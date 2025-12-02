@@ -1,6 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { Button } from "~/components/ui/button";
+import { Input } from "~/components/ui/input";
+import { Card, CardContent } from "~/components/ui/card";
+import { getStartOfDay, getStartOfNextDay } from "~/lib/date-utils";
 
 interface BackfillPeriod {
   hours: number;
@@ -35,15 +39,20 @@ export function BackfillSelector({
     const start = new Date(startDate);
     const end = new Date(endDate);
 
-    if (start >= end) {
-      alert("End date must be after start date");
+    if (start > end) {
+      alert("End date must be after or equal to start date");
       return;
     }
 
+    // Normalize dates: start to beginning of day, end to start of next day
+    // This ensures consistent date boundaries
+    const normalizedStart = getStartOfDay(start);
+    const normalizedEnd = getStartOfNextDay(end);
+
     const newBackfill: BackfillPeriod = {
       hours,
-      startTime: start,
-      endTime: end,
+      startTime: normalizedStart,
+      endTime: normalizedEnd,
     };
 
     onBackfillsChange([...selectedBackfills, newBackfill]);
@@ -67,54 +76,53 @@ export function BackfillSelector({
         </p>
 
         {/* Add backfill form */}
-        <div className="mb-6 rounded-lg border border-gray-200 bg-gray-50 p-4">
-          <div className="grid gap-4 md:grid-cols-4">
-            <div>
-              <label className="mb-2 block text-sm font-medium text-gray-700">
-                Hours
-              </label>
-              <input
-                type="number"
-                min="1"
-                value={hours}
-                onChange={(e) => setHours(Number.parseInt(e.target.value) || 1)}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
-              />
+        <Card className="mb-6">
+          <CardContent className="p-4">
+            <div className="grid gap-4 md:grid-cols-4">
+              <div>
+                <label className="mb-2 block text-sm font-medium text-gray-700">
+                  Hours
+                </label>
+                <Input
+                  type="number"
+                  min="1"
+                  value={hours}
+                  onChange={(e) => setHours(Number.parseInt(e.target.value) || 1)}
+                />
+              </div>
+              <div>
+                <label className="mb-2 block text-sm font-medium text-gray-700">
+                  Start Date
+                </label>
+                <Input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="mb-2 block text-sm font-medium text-gray-700">
+                  End Date
+                </label>
+                <Input
+                  type="date"
+                  value={endDate}
+                  min={startDate || undefined}
+                  onChange={(e) => setEndDate(e.target.value)}
+                />
+              </div>
+              <div className="flex items-end">
+                <Button
+                  onClick={handleAddBackfill}
+                  disabled={!startDate || !endDate || hours < 1}
+                  className="w-full"
+                >
+                  Add
+                </Button>
+              </div>
             </div>
-            <div>
-              <label className="mb-2 block text-sm font-medium text-gray-700">
-                Start Date
-              </label>
-              <input
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
-              />
-            </div>
-            <div>
-              <label className="mb-2 block text-sm font-medium text-gray-700">
-                End Date
-              </label>
-              <input
-                type="date"
-                value={endDate}
-                min={startDate || undefined}
-                onChange={(e) => setEndDate(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
-              />
-            </div>
-            <div className="flex items-end">
-              <button
-                onClick={handleAddBackfill}
-                disabled={!startDate || !endDate || hours < 1}
-                className="w-full rounded-lg bg-gray-900 px-4 py-2 font-medium text-white transition-colors hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                Add
-              </button>
-            </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
 
         {/* List of selected backfills */}
         {selectedBackfills.length > 0 && (
@@ -124,22 +132,23 @@ export function BackfillSelector({
             </h3>
             <div className="space-y-2">
               {selectedBackfills.map((backfill, index) => (
-                <div
-                  key={index}
-                  className="flex items-center justify-between rounded-lg border border-gray-200 bg-white p-3"
-                >
-                  <div className="text-sm text-gray-900">
-                    {backfill.startTime.toLocaleDateString()} -{" "}
-                    {backfill.endTime.toLocaleDateString()} ({backfill.hours}{" "}
-                    hours)
-                  </div>
-                  <button
-                    onClick={() => handleRemoveBackfill(index)}
-                    className="text-sm text-red-600 hover:text-red-800"
-                  >
-                    Remove
-                  </button>
-                </div>
+                <Card key={index}>
+                  <CardContent className="flex items-center justify-between p-3">
+                    <div className="text-sm text-gray-900">
+                      {backfill.startTime.toLocaleDateString()} -{" "}
+                      {backfill.endTime.toLocaleDateString()} ({backfill.hours}{" "}
+                      hours)
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleRemoveBackfill(index)}
+                      className="text-red-600 hover:text-red-800"
+                    >
+                      Remove
+                    </Button>
+                  </CardContent>
+                </Card>
               ))}
             </div>
           </div>
@@ -147,20 +156,13 @@ export function BackfillSelector({
       </div>
 
       <div className="flex gap-4">
-        <button
-          onClick={onBack}
-          className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-3 font-medium text-gray-700 transition-colors hover:bg-gray-50"
-        >
+        <Button variant="outline" onClick={onBack} className="flex-1">
           Back
-        </button>
-        <button
-          onClick={onNext}
-          className="flex-1 rounded-lg bg-gray-900 px-4 py-3 font-medium text-white transition-colors hover:bg-gray-800"
-        >
+        </Button>
+        <Button onClick={onNext} className="flex-1">
           {selectedBackfills.length > 0 ? "Continue" : "Skip Backfills"}
-        </button>
+        </Button>
       </div>
     </div>
   );
 }
-

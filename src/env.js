@@ -21,6 +21,11 @@ export const env = createEnv({
     NODE_ENV: z
       .enum(["development", "test", "production"])
       .default("development"),
+    MAX_UPLOAD_SIZE: z
+      .string()
+      .optional()
+      .default("5368709120"), // 5GB in bytes (default for 10-min video)
+    UPLOAD_DIR: z.string().optional().default("uploads"),
   },
 
   /**
@@ -41,6 +46,8 @@ export const env = createEnv({
     DATABASE_URL: process.env.DATABASE_URL,
     STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY,
     NODE_ENV: process.env.NODE_ENV,
+    MAX_UPLOAD_SIZE: process.env.MAX_UPLOAD_SIZE,
+    UPLOAD_DIR: process.env.UPLOAD_DIR,
   },
   /**
    * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially

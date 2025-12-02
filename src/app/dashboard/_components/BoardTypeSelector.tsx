@@ -1,6 +1,9 @@
 "use client";
 
+import { Button } from "~/components/ui/button";
+import { Card, CardContent } from "~/components/ui/card";
 import { api } from "~/trpc/react";
+import { cn } from "~/lib/utils";
 
 interface BoardTypeSelectorProps {
   selectedBoardTypeId: string | null;
@@ -43,29 +46,32 @@ export function BoardTypeSelector({
         </h2>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {boardTypes.map((boardType) => (
-            <button
+            <Card
               key={boardType.id}
-              onClick={() => onBoardTypeSelect(boardType.id)}
-              className={`rounded-lg border-2 p-4 text-left transition-colors ${
+              className={cn(
+                "cursor-pointer transition-colors",
                 selectedBoardTypeId === boardType.id
-                  ? "border-gray-900 bg-gray-50"
-                  : "border-gray-200 hover:border-gray-300"
-              }`}
+                  ? "border-primary ring-2 ring-primary"
+                  : "hover:border-primary/50"
+              )}
+              onClick={() => onBoardTypeSelect(boardType.id)}
             >
-              {boardType.imageUrl && (
-                <img
-                  src={boardType.imageUrl}
-                  alt={boardType.name}
-                  className="mb-3 h-32 w-full rounded object-cover"
-                />
-              )}
-              <h3 className="font-semibold text-gray-900">{boardType.name}</h3>
-              {boardType.description && (
-                <p className="mt-1 text-sm text-gray-600">
-                  {boardType.description}
-                </p>
-              )}
-            </button>
+              <CardContent className="p-4">
+                {boardType.imageUrl && (
+                  <img
+                    src={boardType.imageUrl}
+                    alt={boardType.name}
+                    className="mb-3 h-32 w-full rounded object-cover"
+                  />
+                )}
+                <h3 className="font-semibold text-gray-900">{boardType.name}</h3>
+                {boardType.description && (
+                  <p className="mt-1 text-sm text-gray-600">
+                    {boardType.description}
+                  </p>
+                )}
+              </CardContent>
+            </Card>
           ))}
         </div>
       </div>
@@ -76,36 +82,34 @@ export function BoardTypeSelector({
             Number of Boards
           </label>
           <div className="flex items-center gap-4">
-            <button
+            <Button
               type="button"
+              variant="outline"
+              size="icon"
               onClick={() => onNumberOfBoardsChange(Math.max(1, numberOfBoards - 1))}
-              className="flex h-10 w-10 items-center justify-center rounded-lg border border-gray-300 hover:bg-gray-50"
             >
               -
-            </button>
+            </Button>
             <span className="text-lg font-semibold text-gray-900">
               {numberOfBoards}
             </span>
-            <button
+            <Button
               type="button"
+              variant="outline"
+              size="icon"
               onClick={() => onNumberOfBoardsChange(numberOfBoards + 1)}
-              className="flex h-10 w-10 items-center justify-center rounded-lg border border-gray-300 hover:bg-gray-50"
             >
               +
-            </button>
+            </Button>
           </div>
         </div>
       )}
 
       {selectedBoardTypeId && (
-        <button
-          onClick={onNext}
-          className="w-full rounded-lg bg-gray-900 px-4 py-3 font-medium text-white transition-colors hover:bg-gray-800"
-        >
+        <Button onClick={onNext} className="w-full">
           Continue to Availability
-        </button>
+        </Button>
       )}
     </div>
   );
 }
-

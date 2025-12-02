@@ -26,11 +26,13 @@ export const users = createTable("user", (d) => ({
     .$defaultFn(() => /* @__PURE__ */ new Date()),
   image: d.varchar({ length: 255 }),
   stripeCustomerId: d.varchar({ length: 255 }),
+  role: d.varchar({ length: 50 }).default("user"), // "user" | "admin"
 }));
 
 export const usersRelations = relations(users, ({ many }) => ({
   accounts: many(accounts),
   orders: many(orders),
+  creatives: many(creatives),
 }));
 
 export const accounts = createTable(
@@ -103,6 +105,8 @@ export const boardTypes = createTable("board_type", (d) => ({
   imageUrl: d.text(),
   slotCostPerDay: d.integer().notNull().default(0), // in cents
   backfillCostPerDay: d.integer().notNull().default(0), // in cents
+  dimensionX: d.integer(),
+  dimensionY: d.integer(),
 }));
 
 export const boardTypesRelations = relations(boardTypes, ({ many }) => ({
@@ -233,6 +237,13 @@ export const orders = createTable("order", (d) => ({
     .$onUpdate(() => new Date()),
   stripePaymentIntentId: d.varchar({ length: 255 }),
   isSubsidizedBySubscription: d.boolean().default(false),
+  approved: d.boolean().default(false),
+  approvedBy: d
+    .varchar({ length: 255 })
+    .references(() => users.id), // Admin user who approved
+  approvedAt: d.timestamp({ withTimezone: true }), // When it was approved
+  targetUrl: d.text(),
+  utmTag: d.text(),
 }));
 
 export const ordersRelations = relations(orders, ({ one, many }) => ({
@@ -256,15 +267,31 @@ export const creatives = createTable("creative", (d) => ({
     .notNull()
     .primaryKey()
     .$defaultFn(() => crypto.randomUUID()),
+  userId: d
+    .varchar({ length: 255 })
+    .notNull()
+    .references(() => users.id),
   fileName: d.varchar({ length: 255 }).notNull(),
+  fileType: d.varchar({ length: 50 }).notNull(), // "image" or "video"
+  filePath: d.text().notNull(), // e.g., "/uploads/userId/uuid-filename.ext"
+  fileSize: d.bigint({ mode: "number" }).notNull(), // file size in bytes
+  mimeType: d.varchar({ length: 100 }).notNull(), // e.g., "image/jpeg", "video/mp4"
   uploadDate: d
     .timestamp({ withTimezone: true })
     .notNull()
     .$defaultFn(() => new Date()),
   approved: d.boolean().default(false),
+  approvedBy: d
+    .varchar({ length: 255 })
+    .references(() => users.id), // Admin user who approved
+  approvedAt: d.timestamp({ withTimezone: true }), // When it was approved
 }));
 
-export const creativesRelations = relations(creatives, ({ many }) => ({
+export const creativesRelations = relations(creatives, ({ one, many }) => ({
+  user: one(users, {
+    fields: [creatives.userId],
+    references: [users.id],
+  }),
   creativeForOrders: many(creativeForOrders),
 }));
 

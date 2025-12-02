@@ -1,6 +1,7 @@
 import { DrizzleAdapter } from "@auth/drizzle-adapter";
 import { type DefaultSession, type NextAuthConfig } from "next-auth";
 import GithubProvider from "next-auth/providers/github";
+import { eq } from "drizzle-orm";
 
 import { db } from "~/server/db";
 import {
@@ -20,8 +21,7 @@ declare module "next-auth" {
   interface Session extends DefaultSession {
     user: {
       id: string;
-      // ...other properties
-      // role: UserRole;
+      role: string | null;
     } & DefaultSession["user"];
   }
 
@@ -56,12 +56,22 @@ export const authConfig = {
     verificationTokensTable: verificationTokens,
   }),
   callbacks: {
-    session: ({ session, user }) => ({
-      ...session,
-      user: {
-        ...session.user,
-        id: user.id,
-      },
-    }),
+    session: async ({ session, user }) => {
+      // Fetch user role from database
+      const [dbUser] = await db
+        .select({ role: users.role })
+        .from(users)
+        .where(eq(users.id, user.id))
+        .limit(1);
+
+      return {
+        ...session,
+        user: {
+          ...session.user,
+          id: user.id,
+          role: dbUser?.role ?? null,
+        },
+      };
+    },
   },
 } satisfies NextAuthConfig;

@@ -14,6 +14,7 @@ import {
   orders,
   backfills,
   creativeForOrders,
+  creatives,
 } from "~/server/db/schema";
 
 export const boardRouter = createTRPCRouter({
@@ -113,7 +114,10 @@ export const boardRouter = createTRPCRouter({
             }),
           )
           .optional(),
-        creativeId: z.string().uuid().optional(),
+        creativeIds: z.array(z.string().uuid()).max(5).optional(), // Up to 5 creatives per order
+        allCreativesApproved: z.boolean().optional(), // Whether all creatives in the order are approved by admin
+        targetUrl: z.string().url().optional().or(z.literal("")),
+        utmTag: z.string().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -251,6 +255,8 @@ export const boardRouter = createTRPCRouter({
               totalPrice,
               currency: "cad",
               status: "pending",
+              targetUrl: input.targetUrl && input.targetUrl !== "" ? input.targetUrl : null,
+              utmTag: input.utmTag && input.utmTag !== "" ? input.utmTag : null,
             })
             .returning();
 
@@ -332,12 +338,14 @@ export const boardRouter = createTRPCRouter({
               }
             }
 
-            // Link creative if provided
-            if (input.creativeId) {
-              await ctx.db.insert(creativeForOrders).values({
-                orderId: newOrder.id,
-                creativeId: input.creativeId,
-              });
+            // Link creatives if provided
+            if (input.creativeIds && input.creativeIds.length > 0) {
+              await ctx.db.insert(creativeForOrders).values(
+                input.creativeIds.map((creativeId) => ({
+                  orderId: newOrder.id,
+                  creativeId,
+                })),
+              );
             }
           } catch (err) {
             console.log("Error creating back fill", err);
@@ -364,5 +372,153 @@ export const boardRouter = createTRPCRouter({
           backfills: [],
         };
       }
+    }),
+
+  getUserOrders: protectedProcedure
+    .input(
+      z.object({
+        page: z.number().int().min(1).default(1),
+        pageSize: z.number().int().min(1).max(100).default(10),
+        sortBy: z.enum(["date", "status"]).default("date"),
+        sortOrder: z.enum(["asc", "desc"]).default("desc"),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+
+      // Get all orders for this user
+      const allUserOrders = await ctx.db
+        .select({
+          order: orders,
+        })
+        .from(orders)
+        .where(eq(orders.userId, userId));
+
+      // Get total count for pagination
+      const totalCount = allUserOrders.length;
+      const totalPages = Math.ceil(totalCount / input.pageSize);
+
+      // For each order, get slots, boards, backfills, and creatives
+      const ordersWithDetails = await Promise.all(
+        allUserOrders.map(async ({ order }) => {
+          // Get slots for this order with board and boardType info
+          const orderSlots = await ctx.db
+            .select({
+              slot: slots,
+              board: boards,
+              boardType: boardTypes,
+            })
+            .from(slots)
+            .innerJoin(boards, eq(slots.boardId, boards.id))
+            .innerJoin(boardTypes, eq(boards.boardTypeId, boardTypes.id))
+            .where(eq(slots.orderId, order.id))
+            .orderBy(slots.startTime);
+
+          // Get backfills for this order
+          const orderBackfills = await ctx.db
+            .select()
+            .from(backfills)
+            .where(eq(backfills.orderId, order.id))
+            .orderBy(backfills.startTime);
+
+          // Get earliest start and latest end dates from slots
+          const startDates = orderSlots.map((s) => s.slot.startTime);
+          const endDates = orderSlots.map((s) => s.slot.endTime);
+          const earliestStart =
+            startDates.length > 0
+              ? new Date(Math.min(...startDates.map((d) => d.getTime())))
+              : null;
+          const latestEnd =
+            endDates.length > 0
+              ? new Date(Math.max(...endDates.map((d) => d.getTime())))
+              : null;
+
+          // Get creatives for this order
+          const orderCreatives = await ctx.db
+            .select({
+              creative: creatives,
+            })
+            .from(creativeForOrders)
+            .innerJoin(creatives, eq(creativeForOrders.creativeId, creatives.id))
+            .where(eq(creativeForOrders.orderId, order.id))
+            .limit(1); // Get first creative for preview
+
+          const previewCreative = orderCreatives[0]?.creative ?? null;
+
+          // Generate preview URL if creative exists
+          let previewUrl: string | null = null;
+          if (previewCreative) {
+            // Extract filename from filePath (e.g., "uploads/userId/uuid-filename.ext" -> "uuid-filename.ext")
+            const filename = previewCreative.filePath.split("/").pop() ?? null;
+            if (filename) {
+              previewUrl = `/api/files/${previewCreative.userId}/${filename}`;
+            }
+          }
+
+          return {
+            order,
+            slots: orderSlots.map((item) => ({
+              id: item.slot.id,
+              startTime: item.slot.startTime,
+              endTime: item.slot.endTime,
+              board: {
+                id: item.board.id,
+                vehicleName: item.board.vehicleName,
+                boardType: {
+                  id: item.boardType.id,
+                  name: item.boardType.name,
+                },
+              },
+            })),
+            backfills: orderBackfills.map((bf) => ({
+              id: bf.id,
+              hours: bf.hours,
+              startTime: bf.startTime,
+              endTime: bf.endTime,
+            })),
+            preview: previewUrl
+              ? {
+                  url: previewUrl,
+                  fileType: previewCreative?.fileType ?? null,
+                  fileName: previewCreative?.fileName ?? null,
+                }
+              : null,
+            startDate: earliestStart,
+            endDate: latestEnd,
+          };
+        }),
+      );
+
+      // Sort the results
+      ordersWithDetails.sort((a, b) => {
+        if (input.sortBy === "date") {
+          const aDate = a.startDate?.getTime() ?? 0;
+          const bDate = b.startDate?.getTime() ?? 0;
+          return input.sortOrder === "asc" ? aDate - bDate : bDate - aDate;
+        } else {
+          // status
+          const aStatus = a.order.status ?? "";
+          const bStatus = b.order.status ?? "";
+          const comparison = aStatus.localeCompare(bStatus);
+          return input.sortOrder === "asc" ? comparison : -comparison;
+        }
+      });
+
+      // Apply pagination
+      const offset = (input.page - 1) * input.pageSize;
+      const paginatedOrders = ordersWithDetails.slice(
+        offset,
+        offset + input.pageSize,
+      );
+
+      return {
+        orders: paginatedOrders,
+        pagination: {
+          page: input.page,
+          pageSize: input.pageSize,
+          totalCount,
+          totalPages,
+        },
+      };
     }),
 });

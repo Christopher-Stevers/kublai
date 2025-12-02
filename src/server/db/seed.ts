@@ -29,6 +29,8 @@ const boardTypeDefinitions = [
     imageUrl: "/images/service-truck-1.png",
     slotCostPerDay: 15000, // $150.00 per day in cents
     backfillCostPerDay: 3500, // $35.00 per day in cents (23% of slot)
+    dimensionX: 1920, // pixels
+    dimensionY: 1080, // pixels
   },
   {
     name: "Tow Truck",
@@ -37,6 +39,8 @@ const boardTypeDefinitions = [
     imageUrl: "/images/tow-truck-1.png",
     slotCostPerDay: 20000, // $200.00 per day in cents
     backfillCostPerDay: 5000, // $50.00 per day in cents (25% of slot)
+    dimensionX: 1920, // pixels
+    dimensionY: 1080, // pixels
   },
   {
     name: "Trade Truck",
@@ -45,6 +49,8 @@ const boardTypeDefinitions = [
     imageUrl: "/images/trade-truck-1.png",
     slotCostPerDay: 18000, // $180.00 per day in cents
     backfillCostPerDay: 4000, // $40.00 per day in cents (22% of slot)
+    dimensionX: 1920, // pixels
+    dimensionY: 1080, // pixels
   },
 ];
 
@@ -79,25 +85,8 @@ const vehicleNameTemplates = {
   ],
 };
 
-// Sample creatives
-const creativeDefinitions = [
-  {
-    fileName: "Creative-001.jpg",
-    approved: true,
-  },
-  {
-    fileName: "Creative-002.jpg",
-    approved: true,
-  },
-  {
-    fileName: "Creative-003.jpg",
-    approved: false,
-  },
-  {
-    fileName: "Creative-004.jpg",
-    approved: true,
-  },
-];
+// Note: Creatives are not seeded as they require userId, fileType, filePath, fileSize, and mimeType
+// Creatives should be created through the application's upload functionality
 
 /**
  * Generate a random number between min and max (inclusive)
@@ -157,9 +146,9 @@ async function seed() {
     for (const typeDef of boardTypeDefinitions) {
       const [result] = await db
         .execute(
-          sql`INSERT INTO genghis_board_type (id, name, description, "imageUrl", "slotCostPerDay", "backfillCostPerDay") 
-              VALUES (gen_random_uuid(), ${typeDef.name}, ${typeDef.description ?? null}, ${typeDef.imageUrl ?? null}, ${typeDef.slotCostPerDay}, ${typeDef.backfillCostPerDay}) 
-              RETURNING id, name, description, "imageUrl", "slotCostPerDay", "backfillCostPerDay"`,
+          sql`INSERT INTO genghis_board_type (id, name, description, "imageUrl", "slotCostPerDay", "backfillCostPerDay", "dimensionX", "dimensionY") 
+              VALUES (gen_random_uuid(), ${typeDef.name}, ${typeDef.description ?? null}, ${typeDef.imageUrl ?? null}, ${typeDef.slotCostPerDay}, ${typeDef.backfillCostPerDay}, ${typeDef.dimensionX ?? null}, ${typeDef.dimensionY ?? null}) 
+              RETURNING id, name, description, "imageUrl", "slotCostPerDay", "backfillCostPerDay", "dimensionX", "dimensionY"`,
         )
         .then((rows) => rows);
       if (result) {
@@ -170,6 +159,8 @@ async function seed() {
           imageUrl: result.imageUrl as string | null,
           slotCostPerDay: result.slotCostPerDay as number,
           backfillCostPerDay: result.backfillCostPerDay as number,
+          dimensionX: result.dimensionX as number | null,
+          dimensionY: result.dimensionY as number | null,
         });
       }
     }
@@ -231,33 +222,14 @@ async function seed() {
       );
     }
 
-    // Create sample creatives
-    console.log("🎨 Creating creatives...");
-    const createdCreatives = [];
-    for (const creativeDef of creativeDefinitions) {
-      const [result] = await db
-        .execute(
-          sql`INSERT INTO genghis_creative (id, "fileName", approved, "uploadDate") 
-              VALUES (gen_random_uuid(), ${creativeDef.fileName}, ${creativeDef.approved}, NOW()) 
-              RETURNING id, "fileName", approved, "uploadDate"`,
-        )
-        .then((rows) => rows);
-      if (result) {
-        createdCreatives.push({
-          id: result.id as string,
-          fileName: result.fileName as string,
-          approved: result.approved as boolean,
-          uploadDate: result.uploadDate as Date,
-        });
-      }
-    }
-    console.log(`✅ Created ${createdCreatives.length} creatives`);
+    // Skip creatives seeding - they require userId and actual file data
+    // Creatives should be created through the application's upload functionality
+    console.log("ℹ️  Skipping creatives (require user and file upload)");
 
     console.log(`\n🎉 Seed completed successfully!`);
     console.log(`📊 Summary:`);
     console.log(`   - Board Types: ${createdBoardTypes.length}`);
     console.log(`   - Total Vehicles: ${allBoards.length}`);
-    console.log(`   - Creatives: ${createdCreatives.length}`);
     console.log(`   - Vehicles per type:`);
     for (const boardType of createdBoardTypes) {
       const count = allBoards.filter(

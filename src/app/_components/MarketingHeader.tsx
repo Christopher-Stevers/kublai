@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { Button } from "~/components/ui/button";
+import { Menu, X } from "lucide-react";
 import { APP_NAME } from "~/constants/app";
 
 export function MarketingHeader() {
@@ -46,61 +48,42 @@ export function MarketingHeader() {
 
         {/* Desktop Navigation */}
         <div className="hidden items-center gap-8 md:flex">
-          <button
+          <Button
+            variant="ghost"
             onClick={() => scrollToSection("features")}
-            className="text-sm font-medium text-gray-700 transition-colors hover:text-gray-900"
+            className="text-sm font-medium"
           >
             Features
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="ghost"
             onClick={() => scrollToSection("how-it-works")}
-            className="text-sm font-medium text-gray-700 transition-colors hover:text-gray-900"
+            className="text-sm font-medium"
           >
             How It Works
-          </button>
-          <Link
-            href="/api/auth/signin"
-            className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-900 transition-colors hover:bg-gray-50"
-          >
-            Sign In
-          </Link>
-          <Link
-            href="/dashboard"
-            className="rounded-lg bg-gray-900 px-6 py-2 text-sm font-semibold text-white transition-colors hover:bg-gray-800"
-          >
-            Get Started
-          </Link>
+          </Button>
+          <Button variant="outline" asChild>
+            <Link href="/api/auth/signin">Sign In</Link>
+          </Button>
+          <Button asChild>
+            <Link href="/dashboard">Get Started</Link>
+          </Button>
         </div>
 
         {/* Mobile Menu Button */}
-        <button
+        <Button
+          variant="ghost"
+          size="icon"
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
           className="md:hidden"
           aria-label="Toggle menu"
         >
-          <svg
-            className="h-6 w-6 text-gray-900"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            {isMobileMenuOpen ? (
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M6 18L18 6M6 6l12 12"
-              />
-            ) : (
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M4 6h16M4 12h16M4 18h16"
-              />
-            )}
-          </svg>
-        </button>
+          {isMobileMenuOpen ? (
+            <X className="h-6 w-6" />
+          ) : (
+            <Menu className="h-6 w-6" />
+          )}
+        </Button>
       </nav>
 
       {/* Mobile Menu */}
@@ -114,30 +97,26 @@ export function MarketingHeader() {
             className="border-t border-gray-200 bg-white md:hidden"
           >
             <div className="flex flex-col gap-4 px-6 py-4">
-              <button
+              <Button
+                variant="ghost"
                 onClick={() => scrollToSection("features")}
-                className="text-left text-sm font-medium text-gray-700 transition-colors hover:text-gray-900"
+                className="justify-start text-sm font-medium"
               >
                 Features
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="ghost"
                 onClick={() => scrollToSection("how-it-works")}
-                className="text-left text-sm font-medium text-gray-700 transition-colors hover:text-gray-900"
+                className="justify-start text-sm font-medium"
               >
                 How It Works
-              </button>
-              <Link
-                href="/api/auth/signin"
-                className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-center text-sm font-semibold text-gray-900 transition-colors hover:bg-gray-50"
-              >
-                Sign In
-              </Link>
-              <Link
-                href="/dashboard"
-                className="rounded-lg bg-gray-900 px-4 py-2 text-center text-sm font-semibold text-white transition-colors hover:bg-gray-800"
-              >
-                Get Started
-              </Link>
+              </Button>
+              <Button variant="outline" asChild>
+                <Link href="/api/auth/signin">Sign In</Link>
+              </Button>
+              <Button asChild>
+                <Link href="/dashboard">Get Started</Link>
+              </Button>
             </div>
           </motion.div>
         )}
@@ -145,4 +124,3 @@ export function MarketingHeader() {
     </motion.header>
   );
 }
-

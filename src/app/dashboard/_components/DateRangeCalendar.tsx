@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { getStartOfDay, getStartOfNextDay } from "~/lib/date-utils";
 
 interface DateRangeCalendarProps {
   availableBoards?: number;
@@ -31,7 +32,11 @@ export function DateRangeCalendar({
       const start = new Date(startDate);
       const end = new Date(endDate);
       if (start <= end) {
-        onDateRangeSelected(start, end);
+        // Normalize dates: start to beginning of day, end to start of next day
+        // This ensures exactly 24 hours for single day selections
+        const normalizedStart = getStartOfDay(start);
+        const normalizedEnd = getStartOfNextDay(end);
+        onDateRangeSelected(normalizedStart, normalizedEnd);
       }
     }
   };
