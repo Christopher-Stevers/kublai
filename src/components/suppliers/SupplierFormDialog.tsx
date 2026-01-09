@@ -55,7 +55,7 @@ export function SupplierFormDialog({
   const createSupplier = api.supplier.create.useMutation({
     onSuccess: (newSupplier) => {
       void utils.supplier.list.invalidate();
-      if (onSupplierCreated) {
+      if (onSupplierCreated && newSupplier) {
         onSupplierCreated(newSupplier.id);
       }
       onOpenChange(false);

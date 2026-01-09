@@ -347,7 +347,8 @@ export const unitsRelations = relations(units, ({ many }) => ({
 // org-specific + optional global (organizationId nullable)
 // ============================
 
-export const categories = createTable(
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const categories: any = createTable(
   "category",
   (d) => ({
     id: d
@@ -363,7 +364,7 @@ export const categories = createTable(
     name: d.varchar({ length: 255 }).notNull(),
     parentId: d
       .uuid()
-      .references(() => categories.id, { onDelete: "set null" }),
+      .references(() => (categories as any).id, { onDelete: "set null" }),
     sortOrder: d.integer().notNull().default(0),
   }),
   (t) => [

@@ -641,7 +641,7 @@ export default function CataloguePage() {
       categoryId: selectedCategoryId ?? undefined,
       partType: selectedPartType || undefined,
       material: selectedMaterial || undefined,
-      sizeNominal: normalizedSize,
+      sizeNominal: normalizedSize ?? undefined,
       sizeUnit: normalizedSize ? sizeUnit : undefined,
       attributeKey: attributeKey || undefined,
       attributeValueMin:

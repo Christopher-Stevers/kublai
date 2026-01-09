@@ -53,30 +53,9 @@ export function SupplierSelector({
     },
   });
 
-  // Handle supplier creation - this will be called from SupplierFormDialog callback
-  const handleSupplierCreated = async (supplierId: string) => {
-    try {
-      // Create supplier part linking supplier to part definition
-      const supplierPart = await utils.supplier.addSupplierPart.fetch({
-        supplierId,
-        partDefinitionId,
-      });
-      // Assign the new supplier part to the material list item
-      updateItem.mutate({
-        itemId,
-        supplierPartId: supplierPart.id,
-      });
-      setIsSupplierDialogOpen(false);
-      setIsDropdownOpen(false);
-      setSearchQuery("");
-      setPendingSupplierName("");
-    } catch (error) {
-      console.error("Error creating supplier part:", error);
-    }
-  };
-
   const addSupplierPart = api.supplier.addSupplierPart.useMutation({
     onSuccess: (supplierPart) => {
+      if (!supplierPart) return;
       // Assign the supplier part to the material list item
       updateItem.mutate({
         itemId,
@@ -89,6 +68,21 @@ export function SupplierSelector({
       setSearchQuery("");
     },
   });
+
+  // Handle supplier creation - this will be called from SupplierFormDialog callback
+  const handleSupplierCreated = async (supplierId: string) => {
+    try {
+      // Create supplier part linking supplier to part definition
+      addSupplierPart.mutate({
+        supplierId,
+        partDefinitionId,
+      });
+      setIsSupplierDialogOpen(false);
+      setPendingSupplierName("");
+    } catch (error) {
+      console.error("Error creating supplier part:", error);
+    }
+  };
 
   // Get all suppliers for the organization
   const { data: allSuppliers } = api.supplier.list.useQuery();

@@ -51,6 +51,13 @@ export const organizationRouter = createTRPCRouter({
           })
           .returning();
 
+        if (!organization) {
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Failed to create organization",
+          });
+        }
+
         // Create default pricing profile with 15% markup
         const [pricingProfile] = await ctx.db
           .insert(pricingProfiles)

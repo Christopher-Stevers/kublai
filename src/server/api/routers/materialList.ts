@@ -29,31 +29,45 @@ export const materialListRouter = createTRPCRouter({
       });
     }
 
-    // Create draft job
-    const [job] = await ctx.db
-      .insert(jobs)
-      .values({
-        organizationId: ctx.user.organizationId,
-        name: "New Material List",
-        foremanUserId: ctx.userId,
-        createdByUserId: ctx.userId,
-        status: "draft",
-      })
-      .returning();
+      // Create draft job
+      const [job] = await ctx.db
+        .insert(jobs)
+        .values({
+          organizationId: ctx.user.organizationId,
+          name: "New Material List",
+          foremanUserId: ctx.userId,
+          createdByUserId: ctx.userId,
+          status: "draft",
+        })
+        .returning();
 
-    // Create draft quote linked to job
-    const [quote] = await ctx.db
-      .insert(quotes)
-      .values({
-        organizationId: ctx.user.organizationId,
-        jobId: job.id,
-        createdByUserId: ctx.userId,
-        subtotalMaterials: "0",
-        total: "0",
-      })
-      .returning();
+      if (!job) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to create job",
+        });
+      }
 
-    return { materialListId: job.id, quoteId: quote.id };
+      // Create draft quote linked to job
+      const [quote] = await ctx.db
+        .insert(quotes)
+        .values({
+          organizationId: ctx.user.organizationId,
+          jobId: job.id,
+          createdByUserId: ctx.userId,
+          subtotalMaterials: "0",
+          total: "0",
+        })
+        .returning();
+
+      if (!quote) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to create quote",
+        });
+      }
+
+      return { materialListId: job.id, quoteId: quote.id };
   }),
 
   /**
@@ -128,34 +142,26 @@ export const materialListRouter = createTRPCRouter({
       }
 
       // Get quote items with part definitions and suppliers
-      const items = await ctx.db
+      const itemsRaw = await ctx.db
         .select({
           id: quoteItems.id,
           quantity: quoteItems.quantity,
           unitCost: quoteItems.unitCost,
           extendedPrice: quoteItems.extendedPrice,
           descriptionSnapshot: quoteItems.descriptionSnapshot,
-          partDefinition: {
-            id: partDefinitions.id,
-            displayName: partDefinitions.displayName,
-            imageUrl: partDefinitions.imageUrl,
-            material: partDefinitions.material,
-          },
-          supplierPart: {
-            id: supplierParts.id,
-            supplierId: supplierParts.supplierId,
-            supplierSku: supplierParts.supplierSku,
-            lastKnownUnitCost: supplierParts.lastKnownUnitCost,
-            supplier: {
-              id: suppliers.id,
-              name: suppliers.name,
-            },
-          },
-          uom: {
-            id: units.id,
-            code: units.code,
-            displayName: units.displayName,
-          },
+          partDefinitionId: partDefinitions.id,
+          partDefinitionDisplayName: partDefinitions.displayName,
+          partDefinitionImageUrl: partDefinitions.imageUrl,
+          partDefinitionMaterial: partDefinitions.material,
+          supplierPartId: supplierParts.id,
+          supplierPartSupplierId: supplierParts.supplierId,
+          supplierPartSku: supplierParts.supplierSku,
+          supplierPartLastKnownUnitCost: supplierParts.lastKnownUnitCost,
+          supplierId: suppliers.id,
+          supplierName: suppliers.name,
+          uomId: units.id,
+          uomCode: units.code,
+          uomDisplayName: units.displayName,
         })
         .from(quoteItems)
         .leftJoin(
@@ -169,6 +175,44 @@ export const materialListRouter = createTRPCRouter({
         .leftJoin(suppliers, eq(supplierParts.supplierId, suppliers.id))
         .leftJoin(units, eq(quoteItems.uomId, units.id))
         .where(eq(quoteItems.quoteId, quote.id));
+
+      // Transform to nested structure
+      const items = itemsRaw.map((item) => ({
+        id: item.id,
+        quantity: item.quantity,
+        unitCost: item.unitCost,
+        extendedPrice: item.extendedPrice,
+        descriptionSnapshot: item.descriptionSnapshot,
+        partDefinition: item.partDefinitionId
+          ? {
+              id: item.partDefinitionId,
+              displayName: item.partDefinitionDisplayName,
+              imageUrl: item.partDefinitionImageUrl,
+              material: item.partDefinitionMaterial,
+            }
+          : null,
+        supplierPart: item.supplierPartId
+          ? {
+              id: item.supplierPartId,
+              supplierId: item.supplierPartSupplierId,
+              supplierSku: item.supplierPartSku,
+              lastKnownUnitCost: item.supplierPartLastKnownUnitCost,
+              supplier: item.supplierId
+                ? {
+                    id: item.supplierId,
+                    name: item.supplierName,
+                  }
+                : null,
+            }
+          : null,
+        uom: item.uomId
+          ? {
+              id: item.uomId,
+              code: item.uomCode,
+              displayName: item.uomDisplayName,
+            }
+          : null,
+      }));
 
       // Calculate material total
       const materialTotal = items.reduce((sum, item) => {
@@ -227,7 +271,7 @@ export const materialListRouter = createTRPCRouter({
           .where(
             and(
               eq(quotes.jobId, list.id),
-              eq(quotes.organizationId, ctx.user.organizationId),
+              eq(quotes.organizationId, ctx.user.organizationId!),
             ),
           )
           .orderBy(desc(quotes.createdAt))
@@ -960,6 +1004,13 @@ ${foremanName}`;
             status: "draft",
           })
           .returning();
+
+        if (!order) {
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Failed to create order",
+          });
+        }
 
         // Create order items
         for (const item of items) {

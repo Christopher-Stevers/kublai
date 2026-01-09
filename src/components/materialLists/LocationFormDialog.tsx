@@ -37,7 +37,7 @@ export function LocationFormDialog({
   const createLocation = api.location.createLocation.useMutation({
     onSuccess: (newLocation) => {
       void utils.location.searchLocations.invalidate();
-      if (onLocationCreated) {
+      if (onLocationCreated && newLocation) {
         onLocationCreated(newLocation.id);
       }
       onOpenChange(false);

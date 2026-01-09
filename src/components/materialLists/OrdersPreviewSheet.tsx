@@ -33,19 +33,26 @@ export function OrdersPreviewSheet({
   const [orders, setOrders] = useState<
     Array<{
       id: string;
+      supplier: {
+        id: string;
+        name: string;
+        contactEmail: string | null;
+      } | null;
       items: Array<{
         id: string;
         quantity: string;
         descriptionSnapshot: string | null;
         supplierSkuSnapshot: string | null;
       }>;
+      sentAt?: Date | null;
     }>
   >([]);
   const [isGenerating, setIsGenerating] = useState(false);
 
   const generateOrders = api.materialList.generateOrders.useMutation({
     onSuccess: (data) => {
-      setOrders(data);
+      // Filter out any orders without an id (shouldn't happen, but TypeScript safety)
+      setOrders(data.filter((order): order is typeof order & { id: string } => !!order.id));
       setIsGenerating(false);
       void utils.materialList.getMaterialList.invalidate({ materialListId });
     },

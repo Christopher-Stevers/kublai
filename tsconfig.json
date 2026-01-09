@@ -38,5 +38,12 @@
     "**/*.js",
     ".next/types/**/*.ts"
   ],
-  "exclude": ["node_modules", "generated"]
+  "exclude": [
+    "node_modules",
+    "generated",
+    "**/build/**",
+    "**/dist/**",
+    "**/.next/**",
+    "apps/mobile/android/**"
+  ]
 }

@@ -1,6 +1,6 @@
 import { Webhook } from "svix";
 import { headers } from "next/headers";
-import { WebhookEvent } from "@clerk/nextjs/server";
+import type { WebhookEvent } from "@clerk/nextjs/server";
 import { db } from "~/server/db";
 import { users } from "~/server/db/schema";
 import { eq } from "drizzle-orm";
@@ -90,8 +90,10 @@ export async function POST(req: Request) {
   if (eventType === "user.deleted") {
     const { id } = evt.data;
 
-    // Delete user from database
-    await db.delete(users).where(eq(users.id, id));
+    if (id) {
+      // Delete user from database
+      await db.delete(users).where(eq(users.id, id));
+    }
   }
 
   return new Response("", { status: 200 });

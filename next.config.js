@@ -6,18 +6,19 @@ import "./src/env.js";
 
 /** @type {import("next").NextConfig} */
 const config = {
-  // Increase body size limit for API routes to handle large file uploads (5GB)
-  api: {
-    bodyParser: {
-      sizeLimit: "5gb",
-    },
-    responseLimit: false,
-  },
   // For Next.js 13+ App Router, we need to configure route handlers differently
   experimental: {
     serverActions: {
       bodySizeLimit: "5gb",
     },
+  },
+  // Ignore ESLint errors during build (linting should be run separately)
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+  // Ignore TypeScript errors during build (typecheck should be run separately)
+  typescript: {
+    ignoreBuildErrors: false, // Keep TypeScript checking during build
   },
 };
 

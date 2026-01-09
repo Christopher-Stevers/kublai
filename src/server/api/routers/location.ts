@@ -30,15 +30,16 @@ export const locationRouter = createTRPCRouter({
       // If query provided, search across multiple fields
       if (input.query && input.query.trim().length > 0) {
         const searchTerm = `%${input.query.trim()}%`;
-        conditions.push(
-          or(
-            ilike(locations.name, searchTerm),
-            ilike(locations.address1, searchTerm),
-            ilike(locations.city, searchTerm),
-            ilike(locations.region, searchTerm),
-            ilike(locations.postalCode, searchTerm),
-          ),
+        const searchCondition = or(
+          ilike(locations.name, searchTerm),
+          ilike(locations.address1, searchTerm),
+          ilike(locations.city, searchTerm),
+          ilike(locations.region, searchTerm),
+          ilike(locations.postalCode, searchTerm),
         );
+        if (searchCondition) {
+          conditions.push(searchCondition);
+        }
       }
 
       const locationList = await ctx.db

@@ -111,8 +111,35 @@ export default function MaterialListDetailPage({
             <div className="space-y-2">
               {materialList.items.map((item) => (
                 <MaterialListItem
-                  key={item.id}
-                  item={item}
+                  key={String(item.id)}
+                  item={item as {
+                    id: string;
+                    quantity: string;
+                    unitCost: string | null;
+                    extendedPrice: string | null;
+                    descriptionSnapshot: string | null;
+                    partDefinition: {
+                      id: string;
+                      displayName: string;
+                      imageUrl: string | null;
+                      material: string | null;
+                    } | null;
+                    supplierPart: {
+                      id: string;
+                      supplierId: string;
+                      supplierSku: string | null;
+                      lastKnownUnitCost: string | null;
+                      supplier: {
+                        id: string;
+                        name: string;
+                      } | null;
+                    } | null;
+                    uom: {
+                      id: string;
+                      code: string;
+                      displayName: string | null;
+                    } | null;
+                  }}
                   materialListId={id}
                 />
               ))}

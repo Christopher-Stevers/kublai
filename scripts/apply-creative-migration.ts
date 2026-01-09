@@ -20,7 +20,7 @@ async function applyCreativeMigration() {
     `;
 
     const existingColumns = result.map(
-      (r: { column_name: string }) => r.column_name,
+      (r) => r.column_name as string,
     );
     console.log("Existing columns:", existingColumns);
 

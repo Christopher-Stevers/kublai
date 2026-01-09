@@ -84,13 +84,14 @@ export async function POST(req: Request) {
         }
 
         // Update subscription status
+        const periodEnd = (subscription as unknown as { current_period_end?: number }).current_period_end;
         await db
           .update(users)
           .set({
             stripeSubscriptionId: subscription.id,
             subscriptionStatus: subscription.status,
-            subscriptionEndsAt: subscription.current_period_end
-              ? new Date(subscription.current_period_end * 1000)
+            subscriptionEndsAt: periodEnd
+              ? new Date(periodEnd * 1000)
               : null,
           })
           .where(eq(users.id, user.id));

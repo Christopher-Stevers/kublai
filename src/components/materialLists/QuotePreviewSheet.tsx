@@ -90,19 +90,19 @@ export function QuotePreviewSheet({
             <h3 className="mb-2 font-semibold">Materials:</h3>
             <div className="space-y-2">
               {materialList.items.map((item) => {
-                const qty = parseFloat(item.quantity);
+                const qty = parseFloat(String(item.quantity));
                 const price = item.extendedPrice
-                  ? parseFloat(item.extendedPrice)
+                  ? parseFloat(String(item.extendedPrice))
                   : 0;
+                const partDef = item.partDefinition as { displayName?: string } | null | undefined;
+                const displayName = String(partDef?.displayName || item.descriptionSnapshot || "Item");
                 return (
                   <div
-                    key={item.id}
+                    key={String(item.id)}
                     className="flex justify-between border-b pb-2 text-sm"
                   >
                     <span>
-                      {item.partDefinition?.displayName ||
-                        item.descriptionSnapshot ||
-                        "Item"}{" "}
+                      {displayName}{" "}
                       × {qty}
                     </span>
                     <span>${price.toFixed(2)}</span>
