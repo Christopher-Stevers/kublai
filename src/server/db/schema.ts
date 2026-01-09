@@ -280,6 +280,9 @@ export const suppliers = createTable(
     contactEmail: d.varchar({ length: 255 }),
     contactPhone: d.varchar({ length: 50 }),
     orderingNotes: d.text(),
+    locationId: d
+      .uuid()
+      .references(() => locations.id, { onDelete: "set null" }),
 
     createdAt: d
       .timestamp({ withTimezone: true })
@@ -289,6 +292,7 @@ export const suppliers = createTable(
   (t) => [
     unique("supplier_org_name_uniq").on(t.organizationId, t.name),
     index("supplier_org_idx").on(t.organizationId),
+    index("supplier_location_idx").on(t.locationId),
   ],
 );
 
@@ -296,6 +300,10 @@ export const suppliersRelations = relations(suppliers, ({ one, many }) => ({
   organization: one(organizations, {
     fields: [suppliers.organizationId],
     references: [organizations.id],
+  }),
+  location: one(locations, {
+    fields: [suppliers.locationId],
+    references: [locations.id],
   }),
   supplierParts: many(supplierParts),
   jobSuppliers: many(jobSuppliers),

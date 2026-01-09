@@ -3,6 +3,11 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { sql } from "drizzle-orm";
 import { env } from "~/env";
+import { exec } from "child_process";
+import { promisify } from "util";
+import { clearDatabase, syncUsersFromClerk } from "../../../scripts/clear-db";
+
+const execAsync = promisify(exec);
 
 // Create database connection
 const conn = postgres(env.DATABASE_URL);
@@ -124,21 +129,50 @@ function generateVehicleDescription(type: string, name: string): string {
   );
 }
 
-async function seed() {
+async function runMigrations() {
+  console.log("🔄 Running database migrations...");
+  try {
+    const { stdout, stderr } = await execAsync("pnpm db:push");
+    if (stdout) console.log(stdout);
+    if (stderr) console.error(stderr);
+    console.log("✅ Migrations completed successfully!");
+  } catch (error) {
+    console.error("❌ Error running migrations:", error);
+    throw error;
+  }
+}
+
+async function seed(shouldClearFirst = false, shouldRunMigrations = false) {
   console.log("🌱 Starting database seed...");
 
   try {
+    // Optionally clear the entire database first (full schema drop)
+    if (shouldClearFirst) {
+      console.log("🗑️  Clearing entire database...");
+      await clearDatabase(db as any);
+      console.log("✅ Database cleared successfully!");
+    }
+
+    // Run migrations if requested (always needed after clearing, or if explicitly requested)
+    if (shouldRunMigrations || shouldClearFirst) {
+      console.log("Running migrations...");
+      await runMigrations();
+    }
+
     // Clear existing data in correct order (respecting foreign key constraints)
-    console.log("🗑️  Clearing existing data...");
-    // Use raw SQL to avoid import issues
-    await db.execute(sql`DELETE FROM kublai_creative_for_order`);
-    await db.execute(sql`DELETE FROM kublai_slot`);
-    await db.execute(sql`DELETE FROM kublai_backfill`);
-    await db.execute(sql`DELETE FROM kublai_order`);
-    await db.execute(sql`DELETE FROM kublai_creative`);
-    await db.execute(sql`DELETE FROM kublai_board`);
-    await db.execute(sql`DELETE FROM kublai_board_type`);
-    console.log("✅ Cleared all existing data");
+    // Skip if we just cleared the entire database (tables don't exist yet)
+    if (!shouldClearFirst) {
+      console.log("🗑️  Clearing existing seed data...");
+      // Use raw SQL to avoid import issues
+      await db.execute(sql`DELETE FROM kublai_creative_for_order`);
+      await db.execute(sql`DELETE FROM kublai_slot`);
+      await db.execute(sql`DELETE FROM kublai_backfill`);
+      await db.execute(sql`DELETE FROM kublai_order`);
+      await db.execute(sql`DELETE FROM kublai_creative`);
+      await db.execute(sql`DELETE FROM kublai_board`);
+      await db.execute(sql`DELETE FROM kublai_board_type`);
+      console.log("✅ Cleared all existing seed data");
+    }
 
     // Create board types
     console.log("📋 Creating board types...");
@@ -239,19 +273,51 @@ async function seed() {
     }
   } catch (error) {
     console.error("❌ Error seeding database:", error);
-    throw error;
+    // If tables don't exist, provide helpful message
+    if (error instanceof Error) {
+      const errorMessage = error.message.toLowerCase();
+      if (
+        errorMessage.includes("does not exist") ||
+        errorMessage.includes("relation") ||
+        errorMessage.includes("table")
+      ) {
+        console.error(
+          "\n⚠️  Database tables don't exist. Please run migrations first:",
+        );
+        console.error("   pnpm db:push");
+        console.error("   Then run seed again: pnpm db:seed");
+      }
+    }
+    // Don't throw - allow user sync to still run
+  }
+
+  // Sync users from Clerk after seeding (or even if seeding failed)
+  try {
+    console.log("\n👥 Syncing users from Clerk...");
+    await syncUsersFromClerk(db as any);
+  } catch (error) {
+    // User sync errors are already handled in syncUsersFromClerk
+    console.error("⚠️  User sync failed, but this is non-fatal");
   }
 }
 
+// Check for flags
+// --no-clear: Skip clearing the database
+// --clear: Explicitly clear the database (default behavior)
+// --no-migrate: Skip running migrations
+const shouldClear = !process.argv.includes("--no-clear");
+const shouldRunMigrations = !process.argv.includes("--no-migrate");
+
 // Run seed when this script is executed directly
-seed()
+// Default behavior: clear -> push -> seed -> sync users
+seed(shouldClear, shouldRunMigrations)
   .then(async () => {
-    console.log("✅ Seed script completed");
+    console.log("\n✅ Seed script completed");
     await conn.end();
     process.exit(0);
   })
   .catch(async (error) => {
-    console.error("❌ Seed script failed:", error);
+    console.error("\n❌ Seed script failed:", error);
     await conn.end();
     process.exit(1);
   });

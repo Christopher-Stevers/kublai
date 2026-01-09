@@ -41,6 +41,46 @@ export function Header() {
           >
             Dashboard
           </Link>
+          <Link
+            href="/dashboard/material-lists"
+            className={`text-sm font-medium transition-colors ${
+              pathname?.startsWith("/dashboard/material-lists")
+                ? "text-gray-900 underline"
+                : "text-gray-600 hover:text-gray-900"
+            }`}
+          >
+            Material Lists
+          </Link>
+          <Link
+            href="/dashboard/catalogue"
+            className={`text-sm font-medium transition-colors ${
+              pathname === "/dashboard/catalogue"
+                ? "text-gray-900 underline"
+                : "text-gray-600 hover:text-gray-900"
+            }`}
+          >
+            Catalogue
+          </Link>
+          <Link
+            href="/dashboard/suppliers"
+            className={`text-sm font-medium transition-colors ${
+              pathname === "/dashboard/suppliers"
+                ? "text-gray-900 underline"
+                : "text-gray-600 hover:text-gray-900"
+            }`}
+          >
+            Suppliers
+          </Link>
+          <Link
+            href="/dashboard/parts"
+            className={`text-sm font-medium transition-colors ${
+              pathname === "/dashboard/parts"
+                ? "text-gray-900 underline"
+                : "text-gray-600 hover:text-gray-900"
+            }`}
+          >
+            Parts
+          </Link>
           {userRole?.role === "admin" && (
             <Link
               href="/admin"

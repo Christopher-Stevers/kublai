@@ -30,6 +30,11 @@ export default async function DashboardLayout({
     redirect("/sign-in");
   }
 
+  // Check if user has an organization - redirect to onboarding if not
+  if (!user.organizationId) {
+    redirect("/onboarding");
+  }
+
   // Admins always have access
   if (user.role !== "admin") {
     // Check for active subscription

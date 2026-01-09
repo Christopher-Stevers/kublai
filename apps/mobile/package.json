@@ -1,0 +1,25 @@
+{
+  "name": "foremanhq-mobile",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "sync:dev": "cross-env CAP_MODE=dev npx cap sync",
+    "sync:prod": "cross-env CAP_MODE=prod npx cap sync",
+    "android": "npx cap open android",
+    "android:manual": "powershell -ExecutionPolicy Bypass -File ./open-android.ps1",
+    "android:build": "powershell -ExecutionPolicy Bypass -File ./build-android.ps1",
+    "android:emulator": "powershell -ExecutionPolicy Bypass -File ./start-emulator.ps1",
+    "android:emulator:build": "powershell -ExecutionPolicy Bypass -File ./run-emulator-build.ps1"
+  },
+  "dependencies": {
+    "@capacitor/core": "^6.0.0",
+    "@capacitor/cli": "^6.0.0",
+    "@capacitor/android": "^6.0.0"
+  },
+  "devDependencies": {
+    "cross-env": "^7.0.3",
+    "dotenv": "^17.2.3",
+    "typescript": "^5.8.2"
+  }
+}
+

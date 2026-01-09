@@ -50,7 +50,10 @@ export async function POST(req: Request) {
     const { id, email_addresses, first_name, last_name, image_url } = evt.data;
 
     const email = email_addresses?.[0]?.email_address ?? "";
-    const name = first_name && last_name ? `${first_name} ${last_name}` : first_name ?? last_name ?? null;
+    const name =
+      first_name && last_name
+        ? `${first_name} ${last_name}`
+        : (first_name ?? last_name ?? null);
 
     // Upsert user in database
     const existingUser = await db
@@ -93,4 +96,3 @@ export async function POST(req: Request) {
 
   return new Response("", { status: 200 });
 }
-

@@ -15,7 +15,7 @@ export default clerkMiddleware(async (auth, req) => {
   // Protect all routes except public ones
   if (!isPublicRoute(req)) {
     const { userId } = await auth();
-    
+
     if (!userId) {
       // Use absolute URL for redirect in middleware
       const signInUrl = new URL("/sign-in", req.url);
@@ -32,4 +32,3 @@ export const config = {
     "/(api|trpc)(.*)",
   ],
 };
-

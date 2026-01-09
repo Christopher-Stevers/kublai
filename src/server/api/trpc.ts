@@ -218,7 +218,8 @@ export const hasDashboardAccess = t.procedure
     const hasActiveSubscription =
       ctx.user.stripeSubscriptionId &&
       ctx.user.subscriptionStatus === "active" &&
-      (!ctx.user.subscriptionEndsAt || new Date(ctx.user.subscriptionEndsAt) > new Date());
+      (!ctx.user.subscriptionEndsAt ||
+        new Date(ctx.user.subscriptionEndsAt) > new Date());
 
     // Check for one-time access
     const hasOneTimeAccess = ctx.user.hasOneTimeAccess === true;
@@ -226,7 +227,8 @@ export const hasDashboardAccess = t.procedure
     if (!hasActiveSubscription && !hasOneTimeAccess) {
       throw new TRPCError({
         code: "FORBIDDEN",
-        message: "Dashboard access required. Please purchase a subscription or one-time access.",
+        message:
+          "Dashboard access required. Please purchase a subscription or one-time access.",
       });
     }
 
