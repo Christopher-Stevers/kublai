@@ -33,7 +33,7 @@ This plan outlines the implementation of an admin dashboard feature that allows 
 
 **Migration Steps:**
 ```sql
-ALTER TABLE "genghis_board_type" 
+ALTER TABLE "kublai_board_type" 
   ADD COLUMN "dimensionX" integer,
   ADD COLUMN "dimensionY" integer;
 ```

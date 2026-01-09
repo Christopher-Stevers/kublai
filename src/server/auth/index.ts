@@ -1,10 +1,7 @@
-import NextAuth from "next-auth";
-import { cache } from "react";
+import { auth as clerkAuth } from "@clerk/nextjs/server";
 
-import { authConfig } from "./config";
-
-const { auth: uncachedAuth, handlers, signIn, signOut } = NextAuth(authConfig);
-
-const auth = cache(uncachedAuth);
-
-export { auth, handlers, signIn, signOut };
+/**
+ * Server-side auth function using Clerk
+ * Use this in server components, API routes, and server actions
+ */
+export const auth = clerkAuth;

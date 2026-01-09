@@ -131,13 +131,13 @@ async function seed() {
     // Clear existing data in correct order (respecting foreign key constraints)
     console.log("🗑️  Clearing existing data...");
     // Use raw SQL to avoid import issues
-    await db.execute(sql`DELETE FROM genghis_creative_for_order`);
-    await db.execute(sql`DELETE FROM genghis_slot`);
-    await db.execute(sql`DELETE FROM genghis_backfill`);
-    await db.execute(sql`DELETE FROM genghis_order`);
-    await db.execute(sql`DELETE FROM genghis_creative`);
-    await db.execute(sql`DELETE FROM genghis_board`);
-    await db.execute(sql`DELETE FROM genghis_board_type`);
+    await db.execute(sql`DELETE FROM kublai_creative_for_order`);
+    await db.execute(sql`DELETE FROM kublai_slot`);
+    await db.execute(sql`DELETE FROM kublai_backfill`);
+    await db.execute(sql`DELETE FROM kublai_order`);
+    await db.execute(sql`DELETE FROM kublai_creative`);
+    await db.execute(sql`DELETE FROM kublai_board`);
+    await db.execute(sql`DELETE FROM kublai_board_type`);
     console.log("✅ Cleared all existing data");
 
     // Create board types
@@ -146,7 +146,7 @@ async function seed() {
     for (const typeDef of boardTypeDefinitions) {
       const [result] = await db
         .execute(
-          sql`INSERT INTO genghis_board_type (id, name, description, "imageUrl", "slotCostPerDay", "backfillCostPerDay", "dimensionX", "dimensionY") 
+          sql`INSERT INTO kublai_board_type (id, name, description, "imageUrl", "slotCostPerDay", "backfillCostPerDay", "dimensionX", "dimensionY") 
               VALUES (gen_random_uuid(), ${typeDef.name}, ${typeDef.description ?? null}, ${typeDef.imageUrl ?? null}, ${typeDef.slotCostPerDay}, ${typeDef.backfillCostPerDay}, ${typeDef.dimensionX ?? null}, ${typeDef.dimensionY ?? null}) 
               RETURNING id, name, description, "imageUrl", "slotCostPerDay", "backfillCostPerDay", "dimensionX", "dimensionY"`,
         )
@@ -201,7 +201,7 @@ async function seed() {
       for (const vehicle of vehicles) {
         const [result] = await db
           .execute(
-            sql`INSERT INTO genghis_board (id, "boardTypeId", "vehicleName", "vehicleDescription") 
+            sql`INSERT INTO kublai_board (id, "boardTypeId", "vehicleName", "vehicleDescription") 
                 VALUES (gen_random_uuid(), ${vehicle.boardTypeId}, ${vehicle.vehicleName ?? null}, ${vehicle.vehicleDescription ?? null}) 
                 RETURNING id, "boardTypeId", "vehicleName", "vehicleDescription"`,
           )

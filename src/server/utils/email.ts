@@ -70,7 +70,7 @@ export async function sendEmail({
     const from = process.env.SMTP_FROM ?? ADMIN_EMAIL;
 
     const info = await transporter.sendMail({
-      from: `"${process.env.APP_NAME ?? "Genghis"}" <${from}>`,
+      from: `"${process.env.APP_NAME ?? "kublai"}" <${from}>`,
       to,
       subject,
       text: text ?? html.replace(/<[^>]*>/g, ""), // Strip HTML for text version
@@ -78,7 +78,10 @@ export async function sendEmail({
     });
 
     if (process.env.NODE_ENV === "development") {
-      console.log("📧 Email sent (test mode):", nodemailer.getTestMessageUrl(info));
+      console.log(
+        "📧 Email sent (test mode):",
+        nodemailer.getTestMessageUrl(info),
+      );
     } else {
       console.log("📧 Email sent to:", to);
     }
@@ -141,7 +144,7 @@ export async function sendOrderApprovalEmail({
             </div>
             <p>Your campaign is now active. If you have any questions, please contact us.</p>
             <div class="footer">
-              <p>This is an automated message from Genghis</p>
+              <p>This is an automated message from kublai</p>
             </div>
           </div>
         </div>
@@ -172,4 +175,3 @@ export async function sendOrderApprovalEmail({
     html,
   });
 }
-

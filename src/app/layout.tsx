@@ -8,17 +8,21 @@ import { TRPCReactProvider } from "~/trpc/react";
 import { APP_NAME } from "~/constants/app";
 
 export const metadata: Metadata = {
-  title: `${APP_NAME} - Mobile Digital Advertising on Trade Trucks`,
+  title: `${APP_NAME} - Simplified Parts Ordering for Trades Foremen`,
   description:
-    "Reach your target audience with mobile digital advertising boards on trade trucks, tow trucks, and service trucks. Book your campaign today and maximize visibility in high-traffic areas.",
+    "ForemanHQ helps trades foremen quickly and easily order parts and supplies for their job sites. Streamline your workflow, reduce downtime, and manage orders all in one place.",
   keywords: [
-    "mobile advertising",
-    "digital billboard",
-    "trade truck advertising",
-    "tow truck advertising",
-    "service truck advertising",
-    "mobile marketing",
-    "outdoor advertising",
+    "trades",
+    "foreman",
+    "parts ordering",
+    "construction",
+    "job site management",
+    "order supplies",
+    "trade contractor",
+    "materials management",
+    "foreman app",
+    "construction tools",
+    "order tracking",
   ],
   icons: [{ rel: "icon", url: "/favicon.ico" }],
 };

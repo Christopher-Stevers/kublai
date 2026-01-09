@@ -1,7 +1,7 @@
 services:
   postgres:
     image: postgres:16
-    container_name: genghis-postgres
+    container_name: kublai-postgres
     restart: always
     environment:
       POSTGRES_USER: postgres

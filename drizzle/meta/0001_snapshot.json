@@ -4,8 +4,8 @@
   "version": "7",
   "dialect": "postgresql",
   "tables": {
-    "public.genghis_account": {
-      "name": "genghis_account",
+    "public.kublai_account": {
+      "name": "kublai_account",
       "schema": "",
       "columns": {
         "userId": {
@@ -93,27 +93,20 @@
         }
       },
       "foreignKeys": {
-        "genghis_account_userId_genghis_user_id_fk": {
-          "name": "genghis_account_userId_genghis_user_id_fk",
-          "tableFrom": "genghis_account",
-          "tableTo": "genghis_user",
-          "columnsFrom": [
-            "userId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+        "kublai_account_userId_kublai_user_id_fk": {
+          "name": "kublai_account_userId_kublai_user_id_fk",
+          "tableFrom": "kublai_account",
+          "tableTo": "kublai_user",
+          "columnsFrom": ["userId"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
-        "genghis_account_provider_providerAccountId_pk": {
-          "name": "genghis_account_provider_providerAccountId_pk",
-          "columns": [
-            "provider",
-            "providerAccountId"
-          ]
+        "kublai_account_provider_providerAccountId_pk": {
+          "name": "kublai_account_provider_providerAccountId_pk",
+          "columns": ["provider", "providerAccountId"]
         }
       },
       "uniqueConstraints": {},
@@ -121,8 +114,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.genghis_backfill": {
-      "name": "genghis_backfill",
+    "public.kublai_backfill": {
+      "name": "kublai_backfill",
       "schema": "",
       "columns": {
         "id": {
@@ -158,16 +151,12 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "genghis_backfill_orderId_genghis_order_id_fk": {
-          "name": "genghis_backfill_orderId_genghis_order_id_fk",
-          "tableFrom": "genghis_backfill",
-          "tableTo": "genghis_order",
-          "columnsFrom": [
-            "orderId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+        "kublai_backfill_orderId_kublai_order_id_fk": {
+          "name": "kublai_backfill_orderId_kublai_order_id_fk",
+          "tableFrom": "kublai_backfill",
+          "tableTo": "kublai_order",
+          "columnsFrom": ["orderId"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -178,8 +167,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.genghis_board_type": {
-      "name": "genghis_board_type",
+    "public.kublai_board_type": {
+      "name": "kublai_board_type",
       "schema": "",
       "columns": {
         "id": {
@@ -229,8 +218,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.genghis_board": {
-      "name": "genghis_board",
+    "public.kublai_board": {
+      "name": "kublai_board",
       "schema": "",
       "columns": {
         "id": {
@@ -260,16 +249,12 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "genghis_board_boardTypeId_genghis_board_type_id_fk": {
-          "name": "genghis_board_boardTypeId_genghis_board_type_id_fk",
-          "tableFrom": "genghis_board",
-          "tableTo": "genghis_board_type",
-          "columnsFrom": [
-            "boardTypeId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+        "kublai_board_boardTypeId_kublai_board_type_id_fk": {
+          "name": "kublai_board_boardTypeId_kublai_board_type_id_fk",
+          "tableFrom": "kublai_board",
+          "tableTo": "kublai_board_type",
+          "columnsFrom": ["boardTypeId"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -280,8 +265,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.genghis_creative_for_order": {
-      "name": "genghis_creative_for_order",
+    "public.kublai_creative_for_order": {
+      "name": "kublai_creative_for_order",
       "schema": "",
       "columns": {
         "id": {
@@ -305,50 +290,39 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "genghis_creative_for_order_orderId_genghis_order_id_fk": {
-          "name": "genghis_creative_for_order_orderId_genghis_order_id_fk",
-          "tableFrom": "genghis_creative_for_order",
-          "tableTo": "genghis_order",
-          "columnsFrom": [
-            "orderId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+        "kublai_creative_for_order_orderId_kublai_order_id_fk": {
+          "name": "kublai_creative_for_order_orderId_kublai_order_id_fk",
+          "tableFrom": "kublai_creative_for_order",
+          "tableTo": "kublai_order",
+          "columnsFrom": ["orderId"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
-        "genghis_creative_for_order_creativeId_genghis_creative_id_fk": {
-          "name": "genghis_creative_for_order_creativeId_genghis_creative_id_fk",
-          "tableFrom": "genghis_creative_for_order",
-          "tableTo": "genghis_creative",
-          "columnsFrom": [
-            "creativeId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+        "kublai_creative_for_order_creativeId_kublai_creative_id_fk": {
+          "name": "kublai_creative_for_order_creativeId_kublai_creative_id_fk",
+          "tableFrom": "kublai_creative_for_order",
+          "tableTo": "kublai_creative",
+          "columnsFrom": ["creativeId"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
-        "genghis_creative_for_order_orderId_creativeId_unique": {
-          "name": "genghis_creative_for_order_orderId_creativeId_unique",
+        "kublai_creative_for_order_orderId_creativeId_unique": {
+          "name": "kublai_creative_for_order_orderId_creativeId_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "orderId",
-            "creativeId"
-          ]
+          "columns": ["orderId", "creativeId"]
         }
       },
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.genghis_creative": {
-      "name": "genghis_creative",
+    "public.kublai_creative": {
+      "name": "kublai_creative",
       "schema": "",
       "columns": {
         "id": {
@@ -421,29 +395,21 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "genghis_creative_userId_genghis_user_id_fk": {
-          "name": "genghis_creative_userId_genghis_user_id_fk",
-          "tableFrom": "genghis_creative",
-          "tableTo": "genghis_user",
-          "columnsFrom": [
-            "userId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+        "kublai_creative_userId_kublai_user_id_fk": {
+          "name": "kublai_creative_userId_kublai_user_id_fk",
+          "tableFrom": "kublai_creative",
+          "tableTo": "kublai_user",
+          "columnsFrom": ["userId"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "genghis_creative_approvedBy_genghis_user_id_fk": {
-          "name": "genghis_creative_approvedBy_genghis_user_id_fk",
-          "tableFrom": "genghis_creative",
-          "tableTo": "genghis_user",
-          "columnsFrom": [
-            "approvedBy"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+        "kublai_creative_approvedBy_kublai_user_id_fk": {
+          "name": "kublai_creative_approvedBy_kublai_user_id_fk",
+          "tableFrom": "kublai_creative",
+          "tableTo": "kublai_user",
+          "columnsFrom": ["approvedBy"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -454,8 +420,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.genghis_order": {
-      "name": "genghis_order",
+    "public.kublai_order": {
+      "name": "kublai_order",
       "schema": "",
       "columns": {
         "id": {
@@ -536,29 +502,21 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "genghis_order_userId_genghis_user_id_fk": {
-          "name": "genghis_order_userId_genghis_user_id_fk",
-          "tableFrom": "genghis_order",
-          "tableTo": "genghis_user",
-          "columnsFrom": [
-            "userId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+        "kublai_order_userId_kublai_user_id_fk": {
+          "name": "kublai_order_userId_kublai_user_id_fk",
+          "tableFrom": "kublai_order",
+          "tableTo": "kublai_user",
+          "columnsFrom": ["userId"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "genghis_order_approvedBy_genghis_user_id_fk": {
-          "name": "genghis_order_approvedBy_genghis_user_id_fk",
-          "tableFrom": "genghis_order",
-          "tableTo": "genghis_user",
-          "columnsFrom": [
-            "approvedBy"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+        "kublai_order_approvedBy_kublai_user_id_fk": {
+          "name": "kublai_order_approvedBy_kublai_user_id_fk",
+          "tableFrom": "kublai_order",
+          "tableTo": "kublai_user",
+          "columnsFrom": ["approvedBy"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -569,8 +527,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.genghis_session": {
-      "name": "genghis_session",
+    "public.kublai_session": {
+      "name": "kublai_session",
       "schema": "",
       "columns": {
         "sessionToken": {
@@ -610,16 +568,12 @@
         }
       },
       "foreignKeys": {
-        "genghis_session_userId_genghis_user_id_fk": {
-          "name": "genghis_session_userId_genghis_user_id_fk",
-          "tableFrom": "genghis_session",
-          "tableTo": "genghis_user",
-          "columnsFrom": [
-            "userId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+        "kublai_session_userId_kublai_user_id_fk": {
+          "name": "kublai_session_userId_kublai_user_id_fk",
+          "tableFrom": "kublai_session",
+          "tableTo": "kublai_user",
+          "columnsFrom": ["userId"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -630,8 +584,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.genghis_slot": {
-      "name": "genghis_slot",
+    "public.kublai_slot": {
+      "name": "kublai_slot",
       "schema": "",
       "columns": {
         "id": {
@@ -710,29 +664,21 @@
         }
       },
       "foreignKeys": {
-        "genghis_slot_boardId_genghis_board_id_fk": {
-          "name": "genghis_slot_boardId_genghis_board_id_fk",
-          "tableFrom": "genghis_slot",
-          "tableTo": "genghis_board",
-          "columnsFrom": [
-            "boardId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+        "kublai_slot_boardId_kublai_board_id_fk": {
+          "name": "kublai_slot_boardId_kublai_board_id_fk",
+          "tableFrom": "kublai_slot",
+          "tableTo": "kublai_board",
+          "columnsFrom": ["boardId"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "genghis_slot_orderId_genghis_order_id_fk": {
-          "name": "genghis_slot_orderId_genghis_order_id_fk",
-          "tableFrom": "genghis_slot",
-          "tableTo": "genghis_order",
-          "columnsFrom": [
-            "orderId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+        "kublai_slot_orderId_kublai_order_id_fk": {
+          "name": "kublai_slot_orderId_kublai_order_id_fk",
+          "tableFrom": "kublai_slot",
+          "tableTo": "kublai_order",
+          "columnsFrom": ["orderId"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -743,8 +689,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.genghis_user": {
-      "name": "genghis_user",
+    "public.kublai_user": {
+      "name": "kublai_user",
       "schema": "",
       "columns": {
         "id": {
@@ -799,8 +745,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.genghis_verification_token": {
-      "name": "genghis_verification_token",
+    "public.kublai_verification_token": {
+      "name": "kublai_verification_token",
       "schema": "",
       "columns": {
         "identifier": {
@@ -825,12 +771,9 @@
       "indexes": {},
       "foreignKeys": {},
       "compositePrimaryKeys": {
-        "genghis_verification_token_identifier_token_pk": {
-          "name": "genghis_verification_token_identifier_token_pk",
-          "columns": [
-            "identifier",
-            "token"
-          ]
+        "kublai_verification_token_identifier_token_pk": {
+          "name": "kublai_verification_token_identifier_token_pk",
+          "columns": ["identifier", "token"]
         }
       },
       "uniqueConstraints": {},

@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { signOut, useSession } from "next-auth/react";
+import { useUser, useClerk } from "@clerk/nextjs";
+import { api } from "~/trpc/react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,7 +18,11 @@ import { APP_NAME } from "~/constants/app";
 
 export function Header() {
   const pathname = usePathname();
-  const { data: session } = useSession();
+  const { user } = useUser();
+  const { signOut } = useClerk();
+  const { data: userRole } = api.user.getMyRole.useQuery(undefined, {
+    enabled: !!user,
+  });
 
   return (
     <header className="flex items-center justify-between border-b border-gray-200 bg-white px-6 py-4">
@@ -36,29 +41,17 @@ export function Header() {
           >
             Dashboard
           </Link>
-          {session?.user?.role === "admin" && (
-            <>
-              <Link
-                href="/admin/orders"
-                className={`text-sm font-medium transition-colors ${
-                  pathname === "/admin/orders"
-                    ? "text-gray-900 underline"
-                    : "text-gray-600 hover:text-gray-900"
-                }`}
-              >
-                Order Dashboard
-              </Link>
-              <Link
-                href="/admin/boards"
-                className={`text-sm font-medium transition-colors ${
-                  pathname === "/admin/boards"
-                    ? "text-gray-900 underline"
-                    : "text-gray-600 hover:text-gray-900"
-                }`}
-              >
-                Boards Management
-              </Link>
-            </>
+          {userRole?.role === "admin" && (
+            <Link
+              href="/admin"
+              className={`text-sm font-medium transition-colors ${
+                pathname === "/admin"
+                  ? "text-gray-900 underline"
+                  : "text-gray-600 hover:text-gray-900"
+              }`}
+            >
+              Admin
+            </Link>
           )}
         </nav>
       </div>
@@ -76,7 +69,7 @@ export function Header() {
               <div className="flex items-center gap-3">
                 <UserIcon className="h-5 w-5 text-muted-foreground" />
                 <span className="text-sm text-gray-700 truncate">
-                  {session?.user?.email ?? "Not signed in"}
+                  {user?.primaryEmailAddress?.emailAddress ?? "Not signed in"}
                 </span>
               </div>
             </DropdownMenuLabel>

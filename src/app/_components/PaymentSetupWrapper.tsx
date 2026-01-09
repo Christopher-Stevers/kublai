@@ -3,10 +3,10 @@
 import { api } from "~/trpc/react";
 import { StripeProvider } from "./StripeProvider";
 import { PaymentSetup } from "./PaymentSetup";
-import { useSession } from "next-auth/react";
+import { useUser } from "@clerk/nextjs";
 
 export function PaymentSetupWrapper() {
-  const { data: session } = useSession();
+  const { user } = useUser();
   const { data: setupIntentData, isLoading, error } =
     api.payment.createSetupIntent.useQuery(undefined, {
       enabled: true,
@@ -44,7 +44,7 @@ export function PaymentSetupWrapper() {
     <StripeProvider clientSecret={setupIntentData.clientSecret}>
       <PaymentSetup
         clientSecret={setupIntentData.clientSecret}
-        userEmail={session?.user?.email ?? ""}
+        userEmail={user?.primaryEmailAddress?.emailAddress ?? ""}
       />
     </StripeProvider>
   );

@@ -9,7 +9,7 @@ if (Test-Path .env) {
     foreach ($line in $envContent) {
         if ($line -match '^DATABASE_URL=(.+)') {
             $dbUrl = $matches[1].Trim('"').Trim("'")
-            # Parse DATABASE_URL: postgresql://postgres:password@localhost:5432/genghis
+            # Parse DATABASE_URL: postgresql://postgres:password@localhost:5432/kublai
             if ($dbUrl -match 'postgresql://[^:]+:([^@]+)@[^:]+:(\d+)/(.+)') {
                 $env:POSTGRES_PASSWORD = $matches[1]
                 $env:POSTGRES_PORT = $matches[2]

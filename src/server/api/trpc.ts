@@ -11,8 +11,10 @@ import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import { ZodError } from "zod";
 
-import { auth } from "~/server/auth";
+import { auth } from "@clerk/nextjs/server";
 import { db } from "~/server/db";
+import { users } from "~/server/db/schema";
+import { eq } from "drizzle-orm";
 
 /**
  * 1. CONTEXT
@@ -27,11 +29,23 @@ import { db } from "~/server/db";
  * @see https://trpc.io/docs/server/context
  */
 export const createTRPCContext = async (opts: { headers: Headers }) => {
-  const session = await auth();
+  const { userId } = await auth();
+
+  // Get user from database if authenticated
+  let dbUser = null;
+  if (userId) {
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+    dbUser = user ?? null;
+  }
 
   return {
     db,
-    session,
+    userId,
+    user: dbUser,
     ...opts,
   };
 };
@@ -114,20 +128,27 @@ export const publicProcedure = t.procedure.use(timingMiddleware);
  * Protected (authenticated) procedure
  *
  * If you want a query or mutation to ONLY be accessible to logged in users, use this. It verifies
- * the session is valid and guarantees `ctx.session.user` is not null.
+ * the user is authenticated and guarantees `ctx.userId` and `ctx.user` are not null.
  *
  * @see https://trpc.io/docs/procedures
  */
 export const protectedProcedure = t.procedure
   .use(timingMiddleware)
   .use(({ ctx, next }) => {
-    if (!ctx.session?.user) {
+    if (!ctx.userId) {
       throw new TRPCError({ code: "UNAUTHORIZED" });
+    }
+    if (!ctx.user) {
+      throw new TRPCError({
+        code: "UNAUTHORIZED",
+        message: "User not found in database",
+      });
     }
     return next({
       ctx: {
-        // infers the `session` as non-nullable
-        session: { ...ctx.session, user: ctx.session.user },
+        // infers the `userId` and `user` as non-nullable
+        userId: ctx.userId,
+        user: ctx.user,
       },
     });
   });
@@ -136,15 +157,21 @@ export const protectedProcedure = t.procedure
  * Admin procedure
  *
  * If you want a query or mutation to ONLY be accessible to admin users, use this. It verifies
- * the session is valid and the user has the "admin" role.
+ * the user is authenticated and has the "admin" role.
  */
 export const adminProcedure = t.procedure
   .use(timingMiddleware)
   .use(({ ctx, next }) => {
-    if (!ctx.session?.user) {
+    if (!ctx.userId) {
       throw new TRPCError({ code: "UNAUTHORIZED" });
     }
-    if (ctx.session.user.role !== "admin") {
+    if (!ctx.user) {
+      throw new TRPCError({
+        code: "UNAUTHORIZED",
+        message: "User not found in database",
+      });
+    }
+    if (ctx.user.role !== "admin") {
       throw new TRPCError({
         code: "FORBIDDEN",
         message: "Admin access required",
@@ -152,8 +179,61 @@ export const adminProcedure = t.procedure
     }
     return next({
       ctx: {
-        // infers the `session` as non-nullable
-        session: { ...ctx.session, user: ctx.session.user },
+        // infers the `userId` and `user` as non-nullable
+        userId: ctx.userId,
+        user: ctx.user,
+      },
+    });
+  });
+
+/**
+ * Procedure that requires dashboard access (subscription or one-time purchase)
+ * Checks if user has active subscription or one-time access
+ */
+export const hasDashboardAccess = t.procedure
+  .use(timingMiddleware)
+  .use(async ({ ctx, next }) => {
+    if (!ctx.userId) {
+      throw new TRPCError({ code: "UNAUTHORIZED" });
+    }
+
+    if (!ctx.user) {
+      throw new TRPCError({
+        code: "UNAUTHORIZED",
+        message: "User not found in database",
+      });
+    }
+
+    // Admins always have access
+    if (ctx.user.role === "admin") {
+      return next({
+        ctx: {
+          userId: ctx.userId,
+          user: ctx.user,
+        },
+      });
+    }
+
+    // Check for active subscription
+    const hasActiveSubscription =
+      ctx.user.stripeSubscriptionId &&
+      ctx.user.subscriptionStatus === "active" &&
+      (!ctx.user.subscriptionEndsAt || new Date(ctx.user.subscriptionEndsAt) > new Date());
+
+    // Check for one-time access
+    const hasOneTimeAccess = ctx.user.hasOneTimeAccess === true;
+
+    if (!hasActiveSubscription && !hasOneTimeAccess) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "Dashboard access required. Please purchase a subscription or one-time access.",
+      });
+    }
+
+    return next({
+      ctx: {
+        userId: ctx.userId,
+        user: ctx.user,
       },
     });
   });

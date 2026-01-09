@@ -1,4 +1,4 @@
-CREATE TABLE "genghis_account" (
+CREATE TABLE "kublai_account" (
 	"userId" varchar(255) NOT NULL,
 	"type" varchar(255) NOT NULL,
 	"provider" varchar(255) NOT NULL,
@@ -10,10 +10,10 @@ CREATE TABLE "genghis_account" (
 	"scope" varchar(255),
 	"id_token" text,
 	"session_state" varchar(255),
-	CONSTRAINT "genghis_account_provider_providerAccountId_pk" PRIMARY KEY("provider","providerAccountId")
+	CONSTRAINT "kublai_account_provider_providerAccountId_pk" PRIMARY KEY("provider", "providerAccountId")
 );
 --> statement-breakpoint
-CREATE TABLE "genghis_backfill" (
+CREATE TABLE "kublai_backfill" (
 	"id" uuid PRIMARY KEY NOT NULL,
 	"hours" integer NOT NULL,
 	"startTime" timestamp with time zone NOT NULL,
@@ -21,35 +21,35 @@ CREATE TABLE "genghis_backfill" (
 	"boardId" uuid NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "genghis_board_type" (
+CREATE TABLE "kublai_board_type" (
 	"id" uuid PRIMARY KEY NOT NULL,
 	"name" varchar(255) NOT NULL,
 	"description" text,
 	"imageUrl" text
 );
 --> statement-breakpoint
-CREATE TABLE "genghis_board" (
+CREATE TABLE "kublai_board" (
 	"id" uuid PRIMARY KEY NOT NULL,
 	"boardTypeId" uuid NOT NULL,
 	"vehicleName" varchar(255),
 	"vehicleDescription" text
 );
 --> statement-breakpoint
-CREATE TABLE "genghis_creative_for_order" (
+CREATE TABLE "kublai_creative_for_order" (
 	"id" uuid PRIMARY KEY NOT NULL,
 	"orderId" uuid NOT NULL,
 	"creativeId" uuid NOT NULL,
-	CONSTRAINT "genghis_creative_for_order_orderId_creativeId_unique" UNIQUE("orderId","creativeId")
+	CONSTRAINT "kublai_creative_for_order_orderId_creativeId_unique" UNIQUE("orderId", "creativeId")
 );
 --> statement-breakpoint
-CREATE TABLE "genghis_creative" (
+CREATE TABLE "kublai_creative" (
 	"id" uuid PRIMARY KEY NOT NULL,
 	"fileName" varchar(255) NOT NULL,
 	"uploadDate" timestamp with time zone NOT NULL,
 	"approved" boolean DEFAULT false
 );
 --> statement-breakpoint
-CREATE TABLE "genghis_order" (
+CREATE TABLE "kublai_order" (
 	"id" uuid PRIMARY KEY NOT NULL,
 	"userId" varchar(255) NOT NULL,
 	"totalPrice" integer NOT NULL,
@@ -61,20 +61,20 @@ CREATE TABLE "genghis_order" (
 	"isSubsidizedBySubscription" boolean DEFAULT false
 );
 --> statement-breakpoint
-CREATE TABLE "genghis_session" (
+CREATE TABLE "kublai_session" (
 	"sessionToken" varchar(255) PRIMARY KEY NOT NULL,
 	"userId" varchar(255) NOT NULL,
 	"expires" timestamp with time zone NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "genghis_slot" (
+CREATE TABLE "kublai_slot" (
 	"id" uuid PRIMARY KEY NOT NULL,
 	"boardId" uuid NOT NULL,
 	"startTime" timestamp with time zone NOT NULL,
 	"endTime" timestamp with time zone NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "genghis_user" (
+CREATE TABLE "kublai_user" (
 	"id" varchar(255) PRIMARY KEY NOT NULL,
 	"name" varchar(255),
 	"email" varchar(255) NOT NULL,
@@ -83,20 +83,37 @@ CREATE TABLE "genghis_user" (
 	"stripeCustomerId" varchar(255)
 );
 --> statement-breakpoint
-CREATE TABLE "genghis_verification_token" (
+CREATE TABLE "kublai_verification_token" (
 	"identifier" varchar(255) NOT NULL,
 	"token" varchar(255) NOT NULL,
 	"expires" timestamp with time zone NOT NULL,
-	CONSTRAINT "genghis_verification_token_identifier_token_pk" PRIMARY KEY("identifier","token")
+	CONSTRAINT "kublai_verification_token_identifier_token_pk" PRIMARY KEY("identifier", "token")
 );
 --> statement-breakpoint
-ALTER TABLE "genghis_account" ADD CONSTRAINT "genghis_account_userId_genghis_user_id_fk" FOREIGN KEY ("userId") REFERENCES "public"."genghis_user"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "genghis_backfill" ADD CONSTRAINT "genghis_backfill_boardId_genghis_board_id_fk" FOREIGN KEY ("boardId") REFERENCES "public"."genghis_board"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "genghis_board" ADD CONSTRAINT "genghis_board_boardTypeId_genghis_board_type_id_fk" FOREIGN KEY ("boardTypeId") REFERENCES "public"."genghis_board_type"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "genghis_creative_for_order" ADD CONSTRAINT "genghis_creative_for_order_orderId_genghis_order_id_fk" FOREIGN KEY ("orderId") REFERENCES "public"."genghis_order"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "genghis_creative_for_order" ADD CONSTRAINT "genghis_creative_for_order_creativeId_genghis_creative_id_fk" FOREIGN KEY ("creativeId") REFERENCES "public"."genghis_creative"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "genghis_order" ADD CONSTRAINT "genghis_order_userId_genghis_user_id_fk" FOREIGN KEY ("userId") REFERENCES "public"."genghis_user"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "genghis_session" ADD CONSTRAINT "genghis_session_userId_genghis_user_id_fk" FOREIGN KEY ("userId") REFERENCES "public"."genghis_user"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "genghis_slot" ADD CONSTRAINT "genghis_slot_boardId_genghis_board_id_fk" FOREIGN KEY ("boardId") REFERENCES "public"."genghis_board"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-CREATE INDEX "account_user_id_idx" ON "genghis_account" USING btree ("userId");--> statement-breakpoint
-CREATE INDEX "t_user_id_idx" ON "genghis_session" USING btree ("userId");
+ALTER TABLE "kublai_account"
+ADD CONSTRAINT "kublai_account_userId_kublai_user_id_fk" FOREIGN KEY ("userId") REFERENCES "public"."kublai_user"("id") ON DELETE no action ON UPDATE no action;
+--> statement-breakpoint
+ALTER TABLE "kublai_backfill"
+ADD CONSTRAINT "kublai_backfill_boardId_kublai_board_id_fk" FOREIGN KEY ("boardId") REFERENCES "public"."kublai_board"("id") ON DELETE no action ON UPDATE no action;
+--> statement-breakpoint
+ALTER TABLE "kublai_board"
+ADD CONSTRAINT "kublai_board_boardTypeId_kublai_board_type_id_fk" FOREIGN KEY ("boardTypeId") REFERENCES "public"."kublai_board_type"("id") ON DELETE no action ON UPDATE no action;
+--> statement-breakpoint
+ALTER TABLE "kublai_creative_for_order"
+ADD CONSTRAINT "kublai_creative_for_order_orderId_kublai_order_id_fk" FOREIGN KEY ("orderId") REFERENCES "public"."kublai_order"("id") ON DELETE cascade ON UPDATE no action;
+--> statement-breakpoint
+ALTER TABLE "kublai_creative_for_order"
+ADD CONSTRAINT "kublai_creative_for_order_creativeId_kublai_creative_id_fk" FOREIGN KEY ("creativeId") REFERENCES "public"."kublai_creative"("id") ON DELETE cascade ON UPDATE no action;
+--> statement-breakpoint
+ALTER TABLE "kublai_order"
+ADD CONSTRAINT "kublai_order_userId_kublai_user_id_fk" FOREIGN KEY ("userId") REFERENCES "public"."kublai_user"("id") ON DELETE no action ON UPDATE no action;
+--> statement-breakpoint
+ALTER TABLE "kublai_session"
+ADD CONSTRAINT "kublai_session_userId_kublai_user_id_fk" FOREIGN KEY ("userId") REFERENCES "public"."kublai_user"("id") ON DELETE no action ON UPDATE no action;
+--> statement-breakpoint
+ALTER TABLE "kublai_slot"
+ADD CONSTRAINT "kublai_slot_boardId_kublai_board_id_fk" FOREIGN KEY ("boardId") REFERENCES "public"."kublai_board"("id") ON DELETE no action ON UPDATE no action;
+--> statement-breakpoint
+CREATE INDEX "account_user_id_idx" ON "kublai_account" USING btree ("userId");
+--> statement-breakpoint
+CREATE INDEX "t_user_id_idx" ON "kublai_session" USING btree ("userId");
