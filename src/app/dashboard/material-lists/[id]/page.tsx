@@ -58,10 +58,7 @@ export default function MaterialListDetailPage({
   };
 
   const handleGenerateQuote = () => {
-    if (
-      !materialList.job.name ||
-      materialList.job.name === "New Material List"
-    ) {
+    if (!materialList.job.name) {
       setShowJobInfoModal(true);
       return;
     }
@@ -69,10 +66,7 @@ export default function MaterialListDetailPage({
   };
 
   const handleGenerateOrder = () => {
-    if (
-      !materialList.job.name ||
-      materialList.job.name === "New Material List"
-    ) {
+    if (!materialList?.job?.name) {
       setShowJobInfoModal(true);
       return;
     }
@@ -112,34 +106,36 @@ export default function MaterialListDetailPage({
               {materialList.items.map((item) => (
                 <MaterialListItem
                   key={String(item.id)}
-                  item={item as {
-                    id: string;
-                    quantity: string;
-                    unitCost: string | null;
-                    extendedPrice: string | null;
-                    descriptionSnapshot: string | null;
-                    partDefinition: {
+                  item={
+                    item as {
                       id: string;
-                      displayName: string;
-                      imageUrl: string | null;
-                      material: string | null;
-                    } | null;
-                    supplierPart: {
-                      id: string;
-                      supplierId: string;
-                      supplierSku: string | null;
-                      lastKnownUnitCost: string | null;
-                      supplier: {
+                      quantity: string;
+                      unitCost: string | null;
+                      extendedPrice: string | null;
+                      descriptionSnapshot: string | null;
+                      partDefinition: {
                         id: string;
-                        name: string;
+                        displayName: string;
+                        imageUrl: string | null;
+                        material: string | null;
                       } | null;
-                    } | null;
-                    uom: {
-                      id: string;
-                      code: string;
-                      displayName: string | null;
-                    } | null;
-                  }}
+                      supplierPart: {
+                        id: string;
+                        supplierId: string;
+                        supplierSku: string | null;
+                        lastKnownUnitCost: string | null;
+                        supplier: {
+                          id: string;
+                          name: string;
+                        } | null;
+                      } | null;
+                      uom: {
+                        id: string;
+                        code: string;
+                        displayName: string | null;
+                      } | null;
+                    }
+                  }
                   materialListId={id}
                 />
               ))}

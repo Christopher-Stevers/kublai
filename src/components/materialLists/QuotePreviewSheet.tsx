@@ -65,7 +65,7 @@ export function QuotePreviewSheet({
     const subject = encodeURIComponent(emailContent.subject);
     const body = encodeURIComponent(emailContent.body);
     const mailtoLink = `mailto:?subject=${subject}&body=${body}`;
-    window.location.href = mailtoLink;
+    window.open(mailtoLink, "_blank");
   };
 
   if (!materialList) {
@@ -94,16 +94,20 @@ export function QuotePreviewSheet({
                 const price = item.extendedPrice
                   ? parseFloat(String(item.extendedPrice))
                   : 0;
-                const partDef = item.partDefinition as { displayName?: string } | null | undefined;
-                const displayName = String(partDef?.displayName || item.descriptionSnapshot || "Item");
+                const partDef = item.partDefinition as
+                  | { displayName?: string }
+                  | null
+                  | undefined;
+                const displayName = String(
+                  partDef?.displayName || item.descriptionSnapshot || "Item",
+                );
                 return (
                   <div
                     key={String(item.id)}
                     className="flex justify-between border-b pb-2 text-sm"
                   >
                     <span>
-                      {displayName}{" "}
-                      × {qty}
+                      {displayName} × {qty}
                     </span>
                     <span>${price.toFixed(2)}</span>
                   </div>
@@ -182,4 +186,3 @@ export function QuotePreviewSheet({
     </Dialog>
   );
 }
-

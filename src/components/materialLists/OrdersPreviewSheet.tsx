@@ -52,7 +52,11 @@ export function OrdersPreviewSheet({
   const generateOrders = api.materialList.generateOrders.useMutation({
     onSuccess: (data) => {
       // Filter out any orders without an id (shouldn't happen, but TypeScript safety)
-      setOrders(data.filter((order): order is typeof order & { id: string } => !!order.id));
+      setOrders(
+        data.filter(
+          (order): order is typeof order & { id: string } => !!order.id,
+        ),
+      );
       setIsGenerating(false);
       void utils.materialList.getMaterialList.invalidate({ materialListId });
     },
@@ -100,15 +104,15 @@ export function OrdersPreviewSheet({
     if (!emailContent) return;
 
     const supplierEmail =
-      (order as { supplier?: { contactEmail: string | null } | null })
-        ?.supplier?.contactEmail || undefined;
+      (order as { supplier?: { contactEmail: string | null } | null })?.supplier
+        ?.contactEmail || undefined;
 
     const subject = encodeURIComponent(emailContent.subject);
     const body = encodeURIComponent(emailContent.body);
     const mailtoLink = supplierEmail
       ? `mailto:${supplierEmail}?subject=${subject}&body=${body}`
       : `mailto:?subject=${subject}&body=${body}`;
-    window.location.href = mailtoLink;
+    window.open(mailtoLink, "_blank");
 
     // Mark as sent
     markOrderSent.mutate({
@@ -162,7 +166,7 @@ export function OrdersPreviewSheet({
             const isSent = emailSent.has(order.id);
 
             return (
-              <div key={order.id} className="border rounded-lg p-4">
+              <div key={order.id} className="rounded-lg border p-4">
                 <div className="flex items-center justify-between">
                   <button
                     onClick={() => toggleSupplier(order.id)}
@@ -221,4 +225,3 @@ export function OrdersPreviewSheet({
     </Dialog>
   );
 }
-
