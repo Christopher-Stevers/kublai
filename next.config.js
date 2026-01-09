@@ -13,9 +13,7 @@ const config = {
     },
   },
   // Ignore ESLint errors during build (linting should be run separately)
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
+
   // Ignore TypeScript errors during build (typecheck should be run separately)
   typescript: {
     ignoreBuildErrors: false, // Keep TypeScript checking during build
