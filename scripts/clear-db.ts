@@ -1,3 +1,7 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
 import "dotenv/config";
 // Don't import db at top level - it will try to connect immediately
 // We'll import it lazily when needed
@@ -1219,7 +1223,7 @@ export async function seedPlumbing(
           console.log(`   ✓ Category "${fullName}" already exists`);
         } else {
           // Verify parent still exists before creating child
-          let parentCheck = await dbToUse
+          const parentCheck = await dbToUse
             .select()
             .from(categories)
             .where(eq(categories.id, parentId))
@@ -1413,10 +1417,6 @@ export async function seedPlumbing(
             partType: partData.partType,
             material: partData.material,
             sizeNominal: partData.sizeNominal?.toString() ?? null,
-            lastKnownUnitCost:
-              parseFloat(partData.lastKnownUnitCost?.toFixed(2) ?? "0.00") ??
-              null,
-            currency: partData.currency ?? "$",
             sizeUnitId: sizeUnitId,
             defaultUomId: defaultUomId,
             isActive: true,
