@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import { eq, and, or, desc, asc } from "drizzle-orm";
+import { eq, and, desc, asc } from "drizzle-orm";
 import { z } from "zod";
 
 import { createTRPCRouter, hasDashboardAccess } from "~/server/api/trpc";
@@ -42,7 +42,6 @@ export const supplierRouter = createTRPCRouter({
       })
       .from(suppliers)
       .leftJoin(locations, eq(suppliers.locationId, locations.id))
-      .where(eq(suppliers.organizationId, ctx.user.organizationId))
       .orderBy(suppliers.name);
 
     return supplierList;
@@ -80,12 +79,7 @@ export const supplierRouter = createTRPCRouter({
         })
         .from(suppliers)
         .leftJoin(locations, eq(suppliers.locationId, locations.id))
-        .where(
-          and(
-            eq(suppliers.id, input.id),
-            eq(suppliers.organizationId, ctx.user.organizationId),
-          ),
-        )
+        .where(and(eq(suppliers.id, input.id)))
         .limit(1);
 
       if (!supplier) {
@@ -127,12 +121,7 @@ export const supplierRouter = createTRPCRouter({
           eq(supplierParts.partDefinitionId, partDefinitions.id),
         )
         .leftJoin(units, eq(supplierParts.packUomId, units.id))
-        .where(
-          and(
-            eq(supplierParts.supplierId, input.id),
-            eq(supplierParts.organizationId, ctx.user.organizationId),
-          ),
-        )
+        .where(and(eq(supplierParts.supplierId, input.id)))
         .orderBy(supplierParts.supplierSku);
 
       return {
@@ -153,10 +142,7 @@ export const supplierRouter = createTRPCRouter({
           .max(255, "Supplier name must be less than 255 characters")
           .trim(),
         contactEmail: z
-          .union([
-            z.string().email("Invalid email address"),
-            z.literal(""),
-          ])
+          .union([z.string().email("Invalid email address"), z.literal("")])
           .optional(),
         contactPhone: z.string().max(50).optional().or(z.literal("")),
         orderingNotes: z.string().optional(),
@@ -177,9 +163,9 @@ export const supplierRouter = createTRPCRouter({
           .values({
             organizationId: ctx.user.organizationId,
             name: input.name,
-            contactEmail: input.contactEmail || null,
-            contactPhone: input.contactPhone || null,
-            orderingNotes: input.orderingNotes || null,
+            contactEmail: input.contactEmail ?? null,
+            contactPhone: input.contactPhone ?? null,
+            orderingNotes: input.orderingNotes ?? null,
             locationId: input.locationId ?? null,
           })
           .returning();
@@ -193,7 +179,8 @@ export const supplierRouter = createTRPCRouter({
         ) {
           throw new TRPCError({
             code: "CONFLICT",
-            message: "A supplier with this name already exists in your organization",
+            message:
+              "A supplier with this name already exists in your organization",
           });
         }
 
@@ -219,10 +206,7 @@ export const supplierRouter = createTRPCRouter({
           .max(255, "Supplier name must be less than 255 characters")
           .trim(),
         contactEmail: z
-          .union([
-            z.string().email("Invalid email address"),
-            z.literal(""),
-          ])
+          .union([z.string().email("Invalid email address"), z.literal("")])
           .optional(),
         contactPhone: z.string().max(50).optional().or(z.literal("")),
         orderingNotes: z.string().optional(),
@@ -241,12 +225,7 @@ export const supplierRouter = createTRPCRouter({
       const [existing] = await ctx.db
         .select()
         .from(suppliers)
-        .where(
-          and(
-            eq(suppliers.id, input.id),
-            eq(suppliers.organizationId, ctx.user.organizationId),
-          ),
-        )
+        .where(and(eq(suppliers.id, input.id)))
         .limit(1);
 
       if (!existing) {
@@ -261,9 +240,9 @@ export const supplierRouter = createTRPCRouter({
           .update(suppliers)
           .set({
             name: input.name,
-            contactEmail: input.contactEmail || null,
-            contactPhone: input.contactPhone || null,
-            orderingNotes: input.orderingNotes || null,
+            contactEmail: input.contactEmail ?? null,
+            contactPhone: input.contactPhone ?? null,
+            orderingNotes: input.orderingNotes ?? null,
             locationId: input.locationId ?? null,
           })
           .where(eq(suppliers.id, input.id))
@@ -278,7 +257,8 @@ export const supplierRouter = createTRPCRouter({
         ) {
           throw new TRPCError({
             code: "CONFLICT",
-            message: "A supplier with this name already exists in your organization",
+            message:
+              "A supplier with this name already exists in your organization",
           });
         }
 
@@ -308,12 +288,7 @@ export const supplierRouter = createTRPCRouter({
       const [existing] = await ctx.db
         .select()
         .from(suppliers)
-        .where(
-          and(
-            eq(suppliers.id, input.id),
-            eq(suppliers.organizationId, ctx.user.organizationId),
-          ),
-        )
+        .where(and(eq(suppliers.id, input.id)))
         .limit(1);
 
       if (!existing) {
@@ -373,12 +348,7 @@ export const supplierRouter = createTRPCRouter({
           eq(supplierParts.partDefinitionId, partDefinitions.id),
         )
         .leftJoin(units, eq(supplierParts.packUomId, units.id))
-        .where(
-          and(
-            eq(supplierParts.supplierId, input.supplierId),
-            eq(supplierParts.organizationId, ctx.user.organizationId),
-          ),
-        )
+        .where(and(eq(supplierParts.supplierId, input.supplierId)))
         .orderBy(supplierParts.supplierSku);
 
       return parts;
@@ -413,12 +383,7 @@ export const supplierRouter = createTRPCRouter({
       const [supplier] = await ctx.db
         .select()
         .from(suppliers)
-        .where(
-          and(
-            eq(suppliers.id, input.supplierId),
-            eq(suppliers.organizationId, ctx.user.organizationId),
-          ),
-        )
+        .where(and(eq(suppliers.id, input.supplierId)))
         .limit(1);
 
       if (!supplier) {
@@ -443,21 +408,55 @@ export const supplierRouter = createTRPCRouter({
       }
 
       try {
+        // Check if this supplier already has this part
+        const existingSupplierPart = await ctx.db
+          .select()
+          .from(supplierParts)
+          .where(
+            and(
+              eq(supplierParts.supplierId, input.supplierId),
+              eq(supplierParts.partDefinitionId, input.partDefinitionId),
+              eq(supplierParts.organizationId, ctx.user.organizationId),
+            ),
+          )
+          .limit(1);
+
+        if (existingSupplierPart.length > 0) {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: "This supplier already has this part",
+          });
+        }
+
+        // Optionally find another supplier part for the same part definition to copy pricing from
+        const [existingPartWithPricing] = await ctx.db
+          .select({
+            lastKnownUnitCost: supplierParts.lastKnownUnitCost,
+            currency: supplierParts.currency,
+          })
+          .from(supplierParts)
+          .where(
+            and(eq(supplierParts.partDefinitionId, input.partDefinitionId)),
+          )
+          .limit(1);
+
         const [newSupplierPart] = await ctx.db
           .insert(supplierParts)
           .values({
             organizationId: ctx.user.organizationId,
             supplierId: input.supplierId,
             partDefinitionId: input.partDefinitionId,
-            supplierSku: input.supplierSku || null,
-            supplierName: input.supplierName || null,
-            packSize: input.packSize ? input.packSize : null,
-            packUomId: input.packUomId || null,
-            lastKnownUnitCost: input.lastKnownUnitCost
-              ? input.lastKnownUnitCost
-              : null,
-            currency: input.currency || "CAD",
-            notes: input.notes || null,
+            supplierSku: input.supplierSku ?? null,
+            supplierName: input.supplierName ?? null,
+            packSize: input.packSize ?? null,
+            packUomId: input.packUomId ?? null,
+            lastKnownUnitCost:
+              input.lastKnownUnitCost ??
+              existingPartWithPricing?.lastKnownUnitCost ??
+              null,
+            currency:
+              input.currency ?? existingPartWithPricing?.currency ?? "CAD",
+            notes: input.notes ?? null,
             isPreferred: false, // New supplier parts are not preferred by default
           })
           .returning();
@@ -513,12 +512,7 @@ export const supplierRouter = createTRPCRouter({
       const [existing] = await ctx.db
         .select()
         .from(supplierParts)
-        .where(
-          and(
-            eq(supplierParts.id, input.id),
-            eq(supplierParts.organizationId, ctx.user.organizationId),
-          ),
-        )
+        .where(and(eq(supplierParts.id, input.id)))
         .limit(1);
 
       if (!existing) {
@@ -536,7 +530,7 @@ export const supplierRouter = createTRPCRouter({
           .where(
             and(
               eq(supplierParts.partDefinitionId, existing.partDefinitionId),
-              eq(supplierParts.organizationId, ctx.user.organizationId),
+
               eq(supplierParts.isPreferred, true),
             ),
           );
@@ -545,21 +539,19 @@ export const supplierRouter = createTRPCRouter({
       try {
         const updateData: Partial<typeof supplierParts.$inferInsert> = {};
         if (input.supplierSku !== undefined)
-          updateData.supplierSku = input.supplierSku || null;
+          updateData.supplierSku = input.supplierSku ?? null;
         if (input.supplierName !== undefined)
-          updateData.supplierName = input.supplierName || null;
+          updateData.supplierName = input.supplierName ?? null;
         if (input.packSize !== undefined)
-          updateData.packSize = input.packSize ? input.packSize : null;
+          updateData.packSize = input.packSize ?? null;
         if (input.packUomId !== undefined)
-          updateData.packUomId = input.packUomId || null;
+          updateData.packUomId = input.packUomId ?? null;
         if (input.lastKnownUnitCost !== undefined)
-          updateData.lastKnownUnitCost = input.lastKnownUnitCost
-            ? input.lastKnownUnitCost
-            : null;
+          updateData.lastKnownUnitCost = input.lastKnownUnitCost ?? null;
         if (input.currency !== undefined) updateData.currency = input.currency;
         if (input.isPreferred !== undefined)
           updateData.isPreferred = input.isPreferred;
-        if (input.notes !== undefined) updateData.notes = input.notes || null;
+        if (input.notes !== undefined) updateData.notes = input.notes ?? null;
 
         const [updated] = await ctx.db
           .update(supplierParts)
@@ -595,12 +587,7 @@ export const supplierRouter = createTRPCRouter({
       const [existing] = await ctx.db
         .select()
         .from(supplierParts)
-        .where(
-          and(
-            eq(supplierParts.id, input.id),
-            eq(supplierParts.organizationId, ctx.user.organizationId),
-          ),
-        )
+        .where(and(eq(supplierParts.id, input.id)))
         .limit(1);
 
       if (!existing) {
@@ -637,12 +624,7 @@ export const supplierRouter = createTRPCRouter({
       const [supplier] = await ctx.db
         .select()
         .from(suppliers)
-        .where(
-          and(
-            eq(suppliers.id, input.supplierId),
-            eq(suppliers.organizationId, ctx.user.organizationId),
-          ),
-        )
+        .where(and(eq(suppliers.id, input.supplierId)))
         .limit(1);
 
       if (!supplier) {
@@ -673,7 +655,6 @@ export const supplierRouter = createTRPCRouter({
         .where(
           and(
             eq(supplierParts.partDefinitionId, input.partDefinitionId),
-            eq(supplierParts.organizationId, ctx.user.organizationId),
             eq(supplierParts.isPreferred, true),
           ),
         );
@@ -686,7 +667,6 @@ export const supplierRouter = createTRPCRouter({
           and(
             eq(supplierParts.supplierId, input.supplierId),
             eq(supplierParts.partDefinitionId, input.partDefinitionId),
-            eq(supplierParts.organizationId, ctx.user.organizationId),
           ),
         )
         .limit(1);
@@ -739,13 +719,12 @@ export const supplierRouter = createTRPCRouter({
         .where(
           and(
             eq(supplierParts.partDefinitionId, input.partDefinitionId),
-            eq(supplierParts.organizationId, ctx.user.organizationId),
             eq(supplierParts.isPreferred, true),
           ),
         )
         .limit(1);
 
-      return preferred || null;
+      return preferred ?? null;
     }),
 
   /**
@@ -775,12 +754,7 @@ export const supplierRouter = createTRPCRouter({
         })
         .from(supplierParts)
         .innerJoin(suppliers, eq(supplierParts.supplierId, suppliers.id))
-        .where(
-          and(
-            eq(supplierParts.partDefinitionId, input.partDefinitionId),
-            eq(supplierParts.organizationId, ctx.user.organizationId),
-          ),
-        )
+        .where(and(eq(supplierParts.partDefinitionId, input.partDefinitionId)))
         .orderBy(desc(supplierParts.isPreferred), asc(suppliers.name));
 
       return parts;
@@ -806,7 +780,6 @@ export const supplierRouter = createTRPCRouter({
         isActive: partDefinitions.isActive,
       })
       .from(partDefinitions)
-      .where(eq(partDefinitions.organizationId, ctx.user.organizationId))
       .orderBy(partDefinitions.displayName);
 
     // Get preferred suppliers for all parts
@@ -818,12 +791,7 @@ export const supplierRouter = createTRPCRouter({
       })
       .from(supplierParts)
       .innerJoin(suppliers, eq(supplierParts.supplierId, suppliers.id))
-      .where(
-        and(
-          eq(supplierParts.organizationId, ctx.user.organizationId),
-          eq(supplierParts.isPreferred, true),
-        ),
-      );
+      .where(and(eq(supplierParts.isPreferred, true)));
 
     // Create a map of partDefinitionId -> preferred supplier
     const preferredMap = new Map(
@@ -838,22 +806,23 @@ export const supplierRouter = createTRPCRouter({
         partDefinitionId: supplierParts.partDefinitionId,
       })
       .from(supplierParts)
-      .innerJoin(suppliers, eq(supplierParts.supplierId, suppliers.id))
-      .where(eq(supplierParts.organizationId, ctx.user.organizationId));
+      .innerJoin(suppliers, eq(supplierParts.supplierId, suppliers.id));
 
     // Group suppliers by part
-    const suppliersByPart = new Map<string, typeof suppliers.$inferSelect[]>();
+    const suppliersByPart = new Map<
+      string,
+      (typeof suppliers.$inferSelect)[]
+    >();
     for (const sp of allSupplierParts) {
-      const existing = suppliersByPart.get(sp.partDefinitionId) || [];
+      const existing = suppliersByPart.get(sp.partDefinitionId) ?? [];
       existing.push(sp.supplier);
       suppliersByPart.set(sp.partDefinitionId, existing);
     }
 
     return parts.map((part) => ({
       ...part,
-      preferredSupplier: preferredMap.get(part.id) || null,
-      availableSuppliers: suppliersByPart.get(part.id) || [],
+      preferredSupplier: preferredMap.get(part.id) ?? null,
+      availableSuppliers: suppliersByPart.get(part.id) ?? [],
     }));
   }),
 });
-

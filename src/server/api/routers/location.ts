@@ -23,9 +23,7 @@ export const locationRouter = createTRPCRouter({
         });
       }
 
-      const conditions = [
-        eq(locations.organizationId, ctx.user.organizationId),
-      ];
+      const conditions = [];
 
       // If query provided, search across multiple fields
       if (input.query && input.query.trim().length > 0) {
@@ -106,4 +104,3 @@ export const locationRouter = createTRPCRouter({
       }
     }),
 });
-

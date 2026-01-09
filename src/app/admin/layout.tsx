@@ -25,6 +25,9 @@ export default async function AdminLayout({
     .limit(1);
 
   // Redirect if not admin
+  if (user?.role !== "admin" && !user?.organizationId) {
+    redirect("/onboarding");
+  }
   if (user?.role !== "admin") {
     redirect("/dashboard");
   }
@@ -36,4 +39,3 @@ export default async function AdminLayout({
     </div>
   );
 }
-

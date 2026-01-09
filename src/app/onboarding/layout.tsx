@@ -30,9 +30,9 @@ export default async function OnboardingLayout({
 
   // If user already has an organization, redirect to dashboard
   if (user.organizationId) {
+    console.log(user.organizationId);
     redirect("/dashboard");
   }
 
   return <>{children}</>;
 }
-

@@ -29,45 +29,45 @@ export const materialListRouter = createTRPCRouter({
       });
     }
 
-      // Create draft job
-      const [job] = await ctx.db
-        .insert(jobs)
-        .values({
-          organizationId: ctx.user.organizationId,
-          name: "New Material List",
-          foremanUserId: ctx.userId,
-          createdByUserId: ctx.userId,
-          status: "draft",
-        })
-        .returning();
+    // Create draft job
+    const [job] = await ctx.db
+      .insert(jobs)
+      .values({
+        organizationId: ctx.user.organizationId,
+        name: "New Material List",
+        foremanUserId: ctx.userId,
+        createdByUserId: ctx.userId,
+        status: "draft",
+      })
+      .returning();
 
-      if (!job) {
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: "Failed to create job",
-        });
-      }
+    if (!job) {
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Failed to create job",
+      });
+    }
 
-      // Create draft quote linked to job
-      const [quote] = await ctx.db
-        .insert(quotes)
-        .values({
-          organizationId: ctx.user.organizationId,
-          jobId: job.id,
-          createdByUserId: ctx.userId,
-          subtotalMaterials: "0",
-          total: "0",
-        })
-        .returning();
+    // Create draft quote linked to job
+    const [quote] = await ctx.db
+      .insert(quotes)
+      .values({
+        organizationId: ctx.user.organizationId,
+        jobId: job.id,
+        createdByUserId: ctx.userId,
+        subtotalMaterials: "0",
+        total: "0",
+      })
+      .returning();
 
-      if (!quote) {
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: "Failed to create quote",
-        });
-      }
+    if (!quote) {
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Failed to create quote",
+      });
+    }
 
-      return { materialListId: job.id, quoteId: quote.id };
+    return { materialListId: job.id, quoteId: quote.id };
   }),
 
   /**
@@ -105,13 +105,7 @@ export const materialListRouter = createTRPCRouter({
         .from(jobs)
         .leftJoin(locations, eq(jobs.locationId, locations.id))
         .leftJoin(users, eq(jobs.foremanUserId, users.id))
-        .where(
-          and(
-            eq(jobs.id, input.materialListId),
-            eq(jobs.organizationId, ctx.user.organizationId),
-            eq(jobs.status, "draft"),
-          ),
-        )
+        .where(and(eq(jobs.id, input.materialListId), eq(jobs.status, "draft")))
         .limit(1);
 
       if (!job) {
@@ -366,6 +360,7 @@ export const materialListRouter = createTRPCRouter({
         partDefinitionId: z.string().uuid(),
         quantity: z.number().positive(),
         supplierPartId: z.string().uuid().optional(),
+        unitCost: z.number().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -395,7 +390,12 @@ export const materialListRouter = createTRPCRouter({
           message: "Material list not found",
         });
       }
-
+      console.log(
+        input.materialListId,
+        "my material list id",
+        input.supplierPartId,
+        "my supplier part id",
+      );
       // Get draft quote
       const [quote] = await ctx.db
         .select()
@@ -433,21 +433,18 @@ export const materialListRouter = createTRPCRouter({
       // Determine supplier part
       let supplierPartId = input.supplierPartId;
       let supplierPart = null;
-      let unitCost = null;
+      let unitCost = input.unitCost ? input.unitCost.toString() : null;
 
       if (supplierPartId) {
+        console.log(supplierPartId, "my supplier part id");
         // Use provided supplier part
         const [sp] = await ctx.db
           .select()
           .from(supplierParts)
-          .where(
-            and(
-              eq(supplierParts.id, supplierPartId),
-              eq(supplierParts.organizationId, ctx.user.organizationId),
-            ),
-          )
+          .where(and(eq(supplierParts.id, supplierPartId)))
           .limit(1);
         supplierPart = sp;
+        console.log(JSON.stringify(sp, null, 2), "my supplier part");
         if (sp) {
           unitCost = sp.lastKnownUnitCost;
         }
@@ -459,7 +456,6 @@ export const materialListRouter = createTRPCRouter({
           .where(
             and(
               eq(supplierParts.partDefinitionId, input.partDefinitionId),
-              eq(supplierParts.organizationId, ctx.user.organizationId),
               eq(supplierParts.isPreferred, true),
             ),
           )
@@ -873,9 +869,7 @@ export const materialListRouter = createTRPCRouter({
       // Build email body
       const lineItems = items
         .map((item) => {
-          const qty = item.quantity
-            ? parseFloat(item.quantity.toString())
-            : 0;
+          const qty = item.quantity ? parseFloat(item.quantity.toString()) : 0;
           const price = item.extendedPrice
             ? parseFloat(item.extendedPrice.toString())
             : 0;
@@ -1118,9 +1112,7 @@ ${foremanName}`;
       // Build email body
       const lineItems = items
         .map((item) => {
-          const qty = item.quantity
-            ? parseFloat(item.quantity.toString())
-            : 0;
+          const qty = item.quantity ? parseFloat(item.quantity.toString()) : 0;
           const sku = item.supplierSkuSnapshot
             ? ` (SKU: ${item.supplierSkuSnapshot})`
             : "";
@@ -1197,4 +1189,3 @@ ${ctx.user.name || "Foreman"}`;
       return updated;
     }),
 });
-
