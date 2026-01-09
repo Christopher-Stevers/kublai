@@ -8,7 +8,7 @@ import { users } from "~/server/db/schema";
 
 // Initialize Stripe with secret key
 const stripe = new Stripe(env.STRIPE_SECRET_KEY, {
-  apiVersion: "2025-11-17.clover",
+  apiVersion: "2025-12-15.clover",
 });
 
 export const paymentRouter = createTRPCRouter({
