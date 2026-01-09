@@ -25,7 +25,7 @@ export default async function AdminLayout({
     .limit(1);
 
   // Redirect if not admin
-  if (!user || user.role !== "admin") {
+  if (user?.role !== "admin") {
     redirect("/dashboard");
   }
 

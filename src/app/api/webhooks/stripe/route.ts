@@ -7,7 +7,7 @@ import { db } from "~/server/db";
 import { users } from "~/server/db/schema";
 import { env } from "~/env";
 
-const stripe = new Stripe(env.STRIPE_SECRET_KEY as string, {
+const stripe = new Stripe(env.STRIPE_SECRET_KEY, {
   apiVersion: "2025-11-17.clover",
 });
 
@@ -44,7 +44,7 @@ export async function POST(req: Request) {
   try {
     switch (event.type) {
       case "checkout.session.completed": {
-        const session = event.data.object as Stripe.Checkout.Session;
+        const session = event.data.object;
         const userId = session.metadata?.userId;
 
         if (!userId) {
@@ -68,7 +68,7 @@ export async function POST(req: Request) {
 
       case "customer.subscription.created":
       case "customer.subscription.updated": {
-        const subscription = event.data.object as Stripe.Subscription;
+        const subscription = event.data.object;
         const customerId = subscription.customer as string;
 
         // Find user by Stripe customer ID
@@ -99,7 +99,7 @@ export async function POST(req: Request) {
       }
 
       case "customer.subscription.deleted": {
-        const subscription = event.data.object as Stripe.Subscription;
+        const subscription = event.data.object;
         const customerId = subscription.customer as string;
 
         // Find user by Stripe customer ID
@@ -127,7 +127,7 @@ export async function POST(req: Request) {
       }
 
       case "invoice.payment_failed": {
-        const invoice = event.data.object as Stripe.Invoice;
+        const invoice = event.data.object;
         const customerId = invoice.customer as string;
 
         // Find user by Stripe customer ID

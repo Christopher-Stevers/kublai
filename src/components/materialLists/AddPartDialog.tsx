@@ -72,16 +72,16 @@ export function AddPartDialog({
   }, [searchQuery]);
 
   // Fetch data
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+   
   const { data: categoryTree } = api.catalogue.getCategoryTree.useQuery();
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+   
   const { data: materials } = api.catalogue.getMaterials.useQuery();
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+   
   const { data: partsByCategory } = api.catalogue.getPartsByCategory.useQuery(
     { categoryId: selectedCategoryId ?? null },
     { enabled: mode === "browse" },
   );
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+   
   const { data: searchResults } = api.catalogue.searchParts.useQuery(
     {
       query: debouncedSearchQuery ?? undefined,
@@ -90,18 +90,18 @@ export function AddPartDialog({
     { enabled: mode === "search" && !!debouncedSearchQuery },
   );
 
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+   
   const parts = useMemo(() => {
     if (mode === "search") {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+       
       return searchResults ?? [];
     }
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+     
     return partsByCategory ?? [];
   }, [mode, searchResults, partsByCategory]);
 
   const utils = api.useUtils();
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+   
   const addItem = api.materialList.addItemToMaterialList.useMutation();
 
   // Store supplier parts data in state instead of using dynamic hooks
@@ -155,10 +155,10 @@ export function AddPartDialog({
         return next;
       });
 
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+       
       void utils.supplier.getSupplierPartsByPart
         .fetch({ partDefinitionId: partId })
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+         
         .then(
           (
             data: Array<{
@@ -180,11 +180,11 @@ export function AddPartDialog({
             });
           },
         )
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+         
         .catch((error) => {
           console.error(`Error fetching supplier parts for ${partId}:`, error);
         })
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+         
         .finally(() => {
           setFetchingParts((prev) => {
             const next = new Set(prev);
@@ -207,7 +207,7 @@ export function AddPartDialog({
       }
       return hasChanges ? next : prev;
     });
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+     
   }, [selectedParts, utils.supplier.getSupplierPartsByPart]);
 
   // Auto-select preferred supplier when part is first selected
@@ -297,7 +297,7 @@ export function AddPartDialog({
     try {
       await Promise.all(
         partsToAdd.map((part) =>
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+           
           addItem.mutateAsync({
             materialListId,
             partDefinitionId: part.id,
@@ -306,7 +306,7 @@ export function AddPartDialog({
           }),
         ),
       );
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+       
       void utils.materialList.getMaterialList.invalidate({ materialListId });
       setSelectedParts(new Map());
       setExpandedSelection(false);
@@ -367,7 +367,7 @@ export function AddPartDialog({
               <div className="w-64 border-r pr-4">
                 <h3 className="mb-2 font-semibold">Categories</h3>
                 <CategoryTree
-                  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+                   
                   categories={categoryTree ?? []}
                   selectedCategoryId={selectedCategoryId}
                   onSelectCategory={setSelectedCategoryId}
@@ -377,7 +377,7 @@ export function AddPartDialog({
               {/* Parts Grid */}
               <div className="flex-1">
                 <h3 className="mb-2 font-semibold">Parts</h3>
-                {/* eslint-disable-next-line @typescript-eslint/no-unsafe-member-access */}
+                { }
                 {parts.length === 0 ? (
                   <p className="text-muted-foreground py-8 text-center">
                     {selectedCategoryId
@@ -386,7 +386,7 @@ export function AddPartDialog({
                   </p>
                 ) : (
                   <div className="space-y-2">
-                    {/* eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */}
+                    { }
                     {parts.map(
                       (part: {
                         id: string;
@@ -500,7 +500,7 @@ export function AddPartDialog({
                     <DropdownMenuItem onClick={() => setSelectedMaterial(null)}>
                       All Materials
                     </DropdownMenuItem>
-                    {/* eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */}
+                    { }
                     {materials?.map((material: string) => (
                       <DropdownMenuItem
                         key={material}
@@ -515,7 +515,7 @@ export function AddPartDialog({
 
               {/* Search Results */}
               <div>
-                {/* eslint-disable-next-line @typescript-eslint/no-unsafe-member-access */}
+                { }
                 {parts.length === 0 ? (
                   <p className="text-muted-foreground py-8 text-center">
                     {debouncedSearchQuery
@@ -524,7 +524,7 @@ export function AddPartDialog({
                   </p>
                 ) : (
                   <div className="space-y-2">
-                    {/* eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */}
+                    { }
                     {parts.map(
                       (part: {
                         id: string;
@@ -769,10 +769,10 @@ export function AddPartDialog({
             </Button>
             <Button
               onClick={handleAddParts}
-              // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+               
               disabled={selectedCount === 0 || addItem.isPending}
             >
-              {/* eslint-disable-next-line @typescript-eslint/no-unsafe-member-access */}
+              { }
               {addItem.isPending
                 ? "Adding..."
                 : `Add ${selectedCount} Part${selectedCount !== 1 ? "s" : ""}`}

@@ -574,7 +574,7 @@ export const materialListRouter = createTRPCRouter({
       }
 
       // Update values
-      let quantity = input.quantity
+      const quantity = input.quantity
         ? input.quantity
         : parseFloat(quoteItem.quantity.toString());
       let unitCost = quoteItem.unitCost

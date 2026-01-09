@@ -34,7 +34,7 @@ function parseSize(sizeStr: string): number | null {
   }
 
   // Handle fractions: "1/2", "3/4", etc.
-  const fractionMatch = trimmed.match(/^(\d+)\/(\d+)$/);
+  const fractionMatch = /^(\d+)\/(\d+)$/.exec(trimmed);
   if (fractionMatch) {
     const numerator = parseFloat(fractionMatch[1] ?? "0");
     const denominator = parseFloat(fractionMatch[2] ?? "1");
@@ -44,7 +44,7 @@ function parseSize(sizeStr: string): number | null {
   }
 
   // Handle mixed numbers: "1 1/2", "2 3/4", etc.
-  const mixedMatch = trimmed.match(/^(\d+)\s+(\d+)\/(\d+)$/);
+  const mixedMatch = /^(\d+)\s+(\d+)\/(\d+)$/.exec(trimmed);
   if (mixedMatch) {
     const whole = parseFloat(mixedMatch[1] ?? "0");
     const numerator = parseFloat(mixedMatch[2] ?? "0");

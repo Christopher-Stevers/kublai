@@ -364,7 +364,7 @@ export const categories: any = createTable(
     name: d.varchar({ length: 255 }).notNull(),
     parentId: d
       .uuid()
-      .references(() => (categories as any).id, { onDelete: "set null" }),
+      .references(() => (categories).id, { onDelete: "set null" }),
     sortOrder: d.integer().notNull().default(0),
   }),
   (t) => [

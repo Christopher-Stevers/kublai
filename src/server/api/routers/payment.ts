@@ -297,7 +297,7 @@ export const paymentRouter = createTRPCRouter({
   createPortalSession: protectedProcedure.mutation(async ({ ctx }) => {
     const user = ctx.user;
 
-    if (!user || !user.stripeCustomerId) {
+    if (!user?.stripeCustomerId) {
       throw new TRPCError({
         code: "BAD_REQUEST",
         message: "No Stripe customer found",

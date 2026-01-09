@@ -18,9 +18,9 @@ import Link from "next/link";
 export default function Dashboard() {
   const router = useRouter();
   // tRPC types are properly inferred - these errors are false positives from strict mode
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+   
   const { data: materialLists, isLoading } =
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+     
     api.materialList.listMaterialLists.useQuery();
 
   // Type guard to ensure materialLists is an array
