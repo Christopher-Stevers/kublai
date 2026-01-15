@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect, useRef } from "react";
 import { api } from "~/trpc/react";
+import { parseSizeInput, formatSize } from "~/lib/size-utils";
 import {
   Dialog,
   DialogContent,
@@ -12,6 +13,7 @@ import {
 } from "~/components/ui/dialog";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
+import { Label } from "~/components/ui/label";
 import { Card, CardContent } from "~/components/ui/card";
 import { Badge } from "~/components/ui/badge";
 import {
@@ -21,15 +23,18 @@ import {
   DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu";
 import {
-  Search,
-  Filter,
+  ChevronLeft,
   ChevronRight,
-  ChevronDown,
-  Check,
-  ChevronUp,
   X,
+  Plus,
+  Minus,
+  ChevronDown,
 } from "lucide-react";
 import Image from "next/image";
+import { WizardProgressIndicator } from "./WizardProgressIndicator";
+import { ValveSelectionDialog } from "./ValveSelectionDialog";
+import { CreateCustomPartDialog } from "./CreateCustomPartDialog";
+import type { WizardStage, PendingPart } from "./wizard/types";
 
 interface AddPartDialogProps {
   open: boolean;
@@ -37,72 +42,336 @@ interface AddPartDialogProps {
   materialListId: string;
 }
 
-interface PartSelection {
-  id: string;
-  displayName: string;
-  imageUrl: string | null;
-  material: string | null;
-  quantity: number;
-  supplierPartId: string | undefined;
-}
-
 export function AddPartDialog({
   open,
   onOpenChange,
   materialListId,
 }: AddPartDialogProps) {
-  const [mode, setMode] = useState<"browse" | "search">("browse");
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(
-    null,
-  );
-  const [searchQuery, setSearchQuery] = useState("");
-  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
+  // Wizard state
+  const [wizardStage, setWizardStage] = useState<WizardStage>("material");
   const [selectedMaterial, setSelectedMaterial] = useState<string | null>(null);
-  const [selectedParts, setSelectedParts] = useState<
-    Map<string, PartSelection>
-  >(new Map());
-  const [expandedSelection, setExpandedSelection] = useState(false);
+  const [selectedSize, setSelectedSize] = useState<{
+    nominal: number;
+    unit: string;
+  } | null>(null);
+  const [selectedPartTypeCategory, setSelectedPartTypeCategory] = useState<
+    string | null
+  >(null);
+  const [customSizeInput, setCustomSizeInput] = useState("");
+  const [showCustomSize, setShowCustomSize] = useState(false);
+  const [isValveDialogOpen, setIsValveDialogOpen] = useState(false);
+  const [pendingParts, setPendingParts] = useState<PendingPart[]>([]);
+  const [isCreateCustomPartDialogOpen, setIsCreateCustomPartDialogOpen] =
+    useState(false);
+  const [customPartContext, setCustomPartContext] = useState<{
+    material?: string | null;
+    size?: { nominal: number; unit: string } | null;
+    partType?: string | null;
+  } | null>(null);
 
-  // Debounce search query
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearchQuery(searchQuery);
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [searchQuery]);
+  const [showCustomMaterialInput, setShowCustomMaterialInput] = useState(false);
+  const [customMaterialName, setCustomMaterialName] = useState("");
+  const [customSizeUnitId, setCustomSizeUnitId] = useState<string | null>(null);
+  const [showCustomPartTypeInput, setShowCustomPartTypeInput] = useState(false);
+  const [customPartTypeName, setCustomPartTypeName] = useState("");
 
   // Fetch data
-
-  const { data: categoryTree } = api.catalogue.getCategoryTree.useQuery();
-
   const { data: materials } = api.catalogue.getMaterials.useQuery();
+  const { data: partTypeCategories } =
+    api.catalogue.getPartTypeCategories.useQuery();
+  const { data: categoryTree } = api.catalogue.getCategoryTree.useQuery();
+  const { data: allPartTypes } = api.catalogue.getPartTypes.useQuery(
+    { category: selectedPartTypeCategory ?? undefined },
+    { enabled: !!selectedPartTypeCategory },
+  );
+  const { data: allUnits } = api.catalogue.getAllUnits.useQuery();
 
-  const { data: partsByCategory } = api.catalogue.getPartsByCategory.useQuery(
-    { categoryId: selectedCategoryId ?? null },
-    { enabled: mode === "browse" },
+  // Helper to find parent category ID by name
+  const findParentCategoryId = (parentName: string): string | null => {
+    if (!categoryTree) return null;
+
+    const findCategory = (
+      nodes: Array<{
+        id: string;
+        name: string;
+        children: Array<unknown>;
+      }>,
+    ): { id: string; name: string; children: Array<unknown> } | null => {
+      for (const node of nodes) {
+        if (node.name === parentName && node.children.length > 0) {
+          return node;
+        }
+        const found = findCategory(
+          node.children as Array<{
+            id: string;
+            name: string;
+            children: Array<unknown>;
+          }>,
+        );
+        if (found) return found;
+      }
+      return null;
+    };
+
+    const parent = findCategory(categoryTree);
+    return parent?.id ?? null;
+  };
+
+  // Get category ID for selected parent category
+  const selectedParentCategoryId = useMemo(() => {
+    if (!selectedPartTypeCategory || !categoryTree) return null;
+    return findParentCategoryId(selectedPartTypeCategory);
+  }, [selectedPartTypeCategory, categoryTree]);
+
+  // Fetch parts matching current material, size, and part type category
+  const { data: partsForSelection } = api.catalogue.searchParts.useQuery(
+    {
+      material: selectedMaterial ?? undefined,
+      sizeNominal: selectedSize?.nominal,
+      sizeUnit: selectedSize?.unit,
+      categoryId: selectedParentCategoryId ?? undefined,
+    },
+    {
+      enabled:
+        wizardStage === "part" &&
+        !!selectedMaterial &&
+        !!selectedSize &&
+        !!selectedPartTypeCategory &&
+        !!selectedParentCategoryId,
+    },
   );
 
-  const { data: searchResults } = api.catalogue.searchParts.useQuery(
+  // Fetch parts for category count (material + size only)
+  const { data: partsForCategoryCount } = api.catalogue.searchParts.useQuery(
     {
-      query: debouncedSearchQuery ?? undefined,
+      material: selectedMaterial ?? undefined,
+      sizeNominal: selectedSize?.nominal,
+      sizeUnit: selectedSize?.unit,
+    },
+    {
+      enabled:
+        wizardStage === "partTypeCategory" &&
+        !!selectedMaterial &&
+        !!selectedSize,
+    },
+  );
+
+  // Calculate part counts per category by deriving parent categories from parts
+  const categoryCounts = useMemo(() => {
+    if (!partsForCategoryCount || !partTypeCategories || !categoryTree)
+      return new Map<string, number>();
+
+    // Create a map of category ID to parent category name
+    const categoryIdToParentName = new Map<string, string>();
+    const categoryIdToName = new Map<string, string>();
+
+    const buildCategoryMaps = (
+      nodes: Array<{
+        id: string;
+        name: string;
+        children: Array<unknown>;
+      }>,
+      parentName: string | null = null,
+    ) => {
+      for (const node of nodes) {
+        categoryIdToName.set(node.id, node.name);
+        if (parentName) {
+          categoryIdToParentName.set(node.id, parentName);
+        }
+        buildCategoryMaps(
+          node.children as Array<{
+            id: string;
+            name: string;
+            children: Array<unknown>;
+          }>,
+          node.name,
+        );
+      }
+    };
+
+    buildCategoryMaps(categoryTree);
+
+    const counts = new Map<string, number>();
+    partTypeCategories.forEach((parentCategoryName) => {
+      // Find all category IDs that belong to this parent
+      const categoryIdsForParent = new Set<string>();
+      for (const [catId, parentName] of categoryIdToParentName.entries()) {
+        if (parentName === parentCategoryName) {
+          categoryIdsForParent.add(catId);
+        }
+      }
+      // Also check if the parent category itself exists (root category)
+      for (const [catId, catName] of categoryIdToName.entries()) {
+        if (catName === parentCategoryName) {
+          // Check if it's a root category (no parent)
+          if (!categoryIdToParentName.has(catId)) {
+            categoryIdsForParent.add(catId);
+          }
+        }
+      }
+
+      // Count parts that have categoryId in this parent's tree
+      const count = partsForCategoryCount.filter((p) => {
+        if (!p.categoryId) return false;
+        return categoryIdsForParent.has(p.categoryId);
+      }).length;
+      counts.set(parentCategoryName, count);
+    });
+    return counts;
+  }, [partsForCategoryCount, partTypeCategories, categoryTree]);
+
+  // Mutations for creating custom items
+  const createMaterial = api.catalogue.createMaterial.useMutation({
+    onSuccess: (newMaterial) => {
+      if (newMaterial) {
+        setSelectedMaterial(newMaterial.name);
+        setCustomMaterialName("");
+        setShowCustomMaterialInput(false);
+        setWizardStage("size");
+        void utils.catalogue.getMaterials.invalidate();
+      }
+    },
+  });
+
+  const createSize = api.catalogue.createSize.useMutation({
+    onSuccess: (newSize) => {
+      if (newSize) {
+        const unit = allUnits?.find((u) => u.id === newSize.unitId);
+        if (unit) {
+          setSelectedSize({
+            nominal: parseFloat(newSize.nominal.toString()),
+            unit: unit.code,
+          });
+          setCustomSizeInput("");
+          setCustomSizeUnitId(null);
+          setShowCustomSize(false);
+          setWizardStage("partTypeCategory");
+        }
+        void utils.catalogue.getAvailableSizes.invalidate();
+      }
+    },
+  });
+
+  // Handler for creating custom category - no mutation needed, just use the string directly
+  const handleCustomCategorySubmit = () => {
+    if (customPartTypeName.trim()) {
+      setSelectedPartTypeCategory(customPartTypeName.trim());
+      setCustomPartTypeName("");
+      setShowCustomPartTypeInput(false);
+      setWizardStage("part");
+    }
+  };
+
+  // Fetch available sizes (from sizes table and part definitions)
+  const { data: availableSizesFromQuery } =
+    api.catalogue.getAvailableSizes.useQuery(
+      {},
+      { enabled: wizardStage === "size" },
+    );
+
+  // Fetch parts for size selection (filtered by material) - for counting parts per size
+  const { data: partsForSize } = api.catalogue.searchParts.useQuery(
+    {
       material: selectedMaterial ?? undefined,
     },
-    { enabled: mode === "search" && !!debouncedSearchQuery },
+    { enabled: wizardStage === "size" && !!selectedMaterial },
   );
 
-  const parts = useMemo(() => {
-    if (mode === "search") {
-      return searchResults ?? [];
-    }
-
-    return partsByCategory ?? [];
-  }, [mode, searchResults, partsByCategory]);
-
   const utils = api.useUtils();
+  const addItem = api.materialList.addItemToMaterialList.useMutation({
+    onMutate: async (variables) => {
+      // Cancel outgoing refetches
+      await utils.materialList.getMaterialList.cancel({ materialListId });
 
-  const addItem = api.materialList.addItemToMaterialList.useMutation();
+      // Snapshot previous value
+      const previousMaterialList = utils.materialList.getMaterialList.getData({
+        materialListId,
+      });
 
-  // Store supplier parts data in state instead of using dynamic hooks
+      // Try to get part definition from cache or use minimal structure
+      // The server will return the full structure, so we use a placeholder
+      const tempId = `temp-${Date.now()}-${Math.random()}`;
+      const unitCost = variables.unitCost ?? null;
+      const cost = unitCost ?? 0;
+      const extendedPrice = variables.quantity * cost;
+
+      const newItem = {
+        id: tempId,
+        quantity: variables.quantity.toString(),
+        unitCost: unitCost?.toString() ?? null,
+        extendedPrice: extendedPrice.toString(),
+        descriptionSnapshot: variables.oneOffDisplayName ?? null,
+        partDefinition: variables.partDefinitionId
+          ? {
+              id: variables.partDefinitionId,
+              displayName: null,
+              imageUrl: null,
+              material: null,
+            }
+          : null,
+        oneOff: variables.oneOffDisplayName
+          ? {
+              displayName: variables.oneOffDisplayName,
+              description: variables.oneOffDescription ?? null,
+              material: variables.oneOffMaterial ?? null,
+              partType: variables.oneOffPartType ?? null,
+              sizeNominal: variables.oneOffSizeNominal?.toString() ?? null,
+              sizeUnitId: variables.oneOffSizeUnitId ?? null,
+            }
+          : null,
+        supplierPart: variables.supplierPartId
+          ? {
+              id: variables.supplierPartId,
+              supplierId: "",
+              supplierSku: null,
+              lastKnownUnitCost: unitCost?.toString() ?? null,
+              supplier: {
+                id: "",
+                name: "",
+              },
+            }
+          : null,
+        uom: null, // Will be set by server
+      };
+
+      // Optimistically add item to material list
+      utils.materialList.getMaterialList.setData({ materialListId }, (old) => {
+        if (!old) return old;
+
+        const updatedItems = [...old.items, newItem];
+
+        // Recalculate material total
+        const newMaterialTotal = updatedItems.reduce((sum, item) => {
+          const price = item.extendedPrice
+            ? parseFloat(item.extendedPrice.toString())
+            : 0;
+          return sum + price;
+        }, 0);
+
+        return {
+          ...old,
+          items: updatedItems,
+          materialTotal: newMaterialTotal,
+        };
+      });
+
+      return { previousMaterialList };
+    },
+    onError: (err, variables, context) => {
+      // Rollback on error
+      if (context?.previousMaterialList) {
+        utils.materialList.getMaterialList.setData(
+          { materialListId },
+          context.previousMaterialList,
+        );
+      }
+    },
+    onSettled: () => {
+      void utils.materialList.getMaterialList.invalidate({ materialListId });
+    },
+  });
+
+  // Store supplier parts data
   const [supplierPartsData, setSupplierPartsData] = useState<
     Map<
       string,
@@ -120,12 +389,10 @@ export function AddPartDialog({
     >
   >(new Map());
 
-  // Track which parts we're currently fetching to avoid duplicate requests
   const [fetchingParts, setFetchingParts] = useState<Set<string>>(new Set());
   const supplierPartsDataRef = useRef(supplierPartsData);
   const fetchingPartsRef = useRef(fetchingParts);
 
-  // Keep refs in sync with state
   useEffect(() => {
     supplierPartsDataRef.current = supplierPartsData;
   }, [supplierPartsData]);
@@ -134,17 +401,16 @@ export function AddPartDialog({
     fetchingPartsRef.current = fetchingParts;
   }, [fetchingParts]);
 
-  // Fetch supplier parts for selected parts on-demand
+  // Fetch supplier parts for pending parts
   useEffect(() => {
-    const selectedPartIds = Array.from(selectedParts.keys());
+    const pendingPartIds = pendingParts.map((p) => p.partId);
 
-    selectedPartIds.forEach((partId) => {
-      // Only fetch if we don't already have the data and aren't currently fetching
+    pendingPartIds.forEach((partId) => {
       if (
         supplierPartsDataRef.current.has(partId) ||
         fetchingPartsRef.current.has(partId)
       ) {
-        return; // Already have data or currently fetching
+        return;
       }
 
       setFetchingParts((prev) => {
@@ -155,7 +421,6 @@ export function AddPartDialog({
 
       void utils.supplier.getSupplierPartsByPart
         .fetch({ partDefinitionId: partId })
-
         .then(
           (
             data: Array<{
@@ -177,11 +442,9 @@ export function AddPartDialog({
             });
           },
         )
-
         .catch((error) => {
           console.error(`Error fetching supplier parts for ${partId}:`, error);
         })
-
         .finally(() => {
           setFetchingParts((prev) => {
             const next = new Set(prev);
@@ -191,8 +454,8 @@ export function AddPartDialog({
         });
     });
 
-    // Clean up supplier parts data for parts that are no longer selected
-    const currentPartIds = new Set(selectedPartIds);
+    // Clean up supplier parts data for parts no longer pending
+    const currentPartIds = new Set(pendingPartIds);
     setSupplierPartsData((prev) => {
       const next = new Map(prev);
       let hasChanges = false;
@@ -204,465 +467,712 @@ export function AddPartDialog({
       }
       return hasChanges ? next : prev;
     });
-  }, [selectedParts, utils.supplier.getSupplierPartsByPart]);
+  }, [pendingParts, utils.supplier.getSupplierPartsByPart]);
 
-  // Auto-select preferred supplier when part is first selected
+  // Auto-select preferred supplier when part is added
   useEffect(() => {
-    const selectedPartIds = Array.from(selectedParts.keys());
+    pendingParts.forEach((pendingPart) => {
+      if (pendingPart.supplierPartId) return;
 
-    selectedPartIds.forEach((partId) => {
-      const selection = selectedParts.get(partId);
-      if (!selection || selection.supplierPartId) return;
-
-      const partsData = supplierPartsData.get(partId);
+      const partsData = supplierPartsData.get(pendingPart.partId);
       if (partsData && partsData.length > 0) {
         const preferred = partsData.find((sp) => sp.isPreferred);
         const supplierPartId = preferred?.id ?? partsData[0]?.id;
         if (supplierPartId) {
-          setSelectedParts((prev) => {
-            const next = new Map(prev);
-            const current = next.get(partId);
-            if (current) {
-              next.set(partId, { ...current, supplierPartId });
-            }
-            return next;
-          });
+          setPendingParts((prev) =>
+            prev.map((p) =>
+              p.partId === pendingPart.partId ? { ...p, supplierPartId } : p,
+            ),
+          );
         }
       }
     });
-  }, [selectedParts, supplierPartsData]);
+  }, [pendingParts, supplierPartsData]);
 
-  const handleTogglePart = (part: {
+  // Group sizes from parts and combine with sizes from query
+  const availableSizes = useMemo(() => {
+    const sizeMap = new Map<
+      string,
+      { nominal: number; unit: string; count: number }
+    >();
+
+    // Add sizes from sizes table and part definitions (from query)
+    if (availableSizesFromQuery) {
+      availableSizesFromQuery.forEach((size) => {
+        const key = `${size.nominal}_${size.unit}`;
+        sizeMap.set(key, {
+          nominal: size.nominal,
+          unit: size.unit,
+          count: 0, // Will be updated from partsForSize
+        });
+      });
+    }
+
+    // Count parts for each size
+    if (partsForSize) {
+      partsForSize.forEach((part) => {
+        if (part.sizeNominal && part.sizeUnit) {
+          const key = `${part.sizeNominal}_${part.sizeUnit}`;
+          const existing = sizeMap.get(key);
+          if (existing) {
+            sizeMap.set(key, { ...existing, count: existing.count + 1 });
+          } else {
+            sizeMap.set(key, {
+              nominal: parseFloat(part.sizeNominal),
+              unit: part.sizeUnit,
+              count: 1,
+            });
+          }
+        }
+      });
+    }
+
+    return Array.from(sizeMap.values()).sort((a, b) => {
+      if (a.unit !== b.unit) {
+        return a.unit.localeCompare(b.unit);
+      }
+      return a.nominal - b.nominal;
+    });
+  }, [availableSizesFromQuery, partsForSize]);
+
+  // Navigation handlers
+  const handleMaterialSelect = (material: string) => {
+    setSelectedMaterial(material);
+    setWizardStage("size");
+    setSelectedSize(null);
+    setShowCustomSize(false);
+    setCustomSizeInput("");
+  };
+
+  const handleSizeSelect = (size: { nominal: number; unit: string }) => {
+    setSelectedSize(size);
+    setWizardStage("partTypeCategory");
+    setShowCustomSize(false);
+    setCustomSizeInput("");
+    setCustomSizeUnitId(null);
+    setSelectedPartTypeCategory(null);
+  };
+
+  const handleCustomSizeSubmit = () => {
+    const parsed = parseSizeInput(customSizeInput);
+    if (parsed !== null && selectedMaterial) {
+      // Find the unit from available sizes (default to "in")
+      const unit =
+        availableSizes.length > 0 ? (availableSizes[0]?.unit ?? "in") : "in";
+      handleSizeSelect({ nominal: parsed, unit });
+    }
+  };
+
+  // Handler for part type category selection
+  const handlePartTypeCategorySelection = (category: string) => {
+    setSelectedPartTypeCategory(category);
+    setWizardStage("part");
+  };
+
+  // Handler for individual part selection
+  const handlePartSelect = (part: {
     id: string;
     displayName: string;
     imageUrl: string | null;
     material: string | null;
+    size: string | null;
+    partType: string | null;
   }) => {
-    setSelectedParts((prev) => {
-      const next = new Map(prev);
-      if (next.has(part.id)) {
-        next.delete(part.id);
-      } else {
-        next.set(part.id, {
-          id: part.id,
-          displayName: part.displayName,
-          imageUrl: part.imageUrl,
-          material: part.material,
-          quantity: 1,
-          supplierPartId: undefined,
-        });
-      }
-      return next;
-    });
+    addToPendingList(part.id, part);
   };
 
-  const handleUpdateQuantity = (partId: string, quantity: number) => {
-    setSelectedParts((prev) => {
-      const next = new Map(prev);
-      const current = next.get(partId);
-      if (current) {
-        next.set(partId, { ...current, quantity: Math.max(1, quantity) });
-      }
-      return next;
-    });
+  const handleValveSelected = (partId: string) => {
+    // Find "Valves" category ID
+    const valvesCategoryId = findParentCategoryId("Valves");
+    if (!valvesCategoryId) return;
+
+    // Fetch the part and add to pending
+    void utils.catalogue.searchParts
+      .fetch({
+        material: selectedMaterial ?? undefined,
+        sizeNominal: selectedSize?.nominal,
+        sizeUnit: selectedSize?.unit,
+        categoryId: valvesCategoryId,
+      })
+      .then((parts) => {
+        const part = parts.find((p) => p.id === partId);
+        if (part) {
+          addToPendingList(partId, {
+            id: part.id,
+            displayName: part.displayName,
+            imageUrl: part.imageUrl,
+            material: part.material,
+            size: part.size,
+            partType: part.partType,
+          });
+        }
+      });
+  };
+
+  const addToPendingList = (
+    partId: string,
+    part: {
+      id: string;
+      displayName: string;
+      imageUrl: string | null;
+      material: string | null;
+      size: string | null;
+      partType: string | null;
+    },
+  ) => {
+    // Check if already in pending list
+    if (pendingParts.some((p) => p.partId === partId)) {
+      // Increment quantity
+      setPendingParts((prev) =>
+        prev.map((p) =>
+          p.partId === partId ? { ...p, quantity: p.quantity + 1 } : p,
+        ),
+      );
+    } else {
+      // Add new part
+      setPendingParts((prev) => [
+        ...prev,
+        {
+          partId,
+          partDefinition: {
+            id: part.id,
+            displayName: part.displayName,
+            imageUrl: part.imageUrl,
+            material: part.material,
+            size: part.size,
+            partType: part.partType,
+          },
+          quantity: 1,
+        },
+      ]);
+    }
+  };
+
+  const handleCustomPartCreated = (part: {
+    id: string;
+    displayName: string;
+    imageUrl: string | null;
+    material: string | null;
+    size: string | null;
+    partType: string | null;
+  }) => {
+    addToPendingList(part.id, part);
+    setCustomPartContext(null);
+  };
+
+  const handleOpenCustomPartDialog = (context?: {
+    material?: string | null;
+    size?: { nominal: number; unit: string } | null;
+    partType?: string | null;
+  }) => {
+    setCustomPartContext(context ?? null);
+    setIsCreateCustomPartDialogOpen(true);
+  };
+
+  const handleUpdateQuantity = (partId: string, delta: number) => {
+    setPendingParts((prev) =>
+      prev.map((p) => {
+        if (p.partId === partId) {
+          const newQuantity = Math.max(1, p.quantity + delta);
+          return { ...p, quantity: newQuantity };
+        }
+        return p;
+      }),
+    );
+  };
+
+  const handleSetQuantity = (partId: string, quantity: number) => {
+    setPendingParts((prev) =>
+      prev.map((p) => {
+        if (p.partId === partId) {
+          return { ...p, quantity: Math.max(1, quantity) };
+        }
+        return p;
+      }),
+    );
   };
 
   const handleUpdateSupplier = (partId: string, supplierPartId: string) => {
-    setSelectedParts((prev) => {
-      const next = new Map(prev);
-      const current = next.get(partId);
-      if (current) {
-        next.set(partId, { ...current, supplierPartId });
-      }
-      return next;
-    });
+    setPendingParts((prev) =>
+      prev.map((p) => {
+        if (p.partId === partId) {
+          return { ...p, supplierPartId };
+        }
+        return p;
+      }),
+    );
   };
 
-  const handleRemovePart = (partId: string) => {
-    setSelectedParts((prev) => {
-      const next = new Map(prev);
-      next.delete(partId);
-      return next;
-    });
+  const handleRemovePendingPart = (partId: string) => {
+    setPendingParts((prev) => prev.filter((p) => p.partId !== partId));
   };
-  console.log(Array.from(selectedParts.values()), "my selected parts");
-  const handleAddParts = async () => {
-    console.log("Adding part");
 
-    if (selectedParts.size === 0) return;
+  const handleContinueAdding = () => {
+    setWizardStage("partTypeCategory");
+    setSelectedPartTypeCategory(null);
+  };
 
-    const partsToAdd = Array.from(selectedParts.values());
+  const handleReviewAndAdd = () => {
+    setWizardStage("review");
+  };
+
+  const handleAddToMaterialList = async () => {
+    if (pendingParts.length === 0) return;
+
     try {
       await Promise.all(
-        partsToAdd.map((part) =>
+        pendingParts.map((pendingPart) =>
           addItem.mutateAsync({
             materialListId,
-            partDefinitionId: part.id,
-            quantity: part.quantity,
-            supplierPartId: part.supplierPartId,
+            partDefinitionId: pendingPart.partId,
+            quantity: pendingPart.quantity,
+            supplierPartId: pendingPart.supplierPartId,
           }),
         ),
       );
 
       void utils.materialList.getMaterialList.invalidate({ materialListId });
-      setSelectedParts(new Map());
-      setExpandedSelection(false);
+      setPendingParts([]);
+      setWizardStage("material");
+      setSelectedMaterial(null);
+      setSelectedSize(null);
       onOpenChange(false);
     } catch (error) {
       console.error("Error adding parts:", error);
     }
   };
 
-  const selectedCount = selectedParts.size;
-
   // Reset state when dialog closes
   useEffect(() => {
     if (!open) {
-      setSelectedParts(new Map());
-      setExpandedSelection(false);
+      setPendingParts([]);
+      setWizardStage("material");
+      setSelectedMaterial(null);
+      setSelectedSize(null);
+      setShowCustomSize(false);
+      setCustomSizeInput("");
+      setIsValveDialogOpen(false);
     }
   }, [open]);
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[90vh] max-w-4xl flex-col p-0">
-        <DialogHeader className="shrink-0 px-6 pt-6 pb-4">
-          <DialogTitle>Add Parts</DialogTitle>
-          <DialogDescription>
-            Browse categories or search for parts to add
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="flex-1 space-y-4 overflow-y-auto px-6 pb-4">
-          {/* Mode Tabs */}
-          <div className="flex gap-2 border-b">
-            <button
-              onClick={() => setMode("browse")}
-              className={`px-4 py-2 font-medium ${
-                mode === "browse"
-                  ? "border-primary text-primary border-b-2"
-                  : "text-gray-600"
-              }`}
-            >
-              Browse
-            </button>
-            <button
-              onClick={() => setMode("search")}
-              className={`px-4 py-2 font-medium ${
-                mode === "search"
-                  ? "border-primary text-primary border-b-2"
-                  : "text-gray-600"
-              }`}
-            >
-              Search
-            </button>
-          </div>
-
-          {mode === "browse" && (
-            <div className="flex gap-4">
-              {/* Category Tree */}
-              <div className="w-64 border-r pr-4">
-                <h3 className="mb-2 font-semibold">Categories</h3>
-                <CategoryTree
-                  categories={categoryTree ?? []}
-                  selectedCategoryId={selectedCategoryId}
-                  onSelectCategory={setSelectedCategoryId}
-                />
-              </div>
-
-              {/* Parts Grid */}
-              <div className="flex-1">
-                <h3 className="mb-2 font-semibold">Parts</h3>
-                {}
-                {parts.length === 0 ? (
-                  <p className="text-muted-foreground py-8 text-center">
-                    {selectedCategoryId
-                      ? "No parts in this category"
-                      : "Select a category to view parts"}
-                  </p>
-                ) : (
-                  <div className="space-y-2">
-                    {}
-                    {parts.map(
-                      (part: {
-                        id: string;
-                        displayName: string;
-                        imageUrl: string | null;
-                        material: string | null;
-                      }) => {
-                        const isSelected = selectedParts.has(part.id);
-                        return (
-                          <Card
-                            key={part.id}
-                            className={`cursor-pointer transition-all hover:shadow-md ${
-                              isSelected
-                                ? "border-primary border-2 shadow-md"
-                                : ""
-                            }`}
-                            onClick={() => handleTogglePart(part)}
-                          >
-                            <CardContent className="p-4">
-                              <div className="flex items-center gap-4">
-                                <div
-                                  className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 transition-colors ${
-                                    isSelected
-                                      ? "border-primary bg-primary"
-                                      : "border-gray-300"
-                                  }`}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleTogglePart(part);
-                                  }}
-                                >
-                                  {isSelected && (
-                                    <Check className="h-3 w-3 text-white" />
-                                  )}
-                                </div>
-                                <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-md bg-gray-100">
-                                  {part.imageUrl ? (
-                                    <Image
-                                      src={part.imageUrl}
-                                      alt={part.displayName}
-                                      fill
-                                      className="object-cover"
-                                    />
-                                  ) : (
-                                    <div className="flex h-full items-center justify-center text-gray-400">
-                                      <svg
-                                        className="h-6 w-6"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        viewBox="0 0 24 24"
-                                      >
-                                        <path
-                                          strokeLinecap="round"
-                                          strokeLinejoin="round"
-                                          strokeWidth={2}
-                                          d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
-                                        />
-                                      </svg>
-                                    </div>
-                                  )}
-                                </div>
-                                <div className="min-w-0 flex-1">
-                                  <h4 className="text-sm font-medium">
-                                    {part.displayName}
-                                  </h4>
-                                  {part.material && (
-                                    <Badge
-                                      variant="outline"
-                                      className="mt-1 text-xs"
-                                    >
-                                      {part.material}
-                                    </Badge>
-                                  )}
-                                </div>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        );
-                      },
-                    )}
-                  </div>
-                )}
-              </div>
+  // Render stage content
+  const renderStageContent = () => {
+    switch (wizardStage) {
+      case "material":
+        return (
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold">Select Material</h3>
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
+              {materials?.map((material) => (
+                <Card
+                  key={material}
+                  className={`cursor-pointer transition-all hover:shadow-md ${
+                    selectedMaterial === material
+                      ? "border-primary border-2 shadow-md"
+                      : ""
+                  }`}
+                  onClick={() => handleMaterialSelect(material)}
+                >
+                  <CardContent className="p-4 text-center">
+                    <p className="font-medium">{material}</p>
+                  </CardContent>
+                </Card>
+              ))}
+              <Card
+                className={`cursor-pointer border-dashed transition-all hover:shadow-md ${
+                  showCustomMaterialInput ? "border-primary border-2" : ""
+                }`}
+                onClick={() => setShowCustomMaterialInput(true)}
+              >
+                <CardContent className="p-4 text-center">
+                  <p className="font-medium">Other</p>
+                </CardContent>
+              </Card>
             </div>
-          )}
-
-          {mode === "search" && (
-            <div className="space-y-4">
-              {/* Search Bar */}
-              <div className="relative">
-                <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            {showCustomMaterialInput && (
+              <div className="mt-4 flex gap-2">
                 <Input
-                  type="text"
-                  placeholder="Search by name, synonym, size, or material..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
+                  placeholder="Enter custom material name"
+                  value={customMaterialName}
+                  onChange={(e) => setCustomMaterialName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && customMaterialName.trim()) {
+                      createMaterial.mutate({
+                        name: customMaterialName.trim(),
+                      });
+                    }
+                  }}
+                  className="flex-1"
+                  autoFocus
+                  disabled={createMaterial.isPending}
                 />
+                <Button
+                  onClick={() => {
+                    if (customMaterialName.trim()) {
+                      createMaterial.mutate({
+                        name: customMaterialName.trim(),
+                      });
+                    }
+                  }}
+                  disabled={
+                    !customMaterialName.trim() || createMaterial.isPending
+                  }
+                >
+                  {createMaterial.isPending ? "Adding..." : "Add Material"}
+                </Button>
               </div>
+            )}
+          </div>
+        );
 
-              {/* Material Filter */}
-              <div>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" className="w-full sm:w-auto">
-                      <Filter className="mr-2 h-4 w-4" />
-                      Material: {selectedMaterial ?? "All"}
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent>
-                    <DropdownMenuItem onClick={() => setSelectedMaterial(null)}>
-                      All Materials
-                    </DropdownMenuItem>
-                    {}
-                    {materials?.map((material: string) => (
-                      <DropdownMenuItem
-                        key={material}
-                        onClick={() => setSelectedMaterial(material)}
-                      >
-                        {material}
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-
-              {/* Search Results */}
-              <div>
-                {}
-                {parts.length === 0 ? (
-                  <p className="text-muted-foreground py-8 text-center">
-                    {debouncedSearchQuery
-                      ? "No parts found"
-                      : "Enter a search query"}
-                  </p>
-                ) : (
-                  <div className="space-y-2">
-                    {}
-                    {parts.map(
-                      (part: {
-                        id: string;
-                        displayName: string;
-                        imageUrl: string | null;
-                        material: string | null;
-                      }) => {
-                        const isSelected = selectedParts.has(part.id);
-                        return (
-                          <Card
-                            key={part.id}
-                            className={`cursor-pointer transition-all hover:shadow-md ${
-                              isSelected
-                                ? "border-primary border-2 shadow-md"
-                                : ""
-                            }`}
-                            onClick={() => handleTogglePart(part)}
-                          >
-                            <CardContent className="p-4">
-                              <div className="flex items-center gap-4">
-                                <div
-                                  className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 transition-colors ${
-                                    isSelected
-                                      ? "border-primary bg-primary"
-                                      : "border-gray-300"
-                                  }`}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleTogglePart(part);
-                                  }}
-                                >
-                                  {isSelected && (
-                                    <Check className="h-3 w-3 text-white" />
-                                  )}
-                                </div>
-                                <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-md bg-gray-100">
-                                  {part.imageUrl ? (
-                                    <Image
-                                      src={part.imageUrl}
-                                      alt={part.displayName}
-                                      fill
-                                      className="object-cover"
-                                    />
-                                  ) : (
-                                    <div className="flex h-full items-center justify-center text-gray-400">
-                                      <svg
-                                        className="h-6 w-6"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        viewBox="0 0 24 24"
-                                      >
-                                        <path
-                                          strokeLinecap="round"
-                                          strokeLinejoin="round"
-                                          strokeWidth={2}
-                                          d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
-                                        />
-                                      </svg>
-                                    </div>
-                                  )}
-                                </div>
-                                <div className="min-w-0 flex-1">
-                                  <h4 className="text-sm font-medium">
-                                    {part.displayName}
-                                  </h4>
-                                  {part.material && (
-                                    <Badge
-                                      variant="outline"
-                                      className="mt-1 text-xs"
-                                    >
-                                      {part.material}
-                                    </Badge>
-                                  )}
-                                </div>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        );
-                      },
-                    )}
+      case "size":
+        return (
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold">Select Size</h3>
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
+              {availableSizes.map((size) => (
+                <Card
+                  key={`${size.nominal}_${size.unit}`}
+                  className={`cursor-pointer transition-all hover:shadow-md ${
+                    selectedSize?.nominal === size.nominal &&
+                    selectedSize?.unit === size.unit
+                      ? "border-primary border-2 shadow-md"
+                      : ""
+                  }`}
+                  onClick={() => handleSizeSelect(size)}
+                >
+                  <CardContent className="p-4 text-center">
+                    <p className="font-medium">
+                      {formatSize(size.nominal, size.unit)}
+                    </p>
+                    <p className="mt-1 text-xs text-gray-500">
+                      {size.count} part{size.count !== 1 ? "s" : ""}
+                    </p>
+                  </CardContent>
+                </Card>
+              ))}
+              <Card
+                className={`cursor-pointer transition-all hover:shadow-md ${
+                  showCustomSize ? "border-primary border-2 shadow-md" : ""
+                }`}
+                onClick={() => setShowCustomSize(true)}
+              >
+                <CardContent className="p-4 text-center">
+                  <p className="font-medium">Other</p>
+                </CardContent>
+              </Card>
+            </div>
+            {showCustomSize && (
+              <div className="mt-4 space-y-2">
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-sm font-medium text-gray-700">
+                      Size (number required)
+                    </label>
+                    <Input
+                      type="text"
+                      placeholder="Enter size (e.g., 1 ½, 2.5)"
+                      value={customSizeInput}
+                      onChange={(e) => setCustomSizeInput(e.target.value)}
+                      className="mt-1"
+                      autoFocus
+                      disabled={createSize.isPending}
+                    />
                   </div>
-                )}
+                  <div>
+                    <label className="text-sm font-medium text-gray-700">
+                      Unit
+                    </label>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className="mt-1 w-full justify-between"
+                          disabled={createSize.isPending}
+                        >
+                          {customSizeUnitId
+                            ? (allUnits?.find((u) => u.id === customSizeUnitId)
+                                ?.code ?? "Select unit")
+                            : "Select unit"}
+                          <ChevronDown className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent>
+                        {allUnits?.map((unit) => (
+                          <DropdownMenuItem
+                            key={unit.id}
+                            onClick={() => setCustomSizeUnitId(unit.id)}
+                          >
+                            {unit.code}
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </div>
+                <Button
+                  onClick={() => {
+                    const parsed = parseSizeInput(customSizeInput);
+                    if (parsed !== null && customSizeUnitId) {
+                      createSize.mutate({
+                        nominal: parsed,
+                        unitId: customSizeUnitId,
+                      });
+                    }
+                  }}
+                  disabled={
+                    !customSizeInput.trim() ||
+                    !customSizeUnitId ||
+                    createSize.isPending ||
+                    parseSizeInput(customSizeInput) === null
+                  }
+                  className="w-full"
+                >
+                  {createSize.isPending ? "Adding..." : "Add Size"}
+                </Button>
+              </div>
+            )}
+          </div>
+        );
+
+      case "partTypeCategory":
+        return (
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold">Select Part Type Category</h3>
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
+              {partTypeCategories?.map((category) => {
+                const count = categoryCounts.get(category) ?? 0;
+                return (
+                  <Card
+                    key={category}
+                    className={`cursor-pointer transition-all hover:shadow-md ${
+                      selectedPartTypeCategory === category
+                        ? "border-primary border-2 shadow-md"
+                        : ""
+                    }`}
+                    onClick={() => handlePartTypeCategorySelection(category)}
+                  >
+                    <CardContent className="p-4 text-center">
+                      <p className="font-medium">{category}</p>
+                      {count > 0 && (
+                        <p className="mt-1 text-xs text-gray-500">
+                          {count} part{count !== 1 ? "s" : ""}
+                        </p>
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+              })}
+              <Card
+                className={`cursor-pointer border-dashed transition-all hover:shadow-md ${
+                  showCustomPartTypeInput ? "border-primary border-2" : ""
+                }`}
+                onClick={() => setShowCustomPartTypeInput(true)}
+              >
+                <CardContent className="p-4 text-center">
+                  <p className="font-medium">Other</p>
+                </CardContent>
+              </Card>
+            </div>
+            {showCustomPartTypeInput && (
+              <div className="mt-4 flex gap-2">
+                <Input
+                  placeholder="Enter custom category name"
+                  value={customPartTypeName}
+                  onChange={(e) => setCustomPartTypeName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && customPartTypeName.trim()) {
+                      handleCustomCategorySubmit();
+                    }
+                  }}
+                  className="flex-1"
+                  autoFocus
+                />
+                <Button
+                  onClick={handleCustomCategorySubmit}
+                  disabled={!customPartTypeName.trim()}
+                >
+                  Add Category
+                </Button>
+              </div>
+            )}
+          </div>
+        );
+
+      case "part":
+        if (!partsForSelection || partsForSelection.length === 0) {
+          return (
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold">No Parts Found</h3>
+              <p className="text-sm text-gray-500">
+                No parts found for the selected material, size, and category.
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() =>
+                    handleOpenCustomPartDialog({
+                      material: selectedMaterial,
+                      size: selectedSize,
+                      partType: null,
+                    })
+                  }
+                >
+                  Create Custom Part
+                </Button>
               </div>
             </div>
-          )}
-        </div>
+          );
+        }
 
-        {/* Sticky Footer */}
-        <div className="shrink-0 border-t bg-white">
-          {selectedCount > 0 && (
-            <div className="border-b px-6 py-3">
-              <button
-                onClick={() => setExpandedSelection(!expandedSelection)}
-                className="flex w-full items-center justify-between text-sm font-medium"
-                aria-label={
-                  expandedSelection
-                    ? "Collapse selected parts"
-                    : "Expand selected parts"
+        return (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold">Select Parts</h3>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setWizardStage("review")}
+              >
+                Review ({pendingParts.length})
+              </Button>
+            </div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
+              {partsForSelection.map((part) => {
+                const isPending = pendingParts.some(
+                  (p) => p.partId === part.id,
+                );
+                return (
+                  <Card
+                    key={part.id}
+                    className={`cursor-pointer transition-all hover:shadow-md ${
+                      isPending ? "border-primary border-2" : ""
+                    }`}
+                    onClick={() => handlePartSelect(part)}
+                  >
+                    <CardContent className="p-4">
+                      <div className="flex flex-col gap-2">
+                        <div className="relative h-32 w-full overflow-hidden rounded-md bg-gray-100">
+                          {part.imageUrl ? (
+                            <Image
+                              src={part.imageUrl}
+                              alt={part.displayName}
+                              fill
+                              className="object-cover"
+                            />
+                          ) : (
+                            <div className="flex h-full items-center justify-center text-gray-400">
+                              <svg
+                                className="h-8 w-8"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
+                                />
+                              </svg>
+                            </div>
+                          )}
+                        </div>
+                        <div>
+                          <h4 className="text-sm font-medium">
+                            {part.displayName}
+                          </h4>
+                          {part.partType && (
+                            <Badge variant="outline" className="mt-1 text-xs">
+                              {part.partType}
+                            </Badge>
+                          )}
+                        </div>
+                        {isPending && <Badge className="w-fit">Added</Badge>}
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+              <Card className="cursor-pointer border-dashed transition-all hover:shadow-md">
+                <CardContent className="flex h-full min-h-[180px] items-center justify-center p-4">
+                  <div className="text-center">
+                    <Plus className="mx-auto h-8 w-8 text-gray-400" />
+                    <p className="mt-2 text-sm font-medium">Add One-off Part</p>
+                    <p className="mt-1 text-xs text-gray-500">
+                      Temporary part (not saved to catalogue)
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card
+                className="cursor-pointer border-dashed transition-all hover:shadow-md"
+                onClick={() =>
+                  handleOpenCustomPartDialog({
+                    material: selectedMaterial,
+                    size: selectedSize,
+                    partType: null,
+                  })
                 }
               >
-                <span>
-                  {selectedCount} part{selectedCount !== 1 ? "s" : ""} selected
-                </span>
-                {expandedSelection ? (
-                  <ChevronUp className="h-4 w-4" />
-                ) : (
-                  <ChevronDown className="h-4 w-4" />
-                )}
-              </button>
+                <CardContent className="flex h-full min-h-[180px] items-center justify-center p-4">
+                  <div className="text-center">
+                    <Plus className="mx-auto h-8 w-8 text-gray-400" />
+                    <p className="mt-2 text-sm font-medium">
+                      Create Custom Part
+                    </p>
+                    <p className="mt-1 text-xs text-gray-500">
+                      Add to catalogue
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
-          )}
-          {expandedSelection && selectedCount > 0 && (
-            <div className="max-h-64 space-y-4 overflow-y-auto border-b px-6 py-4">
-              {Array.from(selectedParts.values()).map((selection) => {
-                const partsData: Array<{
-                  id: string;
-                  supplierId: string;
-                  supplierSku: string | null;
-                  lastKnownUnitCost: string | null;
-                  isPreferred: boolean;
-                  supplier: {
-                    id: string;
-                    name: string;
-                  };
-                }> = supplierPartsData.get(selection.id) ?? [];
+            <div className="flex justify-between">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setSelectedPartTypeCategory(null);
+                  setWizardStage("partTypeCategory");
+                }}
+              >
+                Back to Categories
+              </Button>
+              <Button
+                onClick={() => setWizardStage("review")}
+                disabled={pendingParts.length === 0}
+              >
+                Continue to Review ({pendingParts.length})
+              </Button>
+            </div>
+          </div>
+        );
+
+      case "review":
+        return (
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold">Review Parts</h3>
+            <div className="space-y-4">
+              {pendingParts.map((pendingPart) => {
+                const partsData =
+                  supplierPartsData.get(pendingPart.partId) ?? [];
                 return (
                   <div
-                    key={selection.id}
-                    className="flex items-start gap-4 rounded-lg border p-3"
+                    key={pendingPart.partId}
+                    className="flex items-start gap-4 rounded-lg border p-4"
                   >
-                    <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-md bg-gray-100">
-                      {selection.imageUrl ? (
+                    <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-md bg-gray-100">
+                      {pendingPart.partDefinition.imageUrl ? (
                         <Image
-                          src={selection.imageUrl}
-                          alt={selection.displayName}
+                          src={pendingPart.partDefinition.imageUrl}
+                          alt={pendingPart.partDefinition.displayName}
                           fill
                           className="object-cover"
                         />
                       ) : (
                         <div className="flex h-full items-center justify-center text-gray-400">
                           <svg
-                            className="h-4 w-4"
+                            className="h-6 w-6"
                             fill="none"
                             stroke="currentColor"
                             viewBox="0 0 24 24"
@@ -680,56 +1190,86 @@ export function AddPartDialog({
                     <div className="min-w-0 flex-1 space-y-2">
                       <div className="flex items-start justify-between">
                         <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium">
-                            {selection.displayName}
+                          <p className="font-medium">
+                            {pendingPart.partDefinition.displayName}
                           </p>
-                          {selection.material && (
-                            <Badge variant="outline" className="mt-1 text-xs">
-                              {selection.material}
-                            </Badge>
-                          )}
+                          <div className="mt-1 flex gap-1">
+                            {pendingPart.partDefinition.material && (
+                              <Badge variant="outline" className="text-xs">
+                                {pendingPart.partDefinition.material}
+                              </Badge>
+                            )}
+                            {pendingPart.partDefinition.size && (
+                              <Badge variant="outline" className="text-xs">
+                                {pendingPart.partDefinition.size}
+                              </Badge>
+                            )}
+                          </div>
                         </div>
                         <button
-                          onClick={() => handleRemovePart(selection.id)}
+                          title="Remove part"
+                          onClick={() =>
+                            handleRemovePendingPart(pendingPart.partId)
+                          }
                           className="ml-2 text-gray-400 hover:text-gray-600"
-                          aria-label={`Remove ${selection.displayName}`}
                         >
                           <X className="h-4 w-4" />
                         </button>
                       </div>
-                      <div className="flex gap-2">
-                        <div className="flex-1">
-                          <label className="text-xs text-gray-600">
-                            Quantity
+                      <div className="flex gap-4">
+                        <div className="flex items-center gap-2">
+                          <label className="text-sm text-gray-600">
+                            Quantity:
                           </label>
-                          <Input
-                            type="number"
-                            min="1"
-                            value={selection.quantity}
-                            onChange={(e) =>
-                              handleUpdateQuantity(
-                                selection.id,
-                                parseInt(e.target.value) || 1,
-                              )
-                            }
-                            className="mt-1 h-8"
-                            onClick={(e) => e.stopPropagation()}
-                          />
+                          <div className="flex items-center gap-1">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() =>
+                                handleUpdateQuantity(pendingPart.partId, -1)
+                              }
+                              className="h-8 w-8 p-0"
+                            >
+                              <Minus className="h-4 w-4" />
+                            </Button>
+                            <Input
+                              type="number"
+                              min="1"
+                              value={pendingPart.quantity}
+                              onChange={(e) =>
+                                handleSetQuantity(
+                                  pendingPart.partId,
+                                  parseInt(e.target.value) || 1,
+                                )
+                              }
+                              className="h-8 w-16 [appearance:textfield] text-center [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                            />
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() =>
+                                handleUpdateQuantity(pendingPart.partId, 1)
+                              }
+                              className="h-8 w-8 p-0"
+                            >
+                              <Plus className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </div>
                         {partsData.length > 0 && (
                           <div className="flex-1">
-                            <label className="text-xs text-gray-600">
-                              Supplier
+                            <label className="text-sm text-gray-600">
+                              Supplier:
                             </label>
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
                                 <Button
                                   variant="outline"
                                   className="mt-1 h-8 w-full justify-start text-xs"
-                                  onClick={(e) => e.stopPropagation()}
                                 >
                                   {partsData.find(
-                                    (sp) => sp.id === selection.supplierPartId,
+                                    (sp) =>
+                                      sp.id === pendingPart.supplierPartId,
                                   )?.supplier.name ?? "Select supplier"}
                                 </Button>
                               </DropdownMenuTrigger>
@@ -738,7 +1278,10 @@ export function AddPartDialog({
                                   <DropdownMenuItem
                                     key={sp.id}
                                     onClick={() =>
-                                      handleUpdateSupplier(selection.id, sp.id)
+                                      handleUpdateSupplier(
+                                        pendingPart.partId,
+                                        sp.id,
+                                      )
                                     }
                                   >
                                     {sp.supplier.name}
@@ -758,114 +1301,183 @@ export function AddPartDialog({
                 );
               })}
             </div>
-          )}
-          <DialogFooter className="px-6 py-4">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={handleAddParts}
-              disabled={selectedCount === 0 || addItem.isPending}
-            >
-              {}
-              {addItem.isPending
-                ? "Adding..."
-                : `Add ${selectedCount} Part${selectedCount !== 1 ? "s" : ""}`}
-            </Button>
-          </DialogFooter>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-// Category Tree Component
-function CategoryTree({
-  categories,
-  selectedCategoryId,
-  onSelectCategory,
-}: {
-  categories: Array<{
-    id: string;
-    name: string;
-    children: Array<unknown>;
-    partCount?: number;
-  }>;
-  selectedCategoryId: string | null;
-  onSelectCategory: (categoryId: string | null) => void;
-}) {
-  const [expanded, setExpanded] = useState<Set<string>>(new Set());
-
-  const toggleExpanded = (id: string) => {
-    setExpanded((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
-  };
-
-  const renderCategory = (category: (typeof categories)[0]) => {
-    const isExpanded = expanded.has(category.id);
-    const isSelected = selectedCategoryId === category.id;
-    const hasChildren = category.children.length > 0;
-
-    return (
-      <div key={category.id} className="mb-1">
-        <div className="flex items-center gap-1">
-          {hasChildren && (
-            <button
-              onClick={() => toggleExpanded(category.id)}
-              className="p-0.5"
-            >
-              {isExpanded ? (
-                <ChevronDown className="h-4 w-4" />
-              ) : (
-                <ChevronRight className="h-4 w-4" />
-              )}
-            </button>
-          )}
-          <button
-            onClick={() => onSelectCategory(category.id)}
-            className={`flex-1 text-left text-sm ${
-              isSelected ? "text-primary font-semibold" : "text-gray-700"
-            }`}
-          >
-            {category.name}
-            {category.partCount !== undefined && (
-              <span className="text-muted-foreground ml-1">
-                ({category.partCount})
-              </span>
-            )}
-          </button>
-        </div>
-        {hasChildren && isExpanded && (
-          <div className="mt-1 ml-6">
-            {category.children.map((child) =>
-              renderCategory(child as (typeof categories)[0]),
-            )}
           </div>
-        )}
-      </div>
-    );
+        );
+
+      default:
+        return null;
+    }
   };
 
   return (
-    <div>
-      <button
-        onClick={() => onSelectCategory(null)}
-        className={`mb-2 text-sm ${
-          selectedCategoryId === null
-            ? "text-primary font-semibold"
-            : "text-gray-700"
-        }`}
-      >
-        All Categories
-      </button>
-      {categories.map(renderCategory)}
-    </div>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="flex max-h-[90vh] w-[calc(100vw-2rem)] max-w-4xl flex-col p-0 sm:w-full">
+          <DialogHeader className="shrink-0 px-4 pt-4 pb-3 sm:px-6 sm:pt-6 sm:pb-4">
+            <DialogTitle className="text-lg sm:text-xl">Add Parts</DialogTitle>
+            <DialogDescription className="text-sm">
+              Select material, size, and part type to add parts to your list
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="shrink-0 border-b px-4 sm:px-6">
+            <WizardProgressIndicator
+              currentStage={wizardStage}
+              selectedMaterial={selectedMaterial}
+              selectedSize={selectedSize}
+              selectedPartTypeCategory={selectedPartTypeCategory}
+              onStageClick={(stage) => {
+                if (stage === "material") {
+                  setWizardStage("material");
+                } else if (stage === "size" && selectedMaterial) {
+                  setWizardStage("size");
+                } else if (
+                  stage === "partTypeCategory" &&
+                  selectedMaterial &&
+                  selectedSize
+                ) {
+                  setWizardStage("partTypeCategory");
+                } else if (
+                  stage === "part" &&
+                  selectedMaterial &&
+                  selectedSize &&
+                  selectedPartTypeCategory
+                ) {
+                  setWizardStage("part");
+                }
+              }}
+            />
+          </div>
+
+          <div className="flex-1 space-y-4 overflow-y-auto px-4 pt-4 pb-4 sm:px-6">
+            {renderStageContent()}
+          </div>
+
+          {/* Pending Parts Sidebar */}
+          {pendingParts.length > 0 && wizardStage !== "review" && (
+            <div className="shrink-0 border-t bg-gray-50 px-4 py-4 sm:px-6">
+              <div className="mb-2 flex items-center justify-between">
+                <h4 className="font-semibold">
+                  Pending Parts ({pendingParts.length})
+                </h4>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleContinueAdding}
+                  >
+                    Continue Adding
+                  </Button>
+                  <Button size="sm" onClick={handleReviewAndAdd}>
+                    Review & Add
+                  </Button>
+                </div>
+              </div>
+              <div className="max-h-32 space-y-2 overflow-y-auto">
+                {pendingParts.map((pendingPart) => (
+                  <div
+                    key={pendingPart.partId}
+                    className="flex items-center gap-2 rounded border bg-white p-2 text-sm"
+                  >
+                    <div className="flex-1 truncate">
+                      {pendingPart.partDefinition.displayName}
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          handleUpdateQuantity(pendingPart.partId, -1)
+                        }
+                        className="h-6 w-6 p-0"
+                      >
+                        <Minus className="h-3 w-3" />
+                      </Button>
+                      <Input
+                        type="number"
+                        min="1"
+                        value={pendingPart.quantity}
+                        onChange={(e) =>
+                          handleSetQuantity(
+                            pendingPart.partId,
+                            parseInt(e.target.value) || 1,
+                          )
+                        }
+                        className="h-6 w-12 [appearance:textfield] text-center text-xs [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                      />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          handleUpdateQuantity(pendingPart.partId, 1)
+                        }
+                        className="h-6 w-6 p-0"
+                      >
+                        <Plus className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <DialogFooter className="shrink-0 border-t px-4 py-4 sm:px-6">
+            <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  if (wizardStage === "size") {
+                    setWizardStage("material");
+                  } else if (wizardStage === "partTypeCategory") {
+                    setWizardStage("size");
+                  } else if (wizardStage === "part") {
+                    setWizardStage("partTypeCategory");
+                  } else if (wizardStage === "review") {
+                    setWizardStage("part");
+                  } else {
+                    onOpenChange(false);
+                  }
+                }}
+                disabled={wizardStage === "material"}
+              >
+                <ChevronLeft className="mr-2 h-4 w-4" />
+                Back
+              </Button>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => onOpenChange(false)}>
+                  Cancel
+                </Button>
+                {wizardStage === "review" && (
+                  <Button
+                    onClick={handleAddToMaterialList}
+                    disabled={pendingParts.length === 0 || addItem.isPending}
+                  >
+                    {addItem.isPending
+                      ? "Adding..."
+                      : `Add ${pendingParts.length} Part${pendingParts.length !== 1 ? "s" : ""}`}
+                  </Button>
+                )}
+              </div>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <ValveSelectionDialog
+        open={isValveDialogOpen}
+        onOpenChange={setIsValveDialogOpen}
+        material={selectedMaterial ?? ""}
+        size={selectedSize ?? { nominal: 0, unit: "in" }}
+        onValveSelected={handleValveSelected}
+      />
+
+      <CreateCustomPartDialog
+        open={isCreateCustomPartDialogOpen}
+        onOpenChange={setIsCreateCustomPartDialogOpen}
+        onPartCreated={handleCustomPartCreated}
+        initialContext={customPartContext ?? undefined}
+      />
+    </>
   );
 }

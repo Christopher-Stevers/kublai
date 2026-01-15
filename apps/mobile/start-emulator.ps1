@@ -28,3 +28,5 @@ Write-Host ""
 Write-Host "To check if it's ready:" -ForegroundColor Yellow
 Write-Host "  adb devices" -ForegroundColor White
 
+
+

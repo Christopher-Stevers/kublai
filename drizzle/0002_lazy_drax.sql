@@ -1,0 +1,1 @@
+ALTER TABLE "kublai_part_definition" ADD COLUMN "partTypeCategory" varchar(100);

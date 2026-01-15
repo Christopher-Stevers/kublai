@@ -42,3 +42,5 @@ if ($studioExe) {
     Write-Host "  studio64.exe `"$projectPath`""
 }
 
+
+

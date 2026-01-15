@@ -57,4 +57,23 @@ function Button({
   );
 }
 
-export { Button, buttonVariants };
+function LargeButton({
+  className,
+  variant,
+  size,
+  asChild = false,
+  ...props
+}: React.ComponentProps<"button"> &
+  VariantProps<typeof buttonVariants> & { asChild?: boolean }) {
+  return (
+    <Button
+      className={cn(
+        "min-h-[64px] min-w-[64px]",
+        buttonVariants({ variant, size, className }),
+      )}
+      {...props}
+    />
+  );
+}
+
+export { Button, LargeButton, buttonVariants };

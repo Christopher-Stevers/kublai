@@ -10,6 +10,7 @@
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:seed": "tsx scripts/seed-plumbing.ts",
+    "db:clear": "tsx scripts/clear.ts",
     "db:studio": "drizzle-kit studio",
     "dev": "next dev --turbo --hostname 0.0.0.0 --port 3000",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,mdx}\" --cache",

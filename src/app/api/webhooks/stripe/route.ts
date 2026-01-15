@@ -41,6 +41,7 @@ export async function POST(req: Request) {
   try {
     switch (event.type) {
       case "checkout.session.completed": {
+        console.log("checkout.session.completed");
         const session = event.data.object;
         const userId = session.metadata?.userId;
 

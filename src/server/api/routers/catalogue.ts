@@ -296,7 +296,6 @@ export const catalogueRouter = createTRPCRouter({
         categoryId: z.string().uuid().nullable().optional(),
         // Normalized filters
         partType: z.string().optional(),
-        partTypeCategory: z.string().optional(),
         material: z.string().optional(),
         // Size filtering (normalized)
         sizeNominal: z.number().optional(), // Normalized value (0.5 for 1/2)
@@ -310,6 +309,7 @@ export const catalogueRouter = createTRPCRouter({
       }),
     )
     .query(async ({ ctx, input }) => {
+      console.log(JSON.stringify(input), "searchParts input");
       const organizationId = ctx.user.organizationId;
 
       const conditions = [
@@ -357,13 +357,6 @@ export const catalogueRouter = createTRPCRouter({
       // Part type filter
       if (input.partType) {
         conditions.push(eq(partDefinitions.partType, input.partType));
-      }
-
-      // Part type category filter
-      if (input.partTypeCategory) {
-        conditions.push(
-          eq(partDefinitions.partTypeCategory, input.partTypeCategory),
-        );
       }
 
       // Material filter
@@ -503,7 +496,6 @@ export const catalogueRouter = createTRPCRouter({
           imageUrl: partDefinitions.imageUrl,
           material: partDefinitions.material,
           partType: partDefinitions.partType,
-          partTypeCategory: partDefinitions.partTypeCategory,
           sizeNominal: partDefinitions.sizeNominal,
           sizeUnitId: partDefinitions.sizeUnitId,
           categoryId: partDefinitions.categoryId,
@@ -532,7 +524,6 @@ export const catalogueRouter = createTRPCRouter({
         imageUrl: part.imageUrl,
         material: part.material,
         partType: part.partType,
-        partTypeCategory: part.partTypeCategory,
         size:
           part.sizeNominal && part.sizeUnitCode
             ? `${part.sizeNominal} ${part.sizeUnitCode}`
@@ -621,15 +612,37 @@ export const catalogueRouter = createTRPCRouter({
 
   /**
    * Get distinct part type categories (top-level: Fittings, Valves, Pipes, etc.)
-   * Combines categories from part definitions
+   * Derived from parent categories of parts
    */
   getPartTypeCategories: hasDashboardAccess.query(async ({ ctx }) => {
     const organizationId = ctx.user.organizationId;
 
-    // Get distinct part type categories from part definitions
-    const categories = await ctx.db
-      .selectDistinct({
-        category: partDefinitions.partTypeCategory,
+    // Get all categories to build tree
+    const allCategories = await ctx.db
+      .select({
+        id: categories.id,
+        name: categories.name,
+        parentId: categories.parentId,
+        sortOrder: categories.sortOrder,
+        organizationId: categories.organizationId,
+      })
+      .from(categories)
+      .where(
+        organizationId
+          ? or(
+              eq(categories.organizationId, organizationId),
+              isNull(categories.organizationId),
+            )
+          : isNull(categories.organizationId),
+      );
+
+    // Build category tree
+    const categoryTree = buildCategoryTree(allCategories);
+
+    // Get parts with their categories
+    const partsWithCategories = await ctx.db
+      .select({
+        categoryId: partDefinitions.categoryId,
       })
       .from(partDefinitions)
       .where(
@@ -641,19 +654,47 @@ export const catalogueRouter = createTRPCRouter({
                 isNull(partDefinitions.organizationId),
               )
             : isNull(partDefinitions.organizationId),
-          isNotNull(partDefinitions.partTypeCategory),
+          isNotNull(partDefinitions.categoryId),
         ),
-      )
-      .orderBy(partDefinitions.partTypeCategory);
+      );
 
-    const categorySet = new Set<string>();
-    for (const cat of categories) {
-      if (cat.category) {
-        categorySet.add(cat.category);
+    // Create a map of category ID to category name
+    const categoryMap = new Map<string, string>();
+    for (const cat of allCategories) {
+      categoryMap.set(cat.id, cat.name);
+    }
+
+    // Find parent categories for parts
+    const parentCategorySet = new Set<string>();
+    for (const part of partsWithCategories) {
+      if (part.categoryId) {
+        // Find the category in the tree
+        const findCategory = (nodes: CategoryNode[]): CategoryNode | null => {
+          for (const node of nodes) {
+            if (node.id === part.categoryId) {
+              return node;
+            }
+            const found = findCategory(node.children);
+            if (found) return found;
+          }
+          return null;
+        };
+
+        const category = findCategory(categoryTree);
+        if (category && category.parentId) {
+          // Get parent category name
+          const parentName = categoryMap.get(category.parentId);
+          if (parentName) {
+            parentCategorySet.add(parentName);
+          }
+        } else if (category && !category.parentId) {
+          // This is a root category, use it directly
+          parentCategorySet.add(category.name);
+        }
       }
     }
 
-    return Array.from(categorySet).sort();
+    return Array.from(parentCategorySet).sort();
   }),
 
   /**
@@ -695,9 +736,54 @@ export const catalogueRouter = createTRPCRouter({
         isNotNull(partDefinitions.partType),
       ];
 
-      // Filter by category if provided
+      // Filter by parent category if provided
       if (input?.category) {
-        conditions.push(eq(partDefinitions.partTypeCategory, input.category));
+        // Get all categories to build tree
+        const allCategories = await ctx.db
+          .select({
+            id: categories.id,
+            name: categories.name,
+            parentId: categories.parentId,
+            sortOrder: categories.sortOrder,
+            organizationId: categories.organizationId,
+          })
+          .from(categories)
+          .where(
+            organizationId
+              ? or(
+                  eq(categories.organizationId, organizationId),
+                  isNull(categories.organizationId),
+                )
+              : isNull(categories.organizationId),
+          );
+
+        // Build category tree
+        const categoryTree = buildCategoryTree(allCategories);
+
+        // Find parent category by name
+        const findParentCategory = (
+          nodes: CategoryNode[],
+          parentName: string,
+        ): CategoryNode | null => {
+          for (const node of nodes) {
+            if (node.name === parentName && !node.parentId) {
+              return node;
+            }
+            const found = findParentCategory(node.children, parentName);
+            if (found) return found;
+          }
+          return null;
+        };
+
+        const parentCategory = findParentCategory(categoryTree, input.category);
+        if (parentCategory) {
+          // Collect all descendant category IDs (including the parent)
+          const descendantIds = collectDescendantCategoryIds(
+            categoryTree,
+            parentCategory.id,
+          );
+          conditions.push(inArray(partDefinitions.categoryId, descendantIds));
+        }
       }
 
       // Get part types from part definitions
@@ -1298,7 +1384,6 @@ export const catalogueRouter = createTRPCRouter({
           .transform((val) => (val === "" ? null : val)),
         categoryId: z.string().uuid().optional().nullable(),
         partType: z.string().max(100).optional().nullable(),
-        partTypeCategory: z.string().max(100).optional().nullable(),
         material: z.string().max(100).optional().nullable(),
         sizeNominal: z.number().optional().nullable(),
         sizeUnitId: z.string().uuid().optional().nullable(),
@@ -1361,7 +1446,6 @@ export const catalogueRouter = createTRPCRouter({
               : null,
           categoryId: categoryId,
           partType: input.partType ?? null,
-          partTypeCategory: input.partTypeCategory ?? null,
           material: input.material ?? null,
           sizeNominal:
             input.sizeNominal !== undefined && input.sizeNominal !== null

@@ -13,8 +13,14 @@ import {
   supplierParts,
   suppliers,
   units,
+  jobs,
+  materialLists,
+  quotes,
+  materials,
+  sizes,
+  partTypes,
 } from "../src/server/db/schema";
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import { exec } from "child_process";
 import { promisify } from "util";
 import { drizzle } from "drizzle-orm/postgres-js";
@@ -190,7 +196,7 @@ const partDefinitionsData = [
     material: "Brass",
     sizeNominal: 0.5,
     sizeUnit: "in",
-    partType: "valve",
+    partType: "ball valve",
     synonyms: ["ball valve", "quarter turn valve"],
   },
   {
@@ -200,7 +206,7 @@ const partDefinitionsData = [
     material: "Brass",
     sizeNominal: 0.75,
     sizeUnit: "in",
-    partType: "valve",
+    partType: "ball valve",
     synonyms: ["ball valve 3/4", "3/4 ball valve"],
   },
   {
@@ -210,7 +216,7 @@ const partDefinitionsData = [
     material: "Brass",
     sizeNominal: 0.5,
     sizeUnit: "in",
-    partType: "valve",
+    partType: "gate valve",
     synonyms: ["gate valve", "shutoff valve"],
   },
   {
@@ -220,7 +226,7 @@ const partDefinitionsData = [
     material: "Brass",
     sizeNominal: 0.5,
     sizeUnit: "in",
-    partType: "valve",
+    partType: "check valve",
     synonyms: ["check valve", "backflow preventer"],
   },
   {
@@ -230,7 +236,7 @@ const partDefinitionsData = [
     material: "Copper",
     sizeNominal: 0.5,
     sizeUnit: "in",
-    partType: "pipe",
+    partType: "type L copper",
     synonyms: ["copper pipe", "type L copper", "1/2 copper"],
   },
   {
@@ -240,7 +246,7 @@ const partDefinitionsData = [
     material: "Copper",
     sizeNominal: 0.75,
     sizeUnit: "in",
-    partType: "pipe",
+    partType: "type L copper",
     synonyms: ["copper pipe 3/4", "3/4 copper"],
   },
   {
@@ -250,7 +256,7 @@ const partDefinitionsData = [
     material: "PVC",
     sizeNominal: 0.75,
     sizeUnit: "in",
-    partType: "pipe",
+    partType: "schedule 40",
     synonyms: ["PVC pipe", "schedule 40 PVC", "3/4 PVC"],
   },
   {
@@ -260,7 +266,7 @@ const partDefinitionsData = [
     material: "PEX",
     sizeNominal: 0.5,
     sizeUnit: "in",
-    partType: "pipe",
+    partType: "PEX pipe",
     synonyms: ["PEX pipe", "1/2 PEX"],
   },
   {
@@ -270,7 +276,7 @@ const partDefinitionsData = [
     material: "Steel",
     sizeNominal: 12,
     sizeUnit: "in",
-    partType: "tool",
+    partType: "wrench",
     synonyms: ["pipe wrench", "12 inch wrench"],
   },
   {
@@ -280,7 +286,7 @@ const partDefinitionsData = [
     material: "Steel",
     sizeNominal: null,
     sizeUnit: null,
-    partType: "tool",
+    partType: "cutter",
     synonyms: ["pipe cutter", "copper cutter"],
   },
 ];
@@ -403,6 +409,71 @@ async function ensureDatabaseExists() {
   console.log("✅ Database check complete");
 }
 
+async function runDbPush() {
+  console.log("🔄 Pushing schema to database...");
+  const { stdout, stderr } = await execAsync("pnpm db:push");
+  if (stdout) console.log(stdout);
+  if (stderr) console.error(stderr);
+  console.log("✅ Schema pushed successfully!");
+}
+
+async function truncateTables(db: ReturnType<typeof drizzle>) {
+  console.log(
+    "\n🗑️  Truncating tables (preserving users and organizations)...",
+  );
+
+  try {
+    // First, reset user foreign key references to prevent constraint violations
+    console.log("   → Resetting user foreign key references...");
+    try {
+      await db.execute(
+        sql.raw(
+          `UPDATE kublai_user SET "currentJobId" = NULL, "pricingProfileId" = NULL;`,
+        ),
+      );
+    } catch (err) {
+      console.log("No kublai_user table detected, skipping user FK reset");
+    }
+    console.log("   ✓ User references reset");
+
+    // List of tables to truncate (excluding user, organization, and NextAuth tables)
+    const tablesToTruncate = [
+      "kublai_quote_item",
+      "kublai_order_item",
+      "kublai_quote",
+      "kublai_order",
+      "kublai_material_list",
+      "kublai_job_supplier",
+      "kublai_job",
+      "kublai_supplier_part",
+      "kublai_part_attribute",
+      "kublai_part_synonym",
+      "kublai_part_definition",
+      "kublai_supplier",
+      "kublai_location",
+      "kublai_pricing_profile",
+      "kublai_category",
+      "kublai_unit",
+      "kublai_material",
+      "kublai_size",
+      "kublai_part_type",
+    ];
+
+    // Truncate tables with CASCADE to handle foreign key constraints
+    for (const table of tablesToTruncate) {
+      await db.execute(sql.raw(`TRUNCATE TABLE ${table} CASCADE;`));
+      console.log(`   ✓ Truncated ${table}`);
+    }
+
+    console.log("✅ Table truncation complete");
+  } catch (error) {
+    console.error(
+      "⚠️  Error during truncation (may be expected if tables are empty):",
+      error,
+    );
+  }
+}
+
 async function main() {
   acquireLock();
 
@@ -410,11 +481,14 @@ async function main() {
     // Step 1: Ensure database exists
     await ensureDatabaseExists();
 
-    // Step 3: Connect to database
+    // Step 2: Connect to database
     const connection = postgres(env.DATABASE_URL);
     const db = drizzle(connection);
 
     try {
+      // Step 3: Truncate existing data (except users and organizations)
+      await truncateTables(db);
+
       // Step 4: Create units (must be first - no dependencies)
       console.log("\n📏 Creating units...");
       const unitMap = new Map<string, string>();
@@ -630,6 +704,105 @@ async function main() {
         console.log(`   ✓ Organization "${orgName}" already exists`);
       }
 
+      // Step 7a: Create custom materials
+      console.log("\n🎨 Creating custom materials...");
+      const materialsList = ["Copper", "PVC", "PEX", "Brass", "Steel"];
+      let materialsCreated = 0;
+
+      for (const materialName of materialsList) {
+        const [material] = await db
+          .insert(materials)
+          .values({
+            organizationId: organizationId,
+            name: materialName,
+          })
+          .onConflictDoNothing()
+          .returning({ id: materials.id });
+
+        if (material) {
+          materialsCreated++;
+          console.log(`   ✓ Created material "${materialName}"`);
+        } else {
+          console.log(`   ✓ Material "${materialName}" already exists`);
+        }
+      }
+
+      // Step 7b: Create custom sizes
+      console.log("\n📐 Creating custom sizes...");
+      const sizesList = [
+        { nominal: 0.5, unitCode: "in" },
+        { nominal: 0.75, unitCode: "in" },
+        { nominal: 1.0, unitCode: "in" },
+        { nominal: 12, unitCode: "in" },
+      ];
+      let sizesCreated = 0;
+
+      for (const sizeData of sizesList) {
+        const unitId = unitMap.get(sizeData.unitCode);
+        if (!unitId) {
+          console.log(
+            `   ⚠ Unit "${sizeData.unitCode}" not found, skipping size`,
+          );
+          continue;
+        }
+
+        const [size] = await db
+          .insert(sizes)
+          .values({
+            organizationId: organizationId,
+            nominal: sizeData.nominal.toString(),
+            unitId: unitId,
+          })
+          .onConflictDoNothing()
+          .returning({ id: sizes.id });
+
+        if (size) {
+          sizesCreated++;
+          console.log(
+            `   ✓ Created size ${sizeData.nominal} ${sizeData.unitCode}`,
+          );
+        } else {
+          console.log(
+            `   ✓ Size ${sizeData.nominal} ${sizeData.unitCode} already exists`,
+          );
+        }
+      }
+
+      // Step 7c: Create custom part types
+      console.log("\n🔧 Creating custom part types...");
+      const partTypesList = [
+        "elbow",
+        "tee",
+        "coupling",
+        "ball valve",
+        "gate valve",
+        "check valve",
+        "type L copper",
+        "schedule 40",
+        "PEX pipe",
+        "wrench",
+        "cutter",
+      ];
+      let partTypesCreated = 0;
+
+      for (const partTypeName of partTypesList) {
+        const [partType] = await db
+          .insert(partTypes)
+          .values({
+            organizationId: organizationId,
+            name: partTypeName,
+          })
+          .onConflictDoNothing()
+          .returning({ id: partTypes.id });
+
+        if (partType) {
+          partTypesCreated++;
+          console.log(`   ✓ Created part type "${partTypeName}"`);
+        } else {
+          console.log(`   ✓ Part type "${partTypeName}" already exists`);
+        }
+      }
+
       // Step 8: Create locations
       console.log("\n📍 Creating locations...");
       const locationMap = new Map<string, string>();
@@ -818,6 +991,81 @@ async function main() {
 
       console.log(`   ✓ Linked ${supplierPartsCreated} parts to suppliers`);
 
+      // Step 11: Create sample job and material list
+      console.log("\n📋 Creating sample job and material list...");
+      const [sampleJob] = await db
+        .insert(jobs)
+        .values({
+          organizationId: organizationId,
+          name: "Sample Plumbing Job",
+          createdByUserId: null, // No user in seed script
+          status: "draft",
+        })
+        .onConflictDoNothing()
+        .returning();
+
+      let jobId: string | undefined;
+      if (sampleJob) {
+        jobId = sampleJob.id;
+        console.log(`   ✓ Created sample job "${sampleJob.name}"`);
+      } else {
+        // Job already exists, fetch it
+        const [existing] = await db
+          .select({ id: jobs.id })
+          .from(jobs)
+          .where(
+            and(
+              eq(jobs.organizationId, organizationId),
+              eq(jobs.name, "Sample Plumbing Job"),
+            ),
+          )
+          .limit(1);
+        if (existing) {
+          jobId = existing.id;
+          console.log(`   ✓ Sample job already exists`);
+        }
+      }
+
+      if (jobId) {
+        // Create sample material list
+        const [sampleMaterialList] = await db
+          .insert(materialLists)
+          .values({
+            organizationId: organizationId,
+            jobId: jobId,
+            name: "Sample Material List",
+            createdByUserId: null,
+          })
+          .onConflictDoNothing()
+          .returning();
+
+        if (sampleMaterialList) {
+          // Create sample quote for material list
+          const [sampleQuote] = await db
+            .insert(quotes)
+            .values({
+              organizationId: organizationId,
+              materialListId: sampleMaterialList.id,
+              jobId: jobId,
+              subtotalMaterials: "0",
+              total: "0",
+            })
+            .returning();
+
+          if (sampleQuote) {
+            // Update material list with quote ID
+            await db
+              .update(materialLists)
+              .set({ quoteId: sampleQuote.id })
+              .where(eq(materialLists.id, sampleMaterialList.id));
+
+            console.log(`   ✓ Created sample material list and quote`);
+          }
+        } else {
+          console.log(`   ✓ Sample material list already exists`);
+        }
+      }
+
       // Summary
       console.log(`\n🎉 Plumbing seed completed successfully!`);
       console.log(`📊 Summary:`);
@@ -825,6 +1073,9 @@ async function main() {
       console.log(`   - Categories: ${categoryMap.size}`);
       console.log(`   - Parts created: ${partsCreated}`);
       console.log(`   - Synonyms created: ${synonymsCreated}`);
+      console.log(`   - Materials created: ${materialsCreated}`);
+      console.log(`   - Sizes created: ${sizesCreated}`);
+      console.log(`   - Part types created: ${partTypesCreated}`);
       console.log(`   - Locations created: ${locationsCreated}`);
       console.log(`   - Suppliers created: ${suppliersCreated}`);
       console.log(`   - Supplier parts linked: ${supplierPartsCreated}`);

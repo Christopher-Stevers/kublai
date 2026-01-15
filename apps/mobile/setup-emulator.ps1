@@ -89,3 +89,5 @@ if (Test-Path $avdPath) {
     Write-Host "Recommendation: Use a physical phone for now!" -ForegroundColor Cyan
 }
 
+
+

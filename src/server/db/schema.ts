@@ -547,7 +547,6 @@ export const partDefinitions = createTable(
 
     // Facets (MVP)
     partType: d.varchar({ length: 100 }), // elbow, tee, ball valve, gate valve, etc.
-    partTypeCategory: d.varchar({ length: 100 }), // fittings, valves, pipes, etc.
     material: d.varchar({ length: 100 }), // copper, pvc, pex...
     sizeNominal: d.numeric({ precision: 12, scale: 6 }),
     sizeUnitId: d.uuid().references(() => units.id, { onDelete: "set null" }),

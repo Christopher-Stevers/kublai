@@ -135,3 +135,5 @@ adb devices
 - Check that you have enough RAM (emulators need 2-4GB)
 - Try creating a new emulator with less RAM allocation
 
+
+

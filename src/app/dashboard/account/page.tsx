@@ -29,11 +29,13 @@ export default function AccountPage() {
 
   if (isLoading) {
     return (
-      <div className="px-6 py-8">
+      <div className="px-4 py-6 sm:px-6 sm:py-8">
         <div className="mx-auto max-w-4xl">
-          <h1 className="mb-8 text-3xl font-bold text-gray-900">Account</h1>
+          <h1 className="mb-6 text-2xl font-bold text-gray-900 sm:mb-8 sm:text-3xl">
+            Account
+          </h1>
           <Card>
-            <CardContent className="p-8">
+            <CardContent className="p-6 sm:p-8">
               <p className="text-center text-gray-600">Loading...</p>
             </CardContent>
           </Card>
@@ -43,10 +45,12 @@ export default function AccountPage() {
   }
 
   return (
-    <div className="px-6 py-8">
+    <div className="px-4 py-6 sm:px-6 sm:py-8">
       <div className="mx-auto max-w-4xl">
-        <h1 className="mb-8 text-3xl font-bold text-gray-900">Account</h1>
-        <div className="space-y-8">
+        <h1 className="mb-6 text-2xl font-bold text-gray-900 sm:mb-8 sm:text-3xl">
+          Account
+        </h1>
+        <div className="space-y-6 sm:space-y-8">
           {/* Payment Status */}
           <Card>
             <CardHeader>

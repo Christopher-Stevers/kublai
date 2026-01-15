@@ -144,3 +144,5 @@ cd android
 
 This installs the app directly on your connected phone without needing Android Studio.
 
+
+

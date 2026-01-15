@@ -25,6 +25,11 @@ export const metadata: Metadata = {
     "order tracking",
   ],
   icons: [{ rel: "icon", url: "/favicon.ico" }],
+  viewport: {
+    width: "device-width",
+    initialScale: 1,
+    maximumScale: 5,
+  },
 };
 
 const geist = Geist({

@@ -149,7 +149,6 @@ export const paymentRouter = createTRPCRouter({
           purchaseType: "one-time",
         },
       });
-      console.log(JSON.stringify(session, null, 2), "my session");
 
       if (!session.url) {
         throw new TRPCError({

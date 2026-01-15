@@ -221,3 +221,5 @@ const [sizeUnit, setSizeUnit] = useState<string>("in"); // Default unit
 - Filter by price range (when pricing is added)
 - Sort options (by name, size, material, etc.)
 
+
+
