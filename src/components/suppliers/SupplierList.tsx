@@ -21,9 +21,31 @@ export function SupplierList() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
   const { data: suppliers, isLoading } = api.supplier.list.useQuery();
+  const utils = api.useUtils();
   const deleteSupplier = api.supplier.delete.useMutation({
-    onSuccess: () => {
-      void api.useUtils().supplier.list.invalidate();
+    onMutate: async (variables) => {
+      // Cancel outgoing refetches
+      await utils.supplier.list.cancel();
+
+      // Snapshot previous value
+      const previousSuppliers = utils.supplier.list.getData();
+
+      // Optimistically remove supplier from list
+      utils.supplier.list.setData(undefined, (old) => {
+        if (!old) return old;
+        return old.filter((supplier) => supplier.id !== variables.id);
+      });
+
+      return { previousSuppliers };
+    },
+    onError: (err, variables, context) => {
+      // Rollback on error
+      if (context?.previousSuppliers !== undefined) {
+        utils.supplier.list.setData(undefined, context.previousSuppliers);
+      }
+    },
+    onSettled: () => {
+      void utils.supplier.list.invalidate();
     },
   });
 
@@ -50,14 +72,17 @@ export function SupplierList() {
   if (!suppliers || suppliers.length === 0) {
     return (
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="text-2xl font-bold">Suppliers</h2>
-            <p className="text-muted-foreground mt-1">
+            <h2 className="text-xl font-bold sm:text-2xl">Suppliers</h2>
+            <p className="text-muted-foreground mt-1 text-sm sm:text-base">
               Manage your suppliers and their parts
             </p>
           </div>
-          <Button onClick={() => setIsCreateDialogOpen(true)}>
+          <Button
+            onClick={() => setIsCreateDialogOpen(true)}
+            className="h-11 w-full sm:w-auto"
+          >
             <PlusIcon className="mr-2 h-4 w-4" />
             Add Supplier
           </Button>
@@ -86,14 +111,17 @@ export function SupplierList() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-2xl font-bold">Suppliers</h2>
-          <p className="text-muted-foreground mt-1">
+          <h2 className="text-xl font-bold sm:text-2xl">Suppliers</h2>
+          <p className="text-muted-foreground mt-1 text-sm sm:text-base">
             Manage your suppliers and their parts
           </p>
         </div>
-        <Button onClick={() => setIsCreateDialogOpen(true)}>
+        <Button
+          onClick={() => setIsCreateDialogOpen(true)}
+          className="h-11 w-full sm:w-auto"
+        >
           <PlusIcon className="mr-2 h-4 w-4" />
           Add Supplier
         </Button>
@@ -104,13 +132,15 @@ export function SupplierList() {
           {suppliers.map((supplier) => (
             <div
               key={supplier.id}
-              className="flex items-center justify-between p-4 hover:bg-gray-50"
+              className="flex flex-col gap-3 p-4 hover:bg-gray-50 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
             >
-              <div className="flex-1">
-                <h3 className="font-semibold">{supplier.name}</h3>
-                <div className="mt-1 flex flex-wrap gap-4 text-sm text-muted-foreground">
+              <div className="flex-1 min-w-0">
+                <h3 className="text-base font-semibold sm:text-lg">
+                  {supplier.name}
+                </h3>
+                <div className="mt-1 flex flex-col gap-1 text-xs text-muted-foreground sm:flex-row sm:flex-wrap sm:gap-4 sm:text-sm">
                   {supplier.location && (
-                    <span>
+                    <span className="truncate">
                       📍 {supplier.location.name}
                       {supplier.location.city || supplier.location.region
                         ? ` - ${[supplier.location.city, supplier.location.region]
@@ -120,14 +150,14 @@ export function SupplierList() {
                     </span>
                   )}
                   {supplier.contactEmail && (
-                    <span>{supplier.contactEmail}</span>
+                    <span className="truncate">{supplier.contactEmail}</span>
                   )}
                   {supplier.contactPhone && (
-                    <span>{supplier.contactPhone}</span>
+                    <span className="truncate">{supplier.contactPhone}</span>
                   )}
                 </div>
                 {supplier.orderingNotes && (
-                  <p className="mt-2 text-sm text-muted-foreground">
+                  <p className="mt-2 text-xs text-muted-foreground sm:text-sm">
                     {supplier.orderingNotes}
                   </p>
                 )}
@@ -137,14 +167,15 @@ export function SupplierList() {
                   variant="outline"
                   size="sm"
                   onClick={() => setViewPartsSupplierId(supplier.id)}
+                  className="hidden h-11 sm:inline-flex"
                 >
                   <PackageIcon className="mr-2 h-4 w-4" />
                   View Parts
                 </Button>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon">
-                      <MoreVerticalIcon className="h-4 w-4" />
+                    <Button variant="ghost" size="icon" className="h-11 w-11">
+                      <MoreVerticalIcon className="h-5 w-5" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
@@ -156,6 +187,7 @@ export function SupplierList() {
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       onClick={() => setViewPartsSupplierId(supplier.id)}
+                      className="sm:hidden"
                     >
                       <PackageIcon className="mr-2 h-4 w-4" />
                       View Parts

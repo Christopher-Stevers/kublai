@@ -36,7 +36,42 @@ export function QuotePreviewSheet({
   );
 
   const generateQuote = api.materialList.generateQuote.useMutation({
-    onSuccess: () => {
+    onMutate: async (variables) => {
+      // Cancel outgoing refetches
+      await utils.materialList.getMaterialList.cancel({ materialListId });
+
+      // Snapshot previous value
+      const previousMaterialList = utils.materialList.getMaterialList.getData({
+        materialListId,
+      });
+
+      // Optimistically update quote status (we'll update with actual quote data on success)
+      // For now, just mark that a quote is being generated
+      utils.materialList.getMaterialList.setData({ materialListId }, (old) => {
+        if (!old) return old;
+        return {
+          ...old,
+          quote: old.quote
+            ? {
+                ...old.quote,
+                // Keep existing quote data, will be updated on success
+              }
+            : old.quote,
+        };
+      });
+
+      return { previousMaterialList };
+    },
+    onError: (err, variables, context) => {
+      // Rollback on error
+      if (context?.previousMaterialList) {
+        utils.materialList.getMaterialList.setData(
+          { materialListId },
+          context.previousMaterialList,
+        );
+      }
+    },
+    onSettled: () => {
       void utils.materialList.getMaterialList.invalidate({ materialListId });
     },
   });

@@ -39,7 +39,8 @@ if (-not $emulatorRunning) {
                 Write-Host "✓ Emulator is ready!" -ForegroundColor Green
                 break
             }
-            Write-Host "  Still waiting... ($waited/$maxWait seconds)" -ForegroundColor Gray
+            $waitMsg = "  Still waiting... {0} of {1} seconds" -f $waited, $maxWait
+            Write-Host $waitMsg -ForegroundColor Gray
         }
         
         $finalCheck = adb devices 2>&1
@@ -66,4 +67,5 @@ Write-Host ""
 
 # Call the build script
 & ".\build-android.ps1" -DevUrl $DevUrl
+
 

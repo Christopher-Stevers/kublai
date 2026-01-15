@@ -66,8 +66,20 @@ export function OrdersPreviewSheet({
   });
 
   const markOrderSent = api.materialList.markOrderSent.useMutation({
-    onSuccess: (_, variables) => {
+    onMutate: async (variables) => {
+      // Optimistically mark order as sent in local state
       setEmailSent((prev) => new Set(prev).add(variables.orderId));
+    },
+    onError: (err, variables) => {
+      // Rollback on error
+      setEmailSent((prev) => {
+        const next = new Set(prev);
+        next.delete(variables.orderId);
+        return next;
+      });
+    },
+    onSettled: () => {
+      void utils.materialList.getMaterialList.invalidate({ materialListId });
     },
   });
 

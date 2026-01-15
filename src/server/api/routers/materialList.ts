@@ -5,6 +5,7 @@ import { z } from "zod";
 import { createTRPCRouter, hasDashboardAccess } from "~/server/api/trpc";
 import {
   jobs,
+  materialLists,
   quotes,
   quoteItems,
   orders,
@@ -19,56 +20,121 @@ import {
 
 export const materialListRouter = createTRPCRouter({
   /**
-   * Create a new material list (draft job + draft quote)
+   * Create a new material list (linked to job)
    */
-  createMaterialList: hasDashboardAccess.mutation(async ({ ctx }) => {
-    if (!ctx.user.organizationId) {
-      throw new TRPCError({
-        code: "BAD_REQUEST",
-        message: "User must belong to an organization",
-      });
-    }
+  createMaterialList: hasDashboardAccess
+    .input(
+      z.object({
+        jobId: z.string().uuid().optional(),
+        name: z.string().min(1).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (!ctx.user.organizationId) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "User must belong to an organization",
+        });
+      }
 
-    // Create draft job
-    const [job] = await ctx.db
-      .insert(jobs)
-      .values({
-        organizationId: ctx.user.organizationId,
-        name: "New Material List",
-        foremanUserId: ctx.userId,
-        createdByUserId: ctx.userId,
-        status: "draft",
-      })
-      .returning();
+      // Get job ID - use provided, current job, or create one
+      let jobId = input.jobId;
 
-    if (!job) {
-      throw new TRPCError({
-        code: "INTERNAL_SERVER_ERROR",
-        message: "Failed to create job",
-      });
-    }
+      if (!jobId) {
+        // Use current job if available
+        if (ctx.user.currentJobId) {
+          // Verify current job exists and belongs to organization
+          const [currentJob] = await ctx.db
+            .select({ id: jobs.id })
+            .from(jobs)
+            .where(
+              and(
+                eq(jobs.id, ctx.user.currentJobId),
+                eq(jobs.organizationId, ctx.user.organizationId),
+              ),
+            )
+            .limit(1);
 
-    // Create draft quote linked to job
-    const [quote] = await ctx.db
-      .insert(quotes)
-      .values({
-        organizationId: ctx.user.organizationId,
-        jobId: job.id,
-        createdByUserId: ctx.userId,
-        subtotalMaterials: "0",
-        total: "0",
-      })
-      .returning();
+          if (currentJob) {
+            jobId = currentJob.id;
+          }
+        }
 
-    if (!quote) {
-      throw new TRPCError({
-        code: "INTERNAL_SERVER_ERROR",
-        message: "Failed to create quote",
-      });
-    }
+        // If still no job, get or create current job via job router
+        if (!jobId) {
+          // This will be handled by the frontend calling getCurrentJob first
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "No job specified. Please select a job first.",
+          });
+        }
+      }
 
-    return { materialListId: job.id, quoteId: quote.id };
-  }),
+      // Verify job exists and belongs to organization
+      const [job] = await ctx.db
+        .select({ id: jobs.id })
+        .from(jobs)
+        .where(
+          and(
+            eq(jobs.id, jobId),
+            eq(jobs.organizationId, ctx.user.organizationId),
+          ),
+        )
+        .limit(1);
+
+      if (!job) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Job not found",
+        });
+      }
+
+      // Create material list
+      const [materialList] = await ctx.db
+        .insert(materialLists)
+        .values({
+          organizationId: ctx.user.organizationId,
+          jobId: jobId,
+          name: input.name ?? "New Material List",
+          createdByUserId: ctx.userId,
+        })
+        .returning();
+
+      if (!materialList) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to create material list",
+        });
+      }
+
+      // Create draft quote linked to material list
+      const [quote] = await ctx.db
+        .insert(quotes)
+        .values({
+          organizationId: ctx.user.organizationId,
+          materialListId: materialList.id,
+          jobId: jobId,
+          createdByUserId: ctx.userId,
+          subtotalMaterials: "0",
+          total: "0",
+        })
+        .returning();
+
+      if (!quote) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to create quote",
+        });
+      }
+
+      // Update material list with quote ID
+      await ctx.db
+        .update(materialLists)
+        .set({ quoteId: quote.id })
+        .where(eq(materialLists.id, materialList.id));
+
+      return { materialListId: materialList.id, quoteId: quote.id };
+    }),
 
   /**
    * Get a material list with all items
@@ -83,49 +149,62 @@ export const materialListRouter = createTRPCRouter({
         });
       }
 
-      // Get job
-      const [job] = await ctx.db
+      // Get material list with job
+      const [materialList] = await ctx.db
         .select({
-          id: jobs.id,
-          name: jobs.name,
-          locationId: jobs.locationId,
-          foremanUserId: jobs.foremanUserId,
-          status: jobs.status,
-          createdAt: jobs.createdAt,
-          location: {
-            id: locations.id,
-            name: locations.name,
-          },
-          foreman: {
-            id: users.id,
-            name: users.name,
-            email: users.email,
+          id: materialLists.id,
+          name: materialLists.name,
+          jobId: materialLists.jobId,
+          quoteId: materialLists.quoteId,
+          createdAt: materialLists.createdAt,
+          job: {
+            id: jobs.id,
+            name: jobs.name,
+            locationId: jobs.locationId,
+            foremanUserId: jobs.foremanUserId,
+            status: jobs.status,
+            location: {
+              id: locations.id,
+              name: locations.name,
+            },
+            foreman: {
+              id: users.id,
+              name: users.name,
+              email: users.email,
+            },
           },
         })
-        .from(jobs)
+        .from(materialLists)
+        .leftJoin(jobs, eq(materialLists.jobId, jobs.id))
         .leftJoin(locations, eq(jobs.locationId, locations.id))
         .leftJoin(users, eq(jobs.foremanUserId, users.id))
-        .where(and(eq(jobs.id, input.materialListId), eq(jobs.status, "draft")))
+        .where(
+          and(
+            eq(materialLists.id, input.materialListId),
+            eq(materialLists.organizationId, ctx.user.organizationId),
+          ),
+        )
         .limit(1);
 
-      if (!job) {
+      if (!materialList || !materialList.job) {
         throw new TRPCError({
           code: "NOT_FOUND",
           message: "Material list not found",
         });
       }
 
-      // Get draft quote for this job
+      // Get quote for this material list
+      if (!materialList.quoteId) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Quote not found for material list",
+        });
+      }
+
       const [quote] = await ctx.db
         .select()
         .from(quotes)
-        .where(
-          and(
-            eq(quotes.jobId, input.materialListId),
-            eq(quotes.organizationId, ctx.user.organizationId),
-          ),
-        )
-        .orderBy(desc(quotes.createdAt))
+        .where(eq(quotes.id, materialList.quoteId))
         .limit(1);
 
       if (!quote) {
@@ -156,6 +235,13 @@ export const materialListRouter = createTRPCRouter({
           uomId: units.id,
           uomCode: units.code,
           uomDisplayName: units.displayName,
+          // One-off fields
+          oneOffDisplayName: quoteItems.oneOffDisplayName,
+          oneOffDescription: quoteItems.oneOffDescription,
+          oneOffMaterial: quoteItems.oneOffMaterial,
+          oneOffPartType: quoteItems.oneOffPartType,
+          oneOffSizeNominal: quoteItems.oneOffSizeNominal,
+          oneOffSizeUnitId: quoteItems.oneOffSizeUnitId,
         })
         .from(quoteItems)
         .leftJoin(
@@ -183,6 +269,17 @@ export const materialListRouter = createTRPCRouter({
               displayName: item.partDefinitionDisplayName,
               imageUrl: item.partDefinitionImageUrl,
               material: item.partDefinitionMaterial,
+            }
+          : null,
+        // One-off part data
+        oneOff: item.oneOffDisplayName
+          ? {
+              displayName: item.oneOffDisplayName,
+              description: item.oneOffDescription,
+              material: item.oneOffMaterial,
+              partType: item.oneOffPartType,
+              sizeNominal: item.oneOffSizeNominal,
+              sizeUnitId: item.oneOffSizeUnitId,
             }
           : null,
         supplierPart: item.supplierPartId
@@ -217,7 +314,12 @@ export const materialListRouter = createTRPCRouter({
       }, 0);
 
       return {
-        job,
+        materialList: {
+          id: materialList.id,
+          name: materialList.name,
+          createdAt: materialList.createdAt,
+        },
+        job: materialList.job,
         quote,
         items,
         materialTotal,
@@ -225,81 +327,106 @@ export const materialListRouter = createTRPCRouter({
     }),
 
   /**
-   * List all material lists (draft jobs) for the organization
+   * List all material lists for a job (defaults to current job)
    */
-  listMaterialLists: hasDashboardAccess.query(async ({ ctx }) => {
-    if (!ctx.user.organizationId) {
-      throw new TRPCError({
-        code: "BAD_REQUEST",
-        message: "User must belong to an organization",
-      });
-    }
-
-    const materialLists = await ctx.db
-      .select({
-        id: jobs.id,
-        name: jobs.name,
-        createdAt: jobs.createdAt,
-        foreman: {
-          id: users.id,
-          name: users.name,
-        },
-      })
-      .from(jobs)
-      .leftJoin(users, eq(jobs.foremanUserId, users.id))
-      .where(
-        and(
-          eq(jobs.organizationId, ctx.user.organizationId),
-          eq(jobs.status, "draft"),
-        ),
-      )
-      .orderBy(desc(jobs.createdAt));
-
-    // Get item counts and totals for each material list
-    const listsWithDetails = await Promise.all(
-      materialLists.map(async (list) => {
-        // Get quote for this job
-        const [quote] = await ctx.db
-          .select({ id: quotes.id })
-          .from(quotes)
-          .where(
-            and(
-              eq(quotes.jobId, list.id),
-              eq(quotes.organizationId, ctx.user.organizationId!),
-            ),
-          )
-          .orderBy(desc(quotes.createdAt))
-          .limit(1);
-
-        if (!quote) {
-          return { ...list, itemCount: 0, materialTotal: 0 };
-        }
-
-        // Get items count and total
-        const items = await ctx.db
-          .select({
-            extendedPrice: quoteItems.extendedPrice,
-          })
-          .from(quoteItems)
-          .where(eq(quoteItems.quoteId, quote.id));
-
-        const itemCount = items.length;
-        const materialTotal = items.reduce((sum, item) => {
-          const price = item.extendedPrice
-            ? parseFloat(item.extendedPrice.toString())
-            : 0;
-          return sum + price;
-        }, 0);
-
-        return { ...list, itemCount, materialTotal };
+  listMaterialLists: hasDashboardAccess
+    .input(
+      z.object({
+        jobId: z.string().uuid().optional(),
       }),
-    );
+    )
+    .query(async ({ ctx, input }) => {
+      if (!ctx.user.organizationId) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "User must belong to an organization",
+        });
+      }
 
-    return listsWithDetails;
-  }),
+      // Use provided jobId or current job
+      let jobId = input.jobId ?? ctx.user.currentJobId;
+
+      if (!jobId) {
+        // No job specified - return empty array
+        return [];
+      }
+
+      // Verify job belongs to organization
+      const [job] = await ctx.db
+        .select({ id: jobs.id })
+        .from(jobs)
+        .where(
+          and(
+            eq(jobs.id, jobId),
+            eq(jobs.organizationId, ctx.user.organizationId),
+          ),
+        )
+        .limit(1);
+
+      if (!job) {
+        return [];
+      }
+
+      const materialListsData = await ctx.db
+        .select({
+          id: materialLists.id,
+          name: materialLists.name,
+          createdAt: materialLists.createdAt,
+          foreman: {
+            id: users.id,
+            name: users.name,
+          },
+        })
+        .from(materialLists)
+        .leftJoin(jobs, eq(materialLists.jobId, jobs.id))
+        .leftJoin(users, eq(jobs.foremanUserId, users.id))
+        .where(
+          and(
+            eq(materialLists.jobId, jobId),
+            eq(materialLists.organizationId, ctx.user.organizationId),
+          ),
+        )
+        .orderBy(desc(materialLists.createdAt));
+
+      // Get item counts and totals for each material list
+      const listsWithDetails = await Promise.all(
+        materialListsData.map(async (list) => {
+          // Get quote for this material list
+          const [materialListWithQuote] = await ctx.db
+            .select({ quoteId: materialLists.quoteId })
+            .from(materialLists)
+            .where(eq(materialLists.id, list.id))
+            .limit(1);
+
+          if (!materialListWithQuote?.quoteId) {
+            return { ...list, itemCount: 0, materialTotal: 0 };
+          }
+
+          // Get items count and total
+          const items = await ctx.db
+            .select({
+              extendedPrice: quoteItems.extendedPrice,
+            })
+            .from(quoteItems)
+            .where(eq(quoteItems.quoteId, materialListWithQuote.quoteId));
+
+          const itemCount = items.length;
+          const materialTotal = items.reduce((sum, item) => {
+            const price = item.extendedPrice
+              ? parseFloat(item.extendedPrice.toString())
+              : 0;
+            return sum + price;
+          }, 0);
+
+          return { ...list, itemCount, materialTotal };
+        }),
+      );
+
+      return listsWithDetails;
+    }),
 
   /**
-   * Update material list job info (name and location)
+   * Update job info (name and location) for the job associated with a material list
    */
   updateMaterialListJobInfo: hasDashboardAccess
     .input(
@@ -317,15 +444,17 @@ export const materialListRouter = createTRPCRouter({
         });
       }
 
-      // Verify job exists and belongs to organization
+      // Verify material list exists and belongs to organization
       const [existing] = await ctx.db
-        .select()
-        .from(jobs)
+        .select({
+          id: materialLists.id,
+          jobId: materialLists.jobId,
+        })
+        .from(materialLists)
         .where(
           and(
-            eq(jobs.id, input.materialListId),
-            eq(jobs.organizationId, ctx.user.organizationId),
-            eq(jobs.status, "draft"),
+            eq(materialLists.id, input.materialListId),
+            eq(materialLists.organizationId, ctx.user.organizationId),
           ),
         )
         .limit(1);
@@ -337,30 +466,34 @@ export const materialListRouter = createTRPCRouter({
         });
       }
 
-      // Update job
-      const [updated] = await ctx.db
-        .update(jobs)
-        .set({
-          name: input.name,
-          locationId: input.locationId ?? null,
-        })
-        .where(eq(jobs.id, input.materialListId))
-        .returning();
+      // Update job name and location
+      const jobUpdates: {
+        name: string;
+        locationId?: string | null;
+      } = {
+        name: input.name,
+      };
 
-      return updated;
+      if (input.locationId !== undefined) {
+        jobUpdates.locationId = input.locationId ?? null;
+      }
+
+      await ctx.db
+        .update(jobs)
+        .set(jobUpdates)
+        .where(eq(jobs.id, existing.jobId));
+
+      return { success: true };
     }),
 
   /**
-   * Add item to material list
+   * Update material list name
    */
-  addItemToMaterialList: hasDashboardAccess
+  updateMaterialListName: hasDashboardAccess
     .input(
       z.object({
         materialListId: z.string().uuid(),
-        partDefinitionId: z.string().uuid(),
-        quantity: z.number().positive(),
-        supplierPartId: z.string().uuid().optional(),
-        unitCost: z.number().optional(),
+        name: z.string().min(1).max(255),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -371,42 +504,109 @@ export const materialListRouter = createTRPCRouter({
         });
       }
 
-      // Get job and verify it exists
-      const [job] = await ctx.db
-        .select()
-        .from(jobs)
+      // Verify material list exists and belongs to organization
+      const [existing] = await ctx.db
+        .select({
+          id: materialLists.id,
+        })
+        .from(materialLists)
         .where(
           and(
-            eq(jobs.id, input.materialListId),
-            eq(jobs.organizationId, ctx.user.organizationId),
-            eq(jobs.status, "draft"),
+            eq(materialLists.id, input.materialListId),
+            eq(materialLists.organizationId, ctx.user.organizationId),
           ),
         )
         .limit(1);
 
-      if (!job) {
+      if (!existing) {
         throw new TRPCError({
           code: "NOT_FOUND",
           message: "Material list not found",
         });
       }
-      console.log(
-        input.materialListId,
-        "my material list id",
-        input.supplierPartId,
-        "my supplier part id",
-      );
-      // Get draft quote
+
+      // Update material list name
+      await ctx.db
+        .update(materialLists)
+        .set({
+          name: input.name,
+        })
+        .where(eq(materialLists.id, input.materialListId));
+
+      return { success: true };
+    }),
+
+  /**
+   * Add item to material list
+   */
+  addItemToMaterialList: hasDashboardAccess
+    .input(
+      z.object({
+        materialListId: z.string().uuid(),
+        partDefinitionId: z.string().uuid().optional(),
+        quantity: z.number().positive(),
+        supplierPartId: z.string().uuid().optional(),
+        unitCost: z.number().optional(),
+        // One-off part fields
+        oneOffDisplayName: z.string().min(1).optional(),
+        oneOffDescription: z.string().optional(),
+        oneOffMaterial: z.string().optional(),
+        oneOffPartType: z.string().optional(),
+        oneOffSizeNominal: z.number().optional(),
+        oneOffSizeUnitId: z.string().uuid().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (!ctx.user.organizationId) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "User must belong to an organization",
+        });
+      }
+
+      // Validate: either partDefinitionId or one-off fields must be provided
+      if (!input.partDefinitionId && !input.oneOffDisplayName) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message:
+            "Either partDefinitionId or oneOffDisplayName must be provided",
+        });
+      }
+
+      // Get material list and verify it exists
+      const [materialList] = await ctx.db
+        .select({
+          id: materialLists.id,
+          quoteId: materialLists.quoteId,
+        })
+        .from(materialLists)
+        .where(
+          and(
+            eq(materialLists.id, input.materialListId),
+            eq(materialLists.organizationId, ctx.user.organizationId),
+          ),
+        )
+        .limit(1);
+
+      if (!materialList) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Material list not found",
+        });
+      }
+
+      if (!materialList.quoteId) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Quote not found for material list",
+        });
+      }
+
+      // Get quote
       const [quote] = await ctx.db
         .select()
         .from(quotes)
-        .where(
-          and(
-            eq(quotes.jobId, input.materialListId),
-            eq(quotes.organizationId, ctx.user.organizationId),
-          ),
-        )
-        .orderBy(desc(quotes.createdAt))
+        .where(eq(quotes.id, materialList.quoteId))
         .limit(1);
 
       if (!quote) {
@@ -416,56 +616,68 @@ export const materialListRouter = createTRPCRouter({
         });
       }
 
-      // Get part definition
-      const [partDef] = await ctx.db
-        .select()
-        .from(partDefinitions)
-        .where(eq(partDefinitions.id, input.partDefinitionId))
-        .limit(1);
-
-      if (!partDef) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Part definition not found",
-        });
-      }
-
-      // Determine supplier part
+      let partDef = null;
       let supplierPartId = input.supplierPartId;
       let supplierPart = null;
       let unitCost = input.unitCost ? input.unitCost.toString() : null;
+      let uomId = null;
+      let descriptionSnapshot = null;
 
-      if (supplierPartId) {
-        console.log(supplierPartId, "my supplier part id");
-        // Use provided supplier part
-        const [sp] = await ctx.db
+      if (input.partDefinitionId) {
+        // Regular part - get part definition
+        const [pd] = await ctx.db
           .select()
-          .from(supplierParts)
-          .where(and(eq(supplierParts.id, supplierPartId)))
+          .from(partDefinitions)
+          .where(eq(partDefinitions.id, input.partDefinitionId))
           .limit(1);
-        supplierPart = sp;
-        console.log(JSON.stringify(sp, null, 2), "my supplier part");
-        if (sp) {
-          unitCost = sp.lastKnownUnitCost;
+
+        if (!pd) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Part definition not found",
+          });
+        }
+
+        partDef = pd;
+        uomId = pd.defaultUomId;
+        descriptionSnapshot = pd.displayName;
+
+        // Determine supplier part
+        if (supplierPartId) {
+          // Use provided supplier part
+          const [sp] = await ctx.db
+            .select()
+            .from(supplierParts)
+            .where(and(eq(supplierParts.id, supplierPartId)))
+            .limit(1);
+          supplierPart = sp;
+          if (sp) {
+            unitCost = sp.lastKnownUnitCost;
+          }
+        } else {
+          // Auto-select preferred supplier
+          const [preferred] = await ctx.db
+            .select()
+            .from(supplierParts)
+            .where(
+              and(
+                eq(supplierParts.partDefinitionId, input.partDefinitionId),
+                eq(supplierParts.isPreferred, true),
+              ),
+            )
+            .limit(1);
+
+          if (preferred) {
+            supplierPartId = preferred.id;
+            supplierPart = preferred;
+            unitCost = preferred.lastKnownUnitCost;
+          }
         }
       } else {
-        // Auto-select preferred supplier
-        const [preferred] = await ctx.db
-          .select()
-          .from(supplierParts)
-          .where(
-            and(
-              eq(supplierParts.partDefinitionId, input.partDefinitionId),
-              eq(supplierParts.isPreferred, true),
-            ),
-          )
-          .limit(1);
-
-        if (preferred) {
-          supplierPartId = preferred.id;
-          supplierPart = preferred;
-          unitCost = preferred.lastKnownUnitCost;
-        }
+        // One-off part
+        descriptionSnapshot = input.oneOffDisplayName ?? "";
+        // For one-off parts, use provided unitCost or default to 0
+        unitCost = input.unitCost ? input.unitCost.toString() : null;
       }
 
       // Calculate extended price
@@ -479,12 +691,22 @@ export const materialListRouter = createTRPCRouter({
         .values({
           quoteId: quote.id,
           supplierPartId: supplierPartId ?? null,
-          partDefinitionId: input.partDefinitionId,
+          partDefinitionId: input.partDefinitionId ?? null,
           quantity: qty.toString(),
-          uomId: partDef.defaultUomId,
+          uomId: uomId,
           unitCost: unitCost,
           extendedPrice: extendedPrice.toString(),
-          descriptionSnapshot: partDef.displayName,
+          descriptionSnapshot: descriptionSnapshot,
+          // One-off fields
+          oneOffDisplayName: input.oneOffDisplayName ?? null,
+          oneOffDescription: input.oneOffDescription ?? null,
+          oneOffMaterial: input.oneOffMaterial ?? null,
+          oneOffPartType: input.oneOffPartType ?? null,
+          oneOffSizeNominal:
+            input.oneOffSizeNominal !== undefined
+              ? input.oneOffSizeNominal.toString()
+              : null,
+          oneOffSizeUnitId: input.oneOffSizeUnitId ?? null,
         })
         .returning();
 
@@ -730,36 +952,40 @@ export const materialListRouter = createTRPCRouter({
         });
       }
 
-      // Get job and verify it exists
-      const [job] = await ctx.db
-        .select()
-        .from(jobs)
+      // Get material list and verify it exists
+      const [materialList] = await ctx.db
+        .select({
+          id: materialLists.id,
+          quoteId: materialLists.quoteId,
+        })
+        .from(materialLists)
         .where(
           and(
-            eq(jobs.id, input.materialListId),
-            eq(jobs.organizationId, ctx.user.organizationId),
+            eq(materialLists.id, input.materialListId),
+            eq(materialLists.organizationId, ctx.user.organizationId),
           ),
         )
         .limit(1);
 
-      if (!job) {
+      if (!materialList) {
         throw new TRPCError({
           code: "NOT_FOUND",
           message: "Material list not found",
         });
       }
 
-      // Get draft quote
+      if (!materialList.quoteId) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Quote not found for material list",
+        });
+      }
+
+      // Get quote
       const [quote] = await ctx.db
         .select()
         .from(quotes)
-        .where(
-          and(
-            eq(quotes.jobId, input.materialListId),
-            eq(quotes.organizationId, ctx.user.organizationId),
-          ),
-        )
-        .orderBy(desc(quotes.createdAt))
+        .where(eq(quotes.id, materialList.quoteId))
         .limit(1);
 
       if (!quote) {
@@ -909,36 +1135,40 @@ ${foremanName}`;
         });
       }
 
-      // Get job
-      const [job] = await ctx.db
-        .select()
-        .from(jobs)
+      // Get material list
+      const [materialList] = await ctx.db
+        .select({
+          id: materialLists.id,
+          quoteId: materialLists.quoteId,
+        })
+        .from(materialLists)
         .where(
           and(
-            eq(jobs.id, input.materialListId),
-            eq(jobs.organizationId, ctx.user.organizationId),
+            eq(materialLists.id, input.materialListId),
+            eq(materialLists.organizationId, ctx.user.organizationId),
           ),
         )
         .limit(1);
 
-      if (!job) {
+      if (!materialList) {
         throw new TRPCError({
           code: "NOT_FOUND",
           message: "Material list not found",
         });
       }
 
-      // Get quote items
+      if (!materialList.quoteId) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Quote not found for material list",
+        });
+      }
+
+      // Get quote
       const [quote] = await ctx.db
         .select({ id: quotes.id })
         .from(quotes)
-        .where(
-          and(
-            eq(quotes.jobId, input.materialListId),
-            eq(quotes.organizationId, ctx.user.organizationId),
-          ),
-        )
-        .orderBy(desc(quotes.createdAt))
+        .where(eq(quotes.id, materialList.quoteId))
         .limit(1);
 
       if (!quote) {
@@ -987,12 +1217,26 @@ ${foremanName}`;
       // Create orders
       const createdOrders = [];
       for (const [supplierId, items] of itemsBySupplier.entries()) {
+        // Get job ID from material list
+        const [materialListForOrder] = await ctx.db
+          .select({ jobId: materialLists.jobId })
+          .from(materialLists)
+          .where(eq(materialLists.id, input.materialListId))
+          .limit(1);
+
+        if (!materialListForOrder) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Material list not found",
+          });
+        }
+
         // Create order
         const [order] = await ctx.db
           .insert(orders)
           .values({
             organizationId: ctx.user.organizationId,
-            jobId: input.materialListId,
+            jobId: materialListForOrder.jobId,
             supplierId,
             createdByUserId: ctx.userId,
             status: "draft",

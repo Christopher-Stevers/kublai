@@ -43,10 +43,50 @@ export function SupplierSelector({
 
   const utils = api.useUtils();
   const updateItem = api.materialList.updateMaterialListItem.useMutation({
-    onSuccess: () => {
-      void utils.materialList.getMaterialList.invalidate({
+    onMutate: async (variables) => {
+      // Cancel outgoing refetches
+      await utils.materialList.getMaterialList.cancel({ materialListId });
+
+      // Snapshot previous value
+      const previousMaterialList = utils.materialList.getMaterialList.getData({
         materialListId,
       });
+
+      // Optimistically update item supplier and recalculate if needed
+      utils.materialList.getMaterialList.setData({ materialListId }, (old) => {
+        if (!old) return old;
+
+        const updatedItems = old.items.map((item) => {
+          if (item.id === variables.itemId) {
+            // If supplierPartId is being updated, we need to fetch supplier info
+            // For now, just update the supplierPartId - the server will handle the rest
+            return {
+              ...item,
+              supplierPartId: variables.supplierPartId ?? item.supplierPart?.id,
+            };
+          }
+          return item;
+        });
+
+        return {
+          ...old,
+          items: updatedItems,
+        };
+      });
+
+      return { previousMaterialList };
+    },
+    onError: (err, variables, context) => {
+      // Rollback on error
+      if (context?.previousMaterialList) {
+        utils.materialList.getMaterialList.setData(
+          { materialListId },
+          context.previousMaterialList,
+        );
+      }
+    },
+    onSettled: () => {
+      void utils.materialList.getMaterialList.invalidate({ materialListId });
       void utils.supplier.getSupplierPartsByPart.invalidate({
         partDefinitionId,
       });
@@ -167,7 +207,7 @@ export function SupplierSelector({
         <DropdownMenuTrigger asChild>
           <Button
             variant="outline"
-            className="w-full justify-between"
+            className="h-11 w-full justify-between"
             disabled={updateItem.isPending || addSupplierPart.isPending}
           >
             <span className="truncate">{displayValue}</span>

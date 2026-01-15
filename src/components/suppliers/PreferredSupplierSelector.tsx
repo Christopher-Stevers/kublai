@@ -20,17 +20,65 @@ interface PreferredSupplierSelectorProps {
     name: string;
     contactEmail?: string | null;
   }>;
+  onManageSuppliers?: () => void;
 }
 
 export function PreferredSupplierSelector({
   partDefinitionId,
   currentPreferredSupplierId,
   availableSuppliers,
+  onManageSuppliers,
 }: PreferredSupplierSelectorProps) {
   const utils = api.useUtils();
   const setPreferredSupplier = api.supplier.setPreferredSupplier.useMutation({
-    onSuccess: () => {
+    onMutate: async (variables) => {
+      // Cancel outgoing refetches
+      await utils.catalogue.getPartsSupplierInfo.cancel();
+
+      // Snapshot previous value
+      const previousSupplierInfo = utils.catalogue.getPartsSupplierInfo.getData({
+        partIds: [partDefinitionId],
+      });
+
+      // Find supplier
+      const supplier = availableSuppliers.find(
+        (s) => s.id === variables.supplierId,
+      );
+
+      // Optimistically update supplier info
+      if (supplier) {
+        utils.catalogue.getPartsSupplierInfo.setData(
+          { partIds: [partDefinitionId] },
+          (old) => {
+            const current = old?.[partDefinitionId] || {
+              preferredSupplier: null,
+              availableSuppliers: [],
+            };
+            return {
+              ...old,
+              [partDefinitionId]: {
+                ...current,
+                preferredSupplier: supplier,
+              },
+            };
+          },
+        );
+      }
+
+      return { previousSupplierInfo };
+    },
+    onError: (err, variables, context) => {
+      // Rollback on error
+      if (context?.previousSupplierInfo !== undefined) {
+        utils.catalogue.getPartsSupplierInfo.setData(
+          { partIds: [partDefinitionId] },
+          context.previousSupplierInfo,
+        );
+      }
+    },
+    onSettled: () => {
       void utils.supplier.getAllPartsWithPreferred.invalidate();
+      void utils.catalogue.getPartsSupplierInfo.invalidate();
     },
   });
 
@@ -47,8 +95,20 @@ export function PreferredSupplierSelector({
 
   if (availableSuppliers.length === 0) {
     return (
-      <div className="rounded-md border border-dashed p-4 text-center text-sm text-muted-foreground">
-        No suppliers available. Add this part to a supplier first.
+      <div className="rounded-md border border-dashed p-4 text-center text-sm">
+        <p className="text-muted-foreground mb-2">
+          No suppliers available. Add this part to a supplier first.
+        </p>
+        {onManageSuppliers && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onManageSuppliers}
+            className="mt-2"
+          >
+            Manage Suppliers
+          </Button>
+        )}
       </div>
     );
   }
@@ -92,4 +152,5 @@ export function PreferredSupplierSelector({
     </DropdownMenu>
   );
 }
+
 

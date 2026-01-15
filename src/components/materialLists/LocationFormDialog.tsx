@@ -35,8 +35,50 @@ export function LocationFormDialog({
 
   const utils = api.useUtils();
   const createLocation = api.location.createLocation.useMutation({
-    onSuccess: (newLocation) => {
+    onMutate: async (variables) => {
+      // Cancel outgoing refetches
+      await utils.location.searchLocations.cancel();
+
+      // Snapshot previous value
+      const previousLocations = utils.location.searchLocations.getData({
+        query: undefined,
+      });
+
+      // Create temporary location object
+      const tempId = `temp-${Date.now()}`;
+      const newLocation = {
+        id: tempId,
+        name: variables.name,
+        address1: variables.address1 ?? null,
+        address2: variables.address2 ?? null,
+        city: variables.city ?? null,
+        region: variables.region ?? null,
+        postalCode: variables.postalCode ?? null,
+        country: variables.country ?? null,
+        notes: variables.notes ?? null,
+      };
+
+      // Optimistically add location to search results
+      utils.location.searchLocations.setData({ query: undefined }, (old) => {
+        if (!old) return [newLocation];
+        return [...old, newLocation];
+      });
+
+      return { previousLocations, tempId };
+    },
+    onError: (err, variables, context) => {
+      // Rollback on error
+      if (context?.previousLocations !== undefined) {
+        utils.location.searchLocations.setData(
+          { query: undefined },
+          context.previousLocations,
+        );
+      }
+    },
+    onSettled: () => {
       void utils.location.searchLocations.invalidate();
+    },
+    onSuccess: (newLocation) => {
       if (onLocationCreated && newLocation) {
         onLocationCreated(newLocation.id);
       }

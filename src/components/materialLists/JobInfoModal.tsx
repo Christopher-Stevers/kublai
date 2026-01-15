@@ -58,11 +58,117 @@ export function JobInfoModal({
   }, [searchQuery]);
 
   const utils = api.useUtils();
+  const { data: materialList } = api.materialList.getMaterialList.useQuery(
+    { materialListId },
+    { enabled: open && !!materialListId },
+  );
   const updateJobInfo = api.materialList.updateMaterialListJobInfo.useMutation({
-    onSuccess: () => {
-      void utils.materialList.getMaterialList.invalidate({
+    onMutate: async (variables) => {
+      // Cancel outgoing refetches
+      await utils.materialList.getMaterialList.cancel({ materialListId });
+      await utils.job.getCurrentJob.cancel();
+      await utils.job.listJobs.cancel();
+
+      // Snapshot previous values
+      const previousMaterialList = utils.materialList.getMaterialList.getData({
         materialListId,
       });
+      const previousCurrentJob = utils.job.getCurrentJob.getData();
+      const previousJobsList = utils.job.listJobs.getData();
+
+      // Get location info if provided
+      const location = selectedLocation
+        ? {
+            id: selectedLocation.id,
+            name: selectedLocation.name,
+          }
+        : null;
+
+      const jobId =
+        materialList?.job &&
+        typeof materialList.job === "object" &&
+        "id" in materialList.job
+          ? materialList.job.id
+          : undefined;
+
+      // Optimistically update material list job
+      utils.materialList.getMaterialList.setData({ materialListId }, (old) => {
+        if (
+          !old ||
+          !old.job ||
+          typeof old.job !== "object" ||
+          !("id" in old.job)
+        )
+          return old;
+        return {
+          ...old,
+          job: {
+            ...old.job,
+            name: variables.name,
+            locationId:
+              variables.locationId ??
+              ("locationId" in old.job ? old.job.locationId : null) ??
+              null,
+            location:
+              location ??
+              ("location" in old.job ? old.job.location : null) ??
+              null,
+          },
+        };
+      });
+
+      // Optimistically update current job if it matches
+      if (jobId) {
+        utils.job.getCurrentJob.setData(undefined, (old) => {
+          if (!old || old.id !== jobId) return old;
+          return {
+            ...old,
+            name: variables.name,
+            locationId: variables.locationId ?? old.locationId ?? null,
+          };
+        });
+      }
+
+      // Optimistically update job in list
+      if (jobId) {
+        utils.job.listJobs.setData(undefined, (old) => {
+          if (!old) return old;
+          return old.map((job) =>
+            job.id === jobId
+              ? {
+                  ...job,
+                  name: variables.name,
+                  locationId: variables.locationId ?? job.locationId ?? null,
+                  location: location ?? job.location ?? null,
+                }
+              : job,
+          );
+        });
+      }
+
+      return { previousMaterialList, previousCurrentJob, previousJobsList };
+    },
+    onError: (err, variables, context) => {
+      // Rollback on error
+      if (context?.previousMaterialList) {
+        utils.materialList.getMaterialList.setData(
+          { materialListId },
+          context.previousMaterialList,
+        );
+      }
+      if (context?.previousCurrentJob !== undefined) {
+        utils.job.getCurrentJob.setData(undefined, context.previousCurrentJob);
+      }
+      if (context?.previousJobsList !== undefined) {
+        utils.job.listJobs.setData(undefined, context.previousJobsList);
+      }
+    },
+    onSettled: () => {
+      void utils.materialList.getMaterialList.invalidate({ materialListId });
+      void utils.job.getCurrentJob.invalidate();
+      void utils.job.listJobs.invalidate();
+    },
+    onSuccess: () => {
       onOpenChange(false);
     },
   });
@@ -127,6 +233,7 @@ export function JobInfoModal({
   };
 
   const handleSave = () => {
+    console.log(jobName, selectedLocation, "job name and location");
     if (!jobName.trim()) {
       return;
     }

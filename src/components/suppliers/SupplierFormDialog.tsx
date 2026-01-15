@@ -53,8 +53,54 @@ export function SupplierFormDialog({
 
   const utils = api.useUtils();
   const createSupplier = api.supplier.create.useMutation({
-    onSuccess: (newSupplier) => {
+    onMutate: async (variables) => {
+      // Cancel outgoing refetches
+      await utils.supplier.list.cancel();
+
+      // Snapshot previous value
+      const previousSuppliers = utils.supplier.list.getData();
+
+      // Create temporary supplier object
+      const tempId = `temp-${Date.now()}`;
+      const newSupplier = {
+        id: tempId,
+        organizationId: "",
+        name: variables.name,
+        contactEmail: variables.contactEmail ?? null,
+        contactPhone: variables.contactPhone ?? null,
+        orderingNotes: variables.orderingNotes ?? null,
+        locationId: variables.locationId,
+        createdAt: new Date(),
+        location: variables.locationId
+          ? {
+              id: variables.locationId,
+              name: "",
+              city: null,
+              region: null,
+            }
+          : null,
+      };
+
+      // Optimistically add supplier to list
+      utils.supplier.list.setData(undefined, (old) => {
+        if (!old) return [newSupplier];
+        return [...old, newSupplier].sort((a, b) =>
+          a.name.localeCompare(b.name),
+        );
+      });
+
+      return { previousSuppliers, tempId };
+    },
+    onError: (err, variables, context) => {
+      // Rollback on error
+      if (context?.previousSuppliers !== undefined) {
+        utils.supplier.list.setData(undefined, context.previousSuppliers);
+      }
+    },
+    onSettled: () => {
       void utils.supplier.list.invalidate();
+    },
+    onSuccess: (newSupplier) => {
       if (onSupplierCreated && newSupplier) {
         onSupplierCreated(newSupplier.id);
       }
@@ -81,11 +127,69 @@ export function SupplierFormDialog({
   }, [initialName, initialData, open]);
 
   const updateSupplier = api.supplier.update.useMutation({
-    onSuccess: () => {
+    onMutate: async (variables) => {
+      // Cancel outgoing refetches
+      await utils.supplier.list.cancel();
+      if (supplierId) {
+        await utils.supplier.getById.cancel({ id: supplierId });
+      }
+
+      // Snapshot previous values
+      const previousSuppliers = utils.supplier.list.getData();
+      const previousSupplier = supplierId
+        ? utils.supplier.getById.getData({ id: supplierId })
+        : undefined;
+
+      // Optimistically update supplier in list
+      utils.supplier.list.setData(undefined, (old) => {
+        if (!old) return old;
+        return old.map((supplier) =>
+          supplier.id === variables.id
+            ? {
+                ...supplier,
+                name: variables.name,
+                contactEmail: variables.contactEmail ?? null,
+                contactPhone: variables.contactPhone ?? null,
+                orderingNotes: variables.orderingNotes ?? null,
+                locationId: variables.locationId,
+              }
+            : supplier,
+        );
+      });
+
+      // Optimistically update supplier detail
+      if (supplierId) {
+        utils.supplier.getById.setData({ id: supplierId }, (old) => {
+          if (!old) return old;
+          return {
+            ...old,
+            name: variables.name,
+            contactEmail: variables.contactEmail ?? null,
+            contactPhone: variables.contactPhone ?? null,
+            orderingNotes: variables.orderingNotes ?? null,
+            locationId: variables.locationId,
+          };
+        });
+      }
+
+      return { previousSuppliers, previousSupplier };
+    },
+    onError: (err, variables, context) => {
+      // Rollback on error
+      if (context?.previousSuppliers !== undefined) {
+        utils.supplier.list.setData(undefined, context.previousSuppliers);
+      }
+      if (context?.previousSupplier && supplierId) {
+        utils.supplier.getById.setData({ id: supplierId }, context.previousSupplier);
+      }
+    },
+    onSettled: () => {
       void utils.supplier.list.invalidate();
       if (supplierId) {
         void utils.supplier.getById.invalidate({ id: supplierId });
       }
+    },
+    onSuccess: () => {
       onOpenChange(false);
     },
   });
