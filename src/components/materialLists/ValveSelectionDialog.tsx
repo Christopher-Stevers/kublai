@@ -18,7 +18,8 @@ import { X } from "lucide-react";
 interface ValveSelectionDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  material: string;
+  material: string; // Keep as string for display, but we'll need materialId
+  materialId: string | null;
   size: { nominal: number; unit: string };
   onValveSelected: (partId: string) => void;
 }
@@ -27,17 +28,31 @@ export function ValveSelectionDialog({
   open,
   onOpenChange,
   material,
+  materialId,
   size,
   onValveSelected,
 }: ValveSelectionDialogProps) {
+  // Get partTypes to find "valve" partTypeId
+  const { data: partTypes } = api.catalogue.getPartTypes.useQuery(
+    {},
+    { enabled: open },
+  );
+
+  // Find partTypeId for "valve" (could be "ball valve", "gate valve", etc.)
+  // For now, we'll search for parts with partType containing "valve"
+  // Actually, let's just search without partType filter and filter client-side
   const { data: valveParts, isLoading } = api.catalogue.searchParts.useQuery(
     {
-      material,
+      materialId: materialId ?? undefined,
       sizeNominal: size.nominal,
       sizeUnit: size.unit,
-      partType: "valve",
     },
-    { enabled: open },
+    { enabled: open && !!materialId },
+  );
+
+  // Filter to only valve parts (partType contains "valve")
+  const filteredValveParts = valveParts?.filter(
+    (part) => part.partType?.toLowerCase().includes("valve"),
   );
 
   const handleValveSelect = (partId: string) => {
@@ -58,12 +73,12 @@ export function ValveSelectionDialog({
         <div className="max-h-[60vh] space-y-2 overflow-y-auto">
           {isLoading ? (
             <p className="py-8 text-center text-gray-500">Loading valves...</p>
-          ) : !valveParts || valveParts.length === 0 ? (
+          ) : !filteredValveParts || filteredValveParts.length === 0 ? (
             <p className="py-8 text-center text-gray-500">
               No valves found for this material and size
             </p>
           ) : (
-            valveParts.map((valve) => (
+            filteredValveParts.map((valve) => (
               <Card
                 key={valve.id}
                 className="cursor-pointer transition-all hover:shadow-md"

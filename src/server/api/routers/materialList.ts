@@ -16,6 +16,8 @@ import {
   units,
   locations,
   users,
+  materials,
+  partTypes,
 } from "~/server/db/schema";
 
 export const materialListRouter = createTRPCRouter({
@@ -225,7 +227,8 @@ export const materialListRouter = createTRPCRouter({
           partDefinitionId: partDefinitions.id,
           partDefinitionDisplayName: partDefinitions.displayName,
           partDefinitionImageUrl: partDefinitions.imageUrl,
-          partDefinitionMaterial: partDefinitions.material,
+          partDefinitionMaterialId: partDefinitions.materialId,
+          partDefinitionMaterialName: materials.name,
           supplierPartId: supplierParts.id,
           supplierPartSupplierId: supplierParts.supplierId,
           supplierPartSku: supplierParts.supplierSku,
@@ -254,6 +257,7 @@ export const materialListRouter = createTRPCRouter({
         )
         .leftJoin(suppliers, eq(supplierParts.supplierId, suppliers.id))
         .leftJoin(units, eq(quoteItems.uomId, units.id))
+        .leftJoin(materials, eq(partDefinitions.materialId, materials.id))
         .where(eq(quoteItems.quoteId, quote.id));
 
       // Transform to nested structure
@@ -268,7 +272,7 @@ export const materialListRouter = createTRPCRouter({
               id: item.partDefinitionId,
               displayName: item.partDefinitionDisplayName,
               imageUrl: item.partDefinitionImageUrl,
-              material: item.partDefinitionMaterial,
+              material: item.partDefinitionMaterialName,
             }
           : null,
         // One-off part data

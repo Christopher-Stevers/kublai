@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useEffect, useRef } from "react";
 import { api } from "~/trpc/react";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import {
@@ -14,16 +15,90 @@ import { format } from "date-fns";
 
 export default function Dashboard() {
   const router = useRouter();
+  const utils = api.useUtils();
+  const hasAttemptedCreate = useRef(false);
+  const jobsWithMaterialListsCreated = useRef<Set<string>>(new Set());
 
   // Get all jobs
   const { data: jobs, isLoading } = api.job.listJobs.useQuery();
 
-  if (isLoading) {
+  // Create material list mutation
+  const createMaterialList = api.materialList.createMaterialList.useMutation({
+    onSuccess: (_, variables) => {
+      void utils.job.listJobs.invalidate();
+      // Track that we've created a material list for this job
+      if (variables.jobId) {
+        jobsWithMaterialListsCreated.current.add(variables.jobId);
+      }
+    },
+  });
+
+  // Create job mutation
+  const createJob = api.job.createJob.useMutation({
+    onSuccess: (newJob) => {
+      hasAttemptedCreate.current = false; // Reset on success
+      void utils.job.listJobs.invalidate();
+      // Auto-create material list for the new job
+      if (newJob?.id) {
+        createMaterialList.mutate({ jobId: newJob.id });
+      }
+    },
+    onError: () => {
+      hasAttemptedCreate.current = false; // Reset on error so user can retry
+    },
+  });
+
+  // Auto-create a job if user has no jobs
+  useEffect(() => {
+    if (
+      !isLoading &&
+      (!jobs || jobs.length === 0) &&
+      !createJob.isPending &&
+      !hasAttemptedCreate.current
+    ) {
+      hasAttemptedCreate.current = true;
+      createJob.mutate({ name: "New Job" });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoading, jobs]);
+
+  // Auto-create material lists for jobs that don't have any
+  useEffect(() => {
+    if (
+      !isLoading &&
+      jobs &&
+      jobs.length > 0 &&
+      !createMaterialList.isPending
+    ) {
+      // Find jobs without material lists that we haven't tried to create for yet
+      const jobsNeedingMaterialLists = jobs.filter(
+        (job) =>
+          (job.materialListCount ?? 0) === 0 &&
+          !jobsWithMaterialListsCreated.current.has(job.id),
+      );
+
+      // Create material list for the first job that needs one
+      const jobToCreateFor = jobsNeedingMaterialLists[0];
+      if (jobToCreateFor) {
+        jobsWithMaterialListsCreated.current.add(jobToCreateFor.id);
+        createMaterialList.mutate({ jobId: jobToCreateFor.id });
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoading, jobs]);
+
+  if (isLoading || createJob.isPending || createMaterialList.isPending) {
     return (
       <div className="px-4 py-6 sm:px-6 sm:py-8">
         <div className="mx-auto max-w-6xl">
           <div className="flex items-center justify-center py-12">
-            <p className="text-muted-foreground">Loading jobs...</p>
+            <p className="text-muted-foreground">
+              {createJob.isPending
+                ? "Creating your first job..."
+                : createMaterialList.isPending
+                  ? "Creating material list..."
+                  : "Loading jobs..."}
+            </p>
           </div>
         </div>
       </div>
@@ -68,7 +143,9 @@ export default function Dashboard() {
                     {job.location && (
                       <div className="flex items-center gap-2">
                         <MapPinIcon className="h-4 w-4" />
-                        <span className="line-clamp-1">{job.location.name}</span>
+                        <span className="line-clamp-1">
+                          {job.location.name}
+                        </span>
                       </div>
                     )}
                     {job.foreman && (

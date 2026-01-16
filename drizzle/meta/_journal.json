@@ -27,6 +27,20 @@
       "when": 1768511154443,
       "tag": "0003_luxuriant_blonde_phantom",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1768512000000,
+      "tag": "0004_add_material_parttype_fks",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1768515570678,
+      "tag": "0005_curved_roulette",
+      "breakpoints": true
     }
   ]
 }

@@ -34,9 +34,10 @@ interface CreateCustomPartDialogProps {
     partType: string | null;
   }) => void;
   initialContext?: {
-    material?: string | null;
+    materialId?: string | null;
     size?: { nominal: number; unit: string } | null;
-    partType?: string | null;
+    partTypeId?: string | null;
+    categoryName?: string | null;
   };
 }
 
@@ -51,15 +52,7 @@ export function CreateCustomPartDialog({
 
   // Form state
   const [displayName, setDisplayName] = useState("");
-  const [imageUrl, setImageUrl] = useState("");
-  const [categoryId, setCategoryId] = useState<string | null>(null);
-  const [partType, setPartType] = useState(initialContext?.partType || "");
-  const [material, setMaterial] = useState(initialContext?.material || "");
-  const [sizeNominal, setSizeNominal] = useState(
-    initialContext?.size?.nominal.toString() || "",
-  );
   const [sizeUnitId, setSizeUnitId] = useState<string | null>(null);
-  const [defaultUomId, setDefaultUomId] = useState<string | null>(null);
 
   // Supplier section
   const [supplierId, setSupplierId] = useState<string | null>(null);
@@ -118,13 +111,6 @@ export function CreateCustomPartDialog({
 
       // Reset form
       setDisplayName("");
-      setImageUrl("");
-      setCategoryId(null);
-      setPartType("");
-      setMaterial("");
-      setSizeNominal("");
-      setSizeUnitId(null);
-      setDefaultUomId(null);
       setSupplierId(null);
       setSupplierSku("");
       setSupplierName("");
@@ -145,16 +131,12 @@ export function CreateCustomPartDialog({
 
     createPart.mutate({
       displayName: displayName.trim(),
-      imageUrl: imageUrl.trim() || undefined,
-      categoryId: categoryId ?? undefined,
-      partType: partType.trim() || undefined,
-      material: material.trim() || undefined,
-      sizeNominal:
-        sizeNominal && sizeUnitId
-          ? parseFloat(sizeNominal) || undefined
-          : undefined,
-      sizeUnitId: sizeUnitId ?? undefined,
-      defaultUomId: defaultUomId ?? undefined,
+      imageUrl: undefined,
+      categoryName: initialContext?.categoryName ?? undefined,
+      partTypeId: initialContext?.partTypeId ?? undefined,
+      materialId: initialContext?.materialId ?? undefined,
+      sizeNominal: initialContext?.size?.nominal ?? undefined,
+      sizeUnitId: initialContext?.size ? sizeUnitId : undefined,
       supplierId: supplierId ? supplierId : undefined,
       supplierSku: supplierSku.trim() ? supplierSku.trim() : undefined,
       supplierName: supplierName.trim() ? supplierName.trim() : undefined,
@@ -171,16 +153,16 @@ export function CreateCustomPartDialog({
   };
 
   const isLoading = createPart.isPending;
-
+  console.log("My initinal context", initialContext);
   return (
     <>
-      {JSON.stringify(initialContext)}
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Create Custom Part</DialogTitle>
             <DialogDescription>
-              Add a new part definition to your organization's catalogue
+              Add a new part definition to your organization's catalogue{" "}
+              {JSON.stringify(initialContext)}
             </DialogDescription>
           </DialogHeader>
 

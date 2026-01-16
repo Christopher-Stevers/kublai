@@ -515,170 +515,7 @@ async function main() {
         }
       }
 
-      // Step 5: Create categories (parents first, then children)
-      console.log("\n📁 Creating categories...");
-      const categoryMap = new Map<string, string>();
-
-      // Create parent categories first
-      for (const parentCat of categoryStructure) {
-        const [parent] = await db
-          .insert(categories)
-          .values({
-            name: parentCat.name,
-            organizationId: null,
-            parentId: null,
-            sortOrder: 0,
-          })
-          .onConflictDoNothing()
-          .returning({ id: categories.id });
-
-        let parentId: string;
-        if (parent) {
-          parentId = parent.id;
-          console.log(`   ✓ Created category "${parentCat.name}"`);
-        } else {
-          const [existing] = await db
-            .select()
-            .from(categories)
-            .where(
-              and(
-                eq(categories.name, parentCat.name),
-                isNull(categories.organizationId),
-              ),
-            )
-            .limit(1);
-          if (!existing) {
-            throw new Error(`Failed to create/find category ${parentCat.name}`);
-          }
-          parentId = existing.id;
-          console.log(`   ✓ Category "${parentCat.name}" already exists`);
-        }
-
-        categoryMap.set(parentCat.name, parentId);
-
-        // Create child categories
-        for (const childCat of parentCat.children) {
-          const [child] = await db
-            .insert(categories)
-            .values({
-              name: childCat.name,
-              organizationId: null,
-              parentId: parentId,
-              sortOrder: childCat.sortOrder,
-            })
-            .onConflictDoNothing()
-            .returning({ id: categories.id });
-
-          let childId: string;
-          if (child) {
-            childId = child.id;
-            console.log(
-              `   ✓ Created category "${parentCat.name} > ${childCat.name}"`,
-            );
-          } else {
-            const [existing] = await db
-              .select()
-              .from(categories)
-              .where(
-                and(
-                  eq(categories.name, childCat.name),
-                  isNull(categories.organizationId),
-                  eq(categories.parentId, parentId),
-                ),
-              )
-              .limit(1);
-            if (!existing) {
-              throw new Error(
-                `Failed to create/find category ${childCat.name}`,
-              );
-            }
-            childId = existing.id;
-            console.log(
-              `   ✓ Category "${parentCat.name} > ${childCat.name}" already exists`,
-            );
-          }
-          categoryMap.set(childCat.name, childId);
-        }
-      }
-
-      // Step 6: Create parts
-      console.log("\n🔩 Creating part definitions...");
-      let partsCreated = 0;
-      let synonymsCreated = 0;
-
-      for (const partData of partDefinitionsData) {
-        const categoryId = categoryMap.get(partData.categoryName);
-        if (!categoryId) {
-          throw new Error(
-            `Category "${partData.categoryName}" not found in categoryMap`,
-          );
-        }
-
-        const sizeUnitId = partData.sizeUnit
-          ? (unitMap.get(partData.sizeUnit) ?? null)
-          : null;
-        const defaultUomId = unitMap.get("ea");
-        if (!defaultUomId) {
-          throw new Error('Unit "ea" not found - required for default UOM');
-        }
-
-        const [part] = await db
-          .insert(partDefinitions)
-          .values({
-            organizationId: null,
-            categoryId: categoryId,
-            displayName: partData.displayName,
-            description: partData.description,
-            imageUrl: null,
-            partType: partData.partType,
-            material: partData.material,
-            sizeNominal: partData.sizeNominal?.toString() ?? null,
-            sizeUnitId: sizeUnitId,
-            defaultUomId: defaultUomId,
-            isActive: true,
-          })
-          .onConflictDoNothing()
-          .returning({ id: partDefinitions.id });
-
-        let partId: string;
-        if (part) {
-          partId = part.id;
-          partsCreated++;
-          console.log(`   ✓ Created part "${partData.displayName}"`);
-        } else {
-          const [existing] = await db
-            .select()
-            .from(partDefinitions)
-            .where(
-              and(
-                eq(partDefinitions.displayName, partData.displayName),
-                isNull(partDefinitions.organizationId),
-              ),
-            )
-            .limit(1);
-          if (!existing) {
-            throw new Error(
-              `Failed to create/find part ${partData.displayName}`,
-            );
-          }
-          partId = existing.id;
-          console.log(`   ✓ Part "${partData.displayName}" already exists`);
-        }
-
-        // Create synonyms
-        for (const synonym of partData.synonyms) {
-          await db
-            .insert(partSynonyms)
-            .values({
-              partDefinitionId: partId,
-              synonym: synonym,
-            })
-            .onConflictDoNothing();
-          synonymsCreated++;
-        }
-      }
-
-      // Step 7: Create organization
+      // Step 5: Create organization (needed for materials, partTypes, and parts)
       console.log("\n🏢 Creating organization...");
       const orgName = "Seed Test Organization";
       const [org] = await db
@@ -704,8 +541,270 @@ async function main() {
         console.log(`   ✓ Organization "${orgName}" already exists`);
       }
 
-      // Step 7a: Create custom materials
-      console.log("\n🎨 Creating custom materials...");
+      // Step 6: Create categories (parents first, then children, linked to organization)
+      console.log("\n📁 Creating categories...");
+      const categoryMap = new Map<string, string>();
+
+      // Create parent categories first
+      for (const parentCat of categoryStructure) {
+        const [parent] = await db
+          .insert(categories)
+          .values({
+            name: parentCat.name,
+            organizationId: organizationId,
+            parentId: null,
+            sortOrder: 0,
+          })
+          .onConflictDoNothing()
+          .returning({ id: categories.id });
+
+        let parentId: string;
+        if (parent) {
+          parentId = parent.id;
+          console.log(`   ✓ Created category "${parentCat.name}"`);
+        } else {
+          const [existing] = await db
+            .select()
+            .from(categories)
+            .where(
+              and(
+                eq(categories.name, parentCat.name),
+                eq(categories.organizationId, organizationId),
+                isNull(categories.parentId),
+              ),
+            )
+            .limit(1);
+          if (!existing) {
+            throw new Error(`Failed to create/find category ${parentCat.name}`);
+          }
+          parentId = existing.id;
+          console.log(`   ✓ Category "${parentCat.name}" already exists`);
+        }
+
+        categoryMap.set(parentCat.name, parentId);
+
+        // Create child categories
+        for (const childCat of parentCat.children) {
+          const [child] = await db
+            .insert(categories)
+            .values({
+              name: childCat.name,
+              organizationId: organizationId,
+              parentId: parentId,
+              sortOrder: childCat.sortOrder,
+            })
+            .onConflictDoNothing()
+            .returning({ id: categories.id });
+
+          let childId: string;
+          if (child) {
+            childId = child.id;
+            console.log(
+              `   ✓ Created category "${parentCat.name} > ${childCat.name}"`,
+            );
+          } else {
+            const [existing] = await db
+              .select()
+              .from(categories)
+              .where(
+                and(
+                  eq(categories.name, childCat.name),
+                  eq(categories.organizationId, organizationId),
+                  eq(categories.parentId, parentId),
+                ),
+              )
+              .limit(1);
+            if (!existing) {
+              throw new Error(
+                `Failed to create/find category ${childCat.name}`,
+              );
+            }
+            childId = existing.id;
+            console.log(
+              `   ✓ Category "${parentCat.name} > ${childCat.name}" already exists`,
+            );
+          }
+          categoryMap.set(childCat.name, childId);
+        }
+      }
+
+      // Step 7: Create materials (org-specific, before parts)
+      console.log("\n🎨 Creating materials...");
+      const materialSet = new Set<string>();
+      for (const partData of partDefinitionsData) {
+        if (partData.material) {
+          materialSet.add(partData.material);
+        }
+      }
+      const materialMap = new Map<string, string>();
+      for (const materialName of Array.from(materialSet)) {
+        const [material] = await db
+          .insert(materials)
+          .values({
+            organizationId: organizationId,
+            name: materialName,
+          })
+          .onConflictDoNothing()
+          .returning({ id: materials.id });
+
+        if (material) {
+          materialMap.set(materialName, material.id);
+          console.log(`   ✓ Created material "${materialName}"`);
+        } else {
+          const [existing] = await db
+            .select()
+            .from(materials)
+            .where(
+              and(
+                eq(materials.name, materialName),
+                eq(materials.organizationId, organizationId),
+              ),
+            )
+            .limit(1);
+          if (existing) {
+            materialMap.set(materialName, existing.id);
+            console.log(`   ✓ Material "${materialName}" already exists`);
+          }
+        }
+      }
+
+      // Step 8: Create part types (org-specific, before parts)
+      console.log("\n🔧 Creating part types...");
+      const partTypeSet = new Set<string>();
+      for (const partData of partDefinitionsData) {
+        if (partData.partType) {
+          partTypeSet.add(partData.partType);
+        }
+      }
+      const partTypeMap = new Map<string, string>();
+      for (const partTypeName of Array.from(partTypeSet)) {
+        const [partType] = await db
+          .insert(partTypes)
+          .values({
+            organizationId: organizationId,
+            name: partTypeName,
+          })
+          .onConflictDoNothing()
+          .returning({ id: partTypes.id });
+
+        if (partType) {
+          partTypeMap.set(partTypeName, partType.id);
+          console.log(`   ✓ Created part type "${partTypeName}"`);
+        } else {
+          const [existing] = await db
+            .select()
+            .from(partTypes)
+            .where(
+              and(
+                eq(partTypes.name, partTypeName),
+                eq(partTypes.organizationId, organizationId),
+              ),
+            )
+            .limit(1);
+          if (existing) {
+            partTypeMap.set(partTypeName, existing.id);
+            console.log(`   ✓ Part type "${partTypeName}" already exists`);
+          }
+        }
+      }
+
+      // Step 9: Create parts
+      console.log("\n🔩 Creating part definitions...");
+      let partsCreated = 0;
+      let synonymsCreated = 0;
+
+      for (const partData of partDefinitionsData) {
+        const categoryId = categoryMap.get(partData.categoryName);
+        if (!categoryId) {
+          throw new Error(
+            `Category "${partData.categoryName}" not found in categoryMap`,
+          );
+        }
+
+        const sizeUnitId = partData.sizeUnit
+          ? (unitMap.get(partData.sizeUnit) ?? null)
+          : null;
+        const defaultUomId = unitMap.get("ea");
+        if (!defaultUomId) {
+          throw new Error('Unit "ea" not found - required for default UOM');
+        }
+
+        const materialId = partData.material
+          ? (materialMap.get(partData.material) ?? null)
+          : null;
+        if (partData.material && !materialId) {
+          console.warn(
+            `   ⚠️  Warning: Material "${partData.material}" not found in materialMap for part "${partData.displayName}"`,
+          );
+        }
+
+        const partTypeId = partData.partType
+          ? (partTypeMap.get(partData.partType) ?? null)
+          : null;
+        if (partData.partType && !partTypeId) {
+          console.warn(
+            `   ⚠️  Warning: PartType "${partData.partType}" not found in partTypeMap for part "${partData.displayName}"`,
+          );
+        }
+
+        const [part] = await db
+          .insert(partDefinitions)
+          .values({
+            organizationId: organizationId,
+            categoryId: categoryId,
+            displayName: partData.displayName,
+            description: partData.description,
+            imageUrl: null,
+            partTypeId: partTypeId,
+            materialId: materialId,
+            sizeNominal: partData.sizeNominal?.toString() ?? null,
+            sizeUnitId: sizeUnitId,
+            defaultUomId: defaultUomId,
+            isActive: true,
+          })
+          .onConflictDoNothing()
+          .returning({ id: partDefinitions.id });
+
+        let partId: string;
+        if (part) {
+          partId = part.id;
+          partsCreated++;
+          console.log(`   ✓ Created part "${partData.displayName}"`);
+        } else {
+          const [existing] = await db
+            .select()
+            .from(partDefinitions)
+            .where(
+              and(
+                eq(partDefinitions.displayName, partData.displayName),
+                eq(partDefinitions.organizationId, organizationId),
+              ),
+            )
+            .limit(1);
+          if (!existing) {
+            throw new Error(
+              `Failed to create/find part ${partData.displayName}`,
+            );
+          }
+          partId = existing.id;
+          console.log(`   ✓ Part "${partData.displayName}" already exists`);
+        }
+
+        // Create synonyms
+        for (const synonym of partData.synonyms) {
+          await db
+            .insert(partSynonyms)
+            .values({
+              partDefinitionId: partId,
+              synonym: synonym,
+            })
+            .onConflictDoNothing();
+          synonymsCreated++;
+        }
+      }
+
+      // Step 10: Create custom materials (org-specific, additional ones)
+      console.log("\n🎨 Creating custom materials (org-specific)...");
       const materialsList = ["Copper", "PVC", "PEX", "Brass", "Steel"];
       let materialsCreated = 0;
 
@@ -727,7 +826,7 @@ async function main() {
         }
       }
 
-      // Step 7b: Create custom sizes
+      // Step 11: Create custom sizes
       console.log("\n📐 Creating custom sizes...");
       const sizesList = [
         { nominal: 0.5, unitCode: "in" },
@@ -768,8 +867,8 @@ async function main() {
         }
       }
 
-      // Step 7c: Create custom part types
-      console.log("\n🔧 Creating custom part types...");
+      // Step 12: Create custom part types (org-specific, additional ones)
+      console.log("\n🔧 Creating custom part types (org-specific)...");
       const partTypesList = [
         "elbow",
         "tee",
@@ -803,7 +902,7 @@ async function main() {
         }
       }
 
-      // Step 8: Create locations
+      // Step 13: Create locations
       console.log("\n📍 Creating locations...");
       const locationMap = new Map<string, string>();
       let locationsCreated = 0;
@@ -853,7 +952,7 @@ async function main() {
         }
       }
 
-      // Step 9: Create suppliers
+      // Step 14: Create suppliers
       console.log("\n🏪 Creating suppliers...");
       let suppliersCreated = 0;
       const supplierIds: string[] = [];
@@ -902,7 +1001,7 @@ async function main() {
         }
       }
 
-      // Step 10: Link parts to suppliers
+      // Step 15: Link parts to suppliers
       console.log("\n🔗 Linking parts to suppliers...");
       let supplierPartsCreated = 0;
 
@@ -916,7 +1015,7 @@ async function main() {
           displayName: partDefinitions.displayName,
         })
         .from(partDefinitions)
-        .where(isNull(partDefinitions.organizationId));
+        .where(eq(partDefinitions.organizationId, organizationId));
 
       for (const part of allParts) {
         const existingSupplierParts = await db
@@ -991,7 +1090,7 @@ async function main() {
 
       console.log(`   ✓ Linked ${supplierPartsCreated} parts to suppliers`);
 
-      // Step 11: Create sample job and material list
+      // Step 16: Create sample job and material list
       console.log("\n📋 Creating sample job and material list...");
       const [sampleJob] = await db
         .insert(jobs)
@@ -1071,11 +1170,13 @@ async function main() {
       console.log(`📊 Summary:`);
       console.log(`   - Units: ${unitMap.size}`);
       console.log(`   - Categories: ${categoryMap.size}`);
+      console.log(`   - Global materials: ${materialMap.size}`);
+      console.log(`   - Global part types: ${partTypeMap.size}`);
       console.log(`   - Parts created: ${partsCreated}`);
       console.log(`   - Synonyms created: ${synonymsCreated}`);
-      console.log(`   - Materials created: ${materialsCreated}`);
+      console.log(`   - Org-specific materials created: ${materialsCreated}`);
       console.log(`   - Sizes created: ${sizesCreated}`);
-      console.log(`   - Part types created: ${partTypesCreated}`);
+      console.log(`   - Org-specific part types created: ${partTypesCreated}`);
       console.log(`   - Locations created: ${locationsCreated}`);
       console.log(`   - Suppliers created: ${suppliersCreated}`);
       console.log(`   - Supplier parts linked: ${supplierPartsCreated}`);

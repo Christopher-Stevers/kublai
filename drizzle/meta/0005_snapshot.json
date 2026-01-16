@@ -1,0 +1,2954 @@
+{
+  "id": "f6cbb227-da19-4cff-945b-dbc7ac3f139f",
+  "prevId": "ef0d0d3e-6df8-4ebc-b8e2-f27b0f178135",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.kublai_account": {
+      "name": "kublai_account",
+      "schema": "",
+      "columns": {
+        "userId": {
+          "name": "userId",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "type": {
+          "name": "type",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "provider": {
+          "name": "provider",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "providerAccountId": {
+          "name": "providerAccountId",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "refresh_token": {
+          "name": "refresh_token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "access_token": {
+          "name": "access_token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "token_type": {
+          "name": "token_type",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "scope": {
+          "name": "scope",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "id_token": {
+          "name": "id_token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "session_state": {
+          "name": "session_state",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "account_user_id_idx": {
+          "name": "account_user_id_idx",
+          "columns": [
+            {
+              "expression": "userId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "kublai_account_userId_kublai_user_id_fk": {
+          "name": "kublai_account_userId_kublai_user_id_fk",
+          "tableFrom": "kublai_account",
+          "tableTo": "kublai_user",
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "kublai_account_provider_providerAccountId_pk": {
+          "name": "kublai_account_provider_providerAccountId_pk",
+          "columns": [
+            "provider",
+            "providerAccountId"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.kublai_category": {
+      "name": "kublai_category",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "organizationId": {
+          "name": "organizationId",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "parentId": {
+          "name": "parentId",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sortOrder": {
+          "name": "sortOrder",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        }
+      },
+      "indexes": {
+        "category_parent_idx": {
+          "name": "category_parent_idx",
+          "columns": [
+            {
+              "expression": "parentId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "kublai_category_organizationId_kublai_organization_id_fk": {
+          "name": "kublai_category_organizationId_kublai_organization_id_fk",
+          "tableFrom": "kublai_category",
+          "tableTo": "kublai_organization",
+          "columnsFrom": [
+            "organizationId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "kublai_category_parentId_kublai_category_id_fk": {
+          "name": "kublai_category_parentId_kublai_category_id_fk",
+          "tableFrom": "kublai_category",
+          "tableTo": "kublai_category",
+          "columnsFrom": [
+            "parentId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "category_org_parent_name_uniq": {
+          "name": "category_org_parent_name_uniq",
+          "nullsNotDistinct": false,
+          "columns": [
+            "organizationId",
+            "parentId",
+            "name"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.kublai_job_supplier": {
+      "name": "kublai_job_supplier",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "jobId": {
+          "name": "jobId",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "supplierId": {
+          "name": "supplierId",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "isDefault": {
+          "name": "isDefault",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        }
+      },
+      "indexes": {
+        "job_supplier_job_idx": {
+          "name": "job_supplier_job_idx",
+          "columns": [
+            {
+              "expression": "jobId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "kublai_job_supplier_jobId_kublai_job_id_fk": {
+          "name": "kublai_job_supplier_jobId_kublai_job_id_fk",
+          "tableFrom": "kublai_job_supplier",
+          "tableTo": "kublai_job",
+          "columnsFrom": [
+            "jobId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "kublai_job_supplier_supplierId_kublai_supplier_id_fk": {
+          "name": "kublai_job_supplier_supplierId_kublai_supplier_id_fk",
+          "tableFrom": "kublai_job_supplier",
+          "tableTo": "kublai_supplier",
+          "columnsFrom": [
+            "supplierId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "job_supplier_uniq": {
+          "name": "job_supplier_uniq",
+          "nullsNotDistinct": false,
+          "columns": [
+            "jobId",
+            "supplierId"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.kublai_job": {
+      "name": "kublai_job",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "organizationId": {
+          "name": "organizationId",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "locationId": {
+          "name": "locationId",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "createdByUserId": {
+          "name": "createdByUserId",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "foremanUserId": {
+          "name": "foremanUserId",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'draft'"
+        },
+        "pricingProfileId": {
+          "name": "pricingProfileId",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "job_org_idx": {
+          "name": "job_org_idx",
+          "columns": [
+            {
+              "expression": "organizationId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "job_location_idx": {
+          "name": "job_location_idx",
+          "columns": [
+            {
+              "expression": "locationId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "job_foreman_idx": {
+          "name": "job_foreman_idx",
+          "columns": [
+            {
+              "expression": "foremanUserId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "kublai_job_organizationId_kublai_organization_id_fk": {
+          "name": "kublai_job_organizationId_kublai_organization_id_fk",
+          "tableFrom": "kublai_job",
+          "tableTo": "kublai_organization",
+          "columnsFrom": [
+            "organizationId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "kublai_job_locationId_kublai_location_id_fk": {
+          "name": "kublai_job_locationId_kublai_location_id_fk",
+          "tableFrom": "kublai_job",
+          "tableTo": "kublai_location",
+          "columnsFrom": [
+            "locationId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "kublai_job_createdByUserId_kublai_user_id_fk": {
+          "name": "kublai_job_createdByUserId_kublai_user_id_fk",
+          "tableFrom": "kublai_job",
+          "tableTo": "kublai_user",
+          "columnsFrom": [
+            "createdByUserId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "kublai_job_foremanUserId_kublai_user_id_fk": {
+          "name": "kublai_job_foremanUserId_kublai_user_id_fk",
+          "tableFrom": "kublai_job",
+          "tableTo": "kublai_user",
+          "columnsFrom": [
+            "foremanUserId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "kublai_job_pricingProfileId_kublai_pricing_profile_id_fk": {
+          "name": "kublai_job_pricingProfileId_kublai_pricing_profile_id_fk",
+          "tableFrom": "kublai_job",
+          "tableTo": "kublai_pricing_profile",
+          "columnsFrom": [
+            "pricingProfileId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.kublai_location": {
+      "name": "kublai_location",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "organizationId": {
+          "name": "organizationId",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "address1": {
+          "name": "address1",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "address2": {
+          "name": "address2",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "city": {
+          "name": "city",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "region": {
+          "name": "region",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "postalCode": {
+          "name": "postalCode",
+          "type": "varchar(30)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "country": {
+          "name": "country",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "location_org_idx": {
+          "name": "location_org_idx",
+          "columns": [
+            {
+              "expression": "organizationId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "kublai_location_organizationId_kublai_organization_id_fk": {
+          "name": "kublai_location_organizationId_kublai_organization_id_fk",
+          "tableFrom": "kublai_location",
+          "tableTo": "kublai_organization",
+          "columnsFrom": [
+            "organizationId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.kublai_material_list": {
+      "name": "kublai_material_list",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "organizationId": {
+          "name": "organizationId",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "jobId": {
+          "name": "jobId",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "quoteId": {
+          "name": "quoteId",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "createdByUserId": {
+          "name": "createdByUserId",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "material_list_job_idx": {
+          "name": "material_list_job_idx",
+          "columns": [
+            {
+              "expression": "jobId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "material_list_org_idx": {
+          "name": "material_list_org_idx",
+          "columns": [
+            {
+              "expression": "organizationId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "material_list_quote_idx": {
+          "name": "material_list_quote_idx",
+          "columns": [
+            {
+              "expression": "quoteId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "kublai_material_list_organizationId_kublai_organization_id_fk": {
+          "name": "kublai_material_list_organizationId_kublai_organization_id_fk",
+          "tableFrom": "kublai_material_list",
+          "tableTo": "kublai_organization",
+          "columnsFrom": [
+            "organizationId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "kublai_material_list_jobId_kublai_job_id_fk": {
+          "name": "kublai_material_list_jobId_kublai_job_id_fk",
+          "tableFrom": "kublai_material_list",
+          "tableTo": "kublai_job",
+          "columnsFrom": [
+            "jobId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "kublai_material_list_quoteId_kublai_quote_id_fk": {
+          "name": "kublai_material_list_quoteId_kublai_quote_id_fk",
+          "tableFrom": "kublai_material_list",
+          "tableTo": "kublai_quote",
+          "columnsFrom": [
+            "quoteId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "kublai_material_list_createdByUserId_kublai_user_id_fk": {
+          "name": "kublai_material_list_createdByUserId_kublai_user_id_fk",
+          "tableFrom": "kublai_material_list",
+          "tableTo": "kublai_user",
+          "columnsFrom": [
+            "createdByUserId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.kublai_material": {
+      "name": "kublai_material",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "organizationId": {
+          "name": "organizationId",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "material_org_idx": {
+          "name": "material_org_idx",
+          "columns": [
+            {
+              "expression": "organizationId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "kublai_material_organizationId_kublai_organization_id_fk": {
+          "name": "kublai_material_organizationId_kublai_organization_id_fk",
+          "tableFrom": "kublai_material",
+          "tableTo": "kublai_organization",
+          "columnsFrom": [
+            "organizationId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "material_org_name_uniq": {
+          "name": "material_org_name_uniq",
+          "nullsNotDistinct": false,
+          "columns": [
+            "organizationId",
+            "name"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.kublai_order_item": {
+      "name": "kublai_order_item",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "orderId": {
+          "name": "orderId",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "supplierPartId": {
+          "name": "supplierPartId",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "partDefinitionId": {
+          "name": "partDefinitionId",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "quantity": {
+          "name": "quantity",
+          "type": "numeric(12, 6)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'1'"
+        },
+        "uomId": {
+          "name": "uomId",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "unitCostAtOrderTime": {
+          "name": "unitCostAtOrderTime",
+          "type": "numeric(12, 4)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "descriptionSnapshot": {
+          "name": "descriptionSnapshot",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "supplierSkuSnapshot": {
+          "name": "supplierSkuSnapshot",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "order_item_order_idx": {
+          "name": "order_item_order_idx",
+          "columns": [
+            {
+              "expression": "orderId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "order_item_part_idx": {
+          "name": "order_item_part_idx",
+          "columns": [
+            {
+              "expression": "partDefinitionId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "kublai_order_item_orderId_kublai_order_id_fk": {
+          "name": "kublai_order_item_orderId_kublai_order_id_fk",
+          "tableFrom": "kublai_order_item",
+          "tableTo": "kublai_order",
+          "columnsFrom": [
+            "orderId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "kublai_order_item_supplierPartId_kublai_supplier_part_id_fk": {
+          "name": "kublai_order_item_supplierPartId_kublai_supplier_part_id_fk",
+          "tableFrom": "kublai_order_item",
+          "tableTo": "kublai_supplier_part",
+          "columnsFrom": [
+            "supplierPartId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "kublai_order_item_partDefinitionId_kublai_part_definition_id_fk": {
+          "name": "kublai_order_item_partDefinitionId_kublai_part_definition_id_fk",
+          "tableFrom": "kublai_order_item",
+          "tableTo": "kublai_part_definition",
+          "columnsFrom": [
+            "partDefinitionId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "kublai_order_item_uomId_kublai_unit_id_fk": {
+          "name": "kublai_order_item_uomId_kublai_unit_id_fk",
+          "tableFrom": "kublai_order_item",
+          "tableTo": "kublai_unit",
+          "columnsFrom": [
+            "uomId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.kublai_order": {
+      "name": "kublai_order",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "organizationId": {
+          "name": "organizationId",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "jobId": {
+          "name": "jobId",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "orderNumber": {
+          "name": "orderNumber",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "supplierId": {
+          "name": "supplierId",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "createdByUserId": {
+          "name": "createdByUserId",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "requestedFulfillmentDate": {
+          "name": "requestedFulfillmentDate",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'draft'"
+        },
+        "sentVia": {
+          "name": "sentVia",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sentTo": {
+          "name": "sentTo",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sentAt": {
+          "name": "sentAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "order_job_idx": {
+          "name": "order_job_idx",
+          "columns": [
+            {
+              "expression": "jobId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "order_supplier_idx": {
+          "name": "order_supplier_idx",
+          "columns": [
+            {
+              "expression": "supplierId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "order_org_idx": {
+          "name": "order_org_idx",
+          "columns": [
+            {
+              "expression": "organizationId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "kublai_order_organizationId_kublai_organization_id_fk": {
+          "name": "kublai_order_organizationId_kublai_organization_id_fk",
+          "tableFrom": "kublai_order",
+          "tableTo": "kublai_organization",
+          "columnsFrom": [
+            "organizationId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "kublai_order_jobId_kublai_job_id_fk": {
+          "name": "kublai_order_jobId_kublai_job_id_fk",
+          "tableFrom": "kublai_order",
+          "tableTo": "kublai_job",
+          "columnsFrom": [
+            "jobId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "kublai_order_supplierId_kublai_supplier_id_fk": {
+          "name": "kublai_order_supplierId_kublai_supplier_id_fk",
+          "tableFrom": "kublai_order",
+          "tableTo": "kublai_supplier",
+          "columnsFrom": [
+            "supplierId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "kublai_order_createdByUserId_kublai_user_id_fk": {
+          "name": "kublai_order_createdByUserId_kublai_user_id_fk",
+          "tableFrom": "kublai_order",
+          "tableTo": "kublai_user",
+          "columnsFrom": [
+            "createdByUserId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.kublai_organization": {
+      "name": "kublai_organization",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "organization_name_uniq": {
+          "name": "organization_name_uniq",
+          "nullsNotDistinct": false,
+          "columns": [
+            "name"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.kublai_part_attribute": {
+      "name": "kublai_part_attribute",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "partDefinitionId": {
+          "name": "partDefinitionId",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "key": {
+          "name": "key",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "valueNum": {
+          "name": "valueNum",
+          "type": "numeric(18, 6)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "valueText": {
+          "name": "valueText",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "unitId": {
+          "name": "unitId",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "part_attr_key_num_idx": {
+          "name": "part_attr_key_num_idx",
+          "columns": [
+            {
+              "expression": "key",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "valueNum",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "kublai_part_attribute_partDefinitionId_kublai_part_definition_id_fk": {
+          "name": "kublai_part_attribute_partDefinitionId_kublai_part_definition_id_fk",
+          "tableFrom": "kublai_part_attribute",
+          "tableTo": "kublai_part_definition",
+          "columnsFrom": [
+            "partDefinitionId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "kublai_part_attribute_unitId_kublai_unit_id_fk": {
+          "name": "kublai_part_attribute_unitId_kublai_unit_id_fk",
+          "tableFrom": "kublai_part_attribute",
+          "tableTo": "kublai_unit",
+          "columnsFrom": [
+            "unitId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "part_attr_part_key_uniq": {
+          "name": "part_attr_part_key_uniq",
+          "nullsNotDistinct": false,
+          "columns": [
+            "partDefinitionId",
+            "key"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.kublai_part_definition": {
+      "name": "kublai_part_definition",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "organizationId": {
+          "name": "organizationId",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "categoryId": {
+          "name": "categoryId",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "displayName": {
+          "name": "displayName",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "imageUrl": {
+          "name": "imageUrl",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "partTypeId": {
+          "name": "partTypeId",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "materialId": {
+          "name": "materialId",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sizeNominal": {
+          "name": "sizeNominal",
+          "type": "numeric(12, 6)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sizeUnitId": {
+          "name": "sizeUnitId",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "defaultUomId": {
+          "name": "defaultUomId",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "isActive": {
+          "name": "isActive",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "part_def_org_idx": {
+          "name": "part_def_org_idx",
+          "columns": [
+            {
+              "expression": "organizationId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "part_def_category_idx": {
+          "name": "part_def_category_idx",
+          "columns": [
+            {
+              "expression": "categoryId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "part_def_facets_idx": {
+          "name": "part_def_facets_idx",
+          "columns": [
+            {
+              "expression": "partTypeId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "materialId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "sizeNominal",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "part_def_material_idx": {
+          "name": "part_def_material_idx",
+          "columns": [
+            {
+              "expression": "materialId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "part_def_part_type_idx": {
+          "name": "part_def_part_type_idx",
+          "columns": [
+            {
+              "expression": "partTypeId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "kublai_part_definition_organizationId_kublai_organization_id_fk": {
+          "name": "kublai_part_definition_organizationId_kublai_organization_id_fk",
+          "tableFrom": "kublai_part_definition",
+          "tableTo": "kublai_organization",
+          "columnsFrom": [
+            "organizationId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "kublai_part_definition_categoryId_kublai_category_id_fk": {
+          "name": "kublai_part_definition_categoryId_kublai_category_id_fk",
+          "tableFrom": "kublai_part_definition",
+          "tableTo": "kublai_category",
+          "columnsFrom": [
+            "categoryId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "kublai_part_definition_partTypeId_kublai_part_type_id_fk": {
+          "name": "kublai_part_definition_partTypeId_kublai_part_type_id_fk",
+          "tableFrom": "kublai_part_definition",
+          "tableTo": "kublai_part_type",
+          "columnsFrom": [
+            "partTypeId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "kublai_part_definition_materialId_kublai_material_id_fk": {
+          "name": "kublai_part_definition_materialId_kublai_material_id_fk",
+          "tableFrom": "kublai_part_definition",
+          "tableTo": "kublai_material",
+          "columnsFrom": [
+            "materialId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "kublai_part_definition_sizeUnitId_kublai_unit_id_fk": {
+          "name": "kublai_part_definition_sizeUnitId_kublai_unit_id_fk",
+          "tableFrom": "kublai_part_definition",
+          "tableTo": "kublai_unit",
+          "columnsFrom": [
+            "sizeUnitId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "kublai_part_definition_defaultUomId_kublai_unit_id_fk": {
+          "name": "kublai_part_definition_defaultUomId_kublai_unit_id_fk",
+          "tableFrom": "kublai_part_definition",
+          "tableTo": "kublai_unit",
+          "columnsFrom": [
+            "defaultUomId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.kublai_part_synonym": {
+      "name": "kublai_part_synonym",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "partDefinitionId": {
+          "name": "partDefinitionId",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "synonym": {
+          "name": "synonym",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "part_synonym_part_idx": {
+          "name": "part_synonym_part_idx",
+          "columns": [
+            {
+              "expression": "partDefinitionId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "kublai_part_synonym_partDefinitionId_kublai_part_definition_id_fk": {
+          "name": "kublai_part_synonym_partDefinitionId_kublai_part_definition_id_fk",
+          "tableFrom": "kublai_part_synonym",
+          "tableTo": "kublai_part_definition",
+          "columnsFrom": [
+            "partDefinitionId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.kublai_part_type": {
+      "name": "kublai_part_type",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "organizationId": {
+          "name": "organizationId",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "part_type_org_idx": {
+          "name": "part_type_org_idx",
+          "columns": [
+            {
+              "expression": "organizationId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "kublai_part_type_organizationId_kublai_organization_id_fk": {
+          "name": "kublai_part_type_organizationId_kublai_organization_id_fk",
+          "tableFrom": "kublai_part_type",
+          "tableTo": "kublai_organization",
+          "columnsFrom": [
+            "organizationId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "part_type_org_name_uniq": {
+          "name": "part_type_org_name_uniq",
+          "nullsNotDistinct": false,
+          "columns": [
+            "organizationId",
+            "name"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.kublai_pricing_profile": {
+      "name": "kublai_pricing_profile",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "organizationId": {
+          "name": "organizationId",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'Default'"
+        },
+        "defaultMarkupPercent": {
+          "name": "defaultMarkupPercent",
+          "type": "numeric(6, 3)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'0'"
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "pricing_profile_org_idx": {
+          "name": "pricing_profile_org_idx",
+          "columns": [
+            {
+              "expression": "organizationId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "kublai_pricing_profile_organizationId_kublai_organization_id_fk": {
+          "name": "kublai_pricing_profile_organizationId_kublai_organization_id_fk",
+          "tableFrom": "kublai_pricing_profile",
+          "tableTo": "kublai_organization",
+          "columnsFrom": [
+            "organizationId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "pricing_profile_org_name_uniq": {
+          "name": "pricing_profile_org_name_uniq",
+          "nullsNotDistinct": false,
+          "columns": [
+            "organizationId",
+            "name"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.kublai_quote_item": {
+      "name": "kublai_quote_item",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "quoteId": {
+          "name": "quoteId",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "supplierPartId": {
+          "name": "supplierPartId",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "partDefinitionId": {
+          "name": "partDefinitionId",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "oneOffDisplayName": {
+          "name": "oneOffDisplayName",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "oneOffDescription": {
+          "name": "oneOffDescription",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "oneOffMaterial": {
+          "name": "oneOffMaterial",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "oneOffPartType": {
+          "name": "oneOffPartType",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "oneOffSizeNominal": {
+          "name": "oneOffSizeNominal",
+          "type": "numeric(12, 6)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "oneOffSizeUnitId": {
+          "name": "oneOffSizeUnitId",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "quantity": {
+          "name": "quantity",
+          "type": "numeric(12, 6)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'1'"
+        },
+        "uomId": {
+          "name": "uomId",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "unitCost": {
+          "name": "unitCost",
+          "type": "numeric(12, 4)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "markupPercent": {
+          "name": "markupPercent",
+          "type": "numeric(6, 3)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "unitPrice": {
+          "name": "unitPrice",
+          "type": "numeric(12, 4)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "extendedPrice": {
+          "name": "extendedPrice",
+          "type": "numeric(14, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "descriptionSnapshot": {
+          "name": "descriptionSnapshot",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "quote_item_quote_idx": {
+          "name": "quote_item_quote_idx",
+          "columns": [
+            {
+              "expression": "quoteId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "quote_item_part_idx": {
+          "name": "quote_item_part_idx",
+          "columns": [
+            {
+              "expression": "partDefinitionId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "kublai_quote_item_quoteId_kublai_quote_id_fk": {
+          "name": "kublai_quote_item_quoteId_kublai_quote_id_fk",
+          "tableFrom": "kublai_quote_item",
+          "tableTo": "kublai_quote",
+          "columnsFrom": [
+            "quoteId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "kublai_quote_item_supplierPartId_kublai_supplier_part_id_fk": {
+          "name": "kublai_quote_item_supplierPartId_kublai_supplier_part_id_fk",
+          "tableFrom": "kublai_quote_item",
+          "tableTo": "kublai_supplier_part",
+          "columnsFrom": [
+            "supplierPartId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "kublai_quote_item_partDefinitionId_kublai_part_definition_id_fk": {
+          "name": "kublai_quote_item_partDefinitionId_kublai_part_definition_id_fk",
+          "tableFrom": "kublai_quote_item",
+          "tableTo": "kublai_part_definition",
+          "columnsFrom": [
+            "partDefinitionId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "kublai_quote_item_oneOffSizeUnitId_kublai_unit_id_fk": {
+          "name": "kublai_quote_item_oneOffSizeUnitId_kublai_unit_id_fk",
+          "tableFrom": "kublai_quote_item",
+          "tableTo": "kublai_unit",
+          "columnsFrom": [
+            "oneOffSizeUnitId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "kublai_quote_item_uomId_kublai_unit_id_fk": {
+          "name": "kublai_quote_item_uomId_kublai_unit_id_fk",
+          "tableFrom": "kublai_quote_item",
+          "tableTo": "kublai_unit",
+          "columnsFrom": [
+            "uomId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.kublai_quote": {
+      "name": "kublai_quote",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "organizationId": {
+          "name": "organizationId",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "materialListId": {
+          "name": "materialListId",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "jobId": {
+          "name": "jobId",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "quoteNumber": {
+          "name": "quoteNumber",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "createdByUserId": {
+          "name": "createdByUserId",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "markupPercent": {
+          "name": "markupPercent",
+          "type": "numeric(6, 3)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "laborHours": {
+          "name": "laborHours",
+          "type": "numeric(10, 2)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'0'"
+        },
+        "laborRate": {
+          "name": "laborRate",
+          "type": "numeric(12, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "subtotalMaterials": {
+          "name": "subtotalMaterials",
+          "type": "numeric(14, 2)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'0'"
+        },
+        "total": {
+          "name": "total",
+          "type": "numeric(14, 2)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'0'"
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "quote_job_idx": {
+          "name": "quote_job_idx",
+          "columns": [
+            {
+              "expression": "jobId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "quote_material_list_idx": {
+          "name": "quote_material_list_idx",
+          "columns": [
+            {
+              "expression": "materialListId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "kublai_quote_organizationId_kublai_organization_id_fk": {
+          "name": "kublai_quote_organizationId_kublai_organization_id_fk",
+          "tableFrom": "kublai_quote",
+          "tableTo": "kublai_organization",
+          "columnsFrom": [
+            "organizationId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "kublai_quote_materialListId_kublai_material_list_id_fk": {
+          "name": "kublai_quote_materialListId_kublai_material_list_id_fk",
+          "tableFrom": "kublai_quote",
+          "tableTo": "kublai_material_list",
+          "columnsFrom": [
+            "materialListId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "kublai_quote_jobId_kublai_job_id_fk": {
+          "name": "kublai_quote_jobId_kublai_job_id_fk",
+          "tableFrom": "kublai_quote",
+          "tableTo": "kublai_job",
+          "columnsFrom": [
+            "jobId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "kublai_quote_createdByUserId_kublai_user_id_fk": {
+          "name": "kublai_quote_createdByUserId_kublai_user_id_fk",
+          "tableFrom": "kublai_quote",
+          "tableTo": "kublai_user",
+          "columnsFrom": [
+            "createdByUserId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.kublai_session": {
+      "name": "kublai_session",
+      "schema": "",
+      "columns": {
+        "sessionToken": {
+          "name": "sessionToken",
+          "type": "varchar(255)",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "userId": {
+          "name": "userId",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "expires": {
+          "name": "expires",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "session_user_id_idx": {
+          "name": "session_user_id_idx",
+          "columns": [
+            {
+              "expression": "userId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "kublai_session_userId_kublai_user_id_fk": {
+          "name": "kublai_session_userId_kublai_user_id_fk",
+          "tableFrom": "kublai_session",
+          "tableTo": "kublai_user",
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.kublai_size": {
+      "name": "kublai_size",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "organizationId": {
+          "name": "organizationId",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "nominal": {
+          "name": "nominal",
+          "type": "numeric(12, 6)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "unitId": {
+          "name": "unitId",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "size_org_idx": {
+          "name": "size_org_idx",
+          "columns": [
+            {
+              "expression": "organizationId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "kublai_size_organizationId_kublai_organization_id_fk": {
+          "name": "kublai_size_organizationId_kublai_organization_id_fk",
+          "tableFrom": "kublai_size",
+          "tableTo": "kublai_organization",
+          "columnsFrom": [
+            "organizationId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "kublai_size_unitId_kublai_unit_id_fk": {
+          "name": "kublai_size_unitId_kublai_unit_id_fk",
+          "tableFrom": "kublai_size",
+          "tableTo": "kublai_unit",
+          "columnsFrom": [
+            "unitId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "size_org_nominal_unit_uniq": {
+          "name": "size_org_nominal_unit_uniq",
+          "nullsNotDistinct": false,
+          "columns": [
+            "organizationId",
+            "nominal",
+            "unitId"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.kublai_supplier_part": {
+      "name": "kublai_supplier_part",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "organizationId": {
+          "name": "organizationId",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "supplierId": {
+          "name": "supplierId",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "partDefinitionId": {
+          "name": "partDefinitionId",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "supplierSku": {
+          "name": "supplierSku",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "supplierName": {
+          "name": "supplierName",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "packSize": {
+          "name": "packSize",
+          "type": "numeric(12, 6)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "packUomId": {
+          "name": "packUomId",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "lastKnownUnitCost": {
+          "name": "lastKnownUnitCost",
+          "type": "numeric(12, 4)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "currency": {
+          "name": "currency",
+          "type": "varchar(10)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'CAD'"
+        },
+        "isPreferred": {
+          "name": "isPreferred",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "supplier_part_supplier_idx": {
+          "name": "supplier_part_supplier_idx",
+          "columns": [
+            {
+              "expression": "supplierId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "supplier_part_part_idx": {
+          "name": "supplier_part_part_idx",
+          "columns": [
+            {
+              "expression": "partDefinitionId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "supplier_part_preferred_idx": {
+          "name": "supplier_part_preferred_idx",
+          "columns": [
+            {
+              "expression": "organizationId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "partDefinitionId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "isPreferred",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "kublai_supplier_part_organizationId_kublai_organization_id_fk": {
+          "name": "kublai_supplier_part_organizationId_kublai_organization_id_fk",
+          "tableFrom": "kublai_supplier_part",
+          "tableTo": "kublai_organization",
+          "columnsFrom": [
+            "organizationId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "kublai_supplier_part_supplierId_kublai_supplier_id_fk": {
+          "name": "kublai_supplier_part_supplierId_kublai_supplier_id_fk",
+          "tableFrom": "kublai_supplier_part",
+          "tableTo": "kublai_supplier",
+          "columnsFrom": [
+            "supplierId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "kublai_supplier_part_partDefinitionId_kublai_part_definition_id_fk": {
+          "name": "kublai_supplier_part_partDefinitionId_kublai_part_definition_id_fk",
+          "tableFrom": "kublai_supplier_part",
+          "tableTo": "kublai_part_definition",
+          "columnsFrom": [
+            "partDefinitionId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "kublai_supplier_part_packUomId_kublai_unit_id_fk": {
+          "name": "kublai_supplier_part_packUomId_kublai_unit_id_fk",
+          "tableFrom": "kublai_supplier_part",
+          "tableTo": "kublai_unit",
+          "columnsFrom": [
+            "packUomId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "supplier_part_org_supplier_sku_uniq": {
+          "name": "supplier_part_org_supplier_sku_uniq",
+          "nullsNotDistinct": false,
+          "columns": [
+            "organizationId",
+            "supplierId",
+            "supplierSku"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.kublai_supplier": {
+      "name": "kublai_supplier",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "organizationId": {
+          "name": "organizationId",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "contactEmail": {
+          "name": "contactEmail",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "contactPhone": {
+          "name": "contactPhone",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "orderingNotes": {
+          "name": "orderingNotes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "locationId": {
+          "name": "locationId",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "supplier_org_idx": {
+          "name": "supplier_org_idx",
+          "columns": [
+            {
+              "expression": "organizationId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "supplier_location_idx": {
+          "name": "supplier_location_idx",
+          "columns": [
+            {
+              "expression": "locationId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "kublai_supplier_organizationId_kublai_organization_id_fk": {
+          "name": "kublai_supplier_organizationId_kublai_organization_id_fk",
+          "tableFrom": "kublai_supplier",
+          "tableTo": "kublai_organization",
+          "columnsFrom": [
+            "organizationId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "kublai_supplier_locationId_kublai_location_id_fk": {
+          "name": "kublai_supplier_locationId_kublai_location_id_fk",
+          "tableFrom": "kublai_supplier",
+          "tableTo": "kublai_location",
+          "columnsFrom": [
+            "locationId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "supplier_org_name_uniq": {
+          "name": "supplier_org_name_uniq",
+          "nullsNotDistinct": false,
+          "columns": [
+            "organizationId",
+            "name"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.kublai_unit": {
+      "name": "kublai_unit",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "code": {
+          "name": "code",
+          "type": "varchar(32)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "kind": {
+          "name": "kind",
+          "type": "varchar(32)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "displayName": {
+          "name": "displayName",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "unit_code_uniq": {
+          "name": "unit_code_uniq",
+          "nullsNotDistinct": false,
+          "columns": [
+            "code"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.kublai_user": {
+      "name": "kublai_user",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "varchar(255)",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "email": {
+          "name": "email",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "image": {
+          "name": "image",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "role": {
+          "name": "role",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'user'"
+        },
+        "organizationId": {
+          "name": "organizationId",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "pricingProfileId": {
+          "name": "pricingProfileId",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "stripeCustomerId": {
+          "name": "stripeCustomerId",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "hasOneTimeAccess": {
+          "name": "hasOneTimeAccess",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "stripeSubscriptionId": {
+          "name": "stripeSubscriptionId",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "subscriptionStatus": {
+          "name": "subscriptionStatus",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "subscriptionEndsAt": {
+          "name": "subscriptionEndsAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "oneTimePurchaseDate": {
+          "name": "oneTimePurchaseDate",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "currentJobId": {
+          "name": "currentJobId",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "kublai_user_organizationId_kublai_organization_id_fk": {
+          "name": "kublai_user_organizationId_kublai_organization_id_fk",
+          "tableFrom": "kublai_user",
+          "tableTo": "kublai_organization",
+          "columnsFrom": [
+            "organizationId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "kublai_user_pricingProfileId_kublai_pricing_profile_id_fk": {
+          "name": "kublai_user_pricingProfileId_kublai_pricing_profile_id_fk",
+          "tableFrom": "kublai_user",
+          "tableTo": "kublai_pricing_profile",
+          "columnsFrom": [
+            "pricingProfileId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "kublai_user_currentJobId_kublai_job_id_fk": {
+          "name": "kublai_user_currentJobId_kublai_job_id_fk",
+          "tableFrom": "kublai_user",
+          "tableTo": "kublai_job",
+          "columnsFrom": [
+            "currentJobId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.kublai_verification_token": {
+      "name": "kublai_verification_token",
+      "schema": "",
+      "columns": {
+        "identifier": {
+          "name": "identifier",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "token": {
+          "name": "token",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "expires": {
+          "name": "expires",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "kublai_verification_token_identifier_token_pk": {
+          "name": "kublai_verification_token_identifier_token_pk",
+          "columns": [
+            "identifier",
+            "token"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {},
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

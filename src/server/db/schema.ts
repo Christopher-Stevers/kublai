@@ -379,11 +379,12 @@ export const materials = createTable(
   ],
 );
 
-export const materialsRelations = relations(materials, ({ one }) => ({
+export const materialsRelations = relations(materials, ({ one, many }) => ({
   organization: one(organizations, {
     fields: [materials.organizationId],
     references: [organizations.id],
   }),
+  partDefinitions: many(partDefinitions),
 }));
 
 // ============================
@@ -463,11 +464,12 @@ export const partTypes = createTable(
   ],
 );
 
-export const partTypesRelations = relations(partTypes, ({ one }) => ({
+export const partTypesRelations = relations(partTypes, ({ one, many }) => ({
   organization: one(organizations, {
     fields: [partTypes.organizationId],
     references: [organizations.id],
   }),
+  partDefinitions: many(partDefinitions),
 }));
 
 // ============================
@@ -546,8 +548,12 @@ export const partDefinitions = createTable(
     imageUrl: d.text(),
 
     // Facets (MVP)
-    partType: d.varchar({ length: 100 }), // elbow, tee, ball valve, gate valve, etc.
-    material: d.varchar({ length: 100 }), // copper, pvc, pex...
+    partTypeId: d
+      .uuid()
+      .references(() => partTypes.id, { onDelete: "set null" }),
+    materialId: d
+      .uuid()
+      .references(() => materials.id, { onDelete: "set null" }),
     sizeNominal: d.numeric({ precision: 12, scale: 6 }),
     sizeUnitId: d.uuid().references(() => units.id, { onDelete: "set null" }),
 
@@ -563,7 +569,9 @@ export const partDefinitions = createTable(
   (t) => [
     index("part_def_org_idx").on(t.organizationId),
     index("part_def_category_idx").on(t.categoryId),
-    index("part_def_facets_idx").on(t.partType, t.material, t.sizeNominal),
+    index("part_def_facets_idx").on(t.partTypeId, t.materialId, t.sizeNominal),
+    index("part_def_material_idx").on(t.materialId),
+    index("part_def_part_type_idx").on(t.partTypeId),
   ],
 );
 
@@ -587,6 +595,14 @@ export const partDefinitionsRelations = relations(
       fields: [partDefinitions.defaultUomId],
       references: [units.id],
       relationName: "pd_default_uom",
+    }),
+    material: one(materials, {
+      fields: [partDefinitions.materialId],
+      references: [materials.id],
+    }),
+    partType: one(partTypes, {
+      fields: [partDefinitions.partTypeId],
+      references: [partTypes.id],
     }),
     synonyms: many(partSynonyms),
     attributes: many(partAttributes),
