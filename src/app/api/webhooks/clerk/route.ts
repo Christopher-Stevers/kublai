@@ -38,6 +38,7 @@ export async function POST(req: Request) {
     }) as WebhookEvent;
   } catch (err) {
     console.error("Error verifying webhook:", err);
+    console.error("Payload body:", body);
     return new Response("Error occurred", {
       status: 400,
     });
@@ -45,6 +46,7 @@ export async function POST(req: Request) {
 
   // Handle the webhook
   const eventType = evt.type;
+  console.log(`[Clerk Webhook] Received event: ${eventType} for user: ${evt.data.id}`);
 
   if (eventType === "user.created" || eventType === "user.updated") {
     const { id, email_addresses, first_name, last_name, image_url } = evt.data;

@@ -68,7 +68,7 @@ export default function PricingPage() {
                 <CardTitle className="text-2xl">One-Time Purchase</CardTitle>
                 <div className="mt-4">
                   <span className="text-4xl font-bold text-gray-900">
-                    $99
+                    $20
                   </span>
                   <span className="text-gray-600"> one-time</span>
                 </div>
@@ -152,7 +152,7 @@ export default function PricingPage() {
                 <CardTitle className="text-2xl">Monthly Subscription</CardTitle>
                 <div className="mt-4">
                   <span className="text-4xl font-bold text-gray-900">
-                    $29
+                    $2
                   </span>
                   <span className="text-gray-600"> /month</span>
                 </div>

@@ -27,13 +27,36 @@ export default async function OnboardingLayout({
   // If user doesn't exist, wait for webhook to create it (with timeout)
   // This ensures webhook is the single source of truth for user creation
   if (!user) {
-    user = await waitForUser(userId, 5000, 200); // Wait up to 5 seconds, poll every 200ms
+    user = await waitForUser(userId, 15000, 500); // Wait up to 15 seconds, poll every 500ms
   }
 
-  // If user still doesn't exist after waiting, redirect to sign-in
-  // This shouldn't happen if webhook is working, but handle gracefully
+  // If user still doesn't exist after waiting, show a waiting state instead of redirecting
+  // This prevents redirect loops with the sign-in page and gives the webhook more time
   if (!user) {
-    redirect("/sign-in");
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-gray-50 p-6 text-center">
+        <div className="max-w-md space-y-4">
+          <h1 className="text-2xl font-bold text-gray-900">
+            Setting up your account...
+          </h1>
+          <p className="text-gray-600">
+            We're putting the finishing touches on your account setup. This
+            usually takes just a few seconds.
+          </p>
+          <div className="flex justify-center py-4">
+            <div className="h-10 w-10 animate-spin rounded-full border-4 border-blue-600 border-t-transparent"></div>
+          </div>
+          <p className="text-sm text-gray-500">
+            The page will refresh automatically. If it doesn't, please{" "}
+            <a href="/onboarding" className="text-blue-600 hover:underline">
+              click here to retry
+            </a>
+            .
+          </p>
+          <meta httpEquiv="refresh" content="5" />
+        </div>
+      </div>
+    );
   }
 
   // If user already has an organization, redirect to dashboard
