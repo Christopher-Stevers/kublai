@@ -1,6 +1,5 @@
 "use client";
 
-import { ChevronRight } from "lucide-react";
 import { formatSize } from "~/lib/size-utils";
 
 interface WizardProgressIndicatorProps {
@@ -10,7 +9,10 @@ interface WizardProgressIndicatorProps {
   ) => void;
   selectedMaterial?: string | null;
   selectedSize?: { nominal: number; unit: string } | null;
-  selectedPartTypeCategory?: string | null;
+  selectedPartTypeCategory: {
+    categoryId: string | null;
+    name: string;
+  } | null;
 }
 
 const stages = [
@@ -56,7 +58,7 @@ export function WizardProgressIndicator({
           ? formatSize(selectedSize.nominal, selectedSize.unit)
           : stage.label;
       case "partTypeCategory":
-        return selectedPartTypeCategory ?? stage.label;
+        return selectedPartTypeCategory?.name ?? stage.label;
       case "part":
         return stage.label;
       default:
@@ -65,51 +67,50 @@ export function WizardProgressIndicator({
   };
 
   return (
-    <div className="flex items-center gap-2 py-4">
-      {stages.map((stage, index) => {
-        const isCompleted = stage.step < currentStep;
-        const isCurrent = stage.step === currentStep;
-        const isClickable =
-          onStageClick &&
-          (isCompleted || isCurrent) &&
-          currentStage !== "review";
+    <div className="overflow-x-auto py-3 sm:py-4">
+      <div className="flex min-w-max items-center gap-1.5 sm:gap-2">
+        {stages.map((stage, index) => {
+          const isCompleted = stage.step < currentStep;
+          const isCurrent = stage.step === currentStep;
+          const isClickable =
+            onStageClick &&
+            (isCompleted || isCurrent) &&
+            currentStage !== "review";
 
-        return (
-          <div key={stage.id} className="flex items-center gap-2">
-            <button
-              onClick={() => {
-                if (isClickable) {
-                  onStageClick(stage.id);
-                }
-              }}
-              disabled={!isClickable}
-              className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
-                isCurrent
-                  ? "bg-primary text-primary-foreground"
-                  : isCompleted
-                    ? "bg-primary/10 text-primary hover:bg-primary/20"
-                    : "bg-gray-100 text-gray-500"
-              } ${isClickable ? "cursor-pointer" : "cursor-default"}`}
-            >
-              <div
-                className={`flex h-6 w-6 items-center justify-center rounded-full ${
+          return (
+            <div key={stage.id} className="flex items-center gap-1.5 sm:gap-2">
+              <button
+                onClick={() => {
+                  if (isClickable) {
+                    onStageClick(stage.id);
+                  }
+                }}
+                disabled={!isClickable}
+                className={`flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-medium transition-colors sm:gap-2 sm:px-3 sm:py-2 sm:text-sm ${
                   isCurrent
-                    ? "bg-primary-foreground text-primary"
+                    ? "bg-primary text-primary-foreground"
                     : isCompleted
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-gray-300 text-gray-600"
-                }`}
+                      ? "bg-primary/10 text-primary hover:bg-primary/20"
+                      : "bg-gray-100 text-gray-500"
+                } ${isClickable ? "cursor-pointer" : "cursor-default"}`}
               >
-                {isCompleted ? "✓" : stage.step}
-              </div>
-              <span>{getStageLabel(stage)}</span>
-            </button>
-            {index < stages.length - 1 && (
-              <ChevronRight className="h-4 w-4 text-gray-400" />
-            )}
-          </div>
-        );
-      })}
+                <div
+                  className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs sm:h-6 sm:w-6 sm:text-sm ${
+                    isCurrent
+                      ? "bg-primary-foreground text-primary"
+                      : isCompleted
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-gray-300 text-gray-600"
+                  }`}
+                >
+                  {isCompleted ? "✓" : stage.step}
+                </div>
+                <span className="whitespace-nowrap">{getStageLabel(stage)}</span>
+              </button>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

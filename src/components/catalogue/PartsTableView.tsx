@@ -2,6 +2,7 @@
 
 import { PartsTable, type TableColumn } from "~/components/ui/parts-table";
 import { PartSuppliersDropdown } from "~/components/catalogue/PartSuppliersDropdown";
+import { formatSizeAsFraction } from "~/lib/size-utils";
 
 interface PartsTableViewProps {
   parts: Array<{
@@ -12,7 +13,7 @@ interface PartsTableViewProps {
     size: string | null;
     categoryId: string | null;
   }>;
-  categoryTree: Array<{ id: string; name: string; children: Array<unknown> }>;
+  categoryTree: Array<{ id: string; name: string }>;
   onEdit: (partId: string) => void;
   supplierInfoMap?: Record<
     string,
@@ -31,18 +32,12 @@ export function PartsTableView({
 }: PartsTableViewProps) {
   // Helper to find category name by ID
   const findCategoryName = (
-    tree: Array<{ id: string; name: string; children: Array<unknown> }>,
+    tree: Array<{ id: string; name: string }>,
     id: string | null,
   ): string | null => {
     if (!id) return null;
-    for (const cat of tree) {
-      if (cat.id === id) return cat.name;
-      if (cat.children.length > 0) {
-        const found = findCategoryName(cat.children as typeof tree, id);
-        if (found) return found;
-      }
-    }
-    return null;
+    const cat = tree.find((c) => c.id === id);
+    return cat?.name ?? null;
   };
 
   const columns: TableColumn<(typeof parts)[number]>[] = [
@@ -76,7 +71,9 @@ export function PartsTableView({
       key: "size",
       label: "Size",
       render: (part) => (
-        <div className="text-sm text-gray-600">{part.size || "—"}</div>
+        <div className="text-sm text-gray-600">
+          {part.size ? formatSizeAsFraction(part.size) : "—"}
+        </div>
       ),
     },
     {

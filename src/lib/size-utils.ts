@@ -124,4 +124,89 @@ export function formatSize(nominal: number | null, unit: string | null): string 
   return `${num} ${unit}`;
 }
 
+/**
+ * Convert a decimal number to fractional format (down to 1/16)
+ * @param num - The decimal number to convert
+ * @returns A string representation in fractional format (e.g., "2 1/4", "1/8")
+ */
+export function decimalToFraction(num: number): string {
+  if (Number.isInteger(num)) {
+    return num.toString();
+  }
+
+  // Handle negative numbers
+  const isNegative = num < 0;
+  const absNum = Math.abs(num);
+  const whole = Math.floor(absNum);
+  const fractional = absNum - whole;
+
+  // Convert fractional part to sixteenths
+  // Round to nearest 1/16 to handle floating point precision issues
+  const sixteenths = Math.round(fractional * 16);
+
+  // If it's exactly 0 after rounding, return just the whole number
+  if (sixteenths === 0) {
+    return isNegative ? `-${whole}` : whole.toString();
+  }
+
+  // Simplify the fraction by finding GCD
+  const gcd = (a: number, b: number): number => {
+    return b === 0 ? a : gcd(b, a % b);
+  };
+  const divisor = gcd(sixteenths, 16);
+  const numerator = sixteenths / divisor;
+  const denominator = 16 / divisor;
+
+  // Build the result
+  let result = "";
+  if (isNegative) {
+    result += "-";
+  }
+  if (whole > 0) {
+    result += `${whole} `;
+  }
+  result += `${numerator}/${denominator}`;
+
+  return result;
+}
+
+/**
+ * Format a size string to display in fractional format
+ * Parses strings like "2.25 in" or "0.125" and converts to "2 1/4 in" or "1/8"
+ * @param sizeString - The size string to format (e.g., "2.25 in", "0.125")
+ * @returns The formatted size string with fractions, or the original string if it can't be parsed
+ */
+export function formatSizeAsFraction(sizeString: string | null): string {
+  if (!sizeString) return "";
+
+  const trimmed = sizeString.trim();
+
+  // If it already contains a slash, assume it's already in fractional format
+  if (trimmed.includes("/")) {
+    return trimmed;
+  }
+
+  // Try to parse the size string
+  // Pattern: number (with optional decimal), optional whitespace, optional unit
+  const match = trimmed.match(/^(-?\d+\.?\d*)\s*(\S+)?$/);
+  if (!match) {
+    // If it doesn't match, return as-is
+    return trimmed;
+  }
+
+  const numericPart = match[1];
+  const unit = match[2];
+
+  if (!numericPart) {
+    return trimmed;
+  }
+
+  const numericValue = parseFloat(numericPart);
+  if (isNaN(numericValue) || !isFinite(numericValue)) {
+    return trimmed;
+  }
+
+  const fraction = decimalToFraction(numericValue);
+  return unit ? `${fraction} ${unit}`.trim() : fraction;
+}
 

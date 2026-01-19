@@ -56,13 +56,30 @@ export default function CataloguePage() {
   const { data: sizeUnits } = api.catalogue.getSizeUnits.useQuery();
   const { data: attributeKeys } = api.catalogue.getAttributeKeys.useQuery();
 
+  // Query to get partTypes with IDs for lookup
+  const { data: partTypesWithIds } = api.catalogue.getPartTypesWithIds.useQuery();
+
+  // Look up IDs from names
+  const selectedPartTypeId = useMemo(() => {
+    if (!selectedPartType || !partTypesWithIds) return undefined;
+    const partType = partTypesWithIds.find((pt) => pt.name === selectedPartType);
+    return partType?.id;
+  }, [selectedPartType, partTypesWithIds]);
+
+  const selectedMaterialId = useMemo(() => {
+    if (!selectedMaterial || !materials) return undefined;
+    // materials is an array of { id, name }
+    const material = materials.find((m) => m.name === selectedMaterial);
+    return material?.id;
+  }, [selectedMaterial, materials]);
+
   // Unified search query with all filters
   const { data: searchResults, isLoading: searchLoading } =
     api.catalogue.searchParts.useQuery({
       query: debouncedSearchQuery || undefined,
       categoryId: selectedCategoryId ?? undefined,
-      partType: selectedPartType || undefined,
-      material: selectedMaterial || undefined,
+      partTypeId: selectedPartTypeId,
+      materialId: selectedMaterialId,
       sizeNominal: normalizedSize ?? undefined,
       sizeUnit: normalizedSize ? sizeUnit : undefined,
       attributeKey: attributeKey || undefined,
@@ -204,7 +221,7 @@ export default function CataloguePage() {
             partTypes={partTypes ?? []}
             selectedPartType={selectedPartType}
             onPartTypeChange={setSelectedPartType}
-            materials={materials ?? []}
+            materials={materials?.map((m) => (typeof m === "string" ? m : m.name)) ?? []}
             selectedMaterial={selectedMaterial}
             onMaterialChange={setSelectedMaterial}
             sizeValue={sizeValue}

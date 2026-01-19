@@ -4,6 +4,7 @@ export const userRouter = createTRPCRouter({
   getMyRole: protectedProcedure.query(async ({ ctx }) => {
     return {
       role: ctx.user.role,
+      organizationId: ctx.user.organizationId,
     };
   }),
 });

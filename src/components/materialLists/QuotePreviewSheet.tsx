@@ -12,12 +12,14 @@ import {
 } from "~/components/ui/dialog";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
+import { Textarea } from "~/components/ui/textarea";
 
 interface QuotePreviewSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   materialListId: string;
   jobName: string;
+  quoteId?: string;
 }
 
 export function QuotePreviewSheet({
@@ -25,15 +27,37 @@ export function QuotePreviewSheet({
   onOpenChange,
   materialListId,
   jobName,
+  quoteId: providedQuoteId,
 }: QuotePreviewSheetProps) {
   const [markupPercent, setMarkupPercent] = useState(30);
   const [isEditingMarkup, setIsEditingMarkup] = useState(false);
+  const [notes, setNotes] = useState("");
 
   const utils = api.useUtils();
   const { data: materialList } = api.materialList.getMaterialList.useQuery(
     { materialListId },
-    { enabled: open && !!materialListId },
+    { enabled: open && !!materialListId && !providedQuoteId },
   );
+
+  // Load existing quote if quoteId is provided
+  const { data: existingQuote } = api.materialList.getQuoteById.useQuery(
+    { quoteId: providedQuoteId ?? "" },
+    { enabled: open && !!providedQuoteId },
+  );
+
+  // Load notes and markup from quote when available
+  useEffect(() => {
+    if (providedQuoteId && existingQuote) {
+      if (existingQuote.notes) {
+        setNotes(existingQuote.notes);
+      }
+      if (existingQuote.markupPercent) {
+        setMarkupPercent(parseFloat(existingQuote.markupPercent.toString()));
+      }
+    } else if (materialList?.quote?.notes) {
+      setNotes(materialList.quote.notes);
+    }
+  }, [existingQuote, materialList?.quote?.notes, providedQuoteId]);
 
   const generateQuote = api.materialList.generateQuote.useMutation({
     onMutate: async (variables) => {
@@ -76,55 +100,100 @@ export function QuotePreviewSheet({
     },
   });
 
-  // Generate quote when sheet opens or markup changes
+  // Generate quote when sheet opens or markup changes (only if not viewing existing quote)
   useEffect(() => {
-    if (open && materialListId && !generateQuote.isPending) {
+    if (
+      open &&
+      materialListId &&
+      !providedQuoteId &&
+      !generateQuote.isPending
+    ) {
       generateQuote.mutate({
         materialListId,
         markupPercent,
+        notes: notes.trim() || undefined,
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, materialListId, markupPercent]);
+  }, [open, materialListId, markupPercent, providedQuoteId]);
 
   // Get quote email content
-  const quoteId = materialList?.quote.id;
+  const quoteId = providedQuoteId ?? materialList?.quote.id;
   const { data: emailContent } = api.materialList.getQuoteEmailContent.useQuery(
     { quoteId: quoteId ?? "" },
     { enabled: !!quoteId && open },
   );
 
-  const handleEmailQuote = () => {
-    if (!emailContent) return;
+  const handleEmailQuote = async () => {
+    if (!quoteId) return;
 
-    const subject = encodeURIComponent(emailContent.subject);
-    const body = encodeURIComponent(emailContent.body);
+    // Save notes before emailing (update existing quote or generate new one)
+    await generateQuote.mutateAsync({
+      materialListId,
+      markupPercent,
+      notes: notes.trim() || undefined,
+      quoteId: providedQuoteId, // Pass quoteId if viewing existing quote
+    });
+
+    // Refetch email content to get updated notes
+    const updatedEmailContent = await utils.materialList.getQuoteEmailContent.fetch({
+      quoteId,
+    });
+
+    if (!updatedEmailContent) return;
+
+    const subject = encodeURIComponent(updatedEmailContent.subject);
+    const body = encodeURIComponent(updatedEmailContent.body);
     const mailtoLink = `mailto:?subject=${subject}&body=${body}`;
     window.open(mailtoLink, "_blank");
   };
 
-  if (!materialList) {
+  // If viewing existing quote, we need to get material list for items
+  const { data: materialListForQuote } = api.materialList.getMaterialList.useQuery(
+    { materialListId: existingQuote?.materialListId ?? materialListId },
+    { enabled: open && !!providedQuoteId && !!existingQuote?.materialListId },
+  );
+
+  const displayMaterialList = providedQuoteId
+    ? materialListForQuote
+    : materialList;
+
+  if (!displayMaterialList && !providedQuoteId) {
     return null;
   }
 
-  const subtotal = materialList.materialTotal;
+  // Calculate totals - use existing quote total if available, otherwise calculate
+  const subtotal = displayMaterialList
+    ? displayMaterialList.materialTotal
+    : existingQuote
+      ? parseFloat(existingQuote.subtotalMaterials?.toString() ?? "0")
+      : 0;
   const markup = markupPercent / 100;
-  const total = subtotal * (1 + markup);
+  const total = existingQuote
+    ? parseFloat(existingQuote.total?.toString() ?? "0")
+    : subtotal * (1 + markup);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Quote for: {jobName}</DialogTitle>
-          <DialogDescription>Review and email the quote</DialogDescription>
+          <DialogTitle>
+            {providedQuoteId ? "View/Edit Quote" : "Quote"} for: {jobName}
+          </DialogTitle>
+          <DialogDescription>
+            {providedQuoteId
+              ? "Review, update, and email the quote"
+              : "Review and email the quote"}
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
           {/* Line Items */}
-          <div>
-            <h3 className="mb-2 font-semibold">Materials:</h3>
-            <div className="space-y-2">
-              {materialList.items.map((item) => {
+          {displayMaterialList && (
+            <div>
+              <h3 className="mb-2 font-semibold">Materials:</h3>
+              <div className="space-y-2">
+                {displayMaterialList.items.map((item) => {
                 const qty = parseFloat(String(item.quantity));
                 const price = item.extendedPrice
                   ? parseFloat(String(item.extendedPrice))
@@ -147,9 +216,10 @@ export function QuotePreviewSheet({
                     <span>${price.toFixed(2)}</span>
                   </div>
                 );
-              })}
+                })}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Totals */}
           <div className="space-y-2 border-t pt-4">
@@ -158,7 +228,7 @@ export function QuotePreviewSheet({
               <span>${subtotal.toFixed(2)}</span>
             </div>
             <div className="flex items-center justify-between">
-              <span>Markup:</span>
+              <span>Markup(this will be auto applied to each item in the quote):</span>
               {isEditingMarkup ? (
                 <div className="flex items-center gap-2">
                   <Input
@@ -180,6 +250,8 @@ export function QuotePreviewSheet({
                       generateQuote.mutate({
                         materialListId,
                         markupPercent,
+                        notes: notes.trim() || undefined,
+                        quoteId: providedQuoteId,
                       });
                     }}
                   >
@@ -203,6 +275,20 @@ export function QuotePreviewSheet({
               <span>Total:</span>
               <span>${total.toFixed(2)}</span>
             </div>
+          </div>
+
+          {/* Notes */}
+          <div className="space-y-2 border-t pt-4">
+            <label htmlFor="quote-notes" className="text-sm font-medium">
+              Notes (optional)
+            </label>
+            <Textarea
+              id="quote-notes"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Add any additional notes for the quote..."
+              className="min-h-[100px]"
+            />
           </div>
         </div>
 

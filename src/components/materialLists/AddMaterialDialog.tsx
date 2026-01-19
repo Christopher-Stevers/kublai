@@ -30,7 +30,9 @@ export function AddMaterialDialog({
 
   const createMaterial = api.catalogue.createMaterial.useMutation({
     onSuccess: (newMaterial) => {
-      onMaterialCreated(newMaterial.name);
+      if (newMaterial?.name) {
+        onMaterialCreated(newMaterial.name);
+      }
       setMaterialName("");
       onOpenChange(false);
       void utils.catalogue.getMaterials.invalidate();

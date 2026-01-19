@@ -19,6 +19,7 @@ import {
   DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu";
 import { ChevronDown } from "lucide-react";
+import { PartSuppliersDropdown } from "./PartSuppliersDropdown";
 
 interface EditPartDialogProps {
   open: boolean;
@@ -42,6 +43,12 @@ export function EditPartDialog({
   // Fetch categories and units
   const { data: categoryTree } = api.catalogue.getCategoryTree.useQuery();
   const { data: allUnits } = api.catalogue.getAllUnits.useQuery();
+
+  // Fetch supplier info for this part
+  const { data: supplierInfo } = api.catalogue.getPartsSupplierInfo.useQuery(
+    { partIds: partId ? [partId] : [] },
+    { enabled: open && !!partId },
+  );
 
   // Form state
   const [displayName, setDisplayName] = useState("");
@@ -90,33 +97,17 @@ export function EditPartDialog({
           description: variables.description ?? old.description,
           imageUrl: variables.imageUrl ?? old.imageUrl,
           categoryId: variables.categoryId ?? old.categoryId,
-          partType: variables.partType ?? old.partType,
-          material: variables.material ?? old.material,
-          sizeNominal: variables.sizeNominal ?? old.sizeNominal,
+          partType: old.partType, // partType is derived from partTypeId, not directly updated
+          material: old.material, // material is derived from materialId, not directly updated
+          sizeNominal: variables.sizeNominal ? String(variables.sizeNominal) : old.sizeNominal,
           sizeUnitId: variables.sizeUnitId ?? old.sizeUnitId,
           defaultUomId: variables.defaultUomId ?? old.defaultUomId,
           isActive: variables.isActive ?? old.isActive,
         };
       });
 
-      // Optimistically update part in search results
-      utils.catalogue.searchParts.setData(undefined, (old) => {
-        if (!old) return old;
-        return old.map((p) =>
-          p.id === partId
-            ? {
-                ...p,
-                displayName: variables.displayName ?? p.displayName,
-                imageUrl: variables.imageUrl ?? p.imageUrl,
-                material: variables.material ?? p.material,
-                partType: variables.partType ?? p.partType,
-                size: variables.sizeNominal
-                  ? `${variables.sizeNominal} ${sizeUnits?.find((u) => u.id === variables.sizeUnitId)?.code ?? ""}`
-                  : p.size,
-              }
-            : p,
-        );
-      });
+      // Invalidate search results to refetch with updated data
+      void utils.catalogue.searchParts.invalidate();
 
       return { previousPart, previousSearchResults };
     },
@@ -126,7 +117,8 @@ export function EditPartDialog({
         utils.catalogue.getPart.setData({ partId: partId! }, context.previousPart);
       }
       if (context?.previousSearchResults !== undefined) {
-        utils.catalogue.searchParts.setData(undefined, context.previousSearchResults);
+        // Can't rollback search results without query params, just invalidate
+        void utils.catalogue.searchParts.invalidate();
       }
     },
     onSettled: () => {
@@ -138,30 +130,26 @@ export function EditPartDialog({
     },
   });
 
-  // Flatten category tree for dropdown
-  const flattenCategories = (
-    tree: Array<{ id: string; name: string; children: Array<unknown> }>,
-    level = 0,
-  ): Array<{ id: string; name: string; level: number }> => {
-    const result: Array<{ id: string; name: string; level: number }> = [];
-    for (const cat of tree) {
-      result.push({ id: cat.id, name: cat.name, level });
-      if (cat.children.length > 0) {
-        result.push(...flattenCategories(cat.children as typeof tree, level + 1));
-      }
-    }
-    return result;
-  };
-
-  const categories = categoryTree ? flattenCategories(categoryTree) : [];
+  // Categories are now flat (no children), so just map them
+  const categories = (categoryTree ?? []).map((cat) => ({
+    id: cat.id,
+    name: cat.name,
+  }));
   const selectedCategory = categories.find((c) => c.id === categoryId);
   const selectedSizeUnit = allUnits?.find((u) => u.id === sizeUnitId);
   const selectedDefaultUom = allUnits?.find((u) => u.id === defaultUomId);
   const sizeUnits = allUnits?.filter((u) => u.kind === "length") ?? [];
   const defaultUoms = allUnits?.filter((u) => u.kind === "count") ?? [];
 
+  // Check if part has suppliers
+  const hasSuppliers =
+    partId && supplierInfo?.[partId]?.availableSuppliers
+      ? (supplierInfo[partId]?.availableSuppliers?.length ?? 0) > 0
+      : false;
+
   const handleSave = () => {
     if (!partId || !displayName.trim()) return;
+    if (!hasSuppliers) return; // Prevent saving if no suppliers
 
     // Parse size nominal
     let parsedSizeNominal: number | null = null;
@@ -175,14 +163,19 @@ export function EditPartDialog({
     // Use the selected size unit ID
     const parsedSizeUnitId = sizeUnitId;
 
+    // Look up partTypeId and materialId from names if they changed
+    // Note: part.partTypeId and part.materialId should be used if available
+    // For now, we'll need to keep the existing IDs or look them up
+    // Since the form uses names, we need to convert them to IDs
+    // This is a limitation - the form should use IDs instead of names
     updatePart.mutate({
       partId,
       displayName: displayName.trim(),
       description: description.trim() || null,
       imageUrl: imageUrl.trim() || null,
       categoryId: categoryId ?? null,
-      partType: partType.trim() || null,
-      material: material.trim() || null,
+      partTypeId: undefined, // TODO: Look up partTypeId from partType name or update form to use IDs
+      materialId: undefined, // TODO: Look up materialId from material name or update form to use IDs
       sizeNominal: parsedSizeNominal,
       sizeUnitId: parsedSizeUnitId,
       defaultUomId: defaultUomId ?? null,
@@ -272,7 +265,7 @@ export function EditPartDialog({
                     className="w-full justify-between mt-1"
                   >
                     {selectedCategory
-                      ? `${"  ".repeat(selectedCategory.level)}${selectedCategory.name}`
+                      ? selectedCategory.name
                       : "Select category"}
                     <ChevronDown className="h-4 w-4" />
                   </Button>
@@ -286,7 +279,6 @@ export function EditPartDialog({
                       key={cat.id}
                       onClick={() => setCategoryId(cat.id)}
                     >
-                      {"  ".repeat(cat.level)}
                       {cat.name}
                     </DropdownMenuItem>
                   ))}
@@ -403,6 +395,34 @@ export function EditPartDialog({
               Active (visible in catalogue)
             </label>
           </div>
+
+          {partId && (
+            <div>
+              <label className="text-sm font-medium">
+                Suppliers {!hasSuppliers && <span className="text-red-500">*</span>}
+              </label>
+              <div className="mt-1" onClick={(e) => e.stopPropagation()}>
+                <PartSuppliersDropdown
+                  partDefinitionId={partId}
+                  currentPreferredSupplierId={
+                    supplierInfo?.[partId]?.preferredSupplier?.id || null
+                  }
+                  availableSuppliers={
+                    supplierInfo?.[partId]?.availableSuppliers ?? []
+                  }
+                />
+              </div>
+              {!hasSuppliers ? (
+                <p className="mt-1 text-xs text-amber-600">
+                  At least one supplier is required to save changes to this part
+                </p>
+              ) : (
+                <p className="mt-1 text-xs text-gray-500">
+                  Manage which suppliers provide this part and set a preferred supplier
+                </p>
+              )}
+            </div>
+          )}
         </div>
 
         <DialogFooter>
@@ -411,7 +431,16 @@ export function EditPartDialog({
           </Button>
           <Button
             onClick={handleSave}
-            disabled={!displayName.trim() || updatePart.isPending}
+            disabled={
+              !displayName.trim() ||
+              !hasSuppliers ||
+              updatePart.isPending
+            }
+            title={
+              !hasSuppliers
+                ? "At least one supplier is required to save changes"
+                : undefined
+            }
           >
             {updatePart.isPending ? "Saving..." : "Save Changes"}
           </Button>

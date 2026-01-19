@@ -5,6 +5,7 @@ import { Badge } from "~/components/ui/badge";
 import { Package } from "lucide-react";
 import Image from "next/image";
 import { PartSuppliersDropdown } from "~/components/catalogue/PartSuppliersDropdown";
+import { formatSizeAsFraction } from "~/lib/size-utils";
 
 interface PartCardProps {
   part: {
@@ -62,7 +63,7 @@ export function PartCard({
           )}
           {part.size && (
             <Badge variant="secondary" className="text-xs">
-              {part.size}
+              {formatSizeAsFraction(part.size)}
             </Badge>
           )}
           {part.material && (

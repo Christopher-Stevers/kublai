@@ -60,15 +60,8 @@ export function MaterialListNameModal({
         };
       });
 
-      // Optimistically update material list in list
-      utils.materialList.listMaterialLists.setData(undefined, (old) => {
-        if (!old) return old;
-        return old.map((list) =>
-          list.id === materialListId
-            ? { ...list, name: variables.name }
-            : list,
-        );
-      });
+      // Invalidate material lists to refetch with updated name
+      void utils.materialList.listMaterialLists.invalidate();
 
       return { previousMaterialList, previousList };
     },
@@ -81,10 +74,8 @@ export function MaterialListNameModal({
         );
       }
       if (context?.previousList) {
-        utils.materialList.listMaterialLists.setData(
-          undefined,
-          context.previousList,
-        );
+        // Can't rollback without query params, just invalidate
+        void utils.materialList.listMaterialLists.invalidate();
       }
     },
     onSettled: () => {

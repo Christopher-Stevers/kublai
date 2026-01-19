@@ -58,11 +58,8 @@ export function LocationFormDialog({
         notes: variables.notes ?? null,
       };
 
-      // Optimistically add location to search results
-      utils.location.searchLocations.setData({ query: undefined }, (old) => {
-        if (!old) return [newLocation];
-        return [...old, newLocation];
-      });
+      // Invalidate search results to refetch with new location
+      void utils.location.searchLocations.invalidate();
 
       return { previousLocations, tempId };
     },

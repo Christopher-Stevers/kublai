@@ -18,6 +18,48 @@ export default function Dashboard() {
   const utils = api.useUtils();
   const hasAttemptedCreate = useRef(false);
   const jobsWithMaterialListsCreated = useRef<Set<string>>(new Set());
+  const pollingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const hasRedirectedRef = useRef(false);
+
+  // Check user's organizationId status
+  const { data: userData, isLoading: isLoadingUser } =
+    api.user.getMyRole.useQuery(undefined, {
+      refetchOnMount: true,
+      refetchOnWindowFocus: false,
+    });
+
+  // Redirect to onboarding if user has no organizationId
+  // This is a fallback in case server-side redirect didn't work
+  useEffect(() => {
+    if (hasRedirectedRef.current) {
+      return;
+    }
+
+    // If we have user data and no organizationId, redirect immediately
+    if (userData && !userData.organizationId) {
+      if (typeof window !== 'undefined') {
+        hasRedirectedRef.current = true;
+        window.location.href = "/onboarding";
+      }
+      return;
+    }
+
+    // If still loading after 2 seconds, redirect anyway
+    if (isLoadingUser && !userData) {
+      pollingTimeoutRef.current = setTimeout(() => {
+        if (!hasRedirectedRef.current && typeof window !== 'undefined') {
+          hasRedirectedRef.current = true;
+          window.location.href = "/onboarding";
+        }
+      }, 2000);
+    }
+
+    return () => {
+      if (pollingTimeoutRef.current) {
+        clearTimeout(pollingTimeoutRef.current);
+      }
+    };
+  }, [userData, isLoadingUser]);
 
   // Get all jobs
   const { data: jobs, isLoading } = api.job.listJobs.useQuery();
@@ -86,6 +128,21 @@ export default function Dashboard() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoading, jobs]);
+
+  // Show loading state while checking if onboarding is needed
+  if (isLoadingUser || (userData && !userData.organizationId)) {
+    return (
+      <div className="px-4 py-6 sm:px-6 sm:py-8">
+        <div className="mx-auto max-w-6xl">
+          <div className="flex items-center justify-center py-12">
+            <p className="text-muted-foreground">
+              {isLoadingUser ? "Loading..." : "Setting up your account..."}
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (isLoading || createJob.isPending || createMaterialList.isPending) {
     return (

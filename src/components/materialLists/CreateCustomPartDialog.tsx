@@ -32,6 +32,7 @@ interface CreateCustomPartDialogProps {
     material: string | null;
     size: string | null;
     partType: string | null;
+    supplierPartId?: string;
   }) => void;
   initialContext?: {
     materialId?: string | null;
@@ -64,6 +65,7 @@ export function CreateCustomPartDialog({
   // Fetch data
   const { data: allUnits } = api.catalogue.getAllUnits.useQuery();
   const { data: suppliers } = api.supplier.list.useQuery();
+  const { data: categoryTree } = api.catalogue.getCategoryTree.useQuery();
 
   // Find size unit ID from initial context
   useEffect(() => {
@@ -75,25 +77,30 @@ export function CreateCustomPartDialog({
     }
   }, [initialContext?.size?.unit, allUnits]);
 
-  // Flatten category tree for dropdown
-  const flattenCategories = (
-    tree: Array<{ id: string; name: string; children: Array<unknown> }>,
-    level = 0,
-  ): Array<{ id: string; name: string; level: number }> => {
-    const result: Array<{ id: string; name: string; level: number }> = [];
-    for (const cat of tree) {
-      result.push({ id: cat.id, name: cat.name, level });
-      if (cat.children.length > 0) {
-        result.push(
-          ...flattenCategories(cat.children as typeof tree, level + 1),
-        );
-      }
-    }
-    return result;
-  };
+  // Categories are now flat (no children), so just map them
+  const categoryOptions = (categoryTree ?? []).map((cat) => ({
+    id: cat.id,
+    name: cat.name,
+  }));
 
   const createPart = api.catalogue.createPart.useMutation({
-    onSuccess: (newPart) => {
+    onSuccess: async (newPart) => {
+      // Fetch the supplier part that was created
+      let supplierPartId: string | undefined;
+      if (supplierId) {
+        try {
+          const supplierParts = await utils.supplier.getSupplierPartsByPart.fetch({
+            partDefinitionId: newPart.id,
+          });
+          const supplierPart = supplierParts.find(
+            (sp) => sp.supplierId === supplierId,
+          );
+          supplierPartId = supplierPart?.id;
+        } catch (error) {
+          console.error("Error fetching supplier part:", error);
+        }
+      }
+
       // Format part for pending list
       const formattedPart = {
         id: newPart.id,
@@ -104,6 +111,7 @@ export function CreateCustomPartDialog({
           ? `${newPart.sizeNominal ?? ""} ${newPart.sizeUnit.code}`.trim()
           : null,
         partType: newPart.partType,
+        supplierPartId,
       };
 
       onPartCreated(formattedPart);
@@ -161,8 +169,7 @@ export function CreateCustomPartDialog({
           <DialogHeader>
             <DialogTitle>Create Custom Part</DialogTitle>
             <DialogDescription>
-              Add a new part definition to your organization's catalogue{" "}
-              {JSON.stringify(initialContext)}
+              Add a new part definition to your organization's catalogue
             </DialogDescription>
           </DialogHeader>
 
@@ -186,13 +193,17 @@ export function CreateCustomPartDialog({
               {/* Supplier Section */}
 
               <div>
-                <Label htmlFor="supplier">Supplier</Label>
+                <Label htmlFor="supplier">
+                  Supplier <span className="text-red-500">*</span>
+                </Label>
                 <div className="mt-1 flex gap-2">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button
                         variant="outline"
-                        className="flex-1 justify-between"
+                        className={`flex-1 justify-between ${
+                          !supplierId ? "border-amber-300 text-amber-700" : ""
+                        }`}
                         disabled={isLoading}
                       >
                         {supplierId
@@ -223,6 +234,11 @@ export function CreateCustomPartDialog({
                     New
                   </Button>
                 </div>
+                {!supplierId && (
+                  <p className="mt-1 text-xs text-amber-600">
+                    Supplier is required to create a custom part
+                  </p>
+                )}
               </div>
 
               <div>
@@ -249,7 +265,10 @@ export function CreateCustomPartDialog({
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={isLoading || !displayName.trim()}>
+              <Button
+                type="submit"
+                disabled={isLoading || !displayName.trim() || !supplierId}
+              >
                 {isLoading ? "Creating..." : "Create Part"}
               </Button>
             </DialogFooter>

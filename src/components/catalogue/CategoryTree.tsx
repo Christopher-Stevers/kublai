@@ -7,7 +7,6 @@ interface CategoryTreeProps {
   categories: Array<{
     id: string;
     name: string;
-    children: Array<unknown>;
     partCount?: number;
   }>;
   selectedCategoryId: string | null;
@@ -35,13 +34,9 @@ export function CategoryTree({
     category: {
       id: string;
       name: string;
-      children: Array<unknown>;
       partCount?: number;
     },
-    level = 0,
   ) => {
-    const hasChildren = category.children.length > 0;
-    const isExpanded = expanded.has(category.id);
     const isSelected = selectedCategoryId === category.id;
 
     return (
@@ -52,25 +47,7 @@ export function CategoryTree({
               ? "bg-blue-50 font-medium text-blue-900"
               : "text-gray-700"
           }`}
-          style={{ paddingLeft: `${12 + level * 16}px` }}
         >
-          {hasChildren ? (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                toggleExpanded(category.id);
-              }}
-              className="flex h-4 w-4 items-center justify-center"
-            >
-              {isExpanded ? (
-                <ChevronDown className="h-3 w-3" />
-              ) : (
-                <ChevronRight className="h-3 w-3" />
-              )}
-            </button>
-          ) : (
-            <div className="w-4" />
-          )}
           <button
             onClick={() => onSelectCategory(category.id)}
             className="flex flex-1 items-center justify-between text-left"
@@ -83,13 +60,6 @@ export function CategoryTree({
             )}
           </button>
         </div>
-        {hasChildren && isExpanded && (
-          <div>
-            {category.children.map((child) =>
-              renderCategory(child as typeof category, level + 1),
-            )}
-          </div>
-        )}
       </div>
     );
   };

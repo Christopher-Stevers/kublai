@@ -36,7 +36,8 @@ export function JobSelector() {
           });
         }
       } else {
-        utils.job.getCurrentJob.setData(undefined, null);
+        // Can't set data without query params, just invalidate
+        void utils.job.getCurrentJob.invalidate();
       }
 
       return { previousCurrentJob };

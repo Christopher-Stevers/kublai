@@ -1,6 +1,6 @@
 import "~/styles/globals.css";
 
-import { type Metadata } from "next";
+import { type Metadata, type Viewport } from "next";
 import { Geist } from "next/font/google";
 
 import { SessionProviderWrapper } from "./_components/SessionProviderWrapper";
@@ -10,7 +10,7 @@ import { APP_NAME } from "~/constants/app";
 export const metadata: Metadata = {
   title: `${APP_NAME} - Simplified Parts Ordering for Trades Foremen`,
   description:
-    "ForemanHQ helps trades foremen quickly and easily order parts and supplies for their job sites. Streamline your workflow, reduce downtime, and manage orders all in one place.",
+    "ForemanHQ helps plumbers quickly and easily order parts and supplies for their job sites. Stop texting and manage orders all in one place.",
   keywords: [
     "trades",
     "foreman",
@@ -24,12 +24,20 @@ export const metadata: Metadata = {
     "construction tools",
     "order tracking",
   ],
-  icons: [{ rel: "icon", url: "/favicon.ico" }],
-  viewport: {
-    width: "device-width",
-    initialScale: 1,
-    maximumScale: 5,
-  },
+  icons: [
+    { rel: "icon", url: "/foremanhq/favicon.ico" },
+    { rel: "icon", type: "image/png", sizes: "16x16", url: "/foremanhq/favicon-16x16.png" },
+    { rel: "icon", type: "image/png", sizes: "32x32", url: "/foremanhq/favicon-32x32.png" },
+    { rel: "apple-touch-icon", url: "/foremanhq/apple-touch-icon.png" },
+    { rel: "icon", type: "image/png", sizes: "192x192", url: "/foremanhq/android-chrome-192x192.png" },
+    { rel: "icon", type: "image/png", sizes: "512x512", url: "/foremanhq/android-chrome-512x512.png" },
+  ],
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
 };
 
 const geist = Geist({

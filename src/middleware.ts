@@ -11,6 +11,7 @@ const isPublicRoute = createRouteMatcher([
   "/api/auth(.*)", // Allow Clerk auth routes (they redirect to /sign-in)
 ]);
 
+
 export default clerkMiddleware(async (auth, req) => {
   // Protect all routes except public ones
   if (!isPublicRoute(req)) {
@@ -21,6 +22,12 @@ export default clerkMiddleware(async (auth, req) => {
       const signInUrl = new URL("/sign-in", req.url);
       return NextResponse.redirect(signInUrl);
     }
+
+    // Dashboard routes - let the layout handle organizationId checks
+    // Middleware just ensures user is authenticated
+
+    // Onboarding route is accessible to authenticated users without org
+    // (handled by layout, not middleware)
   }
 });
 

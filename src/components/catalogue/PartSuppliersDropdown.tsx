@@ -87,7 +87,10 @@ export function PartSuppliersDropdown({
               id: supplier.id,
               name: supplier.name,
             }
-          : null,
+          : {
+              id: variables.supplierId,
+              name: "Unknown Supplier",
+            },
       };
 
       // Optimistically add to supplier parts
@@ -171,12 +174,24 @@ export function PartSuppliersDropdown({
       const supplierPart = supplierParts?.find((sp) => sp.id === variables.id);
       const supplierId = supplierPart?.supplierId;
 
+      // Prevent removing the last supplier (defensive check)
+      const supplierCount = supplierParts?.length ?? 0;
+      if (supplierCount <= 1) {
+        // Don't proceed with removal if it's the last supplier
+        throw new Error("Cannot remove the last supplier");
+      }
+
       // Optimistically remove from supplier parts
       utils.supplier.getSupplierPartsByPart.setData(
         { partDefinitionId },
         (old) => {
           if (!old) return old;
-          return old.filter((sp) => sp.id !== variables.id);
+          const filtered = old.filter((sp) => sp.id !== variables.id);
+          // Ensure at least one supplier remains
+          if (filtered.length === 0) {
+            return old; // Don't remove if it would leave zero suppliers
+          }
+          return filtered;
         },
       );
 
@@ -188,16 +203,21 @@ export function PartSuppliersDropdown({
             if (!old) return old;
             const current = old[partDefinitionId];
             if (!current) return old;
+            const remainingSuppliers = current.availableSuppliers.filter(
+              (s) => s.id !== supplierId,
+            );
+            // Ensure at least one supplier remains
+            if (remainingSuppliers.length === 0) {
+              return old; // Don't update if it would leave zero suppliers
+            }
             return {
               ...old,
               [partDefinitionId]: {
                 ...current,
-                availableSuppliers: current.availableSuppliers.filter(
-                  (s) => s.id !== supplierId,
-                ),
+                availableSuppliers: remainingSuppliers,
                 preferredSupplier:
                   current.preferredSupplier?.id === supplierId
-                    ? null
+                    ? remainingSuppliers[0] ?? null // Set first remaining as preferred if removing preferred
                     : current.preferredSupplier,
               },
             };
@@ -330,6 +350,13 @@ export function PartSuppliersDropdown({
     const hasPart = supplierIdsWithPart.has(supplierId);
     
     if (hasPart) {
+      // Prevent removing the last supplier
+      const supplierCount = supplierParts?.length ?? 0;
+      if (supplierCount <= 1) {
+        // Cannot remove the last supplier
+        return;
+      }
+      
       // Remove supplier
       const supplierPart = supplierParts?.find(
         (sp) => sp.supplierId === supplierId,
@@ -357,6 +384,8 @@ export function PartSuppliersDropdown({
         supplierId,
       });
     }
+    // Note: We don't allow unsetting preferred if it's the only supplier
+    // This is handled by preventing removal of the last supplier
   };
 
   const handleSupplierCreated = (newSupplierId: string) => {
@@ -421,10 +450,17 @@ export function PartSuppliersDropdown({
             {/* Suppliers List */}
             <div className="max-h-[300px] overflow-y-auto">
               {filteredSuppliers.length === 0 ? (
-                <div className="text-muted-foreground px-2 py-1.5 text-sm">
-                  {debouncedSearchQuery.trim()
-                    ? "No suppliers found"
-                    : "No suppliers available"}
+                <div className="space-y-2 px-2 py-2">
+                  <div className="text-muted-foreground text-sm">
+                    {debouncedSearchQuery.trim()
+                      ? "No suppliers found"
+                      : "No suppliers available"}
+                  </div>
+                  {!debouncedSearchQuery.trim() && (
+                    <div className="text-xs text-muted-foreground">
+                      Connect an existing supplier or create a new one below.
+                    </div>
+                  )}
                 </div>
               ) : (
                 filteredSuppliers.map((supplier) => {
@@ -444,9 +480,25 @@ export function PartSuppliersDropdown({
                             e.stopPropagation();
                             handleToggleSupplier(supplier.id);
                           }}
-                          className="flex h-4 w-4 items-center justify-center rounded border border-gray-300 transition-colors hover:border-gray-400"
+                          disabled={
+                            hasPart && (supplierParts?.length ?? 0) <= 1
+                          }
+                          className={`flex h-4 w-4 items-center justify-center rounded border border-gray-300 transition-colors ${
+                            hasPart && (supplierParts?.length ?? 0) <= 1
+                              ? "cursor-not-allowed opacity-50"
+                              : "hover:border-gray-400"
+                          }`}
                           aria-label={
-                            hasPart ? "Remove supplier" : "Add supplier"
+                            hasPart
+                              ? (supplierParts?.length ?? 0) <= 1
+                                ? "Cannot remove last supplier"
+                                : "Remove supplier"
+                              : "Add supplier"
+                          }
+                          title={
+                            hasPart && (supplierParts?.length ?? 0) <= 1
+                              ? "Cannot remove the last supplier"
+                              : undefined
                           }
                         >
                           {hasPart && (

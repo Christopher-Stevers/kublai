@@ -8,6 +8,7 @@ import {
   pricingProfiles,
   users,
 } from "~/server/db/schema";
+import { seedOrganization } from "~/server/utils/seed-organization";
 
 export const organizationRouter = createTRPCRouter({
   /**
@@ -75,6 +76,12 @@ export const organizationRouter = createTRPCRouter({
             organizationId: organization.id,
           })
           .where(eq(users.id, user.id));
+
+        // Seed organization with default parts (async, don't wait)
+        seedOrganization(ctx.db, organization.id).catch((error) => {
+          console.error("Error seeding organization:", error);
+          // Don't throw - seeding failure shouldn't prevent org creation
+        });
 
         return {
           organization,

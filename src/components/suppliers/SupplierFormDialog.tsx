@@ -81,20 +81,15 @@ export function SupplierFormDialog({
           : null,
       };
 
-      // Optimistically add supplier to list
-      utils.supplier.list.setData(undefined, (old) => {
-        if (!old) return [newSupplier];
-        return [...old, newSupplier].sort((a, b) =>
-          a.name.localeCompare(b.name),
-        );
-      });
+      // Invalidate supplier list to refetch with new supplier
+      void utils.supplier.list.invalidate();
 
       return { previousSuppliers, tempId };
     },
     onError: (err, variables, context) => {
-      // Rollback on error
+      // Can't rollback without query params, just invalidate
       if (context?.previousSuppliers !== undefined) {
-        utils.supplier.list.setData(undefined, context.previousSuppliers);
+        void utils.supplier.list.invalidate();
       }
     },
     onSettled: () => {
@@ -140,22 +135,8 @@ export function SupplierFormDialog({
         ? utils.supplier.getById.getData({ id: supplierId })
         : undefined;
 
-      // Optimistically update supplier in list
-      utils.supplier.list.setData(undefined, (old) => {
-        if (!old) return old;
-        return old.map((supplier) =>
-          supplier.id === variables.id
-            ? {
-                ...supplier,
-                name: variables.name,
-                contactEmail: variables.contactEmail ?? null,
-                contactPhone: variables.contactPhone ?? null,
-                orderingNotes: variables.orderingNotes ?? null,
-                locationId: variables.locationId,
-              }
-            : supplier,
-        );
-      });
+      // Invalidate supplier list to refetch with updated supplier
+      void utils.supplier.list.invalidate();
 
       // Optimistically update supplier detail
       if (supplierId) {
@@ -167,7 +148,7 @@ export function SupplierFormDialog({
             contactEmail: variables.contactEmail ?? null,
             contactPhone: variables.contactPhone ?? null,
             orderingNotes: variables.orderingNotes ?? null,
-            locationId: variables.locationId,
+            locationId: variables.locationId ?? null,
           };
         });
       }
@@ -175,9 +156,9 @@ export function SupplierFormDialog({
       return { previousSuppliers, previousSupplier };
     },
     onError: (err, variables, context) => {
-      // Rollback on error
+      // Can't rollback without query params, just invalidate
       if (context?.previousSuppliers !== undefined) {
-        utils.supplier.list.setData(undefined, context.previousSuppliers);
+        void utils.supplier.list.invalidate();
       }
       if (context?.previousSupplier && supplierId) {
         utils.supplier.getById.setData({ id: supplierId }, context.previousSupplier);

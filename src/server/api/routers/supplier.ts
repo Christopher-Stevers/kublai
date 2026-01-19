@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import { eq, and, desc, asc } from "drizzle-orm";
+import { eq, and, desc, asc, isNull, or } from "drizzle-orm";
 import { z } from "zod";
 
 import { createTRPCRouter, hasDashboardAccess } from "~/server/api/trpc";
@@ -407,46 +407,72 @@ export const supplierRouter = createTRPCRouter({
         });
       }
 
-      try {
-        // Check if this supplier already has this part
-        const existingSupplierPart = await ctx.db
-          .select()
-          .from(supplierParts)
-          .where(
-            and(
-              eq(supplierParts.supplierId, input.supplierId),
-              eq(supplierParts.partDefinitionId, input.partDefinitionId),
-              eq(supplierParts.organizationId, ctx.user.organizationId),
-            ),
-          )
-          .limit(1);
+      // Normalize supplierSku: convert empty strings to null
+      const normalizedSku = input.supplierSku && input.supplierSku.trim() !== "" 
+        ? input.supplierSku.trim() 
+        : null;
 
-        if (existingSupplierPart.length > 0) {
-          throw new TRPCError({
-            code: "CONFLICT",
-            message: "This supplier already has this part",
-          });
-        }
+      // Optionally find another supplier part for the same part definition to copy pricing from
+      const [existingPartWithPricing] = await ctx.db
+        .select({
+          lastKnownUnitCost: supplierParts.lastKnownUnitCost,
+          currency: supplierParts.currency,
+        })
+        .from(supplierParts)
+        .where(and(eq(supplierParts.partDefinitionId, input.partDefinitionId)))
+        .limit(1);
 
-        // Optionally find another supplier part for the same part definition to copy pricing from
-        const [existingPartWithPricing] = await ctx.db
-          .select({
-            lastKnownUnitCost: supplierParts.lastKnownUnitCost,
-            currency: supplierParts.currency,
+      // Check if this supplier already has this part (by supplierId + partDefinitionId)
+      const [existingSupplierPart] = await ctx.db
+        .select()
+        .from(supplierParts)
+        .where(
+          and(
+            eq(supplierParts.supplierId, input.supplierId),
+            eq(supplierParts.partDefinitionId, input.partDefinitionId),
+            eq(supplierParts.organizationId, ctx.user.organizationId),
+          ),
+        )
+        .limit(1);
+
+      // If exists, update it
+      if (existingSupplierPart) {
+        const [updated] = await ctx.db
+          .update(supplierParts)
+          .set({
+            supplierSku: normalizedSku ?? existingSupplierPart.supplierSku,
+            supplierName:
+              input.supplierName ?? existingSupplierPart.supplierName,
+            packSize: input.packSize ?? existingSupplierPart.packSize,
+            packUomId: input.packUomId ?? existingSupplierPart.packUomId,
+            lastKnownUnitCost:
+              input.lastKnownUnitCost ??
+              existingSupplierPart.lastKnownUnitCost ??
+              existingPartWithPricing?.lastKnownUnitCost ??
+              null,
+            currency:
+              input.currency ??
+              existingSupplierPart.currency ??
+              existingPartWithPricing?.currency ??
+              "CAD",
+            notes: input.notes ?? existingSupplierPart.notes,
+            // Don't change isPreferred on update
           })
-          .from(supplierParts)
-          .where(
-            and(eq(supplierParts.partDefinitionId, input.partDefinitionId)),
-          )
-          .limit(1);
+          .where(eq(supplierParts.id, existingSupplierPart.id))
+          .returning();
 
+        return updated;
+      }
+
+      // Try to insert, handling unique constraint on (organizationId, supplierId, supplierSku)
+      try {
         const [newSupplierPart] = await ctx.db
           .insert(supplierParts)
           .values({
             organizationId: ctx.user.organizationId,
             supplierId: input.supplierId,
             partDefinitionId: input.partDefinitionId,
-            supplierSku: input.supplierSku ?? null,
+            supplierSku: normalizedSku,
             supplierName: input.supplierName ?? null,
             packSize: input.packSize ?? null,
             packUomId: input.packUomId ?? null,
@@ -463,15 +489,55 @@ export const supplierRouter = createTRPCRouter({
 
         return newSupplierPart;
       } catch (error) {
-        // Check for unique constraint violation
+        // Check for unique constraint violation on (organizationId, supplierId, supplierSku)
         if (
           error instanceof Error &&
           error.message.includes("supplier_part_org_supplier_sku_uniq")
         ) {
-          throw new TRPCError({
-            code: "CONFLICT",
-            message: "A part with this SKU already exists for this supplier",
-          });
+          // Find the existing record with the same SKU and update it
+          const skuCondition = normalizedSku
+            ? eq(supplierParts.supplierSku, normalizedSku)
+            : isNull(supplierParts.supplierSku);
+
+          const [existingBySku] = await ctx.db
+            .select()
+            .from(supplierParts)
+            .where(
+              and(
+                eq(supplierParts.organizationId, ctx.user.organizationId),
+                eq(supplierParts.supplierId, input.supplierId),
+                skuCondition,
+              ),
+            )
+            .limit(1);
+
+          if (existingBySku) {
+            // Update the existing record
+            const [updated] = await ctx.db
+              .update(supplierParts)
+              .set({
+                partDefinitionId: input.partDefinitionId,
+                supplierName: input.supplierName ?? existingBySku.supplierName,
+                packSize: input.packSize ?? existingBySku.packSize,
+                packUomId: input.packUomId ?? existingBySku.packUomId,
+                lastKnownUnitCost:
+                  input.lastKnownUnitCost ??
+                  existingBySku.lastKnownUnitCost ??
+                  existingPartWithPricing?.lastKnownUnitCost ??
+                  null,
+                currency:
+                  input.currency ??
+                  existingBySku.currency ??
+                  existingPartWithPricing?.currency ??
+                  "CAD",
+                notes: input.notes ?? existingBySku.notes,
+                // Don't change isPreferred on update
+              })
+              .where(eq(supplierParts.id, existingBySku.id))
+              .returning();
+
+            return updated;
+          }
         }
 
         console.error("Error adding supplier part:", error);

@@ -49,41 +49,51 @@ export async function POST(req: Request) {
   if (eventType === "user.created" || eventType === "user.updated") {
     const { id, email_addresses, first_name, last_name, image_url } = evt.data;
 
-    const email = email_addresses?.[0]?.email_address ?? "";
+    // Extract email - use first available email or fallback to placeholder
+    // Email is required in schema, so we must provide a value
+    const email = email_addresses?.[0]?.email_address ?? `${id}@clerk.temp`;
     const name =
       first_name && last_name
         ? `${first_name} ${last_name}`
         : (first_name ?? last_name ?? null);
 
-    // Upsert user in database
-    const existingUser = await db
-      .select()
-      .from(users)
-      .where(eq(users.id, id))
-      .limit(1);
-
-    if (existingUser.length > 0) {
-      // Update existing user
-      await db
-        .update(users)
-        .set({
-          name: name ?? null,
-          email: email,
-          image: image_url ?? null,
-          updatedAt: new Date(),
-        })
-        .where(eq(users.id, id));
-    } else {
-      // Create new user
+    // Upsert user in database - webhook is the single source of truth for user creation
+    // Try insert first (for new users), then update if user already exists
+    try {
       await db.insert(users).values({
         id,
         name: name ?? null,
-        email: email,
+        email: email, // Required field - use placeholder if no email
         image: image_url ?? null,
         role: "user",
         createdAt: new Date(),
         updatedAt: new Date(),
       });
+    } catch (insertError) {
+      // Check if this is a unique constraint violation (user already exists)
+      const isUniqueConstraintError =
+        insertError instanceof Error &&
+        (insertError.message.includes("unique") ||
+          insertError.message.includes("duplicate") ||
+          insertError.message.includes("violates unique constraint"));
+
+      if (isUniqueConstraintError) {
+        // User already exists - update with latest data from Clerk
+        // This handles cases where webhook fires multiple times or user was created elsewhere
+        await db
+          .update(users)
+          .set({
+            name: name ?? null,
+            email: email, // Update email if it changed
+            image: image_url ?? null,
+            updatedAt: new Date(),
+          })
+          .where(eq(users.id, id));
+      } else {
+        // Re-throw if it's a different error (e.g., database connection issue)
+        console.error("Error creating/updating user in webhook:", insertError);
+        throw insertError;
+      }
     }
   }
 

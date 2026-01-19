@@ -165,15 +165,10 @@ export const materialListRouter = createTRPCRouter({
             locationId: jobs.locationId,
             foremanUserId: jobs.foremanUserId,
             status: jobs.status,
-            location: {
-              id: locations.id,
-              name: locations.name,
-            },
-            foreman: {
-              id: users.id,
-              name: users.name,
-              email: users.email,
-            },
+            locationName: locations.name,
+            foremanId: users.id,
+            foremanName: users.name,
+            foremanEmail: users.email,
           },
         })
         .from(materialLists)
@@ -323,7 +318,26 @@ export const materialListRouter = createTRPCRouter({
           name: materialList.name,
           createdAt: materialList.createdAt,
         },
-        job: materialList.job,
+        job: {
+          id: materialList.job.id,
+          name: materialList.job.name,
+          locationId: materialList.job.locationId,
+          foremanUserId: materialList.job.foremanUserId,
+          status: materialList.job.status,
+          location: materialList.job.locationName
+            ? {
+                id: materialList.job.locationId ?? "",
+                name: materialList.job.locationName,
+              }
+            : null,
+          foreman: materialList.job.foremanId
+            ? {
+                id: materialList.job.foremanId,
+                name: materialList.job.foremanName ?? "",
+                email: materialList.job.foremanEmail ?? "",
+              }
+            : null,
+        },
         quote,
         items,
         materialTotal,
@@ -946,6 +960,8 @@ export const materialListRouter = createTRPCRouter({
       z.object({
         materialListId: z.string().uuid(),
         markupPercent: z.number().min(0).max(1000).default(0),
+        notes: z.string().optional(),
+        quoteId: z.string().uuid().optional(), // Optional: update specific quote instead of material list's quote
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -954,6 +970,67 @@ export const materialListRouter = createTRPCRouter({
           code: "BAD_REQUEST",
           message: "User must belong to an organization",
         });
+      }
+
+      // If quoteId is provided, use that quote directly
+      if (input.quoteId) {
+        const [quote] = await ctx.db
+          .select()
+          .from(quotes)
+          .where(
+            and(
+              eq(quotes.id, input.quoteId),
+              eq(quotes.organizationId, ctx.user.organizationId),
+            ),
+          )
+          .limit(1);
+
+        if (!quote) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Quote not found",
+          });
+        }
+
+        // Calculate totals for this quote
+        const items = await ctx.db
+          .select({ extendedPrice: quoteItems.extendedPrice })
+          .from(quoteItems)
+          .where(eq(quoteItems.quoteId, quote.id));
+
+        const subtotalMaterials = items.reduce((sum, item) => {
+          const price = item.extendedPrice
+            ? parseFloat(item.extendedPrice.toString())
+            : 0;
+          return sum + price;
+        }, 0);
+
+        const markup = input.markupPercent / 100;
+        const total = subtotalMaterials * (1 + markup);
+
+        // Update quote
+        const updateData: {
+          markupPercent: string;
+          subtotalMaterials: string;
+          total: string;
+          notes?: string | null;
+        } = {
+          markupPercent: input.markupPercent.toString(),
+          subtotalMaterials: subtotalMaterials.toString(),
+          total: total.toString(),
+        };
+
+        if (input.notes !== undefined) {
+          updateData.notes = input.notes.trim() || null;
+        }
+
+        const [updated] = await ctx.db
+          .update(quotes)
+          .set(updateData)
+          .where(eq(quotes.id, quote.id))
+          .returning();
+
+        return updated;
       }
 
       // Get material list and verify it exists
@@ -1016,13 +1093,25 @@ export const materialListRouter = createTRPCRouter({
       const total = subtotalMaterials * (1 + markup);
 
       // Update quote
+      const updateData: {
+        markupPercent: string;
+        subtotalMaterials: string;
+        total: string;
+        notes?: string | null;
+      } = {
+        markupPercent: input.markupPercent.toString(),
+        subtotalMaterials: subtotalMaterials.toString(),
+        total: total.toString(),
+      };
+
+      // Update notes if provided
+      if (input.notes !== undefined) {
+        updateData.notes = input.notes.trim() || null;
+      }
+
       const [updated] = await ctx.db
         .update(quotes)
-        .set({
-          markupPercent: input.markupPercent.toString(),
-          subtotalMaterials: subtotalMaterials.toString(),
-          total: total.toString(),
-        })
+        .set(updateData)
         .where(eq(quotes.id, quote.id))
         .returning();
 
@@ -1033,7 +1122,11 @@ export const materialListRouter = createTRPCRouter({
    * Get quote email content
    */
   getQuoteEmailContent: hasDashboardAccess
-    .input(z.object({ quoteId: z.string().uuid() }))
+    .input(
+      z.object({
+        quoteId: z.string().uuid(),
+      }),
+    )
     .query(async ({ ctx, input }) => {
       if (!ctx.user.organizationId) {
         throw new TRPCError({
@@ -1049,6 +1142,7 @@ export const materialListRouter = createTRPCRouter({
           markupPercent: quotes.markupPercent,
           subtotalMaterials: quotes.subtotalMaterials,
           total: quotes.total,
+          notes: quotes.notes,
           job: {
             id: jobs.id,
             name: jobs.name,
@@ -1088,37 +1182,45 @@ export const materialListRouter = createTRPCRouter({
 
       const foremanName = quote.foreman?.name || "Foreman";
       const jobName = quote.job?.name || "Job";
-      const subtotal = quote.subtotalMaterials
-        ? parseFloat(quote.subtotalMaterials.toString())
-        : 0;
-      const markup = quote.markupPercent
+      const markupPercent = quote.markupPercent
         ? parseFloat(quote.markupPercent.toString())
         : 0;
+      const markupMultiplier = 1 + markupPercent / 100;
       const total = quote.total ? parseFloat(quote.total.toString()) : 0;
 
-      // Build email body
+      // Build email body with adjusted prices (markup already included)
+      let adjustedTotal = 0;
       const lineItems = items
         .map((item) => {
           const qty = item.quantity ? parseFloat(item.quantity.toString()) : 0;
-          const price = item.extendedPrice
+          const basePrice = item.extendedPrice
             ? parseFloat(item.extendedPrice.toString())
             : 0;
-          return `- ${item.descriptionSnapshot || "Item"} × ${qty}     $${price.toFixed(2)}`;
+          // Apply markup to get the customer-facing price
+          const adjustedPrice = basePrice * markupMultiplier;
+          adjustedTotal += adjustedPrice;
+          return `- ${item.descriptionSnapshot || "Item"} × ${qty}     $${adjustedPrice.toFixed(2)}`;
         })
         .join("\n");
 
+      // Use the calculated total (should match quote.total, but use it for consistency)
+      const finalTotal = adjustedTotal > 0 ? adjustedTotal : total;
+
       const subject = `Quote – ${jobName}`;
-      const body = `Hi,
+      let body = `Hi,
 
 Here's the materials quote for the ${jobName}:
 
 ${lineItems}
 -----------------------------
-Materials subtotal: $${subtotal.toFixed(2)}
-Markup: ${markup}%
-Total: $${total.toFixed(2)}
+Total: $${finalTotal.toFixed(2)}`;
 
-Let me know if you'd like to move forward.
+      // Add notes from quote if available
+      if (quote.notes && quote.notes.trim()) {
+        body += `\n\nNotes:\n${quote.notes.trim()}`;
+      }
+
+      body += `\n\nLet me know if you'd like to move forward.
 
 Thanks,
 ${foremanName}`;
@@ -1256,15 +1358,19 @@ ${foremanName}`;
 
         // Create order items
         for (const item of items) {
+          // Skip items without partDefinitionId (one-off items should not be in orders)
+          if (!item.partDefinitionId) {
+            continue;
+          }
           await ctx.db.insert(orderItems).values({
             orderId: order.id,
-            supplierPartId: item.supplierPartId,
+            supplierPartId: item.supplierPartId ?? undefined,
             partDefinitionId: item.partDefinitionId,
-            quantity: item.quantity,
-            uomId: item.uomId,
-            unitCostAtOrderTime: item.unitCost,
-            descriptionSnapshot: item.descriptionSnapshot,
-            supplierSkuSnapshot: item.supplierPart?.supplierSku ?? null,
+            quantity: item.quantity ?? "1",
+            uomId: item.uomId ?? undefined,
+            unitCostAtOrderTime: item.unitCost ?? undefined,
+            descriptionSnapshot: item.descriptionSnapshot ?? undefined,
+            supplierSkuSnapshot: item.supplierPart?.supplierSku ?? undefined,
           });
         }
 
@@ -1317,6 +1423,7 @@ ${foremanName}`;
       const [order] = await ctx.db
         .select({
           id: orders.id,
+          notes: orders.notes,
           job: {
             id: jobs.id,
             name: jobs.name,
@@ -1369,15 +1476,20 @@ ${foremanName}`;
         .join("\n");
 
       const subject = `Material Order – ${jobName}`;
-      const body = `Hi,
+      let body = `Hi,
 
 Please see the material order below:
 
 Job: ${jobName}
 
-${lineItems}
+${lineItems}`;
 
-Please confirm availability.
+      // Add notes from order if available
+      if (order.notes && order.notes.trim()) {
+        body += `\n\nNotes:\n${order.notes.trim()}`;
+      }
+
+      body += `\n\nPlease confirm availability.
 
 Thanks,
 ${ctx.user.name || "Foreman"}`;
@@ -1393,6 +1505,7 @@ ${ctx.user.name || "Foreman"}`;
       z.object({
         orderId: z.string().uuid(),
         sentTo: z.string().email(),
+        notes: z.string().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -1423,17 +1536,377 @@ ${ctx.user.name || "Foreman"}`;
       }
 
       // Update order
+      const updateData: {
+        status: string;
+        sentVia: string;
+        sentTo: string;
+        sentAt: Date;
+        notes?: string | null;
+      } = {
+        status: "sent",
+        sentVia: "email",
+        sentTo: input.sentTo,
+        sentAt: new Date(),
+      };
+
+      // Update notes if provided
+      if (input.notes !== undefined) {
+        updateData.notes = input.notes.trim() || null;
+      }
+
       const [updated] = await ctx.db
         .update(orders)
-        .set({
-          status: "sent",
-          sentVia: "email",
-          sentTo: input.sentTo,
-          sentAt: new Date(),
-        })
+        .set(updateData)
         .where(eq(orders.id, input.orderId))
         .returning();
 
       return updated;
     }),
+
+  /**
+   * Get all quotes for a material list
+   */
+  getQuotesForMaterialList: hasDashboardAccess
+    .input(z.object({ materialListId: z.string().uuid() }))
+    .query(async ({ ctx, input }) => {
+      if (!ctx.user.organizationId) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "User must belong to an organization",
+        });
+      }
+
+      // Verify material list exists and belongs to organization
+      const [materialList] = await ctx.db
+        .select({ id: materialLists.id, jobId: materialLists.jobId })
+        .from(materialLists)
+        .where(
+          and(
+            eq(materialLists.id, input.materialListId),
+            eq(materialLists.organizationId, ctx.user.organizationId),
+          ),
+        )
+        .limit(1);
+
+      if (!materialList) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Material list not found",
+        });
+      }
+
+      // Get all quotes for this material list
+      const quotesList = await ctx.db
+        .select({
+          id: quotes.id,
+          quoteNumber: quotes.quoteNumber,
+          total: quotes.total,
+          createdAt: quotes.createdAt,
+        })
+        .from(quotes)
+        .where(
+          and(
+            eq(quotes.materialListId, input.materialListId),
+            eq(quotes.organizationId, ctx.user.organizationId),
+          ),
+        )
+        .orderBy(desc(quotes.createdAt));
+
+      return quotesList;
+    }),
+
+  /**
+   * Get all orders for a material list (via job)
+   */
+  getOrdersForMaterialList: hasDashboardAccess
+    .input(z.object({ materialListId: z.string().uuid() }))
+    .query(async ({ ctx, input }) => {
+      if (!ctx.user.organizationId) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "User must belong to an organization",
+        });
+      }
+
+      // Verify material list exists and belongs to organization
+      const [materialList] = await ctx.db
+        .select({ id: materialLists.id, jobId: materialLists.jobId })
+        .from(materialLists)
+        .where(
+          and(
+            eq(materialLists.id, input.materialListId),
+            eq(materialLists.organizationId, ctx.user.organizationId),
+          ),
+        )
+        .limit(1);
+
+      if (!materialList) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Material list not found",
+        });
+      }
+
+      // Get all orders for the job associated with this material list
+      const ordersList = await ctx.db
+        .select({
+          id: orders.id,
+          orderNumber: orders.orderNumber,
+          status: orders.status,
+          createdAt: orders.createdAt,
+          supplierId: suppliers.id,
+          supplierName: suppliers.name,
+        })
+        .from(orders)
+        .leftJoin(suppliers, eq(orders.supplierId, suppliers.id))
+        .where(
+          and(
+            eq(orders.jobId, materialList.jobId),
+            eq(orders.organizationId, ctx.user.organizationId),
+          ),
+        )
+        .orderBy(desc(orders.createdAt));
+
+      // Transform to include supplier object
+      return ordersList.map((order) => ({
+        id: order.id,
+        orderNumber: order.orderNumber,
+        status: order.status,
+        createdAt: order.createdAt,
+        supplier: order.supplierId
+          ? {
+              id: order.supplierId,
+              name: order.supplierName ?? "",
+            }
+          : null,
+      }));
+    }),
+
+  /**
+   * Get a specific quote by ID
+   */
+  getQuoteById: hasDashboardAccess
+    .input(z.object({ quoteId: z.string().uuid() }))
+    .query(async ({ ctx, input }) => {
+      if (!ctx.user.organizationId) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "User must belong to an organization",
+        });
+      }
+
+      const [quote] = await ctx.db
+        .select({
+          id: quotes.id,
+          quoteNumber: quotes.quoteNumber,
+          markupPercent: quotes.markupPercent,
+          notes: quotes.notes,
+          subtotalMaterials: quotes.subtotalMaterials,
+          total: quotes.total,
+          createdAt: quotes.createdAt,
+          materialListId: quotes.materialListId,
+          jobId: quotes.jobId,
+        })
+        .from(quotes)
+        .where(
+          and(
+            eq(quotes.id, input.quoteId),
+            eq(quotes.organizationId, ctx.user.organizationId),
+          ),
+        )
+        .limit(1);
+
+      if (!quote) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Quote not found",
+        });
+      }
+
+      return quote;
+    }),
+
+  /**
+   * List all quotes for the organization
+   */
+  listQuotes: hasDashboardAccess.query(async ({ ctx }) => {
+    if (!ctx.user.organizationId) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "User must belong to an organization",
+      });
+    }
+
+    const quotesList = await ctx.db
+      .select({
+        id: quotes.id,
+        quoteNumber: quotes.quoteNumber,
+        total: quotes.total,
+        createdAt: quotes.createdAt,
+        materialListId: quotes.materialListId,
+        materialListName: materialLists.name,
+        jobId: quotes.jobId,
+        jobName: jobs.name,
+      })
+      .from(quotes)
+      .leftJoin(materialLists, eq(quotes.materialListId, materialLists.id))
+      .leftJoin(jobs, eq(quotes.jobId, jobs.id))
+      .where(eq(quotes.organizationId, ctx.user.organizationId))
+      .orderBy(desc(quotes.createdAt));
+
+    return quotesList;
+  }),
+
+  /**
+   * Get a specific order by ID with items
+   */
+  getOrderById: hasDashboardAccess
+    .input(z.object({ orderId: z.string().uuid() }))
+    .query(async ({ ctx, input }) => {
+      if (!ctx.user.organizationId) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "User must belong to an organization",
+        });
+      }
+
+      const [order] = await ctx.db
+        .select({
+          id: orders.id,
+          orderNumber: orders.orderNumber,
+          status: orders.status,
+          notes: orders.notes,
+          createdAt: orders.createdAt,
+          sentAt: orders.sentAt,
+          supplierId: orders.supplierId,
+          supplierName: suppliers.name,
+          supplierContactEmail: suppliers.contactEmail,
+        })
+        .from(orders)
+        .leftJoin(suppliers, eq(orders.supplierId, suppliers.id))
+        .where(
+          and(
+            eq(orders.id, input.orderId),
+            eq(orders.organizationId, ctx.user.organizationId),
+          ),
+        )
+        .limit(1);
+
+      if (!order) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Order not found",
+        });
+      }
+
+      // Get order items
+      const items = await ctx.db
+        .select({
+          id: orderItems.id,
+          quantity: orderItems.quantity,
+          descriptionSnapshot: orderItems.descriptionSnapshot,
+          supplierSkuSnapshot: orderItems.supplierSkuSnapshot,
+        })
+        .from(orderItems)
+        .where(eq(orderItems.orderId, input.orderId));
+
+      return {
+        id: order.id,
+        orderNumber: order.orderNumber,
+        status: order.status,
+        notes: order.notes,
+        createdAt: order.createdAt,
+        sentAt: order.sentAt,
+        supplier: order.supplierId
+          ? {
+              id: order.supplierId,
+              name: order.supplierName ?? "",
+              contactEmail: order.supplierContactEmail,
+            }
+          : null,
+        items,
+      };
+    }),
+
+  /**
+   * List all orders for the organization with material lists
+   */
+  listOrders: hasDashboardAccess.query(async ({ ctx }) => {
+    if (!ctx.user.organizationId) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "User must belong to an organization",
+      });
+    }
+
+    // Get all orders with supplier and job info
+    const ordersList = await ctx.db
+      .select({
+        id: orders.id,
+        orderNumber: orders.orderNumber,
+        status: orders.status,
+        createdAt: orders.createdAt,
+        sentAt: orders.sentAt,
+        sentTo: orders.sentTo,
+        jobId: orders.jobId,
+        jobName: jobs.name,
+        supplierId: orders.supplierId,
+        supplierName: suppliers.name,
+        supplierContactEmail: suppliers.contactEmail,
+      })
+      .from(orders)
+      .leftJoin(jobs, eq(orders.jobId, jobs.id))
+      .leftJoin(suppliers, eq(orders.supplierId, suppliers.id))
+      .where(eq(orders.organizationId, ctx.user.organizationId))
+      .orderBy(desc(orders.createdAt));
+
+    // For each order, find the most recent material list for the same job
+    const ordersWithMaterialLists = await Promise.all(
+      ordersList.map(async (order) => {
+        // Get the most recent material list for this job
+        const [materialList] = await ctx.db
+          .select({
+            id: materialLists.id,
+            name: materialLists.name,
+          })
+          .from(materialLists)
+          .where(
+            and(
+              eq(materialLists.jobId, order.jobId),
+              eq(materialLists.organizationId, ctx.user.organizationId),
+            ),
+          )
+          .orderBy(desc(materialLists.createdAt))
+          .limit(1);
+
+        return {
+          id: order.id,
+          orderNumber: order.orderNumber,
+          status: order.status,
+          createdAt: order.createdAt,
+          sentAt: order.sentAt,
+          sentTo: order.sentTo,
+          job: {
+            id: order.jobId,
+            name: order.jobName ?? "",
+          },
+          supplier: order.supplierId
+            ? {
+                id: order.supplierId,
+                name: order.supplierName ?? "",
+                contactEmail: order.supplierContactEmail,
+              }
+            : null,
+          materialList: materialList
+            ? {
+                id: materialList.id,
+                name: materialList.name,
+              }
+            : null,
+        };
+      }),
+    );
+
+    return ordersWithMaterialLists;
+  }),
 });

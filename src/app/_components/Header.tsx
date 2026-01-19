@@ -29,6 +29,9 @@ export function Header() {
   const navLinks = [
     { href: "/dashboard", label: "Dashboard" },
     { href: "/dashboard/catalogue", label: "Catalogue" },
+    { href: "/dashboard/suppliers", label: "Suppliers" },
+    { href: "/dashboard/quotes", label: "Quotes" },
+    { href: "/dashboard/orders", label: "Orders" },
     ...(userRole?.role === "admin" ? [{ href: "/admin", label: "Admin" }] : []),
   ];
 

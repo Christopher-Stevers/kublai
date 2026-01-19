@@ -11,18 +11,21 @@ import {
   DialogTitle,
 } from "~/components/ui/dialog";
 import { Button } from "~/components/ui/button";
+import { Textarea } from "~/components/ui/textarea";
 import { ChevronDownIcon, ChevronRightIcon } from "lucide-react";
 
 interface OrdersPreviewSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   materialListId: string;
+  orderId?: string;
 }
 
 export function OrdersPreviewSheet({
   open,
   onOpenChange,
   materialListId,
+  orderId: providedOrderId,
 }: OrdersPreviewSheetProps) {
   const [expandedSuppliers, setExpandedSuppliers] = useState<Set<string>>(
     new Set(),
@@ -33,6 +36,7 @@ export function OrdersPreviewSheet({
   const [orders, setOrders] = useState<
     Array<{
       id: string;
+      notes?: string | null;
       supplier: {
         id: string;
         name: string;
@@ -47,16 +51,55 @@ export function OrdersPreviewSheet({
       sentAt?: Date | null;
     }>
   >([]);
+  const [orderNotes, setOrderNotes] = useState<Map<string, string>>(new Map());
   const [isGenerating, setIsGenerating] = useState(false);
+
+  // Load existing order if orderId is provided
+  const { data: existingOrder } = api.materialList.getOrderById.useQuery(
+    { orderId: providedOrderId ?? "" },
+    { enabled: open && !!providedOrderId },
+  );
+
+  // Load existing order data when available
+  useEffect(() => {
+    if (providedOrderId && existingOrder) {
+      setOrders([
+        {
+          id: existingOrder.id,
+          notes: existingOrder.notes ?? null,
+          supplier: existingOrder.supplier,
+          items: existingOrder.items,
+          sentAt: existingOrder.sentAt,
+        },
+      ]);
+      if (existingOrder.notes) {
+        const notesMap = new Map<string, string>();
+        notesMap.set(existingOrder.id, existingOrder.notes);
+        setOrderNotes(notesMap);
+      }
+      if (existingOrder.sentAt) {
+        setEmailSent(new Set([existingOrder.id]));
+      }
+    }
+  }, [existingOrder, providedOrderId]);
 
   const generateOrders = api.materialList.generateOrders.useMutation({
     onSuccess: (data) => {
       // Filter out any orders without an id (shouldn't happen, but TypeScript safety)
-      setOrders(
-        data.filter(
-          (order): order is typeof order & { id: string } => !!order.id,
-        ),
+      const validOrders = data.filter(
+        (order): order is typeof order & { id: string } => !!order.id,
       );
+      setOrders(validOrders);
+      
+      // Load notes from orders
+      const notesMap = new Map<string, string>();
+      validOrders.forEach((order) => {
+        if (order.notes) {
+          notesMap.set(order.id, order.notes);
+        }
+      });
+      setOrderNotes(notesMap);
+      
       setIsGenerating(false);
       void utils.materialList.getMaterialList.invalidate({ materialListId });
     },
@@ -83,14 +126,20 @@ export function OrdersPreviewSheet({
     },
   });
 
-  // Generate orders when sheet opens
+  // Generate orders when sheet opens (only if not viewing existing order)
   useEffect(() => {
-    if (open && materialListId && orders.length === 0 && !isGenerating) {
+    if (
+      open &&
+      materialListId &&
+      !providedOrderId &&
+      orders.length === 0 &&
+      !isGenerating
+    ) {
       setIsGenerating(true);
       generateOrders.mutate({ materialListId });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, materialListId]);
+  }, [open, materialListId, providedOrderId]);
 
   const toggleSupplier = (supplierId: string) => {
     setExpandedSuppliers((prev) => {
@@ -108,16 +157,24 @@ export function OrdersPreviewSheet({
     orderId: string,
     order: (typeof orders)[0],
   ) => {
-    // Get email content
+    const supplierEmail =
+      (order as { supplier?: { contactEmail: string | null } | null })?.supplier
+        ?.contactEmail || undefined;
+
+    // Save notes before emailing
+    const notes = orderNotes.get(orderId) || "";
+    await markOrderSent.mutateAsync({
+      orderId,
+      sentTo: supplierEmail || "unknown@example.com",
+      notes: notes.trim() || undefined,
+    });
+
+    // Refetch email content to get updated notes
     const emailContent = await utils.materialList.getOrderEmailContent.fetch({
       orderId,
     });
 
     if (!emailContent) return;
-
-    const supplierEmail =
-      (order as { supplier?: { contactEmail: string | null } | null })?.supplier
-        ?.contactEmail || undefined;
 
     const subject = encodeURIComponent(emailContent.subject);
     const body = encodeURIComponent(emailContent.body);
@@ -125,12 +182,6 @@ export function OrdersPreviewSheet({
       ? `mailto:${supplierEmail}?subject=${subject}&body=${body}`
       : `mailto:?subject=${subject}&body=${body}`;
     window.open(mailtoLink, "_blank");
-
-    // Mark as sent
-    markOrderSent.mutate({
-      orderId,
-      sentTo: supplierEmail || "unknown@example.com",
-    });
   };
 
   if (isGenerating) {
@@ -166,9 +217,15 @@ export function OrdersPreviewSheet({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Orders to Send ({orders.length})</DialogTitle>
+          <DialogTitle>
+            {providedOrderId
+              ? "View/Edit Order"
+              : `Orders to Send (${orders.length})`}
+          </DialogTitle>
           <DialogDescription>
-            Review and email orders to suppliers
+            {providedOrderId
+              ? "Review, update, and email the order"
+              : "Review and email orders to suppliers"}
           </DialogDescription>
         </DialogHeader>
 
@@ -207,22 +264,46 @@ export function OrdersPreviewSheet({
                 </div>
 
                 {isExpanded && (
-                  <div className="mt-4 space-y-2 pl-6">
-                    {order.items.map((item) => {
-                      const qty = parseFloat(item.quantity);
-                      return (
-                        <div
-                          key={item.id}
-                          className="flex justify-between text-sm"
-                        >
-                          <span>
-                            {item.descriptionSnapshot || "Item"} × {qty}
-                            {item.supplierSkuSnapshot &&
-                              ` (SKU: ${item.supplierSkuSnapshot})`}
-                          </span>
-                        </div>
-                      );
-                    })}
+                  <div className="mt-4 space-y-4 pl-6">
+                    <div className="space-y-2">
+                      {order.items.map((item) => {
+                        const qty = parseFloat(item.quantity);
+                        return (
+                          <div
+                            key={item.id}
+                            className="flex justify-between text-sm"
+                          >
+                            <span>
+                              {item.descriptionSnapshot || "Item"} × {qty}
+                              {item.supplierSkuSnapshot &&
+                                ` (SKU: ${item.supplierSkuSnapshot})`}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    
+                    {/* Notes */}
+                    <div className="space-y-2 border-t pt-4">
+                      <label
+                        htmlFor={`order-notes-${order.id}`}
+                        className="text-sm font-medium"
+                      >
+                        Notes (optional)
+                      </label>
+                      <Textarea
+                        id={`order-notes-${order.id}`}
+                        value={orderNotes.get(order.id) || ""}
+                        onChange={(e) => {
+                          const newNotes = new Map(orderNotes);
+                          newNotes.set(order.id, e.target.value);
+                          setOrderNotes(newNotes);
+                        }}
+                        placeholder="Add any additional notes for this order..."
+                        className="min-h-[80px]"
+                        disabled={isSent}
+                      />
+                    </div>
                   </div>
                 )}
               </div>

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { api } from "~/trpc/react";
-import { parseSizeInput, formatSize } from "~/lib/size-utils";
+import { parseSizeInput, formatSize, formatSizeAsFraction } from "~/lib/size-utils";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Card, CardContent } from "~/components/ui/card";
@@ -135,9 +135,9 @@ export function SizeStep({
     <div className="space-y-4">
       <h3 className="text-lg font-semibold">Select Size</h3>
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
-        {availableSizes.map((size) => (
+        {availableSizes.map((size, index) => (
           <Card
-            key={`${size.nominal}_${size.unit}`}
+            key={`${size.nominal}_${index}`}
             className={`cursor-pointer transition-all hover:shadow-md ${
               selectedSize?.nominal === size.nominal &&
               selectedSize?.unit === size.unit
@@ -262,10 +262,10 @@ export function PartTypeCategoryStep({
 }: PartTypeCategoryStepProps) {
   return (
     <div className="space-y-4">
-      <h3 className="text-lg font-semibold">Select Part Type Category</h3>
+      <h3 className="text-lg font-semibold">Select Part Category</h3>
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
         {partTypeCategories?.map((category) => {
-          const count = categoryCounts.get(category) ?? 0;
+          const count = categoryCounts?.get(category) ?? 0;
           return (
             <Card
               key={category}
@@ -556,7 +556,7 @@ export function ReviewStep({
                       )}
                       {pendingPart.partDefinition.size && (
                         <Badge variant="outline" className="text-xs">
-                          {pendingPart.partDefinition.size}
+                          {formatSizeAsFraction(pendingPart.partDefinition.size)}
                         </Badge>
                       )}
                     </div>

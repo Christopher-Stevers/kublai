@@ -8,9 +8,17 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "~/components/ui/dialog";
 import { Button } from "~/components/ui/button";
 import { Badge } from "~/components/ui/badge";
-import { ChevronDownIcon, StarIcon, CheckIcon } from "lucide-react";
+import { ChevronDownIcon, StarIcon, CheckIcon, AlertCircle } from "lucide-react";
+import { PartSuppliersDropdown } from "~/components/catalogue/PartSuppliersDropdown";
 
 interface PreferredSupplierSelectorProps {
   partDefinitionId: string;
@@ -29,6 +37,7 @@ export function PreferredSupplierSelector({
   availableSuppliers,
   onManageSuppliers,
 }: PreferredSupplierSelectorProps) {
+  const [isSupplierDialogOpen, setIsSupplierDialogOpen] = useState(false);
   const utils = api.useUtils();
   const setPreferredSupplier = api.supplier.setPreferredSupplier.useMutation({
     onMutate: async (variables) => {
@@ -54,11 +63,15 @@ export function PreferredSupplierSelector({
               preferredSupplier: null,
               availableSuppliers: [],
             };
+            // Find the full supplier object from availableSuppliers to match the expected type
+            const fullSupplier = current.availableSuppliers.find(
+              (s) => s.id === supplier.id,
+            ) || supplier;
             return {
               ...old,
               [partDefinitionId]: {
                 ...current,
-                preferredSupplier: supplier,
+                preferredSupplier: fullSupplier as typeof current.preferredSupplier,
               },
             };
           },
@@ -86,6 +99,12 @@ export function PreferredSupplierSelector({
     (s) => s.id === currentPreferredSupplierId,
   );
 
+  // Get supplier info for PartSuppliersDropdown
+  const { data: supplierInfo } = api.catalogue.getPartsSupplierInfo.useQuery(
+    { partIds: [partDefinitionId] },
+    { enabled: !!partDefinitionId },
+  );
+
   const handleSelect = (supplierId: string) => {
     setPreferredSupplier.mutate({
       partDefinitionId,
@@ -95,21 +114,58 @@ export function PreferredSupplierSelector({
 
   if (availableSuppliers.length === 0) {
     return (
-      <div className="rounded-md border border-dashed p-4 text-center text-sm">
-        <p className="text-muted-foreground mb-2">
-          No suppliers available. Add this part to a supplier first.
-        </p>
-        {onManageSuppliers && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onManageSuppliers}
-            className="mt-2"
-          >
-            Manage Suppliers
-          </Button>
-        )}
-      </div>
+      <>
+        <button
+          type="button"
+          onClick={() => setIsSupplierDialogOpen(true)}
+          className="w-full rounded-md border border-amber-300 bg-amber-50 p-4 text-center text-sm transition-colors hover:bg-amber-100"
+        >
+          <div className="flex items-center justify-center gap-2 text-amber-800">
+            <AlertCircle className="h-4 w-4 shrink-0" />
+            <span>No suppliers available. Click to add suppliers.</span>
+          </div>
+        </button>
+        <Dialog 
+          open={isSupplierDialogOpen} 
+          onOpenChange={(open) => {
+            setIsSupplierDialogOpen(open);
+            if (!open) {
+              void utils.catalogue.getPartsSupplierInfo.invalidate();
+              void utils.supplier.getAllPartsWithPreferred.invalidate();
+            }
+          }}
+        >
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="text-base sm:text-lg">Manage Suppliers</DialogTitle>
+              <DialogDescription className="text-xs sm:text-sm">
+                Connect existing suppliers or create a new one for this part.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="py-2 sm:py-4">
+              <div>
+                <label className="text-xs font-medium sm:text-sm">
+                  Suppliers
+                </label>
+                <div className="mt-1" onClick={(e) => e.stopPropagation()}>
+                  <PartSuppliersDropdown
+                    partDefinitionId={partDefinitionId}
+                    currentPreferredSupplierId={
+                      supplierInfo?.[partDefinitionId]?.preferredSupplier?.id || null
+                    }
+                    availableSuppliers={
+                      supplierInfo?.[partDefinitionId]?.availableSuppliers ?? []
+                    }
+                  />
+                </div>
+                <p className="mt-1 text-xs text-gray-500">
+                  Select suppliers that provide this part and set a preferred supplier.
+                </p>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </>
     );
   }
 

@@ -708,7 +708,94 @@ async function main() {
         }
       }
 
-      // Step 9: Create parts
+      // Step 9: Create sizes and build sizeMap (must be before creating parts)
+      console.log("\n📐 Creating sizes...");
+      const sizeSet = new Set<string>();
+      for (const partData of partDefinitionsData) {
+        if (
+          partData.sizeNominal !== null &&
+          partData.sizeNominal !== undefined &&
+          partData.sizeUnit
+        ) {
+          const sizeKey = `${partData.sizeNominal}_${partData.sizeUnit}`;
+          sizeSet.add(sizeKey);
+        }
+      }
+
+      // Add sizes from sizesList
+      const sizesList = [
+        { nominal: 0.5, unitCode: "in" },
+        { nominal: 0.75, unitCode: "in" },
+        { nominal: 1.0, unitCode: "in" },
+        { nominal: 12, unitCode: "in" },
+      ];
+      for (const sizeData of sizesList) {
+        const sizeKey = `${sizeData.nominal}_${sizeData.unitCode}`;
+        sizeSet.add(sizeKey);
+      }
+
+      const sizeMap = new Map<string, string>();
+      let sizesCreated = 0;
+
+      // Create or find all sizes and build the map
+      for (const sizeKey of Array.from(sizeSet)) {
+        const parts = sizeKey.split("_");
+        if (parts.length !== 2) {
+          console.warn(`Invalid size key format: ${sizeKey}`);
+          continue;
+        }
+        const [nominalStr, unitCode] = parts;
+        if (!nominalStr || !unitCode) {
+          console.warn(`Invalid size key format: ${sizeKey}`);
+          continue;
+        }
+        const nominal = parseFloat(nominalStr);
+        if (isNaN(nominal)) {
+          console.warn(`Invalid nominal value in size key: ${sizeKey}`);
+          continue;
+        }
+        const unitId = unitMap.get(unitCode);
+        if (!unitId) {
+          console.warn(`Unit "${unitCode}" not found for size ${sizeKey}`);
+          continue;
+        }
+
+        // Check if size already exists
+        const [existing] = await db
+          .select()
+          .from(sizes)
+          .where(
+            and(
+              eq(sizes.organizationId, organizationId),
+              eq(sizes.nominal, nominal.toString()),
+              eq(sizes.unitId, unitId),
+            ),
+          )
+          .limit(1);
+
+        if (existing) {
+          sizeMap.set(sizeKey, existing.id);
+          console.log(`   ✓ Size ${nominal} ${unitCode} already exists`);
+        } else {
+          const [size] = await db
+            .insert(sizes)
+            .values({
+              organizationId: organizationId,
+              nominal: nominal.toString(),
+              unitId: unitId,
+            })
+            .onConflictDoNothing()
+            .returning({ id: sizes.id });
+
+          if (size) {
+            sizesCreated++;
+            sizeMap.set(sizeKey, size.id);
+            console.log(`   ✓ Created size ${nominal} ${unitCode}`);
+          }
+        }
+      }
+
+      // Step 10: Create parts
       console.log("\n🔩 Creating part definitions...");
       let partsCreated = 0;
       let synonymsCreated = 0;
@@ -721,9 +808,70 @@ async function main() {
           );
         }
 
-        const sizeUnitId = partData.sizeUnit
-          ? (unitMap.get(partData.sizeUnit) ?? null)
-          : null;
+        // Get sizeId from sizeMap (created in Step 11)
+        const sizeKey =
+          partData.sizeNominal !== null &&
+          partData.sizeNominal !== undefined &&
+          partData.sizeUnit
+            ? `${partData.sizeNominal}_${partData.sizeUnit}`
+            : null;
+        let sizeId = sizeKey ? sizeMap.get(sizeKey) ?? null : null;
+
+        // If no sizeId found but we have size data, create it
+        if (!sizeId && sizeKey) {
+          const parts = sizeKey.split("_");
+          if (parts.length === 2) {
+            const [nominalStr, unitCode] = parts;
+            const nominal = parseFloat(nominalStr ?? "0");
+            const unitId = unitMap.get(unitCode ?? "");
+            if (unitId && !isNaN(nominal)) {
+              const [newSize] = await db
+                .insert(sizes)
+                .values({
+                  organizationId: organizationId,
+                  nominal: nominal.toString(),
+                  unitId: unitId,
+                })
+                .returning({ id: sizes.id });
+              if (newSize) {
+                sizeId = newSize.id;
+                sizeMap.set(sizeKey, newSize.id);
+              }
+            }
+          }
+        }
+
+        // If still no sizeId, create a default "no size" size
+        if (!sizeId) {
+          const defaultSizeKey = "0_ea";
+          let defaultSizeId = sizeMap.get(defaultSizeKey);
+          if (!defaultSizeId) {
+            const defaultUnitId = unitMap.get("ea");
+            if (defaultUnitId) {
+              const [newDefaultSize] = await db
+                .insert(sizes)
+                .values({
+                  organizationId: organizationId,
+                  nominal: "0",
+                  unitId: defaultUnitId,
+                })
+                .returning({ id: sizes.id });
+              if (newDefaultSize) {
+                defaultSizeId = newDefaultSize.id;
+                sizeMap.set(defaultSizeKey, newDefaultSize.id);
+              }
+            }
+          }
+          sizeId = defaultSizeId ?? null;
+        }
+
+        if (!sizeId) {
+          console.warn(
+            `Failed to get or create size for part "${partData.displayName}"`,
+          );
+          continue;
+        }
+
         const defaultUomId = unitMap.get("ea");
         if (!defaultUomId) {
           throw new Error('Unit "ea" not found - required for default UOM');
@@ -757,8 +905,7 @@ async function main() {
             imageUrl: null,
             partTypeId: partTypeId,
             materialId: materialId,
-            sizeNominal: partData.sizeNominal?.toString() ?? null,
-            sizeUnitId: sizeUnitId,
+            sizeId: sizeId,
             defaultUomId: defaultUomId,
             isActive: true,
           })
@@ -803,7 +950,7 @@ async function main() {
         }
       }
 
-      // Step 10: Create custom materials (org-specific, additional ones)
+      // Step 11: Create custom materials (org-specific, additional ones)
       console.log("\n🎨 Creating custom materials (org-specific)...");
       const materialsList = ["Copper", "PVC", "PEX", "Brass", "Steel"];
       let materialsCreated = 0;
@@ -823,47 +970,6 @@ async function main() {
           console.log(`   ✓ Created material "${materialName}"`);
         } else {
           console.log(`   ✓ Material "${materialName}" already exists`);
-        }
-      }
-
-      // Step 11: Create custom sizes
-      console.log("\n📐 Creating custom sizes...");
-      const sizesList = [
-        { nominal: 0.5, unitCode: "in" },
-        { nominal: 0.75, unitCode: "in" },
-        { nominal: 1.0, unitCode: "in" },
-        { nominal: 12, unitCode: "in" },
-      ];
-      let sizesCreated = 0;
-
-      for (const sizeData of sizesList) {
-        const unitId = unitMap.get(sizeData.unitCode);
-        if (!unitId) {
-          console.log(
-            `   ⚠ Unit "${sizeData.unitCode}" not found, skipping size`,
-          );
-          continue;
-        }
-
-        const [size] = await db
-          .insert(sizes)
-          .values({
-            organizationId: organizationId,
-            nominal: sizeData.nominal.toString(),
-            unitId: unitId,
-          })
-          .onConflictDoNothing()
-          .returning({ id: sizes.id });
-
-        if (size) {
-          sizesCreated++;
-          console.log(
-            `   ✓ Created size ${sizeData.nominal} ${sizeData.unitCode}`,
-          );
-        } else {
-          console.log(
-            `   ✓ Size ${sizeData.nominal} ${sizeData.unitCode} already exists`,
-          );
         }
       }
 

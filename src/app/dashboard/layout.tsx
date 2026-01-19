@@ -5,6 +5,7 @@ import { Header } from "../_components/Header";
 import { db } from "~/server/db";
 import { users } from "~/server/db/schema";
 import { eq } from "drizzle-orm";
+import { waitForUser } from "~/server/utils/wait-for-user";
 
 export default async function DashboardLayout({
   children,
@@ -18,19 +19,27 @@ export default async function DashboardLayout({
     redirect("/sign-in");
   }
 
-  // Get user from database
-  const [user] = await db
+  // Get user from database (webhook should have created it)
+  let [user] = await db
     .select()
     .from(users)
     .where(eq(users.id, userId))
     .limit(1);
 
+  // If user doesn't exist, wait for webhook to create it (with timeout)
+  // This ensures webhook is the single source of truth for user creation
   if (!user) {
-    console.log(user);
-    redirect("/sign-in");
+    user = await waitForUser(userId, 5000, 200); // Wait up to 5 seconds, poll every 200ms
   }
 
-  // Check if user has an organization - redirect to onboarding if not
+  // If user still doesn't exist after waiting, redirect to onboarding
+  // The onboarding page will also wait for the webhook
+  if (!user) {
+    redirect("/onboarding");
+  }
+
+  // CRITICAL: Check organizationId BEFORE any rendering
+  // If no organizationId, redirect immediately
   if (!user.organizationId) {
     redirect("/onboarding");
   }

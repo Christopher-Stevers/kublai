@@ -8,8 +8,10 @@ export function SessionProviderWrapper({ children }: { children: ReactNode }) {
     <ClerkProvider
       signInUrl="/sign-in"
       signUpUrl="/sign-up"
-      afterSignInUrl="/dashboard"
-      afterSignUpUrl="/dashboard"
+      // Redirect to onboarding after sign-in - the onboarding layout will check
+      // if user has organizationId and redirect to dashboard if they do
+      afterSignInUrl="/onboarding"
+      afterSignUpUrl="/onboarding"
     >
       {children}
     </ClerkProvider>

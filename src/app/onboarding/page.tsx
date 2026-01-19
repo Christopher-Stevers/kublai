@@ -10,12 +10,18 @@ import { Loader2 } from "lucide-react";
 
 export default function OnboardingPage() {
   const router = useRouter();
+  const utils = api.useUtils();
   const [orgName, setOrgName] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   const createOrganization = api.organization.createOrganization.useMutation({
-    onSuccess: () => {
-      // Redirect to dashboard on success
+    onSuccess: async () => {
+      // Invalidate user queries to refresh organizationId
+      await utils.user.getMyRole.invalidate();
+      console.log("Created organization, redirecting to dashboard");
+
+      // Use replace instead of push to avoid adding to history
+      // This ensures back button doesn't take user back to onboarding
       router.push("/dashboard");
     },
     onError: (error) => {
@@ -29,6 +35,11 @@ export default function OnboardingPage() {
 
     if (!orgName.trim()) {
       setError("Organization name is required");
+      return;
+    }
+
+    // Prevent double submission
+    if (createOrganization.isPending) {
       return;
     }
 
@@ -65,6 +76,14 @@ export default function OnboardingPage() {
                 required
                 minLength={1}
                 maxLength={255}
+                autoFocus
+                onKeyDown={(e) => {
+                  // Allow Enter key to submit form (default behavior)
+                  // But prevent if already submitting
+                  if (e.key === "Enter" && createOrganization.isPending) {
+                    e.preventDefault();
+                  }
+                }}
               />
             </div>
 
@@ -94,6 +113,3 @@ export default function OnboardingPage() {
     </div>
   );
 }
-
-
-

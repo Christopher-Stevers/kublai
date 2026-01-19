@@ -14,7 +14,7 @@ import { FilterBadge } from "./FilterBadge";
 interface SearchAndFiltersProps {
   searchQuery: string;
   onSearchChange: (query: string) => void;
-  categoryTree: Array<{ id: string; name: string; children: Array<unknown> }>;
+  categoryTree: Array<{ id: string; name: string }>;
   selectedCategoryId: string | null;
   onCategoryChange: (categoryId: string | null) => void;
   partTypes: string[];
@@ -72,20 +72,14 @@ export function SearchAndFilters({
   showFilters,
   onToggleFilters,
 }: SearchAndFiltersProps) {
-  // Find category name from tree
+  // Find category name from flat list
   const findCategoryName = (
-    tree: Array<{ id: string; name: string; children: Array<unknown> }>,
+    tree: Array<{ id: string; name: string }>,
     id: string | null,
   ): string | null => {
     if (!id) return null;
-    for (const cat of tree) {
-      if (cat.id === id) return cat.name;
-      if (cat.children.length > 0) {
-        const found = findCategoryName(cat.children as typeof tree, id);
-        if (found) return found;
-      }
-    }
-    return null;
+    const cat = tree.find((c) => c.id === id);
+    return cat?.name ?? null;
   };
 
   const categoryName = findCategoryName(categoryTree, selectedCategoryId);

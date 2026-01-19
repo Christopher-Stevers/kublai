@@ -10,6 +10,7 @@ import { QuotePreviewSheet } from "~/components/materialLists/QuotePreviewSheet"
 import { OrdersPreviewSheet } from "~/components/materialLists/OrdersPreviewSheet";
 import { AddPartDialog } from "~/components/materialLists/AddPartDialog";
 import { MaterialListNameModal } from "~/components/materialLists/MaterialListNameModal";
+import { ExistingQuotesOrdersDialog } from "~/components/materialLists/ExistingQuotesOrdersDialog";
 import { useState } from "react";
 import { PlusIcon, FileTextIcon, ShoppingCartIcon } from "lucide-react";
 import { ViewToggle } from "~/components/ui/view-toggle";
@@ -32,6 +33,12 @@ export default function MaterialListDetailPage({
   const [showAddPartDialog, setShowAddPartDialog] = useState(false);
   const [showMaterialListNameModal, setShowMaterialListNameModal] =
     useState(false);
+  const [showExistingQuotesDialog, setShowExistingQuotesDialog] =
+    useState(false);
+  const [showExistingOrdersDialog, setShowExistingOrdersDialog] =
+    useState(false);
+  const [selectedQuoteId, setSelectedQuoteId] = useState<string | undefined>();
+  const [selectedOrderId, setSelectedOrderId] = useState<string | undefined>();
   const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
 
   const { data: materialList, isLoading } =
@@ -68,18 +75,40 @@ export default function MaterialListDetailPage({
   };
 
   const handleGenerateQuote = () => {
-    if (!materialList?.job?.name) {
+    const jobName = (materialList?.job as { name?: string } | undefined)?.name;
+    if (!jobName) {
       setShowJobInfoModal(true);
       return;
     }
-    setShowQuoteSheet(true);
+    setShowExistingQuotesDialog(true);
   };
 
   const handleGenerateOrder = () => {
-    if (!materialList?.job?.name) {
+    const jobName = (materialList?.job as { name?: string } | undefined)?.name;
+    if (!jobName) {
       setShowJobInfoModal(true);
       return;
     }
+    setShowExistingOrdersDialog(true);
+  };
+
+  const handleGenerateNewQuote = () => {
+    setSelectedQuoteId(undefined);
+    setShowQuoteSheet(true);
+  };
+
+  const handleGenerateNewOrder = () => {
+    setSelectedOrderId(undefined);
+    setShowOrdersSheet(true);
+  };
+
+  const handleOpenExistingQuote = (quoteId: string) => {
+    setSelectedQuoteId(quoteId);
+    setShowQuoteSheet(true);
+  };
+
+  const handleOpenExistingOrder = (orderId: string) => {
+    setSelectedOrderId(orderId);
     setShowOrdersSheet(true);
   };
 
@@ -96,20 +125,21 @@ export default function MaterialListDetailPage({
                   className="text-left"
                 >
                   <h1 className="cursor-pointer text-xl font-bold text-gray-900 transition-colors hover:text-gray-700 sm:text-2xl">
-                    {materialList.materialList?.name || "Material List"}
+                    {(materialList.materialList as { name?: string } | undefined)?.name || "Material List"}
                   </h1>
                 </button>
                 <button
                   onClick={() => {
-                    if (materialList.job?.id) {
-                      router.push(`/dashboard/jobs/${materialList.job.id}`);
+                    const jobId = (materialList.job as { id?: string } | undefined)?.id;
+                    if (jobId) {
+                      router.push(`/dashboard/jobs/${jobId}`);
                     } else {
                       handleJobInfoClick();
                     }
                   }}
                   className="text-muted-foreground mt-1 h-11 text-sm hover:text-gray-900"
                 >
-                  Job: {materialList.job?.name || "Not set"}
+                  Job: {(materialList.job as { name?: string } | undefined)?.name || "Not set"}
                 </button>
               </div>
             </div>
@@ -261,24 +291,36 @@ export default function MaterialListDetailPage({
         open={showJobInfoModal}
         onOpenChange={setShowJobInfoModal}
         materialListId={id}
-        initialName={materialList?.job?.name ?? undefined}
-        initialLocationId={materialList?.job?.locationId ?? undefined}
+        initialName={(materialList?.job as { name?: string } | undefined)?.name ?? undefined}
+        initialLocationId={(materialList?.job as { locationId?: string } | undefined)?.locationId ?? undefined}
       />
 
       {showQuoteSheet && (
         <QuotePreviewSheet
           open={showQuoteSheet}
-          onOpenChange={setShowQuoteSheet}
+          onOpenChange={(open) => {
+            setShowQuoteSheet(open);
+            if (!open) {
+              setSelectedQuoteId(undefined);
+            }
+          }}
           materialListId={id}
-          jobName={materialList?.job?.name ?? ""}
+          jobName={(materialList?.job as { name?: string } | undefined)?.name ?? ""}
+          quoteId={selectedQuoteId}
         />
       )}
 
       {showOrdersSheet && (
         <OrdersPreviewSheet
           open={showOrdersSheet}
-          onOpenChange={setShowOrdersSheet}
+          onOpenChange={(open) => {
+            setShowOrdersSheet(open);
+            if (!open) {
+              setSelectedOrderId(undefined);
+            }
+          }}
           materialListId={id}
+          orderId={selectedOrderId}
         />
       )}
 
@@ -295,6 +337,24 @@ export default function MaterialListDetailPage({
         initialName={
           (materialList?.materialList?.name as string | undefined) ?? null
         }
+      />
+
+      <ExistingQuotesOrdersDialog
+        open={showExistingQuotesDialog}
+        onOpenChange={setShowExistingQuotesDialog}
+        materialListId={id}
+        type="quote"
+        onGenerateNew={handleGenerateNewQuote}
+        onOpenExisting={handleOpenExistingQuote}
+      />
+
+      <ExistingQuotesOrdersDialog
+        open={showExistingOrdersDialog}
+        onOpenChange={setShowExistingOrdersDialog}
+        materialListId={id}
+        type="order"
+        onGenerateNew={handleGenerateNewOrder}
+        onOpenExisting={handleOpenExistingOrder}
       />
     </div>
   );

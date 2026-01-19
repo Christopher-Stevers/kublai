@@ -144,15 +144,21 @@ export function SupplierPartsDialog({
       // Find part definition from search results
       const partDef = searchResults?.find((p) => p.id === variables.partDefinitionId);
 
-      // Create temporary supplier part
+      // Create temporary supplier part with all required fields
       const tempId = `temp-${Date.now()}`;
       const tempSupplierPart = {
         id: tempId,
         supplierId: variables.supplierId,
         partDefinitionId: variables.partDefinitionId,
         supplierSku: variables.supplierSku ?? null,
+        supplierName: null,
+        packSize: null,
+        packUomId: null,
         lastKnownUnitCost: null,
+        currency: "CAD",
+        notes: null,
         isPreferred: false,
+        createdAt: new Date(),
         partDefinition: partDef
           ? {
               id: partDef.id,

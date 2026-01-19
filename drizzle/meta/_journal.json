@@ -41,6 +41,13 @@
       "when": 1768515570678,
       "tag": "0005_curved_roulette",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1768782096606,
+      "tag": "0006_dapper_catseye",
+      "breakpoints": true
     }
   ]
 }
