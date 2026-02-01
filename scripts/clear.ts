@@ -144,11 +144,57 @@ async function clearDatabase() {
       );
     }
 
-    // Truncate tables with CASCADE to handle foreign key constraints
-    const tableNames = tablesToTruncate.map((t) => t.tablename).join(", ");
-    await sql.unsafe(`TRUNCATE TABLE ${tableNames} RESTART IDENTITY CASCADE;`);
+    // Truncate tables individually in dependency order (no CASCADE to protect users/orgs)
+    console.log("\n🗑️  Truncating tables in dependency order...");
 
-    console.log(`✅ ${tablesToTruncate.length} tables truncated successfully!`);
+    // Define truncation order: child tables first, then parents
+    // This avoids foreign key constraint violations without using CASCADE
+    const truncationOrder = [
+      // Quote/Order items (most dependent)
+      "kublai_quote_item",
+      "kublai_order_item",
+      // Quotes and orders
+      "kublai_quote",
+      "kublai_order",
+      // Material lists and jobs
+      "kublai_material_list",
+      "kublai_job_supplier",
+      "kublai_job",
+      // Supplier parts and parts catalog
+      "kublai_supplier_part",
+      "kublai_part_attribute",
+      "kublai_part_synonym",
+      "kublai_part_definition",
+      // Suppliers and locations
+      "kublai_supplier",
+      "kublai_location",
+      // Pricing and categorization
+      "kublai_pricing_profile",
+      "kublai_category",
+      // Facets and units
+      "kublai_unit",
+      "kublai_material",
+      "kublai_size",
+      "kublai_part_type",
+    ];
+
+    // Filter to only include tables that exist in our database
+    const existingTableNames = tablesToTruncate.map((t) => t.tablename);
+    const tablesToDelete = truncationOrder.filter((name) =>
+      existingTableNames.includes(name),
+    );
+
+    // Truncate each table individually
+    for (const tableName of tablesToDelete) {
+      try {
+        await sql.unsafe(`TRUNCATE TABLE ${tableName} RESTART IDENTITY;`);
+        console.log(`   ✓ Truncated ${tableName}`);
+      } catch (err) {
+        console.log(`   ⚠️  Could not truncate ${tableName}: ${err}`);
+      }
+    }
+
+    console.log(`\n✅ ${tablesToDelete.length} tables truncated successfully!`);
     console.log(
       `   ${skippedTables.length} protected tables preserved (users, orgs, NextAuth)`,
     );
