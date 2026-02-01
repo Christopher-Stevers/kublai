@@ -13,7 +13,7 @@ async function clearDatabase() {
   try {
     // Step 1: Check and handle schema migration for part_definition table
     console.log("Checking schema migration status...");
-    
+
     // Check if old columns exist
     const oldColumnsCheck = await sql`
       SELECT column_name 
@@ -35,7 +35,7 @@ async function clearDatabase() {
     if (oldColumnsCheck.length > 0 && newColumnCheck.length === 0) {
       console.log("⚠️  Old size columns found but new size_id column missing.");
       console.log("   Running migration to add size_id column...");
-      
+
       // Add size_id column if it doesn't exist
       await sql`
         ALTER TABLE kublai_part_definition 
@@ -47,9 +47,11 @@ async function clearDatabase() {
       const rowCount = await sql`
         SELECT COUNT(*) as count FROM kublai_part_definition
       `;
-      
+
       if (rowCount[0]?.count === "0" || rowCount[0]?.count === 0) {
-        console.log("   Table is empty, dropping old columns and making size_id non-nullable...");
+        console.log(
+          "   Table is empty, dropping old columns and making size_id non-nullable...",
+        );
         await sql`
           ALTER TABLE kublai_part_definition 
           DROP COLUMN IF EXISTS size_nominal,
@@ -61,12 +63,18 @@ async function clearDatabase() {
         `;
         console.log("   ✅ Schema migration completed!");
       } else {
-        console.log("   ⚠️  Table has data. Please run the full migration script first.");
-        console.log("   Run: tsx scripts/migrate-part-definition-size-to-sizeid.ts");
+        console.log(
+          "   ⚠️  Table has data. Please run the full migration script first.",
+        );
+        console.log(
+          "   Run: tsx scripts/migrate-part-definition-size-to-sizeid.ts",
+        );
       }
     } else if (oldColumnsCheck.length > 0 && newColumnCheck.length > 0) {
       // Both exist - drop old columns after truncating
-      console.log("   Both old and new columns exist. Will drop old columns after truncating.");
+      console.log(
+        "   Both old and new columns exist. Will drop old columns after truncating.",
+      );
     } else if (oldColumnsCheck.length === 0 && newColumnCheck.length > 0) {
       console.log("   ✅ Schema is already migrated (using size_id).");
     }
@@ -87,16 +95,63 @@ async function clearDatabase() {
       return;
     }
 
-    console.log(`Found ${tables.length} tables to truncate:`);
-    tables.forEach((table) => {
-      console.log(`  - ${table.tablename}`);
+    // Tables to exclude from truncation (users, orgs, and NextAuth tables)
+    const protectedTables = [
+      "kublai_user",
+      "kublai_organization",
+      "kublai_account",
+      "kublai_session",
+      "kublai_verification_token",
+    ];
+
+    // Filter out protected tables
+    const tablesToTruncate = tables.filter(
+      (table) => !protectedTables.includes(table.tablename),
+    );
+
+    const skippedTables = tables.filter((table) =>
+      protectedTables.includes(table.tablename),
+    );
+
+    console.log(`Found ${tables.length} total tables:`);
+    tablesToTruncate.forEach((table) => {
+      console.log(`  - ${table.tablename} (will truncate)`);
     });
 
-    // Truncate all tables with CASCADE to handle foreign key constraints
-    const tableNames = tables.map((t) => t.tablename).join(", ");
+    if (skippedTables.length > 0) {
+      console.log(`\nSkipping ${skippedTables.length} protected tables:`);
+      skippedTables.forEach((table) => {
+        console.log(`  - ${table.tablename} (PROTECTED - preserved)`);
+      });
+    }
+
+    if (tablesToTruncate.length === 0) {
+      console.log("\nNo tables to truncate (all tables are protected)");
+      return;
+    }
+
+    // Reset user foreign key references to prevent constraint violations
+    console.log("\n🔄 Resetting user foreign key references...");
+    try {
+      await sql`
+        UPDATE kublai_user 
+        SET "currentJobId" = NULL, "pricingProfileId" = NULL;
+      `;
+      console.log("   ✓ User references reset");
+    } catch (err) {
+      console.log(
+        "   ℹ️  Could not reset user references (table may not exist or no users)",
+      );
+    }
+
+    // Truncate tables with CASCADE to handle foreign key constraints
+    const tableNames = tablesToTruncate.map((t) => t.tablename).join(", ");
     await sql.unsafe(`TRUNCATE TABLE ${tableNames} RESTART IDENTITY CASCADE;`);
 
-    console.log("✅ All tables truncated successfully!");
+    console.log(`✅ ${tablesToTruncate.length} tables truncated successfully!`);
+    console.log(
+      `   ${skippedTables.length} protected tables preserved (users, orgs, NextAuth)`,
+    );
 
     // Step 2: After truncating, ensure schema is correct
     if (oldColumnsCheck.length > 0) {
@@ -106,13 +161,13 @@ async function clearDatabase() {
         DROP COLUMN IF EXISTS size_nominal,
         DROP COLUMN IF EXISTS size_unit_id
       `;
-      
+
       // Ensure size_id exists and is non-nullable
       await sql`
         ALTER TABLE kublai_part_definition 
         ADD COLUMN IF NOT EXISTS size_id UUID REFERENCES kublai_size(id) ON DELETE SET NULL
       `;
-      
+
       // Make it non-nullable (safe after truncate)
       await sql`
         ALTER TABLE kublai_part_definition 

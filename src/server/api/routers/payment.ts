@@ -151,6 +151,7 @@ export const paymentRouter = createTRPCRouter({
       });
 
       if (!session.url) {
+        console.log("No session URL returned");
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
           message: "Failed to create checkout session",
@@ -241,6 +242,7 @@ export const paymentRouter = createTRPCRouter({
       });
 
       if (!session.url) {
+        console.log("No session URL returned");
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
           message: "Failed to create checkout session",
@@ -249,6 +251,7 @@ export const paymentRouter = createTRPCRouter({
 
       return { url: session.url };
     } catch (error) {
+      console.error(error);
       throw new TRPCError({
         code: "INTERNAL_SERVER_ERROR",
         message: "Failed to create checkout session",
