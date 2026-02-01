@@ -1,0 +1,5652 @@
+[
+  {
+    "displayName": "90 Elbow - 1-1/4\" (ABS)",
+    "description": "90 Elbow made of ABS, 1-1/4 inch",
+    "material": "ABS",
+    "sizeNominal": 1.25,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "90 Elbow - 1-1/2\" (ABS)",
+    "description": "90 Elbow made of ABS, 1-1/2 inch",
+    "material": "ABS",
+    "sizeNominal": 1.5,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "90 Elbow - 2\" (ABS)",
+    "description": "90 Elbow made of ABS, 2 inch",
+    "material": "ABS",
+    "sizeNominal": 2.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "90 Elbow - 3\" (ABS)",
+    "description": "90 Elbow made of ABS, 3 inch",
+    "material": "ABS",
+    "sizeNominal": 3.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "90 Elbow - 4\" (ABS)",
+    "description": "90 Elbow made of ABS, 4 inch",
+    "material": "ABS",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "90 Elbow - 6\" (ABS)",
+    "description": "90 Elbow made of ABS, 6 inch",
+    "material": "ABS",
+    "sizeNominal": 6.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "Fitting 90 Elbow - 1-1/4\" (ABS)",
+    "description": "Fitting 90 Elbow made of ABS, 1-1/4 inch",
+    "material": "ABS",
+    "sizeNominal": 1.25,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "Fitting 90 Elbow - 1-1/2\" (ABS)",
+    "description": "Fitting 90 Elbow made of ABS, 1-1/2 inch",
+    "material": "ABS",
+    "sizeNominal": 1.5,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "Fitting 90 Elbow - 2\" (ABS)",
+    "description": "Fitting 90 Elbow made of ABS, 2 inch",
+    "material": "ABS",
+    "sizeNominal": 2.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "Fitting 90 Elbow - 3\" (ABS)",
+    "description": "Fitting 90 Elbow made of ABS, 3 inch",
+    "material": "ABS",
+    "sizeNominal": 3.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "Fitting 90 Elbow - 4\" (ABS)",
+    "description": "Fitting 90 Elbow made of ABS, 4 inch",
+    "material": "ABS",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "Fitting 90 Elbow - 6\" (ABS)",
+    "description": "Fitting 90 Elbow made of ABS, 6 inch",
+    "material": "ABS",
+    "sizeNominal": 6.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "45 Elbow - 1-1/4\" (ABS)",
+    "description": "45 Elbow made of ABS, 1-1/4 inch",
+    "material": "ABS",
+    "sizeNominal": 1.25,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "45 Elbow - 1-1/2\" (ABS)",
+    "description": "45 Elbow made of ABS, 1-1/2 inch",
+    "material": "ABS",
+    "sizeNominal": 1.5,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "45 Elbow - 2\" (ABS)",
+    "description": "45 Elbow made of ABS, 2 inch",
+    "material": "ABS",
+    "sizeNominal": 2.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "45 Elbow - 3\" (ABS)",
+    "description": "45 Elbow made of ABS, 3 inch",
+    "material": "ABS",
+    "sizeNominal": 3.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "45 Elbow - 4\" (ABS)",
+    "description": "45 Elbow made of ABS, 4 inch",
+    "material": "ABS",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "45 Elbow - 6\" (ABS)",
+    "description": "45 Elbow made of ABS, 6 inch",
+    "material": "ABS",
+    "sizeNominal": 6.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "Fitting 45 Elbow - 1-1/4\" (ABS)",
+    "description": "Fitting 45 Elbow made of ABS, 1-1/4 inch",
+    "material": "ABS",
+    "sizeNominal": 1.25,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "Fitting 45 Elbow - 1-1/2\" (ABS)",
+    "description": "Fitting 45 Elbow made of ABS, 1-1/2 inch",
+    "material": "ABS",
+    "sizeNominal": 1.5,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "Fitting 45 Elbow - 2\" (ABS)",
+    "description": "Fitting 45 Elbow made of ABS, 2 inch",
+    "material": "ABS",
+    "sizeNominal": 2.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "Fitting 45 Elbow - 3\" (ABS)",
+    "description": "Fitting 45 Elbow made of ABS, 3 inch",
+    "material": "ABS",
+    "sizeNominal": 3.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "Fitting 45 Elbow - 4\" (ABS)",
+    "description": "Fitting 45 Elbow made of ABS, 4 inch",
+    "material": "ABS",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "Fitting 45 Elbow - 6\" (ABS)",
+    "description": "Fitting 45 Elbow made of ABS, 6 inch",
+    "material": "ABS",
+    "sizeNominal": 6.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "Coupling - 1-1/4\" (ABS)",
+    "description": "Coupling made of ABS, 1-1/4 inch",
+    "material": "ABS",
+    "sizeNominal": 1.25,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "coupling",
+    "synonyms": []
+  },
+  {
+    "displayName": "Coupling - 1-1/2\" (ABS)",
+    "description": "Coupling made of ABS, 1-1/2 inch",
+    "material": "ABS",
+    "sizeNominal": 1.5,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "coupling",
+    "synonyms": []
+  },
+  {
+    "displayName": "Coupling - 2\" (ABS)",
+    "description": "Coupling made of ABS, 2 inch",
+    "material": "ABS",
+    "sizeNominal": 2.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "coupling",
+    "synonyms": []
+  },
+  {
+    "displayName": "Coupling - 3\" (ABS)",
+    "description": "Coupling made of ABS, 3 inch",
+    "material": "ABS",
+    "sizeNominal": 3.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "coupling",
+    "synonyms": []
+  },
+  {
+    "displayName": "Coupling - 4\" (ABS)",
+    "description": "Coupling made of ABS, 4 inch",
+    "material": "ABS",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "coupling",
+    "synonyms": []
+  },
+  {
+    "displayName": "Coupling - 6\" (ABS)",
+    "description": "Coupling made of ABS, 6 inch",
+    "material": "ABS",
+    "sizeNominal": 6.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "coupling",
+    "synonyms": []
+  },
+  {
+    "displayName": "Reducing Coupling - 1-1/4\" (ABS)",
+    "description": "Reducing Coupling made of ABS, 1-1/4 inch",
+    "material": "ABS",
+    "sizeNominal": 1.25,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "coupling",
+    "synonyms": []
+  },
+  {
+    "displayName": "Reducing Coupling - 1-1/2\" (ABS)",
+    "description": "Reducing Coupling made of ABS, 1-1/2 inch",
+    "material": "ABS",
+    "sizeNominal": 1.5,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "coupling",
+    "synonyms": []
+  },
+  {
+    "displayName": "Reducing Coupling - 2\" (ABS)",
+    "description": "Reducing Coupling made of ABS, 2 inch",
+    "material": "ABS",
+    "sizeNominal": 2.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "coupling",
+    "synonyms": []
+  },
+  {
+    "displayName": "Reducing Coupling - 3\" (ABS)",
+    "description": "Reducing Coupling made of ABS, 3 inch",
+    "material": "ABS",
+    "sizeNominal": 3.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "coupling",
+    "synonyms": []
+  },
+  {
+    "displayName": "Reducing Coupling - 4\" (ABS)",
+    "description": "Reducing Coupling made of ABS, 4 inch",
+    "material": "ABS",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "coupling",
+    "synonyms": []
+  },
+  {
+    "displayName": "Reducing Coupling - 6\" (ABS)",
+    "description": "Reducing Coupling made of ABS, 6 inch",
+    "material": "ABS",
+    "sizeNominal": 6.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "coupling",
+    "synonyms": []
+  },
+  {
+    "displayName": "Wye - 1-1/4\" (ABS)",
+    "description": "Wye made of ABS, 1-1/4 inch",
+    "material": "ABS",
+    "sizeNominal": 1.25,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "wye",
+    "synonyms": []
+  },
+  {
+    "displayName": "Wye - 1-1/2\" (ABS)",
+    "description": "Wye made of ABS, 1-1/2 inch",
+    "material": "ABS",
+    "sizeNominal": 1.5,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "wye",
+    "synonyms": []
+  },
+  {
+    "displayName": "Wye - 2\" (ABS)",
+    "description": "Wye made of ABS, 2 inch",
+    "material": "ABS",
+    "sizeNominal": 2.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "wye",
+    "synonyms": []
+  },
+  {
+    "displayName": "Wye - 3\" (ABS)",
+    "description": "Wye made of ABS, 3 inch",
+    "material": "ABS",
+    "sizeNominal": 3.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "wye",
+    "synonyms": []
+  },
+  {
+    "displayName": "Wye - 4\" (ABS)",
+    "description": "Wye made of ABS, 4 inch",
+    "material": "ABS",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "wye",
+    "synonyms": []
+  },
+  {
+    "displayName": "Wye - 6\" (ABS)",
+    "description": "Wye made of ABS, 6 inch",
+    "material": "ABS",
+    "sizeNominal": 6.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "wye",
+    "synonyms": []
+  },
+  {
+    "displayName": "TY - 1-1/4\" (ABS)",
+    "description": "TY made of ABS, 1-1/4 inch",
+    "material": "ABS",
+    "sizeNominal": 1.25,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "TY - 1-1/2\" (ABS)",
+    "description": "TY made of ABS, 1-1/2 inch",
+    "material": "ABS",
+    "sizeNominal": 1.5,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "TY - 2\" (ABS)",
+    "description": "TY made of ABS, 2 inch",
+    "material": "ABS",
+    "sizeNominal": 2.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "TY - 3\" (ABS)",
+    "description": "TY made of ABS, 3 inch",
+    "material": "ABS",
+    "sizeNominal": 3.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "TY - 4\" (ABS)",
+    "description": "TY made of ABS, 4 inch",
+    "material": "ABS",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "TY - 6\" (ABS)",
+    "description": "TY made of ABS, 6 inch",
+    "material": "ABS",
+    "sizeNominal": 6.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "Bushing - 1-1/4\" (ABS)",
+    "description": "Bushing made of ABS, 1-1/4 inch",
+    "material": "ABS",
+    "sizeNominal": 1.25,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "bushing",
+    "synonyms": []
+  },
+  {
+    "displayName": "Bushing - 1-1/2\" (ABS)",
+    "description": "Bushing made of ABS, 1-1/2 inch",
+    "material": "ABS",
+    "sizeNominal": 1.5,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "bushing",
+    "synonyms": []
+  },
+  {
+    "displayName": "Bushing - 2\" (ABS)",
+    "description": "Bushing made of ABS, 2 inch",
+    "material": "ABS",
+    "sizeNominal": 2.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "bushing",
+    "synonyms": []
+  },
+  {
+    "displayName": "Bushing - 3\" (ABS)",
+    "description": "Bushing made of ABS, 3 inch",
+    "material": "ABS",
+    "sizeNominal": 3.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "bushing",
+    "synonyms": []
+  },
+  {
+    "displayName": "Bushing - 4\" (ABS)",
+    "description": "Bushing made of ABS, 4 inch",
+    "material": "ABS",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "bushing",
+    "synonyms": []
+  },
+  {
+    "displayName": "Bushing - 6\" (ABS)",
+    "description": "Bushing made of ABS, 6 inch",
+    "material": "ABS",
+    "sizeNominal": 6.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "bushing",
+    "synonyms": []
+  },
+  {
+    "displayName": "Pipe Solid Wall - 1-1/4\" (ABS)",
+    "description": "Pipe Solid Wall made of ABS, 1-1/4 inch",
+    "material": "ABS",
+    "sizeNominal": 1.25,
+    "sizeUnit": "in",
+    "categoryName": "Pipe",
+    "partType": "pipe",
+    "synonyms": []
+  },
+  {
+    "displayName": "Pipe Solid Wall - 1-1/2\" (ABS)",
+    "description": "Pipe Solid Wall made of ABS, 1-1/2 inch",
+    "material": "ABS",
+    "sizeNominal": 1.5,
+    "sizeUnit": "in",
+    "categoryName": "Pipe",
+    "partType": "pipe",
+    "synonyms": []
+  },
+  {
+    "displayName": "Pipe Solid Wall - 2\" (ABS)",
+    "description": "Pipe Solid Wall made of ABS, 2 inch",
+    "material": "ABS",
+    "sizeNominal": 2.0,
+    "sizeUnit": "in",
+    "categoryName": "Pipe",
+    "partType": "pipe",
+    "synonyms": []
+  },
+  {
+    "displayName": "Pipe Solid Wall - 3\" (ABS)",
+    "description": "Pipe Solid Wall made of ABS, 3 inch",
+    "material": "ABS",
+    "sizeNominal": 3.0,
+    "sizeUnit": "in",
+    "categoryName": "Pipe",
+    "partType": "pipe",
+    "synonyms": []
+  },
+  {
+    "displayName": "Pipe Solid Wall - 4\" (ABS)",
+    "description": "Pipe Solid Wall made of ABS, 4 inch",
+    "material": "ABS",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Pipe",
+    "partType": "pipe",
+    "synonyms": []
+  },
+  {
+    "displayName": "Pipe Solid Wall - 6\" (ABS)",
+    "description": "Pipe Solid Wall made of ABS, 6 inch",
+    "material": "ABS",
+    "sizeNominal": 6.0,
+    "sizeUnit": "in",
+    "categoryName": "Pipe",
+    "partType": "pipe",
+    "synonyms": []
+  },
+  {
+    "displayName": "Pipe Cell Core - 1-1/4\" (ABS)",
+    "description": "Pipe Cell Core made of ABS, 1-1/4 inch",
+    "material": "ABS",
+    "sizeNominal": 1.25,
+    "sizeUnit": "in",
+    "categoryName": "Pipe",
+    "partType": "pipe",
+    "synonyms": []
+  },
+  {
+    "displayName": "Pipe Cell Core - 1-1/2\" (ABS)",
+    "description": "Pipe Cell Core made of ABS, 1-1/2 inch",
+    "material": "ABS",
+    "sizeNominal": 1.5,
+    "sizeUnit": "in",
+    "categoryName": "Pipe",
+    "partType": "pipe",
+    "synonyms": []
+  },
+  {
+    "displayName": "Pipe Cell Core - 2\" (ABS)",
+    "description": "Pipe Cell Core made of ABS, 2 inch",
+    "material": "ABS",
+    "sizeNominal": 2.0,
+    "sizeUnit": "in",
+    "categoryName": "Pipe",
+    "partType": "pipe",
+    "synonyms": []
+  },
+  {
+    "displayName": "Pipe Cell Core - 3\" (ABS)",
+    "description": "Pipe Cell Core made of ABS, 3 inch",
+    "material": "ABS",
+    "sizeNominal": 3.0,
+    "sizeUnit": "in",
+    "categoryName": "Pipe",
+    "partType": "pipe",
+    "synonyms": []
+  },
+  {
+    "displayName": "Pipe Cell Core - 4\" (ABS)",
+    "description": "Pipe Cell Core made of ABS, 4 inch",
+    "material": "ABS",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Pipe",
+    "partType": "pipe",
+    "synonyms": []
+  },
+  {
+    "displayName": "Pipe Cell Core - 6\" (ABS)",
+    "description": "Pipe Cell Core made of ABS, 6 inch",
+    "material": "ABS",
+    "sizeNominal": 6.0,
+    "sizeUnit": "in",
+    "categoryName": "Pipe",
+    "partType": "pipe",
+    "synonyms": []
+  },
+  {
+    "displayName": "P-Trap - 1-1/4\" (ABS)",
+    "description": "P-Trap made of ABS, 1-1/4 inch",
+    "material": "ABS",
+    "sizeNominal": 1.25,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "trap_adapter",
+    "synonyms": []
+  },
+  {
+    "displayName": "P-Trap - 1-1/2\" (ABS)",
+    "description": "P-Trap made of ABS, 1-1/2 inch",
+    "material": "ABS",
+    "sizeNominal": 1.5,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "trap_adapter",
+    "synonyms": []
+  },
+  {
+    "displayName": "P-Trap - 2\" (ABS)",
+    "description": "P-Trap made of ABS, 2 inch",
+    "material": "ABS",
+    "sizeNominal": 2.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "trap_adapter",
+    "synonyms": []
+  },
+  {
+    "displayName": "P-Trap - 3\" (ABS)",
+    "description": "P-Trap made of ABS, 3 inch",
+    "material": "ABS",
+    "sizeNominal": 3.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "trap_adapter",
+    "synonyms": []
+  },
+  {
+    "displayName": "P-Trap - 4\" (ABS)",
+    "description": "P-Trap made of ABS, 4 inch",
+    "material": "ABS",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "trap_adapter",
+    "synonyms": []
+  },
+  {
+    "displayName": "P-Trap Union - 1-1/4\" (ABS)",
+    "description": "P-Trap Union made of ABS, 1-1/4 inch",
+    "material": "ABS",
+    "sizeNominal": 1.25,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "union",
+    "synonyms": []
+  },
+  {
+    "displayName": "P-Trap Union - 1-1/2\" (ABS)",
+    "description": "P-Trap Union made of ABS, 1-1/2 inch",
+    "material": "ABS",
+    "sizeNominal": 1.5,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "union",
+    "synonyms": []
+  },
+  {
+    "displayName": "P-Trap Union - 2\" (ABS)",
+    "description": "P-Trap Union made of ABS, 2 inch",
+    "material": "ABS",
+    "sizeNominal": 2.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "union",
+    "synonyms": []
+  },
+  {
+    "displayName": "P-Trap Union w/ Cleanout - 1-1/4\" (ABS)",
+    "description": "P-Trap Union w/ Cleanout made of ABS, 1-1/4 inch",
+    "material": "ABS",
+    "sizeNominal": 1.25,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "union",
+    "synonyms": []
+  },
+  {
+    "displayName": "P-Trap Union w/ Cleanout - 1-1/2\" (ABS)",
+    "description": "P-Trap Union w/ Cleanout made of ABS, 1-1/2 inch",
+    "material": "ABS",
+    "sizeNominal": 1.5,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "union",
+    "synonyms": []
+  },
+  {
+    "displayName": "P-Trap Union w/ Cleanout - 2\" (ABS)",
+    "description": "P-Trap Union w/ Cleanout made of ABS, 2 inch",
+    "material": "ABS",
+    "sizeNominal": 2.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "union",
+    "synonyms": []
+  },
+  {
+    "displayName": "P-Trap w/ Cleanout - 1-1/4\" (ABS)",
+    "description": "P-Trap w/ Cleanout made of ABS, 1-1/4 inch",
+    "material": "ABS",
+    "sizeNominal": 1.25,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "trap_adapter",
+    "synonyms": []
+  },
+  {
+    "displayName": "P-Trap w/ Cleanout - 1-1/2\" (ABS)",
+    "description": "P-Trap w/ Cleanout made of ABS, 1-1/2 inch",
+    "material": "ABS",
+    "sizeNominal": 1.5,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "trap_adapter",
+    "synonyms": []
+  },
+  {
+    "displayName": "P-Trap w/ Cleanout - 2\" (ABS)",
+    "description": "P-Trap w/ Cleanout made of ABS, 2 inch",
+    "material": "ABS",
+    "sizeNominal": 2.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "trap_adapter",
+    "synonyms": []
+  },
+  {
+    "displayName": "Fitting Trap Adapter - 1-1/4\" (ABS)",
+    "description": "Fitting Trap Adapter made of ABS, 1-1/4 inch",
+    "material": "ABS",
+    "sizeNominal": 1.25,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "adapter",
+    "synonyms": []
+  },
+  {
+    "displayName": "Fitting Trap Adapter - 1-1/2\" (ABS)",
+    "description": "Fitting Trap Adapter made of ABS, 1-1/2 inch",
+    "material": "ABS",
+    "sizeNominal": 1.5,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "adapter",
+    "synonyms": []
+  },
+  {
+    "displayName": "Fitting Trap Adapter - 2\" (ABS)",
+    "description": "Fitting Trap Adapter made of ABS, 2 inch",
+    "material": "ABS",
+    "sizeNominal": 2.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "adapter",
+    "synonyms": []
+  },
+  {
+    "displayName": "Trap Adapter - 1-1/4\" (ABS)",
+    "description": "Trap Adapter made of ABS, 1-1/4 inch",
+    "material": "ABS",
+    "sizeNominal": 1.25,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "adapter",
+    "synonyms": []
+  },
+  {
+    "displayName": "Trap Adapter - 1-1/2\" (ABS)",
+    "description": "Trap Adapter made of ABS, 1-1/2 inch",
+    "material": "ABS",
+    "sizeNominal": 1.5,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "adapter",
+    "synonyms": []
+  },
+  {
+    "displayName": "Closet Flange - 4\" (ABS)",
+    "description": "Closet Flange made of ABS, 4 inch",
+    "material": "ABS",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "flange",
+    "synonyms": []
+  },
+  {
+    "displayName": "Adjustable Closet Flange - 4\" (ABS)",
+    "description": "Adjustable Closet Flange made of ABS, 4 inch",
+    "material": "ABS",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "flange",
+    "synonyms": []
+  },
+  {
+    "displayName": "Closet Flange w/ Test Plug - 4\" (ABS)",
+    "description": "Closet Flange w/ Test Plug made of ABS, 4 inch",
+    "material": "ABS",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "flange",
+    "synonyms": []
+  },
+  {
+    "displayName": "Fitting Closet Flange - 4\" (ABS)",
+    "description": "Fitting Closet Flange made of ABS, 4 inch",
+    "material": "ABS",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "flange",
+    "synonyms": []
+  },
+  {
+    "displayName": "Adjustable Closet Flange w/ Test Plug - 4\" (ABS)",
+    "description": "Adjustable Closet Flange w/ Test Plug made of ABS, 4 inch",
+    "material": "ABS",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "flange",
+    "synonyms": []
+  },
+  {
+    "displayName": "Offset Closet Flange - 4\" (ABS)",
+    "description": "Offset Closet Flange made of ABS, 4 inch",
+    "material": "ABS",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "flange",
+    "synonyms": []
+  },
+  {
+    "displayName": "45 Discharge Closet Flange - 4\" (ABS)",
+    "description": "45 Discharge Closet Flange made of ABS, 4 inch",
+    "material": "ABS",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "flange",
+    "synonyms": []
+  },
+  {
+    "displayName": "Closet Flange Spacer Ring - 4\" (ABS)",
+    "description": "Closet Flange Spacer Ring made of ABS, 4 inch",
+    "material": "ABS",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "flange",
+    "synonyms": []
+  },
+  {
+    "displayName": "Line Cleanout - 1-1/2\" (ABS)",
+    "description": "Line Cleanout made of ABS, 1-1/2 inch",
+    "material": "ABS",
+    "sizeNominal": 1.5,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "Line Cleanout - 2\" (ABS)",
+    "description": "Line Cleanout made of ABS, 2 inch",
+    "material": "ABS",
+    "sizeNominal": 2.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "Line Cleanout - 3\" (ABS)",
+    "description": "Line Cleanout made of ABS, 3 inch",
+    "material": "ABS",
+    "sizeNominal": 3.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "Line Cleanout - 4\" (ABS)",
+    "description": "Line Cleanout made of ABS, 4 inch",
+    "material": "ABS",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "End Cleanout - 1-1/4\" (ABS)",
+    "description": "End Cleanout made of ABS, 1-1/4 inch",
+    "material": "ABS",
+    "sizeNominal": 1.25,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "End Cleanout - 1-1/2\" (ABS)",
+    "description": "End Cleanout made of ABS, 1-1/2 inch",
+    "material": "ABS",
+    "sizeNominal": 1.5,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "End Cleanout - 2\" (ABS)",
+    "description": "End Cleanout made of ABS, 2 inch",
+    "material": "ABS",
+    "sizeNominal": 2.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "End Cleanout - 3\" (ABS)",
+    "description": "End Cleanout made of ABS, 3 inch",
+    "material": "ABS",
+    "sizeNominal": 3.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "End Cleanout - 4\" (ABS)",
+    "description": "End Cleanout made of ABS, 4 inch",
+    "material": "ABS",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "End Cleanout - 6\" (ABS)",
+    "description": "End Cleanout made of ABS, 6 inch",
+    "material": "ABS",
+    "sizeNominal": 6.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "Fitting End Cleanout - 1-1/4\" (ABS)",
+    "description": "Fitting End Cleanout made of ABS, 1-1/4 inch",
+    "material": "ABS",
+    "sizeNominal": 1.25,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "Fitting End Cleanout - 1-1/2\" (ABS)",
+    "description": "Fitting End Cleanout made of ABS, 1-1/2 inch",
+    "material": "ABS",
+    "sizeNominal": 1.5,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "Fitting End Cleanout - 2\" (ABS)",
+    "description": "Fitting End Cleanout made of ABS, 2 inch",
+    "material": "ABS",
+    "sizeNominal": 2.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "Fitting End Cleanout - 3\" (ABS)",
+    "description": "Fitting End Cleanout made of ABS, 3 inch",
+    "material": "ABS",
+    "sizeNominal": 3.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "Fitting End Cleanout - 4\" (ABS)",
+    "description": "Fitting End Cleanout made of ABS, 4 inch",
+    "material": "ABS",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "Fitting End Cleanout - 6\" (ABS)",
+    "description": "Fitting End Cleanout made of ABS, 6 inch",
+    "material": "ABS",
+    "sizeNominal": 6.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "MIP - 1-1/4\" (ABS)",
+    "description": "MIP made of ABS, 1-1/4 inch",
+    "material": "ABS",
+    "sizeNominal": 1.25,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "MIP - 1-1/2\" (ABS)",
+    "description": "MIP made of ABS, 1-1/2 inch",
+    "material": "ABS",
+    "sizeNominal": 1.5,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "MIP - 2\" (ABS)",
+    "description": "MIP made of ABS, 2 inch",
+    "material": "ABS",
+    "sizeNominal": 2.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "MIP - 3\" (ABS)",
+    "description": "MIP made of ABS, 3 inch",
+    "material": "ABS",
+    "sizeNominal": 3.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "MIP - 4\" (ABS)",
+    "description": "MIP made of ABS, 4 inch",
+    "material": "ABS",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "MIP - 6\" (ABS)",
+    "description": "MIP made of ABS, 6 inch",
+    "material": "ABS",
+    "sizeNominal": 6.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "FIP - 1-1/4\" (ABS)",
+    "description": "FIP made of ABS, 1-1/4 inch",
+    "material": "ABS",
+    "sizeNominal": 1.25,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "FIP - 1-1/2\" (ABS)",
+    "description": "FIP made of ABS, 1-1/2 inch",
+    "material": "ABS",
+    "sizeNominal": 1.5,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "FIP - 2\" (ABS)",
+    "description": "FIP made of ABS, 2 inch",
+    "material": "ABS",
+    "sizeNominal": 2.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "FIP - 3\" (ABS)",
+    "description": "FIP made of ABS, 3 inch",
+    "material": "ABS",
+    "sizeNominal": 3.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "FIP - 4\" (ABS)",
+    "description": "FIP made of ABS, 4 inch",
+    "material": "ABS",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "FIP - 6\" (ABS)",
+    "description": "FIP made of ABS, 6 inch",
+    "material": "ABS",
+    "sizeNominal": 6.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "22.5 Elbow - 1-1/4\" (ABS)",
+    "description": "22.5 Elbow made of ABS, 1-1/4 inch",
+    "material": "ABS",
+    "sizeNominal": 1.25,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "22.5 Elbow - 1-1/2\" (ABS)",
+    "description": "22.5 Elbow made of ABS, 1-1/2 inch",
+    "material": "ABS",
+    "sizeNominal": 1.5,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "22.5 Elbow - 2\" (ABS)",
+    "description": "22.5 Elbow made of ABS, 2 inch",
+    "material": "ABS",
+    "sizeNominal": 2.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "22.5 Elbow - 3\" (ABS)",
+    "description": "22.5 Elbow made of ABS, 3 inch",
+    "material": "ABS",
+    "sizeNominal": 3.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "22.5 Elbow - 4\" (ABS)",
+    "description": "22.5 Elbow made of ABS, 4 inch",
+    "material": "ABS",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "22.5 Elbow - 6\" (ABS)",
+    "description": "22.5 Elbow made of ABS, 6 inch",
+    "material": "ABS",
+    "sizeNominal": 6.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "60 Elbow - 1-1/4\" (ABS)",
+    "description": "60 Elbow made of ABS, 1-1/4 inch",
+    "material": "ABS",
+    "sizeNominal": 1.25,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "60 Elbow - 1-1/2\" (ABS)",
+    "description": "60 Elbow made of ABS, 1-1/2 inch",
+    "material": "ABS",
+    "sizeNominal": 1.5,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "60 Elbow - 2\" (ABS)",
+    "description": "60 Elbow made of ABS, 2 inch",
+    "material": "ABS",
+    "sizeNominal": 2.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "60 Elbow - 3\" (ABS)",
+    "description": "60 Elbow made of ABS, 3 inch",
+    "material": "ABS",
+    "sizeNominal": 3.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "60 Elbow - 4\" (ABS)",
+    "description": "60 Elbow made of ABS, 4 inch",
+    "material": "ABS",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "60 Elbow - 6\" (ABS)",
+    "description": "60 Elbow made of ABS, 6 inch",
+    "material": "ABS",
+    "sizeNominal": 6.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "90 Reducing Elbow - 4\" (ABS)",
+    "description": "90 Reducing Elbow made of ABS, 4 inch",
+    "material": "ABS",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "Double Wye - 1-1/4\" (ABS)",
+    "description": "Double Wye made of ABS, 1-1/4 inch",
+    "material": "ABS",
+    "sizeNominal": 1.25,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "wye",
+    "synonyms": []
+  },
+  {
+    "displayName": "Double Wye - 1-1/2\" (ABS)",
+    "description": "Double Wye made of ABS, 1-1/2 inch",
+    "material": "ABS",
+    "sizeNominal": 1.5,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "wye",
+    "synonyms": []
+  },
+  {
+    "displayName": "Double Wye - 2\" (ABS)",
+    "description": "Double Wye made of ABS, 2 inch",
+    "material": "ABS",
+    "sizeNominal": 2.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "wye",
+    "synonyms": []
+  },
+  {
+    "displayName": "Double Wye - 3\" (ABS)",
+    "description": "Double Wye made of ABS, 3 inch",
+    "material": "ABS",
+    "sizeNominal": 3.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "wye",
+    "synonyms": []
+  },
+  {
+    "displayName": "Double Wye - 4\" (ABS)",
+    "description": "Double Wye made of ABS, 4 inch",
+    "material": "ABS",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "wye",
+    "synonyms": []
+  },
+  {
+    "displayName": "Double Wye - 6\" (ABS)",
+    "description": "Double Wye made of ABS, 6 inch",
+    "material": "ABS",
+    "sizeNominal": 6.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "wye",
+    "synonyms": []
+  },
+  {
+    "displayName": "Dishwasher Wye - 1-1/2\" (ABS)",
+    "description": "Dishwasher Wye made of ABS, 1-1/2 inch",
+    "material": "ABS",
+    "sizeNominal": 1.5,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "wye",
+    "synonyms": []
+  },
+  {
+    "displayName": "90 Elbow - 1-1/4\" (PVC DWV)",
+    "description": "90 Elbow made of PVC DWV, 1-1/4 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 1.25,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "90 Elbow - 1-1/2\" (PVC DWV)",
+    "description": "90 Elbow made of PVC DWV, 1-1/2 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 1.5,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "90 Elbow - 2\" (PVC DWV)",
+    "description": "90 Elbow made of PVC DWV, 2 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 2.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "90 Elbow - 3\" (PVC DWV)",
+    "description": "90 Elbow made of PVC DWV, 3 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 3.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "90 Elbow - 4\" (PVC DWV)",
+    "description": "90 Elbow made of PVC DWV, 4 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "90 Elbow - 6\" (PVC DWV)",
+    "description": "90 Elbow made of PVC DWV, 6 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 6.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "Fitting 90 Elbow - 1-1/4\" (PVC DWV)",
+    "description": "Fitting 90 Elbow made of PVC DWV, 1-1/4 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 1.25,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "Fitting 90 Elbow - 1-1/2\" (PVC DWV)",
+    "description": "Fitting 90 Elbow made of PVC DWV, 1-1/2 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 1.5,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "Fitting 90 Elbow - 2\" (PVC DWV)",
+    "description": "Fitting 90 Elbow made of PVC DWV, 2 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 2.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "Fitting 90 Elbow - 3\" (PVC DWV)",
+    "description": "Fitting 90 Elbow made of PVC DWV, 3 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 3.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "Fitting 90 Elbow - 4\" (PVC DWV)",
+    "description": "Fitting 90 Elbow made of PVC DWV, 4 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "Fitting 90 Elbow - 6\" (PVC DWV)",
+    "description": "Fitting 90 Elbow made of PVC DWV, 6 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 6.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "45 Elbow - 1-1/4\" (PVC DWV)",
+    "description": "45 Elbow made of PVC DWV, 1-1/4 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 1.25,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "45 Elbow - 1-1/2\" (PVC DWV)",
+    "description": "45 Elbow made of PVC DWV, 1-1/2 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 1.5,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "45 Elbow - 2\" (PVC DWV)",
+    "description": "45 Elbow made of PVC DWV, 2 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 2.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "45 Elbow - 3\" (PVC DWV)",
+    "description": "45 Elbow made of PVC DWV, 3 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 3.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "45 Elbow - 4\" (PVC DWV)",
+    "description": "45 Elbow made of PVC DWV, 4 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "45 Elbow - 6\" (PVC DWV)",
+    "description": "45 Elbow made of PVC DWV, 6 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 6.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "Fitting 45 Elbow - 1-1/4\" (PVC DWV)",
+    "description": "Fitting 45 Elbow made of PVC DWV, 1-1/4 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 1.25,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "Fitting 45 Elbow - 1-1/2\" (PVC DWV)",
+    "description": "Fitting 45 Elbow made of PVC DWV, 1-1/2 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 1.5,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "Fitting 45 Elbow - 2\" (PVC DWV)",
+    "description": "Fitting 45 Elbow made of PVC DWV, 2 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 2.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "Fitting 45 Elbow - 3\" (PVC DWV)",
+    "description": "Fitting 45 Elbow made of PVC DWV, 3 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 3.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "Fitting 45 Elbow - 4\" (PVC DWV)",
+    "description": "Fitting 45 Elbow made of PVC DWV, 4 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "Fitting 45 Elbow - 6\" (PVC DWV)",
+    "description": "Fitting 45 Elbow made of PVC DWV, 6 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 6.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "Coupling - 1-1/4\" (PVC DWV)",
+    "description": "Coupling made of PVC DWV, 1-1/4 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 1.25,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "coupling",
+    "synonyms": []
+  },
+  {
+    "displayName": "Coupling - 1-1/2\" (PVC DWV)",
+    "description": "Coupling made of PVC DWV, 1-1/2 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 1.5,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "coupling",
+    "synonyms": []
+  },
+  {
+    "displayName": "Coupling - 2\" (PVC DWV)",
+    "description": "Coupling made of PVC DWV, 2 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 2.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "coupling",
+    "synonyms": []
+  },
+  {
+    "displayName": "Coupling - 3\" (PVC DWV)",
+    "description": "Coupling made of PVC DWV, 3 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 3.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "coupling",
+    "synonyms": []
+  },
+  {
+    "displayName": "Coupling - 4\" (PVC DWV)",
+    "description": "Coupling made of PVC DWV, 4 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "coupling",
+    "synonyms": []
+  },
+  {
+    "displayName": "Coupling - 6\" (PVC DWV)",
+    "description": "Coupling made of PVC DWV, 6 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 6.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "coupling",
+    "synonyms": []
+  },
+  {
+    "displayName": "Reducing Coupling - 1-1/4\" (PVC DWV)",
+    "description": "Reducing Coupling made of PVC DWV, 1-1/4 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 1.25,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "coupling",
+    "synonyms": []
+  },
+  {
+    "displayName": "Reducing Coupling - 1-1/2\" (PVC DWV)",
+    "description": "Reducing Coupling made of PVC DWV, 1-1/2 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 1.5,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "coupling",
+    "synonyms": []
+  },
+  {
+    "displayName": "Reducing Coupling - 2\" (PVC DWV)",
+    "description": "Reducing Coupling made of PVC DWV, 2 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 2.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "coupling",
+    "synonyms": []
+  },
+  {
+    "displayName": "Reducing Coupling - 3\" (PVC DWV)",
+    "description": "Reducing Coupling made of PVC DWV, 3 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 3.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "coupling",
+    "synonyms": []
+  },
+  {
+    "displayName": "Reducing Coupling - 4\" (PVC DWV)",
+    "description": "Reducing Coupling made of PVC DWV, 4 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "coupling",
+    "synonyms": []
+  },
+  {
+    "displayName": "Reducing Coupling - 6\" (PVC DWV)",
+    "description": "Reducing Coupling made of PVC DWV, 6 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 6.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "coupling",
+    "synonyms": []
+  },
+  {
+    "displayName": "Wye - 1-1/4\" (PVC DWV)",
+    "description": "Wye made of PVC DWV, 1-1/4 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 1.25,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "wye",
+    "synonyms": []
+  },
+  {
+    "displayName": "Wye - 1-1/2\" (PVC DWV)",
+    "description": "Wye made of PVC DWV, 1-1/2 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 1.5,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "wye",
+    "synonyms": []
+  },
+  {
+    "displayName": "Wye - 2\" (PVC DWV)",
+    "description": "Wye made of PVC DWV, 2 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 2.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "wye",
+    "synonyms": []
+  },
+  {
+    "displayName": "Wye - 3\" (PVC DWV)",
+    "description": "Wye made of PVC DWV, 3 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 3.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "wye",
+    "synonyms": []
+  },
+  {
+    "displayName": "Wye - 4\" (PVC DWV)",
+    "description": "Wye made of PVC DWV, 4 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "wye",
+    "synonyms": []
+  },
+  {
+    "displayName": "Wye - 6\" (PVC DWV)",
+    "description": "Wye made of PVC DWV, 6 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 6.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "wye",
+    "synonyms": []
+  },
+  {
+    "displayName": "TY - 1-1/4\" (PVC DWV)",
+    "description": "TY made of PVC DWV, 1-1/4 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 1.25,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "TY - 1-1/2\" (PVC DWV)",
+    "description": "TY made of PVC DWV, 1-1/2 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 1.5,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "TY - 2\" (PVC DWV)",
+    "description": "TY made of PVC DWV, 2 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 2.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "TY - 3\" (PVC DWV)",
+    "description": "TY made of PVC DWV, 3 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 3.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "TY - 4\" (PVC DWV)",
+    "description": "TY made of PVC DWV, 4 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "TY - 6\" (PVC DWV)",
+    "description": "TY made of PVC DWV, 6 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 6.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "Bushing - 1-1/4\" (PVC DWV)",
+    "description": "Bushing made of PVC DWV, 1-1/4 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 1.25,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "bushing",
+    "synonyms": []
+  },
+  {
+    "displayName": "Bushing - 1-1/2\" (PVC DWV)",
+    "description": "Bushing made of PVC DWV, 1-1/2 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 1.5,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "bushing",
+    "synonyms": []
+  },
+  {
+    "displayName": "Bushing - 2\" (PVC DWV)",
+    "description": "Bushing made of PVC DWV, 2 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 2.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "bushing",
+    "synonyms": []
+  },
+  {
+    "displayName": "Bushing - 3\" (PVC DWV)",
+    "description": "Bushing made of PVC DWV, 3 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 3.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "bushing",
+    "synonyms": []
+  },
+  {
+    "displayName": "Bushing - 4\" (PVC DWV)",
+    "description": "Bushing made of PVC DWV, 4 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "bushing",
+    "synonyms": []
+  },
+  {
+    "displayName": "Bushing - 6\" (PVC DWV)",
+    "description": "Bushing made of PVC DWV, 6 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 6.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "bushing",
+    "synonyms": []
+  },
+  {
+    "displayName": "Pipe Solid Wall - 1-1/4\" (PVC DWV)",
+    "description": "Pipe Solid Wall made of PVC DWV, 1-1/4 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 1.25,
+    "sizeUnit": "in",
+    "categoryName": "Pipe",
+    "partType": "pipe",
+    "synonyms": []
+  },
+  {
+    "displayName": "Pipe Solid Wall - 1-1/2\" (PVC DWV)",
+    "description": "Pipe Solid Wall made of PVC DWV, 1-1/2 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 1.5,
+    "sizeUnit": "in",
+    "categoryName": "Pipe",
+    "partType": "pipe",
+    "synonyms": []
+  },
+  {
+    "displayName": "Pipe Solid Wall - 2\" (PVC DWV)",
+    "description": "Pipe Solid Wall made of PVC DWV, 2 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 2.0,
+    "sizeUnit": "in",
+    "categoryName": "Pipe",
+    "partType": "pipe",
+    "synonyms": []
+  },
+  {
+    "displayName": "Pipe Solid Wall - 3\" (PVC DWV)",
+    "description": "Pipe Solid Wall made of PVC DWV, 3 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 3.0,
+    "sizeUnit": "in",
+    "categoryName": "Pipe",
+    "partType": "pipe",
+    "synonyms": []
+  },
+  {
+    "displayName": "Pipe Solid Wall - 4\" (PVC DWV)",
+    "description": "Pipe Solid Wall made of PVC DWV, 4 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Pipe",
+    "partType": "pipe",
+    "synonyms": []
+  },
+  {
+    "displayName": "Pipe Solid Wall - 6\" (PVC DWV)",
+    "description": "Pipe Solid Wall made of PVC DWV, 6 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 6.0,
+    "sizeUnit": "in",
+    "categoryName": "Pipe",
+    "partType": "pipe",
+    "synonyms": []
+  },
+  {
+    "displayName": "Pipe Cell Core - 1-1/4\" (PVC DWV)",
+    "description": "Pipe Cell Core made of PVC DWV, 1-1/4 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 1.25,
+    "sizeUnit": "in",
+    "categoryName": "Pipe",
+    "partType": "pipe",
+    "synonyms": []
+  },
+  {
+    "displayName": "Pipe Cell Core - 1-1/2\" (PVC DWV)",
+    "description": "Pipe Cell Core made of PVC DWV, 1-1/2 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 1.5,
+    "sizeUnit": "in",
+    "categoryName": "Pipe",
+    "partType": "pipe",
+    "synonyms": []
+  },
+  {
+    "displayName": "Pipe Cell Core - 2\" (PVC DWV)",
+    "description": "Pipe Cell Core made of PVC DWV, 2 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 2.0,
+    "sizeUnit": "in",
+    "categoryName": "Pipe",
+    "partType": "pipe",
+    "synonyms": []
+  },
+  {
+    "displayName": "Pipe Cell Core - 3\" (PVC DWV)",
+    "description": "Pipe Cell Core made of PVC DWV, 3 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 3.0,
+    "sizeUnit": "in",
+    "categoryName": "Pipe",
+    "partType": "pipe",
+    "synonyms": []
+  },
+  {
+    "displayName": "Pipe Cell Core - 4\" (PVC DWV)",
+    "description": "Pipe Cell Core made of PVC DWV, 4 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Pipe",
+    "partType": "pipe",
+    "synonyms": []
+  },
+  {
+    "displayName": "Pipe Cell Core - 6\" (PVC DWV)",
+    "description": "Pipe Cell Core made of PVC DWV, 6 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 6.0,
+    "sizeUnit": "in",
+    "categoryName": "Pipe",
+    "partType": "pipe",
+    "synonyms": []
+  },
+  {
+    "displayName": "P-Trap - 1-1/4\" (PVC DWV)",
+    "description": "P-Trap made of PVC DWV, 1-1/4 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 1.25,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "trap_adapter",
+    "synonyms": []
+  },
+  {
+    "displayName": "P-Trap - 1-1/2\" (PVC DWV)",
+    "description": "P-Trap made of PVC DWV, 1-1/2 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 1.5,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "trap_adapter",
+    "synonyms": []
+  },
+  {
+    "displayName": "P-Trap - 2\" (PVC DWV)",
+    "description": "P-Trap made of PVC DWV, 2 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 2.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "trap_adapter",
+    "synonyms": []
+  },
+  {
+    "displayName": "P-Trap - 3\" (PVC DWV)",
+    "description": "P-Trap made of PVC DWV, 3 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 3.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "trap_adapter",
+    "synonyms": []
+  },
+  {
+    "displayName": "P-Trap - 4\" (PVC DWV)",
+    "description": "P-Trap made of PVC DWV, 4 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "trap_adapter",
+    "synonyms": []
+  },
+  {
+    "displayName": "P-Trap Union - 1-1/4\" (PVC DWV)",
+    "description": "P-Trap Union made of PVC DWV, 1-1/4 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 1.25,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "union",
+    "synonyms": []
+  },
+  {
+    "displayName": "P-Trap Union - 1-1/2\" (PVC DWV)",
+    "description": "P-Trap Union made of PVC DWV, 1-1/2 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 1.5,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "union",
+    "synonyms": []
+  },
+  {
+    "displayName": "P-Trap Union - 2\" (PVC DWV)",
+    "description": "P-Trap Union made of PVC DWV, 2 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 2.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "union",
+    "synonyms": []
+  },
+  {
+    "displayName": "P-Trap Union w/ Cleanout - 1-1/4\" (PVC DWV)",
+    "description": "P-Trap Union w/ Cleanout made of PVC DWV, 1-1/4 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 1.25,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "union",
+    "synonyms": []
+  },
+  {
+    "displayName": "P-Trap Union w/ Cleanout - 1-1/2\" (PVC DWV)",
+    "description": "P-Trap Union w/ Cleanout made of PVC DWV, 1-1/2 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 1.5,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "union",
+    "synonyms": []
+  },
+  {
+    "displayName": "P-Trap Union w/ Cleanout - 2\" (PVC DWV)",
+    "description": "P-Trap Union w/ Cleanout made of PVC DWV, 2 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 2.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "union",
+    "synonyms": []
+  },
+  {
+    "displayName": "P-Trap w/ Cleanout - 1-1/4\" (PVC DWV)",
+    "description": "P-Trap w/ Cleanout made of PVC DWV, 1-1/4 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 1.25,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "trap_adapter",
+    "synonyms": []
+  },
+  {
+    "displayName": "P-Trap w/ Cleanout - 1-1/2\" (PVC DWV)",
+    "description": "P-Trap w/ Cleanout made of PVC DWV, 1-1/2 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 1.5,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "trap_adapter",
+    "synonyms": []
+  },
+  {
+    "displayName": "P-Trap w/ Cleanout - 2\" (PVC DWV)",
+    "description": "P-Trap w/ Cleanout made of PVC DWV, 2 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 2.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "trap_adapter",
+    "synonyms": []
+  },
+  {
+    "displayName": "Fitting Trap Adapter - 1-1/4\" (PVC DWV)",
+    "description": "Fitting Trap Adapter made of PVC DWV, 1-1/4 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 1.25,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "adapter",
+    "synonyms": []
+  },
+  {
+    "displayName": "Fitting Trap Adapter - 1-1/2\" (PVC DWV)",
+    "description": "Fitting Trap Adapter made of PVC DWV, 1-1/2 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 1.5,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "adapter",
+    "synonyms": []
+  },
+  {
+    "displayName": "Fitting Trap Adapter - 2\" (PVC DWV)",
+    "description": "Fitting Trap Adapter made of PVC DWV, 2 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 2.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "adapter",
+    "synonyms": []
+  },
+  {
+    "displayName": "Trap Adapter - 1-1/4\" (PVC DWV)",
+    "description": "Trap Adapter made of PVC DWV, 1-1/4 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 1.25,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "adapter",
+    "synonyms": []
+  },
+  {
+    "displayName": "Trap Adapter - 1-1/2\" (PVC DWV)",
+    "description": "Trap Adapter made of PVC DWV, 1-1/2 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 1.5,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "adapter",
+    "synonyms": []
+  },
+  {
+    "displayName": "Closet Flange - 4\" (PVC DWV)",
+    "description": "Closet Flange made of PVC DWV, 4 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "flange",
+    "synonyms": []
+  },
+  {
+    "displayName": "Adjustable Closet Flange - 4\" (PVC DWV)",
+    "description": "Adjustable Closet Flange made of PVC DWV, 4 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "flange",
+    "synonyms": []
+  },
+  {
+    "displayName": "Closet Flange w/ Test Plug - 4\" (PVC DWV)",
+    "description": "Closet Flange w/ Test Plug made of PVC DWV, 4 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "flange",
+    "synonyms": []
+  },
+  {
+    "displayName": "Fitting Closet Flange - 4\" (PVC DWV)",
+    "description": "Fitting Closet Flange made of PVC DWV, 4 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "flange",
+    "synonyms": []
+  },
+  {
+    "displayName": "Adjustable Closet Flange w/ Test Plug - 4\" (PVC DWV)",
+    "description": "Adjustable Closet Flange w/ Test Plug made of PVC DWV, 4 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "flange",
+    "synonyms": []
+  },
+  {
+    "displayName": "Offset Closet Flange - 4\" (PVC DWV)",
+    "description": "Offset Closet Flange made of PVC DWV, 4 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "flange",
+    "synonyms": []
+  },
+  {
+    "displayName": "45 Discharge Closet Flange - 4\" (PVC DWV)",
+    "description": "45 Discharge Closet Flange made of PVC DWV, 4 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "flange",
+    "synonyms": []
+  },
+  {
+    "displayName": "Closet Flange Spacer Ring - 4\" (PVC DWV)",
+    "description": "Closet Flange Spacer Ring made of PVC DWV, 4 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "flange",
+    "synonyms": []
+  },
+  {
+    "displayName": "Line Cleanout - 1-1/2\" (PVC DWV)",
+    "description": "Line Cleanout made of PVC DWV, 1-1/2 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 1.5,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "Line Cleanout - 2\" (PVC DWV)",
+    "description": "Line Cleanout made of PVC DWV, 2 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 2.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "Line Cleanout - 3\" (PVC DWV)",
+    "description": "Line Cleanout made of PVC DWV, 3 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 3.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "Line Cleanout - 4\" (PVC DWV)",
+    "description": "Line Cleanout made of PVC DWV, 4 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "End Cleanout - 1-1/4\" (PVC DWV)",
+    "description": "End Cleanout made of PVC DWV, 1-1/4 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 1.25,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "End Cleanout - 1-1/2\" (PVC DWV)",
+    "description": "End Cleanout made of PVC DWV, 1-1/2 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 1.5,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "End Cleanout - 2\" (PVC DWV)",
+    "description": "End Cleanout made of PVC DWV, 2 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 2.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "End Cleanout - 3\" (PVC DWV)",
+    "description": "End Cleanout made of PVC DWV, 3 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 3.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "End Cleanout - 4\" (PVC DWV)",
+    "description": "End Cleanout made of PVC DWV, 4 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "End Cleanout - 6\" (PVC DWV)",
+    "description": "End Cleanout made of PVC DWV, 6 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 6.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "Fitting End Cleanout - 1-1/4\" (PVC DWV)",
+    "description": "Fitting End Cleanout made of PVC DWV, 1-1/4 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 1.25,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "Fitting End Cleanout - 1-1/2\" (PVC DWV)",
+    "description": "Fitting End Cleanout made of PVC DWV, 1-1/2 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 1.5,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "Fitting End Cleanout - 2\" (PVC DWV)",
+    "description": "Fitting End Cleanout made of PVC DWV, 2 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 2.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "Fitting End Cleanout - 3\" (PVC DWV)",
+    "description": "Fitting End Cleanout made of PVC DWV, 3 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 3.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "Fitting End Cleanout - 4\" (PVC DWV)",
+    "description": "Fitting End Cleanout made of PVC DWV, 4 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "Fitting End Cleanout - 6\" (PVC DWV)",
+    "description": "Fitting End Cleanout made of PVC DWV, 6 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 6.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "MIP - 1-1/4\" (PVC DWV)",
+    "description": "MIP made of PVC DWV, 1-1/4 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 1.25,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "MIP - 1-1/2\" (PVC DWV)",
+    "description": "MIP made of PVC DWV, 1-1/2 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 1.5,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "MIP - 2\" (PVC DWV)",
+    "description": "MIP made of PVC DWV, 2 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 2.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "MIP - 3\" (PVC DWV)",
+    "description": "MIP made of PVC DWV, 3 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 3.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "MIP - 4\" (PVC DWV)",
+    "description": "MIP made of PVC DWV, 4 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "MIP - 6\" (PVC DWV)",
+    "description": "MIP made of PVC DWV, 6 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 6.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "FIP - 1-1/4\" (PVC DWV)",
+    "description": "FIP made of PVC DWV, 1-1/4 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 1.25,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "FIP - 1-1/2\" (PVC DWV)",
+    "description": "FIP made of PVC DWV, 1-1/2 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 1.5,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "FIP - 2\" (PVC DWV)",
+    "description": "FIP made of PVC DWV, 2 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 2.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "FIP - 3\" (PVC DWV)",
+    "description": "FIP made of PVC DWV, 3 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 3.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "FIP - 4\" (PVC DWV)",
+    "description": "FIP made of PVC DWV, 4 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "FIP - 6\" (PVC DWV)",
+    "description": "FIP made of PVC DWV, 6 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 6.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "22.5 Elbow - 1-1/4\" (PVC DWV)",
+    "description": "22.5 Elbow made of PVC DWV, 1-1/4 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 1.25,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "22.5 Elbow - 1-1/2\" (PVC DWV)",
+    "description": "22.5 Elbow made of PVC DWV, 1-1/2 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 1.5,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "22.5 Elbow - 2\" (PVC DWV)",
+    "description": "22.5 Elbow made of PVC DWV, 2 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 2.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "22.5 Elbow - 3\" (PVC DWV)",
+    "description": "22.5 Elbow made of PVC DWV, 3 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 3.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "22.5 Elbow - 4\" (PVC DWV)",
+    "description": "22.5 Elbow made of PVC DWV, 4 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "22.5 Elbow - 6\" (PVC DWV)",
+    "description": "22.5 Elbow made of PVC DWV, 6 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 6.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "60 Elbow - 1-1/4\" (PVC DWV)",
+    "description": "60 Elbow made of PVC DWV, 1-1/4 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 1.25,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "60 Elbow - 1-1/2\" (PVC DWV)",
+    "description": "60 Elbow made of PVC DWV, 1-1/2 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 1.5,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "60 Elbow - 2\" (PVC DWV)",
+    "description": "60 Elbow made of PVC DWV, 2 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 2.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "60 Elbow - 3\" (PVC DWV)",
+    "description": "60 Elbow made of PVC DWV, 3 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 3.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "60 Elbow - 4\" (PVC DWV)",
+    "description": "60 Elbow made of PVC DWV, 4 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "60 Elbow - 6\" (PVC DWV)",
+    "description": "60 Elbow made of PVC DWV, 6 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 6.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "90 Reducing Elbow - 4\" (PVC DWV)",
+    "description": "90 Reducing Elbow made of PVC DWV, 4 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "Double Wye - 1-1/4\" (PVC DWV)",
+    "description": "Double Wye made of PVC DWV, 1-1/4 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 1.25,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "wye",
+    "synonyms": []
+  },
+  {
+    "displayName": "Double Wye - 1-1/2\" (PVC DWV)",
+    "description": "Double Wye made of PVC DWV, 1-1/2 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 1.5,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "wye",
+    "synonyms": []
+  },
+  {
+    "displayName": "Double Wye - 2\" (PVC DWV)",
+    "description": "Double Wye made of PVC DWV, 2 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 2.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "wye",
+    "synonyms": []
+  },
+  {
+    "displayName": "Double Wye - 3\" (PVC DWV)",
+    "description": "Double Wye made of PVC DWV, 3 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 3.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "wye",
+    "synonyms": []
+  },
+  {
+    "displayName": "Double Wye - 4\" (PVC DWV)",
+    "description": "Double Wye made of PVC DWV, 4 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "wye",
+    "synonyms": []
+  },
+  {
+    "displayName": "Double Wye - 6\" (PVC DWV)",
+    "description": "Double Wye made of PVC DWV, 6 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 6.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "wye",
+    "synonyms": []
+  },
+  {
+    "displayName": "Dishwasher Wye - 1-1/2\" (PVC DWV)",
+    "description": "Dishwasher Wye made of PVC DWV, 1-1/2 inch",
+    "material": "PVC DWV",
+    "sizeNominal": 1.5,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "wye",
+    "synonyms": []
+  },
+  {
+    "displayName": "90 Elbow - 1-1/4\" (XFR)",
+    "description": "90 Elbow made of XFR, 1-1/4 inch",
+    "material": "XFR",
+    "sizeNominal": 1.25,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "90 Elbow - 1-1/2\" (XFR)",
+    "description": "90 Elbow made of XFR, 1-1/2 inch",
+    "material": "XFR",
+    "sizeNominal": 1.5,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "90 Elbow - 2\" (XFR)",
+    "description": "90 Elbow made of XFR, 2 inch",
+    "material": "XFR",
+    "sizeNominal": 2.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "90 Elbow - 3\" (XFR)",
+    "description": "90 Elbow made of XFR, 3 inch",
+    "material": "XFR",
+    "sizeNominal": 3.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "90 Elbow - 4\" (XFR)",
+    "description": "90 Elbow made of XFR, 4 inch",
+    "material": "XFR",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "90 Elbow - 6\" (XFR)",
+    "description": "90 Elbow made of XFR, 6 inch",
+    "material": "XFR",
+    "sizeNominal": 6.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "Fitting 90 Elbow - 1-1/4\" (XFR)",
+    "description": "Fitting 90 Elbow made of XFR, 1-1/4 inch",
+    "material": "XFR",
+    "sizeNominal": 1.25,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "Fitting 90 Elbow - 1-1/2\" (XFR)",
+    "description": "Fitting 90 Elbow made of XFR, 1-1/2 inch",
+    "material": "XFR",
+    "sizeNominal": 1.5,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "Fitting 90 Elbow - 2\" (XFR)",
+    "description": "Fitting 90 Elbow made of XFR, 2 inch",
+    "material": "XFR",
+    "sizeNominal": 2.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "Fitting 90 Elbow - 3\" (XFR)",
+    "description": "Fitting 90 Elbow made of XFR, 3 inch",
+    "material": "XFR",
+    "sizeNominal": 3.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "Fitting 90 Elbow - 4\" (XFR)",
+    "description": "Fitting 90 Elbow made of XFR, 4 inch",
+    "material": "XFR",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "Fitting 90 Elbow - 6\" (XFR)",
+    "description": "Fitting 90 Elbow made of XFR, 6 inch",
+    "material": "XFR",
+    "sizeNominal": 6.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "45 Elbow - 1-1/4\" (XFR)",
+    "description": "45 Elbow made of XFR, 1-1/4 inch",
+    "material": "XFR",
+    "sizeNominal": 1.25,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "45 Elbow - 1-1/2\" (XFR)",
+    "description": "45 Elbow made of XFR, 1-1/2 inch",
+    "material": "XFR",
+    "sizeNominal": 1.5,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "45 Elbow - 2\" (XFR)",
+    "description": "45 Elbow made of XFR, 2 inch",
+    "material": "XFR",
+    "sizeNominal": 2.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "45 Elbow - 3\" (XFR)",
+    "description": "45 Elbow made of XFR, 3 inch",
+    "material": "XFR",
+    "sizeNominal": 3.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "45 Elbow - 4\" (XFR)",
+    "description": "45 Elbow made of XFR, 4 inch",
+    "material": "XFR",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "45 Elbow - 6\" (XFR)",
+    "description": "45 Elbow made of XFR, 6 inch",
+    "material": "XFR",
+    "sizeNominal": 6.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "Fitting 45 Elbow - 1-1/4\" (XFR)",
+    "description": "Fitting 45 Elbow made of XFR, 1-1/4 inch",
+    "material": "XFR",
+    "sizeNominal": 1.25,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "Fitting 45 Elbow - 1-1/2\" (XFR)",
+    "description": "Fitting 45 Elbow made of XFR, 1-1/2 inch",
+    "material": "XFR",
+    "sizeNominal": 1.5,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "Fitting 45 Elbow - 2\" (XFR)",
+    "description": "Fitting 45 Elbow made of XFR, 2 inch",
+    "material": "XFR",
+    "sizeNominal": 2.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "Fitting 45 Elbow - 3\" (XFR)",
+    "description": "Fitting 45 Elbow made of XFR, 3 inch",
+    "material": "XFR",
+    "sizeNominal": 3.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "Fitting 45 Elbow - 4\" (XFR)",
+    "description": "Fitting 45 Elbow made of XFR, 4 inch",
+    "material": "XFR",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "Fitting 45 Elbow - 6\" (XFR)",
+    "description": "Fitting 45 Elbow made of XFR, 6 inch",
+    "material": "XFR",
+    "sizeNominal": 6.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "Coupling - 1-1/4\" (XFR)",
+    "description": "Coupling made of XFR, 1-1/4 inch",
+    "material": "XFR",
+    "sizeNominal": 1.25,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "coupling",
+    "synonyms": []
+  },
+  {
+    "displayName": "Coupling - 1-1/2\" (XFR)",
+    "description": "Coupling made of XFR, 1-1/2 inch",
+    "material": "XFR",
+    "sizeNominal": 1.5,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "coupling",
+    "synonyms": []
+  },
+  {
+    "displayName": "Coupling - 2\" (XFR)",
+    "description": "Coupling made of XFR, 2 inch",
+    "material": "XFR",
+    "sizeNominal": 2.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "coupling",
+    "synonyms": []
+  },
+  {
+    "displayName": "Coupling - 3\" (XFR)",
+    "description": "Coupling made of XFR, 3 inch",
+    "material": "XFR",
+    "sizeNominal": 3.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "coupling",
+    "synonyms": []
+  },
+  {
+    "displayName": "Coupling - 4\" (XFR)",
+    "description": "Coupling made of XFR, 4 inch",
+    "material": "XFR",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "coupling",
+    "synonyms": []
+  },
+  {
+    "displayName": "Coupling - 6\" (XFR)",
+    "description": "Coupling made of XFR, 6 inch",
+    "material": "XFR",
+    "sizeNominal": 6.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "coupling",
+    "synonyms": []
+  },
+  {
+    "displayName": "Reducing Coupling - 1-1/4\" (XFR)",
+    "description": "Reducing Coupling made of XFR, 1-1/4 inch",
+    "material": "XFR",
+    "sizeNominal": 1.25,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "coupling",
+    "synonyms": []
+  },
+  {
+    "displayName": "Reducing Coupling - 1-1/2\" (XFR)",
+    "description": "Reducing Coupling made of XFR, 1-1/2 inch",
+    "material": "XFR",
+    "sizeNominal": 1.5,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "coupling",
+    "synonyms": []
+  },
+  {
+    "displayName": "Reducing Coupling - 2\" (XFR)",
+    "description": "Reducing Coupling made of XFR, 2 inch",
+    "material": "XFR",
+    "sizeNominal": 2.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "coupling",
+    "synonyms": []
+  },
+  {
+    "displayName": "Reducing Coupling - 3\" (XFR)",
+    "description": "Reducing Coupling made of XFR, 3 inch",
+    "material": "XFR",
+    "sizeNominal": 3.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "coupling",
+    "synonyms": []
+  },
+  {
+    "displayName": "Reducing Coupling - 4\" (XFR)",
+    "description": "Reducing Coupling made of XFR, 4 inch",
+    "material": "XFR",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "coupling",
+    "synonyms": []
+  },
+  {
+    "displayName": "Reducing Coupling - 6\" (XFR)",
+    "description": "Reducing Coupling made of XFR, 6 inch",
+    "material": "XFR",
+    "sizeNominal": 6.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "coupling",
+    "synonyms": []
+  },
+  {
+    "displayName": "Wye - 1-1/4\" (XFR)",
+    "description": "Wye made of XFR, 1-1/4 inch",
+    "material": "XFR",
+    "sizeNominal": 1.25,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "wye",
+    "synonyms": []
+  },
+  {
+    "displayName": "Wye - 1-1/2\" (XFR)",
+    "description": "Wye made of XFR, 1-1/2 inch",
+    "material": "XFR",
+    "sizeNominal": 1.5,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "wye",
+    "synonyms": []
+  },
+  {
+    "displayName": "Wye - 2\" (XFR)",
+    "description": "Wye made of XFR, 2 inch",
+    "material": "XFR",
+    "sizeNominal": 2.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "wye",
+    "synonyms": []
+  },
+  {
+    "displayName": "Wye - 3\" (XFR)",
+    "description": "Wye made of XFR, 3 inch",
+    "material": "XFR",
+    "sizeNominal": 3.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "wye",
+    "synonyms": []
+  },
+  {
+    "displayName": "Wye - 4\" (XFR)",
+    "description": "Wye made of XFR, 4 inch",
+    "material": "XFR",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "wye",
+    "synonyms": []
+  },
+  {
+    "displayName": "Wye - 6\" (XFR)",
+    "description": "Wye made of XFR, 6 inch",
+    "material": "XFR",
+    "sizeNominal": 6.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "wye",
+    "synonyms": []
+  },
+  {
+    "displayName": "TY - 1-1/4\" (XFR)",
+    "description": "TY made of XFR, 1-1/4 inch",
+    "material": "XFR",
+    "sizeNominal": 1.25,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "TY - 1-1/2\" (XFR)",
+    "description": "TY made of XFR, 1-1/2 inch",
+    "material": "XFR",
+    "sizeNominal": 1.5,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "TY - 2\" (XFR)",
+    "description": "TY made of XFR, 2 inch",
+    "material": "XFR",
+    "sizeNominal": 2.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "TY - 3\" (XFR)",
+    "description": "TY made of XFR, 3 inch",
+    "material": "XFR",
+    "sizeNominal": 3.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "TY - 4\" (XFR)",
+    "description": "TY made of XFR, 4 inch",
+    "material": "XFR",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "TY - 6\" (XFR)",
+    "description": "TY made of XFR, 6 inch",
+    "material": "XFR",
+    "sizeNominal": 6.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "Bushing - 1-1/4\" (XFR)",
+    "description": "Bushing made of XFR, 1-1/4 inch",
+    "material": "XFR",
+    "sizeNominal": 1.25,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "bushing",
+    "synonyms": []
+  },
+  {
+    "displayName": "Bushing - 1-1/2\" (XFR)",
+    "description": "Bushing made of XFR, 1-1/2 inch",
+    "material": "XFR",
+    "sizeNominal": 1.5,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "bushing",
+    "synonyms": []
+  },
+  {
+    "displayName": "Bushing - 2\" (XFR)",
+    "description": "Bushing made of XFR, 2 inch",
+    "material": "XFR",
+    "sizeNominal": 2.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "bushing",
+    "synonyms": []
+  },
+  {
+    "displayName": "Bushing - 3\" (XFR)",
+    "description": "Bushing made of XFR, 3 inch",
+    "material": "XFR",
+    "sizeNominal": 3.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "bushing",
+    "synonyms": []
+  },
+  {
+    "displayName": "Bushing - 4\" (XFR)",
+    "description": "Bushing made of XFR, 4 inch",
+    "material": "XFR",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "bushing",
+    "synonyms": []
+  },
+  {
+    "displayName": "Bushing - 6\" (XFR)",
+    "description": "Bushing made of XFR, 6 inch",
+    "material": "XFR",
+    "sizeNominal": 6.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "bushing",
+    "synonyms": []
+  },
+  {
+    "displayName": "Pipe Solid Wall - 1-1/4\" (XFR)",
+    "description": "Pipe Solid Wall made of XFR, 1-1/4 inch",
+    "material": "XFR",
+    "sizeNominal": 1.25,
+    "sizeUnit": "in",
+    "categoryName": "Pipe",
+    "partType": "pipe",
+    "synonyms": []
+  },
+  {
+    "displayName": "Pipe Solid Wall - 1-1/2\" (XFR)",
+    "description": "Pipe Solid Wall made of XFR, 1-1/2 inch",
+    "material": "XFR",
+    "sizeNominal": 1.5,
+    "sizeUnit": "in",
+    "categoryName": "Pipe",
+    "partType": "pipe",
+    "synonyms": []
+  },
+  {
+    "displayName": "Pipe Solid Wall - 2\" (XFR)",
+    "description": "Pipe Solid Wall made of XFR, 2 inch",
+    "material": "XFR",
+    "sizeNominal": 2.0,
+    "sizeUnit": "in",
+    "categoryName": "Pipe",
+    "partType": "pipe",
+    "synonyms": []
+  },
+  {
+    "displayName": "Pipe Solid Wall - 3\" (XFR)",
+    "description": "Pipe Solid Wall made of XFR, 3 inch",
+    "material": "XFR",
+    "sizeNominal": 3.0,
+    "sizeUnit": "in",
+    "categoryName": "Pipe",
+    "partType": "pipe",
+    "synonyms": []
+  },
+  {
+    "displayName": "Pipe Solid Wall - 4\" (XFR)",
+    "description": "Pipe Solid Wall made of XFR, 4 inch",
+    "material": "XFR",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Pipe",
+    "partType": "pipe",
+    "synonyms": []
+  },
+  {
+    "displayName": "Pipe Solid Wall - 6\" (XFR)",
+    "description": "Pipe Solid Wall made of XFR, 6 inch",
+    "material": "XFR",
+    "sizeNominal": 6.0,
+    "sizeUnit": "in",
+    "categoryName": "Pipe",
+    "partType": "pipe",
+    "synonyms": []
+  },
+  {
+    "displayName": "Pipe Cell Core - 1-1/4\" (XFR)",
+    "description": "Pipe Cell Core made of XFR, 1-1/4 inch",
+    "material": "XFR",
+    "sizeNominal": 1.25,
+    "sizeUnit": "in",
+    "categoryName": "Pipe",
+    "partType": "pipe",
+    "synonyms": []
+  },
+  {
+    "displayName": "Pipe Cell Core - 1-1/2\" (XFR)",
+    "description": "Pipe Cell Core made of XFR, 1-1/2 inch",
+    "material": "XFR",
+    "sizeNominal": 1.5,
+    "sizeUnit": "in",
+    "categoryName": "Pipe",
+    "partType": "pipe",
+    "synonyms": []
+  },
+  {
+    "displayName": "Pipe Cell Core - 2\" (XFR)",
+    "description": "Pipe Cell Core made of XFR, 2 inch",
+    "material": "XFR",
+    "sizeNominal": 2.0,
+    "sizeUnit": "in",
+    "categoryName": "Pipe",
+    "partType": "pipe",
+    "synonyms": []
+  },
+  {
+    "displayName": "Pipe Cell Core - 3\" (XFR)",
+    "description": "Pipe Cell Core made of XFR, 3 inch",
+    "material": "XFR",
+    "sizeNominal": 3.0,
+    "sizeUnit": "in",
+    "categoryName": "Pipe",
+    "partType": "pipe",
+    "synonyms": []
+  },
+  {
+    "displayName": "Pipe Cell Core - 4\" (XFR)",
+    "description": "Pipe Cell Core made of XFR, 4 inch",
+    "material": "XFR",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Pipe",
+    "partType": "pipe",
+    "synonyms": []
+  },
+  {
+    "displayName": "Pipe Cell Core - 6\" (XFR)",
+    "description": "Pipe Cell Core made of XFR, 6 inch",
+    "material": "XFR",
+    "sizeNominal": 6.0,
+    "sizeUnit": "in",
+    "categoryName": "Pipe",
+    "partType": "pipe",
+    "synonyms": []
+  },
+  {
+    "displayName": "P-Trap - 1-1/4\" (XFR)",
+    "description": "P-Trap made of XFR, 1-1/4 inch",
+    "material": "XFR",
+    "sizeNominal": 1.25,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "trap_adapter",
+    "synonyms": []
+  },
+  {
+    "displayName": "P-Trap - 1-1/2\" (XFR)",
+    "description": "P-Trap made of XFR, 1-1/2 inch",
+    "material": "XFR",
+    "sizeNominal": 1.5,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "trap_adapter",
+    "synonyms": []
+  },
+  {
+    "displayName": "P-Trap - 2\" (XFR)",
+    "description": "P-Trap made of XFR, 2 inch",
+    "material": "XFR",
+    "sizeNominal": 2.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "trap_adapter",
+    "synonyms": []
+  },
+  {
+    "displayName": "P-Trap - 3\" (XFR)",
+    "description": "P-Trap made of XFR, 3 inch",
+    "material": "XFR",
+    "sizeNominal": 3.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "trap_adapter",
+    "synonyms": []
+  },
+  {
+    "displayName": "P-Trap - 4\" (XFR)",
+    "description": "P-Trap made of XFR, 4 inch",
+    "material": "XFR",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "trap_adapter",
+    "synonyms": []
+  },
+  {
+    "displayName": "P-Trap Union - 1-1/4\" (XFR)",
+    "description": "P-Trap Union made of XFR, 1-1/4 inch",
+    "material": "XFR",
+    "sizeNominal": 1.25,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "union",
+    "synonyms": []
+  },
+  {
+    "displayName": "P-Trap Union - 1-1/2\" (XFR)",
+    "description": "P-Trap Union made of XFR, 1-1/2 inch",
+    "material": "XFR",
+    "sizeNominal": 1.5,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "union",
+    "synonyms": []
+  },
+  {
+    "displayName": "P-Trap Union - 2\" (XFR)",
+    "description": "P-Trap Union made of XFR, 2 inch",
+    "material": "XFR",
+    "sizeNominal": 2.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "union",
+    "synonyms": []
+  },
+  {
+    "displayName": "P-Trap Union w/ Cleanout - 1-1/4\" (XFR)",
+    "description": "P-Trap Union w/ Cleanout made of XFR, 1-1/4 inch",
+    "material": "XFR",
+    "sizeNominal": 1.25,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "union",
+    "synonyms": []
+  },
+  {
+    "displayName": "P-Trap Union w/ Cleanout - 1-1/2\" (XFR)",
+    "description": "P-Trap Union w/ Cleanout made of XFR, 1-1/2 inch",
+    "material": "XFR",
+    "sizeNominal": 1.5,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "union",
+    "synonyms": []
+  },
+  {
+    "displayName": "P-Trap Union w/ Cleanout - 2\" (XFR)",
+    "description": "P-Trap Union w/ Cleanout made of XFR, 2 inch",
+    "material": "XFR",
+    "sizeNominal": 2.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "union",
+    "synonyms": []
+  },
+  {
+    "displayName": "P-Trap w/ Cleanout - 1-1/4\" (XFR)",
+    "description": "P-Trap w/ Cleanout made of XFR, 1-1/4 inch",
+    "material": "XFR",
+    "sizeNominal": 1.25,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "trap_adapter",
+    "synonyms": []
+  },
+  {
+    "displayName": "P-Trap w/ Cleanout - 1-1/2\" (XFR)",
+    "description": "P-Trap w/ Cleanout made of XFR, 1-1/2 inch",
+    "material": "XFR",
+    "sizeNominal": 1.5,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "trap_adapter",
+    "synonyms": []
+  },
+  {
+    "displayName": "P-Trap w/ Cleanout - 2\" (XFR)",
+    "description": "P-Trap w/ Cleanout made of XFR, 2 inch",
+    "material": "XFR",
+    "sizeNominal": 2.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "trap_adapter",
+    "synonyms": []
+  },
+  {
+    "displayName": "Fitting Trap Adapter - 1-1/4\" (XFR)",
+    "description": "Fitting Trap Adapter made of XFR, 1-1/4 inch",
+    "material": "XFR",
+    "sizeNominal": 1.25,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "adapter",
+    "synonyms": []
+  },
+  {
+    "displayName": "Fitting Trap Adapter - 1-1/2\" (XFR)",
+    "description": "Fitting Trap Adapter made of XFR, 1-1/2 inch",
+    "material": "XFR",
+    "sizeNominal": 1.5,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "adapter",
+    "synonyms": []
+  },
+  {
+    "displayName": "Fitting Trap Adapter - 2\" (XFR)",
+    "description": "Fitting Trap Adapter made of XFR, 2 inch",
+    "material": "XFR",
+    "sizeNominal": 2.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "adapter",
+    "synonyms": []
+  },
+  {
+    "displayName": "Trap Adapter - 1-1/4\" (XFR)",
+    "description": "Trap Adapter made of XFR, 1-1/4 inch",
+    "material": "XFR",
+    "sizeNominal": 1.25,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "adapter",
+    "synonyms": []
+  },
+  {
+    "displayName": "Trap Adapter - 1-1/2\" (XFR)",
+    "description": "Trap Adapter made of XFR, 1-1/2 inch",
+    "material": "XFR",
+    "sizeNominal": 1.5,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "adapter",
+    "synonyms": []
+  },
+  {
+    "displayName": "Closet Flange - 4\" (XFR)",
+    "description": "Closet Flange made of XFR, 4 inch",
+    "material": "XFR",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "flange",
+    "synonyms": []
+  },
+  {
+    "displayName": "Adjustable Closet Flange - 4\" (XFR)",
+    "description": "Adjustable Closet Flange made of XFR, 4 inch",
+    "material": "XFR",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "flange",
+    "synonyms": []
+  },
+  {
+    "displayName": "Closet Flange w/ Test Plug - 4\" (XFR)",
+    "description": "Closet Flange w/ Test Plug made of XFR, 4 inch",
+    "material": "XFR",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "flange",
+    "synonyms": []
+  },
+  {
+    "displayName": "Fitting Closet Flange - 4\" (XFR)",
+    "description": "Fitting Closet Flange made of XFR, 4 inch",
+    "material": "XFR",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "flange",
+    "synonyms": []
+  },
+  {
+    "displayName": "Adjustable Closet Flange w/ Test Plug - 4\" (XFR)",
+    "description": "Adjustable Closet Flange w/ Test Plug made of XFR, 4 inch",
+    "material": "XFR",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "flange",
+    "synonyms": []
+  },
+  {
+    "displayName": "Offset Closet Flange - 4\" (XFR)",
+    "description": "Offset Closet Flange made of XFR, 4 inch",
+    "material": "XFR",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "flange",
+    "synonyms": []
+  },
+  {
+    "displayName": "45 Discharge Closet Flange - 4\" (XFR)",
+    "description": "45 Discharge Closet Flange made of XFR, 4 inch",
+    "material": "XFR",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "flange",
+    "synonyms": []
+  },
+  {
+    "displayName": "Closet Flange Spacer Ring - 4\" (XFR)",
+    "description": "Closet Flange Spacer Ring made of XFR, 4 inch",
+    "material": "XFR",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "flange",
+    "synonyms": []
+  },
+  {
+    "displayName": "Line Cleanout - 1-1/2\" (XFR)",
+    "description": "Line Cleanout made of XFR, 1-1/2 inch",
+    "material": "XFR",
+    "sizeNominal": 1.5,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "Line Cleanout - 2\" (XFR)",
+    "description": "Line Cleanout made of XFR, 2 inch",
+    "material": "XFR",
+    "sizeNominal": 2.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "Line Cleanout - 3\" (XFR)",
+    "description": "Line Cleanout made of XFR, 3 inch",
+    "material": "XFR",
+    "sizeNominal": 3.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "Line Cleanout - 4\" (XFR)",
+    "description": "Line Cleanout made of XFR, 4 inch",
+    "material": "XFR",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "End Cleanout - 1-1/4\" (XFR)",
+    "description": "End Cleanout made of XFR, 1-1/4 inch",
+    "material": "XFR",
+    "sizeNominal": 1.25,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "End Cleanout - 1-1/2\" (XFR)",
+    "description": "End Cleanout made of XFR, 1-1/2 inch",
+    "material": "XFR",
+    "sizeNominal": 1.5,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "End Cleanout - 2\" (XFR)",
+    "description": "End Cleanout made of XFR, 2 inch",
+    "material": "XFR",
+    "sizeNominal": 2.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "End Cleanout - 3\" (XFR)",
+    "description": "End Cleanout made of XFR, 3 inch",
+    "material": "XFR",
+    "sizeNominal": 3.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "End Cleanout - 4\" (XFR)",
+    "description": "End Cleanout made of XFR, 4 inch",
+    "material": "XFR",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "End Cleanout - 6\" (XFR)",
+    "description": "End Cleanout made of XFR, 6 inch",
+    "material": "XFR",
+    "sizeNominal": 6.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "Fitting End Cleanout - 1-1/4\" (XFR)",
+    "description": "Fitting End Cleanout made of XFR, 1-1/4 inch",
+    "material": "XFR",
+    "sizeNominal": 1.25,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "Fitting End Cleanout - 1-1/2\" (XFR)",
+    "description": "Fitting End Cleanout made of XFR, 1-1/2 inch",
+    "material": "XFR",
+    "sizeNominal": 1.5,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "Fitting End Cleanout - 2\" (XFR)",
+    "description": "Fitting End Cleanout made of XFR, 2 inch",
+    "material": "XFR",
+    "sizeNominal": 2.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "Fitting End Cleanout - 3\" (XFR)",
+    "description": "Fitting End Cleanout made of XFR, 3 inch",
+    "material": "XFR",
+    "sizeNominal": 3.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "Fitting End Cleanout - 4\" (XFR)",
+    "description": "Fitting End Cleanout made of XFR, 4 inch",
+    "material": "XFR",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "Fitting End Cleanout - 6\" (XFR)",
+    "description": "Fitting End Cleanout made of XFR, 6 inch",
+    "material": "XFR",
+    "sizeNominal": 6.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "MIP - 1-1/4\" (XFR)",
+    "description": "MIP made of XFR, 1-1/4 inch",
+    "material": "XFR",
+    "sizeNominal": 1.25,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "MIP - 1-1/2\" (XFR)",
+    "description": "MIP made of XFR, 1-1/2 inch",
+    "material": "XFR",
+    "sizeNominal": 1.5,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "MIP - 2\" (XFR)",
+    "description": "MIP made of XFR, 2 inch",
+    "material": "XFR",
+    "sizeNominal": 2.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "MIP - 3\" (XFR)",
+    "description": "MIP made of XFR, 3 inch",
+    "material": "XFR",
+    "sizeNominal": 3.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "MIP - 4\" (XFR)",
+    "description": "MIP made of XFR, 4 inch",
+    "material": "XFR",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "MIP - 6\" (XFR)",
+    "description": "MIP made of XFR, 6 inch",
+    "material": "XFR",
+    "sizeNominal": 6.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "FIP - 1-1/4\" (XFR)",
+    "description": "FIP made of XFR, 1-1/4 inch",
+    "material": "XFR",
+    "sizeNominal": 1.25,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "FIP - 1-1/2\" (XFR)",
+    "description": "FIP made of XFR, 1-1/2 inch",
+    "material": "XFR",
+    "sizeNominal": 1.5,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "FIP - 2\" (XFR)",
+    "description": "FIP made of XFR, 2 inch",
+    "material": "XFR",
+    "sizeNominal": 2.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "FIP - 3\" (XFR)",
+    "description": "FIP made of XFR, 3 inch",
+    "material": "XFR",
+    "sizeNominal": 3.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "FIP - 4\" (XFR)",
+    "description": "FIP made of XFR, 4 inch",
+    "material": "XFR",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "FIP - 6\" (XFR)",
+    "description": "FIP made of XFR, 6 inch",
+    "material": "XFR",
+    "sizeNominal": 6.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "22.5 Elbow - 1-1/4\" (XFR)",
+    "description": "22.5 Elbow made of XFR, 1-1/4 inch",
+    "material": "XFR",
+    "sizeNominal": 1.25,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "22.5 Elbow - 1-1/2\" (XFR)",
+    "description": "22.5 Elbow made of XFR, 1-1/2 inch",
+    "material": "XFR",
+    "sizeNominal": 1.5,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "22.5 Elbow - 2\" (XFR)",
+    "description": "22.5 Elbow made of XFR, 2 inch",
+    "material": "XFR",
+    "sizeNominal": 2.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "22.5 Elbow - 3\" (XFR)",
+    "description": "22.5 Elbow made of XFR, 3 inch",
+    "material": "XFR",
+    "sizeNominal": 3.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "22.5 Elbow - 4\" (XFR)",
+    "description": "22.5 Elbow made of XFR, 4 inch",
+    "material": "XFR",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "22.5 Elbow - 6\" (XFR)",
+    "description": "22.5 Elbow made of XFR, 6 inch",
+    "material": "XFR",
+    "sizeNominal": 6.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "60 Elbow - 1-1/4\" (XFR)",
+    "description": "60 Elbow made of XFR, 1-1/4 inch",
+    "material": "XFR",
+    "sizeNominal": 1.25,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "60 Elbow - 1-1/2\" (XFR)",
+    "description": "60 Elbow made of XFR, 1-1/2 inch",
+    "material": "XFR",
+    "sizeNominal": 1.5,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "60 Elbow - 2\" (XFR)",
+    "description": "60 Elbow made of XFR, 2 inch",
+    "material": "XFR",
+    "sizeNominal": 2.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "60 Elbow - 3\" (XFR)",
+    "description": "60 Elbow made of XFR, 3 inch",
+    "material": "XFR",
+    "sizeNominal": 3.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "60 Elbow - 4\" (XFR)",
+    "description": "60 Elbow made of XFR, 4 inch",
+    "material": "XFR",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "60 Elbow - 6\" (XFR)",
+    "description": "60 Elbow made of XFR, 6 inch",
+    "material": "XFR",
+    "sizeNominal": 6.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "90 Reducing Elbow - 4\" (XFR)",
+    "description": "90 Reducing Elbow made of XFR, 4 inch",
+    "material": "XFR",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "Double Wye - 1-1/4\" (XFR)",
+    "description": "Double Wye made of XFR, 1-1/4 inch",
+    "material": "XFR",
+    "sizeNominal": 1.25,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "wye",
+    "synonyms": []
+  },
+  {
+    "displayName": "Double Wye - 1-1/2\" (XFR)",
+    "description": "Double Wye made of XFR, 1-1/2 inch",
+    "material": "XFR",
+    "sizeNominal": 1.5,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "wye",
+    "synonyms": []
+  },
+  {
+    "displayName": "Double Wye - 2\" (XFR)",
+    "description": "Double Wye made of XFR, 2 inch",
+    "material": "XFR",
+    "sizeNominal": 2.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "wye",
+    "synonyms": []
+  },
+  {
+    "displayName": "Double Wye - 3\" (XFR)",
+    "description": "Double Wye made of XFR, 3 inch",
+    "material": "XFR",
+    "sizeNominal": 3.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "wye",
+    "synonyms": []
+  },
+  {
+    "displayName": "Double Wye - 4\" (XFR)",
+    "description": "Double Wye made of XFR, 4 inch",
+    "material": "XFR",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "wye",
+    "synonyms": []
+  },
+  {
+    "displayName": "Double Wye - 6\" (XFR)",
+    "description": "Double Wye made of XFR, 6 inch",
+    "material": "XFR",
+    "sizeNominal": 6.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "wye",
+    "synonyms": []
+  },
+  {
+    "displayName": "Dishwasher Wye - 1-1/2\" (XFR)",
+    "description": "Dishwasher Wye made of XFR, 1-1/2 inch",
+    "material": "XFR",
+    "sizeNominal": 1.5,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "wye",
+    "synonyms": []
+  },
+  {
+    "displayName": "90 Elbow - 1/2\" (Copper)",
+    "description": "90 Elbow made of Copper, 1/2 inch",
+    "material": "Copper",
+    "sizeNominal": 0.5,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "90 Elbow - 3/4\" (Copper)",
+    "description": "90 Elbow made of Copper, 3/4 inch",
+    "material": "Copper",
+    "sizeNominal": 0.75,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "90 Elbow - 1\" (Copper)",
+    "description": "90 Elbow made of Copper, 1 inch",
+    "material": "Copper",
+    "sizeNominal": 1.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "90 Elbow - 1-1/4\" (Copper)",
+    "description": "90 Elbow made of Copper, 1-1/4 inch",
+    "material": "Copper",
+    "sizeNominal": 1.25,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "90 Elbow - 1-1/2\" (Copper)",
+    "description": "90 Elbow made of Copper, 1-1/2 inch",
+    "material": "Copper",
+    "sizeNominal": 1.5,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "90 Elbow - 2\" (Copper)",
+    "description": "90 Elbow made of Copper, 2 inch",
+    "material": "Copper",
+    "sizeNominal": 2.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "90 Elbow - 3\" (Copper)",
+    "description": "90 Elbow made of Copper, 3 inch",
+    "material": "Copper",
+    "sizeNominal": 3.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "90 Elbow - 4\" (Copper)",
+    "description": "90 Elbow made of Copper, 4 inch",
+    "material": "Copper",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "90 Elbow - 6\" (Copper)",
+    "description": "90 Elbow made of Copper, 6 inch",
+    "material": "Copper",
+    "sizeNominal": 6.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "Fitting 90 Elbow - 1/2\" (Copper)",
+    "description": "Fitting 90 Elbow made of Copper, 1/2 inch",
+    "material": "Copper",
+    "sizeNominal": 0.5,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "Fitting 90 Elbow - 3/4\" (Copper)",
+    "description": "Fitting 90 Elbow made of Copper, 3/4 inch",
+    "material": "Copper",
+    "sizeNominal": 0.75,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "Fitting 90 Elbow - 1\" (Copper)",
+    "description": "Fitting 90 Elbow made of Copper, 1 inch",
+    "material": "Copper",
+    "sizeNominal": 1.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "Fitting 90 Elbow - 1-1/4\" (Copper)",
+    "description": "Fitting 90 Elbow made of Copper, 1-1/4 inch",
+    "material": "Copper",
+    "sizeNominal": 1.25,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "Fitting 90 Elbow - 1-1/2\" (Copper)",
+    "description": "Fitting 90 Elbow made of Copper, 1-1/2 inch",
+    "material": "Copper",
+    "sizeNominal": 1.5,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "Fitting 90 Elbow - 2\" (Copper)",
+    "description": "Fitting 90 Elbow made of Copper, 2 inch",
+    "material": "Copper",
+    "sizeNominal": 2.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "Fitting 90 Elbow - 3\" (Copper)",
+    "description": "Fitting 90 Elbow made of Copper, 3 inch",
+    "material": "Copper",
+    "sizeNominal": 3.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "Fitting 90 Elbow - 4\" (Copper)",
+    "description": "Fitting 90 Elbow made of Copper, 4 inch",
+    "material": "Copper",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "Fitting 90 Elbow - 6\" (Copper)",
+    "description": "Fitting 90 Elbow made of Copper, 6 inch",
+    "material": "Copper",
+    "sizeNominal": 6.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "45 Elbow - 1/2\" (Copper)",
+    "description": "45 Elbow made of Copper, 1/2 inch",
+    "material": "Copper",
+    "sizeNominal": 0.5,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "45 Elbow - 3/4\" (Copper)",
+    "description": "45 Elbow made of Copper, 3/4 inch",
+    "material": "Copper",
+    "sizeNominal": 0.75,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "45 Elbow - 1\" (Copper)",
+    "description": "45 Elbow made of Copper, 1 inch",
+    "material": "Copper",
+    "sizeNominal": 1.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "45 Elbow - 1-1/4\" (Copper)",
+    "description": "45 Elbow made of Copper, 1-1/4 inch",
+    "material": "Copper",
+    "sizeNominal": 1.25,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "45 Elbow - 1-1/2\" (Copper)",
+    "description": "45 Elbow made of Copper, 1-1/2 inch",
+    "material": "Copper",
+    "sizeNominal": 1.5,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "45 Elbow - 2\" (Copper)",
+    "description": "45 Elbow made of Copper, 2 inch",
+    "material": "Copper",
+    "sizeNominal": 2.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "45 Elbow - 3\" (Copper)",
+    "description": "45 Elbow made of Copper, 3 inch",
+    "material": "Copper",
+    "sizeNominal": 3.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "45 Elbow - 4\" (Copper)",
+    "description": "45 Elbow made of Copper, 4 inch",
+    "material": "Copper",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "45 Elbow - 6\" (Copper)",
+    "description": "45 Elbow made of Copper, 6 inch",
+    "material": "Copper",
+    "sizeNominal": 6.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "Fitting 45 Elbow - 1/2\" (Copper)",
+    "description": "Fitting 45 Elbow made of Copper, 1/2 inch",
+    "material": "Copper",
+    "sizeNominal": 0.5,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "Fitting 45 Elbow - 3/4\" (Copper)",
+    "description": "Fitting 45 Elbow made of Copper, 3/4 inch",
+    "material": "Copper",
+    "sizeNominal": 0.75,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "Fitting 45 Elbow - 1\" (Copper)",
+    "description": "Fitting 45 Elbow made of Copper, 1 inch",
+    "material": "Copper",
+    "sizeNominal": 1.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "Fitting 45 Elbow - 1-1/4\" (Copper)",
+    "description": "Fitting 45 Elbow made of Copper, 1-1/4 inch",
+    "material": "Copper",
+    "sizeNominal": 1.25,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "Fitting 45 Elbow - 1-1/2\" (Copper)",
+    "description": "Fitting 45 Elbow made of Copper, 1-1/2 inch",
+    "material": "Copper",
+    "sizeNominal": 1.5,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "Fitting 45 Elbow - 2\" (Copper)",
+    "description": "Fitting 45 Elbow made of Copper, 2 inch",
+    "material": "Copper",
+    "sizeNominal": 2.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "Fitting 45 Elbow - 3\" (Copper)",
+    "description": "Fitting 45 Elbow made of Copper, 3 inch",
+    "material": "Copper",
+    "sizeNominal": 3.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "Fitting 45 Elbow - 4\" (Copper)",
+    "description": "Fitting 45 Elbow made of Copper, 4 inch",
+    "material": "Copper",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "Fitting 45 Elbow - 6\" (Copper)",
+    "description": "Fitting 45 Elbow made of Copper, 6 inch",
+    "material": "Copper",
+    "sizeNominal": 6.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "elbow",
+    "synonyms": []
+  },
+  {
+    "displayName": "Coupling - 1/2\" (Copper)",
+    "description": "Coupling made of Copper, 1/2 inch",
+    "material": "Copper",
+    "sizeNominal": 0.5,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "coupling",
+    "synonyms": []
+  },
+  {
+    "displayName": "Coupling - 3/4\" (Copper)",
+    "description": "Coupling made of Copper, 3/4 inch",
+    "material": "Copper",
+    "sizeNominal": 0.75,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "coupling",
+    "synonyms": []
+  },
+  {
+    "displayName": "Coupling - 1\" (Copper)",
+    "description": "Coupling made of Copper, 1 inch",
+    "material": "Copper",
+    "sizeNominal": 1.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "coupling",
+    "synonyms": []
+  },
+  {
+    "displayName": "Coupling - 1-1/4\" (Copper)",
+    "description": "Coupling made of Copper, 1-1/4 inch",
+    "material": "Copper",
+    "sizeNominal": 1.25,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "coupling",
+    "synonyms": []
+  },
+  {
+    "displayName": "Coupling - 1-1/2\" (Copper)",
+    "description": "Coupling made of Copper, 1-1/2 inch",
+    "material": "Copper",
+    "sizeNominal": 1.5,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "coupling",
+    "synonyms": []
+  },
+  {
+    "displayName": "Coupling - 2\" (Copper)",
+    "description": "Coupling made of Copper, 2 inch",
+    "material": "Copper",
+    "sizeNominal": 2.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "coupling",
+    "synonyms": []
+  },
+  {
+    "displayName": "Coupling - 3\" (Copper)",
+    "description": "Coupling made of Copper, 3 inch",
+    "material": "Copper",
+    "sizeNominal": 3.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "coupling",
+    "synonyms": []
+  },
+  {
+    "displayName": "Coupling - 4\" (Copper)",
+    "description": "Coupling made of Copper, 4 inch",
+    "material": "Copper",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "coupling",
+    "synonyms": []
+  },
+  {
+    "displayName": "Coupling - 6\" (Copper)",
+    "description": "Coupling made of Copper, 6 inch",
+    "material": "Copper",
+    "sizeNominal": 6.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "coupling",
+    "synonyms": []
+  },
+  {
+    "displayName": "Reducing Coupling - 1/2\" (Copper)",
+    "description": "Reducing Coupling made of Copper, 1/2 inch",
+    "material": "Copper",
+    "sizeNominal": 0.5,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "coupling",
+    "synonyms": []
+  },
+  {
+    "displayName": "Reducing Coupling - 3/4\" (Copper)",
+    "description": "Reducing Coupling made of Copper, 3/4 inch",
+    "material": "Copper",
+    "sizeNominal": 0.75,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "coupling",
+    "synonyms": []
+  },
+  {
+    "displayName": "Reducing Coupling - 1\" (Copper)",
+    "description": "Reducing Coupling made of Copper, 1 inch",
+    "material": "Copper",
+    "sizeNominal": 1.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "coupling",
+    "synonyms": []
+  },
+  {
+    "displayName": "Reducing Coupling - 1-1/4\" (Copper)",
+    "description": "Reducing Coupling made of Copper, 1-1/4 inch",
+    "material": "Copper",
+    "sizeNominal": 1.25,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "coupling",
+    "synonyms": []
+  },
+  {
+    "displayName": "Reducing Coupling - 1-1/2\" (Copper)",
+    "description": "Reducing Coupling made of Copper, 1-1/2 inch",
+    "material": "Copper",
+    "sizeNominal": 1.5,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "coupling",
+    "synonyms": []
+  },
+  {
+    "displayName": "Reducing Coupling - 2\" (Copper)",
+    "description": "Reducing Coupling made of Copper, 2 inch",
+    "material": "Copper",
+    "sizeNominal": 2.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "coupling",
+    "synonyms": []
+  },
+  {
+    "displayName": "Reducing Coupling - 3\" (Copper)",
+    "description": "Reducing Coupling made of Copper, 3 inch",
+    "material": "Copper",
+    "sizeNominal": 3.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "coupling",
+    "synonyms": []
+  },
+  {
+    "displayName": "Reducing Coupling - 4\" (Copper)",
+    "description": "Reducing Coupling made of Copper, 4 inch",
+    "material": "Copper",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "coupling",
+    "synonyms": []
+  },
+  {
+    "displayName": "Reducing Coupling - 6\" (Copper)",
+    "description": "Reducing Coupling made of Copper, 6 inch",
+    "material": "Copper",
+    "sizeNominal": 6.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "coupling",
+    "synonyms": []
+  },
+  {
+    "displayName": "Tee - 1/2\" (Copper)",
+    "description": "Tee made of Copper, 1/2 inch",
+    "material": "Copper",
+    "sizeNominal": 0.5,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "tee",
+    "synonyms": []
+  },
+  {
+    "displayName": "Tee - 3/4\" (Copper)",
+    "description": "Tee made of Copper, 3/4 inch",
+    "material": "Copper",
+    "sizeNominal": 0.75,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "tee",
+    "synonyms": []
+  },
+  {
+    "displayName": "Tee - 1\" (Copper)",
+    "description": "Tee made of Copper, 1 inch",
+    "material": "Copper",
+    "sizeNominal": 1.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "tee",
+    "synonyms": []
+  },
+  {
+    "displayName": "Tee - 1-1/4\" (Copper)",
+    "description": "Tee made of Copper, 1-1/4 inch",
+    "material": "Copper",
+    "sizeNominal": 1.25,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "tee",
+    "synonyms": []
+  },
+  {
+    "displayName": "Tee - 1-1/2\" (Copper)",
+    "description": "Tee made of Copper, 1-1/2 inch",
+    "material": "Copper",
+    "sizeNominal": 1.5,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "tee",
+    "synonyms": []
+  },
+  {
+    "displayName": "Tee - 2\" (Copper)",
+    "description": "Tee made of Copper, 2 inch",
+    "material": "Copper",
+    "sizeNominal": 2.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "tee",
+    "synonyms": []
+  },
+  {
+    "displayName": "Tee - 3\" (Copper)",
+    "description": "Tee made of Copper, 3 inch",
+    "material": "Copper",
+    "sizeNominal": 3.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "tee",
+    "synonyms": []
+  },
+  {
+    "displayName": "Tee - 4\" (Copper)",
+    "description": "Tee made of Copper, 4 inch",
+    "material": "Copper",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "tee",
+    "synonyms": []
+  },
+  {
+    "displayName": "Tee - 6\" (Copper)",
+    "description": "Tee made of Copper, 6 inch",
+    "material": "Copper",
+    "sizeNominal": 6.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "tee",
+    "synonyms": []
+  },
+  {
+    "displayName": "Bushing - 1/2\" (Copper)",
+    "description": "Bushing made of Copper, 1/2 inch",
+    "material": "Copper",
+    "sizeNominal": 0.5,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "bushing",
+    "synonyms": []
+  },
+  {
+    "displayName": "Bushing - 3/4\" (Copper)",
+    "description": "Bushing made of Copper, 3/4 inch",
+    "material": "Copper",
+    "sizeNominal": 0.75,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "bushing",
+    "synonyms": []
+  },
+  {
+    "displayName": "Bushing - 1\" (Copper)",
+    "description": "Bushing made of Copper, 1 inch",
+    "material": "Copper",
+    "sizeNominal": 1.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "bushing",
+    "synonyms": []
+  },
+  {
+    "displayName": "Bushing - 1-1/4\" (Copper)",
+    "description": "Bushing made of Copper, 1-1/4 inch",
+    "material": "Copper",
+    "sizeNominal": 1.25,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "bushing",
+    "synonyms": []
+  },
+  {
+    "displayName": "Bushing - 1-1/2\" (Copper)",
+    "description": "Bushing made of Copper, 1-1/2 inch",
+    "material": "Copper",
+    "sizeNominal": 1.5,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "bushing",
+    "synonyms": []
+  },
+  {
+    "displayName": "Bushing - 2\" (Copper)",
+    "description": "Bushing made of Copper, 2 inch",
+    "material": "Copper",
+    "sizeNominal": 2.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "bushing",
+    "synonyms": []
+  },
+  {
+    "displayName": "Bushing - 3\" (Copper)",
+    "description": "Bushing made of Copper, 3 inch",
+    "material": "Copper",
+    "sizeNominal": 3.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "bushing",
+    "synonyms": []
+  },
+  {
+    "displayName": "Bushing - 4\" (Copper)",
+    "description": "Bushing made of Copper, 4 inch",
+    "material": "Copper",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "bushing",
+    "synonyms": []
+  },
+  {
+    "displayName": "Bushing - 6\" (Copper)",
+    "description": "Bushing made of Copper, 6 inch",
+    "material": "Copper",
+    "sizeNominal": 6.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "bushing",
+    "synonyms": []
+  },
+  {
+    "displayName": "Type \"L\" Pipe - 1/2\" (Copper)",
+    "description": "Type \"L\" Pipe made of Copper, 1/2 inch",
+    "material": "Copper",
+    "sizeNominal": 0.5,
+    "sizeUnit": "in",
+    "categoryName": "Pipe",
+    "partType": "pipe",
+    "synonyms": []
+  },
+  {
+    "displayName": "Type \"L\" Pipe - 3/4\" (Copper)",
+    "description": "Type \"L\" Pipe made of Copper, 3/4 inch",
+    "material": "Copper",
+    "sizeNominal": 0.75,
+    "sizeUnit": "in",
+    "categoryName": "Pipe",
+    "partType": "pipe",
+    "synonyms": []
+  },
+  {
+    "displayName": "Type \"L\" Pipe - 1\" (Copper)",
+    "description": "Type \"L\" Pipe made of Copper, 1 inch",
+    "material": "Copper",
+    "sizeNominal": 1.0,
+    "sizeUnit": "in",
+    "categoryName": "Pipe",
+    "partType": "pipe",
+    "synonyms": []
+  },
+  {
+    "displayName": "Type \"L\" Pipe - 1-1/4\" (Copper)",
+    "description": "Type \"L\" Pipe made of Copper, 1-1/4 inch",
+    "material": "Copper",
+    "sizeNominal": 1.25,
+    "sizeUnit": "in",
+    "categoryName": "Pipe",
+    "partType": "pipe",
+    "synonyms": []
+  },
+  {
+    "displayName": "Type \"L\" Pipe - 1-1/2\" (Copper)",
+    "description": "Type \"L\" Pipe made of Copper, 1-1/2 inch",
+    "material": "Copper",
+    "sizeNominal": 1.5,
+    "sizeUnit": "in",
+    "categoryName": "Pipe",
+    "partType": "pipe",
+    "synonyms": []
+  },
+  {
+    "displayName": "Type \"L\" Pipe - 2\" (Copper)",
+    "description": "Type \"L\" Pipe made of Copper, 2 inch",
+    "material": "Copper",
+    "sizeNominal": 2.0,
+    "sizeUnit": "in",
+    "categoryName": "Pipe",
+    "partType": "pipe",
+    "synonyms": []
+  },
+  {
+    "displayName": "Type \"L\" Pipe - 3\" (Copper)",
+    "description": "Type \"L\" Pipe made of Copper, 3 inch",
+    "material": "Copper",
+    "sizeNominal": 3.0,
+    "sizeUnit": "in",
+    "categoryName": "Pipe",
+    "partType": "pipe",
+    "synonyms": []
+  },
+  {
+    "displayName": "Type \"L\" Pipe - 4\" (Copper)",
+    "description": "Type \"L\" Pipe made of Copper, 4 inch",
+    "material": "Copper",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Pipe",
+    "partType": "pipe",
+    "synonyms": []
+  },
+  {
+    "displayName": "Type \"L\" Pipe - 6\" (Copper)",
+    "description": "Type \"L\" Pipe made of Copper, 6 inch",
+    "material": "Copper",
+    "sizeNominal": 6.0,
+    "sizeUnit": "in",
+    "categoryName": "Pipe",
+    "partType": "pipe",
+    "synonyms": []
+  },
+  {
+    "displayName": "Type \"M\" Pipe - 1/2\" (Copper)",
+    "description": "Type \"M\" Pipe made of Copper, 1/2 inch",
+    "material": "Copper",
+    "sizeNominal": 0.5,
+    "sizeUnit": "in",
+    "categoryName": "Pipe",
+    "partType": "pipe",
+    "synonyms": []
+  },
+  {
+    "displayName": "Type \"M\" Pipe - 3/4\" (Copper)",
+    "description": "Type \"M\" Pipe made of Copper, 3/4 inch",
+    "material": "Copper",
+    "sizeNominal": 0.75,
+    "sizeUnit": "in",
+    "categoryName": "Pipe",
+    "partType": "pipe",
+    "synonyms": []
+  },
+  {
+    "displayName": "Type \"M\" Pipe - 1\" (Copper)",
+    "description": "Type \"M\" Pipe made of Copper, 1 inch",
+    "material": "Copper",
+    "sizeNominal": 1.0,
+    "sizeUnit": "in",
+    "categoryName": "Pipe",
+    "partType": "pipe",
+    "synonyms": []
+  },
+  {
+    "displayName": "Type \"M\" Pipe - 1-1/4\" (Copper)",
+    "description": "Type \"M\" Pipe made of Copper, 1-1/4 inch",
+    "material": "Copper",
+    "sizeNominal": 1.25,
+    "sizeUnit": "in",
+    "categoryName": "Pipe",
+    "partType": "pipe",
+    "synonyms": []
+  },
+  {
+    "displayName": "Type \"M\" Pipe - 1-1/2\" (Copper)",
+    "description": "Type \"M\" Pipe made of Copper, 1-1/2 inch",
+    "material": "Copper",
+    "sizeNominal": 1.5,
+    "sizeUnit": "in",
+    "categoryName": "Pipe",
+    "partType": "pipe",
+    "synonyms": []
+  },
+  {
+    "displayName": "Type \"M\" Pipe - 2\" (Copper)",
+    "description": "Type \"M\" Pipe made of Copper, 2 inch",
+    "material": "Copper",
+    "sizeNominal": 2.0,
+    "sizeUnit": "in",
+    "categoryName": "Pipe",
+    "partType": "pipe",
+    "synonyms": []
+  },
+  {
+    "displayName": "Type \"M\" Pipe - 3\" (Copper)",
+    "description": "Type \"M\" Pipe made of Copper, 3 inch",
+    "material": "Copper",
+    "sizeNominal": 3.0,
+    "sizeUnit": "in",
+    "categoryName": "Pipe",
+    "partType": "pipe",
+    "synonyms": []
+  },
+  {
+    "displayName": "Type \"M\" Pipe - 4\" (Copper)",
+    "description": "Type \"M\" Pipe made of Copper, 4 inch",
+    "material": "Copper",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Pipe",
+    "partType": "pipe",
+    "synonyms": []
+  },
+  {
+    "displayName": "Type \"M\" Pipe - 6\" (Copper)",
+    "description": "Type \"M\" Pipe made of Copper, 6 inch",
+    "material": "Copper",
+    "sizeNominal": 6.0,
+    "sizeUnit": "in",
+    "categoryName": "Pipe",
+    "partType": "pipe",
+    "synonyms": []
+  },
+  {
+    "displayName": "MIP - 1/2\" (Copper)",
+    "description": "MIP made of Copper, 1/2 inch",
+    "material": "Copper",
+    "sizeNominal": 0.5,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "MIP - 3/4\" (Copper)",
+    "description": "MIP made of Copper, 3/4 inch",
+    "material": "Copper",
+    "sizeNominal": 0.75,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "MIP - 1\" (Copper)",
+    "description": "MIP made of Copper, 1 inch",
+    "material": "Copper",
+    "sizeNominal": 1.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "MIP - 1-1/4\" (Copper)",
+    "description": "MIP made of Copper, 1-1/4 inch",
+    "material": "Copper",
+    "sizeNominal": 1.25,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "MIP - 1-1/2\" (Copper)",
+    "description": "MIP made of Copper, 1-1/2 inch",
+    "material": "Copper",
+    "sizeNominal": 1.5,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "MIP - 2\" (Copper)",
+    "description": "MIP made of Copper, 2 inch",
+    "material": "Copper",
+    "sizeNominal": 2.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "MIP - 3\" (Copper)",
+    "description": "MIP made of Copper, 3 inch",
+    "material": "Copper",
+    "sizeNominal": 3.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "MIP - 4\" (Copper)",
+    "description": "MIP made of Copper, 4 inch",
+    "material": "Copper",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "MIP - 6\" (Copper)",
+    "description": "MIP made of Copper, 6 inch",
+    "material": "Copper",
+    "sizeNominal": 6.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "FIP - 1/2\" (Copper)",
+    "description": "FIP made of Copper, 1/2 inch",
+    "material": "Copper",
+    "sizeNominal": 0.5,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "FIP - 3/4\" (Copper)",
+    "description": "FIP made of Copper, 3/4 inch",
+    "material": "Copper",
+    "sizeNominal": 0.75,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "FIP - 1\" (Copper)",
+    "description": "FIP made of Copper, 1 inch",
+    "material": "Copper",
+    "sizeNominal": 1.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "FIP - 1-1/4\" (Copper)",
+    "description": "FIP made of Copper, 1-1/4 inch",
+    "material": "Copper",
+    "sizeNominal": 1.25,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "FIP - 1-1/2\" (Copper)",
+    "description": "FIP made of Copper, 1-1/2 inch",
+    "material": "Copper",
+    "sizeNominal": 1.5,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "FIP - 2\" (Copper)",
+    "description": "FIP made of Copper, 2 inch",
+    "material": "Copper",
+    "sizeNominal": 2.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "FIP - 3\" (Copper)",
+    "description": "FIP made of Copper, 3 inch",
+    "material": "Copper",
+    "sizeNominal": 3.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "FIP - 4\" (Copper)",
+    "description": "FIP made of Copper, 4 inch",
+    "material": "Copper",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "FIP - 6\" (Copper)",
+    "description": "FIP made of Copper, 6 inch",
+    "material": "Copper",
+    "sizeNominal": 6.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "Kitz 69AMLL - 3/8\" (Copper)",
+    "description": "Kitz 69AMLL made of Copper, 3/8 inch",
+    "material": "Copper",
+    "sizeNominal": 0.375,
+    "sizeUnit": "in",
+    "categoryName": "Valves",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "Kitz 69AMLL - 1/2\" (Copper)",
+    "description": "Kitz 69AMLL made of Copper, 1/2 inch",
+    "material": "Copper",
+    "sizeNominal": 0.5,
+    "sizeUnit": "in",
+    "categoryName": "Valves",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "Kitz 69AMLL - 3/4\" (Copper)",
+    "description": "Kitz 69AMLL made of Copper, 3/4 inch",
+    "material": "Copper",
+    "sizeNominal": 0.75,
+    "sizeUnit": "in",
+    "categoryName": "Valves",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "Kitz 69AMLL - 1\" (Copper)",
+    "description": "Kitz 69AMLL made of Copper, 1 inch",
+    "material": "Copper",
+    "sizeNominal": 1.0,
+    "sizeUnit": "in",
+    "categoryName": "Valves",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "Kitz 69AMLL - 1-1/4\" (Copper)",
+    "description": "Kitz 69AMLL made of Copper, 1-1/4 inch",
+    "material": "Copper",
+    "sizeNominal": 1.25,
+    "sizeUnit": "in",
+    "categoryName": "Valves",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "Kitz 69AMLL - 1-1/2\" (Copper)",
+    "description": "Kitz 69AMLL made of Copper, 1-1/2 inch",
+    "material": "Copper",
+    "sizeNominal": 1.5,
+    "sizeUnit": "in",
+    "categoryName": "Valves",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "Kitz 69AMLL - 2\" (Copper)",
+    "description": "Kitz 69AMLL made of Copper, 2 inch",
+    "material": "Copper",
+    "sizeNominal": 2.0,
+    "sizeUnit": "in",
+    "categoryName": "Valves",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "Kitz 69AMLL - 3\" (Copper)",
+    "description": "Kitz 69AMLL made of Copper, 3 inch",
+    "material": "Copper",
+    "sizeNominal": 3.0,
+    "sizeUnit": "in",
+    "categoryName": "Valves",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "Kitz 859 Lead Free - 3/8\" (Copper)",
+    "description": "Kitz 859 Lead Free made of Copper, 3/8 inch",
+    "material": "Copper",
+    "sizeNominal": 0.375,
+    "sizeUnit": "in",
+    "categoryName": "Valves",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "Kitz 859 Lead Free - 1/2\" (Copper)",
+    "description": "Kitz 859 Lead Free made of Copper, 1/2 inch",
+    "material": "Copper",
+    "sizeNominal": 0.5,
+    "sizeUnit": "in",
+    "categoryName": "Valves",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "Kitz 859 Lead Free - 3/4\" (Copper)",
+    "description": "Kitz 859 Lead Free made of Copper, 3/4 inch",
+    "material": "Copper",
+    "sizeNominal": 0.75,
+    "sizeUnit": "in",
+    "categoryName": "Valves",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "Kitz 859 Lead Free - 1\" (Copper)",
+    "description": "Kitz 859 Lead Free made of Copper, 1 inch",
+    "material": "Copper",
+    "sizeNominal": 1.0,
+    "sizeUnit": "in",
+    "categoryName": "Valves",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "Kitz 859 Lead Free - 1-1/4\" (Copper)",
+    "description": "Kitz 859 Lead Free made of Copper, 1-1/4 inch",
+    "material": "Copper",
+    "sizeNominal": 1.25,
+    "sizeUnit": "in",
+    "categoryName": "Valves",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "Kitz 859 Lead Free - 1-1/2\" (Copper)",
+    "description": "Kitz 859 Lead Free made of Copper, 1-1/2 inch",
+    "material": "Copper",
+    "sizeNominal": 1.5,
+    "sizeUnit": "in",
+    "categoryName": "Valves",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "Kitz 859 Lead Free - 2\" (Copper)",
+    "description": "Kitz 859 Lead Free made of Copper, 2 inch",
+    "material": "Copper",
+    "sizeNominal": 2.0,
+    "sizeUnit": "in",
+    "categoryName": "Valves",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "Kitz 859 Lead Free - 3\" (Copper)",
+    "description": "Kitz 859 Lead Free made of Copper, 3 inch",
+    "material": "Copper",
+    "sizeNominal": 3.0,
+    "sizeUnit": "in",
+    "categoryName": "Valves",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "Union - 1/2\" (Copper)",
+    "description": "Union made of Copper, 1/2 inch",
+    "material": "Copper",
+    "sizeNominal": 0.5,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "union",
+    "synonyms": []
+  },
+  {
+    "displayName": "Union - 3/4\" (Copper)",
+    "description": "Union made of Copper, 3/4 inch",
+    "material": "Copper",
+    "sizeNominal": 0.75,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "union",
+    "synonyms": []
+  },
+  {
+    "displayName": "Union - 1\" (Copper)",
+    "description": "Union made of Copper, 1 inch",
+    "material": "Copper",
+    "sizeNominal": 1.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "union",
+    "synonyms": []
+  },
+  {
+    "displayName": "Union - 1-1/4\" (Copper)",
+    "description": "Union made of Copper, 1-1/4 inch",
+    "material": "Copper",
+    "sizeNominal": 1.25,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "union",
+    "synonyms": []
+  },
+  {
+    "displayName": "Union - 1-1/2\" (Copper)",
+    "description": "Union made of Copper, 1-1/2 inch",
+    "material": "Copper",
+    "sizeNominal": 1.5,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "union",
+    "synonyms": []
+  },
+  {
+    "displayName": "Union - 2\" (Copper)",
+    "description": "Union made of Copper, 2 inch",
+    "material": "Copper",
+    "sizeNominal": 2.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "union",
+    "synonyms": []
+  },
+  {
+    "displayName": "Union - 3\" (Copper)",
+    "description": "Union made of Copper, 3 inch",
+    "material": "Copper",
+    "sizeNominal": 3.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "union",
+    "synonyms": []
+  },
+  {
+    "displayName": "Union - 4\" (Copper)",
+    "description": "Union made of Copper, 4 inch",
+    "material": "Copper",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "union",
+    "synonyms": []
+  },
+  {
+    "displayName": "Union - 6\" (Copper)",
+    "description": "Union made of Copper, 6 inch",
+    "material": "Copper",
+    "sizeNominal": 6.0,
+    "sizeUnit": "in",
+    "categoryName": "Fittings",
+    "partType": "union",
+    "synonyms": []
+  },
+  {
+    "displayName": "Swing Check - 1/2\" (Copper)",
+    "description": "Swing Check made of Copper, 1/2 inch",
+    "material": "Copper",
+    "sizeNominal": 0.5,
+    "sizeUnit": "in",
+    "categoryName": "Valves",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "Swing Check - 3/4\" (Copper)",
+    "description": "Swing Check made of Copper, 3/4 inch",
+    "material": "Copper",
+    "sizeNominal": 0.75,
+    "sizeUnit": "in",
+    "categoryName": "Valves",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "Swing Check - 1\" (Copper)",
+    "description": "Swing Check made of Copper, 1 inch",
+    "material": "Copper",
+    "sizeNominal": 1.0,
+    "sizeUnit": "in",
+    "categoryName": "Valves",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "Swing Check - 1-1/4\" (Copper)",
+    "description": "Swing Check made of Copper, 1-1/4 inch",
+    "material": "Copper",
+    "sizeNominal": 1.25,
+    "sizeUnit": "in",
+    "categoryName": "Valves",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "Swing Check - 1-1/2\" (Copper)",
+    "description": "Swing Check made of Copper, 1-1/2 inch",
+    "material": "Copper",
+    "sizeNominal": 1.5,
+    "sizeUnit": "in",
+    "categoryName": "Valves",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "Swing Check - 2\" (Copper)",
+    "description": "Swing Check made of Copper, 2 inch",
+    "material": "Copper",
+    "sizeNominal": 2.0,
+    "sizeUnit": "in",
+    "categoryName": "Valves",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "Swing Check - 3\" (Copper)",
+    "description": "Swing Check made of Copper, 3 inch",
+    "material": "Copper",
+    "sizeNominal": 3.0,
+    "sizeUnit": "in",
+    "categoryName": "Valves",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "Swing Check - 4\" (Copper)",
+    "description": "Swing Check made of Copper, 4 inch",
+    "material": "Copper",
+    "sizeNominal": 4.0,
+    "sizeUnit": "in",
+    "categoryName": "Valves",
+    "partType": "fitting",
+    "synonyms": []
+  },
+  {
+    "displayName": "Swing Check - 6\" (Copper)",
+    "description": "Swing Check made of Copper, 6 inch",
+    "material": "Copper",
+    "sizeNominal": 6.0,
+    "sizeUnit": "in",
+    "categoryName": "Valves",
+    "partType": "fitting",
+    "synonyms": []
+  }
+]

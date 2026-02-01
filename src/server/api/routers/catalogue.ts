@@ -30,7 +30,9 @@ import { parseSizeInput } from "~/lib/size-utils";
 
 // Helper function to find or create a size record
 async function findOrCreateSize(
-  db: Parameters<Parameters<typeof hasDashboardAccess.query>[0]>[0]["ctx"]["db"],
+  db: Parameters<
+    Parameters<typeof hasDashboardAccess.query>[0]
+  >[0]["ctx"]["db"],
   organizationId: string,
   sizeNominal: number | null | undefined,
   sizeUnitId: string | null | undefined,
@@ -41,10 +43,7 @@ async function findOrCreateSize(
       .select()
       .from(sizes)
       .where(
-        and(
-          eq(sizes.organizationId, organizationId),
-          eq(sizes.nominal, "0"),
-        ),
+        and(eq(sizes.organizationId, organizationId), eq(sizes.nominal, "0")),
       )
       .limit(1);
 
@@ -274,6 +273,7 @@ export const catalogueRouter = createTRPCRouter({
     .query(async ({ ctx, input }) => {
       console.log(JSON.stringify(input), "searchParts input");
       const organizationId = ctx.user.organizationId;
+      console.log(organizationId, "org ID");
 
       if (!organizationId) {
         return [];
@@ -411,7 +411,9 @@ export const catalogueRouter = createTRPCRouter({
       }
 
       // Build size filter conditions for join
-      const sizeJoinConditions: Array<ReturnType<typeof gte> | ReturnType<typeof lte> | ReturnType<typeof eq>> = [];
+      const sizeJoinConditions: Array<
+        ReturnType<typeof gte> | ReturnType<typeof lte> | ReturnType<typeof eq>
+      > = [];
       if (sizeMin !== undefined) {
         sizeJoinConditions.push(gte(sizes.nominal, sizeMin));
       }
@@ -638,10 +640,11 @@ export const catalogueRouter = createTRPCRouter({
             const sizeMin = (input.sizeNominal - tolerance).toString();
             const sizeMax = (input.sizeNominal + tolerance).toString();
 
-            const sizeConditions: Array<ReturnType<typeof gte> | ReturnType<typeof lte> | ReturnType<typeof eq>> = [
-              gte(sizes.nominal, sizeMin),
-              lte(sizes.nominal, sizeMax),
-            ];
+            const sizeConditions: Array<
+              | ReturnType<typeof gte>
+              | ReturnType<typeof lte>
+              | ReturnType<typeof eq>
+            > = [gte(sizes.nominal, sizeMin), lte(sizes.nominal, sizeMax)];
 
             if (sizeUnitId) {
               sizeConditions.push(eq(sizes.unitId, sizeUnitId));
@@ -969,7 +972,9 @@ export const catalogueRouter = createTRPCRouter({
         ];
 
         if (input.materialId) {
-          countConditions.push(eq(partDefinitions.materialId, input.materialId));
+          countConditions.push(
+            eq(partDefinitions.materialId, input.materialId),
+          );
         }
 
         const [partCount] = await ctx.db
@@ -1195,10 +1200,7 @@ export const catalogueRouter = createTRPCRouter({
 
       // Handle size: find or create size record
       let sizeId: string | null = null;
-      if (
-        input.sizeNominal !== undefined ||
-        input.sizeUnitId !== undefined
-      ) {
+      if (input.sizeNominal !== undefined || input.sizeUnitId !== undefined) {
         // Get current part to use existing size if new values not provided
         const [currentPart] = await ctx.db
           .select()
