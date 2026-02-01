@@ -12,7 +12,12 @@ import {
 } from "~/components/ui/dialog";
 import { Button } from "~/components/ui/button";
 import { Textarea } from "~/components/ui/textarea";
-import { ChevronDownIcon, ChevronRightIcon } from "lucide-react";
+import {
+  ChevronDownIcon,
+  ChevronRightIcon,
+  FileSpreadsheet,
+} from "lucide-react";
+import { downloadOrderXlsx } from "~/lib/generateOrderXlsx";
 
 interface OrdersPreviewSheetProps {
   open: boolean;
@@ -47,6 +52,7 @@ export function OrdersPreviewSheet({
         quantity: string;
         descriptionSnapshot: string | null;
         supplierSkuSnapshot: string | null;
+        sizeUnitCode: string | null;
       }>;
       sentAt?: Date | null;
     }>
@@ -90,7 +96,7 @@ export function OrdersPreviewSheet({
         (order): order is typeof order & { id: string } => !!order.id,
       );
       setOrders(validOrders);
-      
+
       // Load notes from orders
       const notesMap = new Map<string, string>();
       validOrders.forEach((order) => {
@@ -99,7 +105,7 @@ export function OrdersPreviewSheet({
         }
       });
       setOrderNotes(notesMap);
-      
+
       setIsGenerating(false);
       void utils.materialList.getMaterialList.invalidate({ materialListId });
     },
@@ -184,6 +190,50 @@ export function OrdersPreviewSheet({
     window.open(mailtoLink, "_blank");
   };
 
+  const handleEmailOrderWithXlsx = async (
+    orderId: string,
+    order: (typeof orders)[0],
+  ) => {
+    const supplierEmail =
+      (order as { supplier?: { contactEmail: string | null } | null })?.supplier
+        ?.contactEmail || undefined;
+    const supplierName =
+      (order as { supplier?: { name: string } | null })?.supplier?.name ||
+      "Supplier";
+
+    // Save notes before emailing
+    const notes = orderNotes.get(orderId) || "";
+    await markOrderSent.mutateAsync({
+      orderId,
+      sentTo: supplierEmail || "unknown@example.com",
+      notes: notes.trim() || undefined,
+    });
+
+    // Refetch email content to get updated notes
+    const emailContent = await utils.materialList.getOrderEmailContent.fetch({
+      orderId,
+    });
+
+    if (!emailContent) return;
+
+    // Generate and download xlsx file
+    const jobName = emailContent.subject.replace("Material Order – ", "");
+    downloadOrderXlsx({
+      jobName,
+      supplierName,
+      items: order.items,
+      notes: orderNotes.get(orderId),
+    });
+
+    // Open mailto with same content
+    const subject = encodeURIComponent(emailContent.subject);
+    const body = encodeURIComponent(emailContent.body);
+    const mailtoLink = supplierEmail
+      ? `mailto:${supplierEmail}?subject=${subject}&body=${body}`
+      : `mailto:?subject=${subject}&body=${body}`;
+    window.open(mailtoLink, "_blank");
+  };
+
   if (isGenerating) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
@@ -254,13 +304,24 @@ export function OrdersPreviewSheet({
                       <span className="text-xs text-green-600">(Sent)</span>
                     )}
                   </button>
-                  <Button
-                    size="sm"
-                    onClick={() => handleEmailOrder(order.id, order)}
-                    disabled={isSent}
-                  >
-                    Email Order
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleEmailOrderWithXlsx(order.id, order)}
+                      disabled={isSent}
+                    >
+                      <FileSpreadsheet className="mr-1 h-4 w-4" />
+                      Email as Excel
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={() => handleEmailOrder(order.id, order)}
+                      disabled={isSent}
+                    >
+                      Email Order
+                    </Button>
+                  </div>
                 </div>
 
                 {isExpanded && (
@@ -282,7 +343,7 @@ export function OrdersPreviewSheet({
                         );
                       })}
                     </div>
-                    
+
                     {/* Notes */}
                     <div className="space-y-2 border-t pt-4">
                       <label

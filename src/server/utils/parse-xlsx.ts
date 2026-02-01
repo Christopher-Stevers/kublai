@@ -1,4 +1,4 @@
-import xlsx from "xlsx";
+import { readFile, utils, type WorkSheet } from "xlsx";
 import { join } from "path";
 
 export interface ParsedPart {
@@ -181,7 +181,7 @@ export function parseMaterialCatalogueFromXlsx(
 ): ParsedPart[] {
   console.log(`[LOAD] Loading: ${filePath}`);
 
-  const workbook = xlsx.readFile(filePath);
+  const workbook = readFile(filePath);
   const sheetName = workbook.SheetNames[0];
   if (!sheetName) {
     throw new Error("No sheets found in workbook");
@@ -192,7 +192,7 @@ export function parseMaterialCatalogueFromXlsx(
   }
 
   // Convert to JSON
-  const data = xlsx.utils.sheet_to_json(worksheet) as Array<{
+  const data = utils.sheet_to_json(worksheet) as Array<{
     Material?: string;
     Size?: string;
     Description?: string;

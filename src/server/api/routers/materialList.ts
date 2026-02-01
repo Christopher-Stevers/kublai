@@ -11,6 +11,7 @@ import {
   orders,
   orderItems,
   partDefinitions,
+  sizes,
   supplierParts,
   suppliers,
   units,
@@ -1385,15 +1386,22 @@ ${foremanName}`;
           .where(eq(suppliers.id, supplierId))
           .limit(1);
 
-        // Get order with items for return
+        // Get order with items for return (including size unit)
         const orderItemsList = await ctx.db
           .select({
             id: orderItems.id,
             quantity: orderItems.quantity,
             descriptionSnapshot: orderItems.descriptionSnapshot,
             supplierSkuSnapshot: orderItems.supplierSkuSnapshot,
+            sizeUnitCode: units.code,
           })
           .from(orderItems)
+          .leftJoin(
+            partDefinitions,
+            eq(orderItems.partDefinitionId, partDefinitions.id),
+          )
+          .leftJoin(sizes, eq(partDefinitions.sizeId, sizes.id))
+          .leftJoin(units, eq(sizes.unitId, units.id))
           .where(eq(orderItems.orderId, order.id));
 
         createdOrders.push({
@@ -1799,15 +1807,22 @@ ${ctx.user.name || "Foreman"}`;
         });
       }
 
-      // Get order items
+      // Get order items (including size unit)
       const items = await ctx.db
         .select({
           id: orderItems.id,
           quantity: orderItems.quantity,
           descriptionSnapshot: orderItems.descriptionSnapshot,
           supplierSkuSnapshot: orderItems.supplierSkuSnapshot,
+          sizeUnitCode: units.code,
         })
         .from(orderItems)
+        .leftJoin(
+          partDefinitions,
+          eq(orderItems.partDefinitionId, partDefinitions.id),
+        )
+        .leftJoin(sizes, eq(partDefinitions.sizeId, sizes.id))
+        .leftJoin(units, eq(sizes.unitId, units.id))
         .where(eq(orderItems.orderId, input.orderId));
 
       return {
