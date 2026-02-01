@@ -1,15 +1,26 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api } from "~/trpc/react";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
+import { Button } from "~/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "~/components/ui/dialog";
+import { Input } from "~/components/ui/input";
 import {
   BriefcaseIcon,
   CalendarIcon,
   UserIcon,
   MapPinIcon,
   PackageIcon,
+  PlusIcon,
 } from "lucide-react";
 import { format } from "date-fns";
 
@@ -20,6 +31,8 @@ export default function Dashboard() {
   const jobsWithMaterialListsCreated = useRef<Set<string>>(new Set());
   const pollingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const hasRedirectedRef = useRef(false);
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [newJobName, setNewJobName] = useState("");
 
   // Check user's organizationId status
   const { data: userData, isLoading: isLoadingUser } =
@@ -80,15 +93,23 @@ export default function Dashboard() {
     onSuccess: (newJob) => {
       hasAttemptedCreate.current = false; // Reset on success
       void utils.job.listJobs.invalidate();
-      // Auto-create material list for the new job
+      setShowCreateDialog(false);
+      setNewJobName("");
+      // Navigate to the new job
       if (newJob?.id) {
-        createMaterialList.mutate({ jobId: newJob.id });
+        router.push(`/dashboard/jobs/${newJob.id}`);
       }
     },
     onError: () => {
       hasAttemptedCreate.current = false; // Reset on error so user can retry
     },
   });
+
+  const handleCreateJob = () => {
+    if (newJobName.trim()) {
+      createJob.mutate({ name: newJobName.trim() });
+    }
+  };
 
   // Auto-create a job if user has no jobs
   useEffect(() => {
@@ -165,13 +186,23 @@ export default function Dashboard() {
   return (
     <div className="px-4 py-6 sm:px-6 sm:py-8">
       <div className="mx-auto max-w-6xl">
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">
-            Dashboard
-          </h1>
-          <p className="text-muted-foreground mt-2 text-sm sm:text-base">
-            Select a job to view and manage its material lists
-          </p>
+        <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">
+              Dashboard
+            </h1>
+            <p className="text-muted-foreground mt-2 text-sm sm:text-base">
+              Select a job to view and manage its material lists
+            </p>
+          </div>
+          <Button
+            onClick={() => setShowCreateDialog(true)}
+            size="lg"
+            className="h-11 w-full sm:w-auto"
+          >
+            <PlusIcon className="mr-2 h-5 w-5" />
+            Add Job
+          </Button>
         </div>
 
         {!jobs || jobs.length === 0 ? (
@@ -234,6 +265,53 @@ export default function Dashboard() {
             ))}
           </div>
         )}
+
+        {/* Create Job Dialog */}
+        <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Create New Job</DialogTitle>
+              <DialogDescription>
+                Enter a name for your new job.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div>
+                <label htmlFor="job-name" className="text-sm font-medium">
+                  Job Name *
+                </label>
+                <Input
+                  id="job-name"
+                  value={newJobName}
+                  onChange={(e) => setNewJobName(e.target.value)}
+                  placeholder="e.g., Smith Bathroom Reno"
+                  className="mt-1"
+                  disabled={createJob.isPending}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && newJobName.trim()) {
+                      handleCreateJob();
+                    }
+                  }}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setShowCreateDialog(false)}
+                disabled={createJob.isPending}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleCreateJob}
+                disabled={!newJobName.trim() || createJob.isPending}
+              >
+                {createJob.isPending ? "Creating..." : "Create Job"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
