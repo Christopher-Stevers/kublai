@@ -114,6 +114,7 @@ function PartCard({ part, isPending, pendingQuantity, onPartSelect, onEditPart }
 
     let timer: ReturnType<typeof setTimeout> | null = null;
     let isLongPress = false;
+    let didScroll = false;
     let activeTouchId = -1;
     let startY = 0;
     let startQty = 1;
@@ -180,6 +181,7 @@ function PartCard({ part, isPending, pendingQuantity, onPartSelect, onEditPart }
       activeTouchId = touch.identifier;
       startY = touch.clientY;
       isLongPress = false;
+      didScroll = false;
 
       const qty = isPendingRef.current ? pendingQuantityRef.current : 1;
       startQty = qty;
@@ -206,9 +208,9 @@ function PartCard({ part, isPending, pendingQuantity, onPartSelect, onEditPart }
       if (!touch) return;
 
       const dy = Math.abs(touch.clientY - startY);
-      if (dy > 8 && timer) {
-        clearTimeout(timer);
-        timer = null;
+      if (dy > 8) {
+        didScroll = true;
+        if (timer) { clearTimeout(timer); timer = null; }
       }
     };
 
@@ -224,7 +226,7 @@ function PartCard({ part, isPending, pendingQuantity, onPartSelect, onEditPart }
       if (!touch) return;
 
       const supplierId = selectedSupplierPartIdRef.current;
-      if (supplierId) onPartSelectRef.current(partRef.current, supplierId);
+      if (supplierId && !didScroll) onPartSelectRef.current(partRef.current, supplierId);
     };
 
     const onTouchCancel = () => {
