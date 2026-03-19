@@ -171,8 +171,9 @@ function PartCard({ part, isPending, pendingQuantity, onPartSelect, onEditPart }
     // ── card-level handlers ──────────────────────────────────────────────────
     const onTouchStart = (e: TouchEvent) => {
       if (!hasSupplierRef.current) return;
-      // Must be synchronous — this is what blocks the browser's scroll decision
-      e.preventDefault();
+      // Do NOT preventDefault here — we want normal scrolling to work.
+      // If the user holds for 500ms without moving, the browser won't have
+      // committed to a scroll, and we lock it out then via doc listeners.
 
       const touch = e.changedTouches[0];
       if (!touch) return;
@@ -188,7 +189,8 @@ function PartCard({ part, isPending, pendingQuantity, onPartSelect, onEditPart }
       timer = setTimeout(() => {
         isLongPress = true;
         setIsQtyPickerOpen(true);
-        // Hand off move/end tracking to document so finger can drift anywhere
+        // Hand off move/end tracking to document so finger can drift anywhere.
+        // Non-passive touchmove will call preventDefault to block any scroll.
         attachDocListeners();
       }, 500);
     };
@@ -261,8 +263,8 @@ function PartCard({ part, isPending, pendingQuantity, onPartSelect, onEditPart }
           WebkitUserSelect: "none",
           userSelect: "none",
           WebkitTouchCallout: "none",
-          // touchAction none = browser never attempts scroll from a card touch
-          touchAction: "none",
+          // Leave touchAction default so normal scrolling works.
+          // Scroll is only blocked after the 500ms long-press fires.
         }}
         onContextMenu={(e) => e.preventDefault()}
       >
