@@ -118,7 +118,6 @@ function PartCard({ part, isPending, pendingQuantity, onPartSelect, onEditPart }
     let activeTouchId = -1;
     let startY = 0;
     let startQty = 1;
-    let startScrollY = 0;
 
     // ── document-level handlers (attached only while long-press is active) ──
     const onDocMove = (e: TouchEvent) => {
@@ -158,13 +157,26 @@ function PartCard({ part, isPending, pendingQuantity, onPartSelect, onEditPart }
       isLongPress = false;
     };
 
+    // Ensure scroll is never stuck from a previous drum roll
+    document.body.style.overflow = "";
+
+    const freezeScroll = () => {
+      document.body.style.overflow = "hidden";
+    };
+
+    const thawScroll = () => {
+      document.body.style.overflow = "";
+    };
+
     const attachDocListeners = () => {
+      freezeScroll();
       document.addEventListener("touchmove", onDocMove, { passive: false });
       document.addEventListener("touchend", onDocEnd, { passive: true });
       document.addEventListener("touchcancel", onDocCancel, { passive: true });
     };
 
     const detachDocListeners = () => {
+      thawScroll();
       document.removeEventListener("touchmove", onDocMove);
       document.removeEventListener("touchend", onDocEnd);
       document.removeEventListener("touchcancel", onDocCancel);
@@ -173,15 +185,11 @@ function PartCard({ part, isPending, pendingQuantity, onPartSelect, onEditPart }
     // ── card-level handlers ──────────────────────────────────────────────────
     const onTouchStart = (e: TouchEvent) => {
       if (!hasSupplierRef.current) return;
-      // Do NOT preventDefault here — we want normal scrolling to work.
-      // If the user holds for 150ms without moving AND the page isn't still
-      // momentum-scrolling, we open the drum roll.
 
       const touch = e.changedTouches[0];
       if (!touch) return;
       activeTouchId = touch.identifier;
       startY = touch.clientY;
-      startScrollY = window.scrollY;
       isLongPress = false;
       didScroll = false;
 
@@ -193,9 +201,6 @@ function PartCard({ part, isPending, pendingQuantity, onPartSelect, onEditPart }
       setDraftQty(qty);
 
       timer = setTimeout(() => {
-        // If the page scrolled while the finger was held, user was stopping
-        // momentum — don't open the drum roll.
-        if (Math.abs(window.scrollY - startScrollY) > 4) return;
         isLongPress = true;
         setIsQtyPickerOpen(true);
         attachDocListeners();
@@ -243,7 +248,7 @@ function PartCard({ part, isPending, pendingQuantity, onPartSelect, onEditPart }
       }
     };
 
-    card.addEventListener("touchstart", onTouchStart, { passive: false });
+    card.addEventListener("touchstart", onTouchStart, { passive: true });
     card.addEventListener("touchmove", onTouchMove, { passive: true });
     card.addEventListener("touchend", onTouchEnd, { passive: true });
     card.addEventListener("touchcancel", onTouchCancel, { passive: true });
@@ -358,7 +363,7 @@ function PartCard({ part, isPending, pendingQuantity, onPartSelect, onEditPart }
               justifyContent: "center",
               background: "rgba(0,0,0,0.55)",
               touchAction: "none",
-              pointerEvents: "none",
+              pointerEvents: "auto",
               userSelect: "none",
             }}
           >
