@@ -119,13 +119,6 @@ function PartCard({ part, isPending, pendingQuantity, onPartSelect, onEditPart }
     let startY = 0;
     let startQty = 1;
 
-    // Cancel long-press if the scroll container actually scrolls while
-    // the finger is held down (catches momentum scroll stop gesture).
-    const onContainerScroll = () => {
-      if (timer) { clearTimeout(timer); timer = null; }
-      didScroll = true;
-    };
-
     // ── document-level handlers (attached only while long-press is active) ──
     const onDocMove = (e: TouchEvent) => {
       e.preventDefault(); // block any scroll while drum roll is open
@@ -190,9 +183,7 @@ function PartCard({ part, isPending, pendingQuantity, onPartSelect, onEditPart }
       isLongPress = false;
       didScroll = false;
 
-      // Listen for scroll events while this touch is active.
-      // If anything scrolls, cancel the long-press immediately.
-      window.addEventListener("scroll", onContainerScroll, { passive: true, capture: true });
+
 
       const qty = isPendingRef.current ? pendingQuantityRef.current : 1;
       startQty = qty;
@@ -226,7 +217,6 @@ function PartCard({ part, isPending, pendingQuantity, onPartSelect, onEditPart }
     };
 
     const onTouchEnd = (e: TouchEvent) => {
-      window.removeEventListener("scroll", onContainerScroll, { capture: true });
       // Only runs for a TAP (long-press hands off to doc listeners before this)
       if (isLongPress) return;
       if (timer) { clearTimeout(timer); timer = null; }
@@ -242,7 +232,6 @@ function PartCard({ part, isPending, pendingQuantity, onPartSelect, onEditPart }
     };
 
     const onTouchCancel = () => {
-      window.removeEventListener("scroll", onContainerScroll, { capture: true });
       if (timer) { clearTimeout(timer); timer = null; }
       if (isLongPress) {
         detachDocListeners();
@@ -261,7 +250,6 @@ function PartCard({ part, isPending, pendingQuantity, onPartSelect, onEditPart }
       card.removeEventListener("touchmove", onTouchMove);
       card.removeEventListener("touchend", onTouchEnd);
       card.removeEventListener("touchcancel", onTouchCancel);
-      window.removeEventListener("scroll", onContainerScroll, { capture: true });
       detachDocListeners();
       if (timer) clearTimeout(timer);
     };
