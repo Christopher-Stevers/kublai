@@ -194,7 +194,7 @@ function PartCard({ part, isPending, pendingQuantity, onPartSelect, onEditPart }
         // Hand off move/end tracking to document so finger can drift anywhere.
         // Non-passive touchmove will call preventDefault to block any scroll.
         attachDocListeners();
-      }, 300);
+      }, 150);
     };
 
     const onTouchMove = (e: TouchEvent) => {
