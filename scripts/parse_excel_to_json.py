@@ -5,8 +5,8 @@ from pathlib import Path
 from fractions import Fraction
 
 # Path to the Excel file
-file_path = Path(r"D:\Chris\Startups\kublai\src\server\api\routers\Material Catalogue-1.xlsx")
-output_path = Path(r"D:\Chris\Startups\kublai\src\server\utils\material-catalogue.json")
+file_path = Path("/root/.openclaw/workspace/parts-catalog/catalogs/Material_Catalogue_Full.xlsx")
+output_path = Path("/root/.openclaw/workspace/kublai/src/server/utils/material-catalogue.json")
 
 def decimal_to_fraction_str(decimal):
     """Convert a decimal to a fraction string (e.g., 1.25 -> '1-1/4', 0.5 -> '1/2')"""
@@ -131,7 +131,7 @@ def main():
     # Load workbook
     print(f"\n[LOAD] Loading: {file_path}")
     wb = openpyxl.load_workbook(file_path)
-    ws = wb['Sheet1']
+    ws = wb['Catalogue']
     
     # Extract data
     parts = []

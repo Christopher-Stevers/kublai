@@ -30,7 +30,7 @@ export default function CataloguePage() {
   const [showFilters, setShowFilters] = useState(false);
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [viewMode, setViewMode] = useState<"grid" | "table">("table");
+  const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
   const [editingPartId, setEditingPartId] = useState<string | null>(null);
 
   // Debounce search query
@@ -246,7 +246,7 @@ export default function CataloguePage() {
 
         <div className="flex-1 overflow-y-auto bg-gray-50 p-4 sm:p-6">
           {isLoading ? (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
               {[...Array(8)].map((_, i) => (
                 <Card key={i} className="overflow-hidden">
                   <div className="aspect-square animate-pulse bg-gray-200" />
@@ -277,7 +277,7 @@ export default function CataloguePage() {
               </div>
               {/* Grid View */}
               {viewMode === "grid" && (
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
                   {parts.map((part) => (
                     <PartCard
                       key={part.id}

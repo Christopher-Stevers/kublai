@@ -1,7 +1,6 @@
 import { parseSizeInput, formatSize } from "~/lib/size-utils";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
-import { Card, CardContent } from "~/components/ui/card";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -9,6 +8,8 @@ import {
   DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu";
 import { ChevronDown } from "lucide-react";
+import { Card, CardContent } from "~/components/ui/card";
+import { LoopingScrollGrid } from "./LoopingScrollGrid";
 
 export interface SizeStageProps {
   availableSizes?: Array<{ nominal: number; unit: string; count: number }>;
@@ -43,39 +44,45 @@ export function SizeStage({
   return (
     <div className="space-y-3 sm:space-y-4">
       <h3 className="text-base font-semibold sm:text-lg">Select Size</h3>
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3 md:grid-cols-3 lg:grid-cols-4 lg:gap-4">
-        {availableSizes?.map((size, index) => (
-          <Card
-            key={`${size.nominal}_${index}`}
-            className={`cursor-pointer transition-all hover:shadow-md ${
-              selectedSize?.nominal === size.nominal &&
-              selectedSize?.unit === size.unit
-                ? "border-primary border-2 shadow-md"
-                : ""
-            }`}
-            onClick={() => onSizeSelect(size)}
-          >
-            <CardContent className="p-3 text-center sm:p-4">
-              <p className="text-sm font-medium sm:text-base">
-                {formatSize(size.nominal, size.unit)}
-              </p>
-              <p className="mt-1 text-xs text-gray-500">
-                {size.count} part{size.count !== 1 ? "s" : ""}
-              </p>
-            </CardContent>
-          </Card>
-        ))}
-        <Card
-          className={`cursor-pointer transition-all hover:shadow-md ${
-            showCustomSize ? "border-primary border-2 shadow-md" : ""
-          }`}
-          onClick={() => onShowCustomSize(true)}
-        >
-          <CardContent className="p-3 text-center sm:p-4">
-            <p className="text-sm font-medium sm:text-base">Other</p>
-          </CardContent>
-        </Card>
-      </div>
+      <LoopingScrollGrid
+        items={[
+          ...(availableSizes ?? []).map((s, i) => ({ type: "size" as const, key: `${s.nominal}_${i}`, ...s })),
+          { type: "other" as const, key: "__other__", nominal: 0, unit: "", count: 0 },
+        ]}
+        getKey={(item) => item.key}
+        renderItem={(item) =>
+          item.type === "other" ? (
+            <Card
+              className={`cursor-pointer transition-all hover:shadow-md ${
+                showCustomSize ? "border-primary border-2 shadow-md" : ""
+              }`}
+              onClick={() => onShowCustomSize(true)}
+            >
+              <CardContent className="p-3 text-center sm:p-4">
+                <p className="text-sm font-medium sm:text-base">Other</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card
+              className={`cursor-pointer transition-all hover:shadow-md ${
+                selectedSize?.nominal === item.nominal && selectedSize?.unit === item.unit
+                  ? "border-primary border-2 shadow-md"
+                  : ""
+              }`}
+              onClick={() => onSizeSelect({ nominal: item.nominal, unit: item.unit })}
+            >
+              <CardContent className="p-3 text-center sm:p-4">
+                <p className="text-sm font-medium sm:text-base">
+                  {formatSize(item.nominal, item.unit)}
+                </p>
+                <p className="mt-1 text-xs text-gray-500">
+                  {item.count} part{item.count !== 1 ? "s" : ""}
+                </p>
+              </CardContent>
+            </Card>
+          )
+        }
+      />
       {showCustomSize && (
         <div className="mt-3 space-y-2 sm:mt-4">
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">

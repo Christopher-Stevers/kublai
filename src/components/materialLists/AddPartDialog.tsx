@@ -36,6 +36,7 @@ export function AddPartDialog({
 }: AddPartDialogProps) {
   // Wizard state
   const [wizardStage, setWizardStage] = useState<WizardStage>("material");
+  const [pendingSectionOpen, setPendingSectionOpen] = useState(false);
   const [selectedMaterialId, setSelectedMaterialId] = useState<string | null>(
     null,
   );
@@ -482,8 +483,9 @@ export function AddPartDialog({
       partType: string | null;
     },
     supplierPartId: string,
+    quantity?: number,
   ) => {
-    addToPendingList(part.id, part, supplierPartId);
+    addToPendingList(part.id, part, supplierPartId, quantity);
   };
 
   // Handler for editing a part
@@ -503,15 +505,40 @@ export function AddPartDialog({
       partType: string | null;
     },
     supplierPartId: string,
+    quantity?: number,
   ) => {
+    // If an explicit quantity was provided (long-press), set it directly
+    if (quantity !== undefined) {
+      setPendingParts((prev) => {
+        const existing = prev.find((p) => p.partId === partId);
+        if (existing) {
+          return prev.map((p) =>
+            p.partId === partId ? { ...p, quantity } : p,
+          );
+        }
+        return [
+          ...prev,
+          {
+            partId,
+            partDefinition: {
+              id: part.id,
+              displayName: part.displayName,
+              imageUrl: part.imageUrl,
+              material: part.material,
+              size: part.size,
+              partType: part.partType,
+            },
+            quantity,
+            supplierPartId,
+          },
+        ];
+      });
+      return;
+    }
     // Check if already in pending list
     if (pendingParts.some((p) => p.partId === partId)) {
-      // Increment quantity
-      setPendingParts((prev) =>
-        prev.map((p) =>
-          p.partId === partId ? { ...p, quantity: p.quantity + 1 } : p,
-        ),
-      );
+      // Deselect (remove from pending list)
+      setPendingParts((prev) => prev.filter((p) => p.partId !== partId));
     } else {
       // Add new part
       setPendingParts((prev) => [
@@ -799,31 +826,37 @@ export function AddPartDialog({
             )}
           </div>
 
+
+
           {/* Pending Parts Sidebar */}
           {pendingParts.length > 0 && wizardStage !== "review" && (
-            <div className="shrink-0 border-t bg-gray-50 px-2 py-3 sm:px-4 sm:py-4 md:px-6">
-              <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="shrink-0 border-t bg-gray-50">
+              <button
+                type="button"
+                className="flex w-full items-center justify-between px-2 py-3 sm:px-4 sm:py-4 md:px-6"
+                onClick={() => setPendingSectionOpen((prev) => !prev)}
+              >
                 <h4 className="text-sm font-semibold sm:text-base">
                   Pending Parts ({pendingParts.length})
                 </h4>
-                <div className="flex flex-col gap-2 sm:flex-row">
+                <svg
+                  className={`h-4 w-4 text-gray-500 transition-transform ${pendingSectionOpen ? "rotate-180" : ""}`}
+                  fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              {pendingSectionOpen && (
+              <div className="px-2 pb-3 sm:px-4 sm:pb-4 md:px-6">
+              <div className="mb-2 flex justify-end">
                   <Button
-                    variant="outline"
                     size="sm"
-                    onClick={handleContinueAdding}
-                    className="w-full text-xs sm:w-auto sm:text-sm"
-                  >
-                    Continue Adding
-                  </Button>
-                  <Button 
-                    size="sm" 
                     onClick={handleReviewAndAdd}
-                    className="w-full text-xs sm:w-auto sm:text-sm"
+                    className="text-xs sm:text-sm"
                   >
                     Review & Add
                   </Button>
                 </div>
-              </div>
               <div className="max-h-32 space-y-2 overflow-y-auto">
                 {pendingParts.map((pendingPart) => (
                   <div
@@ -837,9 +870,7 @@ export function AddPartDialog({
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() =>
-                          handleUpdateQuantity(pendingPart.partId, -1)
-                        }
+                        onClick={() => handleUpdateQuantity(pendingPart.partId, -1)}
                         className="h-6 w-6 p-0"
                       >
                         <Minus className="h-3 w-3" />
@@ -849,19 +880,14 @@ export function AddPartDialog({
                         min="1"
                         value={pendingPart.quantity}
                         onChange={(e) =>
-                          handleSetQuantity(
-                            pendingPart.partId,
-                            parseInt(e.target.value) || 1,
-                          )
+                          handleSetQuantity(pendingPart.partId, parseInt(e.target.value) || 1)
                         }
                         className="h-6 w-12 [appearance:textfield] text-center text-xs [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                       />
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() =>
-                          handleUpdateQuantity(pendingPart.partId, 1)
-                        }
+                        onClick={() => handleUpdateQuantity(pendingPart.partId, 1)}
                         className="h-6 w-6 p-0"
                       >
                         <Plus className="h-3 w-3" />
@@ -870,63 +896,35 @@ export function AddPartDialog({
                   </div>
                 ))}
               </div>
+              </div>
+              )}
             </div>
           )}
 
-          <DialogFooter className="shrink-0 border-t px-2 py-3 sm:px-4 sm:py-4 md:px-6">
-            <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  if (wizardStage === "size") {
-                    setWizardStage("material");
-                  } else if (wizardStage === "partTypeCategory") {
-                    setWizardStage("size");
-                  } else if (wizardStage === "part") {
-                    setWizardStage("partTypeCategory");
-                  } else if (wizardStage === "review") {
-                    setWizardStage("part");
-                  } else {
-                    onOpenChange(false);
+          {wizardStage === "review" && (
+            <DialogFooter className="shrink-0 border-t px-2 py-3 sm:px-4 sm:py-4 md:px-6">
+              <div className="flex w-full justify-end">
+                <Button
+                  onClick={handleAddToMaterialList}
+                  disabled={
+                    pendingParts.length === 0 ||
+                    !allPartsHaveSuppliers ||
+                    addItem.isPending
                   }
-                }}
-                disabled={wizardStage === "material"}
-                className="w-full text-xs sm:w-auto sm:text-sm"
-              >
-                <ChevronLeft className="mr-2 h-4 w-4" />
-                Back
-              </Button>
-              <div className="flex flex-col gap-2 sm:flex-row">
-                <Button 
-                  variant="outline" 
-                  onClick={() => onOpenChange(false)}
+                  title={
+                    !allPartsHaveSuppliers
+                      ? "Please select a supplier for all parts"
+                      : undefined
+                  }
                   className="w-full text-xs sm:w-auto sm:text-sm"
                 >
-                  Cancel
+                  {addItem.isPending
+                    ? "Adding..."
+                    : `Add ${pendingParts.length} Part${pendingParts.length !== 1 ? "s" : ""}`}
                 </Button>
-                {wizardStage === "review" && (
-                  <Button
-                    onClick={handleAddToMaterialList}
-                    disabled={
-                      pendingParts.length === 0 ||
-                      !allPartsHaveSuppliers ||
-                      addItem.isPending
-                    }
-                    title={
-                      !allPartsHaveSuppliers
-                        ? "Please select a supplier for all parts"
-                        : undefined
-                    }
-                    className="w-full text-xs sm:w-auto sm:text-sm"
-                  >
-                    {addItem.isPending
-                      ? "Adding..."
-                      : `Add ${pendingParts.length} Part${pendingParts.length !== 1 ? "s" : ""}`}
-                  </Button>
-                )}
               </div>
-            </div>
-          </DialogFooter>
+            </DialogFooter>
+          )}
         </DialogContent>
       </Dialog>
 

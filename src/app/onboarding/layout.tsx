@@ -17,6 +17,8 @@ export default async function OnboardingLayout({
     redirect("/sign-in");
   }
 
+
+
   // Get user from database (webhook should have created it)
   let [user] = await db
     .select()
