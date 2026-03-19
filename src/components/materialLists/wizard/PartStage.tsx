@@ -118,6 +118,10 @@ function PartCard({ part, isPending, pendingQuantity, onPartSelect, onEditPart }
     let activeTouchId = -1;
     let startY = 0;
     let startQty = 1;
+    let lastScrollTime = 0;
+
+    const onScroll = () => { lastScrollTime = Date.now(); };
+    window.addEventListener("scroll", onScroll, { passive: true });
 
     // ── document-level handlers (attached only while long-press is active) ──
     const onDocMove = (e: TouchEvent) => {
@@ -173,8 +177,8 @@ function PartCard({ part, isPending, pendingQuantity, onPartSelect, onEditPart }
     const onTouchStart = (e: TouchEvent) => {
       if (!hasSupplierRef.current) return;
       // Do NOT preventDefault here — we want normal scrolling to work.
-      // If the user holds for 500ms without moving, the browser won't have
-      // committed to a scroll, and we lock it out then via doc listeners.
+      // If the user holds for 150ms without moving AND the page isn't still
+      // momentum-scrolling, we open the drum roll.
 
       const touch = e.changedTouches[0];
       if (!touch) return;
@@ -182,6 +186,10 @@ function PartCard({ part, isPending, pendingQuantity, onPartSelect, onEditPart }
       startY = touch.clientY;
       isLongPress = false;
       didScroll = false;
+
+      // If the page was scrolling within the last 80ms, ignore this touch
+      // entirely — user just lifted their finger from a scroll.
+      if (Date.now() - lastScrollTime < 80) return;
 
       const qty = isPendingRef.current ? pendingQuantityRef.current : 1;
       startQty = qty;
@@ -248,6 +256,7 @@ function PartCard({ part, isPending, pendingQuantity, onPartSelect, onEditPart }
       card.removeEventListener("touchmove", onTouchMove);
       card.removeEventListener("touchend", onTouchEnd);
       card.removeEventListener("touchcancel", onTouchCancel);
+      window.removeEventListener("scroll", onScroll);
       detachDocListeners();
       if (timer) clearTimeout(timer);
     };
