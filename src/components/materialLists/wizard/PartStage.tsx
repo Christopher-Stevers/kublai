@@ -118,6 +118,7 @@ function PartCard({ part, isPending, pendingQuantity, onPartSelect, onEditPart }
     let activeTouchId = -1;
     let startY = 0;
     let startQty = 1;
+    let startScrollY = 0;
 
     // ── document-level handlers (attached only while long-press is active) ──
     const onDocMove = (e: TouchEvent) => {
@@ -180,6 +181,7 @@ function PartCard({ part, isPending, pendingQuantity, onPartSelect, onEditPart }
       if (!touch) return;
       activeTouchId = touch.identifier;
       startY = touch.clientY;
+      startScrollY = window.scrollY;
       isLongPress = false;
       didScroll = false;
 
@@ -191,10 +193,11 @@ function PartCard({ part, isPending, pendingQuantity, onPartSelect, onEditPart }
       setDraftQty(qty);
 
       timer = setTimeout(() => {
+        // If the page scrolled while the finger was held, user was stopping
+        // momentum — don't open the drum roll.
+        if (Math.abs(window.scrollY - startScrollY) > 4) return;
         isLongPress = true;
         setIsQtyPickerOpen(true);
-        // Hand off move/end tracking to document so finger can drift anywhere.
-        // Non-passive touchmove will call preventDefault to block any scroll.
         attachDocListeners();
       }, 150);
     };
