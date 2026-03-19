@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent } from "~/components/ui/card";
@@ -45,36 +46,33 @@ function PartCard({ part, isPending, pendingQuantity, onPartSelect, onEditPart }
   const [selectedSupplierPartId, setSelectedSupplierPartId] = useState<string | null>(null);
   const [isSupplierDialogOpen, setIsSupplierDialogOpen] = useState(false);
   const [previousSupplierCount, setPreviousSupplierCount] = useState<number>(0);
-
-  // Drum roll state
   const [isQtyPickerOpen, setIsQtyPickerOpen] = useState(false);
   const [draftQty, setDraftQty] = useState(1);
 
-  // Refs for pointer/gesture handling
-  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const didLongPress = useRef(false);
-  const dragStartY = useRef<number>(0);
-  const dragStartQty = useRef<number>(1);
-  const activePointerId = useRef<number | null>(null);
-  const cardElemRef = useRef<HTMLDivElement | null>(null);
-  const isPickerOpenRef = useRef(false);
+  const cardRef = useRef<HTMLDivElement | null>(null);
   const draftQtyRef = useRef(1);
   const selectedSupplierPartIdRef = useRef<string | null>(null);
+  const isPendingRef = useRef(isPending);
+  const pendingQuantityRef = useRef(pendingQuantity);
+  const hasSupplierRef = useRef(false);
+  const onPartSelectRef = useRef(onPartSelect);
+  const partRef = useRef(part);
 
-  // Keep refs in sync
   useEffect(() => { draftQtyRef.current = draftQty; }, [draftQty]);
-  useEffect(() => { selectedSupplierPartIdRef.current = selectedSupplierPartId; }, [selectedSupplierPartId]);
+  useEffect(() => { selectedSupplierPartIdRef.current = selectedSupplierPartId; hasSupplierRef.current = !!selectedSupplierPartId; }, [selectedSupplierPartId]);
+  useEffect(() => { isPendingRef.current = isPending; }, [isPending]);
+  useEffect(() => { pendingQuantityRef.current = pendingQuantity; }, [pendingQuantity]);
+  useEffect(() => { onPartSelectRef.current = onPartSelect; }, [onPartSelect]);
+  useEffect(() => { partRef.current = part; }, [part]);
 
   const { data: supplierParts } = api.supplier.getSupplierPartsByPart.useQuery(
     { partDefinitionId: part.id },
     { enabled: !!part.id },
   );
-
   const { data: supplierInfo } = api.catalogue.getPartsSupplierInfo.useQuery(
     { partIds: [part.id] },
     { enabled: !!part.id },
   );
-
   const utils = api.useUtils();
 
   useEffect(() => {
@@ -83,7 +81,6 @@ function PartCard({ part, isPending, pendingQuantity, onPartSelect, onEditPart }
       const wasNewSupplierAdded = currentCount > previousSupplierCount && previousSupplierCount > 0;
       const preferred = supplierParts.find((sp) => sp.isPreferred);
       const supplierPartId = preferred?.id ?? supplierParts[0]?.id;
-
       if (!selectedSupplierPartId || !supplierParts.find(sp => sp.id === selectedSupplierPartId)) {
         if (supplierPartId) {
           setSelectedSupplierPartId(supplierPartId);
@@ -95,112 +92,178 @@ function PartCard({ part, isPending, pendingQuantity, onPartSelect, onEditPart }
         setSelectedSupplierPartId(preferred.id);
         if (isSupplierDialogOpen) setIsSupplierDialogOpen(false);
       }
-
       setPreviousSupplierCount(currentCount);
     } else {
       setPreviousSupplierCount(0);
     }
   }, [supplierParts, selectedSupplierPartId, isSupplierDialogOpen, previousSupplierCount]);
 
-  const hasSupplier = !!selectedSupplierPartId;
+  // ─── Touch handling ────────────────────────────────────────────────────────
+  // Strategy:
+  //  1. Non-passive touchstart on card → always call preventDefault so the
+  //     browser NEVER gets to decide "this is a scroll".
+  //  2. When long-press fires, open the drum-roll overlay (portal to body).
+  //  3. touchmove/touchend listeners move to DOCUMENT so the finger can drift
+  //     anywhere and we still track it.
+  //  4. A non-passive document touchmove listener prevents any scroll while
+  //     the drum roll is open.
 
-  // Confirm quantity from drum roll and fire onPartSelect
-  const confirmQty = useCallback(() => {
-    const qty = draftQtyRef.current;
-    const supplierId = selectedSupplierPartIdRef.current;
-    if (supplierId) {
-      onPartSelect(part, supplierId, qty);
-    }
-    isPickerOpenRef.current = false;
-    setIsQtyPickerOpen(false);
-    if (cardElemRef.current) cardElemRef.current.style.touchAction = "";
-    activePointerId.current = null;
-  }, [onPartSelect, part]);
+  useEffect(() => {
+    const card = cardRef.current;
+    if (!card) return;
 
-  const handlePressStart = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
-    if (!hasSupplier) return;
-    e.currentTarget.setPointerCapture(e.pointerId);
-    cardElemRef.current = e.currentTarget;
-    activePointerId.current = e.pointerId;
-    didLongPress.current = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    let isLongPress = false;
+    let activeTouchId = -1;
+    let startY = 0;
+    let startQty = 1;
 
-    const capturedY = e.clientY;
-    const startQty = isPending ? pendingQuantity : 1;
-    dragStartQty.current = startQty;
-    draftQtyRef.current = startQty;
-    setDraftQty(startQty);
+    // ── document-level handlers (attached only while long-press is active) ──
+    const onDocMove = (e: TouchEvent) => {
+      e.preventDefault(); // block any scroll while drum roll is open
 
-    longPressTimer.current = setTimeout(() => {
-      didLongPress.current = true;
-      dragStartY.current = capturedY;
-      if (cardElemRef.current) {
-        cardElemRef.current.style.touchAction = "none";
+      let touch: Touch | undefined;
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        if (e.changedTouches[i]!.identifier === activeTouchId) { touch = e.changedTouches[i]; break; }
       }
-      isPickerOpenRef.current = true;
-      setIsQtyPickerOpen(true);
-    }, 500);
-  }, [hasSupplier, isPending, pendingQuantity]);
+      if (!touch) return;
 
-  const handlePointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
-    if (e.pointerId !== activePointerId.current) return;
-    if (!isPickerOpenRef.current) return;
+      const delta = touch.clientY - startY;
+      const newQty = Math.max(1, Math.round(startQty + delta / 20));
+      draftQtyRef.current = newQty;
+      setDraftQty(newQty);
+    };
 
-    const delta = e.clientY - dragStartY.current;
-    const newQty = Math.max(1, Math.round(dragStartQty.current + delta / 20));
-    draftQtyRef.current = newQty;
-    setDraftQty(newQty);
-  }, []);
+    const onDocEnd = (e: TouchEvent) => {
+      let touch: Touch | undefined;
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        if (e.changedTouches[i]!.identifier === activeTouchId) { touch = e.changedTouches[i]; break; }
+      }
+      if (!touch) return;
+      detachDocListeners();
 
-  const handlePressEnd = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
-    if (longPressTimer.current) {
-      clearTimeout(longPressTimer.current);
-      longPressTimer.current = null;
-    }
-    if (e.pointerId !== activePointerId.current) return;
+      const supplierId = selectedSupplierPartIdRef.current;
+      if (supplierId) {
+        onPartSelectRef.current(partRef.current, supplierId, draftQtyRef.current);
+      }
+      setIsQtyPickerOpen(false);
+      isLongPress = false;
+    };
 
-    if (isPickerOpenRef.current) {
-      confirmQty();
-    }
-    // tap handled by onClick
-    if (cardElemRef.current) cardElemRef.current.style.touchAction = "";
-    activePointerId.current = null;
-  }, [confirmQty]);
+    const onDocCancel = () => {
+      detachDocListeners();
+      setIsQtyPickerOpen(false);
+      isLongPress = false;
+    };
 
-  const handlePointerCancel = useCallback((_e: React.PointerEvent<HTMLDivElement>) => {
-    if (longPressTimer.current) {
-      clearTimeout(longPressTimer.current);
-      longPressTimer.current = null;
-    }
-    if (isPickerOpenRef.current) {
-      confirmQty();
-    }
-    if (cardElemRef.current) cardElemRef.current.style.touchAction = "";
-    isPickerOpenRef.current = false;
-    setIsQtyPickerOpen(false);
-    activePointerId.current = null;
-  }, [confirmQty]);
+    const attachDocListeners = () => {
+      document.addEventListener("touchmove", onDocMove, { passive: false });
+      document.addEventListener("touchend", onDocEnd, { passive: true });
+      document.addEventListener("touchcancel", onDocCancel, { passive: true });
+    };
 
-  const handleClick = useCallback(() => {
-    if (didLongPress.current) {
-      didLongPress.current = false;
-      return;
-    }
-    if (!hasSupplier || !selectedSupplierPartIdRef.current) return;
-    onPartSelect(part, selectedSupplierPartIdRef.current);
-  }, [hasSupplier, onPartSelect, part]);
+    const detachDocListeners = () => {
+      document.removeEventListener("touchmove", onDocMove);
+      document.removeEventListener("touchend", onDocEnd);
+      document.removeEventListener("touchcancel", onDocCancel);
+    };
+
+    // ── card-level handlers ──────────────────────────────────────────────────
+    const onTouchStart = (e: TouchEvent) => {
+      if (!hasSupplierRef.current) return;
+      // Must be synchronous — this is what blocks the browser's scroll decision
+      e.preventDefault();
+
+      const touch = e.changedTouches[0];
+      if (!touch) return;
+      activeTouchId = touch.identifier;
+      startY = touch.clientY;
+      isLongPress = false;
+
+      const qty = isPendingRef.current ? pendingQuantityRef.current : 1;
+      startQty = qty;
+      draftQtyRef.current = qty;
+      setDraftQty(qty);
+
+      timer = setTimeout(() => {
+        isLongPress = true;
+        setIsQtyPickerOpen(true);
+        // Hand off move/end tracking to document so finger can drift anywhere
+        attachDocListeners();
+      }, 500);
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      // Only runs before long-press fires (after that, doc listeners take over)
+      if (isLongPress) return;
+
+      let touch: Touch | undefined;
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        if (e.changedTouches[i]!.identifier === activeTouchId) { touch = e.changedTouches[i]; break; }
+      }
+      if (!touch) return;
+
+      const dy = Math.abs(touch.clientY - startY);
+      if (dy > 8 && timer) {
+        clearTimeout(timer);
+        timer = null;
+      }
+    };
+
+    const onTouchEnd = (e: TouchEvent) => {
+      // Only runs for a TAP (long-press hands off to doc listeners before this)
+      if (isLongPress) return;
+      if (timer) { clearTimeout(timer); timer = null; }
+
+      let touch: Touch | undefined;
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        if (e.changedTouches[i]!.identifier === activeTouchId) { touch = e.changedTouches[i]; break; }
+      }
+      if (!touch) return;
+
+      const supplierId = selectedSupplierPartIdRef.current;
+      if (supplierId) onPartSelectRef.current(partRef.current, supplierId);
+    };
+
+    const onTouchCancel = () => {
+      if (timer) { clearTimeout(timer); timer = null; }
+      if (isLongPress) {
+        detachDocListeners();
+        setIsQtyPickerOpen(false);
+        isLongPress = false;
+      }
+    };
+
+    card.addEventListener("touchstart", onTouchStart, { passive: false });
+    card.addEventListener("touchmove", onTouchMove, { passive: true });
+    card.addEventListener("touchend", onTouchEnd, { passive: true });
+    card.addEventListener("touchcancel", onTouchCancel, { passive: true });
+
+    return () => {
+      card.removeEventListener("touchstart", onTouchStart);
+      card.removeEventListener("touchmove", onTouchMove);
+      card.removeEventListener("touchend", onTouchEnd);
+      card.removeEventListener("touchcancel", onTouchCancel);
+      detachDocListeners();
+      if (timer) clearTimeout(timer);
+    };
+  }, [part.id]); // only re-run if the card itself is replaced
+  // ──────────────────────────────────────────────────────────────────────────
+
+  const hasSupplier = !!selectedSupplierPartId;
 
   return (
     <>
       <Card
-        className={`relative transition-all hover:shadow-md ${
-          isPending ? "border-primary border-2" : ""
-        } ${hasSupplier ? "cursor-pointer select-none" : "select-none"}`}
-        style={{ WebkitUserSelect: "none", userSelect: "none", WebkitTouchCallout: "none" }}
-        onPointerDown={handlePressStart}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePressEnd}
-        onPointerCancel={handlePointerCancel}
-        onClick={handleClick}
+        ref={cardRef}
+        className={`relative transition-all hover:shadow-md ${isPending ? "border-primary border-2" : ""} ${hasSupplier ? "cursor-pointer select-none" : "select-none"}`}
+        style={{
+          WebkitUserSelect: "none",
+          userSelect: "none",
+          WebkitTouchCallout: "none",
+          // touchAction none = browser never attempts scroll from a card touch
+          touchAction: "none",
+        }}
         onContextMenu={(e) => e.preventDefault()}
       >
         <CardContent className="p-3">
@@ -269,48 +332,66 @@ function PartCard({ part, isPending, pendingQuantity, onPartSelect, onEditPart }
         </Dialog>
       </Card>
 
-      {/* Drum roll overlay — purely visual, pointer events pass through to card */}
-      {isQtyPickerOpen && (
-        <div
-          className="fixed inset-0 z-50 flex flex-col items-center justify-center"
-          style={{ touchAction: "none", pointerEvents: "none", background: "rgba(0,0,0,0.55)" }}
-        >
-          {/* Numbers column */}
-          <div className="flex flex-col items-center" style={{ gap: 0 }}>
-            {Array.from({ length: 21 }, (_, i) => {
-              const offset = i - 10; // -10 at top, 0 in middle, +10 at bottom
-              const num = draftQty + offset;
-              const isCenter = offset === 0;
-              const dist = Math.abs(offset);
-              const opacity = isCenter ? 1 : Math.max(0.08, 1 - dist * 0.09);
-              const scale = isCenter ? 1 : Math.max(0.55, 1 - dist * 0.04);
-              const fontSize = isCenter ? 72 : Math.max(18, 44 - dist * 2);
-              const fontWeight = isCenter ? 800 : dist <= 2 ? 600 : 400;
-              const color = isCenter ? "#ffffff" : `rgba(255,255,255,${opacity})`;
-              const lineHeight = isCenter ? "88px" : `${Math.max(22, 40 - dist)}px`;
-              if (num < 1 && !isCenter) return null;
-              return (
-                <div
-                  key={offset}
-                  className="select-none text-center"
-                  style={{
-                    fontSize,
-                    fontWeight,
-                    color,
-                    lineHeight,
-                    transform: `scale(${scale})`,
-                    transition: "all 0.05s",
-                    minHeight: lineHeight,
-                  }}
-                >
-                  {num >= 1 ? num : ""}
-                </div>
-              );
-            })}
-          </div>
-          <p className="mt-6 text-xs text-white/50 select-none">Drag up · Release to confirm</p>
-        </div>
-      )}
+      {/* Drum roll — rendered as a portal directly on document.body so it
+          escapes Radix's stacking context and any dialog z-index rules.
+          It is purely visual; all touch tracking happens on the card element
+          and the document-level listeners above. */}
+      {isQtyPickerOpen && typeof document !== "undefined" &&
+        createPortal(
+          <div
+            style={{
+              position: "fixed",
+              inset: 0,
+              zIndex: 99999,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              background: "rgba(0,0,0,0.55)",
+              touchAction: "none",
+              pointerEvents: "none",
+              userSelect: "none",
+            }}
+          >
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+              {Array.from({ length: 21 }, (_, i) => {
+                const offset = i - 10;
+                const num = draftQty + offset;
+                const isCenter = offset === 0;
+                const dist = Math.abs(offset);
+                const opacity = isCenter ? 1 : Math.max(0.08, 1 - dist * 0.09);
+                const scale = isCenter ? 1 : Math.max(0.55, 1 - dist * 0.04);
+                const fontSize = isCenter ? 72 : Math.max(18, 44 - dist * 2);
+                const fontWeight = isCenter ? 800 : dist <= 2 ? 600 : 400;
+                const color = isCenter ? "#ffffff" : `rgba(255,255,255,${opacity})`;
+                const lineHeight = isCenter ? "88px" : `${Math.max(22, 40 - dist)}px`;
+                if (num < 1 && !isCenter) return null;
+                return (
+                  <div
+                    key={offset}
+                    style={{
+                      fontSize,
+                      fontWeight,
+                      color,
+                      lineHeight,
+                      transform: `scale(${scale})`,
+                      transition: "all 0.05s",
+                      minHeight: lineHeight,
+                      textAlign: "center",
+                      userSelect: "none",
+                    }}
+                  >
+                    {num >= 1 ? num : ""}
+                  </div>
+                );
+              })}
+            </div>
+            <p style={{ marginTop: 24, fontSize: 12, color: "rgba(255,255,255,0.4)", userSelect: "none" }}>
+              Drag down · Release to confirm
+            </p>
+          </div>,
+          document.body,
+        )}
     </>
   );
 }
@@ -340,17 +421,11 @@ export interface PartStageProps {
     materialId?: string | null;
     size?: { nominal: number; unit: string } | null;
     partTypeId?: string | null;
-    category?: {
-      name?: string | null;
-      categoryId?: string | null;
-    };
+    category?: { name?: string | null; categoryId?: string | null };
   }) => void;
   selectedMaterialId: string | null;
   selectedSize: { nominal: number; unit: string } | null;
-  selectedPartTypeCategory: {
-    categoryId: string | null;
-    name: string;
-  } | null;
+  selectedPartTypeCategory: { categoryId: string | null; name: string } | null;
   onBackToCategories: () => void;
   onContinueToReview: () => void;
 }
@@ -364,8 +439,6 @@ export function PartStage({
   selectedMaterialId,
   selectedSize,
   selectedPartTypeCategory,
-  onBackToCategories,
-  onContinueToReview,
 }: PartStageProps) {
   if (partsForSelection.length === 0) {
     return (
@@ -396,9 +469,7 @@ export function PartStage({
 
   return (
     <div className="space-y-3 sm:space-y-4">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <h3 className="text-base font-semibold sm:text-lg">Select Parts</h3>
-      </div>
+      <h3 className="text-base font-semibold sm:text-lg">Select Parts</h3>
       <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3">
         {partsForSelection.map((part) => {
           const pendingEntry = pendingParts.find((p) => p.partId === part.id);
