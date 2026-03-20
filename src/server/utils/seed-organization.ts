@@ -422,6 +422,7 @@ export async function seedOrganization(
         sizeId: sizeId ?? null,
         defaultUomId: defaultUomId,
         isActive: true,
+        sortOrder: (partData as { sortOrder?: number }).sortOrder ?? 0,
       })
       .returning({ id: partDefinitions.id });
 

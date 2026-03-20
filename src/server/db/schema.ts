@@ -556,6 +556,7 @@ export const partDefinitions = createTable(
     defaultUomId: d.uuid().references(() => units.id, { onDelete: "set null" }),
 
     isActive: d.boolean().notNull().default(true),
+    sortOrder: d.integer().notNull().default(0),
 
     createdAt: d
       .timestamp({ withTimezone: true })

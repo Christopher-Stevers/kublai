@@ -211,6 +211,7 @@ export const catalogueRouter = createTRPCRouter({
           categoryId: partDefinitions.categoryId,
           organizationId: partDefinitions.organizationId,
           sizeUnitCode: units.code,
+          sortOrder: partDefinitions.sortOrder,
         })
         .from(partDefinitions)
         .leftJoin(sizes, eq(partDefinitions.sizeId, sizes.id))
@@ -219,12 +220,10 @@ export const catalogueRouter = createTRPCRouter({
         .leftJoin(partTypes, eq(partDefinitions.partTypeId, partTypes.id))
         .where(and(...conditions));
 
-      // Sort: org-specific first, then global, then by name
+      // Sort: by sortOrder first, then by name as tiebreaker
       const parts = allParts.sort((a, b) => {
-        const aIsOrg = a.organizationId === organizationId;
-        const bIsOrg = b.organizationId === organizationId;
-        if (aIsOrg !== bIsOrg) {
-          return aIsOrg ? -1 : 1;
+        if (a.sortOrder !== b.sortOrder) {
+          return a.sortOrder - b.sortOrder;
         }
         return a.displayName.localeCompare(b.displayName);
       });

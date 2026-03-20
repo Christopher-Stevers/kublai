@@ -48,6 +48,13 @@
       "when": 1768782096606,
       "tag": "0006_dapper_catseye",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1773971861656,
+      "tag": "0007_add_sort_order_to_part_definitions",
+      "breakpoints": true
     }
   ]
 }

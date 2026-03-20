@@ -10,6 +10,7 @@ export interface ParsedPart {
   categoryName: string;
   partType: string;
   synonyms: string[];
+  sortOrder: number;
 }
 
 /**
@@ -198,6 +199,7 @@ export function parseMaterialCatalogueFromXlsx(
     Description?: string;
     Category?: string;
     Price?: string;
+    SortOrder?: number | string;
   }>;
 
   console.log(`[PROC] Processing ${data.length} rows...`);
@@ -210,6 +212,7 @@ export function parseMaterialCatalogueFromXlsx(
     const sizeStr = row.Size?.toString().trim() ?? "";
     const description = row.Description?.toString().trim() ?? "";
     const category = row.Category?.toString().trim() ?? "Fitting";
+    const sortOrder = row.SortOrder !== undefined ? parseInt(row.SortOrder.toString(), 10) : 0;
 
     if (!material || !description) {
       continue;
@@ -232,6 +235,7 @@ export function parseMaterialCatalogueFromXlsx(
         categoryName: categoryName,
         partType: partType,
         synonyms: synonyms,
+        sortOrder: sortOrder,
       });
     } else {
       // Create separate part for each size with fraction display
@@ -247,6 +251,7 @@ export function parseMaterialCatalogueFromXlsx(
           categoryName: categoryName,
           partType: partType,
           synonyms: synonyms,
+          sortOrder: sortOrder,
         });
       }
     }
