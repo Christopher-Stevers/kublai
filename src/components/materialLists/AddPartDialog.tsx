@@ -12,7 +12,7 @@ import {
 } from "~/components/ui/dialog";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
-import { ChevronLeft, Plus, Minus } from "lucide-react";
+import { Plus, Minus, Search } from "lucide-react";
 import { WizardProgressIndicator } from "./WizardProgressIndicator";
 import { CreateCustomPartDialog } from "./CreateCustomPartDialog";
 import { EditPartDialog } from "~/components/catalogue/EditPartDialog";
@@ -70,6 +70,7 @@ export function AddPartDialog({
   const [customSizeUnitId, setCustomSizeUnitId] = useState<string | null>(null);
   const [showCustomPartTypeInput, setShowCustomPartTypeInput] = useState(false);
   const [customPartTypeName, setCustomPartTypeName] = useState("");
+  const [wizardSearchQuery, setWizardSearchQuery] = useState("");
 
   // Fetch data
   const { data: catalogs } = api.catalogue.getCatalogs.useQuery();
@@ -134,11 +135,14 @@ export function AddPartDialog({
   );
 
   const catalogsWithCounts = useMemo(() => {
-    return (catalogs ?? []).map((catalog) => ({
-      ...catalog,
-      count: catalog.partCount ?? 0,
-    }));
-  }, [catalogs]);
+    const query = wizardSearchQuery.trim().toLowerCase();
+    return (catalogs ?? [])
+      .filter((catalog) => !query || catalog.name.toLowerCase().includes(query))
+      .map((catalog) => ({
+        ...catalog,
+        count: catalog.partCount ?? 0,
+      }));
+  }, [catalogs, wizardSearchQuery]);
 
   // Calculate counts per material from all parts (no filters)
   const materialCounts = useMemo(() => {
@@ -155,20 +159,26 @@ export function AddPartDialog({
 
   // Merge materials with counts
   const materialsWithCounts = useMemo(() => {
-    return (materials ?? []).map((mat) => ({
-      ...mat,
-      count: materialCounts.get(mat.id) ?? 0,
-    }));
-  }, [materials, materialCounts]);
+    const query = wizardSearchQuery.trim().toLowerCase();
+    return (materials ?? [])
+      .filter((mat) => !query || mat.name.toLowerCase().includes(query))
+      .map((mat) => ({
+        ...mat,
+        count: materialCounts.get(mat.id) ?? 0,
+      }));
+  }, [materials, materialCounts, wizardSearchQuery]);
 
   // Use categories directly from getPartTypeCategories (already filtered and counted by material + size)
   const categoriesWithCounts = useMemo(() => {
-    return (partTypeCategories ?? []).map((cat) => ({
-      categoryId: cat.categoryId,
-      name: cat.name,
-      count: cat.count ?? 0,
-    }));
-  }, [partTypeCategories]);
+    const query = wizardSearchQuery.trim().toLowerCase();
+    return (partTypeCategories ?? [])
+      .filter((cat) => !query || cat.name.toLowerCase().includes(query))
+      .map((cat) => ({
+        categoryId: cat.categoryId,
+        name: cat.name,
+        count: cat.count ?? 0,
+      }));
+  }, [partTypeCategories, wizardSearchQuery]);
 
   const utils = api.useUtils();
 
@@ -255,6 +265,23 @@ export function AddPartDialog({
     },
     { enabled: wizardStage === "size" && !!selectedCatalogId && !!selectedMaterialId },
   );
+
+  const filteredAvailableSizes = useMemo(() => {
+    const query = wizardSearchQuery.trim().toLowerCase();
+    return (availableSizesFromQuery ?? []).filter((size) =>
+      !query || `${size.nominal} ${size.unit}`.toLowerCase().includes(query),
+    );
+  }, [availableSizesFromQuery, wizardSearchQuery]);
+
+  const filteredPartsForSelection = useMemo(() => {
+    const query = wizardSearchQuery.trim().toLowerCase();
+    return (partsForSelection ?? []).filter((part) => {
+      if (!query) return true;
+      return [part.displayName, part.description, part.material, part.size]
+        .filter(Boolean)
+        .some((value) => value!.toLowerCase().includes(query));
+    });
+  }, [partsForSelection, wizardSearchQuery]);
 
   const addItem = api.materialList.addItemToMaterialList.useMutation({
     onMutate: async (variables) => {
@@ -711,8 +738,26 @@ export function AddPartDialog({
       setSelectedSize(null);
       setShowCustomSize(false);
       setCustomSizeInput("");
+      setWizardSearchQuery("");
     }
   }, [open]);
+
+  useEffect(() => {
+    setWizardSearchQuery("");
+  }, [wizardStage]);
+
+  const wizardSearchPlaceholder =
+    wizardStage === "catalog"
+      ? "Search catalogs..."
+      : wizardStage === "material"
+        ? "Search materials..."
+        : wizardStage === "size"
+          ? "Search sizes..."
+          : wizardStage === "partTypeCategory"
+            ? "Search categories..."
+            : wizardStage === "part"
+              ? "Search parts..."
+              : "";
 
   return (
     <>
@@ -762,6 +807,19 @@ export function AddPartDialog({
                 }
               }}
             />
+            {wizardStage !== "review" && (
+              <div className="pb-3 sm:pb-4">
+                <div className="relative">
+                  <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                  <Input
+                    value={wizardSearchQuery}
+                    onChange={(e) => setWizardSearchQuery(e.target.value)}
+                    placeholder={wizardSearchPlaceholder}
+                    className="pl-9"
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="flex-1 space-y-3 overflow-y-auto px-2 pt-3 pb-3 sm:space-y-4 sm:px-4 sm:pt-4 sm:pb-4 md:px-6">
@@ -798,7 +856,7 @@ export function AddPartDialog({
             )}
             {wizardStage === "size" && (
               <SizeStage
-                availableSizes={availableSizesFromQuery}
+                availableSizes={filteredAvailableSizes}
                 selectedSize={selectedSize}
                 onSizeSelect={handleSizeSelect}
                 showCustomSize={showCustomSize}
@@ -825,7 +883,7 @@ export function AddPartDialog({
             )}
             {wizardStage === "part" && (
               <PartStage
-                partsForSelection={partsForSelection ?? []}
+                partsForSelection={filteredPartsForSelection}
                 pendingParts={pendingParts}
                 onPartSelect={handlePartSelect}
                 onEditPart={handleEditPart}
@@ -833,10 +891,6 @@ export function AddPartDialog({
                 selectedMaterialId={selectedMaterialId}
                 selectedSize={selectedSize}
                 selectedPartTypeCategory={selectedPartTypeCategory}
-                onBackToCategories={() => {
-                  setSelectedPartTypeCategory(null);
-                  setWizardStage("partTypeCategory");
-                }}
                 onContinueToReview={() => setWizardStage("review")}
               />
             )}
@@ -927,60 +981,30 @@ export function AddPartDialog({
             </div>
           )}
 
-          <DialogFooter className="shrink-0 border-t px-2 py-3 sm:px-4 sm:py-4 md:px-6">
-            <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  if (wizardStage === "size") {
-                    setWizardStage("catalog");
-                  } else if (wizardStage === "partTypeCategory") {
-                    setWizardStage("size");
-                  } else if (wizardStage === "part") {
-                    setWizardStage("partTypeCategory");
-                  } else if (wizardStage === "review") {
-                    setWizardStage("part");
-                  } else {
-                    onOpenChange(false);
+          {wizardStage === "review" && (
+            <DialogFooter className="shrink-0 border-t px-2 py-3 sm:px-4 sm:py-4 md:px-6">
+              <div className="flex w-full justify-end">
+                <Button
+                  onClick={handleAddToMaterialList}
+                  disabled={
+                    pendingParts.length === 0 ||
+                    !allPartsHaveSuppliers ||
+                    addItem.isPending
                   }
-                }}
-                disabled={wizardStage === "catalog"}
-                className="w-full text-xs sm:w-auto sm:text-sm"
-              >
-                <ChevronLeft className="mr-2 h-4 w-4" />
-                Back
-              </Button>
-              <div className="flex flex-col gap-2 sm:flex-row">
-                <Button 
-                  variant="outline" 
-                  onClick={() => onOpenChange(false)}
+                  title={
+                    !allPartsHaveSuppliers
+                      ? "Please select a supplier for all parts"
+                      : undefined
+                  }
                   className="w-full text-xs sm:w-auto sm:text-sm"
                 >
-                  Cancel
+                  {addItem.isPending
+                    ? "Adding..."
+                    : `Add ${pendingParts.length} Part${pendingParts.length !== 1 ? "s" : ""}`}
                 </Button>
-                {wizardStage === "review" && (
-                  <Button
-                    onClick={handleAddToMaterialList}
-                    disabled={
-                      pendingParts.length === 0 ||
-                      !allPartsHaveSuppliers ||
-                      addItem.isPending
-                    }
-                    title={
-                      !allPartsHaveSuppliers
-                        ? "Please select a supplier for all parts"
-                        : undefined
-                    }
-                    className="w-full text-xs sm:w-auto sm:text-sm"
-                  >
-                    {addItem.isPending
-                      ? "Adding..."
-                      : `Add ${pendingParts.length} Part${pendingParts.length !== 1 ? "s" : ""}`}
-                  </Button>
-                )}
               </div>
-            </div>
-          </DialogFooter>
+            </DialogFooter>
+          )}
         </DialogContent>
       </Dialog>
 

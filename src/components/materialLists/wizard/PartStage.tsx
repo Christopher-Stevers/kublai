@@ -337,7 +337,6 @@ export interface PartStageProps {
     categoryId: string | null;
     name: string;
   } | null;
-  onBackToCategories: () => void;
   onContinueToReview: () => void;
 }
 
@@ -350,7 +349,6 @@ export function PartStage({
   selectedMaterialId,
   selectedSize,
   selectedPartTypeCategory,
-  onBackToCategories,
   onContinueToReview,
 }: PartStageProps) {
   const pagination = useClientPagination(partsForSelection);
@@ -422,14 +420,7 @@ export function PartStage({
         itemLabel="parts"
         onPageChange={pagination.setPage}
       />
-      <div className="flex flex-col gap-2 sm:flex-row sm:justify-between">
-        <Button 
-          variant="outline" 
-          onClick={onBackToCategories}
-          className="w-full text-xs sm:w-auto sm:text-sm"
-        >
-          Back to Categories
-        </Button>
+      <div className="flex justify-end">
         <Button
           onClick={onContinueToReview}
           disabled={pendingParts.length === 0}
