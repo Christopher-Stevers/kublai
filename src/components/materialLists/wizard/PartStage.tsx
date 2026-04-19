@@ -15,7 +15,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "~/components/ui/dialog";
-import { Pencil, AlertCircle, Check, ImageIcon } from "lucide-react";
+import { Pencil, AlertCircle, ImageIcon } from "lucide-react";
 import Image from "next/image";
 import type { PendingPart } from "./types";
 import { PartSuppliersDropdown } from "~/components/catalogue/PartSuppliersDropdown";
@@ -101,7 +101,7 @@ interface PartCardProps {
     size: string | null;
   };
   isPending: boolean;
-  onPartRemove?: (partId: string) => void;
+  pendingQuantity?: number;
   onPartSelect: (
     part: {
       id: string;
@@ -111,35 +111,14 @@ interface PartCardProps {
       material: string | null;
       size: string | null;
     },
-    supplierPartId: string,
+    supplierPartId?: string,
   ) => void;
   onEditPart: (partId: string) => void;
 }
 
-function PartCard({ part, isPending, onPartRemove, onPartSelect, onEditPart: _onEditPart }: PartCardProps) {
-  const {
-    selectedSupplierPartId,
-    isSupplierDialogOpen,
-    setIsSupplierDialogOpen,
-    supplierParts,
-    supplierInfo,
-    utils,
-  } = usePartSupplierSelection(part.id);
-
-  const hasSupplier = !!selectedSupplierPartId;
-  const hasAvailableSuppliers = (supplierParts?.length ?? 0) > 0;
+function PartCard({ part, isPending, pendingQuantity = 0, onPartSelect, onEditPart: _onEditPart }: PartCardProps) {
   const handleCardClick = () => {
-    if (isPending) {
-      onPartRemove?.(part.id);
-      return;
-    }
-
-    if (hasSupplier && selectedSupplierPartId) {
-      onPartSelect(part, selectedSupplierPartId);
-      return;
-    }
-
-    setIsSupplierDialogOpen(true);
+    onPartSelect(part);
   };
 
   return (
@@ -168,65 +147,20 @@ function PartCard({ part, isPending, onPartRemove, onPartSelect, onEditPart: _on
           </div>
 
           <div className="absolute inset-x-0 top-0 flex justify-end p-2">
-            {isPending && (
-              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm">
-                <Check className="h-4 w-4" />
+            {pendingQuantity > 0 && (
+              <div className="flex h-6 min-w-6 items-center justify-center rounded-full bg-black px-1.5 text-xs font-semibold text-white shadow-sm sm:h-7 sm:min-w-7 sm:text-sm">
+                {pendingQuantity}
               </div>
             )}
           </div>
 
-          <div className="absolute inset-x-0 bottom-0 px-2 py-2 text-black">
+          <div className="absolute inset-x-0 bottom-0 px-2 py-2 pr-10 text-black">
             <h4 className="line-clamp-2 text-xs font-medium leading-tight sm:text-sm">
               {part.displayName}
             </h4>
           </div>
         </div>
       </CardContent>
-      {/* Supplier Management Dialog */}
-      <Dialog 
-        open={isSupplierDialogOpen} 
-        onOpenChange={(open) => {
-          setIsSupplierDialogOpen(open);
-          if (!open) {
-            // Refetch supplier parts when dialog closes and auto-select if a supplier was added
-            void utils.supplier.getSupplierPartsByPart.invalidate({
-              partDefinitionId: part.id,
-            });
-            void utils.catalogue.getPartsSupplierInfo.invalidate();
-            // The useEffect will handle auto-selecting the supplier when data refreshes
-          }
-        }}
-      >
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-base sm:text-lg">Manage Suppliers</DialogTitle>
-            <DialogDescription className="text-xs sm:text-sm">
-              Connect existing suppliers or create a new one for this part.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-2 sm:py-4">
-            <div>
-              <label className="text-xs font-medium sm:text-sm">
-                Suppliers
-              </label>
-              <div className="mt-1" onClick={(e) => e.stopPropagation()}>
-                <PartSuppliersDropdown
-                  partDefinitionId={part.id}
-                  currentPreferredSupplierId={
-                    supplierInfo?.[part.id]?.preferredSupplier?.id || null
-                  }
-                  availableSuppliers={
-                    supplierInfo?.[part.id]?.availableSuppliers ?? []
-                  }
-                />
-              </div>
-              <p className="mt-1 text-xs text-gray-500">
-                Select suppliers that provide this part and set a preferred supplier.
-              </p>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
     </Card>
   );
 }
@@ -382,7 +316,6 @@ export interface PartStageProps {
     size: string | null;
   }>;
   pendingParts: PendingPart[];
-  onRemovePendingPart: (partId: string) => void;
   onPartSelect: (part: {
     id: string;
     displayName: string;
@@ -390,7 +323,7 @@ export interface PartStageProps {
     imageUrl: string | null;
     material: string | null;
     size: string | null;
-  }, supplierPartId: string) => void;
+  }, supplierPartId?: string) => void;
   onEditPart: (partId: string) => void;
   selectedMaterialId: string | null;
   selectedSize: { nominal: number; unit: string } | null;
@@ -404,7 +337,6 @@ export interface PartStageProps {
 export function PartStage({
   partsForSelection,
   pendingParts,
-  onRemovePendingPart,
   onPartSelect,
   onEditPart,
   selectedMaterialId,
@@ -446,12 +378,13 @@ export function PartStage({
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
           {pagination.paginatedItems.map((part) => {
             const isPending = pendingParts.some((p) => p.partId === part.id);
+            const pendingQuantity = pendingParts.find((p) => p.partId === part.id)?.quantity ?? 0;
             return (
               <PartCard
                 key={part.id}
                 part={part}
                 isPending={isPending}
-                onPartRemove={onRemovePendingPart}
+                pendingQuantity={pendingQuantity}
                 onPartSelect={onPartSelect}
                 onEditPart={onEditPart}
               />

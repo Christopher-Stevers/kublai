@@ -338,7 +338,7 @@ export function AddPartDialog({
       material: string | null;
       size: string | null;
     },
-    supplierPartId: string,
+    supplierPartId?: string,
   ) => {
     addToPendingList(part.id, part, supplierPartId);
   };
@@ -358,7 +358,7 @@ export function AddPartDialog({
       material: string | null;
       size: string | null;
     },
-    supplierPartId: string,
+    supplierPartId?: string,
   ) => {
     // Check if already in pending list
     if (pendingParts.some((p) => p.partId === partId)) {
@@ -636,7 +636,6 @@ export function AddPartDialog({
               <PartStage
                 partsForSelection={filteredPartsForSelection}
                 pendingParts={pendingParts}
-                onRemovePendingPart={handleRemovePendingPart}
                 onPartSelect={handlePartSelect}
                 onEditPart={handleEditPart}
                 selectedMaterialId={selectedMaterialId}
