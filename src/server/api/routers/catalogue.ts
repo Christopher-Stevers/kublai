@@ -1564,6 +1564,7 @@ export const catalogueRouter = createTRPCRouter({
         sizeNominal: z.number().optional().nullable(),
         sizeUnitId: z.string().uuid().optional().nullable(),
         defaultUomId: z.string().uuid().optional().nullable(),
+        isActive: z.boolean().optional(),
         supplierId: z.string().uuid().optional(),
         supplierSku: z.string().max(255).optional(),
         supplierName: z.string().optional(),
@@ -1658,7 +1659,7 @@ export const catalogueRouter = createTRPCRouter({
           materialId: input.materialId ?? null,
           sizeId: sizeId,
           defaultUomId: input.defaultUomId ?? null,
-          isActive: true,
+          isActive: input.isActive ?? true,
         })
         .returning();
 
