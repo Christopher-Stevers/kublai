@@ -400,7 +400,9 @@ export function PartDetailsDialog({
 
           <div className="space-y-4 py-4">
             <div>
-              <Label htmlFor="displayName">Part Name *</Label>
+              <Label htmlFor="displayName">
+                Part Name <span className="text-red-500">*</span>
+              </Label>
               <Input
                 id="displayName"
                 value={displayName}
@@ -421,7 +423,10 @@ export function PartDetailsDialog({
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <FieldHeader label="Catalog" onAdd={() => setShowNewCatalogInput((value) => !value)} />
+                <FieldHeader
+                  label="Catalog *"
+                  onAdd={() => setShowNewCatalogInput((value) => !value)}
+                />
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="outline" className="mt-1 w-full justify-between" disabled={isLoading}>
