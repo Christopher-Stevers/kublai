@@ -323,14 +323,6 @@ export interface PartStageProps {
     size: string | null;
   }, supplierPartId: string) => void;
   onEditPart: (partId: string) => void;
-  onOpenCustomPartDialog: (context?: {
-    materialId?: string | null;
-    size?: { nominal: number; unit: string } | null;
-    category?: {
-      name?: string | null;
-      categoryId?: string | null;
-    };
-  }) => void;
   selectedMaterialId: string | null;
   selectedSize: { nominal: number; unit: string } | null;
   selectedPartTypeCategory: {
@@ -345,7 +337,6 @@ export function PartStage({
   pendingParts,
   onPartSelect,
   onEditPart,
-  onOpenCustomPartDialog,
   selectedMaterialId,
   selectedSize,
   selectedPartTypeCategory,
@@ -360,26 +351,6 @@ export function PartStage({
         <p className="text-xs text-gray-500 sm:text-sm">
           No parts found for the selected material, size, and category.
         </p>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            onClick={() =>
-              onOpenCustomPartDialog({
-                materialId: selectedMaterialId,
-                size: selectedSize,
-                category: selectedPartTypeCategory
-                  ? {
-                      categoryId: selectedPartTypeCategory.categoryId,
-                      name: selectedPartTypeCategory.name,
-                    }
-                  : undefined,
-              })
-            }
-            className="w-full text-xs sm:w-auto sm:text-sm"
-          >
-            Create Custom Part
-          </Button>
-        </div>
       </div>
     );
   }

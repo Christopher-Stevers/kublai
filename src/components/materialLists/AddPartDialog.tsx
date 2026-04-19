@@ -574,26 +574,6 @@ export function AddPartDialog({
                       className="h-8 w-full rounded-lg pl-9 text-xs sm:h-10 sm:text-sm"
                     />
                   </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() =>
-                      handleOpenCustomPartDialog({
-                        materialId: selectedMaterialId,
-                        size: selectedSize,
-                        category: selectedPartTypeCategory
-                          ? {
-                              categoryId: selectedPartTypeCategory.categoryId,
-                              name: selectedPartTypeCategory.name,
-                            }
-                          : undefined,
-                      })
-                    }
-                    disabled={!selectedCatalogId}
-                    className="h-8 shrink-0 rounded-lg px-2 py-1.5 text-xs sm:h-10 sm:px-3 sm:py-2 sm:text-sm"
-                  >
-                    Create Part
-                  </Button>
                 </>
               )}
             </div>
@@ -664,7 +644,6 @@ export function AddPartDialog({
                 pendingParts={pendingParts}
                 onPartSelect={handlePartSelect}
                 onEditPart={handleEditPart}
-                onOpenCustomPartDialog={handleOpenCustomPartDialog}
                 selectedMaterialId={selectedMaterialId}
                 selectedSize={selectedSize}
                 selectedPartTypeCategory={selectedPartTypeCategory}
