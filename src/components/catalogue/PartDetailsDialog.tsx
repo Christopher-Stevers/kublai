@@ -373,6 +373,60 @@ export function PartDetailsDialog({
   const hasSuppliers =
     !!partId && !!supplierInfo?.[partId]?.availableSuppliers?.length;
 
+  const handleCatalogAdd = () => {
+    const name = newCatalogName.trim();
+    if (!name) return;
+
+    const existing = catalogs?.find(
+      (catalog) => catalog.name.trim().toLowerCase() === name.toLowerCase(),
+    );
+
+    if (existing) {
+      setCatalogId(existing.id);
+      setNewCatalogName("");
+      setShowNewCatalogInput(false);
+      return;
+    }
+
+    createCatalog.mutate({ name });
+  };
+
+  const handleMaterialAdd = () => {
+    const name = newMaterialName.trim();
+    if (!name) return;
+
+    const existing = materials?.find(
+      (material) => material.name.trim().toLowerCase() === name.toLowerCase(),
+    );
+
+    if (existing) {
+      setMaterialId(existing.id);
+      setNewMaterialName("");
+      setShowNewMaterialInput(false);
+      return;
+    }
+
+    createMaterial.mutate({ name });
+  };
+
+  const handleCategoryAdd = () => {
+    const name = newCategoryName.trim();
+    if (!name) return;
+
+    const existing = categoryTree?.find(
+      (category) => category.name.trim().toLowerCase() === name.toLowerCase(),
+    );
+
+    if (existing) {
+      setCategoryId(existing.id);
+      setNewCategoryName("");
+      setShowNewCategoryInput(false);
+      return;
+    }
+
+    createCategory.mutate({ name });
+  };
+
   const handleImageFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -464,7 +518,7 @@ export function PartDetailsDialog({
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={() => createCatalog.mutate({ name: newCatalogName.trim() })}
+                    onClick={handleCatalogAdd}
                     disabled={!newCatalogName.trim() || isLoading || createCatalog.isPending}
                   >
                     Add
@@ -546,7 +600,7 @@ export function PartDetailsDialog({
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={() => createMaterial.mutate({ name: newMaterialName.trim() })}
+                    onClick={handleMaterialAdd}
                     disabled={!newMaterialName.trim() || isLoading || createMaterial.isPending}
                   >
                     Add
@@ -596,7 +650,7 @@ export function PartDetailsDialog({
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={() => createCategory.mutate({ name: newCategoryName.trim() })}
+                    onClick={handleCategoryAdd}
                     disabled={!newCategoryName.trim() || isLoading || createCategory.isPending}
                   >
                     Add
