@@ -129,8 +129,8 @@ function PartCard({ part, isPending, pendingQuantity = 0, onPartSelect, onEditPa
       onClick={handleCardClick}
     >
       <CardContent className="h-full p-0">
-        <div className="relative h-full w-full bg-gray-100">
-          <div className="absolute inset-0">
+        <div className="relative h-full w-full bg-white">
+          <div className="absolute inset-x-0 top-0 bottom-8 bg-gray-100">
             {part.imageUrl ? (
               <Image
                 src={part.imageUrl}
@@ -154,7 +154,7 @@ function PartCard({ part, isPending, pendingQuantity = 0, onPartSelect, onEditPa
             )}
           </div>
 
-          <div className="absolute inset-x-0 bottom-0 px-2 py-2 pr-10 text-black">
+          <div className="absolute inset-x-0 bottom-0 px-2 py-1.5 pr-10 text-black">
             <h4 className="line-clamp-2 text-xs font-medium leading-tight sm:text-sm">
               {part.displayName}
             </h4>
