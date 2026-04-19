@@ -122,7 +122,6 @@ function PartCard({ part, isPending, onPartRemove, onPartSelect, onEditPart: _on
     isSupplierDialogOpen,
     setIsSupplierDialogOpen,
     supplierParts,
-    isLoadingSuppliers,
     supplierInfo,
     utils,
   } = usePartSupplierSelection(part.id);
@@ -191,11 +190,6 @@ function PartCard({ part, isPending, onPartRemove, onPartSelect, onEditPart: _on
             <h4 className="line-clamp-2 text-xs font-medium leading-tight sm:text-sm">
               {part.displayName}
             </h4>
-            {!hasAvailableSuppliers && !isLoadingSuppliers && (
-              <p className="mt-1 text-[10px] text-amber-200 sm:text-xs">
-                Tap to add supplier
-              </p>
-            )}
           </div>
         </div>
       </CardContent>
