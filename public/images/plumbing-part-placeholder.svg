@@ -1,0 +1,10 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="512" height="512" rx="40" fill="#E8EEF2"/>
+  <rect x="64" y="64" width="384" height="384" rx="32" fill="#D7E2E8"/>
+  <path d="M202 128C202 112.536 214.536 100 230 100H282C297.464 100 310 112.536 310 128V170H334C357.196 170 376 188.804 376 212V236C376 259.196 357.196 278 334 278H310V384C310 399.464 297.464 412 282 412H230C214.536 412 202 399.464 202 384V278H178C154.804 278 136 259.196 136 236V212C136 188.804 154.804 170 178 170H202V128Z" fill="#5D7A88"/>
+  <path d="M230 100H282C297.464 100 310 112.536 310 128V170H202V128C202 112.536 214.536 100 230 100Z" fill="#44606D"/>
+  <path d="M202 278H310V384C310 399.464 297.464 412 282 412H230C214.536 412 202 399.464 202 384V278Z" fill="#6F8C98"/>
+  <circle cx="256" cy="224" r="42" fill="#F7FAFC"/>
+  <circle cx="256" cy="224" r="22" fill="#A7BBC6"/>
+  <text x="256" y="468" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="28" font-weight="700" fill="#2E3F48">PLUMBING PART</text>
+</svg>
