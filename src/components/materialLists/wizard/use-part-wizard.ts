@@ -89,8 +89,9 @@ export function usePartWizard() {
       .map((catalog) => ({
         ...catalog,
         count: catalog.partCount ?? 0,
-      }));
-  }, [catalogs, wizardSearchQuery]);
+      }))
+      .filter((catalog) => catalog.count > 0 || selectedCatalogId === catalog.id);
+  }, [catalogs, selectedCatalogId, wizardSearchQuery]);
 
   const materialCounts = useMemo(() => {
     const counts = new Map<string, number>();
@@ -111,8 +112,9 @@ export function usePartWizard() {
       .map((mat) => ({
         ...mat,
         count: materialCounts.get(mat.id) ?? 0,
-      }));
-  }, [materials, materialCounts, wizardSearchQuery]);
+      }))
+      .filter((material) => material.count > 0 || selectedMaterialId === material.id);
+  }, [materials, materialCounts, selectedMaterialId, wizardSearchQuery]);
 
   const categoriesWithCounts = useMemo(() => {
     const query = wizardSearchQuery.trim().toLowerCase();
@@ -122,8 +124,11 @@ export function usePartWizard() {
         categoryId: cat.categoryId,
         name: cat.name,
         count: cat.count ?? 0,
-      }));
-  }, [partTypeCategories, wizardSearchQuery]);
+      }))
+      .filter(
+        (category) => category.count > 0 || selectedPartTypeCategory?.categoryId === category.categoryId,
+      );
+  }, [partTypeCategories, selectedPartTypeCategory, wizardSearchQuery]);
 
   const filteredAvailableSizes = useMemo(() => {
     const query = wizardSearchQuery.trim().toLowerCase();
