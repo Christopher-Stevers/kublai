@@ -440,7 +440,7 @@ export function PartDetailsDialog({
               )}
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-[1fr_140px]">
+            <div className={`grid gap-4 ${sizeValue.trim() ? "sm:grid-cols-[1fr_140px]" : "sm:grid-cols-1"}`}>
               <div>
                 <Label>Size</Label>
                 <Input
@@ -451,35 +451,37 @@ export function PartDetailsDialog({
                   disabled={isLoading}
                 />
               </div>
-              <div>
-                <FieldHeader
-                  label="Size Unit"
-                  onAdd={() => {
-                    if (parsedSizeNominal !== null && sizeUnitId) {
-                      createSize.mutate({ nominal: parsedSizeNominal, unitId: sizeUnitId });
-                    }
-                  }}
-                />
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" className="mt-1 w-full justify-between" disabled={isLoading}>
-                      {selectedSizeUnit?.code ?? "Unit"}
-                      <ChevronDown className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent className="max-h-60 overflow-y-auto">
-                    <DropdownMenuItem onClick={() => setSizeUnitId(null)}>None</DropdownMenuItem>
-                    {sizeUnits.map((unit) => (
-                      <DropdownMenuItem key={unit.id} onClick={() => setSizeUnitId(unit.id)}>
-                        {unit.displayName ?? unit.code} ({unit.code})
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-                <p className="mt-1 text-xs text-gray-500">
-                  Pick a size and unit, then click + Add to save it as a reusable size.
-                </p>
-              </div>
+              {sizeValue.trim() && (
+                <div>
+                  <FieldHeader
+                    label="Size Unit"
+                    onAdd={() => {
+                      if (parsedSizeNominal !== null && sizeUnitId) {
+                        createSize.mutate({ nominal: parsedSizeNominal, unitId: sizeUnitId });
+                      }
+                    }}
+                  />
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" className="mt-1 w-full justify-between" disabled={isLoading}>
+                        {selectedSizeUnit?.code ?? "Unit"}
+                        <ChevronDown className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="max-h-60 overflow-y-auto">
+                      <DropdownMenuItem onClick={() => setSizeUnitId(null)}>None</DropdownMenuItem>
+                      {sizeUnits.map((unit) => (
+                        <DropdownMenuItem key={unit.id} onClick={() => setSizeUnitId(unit.id)}>
+                          {unit.displayName ?? unit.code} ({unit.code})
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  <p className="mt-1 text-xs text-gray-500">
+                    Pick a size and unit, then click + Add to save it as a reusable size.
+                  </p>
+                </div>
+              )}
             </div>
 
             <div>
