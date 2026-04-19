@@ -28,7 +28,6 @@ export default function CataloguePage() {
   const [attributeValueMin, setAttributeValueMin] = useState<string>("");
   const [attributeValueMax, setAttributeValueMax] = useState<string>("");
   const [attributeUnit, setAttributeUnit] = useState<string>("");
-  const [showFilters, setShowFilters] = useState(false);
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState<"grid" | "table">("table");
   const [editingPartId, setEditingPartId] = useState<string | null>(null);
@@ -263,8 +262,6 @@ export default function CataloguePage() {
               attributeUnit={attributeUnit}
               onAttributeUnitChange={setAttributeUnit}
               onClearFilters={handleClearFilters}
-              showFilters={showFilters}
-              onToggleFilters={() => setShowFilters(!showFilters)}
             />
 
             {searchLoading ? (

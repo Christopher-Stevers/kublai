@@ -8,7 +8,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu";
-import { ChevronDown, Search, X, Filter } from "lucide-react";
+import { ChevronDown, Search, X } from "lucide-react";
 import { FilterBadge } from "./FilterBadge";
 
 interface SearchAndFiltersProps {
@@ -35,8 +35,6 @@ interface SearchAndFiltersProps {
   attributeUnit: string;
   onAttributeUnitChange: (unit: string) => void;
   onClearFilters: () => void;
-  showFilters: boolean;
-  onToggleFilters: () => void;
 }
 
 export function SearchAndFilters({
@@ -63,8 +61,6 @@ export function SearchAndFilters({
   attributeUnit,
   onAttributeUnitChange,
   onClearFilters,
-  showFilters,
-  onToggleFilters,
 }: SearchAndFiltersProps) {
   // Find category name from flat list
   const findCategoryName = (
@@ -96,16 +92,8 @@ export function SearchAndFilters({
             className="h-11 pl-10"
           />
         </div>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            onClick={onToggleFilters}
-            className="flex h-11 items-center gap-2"
-          >
-            <Filter className="h-4 w-4" />
-            <span className="hidden sm:inline">Filters</span>
-          </Button>
-          {hasActiveFilters && (
+        {hasActiveFilters && (
+          <div className="flex gap-2">
             <Button
               variant="ghost"
               onClick={onClearFilters}
@@ -115,8 +103,8 @@ export function SearchAndFilters({
               <X className="h-4 w-4 sm:mr-1" />
               <span className="hidden sm:inline">Clear All</span>
             </Button>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* Active Filter Badges */}
@@ -166,8 +154,7 @@ export function SearchAndFilters({
       )}
 
       {/* Filter Controls */}
-      {showFilters && (
-        <div className="grid grid-cols-1 gap-4 rounded-lg border bg-gray-50 p-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 rounded-lg border bg-gray-50 p-4 md:grid-cols-2 lg:grid-cols-3">
           {/* Material Filter */}
           <div className="space-y-2">
             <label className="text-sm font-medium text-gray-700">
@@ -292,9 +279,7 @@ export function SearchAndFilters({
               </div>
             </div>
           )}
-        </div>
-      )}
+      </div>
     </div>
   );
 }
-
