@@ -329,6 +329,18 @@ export function PartDetailsDialog({
       void utils.catalogue.getCatalogs.invalidate();
     },
     onError: () => {
+      const name = newCatalogName.trim().toLowerCase();
+      const existing = catalogs?.find(
+        (catalog) => catalog.name.trim().toLowerCase() === name,
+      );
+
+      if (existing) {
+        setCatalogId(existing.id);
+        setNewCatalogName("");
+        setShowNewCatalogInput(false);
+        return;
+      }
+
       setShowNewCatalogInput(true);
     },
   });
@@ -346,6 +358,18 @@ export function PartDetailsDialog({
       setShowNewCategoryInput(false);
     },
     onError: () => {
+      const name = newCategoryName.trim().toLowerCase();
+      const existing = categoryTree?.find(
+        (category) => category.name.trim().toLowerCase() === name,
+      );
+
+      if (existing) {
+        setCategoryId(existing.id);
+        setNewCategoryName("");
+        setShowNewCategoryInput(false);
+        return;
+      }
+
       setShowNewCategoryInput(true);
     },
   });
@@ -363,6 +387,18 @@ export function PartDetailsDialog({
       void utils.catalogue.getMaterials.invalidate();
     },
     onError: () => {
+      const name = newMaterialName.trim().toLowerCase();
+      const existing = materials?.find(
+        (material) => material.name.trim().toLowerCase() === name,
+      );
+
+      if (existing) {
+        setMaterialId(existing.id);
+        setNewMaterialName("");
+        setShowNewMaterialInput(false);
+        return;
+      }
+
       setShowNewMaterialInput(true);
     },
   });
