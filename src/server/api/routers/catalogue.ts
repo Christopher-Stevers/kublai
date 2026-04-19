@@ -176,9 +176,25 @@ export const catalogueRouter = createTRPCRouter({
     .input(z.object({ name: z.string().min(1).max(255) }))
     .mutation(async ({ ctx, input }) => {
       const organizationId = ctx.user.organizationId;
+      const trimmedName = input.name.trim();
 
       if (!organizationId) {
         throw new Error("User must belong to an organization");
+      }
+
+      const [existingCatalog] = await ctx.db
+        .select()
+        .from(catalogs)
+        .where(
+          and(
+            eq(catalogs.organizationId, organizationId),
+            sql`lower(${catalogs.name}) = lower(${trimmedName})`,
+          ),
+        )
+        .limit(1);
+
+      if (existingCatalog) {
+        return existingCatalog;
       }
 
       const [maxSortOrder] = await ctx.db
@@ -190,7 +206,7 @@ export const catalogueRouter = createTRPCRouter({
         .insert(catalogs)
         .values({
           organizationId,
-          name: input.name.trim(),
+          name: trimmedName,
           sortOrder: (maxSortOrder?.maxSortOrder ?? -1) + 1,
         })
         .returning();
@@ -648,16 +664,32 @@ export const catalogueRouter = createTRPCRouter({
     .input(z.object({ name: z.string().min(1).max(100) }))
     .mutation(async ({ ctx, input }) => {
       const organizationId = ctx.user.organizationId;
+      const trimmedName = input.name.trim();
 
       if (!organizationId) {
         throw new Error("User must belong to an organization");
+      }
+
+      const [existingMaterial] = await ctx.db
+        .select()
+        .from(materials)
+        .where(
+          and(
+            eq(materials.organizationId, organizationId),
+            sql`lower(${materials.name}) = lower(${trimmedName})`,
+          ),
+        )
+        .limit(1);
+
+      if (existingMaterial) {
+        return existingMaterial;
       }
 
       const [newMaterial] = await ctx.db
         .insert(materials)
         .values({
           organizationId: organizationId,
-          name: input.name.trim(),
+          name: trimmedName,
         })
         .returning();
 
@@ -990,16 +1022,32 @@ export const catalogueRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       const organizationId = ctx.user.organizationId;
+      const trimmedName = input.name.trim();
 
       if (!organizationId) {
         throw new Error("User must belong to an organization");
+      }
+
+      const [existingCategory] = await ctx.db
+        .select()
+        .from(categories)
+        .where(
+          and(
+            eq(categories.organizationId, organizationId),
+            sql`lower(${categories.name}) = lower(${trimmedName})`,
+          ),
+        )
+        .limit(1);
+
+      if (existingCategory) {
+        return existingCategory;
       }
 
       const [newCategory] = await ctx.db
         .insert(categories)
         .values({
           organizationId: organizationId,
-          name: input.name.trim(),
+          name: trimmedName,
           parentId: input.parentId ?? null,
           sortOrder: 0,
         })
