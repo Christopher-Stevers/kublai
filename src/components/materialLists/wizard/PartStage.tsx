@@ -21,6 +21,76 @@ import Image from "next/image";
 import type { PendingPart } from "./types";
 import { PartSuppliersDropdown } from "~/components/catalogue/PartSuppliersDropdown";
 import { ListPagination, useClientPagination } from "~/components/ui/list-pagination";
+import { ViewToggle } from "~/components/ui/view-toggle";
+
+function usePartSupplierSelection(partId: string) {
+  const [selectedSupplierPartId, setSelectedSupplierPartId] = useState<string | null>(null);
+  const [isSupplierDialogOpen, setIsSupplierDialogOpen] = useState(false);
+  const [previousSupplierCount, setPreviousSupplierCount] = useState<number>(0);
+
+  const { data: supplierParts, isLoading: isLoadingSuppliers } =
+    api.supplier.getSupplierPartsByPart.useQuery(
+      { partDefinitionId: partId },
+      { enabled: !!partId },
+    );
+
+  const { data: supplierInfo } = api.catalogue.getPartsSupplierInfo.useQuery(
+    { partIds: [partId] },
+    { enabled: !!partId },
+  );
+
+  const utils = api.useUtils();
+
+  useEffect(() => {
+    if (supplierParts && supplierParts.length > 0) {
+      const currentCount = supplierParts.length;
+      const wasNewSupplierAdded =
+        currentCount > previousSupplierCount && previousSupplierCount > 0;
+
+      const preferred = supplierParts.find((sp) => sp.isPreferred);
+      const supplierPartId = preferred?.id ?? supplierParts[0]?.id;
+
+      if (
+        !selectedSupplierPartId ||
+        !supplierParts.find((sp) => sp.id === selectedSupplierPartId)
+      ) {
+        if (supplierPartId) {
+          setSelectedSupplierPartId(supplierPartId);
+          if (
+            isSupplierDialogOpen &&
+            (previousSupplierCount === 0 || wasNewSupplierAdded)
+          ) {
+            setIsSupplierDialogOpen(false);
+          }
+        }
+      } else if (
+        preferred &&
+        preferred.id !== selectedSupplierPartId &&
+        wasNewSupplierAdded
+      ) {
+        setSelectedSupplierPartId(preferred.id);
+        if (isSupplierDialogOpen) {
+          setIsSupplierDialogOpen(false);
+        }
+      }
+
+      setPreviousSupplierCount(currentCount);
+    } else {
+      setPreviousSupplierCount(0);
+    }
+  }, [supplierParts, selectedSupplierPartId, isSupplierDialogOpen, previousSupplierCount]);
+
+  return {
+    selectedSupplierPartId,
+    setSelectedSupplierPartId,
+    isSupplierDialogOpen,
+    setIsSupplierDialogOpen,
+    supplierParts,
+    isLoadingSuppliers,
+    supplierInfo,
+    utils,
+  };
+}
 
 interface PartCardProps {
   part: {
@@ -47,61 +117,16 @@ interface PartCardProps {
 }
 
 function PartCard({ part, isPending, onPartSelect, onEditPart }: PartCardProps) {
-  const [selectedSupplierPartId, setSelectedSupplierPartId] = useState<
-    string | null
-  >(null);
-  const [isSupplierDialogOpen, setIsSupplierDialogOpen] = useState(false);
-  const [previousSupplierCount, setPreviousSupplierCount] = useState<number>(0);
-
-  // Fetch supplier parts for this part
-  const { data: supplierParts, isLoading: isLoadingSuppliers } =
-    api.supplier.getSupplierPartsByPart.useQuery(
-      { partDefinitionId: part.id },
-      { enabled: !!part.id },
-    );
-
-  // Get supplier info for PartSuppliersDropdown
-  const { data: supplierInfo } = api.catalogue.getPartsSupplierInfo.useQuery(
-    { partIds: [part.id] },
-    { enabled: !!part.id },
-  );
-
-  const utils = api.useUtils();
-
-  // Auto-select preferred supplier when supplier parts are loaded or when a new supplier is added
-  useEffect(() => {
-    if (supplierParts && supplierParts.length > 0) {
-      const currentCount = supplierParts.length;
-      const wasNewSupplierAdded = currentCount > previousSupplierCount && previousSupplierCount > 0;
-      
-      // If no supplier is selected, or if a new supplier was just added (more suppliers than before)
-      const preferred = supplierParts.find((sp) => sp.isPreferred);
-      const supplierPartId = preferred?.id ?? supplierParts[0]?.id;
-      
-      // Always update if we don't have a selection, or if the current selection is no longer valid
-      if (!selectedSupplierPartId || !supplierParts.find(sp => sp.id === selectedSupplierPartId)) {
-        if (supplierPartId) {
-          setSelectedSupplierPartId(supplierPartId);
-          // Close dialog if it was open and we just auto-selected a supplier (either first time or after adding new one)
-          if (isSupplierDialogOpen && (previousSupplierCount === 0 || wasNewSupplierAdded)) {
-            setIsSupplierDialogOpen(false);
-          }
-        }
-      } else if (preferred && preferred.id !== selectedSupplierPartId && wasNewSupplierAdded) {
-        // If there's a preferred supplier and it's different from current selection, and a new supplier was just added
-        setSelectedSupplierPartId(preferred.id);
-        // Close dialog if it was open and we just auto-selected a supplier
-        if (isSupplierDialogOpen) {
-          setIsSupplierDialogOpen(false);
-        }
-      }
-      
-      // Update the count
-      setPreviousSupplierCount(currentCount);
-    } else {
-      setPreviousSupplierCount(0);
-    }
-  }, [supplierParts, selectedSupplierPartId, isSupplierDialogOpen, previousSupplierCount]);
+  const {
+    selectedSupplierPartId,
+    setSelectedSupplierPartId,
+    isSupplierDialogOpen,
+    setIsSupplierDialogOpen,
+    supplierParts,
+    isLoadingSuppliers,
+    supplierInfo,
+    utils,
+  } = usePartSupplierSelection(part.id);
 
   const hasSupplier = !!selectedSupplierPartId;
   const hasAvailableSuppliers = (supplierParts?.length ?? 0) > 0;
@@ -304,6 +329,148 @@ function PartCard({ part, isPending, onPartSelect, onEditPart }: PartCardProps) 
   );
 }
 
+function PartListRow({ part, isPending, onPartSelect, onEditPart }: PartCardProps) {
+  const {
+    selectedSupplierPartId,
+    setSelectedSupplierPartId,
+    isSupplierDialogOpen,
+    setIsSupplierDialogOpen,
+    supplierParts,
+    isLoadingSuppliers,
+    supplierInfo,
+    utils,
+  } = usePartSupplierSelection(part.id);
+
+  const hasSupplier = !!selectedSupplierPartId;
+  const hasAvailableSuppliers = (supplierParts?.length ?? 0) > 0;
+
+  return (
+    <div
+      className={`rounded-lg border bg-white p-3 transition-all ${
+        isPending ? "border-primary border-2 shadow-sm" : "hover:shadow-sm"
+      }`}
+    >
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start">
+        <div className="flex min-w-0 flex-1 gap-3">
+          <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-md bg-gray-100">
+            {part.imageUrl ? (
+              <Image src={part.imageUrl} alt={part.displayName} fill className="object-cover" />
+            ) : (
+              <div className="flex h-full items-center justify-center text-gray-400">
+                <AlertCircle className="h-4 w-4" />
+              </div>
+            )}
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <h4 className="truncate text-sm font-medium">{part.displayName}</h4>
+                <div className="mt-1 flex flex-wrap gap-2 text-xs text-gray-500">
+                  {part.material && <span>{part.material}</span>}
+                  {part.size && <span>{part.size}</span>}
+                </div>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 w-7 shrink-0 p-0"
+                onClick={() => onEditPart(part.id)}
+                title="Edit part"
+              >
+                <Pencil className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+            {part.description && (
+              <p className="mt-1 line-clamp-2 text-xs text-gray-600">{part.description}</p>
+            )}
+          </div>
+        </div>
+
+        <div className="flex w-full flex-col gap-2 lg:w-64">
+          {isLoadingSuppliers ? (
+            <div className="text-xs text-gray-500">Loading suppliers...</div>
+          ) : hasAvailableSuppliers ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="justify-start text-xs">
+                  <span className="truncate">
+                    {supplierParts?.find((sp) => sp.id === selectedSupplierPartId)?.supplier.name ?? "Select supplier"}
+                  </span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                {supplierParts?.map((sp) => (
+                  <DropdownMenuItem key={sp.id} onClick={() => setSelectedSupplierPartId(sp.id)}>
+                    {sp.supplier.name}
+                    {sp.supplierSku ? ` (${sp.supplierSku})` : ""}
+                    {sp.isPreferred && " ⭐"}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setIsSupplierDialogOpen(true)}
+              className="w-full rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-left text-xs text-amber-800"
+            >
+              No suppliers available. Click to add suppliers.
+            </button>
+          )}
+
+          <Button
+            size="sm"
+            onClick={() => {
+              if (hasSupplier && selectedSupplierPartId) {
+                onPartSelect(part, selectedSupplierPartId);
+              }
+            }}
+            disabled={!hasSupplier}
+          >
+            Add to List
+          </Button>
+        </div>
+      </div>
+
+      <Dialog
+        open={isSupplierDialogOpen}
+        onOpenChange={(open) => {
+          setIsSupplierDialogOpen(open);
+          if (!open) {
+            void utils.supplier.getSupplierPartsByPart.invalidate({
+              partDefinitionId: part.id,
+            });
+            void utils.catalogue.getPartsSupplierInfo.invalidate();
+          }
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-base sm:text-lg">Manage Suppliers</DialogTitle>
+            <DialogDescription className="text-xs sm:text-sm">
+              Connect existing suppliers or create a new one for this part.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-2 sm:py-4">
+            <div>
+              <label className="text-xs font-medium sm:text-sm">Suppliers</label>
+              <div className="mt-1">
+                <PartSuppliersDropdown
+                  partDefinitionId={part.id}
+                  currentPreferredSupplierId={
+                    supplierInfo?.[part.id]?.preferredSupplier?.id || null
+                  }
+                  availableSuppliers={supplierInfo?.[part.id]?.availableSuppliers ?? []}
+                />
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
 export interface PartStageProps {
   partsForSelection: Array<{
     id: string;
@@ -342,6 +509,7 @@ export function PartStage({
   selectedPartTypeCategory,
   onContinueToReview,
 }: PartStageProps) {
+  const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
   const pagination = useClientPagination(partsForSelection);
 
   if (partsForSelection.length === 0) {
@@ -359,29 +527,49 @@ export function PartStage({
     <div className="space-y-3 sm:space-y-4">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <h3 className="text-base font-semibold sm:text-lg">Select Parts</h3>
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={onContinueToReview}
-          className="w-full text-xs sm:w-auto sm:text-sm"
-        >
-          Review ({pendingParts.length})
-        </Button>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <ViewToggle view={viewMode} onViewChange={setViewMode} showOnMobile />
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={onContinueToReview}
+            className="w-full text-xs sm:w-auto sm:text-sm"
+          >
+            Review ({pendingParts.length})
+          </Button>
+        </div>
       </div>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 md:grid-cols-3">
-        {pagination.paginatedItems.map((part) => {
-          const isPending = pendingParts.some((p) => p.partId === part.id);
-          return (
-            <PartCard
-              key={part.id}
-              part={part}
-              isPending={isPending}
-              onPartSelect={onPartSelect}
-              onEditPart={onEditPart}
-            />
-          );
-        })}
-      </div>
+      {viewMode === "grid" ? (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 md:grid-cols-3">
+          {pagination.paginatedItems.map((part) => {
+            const isPending = pendingParts.some((p) => p.partId === part.id);
+            return (
+              <PartCard
+                key={part.id}
+                part={part}
+                isPending={isPending}
+                onPartSelect={onPartSelect}
+                onEditPart={onEditPart}
+              />
+            );
+          })}
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {pagination.paginatedItems.map((part) => {
+            const isPending = pendingParts.some((p) => p.partId === part.id);
+            return (
+              <PartListRow
+                key={part.id}
+                part={part}
+                isPending={isPending}
+                onPartSelect={onPartSelect}
+                onEditPart={onEditPart}
+              />
+            );
+          })}
+        </div>
+      )}
       <ListPagination
         page={pagination.page}
         totalPages={pagination.totalPages}
