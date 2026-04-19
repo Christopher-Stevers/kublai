@@ -551,8 +551,7 @@ export const catalogueRouter = createTRPCRouter({
             ...conditions,
             ...(sizeJoinConditions.length > 0 ? sizeJoinConditions : []),
           ),
-        )
-        .limit(200); // Increased limit for better results
+        );
 
       // Sort: org-specific first, then global, then by name
       const parts = allParts.sort((a, b) => {

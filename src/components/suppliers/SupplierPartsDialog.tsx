@@ -26,6 +26,7 @@ import {
   StarIcon,
   SearchIcon,
 } from "lucide-react";
+import { ListPagination, useClientPagination } from "~/components/ui/list-pagination";
 
 interface SupplierPartsDialogProps {
   open: boolean;
@@ -51,6 +52,8 @@ export function SupplierPartsDialog({
     { query: searchQuery },
     { enabled: isAddDialogOpen && searchQuery.length > 0 },
   );
+  const paginatedSupplierParts = useClientPagination(supplierData?.supplierParts ?? []);
+  const paginatedSearchResults = useClientPagination(searchResults ?? []);
 
   const utils = api.useUtils();
   const removeSupplierPart = api.supplier.removeSupplierPart.useMutation({
@@ -266,7 +269,7 @@ export function SupplierPartsDialog({
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {supplierData.supplierParts.map((sp) => (
+                  {paginatedSupplierParts.paginatedItems.map((sp) => (
                     <div
                       key={sp.id}
                       className="flex items-center justify-between rounded-lg border p-4"
@@ -336,6 +339,15 @@ export function SupplierPartsDialog({
                   ))}
                 </div>
               )}
+              <ListPagination
+                page={paginatedSupplierParts.page}
+                totalPages={paginatedSupplierParts.totalPages}
+                totalItems={paginatedSupplierParts.totalItems}
+                startItem={paginatedSupplierParts.startItem}
+                endItem={paginatedSupplierParts.endItem}
+                itemLabel="supplier parts"
+                onPageChange={paginatedSupplierParts.setPage}
+              />
             </div>
           </div>
 
@@ -381,7 +393,7 @@ export function SupplierPartsDialog({
                   </div>
                 ) : (
                   <div className="divide-y">
-                    {searchResults.map((part) => (
+                    {paginatedSearchResults.paginatedItems.map((part) => (
                       <button
                         key={part.id}
                         type="button"
@@ -407,6 +419,16 @@ export function SupplierPartsDialog({
                 )}
               </div>
             )}
+
+            <ListPagination
+              page={paginatedSearchResults.page}
+              totalPages={paginatedSearchResults.totalPages}
+              totalItems={paginatedSearchResults.totalItems}
+              startItem={paginatedSearchResults.startItem}
+              endItem={paginatedSearchResults.endItem}
+              itemLabel="parts"
+              onPageChange={paginatedSearchResults.setPage}
+            />
 
             {selectedPartId && (
               <div className="rounded-md bg-blue-50 p-3 text-sm">

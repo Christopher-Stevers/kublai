@@ -1,3 +1,5 @@
+"use client";
+
 import { parseSizeInput, formatSize } from "~/lib/size-utils";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
@@ -9,6 +11,7 @@ import {
   DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu";
 import { ChevronDown } from "lucide-react";
+import { ListPagination, useClientPagination } from "~/components/ui/list-pagination";
 
 export interface SizeStageProps {
   availableSizes?: Array<{ nominal: number; unit: string; count: number }>;
@@ -40,11 +43,13 @@ export function SizeStage({
   allUnits,
   onCreateSize,
 }: SizeStageProps) {
+  const pagination = useClientPagination(availableSizes ?? []);
+
   return (
     <div className="space-y-3 sm:space-y-4">
       <h3 className="text-base font-semibold sm:text-lg">Select Size</h3>
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3 md:grid-cols-3 lg:grid-cols-4 lg:gap-4">
-        {availableSizes?.map((size, index) => (
+        {pagination.paginatedItems.map((size, index) => (
           <Card
             key={`${size.nominal}_${index}`}
             className={`cursor-pointer transition-all hover:shadow-md ${
@@ -144,6 +149,15 @@ export function SizeStage({
           </Button>
         </div>
       )}
+      <ListPagination
+        page={pagination.page}
+        totalPages={pagination.totalPages}
+        totalItems={pagination.totalItems}
+        startItem={pagination.startItem}
+        endItem={pagination.endItem}
+        itemLabel="sizes"
+        onPageChange={pagination.setPage}
+      />
     </div>
   );
 }

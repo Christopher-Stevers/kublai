@@ -1,6 +1,9 @@
+"use client";
+
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Card, CardContent } from "~/components/ui/card";
+import { ListPagination, useClientPagination } from "~/components/ui/list-pagination";
 
 export interface PartTypeCategoryStageProps {
   partTypeCategories: Array<{ categoryId: string; name: string; count?: number }>;
@@ -29,12 +32,13 @@ export function PartTypeCategoryStage({
   onCustomPartTypeNameChange,
   onCustomCategorySubmit,
 }: PartTypeCategoryStageProps) {
-	
+  const pagination = useClientPagination(partTypeCategories);
+
   return (
     <div className="space-y-3 sm:space-y-4">
-      <h3 className="text-base font-semibold sm:text-lg">Select Part Type Category</h3>
+      <h3 className="text-base font-semibold sm:text-lg">Select Category</h3>
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3 md:grid-cols-3 lg:grid-cols-4 lg:gap-4">
-        {partTypeCategories.map((category) => {
+        {pagination.paginatedItems.map((category) => {
           return (
             <Card
               key={category.categoryId}
@@ -95,6 +99,15 @@ export function PartTypeCategoryStage({
           </Button>
         </div>
       )}
+      <ListPagination
+        page={pagination.page}
+        totalPages={pagination.totalPages}
+        totalItems={pagination.totalItems}
+        startItem={pagination.startItem}
+        endItem={pagination.endItem}
+        itemLabel="categories"
+        onPageChange={pagination.setPage}
+      />
     </div>
   );
 }

@@ -1,6 +1,9 @@
+"use client";
+
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Card, CardContent } from "~/components/ui/card";
+import { ListPagination, useClientPagination } from "~/components/ui/list-pagination";
 
 export interface MaterialStageProps {
   materials: Array<{ id: string; name: string; count?: number }>;
@@ -26,11 +29,13 @@ export function MaterialStage({
   onCustomMaterialNameChange,
   onCreateMaterial,
 }: MaterialStageProps) {
+  const pagination = useClientPagination(materials);
+
   return (
     <div className="space-y-3 sm:space-y-4">
       <h3 className="text-base font-semibold sm:text-lg">Select Material</h3>
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3 md:grid-cols-3 lg:grid-cols-4 lg:gap-4">
-        {materials.map((material) => (
+        {pagination.paginatedItems.map((material) => (
           <Card
             key={material.id}
             className={`cursor-pointer transition-all hover:shadow-md ${
@@ -93,6 +98,15 @@ export function MaterialStage({
           </Button>
         </div>
       )}
+      <ListPagination
+        page={pagination.page}
+        totalPages={pagination.totalPages}
+        totalItems={pagination.totalItems}
+        startItem={pagination.startItem}
+        endItem={pagination.endItem}
+        itemLabel="materials"
+        onPageChange={pagination.setPage}
+      />
     </div>
   );
 }

@@ -55,7 +55,6 @@ export function EditPartDialog({
   const [description, setDescription] = useState("");
   const [imageUrl, setImageUrl] = useState("");
   const [categoryId, setCategoryId] = useState<string | null>(null);
-  const [partType, setPartType] = useState("");
   const [material, setMaterial] = useState("");
   const [sizeNominal, setSizeNominal] = useState("");
   const [sizeUnitId, setSizeUnitId] = useState<string | null>(null);
@@ -69,7 +68,6 @@ export function EditPartDialog({
       setDescription(part.description ?? "");
       setImageUrl(part.imageUrl ?? "");
       setCategoryId(part.categoryId);
-      setPartType(part.partType ?? "");
       setMaterial(part.material ?? "");
       setSizeNominal(part.sizeNominal?.toString() ?? "");
       setSizeUnitId(part.sizeUnitId);
@@ -97,7 +95,6 @@ export function EditPartDialog({
           description: variables.description ?? old.description,
           imageUrl: variables.imageUrl ?? old.imageUrl,
           categoryId: variables.categoryId ?? old.categoryId,
-          partType: old.partType, // partType is derived from partTypeId, not directly updated
           material: old.material, // material is derived from materialId, not directly updated
           sizeNominal: variables.sizeNominal ? String(variables.sizeNominal) : old.sizeNominal,
           sizeUnitId: variables.sizeUnitId ?? old.sizeUnitId,
@@ -163,18 +160,12 @@ export function EditPartDialog({
     // Use the selected size unit ID
     const parsedSizeUnitId = sizeUnitId;
 
-    // Look up partTypeId and materialId from names if they changed
-    // Note: part.partTypeId and part.materialId should be used if available
-    // For now, we'll need to keep the existing IDs or look them up
-    // Since the form uses names, we need to convert them to IDs
-    // This is a limitation - the form should use IDs instead of names
     updatePart.mutate({
       partId,
       displayName: displayName.trim(),
       description: description.trim() || null,
       imageUrl: imageUrl.trim() || null,
       categoryId: categoryId ?? null,
-      partTypeId: undefined, // TODO: Look up partTypeId from partType name or update form to use IDs
       materialId: undefined, // TODO: Look up materialId from material name or update form to use IDs
       sizeNominal: parsedSizeNominal,
       sizeUnitId: parsedSizeUnitId,
@@ -253,51 +244,36 @@ export function EditPartDialog({
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="category" className="text-sm font-medium">
-                Category
-              </label>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="w-full justify-between mt-1"
+          <div>
+            <label htmlFor="category" className="text-sm font-medium">
+              Category
+            </label>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="mt-1 w-full justify-between"
+                >
+                  {selectedCategory
+                    ? selectedCategory.name
+                    : "Select category"}
+                  <ChevronDown className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="max-h-60 overflow-y-auto">
+                <DropdownMenuItem onClick={() => setCategoryId(null)}>
+                  None
+                </DropdownMenuItem>
+                {categories.map((cat) => (
+                  <DropdownMenuItem
+                    key={cat.id}
+                    onClick={() => setCategoryId(cat.id)}
                   >
-                    {selectedCategory
-                      ? selectedCategory.name
-                      : "Select category"}
-                    <ChevronDown className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="max-h-60 overflow-y-auto">
-                  <DropdownMenuItem onClick={() => setCategoryId(null)}>
-                    None
+                    {cat.name}
                   </DropdownMenuItem>
-                  {categories.map((cat) => (
-                    <DropdownMenuItem
-                      key={cat.id}
-                      onClick={() => setCategoryId(cat.id)}
-                    >
-                      {cat.name}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-
-            <div>
-              <label htmlFor="partType" className="text-sm font-medium">
-                Part Type
-              </label>
-              <Input
-                id="partType"
-                value={partType}
-                onChange={(e) => setPartType(e.target.value)}
-                placeholder="e.g., elbow, tee, valve"
-                className="mt-1"
-              />
-            </div>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -449,4 +425,3 @@ export function EditPartDialog({
     </Dialog>
   );
 }
-

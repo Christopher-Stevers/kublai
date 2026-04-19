@@ -13,7 +13,6 @@ interface PartCardProps {
     displayName: string;
     imageUrl: string | null;
     material: string | null;
-    partType: string | null;
     size: string | null;
   };
   onEdit: (partId: string) => void;
@@ -56,11 +55,6 @@ export function PartCard({
           {part.displayName}
         </h3>
         <div className="mb-3 flex flex-wrap gap-2">
-          {part.partType && (
-            <Badge variant="secondary" className="text-xs">
-              {part.partType}
-            </Badge>
-          )}
           {part.size && (
             <Badge variant="secondary" className="text-xs">
               {formatSizeAsFraction(part.size)}
@@ -85,4 +79,3 @@ export function PartCard({
     </Card>
   );
 }
-

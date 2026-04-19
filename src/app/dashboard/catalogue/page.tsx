@@ -17,6 +17,7 @@ import { PartCard } from "~/components/catalogue/PartCard";
 import { SearchAndFilters } from "~/components/catalogue/SearchAndFilters";
 import { PartsTableView } from "~/components/catalogue/PartsTableView";
 import type { WizardStage } from "~/components/materialLists/wizard/types";
+import { ListPagination, useClientPagination } from "~/components/ui/list-pagination";
 
 export default function CataloguePage() {
   const [wizardStage, setWizardStage] = useState<WizardStage>("catalog");
@@ -28,7 +29,6 @@ export default function CataloguePage() {
     name: string;
   } | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedPartType, setSelectedPartType] = useState<string | null>(null);
   const [selectedMaterial, setSelectedMaterial] = useState<string | null>(null);
   const [sizeValue, setSizeValue] = useState<string>("");
   const [sizeUnit, setSizeUnit] = useState<string>("in");
@@ -66,16 +66,9 @@ export default function CataloguePage() {
   const { data: catalogs } = api.catalogue.getCatalogs.useQuery();
   const { data: categoryTree } = api.catalogue.getCategoryTree.useQuery();
   const { data: materials } = api.catalogue.getMaterials.useQuery();
-  const { data: partTypes } = api.catalogue.getPartTypes.useQuery();
   const { data: sizeUnits } = api.catalogue.getSizeUnits.useQuery();
   const { data: attributeKeys } = api.catalogue.getAttributeKeys.useQuery();
   const { data: allUnits } = api.catalogue.getAllUnits.useQuery();
-  const { data: partTypesWithIds } = api.catalogue.getPartTypesWithIds.useQuery();
-
-  const selectedPartTypeId = useMemo(() => {
-    if (!selectedPartType || !partTypesWithIds) return undefined;
-    return partTypesWithIds.find((pt) => pt.name === selectedPartType)?.id;
-  }, [selectedPartType, partTypesWithIds]);
 
   const selectedMaterialFilterId = useMemo(() => {
     if (!selectedMaterial || !materials) return undefined;
@@ -142,7 +135,6 @@ export default function CataloguePage() {
     query: debouncedSearchQuery || undefined,
     catalogId: selectedCatalogId ?? undefined,
     categoryId: selectedPartTypeCategory?.categoryId ?? undefined,
-    partTypeId: selectedPartTypeId,
     materialId: selectedMaterialFilterId ?? selectedMaterialId ?? undefined,
     sizeNominal: normalizedSize ?? selectedSize?.nominal ?? undefined,
     sizeUnit: normalizedSize ? sizeUnit : selectedSize?.unit,
@@ -161,6 +153,7 @@ export default function CataloguePage() {
   });
 
   const parts = searchResults ?? [];
+  const paginatedParts = useClientPagination(parts);
   const partIds = parts.map((p) => p.id);
   const { data: supplierInfoMap } = api.catalogue.getPartsSupplierInfo.useQuery(
     { partIds },
@@ -217,12 +210,11 @@ export default function CataloguePage() {
   const selectedCatalogName = catalogs?.find((c) => c.id === selectedCatalogId)?.name ?? null;
   const selectedMaterialName = materials?.find((m) => m.id === selectedMaterialId)?.name ?? null;
 
-  const hasActiveFilters = !!(selectedPartType || selectedMaterial || sizeValue || attributeKey || debouncedSearchQuery);
+  const hasActiveFilters = !!(selectedMaterial || sizeValue || attributeKey || debouncedSearchQuery);
 
   const handleClearFilters = () => {
     setSearchQuery("");
     setDebouncedSearchQuery("");
-    setSelectedPartType(null);
     setSelectedMaterial(null);
     setSizeValue("");
     setSizeUnit("in");
@@ -344,9 +336,6 @@ export default function CataloguePage() {
                 const category = (categoryTree ?? []).find((c) => c.id === categoryId);
                 setSelectedPartTypeCategory(category ? { categoryId: category.id, name: category.name } : null);
               }}
-              partTypes={partTypes ?? []}
-              selectedPartType={selectedPartType}
-              onPartTypeChange={setSelectedPartType}
               materials={materials?.map((m) => m.name) ?? []}
               selectedMaterial={selectedMaterial}
               onMaterialChange={setSelectedMaterial}
@@ -397,7 +386,7 @@ export default function CataloguePage() {
                 </div>
                 {viewMode === "grid" && (
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                    {parts.map((part) => (
+                    {paginatedParts.paginatedItems.map((part) => (
                       <PartCard key={part.id} part={part} onEdit={(partId) => setEditingPartId(partId)} supplierInfo={supplierInfoMap?.[part.id]} />
                     ))}
                   </div>
@@ -405,10 +394,19 @@ export default function CataloguePage() {
                 {viewMode === "table" && (
                   <Card className="hidden md:block">
                     <CardContent className="p-0">
-                      <PartsTableView parts={parts} categoryTree={categoryTree ?? []} onEdit={(partId) => setEditingPartId(partId)} supplierInfoMap={supplierInfoMap} />
+                      <PartsTableView parts={paginatedParts.paginatedItems} categoryTree={categoryTree ?? []} onEdit={(partId) => setEditingPartId(partId)} supplierInfoMap={supplierInfoMap} />
                     </CardContent>
                   </Card>
                 )}
+                <ListPagination
+                  page={paginatedParts.page}
+                  totalPages={paginatedParts.totalPages}
+                  totalItems={paginatedParts.totalItems}
+                  startItem={paginatedParts.startItem}
+                  endItem={paginatedParts.endItem}
+                  itemLabel="parts"
+                  onPageChange={paginatedParts.setPage}
+                />
               </>
             )}
           </div>

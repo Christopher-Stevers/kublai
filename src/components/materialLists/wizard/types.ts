@@ -8,9 +8,7 @@ export interface PendingPart {
     imageUrl: string | null;
     material: string | null;
     size: string | null;
-    partType: string | null;
   };
   quantity: number;
   supplierPartId?: string;
 }
-

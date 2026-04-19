@@ -58,7 +58,6 @@ export function AddPartDialog({
   const [customPartContext, setCustomPartContext] = useState<{
     materialId?: string | null;
     size?: { nominal: number; unit: string } | null;
-    partTypeId?: string | null;
     catalogId?: string | null;
     categoryId?: string | null;
     categoryName?: string | null;
@@ -109,7 +108,7 @@ export function AddPartDialog({
     selectedMaterialId,
     selectedSize,
   });
-  // Fetch parts matching current material, size, and part type category
+  // Fetch parts matching current material, size, and category
   const { data: partsForSelection } = api.catalogue.searchParts.useQuery(
     {
       catalogId: selectedCatalogId ?? undefined,
@@ -509,7 +508,6 @@ export function AddPartDialog({
       imageUrl: string | null;
       material: string | null;
       size: string | null;
-      partType: string | null;
     },
     supplierPartId: string,
   ) => {
@@ -530,7 +528,6 @@ export function AddPartDialog({
       imageUrl: string | null;
       material: string | null;
       size: string | null;
-      partType: string | null;
     },
     supplierPartId: string,
   ) => {
@@ -554,7 +551,6 @@ export function AddPartDialog({
             imageUrl: part.imageUrl,
             material: part.material,
             size: part.size,
-            partType: part.partType,
           },
           quantity: 1,
           supplierPartId,
@@ -569,7 +565,6 @@ export function AddPartDialog({
     imageUrl: string | null;
     material: string | null;
     size: string | null;
-    partType: string | null;
     supplierPartId?: string;
   }) => {
     // Custom parts should always have a supplier (required during creation)
@@ -589,7 +584,6 @@ export function AddPartDialog({
   const handleOpenCustomPartDialog = (context?: {
     materialId?: string | null;
     size?: { nominal: number; unit: string } | null;
-    partTypeId?: string | null;
     category?: {
       name?: string | null;
       categoryId?: string | null;
@@ -601,7 +595,6 @@ export function AddPartDialog({
             catalogId: selectedCatalogId,
             materialId: context.materialId,
             size: context.size,
-            partTypeId: context.partTypeId,
             categoryId: context.category?.categoryId ?? null,
             categoryName: context.category?.name ?? null,
           }
@@ -728,7 +721,7 @@ export function AddPartDialog({
           <DialogHeader className="shrink-0 px-2 pt-3 pb-2 sm:px-4 sm:pt-4 sm:pb-3 md:px-6 md:pt-6 md:pb-4">
             <DialogTitle className="text-base sm:text-lg md:text-xl">Add Parts</DialogTitle>
             <DialogDescription className="text-xs sm:text-sm">
-              Select material, size, and part type to add parts to your list
+              Select catalog, material, size, and category to add parts to your list
             </DialogDescription>
           </DialogHeader>
 

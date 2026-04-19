@@ -20,6 +20,7 @@ import { Pencil, AlertCircle } from "lucide-react";
 import Image from "next/image";
 import type { PendingPart } from "./types";
 import { PartSuppliersDropdown } from "~/components/catalogue/PartSuppliersDropdown";
+import { ListPagination, useClientPagination } from "~/components/ui/list-pagination";
 
 interface PartCardProps {
   part: {
@@ -29,7 +30,6 @@ interface PartCardProps {
     imageUrl: string | null;
     material: string | null;
     size: string | null;
-    partType: string | null;
   };
   isPending: boolean;
   onPartSelect: (
@@ -40,7 +40,6 @@ interface PartCardProps {
       imageUrl: string | null;
       material: string | null;
       size: string | null;
-      partType: string | null;
     },
     supplierPartId: string,
   ) => void;
@@ -173,11 +172,6 @@ function PartCard({ part, isPending, onPartSelect, onEditPart }: PartCardProps) 
               <p className="text-xs text-gray-600 line-clamp-2">
                 {truncatedDescription}
               </p>
-            )}
-            {part.partType && (
-              <Badge variant="outline" className="text-xs">
-                {part.partType}
-              </Badge>
             )}
           </div>
           <div className="space-y-2">
@@ -318,7 +312,6 @@ export interface PartStageProps {
     imageUrl: string | null;
     material: string | null;
     size: string | null;
-    partType: string | null;
   }>;
   pendingParts: PendingPart[];
   onPartSelect: (part: {
@@ -328,13 +321,11 @@ export interface PartStageProps {
     imageUrl: string | null;
     material: string | null;
     size: string | null;
-    partType: string | null;
   }, supplierPartId: string) => void;
   onEditPart: (partId: string) => void;
   onOpenCustomPartDialog: (context?: {
     materialId?: string | null;
     size?: { nominal: number; unit: string } | null;
-    partTypeId?: string | null;
     category?: {
       name?: string | null;
       categoryId?: string | null;
@@ -362,6 +353,8 @@ export function PartStage({
   onBackToCategories,
   onContinueToReview,
 }: PartStageProps) {
+  const pagination = useClientPagination(partsForSelection);
+
   if (partsForSelection.length === 0) {
     return (
       <div className="space-y-3 sm:space-y-4">
@@ -376,7 +369,6 @@ export function PartStage({
               onOpenCustomPartDialog({
                 materialId: selectedMaterialId,
                 size: selectedSize,
-                partTypeId: null,
                 category: selectedPartTypeCategory
                   ? {
                       categoryId: selectedPartTypeCategory.categoryId,
@@ -408,7 +400,7 @@ export function PartStage({
         </Button>
       </div>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 md:grid-cols-3">
-        {partsForSelection.map((part) => {
+        {pagination.paginatedItems.map((part) => {
           const isPending = pendingParts.some((p) => p.partId === part.id);
           return (
             <PartCard
@@ -421,6 +413,15 @@ export function PartStage({
           );
         })}
       </div>
+      <ListPagination
+        page={pagination.page}
+        totalPages={pagination.totalPages}
+        totalItems={pagination.totalItems}
+        startItem={pagination.startItem}
+        endItem={pagination.endItem}
+        itemLabel="parts"
+        onPageChange={pagination.setPage}
+      />
       <div className="flex flex-col gap-2 sm:flex-row sm:justify-between">
         <Button 
           variant="outline" 

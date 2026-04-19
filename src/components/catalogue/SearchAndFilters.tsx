@@ -17,9 +17,6 @@ interface SearchAndFiltersProps {
   categoryTree: Array<{ id: string; name: string }>;
   selectedCategoryId: string | null;
   onCategoryChange: (categoryId: string | null) => void;
-  partTypes: string[];
-  selectedPartType: string | null;
-  onPartTypeChange: (partType: string | null) => void;
   materials: string[];
   selectedMaterial: string | null;
   onMaterialChange: (material: string | null) => void;
@@ -48,9 +45,6 @@ export function SearchAndFilters({
   categoryTree,
   selectedCategoryId,
   onCategoryChange,
-  partTypes,
-  selectedPartType,
-  onPartTypeChange,
   materials,
   selectedMaterial,
   onMaterialChange,
@@ -85,7 +79,6 @@ export function SearchAndFilters({
   const categoryName = findCategoryName(categoryTree, selectedCategoryId);
   const hasActiveFilters =
     selectedCategoryId ||
-    selectedPartType ||
     selectedMaterial ||
     sizeValue ||
     attributeKey;
@@ -136,13 +129,6 @@ export function SearchAndFilters({
               onRemove={() => onCategoryChange(null)}
             />
           )}
-          {selectedPartType && (
-            <FilterBadge
-              label="Type"
-              value={selectedPartType}
-              onRemove={() => onPartTypeChange(null)}
-            />
-          )}
           {selectedMaterial && (
             <FilterBadge
               label="Material"
@@ -181,35 +167,7 @@ export function SearchAndFilters({
 
       {/* Filter Controls */}
       {showFilters && (
-        <div className="grid grid-cols-1 gap-4 rounded-lg border bg-gray-50 p-4 md:grid-cols-2 lg:grid-cols-4">
-          {/* Part Type Filter */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-700">
-              Part Type
-            </label>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="w-full justify-between">
-                  {selectedPartType || "All Types"}
-                  <ChevronDown className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-56">
-                <DropdownMenuItem onClick={() => onPartTypeChange(null)}>
-                  All Types
-                </DropdownMenuItem>
-                {partTypes.map((type) => (
-                  <DropdownMenuItem
-                    key={type}
-                    onClick={() => onPartTypeChange(type)}
-                  >
-                    {type}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-
+        <div className="grid grid-cols-1 gap-4 rounded-lg border bg-gray-50 p-4 md:grid-cols-2 lg:grid-cols-3">
           {/* Material Filter */}
           <div className="space-y-2">
             <label className="text-sm font-medium text-gray-700">
@@ -339,5 +297,4 @@ export function SearchAndFilters({
     </div>
   );
 }
-
 

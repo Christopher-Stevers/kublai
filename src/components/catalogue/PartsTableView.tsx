@@ -9,7 +9,6 @@ interface PartsTableViewProps {
     id: string;
     displayName: string;
     material: string | null;
-    partType: string | null;
     size: string | null;
     categoryId: string | null;
   }>;
@@ -61,13 +60,6 @@ export function PartsTableView({
       ),
     },
     {
-      key: "type",
-      label: "Type",
-      render: (part) => (
-        <div className="text-sm text-gray-600">{part.partType || "—"}</div>
-      ),
-    },
-    {
       key: "size",
       label: "Size",
       render: (part) => (
@@ -107,4 +99,3 @@ export function PartsTableView({
 
   return <PartsTable columns={columns} data={parts} />;
 }
-
