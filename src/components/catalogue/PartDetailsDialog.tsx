@@ -24,6 +24,23 @@ import {
 import { SupplierFormDialog } from "~/components/suppliers/SupplierFormDialog";
 import { PartSuppliersDropdown } from "~/components/catalogue/PartSuppliersDropdown";
 
+function buildPartName({
+  description,
+  materialName,
+  sizeValue,
+  sizeUnitCode,
+}: {
+  description: string;
+  materialName?: string | null;
+  sizeValue: string;
+  sizeUnitCode?: string | null;
+}) {
+  return [sizeValue && sizeUnitCode ? `${sizeValue} ${sizeUnitCode}` : sizeValue, materialName, description]
+    .map((value) => value?.trim())
+    .filter((value): value is string => !!value)
+    .join(" ");
+}
+
 type PartSummary = {
   id: string;
   displayName: string;
@@ -103,6 +120,7 @@ export function PartDetailsDialog({
   );
 
   const [displayName, setDisplayName] = useState("");
+  const [hasManuallyEditedDisplayName, setHasManuallyEditedDisplayName] = useState(false);
   const [description, setDescription] = useState("");
   const [imageUrl, setImageUrl] = useState("");
   const [catalogId, setCatalogId] = useState<string | null>(null);
@@ -146,6 +164,7 @@ export function PartDetailsDialog({
       setSupplierSku("");
       setSupplierName("");
       setLastKnownUnitCost("");
+      setHasManuallyEditedDisplayName(true);
       return;
     }
 
@@ -163,6 +182,7 @@ export function PartDetailsDialog({
       setSupplierSku("");
       setSupplierName("");
       setLastKnownUnitCost("");
+      setHasManuallyEditedDisplayName(false);
 
       if (initialContext?.size?.unit && allUnits) {
         const matchedUnit = allUnits.find((unit) => unit.code === initialContext.size?.unit);
@@ -172,6 +192,31 @@ export function PartDetailsDialog({
       }
     }
   }, [open, isEditMode, part, materials, initialContext, allUnits]);
+
+  useEffect(() => {
+    if (!open || isEditMode || hasManuallyEditedDisplayName) {
+      return;
+    }
+
+    setDisplayName(
+      buildPartName({
+        description,
+        materialName: materials?.find((material) => material.id === materialId)?.name,
+        sizeValue,
+        sizeUnitCode: sizeUnits.find((unit) => unit.id === sizeUnitId)?.code,
+      }),
+    );
+  }, [
+    open,
+    isEditMode,
+    hasManuallyEditedDisplayName,
+    description,
+    materials,
+    materialId,
+    sizeValue,
+    sizeUnits,
+    sizeUnitId,
+  ]);
 
   const createPart = api.catalogue.createPart.useMutation({
     onSuccess: async (newPart) => {
@@ -293,11 +338,19 @@ export function PartDetailsDialog({
               <Input
                 id="displayName"
                 value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
+                onChange={(e) => {
+                  setHasManuallyEditedDisplayName(true);
+                  setDisplayName(e.target.value);
+                }}
                 placeholder="e.g., 90° Copper Elbow"
                 className="mt-1"
                 disabled={isLoading}
               />
+              {!isEditMode && (
+                <p className="mt-1 text-xs text-gray-500">
+                  Auto-generated from size, material, and description. You can still override it.
+                </p>
+              )}
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
