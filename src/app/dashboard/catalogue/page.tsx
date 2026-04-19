@@ -12,7 +12,7 @@ import { CatalogStage } from "~/components/materialLists/wizard/CatalogStage";
 import { MaterialStage } from "~/components/materialLists/wizard/MaterialStage";
 import { SizeStage } from "~/components/materialLists/wizard/SizeStage";
 import { PartTypeCategoryStage } from "~/components/materialLists/wizard/PartTypeCategoryStage";
-import { WizardProgressIndicator } from "~/components/materialLists/WizardProgressIndicator";
+import { WizardHeader } from "~/components/materialLists/WizardHeader";
 import { usePartWizard } from "~/components/materialLists/wizard/use-part-wizard";
 import { PartCard } from "~/components/catalogue/PartCard";
 import { SearchAndFilters } from "~/components/catalogue/SearchAndFilters";
@@ -62,6 +62,8 @@ export default function CataloguePage() {
     setShowCustomPartTypeInput,
     customPartTypeName,
     setCustomPartTypeName,
+    wizardSearchQuery,
+    setWizardSearchQuery,
     catalogs,
     catalogsWithCounts,
     materials,
@@ -82,6 +84,7 @@ export default function CataloguePage() {
     selectedMaterialName,
     selectedSizeName,
     selectedCategoryName,
+    wizardSearchPlaceholder,
   } = usePartWizard();
 
   useEffect(() => {
@@ -154,13 +157,17 @@ export default function CataloguePage() {
         <div className="mb-4 flex items-center justify-between">
           <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">Parts Catalogue</h1>
         </div>
-        <WizardProgressIndicator
+        <WizardHeader
           currentStage={wizardStage}
           selectedCatalog={selectedCatalogName}
           selectedMaterial={selectedMaterialName}
           selectedSize={selectedSizeName}
           selectedPartTypeCategory={selectedCategoryName}
           onStageClick={handleStageClick}
+          searchQuery={wizardSearchQuery}
+          onSearchChange={setWizardSearchQuery}
+          searchPlaceholder={wizardSearchPlaceholder}
+          hideSearch={wizardStage === "part"}
         />
       </div>
 

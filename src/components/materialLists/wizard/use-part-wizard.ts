@@ -127,9 +127,16 @@ export function usePartWizard() {
 
   const filteredAvailableSizes = useMemo(() => {
     const query = wizardSearchQuery.trim().toLowerCase();
-    return (availableSizesFromQuery ?? []).filter(
-      (size) => !query || `${size.nominal} ${size.unit}`.toLowerCase().includes(query),
-    );
+    return (availableSizesFromQuery ?? [])
+      .filter(
+        (size) => !query || `${size.nominal} ${size.unit}`.toLowerCase().includes(query),
+      )
+      .sort((a, b) => {
+        if (a.nominal !== b.nominal) {
+          return a.nominal - b.nominal;
+        }
+        return a.unit.localeCompare(b.unit);
+      });
   }, [availableSizesFromQuery, wizardSearchQuery]);
 
   const filteredPartsForSelection = useMemo(() => {

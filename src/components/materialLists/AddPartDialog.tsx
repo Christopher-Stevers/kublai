@@ -12,9 +12,9 @@ import {
 } from "~/components/ui/dialog";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
-import { Plus, Minus, Search } from "lucide-react";
-import { WizardProgressIndicator } from "./WizardProgressIndicator";
+import { Plus, Minus } from "lucide-react";
 import { CreateCustomPartDialog } from "./CreateCustomPartDialog";
+import { WizardHeader } from "./WizardHeader";
 import { EditPartDialog } from "~/components/catalogue/EditPartDialog";
 import type { PendingPart } from "./wizard/types";
 import { CatalogStage } from "./wizard/CatalogStage";
@@ -545,38 +545,19 @@ export function AddPartDialog({
             </DialogDescription>
           </DialogHeader>
 
-          <div className="shrink-0 border-b px-2 sm:px-4 md:px-6">
-            <div className="flex flex-wrap items-center gap-2 pb-3 sm:gap-3 sm:pb-4">
-              <WizardProgressIndicator
-                currentStage={wizardStage}
-                selectedCatalog={selectedCatalogName}
-                selectedMaterial={selectedMaterialName}
-                selectedSize={selectedSizeName}
-                selectedPartTypeCategory={selectedCategoryName}
-                onStageClick={handleStageClick}
-              />
-              {wizardStage !== "review" && (
-                <>
-                  <div
-                    className="relative shrink-0"
-                    style={{
-                      width: `${Math.max(
-                        14,
-                        (wizardSearchQuery || wizardSearchPlaceholder).length + 4,
-                      )}ch`,
-                    }}
-                  >
-                    <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                    <Input
-                      value={wizardSearchQuery}
-                      onChange={(e) => setWizardSearchQuery(e.target.value)}
-                      placeholder={wizardSearchPlaceholder}
-                      className="h-8 w-full rounded-lg pl-9 text-xs sm:h-10 sm:text-sm"
-                    />
-                  </div>
-                </>
-              )}
-            </div>
+          <div className="shrink-0 border-b px-2 pb-3 sm:px-4 sm:pb-4 md:px-6">
+            <WizardHeader
+              currentStage={wizardStage}
+              selectedCatalog={selectedCatalogName}
+              selectedMaterial={selectedMaterialName}
+              selectedSize={selectedSizeName}
+              selectedPartTypeCategory={selectedCategoryName}
+              onStageClick={handleStageClick}
+              searchQuery={wizardSearchQuery}
+              onSearchChange={setWizardSearchQuery}
+              searchPlaceholder={wizardSearchPlaceholder}
+              hideSearch={wizardStage === "review"}
+            />
           </div>
 
           <div className="flex-1 space-y-3 overflow-y-auto px-2 pt-3 pb-3 sm:space-y-4 sm:px-4 sm:pt-4 sm:pb-4 md:px-6">
