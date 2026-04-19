@@ -118,3 +118,18 @@ export function setOfflineJobDetail(
 
   window.localStorage.setItem(jobDetailKey(jobId), JSON.stringify(envelope));
 }
+
+export function getOfflineJobDetailIds(): string[] {
+  if (typeof window === "undefined") return [];
+
+  const ids: string[] = [];
+
+  for (let i = 0; i < window.localStorage.length; i += 1) {
+    const key = window.localStorage.key(i);
+    if (!key?.startsWith(`${JOB_DETAIL_PREFIX}:`)) continue;
+
+    ids.push(key.slice(`${JOB_DETAIL_PREFIX}:`.length));
+  }
+
+  return ids;
+}

@@ -121,3 +121,18 @@ export function clearOfflineMaterialList(materialListId: string) {
   if (typeof window === "undefined") return;
   window.localStorage.removeItem(storageKey(materialListId));
 }
+
+export function getOfflineMaterialListIds(): string[] {
+  if (typeof window === "undefined") return [];
+
+  const ids: string[] = [];
+
+  for (let i = 0; i < window.localStorage.length; i += 1) {
+    const key = window.localStorage.key(i);
+    if (!key?.startsWith(`${STORAGE_PREFIX}:`)) continue;
+
+    ids.push(key.slice(`${STORAGE_PREFIX}:`.length));
+  }
+
+  return ids;
+}

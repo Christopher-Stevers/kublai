@@ -2,6 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { api } from "~/trpc/react";
+import {
+  getOfflineCatalogueSnapshot,
+  setOfflineCatalogueSnapshot,
+} from "~/lib/offline-catalogue";
 import type { WizardStage } from "./types";
 
 type PreloadedPart = {
@@ -45,13 +49,43 @@ export function usePartWizard() {
   const [showCustomPartTypeInput, setShowCustomPartTypeInput] = useState(false);
   const [customPartTypeName, setCustomPartTypeName] = useState("");
   const [wizardSearchQuery, setWizardSearchQuery] = useState("");
+  const [cachedCatalogueData, setCachedCatalogueData] = useState(
+    () => getOfflineCatalogueSnapshot()?.data ?? null,
+  );
 
   const utils = api.useUtils();
-  const { data: catalogs } = api.catalogue.getCatalogs.useQuery();
-  const { data: materials } = api.catalogue.getMaterials.useQuery();
-  const { data: allUnits } = api.catalogue.getAllUnits.useQuery();
-  const { data: categoryTree } = api.catalogue.getCategoryTree.useQuery();
-  const { data: allParts } = api.catalogue.searchParts.useQuery({}, { staleTime: 1000 * 60 * 5 });
+  const { data: serverCatalogs } = api.catalogue.getCatalogs.useQuery();
+  const { data: serverMaterials } = api.catalogue.getMaterials.useQuery();
+  const { data: serverAllUnits } = api.catalogue.getAllUnits.useQuery();
+  const { data: serverCategoryTree } = api.catalogue.getCategoryTree.useQuery();
+  const { data: serverAllParts } = api.catalogue.searchParts.useQuery({}, { staleTime: 1000 * 60 * 5 });
+
+  useEffect(() => {
+    setCachedCatalogueData(getOfflineCatalogueSnapshot()?.data ?? null);
+  }, []);
+
+  useEffect(() => {
+    if (!serverCatalogs || !serverMaterials || !serverAllUnits || !serverCategoryTree || !serverAllParts) {
+      return;
+    }
+
+    const nextSnapshot = {
+      catalogs: serverCatalogs,
+      materials: serverMaterials,
+      categories: serverCategoryTree,
+      allUnits: serverAllUnits,
+      parts: serverAllParts,
+    };
+
+    setOfflineCatalogueSnapshot(nextSnapshot);
+    setCachedCatalogueData(nextSnapshot);
+  }, [serverAllParts, serverAllUnits, serverCatalogs, serverCategoryTree, serverMaterials]);
+
+  const catalogs = serverCatalogs ?? cachedCatalogueData?.catalogs;
+  const materials = serverMaterials ?? cachedCatalogueData?.materials;
+  const allUnits = serverAllUnits ?? cachedCatalogueData?.allUnits;
+  const categoryTree = serverCategoryTree ?? cachedCatalogueData?.categories;
+  const allParts = serverAllParts ?? cachedCatalogueData?.parts;
 
   const partsByCatalog = useMemo(
     () =>
