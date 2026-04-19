@@ -557,6 +557,20 @@ export function AddPartDialog({
               onSearchChange={setWizardSearchQuery}
               searchPlaceholder={wizardSearchPlaceholder}
               hideSearch={wizardStage === "review"}
+              actionLabel={wizardStage === "review" ? undefined : "Create Part"}
+              onActionClick={() =>
+                handleOpenCustomPartDialog({
+                  materialId: selectedMaterialId,
+                  size: selectedSize,
+                  category: selectedPartTypeCategory
+                    ? {
+                        categoryId: selectedPartTypeCategory.categoryId,
+                        name: selectedPartTypeCategory.name,
+                      }
+                    : undefined,
+                })
+              }
+              actionDisabled={!selectedCatalogId}
             />
           </div>
 

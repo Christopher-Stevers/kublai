@@ -2,6 +2,7 @@
 
 import { Search } from "lucide-react";
 import { Input } from "~/components/ui/input";
+import { Button } from "~/components/ui/button";
 import { WizardProgressIndicator } from "~/components/materialLists/WizardProgressIndicator";
 import type { WizardStage } from "~/components/materialLists/wizard/types";
 
@@ -21,6 +22,9 @@ interface WizardHeaderProps {
   onSearchChange?: (value: string) => void;
   searchPlaceholder?: string;
   hideSearch?: boolean;
+  actionLabel?: string;
+  onActionClick?: () => void;
+  actionDisabled?: boolean;
   className?: string;
 }
 
@@ -35,6 +39,9 @@ export function WizardHeader({
   onSearchChange,
   searchPlaceholder = "",
   hideSearch = false,
+  actionLabel,
+  onActionClick,
+  actionDisabled = false,
   className = "",
 }: WizardHeaderProps) {
   return (
@@ -62,6 +69,17 @@ export function WizardHeader({
             className="h-8 w-full rounded-lg pl-9 text-xs sm:h-10 sm:text-sm"
           />
         </div>
+      )}
+      {actionLabel && onActionClick && (
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onActionClick}
+          disabled={actionDisabled}
+          className="h-8 shrink-0 rounded-lg px-2 py-1.5 text-xs sm:h-10 sm:px-3 sm:py-2 sm:text-sm"
+        >
+          {actionLabel}
+        </Button>
       )}
     </div>
   );
