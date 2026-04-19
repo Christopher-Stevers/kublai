@@ -156,7 +156,6 @@ export function PartDetailsDialog({
   const [isActive, setIsActive] = useState(true);
   const [supplierId, setSupplierId] = useState<string | null>(null);
   const [supplierSku, setSupplierSku] = useState("");
-  const [supplierName, setSupplierName] = useState("");
   const [lastKnownUnitCost, setLastKnownUnitCost] = useState("");
   const [isSupplierDialogOpen, setIsSupplierDialogOpen] = useState(false);
   const [showNewCatalogInput, setShowNewCatalogInput] = useState(false);
@@ -186,7 +185,6 @@ export function PartDetailsDialog({
       setIsActive(part.isActive ?? true);
       setSupplierId(null);
       setSupplierSku("");
-      setSupplierName("");
       setLastKnownUnitCost("");
       setHasManuallyEditedDisplayName(true);
       return;
@@ -203,7 +201,6 @@ export function PartDetailsDialog({
       setIsActive(true);
       setSupplierId(null);
       setSupplierSku("");
-      setSupplierName("");
       setLastKnownUnitCost("");
       setHasManuallyEditedDisplayName(false);
 
@@ -369,7 +366,6 @@ export function PartDetailsDialog({
       ...payload,
       supplierId: supplierId ?? undefined,
       supplierSku: supplierSku.trim() || undefined,
-      supplierName: supplierName.trim() || undefined,
       lastKnownUnitCost: lastKnownUnitCost.trim() || undefined,
       currency: "CAD",
     });
@@ -598,6 +594,35 @@ export function PartDetailsDialog({
               )}
             </div>
 
+            {!isEditMode && (
+              <div>
+                <Label>Supplier</Label>
+                <div className="mt-1 flex gap-2">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" className="flex-1 justify-between" disabled={isLoading}>
+                        {supplierId
+                          ? suppliers?.find((supplier) => supplier.id === supplierId)?.name ?? "Select supplier"
+                          : "Select supplier"}
+                        <ChevronDown className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="max-h-60 overflow-y-auto">
+                      <DropdownMenuItem onClick={() => setSupplierId(null)}>None</DropdownMenuItem>
+                      {suppliers?.map((supplier) => (
+                        <DropdownMenuItem key={supplier.id} onClick={() => setSupplierId(supplier.id)}>
+                          {supplier.name}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  <Button type="button" variant="outline" size="sm" onClick={() => setIsSupplierDialogOpen(true)} disabled={isLoading}>
+                    New
+                  </Button>
+                </div>
+              </div>
+            )}
+
             <div>
               <Label>Image URL</Label>
               <Input
@@ -613,49 +638,11 @@ export function PartDetailsDialog({
             {!isEditMode && (
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
-                  <Label>Supplier</Label>
-                  <div className="mt-1 flex gap-2">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="outline" className="flex-1 justify-between" disabled={isLoading}>
-                          {supplierId
-                            ? suppliers?.find((supplier) => supplier.id === supplierId)?.name ?? "Select supplier"
-                            : "Select supplier"}
-                          <ChevronDown className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent className="max-h-60 overflow-y-auto">
-                        <DropdownMenuItem onClick={() => setSupplierId(null)}>None</DropdownMenuItem>
-                        {suppliers?.map((supplier) => (
-                          <DropdownMenuItem key={supplier.id} onClick={() => setSupplierId(supplier.id)}>
-                            {supplier.name}
-                          </DropdownMenuItem>
-                        ))}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                    <Button type="button" variant="outline" size="sm" onClick={() => setIsSupplierDialogOpen(true)} disabled={isLoading}>
-                      New
-                    </Button>
-                  </div>
-                </div>
-
-                <div>
                   <Label>Supplier SKU</Label>
                   <Input
                     value={supplierSku}
                     onChange={(e) => setSupplierSku(e.target.value)}
                     placeholder="Supplier SKU"
-                    className="mt-1"
-                    disabled={isLoading}
-                  />
-                </div>
-
-                <div>
-                  <Label>Supplier Name</Label>
-                  <Input
-                    value={supplierName}
-                    onChange={(e) => setSupplierName(e.target.value)}
-                    placeholder="Supplier item name"
                     className="mt-1"
                     disabled={isLoading}
                   />
