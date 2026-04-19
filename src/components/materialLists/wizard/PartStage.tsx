@@ -15,7 +15,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "~/components/ui/dialog";
-import { Pencil, AlertCircle, Check } from "lucide-react";
+import { Pencil, AlertCircle, Check, ImageIcon } from "lucide-react";
 import Image from "next/image";
 import type { PendingPart } from "./types";
 import { PartSuppliersDropdown } from "~/components/catalogue/PartSuppliersDropdown";
@@ -160,20 +160,9 @@ function PartCard({ part, isPending, onPartRemove, onPartSelect, onEditPart: _on
                 className="object-cover"
               />
             ) : (
-              <div className="flex h-full items-center justify-center text-gray-400">
-                <svg
-                  className="h-6 w-6 sm:h-8 sm:w-8"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
-                  />
-                </svg>
+              <div className="flex h-full flex-col items-center justify-center gap-2 bg-muted text-muted-foreground">
+                <ImageIcon className="h-8 w-8 sm:h-10 sm:w-10" />
+                <span className="text-xs font-medium">No image</span>
               </div>
             )}
           </div>
