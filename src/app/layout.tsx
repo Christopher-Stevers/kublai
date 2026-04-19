@@ -1,3 +1,5 @@
+"use client";
+
 import "~/styles/globals.css";
 
 import { type Metadata, type Viewport } from "next";
@@ -6,6 +8,7 @@ import { Geist } from "next/font/google";
 import { SessionProviderWrapper } from "./_components/SessionProviderWrapper";
 import { TRPCReactProvider } from "~/trpc/react";
 import { APP_NAME } from "~/constants/app";
+import { useOfflineMaterialListSync } from "~/hooks/use-offline-material-list-sync";
 
 export const metadata: Metadata = {
   title: `${APP_NAME} - Simplified Parts Ordering for Trades Foremen`,
@@ -45,6 +48,11 @@ const geist = Geist({
   variable: "--font-geist-sans",
 });
 
+function OfflineSyncBootstrap() {
+  useOfflineMaterialListSync();
+  return null;
+}
+
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
@@ -52,7 +60,10 @@ export default function RootLayout({
     <html lang="en" className={`${geist.variable}`}>
       <body>
         <SessionProviderWrapper>
-          <TRPCReactProvider>{children}</TRPCReactProvider>
+          <TRPCReactProvider>
+            <OfflineSyncBootstrap />
+            {children}
+          </TRPCReactProvider>
         </SessionProviderWrapper>
       </body>
     </html>
