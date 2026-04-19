@@ -771,46 +771,46 @@ export function AddPartDialog({
           </DialogHeader>
 
           <div className="shrink-0 border-b px-2 sm:px-4 md:px-6">
-            <WizardProgressIndicator
-              currentStage={wizardStage}
-              selectedCatalog={
-                catalogs?.find((c) => c.id === selectedCatalogId)?.name ?? null
-              }
-              selectedMaterial={
-                materials?.find((m) => m.id === selectedMaterialId)?.name ??
-                null
-              }
-              selectedSize={selectedSize}
-              selectedPartTypeCategory={selectedPartTypeCategory}
-              onStageClick={(stage) => {
-                if (stage === "catalog") {
-                  setWizardStage("catalog");
-                } else if (stage === "material" && selectedCatalogId) {
-                  setWizardStage("material");
-                } else if (stage === "size" && selectedCatalogId && selectedMaterialId) {
-                  setWizardStage("size");
-                } else if (
-                  stage === "partTypeCategory" &&
-                  selectedCatalogId &&
-                  selectedMaterialId &&
-                  selectedSize
-                ) {
-                  setWizardStage("partTypeCategory");
-                } else if (
-                  stage === "part" &&
-                  selectedCatalogId &&
-                  selectedMaterialId &&
-                  selectedSize &&
-                  selectedPartTypeCategory
-                ) {
-                  setWizardStage("part");
+            <div className="flex flex-wrap items-center gap-2 pb-3 sm:gap-3 sm:pb-4">
+              <WizardProgressIndicator
+                currentStage={wizardStage}
+                selectedCatalog={
+                  catalogs?.find((c) => c.id === selectedCatalogId)?.name ?? null
                 }
-              }}
-            />
-            {wizardStage !== "review" && (
-              <div className="pb-3 sm:pb-4">
-                <div className="flex flex-col gap-2 sm:flex-row">
-                  <div className="relative flex-1">
+                selectedMaterial={
+                  materials?.find((m) => m.id === selectedMaterialId)?.name ??
+                  null
+                }
+                selectedSize={selectedSize}
+                selectedPartTypeCategory={selectedPartTypeCategory}
+                onStageClick={(stage) => {
+                  if (stage === "catalog") {
+                    setWizardStage("catalog");
+                  } else if (stage === "material" && selectedCatalogId) {
+                    setWizardStage("material");
+                  } else if (stage === "size" && selectedCatalogId && selectedMaterialId) {
+                    setWizardStage("size");
+                  } else if (
+                    stage === "partTypeCategory" &&
+                    selectedCatalogId &&
+                    selectedMaterialId &&
+                    selectedSize
+                  ) {
+                    setWizardStage("partTypeCategory");
+                  } else if (
+                    stage === "part" &&
+                    selectedCatalogId &&
+                    selectedMaterialId &&
+                    selectedSize &&
+                    selectedPartTypeCategory
+                  ) {
+                    setWizardStage("part");
+                  }
+                }}
+              />
+              {wizardStage !== "review" && (
+                <>
+                  <div className="relative min-w-[220px] flex-1 sm:min-w-[260px]">
                     <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-gray-400" />
                     <Input
                       value={wizardSearchQuery}
@@ -839,9 +839,9 @@ export function AddPartDialog({
                   >
                     Create Part
                   </Button>
-                </div>
-              </div>
-            )}
+                </>
+              )}
+            </div>
           </div>
 
           <div className="flex-1 space-y-3 overflow-y-auto px-2 pt-3 pb-3 sm:space-y-4 sm:px-4 sm:pt-4 sm:pb-4 md:px-6">
