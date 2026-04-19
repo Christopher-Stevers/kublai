@@ -12,13 +12,14 @@ import { AddPartDialog } from "~/components/materialLists/AddPartDialog";
 import { MaterialListNameModal } from "~/components/materialLists/MaterialListNameModal";
 import { ExistingQuotesOrdersDialog } from "~/components/materialLists/ExistingQuotesOrdersDialog";
 import { useState } from "react";
-import { PlusIcon, FileTextIcon, ShoppingCartIcon } from "lucide-react";
+import { PlusIcon, FileTextIcon, ShoppingCartIcon, WifiOffIcon } from "lucide-react";
 import { ViewToggle } from "~/components/ui/view-toggle";
 import { Card, CardContent } from "~/components/ui/card";
 import { PartsTable, type TableColumn } from "~/components/ui/parts-table";
 import { QuantityControls } from "~/components/materialLists/QuantityControls";
 import { SupplierSelector } from "~/components/materialLists/SupplierSelector";
 import { TrashIcon } from "lucide-react";
+import { useOfflineMaterialList } from "~/hooks/use-offline-material-list";
 
 export default function MaterialListDetailPage({
   params,
@@ -41,11 +42,14 @@ export default function MaterialListDetailPage({
   const [selectedOrderId, setSelectedOrderId] = useState<string | undefined>();
   const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
 
-  const { data: materialList, isLoading } =
+  const { data: serverMaterialList, isLoading } =
     api.materialList.getMaterialList.useQuery(
       { materialListId: id },
       { enabled: !!id },
     );
+
+  const { data: materialList, isOfflineFallback, isOnline } =
+    useOfflineMaterialList(id, serverMaterialList);
 
   const utils = api.useUtils();
 
@@ -117,6 +121,19 @@ export default function MaterialListDetailPage({
       {/* Top Bar */}
       <div className="border-b bg-white px-4 py-3 sm:px-6 sm:py-4">
         <div className="mx-auto max-w-6xl">
+          <div className="mb-3 flex flex-wrap items-center gap-2">
+            {!isOnline && (
+              <div className="inline-flex items-center gap-2 rounded-full bg-amber-100 px-3 py-1 text-sm font-medium text-amber-900">
+                <WifiOffIcon className="h-4 w-4" />
+                Offline mode
+              </div>
+            )}
+            {isOfflineFallback && (
+              <div className="inline-flex items-center rounded-full bg-blue-100 px-3 py-1 text-sm font-medium text-blue-900">
+                Showing cached material list data
+              </div>
+            )}
+          </div>
           <div className="flex items-center justify-between">
             <div>
               <div className="flex flex-col content-start items-start gap-2">
