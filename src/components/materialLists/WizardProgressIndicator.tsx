@@ -76,7 +76,7 @@ export function WizardProgressIndicator({
   };
 
   return (
-    <div className="flex flex-wrap items-center gap-1.5 py-3 sm:gap-2 sm:py-4">
+    <div className="contents">
         {stages.map((stage, index) => {
           const isCompleted = stage.step < currentStep;
           const isCurrent = stage.step === currentStep;

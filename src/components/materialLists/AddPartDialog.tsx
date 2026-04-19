@@ -571,7 +571,7 @@ export function AddPartDialog({
                       value={wizardSearchQuery}
                       onChange={(e) => setWizardSearchQuery(e.target.value)}
                       placeholder={wizardSearchPlaceholder}
-                      className="w-full pl-9"
+                      className="h-8 w-full rounded-lg pl-9 text-xs sm:h-10 sm:text-sm"
                     />
                   </div>
                   <Button
@@ -590,7 +590,7 @@ export function AddPartDialog({
                       })
                     }
                     disabled={!selectedCatalogId}
-                    className="w-auto shrink-0"
+                    className="h-8 shrink-0 rounded-lg px-2 py-1.5 text-xs sm:h-10 sm:px-3 sm:py-2 sm:text-sm"
                   >
                     Create Part
                   </Button>
