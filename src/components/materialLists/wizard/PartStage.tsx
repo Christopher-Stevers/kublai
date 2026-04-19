@@ -154,7 +154,7 @@ function PartCard({ part, isPending, pendingQuantity = 0, onPartSelect, onEditPa
             )}
           </div>
 
-          <div className="absolute inset-x-0 bottom-0 px-2 py-1.5 pr-10 text-black">
+          <div className="absolute inset-x-0 bottom-0 px-2 py-1.5 text-black">
             <h4 className="line-clamp-2 text-xs font-medium leading-tight sm:text-sm">
               {part.displayName}
             </h4>
