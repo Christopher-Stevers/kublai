@@ -138,7 +138,6 @@ export function EditPartDialog({
   const sizeUnits = allUnits?.filter((u) => u.kind === "length") ?? [];
   const defaultUoms = allUnits?.filter((u) => u.kind === "count") ?? [];
 
-  // Check if part has suppliers
   const hasSuppliers =
     partId && supplierInfo?.[partId]?.availableSuppliers
       ? (supplierInfo[partId]?.availableSuppliers?.length ?? 0) > 0
@@ -146,7 +145,6 @@ export function EditPartDialog({
 
   const handleSave = () => {
     if (!partId || !displayName.trim()) return;
-    if (!hasSuppliers) return; // Prevent saving if no suppliers
 
     // Parse size nominal
     let parsedSizeNominal: number | null = null;
@@ -206,7 +204,7 @@ export function EditPartDialog({
         <div className="space-y-4 py-4">
           <div>
             <label htmlFor="displayName" className="text-sm font-medium">
-              Display Name *
+              Part Name *
             </label>
             <Input
               id="displayName"
@@ -375,7 +373,7 @@ export function EditPartDialog({
           {partId && (
             <div>
               <label className="text-sm font-medium">
-                Suppliers {!hasSuppliers && <span className="text-red-500">*</span>}
+                Suppliers
               </label>
               <div className="mt-1" onClick={(e) => e.stopPropagation()}>
                 <PartSuppliersDropdown
@@ -389,8 +387,8 @@ export function EditPartDialog({
                 />
               </div>
               {!hasSuppliers ? (
-                <p className="mt-1 text-xs text-amber-600">
-                  At least one supplier is required to save changes to this part
+                <p className="mt-1 text-xs text-gray-500">
+                  This part does not have any suppliers yet
                 </p>
               ) : (
                 <p className="mt-1 text-xs text-gray-500">
@@ -407,16 +405,7 @@ export function EditPartDialog({
           </Button>
           <Button
             onClick={handleSave}
-            disabled={
-              !displayName.trim() ||
-              !hasSuppliers ||
-              updatePart.isPending
-            }
-            title={
-              !hasSuppliers
-                ? "At least one supplier is required to save changes"
-                : undefined
-            }
+            disabled={!displayName.trim() || updatePart.isPending}
           >
             {updatePart.isPending ? "Saving..." : "Save Changes"}
           </Button>

@@ -177,7 +177,7 @@ export function CreateCustomPartDialog({
             <div className="space-y-4 py-4">
               <div>
                 <Label htmlFor="displayName">
-                  Display Name <span className="text-red-500">*</span>
+                  Part Name <span className="text-red-500">*</span>
                 </Label>
                 <Input
                   id="displayName"
@@ -193,9 +193,7 @@ export function CreateCustomPartDialog({
               {/* Supplier Section */}
 
               <div>
-                <Label htmlFor="supplier">
-                  Supplier <span className="text-red-500">*</span>
-                </Label>
+                <Label htmlFor="supplier">Supplier</Label>
                 <div className="mt-1 flex gap-2">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -214,6 +212,9 @@ export function CreateCustomPartDialog({
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent>
+                      <DropdownMenuItem onClick={() => setSupplierId(null)}>
+                        None
+                      </DropdownMenuItem>
                       {suppliers?.map((supplier) => (
                         <DropdownMenuItem
                           key={supplier.id}
@@ -234,11 +235,6 @@ export function CreateCustomPartDialog({
                     New
                   </Button>
                 </div>
-                {!supplierId && (
-                  <p className="mt-1 text-xs text-amber-600">
-                    Supplier is required to create a custom part
-                  </p>
-                )}
               </div>
 
               <div>
@@ -267,7 +263,7 @@ export function CreateCustomPartDialog({
               </Button>
               <Button
                 type="submit"
-                disabled={isLoading || !displayName.trim() || !supplierId}
+                disabled={isLoading || !displayName.trim()}
               >
                 {isLoading ? "Creating..." : "Create Part"}
               </Button>
