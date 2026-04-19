@@ -51,6 +51,11 @@ export const createTRPCContext = async (opts: { headers: Headers }) => {
  * ZodErrors so that you get typesafety on the frontend if your procedure fails due to validation
  * errors on the backend.
  */
+const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
+const allowDevDashboardAccess =
+  process.env.NODE_ENV !== "production" ||
+  (typeof publishableKey === "string" && publishableKey.startsWith("pk_test_"));
+
 const t = initTRPC.context<typeof createTRPCContext>().create({
   transformer: superjson,
   errorFormatter({ shape, error }) {
@@ -198,8 +203,7 @@ export const hasDashboardAccess = t.procedure
       });
     }
 
-    // Admins always have access
-    if (ctx.user.role === "admin") {
+    if (ctx.user.role === "admin" || allowDevDashboardAccess) {
       return next({
         ctx: {
           userId: ctx.userId,
@@ -208,14 +212,12 @@ export const hasDashboardAccess = t.procedure
       });
     }
 
-    // Check for active subscription
     const hasActiveSubscription =
       ctx.user.stripeSubscriptionId &&
       ctx.user.subscriptionStatus === "active" &&
       (!ctx.user.subscriptionEndsAt ||
         new Date(ctx.user.subscriptionEndsAt) > new Date());
 
-    // Check for one-time access
     const hasOneTimeAccess = ctx.user.hasOneTimeAccess === true;
 
     if (!hasActiveSubscription && !hasOneTimeAccess) {

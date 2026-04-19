@@ -5,6 +5,11 @@ import { Header } from "../_components/Header";
 import { ensureUser } from "~/server/utils/ensure-user";
 import { waitForUser } from "~/server/utils/wait-for-user";
 
+const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
+const allowDevDashboardAccess =
+  process.env.NODE_ENV !== "production" ||
+  (typeof publishableKey === "string" && publishableKey.startsWith("pk_test_"));
+
 export default async function DashboardLayout({
   children,
 }: {
@@ -38,16 +43,14 @@ export default async function DashboardLayout({
     redirect("/onboarding");
   }
 
-  // Admins always have access
-  if (user.role !== "admin") {
-    // Check for active subscription
+  // In dev/test Clerk environments, skip the pricing gate so sign-in links can reach the app.
+  if (!allowDevDashboardAccess && user.role !== "admin") {
     const hasActiveSubscription =
       user.stripeSubscriptionId &&
       user.subscriptionStatus === "active" &&
       (!user.subscriptionEndsAt ||
         new Date(user.subscriptionEndsAt) > new Date());
 
-    // Check for one-time access
     const hasOneTimeAccess = user.hasOneTimeAccess === true;
 
     if (!hasActiveSubscription && !hasOneTimeAccess) {
