@@ -1,4 +1,4 @@
-export type WizardStage = "material" | "size" | "partTypeCategory" | "part" | "review";
+export type WizardStage = "catalog" | "material" | "size" | "partTypeCategory" | "part" | "review";
 
 export interface PendingPart {
   partId: string;

@@ -6,6 +6,7 @@ import { existsSync, writeFileSync, unlinkSync } from "fs";
 import { join } from "path";
 import {
   categories,
+  catalogs,
   locations,
   organizations,
   partDefinitions,
@@ -541,7 +542,40 @@ async function main() {
         console.log(`   ✓ Organization "${orgName}" already exists`);
       }
 
-      // Step 6: Create categories (parents first, then children, linked to organization)
+      // Step 6: Create default catalog and categories
+      console.log("\n📚 Creating default catalog...");
+      const [createdDefaultCatalog] = await db
+        .insert(catalogs)
+        .values({
+          name: "Default Catalog",
+          organizationId: organizationId,
+          sortOrder: 0,
+        })
+        .onConflictDoNothing()
+        .returning({ id: catalogs.id });
+
+      let defaultCatalogId: string;
+      if (createdDefaultCatalog) {
+        defaultCatalogId = createdDefaultCatalog.id;
+        console.log('   ✓ Created catalog "Default Catalog"');
+      } else {
+        const [existingDefaultCatalog] = await db
+          .select()
+          .from(catalogs)
+          .where(
+            and(
+              eq(catalogs.name, "Default Catalog"),
+              eq(catalogs.organizationId, organizationId),
+            ),
+          )
+          .limit(1);
+        if (!existingDefaultCatalog) {
+          throw new Error('Failed to create/find catalog "Default Catalog"');
+        }
+        defaultCatalogId = existingDefaultCatalog.id;
+        console.log('   ✓ Catalog "Default Catalog" already exists');
+      }
+
       console.log("\n📁 Creating categories...");
       const categoryMap = new Map<string, string>();
 
@@ -552,7 +586,6 @@ async function main() {
           .values({
             name: parentCat.name,
             organizationId: organizationId,
-            parentId: null,
             sortOrder: 0,
           })
           .onConflictDoNothing()
@@ -570,7 +603,6 @@ async function main() {
               and(
                 eq(categories.name, parentCat.name),
                 eq(categories.organizationId, organizationId),
-                isNull(categories.parentId),
               ),
             )
             .limit(1);
@@ -590,7 +622,6 @@ async function main() {
             .values({
               name: childCat.name,
               organizationId: organizationId,
-              parentId: parentId,
               sortOrder: childCat.sortOrder,
             })
             .onConflictDoNothing()
@@ -610,7 +641,6 @@ async function main() {
                 and(
                   eq(categories.name, childCat.name),
                   eq(categories.organizationId, organizationId),
-                  eq(categories.parentId, parentId),
                 ),
               )
               .limit(1);
@@ -899,6 +929,7 @@ async function main() {
           .insert(partDefinitions)
           .values({
             organizationId: organizationId,
+            catalogId: defaultCatalogId,
             categoryId: categoryId,
             displayName: partData.displayName,
             description: partData.description,
@@ -1216,16 +1247,13 @@ async function main() {
       } else {
         // Job already exists, fetch it
         const [existing] = await db
-          .select({ id: jobs.id })
+          .select()
           .from(jobs)
           .where(
-            and(
-              eq(jobs.organizationId, organizationId),
-              eq(jobs.name, "Sample Plumbing Job"),
-            ),
+            sql`${jobs.organizationId} = ${organizationId} and ${jobs.name} = ${"Sample Plumbing Job"}`,
           )
           .limit(1);
-        if (existing) {
+        if (existing?.id) {
           jobId = existing.id;
           console.log(`   ✓ Sample job already exists`);
         }
@@ -1245,12 +1273,14 @@ async function main() {
           .returning();
 
         if (sampleMaterialList) {
+          const sampleMaterialListId = sampleMaterialList.id;
+
           // Create sample quote for material list
           const [sampleQuote] = await db
             .insert(quotes)
             .values({
               organizationId: organizationId,
-              materialListId: sampleMaterialList.id,
+              materialListId: sampleMaterialListId,
               jobId: jobId,
               subtotalMaterials: "0",
               total: "0",
@@ -1262,7 +1292,7 @@ async function main() {
             await db
               .update(materialLists)
               .set({ quoteId: sampleQuote.id })
-              .where(eq(materialLists.id, sampleMaterialList.id));
+              .where(sql`${materialLists.id} = ${sampleMaterialListId}`);
 
             console.log(`   ✓ Created sample material list and quote`);
           }

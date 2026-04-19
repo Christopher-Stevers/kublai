@@ -479,6 +479,44 @@ export const partTypesRelations = relations(partTypes, ({ one, many }) => ({
 }));
 
 // ============================
+// CATALOGS
+// org-specific
+// ============================
+
+export const catalogs = createTable(
+  "catalog",
+  (d) => ({
+    id: d
+      .uuid()
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    organizationId: d
+      .uuid()
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    name: d.varchar({ length: 255 }).notNull(),
+    sortOrder: d.integer().notNull().default(0),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  }),
+  (t) => [
+    unique("catalog_org_name_uniq").on(t.organizationId, t.name),
+    index("catalog_org_idx").on(t.organizationId),
+  ],
+);
+
+export const catalogsRelations = relations(catalogs, ({ one, many }) => ({
+  organization: one(organizations, {
+    fields: [catalogs.organizationId],
+    references: [organizations.id],
+  }),
+  partDefinitions: many(partDefinitions),
+}));
+
+// ============================
 // CATEGORIES (tree)
 // org-specific
 // ============================
@@ -533,6 +571,10 @@ export const partDefinitions = createTable(
       .uuid()
       .notNull()
       .references(() => organizations.id, { onDelete: "cascade" }),
+    catalogId: d
+      .uuid()
+      .notNull()
+      .references(() => catalogs.id, { onDelete: "restrict" }),
     categoryId: d
       .uuid()
       .references(() => categories.id, { onDelete: "set null" }),
@@ -564,6 +606,7 @@ export const partDefinitions = createTable(
   }),
   (t) => [
     index("part_def_org_idx").on(t.organizationId),
+    index("part_def_catalog_idx").on(t.catalogId),
     index("part_def_category_idx").on(t.categoryId),
     index("part_def_facets_idx").on(t.partTypeId, t.materialId, t.sizeId),
     index("part_def_material_idx").on(t.materialId),
@@ -578,6 +621,10 @@ export const partDefinitionsRelations = relations(
     organization: one(organizations, {
       fields: [partDefinitions.organizationId],
       references: [organizations.id],
+    }),
+    catalog: one(catalogs, {
+      fields: [partDefinitions.catalogId],
+      references: [catalogs.id],
     }),
     category: one(categories, {
       fields: [partDefinitions.categoryId],

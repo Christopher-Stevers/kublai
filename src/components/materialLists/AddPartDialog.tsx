@@ -17,6 +17,7 @@ import { WizardProgressIndicator } from "./WizardProgressIndicator";
 import { CreateCustomPartDialog } from "./CreateCustomPartDialog";
 import { EditPartDialog } from "~/components/catalogue/EditPartDialog";
 import type { WizardStage, PendingPart } from "./wizard/types";
+import { CatalogStage } from "./wizard/CatalogStage";
 import { MaterialStage } from "./wizard/MaterialStage";
 import { SizeStage } from "./wizard/SizeStage";
 import { PartTypeCategoryStage } from "./wizard/PartTypeCategoryStage";
@@ -35,7 +36,8 @@ export function AddPartDialog({
   materialListId,
 }: AddPartDialogProps) {
   // Wizard state
-  const [wizardStage, setWizardStage] = useState<WizardStage>("material");
+  const [wizardStage, setWizardStage] = useState<WizardStage>("catalog");
+  const [selectedCatalogId, setSelectedCatalogId] = useState<string | null>(null);
   const [selectedMaterialId, setSelectedMaterialId] = useState<string | null>(
     null,
   );
@@ -57,9 +59,13 @@ export function AddPartDialog({
     materialId?: string | null;
     size?: { nominal: number; unit: string } | null;
     partTypeId?: string | null;
+    catalogId?: string | null;
+    categoryId?: string | null;
     categoryName?: string | null;
   } | null>(null);
 
+  const [showCustomCatalogInput, setShowCustomCatalogInput] = useState(false);
+  const [customCatalogName, setCustomCatalogName] = useState("");
   const [showCustomMaterialInput, setShowCustomMaterialInput] = useState(false);
   const [customMaterialName, setCustomMaterialName] = useState("");
   const [customSizeUnitId, setCustomSizeUnitId] = useState<string | null>(null);
@@ -67,13 +73,15 @@ export function AddPartDialog({
   const [customPartTypeName, setCustomPartTypeName] = useState("");
 
   // Fetch data
+  const { data: catalogs } = api.catalogue.getCatalogs.useQuery();
   const { data: materials } = api.catalogue.getMaterials.useQuery();
   
   // Fetch categories with filtered counts when on category stage
   const { data: partTypeCategories } =
     api.catalogue.getPartTypeCategories.useQuery(
-      wizardStage === "partTypeCategory" && selectedMaterialId && selectedSize
+      wizardStage === "partTypeCategory" && selectedCatalogId && selectedMaterialId && selectedSize
         ? {
+            catalogId: selectedCatalogId,
             materialId: selectedMaterialId,
             sizeNominal: selectedSize.nominal,
             sizeUnit: selectedSize.unit,
@@ -104,6 +112,7 @@ export function AddPartDialog({
   // Fetch parts matching current material, size, and part type category
   const { data: partsForSelection } = api.catalogue.searchParts.useQuery(
     {
+      catalogId: selectedCatalogId ?? undefined,
       materialId: selectedMaterialId ?? undefined,
       sizeNominal: selectedSize?.nominal,
       sizeUnit: selectedSize?.unit,
@@ -112,6 +121,7 @@ export function AddPartDialog({
     {
       enabled:
         wizardStage === "part" &&
+        !!selectedCatalogId &&
         !!selectedMaterialId &&
         !!selectedSize &&
         !!selectedPartTypeCategory,
@@ -120,9 +130,16 @@ export function AddPartDialog({
 
   // Fetch all parts (no filters) when on material stage - for counting parts per material
   const { data: allPartsForMaterialCount } = api.catalogue.searchParts.useQuery(
-    {},
-    { enabled: wizardStage === "material" },
+    { catalogId: selectedCatalogId ?? undefined },
+    { enabled: wizardStage === "material" && !!selectedCatalogId },
   );
+
+  const catalogsWithCounts = useMemo(() => {
+    return (catalogs ?? []).map((catalog) => ({
+      ...catalog,
+      count: catalog.partCount ?? 0,
+    }));
+  }, [catalogs]);
 
   // Calculate counts per material from all parts (no filters)
   const materialCounts = useMemo(() => {
@@ -154,6 +171,7 @@ export function AddPartDialog({
     }));
   }, [partTypeCategories]);
 
+  const utils = api.useUtils();
 
   // Mutations for creating custom items
   const createMaterial = api.catalogue.createMaterial.useMutation({
@@ -164,6 +182,18 @@ export function AddPartDialog({
         setShowCustomMaterialInput(false);
         setWizardStage("size");
         void utils.catalogue.getMaterials.invalidate();
+      }
+    },
+  });
+
+  const createCatalog = api.catalogue.createCatalog.useMutation({
+    onSuccess: (newCatalog) => {
+      if (newCatalog) {
+        setSelectedCatalogId(newCatalog.id);
+        setCustomCatalogName("");
+        setShowCustomCatalogInput(false);
+        setWizardStage("material");
+        void utils.catalogue.getCatalogs.invalidate();
       }
     },
   });
@@ -214,19 +244,19 @@ export function AddPartDialog({
   // Filtered by selected material to show accurate counts
   const { data: availableSizesFromQuery } =
     api.catalogue.getAvailableSizes.useQuery(
-      { materialId: selectedMaterialId ?? undefined },
-      { enabled: wizardStage === "size" && !!selectedMaterialId },
+      { catalogId: selectedCatalogId ?? undefined, materialId: selectedMaterialId ?? undefined },
+      { enabled: wizardStage === "size" && !!selectedCatalogId && !!selectedMaterialId },
     );
 
   // Fetch parts for size selection (filtered by material) - for counting parts per size
   const { data: partsForSize } = api.catalogue.searchParts.useQuery(
     {
+      catalogId: selectedCatalogId ?? undefined,
       materialId: selectedMaterialId ?? undefined,
     },
-    { enabled: wizardStage === "size" && !!selectedMaterialId },
+    { enabled: wizardStage === "size" && !!selectedCatalogId && !!selectedMaterialId },
   );
 
-  const utils = api.useUtils();
   const addItem = api.materialList.addItemToMaterialList.useMutation({
     onMutate: async (variables) => {
       // Cancel outgoing refetches
@@ -568,15 +598,20 @@ export function AddPartDialog({
     setCustomPartContext(
       context
         ? {
+            catalogId: selectedCatalogId,
             materialId: context.materialId,
             size: context.size,
             partTypeId: context.partTypeId,
+            categoryId: context.category?.categoryId ?? null,
             categoryName: context.category?.name ?? null,
           }
         : null,
     );
     setIsCreateCustomPartDialogOpen(true);
   };
+
+  const selectedCatalogName =
+    catalogs?.find((catalog) => catalog.id === selectedCatalogId)?.name ?? null;
 
   const handleUpdateQuantity = (partId: string, delta: number) => {
     setPendingParts((prev) =>
@@ -700,6 +735,9 @@ export function AddPartDialog({
           <div className="shrink-0 border-b px-2 sm:px-4 md:px-6">
             <WizardProgressIndicator
               currentStage={wizardStage}
+              selectedCatalog={
+                catalogs?.find((c) => c.id === selectedCatalogId)?.name ?? null
+              }
               selectedMaterial={
                 materials?.find((m) => m.id === selectedMaterialId)?.name ??
                 null
@@ -707,18 +745,22 @@ export function AddPartDialog({
               selectedSize={selectedSize}
               selectedPartTypeCategory={selectedPartTypeCategory}
               onStageClick={(stage) => {
-                if (stage === "material") {
+                if (stage === "catalog") {
+                  setWizardStage("catalog");
+                } else if (stage === "material" && selectedCatalogId) {
                   setWizardStage("material");
-                } else if (stage === "size" && selectedMaterialId) {
+                } else if (stage === "size" && selectedCatalogId && selectedMaterialId) {
                   setWizardStage("size");
                 } else if (
                   stage === "partTypeCategory" &&
+                  selectedCatalogId &&
                   selectedMaterialId &&
                   selectedSize
                 ) {
                   setWizardStage("partTypeCategory");
                 } else if (
                   stage === "part" &&
+                  selectedCatalogId &&
                   selectedMaterialId &&
                   selectedSize &&
                   selectedPartTypeCategory
@@ -730,6 +772,25 @@ export function AddPartDialog({
           </div>
 
           <div className="flex-1 space-y-3 overflow-y-auto px-2 pt-3 pb-3 sm:space-y-4 sm:px-4 sm:pt-4 sm:pb-4 md:px-6">
+            {wizardStage === "catalog" && (
+              <CatalogStage
+                catalogs={catalogsWithCounts}
+                selectedCatalogId={selectedCatalogId}
+                onCatalogSelect={(catalogId) => {
+                  setSelectedCatalogId(catalogId);
+                  setSelectedMaterialId(null);
+                  setSelectedSize(null);
+                  setSelectedPartTypeCategory(null);
+                  setPendingParts([]);
+                  setWizardStage("material");
+                }}
+                showCustomCatalogInput={showCustomCatalogInput}
+                onShowCustomCatalogInput={setShowCustomCatalogInput}
+                customCatalogName={customCatalogName}
+                onCustomCatalogNameChange={setCustomCatalogName}
+                onCreateCatalog={createCatalog}
+              />
+            )}
             {wizardStage === "material" && (
               <MaterialStage
                 materials={materialsWithCounts}
@@ -879,7 +940,7 @@ export function AddPartDialog({
                 variant="outline"
                 onClick={() => {
                   if (wizardStage === "size") {
-                    setWizardStage("material");
+                    setWizardStage("catalog");
                   } else if (wizardStage === "partTypeCategory") {
                     setWizardStage("size");
                   } else if (wizardStage === "part") {
@@ -890,7 +951,7 @@ export function AddPartDialog({
                     onOpenChange(false);
                   }
                 }}
-                disabled={wizardStage === "material"}
+                disabled={wizardStage === "catalog"}
                 className="w-full text-xs sm:w-auto sm:text-sm"
               >
                 <ChevronLeft className="mr-2 h-4 w-4" />

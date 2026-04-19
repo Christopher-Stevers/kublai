@@ -15,6 +15,7 @@ import {
 import { createTRPCRouter, hasDashboardAccess } from "~/server/api/trpc";
 import {
   categories,
+  catalogs,
   partDefinitions,
   partAttributes,
   partSynonyms,
@@ -109,7 +110,93 @@ type CategoryNode = {
   partCount?: number;
 };
 
+type CatalogNode = {
+  id: string;
+  name: string;
+  sortOrder: number;
+  organizationId: string;
+  partCount?: number;
+};
+
 export const catalogueRouter = createTRPCRouter({
+  getCatalogs: hasDashboardAccess.query(async ({ ctx }) => {
+    const organizationId = ctx.user.organizationId;
+
+    if (!organizationId) {
+      return [];
+    }
+
+    const allCatalogs = await ctx.db
+      .select({
+        id: catalogs.id,
+        name: catalogs.name,
+        sortOrder: catalogs.sortOrder,
+        organizationId: catalogs.organizationId,
+      })
+      .from(catalogs)
+      .where(eq(catalogs.organizationId, organizationId));
+
+    const partCounts = await ctx.db
+      .select({
+        catalogId: partDefinitions.catalogId,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(partDefinitions)
+      .where(
+        and(
+          eq(partDefinitions.isActive, true),
+          eq(partDefinitions.organizationId, organizationId),
+        ),
+      )
+      .groupBy(partDefinitions.catalogId);
+
+    const countMap = new Map<string, number>();
+    for (const pc of partCounts) {
+      if (pc.catalogId) {
+        countMap.set(pc.catalogId, pc.count);
+      }
+    }
+
+    const catalogsWithCounts: CatalogNode[] = allCatalogs
+      .map((catalog) => ({
+        ...catalog,
+        partCount: countMap.get(catalog.id) ?? 0,
+      }))
+      .sort((a, b) => {
+        if (a.sortOrder !== b.sortOrder) {
+          return a.sortOrder - b.sortOrder;
+        }
+        return a.name.localeCompare(b.name);
+      });
+
+    return catalogsWithCounts;
+  }),
+
+  createCatalog: hasDashboardAccess
+    .input(z.object({ name: z.string().min(1).max(255) }))
+    .mutation(async ({ ctx, input }) => {
+      const organizationId = ctx.user.organizationId;
+
+      if (!organizationId) {
+        throw new Error("User must belong to an organization");
+      }
+
+      const [maxSortOrder] = await ctx.db
+        .select({ maxSortOrder: sql<number>`coalesce(max(${catalogs.sortOrder}), -1)` })
+        .from(catalogs)
+        .where(eq(catalogs.organizationId, organizationId));
+
+      const [newCatalog] = await ctx.db
+        .insert(catalogs)
+        .values({
+          organizationId,
+          name: input.name.trim(),
+          sortOrder: (maxSortOrder?.maxSortOrder ?? -1) + 1,
+        })
+        .returning();
+
+      return newCatalog;
+    }),
   /**
    * Get all categories for the user's organization (flat list, all are root categories)
    */
@@ -175,6 +262,7 @@ export const catalogueRouter = createTRPCRouter({
   getPartsByCategory: hasDashboardAccess
     .input(
       z.object({
+        catalogId: z.string().uuid().optional(),
         categoryId: z.string().uuid().nullable(),
       }),
     )
@@ -190,6 +278,10 @@ export const catalogueRouter = createTRPCRouter({
         eq(partDefinitions.isActive, true),
         eq(partDefinitions.organizationId, organizationId),
       ];
+
+      if (input.catalogId) {
+        conditions.push(eq(partDefinitions.catalogId, input.catalogId));
+      }
 
       // If categoryId is provided, filter by it; otherwise show all parts
       if (input.categoryId) {
@@ -209,6 +301,7 @@ export const catalogueRouter = createTRPCRouter({
           partTypeName: partTypes.name,
           sizeNominal: sizes.nominal,
           sizeUnitId: sizes.unitId,
+          catalogId: partDefinitions.catalogId,
           categoryId: partDefinitions.categoryId,
           organizationId: partDefinitions.organizationId,
           sizeUnitCode: units.code,
@@ -241,6 +334,7 @@ export const catalogueRouter = createTRPCRouter({
             : null,
         sizeNominal: part.sizeNominal,
         sizeUnit: part.sizeUnitCode,
+        catalogId: part.catalogId,
         categoryId: part.categoryId,
         isOrgSpecific: part.organizationId === organizationId,
       }));
@@ -255,6 +349,7 @@ export const catalogueRouter = createTRPCRouter({
       z.object({
         // Text search (optional)
         query: z.string().optional(),
+        catalogId: z.string().uuid().optional(),
         // Category filter (works with search or alone)
         categoryId: z.string().uuid().nullable().optional(),
         // Normalized filters
@@ -283,6 +378,10 @@ export const catalogueRouter = createTRPCRouter({
         eq(partDefinitions.isActive, true),
         eq(partDefinitions.organizationId, organizationId),
       ];
+
+      if (input.catalogId) {
+        conditions.push(eq(partDefinitions.catalogId, input.catalogId));
+      }
 
       // Category filter (direct category match, no subcategories)
       if (input.categoryId !== undefined && input.categoryId !== null) {
@@ -437,6 +536,7 @@ export const catalogueRouter = createTRPCRouter({
           partTypeName: partTypes.name,
           sizeNominal: sizes.nominal,
           sizeUnitId: sizes.unitId,
+          catalogId: partDefinitions.catalogId,
           categoryId: partDefinitions.categoryId,
           organizationId: partDefinitions.organizationId,
           sizeUnitCode: units.code,
@@ -478,6 +578,7 @@ export const catalogueRouter = createTRPCRouter({
             : null,
         sizeNominal: part.sizeNominal,
         sizeUnit: part.sizeUnitCode,
+        catalogId: part.catalogId,
         categoryId: part.categoryId,
         isOrgSpecific: part.organizationId === organizationId,
       }));
@@ -573,6 +674,7 @@ export const catalogueRouter = createTRPCRouter({
     .input(
       z
         .object({
+          catalogId: z.string().uuid().optional(),
           materialId: z.string().uuid().optional(),
           sizeNominal: z.number().optional(),
           sizeUnit: z.string().optional(),
@@ -601,6 +703,10 @@ export const catalogueRouter = createTRPCRouter({
         eq(partDefinitions.isActive, true),
         eq(partDefinitions.organizationId, organizationId),
       ];
+
+      if (input?.catalogId) {
+        baseConditions.push(eq(partDefinitions.catalogId, input.catalogId));
+      }
 
       // Add material filter if provided
       if (input?.materialId) {
@@ -927,6 +1033,7 @@ export const catalogueRouter = createTRPCRouter({
   getAvailableSizes: hasDashboardAccess
     .input(
       z.object({
+        catalogId: z.string().uuid().optional(),
         materialId: z.string().uuid().optional(),
       }),
     )
@@ -943,6 +1050,10 @@ export const catalogueRouter = createTRPCRouter({
         eq(partDefinitions.isActive, true),
         eq(partDefinitions.organizationId, organizationId),
       ];
+
+      if (input.catalogId) {
+        sizeConditions.push(eq(partDefinitions.catalogId, input.catalogId));
+      }
 
       if (input.materialId) {
         sizeConditions.push(eq(partDefinitions.materialId, input.materialId));
@@ -1075,6 +1186,7 @@ export const catalogueRouter = createTRPCRouter({
           displayName: partDefinitions.displayName,
           description: partDefinitions.description,
           imageUrl: partDefinitions.imageUrl,
+          catalogId: partDefinitions.catalogId,
           categoryId: partDefinitions.categoryId,
           partTypeId: partDefinitions.partTypeId,
           partTypeName: partTypes.name,
@@ -1127,6 +1239,7 @@ export const catalogueRouter = createTRPCRouter({
         displayName: part.displayName,
         description: part.description,
         imageUrl: part.imageUrl,
+        catalogId: part.catalogId,
         categoryId: part.categoryId,
         partType: part.partTypeName,
         material: part.materialName,
@@ -1156,6 +1269,7 @@ export const catalogueRouter = createTRPCRouter({
         displayName: z.string().min(1).max(255).optional(),
         description: z.string().optional().nullable(),
         imageUrl: z.string().optional().nullable(),
+        catalogId: z.string().uuid().optional(),
         categoryId: z.string().uuid().optional().nullable(),
         partTypeId: z.string().uuid().optional().nullable(),
         materialId: z.string().uuid().optional().nullable(),
@@ -1255,6 +1369,7 @@ export const catalogueRouter = createTRPCRouter({
           .insert(partDefinitions)
           .values({
             organizationId: organizationId,
+            catalogId: input.catalogId ?? originalPart.catalogId,
             categoryId: input.categoryId ?? originalPart.categoryId,
             displayName: input.displayName ?? originalPart.displayName,
             description: input.description ?? originalPart.description,
@@ -1277,6 +1392,8 @@ export const catalogueRouter = createTRPCRouter({
       if (input.description !== undefined)
         updateData.description = input.description;
       if (input.imageUrl !== undefined) updateData.imageUrl = input.imageUrl;
+      if (input.catalogId !== undefined)
+        updateData.catalogId = input.catalogId;
       if (input.categoryId !== undefined)
         updateData.categoryId = input.categoryId;
       if (input.partTypeId !== undefined)
@@ -1440,6 +1557,8 @@ export const catalogueRouter = createTRPCRouter({
           .optional()
           .nullable()
           .transform((val) => (val === "" ? null : val)),
+        catalogId: z.string().uuid(),
+        categoryId: z.string().uuid().optional().nullable(),
         categoryName: z.string().optional().nullable(),
         partTypeId: z.string().uuid().optional().nullable(),
         materialId: z.string().uuid().optional().nullable(),
@@ -1460,49 +1579,57 @@ export const catalogueRouter = createTRPCRouter({
         throw new Error("User must belong to an organization");
       }
 
-      // Get or create "Other" category if no category provided
-      let categoryName = input.categoryName;
-      if (!categoryName) {
-        // Check if "Other" category exists for this organization
-        const [existing] = await ctx.db
+      const [catalog] = await ctx.db
+        .select()
+        .from(catalogs)
+        .where(
+          and(
+            eq(catalogs.id, input.catalogId),
+            eq(catalogs.organizationId, organizationId),
+          ),
+        )
+        .limit(1);
+
+      if (!catalog) {
+        throw new Error("Catalog not found");
+      }
+
+      let categoryId: string | null = input.categoryId ?? null;
+      if (!categoryId) {
+        let categoryName = input.categoryName;
+        if (!categoryName) {
+          categoryName = "Other";
+        }
+
+        const [existingCategory] = await ctx.db
           .select()
           .from(categories)
           .where(
             and(
-              eq(categories.name, "Other"),
+              eq(categories.name, categoryName),
               eq(categories.organizationId, organizationId),
             ),
           )
           .limit(1);
 
-        if (existing) {
-          categoryName = existing.id;
+        if (existingCategory) {
+          categoryId = existingCategory.id;
         } else {
-          // Create "Other" category
           const [newCategory] = await ctx.db
             .insert(categories)
             .values({
-              name: "Other",
+              name: categoryName,
               organizationId: organizationId,
-              sortOrder: 9999, // Put it at the end
+              sortOrder: categoryName === "Other" ? 9999 : 0,
             })
             .returning();
-          categoryName = newCategory.id;
+          categoryId = newCategory?.id ?? null;
         }
       }
 
-      // Create part definition
-      const [category] = await ctx.db
-        .select()
-        .from(categories)
-        .where(eq(categories.name, categoryName))
-        .limit(1);
-
-      if (!category) {
+      if (!categoryId) {
         throw new Error("Category not found");
       }
-      console.log(category.id, "category id");
-      console.log(categoryName, "category id");
 
       // Find or create size record
       const sizeId = await findOrCreateSize(
@@ -1520,13 +1647,14 @@ export const catalogueRouter = createTRPCRouter({
         .insert(partDefinitions)
         .values({
           organizationId: organizationId,
+          catalogId: catalog.id,
           displayName: input.displayName,
           description: input.description ?? null,
           imageUrl:
             input.imageUrl && input.imageUrl.trim() !== ""
               ? input.imageUrl
               : null,
-          categoryId: category.id,
+          categoryId: categoryId,
           partTypeId: input.partTypeId ?? null,
           materialId: input.materialId ?? null,
           sizeId: sizeId,
@@ -1585,6 +1713,7 @@ export const catalogueRouter = createTRPCRouter({
           displayName: partDefinitions.displayName,
           description: partDefinitions.description,
           imageUrl: partDefinitions.imageUrl,
+          catalogId: partDefinitions.catalogId,
           categoryId: partDefinitions.categoryId,
           partTypeId: partDefinitions.partTypeId,
           partTypeName: partTypes.name,
@@ -1630,6 +1759,7 @@ export const catalogueRouter = createTRPCRouter({
         displayName: part.displayName,
         description: part.description,
         imageUrl: part.imageUrl,
+        catalogId: part.catalogId,
         categoryId: part.categoryId,
         partType: part.partTypeName,
         material: part.materialName,

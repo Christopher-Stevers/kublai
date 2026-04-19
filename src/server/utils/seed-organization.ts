@@ -2,6 +2,7 @@ import { and, eq } from "drizzle-orm";
 import type { db } from "~/server/db";
 import {
   categories,
+  catalogs,
   materials,
   partDefinitions,
   partSynonyms,
@@ -409,7 +410,33 @@ export async function seedOrganization(
     }
   }
 
-  // Step 2: Create root categories only (no child categories)
+  // Step 2: Create default catalog and root categories only (no child categories)
+  let defaultCatalogId: string | null = null;
+  const [existingDefaultCatalog] = await db
+    .select({ id: catalogs.id })
+    .from(catalogs)
+    .where(
+      and(
+        eq(catalogs.name, "Default Catalog"),
+        eq(catalogs.organizationId, organizationId),
+      ),
+    )
+    .limit(1);
+
+  if (existingDefaultCatalog) {
+    defaultCatalogId = existingDefaultCatalog.id;
+  } else {
+    const [catalog] = await db
+      .insert(catalogs)
+      .values({
+        organizationId,
+        name: "Default Catalog",
+        sortOrder: 0,
+      })
+      .returning({ id: catalogs.id });
+    defaultCatalogId = catalog?.id ?? null;
+  }
+
   const categoryMap = new Map<string, string>();
 
   for (const categoryName of rootCategories) {
@@ -685,6 +712,7 @@ export async function seedOrganization(
       .insert(partDefinitions)
       .values({
         organizationId: organizationId,
+        catalogId: defaultCatalogId!,
         categoryId: categoryId,
         displayName: partData.displayName,
         description: partData.description,

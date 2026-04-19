@@ -35,9 +35,11 @@ interface CreateCustomPartDialogProps {
     supplierPartId?: string;
   }) => void;
   initialContext?: {
+    catalogId?: string | null;
     materialId?: string | null;
     size?: { nominal: number; unit: string } | null;
     partTypeId?: string | null;
+    categoryId?: string | null;
     categoryName?: string | null;
   };
 }
@@ -140,6 +142,8 @@ export function CreateCustomPartDialog({
     createPart.mutate({
       displayName: displayName.trim(),
       imageUrl: undefined,
+      catalogId: initialContext?.catalogId ?? "",
+      categoryId: initialContext?.categoryId ?? undefined,
       categoryName: initialContext?.categoryName ?? undefined,
       partTypeId: initialContext?.partTypeId ?? undefined,
       materialId: initialContext?.materialId ?? undefined,
