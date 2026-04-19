@@ -4,6 +4,21 @@ import { useEffect, useMemo, useState } from "react";
 import { api } from "~/trpc/react";
 import type { WizardStage } from "./types";
 
+type PreloadedPart = {
+  id: string;
+  displayName: string;
+  description: string | null;
+  imageUrl: string | null;
+  material: string | null;
+  materialId: string | null;
+  size: string | null;
+  sizeNominal: string | number | null;
+  sizeUnit: string | null;
+  catalogId: string;
+  categoryId: string | null;
+  isOrgSpecific: boolean;
+};
+
 export function usePartWizard() {
   const [wizardStage, setWizardStage] = useState<WizardStage>("catalog");
   const [selectedCatalogId, setSelectedCatalogId] = useState<string | null>(null);
@@ -35,75 +50,84 @@ export function usePartWizard() {
   const { data: catalogs } = api.catalogue.getCatalogs.useQuery();
   const { data: materials } = api.catalogue.getMaterials.useQuery();
   const { data: allUnits } = api.catalogue.getAllUnits.useQuery();
+  const { data: categoryTree } = api.catalogue.getCategoryTree.useQuery();
+  const { data: allParts } = api.catalogue.searchParts.useQuery({}, { staleTime: 1000 * 60 * 5 });
 
-  const { data: partTypeCategories } = api.catalogue.getPartTypeCategories.useQuery(
-    wizardStage === "partTypeCategory" && hasCatalogSelection && hasMaterialSelection
-      ? {
-          catalogId: selectedCatalogId ?? undefined,
-          materialId: selectedMaterialId ?? undefined,
-          sizeNominal: selectedSize?.nominal,
-          sizeUnit: selectedSize?.unit,
+  const partsByCatalog = useMemo(
+    () =>
+      (allParts ?? []).filter((part) =>
+        !hasCatalogSelection || selectedCatalogId === null
+          ? true
+          : part.catalogId === selectedCatalogId,
+      ),
+    [allParts, hasCatalogSelection, selectedCatalogId],
+  );
+
+  const partsByMaterial = useMemo(
+    () =>
+      partsByCatalog.filter((part) =>
+        !hasMaterialSelection || selectedMaterialId === null
+          ? true
+          : part.materialId === selectedMaterialId,
+      ),
+    [hasMaterialSelection, partsByCatalog, selectedMaterialId],
+  );
+
+  const partsBySize = useMemo(
+    () =>
+      partsByMaterial.filter((part) => {
+        if (!hasSizeSelection || selectedSize === null) {
+          return true;
         }
-      : undefined,
-    {
-      enabled:
-        wizardStage === "partTypeCategory" && hasCatalogSelection && hasMaterialSelection,
-    },
+
+        const nominal = part.sizeNominal === null ? null : Number(part.sizeNominal);
+        return nominal === selectedSize.nominal && part.sizeUnit === selectedSize.unit;
+      }),
+    [hasSizeSelection, partsByMaterial, selectedSize],
   );
 
-  const { data: partsForSelection } = api.catalogue.searchParts.useQuery(
-    {
-      catalogId: selectedCatalogId ?? undefined,
-      materialId: selectedMaterialId ?? undefined,
-      sizeNominal: selectedSize?.nominal,
-      sizeUnit: selectedSize?.unit,
-      categoryId: selectedPartTypeCategory?.categoryId ?? undefined,
-    },
-    {
-      enabled:
-        wizardStage === "part" &&
-        hasCatalogSelection &&
-        hasMaterialSelection &&
-        hasSizeSelection &&
-        hasCategorySelection,
-    },
-  );
+  const partsByCategory = useMemo(
+    () =>
+      partsBySize.filter((part) => {
+        if (
+          !hasCategorySelection ||
+          !selectedPartTypeCategory ||
+          selectedPartTypeCategory.categoryId === null
+        ) {
+          return true;
+        }
 
-  const { data: allPartsForMaterialCount } = api.catalogue.searchParts.useQuery(
-    { catalogId: selectedCatalogId ?? undefined },
-    { enabled: hasCatalogSelection },
-  );
-
-  const { data: availableSizesFromQuery } = api.catalogue.getAvailableSizes.useQuery(
-    {
-      catalogId: selectedCatalogId ?? undefined,
-      materialId: selectedMaterialId ?? undefined,
-    },
-    { enabled: hasCatalogSelection && hasMaterialSelection },
+        return part.categoryId === selectedPartTypeCategory.categoryId;
+      }),
+    [hasCategorySelection, partsBySize, selectedPartTypeCategory],
   );
 
   const catalogsWithCounts = useMemo(() => {
     const query = wizardSearchQuery.trim().toLowerCase();
+    const countMap = new Map<string, number>();
+
+    for (const part of allParts ?? []) {
+      countMap.set(part.catalogId, (countMap.get(part.catalogId) ?? 0) + 1);
+    }
+
     return (catalogs ?? [])
       .filter((catalog) => !query || catalog.name.toLowerCase().includes(query))
       .map((catalog) => ({
         ...catalog,
-        count: catalog.partCount ?? 0,
+        count: countMap.get(catalog.id) ?? 0,
       }))
       .filter((catalog) => catalog.count > 0 || selectedCatalogId === catalog.id);
-  }, [catalogs, selectedCatalogId, wizardSearchQuery]);
+  }, [allParts, catalogs, selectedCatalogId, wizardSearchQuery]);
 
   const materialCounts = useMemo(() => {
     const counts = new Map<string, number>();
-    if (allPartsForMaterialCount) {
-      for (const part of allPartsForMaterialCount) {
-        if (part.materialId) {
-          counts.set(part.materialId, (counts.get(part.materialId) ?? 0) + 1);
-        }
+    for (const part of partsByCatalog) {
+      if (part.materialId) {
+        counts.set(part.materialId, (counts.get(part.materialId) ?? 0) + 1);
       }
     }
     return counts;
-  }, [allPartsForMaterialCount]);
+  }, [partsByCatalog]);
 
   const materialsWithCounts = useMemo(() => {
     const query = wizardSearchQuery.trim().toLowerCase();
@@ -118,21 +142,54 @@ export function usePartWizard() {
 
   const categoriesWithCounts = useMemo(() => {
     const query = wizardSearchQuery.trim().toLowerCase();
-    return (partTypeCategories ?? [])
-      .filter((cat) => !query || cat.name.toLowerCase().includes(query))
-      .map((cat) => ({
-        categoryId: cat.categoryId,
-        name: cat.name,
-        count: cat.count ?? 0,
+    const countMap = new Map<string | null, number>();
+
+    for (const part of partsBySize) {
+      countMap.set(part.categoryId, (countMap.get(part.categoryId) ?? 0) + 1);
+    }
+
+    return (categoryTree ?? [])
+      .map((category) => ({
+        categoryId: category.id,
+        name: category.name,
+        count: countMap.get(category.id) ?? 0,
       }))
+      .filter((cat) => !query || cat.name.toLowerCase().includes(query))
       .filter(
         (category) => category.count > 0 || selectedPartTypeCategory?.categoryId === category.categoryId,
       );
-  }, [partTypeCategories, selectedPartTypeCategory, wizardSearchQuery]);
+  }, [categoryTree, partsBySize, selectedPartTypeCategory, wizardSearchQuery]);
 
   const filteredAvailableSizes = useMemo(() => {
     const query = wizardSearchQuery.trim().toLowerCase();
-    return (availableSizesFromQuery ?? [])
+    const counts = new Map<string, number>();
+
+    for (const part of partsByMaterial) {
+      const nominal = part.sizeNominal === null ? null : Number(part.sizeNominal);
+      if (nominal === null || !part.sizeUnit) {
+        continue;
+      }
+
+      const key = `${nominal}:${part.sizeUnit}`;
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+
+    return partsByMaterial
+      .flatMap((part) => {
+        const nominal = part.sizeNominal === null ? null : Number(part.sizeNominal);
+        if (nominal === null || !part.sizeUnit) {
+          return [];
+        }
+
+        const key = `${nominal}:${part.sizeUnit}`;
+        const count = counts.get(key) ?? 0;
+        if (count === 0) {
+          return [];
+        }
+        counts.delete(key);
+
+        return [{ nominal, unit: part.sizeUnit, count }];
+      })
       .filter(
         (size) => !query || `${size.nominal} ${size.unit}`.toLowerCase().includes(query),
       )
@@ -142,17 +199,17 @@ export function usePartWizard() {
         }
         return a.unit.localeCompare(b.unit);
       });
-  }, [availableSizesFromQuery, wizardSearchQuery]);
+  }, [partsByMaterial, wizardSearchQuery]);
 
   const filteredPartsForSelection = useMemo(() => {
     const query = wizardSearchQuery.trim().toLowerCase();
-    return (partsForSelection ?? []).filter((part) => {
+    return partsByCategory.filter((part) => {
       if (!query) return true;
       return [part.displayName, part.description, part.material, part.size]
         .filter(Boolean)
         .some((value) => value!.toLowerCase().includes(query));
     });
-  }, [partsForSelection, wizardSearchQuery]);
+  }, [partsByCategory, wizardSearchQuery]);
 
   const createCatalog = api.catalogue.createCatalog.useMutation({
     onSuccess: (newCatalog) => {
