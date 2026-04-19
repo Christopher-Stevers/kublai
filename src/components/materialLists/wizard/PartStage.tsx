@@ -129,7 +129,7 @@ function PartCard({ part, isPending, pendingQuantity = 0, onPartSelect, onEditPa
       onClick={handleCardClick}
     >
       <CardContent className="h-full p-0">
-        <div className="relative h-full w-full bg-white">
+        <div className="relative h-full w-full bg-gray-100">
           <div className="absolute inset-0 bg-gray-100">
             {part.imageUrl ? (
               <Image
@@ -146,7 +146,7 @@ function PartCard({ part, isPending, pendingQuantity = 0, onPartSelect, onEditPa
             )}
           </div>
 
-          <div className="absolute inset-x-0 top-0 flex justify-end p-2">
+          <div className="absolute top-0 right-0 flex justify-end p-1">
             {pendingQuantity > 0 && (
               <div className="flex h-6 min-w-6 items-center justify-center rounded-full bg-black px-1.5 text-xs font-semibold text-white shadow-sm sm:h-7 sm:min-w-7 sm:text-sm">
                 {pendingQuantity}
@@ -154,7 +154,7 @@ function PartCard({ part, isPending, pendingQuantity = 0, onPartSelect, onEditPa
             )}
           </div>
 
-          <div className="absolute inset-x-0 bottom-0 px-2 py-1.5 text-black">
+          <div className="absolute inset-x-0 bottom-0 p-0 text-black">
             <h4 className="line-clamp-2 text-xs font-medium leading-tight sm:text-sm [text-shadow:-1px_-1px_0_rgba(255,255,255,0.95),1px_-1px_0_rgba(255,255,255,0.95),-1px_1px_0_rgba(255,255,255,0.95),1px_1px_0_rgba(255,255,255,0.95)]">
               {part.displayName}
             </h4>
