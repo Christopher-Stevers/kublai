@@ -175,8 +175,8 @@ function PartCard({ part, isPending, onPartRemove, onPartSelect, onEditPart: _on
             )}
           </div>
 
-          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/55 to-transparent px-2 py-2 text-white">
-            <h4 className="line-clamp-2 text-xs font-medium leading-tight sm:text-sm">
+          <div className="absolute inset-x-0 bottom-0 px-2 py-2 text-white">
+            <h4 className="line-clamp-2 text-xs font-medium leading-tight sm:text-sm [text-shadow:0_1px_2px_rgba(0,0,0,0.85)]">
               {part.displayName}
             </h4>
           </div>
