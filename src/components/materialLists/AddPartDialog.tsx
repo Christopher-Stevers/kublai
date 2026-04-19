@@ -809,14 +809,36 @@ export function AddPartDialog({
             />
             {wizardStage !== "review" && (
               <div className="pb-3 sm:pb-4">
-                <div className="relative">
-                  <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                  <Input
-                    value={wizardSearchQuery}
-                    onChange={(e) => setWizardSearchQuery(e.target.value)}
-                    placeholder={wizardSearchPlaceholder}
-                    className="pl-9"
-                  />
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <div className="relative flex-1">
+                    <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                    <Input
+                      value={wizardSearchQuery}
+                      onChange={(e) => setWizardSearchQuery(e.target.value)}
+                      placeholder={wizardSearchPlaceholder}
+                      className="pl-9"
+                    />
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() =>
+                      handleOpenCustomPartDialog({
+                        materialId: selectedMaterialId,
+                        size: selectedSize,
+                        category: selectedPartTypeCategory
+                          ? {
+                              categoryId: selectedPartTypeCategory.categoryId,
+                              name: selectedPartTypeCategory.name,
+                            }
+                          : undefined,
+                      })
+                    }
+                    disabled={!selectedCatalogId}
+                    className="w-full sm:w-auto"
+                  >
+                    Create Part
+                  </Button>
                 </div>
               </div>
             )}
