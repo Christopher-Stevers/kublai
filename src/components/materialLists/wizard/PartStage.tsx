@@ -149,9 +149,9 @@ function PartCard({ part, isPending, onPartSelect, onEditPart }: PartCardProps) 
       } ${hasSupplier ? "cursor-pointer" : ""}`}
       onClick={hasSupplier ? handleCardClick : undefined}
     >
-      <CardContent className="p-3 sm:p-4">
+      <CardContent className="p-2 sm:p-4">
         <div className="flex flex-col gap-2">
-          <div className="relative h-24 w-full overflow-hidden rounded-md bg-gray-100 sm:h-32">
+          <div className="relative h-16 w-full overflow-hidden rounded-md bg-gray-100 sm:h-32">
             {part.imageUrl ? (
               <Image
                 src={part.imageUrl}
@@ -179,22 +179,24 @@ function PartCard({ part, isPending, onPartSelect, onEditPart }: PartCardProps) 
           </div>
           <div className="space-y-1">
             <div className="flex items-start justify-between gap-2">
-              <h4 className="text-xs font-medium sm:text-sm">{part.displayName}</h4>
+              <h4 className="line-clamp-2 text-[11px] font-medium leading-tight sm:text-sm">
+                {part.displayName}
+              </h4>
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-5 w-5 shrink-0 p-0 sm:h-6 sm:w-6"
+                className="h-4 w-4 shrink-0 p-0 sm:h-6 sm:w-6"
                 onClick={(e) => {
                   e.stopPropagation();
                   onEditPart(part.id);
                 }}
                 title="Edit part"
               >
-                <Pencil className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                <Pencil className="h-2.5 w-2.5 sm:h-3.5 sm:w-3.5" />
               </Button>
             </div>
             {truncatedDescription && (
-              <p className="text-xs text-gray-600 line-clamp-2">
+              <p className="line-clamp-2 text-[10px] text-gray-600 sm:text-xs">
                 {truncatedDescription}
               </p>
             )}
@@ -216,7 +218,7 @@ function PartCard({ part, isPending, onPartSelect, onEditPart }: PartCardProps) 
                   <DropdownMenuTrigger asChild>
                     <Button
                       variant="outline"
-                      className={`mt-1 h-7 w-full justify-start text-xs sm:h-8 ${
+                      className={`mt-1 h-6 w-full justify-start px-2 text-[10px] sm:h-8 sm:text-xs ${
                         !hasSupplier
                           ? "border-amber-300 text-amber-700"
                           : ""
@@ -266,7 +268,7 @@ function PartCard({ part, isPending, onPartSelect, onEditPart }: PartCardProps) 
             </div>
             <Button
               size="sm"
-              className="w-full text-xs sm:text-sm"
+              className="h-7 w-full px-2 text-[10px] sm:h-9 sm:text-sm"
               onClick={(e) => {
                 e.stopPropagation();
                 if (hasSupplier && selectedSupplierPartId) {
@@ -540,7 +542,7 @@ export function PartStage({
         </div>
       </div>
       {viewMode === "grid" ? (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 md:grid-cols-3">
+        <div className="grid grid-cols-3 gap-2 sm:grid-cols-2 sm:gap-4 md:grid-cols-3">
           {pagination.paginatedItems.map((part) => {
             const isPending = pendingParts.some((p) => p.partId === part.id);
             return (
