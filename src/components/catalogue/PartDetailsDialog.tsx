@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { ChevronDown } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { ChevronDown, Package, Upload } from "lucide-react";
 import { api } from "~/trpc/react";
 import { parseSizeInput } from "~/lib/size-utils";
+import Image from "next/image";
 import {
   Dialog,
   DialogContent,
@@ -64,6 +65,37 @@ function buildPartName({
     .map((value) => value?.trim())
     .filter((value): value is string => !!value)
     .join(" ");
+}
+
+async function fileToWebpDataUrl(file: File): Promise<string> {
+  const imageBitmap = await createImageBitmap(file);
+
+  const maxDimension = 1200;
+  const scale = Math.min(1, maxDimension / Math.max(imageBitmap.width, imageBitmap.height));
+  const width = Math.max(1, Math.round(imageBitmap.width * scale));
+  const height = Math.max(1, Math.round(imageBitmap.height * scale));
+
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+
+  const ctx = canvas.getContext("2d");
+  if (!ctx) {
+    throw new Error("Could not create canvas context");
+  }
+
+  ctx.drawImage(imageBitmap, 0, 0, width, height);
+
+  const qualitySteps = [0.82, 0.72, 0.62, 0.52, 0.42];
+  for (const quality of qualitySteps) {
+    const dataUrl = canvas.toDataURL("image/webp", quality);
+    const estimatedBytes = Math.ceil((dataUrl.length * 3) / 4);
+    if (estimatedBytes <= 250 * 1024 || quality === qualitySteps[qualitySteps.length - 1]) {
+      return dataUrl;
+    }
+  }
+
+  return canvas.toDataURL("image/webp", 0.42);
 }
 
 type PartSummary = {
@@ -158,6 +190,7 @@ export function PartDetailsDialog({
   const [supplierSku, setSupplierSku] = useState("");
   const [lastKnownUnitCost, setLastKnownUnitCost] = useState("");
   const [isSupplierDialogOpen, setIsSupplierDialogOpen] = useState(false);
+  const [isProcessingImage, setIsProcessingImage] = useState(false);
   const [showNewCatalogInput, setShowNewCatalogInput] = useState(false);
   const [newCatalogName, setNewCatalogName] = useState("");
   const [showNewCategoryInput, setShowNewCategoryInput] = useState(false);
@@ -169,6 +202,7 @@ export function PartDetailsDialog({
     () => (allUnits?.filter((u) => u.kind === "length") ?? []),
     [allUnits],
   );
+  const imageInputRef = useRef<HTMLInputElement | null>(null);
   useEffect(() => {
     if (!open) return;
 
@@ -331,13 +365,29 @@ export function PartDetailsDialog({
   });
 
   const parsedSizeNominal = sizeValue.trim() ? parseSizeInput(sizeValue.trim()) : null;
-  const isLoading = createPart.isPending || updatePart.isPending;
+  const isLoading = createPart.isPending || updatePart.isPending || isProcessingImage;
   const selectedCatalog = catalogs?.find((catalog) => catalog.id === catalogId);
   const selectedCategory = categoryTree?.find((category) => category.id === categoryId);
   const selectedMaterial = materials?.find((material) => material.id === materialId);
   const selectedSizeUnit = sizeUnits.find((unit) => unit.id === sizeUnitId);
   const hasSuppliers =
     !!partId && !!supplierInfo?.[partId]?.availableSuppliers?.length;
+
+  const handleImageFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setIsProcessingImage(true);
+      const dataUrl = await fileToWebpDataUrl(file);
+      setImageUrl(dataUrl);
+    } catch (error) {
+      console.error("Failed to process image", error);
+    } finally {
+      setIsProcessingImage(false);
+      event.target.value = "";
+    }
+  };
 
   const handleSubmit = () => {
     if (!displayName.trim() || !catalogId) {
@@ -622,6 +672,40 @@ export function PartDetailsDialog({
                 </div>
               </div>
             )}
+
+            <div>
+              <Label>Part Image</Label>
+              <button
+                type="button"
+                onClick={() => imageInputRef.current?.click()}
+                disabled={isLoading}
+                className="mt-1 flex w-full items-center gap-4 rounded-lg border bg-gray-50 p-3 text-left transition-colors hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <div className="relative flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-md bg-white">
+                  {imageUrl ? (
+                    <Image src={imageUrl} alt="Part preview" fill className="object-cover" unoptimized />
+                  ) : (
+                    <Package className="h-8 w-8 text-gray-400" />
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 text-sm font-medium text-gray-900">
+                    <Upload className="h-4 w-4" />
+                    {imageUrl ? "Change image" : "Upload image"}
+                  </div>
+                  <p className="mt-1 text-xs text-gray-500">
+                    Click to choose an image. It will be resized and saved as WebP automatically.
+                  </p>
+                </div>
+              </button>
+              <input
+                ref={imageInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleImageFileChange}
+              />
+            </div>
 
             <div>
               <Label>Image URL</Label>
