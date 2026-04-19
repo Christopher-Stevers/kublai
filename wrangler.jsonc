@@ -1,6 +1,7 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
-  "name": "kublai",
+  "name": "foremanhq",
+  "account_id": "572389bd857af8ef630528d94e8be6ea",
   "main": ".open-next/worker.js",
   "compatibility_date": "2026-04-19",
   "compatibility_flags": ["nodejs_compat"],
@@ -8,6 +9,12 @@
     "directory": ".open-next/assets",
     "binding": "ASSETS"
   },
+  "routes": [
+    {
+      "pattern": "foremanhq.stellarator.work",
+      "custom_domain": true
+    }
+  ],
   "observability": {
     "enabled": true
   }
