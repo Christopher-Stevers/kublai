@@ -5,7 +5,7 @@ import { eq, sql } from "drizzle-orm";
 import { db } from "../src/server/db";
 import { partDefinitions } from "../src/server/db/schema";
 
-const PLACEHOLDER_URL = "/images/plumbing-part-placeholder.svg";
+const PLACEHOLDER_URL = "/images/plumbing-part-placeholder.jpg";
 
 async function main() {
   const before = await db
