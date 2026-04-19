@@ -328,6 +328,9 @@ export function PartDetailsDialog({
       setShowNewCatalogInput(false);
       void utils.catalogue.getCatalogs.invalidate();
     },
+    onError: () => {
+      setShowNewCatalogInput(true);
+    },
   });
 
   const createCategory = api.catalogue.createCategoryType.useMutation({
@@ -342,6 +345,9 @@ export function PartDetailsDialog({
       setNewCategoryName("");
       setShowNewCategoryInput(false);
     },
+    onError: () => {
+      setShowNewCategoryInput(true);
+    },
   });
 
   const createMaterial = api.catalogue.createMaterial.useMutation({
@@ -355,6 +361,9 @@ export function PartDetailsDialog({
       setNewMaterialName("");
       setShowNewMaterialInput(false);
       void utils.catalogue.getMaterials.invalidate();
+    },
+    onError: () => {
+      setShowNewMaterialInput(true);
     },
   });
 
@@ -388,6 +397,7 @@ export function PartDetailsDialog({
       return;
     }
 
+    setShowNewCatalogInput(false);
     createCatalog.mutate({ name });
   };
 
@@ -406,6 +416,7 @@ export function PartDetailsDialog({
       return;
     }
 
+    setShowNewMaterialInput(false);
     createMaterial.mutate({ name });
   };
 
@@ -424,6 +435,7 @@ export function PartDetailsDialog({
       return;
     }
 
+    setShowNewCategoryInput(false);
     createCategory.mutate({ name });
   };
 
