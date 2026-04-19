@@ -5,7 +5,13 @@ import { StripeProvider } from "./StripeProvider";
 import { PaymentSetup } from "./PaymentSetup";
 import { useUser } from "@clerk/nextjs";
 
-export function PaymentSetupWrapper() {
+const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
+const hasUsableClerkKey =
+  typeof publishableKey === "string" &&
+  /^(pk|test|live)_/.test(publishableKey) &&
+  publishableKey.length > 20;
+
+function PaymentSetupWithClerk() {
   const { user } = useUser();
   const { data: setupIntentData, isLoading, error } =
     api.payment.createSetupIntent.useQuery(undefined, {
@@ -24,7 +30,8 @@ export function PaymentSetupWrapper() {
     return (
       <div className="rounded-lg bg-white p-8 shadow-sm">
         <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600">
-          {error.message ?? "Failed to initialize payment form. Please refresh the page."}
+          {error.message ??
+            "Failed to initialize payment form. Please refresh the page."}
         </div>
       </div>
     );
@@ -50,3 +57,20 @@ export function PaymentSetupWrapper() {
   );
 }
 
+function PaymentSetupWithoutClerk() {
+  return (
+    <div className="rounded-lg bg-white p-8 shadow-sm">
+      <div className="rounded-lg bg-amber-50 p-3 text-sm text-amber-700">
+        Payment setup is disabled until Clerk and Stripe are configured.
+      </div>
+    </div>
+  );
+}
+
+export function PaymentSetupWrapper() {
+  return hasUsableClerkKey ? (
+    <PaymentSetupWithClerk />
+  ) : (
+    <PaymentSetupWithoutClerk />
+  );
+}

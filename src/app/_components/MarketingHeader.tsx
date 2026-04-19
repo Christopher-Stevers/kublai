@@ -21,7 +21,7 @@ export function MarketingHeader() {
             variant="outline"
             className="hidden border-blue-600 text-blue-600 hover:bg-blue-50 sm:inline-flex"
           >
-            <Link href="/api/auth/signin">Sign In</Link>
+            <Link href="/sign-in">Sign In</Link>
           </Button>
           <Button
             asChild

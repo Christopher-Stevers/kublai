@@ -5,11 +5,21 @@ import { users } from "~/server/db/schema";
 import { eq } from "drizzle-orm";
 import { waitForUser } from "~/server/utils/wait-for-user";
 
+const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
+const hasUsableClerkKey =
+  typeof publishableKey === "string" &&
+  /^(pk|test|live)_/.test(publishableKey) &&
+  publishableKey.length > 20;
+
 export default async function SignInLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  if (!hasUsableClerkKey) {
+    return <>{children}</>;
+  }
+
   const { userId } = await auth();
 
   // If user is authenticated, redirect them away from sign-in page

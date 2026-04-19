@@ -17,27 +17,40 @@ import { Button } from "~/components/ui/button";
 import { UserIcon, ChevronDownIcon, MenuIcon, XIcon } from "lucide-react";
 import { APP_NAME } from "~/constants/app";
 
-export function Header() {
-  const pathname = usePathname();
-  const { user } = useUser();
-  const { signOut } = useClerk();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { data: userRole } = api.user.getMyRole.useQuery(undefined, {
-    enabled: !!user,
-  });
+const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
+const hasUsableClerkKey =
+  typeof publishableKey === "string" &&
+  /^(pk|test|live)_/.test(publishableKey) &&
+  publishableKey.length > 20;
 
+function HeaderFrame({
+  pathname,
+  mobileMenuOpen,
+  setMobileMenuOpen,
+  userEmail,
+  signOut,
+  showAccount,
+  showAdmin,
+}: {
+  pathname: string | null;
+  mobileMenuOpen: boolean;
+  setMobileMenuOpen: (open: boolean) => void;
+  userEmail: string;
+  signOut?: () => void | Promise<void>;
+  showAccount: boolean;
+  showAdmin: boolean;
+}) {
   const navLinks = [
     { href: "/dashboard", label: "Dashboard" },
     { href: "/dashboard/catalogue", label: "Catalogue" },
     { href: "/dashboard/suppliers", label: "Suppliers" },
     { href: "/dashboard/quotes", label: "Quotes" },
     { href: "/dashboard/orders", label: "Orders" },
-    ...(userRole?.role === "admin" ? [{ href: "/admin", label: "Admin" }] : []),
+    ...(showAdmin ? [{ href: "/admin", label: "Admin" }] : []),
   ];
 
   const isActive = (href: string) => {
     if (href === "/dashboard") {
-      // Active for /dashboard and /dashboard/jobs/* but not /dashboard/material-lists/*
       return (
         pathname === "/dashboard" ||
         (pathname?.startsWith("/dashboard/jobs/") ?? false)
@@ -55,7 +68,6 @@ export function Header() {
         >
           {APP_NAME}
         </Link>
-        {/* Desktop Navigation */}
         <nav className="hidden gap-6 lg:flex">
           {navLinks.map((link) => (
             <Link
@@ -73,7 +85,6 @@ export function Header() {
         </nav>
       </div>
 
-      {/* Desktop Actions */}
       <div className="hidden items-center gap-4 lg:flex">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -86,27 +97,28 @@ export function Header() {
             <DropdownMenuLabel>
               <div className="flex items-center gap-3">
                 <UserIcon className="text-muted-foreground h-5 w-5" />
-                <span className="truncate text-sm text-gray-700">
-                  {user?.primaryEmailAddress?.emailAddress ?? "Not signed in"}
-                </span>
+                <span className="truncate text-sm text-gray-700">{userEmail}</span>
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem asChild>
-              <Link href="/dashboard/account">Manage Account</Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => {
-                void signOut();
-              }}
-            >
-              Sign out
-            </DropdownMenuItem>
+            {showAccount ? (
+              <DropdownMenuItem asChild>
+                <Link href="/dashboard/account">Manage Account</Link>
+              </DropdownMenuItem>
+            ) : null}
+            {signOut ? (
+              <DropdownMenuItem
+                onClick={() => {
+                  void signOut();
+                }}
+              >
+                Sign out
+              </DropdownMenuItem>
+            ) : null}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
 
-      {/* Mobile Menu Button */}
       <div className="flex items-center gap-2 lg:hidden">
         <Button
           variant="ghost"
@@ -123,7 +135,6 @@ export function Header() {
         </Button>
       </div>
 
-      {/* Mobile Menu Overlay */}
       {mobileMenuOpen && (
         <>
           <div
@@ -165,27 +176,29 @@ export function Header() {
               <div className="border-t px-4 py-4">
                 <div className="mb-3 flex items-center gap-3 rounded-md px-3 py-2">
                   <UserIcon className="text-muted-foreground h-5 w-5" />
-                  <span className="truncate text-sm text-gray-700">
-                    {user?.primaryEmailAddress?.emailAddress ?? "Not signed in"}
-                  </span>
+                  <span className="truncate text-sm text-gray-700">{userEmail}</span>
                 </div>
                 <div className="space-y-1">
-                  <Link
-                    href="/dashboard/account"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="block rounded-md px-3 py-2 text-base font-medium text-gray-700 transition-colors hover:bg-gray-50 hover:text-gray-900"
-                  >
-                    Manage Account
-                  </Link>
-                  <button
-                    onClick={() => {
-                      setMobileMenuOpen(false);
-                      void signOut();
-                    }}
-                    className="block w-full rounded-md px-3 py-2 text-left text-base font-medium text-gray-700 transition-colors hover:bg-gray-50 hover:text-gray-900"
-                  >
-                    Sign out
-                  </button>
+                  {showAccount ? (
+                    <Link
+                      href="/dashboard/account"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="block rounded-md px-3 py-2 text-base font-medium text-gray-700 transition-colors hover:bg-gray-50 hover:text-gray-900"
+                    >
+                      Manage Account
+                    </Link>
+                  ) : null}
+                  {signOut ? (
+                    <button
+                      onClick={() => {
+                        setMobileMenuOpen(false);
+                        void signOut();
+                      }}
+                      className="block w-full rounded-md px-3 py-2 text-left text-base font-medium text-gray-700 transition-colors hover:bg-gray-50 hover:text-gray-900"
+                    >
+                      Sign out
+                    </button>
+                  ) : null}
                 </div>
               </div>
             </div>
@@ -194,4 +207,46 @@ export function Header() {
       )}
     </header>
   );
+}
+
+function HeaderWithClerk() {
+  const pathname = usePathname();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { user } = useUser();
+  const { signOut } = useClerk();
+  const { data: userRole } = api.user.getMyRole.useQuery(undefined, {
+    enabled: !!user,
+  });
+
+  return (
+    <HeaderFrame
+      pathname={pathname}
+      mobileMenuOpen={mobileMenuOpen}
+      setMobileMenuOpen={setMobileMenuOpen}
+      userEmail={user?.primaryEmailAddress?.emailAddress ?? "Not signed in"}
+      signOut={() => signOut()}
+      showAccount={true}
+      showAdmin={userRole?.role === "admin"}
+    />
+  );
+}
+
+function HeaderWithoutClerk() {
+  const pathname = usePathname();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  return (
+    <HeaderFrame
+      pathname={pathname}
+      mobileMenuOpen={mobileMenuOpen}
+      setMobileMenuOpen={setMobileMenuOpen}
+      userEmail="Auth disabled"
+      showAccount={false}
+      showAdmin={false}
+    />
+  );
+}
+
+export function Header() {
+  return hasUsableClerkKey ? <HeaderWithClerk /> : <HeaderWithoutClerk />;
 }
