@@ -338,21 +338,6 @@ export function PartDetailsDialog({
       setShowNewCatalogInput(false);
       void utils.catalogue.getCatalogs.invalidate();
     },
-    onError: () => {
-      const name = newCatalogName.trim().toLowerCase();
-      const existing = catalogs?.find(
-        (catalog) => catalog.name.trim().toLowerCase() === name,
-      );
-
-      if (existing) {
-        setCatalogId(existing.id);
-        setNewCatalogName("");
-        setShowNewCatalogInput(false);
-        return;
-      }
-
-      setShowNewCatalogInput(true);
-    },
   });
 
   const createCategory = api.catalogue.createCategoryType.useMutation({
@@ -367,21 +352,6 @@ export function PartDetailsDialog({
       setNewCategoryName("");
       setShowNewCategoryInput(false);
     },
-    onError: () => {
-      const name = newCategoryName.trim().toLowerCase();
-      const existing = categoryTree?.find(
-        (category) => category.name.trim().toLowerCase() === name,
-      );
-
-      if (existing) {
-        setCategoryId(existing.id);
-        setNewCategoryName("");
-        setShowNewCategoryInput(false);
-        return;
-      }
-
-      setShowNewCategoryInput(true);
-    },
   });
 
   const createMaterial = api.catalogue.createMaterial.useMutation({
@@ -395,21 +365,6 @@ export function PartDetailsDialog({
       setNewMaterialName("");
       setShowNewMaterialInput(false);
       void utils.catalogue.getMaterials.invalidate();
-    },
-    onError: () => {
-      const name = newMaterialName.trim().toLowerCase();
-      const existing = materials?.find(
-        (material) => material.name.trim().toLowerCase() === name,
-      );
-
-      if (existing) {
-        setMaterialId(existing.id);
-        setNewMaterialName("");
-        setShowNewMaterialInput(false);
-        return;
-      }
-
-      setShowNewMaterialInput(true);
     },
   });
 
