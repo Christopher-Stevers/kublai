@@ -3,6 +3,10 @@
 import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
 import { MinusIcon, PlusIcon } from "lucide-react";
+import {
+  applyOfflineQuantityUpdate,
+  enqueueOfflineMutation,
+} from "~/lib/offline-material-list-mutations";
 
 interface QuantityControlsProps {
   itemId: string;
@@ -81,19 +85,43 @@ export function QuantityControls({
     },
   });
 
+  const queueOfflineQuantityChange = (nextQuantity: number) => {
+    applyOfflineQuantityUpdate(materialListId, itemId, nextQuantity);
+    enqueueOfflineMutation({
+      type: "updateItemQuantity",
+      materialListId,
+      itemId,
+      quantity: nextQuantity,
+      queuedAt: new Date().toISOString(),
+    });
+    void utils.materialList.getMaterialList.invalidate({ materialListId });
+  };
+
   const handleDecrease = () => {
     if (quantity > 1) {
+      const nextQuantity = quantity - 1;
+      if (typeof window !== "undefined" && !window.navigator.onLine) {
+        queueOfflineQuantityChange(nextQuantity);
+        return;
+      }
+
       updateItem.mutate({
         itemId,
-        quantity: quantity - 1,
+        quantity: nextQuantity,
       });
     }
   };
 
   const handleIncrease = () => {
+    const nextQuantity = quantity + 1;
+    if (typeof window !== "undefined" && !window.navigator.onLine) {
+      queueOfflineQuantityChange(nextQuantity);
+      return;
+    }
+
     updateItem.mutate({
       itemId,
-      quantity: quantity + 1,
+      quantity: nextQuantity,
     });
   };
 

@@ -12,6 +12,10 @@ import {
 } from "~/components/ui/dialog";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
+import {
+  applyOfflineRenameMaterialList,
+  enqueueOfflineMutation,
+} from "~/lib/offline-material-list-mutations";
 
 interface MaterialListNameModalProps {
   open: boolean;
@@ -88,13 +92,28 @@ export function MaterialListNameModal({
   });
 
   const handleSave = () => {
-    if (!name.trim()) {
+    const trimmedName = name.trim();
+    if (!trimmedName) {
+      return;
+    }
+
+    if (typeof window !== "undefined" && !window.navigator.onLine) {
+      applyOfflineRenameMaterialList(materialListId, trimmedName);
+      enqueueOfflineMutation({
+        type: "renameMaterialList",
+        materialListId,
+        name: trimmedName,
+        queuedAt: new Date().toISOString(),
+      });
+      void utils.materialList.getMaterialList.invalidate({ materialListId });
+      void utils.materialList.listMaterialLists.invalidate();
+      onOpenChange(false);
       return;
     }
 
     updateName.mutate({
       materialListId,
-      name: name.trim(),
+      name: trimmedName,
     });
   };
 

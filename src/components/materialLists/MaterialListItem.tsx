@@ -7,6 +7,10 @@ import { SupplierSelector } from "~/components/materialLists/SupplierSelector";
 import { Button } from "~/components/ui/button";
 import { TrashIcon } from "lucide-react";
 import Image from "next/image";
+import {
+  applyOfflineRemoveItem,
+  enqueueOfflineMutation,
+} from "~/lib/offline-material-list-mutations";
 
 interface MaterialListItemProps {
   item: {
@@ -97,6 +101,22 @@ export function MaterialListItem({ item, materialListId }: MaterialListItemProps
     ? parseFloat(item.extendedPrice)
     : quantity * unitCost;
 
+  const handleRemove = () => {
+    if (typeof window !== "undefined" && !window.navigator.onLine) {
+      applyOfflineRemoveItem(materialListId, item.id);
+      enqueueOfflineMutation({
+        type: "removeItem",
+        materialListId,
+        itemId: item.id,
+        queuedAt: new Date().toISOString(),
+      });
+      void utils.materialList.getMaterialList.invalidate({ materialListId });
+      return;
+    }
+
+    removeItem.mutate({ itemId: item.id });
+  };
+
   return (
     <Card>
       <CardContent className="p-3 sm:p-4">
@@ -157,7 +177,7 @@ export function MaterialListItem({ item, materialListId }: MaterialListItemProps
                     variant="ghost"
                     size="sm"
                     className="h-10 w-10 p-0"
-                    onClick={() => removeItem.mutate({ itemId: item.id })}
+                    onClick={handleRemove}
                     disabled={removeItem.isPending}
                     aria-label="Remove item"
                   >
@@ -199,7 +219,7 @@ export function MaterialListItem({ item, materialListId }: MaterialListItemProps
               variant="ghost"
               size="sm"
               className="h-10 w-10 p-0"
-              onClick={() => removeItem.mutate({ itemId: item.id })}
+              onClick={handleRemove}
               disabled={removeItem.isPending}
               aria-label="Remove item"
             >
