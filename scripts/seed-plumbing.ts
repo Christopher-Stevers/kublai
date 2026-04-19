@@ -542,12 +542,12 @@ async function main() {
         console.log(`   ✓ Organization "${orgName}" already exists`);
       }
 
-      // Step 6: Create default catalog and categories
-      console.log("\n📚 Creating default catalog...");
+      // Step 6: Create Plumbing catalog and categories
+      console.log("\n📚 Creating Plumbing catalog...");
       const [createdDefaultCatalog] = await db
         .insert(catalogs)
         .values({
-          name: "Default Catalog",
+          name: "Plumbing",
           organizationId: organizationId,
           sortOrder: 0,
         })
@@ -557,23 +557,23 @@ async function main() {
       let defaultCatalogId: string;
       if (createdDefaultCatalog) {
         defaultCatalogId = createdDefaultCatalog.id;
-        console.log('   ✓ Created catalog "Default Catalog"');
+        console.log('   ✓ Created catalog "Plumbing"');
       } else {
         const [existingDefaultCatalog] = await db
           .select()
           .from(catalogs)
           .where(
             and(
-              eq(catalogs.name, "Default Catalog"),
+              eq(catalogs.name, "Plumbing"),
               eq(catalogs.organizationId, organizationId),
             ),
           )
           .limit(1);
         if (!existingDefaultCatalog) {
-          throw new Error('Failed to create/find catalog "Default Catalog"');
+          throw new Error('Failed to create/find catalog "Plumbing"');
         }
         defaultCatalogId = existingDefaultCatalog.id;
-        console.log('   ✓ Catalog "Default Catalog" already exists');
+        console.log('   ✓ Catalog "Plumbing" already exists');
       }
 
       console.log("\n📁 Creating categories...");

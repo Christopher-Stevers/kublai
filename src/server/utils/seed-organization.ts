@@ -410,14 +410,14 @@ export async function seedOrganization(
     }
   }
 
-  // Step 2: Create default catalog and root categories only (no child categories)
+  // Step 2: Create Plumbing catalog and root categories only (no child categories)
   let defaultCatalogId: string | null = null;
   const [existingDefaultCatalog] = await db
     .select({ id: catalogs.id })
     .from(catalogs)
     .where(
       and(
-        eq(catalogs.name, "Default Catalog"),
+        eq(catalogs.name, "Plumbing"),
         eq(catalogs.organizationId, organizationId),
       ),
     )
@@ -430,7 +430,7 @@ export async function seedOrganization(
       .insert(catalogs)
       .values({
         organizationId,
-        name: "Default Catalog",
+        name: "Plumbing",
         sortOrder: 0,
       })
       .returning({ id: catalogs.id });

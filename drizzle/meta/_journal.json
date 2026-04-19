@@ -55,6 +55,13 @@
       "when": 1771620000000,
       "tag": "0007_catalogs",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1771621200000,
+      "tag": "0008_plumbing_catalog",
+      "breakpoints": true
     }
   ]
 }
