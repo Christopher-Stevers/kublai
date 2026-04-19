@@ -557,13 +557,21 @@ export function AddPartDialog({
               />
               {wizardStage !== "review" && (
                 <>
-                  <div className="relative min-w-[220px] flex-1 sm:min-w-[260px]">
+                  <div
+                    className="relative shrink-0"
+                    style={{
+                      width: `${Math.max(
+                        14,
+                        (wizardSearchQuery || wizardSearchPlaceholder).length + 4,
+                      )}ch`,
+                    }}
+                  >
                     <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-gray-400" />
                     <Input
                       value={wizardSearchQuery}
                       onChange={(e) => setWizardSearchQuery(e.target.value)}
                       placeholder={wizardSearchPlaceholder}
-                      className="pl-9"
+                      className="w-full pl-9"
                     />
                   </div>
                   <Button
@@ -582,7 +590,7 @@ export function AddPartDialog({
                       })
                     }
                     disabled={!selectedCatalogId}
-                    className="w-full sm:w-auto"
+                    className="w-auto shrink-0"
                   >
                     Create Part
                   </Button>
