@@ -442,7 +442,14 @@ export function PartDetailsDialog({
 
             <div className={`grid gap-4 ${sizeValue.trim() ? "sm:grid-cols-[1fr_140px]" : "sm:grid-cols-1"}`}>
               <div>
-                <Label>Size</Label>
+                <FieldHeader
+                  label="Size"
+                  onAdd={() => {
+                    if (parsedSizeNominal !== null && sizeUnitId) {
+                      createSize.mutate({ nominal: parsedSizeNominal, unitId: sizeUnitId });
+                    }
+                  }}
+                />
                 <Input
                   value={sizeValue}
                   onChange={(e) => setSizeValue(e.target.value)}
@@ -453,14 +460,7 @@ export function PartDetailsDialog({
               </div>
               {sizeValue.trim() && (
                 <div>
-                  <FieldHeader
-                    label="Size Unit"
-                    onAdd={() => {
-                      if (parsedSizeNominal !== null && sizeUnitId) {
-                        createSize.mutate({ nominal: parsedSizeNominal, unitId: sizeUnitId });
-                      }
-                    }}
-                  />
+                  <Label>Size Unit</Label>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="outline" className="mt-1 w-full justify-between" disabled={isLoading}>
