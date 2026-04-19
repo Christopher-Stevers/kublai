@@ -67,16 +67,6 @@ export function CatalogStage({
             </CardContent>
           </Card>
         ))}
-        <Card
-          className={`cursor-pointer border-dashed transition-all hover:shadow-md ${
-            showCustomCatalogInput ? "border-primary border-2" : ""
-          }`}
-          onClick={() => onShowCustomCatalogInput(true)}
-        >
-          <CardContent className="p-3 text-center sm:p-4">
-            <p className="text-sm font-medium sm:text-base">Other</p>
-          </CardContent>
-        </Card>
       </div>
       {showCustomCatalogInput && (
         <div className="mt-3 flex flex-col gap-2 sm:mt-4 sm:flex-row">

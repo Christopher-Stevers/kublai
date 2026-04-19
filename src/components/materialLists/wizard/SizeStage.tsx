@@ -82,16 +82,6 @@ export function SizeStage({
             </CardContent>
           </Card>
         ))}
-        <Card
-          className={`cursor-pointer transition-all hover:shadow-md ${
-            showCustomSize ? "border-primary border-2 shadow-md" : ""
-          }`}
-          onClick={() => onShowCustomSize(true)}
-        >
-          <CardContent className="p-3 text-center sm:p-4">
-            <p className="text-sm font-medium sm:text-base">Other</p>
-          </CardContent>
-        </Card>
       </div>
       {showCustomSize && (
         <div className="mt-3 space-y-2 sm:mt-4">

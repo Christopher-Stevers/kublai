@@ -67,16 +67,6 @@ export function MaterialStage({
             </CardContent>
           </Card>
         ))}
-        <Card
-          className={`cursor-pointer border-dashed transition-all hover:shadow-md ${
-            showCustomMaterialInput ? "border-primary border-2" : ""
-          }`}
-          onClick={() => onShowCustomMaterialInput(true)}
-        >
-          <CardContent className="p-3 text-center sm:p-4">
-            <p className="text-sm font-medium sm:text-base">Other</p>
-          </CardContent>
-        </Card>
       </div>
       {showCustomMaterialInput && (
         <div className="mt-3 flex flex-col gap-2 sm:mt-4 sm:flex-row">
