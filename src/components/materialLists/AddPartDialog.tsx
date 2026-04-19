@@ -570,7 +570,6 @@ export function AddPartDialog({
                     : undefined,
                 })
               }
-              actionDisabled={!selectedCatalogId}
             />
           </div>
 

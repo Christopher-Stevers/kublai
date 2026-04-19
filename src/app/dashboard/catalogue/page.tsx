@@ -171,7 +171,6 @@ export default function CataloguePage() {
           hideSearch={wizardStage === "part"}
           actionLabel="Create Part"
           onActionClick={() => setIsCreatePartDialogOpen(true)}
-          actionDisabled={!selectedCatalogId}
         />
       </div>
 
