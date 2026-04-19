@@ -15,13 +15,14 @@ This repo is wired for Cloudflare Workers using OpenNext.
 ## Local Cloudflare build check
 
 ```bash
-SKIP_ENV_VALIDATION=1 pnpm preview
+pnpm preview
 ```
 
 ## Dry run deploy check
 
 ```bash
-SKIP_ENV_VALIDATION=1 pnpm exec wrangler deploy --dry-run
+./scripts/open-next-with-env.sh opennextjs-cloudflare build
+./scripts/open-next-with-env.sh wrangler deploy --dry-run
 ```
 
 ## Real deploy
@@ -32,11 +33,12 @@ SKIP_ENV_VALIDATION=1 pnpm exec wrangler deploy --dry-run
    ```
 2. Deploy:
    ```bash
-   SKIP_ENV_VALIDATION=1 pnpm deploy
+   pnpm deploy
    ```
 
 ## Notes
 - This app builds for Cloudflare Workers, not Pages static export.
 - Real production deploy still needs proper env vars and secrets set in Cloudflare.
+- The helper script `scripts/open-next-with-env.sh` sources `.env` before running OpenNext or Wrangler locally.
 - The current `wrangler.jsonc` app name is `kublai`, which you can rename.
 - If you attach a custom domain later, do it in the Cloudflare dashboard or with Wrangler routes.
