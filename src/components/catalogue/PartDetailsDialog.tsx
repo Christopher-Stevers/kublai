@@ -400,190 +400,43 @@ export function PartDetailsDialog({
 
           <div className="space-y-4 py-4">
             <div>
-              <Label htmlFor="displayName">
-                Part Name <span className="text-red-500">*</span>
-              </Label>
-              <Input
-                id="displayName"
-                value={displayName}
-                onChange={(e) => {
-                  setHasManuallyEditedDisplayName(true);
-                  setDisplayName(e.target.value);
-                }}
-                placeholder="e.g., 90° Copper Elbow"
-                className="mt-1"
-                disabled={isLoading}
+              <FieldHeader
+                label="Catalog *"
+                onAdd={() => setShowNewCatalogInput((value) => !value)}
               />
-              {!isEditMode && (
-                <p className="mt-1 text-xs text-gray-500">
-                  Auto-generated from size, material, and description. You can still override it.
-                </p>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="mt-1 w-full justify-between" disabled={isLoading}>
+                    {selectedCatalog?.name ?? "Select catalog"}
+                    <ChevronDown className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="max-h-60 overflow-y-auto">
+                  {catalogs?.map((catalog) => (
+                    <DropdownMenuItem key={catalog.id} onClick={() => setCatalogId(catalog.id)}>
+                      {catalog.name}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+              {showNewCatalogInput && (
+                <div className="mt-2 flex gap-2">
+                  <Input
+                    value={newCatalogName}
+                    onChange={(e) => setNewCatalogName(e.target.value)}
+                    placeholder="New catalog name"
+                    disabled={isLoading || createCatalog.isPending}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => createCatalog.mutate({ name: newCatalogName.trim() })}
+                    disabled={!newCatalogName.trim() || isLoading || createCatalog.isPending}
+                  >
+                    Add
+                  </Button>
+                </div>
               )}
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <FieldHeader
-                  label="Catalog *"
-                  onAdd={() => setShowNewCatalogInput((value) => !value)}
-                />
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" className="mt-1 w-full justify-between" disabled={isLoading}>
-                      {selectedCatalog?.name ?? "Select catalog"}
-                      <ChevronDown className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent className="max-h-60 overflow-y-auto">
-                    {catalogs?.map((catalog) => (
-                      <DropdownMenuItem key={catalog.id} onClick={() => setCatalogId(catalog.id)}>
-                        {catalog.name}
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-                {showNewCatalogInput && (
-                  <div className="mt-2 flex gap-2">
-                    <Input
-                      value={newCatalogName}
-                      onChange={(e) => setNewCatalogName(e.target.value)}
-                      placeholder="New catalog name"
-                      disabled={isLoading || createCatalog.isPending}
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => createCatalog.mutate({ name: newCatalogName.trim() })}
-                      disabled={!newCatalogName.trim() || isLoading || createCatalog.isPending}
-                    >
-                      Add
-                    </Button>
-                  </div>
-                )}
-              </div>
-
-              <div>
-                <FieldHeader label="Category" onAdd={() => setShowNewCategoryInput((value) => !value)} />
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" className="mt-1 w-full justify-between" disabled={isLoading}>
-                      {selectedCategory?.name ?? "Select category"}
-                      <ChevronDown className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent className="max-h-60 overflow-y-auto">
-                    <DropdownMenuItem onClick={() => setCategoryId(null)}>None</DropdownMenuItem>
-                    {categoryTree?.map((category) => (
-                      <DropdownMenuItem key={category.id} onClick={() => setCategoryId(category.id)}>
-                        {category.name}
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-                {showNewCategoryInput && (
-                  <div className="mt-2 flex gap-2">
-                    <Input
-                      value={newCategoryName}
-                      onChange={(e) => setNewCategoryName(e.target.value)}
-                      placeholder="New category name"
-                      disabled={isLoading || createCategory.isPending}
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => createCategory.mutate({ name: newCategoryName.trim() })}
-                      disabled={!newCategoryName.trim() || isLoading || createCategory.isPending}
-                    >
-                      Add
-                    </Button>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <FieldHeader label="Material" onAdd={() => setShowNewMaterialInput((value) => !value)} />
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" className="mt-1 w-full justify-between" disabled={isLoading}>
-                      {selectedMaterial?.name ?? "Select material"}
-                      <ChevronDown className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent className="max-h-60 overflow-y-auto">
-                    <DropdownMenuItem onClick={() => setMaterialId(null)}>None</DropdownMenuItem>
-                    {materials?.map((material) => (
-                      <DropdownMenuItem key={material.id} onClick={() => setMaterialId(material.id)}>
-                        {material.name}
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-                {showNewMaterialInput && (
-                  <div className="mt-2 flex gap-2">
-                    <Input
-                      value={newMaterialName}
-                      onChange={(e) => setNewMaterialName(e.target.value)}
-                      placeholder="New material name"
-                      disabled={isLoading || createMaterial.isPending}
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => createMaterial.mutate({ name: newMaterialName.trim() })}
-                      disabled={!newMaterialName.trim() || isLoading || createMaterial.isPending}
-                    >
-                      Add
-                    </Button>
-                  </div>
-                )}
-              </div>
-
-              <div>
-                <Label>Default Unit of Measure</Label>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" className="mt-1 w-full justify-between" disabled={isLoading}>
-                      {selectedDefaultUom
-                        ? `${selectedDefaultUom.displayName ?? selectedDefaultUom.code} (${selectedDefaultUom.code})`
-                        : "Select unit"}
-                      <ChevronDown className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent className="max-h-60 overflow-y-auto">
-                    <DropdownMenuItem onClick={() => setDefaultUomId(null)}>None</DropdownMenuItem>
-                    {defaultUoms.map((unit) => (
-                      <DropdownMenuItem key={unit.id} onClick={() => setDefaultUomId(unit.id)}>
-                        {unit.displayName ?? unit.code} ({unit.code})
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            </div>
-
-            <div>
-              <Label>Description</Label>
-              <Input
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Part description"
-                className="mt-1"
-                disabled={isLoading}
-              />
-            </div>
-
-            <div>
-              <Label>Image URL</Label>
-              <Input
-                value={imageUrl}
-                onChange={(e) => setImageUrl(e.target.value)}
-                placeholder="https://..."
-                type="url"
-                className="mt-1"
-                disabled={isLoading}
-              />
             </div>
 
             <div className="grid gap-4 sm:grid-cols-[1fr_140px]">
@@ -626,6 +479,149 @@ export function PartDetailsDialog({
                   Pick a size and unit, then click + Add to save it as a reusable size.
                 </p>
               </div>
+            </div>
+
+            <div>
+              <FieldHeader label="Material" onAdd={() => setShowNewMaterialInput((value) => !value)} />
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="mt-1 w-full justify-between" disabled={isLoading}>
+                    {selectedMaterial?.name ?? "Select material"}
+                    <ChevronDown className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="max-h-60 overflow-y-auto">
+                  <DropdownMenuItem onClick={() => setMaterialId(null)}>None</DropdownMenuItem>
+                  {materials?.map((material) => (
+                    <DropdownMenuItem key={material.id} onClick={() => setMaterialId(material.id)}>
+                      {material.name}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+              {showNewMaterialInput && (
+                <div className="mt-2 flex gap-2">
+                  <Input
+                    value={newMaterialName}
+                    onChange={(e) => setNewMaterialName(e.target.value)}
+                    placeholder="New material name"
+                    disabled={isLoading || createMaterial.isPending}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => createMaterial.mutate({ name: newMaterialName.trim() })}
+                    disabled={!newMaterialName.trim() || isLoading || createMaterial.isPending}
+                  >
+                    Add
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            <div>
+              <Label>Description</Label>
+              <Input
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Part description"
+                className="mt-1"
+                disabled={isLoading}
+              />
+            </div>
+
+            <div>
+              <FieldHeader label="Category" onAdd={() => setShowNewCategoryInput((value) => !value)} />
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="mt-1 w-full justify-between" disabled={isLoading}>
+                    {selectedCategory?.name ?? "Select category"}
+                    <ChevronDown className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="max-h-60 overflow-y-auto">
+                  <DropdownMenuItem onClick={() => setCategoryId(null)}>None</DropdownMenuItem>
+                  {categoryTree?.map((category) => (
+                    <DropdownMenuItem key={category.id} onClick={() => setCategoryId(category.id)}>
+                      {category.name}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+              {showNewCategoryInput && (
+                <div className="mt-2 flex gap-2">
+                  <Input
+                    value={newCategoryName}
+                    onChange={(e) => setNewCategoryName(e.target.value)}
+                    placeholder="New category name"
+                    disabled={isLoading || createCategory.isPending}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => createCategory.mutate({ name: newCategoryName.trim() })}
+                    disabled={!newCategoryName.trim() || isLoading || createCategory.isPending}
+                  >
+                    Add
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            <div>
+              <Label htmlFor="displayName">
+                Part Name <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="displayName"
+                value={displayName}
+                onChange={(e) => {
+                  setHasManuallyEditedDisplayName(true);
+                  setDisplayName(e.target.value);
+                }}
+                placeholder="e.g., 90° Copper Elbow"
+                className="mt-1"
+                disabled={isLoading}
+              />
+              {!isEditMode && (
+                <p className="mt-1 text-xs text-gray-500">
+                  Auto-generated from size, material, and description. You can still override it.
+                </p>
+              )}
+            </div>
+
+            <div>
+              <Label>Image URL</Label>
+              <Input
+                value={imageUrl}
+                onChange={(e) => setImageUrl(e.target.value)}
+                placeholder="https://..."
+                type="url"
+                className="mt-1"
+                disabled={isLoading}
+              />
+            </div>
+
+            <div>
+              <Label>Default Unit of Measure</Label>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="mt-1 w-full justify-between" disabled={isLoading}>
+                    {selectedDefaultUom
+                      ? `${selectedDefaultUom.displayName ?? selectedDefaultUom.code} (${selectedDefaultUom.code})`
+                      : "Select unit"}
+                    <ChevronDown className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="max-h-60 overflow-y-auto">
+                  <DropdownMenuItem onClick={() => setDefaultUomId(null)}>None</DropdownMenuItem>
+                  {defaultUoms.map((unit) => (
+                    <DropdownMenuItem key={unit.id} onClick={() => setDefaultUomId(unit.id)}>
+                      {unit.displayName ?? unit.code} ({unit.code})
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
 
             {!isEditMode && (
