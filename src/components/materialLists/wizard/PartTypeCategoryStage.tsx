@@ -11,6 +11,7 @@ export interface PartTypeCategoryStageProps {
     categoryId: string | null;
     name: string;
   } | null;
+  allSelected?: boolean;
   onPartTypeCategorySelect: (category: {
     categoryId: string | null;
     name: string;
@@ -25,6 +26,7 @@ export interface PartTypeCategoryStageProps {
 export function PartTypeCategoryStage({
   partTypeCategories,
   selectedPartTypeCategory,
+  allSelected = false,
   onPartTypeCategorySelect,
   showCustomPartTypeInput,
   onShowCustomPartTypeInput,
@@ -38,6 +40,23 @@ export function PartTypeCategoryStage({
     <div className="space-y-3 sm:space-y-4">
       <h3 className="text-base font-semibold sm:text-lg">Select Category</h3>
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3 md:grid-cols-3 lg:grid-cols-4 lg:gap-4">
+        <Card
+          className={`cursor-pointer transition-all hover:shadow-md ${
+            allSelected
+              ? "border-primary border-2 shadow-md"
+              : ""
+          }`}
+          onClick={() =>
+            onPartTypeCategorySelect({
+              categoryId: null,
+              name: "All Categories",
+            })
+          }
+        >
+          <CardContent className="p-3 text-center sm:p-4">
+            <p className="text-sm font-medium sm:text-base">All</p>
+          </CardContent>
+        </Card>
         {pagination.paginatedItems.map((category) => {
           return (
             <Card

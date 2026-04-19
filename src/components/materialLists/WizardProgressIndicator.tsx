@@ -62,7 +62,9 @@ export function WizardProgressIndicator({
         return selectedMaterial ?? stage.label;
       case "size":
         return selectedSize
-          ? formatSize(selectedSize.nominal, selectedSize.unit)
+          ? selectedSize.unit === "All Sizes"
+            ? "All Sizes"
+            : formatSize(selectedSize.nominal, selectedSize.unit)
           : stage.label;
       case "partTypeCategory":
         return selectedPartTypeCategory?.name ?? stage.label;

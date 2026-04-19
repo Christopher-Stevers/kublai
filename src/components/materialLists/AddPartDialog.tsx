@@ -53,9 +53,13 @@ export function AddPartDialog({
     wizardStage,
     setWizardStage,
     selectedCatalogId,
+    hasCatalogSelection,
     selectedMaterialId,
+    hasMaterialSelection,
     selectedSize,
+    hasSizeSelection,
     selectedPartTypeCategory,
+    hasCategorySelection,
     setSelectedPartTypeCategory,
     showCustomCatalogInput,
     setShowCustomCatalogInput,
@@ -97,6 +101,8 @@ export function AddPartDialog({
     resetWizard,
     selectedCatalogName,
     selectedMaterialName,
+    selectedSizeName,
+    selectedCategoryName,
     wizardSearchPlaceholder,
   } = usePartWizard();
 
@@ -108,7 +114,7 @@ export function AddPartDialog({
       catalogId: selectedCatalogId ?? undefined,
       materialId: selectedMaterialId ?? undefined,
     },
-    { enabled: wizardStage === "size" && !!selectedCatalogId && !!selectedMaterialId },
+    { enabled: wizardStage === "size" && hasCatalogSelection && hasMaterialSelection },
   );
 
   const addItem = api.materialList.addItemToMaterialList.useMutation({
@@ -545,8 +551,8 @@ export function AddPartDialog({
                 currentStage={wizardStage}
                 selectedCatalog={selectedCatalogName}
                 selectedMaterial={selectedMaterialName}
-                selectedSize={selectedSize}
-                selectedPartTypeCategory={selectedPartTypeCategory}
+                selectedSize={selectedSizeName}
+                selectedPartTypeCategory={selectedCategoryName}
                 onStageClick={handleStageClick}
               />
               {wizardStage !== "review" && (
@@ -590,6 +596,7 @@ export function AddPartDialog({
               <CatalogStage
                 catalogs={catalogsWithCounts}
                 selectedCatalogId={selectedCatalogId}
+                allSelected={hasCatalogSelection && selectedCatalogId === null}
                 onCatalogSelect={(catalogId) => {
                   handleCatalogSelect(catalogId);
                   setPendingParts([]);
@@ -605,6 +612,7 @@ export function AddPartDialog({
               <MaterialStage
                 materials={materialsWithCounts}
                 selectedMaterialId={selectedMaterialId}
+                allSelected={hasMaterialSelection && selectedMaterialId === null}
                 onMaterialSelect={handleMaterialSelect}
                 showCustomMaterialInput={showCustomMaterialInput}
                 onShowCustomMaterialInput={setShowCustomMaterialInput}
@@ -617,6 +625,7 @@ export function AddPartDialog({
               <SizeStage
                 availableSizes={filteredAvailableSizes}
                 selectedSize={selectedSize}
+                allSelected={hasSizeSelection && selectedSize === null}
                 onSizeSelect={handleSizeSelect}
                 showCustomSize={showCustomSize}
                 onShowCustomSize={setShowCustomSize}
@@ -632,6 +641,7 @@ export function AddPartDialog({
               <PartTypeCategoryStage
                 partTypeCategories={categoriesWithCounts}
                 selectedPartTypeCategory={selectedPartTypeCategory}
+                allSelected={hasCategorySelection && selectedPartTypeCategory?.categoryId === null}
                 onPartTypeCategorySelect={handlePartTypeCategorySelection}
                 showCustomPartTypeInput={showCustomPartTypeInput}
                 onShowCustomPartTypeInput={setShowCustomPartTypeInput}

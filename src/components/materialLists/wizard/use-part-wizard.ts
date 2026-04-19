@@ -7,15 +7,19 @@ import type { WizardStage } from "./types";
 export function usePartWizard() {
   const [wizardStage, setWizardStage] = useState<WizardStage>("catalog");
   const [selectedCatalogId, setSelectedCatalogId] = useState<string | null>(null);
+  const [hasCatalogSelection, setHasCatalogSelection] = useState(false);
   const [selectedMaterialId, setSelectedMaterialId] = useState<string | null>(null);
+  const [hasMaterialSelection, setHasMaterialSelection] = useState(false);
   const [selectedSize, setSelectedSize] = useState<{
     nominal: number;
     unit: string;
   } | null>(null);
+  const [hasSizeSelection, setHasSizeSelection] = useState(false);
   const [selectedPartTypeCategory, setSelectedPartTypeCategory] = useState<{
     categoryId: string | null;
     name: string;
   } | null>(null);
+  const [hasCategorySelection, setHasCategorySelection] = useState(false);
   const [showCustomCatalogInput, setShowCustomCatalogInput] = useState(false);
   const [customCatalogName, setCustomCatalogName] = useState("");
   const [showCustomMaterialInput, setShowCustomMaterialInput] = useState(false);
@@ -33,19 +37,17 @@ export function usePartWizard() {
   const { data: allUnits } = api.catalogue.getAllUnits.useQuery();
 
   const { data: partTypeCategories } = api.catalogue.getPartTypeCategories.useQuery(
-    wizardStage === "partTypeCategory" &&
-      selectedCatalogId &&
-      selectedMaterialId &&
-      selectedSize
+    wizardStage === "partTypeCategory" && hasCatalogSelection && hasMaterialSelection
       ? {
-          catalogId: selectedCatalogId,
-          materialId: selectedMaterialId,
-          sizeNominal: selectedSize.nominal,
-          sizeUnit: selectedSize.unit,
+          catalogId: selectedCatalogId ?? undefined,
+          materialId: selectedMaterialId ?? undefined,
+          sizeNominal: selectedSize?.nominal,
+          sizeUnit: selectedSize?.unit,
         }
       : undefined,
     {
-      enabled: wizardStage === "partTypeCategory",
+      enabled:
+        wizardStage === "partTypeCategory" && hasCatalogSelection && hasMaterialSelection,
     },
   );
 
@@ -60,16 +62,16 @@ export function usePartWizard() {
     {
       enabled:
         wizardStage === "part" &&
-        !!selectedCatalogId &&
-        !!selectedMaterialId &&
-        !!selectedSize &&
-        !!selectedPartTypeCategory,
+        hasCatalogSelection &&
+        hasMaterialSelection &&
+        hasSizeSelection &&
+        hasCategorySelection,
     },
   );
 
   const { data: allPartsForMaterialCount } = api.catalogue.searchParts.useQuery(
     { catalogId: selectedCatalogId ?? undefined },
-    { enabled: !!selectedCatalogId },
+    { enabled: hasCatalogSelection },
   );
 
   const { data: availableSizesFromQuery } = api.catalogue.getAvailableSizes.useQuery(
@@ -77,7 +79,7 @@ export function usePartWizard() {
       catalogId: selectedCatalogId ?? undefined,
       materialId: selectedMaterialId ?? undefined,
     },
-    { enabled: !!selectedCatalogId && !!selectedMaterialId },
+    { enabled: hasCatalogSelection && hasMaterialSelection },
   );
 
   const catalogsWithCounts = useMemo(() => {
@@ -144,6 +146,7 @@ export function usePartWizard() {
     onSuccess: (newCatalog) => {
       if (!newCatalog) return;
       setSelectedCatalogId(newCatalog.id);
+      setHasCatalogSelection(true);
       setCustomCatalogName("");
       setShowCustomCatalogInput(false);
       setWizardStage("material");
@@ -155,6 +158,7 @@ export function usePartWizard() {
     onSuccess: (newMaterial) => {
       if (!newMaterial) return;
       setSelectedMaterialId(newMaterial.id);
+      setHasMaterialSelection(true);
       setCustomMaterialName("");
       setShowCustomMaterialInput(false);
       setWizardStage("size");
@@ -171,6 +175,7 @@ export function usePartWizard() {
           nominal: parseFloat(newSize.nominal.toString()),
           unit: unit.code,
         });
+        setHasSizeSelection(true);
         setCustomSizeInput("");
         setCustomSizeUnitId(null);
         setShowCustomSize(false);
@@ -187,6 +192,7 @@ export function usePartWizard() {
         categoryId: newCategory.id,
         name: newCategory.name,
       });
+      setHasCategorySelection(true);
       setCustomPartTypeName("");
       setShowCustomPartTypeInput(false);
       setWizardStage("part");
@@ -194,26 +200,35 @@ export function usePartWizard() {
     },
   });
 
-  const handleCatalogSelect = (catalogId: string) => {
+  const handleCatalogSelect = (catalogId: string | null) => {
     setSelectedCatalogId(catalogId);
+    setHasCatalogSelection(true);
     setSelectedMaterialId(null);
+    setHasMaterialSelection(false);
     setSelectedSize(null);
+    setHasSizeSelection(false);
     setSelectedPartTypeCategory(null);
+    setHasCategorySelection(false);
     setWizardStage("material");
   };
 
-  const handleMaterialSelect = (materialId: string) => {
+  const handleMaterialSelect = (materialId: string | null) => {
     setSelectedMaterialId(materialId);
+    setHasMaterialSelection(true);
     setSelectedSize(null);
+    setHasSizeSelection(false);
     setSelectedPartTypeCategory(null);
+    setHasCategorySelection(false);
     setShowCustomSize(false);
     setCustomSizeInput("");
     setWizardStage("size");
   };
 
-  const handleSizeSelect = (size: { nominal: number; unit: string }) => {
+  const handleSizeSelect = (size: { nominal: number; unit: string } | null) => {
     setSelectedSize(size);
+    setHasSizeSelection(true);
     setSelectedPartTypeCategory(null);
+    setHasCategorySelection(false);
     setShowCustomSize(false);
     setCustomSizeInput("");
     setCustomSizeUnitId(null);
@@ -228,6 +243,7 @@ export function usePartWizard() {
       categoryId: category.categoryId,
       name: category.name,
     });
+    setHasCategorySelection(true);
     setWizardStage("part");
   };
 
@@ -240,23 +256,23 @@ export function usePartWizard() {
   const handleStageClick = (stage: Exclude<WizardStage, "review">) => {
     if (stage === "catalog") {
       setWizardStage("catalog");
-    } else if (stage === "material" && selectedCatalogId) {
+    } else if (stage === "material" && hasCatalogSelection) {
       setWizardStage("material");
-    } else if (stage === "size" && selectedCatalogId && selectedMaterialId) {
+    } else if (stage === "size" && hasCatalogSelection && hasMaterialSelection) {
       setWizardStage("size");
     } else if (
       stage === "partTypeCategory" &&
-      selectedCatalogId &&
-      selectedMaterialId &&
-      selectedSize
+      hasCatalogSelection &&
+      hasMaterialSelection &&
+      hasSizeSelection
     ) {
       setWizardStage("partTypeCategory");
     } else if (
       stage === "part" &&
-      selectedCatalogId &&
-      selectedMaterialId &&
-      selectedSize &&
-      selectedPartTypeCategory
+      hasCatalogSelection &&
+      hasMaterialSelection &&
+      hasSizeSelection &&
+      hasCategorySelection
     ) {
       setWizardStage("part");
     }
@@ -265,9 +281,13 @@ export function usePartWizard() {
   const resetWizard = () => {
     setWizardStage("catalog");
     setSelectedCatalogId(null);
+    setHasCatalogSelection(false);
     setSelectedMaterialId(null);
+    setHasMaterialSelection(false);
     setSelectedSize(null);
+    setHasSizeSelection(false);
     setSelectedPartTypeCategory(null);
+    setHasCategorySelection(false);
     setShowCustomCatalogInput(false);
     setCustomCatalogName("");
     setShowCustomMaterialInput(false);
@@ -284,10 +304,25 @@ export function usePartWizard() {
     setWizardSearchQuery("");
   }, [wizardStage]);
 
-  const selectedCatalogName =
-    catalogs?.find((catalog) => catalog.id === selectedCatalogId)?.name ?? null;
-  const selectedMaterialName =
-    materials?.find((material) => material.id === selectedMaterialId)?.name ?? null;
+  const selectedCatalogName = hasCatalogSelection
+    ? selectedCatalogId
+      ? catalogs?.find((catalog) => catalog.id === selectedCatalogId)?.name ?? null
+      : "All Catalogs"
+    : null;
+
+  const selectedMaterialName = hasMaterialSelection
+    ? selectedMaterialId
+      ? materials?.find((material) => material.id === selectedMaterialId)?.name ?? null
+      : "All Materials"
+    : null;
+
+  const selectedSizeName = hasSizeSelection
+    ? selectedSize ?? { nominal: 0, unit: "All Sizes" }
+    : null;
+
+  const selectedCategoryName = hasCategorySelection
+    ? selectedPartTypeCategory ?? { categoryId: null, name: "All Categories" }
+    : null;
 
   const wizardSearchPlaceholder =
     wizardStage === "catalog"
@@ -306,9 +341,13 @@ export function usePartWizard() {
     wizardStage,
     setWizardStage,
     selectedCatalogId,
+    hasCatalogSelection,
     selectedMaterialId,
+    hasMaterialSelection,
     selectedSize,
+    hasSizeSelection,
     selectedPartTypeCategory,
+    hasCategorySelection,
     setSelectedPartTypeCategory,
     showCustomCatalogInput,
     setShowCustomCatalogInput,
@@ -350,6 +389,8 @@ export function usePartWizard() {
     resetWizard,
     selectedCatalogName,
     selectedMaterialName,
+    selectedSizeName,
+    selectedCategoryName,
     wizardSearchPlaceholder,
   };
 }

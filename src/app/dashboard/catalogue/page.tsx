@@ -36,9 +36,13 @@ export default function CataloguePage() {
   const {
     wizardStage,
     selectedCatalogId,
+    hasCatalogSelection,
     selectedMaterialId,
+    hasMaterialSelection,
     selectedSize,
+    hasSizeSelection,
     selectedPartTypeCategory,
+    hasCategorySelection,
     setSelectedPartTypeCategory,
     showCustomCatalogInput,
     setShowCustomCatalogInput,
@@ -76,6 +80,8 @@ export default function CataloguePage() {
     handleStageClick,
     selectedCatalogName,
     selectedMaterialName,
+    selectedSizeName,
+    selectedCategoryName,
   } = usePartWizard();
 
   useEffect(() => {
@@ -152,8 +158,8 @@ export default function CataloguePage() {
           currentStage={wizardStage}
           selectedCatalog={selectedCatalogName}
           selectedMaterial={selectedMaterialName}
-          selectedSize={selectedSize}
-          selectedPartTypeCategory={selectedPartTypeCategory}
+          selectedSize={selectedSizeName}
+          selectedPartTypeCategory={selectedCategoryName}
           onStageClick={handleStageClick}
         />
       </div>
@@ -163,6 +169,7 @@ export default function CataloguePage() {
           <CatalogStage
             catalogs={catalogsWithCounts}
             selectedCatalogId={selectedCatalogId}
+            allSelected={hasCatalogSelection && selectedCatalogId === null}
             onCatalogSelect={(catalogId) => {
               handleCatalogSelect(catalogId);
               handleClearFilters();
@@ -175,10 +182,11 @@ export default function CataloguePage() {
           />
         )}
 
-        {wizardStage === "material" && selectedCatalogId && (
+        {wizardStage === "material" && hasCatalogSelection && (
           <MaterialStage
             materials={materialsWithCounts}
             selectedMaterialId={selectedMaterialId}
+            allSelected={hasMaterialSelection && selectedMaterialId === null}
             onMaterialSelect={handleMaterialSelect}
             showCustomMaterialInput={showCustomMaterialInput}
             onShowCustomMaterialInput={setShowCustomMaterialInput}
@@ -188,10 +196,11 @@ export default function CataloguePage() {
           />
         )}
 
-        {wizardStage === "size" && selectedCatalogId && selectedMaterialId && (
+        {wizardStage === "size" && hasCatalogSelection && hasMaterialSelection && (
           <SizeStage
             availableSizes={filteredAvailableSizes}
             selectedSize={selectedSize}
+            allSelected={hasSizeSelection && selectedSize === null}
             onSizeSelect={handleSizeSelect}
             showCustomSize={showCustomSize}
             onShowCustomSize={setShowCustomSize}
@@ -204,10 +213,11 @@ export default function CataloguePage() {
           />
         )}
 
-        {wizardStage === "partTypeCategory" && selectedCatalogId && selectedMaterialId && selectedSize && (
+        {wizardStage === "partTypeCategory" && hasCatalogSelection && hasMaterialSelection && hasSizeSelection && (
           <PartTypeCategoryStage
             partTypeCategories={categoriesWithCounts}
             selectedPartTypeCategory={selectedPartTypeCategory}
+            allSelected={hasCategorySelection && selectedPartTypeCategory?.categoryId === null}
             onPartTypeCategorySelect={handlePartTypeCategorySelection}
             showCustomPartTypeInput={showCustomPartTypeInput}
             onShowCustomPartTypeInput={setShowCustomPartTypeInput}
@@ -217,7 +227,7 @@ export default function CataloguePage() {
           />
         )}
 
-        {wizardStage === "part" && selectedCatalogId && (
+        {wizardStage === "part" && hasCatalogSelection && hasMaterialSelection && hasSizeSelection && hasCategorySelection && (
           <div className="space-y-4">
             <SearchAndFilters
               searchQuery={searchQuery}

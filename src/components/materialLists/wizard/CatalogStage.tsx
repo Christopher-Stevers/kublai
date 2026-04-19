@@ -8,7 +8,8 @@ import { ListPagination, useClientPagination } from "~/components/ui/list-pagina
 export interface CatalogStageProps {
   catalogs: Array<{ id: string; name: string; count?: number }>;
   selectedCatalogId: string | null;
-  onCatalogSelect: (catalogId: string) => void;
+  allSelected?: boolean;
+  onCatalogSelect: (catalogId: string | null) => void;
   showCustomCatalogInput: boolean;
   onShowCustomCatalogInput: (show: boolean) => void;
   customCatalogName: string;
@@ -22,6 +23,7 @@ export interface CatalogStageProps {
 export function CatalogStage({
   catalogs,
   selectedCatalogId,
+  allSelected = false,
   onCatalogSelect,
   showCustomCatalogInput,
   onShowCustomCatalogInput,
@@ -35,6 +37,16 @@ export function CatalogStage({
     <div className="space-y-3 sm:space-y-4">
       <h3 className="text-base font-semibold sm:text-lg">Select Catalog</h3>
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3 md:grid-cols-3 lg:grid-cols-4 lg:gap-4">
+        <Card
+          className={`cursor-pointer transition-all hover:shadow-md ${
+            allSelected ? "border-primary border-2 shadow-md" : ""
+          }`}
+          onClick={() => onCatalogSelect(null)}
+        >
+          <CardContent className="p-3 text-center sm:p-4">
+            <p className="text-sm font-medium sm:text-base">All</p>
+          </CardContent>
+        </Card>
         {pagination.paginatedItems.map((catalog) => (
           <Card
             key={catalog.id}
