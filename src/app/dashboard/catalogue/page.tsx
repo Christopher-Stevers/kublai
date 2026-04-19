@@ -7,6 +7,7 @@ import { Card, CardContent } from "~/components/ui/card";
 import { Package } from "lucide-react";
 import { ViewToggle } from "~/components/ui/view-toggle";
 import { EditPartDialog } from "~/components/catalogue/EditPartDialog";
+import { CreateCustomPartDialog } from "~/components/materialLists/CreateCustomPartDialog";
 import { parseSizeInput } from "~/lib/size-utils";
 import { CatalogStage } from "~/components/materialLists/wizard/CatalogStage";
 import { MaterialStage } from "~/components/materialLists/wizard/MaterialStage";
@@ -31,6 +32,7 @@ export default function CataloguePage() {
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState<"grid" | "table">("table");
   const [editingPartId, setEditingPartId] = useState<string | null>(null);
+  const [isCreatePartDialogOpen, setIsCreatePartDialogOpen] = useState(false);
 
   const {
     wizardStage,
@@ -167,6 +169,9 @@ export default function CataloguePage() {
           onSearchChange={setWizardSearchQuery}
           searchPlaceholder={wizardSearchPlaceholder}
           hideSearch={wizardStage === "part"}
+          actionLabel="Create Part"
+          onActionClick={() => setIsCreatePartDialogOpen(true)}
+          actionDisabled={!selectedCatalogId}
         />
       </div>
 
@@ -325,6 +330,20 @@ export default function CataloguePage() {
           if (!open) setEditingPartId(null);
         }}
         partId={editingPartId}
+      />
+      <CreateCustomPartDialog
+        open={isCreatePartDialogOpen}
+        onOpenChange={setIsCreatePartDialogOpen}
+        onPartCreated={() => {
+          setIsCreatePartDialogOpen(false);
+        }}
+        initialContext={{
+          catalogId: selectedCatalogId,
+          materialId: selectedMaterialId,
+          size: selectedSize,
+          categoryId: selectedPartTypeCategory?.categoryId ?? null,
+          categoryName: selectedPartTypeCategory?.name ?? null,
+        }}
       />
     </div>
   );
