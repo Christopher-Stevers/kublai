@@ -21,8 +21,10 @@ import {
   MapPinIcon,
   PackageIcon,
   PlusIcon,
+  WifiOffIcon,
 } from "lucide-react";
 import { format } from "date-fns";
+import { useOfflineJobsList } from "~/hooks/use-offline-jobs";
 
 export default function Dashboard() {
   const router = useRouter();
@@ -75,7 +77,12 @@ export default function Dashboard() {
   }, [userData, isLoadingUser]);
 
   // Get all jobs
-  const { data: jobs, isLoading } = api.job.listJobs.useQuery();
+  const { data: serverJobs, isLoading } = api.job.listJobs.useQuery();
+  const {
+    data: jobs,
+    isOnline,
+    isOfflineFallback,
+  } = useOfflineJobsList(serverJobs);
 
   // Create material list mutation
   const createMaterialList = api.materialList.createMaterialList.useMutation({
@@ -117,6 +124,7 @@ export default function Dashboard() {
       !isLoading &&
       (!jobs || jobs.length === 0) &&
       !createJob.isPending &&
+      isOnline &&
       !hasAttemptedCreate.current
     ) {
       hasAttemptedCreate.current = true;
@@ -131,7 +139,8 @@ export default function Dashboard() {
       !isLoading &&
       jobs &&
       jobs.length > 0 &&
-      !createMaterialList.isPending
+      !createMaterialList.isPending &&
+      isOnline
     ) {
       // Find jobs without material lists that we haven't tried to create for yet
       const jobsNeedingMaterialLists = jobs.filter(
@@ -165,7 +174,7 @@ export default function Dashboard() {
     );
   }
 
-  if (isLoading || createJob.isPending || createMaterialList.isPending) {
+  if ((isLoading && !jobs) || createJob.isPending || createMaterialList.isPending) {
     return (
       <div className="px-4 py-6 sm:px-6 sm:py-8">
         <div className="mx-auto max-w-6xl">
@@ -186,6 +195,19 @@ export default function Dashboard() {
   return (
     <div className="px-4 py-6 sm:px-6 sm:py-8">
       <div className="mx-auto max-w-6xl">
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          {!isOnline && (
+            <div className="inline-flex items-center gap-2 rounded-full bg-amber-100 px-3 py-1 text-sm font-medium text-amber-900">
+              <WifiOffIcon className="h-4 w-4" />
+              Offline mode
+            </div>
+          )}
+          {isOfflineFallback && (
+            <div className="inline-flex items-center rounded-full bg-blue-100 px-3 py-1 text-sm font-medium text-blue-900">
+              Showing cached jobs
+            </div>
+          )}
+        </div>
         <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">

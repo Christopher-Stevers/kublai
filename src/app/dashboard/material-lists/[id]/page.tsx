@@ -53,7 +53,7 @@ export default function MaterialListDetailPage({
 
   const utils = api.useUtils();
 
-  if (isLoading) {
+  if (isLoading && !materialList) {
     return (
       <div className="flex h-[calc(100vh-4rem)] items-center justify-center">
         <p className="text-muted-foreground">Loading material list...</p>

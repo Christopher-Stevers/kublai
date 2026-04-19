@@ -13,9 +13,11 @@ import {
   ArrowLeftIcon,
   MapPinIcon,
   PencilIcon,
+  WifiOffIcon,
 } from "lucide-react";
 import { format } from "date-fns";
 import { JobEditDialog } from "~/components/jobs/JobEditDialog";
+import { useOfflineJobDetail } from "~/hooks/use-offline-jobs";
 
 export default function JobDetailPage({
   params,
@@ -28,21 +30,31 @@ export default function JobDetailPage({
   const [showEditDialog, setShowEditDialog] = useState(false);
 
   // Get job details
-  const { data: job, isLoading: jobLoading } = api.job.getJob.useQuery(
+  const { data: serverJob, isLoading: jobLoading } = api.job.getJob.useQuery(
     { jobId },
     { enabled: !!jobId },
   );
 
   // Get material lists for this job
-  const { data: materialLists, isLoading: listsLoading } =
+  const { data: serverMaterialLists, isLoading: listsLoading } =
     api.materialList.listMaterialLists.useQuery(
       { jobId },
       { enabled: !!jobId },
     );
 
+  const {
+    data: offlineJobData,
+    isOnline,
+    isOfflineFallback,
+  } = useOfflineJobDetail(jobId, serverJob, serverMaterialLists);
+
+  const job = offlineJobData?.job ?? null;
+  const materialLists = offlineJobData?.materialLists ?? null;
+
   const createMaterialList = api.materialList.createMaterialList.useMutation({
     onSuccess: (data) => {
-      void utils.materialList.listMaterialLists.invalidate();
+      void utils.materialList.listMaterialLists.invalidate({ jobId });
+      void utils.job.getJob.invalidate({ jobId });
       router.push(`/dashboard/material-lists/${data.materialListId}`);
     },
   });
@@ -54,11 +66,12 @@ export default function JobDetailPage({
       !listsLoading &&
       materialLists &&
       materialLists.length === 0 &&
-      !createMaterialList.isPending
+      !createMaterialList.isPending &&
+      isOnline
     ) {
       createMaterialList.mutate({ jobId: job.id });
     }
-  }, [job?.id, listsLoading, materialLists, createMaterialList, jobId]);
+  }, [job?.id, listsLoading, materialLists, createMaterialList, jobId, isOnline]);
 
   const handleCreateNew = () => {
     if (job?.id) {
@@ -68,7 +81,7 @@ export default function JobDetailPage({
 
   const isLoading = jobLoading || listsLoading;
 
-  if (isLoading) {
+  if (isLoading && !job) {
     return (
       <div className="px-4 py-6 sm:px-6 sm:py-8">
         <div className="mx-auto max-w-6xl">
@@ -99,6 +112,19 @@ export default function JobDetailPage({
   return (
     <div className="px-4 py-6 sm:px-6 sm:py-8">
       <div className="mx-auto max-w-6xl">
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          {!isOnline && (
+            <div className="inline-flex items-center gap-2 rounded-full bg-amber-100 px-3 py-1 text-sm font-medium text-amber-900">
+              <WifiOffIcon className="h-4 w-4" />
+              Offline mode
+            </div>
+          )}
+          {isOfflineFallback && (
+            <div className="inline-flex items-center rounded-full bg-blue-100 px-3 py-1 text-sm font-medium text-blue-900">
+              Showing cached job and material lists
+            </div>
+          )}
+        </div>
         {/* Back Button */}
         <Button
           variant="ghost"
@@ -235,4 +261,3 @@ export default function JobDetailPage({
     </div>
   );
 }
-
