@@ -296,15 +296,24 @@ export function PartDetailsDialog({
   const createCatalog = api.catalogue.createCatalog.useMutation({
     onSuccess: (newCatalog) => {
       if (!newCatalog) return;
-      void utils.catalogue.getCatalogs.invalidate();
+      utils.catalogue.getCatalogs.setData(undefined, (old) => {
+        const next = [...(old ?? []), newCatalog];
+        return next.sort((a, b) => a.name.localeCompare(b.name));
+      });
       setCatalogId(newCatalog.id);
       setNewCatalogName("");
       setShowNewCatalogInput(false);
+      void utils.catalogue.getCatalogs.invalidate();
     },
   });
 
   const createCategory = api.catalogue.createCategoryType.useMutation({
     onSuccess: (newCategory) => {
+      if (!newCategory) return;
+      utils.catalogue.getCategoryTree.setData(undefined, (old) => {
+        const next = [...(old ?? []), newCategory];
+        return next.sort((a, b) => a.name.localeCompare(b.name));
+      });
       void utils.catalogue.getCategoryTree.invalidate();
       setCategoryId(newCategory.id);
       setNewCategoryName("");
@@ -315,10 +324,14 @@ export function PartDetailsDialog({
   const createMaterial = api.catalogue.createMaterial.useMutation({
     onSuccess: (newMaterial) => {
       if (!newMaterial) return;
-      void utils.catalogue.getMaterials.invalidate();
+      utils.catalogue.getMaterials.setData(undefined, (old) => {
+        const next = [...(old ?? []), newMaterial];
+        return next.sort((a, b) => a.name.localeCompare(b.name));
+      });
       setMaterialId(newMaterial.id);
       setNewMaterialName("");
       setShowNewMaterialInput(false);
+      void utils.catalogue.getMaterials.invalidate();
     },
   });
 
