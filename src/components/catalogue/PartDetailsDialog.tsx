@@ -153,7 +153,6 @@ export function PartDetailsDialog({
   const [materialId, setMaterialId] = useState<string | null>(null);
   const [sizeValue, setSizeValue] = useState("");
   const [sizeUnitId, setSizeUnitId] = useState<string | null>(null);
-  const [defaultUomId, setDefaultUomId] = useState<string | null>(null);
   const [isActive, setIsActive] = useState(true);
   const [supplierId, setSupplierId] = useState<string | null>(null);
   const [supplierSku, setSupplierSku] = useState("");
@@ -171,11 +170,6 @@ export function PartDetailsDialog({
     () => (allUnits?.filter((u) => u.kind === "length") ?? []),
     [allUnits],
   );
-  const defaultUoms = useMemo(
-    () => (allUnits?.filter((u) => u.kind === "count") ?? []),
-    [allUnits],
-  );
-
   useEffect(() => {
     if (!open) return;
 
@@ -189,7 +183,6 @@ export function PartDetailsDialog({
       setMaterialId(matchedMaterial?.id ?? null);
       setSizeValue(part.sizeNominal?.toString() ?? "");
       setSizeUnitId(part.sizeUnitId ?? null);
-      setDefaultUomId(part.defaultUomId ?? null);
       setIsActive(part.isActive ?? true);
       setSupplierId(null);
       setSupplierSku("");
@@ -207,7 +200,6 @@ export function PartDetailsDialog({
       setCategoryId(initialContext?.categoryId ?? null);
       setMaterialId(initialContext?.materialId ?? null);
       setSizeValue(initialContext?.size?.nominal?.toString() ?? "");
-      setDefaultUomId(null);
       setIsActive(true);
       setSupplierId(null);
       setSupplierSku("");
@@ -347,7 +339,6 @@ export function PartDetailsDialog({
   const selectedCategory = categoryTree?.find((category) => category.id === categoryId);
   const selectedMaterial = materials?.find((material) => material.id === materialId);
   const selectedSizeUnit = sizeUnits.find((unit) => unit.id === sizeUnitId);
-  const selectedDefaultUom = defaultUoms.find((unit) => unit.id === defaultUomId);
   const hasSuppliers =
     !!partId && !!supplierInfo?.[partId]?.availableSuppliers?.length;
 
@@ -365,7 +356,6 @@ export function PartDetailsDialog({
       materialId,
       sizeNominal: parsedSizeNominal,
       sizeUnitId: parsedSizeNominal ? sizeUnitId : null,
-      defaultUomId,
       isActive,
     };
 
@@ -618,28 +608,6 @@ export function PartDetailsDialog({
                 className="mt-1"
                 disabled={isLoading}
               />
-            </div>
-
-            <div>
-              <Label>Default Unit of Measure</Label>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="mt-1 w-full justify-between" disabled={isLoading}>
-                    {selectedDefaultUom
-                      ? `${selectedDefaultUom.displayName ?? selectedDefaultUom.code} (${selectedDefaultUom.code})`
-                      : "Select unit"}
-                    <ChevronDown className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="max-h-60 overflow-y-auto">
-                  <DropdownMenuItem onClick={() => setDefaultUomId(null)}>None</DropdownMenuItem>
-                  {defaultUoms.map((unit) => (
-                    <DropdownMenuItem key={unit.id} onClick={() => setDefaultUomId(unit.id)}>
-                      {unit.displayName ?? unit.code} ({unit.code})
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
             </div>
 
             {!isEditMode && (
