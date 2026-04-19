@@ -348,53 +348,41 @@ function PartListRow({ part, isPending, onPartSelect, onEditPart }: PartCardProp
 
   return (
     <div
-      className={`rounded-lg border bg-white p-3 transition-all ${
+      className={`rounded-lg border bg-white px-3 py-2 transition-all ${
         isPending ? "border-primary border-2 shadow-sm" : "hover:shadow-sm"
       }`}
     >
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-start">
-        <div className="flex min-w-0 flex-1 gap-3">
-          <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-md bg-gray-100">
-            {part.imageUrl ? (
-              <Image src={part.imageUrl} alt={part.displayName} fill className="object-cover" />
-            ) : (
-              <div className="flex h-full items-center justify-center text-gray-400">
-                <AlertCircle className="h-4 w-4" />
-              </div>
-            )}
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0">
-                <h4 className="truncate text-sm font-medium">{part.displayName}</h4>
-                <div className="mt-1 flex flex-wrap gap-2 text-xs text-gray-500">
-                  {part.material && <span>{part.material}</span>}
-                  {part.size && <span>{part.size}</span>}
-                </div>
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 w-7 shrink-0 p-0"
-                onClick={() => onEditPart(part.id)}
-                title="Edit part"
-              >
-                <Pencil className="h-3.5 w-3.5" />
-              </Button>
+      <div className="flex items-center gap-3">
+        <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-md bg-gray-100">
+          {part.imageUrl ? (
+            <Image src={part.imageUrl} alt={part.displayName} fill className="object-cover" />
+          ) : (
+            <div className="flex h-full items-center justify-center text-gray-400">
+              <AlertCircle className="h-4 w-4" />
             </div>
-            {part.description && (
-              <p className="mt-1 line-clamp-2 text-xs text-gray-600">{part.description}</p>
-            )}
-          </div>
+          )}
         </div>
 
-        <div className="flex w-full flex-col gap-2 lg:w-64">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <h4 className="truncate text-sm font-medium">{part.displayName}</h4>
+            <div className="hidden flex-wrap gap-2 text-xs text-gray-500 sm:flex">
+              {part.material && <span>{part.material}</span>}
+              {part.size && <span>{part.size}</span>}
+            </div>
+          </div>
+          {part.description && (
+            <p className="truncate text-xs text-gray-600">{part.description}</p>
+          )}
+        </div>
+
+        <div className="flex shrink-0 items-center gap-2">
           {isLoadingSuppliers ? (
-            <div className="text-xs text-gray-500">Loading suppliers...</div>
+            <div className="text-xs text-gray-500">Loading...</div>
           ) : hasAvailableSuppliers ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="justify-start text-xs">
+                <Button variant="outline" className="h-8 max-w-32 justify-start px-2 text-xs">
                   <span className="truncate">
                     {supplierParts?.find((sp) => sp.id === selectedSupplierPartId)?.supplier.name ?? "Select supplier"}
                   </span>
@@ -414,14 +402,25 @@ function PartListRow({ part, isPending, onPartSelect, onEditPart }: PartCardProp
             <button
               type="button"
               onClick={() => setIsSupplierDialogOpen(true)}
-              className="w-full rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-left text-xs text-amber-800"
+              className="rounded-md border border-amber-300 bg-amber-50 px-2 py-1 text-xs text-amber-800"
             >
-              No suppliers available. Click to add suppliers.
+              Add supplier
             </button>
           )}
 
           <Button
+            variant="ghost"
             size="sm"
+            className="h-7 w-7 p-0"
+            onClick={() => onEditPart(part.id)}
+            title="Edit part"
+          >
+            <Pencil className="h-3.5 w-3.5" />
+          </Button>
+
+          <Button
+            size="sm"
+            className="h-8 px-3 text-xs"
             onClick={() => {
               if (hasSupplier && selectedSupplierPartId) {
                 onPartSelect(part, selectedSupplierPartId);
@@ -429,7 +428,7 @@ function PartListRow({ part, isPending, onPartSelect, onEditPart }: PartCardProp
             }}
             disabled={!hasSupplier}
           >
-            Add to List
+            Add
           </Button>
         </div>
       </div>
