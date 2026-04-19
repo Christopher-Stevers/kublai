@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent } from "~/components/ui/card";
-import { Badge } from "~/components/ui/badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,7 +15,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "~/components/ui/dialog";
-import { Pencil, AlertCircle } from "lucide-react";
+import { Pencil, AlertCircle, Check } from "lucide-react";
 import Image from "next/image";
 import type { PendingPart } from "./types";
 import { PartSuppliersDropdown } from "~/components/catalogue/PartSuppliersDropdown";
@@ -102,6 +101,7 @@ interface PartCardProps {
     size: string | null;
   };
   isPending: boolean;
+  onPartRemove?: (partId: string) => void;
   onPartSelect: (
     part: {
       id: string;
@@ -116,10 +116,9 @@ interface PartCardProps {
   onEditPart: (partId: string) => void;
 }
 
-function PartCard({ part, isPending, onPartSelect, onEditPart }: PartCardProps) {
+function PartCard({ part, isPending, onPartRemove, onPartSelect, onEditPart: _onEditPart }: PartCardProps) {
   const {
     selectedSupplierPartId,
-    setSelectedSupplierPartId,
     isSupplierDialogOpen,
     setIsSupplierDialogOpen,
     supplierParts,
@@ -130,28 +129,30 @@ function PartCard({ part, isPending, onPartSelect, onEditPart }: PartCardProps) 
 
   const hasSupplier = !!selectedSupplierPartId;
   const hasAvailableSuppliers = (supplierParts?.length ?? 0) > 0;
-  const truncatedDescription = part.description
-    ? part.description.length > 100
-      ? `${part.description.substring(0, 100)}...`
-      : part.description
-    : null;
-
   const handleCardClick = () => {
+    if (isPending) {
+      onPartRemove?.(part.id);
+      return;
+    }
+
     if (hasSupplier && selectedSupplierPartId) {
       onPartSelect(part, selectedSupplierPartId);
+      return;
     }
+
+    setIsSupplierDialogOpen(true);
   };
 
   return (
     <Card
-      className={`relative aspect-square transition-all hover:shadow-md ${
-        isPending ? "border-primary border-2" : ""
-      } ${hasSupplier ? "cursor-pointer" : ""}`}
-      onClick={hasSupplier ? handleCardClick : undefined}
+      className={`relative aspect-square overflow-hidden transition-all hover:shadow-md ${
+        isPending ? "border-primary border-2 shadow-md" : ""
+      } cursor-pointer`}
+      onClick={handleCardClick}
     >
-      <CardContent className="flex h-full flex-col p-2 sm:p-4">
-        <div className="flex h-full flex-col gap-2">
-          <div className="relative aspect-square w-full overflow-hidden rounded-md bg-gray-100">
+      <CardContent className="h-full p-0">
+        <div className="relative h-full w-full bg-gray-100">
+          <div className="absolute inset-0">
             {part.imageUrl ? (
               <Image
                 src={part.imageUrl}
@@ -177,102 +178,24 @@ function PartCard({ part, isPending, onPartSelect, onEditPart }: PartCardProps) 
               </div>
             )}
           </div>
-          <div className="min-h-0 flex-1 space-y-1">
-            <div className="flex items-start justify-between gap-2">
-              <h4 className="line-clamp-2 text-[11px] font-medium leading-tight sm:text-sm">
-                {part.displayName}
-              </h4>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-4 w-4 shrink-0 p-0 sm:h-6 sm:w-6"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onEditPart(part.id);
-                }}
-                title="Edit part"
-              >
-                <Pencil className="h-2.5 w-2.5 sm:h-3.5 sm:w-3.5" />
-              </Button>
-            </div>
-            {truncatedDescription && (
-              <p className="line-clamp-2 text-[10px] text-gray-600 sm:text-xs">
-                {truncatedDescription}
-              </p>
+
+          <div className="absolute inset-x-0 top-0 flex justify-end p-2">
+            {isPending && (
+              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm">
+                <Check className="h-4 w-4" />
+              </div>
             )}
           </div>
-          <div className="mt-auto space-y-2">
-            <div>
-              {isLoadingSuppliers ? (
-                <div className="mt-1 text-xs text-gray-500">
-                  Loading suppliers...
-                </div>
-              ) : hasAvailableSuppliers ? (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={`h-6 w-full justify-start px-2 text-[10px] sm:h-8 sm:text-xs ${
-                        !hasSupplier
-                          ? "border-amber-300 text-amber-700"
-                          : ""
-                      }`}
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <span className="truncate">
-                        {supplierParts?.find(
-                          (sp) => sp.id === selectedSupplierPartId,
-                        )?.supplier.name ?? "Select supplier"}
-                      </span>
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent onClick={(e) => e.stopPropagation()}>
-                    {supplierParts?.map((sp) => (
-                      <DropdownMenuItem
-                        key={sp.id}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedSupplierPartId(sp.id);
-                        }}
-                      >
-                        {sp.supplier.name}
-                        {sp.supplierSku ? ` (${sp.supplierSku})` : ""}
-                        {sp.isPreferred && " ⭐"}
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              ) : (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setIsSupplierDialogOpen(true);
-                  }}
-                  className="w-full cursor-pointer rounded-md border border-amber-300 bg-amber-50 px-2 py-1.5 text-left text-xs text-amber-800 transition-colors hover:bg-amber-100 sm:px-3 sm:py-2"
-                >
-                  <div className="flex items-center gap-2">
-                    <AlertCircle className="h-3 w-3 shrink-0 sm:h-3.5 sm:w-3.5" />
-                    <span className="flex-1">
-                      No suppliers available. Click to add suppliers.
-                    </span>
-                  </div>
-                </button>
-              )}
-            </div>
-            <Button
-              size="sm"
-              className="h-7 w-full px-2 text-[10px] sm:h-9 sm:text-sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                if (hasSupplier && selectedSupplierPartId) {
-                  onPartSelect(part, selectedSupplierPartId);
-                }
-              }}
-              disabled={!hasSupplier}
-            >
-              Add to List
-            </Button>
+
+          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/55 to-transparent px-2 py-2 text-white">
+            <h4 className="line-clamp-2 text-xs font-medium leading-tight sm:text-sm">
+              {part.displayName}
+            </h4>
+            {!hasAvailableSuppliers && !isLoadingSuppliers && (
+              <p className="mt-1 text-[10px] text-amber-200 sm:text-xs">
+                Tap to add supplier
+              </p>
+            )}
           </div>
         </div>
       </CardContent>
@@ -476,6 +399,7 @@ export interface PartStageProps {
     size: string | null;
   }>;
   pendingParts: PendingPart[];
+  onRemovePendingPart: (partId: string) => void;
   onPartSelect: (part: {
     id: string;
     displayName: string;
@@ -497,6 +421,7 @@ export interface PartStageProps {
 export function PartStage({
   partsForSelection,
   pendingParts,
+  onRemovePendingPart,
   onPartSelect,
   onEditPart,
   selectedMaterialId,
@@ -535,7 +460,7 @@ export function PartStage({
         </Button>
       </div>
       {viewMode === "grid" ? (
-        <div className="grid grid-cols-3 gap-2 sm:grid-cols-2 sm:gap-4 md:grid-cols-3">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
           {pagination.paginatedItems.map((part) => {
             const isPending = pendingParts.some((p) => p.partId === part.id);
             return (
@@ -543,6 +468,7 @@ export function PartStage({
                 key={part.id}
                 part={part}
                 isPending={isPending}
+                onPartRemove={onRemovePendingPart}
                 onPartSelect={onPartSelect}
                 onEditPart={onEditPart}
               />

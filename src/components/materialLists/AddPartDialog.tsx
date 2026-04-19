@@ -636,6 +636,7 @@ export function AddPartDialog({
               <PartStage
                 partsForSelection={filteredPartsForSelection}
                 pendingParts={pendingParts}
+                onRemovePendingPart={handleRemovePendingPart}
                 onPartSelect={handlePartSelect}
                 onEditPart={handleEditPart}
                 selectedMaterialId={selectedMaterialId}
