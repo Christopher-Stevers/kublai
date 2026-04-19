@@ -2,9 +2,7 @@ import { redirect } from "next/navigation";
 import { HydrateClient } from "~/trpc/server";
 import { auth } from "@clerk/nextjs/server";
 import { Header } from "../_components/Header";
-import { db } from "~/server/db";
-import { users } from "~/server/db/schema";
-import { eq } from "drizzle-orm";
+import { ensureUser } from "~/server/utils/ensure-user";
 import { waitForUser } from "~/server/utils/wait-for-user";
 
 export default async function DashboardLayout({
@@ -20,16 +18,12 @@ export default async function DashboardLayout({
   }
 
   // Get user from database (webhook should have created it)
-  let [user] = await db
-    .select()
-    .from(users)
-    .where(eq(users.id, userId))
-    .limit(1);
+  let user = await ensureUser(userId);
 
   // If user doesn't exist, wait for webhook to create it (with timeout)
   // This ensures webhook is the single source of truth for user creation
   if (!user) {
-    user = await waitForUser(userId, 5000, 200); // Wait up to 5 seconds, poll every 200ms
+    user = await waitForUser(userId, 3000, 250);
   }
 
   // If user still doesn't exist after waiting, redirect to onboarding

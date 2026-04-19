@@ -13,8 +13,7 @@ import { ZodError } from "zod";
 
 import { auth } from "@clerk/nextjs/server";
 import { db } from "~/server/db";
-import { users } from "~/server/db/schema";
-import { eq } from "drizzle-orm";
+import { ensureUser } from "~/server/utils/ensure-user";
 
 /**
  * 1. CONTEXT
@@ -34,12 +33,7 @@ export const createTRPCContext = async (opts: { headers: Headers }) => {
   // Get user from database if authenticated
   let dbUser = null;
   if (userId) {
-    const [user] = await db
-      .select()
-      .from(users)
-      .where(eq(users.id, userId))
-      .limit(1);
-    dbUser = user ?? null;
+    dbUser = await ensureUser(userId);
   }
 
   return {

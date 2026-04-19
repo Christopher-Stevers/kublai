@@ -1,9 +1,6 @@
 import { redirect } from "next/navigation";
 import { auth } from "@clerk/nextjs/server";
-import { db } from "~/server/db";
-import { users } from "~/server/db/schema";
-import { eq } from "drizzle-orm";
-import { waitForUser } from "~/server/utils/wait-for-user";
+import { ensureUser } from "~/server/utils/ensure-user";
 
 const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
 const hasUsableClerkKey =
@@ -25,11 +22,7 @@ export default async function SignInLayout({
   // If user is authenticated, redirect them away from sign-in page
   if (userId) {
     // Get user from database (webhook should have created it)
-    let [user] = await db
-      .select()
-      .from(users)
-      .where(eq(users.id, userId))
-      .limit(1);
+    const user = await ensureUser(userId);
 
     // If user exists and has organizationId, redirect to dashboard
     if (user?.organizationId) {
