@@ -136,7 +136,7 @@ function PartCard({ part, isPending, pendingQuantity = 0, onPartSelect, onEditPa
                 src={part.imageUrl}
                 alt={part.displayName}
                 fill
-                className="object-contain"
+                className="object-cover"
               />
             ) : (
               <div className="flex h-full flex-col items-center justify-center gap-2 bg-muted text-muted-foreground">
