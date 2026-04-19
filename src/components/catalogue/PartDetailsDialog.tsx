@@ -24,6 +24,31 @@ import {
 import { SupplierFormDialog } from "~/components/suppliers/SupplierFormDialog";
 import { PartSuppliersDropdown } from "~/components/catalogue/PartSuppliersDropdown";
 
+function FieldHeader({
+  label,
+  onAdd,
+  addLabel = "+ Add",
+}: {
+  label: string;
+  onAdd?: () => void;
+  addLabel?: string;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-2">
+      <Label>{label}</Label>
+      {onAdd && (
+        <button
+          type="button"
+          onClick={onAdd}
+          className="text-xs font-medium text-primary hover:underline"
+        >
+          {addLabel}
+        </button>
+      )}
+    </div>
+  );
+}
+
 function buildPartName({
   description,
   materialName,
@@ -135,6 +160,12 @@ export function PartDetailsDialog({
   const [supplierName, setSupplierName] = useState("");
   const [lastKnownUnitCost, setLastKnownUnitCost] = useState("");
   const [isSupplierDialogOpen, setIsSupplierDialogOpen] = useState(false);
+  const [showNewCatalogInput, setShowNewCatalogInput] = useState(false);
+  const [newCatalogName, setNewCatalogName] = useState("");
+  const [showNewCategoryInput, setShowNewCategoryInput] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [showNewMaterialInput, setShowNewMaterialInput] = useState(false);
+  const [newMaterialName, setNewMaterialName] = useState("");
 
   const sizeUnits = useMemo(
     () => (allUnits?.filter((u) => u.kind === "length") ?? []),
@@ -262,6 +293,41 @@ export function PartDetailsDialog({
     setIsSupplierDialogOpen(false);
   };
 
+  const createCatalog = api.catalogue.createCatalog.useMutation({
+    onSuccess: (newCatalog) => {
+      if (!newCatalog) return;
+      void utils.catalogue.getCatalogs.invalidate();
+      setCatalogId(newCatalog.id);
+      setNewCatalogName("");
+      setShowNewCatalogInput(false);
+    },
+  });
+
+  const createCategory = api.catalogue.createCategoryType.useMutation({
+    onSuccess: (newCategory) => {
+      void utils.catalogue.getCategoryTree.invalidate();
+      setCategoryId(newCategory.id);
+      setNewCategoryName("");
+      setShowNewCategoryInput(false);
+    },
+  });
+
+  const createMaterial = api.catalogue.createMaterial.useMutation({
+    onSuccess: (newMaterial) => {
+      if (!newMaterial) return;
+      void utils.catalogue.getMaterials.invalidate();
+      setMaterialId(newMaterial.id);
+      setNewMaterialName("");
+      setShowNewMaterialInput(false);
+    },
+  });
+
+  const createSize = api.catalogue.createSize.useMutation({
+    onSuccess: () => {
+      void utils.catalogue.getAvailableSizes.invalidate();
+    },
+  });
+
   const parsedSizeNominal = sizeValue.trim() ? parseSizeInput(sizeValue.trim()) : null;
   const isLoading = createPart.isPending || updatePart.isPending;
   const selectedCatalog = catalogs?.find((catalog) => catalog.id === catalogId);
@@ -355,7 +421,7 @@ export function PartDetailsDialog({
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <Label>Catalog</Label>
+                <FieldHeader label="Catalog" onAdd={() => setShowNewCatalogInput((value) => !value)} />
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="outline" className="mt-1 w-full justify-between" disabled={isLoading}>
@@ -371,10 +437,28 @@ export function PartDetailsDialog({
                     ))}
                   </DropdownMenuContent>
                 </DropdownMenu>
+                {showNewCatalogInput && (
+                  <div className="mt-2 flex gap-2">
+                    <Input
+                      value={newCatalogName}
+                      onChange={(e) => setNewCatalogName(e.target.value)}
+                      placeholder="New catalog name"
+                      disabled={isLoading || createCatalog.isPending}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => createCatalog.mutate({ name: newCatalogName.trim() })}
+                      disabled={!newCatalogName.trim() || isLoading || createCatalog.isPending}
+                    >
+                      Add
+                    </Button>
+                  </div>
+                )}
               </div>
 
               <div>
-                <Label>Category</Label>
+                <FieldHeader label="Category" onAdd={() => setShowNewCategoryInput((value) => !value)} />
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="outline" className="mt-1 w-full justify-between" disabled={isLoading}>
@@ -391,12 +475,30 @@ export function PartDetailsDialog({
                     ))}
                   </DropdownMenuContent>
                 </DropdownMenu>
+                {showNewCategoryInput && (
+                  <div className="mt-2 flex gap-2">
+                    <Input
+                      value={newCategoryName}
+                      onChange={(e) => setNewCategoryName(e.target.value)}
+                      placeholder="New category name"
+                      disabled={isLoading || createCategory.isPending}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => createCategory.mutate({ name: newCategoryName.trim() })}
+                      disabled={!newCategoryName.trim() || isLoading || createCategory.isPending}
+                    >
+                      Add
+                    </Button>
+                  </div>
+                )}
               </div>
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <Label>Material</Label>
+                <FieldHeader label="Material" onAdd={() => setShowNewMaterialInput((value) => !value)} />
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="outline" className="mt-1 w-full justify-between" disabled={isLoading}>
@@ -413,6 +515,24 @@ export function PartDetailsDialog({
                     ))}
                   </DropdownMenuContent>
                 </DropdownMenu>
+                {showNewMaterialInput && (
+                  <div className="mt-2 flex gap-2">
+                    <Input
+                      value={newMaterialName}
+                      onChange={(e) => setNewMaterialName(e.target.value)}
+                      placeholder="New material name"
+                      disabled={isLoading || createMaterial.isPending}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => createMaterial.mutate({ name: newMaterialName.trim() })}
+                      disabled={!newMaterialName.trim() || isLoading || createMaterial.isPending}
+                    >
+                      Add
+                    </Button>
+                  </div>
+                )}
               </div>
 
               <div>
@@ -473,7 +593,14 @@ export function PartDetailsDialog({
                 />
               </div>
               <div>
-                <Label>Size Unit</Label>
+                <FieldHeader
+                  label="Size Unit"
+                  onAdd={() => {
+                    if (parsedSizeNominal !== null && sizeUnitId) {
+                      createSize.mutate({ nominal: parsedSizeNominal, unitId: sizeUnitId });
+                    }
+                  }}
+                />
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="outline" className="mt-1 w-full justify-between" disabled={isLoading}>
@@ -490,6 +617,9 @@ export function PartDetailsDialog({
                     ))}
                   </DropdownMenuContent>
                 </DropdownMenu>
+                <p className="mt-1 text-xs text-gray-500">
+                  Pick a size and unit, then click + Add to save it as a reusable size.
+                </p>
               </div>
             </div>
 
