@@ -7,11 +7,18 @@ import { db } from "~/server/db";
 import { users } from "~/server/db/schema";
 import { env } from "~/env";
 
-const stripe = new Stripe(env.STRIPE_SECRET_KEY, {
-  apiVersion: "2025-12-15.clover",
-});
+function getStripeClient() {
+  if (!env.STRIPE_SECRET_KEY) {
+    throw new Error("Missing STRIPE_SECRET_KEY");
+  }
+
+  return new Stripe(env.STRIPE_SECRET_KEY, {
+    apiVersion: "2025-12-15.clover",
+  });
+}
 
 export async function POST(req: Request) {
+  const stripe = getStripeClient();
   const body = await req.text();
   const headersList = await headers();
   const signature = headersList.get("stripe-signature");

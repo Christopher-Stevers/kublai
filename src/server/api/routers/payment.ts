@@ -6,16 +6,25 @@ import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { env } from "~/env";
 import { users } from "~/server/db/schema";
 
-// Initialize Stripe with secret key
-const stripe = new Stripe(env.STRIPE_SECRET_KEY, {
-  apiVersion: "2025-12-15.clover",
-});
+function getStripeClient() {
+  if (!env.STRIPE_SECRET_KEY) {
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: "STRIPE_SECRET_KEY is not configured",
+    });
+  }
+
+  return new Stripe(env.STRIPE_SECRET_KEY, {
+    apiVersion: "2025-12-15.clover",
+  });
+}
 
 export const paymentRouter = createTRPCRouter({
   /**
    * Create a Stripe Setup Intent for saving payment methods
    */
   createSetupIntent: protectedProcedure.query(async ({ ctx }) => {
+    const stripe = getStripeClient();
     const user = ctx.user;
 
     if (!user) {
@@ -82,6 +91,7 @@ export const paymentRouter = createTRPCRouter({
    * Create a Stripe Checkout Session for one-time purchase
    */
   createOneTimeCheckout: protectedProcedure.mutation(async ({ ctx }) => {
+    const stripe = getStripeClient();
     const userId = ctx.userId;
     const user = ctx.user;
 
@@ -173,6 +183,7 @@ export const paymentRouter = createTRPCRouter({
    * Create a Stripe Checkout Session for subscription
    */
   createSubscriptionCheckout: protectedProcedure.mutation(async ({ ctx }) => {
+    const stripe = getStripeClient();
     const userId = ctx.userId;
     const user = ctx.user;
 
@@ -297,6 +308,7 @@ export const paymentRouter = createTRPCRouter({
    * Create Stripe Customer Portal session for managing subscription
    */
   createPortalSession: protectedProcedure.mutation(async ({ ctx }) => {
+    const stripe = getStripeClient();
     const user = ctx.user;
 
     if (!user?.stripeCustomerId) {
