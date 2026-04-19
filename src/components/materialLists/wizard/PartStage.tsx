@@ -130,7 +130,7 @@ function PartCard({ part, isPending, pendingQuantity = 0, onPartSelect, onEditPa
     >
       <CardContent className="h-full p-0">
         <div className="relative h-full w-full bg-white">
-          <div className="absolute inset-x-0 top-0 bottom-8 bg-gray-100">
+          <div className="absolute inset-0 bg-gray-100">
             {part.imageUrl ? (
               <Image
                 src={part.imageUrl}
