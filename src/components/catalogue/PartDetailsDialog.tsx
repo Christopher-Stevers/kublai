@@ -203,8 +203,16 @@ export function PartDetailsDialog({
     [allUnits],
   );
   const imageInputRef = useRef<HTMLInputElement | null>(null);
+  const initializedForOpenRef = useRef(false);
+
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      initializedForOpenRef.current = false;
+    }
+  }, [open]);
+
+  useEffect(() => {
+    if (!open || initializedForOpenRef.current) return;
 
     if (isEditMode && part) {
       setDisplayName(part.displayName ?? "");
@@ -221,6 +229,7 @@ export function PartDetailsDialog({
       setSupplierSku("");
       setLastKnownUnitCost("");
       setHasManuallyEditedDisplayName(true);
+      initializedForOpenRef.current = true;
       return;
     }
 
@@ -244,8 +253,9 @@ export function PartDetailsDialog({
       } else {
         setSizeUnitId(null);
       }
+      initializedForOpenRef.current = true;
     }
-  }, [open, isEditMode, part, materials, initialContext, allUnits]);
+  }, [open, isEditMode, part, initialContext, allUnits]);
 
   useEffect(() => {
     if (!open || isEditMode || hasManuallyEditedDisplayName) {
