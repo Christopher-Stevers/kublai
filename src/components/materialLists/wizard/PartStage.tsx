@@ -144,14 +144,14 @@ function PartCard({ part, isPending, onPartSelect, onEditPart }: PartCardProps) 
 
   return (
     <Card
-      className={`relative transition-all hover:shadow-md ${
+      className={`relative aspect-square transition-all hover:shadow-md ${
         isPending ? "border-primary border-2" : ""
       } ${hasSupplier ? "cursor-pointer" : ""}`}
       onClick={hasSupplier ? handleCardClick : undefined}
     >
-      <CardContent className="p-2 sm:p-4">
-        <div className="flex flex-col gap-2">
-          <div className="relative h-16 w-full overflow-hidden rounded-md bg-gray-100 sm:h-32">
+      <CardContent className="flex h-full flex-col p-2 sm:p-4">
+        <div className="flex h-full flex-col gap-2">
+          <div className="relative aspect-square w-full overflow-hidden rounded-md bg-gray-100">
             {part.imageUrl ? (
               <Image
                 src={part.imageUrl}
@@ -177,7 +177,7 @@ function PartCard({ part, isPending, onPartSelect, onEditPart }: PartCardProps) 
               </div>
             )}
           </div>
-          <div className="space-y-1">
+          <div className="min-h-0 flex-1 space-y-1">
             <div className="flex items-start justify-between gap-2">
               <h4 className="line-clamp-2 text-[11px] font-medium leading-tight sm:text-sm">
                 {part.displayName}
@@ -201,14 +201,8 @@ function PartCard({ part, isPending, onPartSelect, onEditPart }: PartCardProps) 
               </p>
             )}
           </div>
-          <div className="space-y-2">
+          <div className="mt-auto space-y-2">
             <div>
-              <label className="text-xs font-medium text-gray-700">
-                Supplier:{" "}
-                {!hasSupplier && hasAvailableSuppliers && (
-                  <span className="text-amber-600">*Required</span>
-                )}
-              </label>
               {isLoadingSuppliers ? (
                 <div className="mt-1 text-xs text-gray-500">
                   Loading suppliers...
@@ -218,7 +212,7 @@ function PartCard({ part, isPending, onPartSelect, onEditPart }: PartCardProps) 
                   <DropdownMenuTrigger asChild>
                     <Button
                       variant="outline"
-                      className={`mt-1 h-6 w-full justify-start px-2 text-[10px] sm:h-8 sm:text-xs ${
+                      className={`h-6 w-full justify-start px-2 text-[10px] sm:h-8 sm:text-xs ${
                         !hasSupplier
                           ? "border-amber-300 text-amber-700"
                           : ""
@@ -255,7 +249,7 @@ function PartCard({ part, isPending, onPartSelect, onEditPart }: PartCardProps) 
                     e.stopPropagation();
                     setIsSupplierDialogOpen(true);
                   }}
-                  className="mt-1 w-full cursor-pointer rounded-md border border-amber-300 bg-amber-50 px-2 py-1.5 text-left text-xs text-amber-800 transition-colors hover:bg-amber-100 sm:px-3 sm:py-2"
+                  className="w-full cursor-pointer rounded-md border border-amber-300 bg-amber-50 px-2 py-1.5 text-left text-xs text-amber-800 transition-colors hover:bg-amber-100 sm:px-3 sm:py-2"
                 >
                   <div className="flex items-center gap-2">
                     <AlertCircle className="h-3 w-3 shrink-0 sm:h-3.5 sm:w-3.5" />
@@ -526,19 +520,19 @@ export function PartStage({
 
   return (
     <div className="space-y-3 sm:space-y-4">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex items-center justify-between gap-3">
         <h3 className="text-base font-semibold sm:text-lg">Select Parts</h3>
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          <ViewToggle view={viewMode} onViewChange={setViewMode} showOnMobile />
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={onContinueToReview}
-            className="w-full text-xs sm:w-auto sm:text-sm"
-          >
-            Review ({pendingParts.length})
-          </Button>
-        </div>
+        <ViewToggle view={viewMode} onViewChange={setViewMode} showOnMobile />
+      </div>
+      <div className="flex justify-end">
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={onContinueToReview}
+          className="w-full text-xs sm:w-auto sm:text-sm"
+        >
+          Review ({pendingParts.length})
+        </Button>
       </div>
       {viewMode === "grid" ? (
         <div className="grid grid-cols-3 gap-2 sm:grid-cols-2 sm:gap-4 md:grid-cols-3">
