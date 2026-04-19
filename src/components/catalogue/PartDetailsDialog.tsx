@@ -404,22 +404,7 @@ export function PartDetailsDialog({
                 label="Catalog *"
                 onAdd={() => setShowNewCatalogInput((value) => !value)}
               />
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="mt-1 w-full justify-between" disabled={isLoading}>
-                    {selectedCatalog?.name ?? "Select catalog"}
-                    <ChevronDown className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="max-h-60 overflow-y-auto">
-                  {catalogs?.map((catalog) => (
-                    <DropdownMenuItem key={catalog.id} onClick={() => setCatalogId(catalog.id)}>
-                      {catalog.name}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-              {showNewCatalogInput && (
+              {showNewCatalogInput ? (
                 <div className="mt-2 flex gap-2">
                   <Input
                     value={newCatalogName}
@@ -436,6 +421,22 @@ export function PartDetailsDialog({
                     Add
                   </Button>
                 </div>
+              ) : (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" className="mt-1 w-full justify-between" disabled={isLoading}>
+                      {selectedCatalog?.name ?? "Select catalog"}
+                      <ChevronDown className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="max-h-60 overflow-y-auto">
+                    {catalogs?.map((catalog) => (
+                      <DropdownMenuItem key={catalog.id} onClick={() => setCatalogId(catalog.id)}>
+                        {catalog.name}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               )}
             </div>
 
@@ -483,23 +484,7 @@ export function PartDetailsDialog({
 
             <div>
               <FieldHeader label="Material" onAdd={() => setShowNewMaterialInput((value) => !value)} />
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="mt-1 w-full justify-between" disabled={isLoading}>
-                    {selectedMaterial?.name ?? "Select material"}
-                    <ChevronDown className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="max-h-60 overflow-y-auto">
-                  <DropdownMenuItem onClick={() => setMaterialId(null)}>None</DropdownMenuItem>
-                  {materials?.map((material) => (
-                    <DropdownMenuItem key={material.id} onClick={() => setMaterialId(material.id)}>
-                      {material.name}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-              {showNewMaterialInput && (
+              {showNewMaterialInput ? (
                 <div className="mt-2 flex gap-2">
                   <Input
                     value={newMaterialName}
@@ -516,6 +501,23 @@ export function PartDetailsDialog({
                     Add
                   </Button>
                 </div>
+              ) : (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" className="mt-1 w-full justify-between" disabled={isLoading}>
+                      {selectedMaterial?.name ?? "Select material"}
+                      <ChevronDown className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="max-h-60 overflow-y-auto">
+                    <DropdownMenuItem onClick={() => setMaterialId(null)}>None</DropdownMenuItem>
+                    {materials?.map((material) => (
+                      <DropdownMenuItem key={material.id} onClick={() => setMaterialId(material.id)}>
+                        {material.name}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               )}
             </div>
 
@@ -532,23 +534,7 @@ export function PartDetailsDialog({
 
             <div>
               <FieldHeader label="Category" onAdd={() => setShowNewCategoryInput((value) => !value)} />
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="mt-1 w-full justify-between" disabled={isLoading}>
-                    {selectedCategory?.name ?? "Select category"}
-                    <ChevronDown className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="max-h-60 overflow-y-auto">
-                  <DropdownMenuItem onClick={() => setCategoryId(null)}>None</DropdownMenuItem>
-                  {categoryTree?.map((category) => (
-                    <DropdownMenuItem key={category.id} onClick={() => setCategoryId(category.id)}>
-                      {category.name}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-              {showNewCategoryInput && (
+              {showNewCategoryInput ? (
                 <div className="mt-2 flex gap-2">
                   <Input
                     value={newCategoryName}
@@ -565,6 +551,23 @@ export function PartDetailsDialog({
                     Add
                   </Button>
                 </div>
+              ) : (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" className="mt-1 w-full justify-between" disabled={isLoading}>
+                      {selectedCategory?.name ?? "Select category"}
+                      <ChevronDown className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="max-h-60 overflow-y-auto">
+                    <DropdownMenuItem onClick={() => setCategoryId(null)}>None</DropdownMenuItem>
+                    {categoryTree?.map((category) => (
+                      <DropdownMenuItem key={category.id} onClick={() => setCategoryId(category.id)}>
+                        {category.name}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               )}
             </div>
 
