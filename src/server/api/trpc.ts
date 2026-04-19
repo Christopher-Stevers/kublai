@@ -14,6 +14,7 @@ import { ZodError } from "zod";
 import { auth } from "@clerk/nextjs/server";
 import { db } from "~/server/db";
 import { ensureUser } from "~/server/utils/ensure-user";
+import { getDevBypassUser } from "~/server/utils/get-dev-bypass-user";
 
 /**
  * 1. CONTEXT
@@ -28,12 +29,16 @@ import { ensureUser } from "~/server/utils/ensure-user";
  * @see https://trpc.io/docs/server/context
  */
 export const createTRPCContext = async (opts: { headers: Headers }) => {
-  const { userId } = await auth();
+  const { userId: clerkUserId } = await auth();
+  let userId = clerkUserId;
 
   // Get user from database if authenticated
   let dbUser = null;
   if (userId) {
     dbUser = await ensureUser(userId);
+  } else {
+    dbUser = await getDevBypassUser();
+    userId = dbUser?.id ?? null;
   }
 
   return {

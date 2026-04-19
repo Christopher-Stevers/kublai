@@ -4,6 +4,7 @@ import { auth } from "@clerk/nextjs/server";
 import { Header } from "../_components/Header";
 import { ensureUser } from "~/server/utils/ensure-user";
 import { waitForUser } from "~/server/utils/wait-for-user";
+import { getDevBypassUser } from "~/server/utils/get-dev-bypass-user";
 
 const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
 const allowDevDashboardAccess =
@@ -15,20 +16,30 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { userId } = await auth();
+  const { userId: clerkUserId } = await auth();
+  let userId = clerkUserId;
 
   // Redirect if not authenticated
   if (!userId) {
+    const devBypassUser = await getDevBypassUser();
+    if (!devBypassUser) {
+      redirect("/sign-in");
+    }
+    userId = devBypassUser.id;
+  }
+
+  const effectiveUserId = userId;
+  if (!effectiveUserId) {
     redirect("/sign-in");
   }
 
   // Get user from database (webhook should have created it)
-  let user = await ensureUser(userId);
+  let user = await ensureUser(effectiveUserId);
 
   // If user doesn't exist, wait for webhook to create it (with timeout)
   // This ensures webhook is the single source of truth for user creation
   if (!user) {
-    user = await waitForUser(userId, 3000, 250);
+    user = await waitForUser(effectiveUserId, 3000, 250);
   }
 
   // If user still doesn't exist after waiting, redirect to onboarding

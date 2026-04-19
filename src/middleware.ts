@@ -13,6 +13,10 @@ const isPublicRoute = createRouteMatcher([
 
 
 export default clerkMiddleware(async (auth, req) => {
+  if (process.env.NODE_ENV !== "production") {
+    return NextResponse.next();
+  }
+
   // Protect all routes except public ones
   if (!isPublicRoute(req)) {
     const { userId } = await auth();
