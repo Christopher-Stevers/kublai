@@ -95,8 +95,8 @@ export function ReviewStage({
 
   return (
     <div className="space-y-3 sm:space-y-4">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-2">
+      <div className="space-y-2">
+        <div className="flex items-center justify-between gap-3">
           <h3 className="text-base font-semibold sm:text-lg">Review Parts</h3>
           <ViewToggle view={reviewView} onViewChange={setReviewView} showOnMobile />
         </div>
