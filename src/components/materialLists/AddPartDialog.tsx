@@ -380,10 +380,14 @@ export function AddPartDialog({
     setPendingParts((prev) => {
       const existing = prev.find((pendingPart) => pendingPart.partId === part.id);
 
+      if (quantity <= 0) {
+        return prev.filter((pendingPart) => pendingPart.partId !== part.id);
+      }
+
       if (existing) {
         return prev.map((pendingPart) =>
           pendingPart.partId === part.id
-            ? { ...pendingPart, quantity: Math.max(1, quantity) }
+            ? { ...pendingPart, quantity }
             : pendingPart,
         );
       }
@@ -399,7 +403,7 @@ export function AddPartDialog({
             material: part.material,
             size: part.size,
           },
-          quantity: Math.max(1, quantity),
+          quantity,
         },
       ];
     });
@@ -417,7 +421,7 @@ export function AddPartDialog({
       return;
     }
 
-    const clampQuantity = (quantity: number) => Math.max(1, quantity);
+    const clampQuantity = (quantity: number) => Math.max(0, quantity);
 
     const handleTouchMove = (event: TouchEvent) => {
       if (event.touches.length === 0) {
@@ -959,7 +963,7 @@ export function AddPartDialog({
                     <div className="absolute inset-x-0 top-1/2 h-24 -translate-y-1/2 rounded-3xl border border-white/35 bg-white/20 shadow-inner sm:h-28" />
                     <div className="absolute inset-x-0 flex flex-col items-center transition-transform duration-75 ease-out">
                       {Array.from({ length: 13 }, (_, index) => {
-                        const value = Math.max(1, quantityPickerPreview.quantity - 6 + index);
+                        const value = Math.max(0, quantityPickerPreview.quantity - 6 + index);
                         const distance = Math.abs(value - quantityPickerPreview.quantity);
                         const opacity = Math.max(0.18, 1 - distance * 0.18);
                         const scale = Math.max(0.72, 1 - distance * 0.08);
