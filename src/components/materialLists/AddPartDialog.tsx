@@ -41,7 +41,7 @@ export function AddPartDialog({
   const [isCreateCustomPartDialogOpen, setIsCreateCustomPartDialogOpen] =
     useState(false);
   const [editingPartId, setEditingPartId] = useState<string | null>(null);
-  const [isPendingTrayOpen, setIsPendingTrayOpen] = useState(true);
+  const [isPendingTrayOpen, setIsPendingTrayOpen] = useState(false);
   const [customPartContext, setCustomPartContext] = useState<{
     materialId?: string | null;
     size?: { nominal: number; unit: string } | null;
@@ -559,14 +559,14 @@ export function AddPartDialog({
   useEffect(() => {
     if (!open) {
       setPendingParts([]);
-      setIsPendingTrayOpen(true);
+      setIsPendingTrayOpen(false);
       resetWizard();
     }
   }, [open, resetWizard]);
 
   useEffect(() => {
-    if (pendingParts.length > 0) {
-      setIsPendingTrayOpen(true);
+    if (pendingParts.length === 0) {
+      setIsPendingTrayOpen(false);
     }
   }, [pendingParts.length]);
 
@@ -732,13 +732,6 @@ export function AddPartDialog({
                         className="w-full text-xs sm:w-auto sm:text-sm"
                       >
                         Review Parts
-                      </Button>
-                      <Button
-                        size="sm"
-                        onClick={() => setIsPendingTrayOpen(false)}
-                        className="w-full text-xs sm:w-auto sm:text-sm"
-                      >
-                        Continue
                       </Button>
                     </div>
 
