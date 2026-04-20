@@ -947,9 +947,15 @@ export function AddPartDialog({
           )}
 
           {quantityPickerPreview && (
-            <div className="absolute inset-0 z-[90] flex touch-none bg-black/20 backdrop-blur-[1px]">
+            <div
+              className="absolute inset-0 z-[90] flex touch-none select-none bg-black/20 backdrop-blur-[1px]"
+              style={{ WebkitUserSelect: "none", userSelect: "none", WebkitTouchCallout: "none" }}
+            >
               <div className="flex h-full w-full p-2 sm:p-3">
-                <div className="flex h-full w-full flex-col rounded-[2rem] bg-white/18 px-4 py-5 text-white shadow-2xl ring-1 ring-white/20 backdrop-blur-md sm:px-8 sm:py-8">
+                <div
+                  className="flex h-full w-full flex-col rounded-[2rem] bg-white/18 px-4 py-5 text-white shadow-2xl ring-1 ring-white/20 backdrop-blur-md sm:px-8 sm:py-8"
+                  style={{ WebkitUserSelect: "none", userSelect: "none", WebkitTouchCallout: "none" }}
+                >
                   <div className="mb-6 text-center sm:mb-8">
                     <div className="text-base font-medium uppercase tracking-[0.22em] text-white/70 sm:text-lg">
                       Quantity
@@ -974,7 +980,7 @@ export function AddPartDialog({
                         return (
                           <div
                             key={`${quantityPickerPreview.quantity}-${rawValue}-${index}`}
-                            className="flex h-13 items-center justify-center text-center font-semibold leading-none sm:h-16"
+                            className="flex h-13 select-none items-center justify-center text-center font-semibold leading-none sm:h-16"
                             style={{
                               opacity,
                               transform: `scale(${scale})`,
