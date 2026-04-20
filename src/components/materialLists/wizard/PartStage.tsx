@@ -123,7 +123,7 @@ function PartCard({ part, isPending, pendingQuantity = 0, onPartSelect, onEditPa
 
   return (
     <Card
-      className={`relative aspect-square overflow-hidden transition-all hover:shadow-md ${
+      className={`relative aspect-square gap-0 py-0 overflow-hidden transition-all hover:shadow-md ${
         isPending ? "border-primary border-2 shadow-md" : ""
       } cursor-pointer`}
       onClick={handleCardClick}
