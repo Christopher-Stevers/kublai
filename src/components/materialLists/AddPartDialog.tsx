@@ -577,7 +577,7 @@ export function AddPartDialog({
   // Reset state when dialog closes
   useEffect(() => {
     if (!open) {
-      setPendingParts([]);
+      setPendingParts((prev) => (prev.length === 0 ? prev : []));
       setIsPendingTrayOpen(false);
       setQuantityPickerPreview(null);
       resetWizard();

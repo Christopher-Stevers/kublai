@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "~/trpc/react";
 import {
   getOfflineCatalogueSnapshot,
@@ -381,7 +381,7 @@ export function usePartWizard() {
     }
   };
 
-  const resetWizard = () => {
+  const resetWizard = useCallback(() => {
     setWizardStage("catalog");
     setSelectedCatalogId(null);
     setHasCatalogSelection(false);
@@ -401,7 +401,7 @@ export function usePartWizard() {
     setShowCustomPartTypeInput(false);
     setCustomPartTypeName("");
     setWizardSearchQuery("");
-  };
+  }, []);
 
   useEffect(() => {
     setWizardSearchQuery("");
