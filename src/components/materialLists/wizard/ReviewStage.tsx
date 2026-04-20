@@ -191,8 +191,8 @@ export function ReviewStage({
                   </div>
                 )}
               </div>
-              <div className="min-w-[14rem] flex-1">
-                <div className="truncate text-sm font-medium sm:text-base">
+              <div className="min-w-max flex-1">
+                <div className="whitespace-nowrap text-sm font-medium sm:text-base">
                   {pendingPart.partDefinition.displayName}
                 </div>
               </div>
