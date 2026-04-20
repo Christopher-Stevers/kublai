@@ -877,20 +877,24 @@ export function AddPartDialog({
         </DialogContent>
       </Dialog>
 
-      <CreateCustomPartDialog
-        open={isCreateCustomPartDialogOpen}
-        onOpenChange={setIsCreateCustomPartDialogOpen}
-        onPartCreated={handleCustomPartCreated}
-        initialContext={customPartContext ?? undefined}
-      />
+      {isCreateCustomPartDialogOpen && (
+        <CreateCustomPartDialog
+          open={isCreateCustomPartDialogOpen}
+          onOpenChange={setIsCreateCustomPartDialogOpen}
+          onPartCreated={handleCustomPartCreated}
+          initialContext={customPartContext ?? undefined}
+        />
+      )}
 
-      <EditPartDialog
-        open={editingPartId !== null}
-        onOpenChange={(open) => {
-          if (!open) setEditingPartId(null);
-        }}
-        partId={editingPartId}
-      />
+      {editingPartId !== null && (
+        <EditPartDialog
+          open={editingPartId !== null}
+          onOpenChange={(open) => {
+            if (!open) setEditingPartId(null);
+          }}
+          partId={editingPartId}
+        />
+      )}
     </>
   );
 }
