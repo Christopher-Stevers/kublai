@@ -838,16 +838,30 @@ export function AddPartDialog({
               <button
                 type="button"
                 onClick={() => setIsPendingTrayOpen((open) => !open)}
-                className="flex w-full items-center justify-between px-2 py-3 text-left sm:px-4 sm:py-4 md:px-6"
+                className="flex w-full items-center justify-between gap-2 px-2 py-3 text-left sm:px-4 sm:py-4 md:px-6"
               >
                 <div className="text-sm font-semibold sm:text-base">
                   Pending Parts ({pendingParts.length})
                 </div>
-                {isPendingTrayOpen ? (
-                  <ChevronDown className="h-4 w-4 text-gray-500" />
-                ) : (
-                  <ChevronUp className="h-4 w-4 text-gray-500" />
-                )}
+                <div className="ml-auto flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      handleReviewAndAdd();
+                    }}
+                    className="h-8 px-2.5 text-xs sm:h-9 sm:text-sm"
+                  >
+                    Review Parts
+                  </Button>
+                  {isPendingTrayOpen ? (
+                    <ChevronDown className="h-4 w-4 text-gray-500" />
+                  ) : (
+                    <ChevronUp className="h-4 w-4 text-gray-500" />
+                  )}
+                </div>
               </button>
 
               <div
@@ -856,18 +870,7 @@ export function AddPartDialog({
                 }`}
               >
                 <div className="overflow-hidden">
-                  <div className="border-t px-2 pb-3 sm:px-4 sm:pb-4 md:px-6">
-                    <div className="flex flex-col gap-2 py-3 sm:flex-row sm:justify-end sm:py-4">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handleReviewAndAdd}
-                        className="w-full text-xs sm:w-auto sm:text-sm"
-                      >
-                        Review Parts
-                      </Button>
-                    </div>
-
+                  <div className="border-t px-2 pt-3 pb-3 sm:px-4 sm:pt-4 sm:pb-4 md:px-6">
                     <div className="max-h-32 space-y-2 overflow-y-auto overscroll-contain">
                       {pendingParts.map((pendingPart) => (
                         <div
