@@ -379,14 +379,7 @@ function PartListRow({ part, isPending, pendingQuantity = 0, onPartSelect, onPar
         <div className="min-w-0 flex-1 overflow-hidden">
           <div className="flex min-w-0 items-center gap-2">
             <h4 className="truncate text-sm font-medium sm:text-[15px]">{part.displayName}</h4>
-            <div className="hidden flex-wrap gap-2 text-xs text-gray-500 sm:flex">
-              {part.material && <span>{part.material}</span>}
-              {part.size && <span>{part.size}</span>}
-            </div>
           </div>
-          {part.description && (
-            <p className="truncate text-[11px] text-gray-600 sm:text-xs">{part.description}</p>
-          )}
         </div>
 
         <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
