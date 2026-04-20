@@ -840,13 +840,8 @@ export function AddPartDialog({
                 onClick={() => setIsPendingTrayOpen((open) => !open)}
                 className="flex w-full items-center justify-between px-2 py-3 text-left sm:px-4 sm:py-4 md:px-6"
               >
-                <div>
-                  <div className="text-sm font-semibold sm:text-base">
-                    Pending Parts ({pendingParts.length})
-                  </div>
-                  <div className="text-xs text-gray-500">
-                    Review parts or continue browsing
-                  </div>
+                <div className="text-sm font-semibold sm:text-base">
+                  Pending Parts ({pendingParts.length})
                 </div>
                 {isPendingTrayOpen ? (
                   <ChevronDown className="h-4 w-4 text-gray-500" />
