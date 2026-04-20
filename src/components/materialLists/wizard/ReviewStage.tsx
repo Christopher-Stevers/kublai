@@ -15,7 +15,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "~/components/ui/dialog";
-import { Plus, Minus, AlertCircle } from "lucide-react";
+import { Plus, Minus, AlertCircle, Trash2 } from "lucide-react";
 import Image from "next/image";
 import type { PendingPart } from "./types";
 import { PartSuppliersDropdown } from "~/components/catalogue/PartSuppliersDropdown";
@@ -301,8 +301,9 @@ export function ReviewStage({
                   setConfirmingRemovePartId(pendingPart.partId);
                 }}
                 className={reviewView === "grid" ? "self-end" : "shrink-0"}
+                title={confirmingRemovePartId === pendingPart.partId ? "Confirm remove" : "Remove part"}
               >
-                {confirmingRemovePartId === pendingPart.partId ? "Confirm remove" : "Remove"}
+                {confirmingRemovePartId === pendingPart.partId ? "Confirm" : <Trash2 className="h-4 w-4" />}
               </Button>
             </div>
           );
