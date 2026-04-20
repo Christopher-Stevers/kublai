@@ -21,6 +21,7 @@ import Image from "next/image";
 import { formatSizeAsFraction } from "~/lib/size-utils";
 import type { PendingPart } from "./types";
 import { PartSuppliersDropdown } from "~/components/catalogue/PartSuppliersDropdown";
+import { ViewToggle } from "~/components/ui/view-toggle";
 
 export interface ReviewStageProps {
   pendingParts: PendingPart[];
@@ -56,6 +57,7 @@ export function ReviewStage({
 }: ReviewStageProps) {
   const [supplierDialogPartId, setSupplierDialogPartId] = useState<string | null>(null);
   const [supplierCountBeforeDialog, setSupplierCountBeforeDialog] = useState<number>(0);
+  const [reviewView, setReviewView] = useState<"grid" | "table">("table");
 
   const utils = api.useUtils();
 
@@ -94,7 +96,10 @@ export function ReviewStage({
   return (
     <div className="space-y-3 sm:space-y-4">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <h3 className="text-base font-semibold sm:text-lg">Review Parts</h3>
+        <div className="flex items-center gap-2">
+          <h3 className="text-base font-semibold sm:text-lg">Review Parts</h3>
+          <ViewToggle view={reviewView} onViewChange={setReviewView} showOnMobile />
+        </div>
         {!allPartsHaveSuppliers && (
           <div className="flex items-center gap-2 rounded-md bg-amber-50 px-2 py-1.5 text-xs text-amber-800 sm:px-3 sm:text-sm">
             <AlertCircle className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" />
@@ -102,7 +107,7 @@ export function ReviewStage({
           </div>
         )}
       </div>
-      <div className="space-y-2">
+      <div className={reviewView === "grid" ? "grid grid-cols-2 gap-3 sm:grid-cols-3" : "space-y-2"}>
         {pendingParts.map((pendingPart) => {
           const partsData = supplierPartsData.get(pendingPart.partId) ?? [];
           const hasSupplier = !!pendingPart.supplierPartId;
@@ -111,11 +116,11 @@ export function ReviewStage({
           return (
             <div
               key={pendingPart.partId}
-              className={`flex flex-wrap items-center gap-2 rounded-lg border p-2 sm:flex-nowrap sm:gap-3 ${
-                isMissingSupplier ? "border-amber-300 bg-amber-50/50" : ""
-              }`}
+              className={reviewView === "grid"
+                ? `flex flex-col gap-3 rounded-lg border p-3 ${isMissingSupplier ? "border-amber-300 bg-amber-50/50" : ""}`
+                : `flex flex-wrap items-center gap-2 rounded-lg border p-2 sm:flex-nowrap sm:gap-3 ${isMissingSupplier ? "border-amber-300 bg-amber-50/50" : ""}`}
             >
-              <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-md bg-gray-100">
+              <div className={reviewView === "grid" ? "relative aspect-square w-full overflow-hidden rounded-md bg-gray-100" : "relative h-10 w-10 shrink-0 overflow-hidden rounded-md bg-gray-100"}>
                 {pendingPart.partDefinition.imageUrl ? (
                   <Image
                     src={pendingPart.partDefinition.imageUrl}
@@ -158,7 +163,7 @@ export function ReviewStage({
                   )}
                 </div>
               </div>
-              <div className="flex shrink-0 items-center gap-1">
+              <div className={reviewView === "grid" ? "flex items-center justify-center gap-1" : "flex shrink-0 items-center gap-1"}>
                 <Button
                   variant="outline"
                   size="sm"
@@ -188,7 +193,7 @@ export function ReviewStage({
                   <Plus className="h-4 w-4" />
                 </Button>
               </div>
-              <div className="min-w-[11rem] shrink-0 sm:min-w-[13rem]">
+              <div className={reviewView === "grid" ? "min-w-0" : "min-w-[11rem] shrink-0 sm:min-w-[13rem]"}>
                 {hasAvailableSuppliers ? (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -234,7 +239,7 @@ export function ReviewStage({
               <button
                 title="Remove part"
                 onClick={() => onRemovePendingPart(pendingPart.partId)}
-                className="shrink-0 text-gray-400 hover:text-gray-600"
+                className={reviewView === "grid" ? "self-end text-gray-400 hover:text-gray-600" : "shrink-0 text-gray-400 hover:text-gray-600"}
               >
                 <X className="h-4 w-4" />
               </button>
