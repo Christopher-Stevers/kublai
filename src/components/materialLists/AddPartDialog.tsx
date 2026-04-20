@@ -579,7 +579,7 @@ export function AddPartDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="relative flex max-h-[90vh] w-[calc(100vw-1rem)] max-w-4xl flex-col overflow-hidden p-0 sm:w-full sm:max-w-4xl">
+        <DialogContent className="relative top-2 left-1/2 flex h-[calc(100dvh-1rem)] max-h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-4xl translate-x-[-50%] translate-y-0 flex-col overflow-hidden rounded-2xl p-0 sm:top-[50%] sm:h-auto sm:max-h-[90vh] sm:w-full sm:max-w-4xl sm:translate-y-[-50%]">
           <DialogHeader className="shrink-0 px-2 pt-3 pb-2 sm:px-4 sm:pt-4 sm:pb-3 md:px-6 md:pt-6 md:pb-4">
             <DialogTitle className="text-base sm:text-lg md:text-xl">Add Parts</DialogTitle>
             <DialogDescription className="text-xs sm:text-sm">
