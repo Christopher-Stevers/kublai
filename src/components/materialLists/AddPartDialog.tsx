@@ -651,12 +651,8 @@ export function AddPartDialog({
   // Check if all pending parts have suppliers
   const allPartsHaveSuppliers = useMemo(() => {
     if (pendingParts.length === 0) return false;
-    return pendingParts.every((p) => {
-      const partsData = supplierPartsData.get(p.partId) ?? [];
-      // Part must have supplierPartId set AND have available suppliers
-      return p.supplierPartId && partsData.length > 0;
-    });
-  }, [pendingParts, supplierPartsData]);
+    return pendingParts.every((p) => !!p.supplierPartId);
+  }, [pendingParts]);
 
   // Reset state when dialog closes
   useEffect(() => {
