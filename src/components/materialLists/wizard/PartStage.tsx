@@ -359,6 +359,14 @@ function PartCard({ part, isPending, pendingQuantity = 0, onPartSelect, onPartQu
 }
 
 function PartListRow({ part, isPending, pendingQuantity = 0, onPartSelect, onPartQuantitySet, onEditPart }: PartCardProps) {
+  const [quantityInput, setQuantityInput] = useState(() =>
+    pendingQuantity > 0 ? String(pendingQuantity) : "",
+  );
+
+  useEffect(() => {
+    setQuantityInput(pendingQuantity > 0 ? String(pendingQuantity) : "");
+  }, [pendingQuantity]);
+
   return (
     <div
       className={`rounded-lg border bg-white px-2.5 py-2 transition-all sm:px-3 ${
@@ -396,10 +404,29 @@ function PartListRow({ part, isPending, pendingQuantity = 0, onPartSelect, onPar
               <Input
                 type="number"
                 min="0"
-                value={pendingQuantity}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                  onPartQuantitySet?.(part, parseInt(e.target.value) || 0)
-                }
+                value={quantityInput}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                  const nextValue = e.target.value;
+                  setQuantityInput(nextValue);
+
+                  if (nextValue === "") {
+                    return;
+                  }
+
+                  onPartQuantitySet?.(part, parseInt(nextValue) || 0);
+                }}
+                onBlur={() => {
+                  const parsedQuantity = parseInt(quantityInput);
+
+                  if (!quantityInput || Number.isNaN(parsedQuantity) || parsedQuantity <= 0) {
+                    setQuantityInput("");
+                    onPartQuantitySet?.(part, 0);
+                    return;
+                  }
+
+                  setQuantityInput(String(parsedQuantity));
+                  onPartQuantitySet?.(part, parsedQuantity);
+                }}
                 className="h-8 w-12 [appearance:textfield] px-1 text-center text-sm sm:w-14 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
               />
               <Button
