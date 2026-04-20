@@ -165,7 +165,7 @@ function PartCard({ part, isPending, pendingQuantity = 0, onPartSelect, onPartQu
     if (!longPressTriggeredRef.current || pointerStartYRef.current === null) return;
 
     const deltaY = pointerStartYRef.current - clientY;
-    const steps = Math.round(deltaY / 28);
+    const steps = Math.round(deltaY / 18);
     const nextQuantity = clampQuantity(baseQuantityRef.current + steps);
     dragQuantityRef.current = nextQuantity;
     onQuantityPickerPreviewChange?.({

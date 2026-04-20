@@ -444,7 +444,7 @@ export function AddPartDialog({
       pickerTouchAccumulatorRef.current += deltaY;
       pickerTouchYRef.current = touchY;
 
-      const stepSize = 28;
+      const stepSize = 18;
       const stepDelta = Math.trunc(pickerTouchAccumulatorRef.current / stepSize);
       if (stepDelta === 0) {
         return;
