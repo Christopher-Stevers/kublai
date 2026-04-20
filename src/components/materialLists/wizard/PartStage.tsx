@@ -265,7 +265,7 @@ function PartCard({ part, isPending, pendingQuantity = 0, onPartSelect, onPartQu
       window.addEventListener("pointermove", handleWindowPointerMove, { passive: false });
       window.addEventListener("pointerup", handleWindowPointerUp, { passive: false });
       window.addEventListener("pointercancel", handleWindowPointerCancel);
-    }, 150);
+    }, 100);
   };
 
   const handlePointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
