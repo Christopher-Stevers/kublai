@@ -361,12 +361,12 @@ function PartCard({ part, isPending, pendingQuantity = 0, onPartSelect, onPartQu
 function PartListRow({ part, isPending, pendingQuantity = 0, onPartSelect, onPartQuantitySet, onEditPart }: PartCardProps) {
   return (
     <div
-      className={`rounded-lg border bg-white px-3 py-2 transition-all ${
+      className={`rounded-lg border bg-white px-2.5 py-2 transition-all sm:px-3 ${
         isPending ? "border-primary border-2 shadow-sm" : "hover:shadow-sm"
       }`}
     >
-      <div className="flex items-center gap-3">
-        <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-md bg-gray-100">
+      <div className="flex items-center gap-2 sm:gap-3">
+        <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-md bg-gray-100 sm:h-12 sm:w-12">
           {part.imageUrl ? (
             <Image src={part.imageUrl} alt={part.displayName} fill className="object-cover" />
           ) : (
@@ -376,27 +376,27 @@ function PartListRow({ part, isPending, pendingQuantity = 0, onPartSelect, onPar
           )}
         </div>
 
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <h4 className="truncate text-sm font-medium">{part.displayName}</h4>
+        <div className="min-w-0 flex-1 overflow-hidden">
+          <div className="flex min-w-0 items-center gap-2">
+            <h4 className="truncate text-sm font-medium sm:text-[15px]">{part.displayName}</h4>
             <div className="hidden flex-wrap gap-2 text-xs text-gray-500 sm:flex">
               {part.material && <span>{part.material}</span>}
               {part.size && <span>{part.size}</span>}
             </div>
           </div>
           {part.description && (
-            <p className="truncate text-xs text-gray-600">{part.description}</p>
+            <p className="truncate text-[11px] text-gray-600 sm:text-xs">{part.description}</p>
           )}
         </div>
 
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
           {isPending ? (
             <div className="flex items-center gap-1">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => onPartQuantitySet?.(part, pendingQuantity - 1)}
-                className="h-8 w-8 p-0"
+                className="h-8 w-7 p-0 sm:w-8"
               >
                 <Minus className="h-4 w-4" />
               </Button>
@@ -407,13 +407,13 @@ function PartListRow({ part, isPending, pendingQuantity = 0, onPartSelect, onPar
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                   onPartQuantitySet?.(part, parseInt(e.target.value) || 0)
                 }
-                className="h-8 w-14 [appearance:textfield] text-center text-sm [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                className="h-8 w-12 [appearance:textfield] px-1 text-center text-sm sm:w-14 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
               />
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => onPartQuantitySet?.(part, pendingQuantity + 1)}
-                className="h-8 w-8 p-0"
+                className="h-8 w-7 p-0 sm:w-8"
               >
                 <Plus className="h-4 w-4" />
               </Button>
@@ -421,7 +421,7 @@ function PartListRow({ part, isPending, pendingQuantity = 0, onPartSelect, onPar
           ) : (
             <Button
               size="sm"
-              className="h-8 px-3 text-xs"
+              className="h-8 px-2.5 text-xs sm:px-3"
               onClick={() => onPartSelect(part)}
             >
               Add
