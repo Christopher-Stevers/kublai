@@ -162,10 +162,10 @@ export function ReviewStage({
             <div
               key={pendingPart.partId}
               className={reviewView === "grid"
-                ? `flex flex-col gap-3 rounded-lg border p-3 ${isMissingSupplier ? "border-amber-300 bg-amber-50/50" : ""}`
+                ? `rounded-xl border bg-white p-3 shadow-sm ${isMissingSupplier ? "border-amber-300 bg-amber-50/50" : ""}`
                 : `flex min-w-max flex-nowrap items-center gap-2 rounded-lg border p-2 sm:gap-3 ${isMissingSupplier ? "border-amber-300 bg-amber-50/50" : ""}`}
             >
-              <div className={reviewView === "grid" ? "relative aspect-square w-full overflow-hidden rounded-md bg-gray-100" : "relative h-10 w-10 shrink-0 overflow-hidden rounded-md bg-gray-100"}>
+              <div className={reviewView === "grid" ? "relative mb-3 aspect-square w-full overflow-hidden rounded-md bg-gray-100" : "relative h-10 w-10 shrink-0 overflow-hidden rounded-md bg-gray-100"}>
                 {pendingPart.partDefinition.imageUrl ? (
                   <Image
                     src={pendingPart.partDefinition.imageUrl}
@@ -191,12 +191,12 @@ export function ReviewStage({
                   </div>
                 )}
               </div>
-              <div className={reviewView === "grid" ? "min-w-0 flex-1" : "min-w-max flex-1"}>
-                <div className={reviewView === "grid" ? "break-words text-sm font-medium leading-snug sm:text-base" : "whitespace-nowrap text-sm font-medium sm:text-base"}>
+              <div className={reviewView === "grid" ? "min-w-0" : "min-w-max flex-1"}>
+                <div className={reviewView === "grid" ? "line-clamp-3 break-words text-sm font-semibold leading-snug text-gray-900 sm:text-base" : "whitespace-nowrap text-sm font-medium sm:text-base"}>
                   {pendingPart.partDefinition.displayName}
                 </div>
               </div>
-              <div className={reviewView === "grid" ? "flex items-center justify-center gap-1" : "flex shrink-0 items-center gap-1"}>
+              <div className={reviewView === "grid" ? "mt-3 flex items-center justify-center gap-1" : "flex shrink-0 items-center gap-1"}>
                 <Button
                   variant="outline"
                   size="sm"
@@ -226,7 +226,7 @@ export function ReviewStage({
                   <Plus className="h-4 w-4" />
                 </Button>
               </div>
-              <div className={reviewView === "grid" ? "min-w-0" : "min-w-[11rem] shrink-0 sm:min-w-[13rem]"}>
+              <div className={reviewView === "grid" ? "mt-3 min-w-0" : "min-w-[11rem] shrink-0 sm:min-w-[13rem]"}>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button
@@ -300,7 +300,7 @@ export function ReviewStage({
 
                   setConfirmingRemovePartId(pendingPart.partId);
                 }}
-                className={reviewView === "grid" ? "self-end" : "shrink-0"}
+                className={reviewView === "grid" ? "mt-3 w-full" : "shrink-0"}
                 title={confirmingRemovePartId === pendingPart.partId ? "Confirm remove" : "Remove part"}
               >
                 {confirmingRemovePartId === pendingPart.partId ? "Confirm" : <Trash2 className="h-4 w-4" />}
