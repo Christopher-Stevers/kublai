@@ -94,6 +94,8 @@ function usePartSupplierSelection(partId: string) {
   };
 }
 
+type PartStageActionMode = "select" | "edit";
+
 interface PartCardProps {
   part: {
     id: string;
@@ -137,9 +139,11 @@ interface PartCardProps {
       | null,
   ) => void;
   onEditPart: (partId: string) => void;
+  actionMode?: PartStageActionMode;
+  actionLabel?: string;
 }
 
-function PartCard({ part, isPending, pendingQuantity = 0, onPartSelect, onPartQuantitySet, onQuantityPickerPreviewChange, onEditPart: _onEditPart }: PartCardProps) {
+function PartCard({ part, isPending, pendingQuantity = 0, onPartSelect, onPartQuantitySet, onQuantityPickerPreviewChange, onEditPart, actionMode = "select" }: PartCardProps) {
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressTriggeredRef = useRef(false);
   const pointerStartYRef = useRef<number | null>(null);
@@ -238,6 +242,14 @@ function PartCard({ part, isPending, pendingQuantity = 0, onPartSelect, onPartQu
   const handlePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (event.pointerType === "mouse" && event.button !== 0) return;
 
+    if (actionMode === "edit") {
+      activePointerIdRef.current = event.pointerId;
+      activePointerTypeRef.current = event.pointerType;
+      pointerElementRef.current = event.currentTarget;
+      event.currentTarget.setPointerCapture(event.pointerId);
+      return;
+    }
+
     longPressTriggeredRef.current = false;
     activePointerIdRef.current = event.pointerId;
     activePointerTypeRef.current = event.pointerType;
@@ -277,6 +289,15 @@ function PartCard({ part, isPending, pendingQuantity = 0, onPartSelect, onPartQu
 
   const finishPointerInteraction = () => {
     clearLongPressTimer();
+
+    if (actionMode === "edit") {
+      onEditPart(part.id);
+      pointerStartYRef.current = null;
+      activePointerIdRef.current = null;
+      activePointerTypeRef.current = null;
+      pointerElementRef.current = null;
+      return;
+    }
 
     if (longPressTriggeredRef.current) {
       if (activePointerTypeRef.current === "touch") {
@@ -358,7 +379,7 @@ function PartCard({ part, isPending, pendingQuantity = 0, onPartSelect, onPartQu
   );
 }
 
-function PartListRow({ part, isPending, pendingQuantity = 0, onPartSelect, onPartQuantitySet, onEditPart }: PartCardProps) {
+function PartListRow({ part, isPending, pendingQuantity = 0, onPartSelect, onPartQuantitySet, onEditPart, actionMode = "select", actionLabel }: PartCardProps) {
   const [quantityInput, setQuantityInput] = useState(() =>
     pendingQuantity > 0 ? String(pendingQuantity) : "",
   );
@@ -391,7 +412,7 @@ function PartListRow({ part, isPending, pendingQuantity = 0, onPartSelect, onPar
         </div>
 
         <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
-          {isPending ? (
+          {isPending && actionMode === "select" ? (
             <div className="flex items-center gap-1">
               <Button
                 variant="outline"
@@ -442,9 +463,11 @@ function PartListRow({ part, isPending, pendingQuantity = 0, onPartSelect, onPar
             <Button
               size="sm"
               className="h-8 px-2.5 text-xs sm:px-3"
-              onClick={() => onPartSelect(part)}
+              onClick={() =>
+                actionMode === "edit" ? onEditPart(part.id) : onPartSelect(part)
+              }
             >
-              Add
+              {actionLabel ?? (actionMode === "edit" ? "Edit" : "Add")}
             </Button>
           )}
         </div>
@@ -496,6 +519,9 @@ export interface PartStageProps {
     name: string;
   } | null;
   onContinueToReview: () => void;
+  actionMode?: PartStageActionMode;
+  title?: string;
+  actionLabel?: string;
 }
 
 export function PartStage({
@@ -509,6 +535,9 @@ export function PartStage({
   selectedSize,
   selectedPartTypeCategory,
   onContinueToReview,
+  actionMode = "select",
+  title = "Select Parts",
+  actionLabel,
 }: PartStageProps) {
   const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
   const pagination = useClientPagination(partsForSelection);
@@ -527,7 +556,7 @@ export function PartStage({
   return (
     <div className="space-y-3 sm:space-y-4">
       <div className="flex items-center justify-between gap-3">
-        <h3 className="text-base font-semibold sm:text-lg">Select Parts</h3>
+        <h3 className="text-base font-semibold sm:text-lg">{title}</h3>
         <ViewToggle view={viewMode} onViewChange={setViewMode} showOnMobile />
       </div>
       {viewMode === "grid" ? (
@@ -545,6 +574,8 @@ export function PartStage({
                 onPartQuantitySet={onPartQuantitySet}
                 onQuantityPickerPreviewChange={onQuantityPickerPreviewChange}
                 onEditPart={onEditPart}
+                actionMode={actionMode}
+                actionLabel={actionLabel}
               />
             );
           })}
@@ -563,6 +594,8 @@ export function PartStage({
                 onPartSelect={onPartSelect}
                 onPartQuantitySet={onPartQuantitySet}
                 onEditPart={onEditPart}
+                actionMode={actionMode}
+                actionLabel={actionLabel}
               />
             );
           })}
