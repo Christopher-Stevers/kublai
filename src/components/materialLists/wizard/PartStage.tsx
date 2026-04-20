@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, type PointerEvent as ReactPointerEvent } from "react";
 import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent } from "~/components/ui/card";
@@ -115,12 +115,80 @@ interface PartCardProps {
     },
     supplierPartId?: string,
   ) => void;
+  onPartQuantitySet?: (
+    part: {
+      id: string;
+      displayName: string;
+      description: string | null;
+      imageUrl: string | null;
+      material: string | null;
+      size: string | null;
+    },
+    quantity: number,
+  ) => void;
   onEditPart: (partId: string) => void;
 }
 
-function PartCard({ part, isPending, pendingQuantity = 0, onPartSelect, onEditPart: _onEditPart }: PartCardProps) {
-  const handleCardClick = () => {
+function PartCard({ part, isPending, pendingQuantity = 0, onPartSelect, onPartQuantitySet, onEditPart: _onEditPart }: PartCardProps) {
+  const [isLongPressActive, setIsLongPressActive] = useState(false);
+  const [dragQuantity, setDragQuantity] = useState(Math.max(pendingQuantity, 1));
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressTriggeredRef = useRef(false);
+  const pointerStartYRef = useRef<number | null>(null);
+  const baseQuantityRef = useRef(1);
+
+  const clearLongPressTimer = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  };
+
+  const clampQuantity = (quantity: number) => Math.max(1, Math.min(25, quantity));
+
+  const handlePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.pointerType === "mouse" && event.button !== 0) return;
+
+    longPressTriggeredRef.current = false;
+    pointerStartYRef.current = event.clientY;
+    baseQuantityRef.current = Math.max(pendingQuantity, 1);
+    setDragQuantity(Math.max(pendingQuantity, 1));
+
+    longPressTimerRef.current = setTimeout(() => {
+      longPressTriggeredRef.current = true;
+      setIsLongPressActive(true);
+      setDragQuantity(baseQuantityRef.current);
+    }, 150);
+  };
+
+  const handlePointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (!longPressTriggeredRef.current || pointerStartYRef.current === null) return;
+
+    const deltaY = pointerStartYRef.current - event.clientY;
+    const steps = Math.round(deltaY / 22);
+    setDragQuantity(clampQuantity(baseQuantityRef.current + steps));
+  };
+
+  const finishPointerInteraction = () => {
+    clearLongPressTimer();
+
+    if (longPressTriggeredRef.current) {
+      onPartQuantitySet?.(part, dragQuantity);
+      setIsLongPressActive(false);
+      longPressTriggeredRef.current = false;
+      pointerStartYRef.current = null;
+      return;
+    }
+
     onPartSelect(part);
+    pointerStartYRef.current = null;
+  };
+
+  const cancelPointerInteraction = () => {
+    clearLongPressTimer();
+    setIsLongPressActive(false);
+    longPressTriggeredRef.current = false;
+    pointerStartYRef.current = null;
   };
 
   return (
@@ -128,7 +196,14 @@ function PartCard({ part, isPending, pendingQuantity = 0, onPartSelect, onEditPa
       className={`relative aspect-square gap-0 overflow-hidden rounded-2xl py-0 transition-all hover:shadow-md ${
         isPending ? "border-primary border-2 shadow-md" : ""
       } cursor-pointer`}
-      onClick={handleCardClick}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={finishPointerInteraction}
+      onPointerCancel={cancelPointerInteraction}
+      onPointerLeave={() => {
+        if (isLongPressActive) return;
+        clearLongPressTimer();
+      }}
     >
       <CardContent className="h-full p-0">
         <div className="flex h-full w-full flex-col p-3 sm:p-4">
@@ -148,6 +223,25 @@ function PartCard({ part, isPending, pendingQuantity = 0, onPartSelect, onEditPa
               )}
             </div>
           </div>
+
+          {isLongPressActive && (
+            <div className="pointer-events-none absolute inset-x-6 top-1/2 z-10 -translate-y-1/2 rounded-2xl bg-black/75 py-3 text-white backdrop-blur-sm">
+              <div className="flex flex-col items-center justify-center gap-1 text-center">
+                {[2, 1, 0, -1, -2].map((offset) => {
+                  const value = clampQuantity(dragQuantity + offset);
+                  const isCurrent = offset === 0;
+                  return (
+                    <div
+                      key={`${part.id}-${offset}-${value}`}
+                      className={isCurrent ? "text-3xl font-bold leading-none" : "text-sm leading-none opacity-60"}
+                    >
+                      {value}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           <div className="flex min-h-0 flex-1 items-start justify-center text-center text-black">
             <h4 className="line-clamp-3 text-sm font-medium leading-snug sm:text-base">
@@ -319,6 +413,14 @@ export interface PartStageProps {
     material: string | null;
     size: string | null;
   }, supplierPartId?: string) => void;
+  onPartQuantitySet: (part: {
+    id: string;
+    displayName: string;
+    description: string | null;
+    imageUrl: string | null;
+    material: string | null;
+    size: string | null;
+  }, quantity: number) => void;
   onEditPart: (partId: string) => void;
   selectedMaterialId: string | null;
   selectedSize: { nominal: number; unit: string } | null;
@@ -333,6 +435,7 @@ export function PartStage({
   partsForSelection,
   pendingParts,
   onPartSelect,
+  onPartQuantitySet,
   onEditPart,
   selectedMaterialId,
   selectedSize,
@@ -371,6 +474,7 @@ export function PartStage({
                 isPending={isPending}
                 pendingQuantity={pendingQuantity}
                 onPartSelect={onPartSelect}
+                onPartQuantitySet={onPartQuantitySet}
                 onEditPart={onEditPart}
               />
             );

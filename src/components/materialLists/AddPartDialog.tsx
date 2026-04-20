@@ -344,6 +344,45 @@ export function AddPartDialog({
     addToPendingList(part.id, part, supplierPartId);
   };
 
+  const handlePartQuantitySet = (
+    part: {
+      id: string;
+      displayName: string;
+      description: string | null;
+      imageUrl: string | null;
+      material: string | null;
+      size: string | null;
+    },
+    quantity: number,
+  ) => {
+    setPendingParts((prev) => {
+      const existing = prev.find((pendingPart) => pendingPart.partId === part.id);
+
+      if (existing) {
+        return prev.map((pendingPart) =>
+          pendingPart.partId === part.id
+            ? { ...pendingPart, quantity: Math.max(1, quantity) }
+            : pendingPart,
+        );
+      }
+
+      return [
+        ...prev,
+        {
+          partId: part.id,
+          partDefinition: {
+            id: part.id,
+            displayName: part.displayName,
+            imageUrl: part.imageUrl,
+            material: part.material,
+            size: part.size,
+          },
+          quantity: Math.max(1, quantity),
+        },
+      ];
+    });
+  };
+
   // Handler for editing a part
   const handleEditPart = (partId: string) => {
     setEditingPartId(partId);
@@ -634,6 +673,7 @@ export function AddPartDialog({
                 partsForSelection={filteredPartsForSelection}
                 pendingParts={pendingParts}
                 onPartSelect={handlePartSelect}
+                onPartQuantitySet={handlePartQuantitySet}
                 onEditPart={handleEditPart}
                 selectedMaterialId={selectedMaterialId}
                 selectedSize={selectedSize}
