@@ -152,7 +152,7 @@ export function ReviewStage({
           </div>
         )}
       </div>
-      <div className={reviewView === "grid" ? "grid grid-cols-2 gap-3 sm:grid-cols-3" : "space-y-2"}>
+      <div className={reviewView === "grid" ? "grid grid-cols-2 gap-3 sm:grid-cols-3" : "space-y-2 overflow-x-auto"}>
         {pendingParts.map((pendingPart) => {
           const partsData = supplierPartsData.get(pendingPart.partId) ?? [];
           const hasSupplier = !!pendingPart.supplierPartId;
@@ -163,7 +163,7 @@ export function ReviewStage({
               key={pendingPart.partId}
               className={reviewView === "grid"
                 ? `flex flex-col gap-3 rounded-lg border p-3 ${isMissingSupplier ? "border-amber-300 bg-amber-50/50" : ""}`
-                : `flex flex-wrap items-center gap-2 rounded-lg border p-2 sm:flex-nowrap sm:gap-3 ${isMissingSupplier ? "border-amber-300 bg-amber-50/50" : ""}`}
+                : `flex min-w-max flex-nowrap items-center gap-2 rounded-lg border p-2 sm:gap-3 ${isMissingSupplier ? "border-amber-300 bg-amber-50/50" : ""}`}
             >
               <div className={reviewView === "grid" ? "relative aspect-square w-full overflow-hidden rounded-md bg-gray-100" : "relative h-10 w-10 shrink-0 overflow-hidden rounded-md bg-gray-100"}>
                 {pendingPart.partDefinition.imageUrl ? (
@@ -191,7 +191,7 @@ export function ReviewStage({
                   </div>
                 )}
               </div>
-              <div className="min-w-0 flex-1">
+              <div className="min-w-[14rem] flex-1">
                 <div className="truncate text-sm font-medium sm:text-base">
                   {pendingPart.partDefinition.displayName}
                 </div>
