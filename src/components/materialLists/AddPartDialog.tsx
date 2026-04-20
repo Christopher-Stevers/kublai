@@ -47,6 +47,7 @@ export function AddPartDialog({
     partName: string;
     quantity: number;
   } | null>(null);
+  const [isMobileViewport, setIsMobileViewport] = useState(false);
   const [customPartContext, setCustomPartContext] = useState<{
     materialId?: string | null;
     size?: { nominal: number; unit: string } | null;
@@ -590,10 +591,39 @@ export function AddPartDialog({
     }
   }, [pendingParts.length]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const mediaQuery = window.matchMedia("(max-width: 639px)");
+    const updateViewport = () => setIsMobileViewport(mediaQuery.matches);
+
+    updateViewport();
+    mediaQuery.addEventListener("change", updateViewport);
+
+    return () => {
+      mediaQuery.removeEventListener("change", updateViewport);
+    };
+  }, []);
+
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="relative flex max-h-[90vh] w-[calc(100vw-1rem)] max-w-4xl flex-col overflow-hidden p-0 sm:w-full sm:max-w-4xl">
+        <DialogContent
+          className="relative flex max-h-[90vh] w-[calc(100vw-1rem)] max-w-4xl flex-col overflow-hidden p-0 sm:w-full sm:max-w-4xl"
+          style={
+            isMobileViewport
+              ? {
+                  top: "0.5rem",
+                  left: "50%",
+                  transform: "translateX(-50%)",
+                  width: "calc(100vw - 1rem)",
+                  maxHeight: "calc(100dvh - 1rem)",
+                }
+              : undefined
+          }
+        >
           <DialogHeader className="shrink-0 px-2 pt-3 pb-2 sm:px-4 sm:pt-4 sm:pb-3 md:px-6 md:pt-6 md:pb-4">
             <DialogTitle className="text-base sm:text-lg md:text-xl">Add Parts</DialogTitle>
             <DialogDescription className="text-xs sm:text-sm">
