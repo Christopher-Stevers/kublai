@@ -12,7 +12,7 @@ import {
 } from "~/components/ui/dialog";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
-import { Plus, Minus } from "lucide-react";
+import { Plus, Minus, ChevronDown, ChevronUp } from "lucide-react";
 import { CreateCustomPartDialog } from "./CreateCustomPartDialog";
 import { WizardHeader } from "./WizardHeader";
 import { EditPartDialog } from "~/components/catalogue/EditPartDialog";
@@ -41,6 +41,7 @@ export function AddPartDialog({
   const [isCreateCustomPartDialogOpen, setIsCreateCustomPartDialogOpen] =
     useState(false);
   const [editingPartId, setEditingPartId] = useState<string | null>(null);
+  const [isPendingTrayOpen, setIsPendingTrayOpen] = useState(true);
   const [customPartContext, setCustomPartContext] = useState<{
     materialId?: string | null;
     size?: { nominal: number; unit: string } | null;
@@ -464,11 +465,6 @@ export function AddPartDialog({
     setPendingParts((prev) => prev.filter((p) => p.partId !== partId));
   };
 
-  const handleContinueAdding = () => {
-    setWizardStage("partTypeCategory");
-    setSelectedPartTypeCategory(null);
-  };
-
   const handleReviewAndAdd = () => {
     setWizardStage("review");
   };
@@ -524,9 +520,16 @@ export function AddPartDialog({
   useEffect(() => {
     if (!open) {
       setPendingParts([]);
+      setIsPendingTrayOpen(true);
       resetWizard();
     }
   }, [open, resetWizard]);
+
+  useEffect(() => {
+    if (pendingParts.length > 0) {
+      setIsPendingTrayOpen(true);
+    }
+  }, [pendingParts.length]);
 
   return (
     <>
@@ -651,76 +654,98 @@ export function AddPartDialog({
             )}
           </div>
 
-          {/* Pending Parts Sidebar */}
+          {/* Pending Parts Tray */}
           {pendingParts.length > 0 && wizardStage !== "review" && (
-            <div className="shrink-0 border-t bg-gray-50 px-2 py-3 sm:px-4 sm:py-4 md:px-6">
-              <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <h4 className="text-sm font-semibold sm:text-base">
-                  Pending Parts ({pendingParts.length})
-                </h4>
-                <div className="flex flex-col gap-2 sm:flex-row">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleContinueAdding}
-                    className="w-full text-xs sm:w-auto sm:text-sm"
-                  >
-                    Continue Adding
-                  </Button>
-                  <Button 
-                    size="sm" 
-                    onClick={handleReviewAndAdd}
-                    className="w-full text-xs sm:w-auto sm:text-sm"
-                  >
-                    Review & Add
-                  </Button>
+            <div className="shrink-0 border-t bg-gray-50">
+              <button
+                type="button"
+                onClick={() => setIsPendingTrayOpen((open) => !open)}
+                className="flex w-full items-center justify-between px-2 py-3 text-left sm:px-4 sm:py-4 md:px-6"
+              >
+                <div>
+                  <div className="text-sm font-semibold sm:text-base">
+                    Pending Parts ({pendingParts.length})
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    Review parts or continue browsing
+                  </div>
                 </div>
-              </div>
-              <div className="max-h-32 space-y-2 overflow-y-auto">
-                {pendingParts.map((pendingPart) => (
-                  <div
-                    key={pendingPart.partId}
-                    className="flex items-center gap-2 rounded border bg-white p-1.5 text-xs sm:p-2 sm:text-sm"
-                  >
-                    <div className="min-w-0 flex-1 truncate">
-                      {pendingPart.partDefinition.displayName}
+                {isPendingTrayOpen ? (
+                  <ChevronDown className="h-4 w-4 text-gray-500" />
+                ) : (
+                  <ChevronUp className="h-4 w-4 text-gray-500" />
+                )}
+              </button>
+
+              <div
+                className={`grid transition-all duration-200 ease-out ${
+                  isPendingTrayOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+                }`}
+              >
+                <div className="overflow-hidden">
+                  <div className="border-t px-2 pb-3 sm:px-4 sm:pb-4 md:px-6">
+                    <div className="flex flex-col gap-2 py-3 sm:flex-row sm:justify-end sm:py-4">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleReviewAndAdd}
+                        className="w-full text-xs sm:w-auto sm:text-sm"
+                      >
+                        Review Parts
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={() => setIsPendingTrayOpen(false)}
+                        className="w-full text-xs sm:w-auto sm:text-sm"
+                      >
+                        Continue
+                      </Button>
                     </div>
-                    <div className="flex shrink-0 items-center gap-1">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() =>
-                          handleUpdateQuantity(pendingPart.partId, -1)
-                        }
-                        className="h-6 w-6 p-0"
-                      >
-                        <Minus className="h-3 w-3" />
-                      </Button>
-                      <Input
-                        type="number"
-                        min="1"
-                        value={pendingPart.quantity}
-                        onChange={(e) =>
-                          handleSetQuantity(
-                            pendingPart.partId,
-                            parseInt(e.target.value) || 1,
-                          )
-                        }
-                        className="h-6 w-12 [appearance:textfield] text-center text-xs [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                      />
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() =>
-                          handleUpdateQuantity(pendingPart.partId, 1)
-                        }
-                        className="h-6 w-6 p-0"
-                      >
-                        <Plus className="h-3 w-3" />
-                      </Button>
+
+                    <div className="max-h-32 space-y-2 overflow-y-auto">
+                      {pendingParts.map((pendingPart) => (
+                        <div
+                          key={pendingPart.partId}
+                          className="flex items-center gap-2 rounded border bg-white p-1.5 text-xs sm:p-2 sm:text-sm"
+                        >
+                          <div className="min-w-0 flex-1 truncate">
+                            {pendingPart.partDefinition.displayName}
+                          </div>
+                          <div className="flex shrink-0 items-center gap-1">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleUpdateQuantity(pendingPart.partId, -1)}
+                              className="h-6 w-6 p-0"
+                            >
+                              <Minus className="h-3 w-3" />
+                            </Button>
+                            <Input
+                              type="number"
+                              min="1"
+                              value={pendingPart.quantity}
+                              onChange={(e) =>
+                                handleSetQuantity(
+                                  pendingPart.partId,
+                                  parseInt(e.target.value) || 1,
+                                )
+                              }
+                              className="h-6 w-12 [appearance:textfield] text-center text-xs [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                            />
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleUpdateQuantity(pendingPart.partId, 1)}
+                              className="h-6 w-6 p-0"
+                            >
+                              <Plus className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
-                ))}
+                </div>
               </div>
             </div>
           )}
