@@ -48,6 +48,8 @@ export function AddPartDialog({
     quantity: number;
   } | null>(null);
   const [isMobileViewport, setIsMobileViewport] = useState(false);
+  const pickerTouchYRef = useRef<number | null>(null);
+  const pickerTouchAccumulatorRef = useRef(0);
   const [customPartContext, setCustomPartContext] = useState<{
     materialId?: string | null;
     size?: { nominal: number; unit: string } | null;
@@ -407,6 +409,83 @@ export function AddPartDialog({
   const handleEditPart = (partId: string) => {
     setEditingPartId(partId);
   };
+
+  useEffect(() => {
+    if (!quantityPickerPreview) {
+      pickerTouchYRef.current = null;
+      pickerTouchAccumulatorRef.current = 0;
+      return;
+    }
+
+    const clampQuantity = (quantity: number) => Math.max(1, Math.min(25, quantity));
+
+    const handleTouchMove = (event: TouchEvent) => {
+      if (event.touches.length === 0) {
+        return;
+      }
+
+      event.preventDefault();
+
+      const touchY = event.touches[0]?.clientY;
+      if (touchY === undefined) {
+        return;
+      }
+
+      if (pickerTouchYRef.current === null) {
+        pickerTouchYRef.current = touchY;
+        return;
+      }
+
+      const deltaY = pickerTouchYRef.current - touchY;
+      pickerTouchAccumulatorRef.current += deltaY;
+      pickerTouchYRef.current = touchY;
+
+      const stepSize = 28;
+      const stepDelta = Math.trunc(pickerTouchAccumulatorRef.current / stepSize);
+      if (stepDelta === 0) {
+        return;
+      }
+
+      pickerTouchAccumulatorRef.current -= stepDelta * stepSize;
+
+      setQuantityPickerPreview((prev) => {
+        if (!prev) {
+          return prev;
+        }
+
+        return {
+          ...prev,
+          quantity: clampQuantity(prev.quantity + stepDelta),
+        };
+      });
+    };
+
+    const handleTouchEnd = (event: TouchEvent) => {
+      event.preventDefault();
+
+      const matchingPart = filteredPartsForSelection.find(
+        (part) => part.id === quantityPickerPreview.partId,
+      );
+
+      if (matchingPart) {
+        handlePartQuantitySet(matchingPart, quantityPickerPreview.quantity);
+      }
+
+      pickerTouchYRef.current = null;
+      pickerTouchAccumulatorRef.current = 0;
+      setQuantityPickerPreview(null);
+    };
+
+    window.addEventListener("touchmove", handleTouchMove, { passive: false });
+    window.addEventListener("touchend", handleTouchEnd, { passive: false });
+    window.addEventListener("touchcancel", handleTouchEnd, { passive: false });
+
+    return () => {
+      window.removeEventListener("touchmove", handleTouchMove);
+      window.removeEventListener("touchend", handleTouchEnd);
+      window.removeEventListener("touchcancel", handleTouchEnd);
+    };
+  }, [filteredPartsForSelection, quantityPickerPreview]);
 
   const addToPendingList = (
     partId: string,
