@@ -610,7 +610,7 @@ export function AddPartDialog({
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent
-          className="relative flex max-h-[90vh] w-[calc(100vw-1rem)] max-w-4xl flex-col overflow-hidden p-0 sm:w-full sm:max-w-4xl"
+          className={`relative flex max-h-[90vh] w-[calc(100vw-1rem)] max-w-4xl flex-col overflow-hidden p-0 sm:w-full sm:max-w-4xl ${quantityPickerPreview ? "touch-none" : ""}`}
           style={
             isMobileViewport
               ? {
@@ -663,7 +663,7 @@ export function AddPartDialog({
             />
           </div>
 
-          <div className="flex-1 space-y-3 overflow-y-auto overscroll-contain px-2 pt-3 pb-3 sm:space-y-4 sm:px-4 sm:pt-4 sm:pb-4 md:px-6">
+          <div className={`flex-1 space-y-3 overflow-y-auto overscroll-contain px-2 pt-3 pb-3 sm:space-y-4 sm:px-4 sm:pt-4 sm:pb-4 md:px-6 ${quantityPickerPreview ? "touch-none overflow-hidden" : ""}`}>
             {wizardStage === "catalog" && (
               <CatalogStage
                 catalogs={catalogsWithCounts}
@@ -864,7 +864,7 @@ export function AddPartDialog({
           )}
 
           {quantityPickerPreview && (
-            <div className="pointer-events-none absolute inset-0 z-[90] flex items-center justify-center bg-black/20 backdrop-blur-[1px]">
+            <div className="absolute inset-0 z-[90] flex touch-none items-center justify-center bg-black/20 backdrop-blur-[1px]">
               <div className="flex h-full w-full items-center justify-center px-6 py-8 sm:px-10">
                 <div className="w-full max-w-sm rounded-[2rem] bg-white/18 px-8 py-8 text-white shadow-2xl ring-1 ring-white/20 backdrop-blur-md">
                   <div className="mb-6 text-center">
