@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
-import { Badge } from "~/components/ui/badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,7 +17,6 @@ import {
 } from "~/components/ui/dialog";
 import { X, Plus, Minus, AlertCircle } from "lucide-react";
 import Image from "next/image";
-import { formatSizeAsFraction } from "~/lib/size-utils";
 import type { PendingPart } from "./types";
 import { PartSuppliersDropdown } from "~/components/catalogue/PartSuppliersDropdown";
 import { ViewToggle } from "~/components/ui/view-toggle";
@@ -191,18 +189,6 @@ export function ReviewStage({
               <div className="min-w-0 flex-1">
                 <div className="truncate text-sm font-medium sm:text-base">
                   {pendingPart.partDefinition.displayName}
-                </div>
-                <div className="mt-1 flex flex-wrap gap-1">
-                  {pendingPart.partDefinition.material && (
-                    <Badge variant="outline" className="text-[10px] sm:text-xs">
-                      {pendingPart.partDefinition.material}
-                    </Badge>
-                  )}
-                  {pendingPart.partDefinition.size && (
-                    <Badge variant="outline" className="text-[10px] sm:text-xs">
-                      {formatSizeAsFraction(pendingPart.partDefinition.size)}
-                    </Badge>
-                  )}
                 </div>
               </div>
               <div className={reviewView === "grid" ? "flex items-center justify-center gap-1" : "flex shrink-0 items-center gap-1"}>
