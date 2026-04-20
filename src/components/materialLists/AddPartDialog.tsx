@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect, useRef, useLayoutEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { api } from "~/trpc/react";
 import {
   Dialog,
@@ -591,18 +591,19 @@ export function AddPartDialog({
     }
   }, [pendingParts.length]);
 
-  useLayoutEffect(() => {
+  useEffect(() => {
     if (typeof window === "undefined") {
       return;
     }
 
-    const updateViewport = () => setIsMobileViewport(window.innerWidth < 640);
+    const mediaQuery = window.matchMedia("(max-width: 639px)");
+    const updateViewport = () => setIsMobileViewport(mediaQuery.matches);
 
     updateViewport();
-    window.addEventListener("resize", updateViewport);
+    mediaQuery.addEventListener("change", updateViewport);
 
     return () => {
-      window.removeEventListener("resize", updateViewport);
+      mediaQuery.removeEventListener("change", updateViewport);
     };
   }, []);
 
@@ -614,14 +615,10 @@ export function AddPartDialog({
           style={
             isMobileViewport
               ? {
-                  position: "fixed",
                   top: "0.5rem",
-                  right: "0.5rem",
-                  bottom: "0.5rem",
-                  left: "0.5rem",
-                  transform: "none",
-                  width: "auto",
-                  maxWidth: "none",
+                  left: "50%",
+                  transform: "translateX(-50%)",
+                  width: "calc(100vw - 1rem)",
                   maxHeight: "calc(100dvh - 1rem)",
                 }
               : undefined
