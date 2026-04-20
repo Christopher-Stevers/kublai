@@ -14,12 +14,15 @@ import { ExistingQuotesOrdersDialog } from "~/components/materialLists/ExistingQ
 import { useState } from "react";
 import { PlusIcon, FileTextIcon, ShoppingCartIcon, WifiOffIcon } from "lucide-react";
 import { ViewToggle } from "~/components/ui/view-toggle";
-import { Card, CardContent } from "~/components/ui/card";
-import { PartsTable, type TableColumn } from "~/components/ui/parts-table";
 import { QuantityControls } from "~/components/materialLists/QuantityControls";
 import { SupplierSelector } from "~/components/materialLists/SupplierSelector";
 import { TrashIcon } from "lucide-react";
 import { useOfflineMaterialList } from "~/hooks/use-offline-material-list";
+import Image from "next/image";
+import {
+  applyOfflineRemoveItem,
+  enqueueOfflineMutation,
+} from "~/lib/offline-material-list-mutations";
 
 export default function MaterialListDetailPage({
   params,
@@ -160,7 +163,7 @@ export default function MaterialListDetailPage({
                 </button>
               </div>
             </div>
-            <ViewToggle view={viewMode} onViewChange={setViewMode} />
+            <ViewToggle view={viewMode} onViewChange={setViewMode} showOnMobile />
           </div>
         </div>
       </div>
@@ -219,45 +222,41 @@ export default function MaterialListDetailPage({
                   ))}
                 </div>
               )}
-              {/* Table View */}
+              {/* List View */}
               {viewMode === "table" && (
-                <Card className="hidden md:block">
-                  <CardContent className="p-0">
-                    <MaterialListTableView
-                      items={
-                        materialList.items as Array<{
+                <MaterialListTableView
+                  items={
+                    materialList.items as Array<{
+                      id: string;
+                      quantity: string;
+                      unitCost: string | null;
+                      extendedPrice: string | null;
+                      descriptionSnapshot: string | null;
+                      partDefinition: {
+                        id: string;
+                        displayName: string;
+                        imageUrl: string | null;
+                        material: string | null;
+                      } | null;
+                      supplierPart: {
+                        id: string;
+                        supplierId: string;
+                        supplierSku: string | null;
+                        lastKnownUnitCost: string | null;
+                        supplier: {
                           id: string;
-                          quantity: string;
-                          unitCost: string | null;
-                          extendedPrice: string | null;
-                          descriptionSnapshot: string | null;
-                          partDefinition: {
-                            id: string;
-                            displayName: string;
-                            imageUrl: string | null;
-                            material: string | null;
-                          } | null;
-                          supplierPart: {
-                            id: string;
-                            supplierId: string;
-                            supplierSku: string | null;
-                            lastKnownUnitCost: string | null;
-                            supplier: {
-                              id: string;
-                              name: string;
-                            } | null;
-                          } | null;
-                          uom: {
-                            id: string;
-                            code: string;
-                            displayName: string | null;
-                          } | null;
-                        }>
-                      }
-                      materialListId={id}
-                    />
-                  </CardContent>
-                </Card>
+                          name: string;
+                        } | null;
+                      } | null;
+                      uom: {
+                        id: string;
+                        code: string;
+                        displayName: string | null;
+                      } | null;
+                    }>
+                  }
+                  materialListId={id}
+                />
               )}
             </>
           )}
@@ -415,15 +414,12 @@ function MaterialListTableView({
   const utils = api.useUtils();
   const removeItem = api.materialList.removeMaterialListItem.useMutation({
     onMutate: async (variables) => {
-      // Cancel outgoing refetches
       await utils.materialList.getMaterialList.cancel({ materialListId });
 
-      // Snapshot previous value
       const previousMaterialList = utils.materialList.getMaterialList.getData({
         materialListId,
       });
 
-      // Optimistically remove item and recalculate totals
       utils.materialList.getMaterialList.setData({ materialListId }, (old) => {
         if (!old) return old;
 
@@ -431,7 +427,6 @@ function MaterialListTableView({
           (item) => item.id !== variables.itemId,
         );
 
-        // Recalculate material total
         const newMaterialTotal = updatedItems.reduce((sum, item) => {
           const price = item.extendedPrice
             ? parseFloat(item.extendedPrice.toString())
@@ -448,8 +443,7 @@ function MaterialListTableView({
 
       return { previousMaterialList };
     },
-    onError: (err, variables, context) => {
-      // Rollback on error
+    onError: (_err, _variables, context) => {
       if (context?.previousMaterialList) {
         utils.materialList.getMaterialList.setData(
           { materialListId },
@@ -462,110 +456,89 @@ function MaterialListTableView({
     },
   });
 
-  const columns: TableColumn<(typeof items)[number]>[] = [
-    {
-      key: "partName",
-      label: "Part Name",
-      render: (item) => (
-        <div>
-          <div className="text-sm font-medium text-gray-900">
-            {item.partDefinition?.displayName ||
-              item.descriptionSnapshot ||
-              "Unknown Part"}
-          </div>
-          {item.partDefinition?.material && (
-            <div className="mt-1 text-xs text-gray-500">
-              {item.partDefinition.material}
-            </div>
-          )}
-        </div>
-      ),
-      className: "whitespace-nowrap",
-    },
-    {
-      key: "quantity",
-      label: "Quantity",
-      render: (item) => (
-        <QuantityControls
-          itemId={item.id}
-          quantity={parseFloat(item.quantity)}
-          materialListId={materialListId}
-        />
-      ),
-      className: "whitespace-nowrap",
-    },
-    {
-      key: "unit",
-      label: "Unit",
-      render: (item) => (
-        <div className="text-sm text-gray-600">
-          {item.uom?.displayName || item.uom?.code || "—"}
-        </div>
-      ),
-      className: "whitespace-nowrap",
-    },
-    {
-      key: "supplier",
-      label: "Supplier",
-      render: (item) => (
-        <div className="w-full max-w-[200px]">
-          <SupplierSelector
-            itemId={item.id}
-            partDefinitionId={item.partDefinition?.id ?? ""}
-            currentSupplierPartId={item.supplierPart?.id}
-            materialListId={materialListId}
-          />
-        </div>
-      ),
-    },
-    {
-      key: "unitCost",
-      label: "Unit Cost",
-      render: (item) => {
-        const unitCost = item.unitCost ? parseFloat(item.unitCost) : 0;
-        return (
-          <div className="text-sm text-gray-600">
-            {unitCost > 0 ? `$${unitCost.toFixed(2)}` : "—"}
-          </div>
-        );
-      },
-      className: "whitespace-nowrap",
-    },
-    {
-      key: "lineTotal",
-      label: "Line Total",
-      render: (item) => {
-        const quantity = parseFloat(item.quantity);
-        const unitCost = item.unitCost ? parseFloat(item.unitCost) : 0;
-        const lineTotal = item.extendedPrice
-          ? parseFloat(item.extendedPrice)
-          : quantity * unitCost;
-        return (
-          <div className="text-sm font-semibold text-gray-900">
-            ${lineTotal.toFixed(2)}
-          </div>
-        );
-      },
-      className: "whitespace-nowrap",
-    },
-    {
-      key: "actions",
-      label: "Actions",
-      render: (item) => (
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => removeItem.mutate({ itemId: item.id })}
-          disabled={removeItem.isPending}
-          className="h-8 w-8 p-0"
-          aria-label="Remove item"
-        >
-          <TrashIcon className="h-4 w-4" />
-        </Button>
-      ),
-      className: "whitespace-nowrap",
-    },
-  ];
+  const handleRemove = (itemId: string) => {
+    if (typeof window !== "undefined" && !window.navigator.onLine) {
+      applyOfflineRemoveItem(materialListId, itemId);
+      enqueueOfflineMutation({
+        type: "removeItem",
+        materialListId,
+        itemId,
+        queuedAt: new Date().toISOString(),
+      });
+      void utils.materialList.getMaterialList.invalidate({ materialListId });
+      return;
+    }
 
-  return <PartsTable columns={columns} data={items} />;
+    removeItem.mutate({ itemId });
+  };
+
+  return (
+    <div className="space-y-2 overflow-x-auto">
+      {items.map((item) => (
+        <div
+          key={item.id}
+          className="flex min-w-max flex-nowrap items-center gap-2 rounded-lg border p-2 sm:gap-3"
+        >
+          <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-md bg-gray-100">
+            {item.partDefinition?.imageUrl ? (
+              <Image
+                src={item.partDefinition.imageUrl}
+                alt={item.partDefinition.displayName}
+                fill
+                className="object-cover"
+              />
+            ) : (
+              <div className="flex h-full items-center justify-center text-gray-400">
+                <svg
+                  className="h-4 w-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
+                  />
+                </svg>
+              </div>
+            )}
+          </div>
+          <div className="min-w-max flex-1">
+            <div className="whitespace-nowrap text-sm font-medium sm:text-base">
+              {item.partDefinition?.displayName ||
+                item.descriptionSnapshot ||
+                "Unknown Part"}
+            </div>
+          </div>
+          <div className="flex shrink-0 items-center gap-1">
+            <QuantityControls
+              itemId={item.id}
+              quantity={parseFloat(item.quantity)}
+              materialListId={materialListId}
+            />
+          </div>
+          <div className="min-w-[11rem] shrink-0 sm:min-w-[13rem]">
+            <SupplierSelector
+              itemId={item.id}
+              partDefinitionId={item.partDefinition?.id ?? ""}
+              currentSupplierPartId={item.supplierPart?.id}
+              materialListId={materialListId}
+            />
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handleRemove(item.id)}
+            disabled={removeItem.isPending}
+            className="shrink-0"
+            aria-label="Remove item"
+          >
+            <TrashIcon className="h-4 w-4" />
+          </Button>
+        </div>
+      ))}
+    </div>
+  );
 }
