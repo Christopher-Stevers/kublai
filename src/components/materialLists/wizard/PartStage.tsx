@@ -126,16 +126,25 @@ interface PartCardProps {
     },
     quantity: number,
   ) => void;
+  onQuantityPickerPreviewChange?: (
+    preview:
+      | {
+          partId: string;
+          partName: string;
+          quantity: number;
+        }
+      | null,
+  ) => void;
   onEditPart: (partId: string) => void;
 }
 
-function PartCard({ part, isPending, pendingQuantity = 0, onPartSelect, onPartQuantitySet, onEditPart: _onEditPart }: PartCardProps) {
-  const [isLongPressActive, setIsLongPressActive] = useState(false);
-  const [dragQuantity, setDragQuantity] = useState(Math.max(pendingQuantity, 1));
+function PartCard({ part, isPending, pendingQuantity = 0, onPartSelect, onPartQuantitySet, onQuantityPickerPreviewChange, onEditPart: _onEditPart }: PartCardProps) {
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressTriggeredRef = useRef(false);
   const pointerStartYRef = useRef<number | null>(null);
   const baseQuantityRef = useRef(1);
+  const dragQuantityRef = useRef(Math.max(pendingQuantity, 1));
+  const activePointerIdRef = useRef<number | null>(null);
 
   const clearLongPressTimer = () => {
     if (longPressTimerRef.current) {
@@ -146,50 +155,122 @@ function PartCard({ part, isPending, pendingQuantity = 0, onPartSelect, onPartQu
 
   const clampQuantity = (quantity: number) => Math.max(1, Math.min(25, quantity));
 
+  const clearPickerPreview = () => {
+    onQuantityPickerPreviewChange?.(null);
+  };
+
+  const updateDragQuantity = (clientY: number) => {
+    if (!longPressTriggeredRef.current || pointerStartYRef.current === null) return;
+
+    const deltaY = pointerStartYRef.current - clientY;
+    const steps = Math.round(deltaY / 28);
+    const nextQuantity = clampQuantity(baseQuantityRef.current + steps);
+    dragQuantityRef.current = nextQuantity;
+    onQuantityPickerPreviewChange?.({
+      partId: part.id,
+      partName: part.displayName,
+      quantity: nextQuantity,
+    });
+  };
+
+  const teardownWindowListeners = () => {
+    window.removeEventListener("pointermove", handleWindowPointerMove);
+    window.removeEventListener("pointerup", handleWindowPointerUp);
+    window.removeEventListener("pointercancel", handleWindowPointerCancel);
+  };
+
+  const finishLongPressSelection = () => {
+    onPartQuantitySet?.(part, dragQuantityRef.current);
+    clearPickerPreview();
+    longPressTriggeredRef.current = false;
+    pointerStartYRef.current = null;
+    activePointerIdRef.current = null;
+    teardownWindowListeners();
+  };
+
+  const cancelLongPressSelection = () => {
+    clearPickerPreview();
+    longPressTriggeredRef.current = false;
+    pointerStartYRef.current = null;
+    activePointerIdRef.current = null;
+    teardownWindowListeners();
+  };
+
+  function handleWindowPointerMove(event: PointerEvent) {
+    if (activePointerIdRef.current !== event.pointerId) return;
+    event.preventDefault();
+    updateDragQuantity(event.clientY);
+  }
+
+  function handleWindowPointerUp(event: PointerEvent) {
+    if (activePointerIdRef.current !== event.pointerId) return;
+    event.preventDefault();
+    clearLongPressTimer();
+
+    if (longPressTriggeredRef.current) {
+      finishLongPressSelection();
+    }
+  }
+
+  function handleWindowPointerCancel(event: PointerEvent) {
+    if (activePointerIdRef.current !== event.pointerId) return;
+    clearLongPressTimer();
+    cancelLongPressSelection();
+  }
+
   const handlePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (event.pointerType === "mouse" && event.button !== 0) return;
 
     longPressTriggeredRef.current = false;
+    activePointerIdRef.current = event.pointerId;
     pointerStartYRef.current = event.clientY;
     baseQuantityRef.current = Math.max(pendingQuantity, 1);
-    setDragQuantity(Math.max(pendingQuantity, 1));
+    dragQuantityRef.current = Math.max(pendingQuantity, 1);
+    event.currentTarget.setPointerCapture(event.pointerId);
 
     longPressTimerRef.current = setTimeout(() => {
       longPressTriggeredRef.current = true;
-      setIsLongPressActive(true);
-      setDragQuantity(baseQuantityRef.current);
+      onQuantityPickerPreviewChange?.({
+        partId: part.id,
+        partName: part.displayName,
+        quantity: baseQuantityRef.current,
+      });
+      window.addEventListener("pointermove", handleWindowPointerMove, { passive: false });
+      window.addEventListener("pointerup", handleWindowPointerUp, { passive: false });
+      window.addEventListener("pointercancel", handleWindowPointerCancel);
     }, 150);
   };
 
   const handlePointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (!longPressTriggeredRef.current || pointerStartYRef.current === null) return;
-
-    const deltaY = pointerStartYRef.current - event.clientY;
-    const steps = Math.round(deltaY / 22);
-    setDragQuantity(clampQuantity(baseQuantityRef.current + steps));
+    if (!longPressTriggeredRef.current) return;
+    event.preventDefault();
+    updateDragQuantity(event.clientY);
   };
 
   const finishPointerInteraction = () => {
     clearLongPressTimer();
 
     if (longPressTriggeredRef.current) {
-      onPartQuantitySet?.(part, dragQuantity);
-      setIsLongPressActive(false);
-      longPressTriggeredRef.current = false;
-      pointerStartYRef.current = null;
+      finishLongPressSelection();
       return;
     }
 
     onPartSelect(part);
     pointerStartYRef.current = null;
+    activePointerIdRef.current = null;
   };
 
   const cancelPointerInteraction = () => {
     clearLongPressTimer();
-    setIsLongPressActive(false);
-    longPressTriggeredRef.current = false;
-    pointerStartYRef.current = null;
+    cancelLongPressSelection();
   };
+
+  useEffect(() => {
+    return () => {
+      clearLongPressTimer();
+      teardownWindowListeners();
+    };
+  }, []);
 
   return (
     <Card
@@ -203,7 +284,7 @@ function PartCard({ part, isPending, pendingQuantity = 0, onPartSelect, onPartQu
       onPointerUp={finishPointerInteraction}
       onPointerCancel={cancelPointerInteraction}
       onPointerLeave={() => {
-        if (isLongPressActive) return;
+        if (longPressTriggeredRef.current) return;
         clearLongPressTimer();
       }}
     >
@@ -226,27 +307,6 @@ function PartCard({ part, isPending, pendingQuantity = 0, onPartSelect, onPartQu
               )}
             </div>
           </div>
-
-          {isLongPressActive && (
-            <div className="pointer-events-none fixed inset-0 z-[80] flex items-center justify-center bg-black/25 backdrop-blur-[1px]">
-              <div className="rounded-3xl bg-black/45 px-8 py-6 text-white">
-                <div className="flex flex-col items-center justify-center gap-2 text-center">
-                  {[3, 2, 1, 0, -1, -2, -3].map((offset) => {
-                    const value = clampQuantity(dragQuantity + offset);
-                    const isCurrent = offset === 0;
-                    return (
-                      <div
-                        key={`${part.id}-${offset}-${value}`}
-                        className={isCurrent ? "text-5xl font-bold leading-none" : "text-lg leading-none opacity-55"}
-                      >
-                        {value}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          )}
 
           <div className="flex min-h-0 flex-1 items-start justify-center text-center text-black">
             <h4 className="line-clamp-3 text-sm font-medium leading-snug sm:text-base">
@@ -426,6 +486,15 @@ export interface PartStageProps {
     material: string | null;
     size: string | null;
   }, quantity: number) => void;
+  onQuantityPickerPreviewChange: (
+    preview:
+      | {
+          partId: string;
+          partName: string;
+          quantity: number;
+        }
+      | null,
+  ) => void;
   onEditPart: (partId: string) => void;
   selectedMaterialId: string | null;
   selectedSize: { nominal: number; unit: string } | null;
@@ -441,6 +510,7 @@ export function PartStage({
   pendingParts,
   onPartSelect,
   onPartQuantitySet,
+  onQuantityPickerPreviewChange,
   onEditPart,
   selectedMaterialId,
   selectedSize,
@@ -480,6 +550,7 @@ export function PartStage({
                 pendingQuantity={pendingQuantity}
                 onPartSelect={onPartSelect}
                 onPartQuantitySet={onPartQuantitySet}
+                onQuantityPickerPreviewChange={onQuantityPickerPreviewChange}
                 onEditPart={onEditPart}
               />
             );

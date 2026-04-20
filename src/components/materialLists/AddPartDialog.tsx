@@ -42,6 +42,11 @@ export function AddPartDialog({
     useState(false);
   const [editingPartId, setEditingPartId] = useState<string | null>(null);
   const [isPendingTrayOpen, setIsPendingTrayOpen] = useState(false);
+  const [quantityPickerPreview, setQuantityPickerPreview] = useState<{
+    partId: string;
+    partName: string;
+    quantity: number;
+  } | null>(null);
   const [customPartContext, setCustomPartContext] = useState<{
     materialId?: string | null;
     size?: { nominal: number; unit: string } | null;
@@ -560,6 +565,7 @@ export function AddPartDialog({
     if (!open) {
       setPendingParts([]);
       setIsPendingTrayOpen(false);
+      setQuantityPickerPreview(null);
       resetWizard();
     }
   }, [open, resetWizard]);
@@ -573,7 +579,7 @@ export function AddPartDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="flex max-h-[90vh] w-[calc(100vw-1rem)] max-w-4xl flex-col p-0 sm:w-full sm:max-w-4xl">
+        <DialogContent className="relative flex max-h-[90vh] w-[calc(100vw-1rem)] max-w-4xl flex-col overflow-hidden p-0 sm:w-full sm:max-w-4xl">
           <DialogHeader className="shrink-0 px-2 pt-3 pb-2 sm:px-4 sm:pt-4 sm:pb-3 md:px-6 md:pt-6 md:pb-4">
             <DialogTitle className="text-base sm:text-lg md:text-xl">Add Parts</DialogTitle>
             <DialogDescription className="text-xs sm:text-sm">
@@ -674,6 +680,7 @@ export function AddPartDialog({
                 pendingParts={pendingParts}
                 onPartSelect={handlePartSelect}
                 onPartQuantitySet={handlePartQuantitySet}
+                onQuantityPickerPreviewChange={setQuantityPickerPreview}
                 onEditPart={handleEditPart}
                 selectedMaterialId={selectedMaterialId}
                 selectedSize={selectedSize}
@@ -806,6 +813,52 @@ export function AddPartDialog({
                 </Button>
               </div>
             </DialogFooter>
+          )}
+
+          {quantityPickerPreview && (
+            <div className="pointer-events-none absolute inset-0 z-[90] flex items-center justify-center bg-black/20 backdrop-blur-[1px]">
+              <div className="flex h-full w-full items-center justify-center px-6 py-8 sm:px-10">
+                <div className="w-full max-w-sm rounded-[2rem] bg-white/18 px-8 py-8 text-white shadow-2xl ring-1 ring-white/20 backdrop-blur-md">
+                  <div className="mb-6 text-center">
+                    <div className="text-sm font-medium uppercase tracking-[0.18em] text-white/70">
+                      Quantity
+                    </div>
+                    <div className="mt-2 line-clamp-2 text-sm text-white/85 sm:text-base">
+                      {quantityPickerPreview.partName}
+                    </div>
+                  </div>
+
+                  <div className="relative mx-auto flex h-72 items-center justify-center overflow-hidden">
+                    <div className="absolute inset-x-0 top-1/2 h-16 -translate-y-1/2 rounded-2xl border border-white/35 bg-white/20 shadow-inner" />
+                    <div
+                      className="absolute inset-x-0 flex flex-col items-center transition-transform duration-75 ease-out"
+                      style={{ transform: `translateY(${(13 - quantityPickerPreview.quantity) * 40}px)` }}
+                    >
+                      {Array.from({ length: 25 }, (_, index) => {
+                        const value = index + 1;
+                        const distance = Math.abs(value - quantityPickerPreview.quantity);
+                        const opacity = Math.max(0.18, 1 - distance * 0.18);
+                        const scale = Math.max(0.72, 1 - distance * 0.08);
+
+                        return (
+                          <div
+                            key={value}
+                            className="flex h-10 items-center justify-center text-center font-semibold leading-none"
+                            style={{
+                              opacity,
+                              transform: `scale(${scale})`,
+                              fontSize: distance === 0 ? "2.5rem" : distance === 1 ? "1.6rem" : "1.05rem",
+                            }}
+                          >
+                            {value}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           )}
         </DialogContent>
       </Dialog>
