@@ -191,8 +191,8 @@ export function ReviewStage({
                   </div>
                 )}
               </div>
-              <div className="min-w-max flex-1">
-                <div className="whitespace-nowrap text-sm font-medium sm:text-base">
+              <div className={reviewView === "grid" ? "min-w-0 flex-1" : "min-w-max flex-1"}>
+                <div className={reviewView === "grid" ? "break-words text-sm font-medium leading-snug sm:text-base" : "whitespace-nowrap text-sm font-medium sm:text-base"}>
                   {pendingPart.partDefinition.displayName}
                 </div>
               </div>
