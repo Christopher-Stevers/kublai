@@ -58,6 +58,7 @@ export function ReviewStage({
   const [supplierDialogPartId, setSupplierDialogPartId] = useState<string | null>(null);
   const [supplierCountBeforeDialog, setSupplierCountBeforeDialog] = useState<number>(0);
   const [reviewView, setReviewView] = useState<"grid" | "table">("table");
+  const [pendingSupplierLabels, setPendingSupplierLabels] = useState<Record<string, string>>({});
 
   const utils = api.useUtils();
   const { data: allSuppliers } = api.supplier.list.useQuery();
@@ -77,6 +78,30 @@ export function ReviewStage({
       void utils.catalogue.getPartsSupplierInfo.invalidate();
     },
   });
+
+  useEffect(() => {
+    setPendingSupplierLabels((prev) => {
+      let changed = false;
+      const next = { ...prev };
+
+      for (const pendingPart of pendingParts) {
+        if (!pendingPart.supplierPartId || !next[pendingPart.partId]) {
+          continue;
+        }
+
+        const matchedSupplier = (supplierPartsData.get(pendingPart.partId) ?? []).find(
+          (sp) => sp.id === pendingPart.supplierPartId,
+        );
+
+        if (matchedSupplier) {
+          delete next[pendingPart.partId];
+          changed = true;
+        }
+      }
+
+      return changed ? next : prev;
+    });
+  }, [pendingParts, supplierPartsData]);
 
   // Get supplier info for the part in the dialog
   const { data: supplierInfo } = api.catalogue.getPartsSupplierInfo.useQuery(
@@ -221,7 +246,7 @@ export function ReviewStage({
                       }`}
                     >
                       <span className="truncate">
-                        {partsData.find((sp) => sp.id === pendingPart.supplierPartId)?.supplier.name ?? "Select supplier"}
+                        {partsData.find((sp) => sp.id === pendingPart.supplierPartId)?.supplier.name ?? pendingSupplierLabels[pendingPart.partId] ?? "Select supplier"}
                       </span>
                     </Button>
                   </DropdownMenuTrigger>
@@ -243,12 +268,16 @@ export function ReviewStage({
                       .map((supplier) => (
                         <DropdownMenuItem
                           key={supplier.id}
-                          onClick={() =>
+                          onClick={() => {
+                            setPendingSupplierLabels((prev) => ({
+                              ...prev,
+                              [pendingPart.partId]: supplier.name,
+                            }));
                             addSupplierPart.mutate({
                               supplierId: supplier.id,
                               partDefinitionId: pendingPart.partId,
-                            })
-                          }
+                            });
+                          }}
                         >
                           {supplier.name}
                         </DropdownMenuItem>
