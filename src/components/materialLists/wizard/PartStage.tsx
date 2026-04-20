@@ -313,7 +313,7 @@ function PartCard({ part, isPending, pendingQuantity = 0, onPartSelect, onPartQu
 
   return (
     <Card
-      className={`relative aspect-[1/1.14] gap-0 overflow-hidden rounded-2xl py-0 transition-all hover:shadow-md ${
+      className={`relative gap-0 overflow-hidden rounded-2xl py-0 transition-all hover:shadow-md ${
         isPending ? "border-primary border-2 shadow-md" : ""
       } cursor-pointer`}
       style={{ WebkitTouchCallout: "none", WebkitUserSelect: "none", userSelect: "none" }}
@@ -327,8 +327,8 @@ function PartCard({ part, isPending, pendingQuantity = 0, onPartSelect, onPartQu
         clearLongPressTimer();
       }}
     >
-      <CardContent className="h-full p-0">
-        <div className="flex h-full w-full flex-col p-3 sm:p-4">
+      <CardContent className="p-0">
+        <div className="flex w-full flex-col p-3 sm:p-4">
           <div className="relative mb-3 aspect-square w-full overflow-hidden rounded-xl bg-gray-100">
             <Image
               src={part.imageUrl ?? TILE_FALLBACK_IMAGE_URL}
@@ -347,8 +347,8 @@ function PartCard({ part, isPending, pendingQuantity = 0, onPartSelect, onPartQu
             </div>
           </div>
 
-          <div className="flex min-h-0 flex-1 items-end justify-center text-center text-black">
-            <h4 className="line-clamp-3 text-sm font-medium leading-snug sm:text-base">
+          <div className="flex min-h-[2.75rem] items-end justify-center text-center text-black sm:min-h-[3.25rem]">
+            <h4 className="text-sm font-medium leading-snug sm:text-base">
               {part.displayName}
             </h4>
           </div>
