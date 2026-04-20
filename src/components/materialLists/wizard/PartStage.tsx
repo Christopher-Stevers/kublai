@@ -125,45 +125,34 @@ function PartCard({ part, isPending, pendingQuantity = 0, onPartSelect, onEditPa
 
   return (
     <Card
-      className={`relative aspect-square gap-0 py-0 overflow-hidden transition-all hover:shadow-md ${
+      className={`relative aspect-square gap-0 overflow-hidden rounded-2xl py-0 transition-all hover:shadow-md ${
         isPending ? "border-primary border-2 shadow-md" : ""
       } cursor-pointer`}
       onClick={handleCardClick}
     >
       <CardContent className="h-full p-0">
-        <div className="h-full w-full p-1.5 sm:p-2">
-          <div className="relative h-full w-full bg-gray-100">
-            <div className="absolute inset-0 bg-gray-100">
-            {part.imageUrl ? (
-              <Image
-                src={part.imageUrl}
-                alt={part.displayName}
-                fill
-                className="object-fill"
-              />
-            ) : (
-              <Image
-                src={TILE_FALLBACK_IMAGE_URL}
-                alt={part.displayName}
-                fill
-                className="object-fill"
-              />
-            )}
-            </div>
+        <div className="flex h-full w-full flex-col p-3 sm:p-4">
+          <div className="relative mb-3 aspect-square w-full overflow-hidden rounded-xl bg-gray-100">
+            <Image
+              src={part.imageUrl ?? TILE_FALLBACK_IMAGE_URL}
+              alt={part.displayName}
+              fill
+              className="object-cover"
+            />
 
-            <div className="absolute top-0 right-0 flex justify-end p-1">
+            <div className="absolute top-2 right-2 flex justify-end">
               {pendingQuantity > 0 && (
                 <div className="flex h-6 min-w-6 items-center justify-center rounded-full bg-black px-1.5 text-xs font-semibold text-white shadow-sm sm:h-7 sm:min-w-7 sm:text-sm">
                   {pendingQuantity}
                 </div>
               )}
             </div>
+          </div>
 
-            <div className="absolute inset-x-0 bottom-0 flex items-end p-0 text-black">
-              <h4 className="line-clamp-2 text-xs font-medium leading-none sm:text-sm [text-shadow:-1px_-1px_0_rgba(255,255,255,0.95),1px_-1px_0_rgba(255,255,255,0.95),-1px_1px_0_rgba(255,255,255,0.95),1px_1px_0_rgba(255,255,255,0.95)]">
-                {part.displayName}
-              </h4>
-            </div>
+          <div className="flex min-h-0 flex-1 items-start justify-center text-center text-black">
+            <h4 className="line-clamp-3 text-sm font-medium leading-snug sm:text-base">
+              {part.displayName}
+            </h4>
           </div>
         </div>
       </CardContent>
@@ -370,16 +359,6 @@ export function PartStage({
         <h3 className="text-base font-semibold sm:text-lg">Select Parts</h3>
         <ViewToggle view={viewMode} onViewChange={setViewMode} showOnMobile />
       </div>
-      <div className="flex justify-end">
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={onContinueToReview}
-          className="w-full text-xs sm:w-auto sm:text-sm"
-        >
-          Review ({pendingParts.length})
-        </Button>
-      </div>
       {viewMode === "grid" ? (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
           {pagination.paginatedItems.map((part) => {
@@ -422,15 +401,6 @@ export function PartStage({
         itemLabel="parts"
         onPageChange={pagination.setPage}
       />
-      <div className="flex justify-end">
-        <Button
-          onClick={onContinueToReview}
-          disabled={pendingParts.length === 0}
-          className="w-full text-xs sm:w-auto sm:text-sm"
-        >
-          Continue to Review ({pendingParts.length})
-        </Button>
-      </div>
     </div>
   );
 }
