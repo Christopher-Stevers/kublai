@@ -654,6 +654,19 @@ export function AddPartDialog({
     return pendingParts.every((p) => !!p.supplierPartId);
   }, [pendingParts]);
 
+  const reviewedPartsTotal = useMemo(() => {
+    return pendingParts.reduce((sum, pendingPart) => {
+      const selectedSupplierPart = (supplierPartsData.get(pendingPart.partId) ?? []).find(
+        (supplierPart) => supplierPart.id === pendingPart.supplierPartId,
+      );
+      const unitCost = selectedSupplierPart?.lastKnownUnitCost
+        ? parseFloat(selectedSupplierPart.lastKnownUnitCost)
+        : 0;
+
+      return sum + pendingPart.quantity * unitCost;
+    }, 0);
+  }, [pendingParts, supplierPartsData]);
+
   // Reset state when dialog closes
   useEffect(() => {
     if (!open) {
@@ -917,7 +930,13 @@ export function AddPartDialog({
 
           {wizardStage === "review" && (
             <DialogFooter className="shrink-0 border-t px-2 py-3 sm:px-4 sm:py-4 md:px-6">
-              <div className="flex w-full justify-end">
+              <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="text-left sm:text-right">
+                  <p className="text-xs text-gray-600 sm:text-sm">Review Total</p>
+                  <p className="text-lg font-semibold sm:text-xl">
+                    ${reviewedPartsTotal.toFixed(2)}
+                  </p>
+                </div>
                 <Button
                   onClick={handleAddToMaterialList}
                   disabled={
