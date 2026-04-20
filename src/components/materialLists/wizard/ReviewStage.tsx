@@ -102,7 +102,7 @@ export function ReviewStage({
           </div>
         )}
       </div>
-      <div className="space-y-3 sm:space-y-4">
+      <div className="space-y-2">
         {pendingParts.map((pendingPart) => {
           const partsData = supplierPartsData.get(pendingPart.partId) ?? [];
           const hasSupplier = !!pendingPart.supplierPartId;
@@ -111,11 +111,11 @@ export function ReviewStage({
           return (
             <div
               key={pendingPart.partId}
-              className={`flex flex-col gap-3 rounded-lg border p-3 sm:flex-row sm:items-start sm:gap-4 sm:p-4 ${
+              className={`flex flex-wrap items-center gap-2 rounded-lg border p-2 sm:flex-nowrap sm:gap-3 ${
                 isMissingSupplier ? "border-amber-300 bg-amber-50/50" : ""
               }`}
             >
-              <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-md bg-gray-100 sm:h-16 sm:w-16">
+              <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-md bg-gray-100">
                 {pendingPart.partDefinition.imageUrl ? (
                   <Image
                     src={pendingPart.partDefinition.imageUrl}
@@ -126,7 +126,7 @@ export function ReviewStage({
                 ) : (
                   <div className="flex h-full items-center justify-center text-gray-400">
                     <svg
-                      className="h-4 w-4 sm:h-6 sm:w-6"
+                      className="h-4 w-4"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -141,129 +141,103 @@ export function ReviewStage({
                   </div>
                 )}
               </div>
-              <div className="min-w-0 flex-1 space-y-2">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium sm:text-base">
-                      {pendingPart.partDefinition.displayName}
-                    </p>
-                    <div className="mt-1 flex flex-wrap gap-1">
-                      {pendingPart.partDefinition.material && (
-                        <Badge variant="outline" className="text-xs">
-                          {pendingPart.partDefinition.material}
-                        </Badge>
-                      )}
-                      {pendingPart.partDefinition.size && (
-                        <Badge variant="outline" className="text-xs">
-                          {formatSizeAsFraction(pendingPart.partDefinition.size)}
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                  <button
-                    title="Remove part"
-                    onClick={() => onRemovePendingPart(pendingPart.partId)}
-                    className="shrink-0 text-gray-400 hover:text-gray-600"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-sm font-medium sm:text-base">
+                  {pendingPart.partDefinition.displayName}
                 </div>
-                <div className="flex flex-col gap-3 sm:flex-row sm:gap-4">
-                  <div className="flex items-center gap-2">
-                    <label className="text-xs text-gray-600 sm:text-sm">Quantity:</label>
-                    <div className="flex items-center gap-1">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => onUpdateQuantity(pendingPart.partId, -1)}
-                        className="h-7 w-7 p-0 sm:h-8 sm:w-8"
-                      >
-                        <Minus className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                      </Button>
-                      <Input
-                        type="number"
-                        min="1"
-                        value={pendingPart.quantity}
-                        onChange={(e) =>
-                          onSetQuantity(
-                            pendingPart.partId,
-                            parseInt(e.target.value) || 1,
-                          )
-                        }
-                        className="h-7 w-14 [appearance:textfield] text-center text-xs sm:h-8 sm:w-16 sm:text-sm [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                      />
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => onUpdateQuantity(pendingPart.partId, 1)}
-                        className="h-7 w-7 p-0 sm:h-8 sm:w-8"
-                      >
-                        <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <label className="text-xs text-gray-600 sm:text-sm">
-                      Supplier:{" "}
-                      {isMissingSupplier && (
-                        <span className="text-amber-600">*Required</span>
-                      )}
-                    </label>
-                    {hasAvailableSuppliers ? (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="outline"
-                            className={`mt-1 h-7 w-full justify-start text-xs sm:h-8 ${
-                              isMissingSupplier
-                                ? "border-amber-300 text-amber-700"
-                                : ""
-                            }`}
-                          >
-                            <span className="truncate">
-                              {partsData.find(
-                                (sp) => sp.id === pendingPart.supplierPartId,
-                              )?.supplier.name ?? "Select supplier"}
-                            </span>
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent>
-                          {partsData.map((sp) => (
-                            <DropdownMenuItem
-                              key={sp.id}
-                              onClick={() =>
-                                onUpdateSupplier(pendingPart.partId, sp.id)
-                              }
-                            >
-                              {sp.supplier.name}
-                              {sp.supplierSku ? ` (${sp.supplierSku})` : ""}
-                              {sp.isPreferred && " ⭐"}
-                            </DropdownMenuItem>
-                          ))}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          // Store the current supplier count before opening dialog
-                          const partsData = supplierPartsData.get(pendingPart.partId) ?? [];
-                          setSupplierCountBeforeDialog(partsData.length);
-                          setSupplierDialogPartId(pendingPart.partId);
-                        }}
-                        className="mt-1 w-full cursor-pointer rounded-md border border-amber-300 bg-amber-50 px-2 py-1.5 text-left text-xs text-amber-800 transition-colors hover:bg-amber-100 sm:px-3 sm:py-2"
-                      >
-                        <div className="flex items-center gap-2">
-                          <AlertCircle className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" />
-                          <span className="flex-1">
-                            No suppliers available. Click to add suppliers.
-                          </span>
-                        </div>
-                      </button>
-                    )}
-                  </div>
+                <div className="mt-1 flex flex-wrap gap-1">
+                  {pendingPart.partDefinition.material && (
+                    <Badge variant="outline" className="text-[10px] sm:text-xs">
+                      {pendingPart.partDefinition.material}
+                    </Badge>
+                  )}
+                  {pendingPart.partDefinition.size && (
+                    <Badge variant="outline" className="text-[10px] sm:text-xs">
+                      {formatSizeAsFraction(pendingPart.partDefinition.size)}
+                    </Badge>
+                  )}
                 </div>
               </div>
+              <div className="flex shrink-0 items-center gap-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onUpdateQuantity(pendingPart.partId, -1)}
+                  className="h-8 w-8 p-0"
+                >
+                  <Minus className="h-4 w-4" />
+                </Button>
+                <Input
+                  type="number"
+                  min="0"
+                  value={pendingPart.quantity}
+                  onChange={(e) =>
+                    onSetQuantity(
+                      pendingPart.partId,
+                      parseInt(e.target.value) || 0,
+                    )
+                  }
+                  className="h-8 w-16 [appearance:textfield] text-center text-sm [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onUpdateQuantity(pendingPart.partId, 1)}
+                  className="h-8 w-8 p-0"
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+              <div className="min-w-[11rem] shrink-0 sm:min-w-[13rem]">
+                {hasAvailableSuppliers ? (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={`h-8 w-full justify-start text-xs sm:text-sm ${
+                          isMissingSupplier ? "border-amber-300 text-amber-700" : ""
+                        }`}
+                      >
+                        <span className="truncate">
+                          {partsData.find((sp) => sp.id === pendingPart.supplierPartId)?.supplier.name ?? "Select supplier"}
+                        </span>
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                      {partsData.map((sp) => (
+                        <DropdownMenuItem
+                          key={sp.id}
+                          onClick={() => onUpdateSupplier(pendingPart.partId, sp.id)}
+                        >
+                          {sp.supplier.name}
+                          {sp.supplierSku ? ` (${sp.supplierSku})` : ""}
+                          {sp.isPreferred && " ⭐"}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const partsData = supplierPartsData.get(pendingPart.partId) ?? [];
+                      setSupplierCountBeforeDialog(partsData.length);
+                      setSupplierDialogPartId(pendingPart.partId);
+                    }}
+                    className="flex h-8 w-full items-center gap-2 rounded-md border border-amber-300 bg-amber-50 px-2 text-left text-xs text-amber-800 transition-colors hover:bg-amber-100 sm:text-sm"
+                  >
+                    <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                    <span className="truncate">Add supplier</span>
+                  </button>
+                )}
+              </div>
+              <button
+                title="Remove part"
+                onClick={() => onRemovePendingPart(pendingPart.partId)}
+                className="shrink-0 text-gray-400 hover:text-gray-600"
+              >
+                <X className="h-4 w-4" />
+              </button>
             </div>
           );
         })}
