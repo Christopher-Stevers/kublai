@@ -288,7 +288,7 @@ function PartCard({ part, isPending, pendingQuantity = 0, onPartSelect, onPartQu
 
   return (
     <Card
-      className={`relative aspect-square gap-0 overflow-hidden rounded-2xl py-0 transition-all hover:shadow-md ${
+      className={`relative aspect-[1/1.14] gap-0 overflow-hidden rounded-2xl py-0 transition-all hover:shadow-md ${
         isPending ? "border-primary border-2 shadow-md" : ""
       } cursor-pointer`}
       style={{ WebkitTouchCallout: "none", WebkitUserSelect: "none", userSelect: "none" }}
