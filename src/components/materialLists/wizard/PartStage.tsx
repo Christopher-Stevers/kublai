@@ -196,6 +196,8 @@ function PartCard({ part, isPending, pendingQuantity = 0, onPartSelect, onPartQu
       className={`relative aspect-square gap-0 overflow-hidden rounded-2xl py-0 transition-all hover:shadow-md ${
         isPending ? "border-primary border-2 shadow-md" : ""
       } cursor-pointer`}
+      style={{ WebkitTouchCallout: "none", WebkitUserSelect: "none", userSelect: "none" }}
+      onContextMenu={(event) => event.preventDefault()}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={finishPointerInteraction}
@@ -213,6 +215,7 @@ function PartCard({ part, isPending, pendingQuantity = 0, onPartSelect, onPartQu
               alt={part.displayName}
               fill
               className="object-cover"
+              draggable={false}
             />
 
             <div className="absolute top-2 right-2 flex justify-end">
@@ -225,20 +228,22 @@ function PartCard({ part, isPending, pendingQuantity = 0, onPartSelect, onPartQu
           </div>
 
           {isLongPressActive && (
-            <div className="pointer-events-none absolute inset-x-6 top-1/2 z-10 -translate-y-1/2 rounded-2xl bg-black/75 py-3 text-white backdrop-blur-sm">
-              <div className="flex flex-col items-center justify-center gap-1 text-center">
-                {[2, 1, 0, -1, -2].map((offset) => {
-                  const value = clampQuantity(dragQuantity + offset);
-                  const isCurrent = offset === 0;
-                  return (
-                    <div
-                      key={`${part.id}-${offset}-${value}`}
-                      className={isCurrent ? "text-3xl font-bold leading-none" : "text-sm leading-none opacity-60"}
-                    >
-                      {value}
-                    </div>
-                  );
-                })}
+            <div className="pointer-events-none fixed inset-0 z-[80] flex items-center justify-center bg-black/25 backdrop-blur-[1px]">
+              <div className="rounded-3xl bg-black/45 px-8 py-6 text-white">
+                <div className="flex flex-col items-center justify-center gap-2 text-center">
+                  {[3, 2, 1, 0, -1, -2, -3].map((offset) => {
+                    const value = clampQuantity(dragQuantity + offset);
+                    const isCurrent = offset === 0;
+                    return (
+                      <div
+                        key={`${part.id}-${offset}-${value}`}
+                        className={isCurrent ? "text-5xl font-bold leading-none" : "text-lg leading-none opacity-55"}
+                      >
+                        {value}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           )}
