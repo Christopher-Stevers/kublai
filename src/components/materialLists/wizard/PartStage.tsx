@@ -526,12 +526,15 @@ export function PartStage({
         <div className="space-y-3">
           {pagination.paginatedItems.map((part) => {
             const isPending = pendingParts.some((p) => p.partId === part.id);
+            const pendingQuantity = pendingParts.find((p) => p.partId === part.id)?.quantity ?? 0;
             return (
               <PartListRow
                 key={part.id}
                 part={part}
                 isPending={isPending}
+                pendingQuantity={pendingQuantity}
                 onPartSelect={onPartSelect}
+                onPartQuantitySet={onPartQuantitySet}
                 onEditPart={onEditPart}
               />
             );
