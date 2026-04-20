@@ -617,10 +617,11 @@ export function AddPartDialog({
                   position: "fixed",
                   top: "0.5rem",
                   right: "0.5rem",
-                  bottom: "0.5rem",
                   left: "0.5rem",
+                  bottom: "auto",
                   transform: "none",
                   width: "auto",
+                  height: "calc(100dvh - 1rem)",
                   maxWidth: "none",
                   maxHeight: "calc(100dvh - 1rem)",
                 }
