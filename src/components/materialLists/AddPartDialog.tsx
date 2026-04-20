@@ -417,7 +417,7 @@ export function AddPartDialog({
       return;
     }
 
-    const clampQuantity = (quantity: number) => Math.max(1, Math.min(25, quantity));
+    const clampQuantity = (quantity: number) => Math.max(1, quantity);
 
     const handleTouchMove = (event: TouchEvent) => {
       if (event.touches.length === 0) {
@@ -957,19 +957,16 @@ export function AddPartDialog({
 
                   <div className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden">
                     <div className="absolute inset-x-0 top-1/2 h-24 -translate-y-1/2 rounded-3xl border border-white/35 bg-white/20 shadow-inner sm:h-28" />
-                    <div
-                      className="absolute inset-x-0 flex flex-col items-center transition-transform duration-75 ease-out"
-                      style={{ transform: `translateY(${(13 - quantityPickerPreview.quantity) * 52}px)` }}
-                    >
-                      {Array.from({ length: 25 }, (_, index) => {
-                        const value = index + 1;
+                    <div className="absolute inset-x-0 flex flex-col items-center transition-transform duration-75 ease-out">
+                      {Array.from({ length: 13 }, (_, index) => {
+                        const value = Math.max(1, quantityPickerPreview.quantity - 6 + index);
                         const distance = Math.abs(value - quantityPickerPreview.quantity);
                         const opacity = Math.max(0.18, 1 - distance * 0.18);
                         const scale = Math.max(0.72, 1 - distance * 0.08);
 
                         return (
                           <div
-                            key={value}
+                            key={`${quantityPickerPreview.quantity}-${value}-${index}`}
                             className="flex h-13 items-center justify-center text-center font-semibold leading-none sm:h-16"
                             style={{
                               opacity,

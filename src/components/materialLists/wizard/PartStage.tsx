@@ -154,7 +154,7 @@ function PartCard({ part, isPending, pendingQuantity = 0, onPartSelect, onPartQu
     }
   };
 
-  const clampQuantity = (quantity: number) => Math.max(1, Math.min(25, quantity));
+  const clampQuantity = (quantity: number) => Math.max(1, quantity);
 
   const clearPickerPreview = () => {
     onQuantityPickerPreviewChange?.(null);
