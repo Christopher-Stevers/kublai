@@ -15,7 +15,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "~/components/ui/dialog";
-import { Pencil, AlertCircle } from "lucide-react";
+import { AlertCircle } from "lucide-react";
 import Image from "next/image";
 import type { PendingPart } from "./types";
 import { PartSuppliersDropdown } from "~/components/catalogue/PartSuppliersDropdown";
@@ -433,16 +433,6 @@ function PartListRow({ part, isPending, onPartSelect, onEditPart }: PartCardProp
               Add supplier
             </button>
           )}
-
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 w-7 p-0"
-            onClick={() => onEditPart(part.id)}
-            title="Edit part"
-          >
-            <Pencil className="h-3.5 w-3.5" />
-          </Button>
 
           <Button
             size="sm"
