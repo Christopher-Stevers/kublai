@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, type PointerEvent as ReactPointerEvent } f
 import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent } from "~/components/ui/card";
+import { Input } from "~/components/ui/input";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,7 +16,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "~/components/ui/dialog";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Minus, Plus } from "lucide-react";
 import Image from "next/image";
 import type { PendingPart } from "./types";
 import { PartSuppliersDropdown } from "~/components/catalogue/PartSuppliersDropdown";
@@ -357,7 +358,7 @@ function PartCard({ part, isPending, pendingQuantity = 0, onPartSelect, onPartQu
   );
 }
 
-function PartListRow({ part, isPending, onPartSelect, onEditPart }: PartCardProps) {
+function PartListRow({ part, isPending, pendingQuantity = 0, onPartSelect, onPartQuantitySet, onEditPart }: PartCardProps) {
   return (
     <div
       className={`rounded-lg border bg-white px-3 py-2 transition-all ${
@@ -389,13 +390,43 @@ function PartListRow({ part, isPending, onPartSelect, onEditPart }: PartCardProp
         </div>
 
         <div className="flex shrink-0 items-center gap-2">
-          <Button
-            size="sm"
-            className="h-8 px-3 text-xs"
-            onClick={() => onPartSelect(part)}
-          >
-            {isPending ? "Remove" : "Add"}
-          </Button>
+          {isPending ? (
+            <div className="flex items-center gap-1">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onPartQuantitySet?.(part, pendingQuantity - 1)}
+                className="h-8 w-8 p-0"
+              >
+                <Minus className="h-4 w-4" />
+              </Button>
+              <Input
+                type="number"
+                min="0"
+                value={pendingQuantity}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  onPartQuantitySet?.(part, parseInt(e.target.value) || 0)
+                }
+                className="h-8 w-14 [appearance:textfield] text-center text-sm [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onPartQuantitySet?.(part, pendingQuantity + 1)}
+                className="h-8 w-8 p-0"
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
+          ) : (
+            <Button
+              size="sm"
+              className="h-8 px-3 text-xs"
+              onClick={() => onPartSelect(part)}
+            >
+              Add
+            </Button>
+          )}
         </div>
       </div>
     </div>
