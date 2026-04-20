@@ -15,12 +15,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "~/components/ui/dialog";
-import { Pencil, AlertCircle, ImageIcon } from "lucide-react";
+import { Pencil, AlertCircle } from "lucide-react";
 import Image from "next/image";
 import type { PendingPart } from "./types";
 import { PartSuppliersDropdown } from "~/components/catalogue/PartSuppliersDropdown";
 import { ListPagination, useClientPagination } from "~/components/ui/list-pagination";
 import { ViewToggle } from "~/components/ui/view-toggle";
+
+const TILE_FALLBACK_IMAGE_URL = "/images/plumbing-part-placeholder-v2.jpg";
 
 function usePartSupplierSelection(partId: string) {
   const [selectedSupplierPartId, setSelectedSupplierPartId] = useState<string | null>(null);
@@ -140,10 +142,12 @@ function PartCard({ part, isPending, pendingQuantity = 0, onPartSelect, onEditPa
                 className="object-fill"
               />
             ) : (
-              <div className="flex h-full flex-col items-center justify-center gap-2 bg-muted text-muted-foreground">
-                <ImageIcon className="h-8 w-8 sm:h-10 sm:w-10" />
-                <span className="text-xs font-medium">No image</span>
-              </div>
+              <Image
+                src={TILE_FALLBACK_IMAGE_URL}
+                alt={part.displayName}
+                fill
+                className="object-fill"
+              />
             )}
             </div>
 
