@@ -15,7 +15,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "~/components/ui/dialog";
-import { X, Plus, Minus, AlertCircle } from "lucide-react";
+import { Plus, Minus, AlertCircle } from "lucide-react";
 import Image from "next/image";
 import type { PendingPart } from "./types";
 import { PartSuppliersDropdown } from "~/components/catalogue/PartSuppliersDropdown";
@@ -57,6 +57,7 @@ export function ReviewStage({
   const [supplierCountBeforeDialog, setSupplierCountBeforeDialog] = useState<number>(0);
   const [reviewView, setReviewView] = useState<"grid" | "table">("table");
   const [pendingSupplierLabels, setPendingSupplierLabels] = useState<Record<string, string>>({});
+  const [confirmingRemovePartId, setConfirmingRemovePartId] = useState<string | null>(null);
 
   const utils = api.useUtils();
   const { data: allSuppliers } = api.supplier.list.useQuery();
@@ -99,6 +100,10 @@ export function ReviewStage({
 
       return changed ? next : prev;
     });
+
+    setConfirmingRemovePartId((current) =>
+      current && pendingParts.some((part) => part.partId === current) ? current : null,
+    );
   }, [pendingParts, supplierPartsData]);
 
   // Get supplier info for the part in the dialog
@@ -282,13 +287,23 @@ export function ReviewStage({
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
-              <button
-                title="Remove part"
-                onClick={() => onRemovePendingPart(pendingPart.partId)}
-                className={reviewView === "grid" ? "self-end text-gray-400 hover:text-gray-600" : "shrink-0 text-gray-400 hover:text-gray-600"}
+              <Button
+                type="button"
+                variant={confirmingRemovePartId === pendingPart.partId ? "destructive" : "outline"}
+                size="sm"
+                onClick={() => {
+                  if (confirmingRemovePartId === pendingPart.partId) {
+                    onRemovePendingPart(pendingPart.partId);
+                    setConfirmingRemovePartId(null);
+                    return;
+                  }
+
+                  setConfirmingRemovePartId(pendingPart.partId);
+                }}
+                className={reviewView === "grid" ? "self-end" : "shrink-0"}
               >
-                <X className="h-4 w-4" />
-              </button>
+                {confirmingRemovePartId === pendingPart.partId ? "Confirm remove" : "Remove"}
+              </Button>
             </div>
           );
         })}
