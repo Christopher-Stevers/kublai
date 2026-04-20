@@ -237,6 +237,11 @@ export function AddPartDialog({
   const [fetchingParts, setFetchingParts] = useState<Set<string>>(new Set());
   const supplierPartsDataRef = useRef(supplierPartsData);
   const fetchingPartsRef = useRef(fetchingParts);
+  const fetchSupplierPartsRef = useRef(utils.supplier.getSupplierPartsByPart.fetch);
+  const pendingPartIdsKey = useMemo(
+    () => pendingParts.map((p) => p.partId).sort().join("|"),
+    [pendingParts],
+  );
 
   useEffect(() => {
     supplierPartsDataRef.current = supplierPartsData;
@@ -245,6 +250,10 @@ export function AddPartDialog({
   useEffect(() => {
     fetchingPartsRef.current = fetchingParts;
   }, [fetchingParts]);
+
+  useEffect(() => {
+    fetchSupplierPartsRef.current = utils.supplier.getSupplierPartsByPart.fetch;
+  }, [utils.supplier.getSupplierPartsByPart.fetch]);
 
   // Fetch supplier parts for pending parts
   useEffect(() => {
@@ -259,13 +268,15 @@ export function AddPartDialog({
       }
 
       setFetchingParts((prev) => {
+        if (prev.has(partId)) {
+          return prev;
+        }
         const next = new Set(prev);
         next.add(partId);
         return next;
       });
 
-      void utils.supplier.getSupplierPartsByPart
-        .fetch({ partDefinitionId: partId })
+      void fetchSupplierPartsRef.current({ partDefinitionId: partId })
         .then(
           (
             data: Array<{
@@ -292,6 +303,9 @@ export function AddPartDialog({
         })
         .finally(() => {
           setFetchingParts((prev) => {
+            if (!prev.has(partId)) {
+              return prev;
+            }
             const next = new Set(prev);
             next.delete(partId);
             return next;
@@ -312,7 +326,7 @@ export function AddPartDialog({
       }
       return hasChanges ? next : prev;
     });
-  }, [pendingParts, utils.supplier.getSupplierPartsByPart]);
+  }, [pendingPartIdsKey]);
 
   // Auto-select preferred supplier when part is added
   useEffect(() => {
