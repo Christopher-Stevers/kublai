@@ -60,6 +60,23 @@ export function ReviewStage({
   const [reviewView, setReviewView] = useState<"grid" | "table">("table");
 
   const utils = api.useUtils();
+  const { data: allSuppliers } = api.supplier.list.useQuery();
+
+  const addSupplierPart = api.supplier.addSupplierPart.useMutation({
+    onSuccess: (supplierPart) => {
+      if (!supplierPart) return;
+      const pendingPart = pendingParts.find(
+        (part) => part.partId === supplierPart.partDefinitionId,
+      );
+      if (pendingPart) {
+        onUpdateSupplier(pendingPart.partId, supplierPart.id);
+      }
+      void utils.supplier.getSupplierPartsByPart.invalidate({
+        partDefinitionId: supplierPart.partDefinitionId,
+      });
+      void utils.catalogue.getPartsSupplierInfo.invalidate();
+    },
+  });
 
   // Get supplier info for the part in the dialog
   const { data: supplierInfo } = api.catalogue.getPartsSupplierInfo.useQuery(
@@ -194,47 +211,61 @@ export function ReviewStage({
                 </Button>
               </div>
               <div className={reviewView === "grid" ? "min-w-0" : "min-w-[11rem] shrink-0 sm:min-w-[13rem]"}>
-                {hasAvailableSuppliers ? (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className={`h-8 w-full justify-start text-xs sm:text-sm ${
-                          isMissingSupplier ? "border-amber-300 text-amber-700" : ""
-                        }`}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      disabled={addSupplierPart.isPending}
+                      className={`h-8 w-full justify-start text-xs sm:text-sm ${
+                        isMissingSupplier ? "border-amber-300 text-amber-700" : ""
+                      }`}
+                    >
+                      <span className="truncate">
+                        {partsData.find((sp) => sp.id === pendingPart.supplierPartId)?.supplier.name ?? "Select supplier"}
+                      </span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    {partsData.map((sp) => (
+                      <DropdownMenuItem
+                        key={sp.id}
+                        onClick={() => onUpdateSupplier(pendingPart.partId, sp.id)}
                       >
-                        <span className="truncate">
-                          {partsData.find((sp) => sp.id === pendingPart.supplierPartId)?.supplier.name ?? "Select supplier"}
-                        </span>
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent>
-                      {partsData.map((sp) => (
+                        {sp.supplier.name}
+                        {sp.supplierSku ? ` (${sp.supplierSku})` : ""}
+                        {sp.isPreferred && " ⭐"}
+                      </DropdownMenuItem>
+                    ))}
+                    {allSuppliers
+                      ?.filter(
+                        (supplier) => !partsData.some((sp) => sp.supplierId === supplier.id),
+                      )
+                      .map((supplier) => (
                         <DropdownMenuItem
-                          key={sp.id}
-                          onClick={() => onUpdateSupplier(pendingPart.partId, sp.id)}
+                          key={supplier.id}
+                          onClick={() =>
+                            addSupplierPart.mutate({
+                              supplierId: supplier.id,
+                              partDefinitionId: pendingPart.partId,
+                            })
+                          }
                         >
-                          {sp.supplier.name}
-                          {sp.supplierSku ? ` (${sp.supplierSku})` : ""}
-                          {sp.isPreferred && " ⭐"}
+                          {supplier.name}
                         </DropdownMenuItem>
                       ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const partsData = supplierPartsData.get(pendingPart.partId) ?? [];
-                      setSupplierCountBeforeDialog(partsData.length);
-                      setSupplierDialogPartId(pendingPart.partId);
-                    }}
-                    className="flex h-8 w-full items-center gap-2 rounded-md border border-amber-300 bg-amber-50 px-2 text-left text-xs text-amber-800 transition-colors hover:bg-amber-100 sm:text-sm"
-                  >
-                    <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-                    <span className="truncate">Add supplier</span>
-                  </button>
-                )}
+                    {!hasAvailableSuppliers && (!allSuppliers || allSuppliers.length === 0) && (
+                      <DropdownMenuItem
+                        onClick={() => {
+                          const partsData = supplierPartsData.get(pendingPart.partId) ?? [];
+                          setSupplierCountBeforeDialog(partsData.length);
+                          setSupplierDialogPartId(pendingPart.partId);
+                        }}
+                      >
+                        Add supplier
+                      </DropdownMenuItem>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
               <button
                 title="Remove part"
