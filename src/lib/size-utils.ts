@@ -3,6 +3,8 @@
  * Handles fractions, decimals, mixed numbers, and unicode fractions
  */
 
+const IMPERIAL_UNITS = new Set(["in", "ft", "yd"]);
+
 /**
  * Parse size string to normalized number
  * Handles fractions (1/2 → 0.5), decimals (0.5 → 0.5), mixed (1 1/2 → 1.5), and unicode fractions (1 ½ → 1.5)
@@ -87,40 +89,16 @@ export function parseSizeInput(input: string): number | null {
  * Format size for display
  * Converts numeric values to readable format with fractions
  */
-export function formatSize(nominal: number | null, unit: string | null): string {
+export function formatSize(nominal: number | string | null, unit: string | null): string {
   if (nominal === null || unit === null) return "";
 
-  // Convert to number if it's a string
   const num = typeof nominal === "string" ? parseFloat(nominal) : nominal;
+  if (!Number.isFinite(num)) return "";
 
-  // Check if it's a whole number
-  if (Number.isInteger(num)) {
-    return `${num} ${unit}`;
+  if (IMPERIAL_UNITS.has(unit)) {
+    return `${decimalToFraction(num)} ${unit}`;
   }
 
-  // Check if it's a common fraction
-  const fraction = num % 1;
-  const whole = Math.floor(num);
-
-  // Common fractions
-  const fractions: Record<number, string> = {
-    0.125: "⅛",
-    0.25: "¼",
-    0.375: "⅜",
-    0.5: "½",
-    0.625: "⅝",
-    0.75: "¾",
-    0.875: "⅞",
-  };
-
-  if (fractions[fraction]) {
-    if (whole > 0) {
-      return `${whole} ${fractions[fraction]} ${unit}`;
-    }
-    return `${fractions[fraction]} ${unit}`;
-  }
-
-  // Fallback to decimal
   return `${num} ${unit}`;
 }
 
@@ -180,22 +158,17 @@ export function formatSizeAsFraction(sizeString: string | null): string {
   if (!sizeString) return "";
 
   const trimmed = sizeString.trim();
-
-  // If it already contains a slash, assume it's already in fractional format
   if (trimmed.includes("/")) {
     return trimmed;
   }
 
-  // Try to parse the size string
-  // Pattern: number (with optional decimal), optional whitespace, optional unit
   const match = trimmed.match(/^(-?\d+\.?\d*)\s*(\S+)?$/);
   if (!match) {
-    // If it doesn't match, return as-is
     return trimmed;
   }
 
   const numericPart = match[1];
-  const unit = match[2];
+  const unit = match[2] ?? null;
 
   if (!numericPart) {
     return trimmed;
@@ -206,7 +179,6 @@ export function formatSizeAsFraction(sizeString: string | null): string {
     return trimmed;
   }
 
-  const fraction = decimalToFraction(numericValue);
-  return unit ? `${fraction} ${unit}`.trim() : fraction;
+  return formatSize(numericValue, unit);
 }
 

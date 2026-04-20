@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, Package, Upload } from "lucide-react";
 import { api } from "~/trpc/react";
-import { parseSizeInput } from "~/lib/size-utils";
+import { formatSize, parseSizeInput } from "~/lib/size-utils";
 import Image from "next/image";
 import {
   Dialog,
@@ -302,7 +302,7 @@ export function PartDetailsDialog({
         imageUrl: newPart.imageUrl,
         material: newPart.material,
         size: newPart.sizeUnit
-          ? `${newPart.sizeNominal ?? ""} ${newPart.sizeUnit.code}`.trim()
+          ? formatSize(newPart.sizeNominal, newPart.sizeUnit.code)
           : null,
         supplierPartId,
       });

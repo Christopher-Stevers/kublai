@@ -27,7 +27,7 @@ import {
   partTypes,
 } from "~/server/db/schema";
 
-import { parseSizeInput } from "~/lib/size-utils";
+import { formatSize, parseSizeInput } from "~/lib/size-utils";
 
 // Helper function to find or create a size record
 async function findOrCreateSize(
@@ -346,7 +346,7 @@ export const catalogueRouter = createTRPCRouter({
         material: part.materialName,
         size:
           part.sizeNominal && part.sizeUnitCode
-            ? `${part.sizeNominal} ${part.sizeUnitCode}`
+            ? formatSize(Number(part.sizeNominal), part.sizeUnitCode)
             : null,
         sizeNominal: part.sizeNominal,
         sizeUnit: part.sizeUnitCode,
@@ -589,7 +589,7 @@ export const catalogueRouter = createTRPCRouter({
         partType: part.partTypeName,
         size:
           part.sizeNominal && part.sizeUnitCode
-            ? `${part.sizeNominal} ${part.sizeUnitCode}`
+            ? formatSize(Number(part.sizeNominal), part.sizeUnitCode)
             : null,
         sizeNominal: part.sizeNominal,
         sizeUnit: part.sizeUnitCode,
