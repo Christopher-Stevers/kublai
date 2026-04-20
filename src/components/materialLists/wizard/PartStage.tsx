@@ -347,7 +347,7 @@ function PartCard({ part, isPending, pendingQuantity = 0, onPartSelect, onPartQu
             </div>
           </div>
 
-          <div className="flex min-h-0 flex-1 items-start justify-center text-center text-black">
+          <div className="flex min-h-0 flex-1 items-end justify-center text-center text-black">
             <h4 className="line-clamp-3 text-sm font-medium leading-snug sm:text-base">
               {part.displayName}
             </h4>
