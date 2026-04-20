@@ -943,23 +943,23 @@ export function AddPartDialog({
           )}
 
           {quantityPickerPreview && (
-            <div className="absolute inset-0 z-[90] flex touch-none items-center justify-center bg-black/20 backdrop-blur-[1px]">
-              <div className="flex h-full w-full items-center justify-center px-6 py-8 sm:px-10">
-                <div className="w-full max-w-sm rounded-[2rem] bg-white/18 px-8 py-8 text-white shadow-2xl ring-1 ring-white/20 backdrop-blur-md">
-                  <div className="mb-6 text-center">
-                    <div className="text-sm font-medium uppercase tracking-[0.18em] text-white/70">
+            <div className="absolute inset-0 z-[90] flex touch-none bg-black/20 backdrop-blur-[1px]">
+              <div className="flex h-full w-full p-2 sm:p-3">
+                <div className="flex h-full w-full flex-col rounded-[2rem] bg-white/18 px-4 py-5 text-white shadow-2xl ring-1 ring-white/20 backdrop-blur-md sm:px-8 sm:py-8">
+                  <div className="mb-6 text-center sm:mb-8">
+                    <div className="text-base font-medium uppercase tracking-[0.22em] text-white/70 sm:text-lg">
                       Quantity
                     </div>
-                    <div className="mt-2 line-clamp-2 text-sm text-white/85 sm:text-base">
+                    <div className="mt-2 line-clamp-2 text-base text-white/85 sm:text-xl">
                       {quantityPickerPreview.partName}
                     </div>
                   </div>
 
-                  <div className="relative mx-auto flex h-72 items-center justify-center overflow-hidden">
-                    <div className="absolute inset-x-0 top-1/2 h-16 -translate-y-1/2 rounded-2xl border border-white/35 bg-white/20 shadow-inner" />
+                  <div className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden">
+                    <div className="absolute inset-x-0 top-1/2 h-24 -translate-y-1/2 rounded-3xl border border-white/35 bg-white/20 shadow-inner sm:h-28" />
                     <div
                       className="absolute inset-x-0 flex flex-col items-center transition-transform duration-75 ease-out"
-                      style={{ transform: `translateY(${(13 - quantityPickerPreview.quantity) * 40}px)` }}
+                      style={{ transform: `translateY(${(13 - quantityPickerPreview.quantity) * 52}px)` }}
                     >
                       {Array.from({ length: 25 }, (_, index) => {
                         const value = index + 1;
@@ -970,11 +970,16 @@ export function AddPartDialog({
                         return (
                           <div
                             key={value}
-                            className="flex h-10 items-center justify-center text-center font-semibold leading-none"
+                            className="flex h-13 items-center justify-center text-center font-semibold leading-none sm:h-16"
                             style={{
                               opacity,
                               transform: `scale(${scale})`,
-                              fontSize: distance === 0 ? "2.5rem" : distance === 1 ? "1.6rem" : "1.05rem",
+                              fontSize:
+                                distance === 0
+                                  ? "4.5rem"
+                                  : distance === 1
+                                    ? "2.75rem"
+                                    : "1.6rem",
                             }}
                           >
                             {value}
