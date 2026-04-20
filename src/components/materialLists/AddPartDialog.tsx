@@ -360,32 +360,26 @@ export function AddPartDialog({
     },
     supplierPartId?: string,
   ) => {
-    // Check if already in pending list
     if (pendingParts.some((p) => p.partId === partId)) {
-      // Increment quantity
-      setPendingParts((prev) =>
-        prev.map((p) =>
-          p.partId === partId ? { ...p, quantity: p.quantity + 1 } : p,
-        ),
-      );
-    } else {
-      // Add new part
-      setPendingParts((prev) => [
-        ...prev,
-        {
-          partId,
-          partDefinition: {
-            id: part.id,
-            displayName: part.displayName,
-            imageUrl: part.imageUrl,
-            material: part.material,
-            size: part.size,
-          },
-          quantity: 1,
-          supplierPartId,
-        },
-      ]);
+      setPendingParts((prev) => prev.filter((p) => p.partId !== partId));
+      return;
     }
+
+    setPendingParts((prev) => [
+      ...prev,
+      {
+        partId,
+        partDefinition: {
+          id: part.id,
+          displayName: part.displayName,
+          imageUrl: part.imageUrl,
+          material: part.material,
+          size: part.size,
+        },
+        quantity: 1,
+        supplierPartId,
+      },
+    ]);
   };
 
   const handleCustomPartCreated = (part: {
