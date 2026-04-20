@@ -145,6 +145,7 @@ function PartCard({ part, isPending, pendingQuantity = 0, onPartSelect, onPartQu
   const baseQuantityRef = useRef(1);
   const dragQuantityRef = useRef(Math.max(pendingQuantity, 1));
   const activePointerIdRef = useRef<number | null>(null);
+  const activePointerTypeRef = useRef<string | null>(null);
   const pointerElementRef = useRef<HTMLDivElement | null>(null);
 
   const clearLongPressTimer = () => {
@@ -186,6 +187,7 @@ function PartCard({ part, isPending, pendingQuantity = 0, onPartSelect, onPartQu
     longPressTriggeredRef.current = false;
     pointerStartYRef.current = null;
     activePointerIdRef.current = null;
+    activePointerTypeRef.current = null;
     pointerElementRef.current = null;
     teardownWindowListeners();
   };
@@ -195,6 +197,7 @@ function PartCard({ part, isPending, pendingQuantity = 0, onPartSelect, onPartQu
     longPressTriggeredRef.current = false;
     pointerStartYRef.current = null;
     activePointerIdRef.current = null;
+    activePointerTypeRef.current = null;
     pointerElementRef.current = null;
     teardownWindowListeners();
   };
@@ -207,6 +210,11 @@ function PartCard({ part, isPending, pendingQuantity = 0, onPartSelect, onPartQu
 
   function handleWindowPointerUp(event: PointerEvent) {
     if (activePointerIdRef.current !== event.pointerId) return;
+
+    if (longPressTriggeredRef.current && activePointerTypeRef.current === "touch") {
+      return;
+    }
+
     event.preventDefault();
     clearLongPressTimer();
 
@@ -217,6 +225,11 @@ function PartCard({ part, isPending, pendingQuantity = 0, onPartSelect, onPartQu
 
   function handleWindowPointerCancel(event: PointerEvent) {
     if (activePointerIdRef.current !== event.pointerId) return;
+
+    if (longPressTriggeredRef.current && activePointerTypeRef.current === "touch") {
+      return;
+    }
+
     clearLongPressTimer();
     cancelLongPressSelection();
   }
@@ -226,6 +239,7 @@ function PartCard({ part, isPending, pendingQuantity = 0, onPartSelect, onPartQu
 
     longPressTriggeredRef.current = false;
     activePointerIdRef.current = event.pointerId;
+    activePointerTypeRef.current = event.pointerType;
     pointerElementRef.current = event.currentTarget;
     pointerStartYRef.current = event.clientY;
     baseQuantityRef.current = Math.max(pendingQuantity, 1);
@@ -264,6 +278,10 @@ function PartCard({ part, isPending, pendingQuantity = 0, onPartSelect, onPartQu
     clearLongPressTimer();
 
     if (longPressTriggeredRef.current) {
+      if (activePointerTypeRef.current === "touch") {
+        return;
+      }
+
       finishLongPressSelection();
       return;
     }
@@ -271,11 +289,17 @@ function PartCard({ part, isPending, pendingQuantity = 0, onPartSelect, onPartQu
     onPartSelect(part);
     pointerStartYRef.current = null;
     activePointerIdRef.current = null;
+    activePointerTypeRef.current = null;
     pointerElementRef.current = null;
   };
 
   const cancelPointerInteraction = () => {
     clearLongPressTimer();
+
+    if (longPressTriggeredRef.current && activePointerTypeRef.current === "touch") {
+      return;
+    }
+
     cancelLongPressSelection();
   };
 
