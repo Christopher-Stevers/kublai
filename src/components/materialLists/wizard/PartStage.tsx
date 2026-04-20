@@ -358,20 +358,6 @@ function PartCard({ part, isPending, pendingQuantity = 0, onPartSelect, onPartQu
 }
 
 function PartListRow({ part, isPending, onPartSelect, onEditPart }: PartCardProps) {
-  const {
-    selectedSupplierPartId,
-    setSelectedSupplierPartId,
-    isSupplierDialogOpen,
-    setIsSupplierDialogOpen,
-    supplierParts,
-    isLoadingSuppliers,
-    supplierInfo,
-    utils,
-  } = usePartSupplierSelection(part.id);
-
-  const hasSupplier = !!selectedSupplierPartId;
-  const hasAvailableSuppliers = (supplierParts?.length ?? 0) > 0;
-
   return (
     <div
       className={`rounded-lg border bg-white px-3 py-2 transition-all ${
@@ -403,87 +389,15 @@ function PartListRow({ part, isPending, onPartSelect, onEditPart }: PartCardProp
         </div>
 
         <div className="flex shrink-0 items-center gap-2">
-          {isLoadingSuppliers ? (
-            <div className="text-xs text-gray-500">Loading...</div>
-          ) : hasAvailableSuppliers ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="h-8 max-w-32 justify-start px-2 text-xs">
-                  <span className="truncate">
-                    {supplierParts?.find((sp) => sp.id === selectedSupplierPartId)?.supplier.name ?? "Select supplier"}
-                  </span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                {supplierParts?.map((sp) => (
-                  <DropdownMenuItem key={sp.id} onClick={() => setSelectedSupplierPartId(sp.id)}>
-                    {sp.supplier.name}
-                    {sp.supplierSku ? ` (${sp.supplierSku})` : ""}
-                    {sp.isPreferred && " ⭐"}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setIsSupplierDialogOpen(true)}
-              className="rounded-md border border-amber-300 bg-amber-50 px-2 py-1 text-xs text-amber-800"
-            >
-              Add supplier
-            </button>
-          )}
-
           <Button
             size="sm"
             className="h-8 px-3 text-xs"
-            onClick={() => {
-              if (hasSupplier && selectedSupplierPartId) {
-                onPartSelect(part, selectedSupplierPartId);
-              }
-            }}
-            disabled={!hasSupplier}
+            onClick={() => onPartSelect(part)}
           >
-            Add
+            {isPending ? "Remove" : "Add"}
           </Button>
         </div>
       </div>
-
-      <Dialog
-        open={isSupplierDialogOpen}
-        onOpenChange={(open) => {
-          setIsSupplierDialogOpen(open);
-          if (!open) {
-            void utils.supplier.getSupplierPartsByPart.invalidate({
-              partDefinitionId: part.id,
-            });
-            void utils.catalogue.getPartsSupplierInfo.invalidate();
-          }
-        }}
-      >
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-base sm:text-lg">Manage Suppliers</DialogTitle>
-            <DialogDescription className="text-xs sm:text-sm">
-              Connect existing suppliers or create a new one for this part.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-2 sm:py-4">
-            <div>
-              <label className="text-xs font-medium sm:text-sm">Suppliers</label>
-              <div className="mt-1">
-                <PartSuppliersDropdown
-                  partDefinitionId={part.id}
-                  currentPreferredSupplierId={
-                    supplierInfo?.[part.id]?.preferredSupplier?.id || null
-                  }
-                  availableSuppliers={supplierInfo?.[part.id]?.availableSuppliers ?? []}
-                />
-              </div>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
