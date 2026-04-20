@@ -145,6 +145,7 @@ function PartCard({ part, isPending, pendingQuantity = 0, onPartSelect, onPartQu
   const baseQuantityRef = useRef(1);
   const dragQuantityRef = useRef(Math.max(pendingQuantity, 1));
   const activePointerIdRef = useRef<number | null>(null);
+  const pointerElementRef = useRef<HTMLDivElement | null>(null);
 
   const clearLongPressTimer = () => {
     if (longPressTimerRef.current) {
@@ -185,6 +186,7 @@ function PartCard({ part, isPending, pendingQuantity = 0, onPartSelect, onPartQu
     longPressTriggeredRef.current = false;
     pointerStartYRef.current = null;
     activePointerIdRef.current = null;
+    pointerElementRef.current = null;
     teardownWindowListeners();
   };
 
@@ -193,6 +195,7 @@ function PartCard({ part, isPending, pendingQuantity = 0, onPartSelect, onPartQu
     longPressTriggeredRef.current = false;
     pointerStartYRef.current = null;
     activePointerIdRef.current = null;
+    pointerElementRef.current = null;
     teardownWindowListeners();
   };
 
@@ -223,6 +226,7 @@ function PartCard({ part, isPending, pendingQuantity = 0, onPartSelect, onPartQu
 
     longPressTriggeredRef.current = false;
     activePointerIdRef.current = event.pointerId;
+    pointerElementRef.current = event.currentTarget;
     pointerStartYRef.current = event.clientY;
     baseQuantityRef.current = Math.max(pendingQuantity, 1);
     dragQuantityRef.current = Math.max(pendingQuantity, 1);
@@ -230,6 +234,15 @@ function PartCard({ part, isPending, pendingQuantity = 0, onPartSelect, onPartQu
 
     longPressTimerRef.current = setTimeout(() => {
       longPressTriggeredRef.current = true;
+
+      if (
+        pointerElementRef.current &&
+        activePointerIdRef.current !== null &&
+        pointerElementRef.current.hasPointerCapture(activePointerIdRef.current)
+      ) {
+        pointerElementRef.current.releasePointerCapture(activePointerIdRef.current);
+      }
+
       onQuantityPickerPreviewChange?.({
         partId: part.id,
         partName: part.displayName,
@@ -258,6 +271,7 @@ function PartCard({ part, isPending, pendingQuantity = 0, onPartSelect, onPartQu
     onPartSelect(part);
     pointerStartYRef.current = null;
     activePointerIdRef.current = null;
+    pointerElementRef.current = null;
   };
 
   const cancelPointerInteraction = () => {
