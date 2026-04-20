@@ -663,7 +663,7 @@ export function AddPartDialog({
             />
           </div>
 
-          <div className="flex-1 space-y-3 overflow-y-auto px-2 pt-3 pb-3 sm:space-y-4 sm:px-4 sm:pt-4 sm:pb-4 md:px-6">
+          <div className="flex-1 space-y-3 overflow-y-auto overscroll-contain px-2 pt-3 pb-3 sm:space-y-4 sm:px-4 sm:pt-4 sm:pb-4 md:px-6">
             {wizardStage === "catalog" && (
               <CatalogStage
                 catalogs={catalogsWithCounts}
@@ -790,7 +790,7 @@ export function AddPartDialog({
                       </Button>
                     </div>
 
-                    <div className="max-h-32 space-y-2 overflow-y-auto">
+                    <div className="max-h-32 space-y-2 overflow-y-auto overscroll-contain">
                       {pendingParts.map((pendingPart) => (
                         <div
                           key={pendingPart.partId}
