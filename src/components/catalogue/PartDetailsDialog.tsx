@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown, Package, Upload } from "lucide-react";
+import { ChevronDown, Package, Sparkles, Upload } from "lucide-react";
 import { api } from "~/trpc/react";
 import { formatSize, parseSizeInput } from "~/lib/size-utils";
 import Image from "next/image";
@@ -191,6 +191,7 @@ export function PartDetailsDialog({
   const [lastKnownUnitCost, setLastKnownUnitCost] = useState("");
   const [isSupplierDialogOpen, setIsSupplierDialogOpen] = useState(false);
   const [isProcessingImage, setIsProcessingImage] = useState(false);
+  const [aiImageError, setAiImageError] = useState<string | null>(null);
   const [showNewCatalogInput, setShowNewCatalogInput] = useState(false);
   const [newCatalogName, setNewCatalogName] = useState("");
   const [showNewCategoryInput, setShowNewCategoryInput] = useState(false);
@@ -374,14 +375,48 @@ export function PartDetailsDialog({
     },
   });
 
+  const generatePartImage = api.catalogue.generatePartImage.useMutation({
+    onSuccess: ({ imageUrl: generatedImageUrl }) => {
+      setImageUrl(generatedImageUrl);
+      setAiImageError(null);
+    },
+    onError: (error) => {
+      setAiImageError(error.message);
+    },
+  });
+
   const parsedSizeNominal = sizeValue.trim() ? parseSizeInput(sizeValue.trim()) : null;
-  const isLoading = createPart.isPending || updatePart.isPending || isProcessingImage;
+  const isLoading =
+    createPart.isPending ||
+    updatePart.isPending ||
+    isProcessingImage ||
+    generatePartImage.isPending;
   const selectedCatalog = catalogs?.find((catalog) => catalog.id === catalogId);
   const selectedCategory = categoryTree?.find((category) => category.id === categoryId);
   const selectedMaterial = materials?.find((material) => material.id === materialId);
   const selectedSizeUnit = sizeUnits.find((unit) => unit.id === sizeUnitId);
   const hasSuppliers =
     !!partId && !!supplierInfo?.[partId]?.availableSuppliers?.length;
+
+  const handleGenerateImage = () => {
+    const trimmedDisplayName = displayName.trim();
+    if (!trimmedDisplayName) {
+      setAiImageError("Enter a part name before generating an image.");
+      return;
+    }
+
+    setAiImageError(null);
+    generatePartImage.mutate({
+      displayName: trimmedDisplayName,
+      description: description.trim() || null,
+      materialName: selectedMaterial?.name ?? null,
+      catalogName: selectedCatalog?.name ?? null,
+      categoryName: selectedCategory?.name ?? null,
+      size: sizeValue.trim()
+        ? [sizeValue.trim(), selectedSizeUnit?.code].filter(Boolean).join(" ")
+        : null,
+    });
+  };
 
   const handleCatalogAdd = () => {
     const name = newCatalogName.trim();
@@ -765,6 +800,21 @@ export function PartDetailsDialog({
                   </p>
                 </div>
               </button>
+              <div className="mt-2 flex justify-end">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleGenerateImage}
+                  disabled={isLoading}
+                >
+                  <Sparkles className="mr-2 h-4 w-4" />
+                  {generatePartImage.isPending ? "Generating image..." : "Generate with AI"}
+                </Button>
+              </div>
+              {aiImageError && (
+                <p className="mt-2 text-xs text-red-600">{aiImageError}</p>
+              )}
               <input
                 ref={imageInputRef}
                 type="file"
