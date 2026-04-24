@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { TRPCError } from "@trpc/server";
 import {
   sql,
   and,
@@ -14,7 +13,6 @@ import {
 } from "drizzle-orm";
 
 import { createTRPCRouter, hasDashboardAccess } from "~/server/api/trpc";
-import { env } from "~/env";
 import {
   categories,
   catalogs,
@@ -119,34 +117,6 @@ type CatalogNode = {
   organizationId: string;
   partCount?: number;
 };
-
-function buildPartImagePrompt(input: {
-  displayName: string;
-  description?: string | null;
-  materialName?: string | null;
-  catalogName?: string | null;
-  categoryName?: string | null;
-  size?: string | null;
-}) {
-  const details = [
-    input.materialName ? `material: ${input.materialName}` : null,
-    input.size ? `size: ${input.size}` : null,
-    input.categoryName ? `category: ${input.categoryName}` : null,
-    input.catalogName ? `catalog: ${input.catalogName}` : null,
-    input.description ? `description: ${input.description}` : null,
-  ].filter(Boolean);
-
-  return [
-    `Create a clean product photo style catalogue image for a construction/plumbing part named "${input.displayName}".`,
-    details.length > 0 ? `Part details: ${details.join(", ")}.` : null,
-    "Show a single centered part on a plain light background.",
-    "Make it look like a real catalogue/product image, well lit, sharp, and practical for a contractor materials app.",
-    "No text, no labels, no branding, no watermark, no hands, no packaging, no extra objects unless required to depict the part accurately.",
-    "Square composition.",
-  ]
-    .filter(Boolean)
-    .join(" ");
-}
 
 export const catalogueRouter = createTRPCRouter({
   getCatalogs: hasDashboardAccess.query(async ({ ctx }) => {
@@ -1493,65 +1463,6 @@ export const catalogueRouter = createTRPCRouter({
       }
 
       return updated;
-    }),
-
-  generatePartImage: hasDashboardAccess
-    .input(
-      z.object({
-        displayName: z.string().min(1).max(255),
-        description: z.string().optional().nullable(),
-        materialName: z.string().optional().nullable(),
-        catalogName: z.string().optional().nullable(),
-        categoryName: z.string().optional().nullable(),
-        size: z.string().optional().nullable(),
-      }),
-    )
-    .mutation(async ({ input }) => {
-      if (!env.OPENAI_API_KEY) {
-        throw new TRPCError({
-          code: "PRECONDITION_FAILED",
-          message: "OPENAI_API_KEY is not configured",
-        });
-      }
-
-      const prompt = buildPartImagePrompt(input);
-      const response = await fetch("https://api.openai.com/v1/images/generations", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${env.OPENAI_API_KEY}`,
-        },
-        body: JSON.stringify({
-          model: env.OPENAI_IMAGE_MODEL ?? "gpt-image-1",
-          prompt,
-          size: "1024x1024",
-        }),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: `OpenAI image generation failed: ${errorText}`,
-        });
-      }
-
-      const result = (await response.json()) as {
-        data?: Array<{ b64_json?: string }>;
-      };
-
-      const b64 = result.data?.[0]?.b64_json;
-      if (!b64) {
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: "OpenAI image generation returned no image data",
-        });
-      }
-
-      return {
-        prompt,
-        imageUrl: `data:image/png;base64,${b64}`,
-      };
     }),
 
   /**
