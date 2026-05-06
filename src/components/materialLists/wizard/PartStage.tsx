@@ -1,100 +1,18 @@
 import { useState, useEffect, useRef, type PointerEvent as ReactPointerEvent } from "react";
-import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "~/components/ui/dropdown-menu";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "~/components/ui/dialog";
 import { AlertCircle, Minus, Plus } from "lucide-react";
 import Image from "next/image";
 import type { PendingPart } from "./types";
-import { PartSuppliersDropdown } from "~/components/catalogue/PartSuppliersDropdown";
-import { ListPagination, useClientPagination } from "~/components/ui/list-pagination";
+import { useClientPagination } from "~/components/ui/list-pagination";
 import { ViewToggle } from "~/components/ui/view-toggle";
-import { useOnlineStatus } from "~/hooks/use-online-status";
+import {
+  WIZARD_OPTION_GRID_CLASS,
+  WizardOptionPagination,
+} from "./WizardOptionGrid";
 
 const TILE_FALLBACK_IMAGE_URL = "/images/plumbing-part-placeholder-v2.jpg";
-
-function usePartSupplierSelection(partId: string) {
-  const [selectedSupplierPartId, setSelectedSupplierPartId] = useState<string | null>(null);
-  const [isSupplierDialogOpen, setIsSupplierDialogOpen] = useState(false);
-  const [previousSupplierCount, setPreviousSupplierCount] = useState<number>(0);
-
-  const isOnline = useOnlineStatus();
-  const { data: supplierParts, isLoading: isLoadingSuppliers } =
-    api.supplier.getSupplierPartsByPart.useQuery(
-      { partDefinitionId: partId },
-      { enabled: isOnline && !!partId },
-    );
-
-  const { data: supplierInfo } = api.catalogue.getPartsSupplierInfo.useQuery(
-    { partIds: [partId] },
-    { enabled: isOnline && !!partId },
-  );
-
-  const utils = api.useUtils();
-
-  useEffect(() => {
-    if (supplierParts && supplierParts.length > 0) {
-      const currentCount = supplierParts.length;
-      const wasNewSupplierAdded =
-        currentCount > previousSupplierCount && previousSupplierCount > 0;
-
-      const preferred = supplierParts.find((sp) => sp.isPreferred);
-      const supplierPartId = preferred?.id ?? supplierParts[0]?.id;
-
-      if (
-        !selectedSupplierPartId ||
-        !supplierParts.find((sp) => sp.id === selectedSupplierPartId)
-      ) {
-        if (supplierPartId) {
-          setSelectedSupplierPartId(supplierPartId);
-          if (
-            isSupplierDialogOpen &&
-            (previousSupplierCount === 0 || wasNewSupplierAdded)
-          ) {
-            setIsSupplierDialogOpen(false);
-          }
-        }
-      } else if (
-        preferred &&
-        preferred.id !== selectedSupplierPartId &&
-        wasNewSupplierAdded
-      ) {
-        setSelectedSupplierPartId(preferred.id);
-        if (isSupplierDialogOpen) {
-          setIsSupplierDialogOpen(false);
-        }
-      }
-
-      setPreviousSupplierCount(currentCount);
-    } else {
-      setPreviousSupplierCount(0);
-    }
-  }, [supplierParts, selectedSupplierPartId, isSupplierDialogOpen, previousSupplierCount]);
-
-  return {
-    selectedSupplierPartId,
-    setSelectedSupplierPartId,
-    isSupplierDialogOpen,
-    setIsSupplierDialogOpen,
-    supplierParts,
-    isLoadingSuppliers,
-    supplierInfo,
-    utils,
-  };
-}
 
 type PartStageActionMode = "select" | "edit";
 
@@ -543,6 +461,13 @@ export function PartStage({
 }: PartStageProps) {
   const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
   const pagination = useClientPagination(partsForSelection);
+  const getPendingPartState = (partId: string) => {
+    const pendingPart = pendingParts.find((part) => part.partId === partId);
+    return {
+      isPending: Boolean(pendingPart),
+      pendingQuantity: pendingPart?.quantity ?? 0,
+    };
+  };
 
   if (partsForSelection.length === 0) {
     return (
@@ -562,10 +487,9 @@ export function PartStage({
         <ViewToggle view={viewMode} onViewChange={setViewMode} showOnMobile />
       </div>
       {viewMode === "grid" ? (
-        <div className="grid grid-cols-[repeat(auto-fit,minmax(12rem,1fr))] gap-3">
+        <div className={WIZARD_OPTION_GRID_CLASS}>
           {pagination.paginatedItems.map((part) => {
-            const isPending = pendingParts.some((p) => p.partId === part.id);
-            const pendingQuantity = pendingParts.find((p) => p.partId === part.id)?.quantity ?? 0;
+            const { isPending, pendingQuantity } = getPendingPartState(part.id);
             return (
               <PartCard
                 key={part.id}
@@ -585,8 +509,7 @@ export function PartStage({
       ) : (
         <div className="space-y-3">
           {pagination.paginatedItems.map((part) => {
-            const isPending = pendingParts.some((p) => p.partId === part.id);
-            const pendingQuantity = pendingParts.find((p) => p.partId === part.id)?.quantity ?? 0;
+            const { isPending, pendingQuantity } = getPendingPartState(part.id);
             return (
               <PartListRow
                 key={part.id}
@@ -603,15 +526,7 @@ export function PartStage({
           })}
         </div>
       )}
-      <ListPagination
-        page={pagination.page}
-        totalPages={pagination.totalPages}
-        totalItems={pagination.totalItems}
-        startItem={pagination.startItem}
-        endItem={pagination.endItem}
-        itemLabel="parts"
-        onPageChange={pagination.setPage}
-      />
+      <WizardOptionPagination pagination={pagination} itemLabel="parts" />
     </div>
   );
 }

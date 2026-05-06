@@ -24,6 +24,7 @@ import { CategoryStage } from "./wizard/CategoryStage";
 import { PartStage } from "./wizard/PartStage";
 import { ReviewStage } from "./wizard/ReviewStage";
 import { usePartWizard } from "./wizard/use-part-wizard";
+import { VerticalPickerOverlay } from "./wizard/VerticalPickerOverlay";
 import {
   applyOfflineAddItem,
   enqueueOfflineMutation,
@@ -1206,75 +1207,14 @@ export function AddPartDialog({
           )}
 
           {quantityPickerPreview && (
-            <div
-              className="absolute inset-0 z-[90] flex touch-none select-none bg-black/20 backdrop-blur-[1px]"
-              style={{ WebkitUserSelect: "none", userSelect: "none", WebkitTouchCallout: "none" }}
-            >
-              <div className="flex h-full w-full p-2 sm:p-3">
-                <div
-                  className="flex h-full w-full flex-col rounded-[2rem] bg-white/18 px-4 py-5 text-white shadow-2xl ring-1 ring-white/20 backdrop-blur-md sm:px-8 sm:py-8"
-                  style={{ WebkitUserSelect: "none", userSelect: "none", WebkitTouchCallout: "none" }}
-                >
-                  <div className="mb-6 text-center sm:mb-8">
-                    <div className="text-base font-medium uppercase tracking-[0.22em] text-slate-900/80 sm:text-lg">
-                      Quantity
-                    </div>
-                    <div
-                      className="mt-2 line-clamp-2 text-base font-semibold text-slate-950 sm:text-xl"
-                      style={{
-                        WebkitTextStroke: "0.35px rgba(255,255,255,0.7)",
-                        textShadow:
-                          "0 0 2px rgba(255,255,255,0.9), 0 0 8px rgba(15,23,42,0.78), 0 0 18px rgba(0,0,0,0.58)",
-                      }}
-                    >
-                      {quantityPickerPreview.partName}
-                    </div>
-                  </div>
-
-                  <div className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden">
-                    <div className="absolute inset-x-0 top-1/2 h-24 -translate-y-1/2 rounded-3xl border border-white/35 bg-white/20 shadow-inner sm:h-28" />
-                    <div className="absolute inset-x-0 flex flex-col items-center transition-transform duration-75 ease-out">
-                      {Array.from({ length: 13 }, (_, index) => {
-                        const rawValue = quantityPickerPreview.quantity - 6 + index;
-                        const value = rawValue < 0 ? null : rawValue;
-                        const distance = value === null
-                          ? Math.abs(rawValue - quantityPickerPreview.quantity)
-                          : Math.abs(value - quantityPickerPreview.quantity);
-                        const opacity = value === null ? 0 : Math.max(0.3, 1 - distance * 0.14);
-                        const scale = Math.max(0.72, 1 - distance * 0.08);
-                        const isActive = distance === 0;
-
-                        return (
-                          <div
-                            key={`${quantityPickerPreview.quantity}-${rawValue}-${index}`}
-                            className="flex h-13 select-none items-center justify-center text-center font-black leading-none tracking-tight sm:h-16"
-                            style={{
-                              opacity,
-                              color: isActive ? "#020617" : "#0f172a",
-                              transform: `scale(${scale})`,
-                              fontSize:
-                                distance === 0
-                                  ? "4.5rem"
-                                  : distance === 1
-                                    ? "2.75rem"
-                                    : "1.6rem",
-                              WebkitTextStroke: isActive
-                                ? "1.35px rgba(255,255,255,0.92)"
-                                : "0.75px rgba(255,255,255,0.62)",
-                              textShadow: isActive
-                                ? "0 0 2px rgba(255,255,255,1), 0 0 6px rgba(255,255,255,0.85), 0 0 12px rgba(0,0,0,0.95), 0 0 26px rgba(0,0,0,0.9), 0 0 42px rgba(0,0,0,0.78)"
-                                : "0 0 2px rgba(255,255,255,0.85), 0 0 10px rgba(0,0,0,0.72), 0 0 22px rgba(0,0,0,0.58)",
-                            }}
-                          >
-                            {value ?? ""}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <VerticalPickerOverlay
+              className="absolute"
+              title="Quantity"
+              subtitle={quantityPickerPreview.partName}
+              centerIndex={quantityPickerPreview.quantity}
+              getItem={(value) => (value < 0 ? null : value)}
+              renderItem={(value) => value}
+            />
           )}
         </DialogContent>
       </Dialog>

@@ -12,7 +12,14 @@ import {
   DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu";
 import { ChevronDown } from "lucide-react";
-import { ListPagination, useClientPagination } from "~/components/ui/list-pagination";
+import { useClientPagination } from "~/components/ui/list-pagination";
+import {
+  WIZARD_OPTION_GRID_CLASS,
+  WIZARD_OPTION_SELECTED_CLASS,
+  WizardAllOption,
+  WizardOptionPagination,
+} from "./WizardOptionGrid";
+import { VerticalPickerOverlay } from "./VerticalPickerOverlay";
 
 type SizeSelection = { nominal: number; unit: string; sizeLabel?: string | null };
 type AvailableSize = SizeSelection & {
@@ -193,7 +200,7 @@ function SizeCard({
 
   return (
     <Card
-      className={`cursor-pointer transition-all hover:shadow-md ${isSelected ? "border-primary border-2 shadow-md" : ""}`}
+      className={`cursor-pointer transition-all hover:shadow-md ${isSelected ? WIZARD_OPTION_SELECTED_CLASS : ""}`}
       style={{ WebkitTouchCallout: "none", WebkitUserSelect: "none", userSelect: "none", touchAction: "none" }}
       onContextMenu={(event) => event.preventDefault()}
       onPointerDown={handlePointerDown}
@@ -238,17 +245,8 @@ export function SizeStage({
   return (
     <div className={`relative space-y-3 sm:space-y-4 ${subSizePreview ? "touch-none" : ""}`}>
       <h3 className="text-base font-semibold sm:text-lg">Select Size</h3>
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(12rem,1fr))] gap-3">
-        <Card
-          className={`cursor-pointer transition-all hover:shadow-md ${
-            allSelected ? "border-primary border-2 shadow-md" : ""
-          }`}
-          onClick={() => onSizeSelect(null)}
-        >
-          <CardContent className="p-3 text-center sm:p-4">
-            <p className="text-sm font-medium sm:text-base">All</p>
-          </CardContent>
-        </Card>
+      <div className={WIZARD_OPTION_GRID_CLASS}>
+        <WizardAllOption selected={allSelected} onSelect={() => onSizeSelect(null)} />
         {pagination.paginatedItems.map((size, index) => (
           <SizeCard
             key={`${size.nominal}_${size.unit}_${index}`}
@@ -327,77 +325,18 @@ export function SizeStage({
           </Button>
         </div>
       )}
-      <ListPagination
-        page={pagination.page}
-        totalPages={pagination.totalPages}
-        totalItems={pagination.totalItems}
-        startItem={pagination.startItem}
-        endItem={pagination.endItem}
-        itemLabel="sizes"
-        onPageChange={pagination.setPage}
-      />
+      <WizardOptionPagination pagination={pagination} itemLabel="sizes" />
       {subSizePreview && (
-        <div
-          className="fixed inset-0 z-[90] flex touch-none select-none bg-black/20 backdrop-blur-[1px]"
-          style={{ WebkitUserSelect: "none", userSelect: "none", WebkitTouchCallout: "none" }}
-        >
-          <div className="flex h-full w-full p-2 sm:p-3">
-            <div
-              className="flex h-full w-full flex-col rounded-[2rem] bg-white/18 px-4 py-5 text-slate-950 shadow-2xl ring-1 ring-white/20 backdrop-blur-md sm:px-8 sm:py-8"
-              style={{ WebkitUserSelect: "none", userSelect: "none", WebkitTouchCallout: "none" }}
-            >
-              <div className="mb-6 text-center sm:mb-8">
-                <div className="text-base font-medium uppercase tracking-[0.22em] text-slate-900/80 sm:text-lg">
-                  Sub-size
-                </div>
-                <div
-                  className="mt-2 text-base font-semibold text-slate-950 sm:text-xl"
-                  style={{
-                    WebkitTextStroke: "0.35px rgba(255,255,255,0.7)",
-                    textShadow:
-                      "0 0 2px rgba(255,255,255,0.9), 0 0 8px rgba(15,23,42,0.78), 0 0 18px rgba(0,0,0,0.58)",
-                  }}
-                >
-                  {formatSize(subSizePreview.size.nominal, subSizePreview.size.unit)} fittings
-                </div>
-              </div>
-
-              <div className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden">
-                <div className="absolute inset-x-0 top-1/2 h-24 -translate-y-1/2 rounded-3xl border border-white/35 bg-white/20 shadow-inner sm:h-28" />
-                <div className="absolute inset-x-0 flex flex-col items-center transition-transform duration-75 ease-out">
-                  {Array.from({ length: 13 }, (_, index) => {
-                    const rawIndex = subSizePreview.selectedIndex - 6 + index;
-                    const subSize = subSizePreview.size.subSizes?.[rawIndex] ?? null;
-                    const distance = Math.abs(rawIndex - subSizePreview.selectedIndex);
-                    const opacity = subSize === null ? 0 : Math.max(0.3, 1 - distance * 0.14);
-                    const scale = Math.max(0.72, 1 - distance * 0.08);
-                    const isActive = distance === 0;
-                    return (
-                      <div
-                        key={`${subSizePreview.selectedIndex}-${rawIndex}-${subSize?.label ?? "blank"}`}
-                        className="flex h-13 max-w-full select-none items-center justify-center px-3 text-center font-black leading-none tracking-tight sm:h-16"
-                        style={{
-                          opacity,
-                          color: isActive ? "#020617" : "#0f172a",
-                          transform: `scale(${scale})`,
-                          fontSize: distance === 0 ? "3.7rem" : distance === 1 ? "2.35rem" : "1.35rem",
-                          WebkitTextStroke: isActive
-                            ? "1.35px rgba(255,255,255,0.92)"
-                            : "0.75px rgba(255,255,255,0.62)",
-                          textShadow: isActive
-                            ? "0 0 2px rgba(255,255,255,1), 0 0 6px rgba(255,255,255,0.85), 0 0 12px rgba(0,0,0,0.95), 0 0 26px rgba(0,0,0,0.9), 0 0 42px rgba(0,0,0,0.78)"
-                            : "0 0 2px rgba(255,255,255,0.85), 0 0 10px rgba(0,0,0,0.72), 0 0 22px rgba(0,0,0,0.58)",
-                        }}
-                      >
-                        {subSize?.label ?? ""}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+        <VerticalPickerOverlay
+          title="Sub-size"
+          subtitle={`${formatSize(subSizePreview.size.nominal, subSizePreview.size.unit)} fittings`}
+          centerIndex={subSizePreview.selectedIndex}
+          getItem={(index) => subSizePreview.size.subSizes?.[index] ?? null}
+          renderItem={(subSize) => subSize.label}
+          activeFontSize="3.7rem"
+          nearFontSize="2.35rem"
+          farFontSize="1.35rem"
+        />
       )}
     </div>
   );

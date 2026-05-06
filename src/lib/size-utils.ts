@@ -5,6 +5,36 @@
 
 const IMPERIAL_UNITS = new Set(["in", "ft", "yd"]);
 const INCH_UNITS = new Set(["in", "inch", "inches", '"']);
+const UNICODE_FRACTIONS: Record<string, string> = {
+  "½": "1/2",
+  "⅓": "1/3",
+  "⅔": "2/3",
+  "¼": "1/4",
+  "¾": "3/4",
+  "⅕": "1/5",
+  "⅖": "2/5",
+  "⅗": "3/5",
+  "⅘": "4/5",
+  "⅙": "1/6",
+  "⅚": "5/6",
+  "⅛": "1/8",
+  "⅜": "3/8",
+  "⅝": "5/8",
+  "⅞": "7/8",
+};
+
+function normalizeUnicodeFractions(value: string): string {
+  return value.replace(/[½⅓⅔¼¾⅕⅖⅗⅘⅙⅚⅛⅜⅝⅞]/g, (match) => ` ${UNICODE_FRACTIONS[match] ?? match}`);
+}
+
+function parseFraction(numerator: string, denominator: string): number | null {
+  const numeratorValue = Number(numerator);
+  const denominatorValue = Number(denominator);
+  if (!Number.isFinite(numeratorValue) || !Number.isFinite(denominatorValue) || denominatorValue === 0) {
+    return null;
+  }
+  return numeratorValue / denominatorValue;
+}
 
 function formatUnitForDimension(unit: string | null | undefined): string {
   const normalized = String(unit ?? "").trim().toLowerCase();
@@ -33,70 +63,23 @@ export function parseSizeInput(input: string): number | null {
     return null;
   }
 
-  const trimmed = input.trim();
+  const trimmed = normalizeUnicodeFractions(input.trim()).replace(/\s+/g, " ");
   if (!trimmed) {
     return null;
   }
 
-  // Try parsing as decimal first
-  const decimal = parseFloat(trimmed);
-  if (!isNaN(decimal) && isFinite(decimal)) {
-    // Check if it's a pure decimal (not a fraction that happens to parse)
-    if (!trimmed.includes("/")) {
-      return decimal;
-    }
-  }
-
-  // Handle fractions: "1/2", "3/4", etc.
   const fractionMatch = /^(\d+)\/(\d+)$/.exec(trimmed);
-  if (fractionMatch) {
-    const numerator = parseFloat(fractionMatch[1] ?? "0");
-    const denominator = parseFloat(fractionMatch[2] ?? "1");
-    if (denominator !== 0) {
-      return numerator / denominator;
-    }
+  if (fractionMatch?.[1] && fractionMatch[2]) {
+    return parseFraction(fractionMatch[1], fractionMatch[2]);
   }
 
-  // Handle mixed numbers: "1 1/2", "2 3/4", etc.
-  const mixedMatch = /^(\d+)\s+(\d+)\/(\d+)$/.exec(trimmed) ?? /^(\d+)-(\d+)\/(\d+)$/.exec(trimmed);
-  if (mixedMatch) {
-    const whole = parseFloat(mixedMatch[1] ?? "0");
-    const numerator = parseFloat(mixedMatch[2] ?? "0");
-    const denominator = parseFloat(mixedMatch[3] ?? "1");
-    if (denominator !== 0) {
-      return whole + numerator / denominator;
-    }
+  const mixedMatch = /^(\d+)(?:\s+|-)(\d+)\/(\d+)$/.exec(trimmed);
+  if (mixedMatch?.[1] && mixedMatch[2] && mixedMatch[3]) {
+    const fraction = parseFraction(mixedMatch[2], mixedMatch[3]);
+    return fraction === null ? null : Number(mixedMatch[1]) + fraction;
   }
 
-  // Handle unicode fractions: "1 ½", "2 ¾", etc.
-  const unicodeFractions: Record<string, number> = {
-    "½": 0.5,
-    "⅓": 1 / 3,
-    "⅔": 2 / 3,
-    "¼": 0.25,
-    "¾": 0.75,
-    "⅕": 0.2,
-    "⅖": 0.4,
-    "⅗": 0.6,
-    "⅘": 0.8,
-    "⅙": 1 / 6,
-    "⅚": 5 / 6,
-    "⅛": 0.125,
-    "⅜": 0.375,
-    "⅝": 0.625,
-    "⅞": 0.875,
-  };
-
-  for (const [unicode, value] of Object.entries(unicodeFractions)) {
-    if (trimmed.includes(unicode)) {
-      const wholeMatch = trimmed.match(/^(\d+)\s*/);
-      const whole = wholeMatch ? parseFloat(wholeMatch[1] ?? "0") : 0;
-      return whole + value;
-    }
-  }
-
-  // If all else fails, try parsing as number
-  const final = parseFloat(trimmed);
+  const final = Number(trimmed);
   if (!isNaN(final) && isFinite(final)) {
     return final;
   }
@@ -198,6 +181,11 @@ export function decimalToFraction(num: number): string {
   // Convert fractional part to sixteenths
   // Round to nearest 1/16 to handle floating point precision issues
   const sixteenths = Math.round(fractional * 16);
+
+  if (sixteenths === 16) {
+    const roundedWhole = whole + 1;
+    return isNegative ? `-${roundedWhole}` : roundedWhole.toString();
+  }
 
   // If it's exactly 0 after rounding, return just the whole number
   if (sixteenths === 0) {

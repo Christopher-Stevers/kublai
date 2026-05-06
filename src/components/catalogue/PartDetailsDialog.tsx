@@ -77,6 +77,36 @@ function buildPartName({
   });
 }
 
+function handleAddableLookup<T extends { id: string; name: string }>({
+  name,
+  items,
+  select,
+  reset,
+  create,
+}: {
+  name: string;
+  items: T[] | undefined;
+  select: (id: string) => void;
+  reset: () => void;
+  create: (name: string) => void;
+}) {
+  const trimmedName = name.trim();
+  if (!trimmedName) return;
+
+  const existing = items?.find(
+    (item) => item.name.trim().toLowerCase() === trimmedName.toLowerCase(),
+  );
+
+  if (existing) {
+    select(existing.id);
+    reset();
+    return;
+  }
+
+  reset();
+  create(trimmedName);
+}
+
 async function uploadPartImage(file: File): Promise<string> {
   const formData = new FormData();
   formData.append("file", file);
@@ -425,62 +455,38 @@ export function PartDetailsDialog({
   const hasSuppliers =
     !!partId && !!supplierInfo?.[partId]?.availableSuppliers?.length;
 
-  const handleCatalogAdd = () => {
-    const name = newCatalogName.trim();
-    if (!name) return;
-
-    const existing = catalogs?.find(
-      (catalog) => catalog.name.trim().toLowerCase() === name.toLowerCase(),
-    );
-
-    if (existing) {
-      setCatalogId(existing.id);
+  const handleCatalogAdd = () => handleAddableLookup({
+    name: newCatalogName,
+    items: catalogs,
+    select: setCatalogId,
+    reset: () => {
       setNewCatalogName("");
       setShowNewCatalogInput(false);
-      return;
-    }
+    },
+    create: (name) => createCatalog.mutate({ name }),
+  });
 
-    setShowNewCatalogInput(false);
-    createCatalog.mutate({ name });
-  };
-
-  const handleMaterialAdd = () => {
-    const name = newMaterialName.trim();
-    if (!name) return;
-
-    const existing = materials?.find(
-      (material) => material.name.trim().toLowerCase() === name.toLowerCase(),
-    );
-
-    if (existing) {
-      setMaterialId(existing.id);
+  const handleMaterialAdd = () => handleAddableLookup({
+    name: newMaterialName,
+    items: materials,
+    select: setMaterialId,
+    reset: () => {
       setNewMaterialName("");
       setShowNewMaterialInput(false);
-      return;
-    }
+    },
+    create: (name) => createMaterial.mutate({ name }),
+  });
 
-    setShowNewMaterialInput(false);
-    createMaterial.mutate({ name });
-  };
-
-  const handleCategoryAdd = () => {
-    const name = newCategoryName.trim();
-    if (!name) return;
-
-    const existing = categoryTree?.find(
-      (category) => category.name.trim().toLowerCase() === name.toLowerCase(),
-    );
-
-    if (existing) {
-      setCategoryId(existing.id);
+  const handleCategoryAdd = () => handleAddableLookup({
+    name: newCategoryName,
+    items: categoryTree,
+    select: setCategoryId,
+    reset: () => {
       setNewCategoryName("");
       setShowNewCategoryInput(false);
-      return;
-    }
-
-    setShowNewCategoryInput(false);
-    createCategory.mutate({ name });
-  };
+    },
+    create: (name) => createCategory.mutate({ name }),
+  });
 
   const handleImageFileChange = async (
     event: React.ChangeEvent<HTMLInputElement>,

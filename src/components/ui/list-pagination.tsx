@@ -5,6 +5,8 @@ import { Button } from "~/components/ui/button";
 
 export const DEFAULT_PAGE_SIZE = 200;
 
+export type UseClientPaginationResult<T> = ReturnType<typeof useClientPagination<T>>;
+
 export function useClientPagination<T>(items: T[], pageSize = DEFAULT_PAGE_SIZE) {
   const [page, setPage] = useState(1);
   const totalItems = items.length;

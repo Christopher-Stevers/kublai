@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { db as appDb } from "~/server/db";
 import {
   sql,
   and,
@@ -29,6 +30,36 @@ import {
 } from "~/server/db/schema";
 
 import { formatSize, formatSizeDimensions, generatePartDisplayName, parseSizeInput } from "~/lib/size-utils";
+
+function normalizeAliases(input: string | string[] | null | undefined) {
+  const aliases = Array.isArray(input) ? input : (input ?? "").split(/[;,\n]/);
+
+  return Array.from(
+    new Set(
+      aliases
+        .map((alias) => alias.trim())
+        .filter((alias) => alias.length > 0)
+        .map((alias) => alias.slice(0, 255)),
+    ),
+  );
+}
+
+async function syncPartAliases(database: typeof appDb, partDefinitionId: string, aliases: string | string[]) {
+  const normalizedAliases = normalizeAliases(aliases);
+
+  await database
+    .delete(partSynonyms)
+    .where(eq(partSynonyms.partDefinitionId, partDefinitionId));
+
+  if (normalizedAliases.length > 0) {
+    await database.insert(partSynonyms).values(
+      normalizedAliases.map((synonym) => ({
+        partDefinitionId,
+        synonym,
+      })),
+    );
+  }
+}
 
 // Helper function to find or create a size record
 async function findOrCreateSize(
@@ -359,7 +390,6 @@ export const catalogueRouter = createTRPCRouter({
       }),
     )
     .query(async ({ ctx, input }) => {
-      console.log(JSON.stringify(input), "searchParts input");
       const organizationId = ctx.user.organizationId;
 
       if (!organizationId) {
@@ -732,70 +762,44 @@ export const catalogueRouter = createTRPCRouter({
         sizeUnitId = unitRow?.id;
       }
 
-      // For each category, count # of active parts in that category
-      const categoriesWithCount = await Promise.all(
-        allCategories.map(async (cat) => {
-          const countConditions: Array<ReturnType<typeof eq>> = [
-            ...baseConditions,
-            eq(partDefinitions.categoryId, cat.id),
-          ];
+      const sizeConditions = [];
+      if (sizeJoinNeeded && input?.sizeNominal !== undefined) {
+        const tolerance = 0.01;
+        sizeConditions.push(
+          gte(sizes.nominal, (input.sizeNominal - tolerance).toString()),
+          lte(sizes.nominal, (input.sizeNominal + tolerance).toString()),
+        );
 
-          // If size filtering is needed, join with sizes table
-          if (sizeJoinNeeded && input?.sizeNominal !== undefined) {
-            const tolerance = 0.01;
-            const sizeMin = (input.sizeNominal - tolerance).toString();
-            const sizeMax = (input.sizeNominal + tolerance).toString();
+        if (sizeUnitId) {
+          sizeConditions.push(eq(sizes.unitId, sizeUnitId));
+        }
+      }
 
-            const sizeConditions: Array<ReturnType<typeof gte> | ReturnType<typeof lte> | ReturnType<typeof eq>> = [
-              gte(sizes.nominal, sizeMin),
-              lte(sizes.nominal, sizeMax),
-            ];
+      const countRows = sizeConditions.length
+        ? await ctx.db
+            .select({ categoryId: partDefinitions.categoryId, count: sql<number>`count(*)` })
+            .from(partDefinitions)
+            .leftJoin(sizes, eq(partDefinitions.sizeId, sizes.id))
+            .where(and(...baseConditions, ...sizeConditions, isNotNull(partDefinitions.categoryId)))
+            .groupBy(partDefinitions.categoryId)
+        : await ctx.db
+            .select({ categoryId: partDefinitions.categoryId, count: sql<number>`count(*)` })
+            .from(partDefinitions)
+            .where(and(...baseConditions, isNotNull(partDefinitions.categoryId)))
+            .groupBy(partDefinitions.categoryId);
 
-            if (sizeUnitId) {
-              sizeConditions.push(eq(sizes.unitId, sizeUnitId));
-            }
-
-            const result = await ctx.db
-              .select({ count: sql<number>`count(*)` })
-              .from(partDefinitions)
-              .leftJoin(sizes, eq(partDefinitions.sizeId, sizes.id))
-              .where(and(...countConditions, ...sizeConditions));
-
-            const count = Number(result[0]?.count ?? 0);
-
-            return {
-              id: cat.id,
-              name: cat.name,
-              count: count,
-            };
-          } else {
-            const result = await ctx.db
-              .select({ count: sql<number>`count(*)` })
-              .from(partDefinitions)
-              .where(and(...countConditions));
-
-            const count = Number(result[0]?.count ?? 0);
-
-            return {
-              id: cat.id,
-              name: cat.name,
-              count: count,
-            };
-          }
-        }),
+      const countByCategoryId = new Map(
+        countRows.map((row) => [row.categoryId, Number(row.count ?? 0)]),
       );
 
-      const result = await Promise.all(
-        categoriesWithCount
-          .filter((cat) => cat.count > 0)
-          .sort((a, b) => a.name.localeCompare(b.name))
-          .map(async (cat) => ({
-            categoryId: cat.id,
-            name: cat.name,
-            count: cat.count,
-          })),
-      );
-      return result;
+      return allCategories
+        .map((category) => ({
+          categoryId: category.id,
+          name: category.name,
+          count: countByCategoryId.get(category.id) ?? 0,
+        }))
+        .filter((category) => category.count > 0)
+        .sort((a, b) => a.name.localeCompare(b.name));
     }),
 
   /**
@@ -920,45 +924,25 @@ export const catalogueRouter = createTRPCRouter({
         sizeConditions.push(eq(partDefinitions.materialId, input.materialId));
       }
 
-      const uniqueSizes = await ctx.db
-        .selectDistinct({
-          sizeId: partDefinitions.sizeId,
+      const sizeRows = await ctx.db
+        .select({
           nominal: sizes.nominal,
           unitId: sizes.unitId,
           unitCode: units.code,
+          count: sql<number>`count(*)::int`,
         })
         .from(partDefinitions)
         .innerJoin(sizes, eq(partDefinitions.sizeId, sizes.id))
         .innerJoin(units, eq(sizes.unitId, units.id))
-        .where(and(...sizeConditions, isNotNull(partDefinitions.sizeId)));
+        .where(and(...sizeConditions, isNotNull(partDefinitions.sizeId)))
+        .groupBy(sizes.nominal, sizes.unitId, units.code);
 
-      // For each unique size, count the parts that match
-      const sizesWithCounts = uniqueSizes.map(async (size) => {
-        const countConditions = [
-          sql`${partDefinitions.sizeId} = ${size.sizeId}`,
-          eq(partDefinitions.isActive, true),
-          eq(partDefinitions.organizationId, organizationId),
-        ];
-
-        if (input.materialId) {
-          countConditions.push(eq(partDefinitions.materialId, input.materialId));
-        }
-
-        const [partCount] = await ctx.db
-          .select({ count: sql<number>`count(*)::int` })
-          .from(partDefinitions)
-          .where(and(...countConditions))
-          .limit(1);
-
-        return {
-          nominal: parseFloat(size.nominal ?? "0") ?? 0,
-          unitId: size.unitId ?? "",
-          unit: size.unitCode ?? "",
-          count: (partCount?.count as number) ?? 0,
-        };
-      });
-
-      return Promise.all(sizesWithCounts);
+      return sizeRows.map((size) => ({
+        nominal: parseFloat(size.nominal ?? "0") ?? 0,
+        unitId: size.unitId ?? "",
+        unit: size.unitCode ?? "",
+        count: size.count ?? 0,
+      }));
     }),
 
   /**
@@ -1260,27 +1244,7 @@ export const catalogueRouter = createTRPCRouter({
       }
 
       if (input.aliases !== undefined) {
-        const normalizedAliases = Array.from(
-          new Set(
-            input.aliases
-              .map((alias) => alias.trim())
-              .filter((alias) => alias.length > 0)
-              .map((alias) => alias.slice(0, 255)),
-          ),
-        );
-
-        await ctx.db
-          .delete(partSynonyms)
-          .where(eq(partSynonyms.partDefinitionId, updated.id));
-
-        if (normalizedAliases.length > 0) {
-          await ctx.db.insert(partSynonyms).values(
-            normalizedAliases.map((synonym) => ({
-              partDefinitionId: updated.id,
-              synonym,
-            })),
-          );
-        }
+        await syncPartAliases(ctx.db, updated.id, input.aliases);
       }
 
       return updated;
@@ -1794,37 +1758,14 @@ export const catalogueRouter = createTRPCRouter({
             .update(partDefinitions)
             .set(values)
             .where(eq(partDefinitions.id, rawRow.partId));
-          await ctx.db.delete(partSynonyms).where(eq(partSynonyms.partDefinitionId, rawRow.partId));
-          const aliases = (rawRow.aliases ?? "")
-            .split(/[;,\n]/)
-            .map((alias) => alias.trim())
-            .filter(Boolean);
-          if (aliases.length > 0) {
-            await ctx.db.insert(partSynonyms).values(
-              Array.from(new Set(aliases)).map((synonym) => ({
-                partDefinitionId: rawRow.partId!,
-                synonym,
-              })),
-            );
-          }
+          await syncPartAliases(ctx.db, rawRow.partId, rawRow.aliases ?? "");
           updated += 1;
           continue;
         }
 
         const [newPart] = await ctx.db.insert(partDefinitions).values(values).returning({ id: partDefinitions.id });
         if (newPart?.id) {
-          const aliases = (rawRow.aliases ?? "")
-            .split(/[;,\n]/)
-            .map((alias) => alias.trim())
-            .filter(Boolean);
-          if (aliases.length > 0) {
-            await ctx.db.insert(partSynonyms).values(
-              Array.from(new Set(aliases)).map((synonym) => ({
-                partDefinitionId: newPart.id,
-                synonym,
-              })),
-            );
-          }
+          await syncPartAliases(ctx.db, newPart.id, rawRow.aliases ?? "");
           existingPartIds.add(newPart.id);
           created += 1;
         } else {

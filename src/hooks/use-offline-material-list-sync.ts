@@ -3,6 +3,7 @@
 import { useCallback, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { api } from "~/trpc/react";
+import { setOfflineIdMappings } from "~/lib/offline-id-map";
 import {
   getOfflineMutationQueue,
   notifyOfflineMaterialListSyncStateChanged,
@@ -366,18 +367,11 @@ export function useOfflineMaterialListSyncRunner() {
         await setQueue(queue);
       }
 
-      if ((localMaterialListIdMap.size > 0 || localJobIdMap.size > 0) && typeof window !== "undefined") {
-        const existingMap = JSON.parse(
-          window.localStorage.getItem("foremanhq.offline.id-map") ?? "{}",
-        ) as Record<string, string>;
-        for (const [localId, serverId] of localMaterialListIdMap) {
-          existingMap[localId] = serverId;
-        }
-        for (const [localId, serverId] of localJobIdMap) {
-          existingMap[localId] = serverId;
-        }
-        window.localStorage.setItem("foremanhq.offline.id-map", JSON.stringify(existingMap));
-        window.dispatchEvent(new Event("foremanhq:offline-id-map-changed"));
+      if (localMaterialListIdMap.size > 0 || localJobIdMap.size > 0) {
+        setOfflineIdMappings({
+          ...Object.fromEntries(localMaterialListIdMap),
+          ...Object.fromEntries(localJobIdMap),
+        });
       }
 
       for (const mutation of queue) {

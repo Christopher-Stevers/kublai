@@ -12,7 +12,10 @@ import { CategoryStage } from "~/components/materialLists/wizard/CategoryStage";
 import { PartStage } from "~/components/materialLists/wizard/PartStage";
 import { WizardHeader } from "~/components/materialLists/WizardHeader";
 import { usePartWizard } from "~/components/materialLists/wizard/use-part-wizard";
-import { generatePartDisplayName } from "~/lib/size-utils";
+import {
+  downloadCatalogueRowsAsXlsx,
+  readCatalogueImportWorkbook,
+} from "~/lib/catalogue-xlsx";
 
 export default function CataloguePage() {
   const [editingPartId, setEditingPartId] = useState<string | null>(null);
@@ -84,11 +87,7 @@ export default function CataloguePage() {
     try {
       setIsExporting(true);
       const rows = await utils.catalogue.exportCatalogueRows.fetch();
-      const XLSX = await import("xlsx");
-      const worksheet = XLSX.utils.json_to_sheet(rows);
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, "Parts");
-      XLSX.writeFile(workbook, "foremenhq-catalogue.xlsx");
+      await downloadCatalogueRowsAsXlsx(rows, "foremenhq-catalogue.xlsx");
     } finally {
       setIsExporting(false);
     }
@@ -108,59 +107,7 @@ export default function CataloguePage() {
     try {
       setIsImporting(true);
       setImportProgress("Reading workbook...");
-      const buffer = await file.arrayBuffer();
-      const XLSX = await import("xlsx");
-      const workbook = XLSX.read(buffer, { type: "array" });
-      const firstSheet = workbook.SheetNames[0];
-
-      if (!firstSheet) {
-        alert("That workbook is empty.");
-        return;
-      }
-
-      const sheet = workbook.Sheets[firstSheet];
-      if (!sheet) {
-        alert("Could not read the first worksheet.");
-        return;
-      }
-      const rawRows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, {
-        defval: "",
-      });
-
-      const rows = rawRows
-        .map((row) => {
-          const rawSizeNominal = row["sizeNominal"] ?? row["Size Nominal"];
-          const sizeNominal =
-            rawSizeNominal === "" || rawSizeNominal === undefined || rawSizeNominal === null
-              ? null
-              : String(rawSizeNominal).trim();
-          const sizeUnit = String(row["sizeUnit"] ?? row["Size Unit"] ?? "").trim();
-          const material = String(row["material"] ?? row["Material"] ?? "").trim();
-          const description = String(row["description"] ?? row["Description"] ?? "").trim();
-          const displayName =
-            String(row["displayName"] ?? row["Display Name"] ?? "").trim() ||
-            generatePartDisplayName({ sizeNominal, sizeUnit, material, description });
-
-          return {
-            partId: String(row["partId"] ?? row["Part ID"] ?? "").trim() || null,
-            catalog: String(row["catalog"] ?? row["Catalog"] ?? "").trim(),
-            category: String(row["category"] ?? row["Category"] ?? "").trim(),
-            material,
-            displayName,
-            description,
-            sizeNominal,
-            sizeUnit,
-            imageUrl: String(row["imageUrl"] ?? row["Image URL"] ?? "").trim(),
-            aliases: String(row["aliases"] ?? row["Aliases"] ?? "").trim(),
-            isActive:
-              typeof (row["isActive"] ?? row["Is Active"]) === "boolean"
-                ? Boolean(row["isActive"] ?? row["Is Active"])
-                : String(row["isActive"] ?? row["Is Active"] ?? "true")
-                    .trim()
-                    .toLowerCase() !== "false",
-          };
-        })
-        .filter((row) => row.catalog && row.displayName);
+      const rows = await readCatalogueImportWorkbook(file);
 
       if (rows.length === 0) {
         alert("No usable catalogue rows were found in that workbook.");
@@ -192,11 +139,8 @@ export default function CataloguePage() {
         }
       }
 
-      const backupWorksheet = XLSX.utils.json_to_sheet(existingRows);
-      const backupWorkbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(backupWorkbook, backupWorksheet, "Parts");
       const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-      XLSX.writeFile(backupWorkbook, `foremenhq-catalogue-backup-${timestamp}.xlsx`);
+      await downloadCatalogueRowsAsXlsx(existingRows, `foremenhq-catalogue-backup-${timestamp}.xlsx`);
 
       const batchSize = 50;
       let created = 0;

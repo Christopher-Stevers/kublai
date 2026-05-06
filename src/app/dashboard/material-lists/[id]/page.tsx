@@ -30,6 +30,7 @@ import {
   type MaterialListSyncStatus,
 } from "~/hooks/use-offline-material-list";
 import { useOnlineStatus } from "~/hooks/use-online-status";
+import { OFFLINE_ID_MAP_CHANGED_EVENT, resolveOfflineId } from "~/lib/offline-id-map";
 import Image from "next/image";
 import {
   applyOfflineRemoveItem,
@@ -165,16 +166,13 @@ export default function MaterialListDetailPage({
     if (!id.startsWith("offline-list-") || typeof window === "undefined") return;
 
     const redirectIfMapped = () => {
-      const idMap = JSON.parse(
-        window.localStorage.getItem("foremanhq.offline.id-map") ?? "{}",
-      ) as Record<string, string>;
-      const mappedId = idMap[id];
-      if (mappedId) router.replace(`/dashboard/material-lists/${mappedId}`);
+      const mappedId = resolveOfflineId(id);
+      if (mappedId !== id) router.replace(`/dashboard/material-lists/${mappedId}`);
     };
 
     redirectIfMapped();
-    window.addEventListener("foremanhq:offline-id-map-changed", redirectIfMapped);
-    return () => window.removeEventListener("foremanhq:offline-id-map-changed", redirectIfMapped);
+    window.addEventListener(OFFLINE_ID_MAP_CHANGED_EVENT, redirectIfMapped);
+    return () => window.removeEventListener(OFFLINE_ID_MAP_CHANGED_EVENT, redirectIfMapped);
   }, [id, router]);
 
   const { data: serverMaterialList, isLoading, isFetching } =

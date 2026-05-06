@@ -1,6 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { eq, and, sql, desc, inArray } from "drizzle-orm";
 import { z } from "zod";
+import type { db as appDb } from "~/server/db";
 
 function getNextBusinessDay(from = new Date()) {
   const next = new Date(from);
@@ -84,6 +85,28 @@ import {
   users,
   materials,
 } from "~/server/db/schema";
+
+async function recalculateQuoteTotals(database: typeof appDb, quoteId: string) {
+  const allItems = await database
+    .select({ extendedPrice: quoteItems.extendedPrice })
+    .from(quoteItems)
+    .where(eq(quoteItems.quoteId, quoteId));
+
+  const subtotal = allItems.reduce((sum, item) => {
+    const price = item.extendedPrice ? parseFloat(item.extendedPrice.toString()) : 0;
+    return sum + price;
+  }, 0);
+
+  await database
+    .update(quotes)
+    .set({
+      subtotalMaterials: subtotal.toString(),
+      total: subtotal.toString(),
+    })
+    .where(eq(quotes.id, quoteId));
+
+  return subtotal;
+}
 
 export const materialListRouter = createTRPCRouter({
   /**
@@ -936,26 +959,7 @@ export const materialListRouter = createTRPCRouter({
         })
         .returning();
 
-      // Update quote subtotal
-      const allItems = await ctx.db
-        .select({ extendedPrice: quoteItems.extendedPrice })
-        .from(quoteItems)
-        .where(eq(quoteItems.quoteId, quote.id));
-
-      const subtotal = allItems.reduce((sum, item) => {
-        const price = item.extendedPrice
-          ? parseFloat(item.extendedPrice.toString())
-          : 0;
-        return sum + price;
-      }, 0);
-
-      await ctx.db
-        .update(quotes)
-        .set({
-          subtotalMaterials: subtotal.toString(),
-          total: subtotal.toString(),
-        })
-        .where(eq(quotes.id, quote.id));
+      await recalculateQuoteTotals(ctx.db, quote.id);
 
       publishMaterialListEvent(input.materialListId);
       return quoteItem;
@@ -1090,25 +1094,7 @@ export const materialListRouter = createTRPCRouter({
 
       const insertedItems = await ctx.db.insert(quoteItems).values(values).returning();
 
-      const allItems = await ctx.db
-        .select({ extendedPrice: quoteItems.extendedPrice })
-        .from(quoteItems)
-        .where(eq(quoteItems.quoteId, quote.id));
-
-      const subtotal = allItems.reduce((sum, item) => {
-        const price = item.extendedPrice
-          ? parseFloat(item.extendedPrice.toString())
-          : 0;
-        return sum + price;
-      }, 0);
-
-      await ctx.db
-        .update(quotes)
-        .set({
-          subtotalMaterials: subtotal.toString(),
-          total: subtotal.toString(),
-        })
-        .where(eq(quotes.id, quote.id));
+      await recalculateQuoteTotals(ctx.db, quote.id);
 
       publishMaterialListEvent(input.materialListId);
       return insertedItems;
@@ -1222,26 +1208,7 @@ export const materialListRouter = createTRPCRouter({
         .where(eq(quoteItems.id, input.itemId))
         .returning();
 
-      // Update quote subtotal
-      const allItems = await ctx.db
-        .select({ extendedPrice: quoteItems.extendedPrice })
-        .from(quoteItems)
-        .where(eq(quoteItems.quoteId, quote.id));
-
-      const subtotal = allItems.reduce((sum, item) => {
-        const price = item.extendedPrice
-          ? parseFloat(item.extendedPrice.toString())
-          : 0;
-        return sum + price;
-      }, 0);
-
-      await ctx.db
-        .update(quotes)
-        .set({
-          subtotalMaterials: subtotal.toString(),
-          total: subtotal.toString(),
-        })
-        .where(eq(quotes.id, quote.id));
+      await recalculateQuoteTotals(ctx.db, quote.id);
 
       if (quote.materialListId) publishMaterialListEvent(quote.materialListId);
       return updated;
@@ -1296,26 +1263,7 @@ export const materialListRouter = createTRPCRouter({
       // Delete item
       await ctx.db.delete(quoteItems).where(eq(quoteItems.id, input.itemId));
 
-      // Update quote subtotal
-      const allItems = await ctx.db
-        .select({ extendedPrice: quoteItems.extendedPrice })
-        .from(quoteItems)
-        .where(eq(quoteItems.quoteId, quote.id));
-
-      const subtotal = allItems.reduce((sum, item) => {
-        const price = item.extendedPrice
-          ? parseFloat(item.extendedPrice.toString())
-          : 0;
-        return sum + price;
-      }, 0);
-
-      await ctx.db
-        .update(quotes)
-        .set({
-          subtotalMaterials: subtotal.toString(),
-          total: subtotal.toString(),
-        })
-        .where(eq(quotes.id, quote.id));
+      await recalculateQuoteTotals(ctx.db, quote.id);
 
       if (quote.materialListId) publishMaterialListEvent(quote.materialListId);
       return { success: true };
