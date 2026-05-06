@@ -321,7 +321,7 @@ export function ReviewStage({
               {sp.isPreferred && " ⭐"}
             </DropdownMenuItem>
           ))}
-          {allSuppliers
+          {isOnline && allSuppliers
             ?.filter(
               (supplier) => !partsData.some((sp) => sp.supplierId === supplier.id),
             )
@@ -333,7 +333,7 @@ export function ReviewStage({
                     ...prev,
                     [pendingPart.partId]: {
                       supplierPartId: pendingPart.supplierPartId ?? "pending",
-                      label: supplier.name,
+                      label: `Linking ${supplier.name}...`,
                       lastKnownUnitCost: null,
                     },
                   }));
@@ -355,7 +355,12 @@ export function ReviewStage({
                 {supplier.name}
               </DropdownMenuItem>
             ))}
-          {!hasAvailableSuppliers && (!allSuppliers || allSuppliers.length === 0) && (
+          {!hasAvailableSuppliers && !isOnline && (
+            <DropdownMenuItem disabled>
+              No cached suppliers for this part
+            </DropdownMenuItem>
+          )}
+          {!hasAvailableSuppliers && isOnline && (!allSuppliers || allSuppliers.length === 0) && (
             <DropdownMenuItem
               onClick={() => {
                 const currentPartsData = supplierPartsData.get(pendingPart.partId) ?? [];

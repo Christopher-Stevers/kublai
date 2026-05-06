@@ -828,13 +828,13 @@ export function AddPartDialog({
     }
   };
 
-  // Check if all pending parts have suppliers
+  // Local-first add requires real supplierPartIds. A supplier creation/link that is
+  // still resolving cannot be queued safely because the offline mutation needs the
+  // final supplierPartId.
   const allPartsHaveSuppliers = useMemo(() => {
     if (pendingParts.length === 0) return false;
-    return pendingParts.every(
-      (p) => !!p.supplierPartId || resolvingSupplierPartIds.has(p.partId),
-    );
-  }, [pendingParts, resolvingSupplierPartIds]);
+    return pendingParts.every((p) => !!p.supplierPartId);
+  }, [pendingParts]);
 
   const reviewedPartsTotal = useMemo(() => {
     return pendingParts.reduce((sum, pendingPart) => {
