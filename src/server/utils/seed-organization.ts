@@ -6,7 +6,6 @@ import {
   materials,
   partDefinitions,
   partSynonyms,
-  partTypes,
   sizes,
   suppliers,
   supplierParts,
@@ -43,7 +42,6 @@ const partDefinitionsData = [
     material: "Copper",
     sizeNominal: 0.5,
     sizeUnit: "in",
-    partType: "elbow",
     synonyms: ["copper 90", "90 elbow", "copper elbow 90"],
   },
   {
@@ -53,7 +51,6 @@ const partDefinitionsData = [
     material: "PVC",
     sizeNominal: 0.75,
     sizeUnit: "in",
-    partType: "elbow",
     synonyms: ["PVC 90", "90 PVC elbow"],
   },
   {
@@ -63,7 +60,6 @@ const partDefinitionsData = [
     material: "Copper",
     sizeNominal: 0.5,
     sizeUnit: "in",
-    partType: "elbow",
     synonyms: ["copper 45", "45 elbow"],
   },
   {
@@ -73,7 +69,6 @@ const partDefinitionsData = [
     material: "PEX",
     sizeNominal: 0.5,
     sizeUnit: "in",
-    partType: "elbow",
     synonyms: ["PEX 90", "90 PEX elbow"],
   },
   {
@@ -83,7 +78,6 @@ const partDefinitionsData = [
     material: "PEX",
     sizeNominal: 0.75,
     sizeUnit: "in",
-    partType: "elbow",
     synonyms: ["PEX 45", "45 PEX elbow"],
   },
   {
@@ -93,7 +87,6 @@ const partDefinitionsData = [
     material: "Copper",
     sizeNominal: 0.5,
     sizeUnit: "in",
-    partType: "tee",
     synonyms: ["copper tee", "T fitting", "copper T"],
   },
   {
@@ -103,7 +96,6 @@ const partDefinitionsData = [
     material: "PVC",
     sizeNominal: 0.75,
     sizeUnit: "in",
-    partType: "tee",
     synonyms: ["PVC tee", "PVC T"],
   },
   {
@@ -113,7 +105,6 @@ const partDefinitionsData = [
     material: "PEX",
     sizeNominal: 0.5,
     sizeUnit: "in",
-    partType: "tee",
     synonyms: ["PEX tee", "PEX T"],
   },
   {
@@ -123,7 +114,6 @@ const partDefinitionsData = [
     material: "Copper",
     sizeNominal: 0.75,
     sizeUnit: "in",
-    partType: "tee",
     synonyms: ["reducing tee", "copper reducing tee"],
   },
   {
@@ -133,7 +123,6 @@ const partDefinitionsData = [
     material: "Copper",
     sizeNominal: 0.5,
     sizeUnit: "in",
-    partType: "coupling",
     synonyms: ["copper coupling", "straight coupling"],
   },
   {
@@ -143,7 +132,6 @@ const partDefinitionsData = [
     material: "PVC",
     sizeNominal: 0.75,
     sizeUnit: "in",
-    partType: "coupling",
     synonyms: ["PVC coupling"],
   },
   {
@@ -153,7 +141,6 @@ const partDefinitionsData = [
     material: "PEX",
     sizeNominal: 0.5,
     sizeUnit: "in",
-    partType: "coupling",
     synonyms: ["PEX coupling"],
   },
   {
@@ -163,7 +150,6 @@ const partDefinitionsData = [
     material: "Copper",
     sizeNominal: 0.75,
     sizeUnit: "in",
-    partType: "coupler",
     synonyms: ["copper coupler"],
   },
   // Valves category
@@ -174,7 +160,6 @@ const partDefinitionsData = [
     material: "Brass",
     sizeNominal: 0.5,
     sizeUnit: "in",
-    partType: "ball valve",
     synonyms: ["ball valve", "quarter turn valve"],
   },
   {
@@ -184,7 +169,6 @@ const partDefinitionsData = [
     material: "Brass",
     sizeNominal: 0.75,
     sizeUnit: "in",
-    partType: "ball valve",
     synonyms: ["ball valve 3/4", "3/4 ball valve"],
   },
   {
@@ -194,7 +178,6 @@ const partDefinitionsData = [
     material: "Brass",
     sizeNominal: 1.0,
     sizeUnit: "in",
-    partType: "ball valve",
     synonyms: ["ball valve 1", "1 ball valve"],
   },
   {
@@ -204,7 +187,6 @@ const partDefinitionsData = [
     material: "Brass",
     sizeNominal: 0.5,
     sizeUnit: "in",
-    partType: "gate valve",
     synonyms: ["gate valve", "shutoff valve"],
   },
   {
@@ -214,7 +196,6 @@ const partDefinitionsData = [
     material: "Brass",
     sizeNominal: 0.75,
     sizeUnit: "in",
-    partType: "gate valve",
     synonyms: ["gate valve 3/4", "3/4 gate valve"],
   },
   {
@@ -224,7 +205,6 @@ const partDefinitionsData = [
     material: "Brass",
     sizeNominal: 0.5,
     sizeUnit: "in",
-    partType: "check valve",
     synonyms: ["check valve", "backflow preventer"],
   },
   {
@@ -234,7 +214,6 @@ const partDefinitionsData = [
     material: "Brass",
     sizeNominal: 0.75,
     sizeUnit: "in",
-    partType: "check valve",
     synonyms: ["check valve 3/4", "3/4 check valve"],
   },
   // Fixtures category
@@ -245,7 +224,6 @@ const partDefinitionsData = [
     material: "Chrome",
     sizeNominal: null,
     sizeUnit: null,
-    partType: "faucet",
     synonyms: ["kitchen faucet", "faucet"],
   },
   {
@@ -255,7 +233,6 @@ const partDefinitionsData = [
     material: "Chrome",
     sizeNominal: null,
     sizeUnit: null,
-    partType: "faucet",
     synonyms: ["bathroom faucet", "lavatory faucet"],
   },
   {
@@ -265,7 +242,6 @@ const partDefinitionsData = [
     material: "Porcelain",
     sizeNominal: null,
     sizeUnit: null,
-    partType: "toilet",
     synonyms: ["toilet", "commode"],
   },
   {
@@ -275,7 +251,6 @@ const partDefinitionsData = [
     material: "Stainless Steel",
     sizeNominal: null,
     sizeUnit: null,
-    partType: "sink",
     synonyms: ["kitchen sink", "sink"],
   },
   {
@@ -285,7 +260,6 @@ const partDefinitionsData = [
     material: "Porcelain",
     sizeNominal: null,
     sizeUnit: null,
-    partType: "sink",
     synonyms: ["bathroom sink", "lavatory sink"],
   },
   // Pipe category
@@ -296,7 +270,6 @@ const partDefinitionsData = [
     material: "Copper",
     sizeNominal: 0.5,
     sizeUnit: "in",
-    partType: "type L copper",
     synonyms: ["copper pipe", "type L copper", "1/2 copper"],
   },
   {
@@ -306,7 +279,6 @@ const partDefinitionsData = [
     material: "Copper",
     sizeNominal: 0.75,
     sizeUnit: "in",
-    partType: "type L copper",
     synonyms: ["copper pipe 3/4", "3/4 copper"],
   },
   {
@@ -316,7 +288,6 @@ const partDefinitionsData = [
     material: "Copper",
     sizeNominal: 1.0,
     sizeUnit: "in",
-    partType: "type L copper",
     synonyms: ["copper pipe 1", "1 copper"],
   },
   {
@@ -326,7 +297,6 @@ const partDefinitionsData = [
     material: "PVC",
     sizeNominal: 0.5,
     sizeUnit: "in",
-    partType: "schedule 40",
     synonyms: ["PVC pipe", "schedule 40 PVC", "1/2 PVC"],
   },
   {
@@ -336,7 +306,6 @@ const partDefinitionsData = [
     material: "PVC",
     sizeNominal: 0.75,
     sizeUnit: "in",
-    partType: "schedule 40",
     synonyms: ["PVC pipe", "schedule 40 PVC", "3/4 PVC"],
   },
   {
@@ -346,7 +315,6 @@ const partDefinitionsData = [
     material: "PVC",
     sizeNominal: 1.0,
     sizeUnit: "in",
-    partType: "schedule 40",
     synonyms: ["PVC pipe", "schedule 40 PVC", "1 PVC"],
   },
   {
@@ -356,7 +324,6 @@ const partDefinitionsData = [
     material: "PEX",
     sizeNominal: 0.5,
     sizeUnit: "in",
-    partType: "PEX pipe",
     synonyms: ["PEX pipe", "1/2 PEX"],
   },
   {
@@ -366,7 +333,6 @@ const partDefinitionsData = [
     material: "PEX",
     sizeNominal: 0.75,
     sizeUnit: "in",
-    partType: "PEX pipe",
     synonyms: ["PEX pipe", "3/4 PEX"],
   },
   {
@@ -376,7 +342,6 @@ const partDefinitionsData = [
     material: "PEX",
     sizeNominal: 1.0,
     sizeUnit: "in",
-    partType: "PEX pipe",
     synonyms: ["PEX pipe", "1 PEX"],
   },
 ];
@@ -506,40 +471,6 @@ export async function seedOrganization(
   }
 
   // Step 4: Create part types (org-specific)
-  const partTypeSet = new Set<string>();
-  for (const partData of partDefinitionsData) {
-    if (partData.partType) {
-      partTypeSet.add(partData.partType);
-    }
-  }
-  const partTypeMap = new Map<string, string>();
-  for (const partTypeName of Array.from(partTypeSet)) {
-    const [existing] = await db
-      .select()
-      .from(partTypes)
-      .where(
-        and(
-          eq(partTypes.name, partTypeName),
-          eq(partTypes.organizationId, organizationId),
-        ),
-      )
-      .limit(1);
-
-    if (existing) {
-      partTypeMap.set(partTypeName, existing.id);
-    } else {
-      const [partType] = await db
-        .insert(partTypes)
-        .values({
-          organizationId: organizationId,
-          name: partTypeName,
-        })
-        .returning({ id: partTypes.id });
-      if (partType) {
-        partTypeMap.set(partTypeName, partType.id);
-      }
-    }
-  }
 
   // Step 5: Create sizes (org-specific) - unique combinations of nominal and unit
   const sizeSet = new Set<string>();
@@ -605,11 +536,6 @@ export async function seedOrganization(
   }
 
   // Step 6: Create parts
-  const defaultUomId = unitMap.get("ea");
-  if (!defaultUomId) {
-    throw new Error('Unit "ea" not found - required for default UOM');
-  }
-
   for (const partData of partDefinitionsData) {
     const categoryId = categoryMap.get(partData.categoryName);
     if (!categoryId) {
@@ -688,26 +614,6 @@ export async function seedOrganization(
       ? materialMap.get(partData.material) ?? null
       : null;
 
-    const partTypeId = partData.partType
-      ? partTypeMap.get(partData.partType) ?? null
-      : null;
-
-    // Check if part already exists
-    const [existing] = await db
-      .select()
-      .from(partDefinitions)
-      .where(
-        and(
-          eq(partDefinitions.displayName, partData.displayName),
-          eq(partDefinitions.organizationId, organizationId),
-        ),
-      )
-      .limit(1);
-
-    if (existing) {
-      continue; // Skip if already exists
-    }
-
     const [part] = await db
       .insert(partDefinitions)
       .values({
@@ -717,10 +623,8 @@ export async function seedOrganization(
         displayName: partData.displayName,
         description: partData.description,
         imageUrl: null,
-        partTypeId: partTypeId,
         materialId: materialId,
         sizeId: finalSizeId ?? null,
-        defaultUomId: defaultUomId,
         isActive: true,
       })
       .returning({ id: partDefinitions.id });

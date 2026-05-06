@@ -1,3 +1,4 @@
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { HydrateClient } from "~/trpc/server";
 import { auth } from "@clerk/nextjs/server";
@@ -5,11 +6,11 @@ import { Header } from "../_components/Header";
 import { ensureUser } from "~/server/utils/ensure-user";
 import { waitForUser } from "~/server/utils/wait-for-user";
 import { getDevBypassUser } from "~/server/utils/get-dev-bypass-user";
+import { getAgentBypassUser } from "~/server/utils/get-agent-bypass-user";
+import { OfflineSyncDebugPanel } from "~/components/offline/OfflineSyncDebugPanel";
 
 const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
-const allowDevDashboardAccess =
-  process.env.NODE_ENV !== "production" ||
-  (typeof publishableKey === "string" && publishableKey.startsWith("pk_test_"));
+const allowDevDashboardAccess = process.env.NODE_ENV !== "production";
 
 export default async function DashboardLayout({
   children,
@@ -21,11 +22,13 @@ export default async function DashboardLayout({
 
   // Redirect if not authenticated
   if (!userId) {
-    const devBypassUser = await getDevBypassUser();
-    if (!devBypassUser) {
+    const requestHeaders = await headers();
+    const bypassUser =
+      (await getAgentBypassUser(requestHeaders)) ?? (await getDevBypassUser());
+    if (!bypassUser) {
       redirect("/sign-in");
     }
-    userId = devBypassUser.id;
+    userId = bypassUser.id;
   }
 
   const effectiveUserId = userId;
@@ -74,6 +77,7 @@ export default async function DashboardLayout({
       <div className="flex min-h-screen flex-col bg-gray-50">
         <Header />
         <main className="flex-1">{children}</main>
+        <OfflineSyncDebugPanel />
       </div>
     </HydrateClient>
   );

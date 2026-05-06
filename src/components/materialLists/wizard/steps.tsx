@@ -237,40 +237,40 @@ export function SizeStep({
 }
 
 // Part Type Category Step
-interface PartTypeCategoryStepProps {
-  partTypeCategories?: string[];
+interface CategoryStepProps {
+  categories?: string[];
   categoryCounts: Map<string, number>;
-  selectedPartTypeCategory: string | null;
+  selectedCategory: string | null;
   onCategorySelect: (category: string) => void;
-  showCustomPartTypeInput: boolean;
-  onShowCustomPartTypeInput: (show: boolean) => void;
-  customPartTypeName: string;
-  onCustomPartTypeNameChange: (name: string) => void;
+  showCustomCategoryInput: boolean;
+  onShowCustomCategoryInput: (show: boolean) => void;
+  customCategoryName: string;
+  onCustomCategoryNameChange: (name: string) => void;
   onCustomCategorySubmit: () => void;
 }
 
-export function PartTypeCategoryStep({
-  partTypeCategories,
+export function CategoryStep({
+  categories,
   categoryCounts,
-  selectedPartTypeCategory,
+  selectedCategory,
   onCategorySelect,
-  showCustomPartTypeInput,
-  onShowCustomPartTypeInput,
-  customPartTypeName,
-  onCustomPartTypeNameChange,
+  showCustomCategoryInput,
+  onShowCustomCategoryInput,
+  customCategoryName,
+  onCustomCategoryNameChange,
   onCustomCategorySubmit,
-}: PartTypeCategoryStepProps) {
+}: CategoryStepProps) {
   return (
     <div className="space-y-4">
       <h3 className="text-lg font-semibold">Select Part Category</h3>
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
-        {partTypeCategories?.map((category) => {
+        {categories?.map((category) => {
           const count = categoryCounts?.get(category) ?? 0;
           return (
             <Card
               key={category}
               className={`cursor-pointer transition-all hover:shadow-md ${
-                selectedPartTypeCategory === category
+                selectedCategory === category
                   ? "border-primary border-2 shadow-md"
                   : ""
               }`}
@@ -289,23 +289,23 @@ export function PartTypeCategoryStep({
         })}
         <Card
           className={`cursor-pointer border-dashed transition-all hover:shadow-md ${
-            showCustomPartTypeInput ? "border-primary border-2" : ""
+            showCustomCategoryInput ? "border-primary border-2" : ""
           }`}
-          onClick={() => onShowCustomPartTypeInput(true)}
+          onClick={() => onShowCustomCategoryInput(true)}
         >
           <CardContent className="p-4 text-center">
             <p className="font-medium">Other</p>
           </CardContent>
         </Card>
       </div>
-      {showCustomPartTypeInput && (
+      {showCustomCategoryInput && (
         <div className="mt-4 flex gap-2">
           <Input
             placeholder="Enter custom category name"
-            value={customPartTypeName}
-            onChange={(e) => onCustomPartTypeNameChange(e.target.value)}
+            value={customCategoryName}
+            onChange={(e) => onCustomCategoryNameChange(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Enter" && customPartTypeName.trim()) {
+              if (e.key === "Enter" && customCategoryName.trim()) {
                 onCustomCategorySubmit();
               }
             }}
@@ -314,7 +314,7 @@ export function PartTypeCategoryStep({
           />
           <Button
             onClick={onCustomCategorySubmit}
-            disabled={!customPartTypeName.trim()}
+            disabled={!customCategoryName.trim()}
           >
             Add Category
           </Button>
@@ -331,7 +331,6 @@ interface Part {
   imageUrl: string | null;
   material: string | null;
   size: string | null;
-  partType: string | null;
 }
 
 interface PartStepProps {
@@ -419,11 +418,6 @@ export function PartStep({
                   </div>
                   <div>
                     <h4 className="text-sm font-medium">{part.displayName}</h4>
-                    {part.partType && (
-                      <Badge variant="outline" className="mt-1 text-xs">
-                        {part.partType}
-                      </Badge>
-                    )}
                   </div>
                   {isPending && <Badge className="w-fit">Added</Badge>}
                 </div>
@@ -469,8 +463,7 @@ interface PendingPart {
     imageUrl: string | null;
     material: string | null;
     size: string | null;
-    partType: string | null;
-  };
+    };
   quantity: number;
   supplierPartId?: string;
 }

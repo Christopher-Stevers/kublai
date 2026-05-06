@@ -13,12 +13,19 @@ import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Search, ChevronDownIcon } from "lucide-react";
 import { SupplierFormDialog } from "~/components/suppliers/SupplierFormDialog";
+import {
+  applyOfflineSupplierPartUpdate,
+  enqueueOfflineMutation,
+  setActiveItemSyncStatus,
+} from "~/lib/offline-material-list-mutations";
+import { useOnlineStatus } from "~/hooks/use-online-status";
 
 interface SupplierSelectorProps {
   itemId: string;
   partDefinitionId: string;
   currentSupplierPartId: string | null | undefined;
   materialListId: string;
+  compact?: boolean;
 }
 
 export function SupplierSelector({
@@ -26,12 +33,17 @@ export function SupplierSelector({
   partDefinitionId,
   currentSupplierPartId,
   materialListId,
+  compact = false,
 }: SupplierSelectorProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isSupplierDialogOpen, setIsSupplierDialogOpen] = useState(false);
   const [pendingSupplierName, setPendingSupplierName] = useState("");
+  const [optimisticSupplierPartId, setOptimisticSupplierPartId] = useState(
+    currentSupplierPartId ?? null,
+  );
+  const [optimisticDisplayLabel, setOptimisticDisplayLabel] = useState<string | null>(null);
 
   // Debounce search query
   useEffect(() => {
@@ -41,52 +53,42 @@ export function SupplierSelector({
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
+  useEffect(() => {
+    setOptimisticSupplierPartId(currentSupplierPartId ?? null);
+  }, [currentSupplierPartId]);
+
   const utils = api.useUtils();
+  const isOnline = useOnlineStatus();
   const updateItem = api.materialList.updateMaterialListItem.useMutation({
-    onMutate: async (variables) => {
-      // Cancel outgoing refetches
-      await utils.materialList.getMaterialList.cancel({ materialListId });
-
-      // Snapshot previous value
-      const previousMaterialList = utils.materialList.getMaterialList.getData({
-        materialListId,
-      });
-
-      // Optimistically update item supplier and recalculate if needed
-      utils.materialList.getMaterialList.setData({ materialListId }, (old) => {
-        if (!old) return old;
-
-        const updatedItems = old.items.map((item) => {
-          if (item.id === variables.itemId) {
-            // If supplierPartId is being updated, we need to fetch supplier info
-            // For now, just update the supplierPartId - the server will handle the rest
-            return {
-              ...item,
-              supplierPartId: variables.supplierPartId ?? item.supplierPart?.id,
-            };
-          }
-          return item;
-        });
-
-        return {
-          ...old,
-          items: updatedItems,
-        };
-      });
-
-      return { previousMaterialList };
+    onMutate: () => {
+      void setActiveItemSyncStatus(materialListId, itemId, "syncing");
     },
-    onError: (err, variables, context) => {
-      // Rollback on error
-      if (context?.previousMaterialList) {
-        utils.materialList.getMaterialList.setData(
-          { materialListId },
-          context.previousMaterialList,
-        );
-      }
-    },
-    onSettled: () => {
+    onError: () => {
+      void setActiveItemSyncStatus(materialListId, itemId, "pending");
       void utils.materialList.getMaterialList.invalidate({ materialListId });
+    },
+    onSuccess: (updatedItem) => {
+      if (updatedItem?.updatedAt) {
+        utils.materialList.getMaterialList.setData({ materialListId }, (old) => {
+          if (!old) return old;
+          return {
+            ...old,
+            items: old.items.map((item) =>
+              item.id === itemId
+                ? {
+                    ...item,
+                    updatedAt: updatedItem.updatedAt,
+                    syncVersion:
+                      updatedItem.updatedAt instanceof Date
+                        ? updatedItem.updatedAt.toISOString()
+                        : String(updatedItem.updatedAt),
+                  }
+                : item,
+            ),
+          };
+        });
+      }
+      void setActiveItemSyncStatus(materialListId, itemId, "synced");
       void utils.supplier.getSupplierPartsByPart.invalidate({
         partDefinitionId,
       });
@@ -96,7 +98,33 @@ export function SupplierSelector({
   const addSupplierPart = api.supplier.addSupplierPart.useMutation({
     onSuccess: (supplierPart) => {
       if (!supplierPart) return;
+
+      const supplier = allSuppliers?.find(
+        (candidate) => candidate.id === supplierPart.supplierId,
+      );
+
+      if (supplier) {
+        const optimisticSupplierPart = {
+          id: supplierPart.id,
+          supplierId: supplierPart.supplierId,
+          supplierSku: supplierPart.supplierSku,
+          lastKnownUnitCost: supplierPart.lastKnownUnitCost,
+          isPreferred: supplierPart.isPreferred,
+          supplier: {
+            id: supplier.id,
+            name: supplier.name,
+          },
+        } satisfies NonNullable<typeof supplierParts>[number];
+
+        setOptimisticSupplierPartId(supplierPart.id);
+        setOptimisticDisplayLabel(
+          `${supplier.name}${supplierPart.supplierSku ? ` (${supplierPart.supplierSku})` : ""}`,
+        );
+        updateCachedSupplierPart(optimisticSupplierPart);
+      }
+
       // Assign the supplier part to the material list item
+      void setActiveItemSyncStatus(materialListId, itemId, "pending");
       updateItem.mutate({
         itemId,
         supplierPartId: supplierPart.id,
@@ -125,26 +153,75 @@ export function SupplierSelector({
   };
 
   // Get all suppliers for the organization
-  const { data: allSuppliers } = api.supplier.list.useQuery();
+  const { data: allSuppliers } = api.supplier.list.useQuery(undefined, {
+    enabled: isOnline,
+  });
 
   // Get supplier parts for this part definition
   const { data: supplierParts } = api.supplier.getSupplierPartsByPart.useQuery(
     { partDefinitionId },
-    { enabled: !!partDefinitionId },
+    { enabled: isOnline && !!partDefinitionId },
   );
 
   // Find current supplier part
   const currentSupplierPart = supplierParts?.find(
-    (sp) => sp.id === currentSupplierPartId,
+    (sp) => sp.id === optimisticSupplierPartId,
   );
 
-  const displayValue = currentSupplierPart
+  const displayValue = optimisticDisplayLabel ?? (currentSupplierPart
     ? `${currentSupplierPart.supplier.name}${
         currentSupplierPart.supplierSku
           ? ` (${currentSupplierPart.supplierSku})`
           : ""
       }`
-    : "No supplier";
+    : "No supplier");
+
+  const updateCachedSupplierPart = (
+    selectedSupplierPart: NonNullable<typeof supplierParts>[number] | null,
+  ) => {
+    const unitCost = selectedSupplierPart?.lastKnownUnitCost
+      ? parseFloat(selectedSupplierPart.lastKnownUnitCost)
+      : 0;
+
+    utils.materialList.getMaterialList.setData({ materialListId }, (old) => {
+      if (!old) return old;
+
+      const updatedItems = old.items.map((item) => {
+        if (item.id !== itemId) return item;
+
+        const quantity = item.quantity ? parseFloat(item.quantity.toString()) : 0;
+        const extendedPrice = quantity * unitCost;
+
+        return {
+          ...item,
+          supplierPart: selectedSupplierPart
+            ? {
+                id: selectedSupplierPart.id,
+                supplierId: selectedSupplierPart.supplierId,
+                supplierSku: selectedSupplierPart.supplierSku,
+                lastKnownUnitCost: selectedSupplierPart.lastKnownUnitCost,
+                supplier: selectedSupplierPart.supplier,
+              }
+            : null,
+          unitCost: unitCost.toString(),
+          extendedPrice: extendedPrice.toString(),
+        };
+      });
+
+      const materialTotal = updatedItems.reduce((sum, item) => {
+        const price = item.extendedPrice
+          ? parseFloat(item.extendedPrice.toString())
+          : 0;
+        return sum + price;
+      }, 0);
+
+      return {
+        ...old,
+        items: updatedItems,
+        materialTotal,
+      };
+    });
+  };
 
   // Filter suppliers based on search query
   const filteredSuppliers = useMemo(() => {
@@ -178,16 +255,82 @@ export function SupplierSelector({
     );
 
   const handleSupplierPartSelect = (supplierPartId: string) => {
-    updateItem.mutate({
-      itemId,
-      supplierPartId: supplierPartId === "none" ? null : supplierPartId,
-    });
+    const selectedSupplierPart =
+      supplierPartId === "none"
+        ? null
+        : supplierParts?.find((supplierPart) => supplierPart.id === supplierPartId) ?? null;
+    const nextSupplierPartId = supplierPartId === "none" ? null : supplierPartId;
+
+    setOptimisticSupplierPartId(nextSupplierPartId);
+    setOptimisticDisplayLabel(
+      selectedSupplierPart
+        ? `${selectedSupplierPart.supplier.name}${
+            selectedSupplierPart.supplierSku
+              ? ` (${selectedSupplierPart.supplierSku})`
+              : ""
+          }`
+        : "No supplier",
+    );
+    updateCachedSupplierPart(selectedSupplierPart);
     setIsDropdownOpen(false);
     setSearchQuery("");
+
+    if (typeof window !== "undefined" && !window.navigator.onLine) {
+      const unitCost = selectedSupplierPart?.lastKnownUnitCost
+        ? parseFloat(selectedSupplierPart.lastKnownUnitCost)
+        : 0;
+
+      void applyOfflineSupplierPartUpdate(materialListId, itemId, {
+        supplierPartId: nextSupplierPartId,
+        unitCost,
+        supplierPartSnapshot: selectedSupplierPart
+          ? {
+              id: selectedSupplierPart.id,
+              supplierId: selectedSupplierPart.supplierId,
+              supplierSku: selectedSupplierPart.supplierSku,
+              lastKnownUnitCost: selectedSupplierPart.lastKnownUnitCost,
+              supplier: selectedSupplierPart.supplier,
+            }
+          : null,
+      });
+      void enqueueOfflineMutation({
+        type: "updateItemSupplierPart",
+        materialListId,
+        itemId,
+        supplierPartId: nextSupplierPartId,
+        unitCost,
+        supplierPartSnapshot: selectedSupplierPart
+          ? {
+              id: selectedSupplierPart.id,
+              supplierId: selectedSupplierPart.supplierId,
+              supplierSku: selectedSupplierPart.supplierSku,
+              lastKnownUnitCost: selectedSupplierPart.lastKnownUnitCost,
+              supplier: selectedSupplierPart.supplier,
+            }
+          : null,
+        queuedAt: new Date().toISOString(),
+      });
+      void utils.materialList.getMaterialList.invalidate({ materialListId });
+      return;
+    }
+
+    void setActiveItemSyncStatus(materialListId, itemId, "pending");
+    updateItem.mutate({
+      itemId,
+      supplierPartId: nextSupplierPartId,
+    });
   };
 
   const handleSupplierSelect = (supplierId: string) => {
+    const selectedSupplier = allSuppliers?.find((supplier) => supplier.id === supplierId);
+    if (selectedSupplier) {
+      setOptimisticDisplayLabel(selectedSupplier.name);
+      setIsDropdownOpen(false);
+      setSearchQuery("");
+    }
+
     // Create supplier part for this supplier and part
+    void setActiveItemSyncStatus(materialListId, itemId, "pending");
     addSupplierPart.mutate({
       supplierId,
       partDefinitionId,
@@ -207,8 +350,8 @@ export function SupplierSelector({
         <DropdownMenuTrigger asChild>
           <Button
             variant="outline"
-            className="h-11 w-full justify-between"
-            disabled={updateItem.isPending || addSupplierPart.isPending}
+            className={`${compact ? "h-8 text-xs" : "h-11"} w-full justify-between`}
+            style={compact ? { touchAction: "auto" } : undefined}
           >
             <span className="truncate">{displayValue}</span>
             <ChevronDownIcon className="h-4 w-4 shrink-0" />
@@ -303,7 +446,7 @@ export function SupplierSelector({
             </div>
 
             {/* Clear selection */}
-            {currentSupplierPart && (
+            {optimisticSupplierPartId && (
               <>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem

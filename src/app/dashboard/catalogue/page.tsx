@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
 import { EditPartDialog } from "~/components/catalogue/EditPartDialog";
@@ -8,14 +8,22 @@ import { CreateCustomPartDialog } from "~/components/materialLists/CreateCustomP
 import { CatalogStage } from "~/components/materialLists/wizard/CatalogStage";
 import { MaterialStage } from "~/components/materialLists/wizard/MaterialStage";
 import { SizeStage } from "~/components/materialLists/wizard/SizeStage";
-import { PartTypeCategoryStage } from "~/components/materialLists/wizard/PartTypeCategoryStage";
+import { CategoryStage } from "~/components/materialLists/wizard/CategoryStage";
 import { PartStage } from "~/components/materialLists/wizard/PartStage";
 import { WizardHeader } from "~/components/materialLists/WizardHeader";
 import { usePartWizard } from "~/components/materialLists/wizard/use-part-wizard";
+import { generatePartDisplayName } from "~/lib/size-utils";
 
 export default function CataloguePage() {
   const [editingPartId, setEditingPartId] = useState<string | null>(null);
   const [isCreatePartDialogOpen, setIsCreatePartDialogOpen] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+  const [importProgress, setImportProgress] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const utils = api.useUtils();
+
+  const importCatalogueRows = api.catalogue.importCatalogueRows.useMutation();
 
   const {
     wizardStage,
@@ -25,9 +33,9 @@ export default function CataloguePage() {
     hasMaterialSelection,
     selectedSize,
     hasSizeSelection,
-    selectedPartTypeCategory,
+    selectedCategory,
     hasCategorySelection,
-    setSelectedPartTypeCategory,
+    setSelectedCategory,
     showCustomCatalogInput,
     setShowCustomCatalogInput,
     customCatalogName,
@@ -42,10 +50,10 @@ export default function CataloguePage() {
     setCustomSizeInput,
     customSizeUnitId,
     setCustomSizeUnitId,
-    showCustomPartTypeInput,
-    setShowCustomPartTypeInput,
-    customPartTypeName,
-    setCustomPartTypeName,
+    showCustomCategoryInput,
+    setShowCustomCategoryInput,
+    customCategoryName,
+    setCustomCategoryName,
     wizardSearchQuery,
     setWizardSearchQuery,
     catalogs,
@@ -61,7 +69,7 @@ export default function CataloguePage() {
     handleCatalogSelect,
     handleMaterialSelect,
     handleSizeSelect,
-    handlePartTypeCategorySelection,
+    handleCategorySelection,
     handleCustomCategorySubmit,
     handleStageClick,
     selectedCatalogName,
@@ -72,18 +80,191 @@ export default function CataloguePage() {
     wizardSearchPlaceholder,
   } = usePartWizard();
 
+  const handleExport = async () => {
+    try {
+      setIsExporting(true);
+      const rows = await utils.catalogue.exportCatalogueRows.fetch();
+      const XLSX = await import("xlsx");
+      const worksheet = XLSX.utils.json_to_sheet(rows);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Parts");
+      XLSX.writeFile(workbook, "foremenhq-catalogue.xlsx");
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleImportClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleImportFile = async (
+    event: { target: HTMLInputElement },
+  ) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    try {
+      setIsImporting(true);
+      setImportProgress("Reading workbook...");
+      const buffer = await file.arrayBuffer();
+      const XLSX = await import("xlsx");
+      const workbook = XLSX.read(buffer, { type: "array" });
+      const firstSheet = workbook.SheetNames[0];
+
+      if (!firstSheet) {
+        alert("That workbook is empty.");
+        return;
+      }
+
+      const sheet = workbook.Sheets[firstSheet];
+      if (!sheet) {
+        alert("Could not read the first worksheet.");
+        return;
+      }
+      const rawRows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, {
+        defval: "",
+      });
+
+      const rows = rawRows
+        .map((row) => {
+          const rawSizeNominal = row["sizeNominal"] ?? row["Size Nominal"];
+          const sizeNominal =
+            rawSizeNominal === "" || rawSizeNominal === undefined || rawSizeNominal === null
+              ? null
+              : String(rawSizeNominal).trim();
+          const sizeUnit = String(row["sizeUnit"] ?? row["Size Unit"] ?? "").trim();
+          const material = String(row["material"] ?? row["Material"] ?? "").trim();
+          const description = String(row["description"] ?? row["Description"] ?? "").trim();
+          const displayName =
+            String(row["displayName"] ?? row["Display Name"] ?? "").trim() ||
+            generatePartDisplayName({ sizeNominal, sizeUnit, material, description });
+
+          return {
+            partId: String(row["partId"] ?? row["Part ID"] ?? "").trim() || null,
+            catalog: String(row["catalog"] ?? row["Catalog"] ?? "").trim(),
+            category: String(row["category"] ?? row["Category"] ?? "").trim(),
+            material,
+            displayName,
+            description,
+            sizeNominal,
+            sizeUnit,
+            imageUrl: String(row["imageUrl"] ?? row["Image URL"] ?? "").trim(),
+            aliases: String(row["aliases"] ?? row["Aliases"] ?? "").trim(),
+            isActive:
+              typeof (row["isActive"] ?? row["Is Active"]) === "boolean"
+                ? Boolean(row["isActive"] ?? row["Is Active"])
+                : String(row["isActive"] ?? row["Is Active"] ?? "true")
+                    .trim()
+                    .toLowerCase() !== "false",
+          };
+        })
+        .filter((row) => row.catalog && row.displayName);
+
+      if (rows.length === 0) {
+        alert("No usable catalogue rows were found in that workbook.");
+        return;
+      }
+
+      setImportProgress("Preparing local backup...");
+      const existingRows = await utils.catalogue.exportCatalogueRows.fetch();
+      const existingPartIds = new Set(
+        existingRows
+          .map((row) => String(row.partId ?? "").trim())
+          .filter(Boolean),
+      );
+      const overwriteRows = rows.filter((row) => row.partId && existingPartIds.has(row.partId));
+
+      if (overwriteRows.length > 0) {
+        const sampleNames = overwriteRows
+          .slice(0, 8)
+          .map((row) => `• ${row.displayName}`)
+          .join("\n");
+        const moreCount = overwriteRows.length - 8;
+        const shouldContinue = window.confirm(
+          `This import will overwrite ${overwriteRows.length} existing part${overwriteRows.length === 1 ? "" : "s"} because their partId already exists.\n\n${sampleNames}${moreCount > 0 ? `\n• ...and ${moreCount} more` : ""}\n\nA catalogue backup will download before import. Continue?`,
+        );
+
+        if (!shouldContinue) {
+          setImportProgress(null);
+          return;
+        }
+      }
+
+      const backupWorksheet = XLSX.utils.json_to_sheet(existingRows);
+      const backupWorkbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(backupWorkbook, backupWorksheet, "Parts");
+      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+      XLSX.writeFile(backupWorkbook, `foremenhq-catalogue-backup-${timestamp}.xlsx`);
+
+      const batchSize = 50;
+      let created = 0;
+      let updated = 0;
+      let skipped = 0;
+
+      for (let start = 0; start < rows.length; start += batchSize) {
+        const batch = rows.slice(start, start + batchSize);
+        const batchNumber = Math.floor(start / batchSize) + 1;
+        const batchCount = Math.ceil(rows.length / batchSize);
+        setImportProgress(
+          `Importing ${Math.min(start + batch.length, rows.length)} of ${rows.length} rows... (${batchNumber}/${batchCount})`,
+        );
+
+        const result = await importCatalogueRows.mutateAsync({ rows: batch });
+        created += result.created;
+        updated += result.updated;
+        skipped += result.skipped;
+      }
+
+      setImportProgress("Refreshing catalogue...");
+      await Promise.all([
+        utils.catalogue.searchParts.invalidate(),
+        utils.catalogue.getCatalogs.invalidate(),
+        utils.catalogue.getCategoryTree.invalidate(),
+        utils.catalogue.getMaterials.invalidate(),
+      ]);
+
+      alert(`Catalogue import done. Created ${created}, updated ${updated}, skipped ${skipped}.`);
+    } catch (error) {
+      console.error("Catalogue import failed", error);
+      alert("Catalogue import failed. Check the workbook format and try again.");
+    } finally {
+      setIsImporting(false);
+      setImportProgress(null);
+    }
+  };
+
   return (
     <div className="flex h-[calc(100vh-4rem)] flex-col overflow-hidden">
       <div className="border-b bg-white p-4 sm:p-6">
         <div className="mb-4 flex items-center justify-between">
           <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">Parts Catalogue</h1>
+          <div className="flex items-center gap-2">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".xlsx,.xls"
+              className="hidden"
+              onChange={handleImportFile}
+            />
+            <div className="flex flex-col items-end gap-1">
+              <Button variant="outline" onClick={handleImportClick} disabled={isImporting}>
+                {isImporting ? "Importing..." : "Import XLSX"}
+              </Button>
+              {importProgress && <div className="text-xs font-medium text-slate-600">{importProgress}</div>}
+            </div>
+            <Button variant="outline" onClick={handleExport} disabled={isExporting}>
+              {isExporting ? "Exporting..." : "Export XLSX"}
+            </Button>
+          </div>
         </div>
         <WizardHeader
           currentStage={wizardStage}
           selectedCatalog={selectedCatalogName}
           selectedMaterial={selectedMaterialName}
           selectedSize={selectedSizeName}
-          selectedPartTypeCategory={selectedCategoryName}
+          selectedCategory={selectedCategoryName}
           onStageClick={handleStageClick}
           searchQuery={wizardSearchQuery}
           onSearchChange={setWizardSearchQuery}
@@ -140,16 +321,16 @@ export default function CataloguePage() {
           />
         )}
 
-        {wizardStage === "partTypeCategory" && hasCatalogSelection && hasMaterialSelection && hasSizeSelection && (
-          <PartTypeCategoryStage
-            partTypeCategories={categoriesWithCounts}
-            selectedPartTypeCategory={selectedPartTypeCategory}
-            allSelected={hasCategorySelection && selectedPartTypeCategory?.categoryId === null}
-            onPartTypeCategorySelect={handlePartTypeCategorySelection}
-            showCustomPartTypeInput={showCustomPartTypeInput}
-            onShowCustomPartTypeInput={setShowCustomPartTypeInput}
-            customPartTypeName={customPartTypeName}
-            onCustomPartTypeNameChange={setCustomPartTypeName}
+        {wizardStage === "category" && hasCatalogSelection && hasMaterialSelection && hasSizeSelection && (
+          <CategoryStage
+            categories={categoriesWithCounts}
+            selectedCategory={selectedCategory}
+            allSelected={hasCategorySelection && selectedCategory?.categoryId === null}
+            onCategorySelect={handleCategorySelection}
+            showCustomCategoryInput={showCustomCategoryInput}
+            onShowCustomCategoryInput={setShowCustomCategoryInput}
+            customCategoryName={customCategoryName}
+            onCustomCategoryNameChange={setCustomCategoryName}
             onCustomCategorySubmit={handleCustomCategorySubmit}
           />
         )}
@@ -164,7 +345,7 @@ export default function CataloguePage() {
             onEditPart={setEditingPartId}
             selectedMaterialId={selectedMaterialId}
             selectedSize={selectedSize}
-            selectedPartTypeCategory={selectedPartTypeCategory}
+            selectedCategory={selectedCategory}
             onContinueToReview={() => undefined}
             actionMode="edit"
             title="Parts"
@@ -190,8 +371,8 @@ export default function CataloguePage() {
           catalogId: selectedCatalogId,
           materialId: selectedMaterialId,
           size: selectedSize,
-          categoryId: selectedPartTypeCategory?.categoryId ?? null,
-          categoryName: selectedPartTypeCategory?.name ?? null,
+          categoryId: selectedCategory?.categoryId ?? null,
+          categoryName: selectedCategory?.name ?? null,
         }}
       />
     </div>

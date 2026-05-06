@@ -19,7 +19,6 @@ import {
   quotes,
   materials,
   sizes,
-  partTypes,
 } from "../src/server/db/schema";
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { exec } from "child_process";
@@ -107,7 +106,6 @@ const partDefinitionsData = [
     material: "Copper",
     sizeNominal: 0.5,
     sizeUnit: "in",
-    partType: "elbow",
     synonyms: ["copper 90", "90 elbow", "copper elbow 90"],
   },
   {
@@ -117,7 +115,6 @@ const partDefinitionsData = [
     material: "PVC",
     sizeNominal: 0.75,
     sizeUnit: "in",
-    partType: "elbow",
     synonyms: ["PVC 90", "90 PVC elbow"],
   },
   {
@@ -127,7 +124,6 @@ const partDefinitionsData = [
     material: "Copper",
     sizeNominal: 0.5,
     sizeUnit: "in",
-    partType: "elbow",
     synonyms: ["copper 45", "45 elbow"],
   },
   {
@@ -137,7 +133,6 @@ const partDefinitionsData = [
     material: "PEX",
     sizeNominal: 0.5,
     sizeUnit: "in",
-    partType: "elbow",
     synonyms: ["PEX 90", "90 PEX elbow"],
   },
   {
@@ -147,7 +142,6 @@ const partDefinitionsData = [
     material: "Copper",
     sizeNominal: 0.5,
     sizeUnit: "in",
-    partType: "tee",
     synonyms: ["copper tee", "T fitting", "copper T"],
   },
   {
@@ -157,7 +151,6 @@ const partDefinitionsData = [
     material: "PVC",
     sizeNominal: 0.75,
     sizeUnit: "in",
-    partType: "tee",
     synonyms: ["PVC tee", "PVC T"],
   },
   {
@@ -167,7 +160,6 @@ const partDefinitionsData = [
     material: "Copper",
     sizeNominal: 0.75,
     sizeUnit: "in",
-    partType: "tee",
     synonyms: ["reducing tee", "copper reducing tee"],
   },
   {
@@ -177,7 +169,6 @@ const partDefinitionsData = [
     material: "Copper",
     sizeNominal: 0.5,
     sizeUnit: "in",
-    partType: "coupling",
     synonyms: ["copper coupling", "straight coupling"],
   },
   {
@@ -187,7 +178,6 @@ const partDefinitionsData = [
     material: "PVC",
     sizeNominal: 0.75,
     sizeUnit: "in",
-    partType: "coupling",
     synonyms: ["PVC coupling"],
   },
   {
@@ -197,7 +187,6 @@ const partDefinitionsData = [
     material: "Brass",
     sizeNominal: 0.5,
     sizeUnit: "in",
-    partType: "ball valve",
     synonyms: ["ball valve", "quarter turn valve"],
   },
   {
@@ -207,7 +196,6 @@ const partDefinitionsData = [
     material: "Brass",
     sizeNominal: 0.75,
     sizeUnit: "in",
-    partType: "ball valve",
     synonyms: ["ball valve 3/4", "3/4 ball valve"],
   },
   {
@@ -217,7 +205,6 @@ const partDefinitionsData = [
     material: "Brass",
     sizeNominal: 0.5,
     sizeUnit: "in",
-    partType: "gate valve",
     synonyms: ["gate valve", "shutoff valve"],
   },
   {
@@ -227,7 +214,6 @@ const partDefinitionsData = [
     material: "Brass",
     sizeNominal: 0.5,
     sizeUnit: "in",
-    partType: "check valve",
     synonyms: ["check valve", "backflow preventer"],
   },
   {
@@ -237,7 +223,6 @@ const partDefinitionsData = [
     material: "Copper",
     sizeNominal: 0.5,
     sizeUnit: "in",
-    partType: "type L copper",
     synonyms: ["copper pipe", "type L copper", "1/2 copper"],
   },
   {
@@ -247,7 +232,6 @@ const partDefinitionsData = [
     material: "Copper",
     sizeNominal: 0.75,
     sizeUnit: "in",
-    partType: "type L copper",
     synonyms: ["copper pipe 3/4", "3/4 copper"],
   },
   {
@@ -257,7 +241,6 @@ const partDefinitionsData = [
     material: "PVC",
     sizeNominal: 0.75,
     sizeUnit: "in",
-    partType: "schedule 40",
     synonyms: ["PVC pipe", "schedule 40 PVC", "3/4 PVC"],
   },
   {
@@ -267,7 +250,6 @@ const partDefinitionsData = [
     material: "PEX",
     sizeNominal: 0.5,
     sizeUnit: "in",
-    partType: "PEX pipe",
     synonyms: ["PEX pipe", "1/2 PEX"],
   },
   {
@@ -277,7 +259,6 @@ const partDefinitionsData = [
     material: "Steel",
     sizeNominal: 12,
     sizeUnit: "in",
-    partType: "wrench",
     synonyms: ["pipe wrench", "12 inch wrench"],
   },
   {
@@ -287,7 +268,6 @@ const partDefinitionsData = [
     material: "Steel",
     sizeNominal: null,
     sizeUnit: null,
-    partType: "cutter",
     synonyms: ["pipe cutter", "copper cutter"],
   },
 ];
@@ -457,7 +437,6 @@ async function truncateTables(db: ReturnType<typeof drizzle>) {
       "kublai_unit",
       "kublai_material",
       "kublai_size",
-      "kublai_part_type",
     ];
 
     // Truncate tables with CASCADE to handle foreign key constraints
@@ -516,7 +495,7 @@ async function main() {
         }
       }
 
-      // Step 5: Create organization (needed for materials, partTypes, and parts)
+      // Step 5: Create organization (needed for materials and parts)
       console.log("\n🏢 Creating organization...");
       const orgName = "Seed Test Organization";
       const [org] = await db
@@ -698,47 +677,7 @@ async function main() {
         }
       }
 
-      // Step 8: Create part types (org-specific, before parts)
-      console.log("\n🔧 Creating part types...");
-      const partTypeSet = new Set<string>();
-      for (const partData of partDefinitionsData) {
-        if (partData.partType) {
-          partTypeSet.add(partData.partType);
-        }
-      }
-      const partTypeMap = new Map<string, string>();
-      for (const partTypeName of Array.from(partTypeSet)) {
-        const [partType] = await db
-          .insert(partTypes)
-          .values({
-            organizationId: organizationId,
-            name: partTypeName,
-          })
-          .onConflictDoNothing()
-          .returning({ id: partTypes.id });
-
-        if (partType) {
-          partTypeMap.set(partTypeName, partType.id);
-          console.log(`   ✓ Created part type "${partTypeName}"`);
-        } else {
-          const [existing] = await db
-            .select()
-            .from(partTypes)
-            .where(
-              and(
-                eq(partTypes.name, partTypeName),
-                eq(partTypes.organizationId, organizationId),
-              ),
-            )
-            .limit(1);
-          if (existing) {
-            partTypeMap.set(partTypeName, existing.id);
-            console.log(`   ✓ Part type "${partTypeName}" already exists`);
-          }
-        }
-      }
-
-      // Step 9: Create sizes and build sizeMap (must be before creating parts)
+      // Step 8: Create sizes and build sizeMap (must be before creating parts)
       console.log("\n📐 Creating sizes...");
       const sizeSet = new Set<string>();
       for (const partData of partDefinitionsData) {
@@ -902,11 +841,6 @@ async function main() {
           continue;
         }
 
-        const defaultUomId = unitMap.get("ea");
-        if (!defaultUomId) {
-          throw new Error('Unit "ea" not found - required for default UOM');
-        }
-
         const materialId = partData.material
           ? (materialMap.get(partData.material) ?? null)
           : null;
@@ -916,16 +850,7 @@ async function main() {
           );
         }
 
-        const partTypeId = partData.partType
-          ? (partTypeMap.get(partData.partType) ?? null)
-          : null;
-        if (partData.partType && !partTypeId) {
-          console.warn(
-            `   ⚠️  Warning: PartType "${partData.partType}" not found in partTypeMap for part "${partData.displayName}"`,
-          );
-        }
-
-        const [part] = await db
+    const [part] = await db
           .insert(partDefinitions)
           .values({
             organizationId: organizationId,
@@ -934,10 +859,8 @@ async function main() {
             displayName: partData.displayName,
             description: partData.description,
             imageUrl: null,
-            partTypeId: partTypeId,
-            materialId: materialId,
+                materialId: materialId,
             sizeId: sizeId,
-            defaultUomId: defaultUomId,
             isActive: true,
           })
           .onConflictDoNothing()
@@ -1004,318 +927,6 @@ async function main() {
         }
       }
 
-      // Step 12: Create custom part types (org-specific, additional ones)
-      console.log("\n🔧 Creating custom part types (org-specific)...");
-      const partTypesList = [
-        "elbow",
-        "tee",
-        "coupling",
-        "ball valve",
-        "gate valve",
-        "check valve",
-        "type L copper",
-        "schedule 40",
-        "PEX pipe",
-        "wrench",
-        "cutter",
-      ];
-      let partTypesCreated = 0;
-
-      for (const partTypeName of partTypesList) {
-        const [partType] = await db
-          .insert(partTypes)
-          .values({
-            organizationId: organizationId,
-            name: partTypeName,
-          })
-          .onConflictDoNothing()
-          .returning({ id: partTypes.id });
-
-        if (partType) {
-          partTypesCreated++;
-          console.log(`   ✓ Created part type "${partTypeName}"`);
-        } else {
-          console.log(`   ✓ Part type "${partTypeName}" already exists`);
-        }
-      }
-
-      // Step 13: Create locations
-      console.log("\n📍 Creating locations...");
-      const locationMap = new Map<string, string>();
-      let locationsCreated = 0;
-
-      for (const locationData of locationDefinitions) {
-        const [location] = await db
-          .insert(locations)
-          .values({
-            organizationId: organizationId,
-            name: locationData.name,
-            address1: locationData.address1,
-            address2: null,
-            city: locationData.city,
-            region: locationData.region,
-            postalCode: locationData.postalCode,
-            country: locationData.country,
-            notes: null,
-          })
-          .onConflictDoNothing()
-          .returning({ id: locations.id });
-
-        let locationId: string;
-        if (location) {
-          locationId = location.id;
-          locationMap.set(locationData.name, locationId);
-          locationsCreated++;
-          console.log(`   ✓ Created location "${locationData.name}"`);
-        } else {
-          const [existing] = await db
-            .select()
-            .from(locations)
-            .where(
-              and(
-                eq(locations.name, locationData.name),
-                eq(locations.organizationId, organizationId),
-              ),
-            )
-            .limit(1);
-          if (!existing) {
-            throw new Error(
-              `Failed to create/find location ${locationData.name}`,
-            );
-          }
-          locationId = existing.id;
-          locationMap.set(locationData.name, locationId);
-          console.log(`   ✓ Location "${locationData.name}" already exists`);
-        }
-      }
-
-      // Step 14: Create suppliers
-      console.log("\n🏪 Creating suppliers...");
-      let suppliersCreated = 0;
-      const supplierIds: string[] = [];
-
-      for (const supplierData of supplierDefinitions) {
-        const locationId = locationMap.get(supplierData.locationName) ?? null;
-
-        const [supplier] = await db
-          .insert(suppliers)
-          .values({
-            organizationId: organizationId,
-            name: supplierData.name,
-            contactEmail: supplierData.contactEmail,
-            contactPhone: supplierData.contactPhone,
-            orderingNotes: supplierData.orderingNotes,
-            locationId: locationId,
-          })
-          .onConflictDoNothing()
-          .returning({ id: suppliers.id });
-
-        let supplierId: string;
-        if (supplier) {
-          supplierId = supplier.id;
-          supplierIds.push(supplierId);
-          suppliersCreated++;
-          console.log(`   ✓ Created supplier "${supplierData.name}"`);
-        } else {
-          const [existing] = await db
-            .select()
-            .from(suppliers)
-            .where(
-              and(
-                eq(suppliers.name, supplierData.name),
-                eq(suppliers.organizationId, organizationId),
-              ),
-            )
-            .limit(1);
-          if (!existing) {
-            throw new Error(
-              `Failed to create/find supplier ${supplierData.name}`,
-            );
-          }
-          supplierId = existing.id;
-          supplierIds.push(supplierId);
-          console.log(`   ✓ Supplier "${supplierData.name}" already exists`);
-        }
-      }
-
-      // Step 15: Link parts to suppliers
-      console.log("\n🔗 Linking parts to suppliers...");
-      let supplierPartsCreated = 0;
-
-      if (!organizationId) {
-        throw new Error("Organization ID is not defined");
-      }
-
-      const allParts = await db
-        .select({
-          id: partDefinitions.id,
-          displayName: partDefinitions.displayName,
-        })
-        .from(partDefinitions)
-        .where(eq(partDefinitions.organizationId, organizationId));
-
-      for (const part of allParts) {
-        const existingSupplierParts = await db
-          .select()
-          .from(supplierParts)
-          .where(
-            and(
-              eq(supplierParts.partDefinitionId, part.id),
-              eq(supplierParts.organizationId, organizationId),
-            ),
-          )
-          .limit(1);
-
-        if (existingSupplierParts.length === 0 && supplierIds.length > 0) {
-          const randomSupplierId =
-            supplierIds[Math.floor(Math.random() * supplierIds.length)];
-
-          if (!randomSupplierId) {
-            continue;
-          }
-
-          const sku = part.displayName
-            .replace(/[^a-zA-Z0-9]/g, "")
-            .substring(0, 20)
-            .toUpperCase();
-
-          let basePrice = 500;
-          if (part.displayName.includes("Pipe")) {
-            basePrice = 2000 + Math.floor(Math.random() * 5000);
-          } else if (part.displayName.includes("Valve")) {
-            basePrice = 1500 + Math.floor(Math.random() * 3500);
-          } else if (
-            part.displayName.includes("Elbow") ||
-            part.displayName.includes("Tee")
-          ) {
-            basePrice = 300 + Math.floor(Math.random() * 1200);
-          } else if (part.displayName.includes("Coupling")) {
-            basePrice = 200 + Math.floor(Math.random() * 800);
-          } else if (
-            part.displayName.includes("Wrench") ||
-            part.displayName.includes("Cutter")
-          ) {
-            basePrice = 3000 + Math.floor(Math.random() * 7000);
-          }
-
-          if (part.displayName.includes("3/4")) {
-            basePrice = Math.floor(basePrice * 1.3);
-          } else if (part.displayName.includes("1/2")) {
-            basePrice = Math.floor(basePrice * 1.1);
-          }
-
-          const priceString = (basePrice / 100).toFixed(2);
-          const packUomId = unitMap.get("ea");
-
-          await db.insert(supplierParts).values({
-            organizationId: organizationId,
-            supplierId: randomSupplierId,
-            partDefinitionId: part.id,
-            supplierSku: `${sku}-${Math.floor(Math.random() * 1000)}`,
-            supplierName: part.displayName,
-            packSize: "1",
-            packUomId: packUomId ?? null,
-            lastKnownUnitCost: priceString,
-            currency: "CAD",
-            isPreferred: false,
-            notes: null,
-          });
-
-          supplierPartsCreated++;
-        }
-      }
-
-      console.log(`   ✓ Linked ${supplierPartsCreated} parts to suppliers`);
-
-      // Step 16: Create sample job and material list
-      console.log("\n📋 Creating sample job and material list...");
-      const [sampleJob] = await db
-        .insert(jobs)
-        .values({
-          organizationId: organizationId,
-          name: "Sample Plumbing Job",
-          createdByUserId: null, // No user in seed script
-          status: "draft",
-        })
-        .onConflictDoNothing()
-        .returning();
-
-      let jobId: string | undefined;
-      if (sampleJob) {
-        jobId = sampleJob.id;
-        console.log(`   ✓ Created sample job "${sampleJob.name}"`);
-      } else {
-        // Job already exists, fetch it
-        const [existing] = await db
-          .select()
-          .from(jobs)
-          .where(
-            sql`${jobs.organizationId} = ${organizationId} and ${jobs.name} = ${"Sample Plumbing Job"}`,
-          )
-          .limit(1);
-        if (existing?.id) {
-          jobId = existing.id;
-          console.log(`   ✓ Sample job already exists`);
-        }
-      }
-
-      if (jobId) {
-        // Create sample material list
-        const [sampleMaterialList] = await db
-          .insert(materialLists)
-          .values({
-            organizationId: organizationId,
-            jobId: jobId,
-            name: "Sample Material List",
-            createdByUserId: null,
-          })
-          .onConflictDoNothing()
-          .returning();
-
-        if (sampleMaterialList) {
-          const sampleMaterialListId = sampleMaterialList.id;
-
-          // Create sample quote for material list
-          const [sampleQuote] = await db
-            .insert(quotes)
-            .values({
-              organizationId: organizationId,
-              materialListId: sampleMaterialListId,
-              jobId: jobId,
-              subtotalMaterials: "0",
-              total: "0",
-            })
-            .returning();
-
-          if (sampleQuote) {
-            // Update material list with quote ID
-            await db
-              .update(materialLists)
-              .set({ quoteId: sampleQuote.id })
-              .where(sql`${materialLists.id} = ${sampleMaterialListId}`);
-
-            console.log(`   ✓ Created sample material list and quote`);
-          }
-        } else {
-          console.log(`   ✓ Sample material list already exists`);
-        }
-      }
-
-      // Summary
-      console.log(`\n🎉 Plumbing seed completed successfully!`);
-      console.log(`📊 Summary:`);
-      console.log(`   - Units: ${unitMap.size}`);
-      console.log(`   - Categories: ${categoryMap.size}`);
-      console.log(`   - Global materials: ${materialMap.size}`);
-      console.log(`   - Global part types: ${partTypeMap.size}`);
-      console.log(`   - Parts created: ${partsCreated}`);
-      console.log(`   - Synonyms created: ${synonymsCreated}`);
-      console.log(`   - Org-specific materials created: ${materialsCreated}`);
-      console.log(`   - Sizes created: ${sizesCreated}`);
-      console.log(`   - Org-specific part types created: ${partTypesCreated}`);
-      console.log(`   - Locations created: ${locationsCreated}`);
-      console.log(`   - Suppliers created: ${suppliersCreated}`);
-      console.log(`   - Supplier parts linked: ${supplierPartsCreated}`);
     } finally {
       await connection.end();
     }

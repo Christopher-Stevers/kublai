@@ -18,6 +18,7 @@ import {
 import { Button } from "~/components/ui/button";
 import { Badge } from "~/components/ui/badge";
 import { ChevronDownIcon, StarIcon, CheckIcon, AlertCircle } from "lucide-react";
+import { useOnlineStatus } from "~/hooks/use-online-status";
 import { PartSuppliersDropdown } from "~/components/catalogue/PartSuppliersDropdown";
 
 interface PreferredSupplierSelectorProps {
@@ -95,6 +96,8 @@ export function PreferredSupplierSelector({
     },
   });
 
+  const isOnline = useOnlineStatus();
+
   const currentSupplier = availableSuppliers.find(
     (s) => s.id === currentPreferredSupplierId,
   );
@@ -102,7 +105,7 @@ export function PreferredSupplierSelector({
   // Get supplier info for PartSuppliersDropdown
   const { data: supplierInfo } = api.catalogue.getPartsSupplierInfo.useQuery(
     { partIds: [partDefinitionId] },
-    { enabled: !!partDefinitionId },
+    { enabled: isOnline && !!partDefinitionId },
   );
 
   const handleSelect = (supplierId: string) => {

@@ -1,9 +1,19 @@
+import {
+  idbDeleteMaterialList,
+  idbGetMaterialList,
+  idbGetMaterialListIds,
+  idbSetMaterialList,
+} from "~/lib/offline-indexed-db";
+
 export interface OfflineMaterialListItem {
   id: string;
   quantity: string;
   unitCost: string | null;
   extendedPrice: string | null;
   descriptionSnapshot: string | null;
+  createdAt?: string | Date | null;
+  updatedAt?: string | Date | null;
+  syncVersion?: string | null;
   partDefinition: {
     id: string;
     displayName: string | null;
@@ -25,6 +35,13 @@ export interface OfflineMaterialListItem {
     code: string | null;
     displayName: string | null;
   } | null;
+  oneOff?: {
+    displayName: string;
+    description: string | null;
+    material: string | null;
+    sizeNominal: string | null;
+    sizeUnitId: string | null;
+  } | null;
 }
 
 export interface OfflineMaterialListRecord {
@@ -32,6 +49,8 @@ export interface OfflineMaterialListRecord {
     id: string;
     name: string;
     createdAt?: string | Date;
+    updatedAt?: string | Date;
+    syncVersion?: string | null;
   };
   job: {
     id: string;
@@ -60,79 +79,106 @@ export interface OfflineMaterialListEnvelope {
   version: 1;
   updatedAt: string;
   pendingSync: boolean;
+  pendingDeletedItemIds?: string[];
   data: OfflineMaterialListRecord;
 }
 
 const STORAGE_PREFIX = "foremanhq.offline.material-list";
+const OFFLINE_MATERIAL_LIST_SYNC_EVENT = "foremanhq:offline-material-list-sync";
+let migratedLegacyLocalStorage = false;
 
-function storageKey(materialListId: string) {
+function notifyOfflineMaterialListChanged() {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new Event(OFFLINE_MATERIAL_LIST_SYNC_EVENT));
+}
+
+function legacyStorageKey(materialListId: string) {
   return `${STORAGE_PREFIX}:${materialListId}`;
 }
 
-export function getOfflineMaterialList(
-  materialListId: string,
-): OfflineMaterialListEnvelope | null {
-  if (typeof window === "undefined") return null;
+async function migrateLegacyMaterialLists() {
+  if (migratedLegacyLocalStorage || typeof window === "undefined") return;
+  migratedLegacyLocalStorage = true;
 
-  const raw = window.localStorage.getItem(storageKey(materialListId));
-  if (!raw) return null;
+  const migrations: Promise<void>[] = [];
+  for (let i = 0; i < window.localStorage.length; i += 1) {
+    const key = window.localStorage.key(i);
+    if (!key?.startsWith(`${STORAGE_PREFIX}:`)) continue;
 
-  try {
-    return JSON.parse(raw) as OfflineMaterialListEnvelope;
-  } catch {
-    return null;
+    const materialListId = key.slice(`${STORAGE_PREFIX}:`.length);
+    const raw = window.localStorage.getItem(key);
+    if (!raw) continue;
+
+    migrations.push(
+      (async () => {
+        try {
+          const existing = await idbGetMaterialList<OfflineMaterialListEnvelope>(materialListId);
+          if (!existing) {
+            await idbSetMaterialList(materialListId, JSON.parse(raw) as OfflineMaterialListEnvelope);
+          }
+        } catch {
+          // Ignore malformed legacy cache entries.
+        }
+      })(),
+    );
   }
+
+  await Promise.all(migrations);
 }
 
-export function setOfflineMaterialList(
+export async function getOfflineMaterialList(
+  materialListId: string,
+): Promise<OfflineMaterialListEnvelope | null> {
+  await migrateLegacyMaterialLists();
+  return idbGetMaterialList<OfflineMaterialListEnvelope>(materialListId);
+}
+
+export async function setOfflineMaterialList(
   materialListId: string,
   data: OfflineMaterialListRecord,
-  options?: { pendingSync?: boolean },
+  options?: { pendingSync?: boolean; pendingDeletedItemIds?: string[] },
 ) {
-  if (typeof window === "undefined") return;
-
   const envelope: OfflineMaterialListEnvelope = {
     version: 1,
     updatedAt: new Date().toISOString(),
     pendingSync: options?.pendingSync ?? false,
+    pendingDeletedItemIds: options?.pendingDeletedItemIds ?? [],
     data,
   };
 
-  window.localStorage.setItem(storageKey(materialListId), JSON.stringify(envelope));
+  await idbSetMaterialList(materialListId, envelope);
+  if (typeof window !== "undefined") {
+    window.localStorage.setItem(legacyStorageKey(materialListId), JSON.stringify(envelope));
+  }
+  notifyOfflineMaterialListChanged();
 }
 
-export function patchOfflineMaterialList(
+export async function patchOfflineMaterialList(
   materialListId: string,
   updater: (current: OfflineMaterialListRecord) => OfflineMaterialListRecord,
-  options?: { pendingSync?: boolean },
+  options?: { pendingSync?: boolean; pendingDeletedItemIds?: string[] },
 ) {
-  const existing = getOfflineMaterialList(materialListId);
+  const existing = await getOfflineMaterialList(materialListId);
   if (!existing) return null;
 
   const nextData = updater(existing.data);
-  setOfflineMaterialList(materialListId, nextData, {
+  await setOfflineMaterialList(materialListId, nextData, {
     pendingSync: options?.pendingSync ?? existing.pendingSync,
+    pendingDeletedItemIds:
+      options?.pendingDeletedItemIds ?? existing.pendingDeletedItemIds ?? [],
   });
 
   return nextData;
 }
 
-export function clearOfflineMaterialList(materialListId: string) {
-  if (typeof window === "undefined") return;
-  window.localStorage.removeItem(storageKey(materialListId));
+export async function clearOfflineMaterialList(materialListId: string) {
+  await idbDeleteMaterialList(materialListId);
+  if (typeof window !== "undefined") {
+    window.localStorage.removeItem(legacyStorageKey(materialListId));
+  }
 }
 
-export function getOfflineMaterialListIds(): string[] {
-  if (typeof window === "undefined") return [];
-
-  const ids: string[] = [];
-
-  for (let i = 0; i < window.localStorage.length; i += 1) {
-    const key = window.localStorage.key(i);
-    if (!key?.startsWith(`${STORAGE_PREFIX}:`)) continue;
-
-    ids.push(key.slice(`${STORAGE_PREFIX}:`.length));
-  }
-
-  return ids;
+export async function getOfflineMaterialListIds(): Promise<string[]> {
+  await migrateLegacyMaterialLists();
+  return idbGetMaterialListIds();
 }

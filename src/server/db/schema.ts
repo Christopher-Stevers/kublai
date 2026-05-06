@@ -290,6 +290,7 @@ export const suppliers = createTable(
       .references(() => organizations.id, { onDelete: "cascade" }),
 
     name: d.varchar({ length: 255 }).notNull(),
+    contactName: d.varchar({ length: 255 }),
     contactEmail: d.varchar({ length: 255 }),
     contactPhone: d.varchar({ length: 50 }),
     orderingNotes: d.text(),
@@ -343,9 +344,6 @@ export const units = createTable(
 );
 
 export const unitsRelations = relations(units, ({ many }) => ({
-  partDefinitionsDefaultUom: many(partDefinitions, {
-    relationName: "pd_default_uom",
-  }),
   partDefinitionsSizeUnit: many(partDefinitions, {
     relationName: "pd_size_unit",
   }),
@@ -442,43 +440,6 @@ export const sizesRelations = relations(sizes, ({ one, many }) => ({
 }));
 
 // ============================
-// PART TYPES (custom part types)
-// org-specific
-// ============================
-
-export const partTypes = createTable(
-  "part_type",
-  (d) => ({
-    id: d
-      .uuid()
-      .notNull()
-      .primaryKey()
-      .$defaultFn(() => crypto.randomUUID()),
-    organizationId: d
-      .uuid()
-      .notNull()
-      .references(() => organizations.id, { onDelete: "cascade" }),
-    name: d.varchar({ length: 100 }).notNull(),
-    createdAt: d
-      .timestamp({ withTimezone: true })
-      .notNull()
-      .$defaultFn(() => new Date()),
-  }),
-  (t) => [
-    unique("part_type_org_name_uniq").on(t.organizationId, t.name),
-    index("part_type_org_idx").on(t.organizationId),
-  ],
-);
-
-export const partTypesRelations = relations(partTypes, ({ one, many }) => ({
-  organization: one(organizations, {
-    fields: [partTypes.organizationId],
-    references: [organizations.id],
-  }),
-  partDefinitions: many(partDefinitions),
-}));
-
-// ============================
 // CATALOGS
 // org-specific
 // ============================
@@ -517,7 +478,7 @@ export const catalogsRelations = relations(catalogs, ({ one, many }) => ({
 }));
 
 // ============================
-// CATEGORIES (tree)
+// CATEGORIES
 // org-specific
 // ============================
 
@@ -530,19 +491,14 @@ export const categories: any = createTable(
       .notNull()
       .primaryKey()
       .$defaultFn(() => crypto.randomUUID()),
-
     organizationId: d
       .uuid()
       .notNull()
       .references(() => organizations.id, { onDelete: "cascade" }),
-
     name: d.varchar({ length: 255 }).notNull(),
     sortOrder: d.integer().notNull().default(0),
   }),
-  (t) => [
-    // Unique constraint: category name must be unique within an organization
-    unique("category_org_name_uniq").on(t.organizationId, t.name),
-  ],
+  (t) => [unique("category_org_name_uniq").on(t.organizationId, t.name)],
 );
 
 export const categoriesRelations = relations(categories, ({ one, many }) => ({
@@ -582,20 +538,15 @@ export const partDefinitions = createTable(
     displayName: d.varchar({ length: 255 }).notNull(),
     description: d.text(),
     imageUrl: d.text(),
+    sizeLabel: d.varchar({ length: 100 }),
 
     // Facets (MVP)
-    partTypeId: d
-      .uuid()
-      .references(() => partTypes.id, { onDelete: "set null" }),
     materialId: d
       .uuid()
       .references(() => materials.id, { onDelete: "set null" }),
     sizeId: d
       .uuid()
-      .notNull()
       .references(() => sizes.id, { onDelete: "set null" }),
-
-    defaultUomId: d.uuid().references(() => units.id, { onDelete: "set null" }),
 
     isActive: d.boolean().notNull().default(true),
 
@@ -608,9 +559,8 @@ export const partDefinitions = createTable(
     index("part_def_org_idx").on(t.organizationId),
     index("part_def_catalog_idx").on(t.catalogId),
     index("part_def_category_idx").on(t.categoryId),
-    index("part_def_facets_idx").on(t.partTypeId, t.materialId, t.sizeId),
+    index("part_def_facets_idx").on(t.materialId, t.sizeId),
     index("part_def_material_idx").on(t.materialId),
-    index("part_def_part_type_idx").on(t.partTypeId),
     index("part_def_size_idx").on(t.sizeId),
   ],
 );
@@ -634,18 +584,9 @@ export const partDefinitionsRelations = relations(
       fields: [partDefinitions.sizeId],
       references: [sizes.id],
     }),
-    defaultUom: one(units, {
-      fields: [partDefinitions.defaultUomId],
-      references: [units.id],
-      relationName: "pd_default_uom",
-    }),
     material: one(materials, {
       fields: [partDefinitions.materialId],
       references: [materials.id],
-    }),
-    partType: one(partTypes, {
-      fields: [partDefinitions.partTypeId],
-      references: [partTypes.id],
     }),
     synonyms: many(partSynonyms),
     attributes: many(partAttributes),
@@ -828,6 +769,8 @@ export const jobs = createTable(
     foremanUserId: d.varchar({ length: 255 }).references(() => users.id, {
       onDelete: "set null",
     }),
+    foremanName: d.varchar({ length: 255 }),
+    poNumber: d.varchar({ length: 100 }),
 
     status: d.varchar({ length: 50 }).notNull().default("draft"), // draft|quoted|ordered|completed
     pricingProfileId: d
@@ -1071,7 +1014,6 @@ export const quoteItems = createTable(
     oneOffDisplayName: d.varchar({ length: 255 }),
     oneOffDescription: d.text(),
     oneOffMaterial: d.varchar({ length: 100 }),
-    oneOffPartType: d.varchar({ length: 100 }),
     oneOffSizeNominal: d.numeric({ precision: 12, scale: 6 }),
     oneOffSizeUnitId: d
       .uuid()
@@ -1087,10 +1029,23 @@ export const quoteItems = createTable(
 
     descriptionSnapshot: d.text(),
     notes: d.text(),
+    addedByUserId: d.varchar({ length: 255 }).references(() => users.id, {
+      onDelete: "set null",
+    }),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .notNull()
+      .$defaultFn(() => new Date()),
+    updatedAt: d
+      .timestamp({ withTimezone: true })
+      .notNull()
+      .$defaultFn(() => new Date())
+      .$onUpdate(() => new Date()),
   }),
   (t) => [
     index("quote_item_quote_idx").on(t.quoteId),
     index("quote_item_part_idx").on(t.partDefinitionId),
+    index("quote_item_added_by_idx").on(t.addedByUserId),
   ],
 );
 
@@ -1113,6 +1068,10 @@ export const quoteItemsRelations = relations(quoteItems, ({ one }) => ({
     fields: [quoteItems.uomId],
     references: [units.id],
     relationName: "qi_uom",
+  }),
+  addedBy: one(users, {
+    fields: [quoteItems.addedByUserId],
+    references: [users.id],
   }),
 }));
 
@@ -1138,6 +1097,9 @@ export const orders = createTable(
       .uuid()
       .notNull()
       .references(() => jobs.id, { onDelete: "cascade" }),
+    materialListId: d
+      .uuid()
+      .references(() => materialLists.id, { onDelete: "set null" }),
 
     orderNumber: d.varchar({ length: 100 }),
 
@@ -1164,6 +1126,8 @@ export const orders = createTable(
   }),
   (t) => [
     index("order_job_idx").on(t.jobId),
+    // @ts-expect-error - Drizzle type inference limitation with nullable columns
+    index("order_material_list_idx").on(t.materialListId as any),
     index("order_supplier_idx").on(t.supplierId),
     index("order_org_idx").on(t.organizationId),
   ],
@@ -1175,6 +1139,10 @@ export const ordersRelations = relations(orders, ({ one, many }) => ({
     references: [organizations.id],
   }),
   job: one(jobs, { fields: [orders.jobId], references: [jobs.id] }),
+  materialList: one(materialLists, {
+    fields: [orders.materialListId],
+    references: [materialLists.id],
+  }),
   supplier: one(suppliers, {
     fields: [orders.supplierId],
     references: [suppliers.id],

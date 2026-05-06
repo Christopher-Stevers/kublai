@@ -34,6 +34,7 @@ export interface OfflineCataloguePart {
   material: string | null;
   materialId: string | null;
   size: string | null;
+  sizeLabel?: string | null;
   sizeNominal: string | number | null;
   sizeUnit: string | null;
   catalogId: string;

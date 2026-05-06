@@ -13,6 +13,7 @@ import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { CheckIcon, StarIcon, PlusIcon, SearchIcon, ChevronDownIcon } from "lucide-react";
 import { SupplierFormDialog } from "~/components/suppliers/SupplierFormDialog";
+import { useOnlineStatus } from "~/hooks/use-online-status";
 
 interface PartSuppliersDropdownProps {
   partDefinitionId: string;
@@ -43,16 +44,17 @@ export function PartSuppliersDropdown({
   }, [searchQuery]);
 
   const utils = api.useUtils();
+  const isOnline = useOnlineStatus();
 
   // Get suppliers for this part
   const { data: supplierParts } = api.supplier.getSupplierPartsByPart.useQuery(
     { partDefinitionId },
-    { enabled: isDropdownOpen && !!partDefinitionId },
+    { enabled: isOnline && isDropdownOpen && !!partDefinitionId },
   );
 
   // Get all suppliers
   const { data: allSuppliers } = api.supplier.list.useQuery(undefined, {
-    enabled: isDropdownOpen,
+    enabled: isOnline && isDropdownOpen,
   });
 
   // Add supplier mutation

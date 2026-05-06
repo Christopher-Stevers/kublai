@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { api } from "~/trpc/react";
+import { useOfflineMaterialListSyncRunner } from "~/hooks/use-offline-material-list-sync";
 import {
   Dialog,
   DialogContent,
@@ -13,6 +14,7 @@ import {
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Textarea } from "~/components/ui/textarea";
+import { useOnlineStatus } from "~/hooks/use-online-status";
 
 interface QuotePreviewSheetProps {
   open: boolean;
@@ -32,17 +34,20 @@ export function QuotePreviewSheet({
   const [markupPercent, setMarkupPercent] = useState(30);
   const [isEditingMarkup, setIsEditingMarkup] = useState(false);
   const [notes, setNotes] = useState("");
+  const [syncError, setSyncError] = useState<string | null>(null);
 
   const utils = api.useUtils();
+  const isOnline = useOnlineStatus();
+  const syncOfflineChanges = useOfflineMaterialListSyncRunner();
   const { data: materialList } = api.materialList.getMaterialList.useQuery(
     { materialListId },
-    { enabled: open && !!materialListId && !providedQuoteId },
+    { enabled: isOnline && open && !!materialListId && !providedQuoteId },
   );
 
   // Load existing quote if quoteId is provided
   const { data: existingQuote } = api.materialList.getQuoteById.useQuery(
     { quoteId: providedQuoteId ?? "" },
-    { enabled: open && !!providedQuoteId },
+    { enabled: isOnline && open && !!providedQuoteId },
   );
 
   // Load notes and markup from quote when available
@@ -108,20 +113,34 @@ export function QuotePreviewSheet({
       !providedQuoteId &&
       !generateQuote.isPending
     ) {
-      generateQuote.mutate({
-        materialListId,
-        markupPercent,
-        notes: notes.trim() || undefined,
-      });
+      void (async () => {
+        if (typeof window !== "undefined" && !window.navigator.onLine) {
+          setSyncError("Reconnect to sync offline changes before generating a quote.");
+          return;
+        }
+
+        const syncResult = await syncOfflineChanges();
+        if (syncResult.remaining > 0) {
+          setSyncError("Queued changes still need to sync before quote generation.");
+          return;
+        }
+
+        setSyncError(null);
+        generateQuote.mutate({
+          materialListId,
+          markupPercent,
+          notes: notes.trim() || undefined,
+        });
+      })();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, materialListId, markupPercent, providedQuoteId]);
+  }, [open, materialListId, markupPercent, notes, providedQuoteId, syncOfflineChanges]);
 
   // Get quote email content
   const quoteId = providedQuoteId ?? materialList?.quote.id;
   const { data: emailContent } = api.materialList.getQuoteEmailContent.useQuery(
     { quoteId: quoteId ?? "" },
-    { enabled: !!quoteId && open },
+    { enabled: isOnline && !!quoteId && open },
   );
 
   const handleEmailQuote = async () => {
@@ -151,7 +170,7 @@ export function QuotePreviewSheet({
   // If viewing existing quote, we need to get material list for items
   const { data: materialListForQuote } = api.materialList.getMaterialList.useQuery(
     { materialListId: existingQuote?.materialListId ?? materialListId },
-    { enabled: open && !!providedQuoteId && !!existingQuote?.materialListId },
+    { enabled: isOnline && open && !!providedQuoteId && !!existingQuote?.materialListId },
   );
 
   const displayMaterialList = providedQuoteId
@@ -188,6 +207,11 @@ export function QuotePreviewSheet({
         </DialogHeader>
 
         <div className="space-y-4 py-4">
+          {syncError && (
+            <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+              {syncError}
+            </div>
+          )}
           {/* Line Items */}
           {displayMaterialList && (
             <div>

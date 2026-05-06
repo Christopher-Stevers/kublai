@@ -1,0 +1,60 @@
+{
+  "name": "ForemanHQ",
+  "short_name": "ForemanHQ",
+  "description": "Offline-capable field workflow for trades foremen to manage jobs, material lists, quotes, and supplier orders.",
+  "id": "/dashboard",
+  "start_url": "/dashboard",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui", "browser"],
+  "orientation": "portrait-primary",
+  "background_color": "#f9fafb",
+  "theme_color": "#ffffff",
+  "categories": ["business", "productivity", "utilities"],
+  "icons": [
+    {
+      "src": "/foremanhq/android-chrome-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/foremanhq/android-chrome-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/foremanhq/android-chrome-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/foremanhq/android-chrome-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Dashboard",
+      "short_name": "Dashboard",
+      "url": "/dashboard",
+      "icons": [{ "src": "/foremanhq/android-chrome-192x192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Catalogue",
+      "short_name": "Catalogue",
+      "url": "/dashboard/catalogue",
+      "icons": [{ "src": "/foremanhq/android-chrome-192x192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Orders",
+      "short_name": "Orders",
+      "url": "/dashboard/orders",
+      "icons": [{ "src": "/foremanhq/android-chrome-192x192.png", "sizes": "192x192" }]
+    }
+  ]
+}

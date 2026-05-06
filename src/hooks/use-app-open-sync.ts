@@ -12,6 +12,7 @@ import {
   getOfflineMaterialListIds,
   setOfflineMaterialList,
 } from "~/lib/offline-material-list";
+import { getOfflineMutationQueue } from "~/lib/offline-material-list-mutations";
 
 const MIN_SYNC_INTERVAL_MS = 30_000;
 
@@ -58,32 +59,63 @@ export function useAppOpenSync() {
           parts,
         });
 
-        await Promise.all(
-          getOfflineJobDetailIds().map(async (jobId) => {
-            try {
-              const [job, materialLists] = await Promise.all([
-                utils.client.job.getJob.query({ jobId }),
-                utils.client.materialList.listMaterialLists.query({ jobId }),
-              ]);
-
-              utils.job.getJob.setData({ jobId }, job);
-              utils.materialList.listMaterialLists.setData({ jobId }, materialLists);
-              setOfflineJobDetail(jobId, { job, materialLists });
-            } catch (error) {
-              console.error("Failed to sync cached job detail", jobId, error);
-            }
-          }),
+        const jobIdsToCache = Array.from(
+          new Set([...jobs.map((job) => job.id), ...getOfflineJobDetailIds()]),
         );
+        const materialListIdsToCache = new Set<string>();
 
+        for (const jobId of jobIdsToCache) {
+          try {
+            const job = await utils.client.job.getJob.query({ jobId });
+            const materialLists = await utils.client.materialList.listMaterialLists.query({ jobId });
+
+            for (const materialList of materialLists) {
+              materialListIdsToCache.add(materialList.id);
+            }
+
+            utils.job.getJob.setData({ jobId }, job);
+            utils.materialList.listMaterialLists.setData({ jobId }, materialLists);
+            setOfflineJobDetail(jobId, { job, materialLists }, { notify: false });
+          } catch (error) {
+            console.error("Failed to sync cached job detail", jobId, error);
+          }
+        }
+
+        const materialListIds = Array.from(
+          new Set([...Array.from(materialListIdsToCache), ...(await getOfflineMaterialListIds())]),
+        );
         await Promise.all(
-          getOfflineMaterialListIds().map(async (materialListId) => {
+          materialListIds.map(async (materialListId) => {
             try {
               const materialList = await utils.client.materialList.getMaterialList.query({ materialListId });
-              const cached = getOfflineMaterialList(materialListId);
+              const cached = await getOfflineMaterialList(materialListId);
+
+              if (cached?.pendingSync && cached.data) {
+                const queue = await getOfflineMutationQueue();
+                const hasQueuedChangesForList = queue.some(
+                  (mutation) => mutation.materialListId === materialListId,
+                );
+                const hasPendingDeletedItems =
+                  (cached.pendingDeletedItemIds?.length ?? 0) > 0;
+
+                if (!hasQueuedChangesForList && !hasPendingDeletedItems) {
+                  utils.materialList.getMaterialList.setData({ materialListId }, materialList);
+                  await setOfflineMaterialList(materialListId, materialList, {
+                    pendingSync: false,
+                  });
+                  return;
+                }
+
+                utils.materialList.getMaterialList.setData(
+                  { materialListId },
+                  cached.data as typeof materialList,
+                );
+                return;
+              }
 
               utils.materialList.getMaterialList.setData({ materialListId }, materialList);
-              setOfflineMaterialList(materialListId, materialList, {
-                pendingSync: cached?.pendingSync ?? false,
+              await setOfflineMaterialList(materialListId, materialList, {
+                pendingSync: false,
               });
             } catch (error) {
               console.error("Failed to sync cached material list", materialListId, error);
@@ -119,4 +151,3 @@ export function useAppOpenSync() {
     };
   }, [utils]);
 }
-

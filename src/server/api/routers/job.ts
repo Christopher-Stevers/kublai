@@ -27,16 +27,24 @@ export const jobRouter = createTRPCRouter({
       .select({
         id: jobs.id,
         name: jobs.name,
+        poNumber: jobs.poNumber,
         locationId: jobs.locationId,
+        foremanName: jobs.foremanName,
         status: jobs.status,
         createdAt: jobs.createdAt,
         location: {
           id: locations.id,
           name: locations.name,
+          address1: locations.address1,
+          address2: locations.address2,
+          city: locations.city,
+          region: locations.region,
+          postalCode: locations.postalCode,
+          country: locations.country,
         },
         foreman: {
           id: users.id,
-          name: users.name,
+          name: sql<string>`coalesce(${jobs.foremanName}, ${users.name})`,
         },
         materialListCount: sql<number>`(
           SELECT COUNT(*)::int 
@@ -71,17 +79,25 @@ export const jobRouter = createTRPCRouter({
         .select({
           id: jobs.id,
           name: jobs.name,
+          poNumber: jobs.poNumber,
           locationId: jobs.locationId,
           foremanUserId: jobs.foremanUserId,
+          foremanName: jobs.foremanName,
           status: jobs.status,
           createdAt: jobs.createdAt,
           location: {
             id: locations.id,
             name: locations.name,
+            address1: locations.address1,
+            address2: locations.address2,
+            city: locations.city,
+            region: locations.region,
+            postalCode: locations.postalCode,
+            country: locations.country,
           },
           foreman: {
             id: users.id,
-            name: users.name,
+            name: sql<string>`coalesce(${jobs.foremanName}, ${users.name})`,
           },
         })
         .from(jobs)
@@ -173,7 +189,9 @@ export const jobRouter = createTRPCRouter({
         jobId: z.string().uuid(),
         name: z.string().min(1).optional(),
         locationId: z.string().uuid().nullable().optional(),
+        poNumber: z.string().trim().nullable().optional(),
         foremanUserId: z.string().optional(),
+        foremanName: z.string().trim().nullable().optional(),
         status: z.string().optional(),
       }),
     )
@@ -186,6 +204,12 @@ export const jobRouter = createTRPCRouter({
       }
 
       const { jobId, ...updates } = input;
+      if (updates.foremanName !== undefined) {
+        updates.foremanName = updates.foremanName?.trim() || null;
+      }
+      if (updates.poNumber !== undefined) {
+        updates.poNumber = updates.poNumber?.trim() || null;
+      }
 
       // Verify job belongs to organization
       const [existingJob] = await ctx.db
@@ -213,6 +237,47 @@ export const jobRouter = createTRPCRouter({
         .returning();
 
       return updatedJob;
+    }),
+
+  /**
+   * Delete a job and its related material lists, quotes, and orders.
+   */
+  deleteJob: hasDashboardAccess
+    .input(z.object({ jobId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      if (!ctx.user.organizationId) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "User must belong to an organization",
+        });
+      }
+
+      const [existingJob] = await ctx.db
+        .select({ id: jobs.id })
+        .from(jobs)
+        .where(
+          and(
+            eq(jobs.id, input.jobId),
+            eq(jobs.organizationId, ctx.user.organizationId),
+          ),
+        )
+        .limit(1);
+
+      if (!existingJob) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Job not found",
+        });
+      }
+
+      await ctx.db
+        .update(users)
+        .set({ currentJobId: null })
+        .where(eq(users.currentJobId, input.jobId));
+
+      await ctx.db.delete(jobs).where(eq(jobs.id, input.jobId));
+
+      return { success: true };
     }),
 
   /**
@@ -352,4 +417,3 @@ export const jobRouter = createTRPCRouter({
     };
   }),
 });
-

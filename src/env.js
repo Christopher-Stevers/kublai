@@ -9,6 +9,7 @@ export const env = createEnv({
   client: {
     NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: z.string(),
     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: z.string(),
+    NEXT_PUBLIC_ENABLE_OFFLINE_TEST_TOGGLE: z.enum(["true", "false"]).optional(),
   },
   server: {
     DATABASE_URL: z.string().url(),
@@ -30,6 +31,8 @@ export const env = createEnv({
     CAP_PROD_URL: z.string().url().optional(),
     CAP_DEV_URL: z.string().url().optional(),
     CAP_MODE: z.enum(["dev", "prod"]).optional(),
+    FOREMENHQ_AGENT_AUTH_BYPASS: z.enum(["true", "false"]).optional(),
+    FOREMENHQ_AGENT_AUTH_SECRET: z.string().min(32).optional(),
     NODE_ENV: z
       .enum(["development", "test", "production"])
       .default("development"),
@@ -50,6 +53,8 @@ export const env = createEnv({
       process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,
     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:
       process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
+    NEXT_PUBLIC_ENABLE_OFFLINE_TEST_TOGGLE:
+      process.env.NEXT_PUBLIC_ENABLE_OFFLINE_TEST_TOGGLE,
     DATABASE_URL: process.env.DATABASE_URL,
     STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY,
     STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET,
@@ -69,6 +74,8 @@ export const env = createEnv({
     CAP_PROD_URL: process.env.CAP_PROD_URL,
     CAP_DEV_URL: process.env.CAP_DEV_URL,
     CAP_MODE: process.env.CAP_MODE,
+    FOREMENHQ_AGENT_AUTH_BYPASS: process.env.FOREMENHQ_AGENT_AUTH_BYPASS,
+    FOREMENHQ_AGENT_AUTH_SECRET: process.env.FOREMENHQ_AGENT_AUTH_SECRET,
     NODE_ENV: process.env.NODE_ENV,
   },
   /**

@@ -98,8 +98,8 @@ export function MaterialListNameModal({
     }
 
     if (typeof window !== "undefined" && !window.navigator.onLine) {
-      applyOfflineRenameMaterialList(materialListId, trimmedName);
-      enqueueOfflineMutation({
+      void applyOfflineRenameMaterialList(materialListId, trimmedName);
+      void enqueueOfflineMutation({
         type: "renameMaterialList",
         materialListId,
         name: trimmedName,

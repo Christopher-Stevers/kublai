@@ -211,7 +211,7 @@ async function migratePartDefinitionSizeToSizeId() {
     `;
     await connection`
       CREATE INDEX IF NOT EXISTS part_def_facets_idx 
-      ON kublai_part_definition(part_type_id, material_id, size_id)
+      ON kublai_part_definition(material_id, size_id)
     `;
     await connection`
       CREATE INDEX IF NOT EXISTS part_def_size_idx 

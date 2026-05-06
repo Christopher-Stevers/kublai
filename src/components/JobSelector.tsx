@@ -11,11 +11,17 @@ import {
 } from "~/components/ui/dropdown-menu";
 import { Button } from "~/components/ui/button";
 import { BriefcaseIcon, ChevronDownIcon } from "lucide-react";
+import { useOnlineStatus } from "~/hooks/use-online-status";
 
 export function JobSelector() {
   const utils = api.useUtils();
-  const { data: currentJob } = api.job.getCurrentJob.useQuery();
-  const { data: jobs } = api.job.listJobs.useQuery();
+  const isOnline = useOnlineStatus();
+  const { data: currentJob } = api.job.getCurrentJob.useQuery(undefined, {
+    enabled: isOnline,
+  });
+  const { data: jobs } = api.job.listJobs.useQuery(undefined, {
+    enabled: isOnline,
+  });
   const setCurrentJob = api.job.setCurrentJob.useMutation({
     onMutate: async (variables) => {
       // Cancel outgoing refetches

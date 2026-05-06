@@ -62,6 +62,20 @@
       "when": 1771621200000,
       "tag": "0008_plumbing_catalog",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1777343315516,
+      "tag": "0009_sloppy_red_shift",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1777432279496,
+      "tag": "0010_left_joseph",
+      "breakpoints": true
     }
   ]
 }

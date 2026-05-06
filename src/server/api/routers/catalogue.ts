@@ -24,51 +24,28 @@ import {
   suppliers,
   materials,
   sizes,
-  partTypes,
+  quoteItems,
+  orderItems,
 } from "~/server/db/schema";
 
-import { formatSize, parseSizeInput } from "~/lib/size-utils";
+import { formatSize, formatSizeDimensions, generatePartDisplayName, parseSizeInput } from "~/lib/size-utils";
 
 // Helper function to find or create a size record
 async function findOrCreateSize(
   db: Parameters<Parameters<typeof hasDashboardAccess.query>[0]>[0]["ctx"]["db"],
   organizationId: string,
-  sizeNominal: number | null | undefined,
+  sizeNominal: number | string | null | undefined,
   sizeUnitId: string | null | undefined,
 ): Promise<string | null> {
-  if (!sizeNominal || !sizeUnitId) {
-    // If no size provided, find or create a default "no size" size (nominal=0)
-    const [defaultSize] = await db
-      .select()
-      .from(sizes)
-      .where(
-        and(
-          eq(sizes.organizationId, organizationId),
-          eq(sizes.nominal, "0"),
-        ),
-      )
-      .limit(1);
+  if (sizeNominal === undefined || sizeNominal === null || sizeNominal === "" || !sizeUnitId) {
+    return null;
+  }
 
-    if (defaultSize) {
-      return defaultSize.id;
-    }
+  const parsedSizeNominal =
+    typeof sizeNominal === "string" ? parseSizeInput(sizeNominal.split(/\s*(?:x|×)\s*/i)[0] ?? "") : sizeNominal;
 
-    // Get a default unit (first unit in the system)
-    const [defaultUnit] = await db.select().from(units).limit(1);
-    if (!defaultUnit) {
-      throw new Error("No units found in database");
-    }
-
-    const [newDefaultSize] = await db
-      .insert(sizes)
-      .values({
-        organizationId,
-        nominal: "0",
-        unitId: defaultUnit.id,
-      })
-      .returning();
-
-    return newDefaultSize?.id ?? null;
+  if (parsedSizeNominal === null || parsedSizeNominal === undefined || Number.isNaN(parsedSizeNominal)) {
+    return null;
   }
 
   // Find existing size
@@ -78,7 +55,7 @@ async function findOrCreateSize(
     .where(
       and(
         eq(sizes.organizationId, organizationId),
-        eq(sizes.nominal, sizeNominal.toString()),
+        eq(sizes.nominal, parsedSizeNominal.toString()),
         eq(sizes.unitId, sizeUnitId),
       ),
     )
@@ -93,7 +70,7 @@ async function findOrCreateSize(
     .insert(sizes)
     .values({
       organizationId,
-      nominal: sizeNominal.toString(),
+      nominal: parsedSizeNominal.toString(),
       unitId: sizeUnitId,
     })
     .returning();
@@ -311,10 +288,9 @@ export const catalogueRouter = createTRPCRouter({
           id: partDefinitions.id,
           displayName: partDefinitions.displayName,
           imageUrl: partDefinitions.imageUrl,
+          sizeLabel: partDefinitions.sizeLabel,
           materialId: partDefinitions.materialId,
           materialName: materials.name,
-          partTypeId: partDefinitions.partTypeId,
-          partTypeName: partTypes.name,
           sizeNominal: sizes.nominal,
           sizeUnitId: sizes.unitId,
           catalogId: partDefinitions.catalogId,
@@ -326,7 +302,6 @@ export const catalogueRouter = createTRPCRouter({
         .leftJoin(sizes, eq(partDefinitions.sizeId, sizes.id))
         .leftJoin(units, eq(sizes.unitId, units.id))
         .leftJoin(materials, eq(partDefinitions.materialId, materials.id))
-        .leftJoin(partTypes, eq(partDefinitions.partTypeId, partTypes.id))
         .where(and(...conditions));
 
       // Sort: org-specific first, then global, then by name
@@ -344,10 +319,12 @@ export const catalogueRouter = createTRPCRouter({
         displayName: part.displayName,
         imageUrl: part.imageUrl,
         material: part.materialName,
-        size:
+        size: part.sizeLabel ?? (
           part.sizeNominal && part.sizeUnitCode
             ? formatSize(Number(part.sizeNominal), part.sizeUnitCode)
-            : null,
+            : null
+        ),
+        sizeLabel: part.sizeLabel,
         sizeNominal: part.sizeNominal,
         sizeUnit: part.sizeUnitCode,
         catalogId: part.catalogId,
@@ -358,7 +335,7 @@ export const catalogueRouter = createTRPCRouter({
 
   /**
    * Faceted search with full filtering support
-   * Supports: text search, category, partType, material, size (normalized), and attributes
+   * Supports: text search, category, category, material, size (normalized), and attributes
    */
   searchParts: hasDashboardAccess
     .input(
@@ -369,10 +346,9 @@ export const catalogueRouter = createTRPCRouter({
         // Category filter (works with search or alone)
         categoryId: z.string().uuid().nullable().optional(),
         // Normalized filters
-        partTypeId: z.string().uuid().optional(),
         materialId: z.string().uuid().optional(),
         // Size filtering (normalized)
-        sizeNominal: z.number().optional(), // Normalized value (0.5 for 1/2)
+        sizeNominal: z.number().optional(), // Primary normalized value (0.5 for 1/2)
         sizeUnit: z.string().optional(), // "in", "mm", etc.
         sizeTolerance: z.number().optional().default(0.01), // For range matching
         // Attribute filters (MVP: volume, flow_rate)
@@ -405,10 +381,6 @@ export const catalogueRouter = createTRPCRouter({
       }
 
       // Part type filter
-      if (input.partTypeId) {
-        conditions.push(eq(partDefinitions.partTypeId, input.partTypeId));
-      }
-
       // Material filter
       if (input.materialId) {
         conditions.push(eq(partDefinitions.materialId, input.materialId));
@@ -546,10 +518,9 @@ export const catalogueRouter = createTRPCRouter({
           displayName: partDefinitions.displayName,
           description: partDefinitions.description,
           imageUrl: partDefinitions.imageUrl,
+          sizeLabel: partDefinitions.sizeLabel,
           materialId: partDefinitions.materialId,
           materialName: materials.name,
-          partTypeId: partDefinitions.partTypeId,
-          partTypeName: partTypes.name,
           sizeNominal: sizes.nominal,
           sizeUnitId: sizes.unitId,
           catalogId: partDefinitions.catalogId,
@@ -561,7 +532,6 @@ export const catalogueRouter = createTRPCRouter({
         .leftJoin(sizes, eq(partDefinitions.sizeId, sizes.id))
         .leftJoin(units, eq(sizes.unitId, units.id))
         .leftJoin(materials, eq(partDefinitions.materialId, materials.id))
-        .leftJoin(partTypes, eq(partDefinitions.partTypeId, partTypes.id))
         .where(
           and(
             ...conditions,
@@ -586,11 +556,12 @@ export const catalogueRouter = createTRPCRouter({
         imageUrl: part.imageUrl,
         material: part.materialName,
         materialId: part.materialId,
-        partType: part.partTypeName,
-        size:
+        size: part.sizeLabel ?? (
           part.sizeNominal && part.sizeUnitCode
             ? formatSize(Number(part.sizeNominal), part.sizeUnitCode)
-            : null,
+            : null
+        ),
+        sizeLabel: part.sizeLabel,
         sizeNominal: part.sizeNominal,
         sizeUnit: part.sizeUnitCode,
         catalogId: part.catalogId,
@@ -701,7 +672,7 @@ export const catalogueRouter = createTRPCRouter({
    * Derived from parent categories of parts
    * Can optionally filter by material and size
    */
-  getPartTypeCategories: hasDashboardAccess
+  getCategories: hasDashboardAccess
     .input(
       z
         .object({
@@ -825,163 +796,6 @@ export const catalogueRouter = createTRPCRouter({
           })),
       );
       return result;
-    }),
-
-  /**
-   * Get distinct part types for filter dropdown
-   * Combines part types from partTypes table and part definitions
-   * Can optionally filter by category
-   */
-  getPartTypes: hasDashboardAccess
-    .input(
-      z
-        .object({
-          category: z.string().optional(),
-        })
-        .optional(),
-    )
-    .query(async ({ ctx, input }) => {
-      const organizationId = ctx.user.organizationId;
-
-      // Get part types from partTypes table
-      const customPartTypes = organizationId
-        ? await ctx.db
-            .select({
-              name: partTypes.name,
-            })
-            .from(partTypes)
-            .where(eq(partTypes.organizationId, organizationId))
-            .orderBy(partTypes.name)
-        : [];
-
-      if (!organizationId) {
-        return [];
-      }
-
-      // Build conditions for part definitions query
-      const conditions = [
-        eq(partDefinitions.isActive, true),
-        eq(partDefinitions.organizationId, organizationId),
-        isNotNull(partDefinitions.partTypeId),
-      ];
-
-      // Filter by category if provided (direct match, no subcategories)
-      if (input?.category) {
-        const [category] = await ctx.db
-          .select()
-          .from(categories)
-          .where(
-            and(
-              eq(categories.name, input.category),
-              eq(categories.organizationId, organizationId),
-            ),
-          )
-          .limit(1);
-
-        if (category) {
-          conditions.push(eq(partDefinitions.categoryId, category.id));
-        }
-      }
-
-      // Get part types from part definitions (via join)
-      const partDefPartTypes = await ctx.db
-        .selectDistinct({
-          partTypeName: partTypes.name,
-        })
-        .from(partDefinitions)
-        .innerJoin(partTypes, eq(partDefinitions.partTypeId, partTypes.id))
-        .where(and(...conditions))
-        .orderBy(partTypes.name);
-
-      // Combine and deduplicate
-      const partTypeSet = new Set<string>();
-      for (const pt of customPartTypes) {
-        partTypeSet.add(pt.name);
-      }
-      for (const pt of partDefPartTypes) {
-        if (pt.partTypeName) {
-          partTypeSet.add(pt.partTypeName);
-        }
-      }
-
-      return Array.from(partTypeSet).sort();
-    }),
-
-  /**
-   * Get part types with IDs for lookup
-   */
-  getPartTypesWithIds: hasDashboardAccess.query(async ({ ctx }) => {
-    const organizationId = ctx.user.organizationId;
-
-    // Get part types from partTypes table
-    const customPartTypes = organizationId
-      ? await ctx.db
-          .select({
-            id: partTypes.id,
-            name: partTypes.name,
-          })
-          .from(partTypes)
-          .where(eq(partTypes.organizationId, organizationId))
-          .orderBy(partTypes.name)
-      : [];
-
-    // Get part types from part definitions (via join)
-    const partDefPartTypes = await ctx.db
-      .selectDistinct({
-        id: partTypes.id,
-        name: partTypes.name,
-      })
-      .from(partDefinitions)
-      .innerJoin(partTypes, eq(partDefinitions.partTypeId, partTypes.id))
-      .where(
-        and(
-          eq(partDefinitions.isActive, true),
-          isNotNull(partDefinitions.partTypeId),
-          eq(partDefinitions.organizationId, organizationId),
-        ),
-      )
-      .orderBy(partTypes.name);
-
-    // Combine and deduplicate by ID
-    const partTypeMap = new Map<string, { id: string; name: string }>();
-    for (const pt of customPartTypes) {
-      partTypeMap.set(pt.id, { id: pt.id, name: pt.name });
-    }
-    for (const pt of partDefPartTypes) {
-      partTypeMap.set(pt.id, { id: pt.id, name: pt.name });
-    }
-
-    return Array.from(partTypeMap.values()).sort((a, b) =>
-      a.name.localeCompare(b.name),
-    );
-  }),
-
-  /**
-   * Create a custom part type
-   */
-  createPartType: hasDashboardAccess
-    .input(z.object({ name: z.string().min(1).max(100) }))
-    .mutation(async ({ ctx, input }) => {
-      const organizationId = ctx.user.organizationId;
-
-      if (!organizationId) {
-        throw new Error("User must belong to an organization");
-      }
-      console.log(organizationId, input.name, "my name input");
-      try {
-        const [newPartType] = await ctx.db
-          .insert(partTypes)
-          .values({
-            organizationId: organizationId,
-            name: input.name.trim(),
-          })
-          .returning();
-
-        return newPartType;
-      } catch (error) {
-        console.error("Error creating part type:", error);
-        throw new Error("Failed to create part type");
-      }
     }),
 
   /**
@@ -1116,12 +930,12 @@ export const catalogueRouter = createTRPCRouter({
         .from(partDefinitions)
         .innerJoin(sizes, eq(partDefinitions.sizeId, sizes.id))
         .innerJoin(units, eq(sizes.unitId, units.id))
-        .where(and(...sizeConditions));
+        .where(and(...sizeConditions, isNotNull(partDefinitions.sizeId)));
 
       // For each unique size, count the parts that match
       const sizesWithCounts = uniqueSizes.map(async (size) => {
         const countConditions = [
-          eq(partDefinitions.sizeId, size.sizeId),
+          sql`${partDefinitions.sizeId} = ${size.sizeId}`,
           eq(partDefinitions.isActive, true),
           eq(partDefinitions.organizationId, organizationId),
         ];
@@ -1233,15 +1047,13 @@ export const catalogueRouter = createTRPCRouter({
           displayName: partDefinitions.displayName,
           description: partDefinitions.description,
           imageUrl: partDefinitions.imageUrl,
+          sizeLabel: partDefinitions.sizeLabel,
           catalogId: partDefinitions.catalogId,
           categoryId: partDefinitions.categoryId,
-          partTypeId: partDefinitions.partTypeId,
-          partTypeName: partTypes.name,
           materialId: partDefinitions.materialId,
           materialName: materials.name,
           sizeNominal: sizes.nominal,
           sizeUnitId: sizes.unitId,
-          defaultUomId: partDefinitions.defaultUomId,
           isActive: partDefinitions.isActive,
           organizationId: partDefinitions.organizationId,
           sizeUnitCode: units.code,
@@ -1251,7 +1063,6 @@ export const catalogueRouter = createTRPCRouter({
         .leftJoin(sizes, eq(partDefinitions.sizeId, sizes.id))
         .leftJoin(units, eq(sizes.unitId, units.id))
         .leftJoin(materials, eq(partDefinitions.materialId, materials.id))
-        .leftJoin(partTypes, eq(partDefinitions.partTypeId, partTypes.id))
         .where(
           and(
             eq(partDefinitions.id, input.partId),
@@ -1266,20 +1077,11 @@ export const catalogueRouter = createTRPCRouter({
         throw new Error("Part not found");
       }
 
-      // Get default UOM separately
-      let defaultUom = null;
-      if (part.defaultUomId) {
-        const [uom] = await ctx.db
-          .select({
-            id: units.id,
-            code: units.code,
-            displayName: units.displayName,
-          })
-          .from(units)
-          .where(eq(units.id, part.defaultUomId))
-          .limit(1);
-        defaultUom = uom ?? null;
-      }
+      const aliases = await ctx.db
+        .select({ id: partSynonyms.id, synonym: partSynonyms.synonym })
+        .from(partSynonyms)
+        .where(eq(partSynonyms.partDefinitionId, input.partId))
+        .orderBy(partSynonyms.synonym);
 
       return {
         id: part.id,
@@ -1288,11 +1090,10 @@ export const catalogueRouter = createTRPCRouter({
         imageUrl: part.imageUrl,
         catalogId: part.catalogId,
         categoryId: part.categoryId,
-        partType: part.partTypeName,
         material: part.materialName,
         sizeNominal: part.sizeNominal,
+        sizeLabel: part.sizeLabel,
         sizeUnitId: part.sizeUnitId,
-        defaultUomId: part.defaultUomId,
         isActive: part.isActive,
         isOrgSpecific: part.organizationId === organizationId,
         sizeUnit: part.sizeUnitId
@@ -1302,7 +1103,7 @@ export const catalogueRouter = createTRPCRouter({
               displayName: part.sizeUnitDisplayName,
             }
           : null,
-        defaultUom,
+        aliases,
       };
     }),
 
@@ -1318,12 +1119,12 @@ export const catalogueRouter = createTRPCRouter({
         imageUrl: z.string().optional().nullable(),
         catalogId: z.string().uuid().optional(),
         categoryId: z.string().uuid().optional().nullable(),
-        partTypeId: z.string().uuid().optional().nullable(),
         materialId: z.string().uuid().optional().nullable(),
         sizeNominal: z.number().optional().nullable(),
+        sizeLabel: z.string().optional().nullable(),
         sizeUnitId: z.string().uuid().optional().nullable(),
-        defaultUomId: z.string().uuid().optional().nullable(),
         isActive: z.boolean().optional(),
+        aliases: z.array(z.string().min(1).max(255)).optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -1421,10 +1222,9 @@ export const catalogueRouter = createTRPCRouter({
             displayName: input.displayName ?? originalPart.displayName,
             description: input.description ?? originalPart.description,
             imageUrl: input.imageUrl ?? originalPart.imageUrl,
-            partTypeId: input.partTypeId ?? originalPart.partTypeId,
+            sizeLabel: input.sizeLabel?.trim() || originalPart.sizeLabel,
             materialId: input.materialId ?? originalPart.materialId,
             sizeId: finalSizeId,
-            defaultUomId: input.defaultUomId ?? originalPart.defaultUomId,
             isActive: input.isActive ?? originalPart.isActive,
           })
           .returning();
@@ -1439,17 +1239,14 @@ export const catalogueRouter = createTRPCRouter({
       if (input.description !== undefined)
         updateData.description = input.description;
       if (input.imageUrl !== undefined) updateData.imageUrl = input.imageUrl;
+      if (input.sizeLabel !== undefined) updateData.sizeLabel = input.sizeLabel?.trim() || null;
       if (input.catalogId !== undefined)
         updateData.catalogId = input.catalogId;
       if (input.categoryId !== undefined)
         updateData.categoryId = input.categoryId;
-      if (input.partTypeId !== undefined)
-        updateData.partTypeId = input.partTypeId;
       if (input.materialId !== undefined)
         updateData.materialId = input.materialId;
       if (sizeId !== null) updateData.sizeId = sizeId;
-      if (input.defaultUomId !== undefined)
-        updateData.defaultUomId = input.defaultUomId;
       if (input.isActive !== undefined) updateData.isActive = input.isActive;
 
       const [updated] = await ctx.db
@@ -1462,7 +1259,185 @@ export const catalogueRouter = createTRPCRouter({
         throw new Error("Failed to update part");
       }
 
+      if (input.aliases !== undefined) {
+        const normalizedAliases = Array.from(
+          new Set(
+            input.aliases
+              .map((alias) => alias.trim())
+              .filter((alias) => alias.length > 0)
+              .map((alias) => alias.slice(0, 255)),
+          ),
+        );
+
+        await ctx.db
+          .delete(partSynonyms)
+          .where(eq(partSynonyms.partDefinitionId, updated.id));
+
+        if (normalizedAliases.length > 0) {
+          await ctx.db.insert(partSynonyms).values(
+            normalizedAliases.map((synonym) => ({
+              partDefinitionId: updated.id,
+              synonym,
+            })),
+          );
+        }
+      }
+
       return updated;
+    }),
+
+  findDuplicateCandidates: hasDashboardAccess
+    .input(z.object({ partId: z.string().uuid(), limit: z.number().min(1).max(20).default(8) }))
+    .query(async ({ ctx, input }) => {
+      const organizationId = ctx.user.organizationId;
+      if (!organizationId) return [];
+
+      const [part] = await ctx.db
+        .select({
+          id: partDefinitions.id,
+          displayName: partDefinitions.displayName,
+          catalogId: partDefinitions.catalogId,
+          categoryId: partDefinitions.categoryId,
+          materialId: partDefinitions.materialId,
+          sizeId: partDefinitions.sizeId,
+        })
+        .from(partDefinitions)
+        .where(and(eq(partDefinitions.id, input.partId), eq(partDefinitions.organizationId, organizationId)))
+        .limit(1);
+
+      if (!part) return [];
+
+      const exactName = part.displayName.trim().toLowerCase();
+      const looseName = `%${part.displayName.trim().replace(/\s+/g, "%")}%`;
+
+      const candidates = await ctx.db
+        .select({
+          id: partDefinitions.id,
+          displayName: partDefinitions.displayName,
+          description: partDefinitions.description,
+          imageUrl: partDefinitions.imageUrl,
+          sizeLabel: partDefinitions.sizeLabel,
+          materialName: materials.name,
+          sizeNominal: sizes.nominal,
+          sizeUnitCode: units.code,
+          catalogId: partDefinitions.catalogId,
+          categoryId: partDefinitions.categoryId,
+          materialId: partDefinitions.materialId,
+          sizeId: partDefinitions.sizeId,
+        })
+        .from(partDefinitions)
+        .leftJoin(materials, eq(partDefinitions.materialId, materials.id))
+        .leftJoin(sizes, eq(partDefinitions.sizeId, sizes.id))
+        .leftJoin(units, eq(sizes.unitId, units.id))
+        .where(
+          and(
+            eq(partDefinitions.organizationId, organizationId),
+            eq(partDefinitions.isActive, true),
+            sql`${partDefinitions.id} <> ${input.partId}`,
+            or(
+              sql`lower(${partDefinitions.displayName}) = ${exactName}`,
+              and(
+                eq(partDefinitions.catalogId, part.catalogId),
+                part.categoryId ? eq(partDefinitions.categoryId, part.categoryId) : isNull(partDefinitions.categoryId),
+                part.materialId ? eq(partDefinitions.materialId, part.materialId) : isNull(partDefinitions.materialId),
+                part.sizeId ? eq(partDefinitions.sizeId, part.sizeId) : isNull(partDefinitions.sizeId),
+              ),
+              ilike(partDefinitions.displayName, looseName),
+            ),
+          ),
+        )
+        .limit(input.limit);
+
+      return candidates.map((candidate) => ({
+        id: candidate.id,
+        displayName: candidate.displayName,
+        description: candidate.description,
+        imageUrl: candidate.imageUrl,
+        material: candidate.materialName,
+        size: candidate.sizeLabel ?? (
+          candidate.sizeNominal && candidate.sizeUnitCode
+            ? formatSize(Number(candidate.sizeNominal), candidate.sizeUnitCode)
+            : null
+        ),
+        sizeLabel: candidate.sizeLabel,
+        reasons: [
+          candidate.displayName.trim().toLowerCase() === exactName ? "same name" : null,
+          candidate.catalogId === part.catalogId && candidate.categoryId === part.categoryId ? "same category" : null,
+          candidate.materialId === part.materialId ? "same material" : null,
+          candidate.sizeId === part.sizeId ? "same size" : null,
+        ].filter((reason): reason is string => !!reason),
+      }));
+    }),
+
+  mergeDuplicatePart: hasDashboardAccess
+    .input(z.object({ sourcePartId: z.string().uuid(), targetPartId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      const organizationId = ctx.user.organizationId;
+      if (!organizationId) {
+        throw new Error("User must belong to an organization");
+      }
+
+      if (input.sourcePartId === input.targetPartId) {
+        throw new Error("Choose two different parts to merge");
+      }
+
+      const parts = await ctx.db
+        .select({ id: partDefinitions.id, displayName: partDefinitions.displayName })
+        .from(partDefinitions)
+        .where(
+          and(
+            eq(partDefinitions.organizationId, organizationId),
+            inArray(partDefinitions.id, [input.sourcePartId, input.targetPartId]),
+          ),
+        );
+
+      const source = parts.find((part) => part.id === input.sourcePartId);
+      const target = parts.find((part) => part.id === input.targetPartId);
+      if (!source || !target) {
+        throw new Error("Both parts must exist in your organization");
+      }
+
+      await ctx.db
+        .update(quoteItems)
+        .set({ partDefinitionId: input.targetPartId })
+        .where(eq(quoteItems.partDefinitionId, input.sourcePartId));
+
+      await ctx.db
+        .update(orderItems)
+        .set({ partDefinitionId: input.targetPartId })
+        .where(eq(orderItems.partDefinitionId, input.sourcePartId));
+
+      await ctx.db
+        .update(supplierParts)
+        .set({ partDefinitionId: input.targetPartId })
+        .where(eq(supplierParts.partDefinitionId, input.sourcePartId));
+
+      const sourceAliases = await ctx.db
+        .select({ synonym: partSynonyms.synonym })
+        .from(partSynonyms)
+        .where(eq(partSynonyms.partDefinitionId, input.sourcePartId));
+
+      const targetAliases = await ctx.db
+        .select({ synonym: partSynonyms.synonym })
+        .from(partSynonyms)
+        .where(eq(partSynonyms.partDefinitionId, input.targetPartId));
+
+      const existingAliasSet = new Set(targetAliases.map((alias) => alias.synonym.trim().toLowerCase()));
+      const mergedAliases = [source.displayName, ...sourceAliases.map((alias) => alias.synonym)]
+        .map((alias) => alias.trim())
+        .filter((alias) => alias && !existingAliasSet.has(alias.toLowerCase()))
+        .map((synonym) => ({ partDefinitionId: input.targetPartId, synonym }));
+
+      if (mergedAliases.length > 0) {
+        await ctx.db.insert(partSynonyms).values(mergedAliases);
+      }
+
+      await ctx.db
+        .update(partDefinitions)
+        .set({ isActive: false })
+        .where(eq(partDefinitions.id, input.sourcePartId));
+
+      return { mergedPartId: input.sourcePartId, targetPartId: input.targetPartId };
     }),
 
   /**
@@ -1591,6 +1566,275 @@ export const catalogueRouter = createTRPCRouter({
     return newCategory.id;
   }),
 
+  exportCatalogueRows: hasDashboardAccess.query(async ({ ctx }) => {
+    const organizationId = ctx.user.organizationId;
+
+    if (!organizationId) {
+      throw new Error("User must belong to an organization");
+    }
+
+    const rows = await ctx.db
+      .select({
+        partId: partDefinitions.id,
+        catalogName: catalogs.name,
+        categoryName: categories.name,
+        materialName: materials.name,
+        displayName: partDefinitions.displayName,
+        description: partDefinitions.description,
+        sizeNominal: sizes.nominal,
+        sizeLabel: partDefinitions.sizeLabel,
+        sizeUnitCode: units.code,
+        imageUrl: partDefinitions.imageUrl,
+        isActive: partDefinitions.isActive,
+      })
+      .from(partDefinitions)
+      .innerJoin(catalogs, eq(partDefinitions.catalogId, catalogs.id))
+      .leftJoin(categories, eq(partDefinitions.categoryId, categories.id))
+      .leftJoin(materials, eq(partDefinitions.materialId, materials.id))
+      .leftJoin(sizes, eq(partDefinitions.sizeId, sizes.id))
+      .leftJoin(units, eq(sizes.unitId, units.id))
+      .where(eq(partDefinitions.organizationId, organizationId))
+      .orderBy(catalogs.sortOrder, categories.sortOrder, partDefinitions.displayName);
+
+    const aliases = rows.length
+      ? await ctx.db
+          .select({ partDefinitionId: partSynonyms.partDefinitionId, synonym: partSynonyms.synonym })
+          .from(partSynonyms)
+          .where(inArray(partSynonyms.partDefinitionId, rows.map((row) => row.partId)))
+      : [];
+
+    const aliasesByPartId = new Map<string, string[]>();
+    for (const alias of aliases) {
+      aliasesByPartId.set(alias.partDefinitionId, [
+        ...(aliasesByPartId.get(alias.partDefinitionId) ?? []),
+        alias.synonym,
+      ]);
+    }
+
+    return rows.map((row) => ({
+      partId: row.partId,
+      catalog: row.catalogName,
+      category: row.categoryName ?? "",
+      material: row.materialName ?? "",
+      displayName: row.displayName,
+      description: row.description ?? "",
+      sizeNominal: row.sizeLabel ?? (
+        row.sizeNominal !== null && row.sizeNominal !== undefined
+          ? Number(row.sizeNominal)
+          : null
+      ),
+      sizeUnit: row.sizeUnitCode ?? "",
+      imageUrl: row.imageUrl ?? "",
+      aliases: (aliasesByPartId.get(row.partId) ?? []).join("; "),
+      isActive: row.isActive,
+    }));
+  }),
+
+  importCatalogueRows: hasDashboardAccess
+    .input(
+      z.object({
+        rows: z.array(
+          z.object({
+            partId: z.string().uuid().optional().nullable(),
+            catalog: z.string(),
+            category: z.string().optional().nullable(),
+            material: z.string().optional().nullable(),
+            displayName: z.string().optional().default(""),
+            description: z.string().optional().nullable(),
+            sizeNominal: z.union([z.number(), z.string()]).optional().nullable(),
+            sizeUnit: z.string().optional().nullable(),
+            imageUrl: z.string().optional().nullable(),
+            aliases: z.string().optional().nullable(),
+            isActive: z.boolean().optional(),
+          }),
+        ),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const organizationId = ctx.user.organizationId;
+
+      if (!organizationId) {
+        throw new Error("User must belong to an organization");
+      }
+
+      const [existingCatalogs, existingCategories, existingMaterials, allUnits, existingParts] =
+        await Promise.all([
+          ctx.db.select().from(catalogs).where(eq(catalogs.organizationId, organizationId)),
+          ctx.db.select().from(categories).where(eq(categories.organizationId, organizationId)),
+          ctx.db.select().from(materials).where(eq(materials.organizationId, organizationId)),
+          ctx.db.select().from(units),
+          ctx.db
+            .select({
+              id: partDefinitions.id,
+              organizationId: partDefinitions.organizationId,
+            })
+            .from(partDefinitions)
+            .where(eq(partDefinitions.organizationId, organizationId)),
+        ]);
+
+      const catalogByName = new Map(existingCatalogs.map((item) => [item.name.trim().toLowerCase(), item]));
+      const categoryByName = new Map(existingCategories.map((item) => [item.name.trim().toLowerCase(), item]));
+      const materialByName = new Map(existingMaterials.map((item) => [item.name.trim().toLowerCase(), item]));
+      const unitByCode = new Map(allUnits.map((item) => [item.code.trim().toLowerCase(), item]));
+      const existingPartIds = new Set(existingParts.map((item) => item.id));
+
+      let created = 0;
+      let updated = 0;
+      let skipped = 0;
+
+      for (const rawRow of input.rows) {
+        const displayName =
+          rawRow.displayName.trim() ||
+          generatePartDisplayName({
+            sizeNominal: rawRow.sizeNominal,
+            sizeUnit: rawRow.sizeUnit,
+            material: rawRow.material,
+            description: rawRow.description,
+          });
+        const catalogName = rawRow.catalog.trim();
+
+        if (!displayName || !catalogName) {
+          skipped += 1;
+          continue;
+        }
+
+        const catalogKey = catalogName.toLowerCase();
+        let catalog = catalogByName.get(catalogKey);
+        if (!catalog) {
+          const [maxSortOrder] = await ctx.db
+            .select({ maxSortOrder: sql<number>`coalesce(max(${catalogs.sortOrder}), -1)` })
+            .from(catalogs)
+            .where(eq(catalogs.organizationId, organizationId));
+
+          const [newCatalog] = await ctx.db
+            .insert(catalogs)
+            .values({
+              organizationId,
+              name: catalogName,
+              sortOrder: (maxSortOrder?.maxSortOrder ?? -1) + 1,
+            })
+            .returning();
+
+          if (!newCatalog) {
+            skipped += 1;
+            continue;
+          }
+
+          catalog = newCatalog;
+          catalogByName.set(catalogKey, newCatalog);
+        }
+
+        const categoryName = rawRow.category?.trim() || "";
+        let categoryId: string | null = null;
+        if (categoryName) {
+          const categoryKey = categoryName.toLowerCase();
+          let category = categoryByName.get(categoryKey) ?? null;
+          if (!category) {
+            const [newCategory] = await ctx.db
+              .insert(categories)
+              .values({
+                organizationId,
+                name: categoryName,
+                sortOrder: 0,
+              })
+              .returning();
+            if (!newCategory) {
+              skipped += 1;
+              continue;
+            }
+            category = newCategory;
+            categoryByName.set(categoryKey, newCategory);
+          }
+          categoryId = category?.id ?? null;
+        }
+
+        let materialId: string | null = null;
+        const materialName = rawRow.material?.trim();
+        if (materialName) {
+          const materialKey = materialName.toLowerCase();
+          let material = materialByName.get(materialKey);
+          if (!material) {
+            const [newMaterial] = await ctx.db
+              .insert(materials)
+              .values({ organizationId, name: materialName })
+              .returning();
+            material = newMaterial;
+            if (material) {
+              materialByName.set(materialKey, material);
+            }
+          }
+          materialId = material?.id ?? null;
+        }
+
+        const sizeUnitCode = rawRow.sizeUnit?.trim().toLowerCase() || "";
+        const sizeUnitId = sizeUnitCode ? (unitByCode.get(sizeUnitCode)?.id ?? null) : null;
+        const sizeLabel = formatSizeDimensions(rawRow.sizeNominal ?? null, rawRow.sizeUnit ?? null) || null;
+        const sizeId = await findOrCreateSize(
+          ctx.db,
+          organizationId,
+          rawRow.sizeNominal ?? null,
+          sizeUnitId,
+        );
+
+        const values: typeof partDefinitions.$inferInsert = {
+          organizationId,
+          catalogId: catalog.id,
+          categoryId,
+          displayName,
+          description: rawRow.description?.trim() || null,
+          imageUrl: rawRow.imageUrl?.trim() || null,
+          sizeLabel,
+          materialId,
+          sizeId,
+          isActive: rawRow.isActive ?? true,
+        };
+
+        if (rawRow.partId && existingPartIds.has(rawRow.partId)) {
+          await ctx.db
+            .update(partDefinitions)
+            .set(values)
+            .where(eq(partDefinitions.id, rawRow.partId));
+          await ctx.db.delete(partSynonyms).where(eq(partSynonyms.partDefinitionId, rawRow.partId));
+          const aliases = (rawRow.aliases ?? "")
+            .split(/[;,\n]/)
+            .map((alias) => alias.trim())
+            .filter(Boolean);
+          if (aliases.length > 0) {
+            await ctx.db.insert(partSynonyms).values(
+              Array.from(new Set(aliases)).map((synonym) => ({
+                partDefinitionId: rawRow.partId!,
+                synonym,
+              })),
+            );
+          }
+          updated += 1;
+          continue;
+        }
+
+        const [newPart] = await ctx.db.insert(partDefinitions).values(values).returning({ id: partDefinitions.id });
+        if (newPart?.id) {
+          const aliases = (rawRow.aliases ?? "")
+            .split(/[;,\n]/)
+            .map((alias) => alias.trim())
+            .filter(Boolean);
+          if (aliases.length > 0) {
+            await ctx.db.insert(partSynonyms).values(
+              Array.from(new Set(aliases)).map((synonym) => ({
+                partDefinitionId: newPart.id,
+                synonym,
+              })),
+            );
+          }
+          existingPartIds.add(newPart.id);
+          created += 1;
+        } else {
+          skipped += 1;
+        }
+      }
+
+      return { created, updated, skipped, total: input.rows.length };
+    }),
+
   /**
    * Create a new part definition
    */
@@ -1607,11 +1851,10 @@ export const catalogueRouter = createTRPCRouter({
         catalogId: z.string().uuid(),
         categoryId: z.string().uuid().optional().nullable(),
         categoryName: z.string().optional().nullable(),
-        partTypeId: z.string().uuid().optional().nullable(),
         materialId: z.string().uuid().optional().nullable(),
         sizeNominal: z.number().optional().nullable(),
+        sizeLabel: z.string().optional().nullable(),
         sizeUnitId: z.string().uuid().optional().nullable(),
-        defaultUomId: z.string().uuid().optional().nullable(),
         isActive: z.boolean().optional(),
         supplierId: z.string().uuid().optional(),
         supplierSku: z.string().max(255).optional(),
@@ -1643,12 +1886,8 @@ export const catalogueRouter = createTRPCRouter({
       }
 
       let categoryId: string | null = input.categoryId ?? null;
-      if (!categoryId) {
-        let categoryName = input.categoryName;
-        if (!categoryName) {
-          categoryName = "Other";
-        }
-
+      const categoryName = input.categoryName?.trim() || "";
+      if (!categoryId && categoryName) {
         const [existingCategory] = await ctx.db
           .select()
           .from(categories)
@@ -1668,15 +1907,11 @@ export const catalogueRouter = createTRPCRouter({
             .values({
               name: categoryName,
               organizationId: organizationId,
-              sortOrder: categoryName === "Other" ? 9999 : 0,
+              sortOrder: 0,
             })
             .returning();
           categoryId = newCategory?.id ?? null;
         }
-      }
-
-      if (!categoryId) {
-        throw new Error("Category not found");
       }
 
       // Find or create size record
@@ -1686,10 +1921,6 @@ export const catalogueRouter = createTRPCRouter({
         input.sizeNominal ?? null,
         input.sizeUnitId ?? null,
       );
-
-      if (!sizeId) {
-        throw new Error("Failed to create or find size record");
-      }
 
       const [newPart] = await ctx.db
         .insert(partDefinitions)
@@ -1703,10 +1934,9 @@ export const catalogueRouter = createTRPCRouter({
               ? input.imageUrl
               : null,
           categoryId: categoryId,
-          partTypeId: input.partTypeId ?? null,
+          sizeLabel: input.sizeLabel?.trim() || null,
           materialId: input.materialId ?? null,
           sizeId: sizeId,
-          defaultUomId: input.defaultUomId ?? null,
           isActive: input.isActive ?? true,
         })
         .returning();
@@ -1761,15 +1991,13 @@ export const catalogueRouter = createTRPCRouter({
           displayName: partDefinitions.displayName,
           description: partDefinitions.description,
           imageUrl: partDefinitions.imageUrl,
+          sizeLabel: partDefinitions.sizeLabel,
           catalogId: partDefinitions.catalogId,
           categoryId: partDefinitions.categoryId,
-          partTypeId: partDefinitions.partTypeId,
-          partTypeName: partTypes.name,
           materialId: partDefinitions.materialId,
           materialName: materials.name,
           sizeNominal: sizes.nominal,
           sizeUnitId: sizes.unitId,
-          defaultUomId: partDefinitions.defaultUomId,
           isActive: partDefinitions.isActive,
           organizationId: partDefinitions.organizationId,
           sizeUnitCode: units.code,
@@ -1779,27 +2007,11 @@ export const catalogueRouter = createTRPCRouter({
         .leftJoin(sizes, eq(partDefinitions.sizeId, sizes.id))
         .leftJoin(units, eq(sizes.unitId, units.id))
         .leftJoin(materials, eq(partDefinitions.materialId, materials.id))
-        .leftJoin(partTypes, eq(partDefinitions.partTypeId, partTypes.id))
         .where(eq(partDefinitions.id, newPart.id))
         .limit(1);
 
       if (!part) {
         throw new Error("Failed to retrieve created part");
-      }
-
-      // Get default UOM if provided
-      let defaultUom = null;
-      if (part.defaultUomId) {
-        const [uom] = await ctx.db
-          .select({
-            id: units.id,
-            code: units.code,
-            displayName: units.displayName,
-          })
-          .from(units)
-          .where(eq(units.id, part.defaultUomId))
-          .limit(1);
-        defaultUom = uom ?? null;
       }
 
       return {
@@ -1809,11 +2021,10 @@ export const catalogueRouter = createTRPCRouter({
         imageUrl: part.imageUrl,
         catalogId: part.catalogId,
         categoryId: part.categoryId,
-        partType: part.partTypeName,
         material: part.materialName,
         sizeNominal: part.sizeNominal,
+        sizeLabel: part.sizeLabel,
         sizeUnitId: part.sizeUnitId,
-        defaultUomId: part.defaultUomId,
         isActive: part.isActive,
         isOrgSpecific: part.organizationId === organizationId,
         sizeUnit: part.sizeUnitId
@@ -1823,7 +2034,6 @@ export const catalogueRouter = createTRPCRouter({
               displayName: part.sizeUnitDisplayName,
             }
           : null,
-        defaultUom,
       };
     }),
 });

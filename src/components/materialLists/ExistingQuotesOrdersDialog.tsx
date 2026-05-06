@@ -11,6 +11,7 @@ import {
 } from "~/components/ui/dialog";
 import { Button } from "~/components/ui/button";
 import { format } from "date-fns";
+import { useOnlineStatus } from "~/hooks/use-online-status";
 
 interface ExistingQuotesOrdersDialogProps {
   open: boolean;
@@ -29,16 +30,17 @@ export function ExistingQuotesOrdersDialog({
   onGenerateNew,
   onOpenExisting,
 }: ExistingQuotesOrdersDialogProps) {
+  const isOnline = useOnlineStatus();
   const { data: quotes, isLoading: quotesLoading } =
     api.materialList.getQuotesForMaterialList.useQuery(
       { materialListId },
-      { enabled: open && type === "quote" && !!materialListId },
+      { enabled: isOnline && open && type === "quote" && !!materialListId },
     );
 
   const { data: orders, isLoading: ordersLoading } =
     api.materialList.getOrdersForMaterialList.useQuery(
       { materialListId },
-      { enabled: open && type === "order" && !!materialListId },
+      { enabled: isOnline && open && type === "order" && !!materialListId },
     );
 
   const isLoading = type === "quote" ? quotesLoading : ordersLoading;

@@ -4,6 +4,25 @@
  */
 
 const IMPERIAL_UNITS = new Set(["in", "ft", "yd"]);
+const INCH_UNITS = new Set(["in", "inch", "inches", '"']);
+
+function formatUnitForDimension(unit: string | null | undefined): string {
+  const normalized = String(unit ?? "").trim().toLowerCase();
+  if (!normalized) return "";
+  if (INCH_UNITS.has(normalized)) return '"';
+  return ` ${unit}`;
+}
+
+function stripUnitFromDimension(value: string, unit: string | null | undefined): string {
+  const normalizedUnit = String(unit ?? "").trim();
+  let result = value.trim().replace(/[”″"]/g, "");
+
+  if (normalizedUnit) {
+    result = result.replace(new RegExp(`\\s*${normalizedUnit.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*$`, "i"), "");
+  }
+
+  return result.replace(/\s*(inches|inch|in)\s*$/i, "").trim();
+}
 
 /**
  * Parse size string to normalized number
@@ -39,7 +58,7 @@ export function parseSizeInput(input: string): number | null {
   }
 
   // Handle mixed numbers: "1 1/2", "2 3/4", etc.
-  const mixedMatch = /^(\d+)\s+(\d+)\/(\d+)$/.exec(trimmed);
+  const mixedMatch = /^(\d+)\s+(\d+)\/(\d+)$/.exec(trimmed) ?? /^(\d+)-(\d+)\/(\d+)$/.exec(trimmed);
   if (mixedMatch) {
     const whole = parseFloat(mixedMatch[1] ?? "0");
     const numerator = parseFloat(mixedMatch[2] ?? "0");
@@ -99,7 +118,65 @@ export function formatSize(nominal: number | string | null, unit: string | null)
     return `${decimalToFraction(num)} ${unit}`;
   }
 
-  return `${num} ${unit}`;
+  return `${formatSizeDecimal(num)} ${unit}`;
+}
+
+/**
+ * Format one or more size dimensions for generated part names.
+ * Examples: 4 x 4 x 4 + in -> 4" x 4" x 4", 0.5 + in -> 1/2".
+ */
+export function formatSizeDimensions(
+  nominal: number | string | null | undefined,
+  unit: string | null | undefined,
+): string {
+  if (nominal === null || nominal === undefined || nominal === "") return "";
+
+  const unitSuffix = formatUnitForDimension(unit);
+  const parts = String(nominal)
+    .trim()
+    .split(/\s*(?:x|×)\s*/i)
+    .map((part) => stripUnitFromDimension(part, unit))
+    .filter(Boolean);
+
+  return parts
+    .map((part) => {
+      const numeric = parseSizeInput(part);
+      const formatted = numeric === null ? part : decimalToFraction(numeric);
+      return `${formatted}${unitSuffix}`;
+    })
+    .join(" x ");
+}
+
+export function generatePartDisplayName(input: {
+  sizeNominal?: number | string | null;
+  sizeUnit?: string | null;
+  material?: string | null;
+  description?: string | null;
+}): string {
+  return [
+    formatSizeDimensions(input.sizeNominal, input.sizeUnit),
+    input.material?.trim(),
+    input.description?.trim(),
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
+}
+
+/**
+ * Format a decimal size using the fewest decimal places needed.
+ * Keeps user-facing edit inputs tidy when DB decimals arrive as strings like "3.0000".
+ */
+export function formatSizeDecimal(nominal: number | string | null): string {
+  if (nominal === null) return "";
+
+  const raw = typeof nominal === "string" ? nominal.trim() : nominal.toString();
+  if (!raw) return "";
+
+  const num = Number(raw);
+  if (!Number.isFinite(num)) return raw;
+
+  return num.toString();
 }
 
 /**

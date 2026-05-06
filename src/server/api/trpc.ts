@@ -15,6 +15,9 @@ import { auth } from "@clerk/nextjs/server";
 import { db } from "~/server/db";
 import { ensureUser } from "~/server/utils/ensure-user";
 import { getDevBypassUser } from "~/server/utils/get-dev-bypass-user";
+import { getAgentBypassUser } from "~/server/utils/get-agent-bypass-user";
+
+const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
 
 /**
  * 1. CONTEXT
@@ -37,7 +40,8 @@ export const createTRPCContext = async (opts: { headers: Headers }) => {
   if (userId) {
     dbUser = await ensureUser(userId);
   } else {
-    dbUser = await getDevBypassUser();
+    dbUser = await getAgentBypassUser(opts.headers);
+    dbUser ??= await getDevBypassUser();
     userId = dbUser?.id ?? null;
   }
 
@@ -56,10 +60,8 @@ export const createTRPCContext = async (opts: { headers: Headers }) => {
  * ZodErrors so that you get typesafety on the frontend if your procedure fails due to validation
  * errors on the backend.
  */
-const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
 const allowDevDashboardAccess =
-  process.env.NODE_ENV !== "production" ||
-  (typeof publishableKey === "string" && publishableKey.startsWith("pk_test_"));
+  process.env.NODE_ENV !== "production";
 
 const t = initTRPC.context<typeof createTRPCContext>().create({
   transformer: superjson,

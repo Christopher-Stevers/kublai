@@ -3,14 +3,14 @@
 import { formatSize } from "~/lib/size-utils";
 
 interface WizardProgressIndicatorProps {
-  currentStage: "catalog" | "material" | "size" | "partTypeCategory" | "part" | "review";
+  currentStage: "catalog" | "material" | "size" | "category" | "part" | "review";
   onStageClick?: (
-    stage: "catalog" | "material" | "size" | "partTypeCategory" | "part",
+    stage: "catalog" | "material" | "size" | "category" | "part",
   ) => void;
   selectedCatalog?: string | null;
   selectedMaterial?: string | null;
   selectedSize?: { nominal: number; unit: string } | null;
-  selectedPartTypeCategory: {
+  selectedCategory: {
     categoryId: string | null;
     name: string;
   } | null;
@@ -20,7 +20,7 @@ const stages = [
   { id: "catalog" as const, label: "Catalog", step: 1 },
   { id: "material" as const, label: "Material", step: 2 },
   { id: "size" as const, label: "Size", step: 3 },
-  { id: "partTypeCategory" as const, label: "Category", step: 4 },
+  { id: "category" as const, label: "Category", step: 4 },
   { id: "part" as const, label: "Part", step: 5 },
 ];
 
@@ -30,7 +30,7 @@ export function WizardProgressIndicator({
   selectedCatalog,
   selectedMaterial,
   selectedSize,
-  selectedPartTypeCategory,
+  selectedCategory,
 }: WizardProgressIndicatorProps) {
   const getCurrentStep = () => {
     switch (currentStage) {
@@ -40,7 +40,7 @@ export function WizardProgressIndicator({
         return 2;
       case "size":
         return 3;
-      case "partTypeCategory":
+      case "category":
         return 4;
       case "part":
         return 5;
@@ -66,8 +66,8 @@ export function WizardProgressIndicator({
             ? "All Sizes"
             : formatSize(selectedSize.nominal, selectedSize.unit)
           : stage.label;
-      case "partTypeCategory":
-        return selectedPartTypeCategory?.name ?? stage.label;
+      case "category":
+        return selectedCategory?.name ?? stage.label;
       case "part":
         return stage.label;
       default:
@@ -94,7 +94,7 @@ export function WizardProgressIndicator({
                   }
                 }}
                 disabled={!isClickable}
-                className={`flex min-w-0 items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-medium transition-colors sm:gap-2 sm:px-3 sm:py-2 sm:text-sm ${
+                className={`flex h-9 min-w-0 items-center gap-1.5 rounded-lg px-2 text-xs font-medium transition-colors sm:gap-2 sm:px-3 sm:text-sm ${
                   isCurrent
                     ? "bg-primary text-primary-foreground"
                     : isCompleted

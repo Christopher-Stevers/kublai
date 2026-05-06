@@ -22,6 +22,7 @@ import type { PendingPart } from "./types";
 import { PartSuppliersDropdown } from "~/components/catalogue/PartSuppliersDropdown";
 import { ListPagination, useClientPagination } from "~/components/ui/list-pagination";
 import { ViewToggle } from "~/components/ui/view-toggle";
+import { useOnlineStatus } from "~/hooks/use-online-status";
 
 const TILE_FALLBACK_IMAGE_URL = "/images/plumbing-part-placeholder-v2.jpg";
 
@@ -30,15 +31,16 @@ function usePartSupplierSelection(partId: string) {
   const [isSupplierDialogOpen, setIsSupplierDialogOpen] = useState(false);
   const [previousSupplierCount, setPreviousSupplierCount] = useState<number>(0);
 
+  const isOnline = useOnlineStatus();
   const { data: supplierParts, isLoading: isLoadingSuppliers } =
     api.supplier.getSupplierPartsByPart.useQuery(
       { partDefinitionId: partId },
-      { enabled: !!partId },
+      { enabled: isOnline && !!partId },
     );
 
   const { data: supplierInfo } = api.catalogue.getPartsSupplierInfo.useQuery(
     { partIds: [partId] },
-    { enabled: !!partId },
+    { enabled: isOnline && !!partId },
   );
 
   const utils = api.useUtils();
@@ -169,7 +171,7 @@ function PartCard({ part, isPending, pendingQuantity = 0, onPartSelect, onPartQu
   const updateDragQuantity = (clientY: number) => {
     if (!longPressTriggeredRef.current || pointerStartYRef.current === null) return;
 
-    const deltaY = pointerStartYRef.current - clientY;
+    const deltaY = clientY - pointerStartYRef.current;
     const steps = Math.round(deltaY / 18);
     const nextQuantity = clampQuantity(baseQuantityRef.current + steps);
     dragQuantityRef.current = nextQuantity;
@@ -334,7 +336,7 @@ function PartCard({ part, isPending, pendingQuantity = 0, onPartSelect, onPartQu
 
   return (
     <Card
-      className={`relative gap-0 overflow-hidden rounded-2xl py-0 transition-all hover:shadow-md ${
+      className={`relative w-full gap-0 overflow-hidden rounded-2xl py-0 transition-all hover:shadow-md ${
         isPending ? "border-primary border-2 shadow-md" : ""
       } cursor-pointer`}
       style={{ WebkitTouchCallout: "none", WebkitUserSelect: "none", userSelect: "none" }}
@@ -349,7 +351,7 @@ function PartCard({ part, isPending, pendingQuantity = 0, onPartSelect, onPartQu
       }}
     >
       <CardContent className="p-0">
-        <div className="flex w-full flex-col p-3 sm:p-4">
+        <div className="flex w-full flex-col p-3">
           <div className="relative mb-3 aspect-square w-full overflow-hidden rounded-xl bg-gray-100">
             <Image
               src={part.imageUrl ?? TILE_FALLBACK_IMAGE_URL}
@@ -368,8 +370,8 @@ function PartCard({ part, isPending, pendingQuantity = 0, onPartSelect, onPartQu
             </div>
           </div>
 
-          <div className="flex min-h-[2.75rem] items-end justify-center text-center text-black sm:min-h-[3.25rem]">
-            <h4 className="text-sm font-medium leading-snug sm:text-base">
+          <div className="flex min-h-[2.75rem] items-start justify-center text-center text-black">
+            <h4 className="line-clamp-2 text-sm font-medium leading-snug">
               {part.displayName}
             </h4>
           </div>
@@ -513,8 +515,8 @@ export interface PartStageProps {
   ) => void;
   onEditPart: (partId: string) => void;
   selectedMaterialId: string | null;
-  selectedSize: { nominal: number; unit: string } | null;
-  selectedPartTypeCategory: {
+  selectedSize: { nominal: number; unit: string; sizeLabel?: string | null } | null;
+  selectedCategory: {
     categoryId: string | null;
     name: string;
   } | null;
@@ -533,7 +535,7 @@ export function PartStage({
   onEditPart,
   selectedMaterialId,
   selectedSize,
-  selectedPartTypeCategory,
+  selectedCategory,
   onContinueToReview,
   actionMode = "select",
   title = "Select Parts",
@@ -560,7 +562,7 @@ export function PartStage({
         <ViewToggle view={viewMode} onViewChange={setViewMode} showOnMobile />
       </div>
       {viewMode === "grid" ? (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(12rem,1fr))] gap-3">
           {pagination.paginatedItems.map((part) => {
             const isPending = pendingParts.some((p) => p.partId === part.id);
             const pendingQuantity = pendingParts.find((p) => p.partId === part.id)?.quantity ?? 0;

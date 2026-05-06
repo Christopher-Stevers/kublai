@@ -28,6 +28,7 @@ export const supplierRouter = createTRPCRouter({
         id: suppliers.id,
         organizationId: suppliers.organizationId,
         name: suppliers.name,
+        contactName: suppliers.contactName,
         contactEmail: suppliers.contactEmail,
         contactPhone: suppliers.contactPhone,
         orderingNotes: suppliers.orderingNotes,
@@ -65,6 +66,7 @@ export const supplierRouter = createTRPCRouter({
           id: suppliers.id,
           organizationId: suppliers.organizationId,
           name: suppliers.name,
+          contactName: suppliers.contactName,
           contactEmail: suppliers.contactEmail,
           contactPhone: suppliers.contactPhone,
           orderingNotes: suppliers.orderingNotes,
@@ -141,6 +143,7 @@ export const supplierRouter = createTRPCRouter({
           .min(1, "Supplier name is required")
           .max(255, "Supplier name must be less than 255 characters")
           .trim(),
+        contactName: z.string().max(255).optional().or(z.literal("")),
         contactEmail: z
           .union([z.string().email("Invalid email address"), z.literal("")])
           .optional(),
@@ -163,6 +166,7 @@ export const supplierRouter = createTRPCRouter({
           .values({
             organizationId: ctx.user.organizationId,
             name: input.name,
+            contactName: input.contactName ?? null,
             contactEmail: input.contactEmail ?? null,
             contactPhone: input.contactPhone ?? null,
             orderingNotes: input.orderingNotes ?? null,
@@ -205,6 +209,7 @@ export const supplierRouter = createTRPCRouter({
           .min(1, "Supplier name is required")
           .max(255, "Supplier name must be less than 255 characters")
           .trim(),
+        contactName: z.string().max(255).optional().or(z.literal("")),
         contactEmail: z
           .union([z.string().email("Invalid email address"), z.literal("")])
           .optional(),
@@ -240,6 +245,7 @@ export const supplierRouter = createTRPCRouter({
           .update(suppliers)
           .set({
             name: input.name,
+            contactName: input.contactName ?? null,
             contactEmail: input.contactEmail ?? null,
             contactPhone: input.contactPhone ?? null,
             orderingNotes: input.orderingNotes ?? null,

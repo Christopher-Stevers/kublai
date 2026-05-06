@@ -13,6 +13,20 @@ import {
 import { Button } from "~/components/ui/button";
 import { Textarea } from "~/components/ui/textarea";
 import { ChevronDownIcon, ChevronRightIcon } from "lucide-react";
+import { useOnlineStatus } from "~/hooks/use-online-status";
+
+const GENERATE_ORDER_TIMEOUT_MS = 20_000;
+
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string) {
+  let timeoutId: number | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timeoutId = window.setTimeout(() => reject(new Error(message)), timeoutMs);
+  });
+
+  return Promise.race([promise, timeout]).finally(() => {
+    if (timeoutId) window.clearTimeout(timeoutId);
+  });
+}
 
 interface OrdersPreviewSheetProps {
   open: boolean;
@@ -33,6 +47,7 @@ export function OrdersPreviewSheet({
   const [emailSent, setEmailSent] = useState<Set<string>>(new Set());
 
   const utils = api.useUtils();
+  const isOnline = useOnlineStatus();
   const [orders, setOrders] = useState<
     Array<{
       id: string;
@@ -53,11 +68,12 @@ export function OrdersPreviewSheet({
   >([]);
   const [orderNotes, setOrderNotes] = useState<Map<string, string>>(new Map());
   const [isGenerating, setIsGenerating] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
 
   // Load existing order if orderId is provided
   const { data: existingOrder } = api.materialList.getOrderById.useQuery(
     { orderId: providedOrderId ?? "" },
-    { enabled: open && !!providedOrderId },
+    { enabled: isOnline && open && !!providedOrderId },
   );
 
   // Load existing order data when available
@@ -83,30 +99,7 @@ export function OrdersPreviewSheet({
     }
   }, [existingOrder, providedOrderId]);
 
-  const generateOrders = api.materialList.generateOrders.useMutation({
-    onSuccess: (data) => {
-      // Filter out any orders without an id (shouldn't happen, but TypeScript safety)
-      const validOrders = data.filter(
-        (order): order is typeof order & { id: string } => !!order.id,
-      );
-      setOrders(validOrders);
-      
-      // Load notes from orders
-      const notesMap = new Map<string, string>();
-      validOrders.forEach((order) => {
-        if (order.notes) {
-          notesMap.set(order.id, order.notes);
-        }
-      });
-      setOrderNotes(notesMap);
-      
-      setIsGenerating(false);
-      void utils.materialList.getMaterialList.invalidate({ materialListId });
-    },
-    onError: () => {
-      setIsGenerating(false);
-    },
-  });
+  const generateOrders = api.materialList.generateOrders.useMutation();
 
   const markOrderSent = api.materialList.markOrderSent.useMutation({
     onMutate: async (variables) => {
@@ -135,11 +128,49 @@ export function OrdersPreviewSheet({
       orders.length === 0 &&
       !isGenerating
     ) {
-      setIsGenerating(true);
-      generateOrders.mutate({ materialListId });
+      void (async () => {
+        if (!isOnline) {
+          setSyncError("Reconnect before generating orders. Orders are generated from the online database.");
+          return;
+        }
+
+        setIsGenerating(true);
+
+        try {
+          await utils.materialList.getMaterialList.invalidate({ materialListId });
+          const data = await withTimeout(
+            generateOrders.mutateAsync({ materialListId }),
+            GENERATE_ORDER_TIMEOUT_MS,
+            "Order generation timed out.",
+          );
+          const validOrders = data.filter(
+            (order): order is typeof order & { id: string } => !!order.id,
+          );
+          setOrders(validOrders);
+
+          const notesMap = new Map<string, string>();
+          validOrders.forEach((order) => {
+            if (order.notes) {
+              notesMap.set(order.id, order.notes);
+            }
+          });
+          setOrderNotes(notesMap);
+          setSyncError(null);
+          void utils.materialList.getMaterialList.invalidate({ materialListId });
+        } catch (error) {
+          generateOrders.reset();
+          setSyncError(
+            error instanceof Error && /timed out/i.test(error.message)
+              ? "Order generation timed out. The online database did not respond in time. Close this and try again."
+              : "Order generation failed. Try again in a moment.",
+          );
+        } finally {
+          setIsGenerating(false);
+        }
+      })();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, materialListId, providedOrderId]);
+  }, [open, materialListId, orders.length, providedOrderId, isGenerating, isOnline]);
 
   const toggleSupplier = (supplierId: string) => {
     setExpandedSuppliers((prev) => {
@@ -188,7 +219,24 @@ export function OrdersPreviewSheet({
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent>
-          <p className="text-muted-foreground">Generating orders...</p>
+          <DialogHeader>
+            <DialogTitle>Generating Orders</DialogTitle>
+            <DialogDescription>
+              Preparing purchase orders from the online database.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                generateOrders.reset();
+                setIsGenerating(false);
+                onOpenChange(false);
+              }}
+            >
+              Cancel
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     );
@@ -199,10 +247,11 @@ export function OrdersPreviewSheet({
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>No Orders to Send</DialogTitle>
+            <DialogTitle>{syncError ? "Sync Required" : "No Orders to Send"}</DialogTitle>
             <DialogDescription>
-              No items have suppliers assigned. Please assign suppliers to items
-              before generating orders.
+              {syncError
+                ? syncError
+                : "No items have suppliers assigned. Please assign suppliers to items before generating orders."}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

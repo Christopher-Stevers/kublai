@@ -1,8 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { useUser, useClerk } from "@clerk/nextjs";
 import { api } from "~/trpc/react";
 import {
@@ -14,14 +13,35 @@ import {
   DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu";
 import { Button } from "~/components/ui/button";
-import { UserIcon, ChevronDownIcon, MenuIcon, XIcon } from "lucide-react";
+import {
+  ArrowLeftIcon,
+  ChevronDownIcon,
+  DownloadIcon,
+  MenuIcon,
+  UserIcon,
+  XIcon,
+} from "lucide-react";
 import { APP_NAME } from "~/constants/app";
+import { useOnlineStatus } from "~/hooks/use-online-status";
 
 const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
 const hasUsableClerkKey =
   typeof publishableKey === "string" &&
   /^(pk|test|live)_/.test(publishableKey) &&
   publishableKey.length > 20;
+type BeforeInstallPromptEvent = Event & {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
+};
+
+function isStandaloneApp() {
+  if (typeof window === "undefined") return false;
+  return (
+    window.matchMedia("(display-mode: standalone)").matches ||
+    ("standalone" in window.navigator &&
+      (window.navigator as Navigator & { standalone?: boolean }).standalone === true)
+  );
+}
 
 function HeaderFrame({
   pathname,
@@ -40,6 +60,10 @@ function HeaderFrame({
   showAccount: boolean;
   showAdmin: boolean;
 }) {
+  const router = useRouter();
+  const isOnline = useOnlineStatus();
+  const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [isInstalled, setIsInstalled] = useState(false);
   const navLinks = [
     { href: "/dashboard", label: "Dashboard" },
     { href: "/dashboard/catalogue", label: "Catalogue" },
@@ -59,20 +83,85 @@ function HeaderFrame({
     return pathname?.startsWith(href);
   };
 
+  const showBackButton =
+    pathname?.startsWith("/dashboard/jobs/") ||
+    pathname?.startsWith("/dashboard/material-lists/");
+
+  useEffect(() => {
+    setIsInstalled(isStandaloneApp());
+
+    const handleBeforeInstallPrompt = (event: Event) => {
+      event.preventDefault();
+      setInstallPrompt(event as BeforeInstallPromptEvent);
+    };
+
+    const handleAppInstalled = () => {
+      setIsInstalled(true);
+      setInstallPrompt(null);
+    };
+
+    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+    window.addEventListener("appinstalled", handleAppInstalled);
+
+    return () => {
+      window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+      window.removeEventListener("appinstalled", handleAppInstalled);
+    };
+  }, []);
+
+  const navigate = (href: string) => {
+    if (!isOnline) {
+      window.location.href = href;
+      return;
+    }
+
+    router.push(href);
+  };
+
+  const handleInstallApp = async () => {
+    if (isInstalled) return;
+
+    if (!installPrompt) {
+      navigate("/dashboard/account");
+      return;
+    }
+
+    await installPrompt.prompt();
+    const choice = await installPrompt.userChoice;
+    setInstallPrompt(null);
+    if (choice.outcome === "accepted") {
+      setIsInstalled(true);
+    }
+  };
+
   return (
     <header className="sticky top-0 z-50 flex items-center justify-between border-b border-gray-200 bg-white px-4 py-3 sm:px-6 sm:py-4">
       <div className="flex items-center gap-4 sm:gap-8">
-        <Link
-          href="/dashboard"
+        {showBackButton && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => router.back()}
+            className="h-10 px-2 sm:px-3"
+            aria-label="Go back"
+          >
+            <ArrowLeftIcon className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">Back</span>
+          </Button>
+        )}
+        <button
+          type="button"
+          onClick={() => navigate("/dashboard")}
           className="text-lg font-bold text-gray-900 sm:text-xl"
         >
           {APP_NAME}
-        </Link>
+        </button>
         <nav className="hidden gap-6 lg:flex">
           {navLinks.map((link) => (
-            <Link
+            <button
               key={link.href}
-              href={link.href}
+              type="button"
+              onClick={() => navigate(link.href)}
               className={`text-sm font-medium transition-colors ${
                 isActive(link.href)
                   ? "text-gray-900 underline"
@@ -80,7 +169,7 @@ function HeaderFrame({
               }`}
             >
               {link.label}
-            </Link>
+            </button>
           ))}
         </nav>
       </div>
@@ -102,10 +191,14 @@ function HeaderFrame({
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             {showAccount ? (
-              <DropdownMenuItem asChild>
-                <Link href="/dashboard/account">Manage Account</Link>
+              <DropdownMenuItem onClick={() => navigate("/dashboard/account")}>
+                Manage Account
               </DropdownMenuItem>
             ) : null}
+            <DropdownMenuItem onClick={handleInstallApp} disabled={isInstalled}>
+              <DownloadIcon className="mr-2 h-4 w-4" />
+              {isInstalled ? "App Installed" : "Install App"}
+            </DropdownMenuItem>
             {signOut ? (
               <DropdownMenuItem
                 onClick={() => {
@@ -119,7 +212,7 @@ function HeaderFrame({
         </DropdownMenu>
       </div>
 
-      <div className="flex items-center gap-2 lg:hidden">
+      <div className="ml-auto flex items-center gap-2 lg:hidden">
         <Button
           variant="ghost"
           size="icon"
@@ -158,18 +251,20 @@ function HeaderFrame({
               <nav className="flex-1 overflow-y-auto px-4 py-4">
                 <div className="space-y-1">
                   {navLinks.map((link) => (
-                    <Link
+                    <button
                       key={link.href}
-                      href={link.href}
-                      onClick={() => setMobileMenuOpen(false)}
-                      className={`block rounded-md px-3 py-3 text-base font-medium transition-colors ${
+                      onClick={() => {
+                        setMobileMenuOpen(false);
+                        navigate(link.href);
+                      }}
+                      className={`block w-full rounded-md px-3 py-3 text-left text-base font-medium transition-colors ${
                         isActive(link.href)
                           ? "bg-gray-100 text-gray-900"
                           : "text-gray-700 hover:bg-gray-50 hover:text-gray-900"
                       }`}
                     >
                       {link.label}
-                    </Link>
+                    </button>
                   ))}
                 </div>
               </nav>
@@ -180,14 +275,28 @@ function HeaderFrame({
                 </div>
                 <div className="space-y-1">
                   {showAccount ? (
-                    <Link
-                      href="/dashboard/account"
-                      onClick={() => setMobileMenuOpen(false)}
-                      className="block rounded-md px-3 py-2 text-base font-medium text-gray-700 transition-colors hover:bg-gray-50 hover:text-gray-900"
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMobileMenuOpen(false);
+                        navigate("/dashboard/account");
+                      }}
+                      className="block w-full rounded-md px-3 py-2 text-left text-base font-medium text-gray-700 transition-colors hover:bg-gray-50 hover:text-gray-900"
                     >
                       Manage Account
-                    </Link>
+                    </button>
                   ) : null}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      void handleInstallApp();
+                    }}
+                    disabled={isInstalled}
+                    className="block w-full rounded-md px-3 py-2 text-left text-base font-medium text-gray-700 transition-colors hover:bg-gray-50 hover:text-gray-900 disabled:text-gray-400"
+                  >
+                    {isInstalled ? "App Installed" : "Install App"}
+                  </button>
                   {signOut ? (
                     <button
                       onClick={() => {
@@ -214,8 +323,9 @@ function HeaderWithClerk() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { user } = useUser();
   const { signOut } = useClerk();
+  const isOnline = useOnlineStatus();
   const { data: userRole } = api.user.getMyRole.useQuery(undefined, {
-    enabled: !!user,
+    enabled: !!user && isOnline,
   });
 
   return (

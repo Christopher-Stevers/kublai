@@ -3,15 +3,25 @@
 import { useState } from "react";
 import { api } from "~/trpc/react";
 import Link from "next/link";
-import { FileTextIcon, ExternalLinkIcon, MailIcon } from "lucide-react";
+import { FileTextIcon, ExternalLinkIcon, MailIcon, WifiOffIcon } from "lucide-react";
 import { Button } from "~/components/ui/button";
+import { useOnlineStatus } from "~/hooks/use-online-status";
+import { useOfflineQuotes } from "~/hooks/use-offline-documents";
 
 export function QuotesList() {
-  const { data: quotes, isLoading } = api.materialList.listQuotes.useQuery();
+  const isOnline = useOnlineStatus();
+  const { data: serverQuotes, isLoading } = api.materialList.listQuotes.useQuery(undefined, {
+    enabled: isOnline,
+  });
+  const {
+    data: quotes,
+    cacheLoaded,
+    isOfflineFallback,
+  } = useOfflineQuotes(serverQuotes);
   const utils = api.useUtils();
   const [sendingEmailFor, setSendingEmailFor] = useState<string | null>(null);
 
-  if (isLoading) {
+  if ((isLoading || !cacheLoaded) && !quotes) {
     return (
       <div className="flex items-center justify-center py-12">
         <p className="text-muted-foreground">Loading quotes...</p>
@@ -27,6 +37,11 @@ export function QuotesList() {
           <p className="text-muted-foreground mt-1 text-sm sm:text-base">
             View past quotes and their material lists
           </p>
+          {isOfflineFallback && (
+            <p className="mt-2 inline-flex items-center gap-2 rounded-full bg-orange-100 px-3 py-1 text-xs font-medium text-orange-900">
+              <WifiOffIcon className="h-3 w-3" /> Offline cached quotes
+            </p>
+          )}
         </div>
         <div className="rounded-lg border border-dashed p-12 text-center">
           <FileTextIcon className="mx-auto h-12 w-12 text-muted-foreground" />
@@ -125,7 +140,7 @@ export function QuotesList() {
                   variant="outline"
                   size="sm"
                   onClick={() => handleResendEmail(quote.id)}
-                  disabled={sendingEmailFor === quote.id}
+                  disabled={!isOnline || sendingEmailFor === quote.id}
                   className="h-11"
                 >
                   <MailIcon className="mr-2 h-4 w-4" />

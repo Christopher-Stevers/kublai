@@ -23,7 +23,6 @@ interface MaterialListTableRowProps {
       displayName: string;
       description: string | null;
       material: string | null;
-      partType: string | null;
       sizeNominal: string | null;
       sizeUnitId: string | null;
     } | null;
@@ -121,11 +120,6 @@ export function MaterialListTableRow({
         {(item.oneOff?.material || item.partDefinition?.material) && (
           <div className="text-xs text-gray-500 mt-1">
             {item.oneOff?.material || item.partDefinition?.material}
-          </div>
-        )}
-        {item.oneOff?.partType && (
-          <div className="text-xs text-gray-500">
-            {item.oneOff.partType}
           </div>
         )}
         {item.oneOff?.sizeNominal && (

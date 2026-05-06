@@ -5,41 +5,41 @@ import { Input } from "~/components/ui/input";
 import { Card, CardContent } from "~/components/ui/card";
 import { ListPagination, useClientPagination } from "~/components/ui/list-pagination";
 
-export interface PartTypeCategoryStageProps {
-  partTypeCategories: Array<{ categoryId: string; name: string; count?: number }>;
-  selectedPartTypeCategory: {
+export interface CategoryStageProps {
+  categories: Array<{ categoryId: string; name: string; count?: number }>;
+  selectedCategory: {
     categoryId: string | null;
     name: string;
   } | null;
   allSelected?: boolean;
-  onPartTypeCategorySelect: (category: {
+  onCategorySelect: (category: {
     categoryId: string | null;
     name: string;
   }) => void;
-  showCustomPartTypeInput: boolean;
-  onShowCustomPartTypeInput: (show: boolean) => void;
-  customPartTypeName: string;
-  onCustomPartTypeNameChange: (name: string) => void;
+  showCustomCategoryInput: boolean;
+  onShowCustomCategoryInput: (show: boolean) => void;
+  customCategoryName: string;
+  onCustomCategoryNameChange: (name: string) => void;
   onCustomCategorySubmit: () => void;
 }
 
-export function PartTypeCategoryStage({
-  partTypeCategories,
-  selectedPartTypeCategory,
+export function CategoryStage({
+  categories,
+  selectedCategory,
   allSelected = false,
-  onPartTypeCategorySelect,
-  showCustomPartTypeInput,
-  onShowCustomPartTypeInput,
-  customPartTypeName,
-  onCustomPartTypeNameChange,
+  onCategorySelect,
+  showCustomCategoryInput,
+  onShowCustomCategoryInput,
+  customCategoryName,
+  onCustomCategoryNameChange,
   onCustomCategorySubmit,
-}: PartTypeCategoryStageProps) {
-  const pagination = useClientPagination(partTypeCategories);
+}: CategoryStageProps) {
+  const pagination = useClientPagination(categories);
 
   return (
     <div className="space-y-3 sm:space-y-4">
       <h3 className="text-base font-semibold sm:text-lg">Select Category</h3>
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3 md:grid-cols-3 lg:grid-cols-4 lg:gap-4">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(12rem,1fr))] gap-3">
         <Card
           className={`cursor-pointer transition-all hover:shadow-md ${
             allSelected
@@ -47,7 +47,7 @@ export function PartTypeCategoryStage({
               : ""
           }`}
           onClick={() =>
-            onPartTypeCategorySelect({
+            onCategorySelect({
               categoryId: null,
               name: "All Categories",
             })
@@ -62,12 +62,12 @@ export function PartTypeCategoryStage({
             <Card
               key={category.categoryId}
               className={`cursor-pointer transition-all hover:shadow-md ${
-                selectedPartTypeCategory?.categoryId === category.categoryId
+                selectedCategory?.categoryId === category.categoryId
                   ? "border-primary border-2 shadow-md"
                   : ""
               }`}
               onClick={() =>
-                onPartTypeCategorySelect({
+                onCategorySelect({
                   categoryId: category.categoryId,
                   name: category.name,
                 })
@@ -85,14 +85,14 @@ export function PartTypeCategoryStage({
           );
         })}
       </div>
-      {showCustomPartTypeInput && (
+      {showCustomCategoryInput && (
         <div className="mt-3 flex flex-col gap-2 sm:mt-4 sm:flex-row">
           <Input
             placeholder="Enter custom category name"
-            value={customPartTypeName}
-            onChange={(e) => onCustomPartTypeNameChange(e.target.value)}
+            value={customCategoryName}
+            onChange={(e) => onCustomCategoryNameChange(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Enter" && customPartTypeName.trim()) {
+              if (e.key === "Enter" && customCategoryName.trim()) {
                 onCustomCategorySubmit();
               }
             }}
@@ -101,7 +101,7 @@ export function PartTypeCategoryStage({
           />
           <Button
             onClick={onCustomCategorySubmit}
-            disabled={!customPartTypeName.trim()}
+            disabled={!customCategoryName.trim()}
             className="w-full text-xs sm:w-auto sm:text-sm"
           >
             Add Category

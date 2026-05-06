@@ -27,6 +27,7 @@ import {
   SearchIcon,
 } from "lucide-react";
 import { ListPagination, useClientPagination } from "~/components/ui/list-pagination";
+import { useOnlineStatus } from "~/hooks/use-online-status";
 
 interface SupplierPartsDialogProps {
   open: boolean;
@@ -42,15 +43,16 @@ export function SupplierPartsDialog({
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedPartId, setSelectedPartId] = useState<string>("");
+  const isOnline = useOnlineStatus();
 
   const { data: supplierData, isLoading } = api.supplier.getById.useQuery(
     { id: supplierId },
-    { enabled: open && !!supplierId },
+    { enabled: isOnline && open && !!supplierId },
   );
 
   const { data: searchResults } = api.catalogue.searchParts.useQuery(
     { query: searchQuery },
-    { enabled: isAddDialogOpen && searchQuery.length > 0 },
+    { enabled: isOnline && isAddDialogOpen && searchQuery.length > 0 },
   );
   const paginatedSupplierParts = useClientPagination(supplierData?.supplierParts ?? []);
   const paginatedSearchResults = useClientPagination(searchResults ?? []);

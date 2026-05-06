@@ -1,11 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useDeferredValue, useEffect, useMemo, useState } from "react";
 import { api } from "~/trpc/react";
 import {
   getOfflineCatalogueSnapshot,
   setOfflineCatalogueSnapshot,
 } from "~/lib/offline-catalogue";
+import { useOnlineStatus } from "~/hooks/use-online-status";
 import type { WizardStage } from "./types";
 
 type PreloadedPart = {
@@ -16,6 +17,7 @@ type PreloadedPart = {
   material: string | null;
   materialId: string | null;
   size: string | null;
+  sizeLabel?: string | null;
   sizeNominal: string | number | null;
   sizeUnit: string | null;
   catalogId: string;
@@ -32,9 +34,10 @@ export function usePartWizard() {
   const [selectedSize, setSelectedSize] = useState<{
     nominal: number;
     unit: string;
+    sizeLabel?: string | null;
   } | null>(null);
   const [hasSizeSelection, setHasSizeSelection] = useState(false);
-  const [selectedPartTypeCategory, setSelectedPartTypeCategory] = useState<{
+  const [selectedCategory, setSelectedCategory] = useState<{
     categoryId: string | null;
     name: string;
   } | null>(null);
@@ -46,26 +49,39 @@ export function usePartWizard() {
   const [showCustomSize, setShowCustomSize] = useState(false);
   const [customSizeInput, setCustomSizeInput] = useState("");
   const [customSizeUnitId, setCustomSizeUnitId] = useState<string | null>(null);
-  const [showCustomPartTypeInput, setShowCustomPartTypeInput] = useState(false);
-  const [customPartTypeName, setCustomPartTypeName] = useState("");
+  const [showCustomCategoryInput, setShowCustomCategoryInput] = useState(false);
+  const [customCategoryName, setCustomCategoryName] = useState("");
   const [wizardSearchQuery, setWizardSearchQuery] = useState("");
+  const deferredWizardSearchQuery = useDeferredValue(wizardSearchQuery);
   const [cachedCatalogueData, setCachedCatalogueData] = useState(
     () => getOfflineCatalogueSnapshot()?.data ?? null,
   );
 
   const utils = api.useUtils();
-  const { data: serverCatalogs } = api.catalogue.getCatalogs.useQuery();
-  const { data: serverMaterials } = api.catalogue.getMaterials.useQuery();
-  const { data: serverAllUnits } = api.catalogue.getAllUnits.useQuery();
-  const { data: serverCategoryTree } = api.catalogue.getCategoryTree.useQuery();
-  const { data: serverAllParts } = api.catalogue.searchParts.useQuery({}, { staleTime: 1000 * 60 * 5 });
+  const isOnline = useOnlineStatus();
+  const { data: serverCatalogs } = api.catalogue.getCatalogs.useQuery(undefined, {
+    enabled: isOnline,
+  });
+  const { data: serverMaterials } = api.catalogue.getMaterials.useQuery(undefined, {
+    enabled: isOnline,
+  });
+  const { data: serverAllUnits } = api.catalogue.getAllUnits.useQuery(undefined, {
+    enabled: isOnline,
+  });
+  const { data: serverCategoryTree } = api.catalogue.getCategoryTree.useQuery(undefined, {
+    enabled: isOnline,
+  });
+  const { data: serverAllParts } = api.catalogue.searchParts.useQuery({}, {
+    enabled: isOnline,
+    staleTime: 1000 * 60 * 5,
+  });
 
   useEffect(() => {
     setCachedCatalogueData(getOfflineCatalogueSnapshot()?.data ?? null);
   }, []);
 
   useEffect(() => {
-    if (!serverCatalogs || !serverMaterials || !serverAllUnits || !serverCategoryTree || !serverAllParts) {
+    if (!isOnline || !serverCatalogs || !serverMaterials || !serverAllUnits || !serverCategoryTree || !serverAllParts) {
       return;
     }
 
@@ -79,13 +95,13 @@ export function usePartWizard() {
 
     setOfflineCatalogueSnapshot(nextSnapshot);
     setCachedCatalogueData(nextSnapshot);
-  }, [serverAllParts, serverAllUnits, serverCatalogs, serverCategoryTree, serverMaterials]);
+  }, [isOnline, serverAllParts, serverAllUnits, serverCatalogs, serverCategoryTree, serverMaterials]);
 
-  const catalogs = serverCatalogs ?? cachedCatalogueData?.catalogs;
-  const materials = serverMaterials ?? cachedCatalogueData?.materials;
-  const allUnits = serverAllUnits ?? cachedCatalogueData?.allUnits;
-  const categoryTree = serverCategoryTree ?? cachedCatalogueData?.categories;
-  const allParts = serverAllParts ?? cachedCatalogueData?.parts;
+  const catalogs = isOnline ? (serverCatalogs ?? cachedCatalogueData?.catalogs) : cachedCatalogueData?.catalogs;
+  const materials = isOnline ? (serverMaterials ?? cachedCatalogueData?.materials) : cachedCatalogueData?.materials;
+  const allUnits = isOnline ? (serverAllUnits ?? cachedCatalogueData?.allUnits) : cachedCatalogueData?.allUnits;
+  const categoryTree = isOnline ? (serverCategoryTree ?? cachedCatalogueData?.categories) : cachedCatalogueData?.categories;
+  const allParts = isOnline ? (serverAllParts ?? cachedCatalogueData?.parts) : cachedCatalogueData?.parts;
 
   const partsByCatalog = useMemo(
     () =>
@@ -115,7 +131,10 @@ export function usePartWizard() {
         }
 
         const nominal = part.sizeNominal === null ? null : Number(part.sizeNominal);
-        return nominal === selectedSize.nominal && part.sizeUnit === selectedSize.unit;
+        const primaryMatch = nominal === selectedSize.nominal && part.sizeUnit === selectedSize.unit;
+        if (!primaryMatch) return false;
+        if (!selectedSize.sizeLabel) return true;
+        return (part.sizeLabel ?? part.size) === selectedSize.sizeLabel;
       }),
     [hasSizeSelection, partsByMaterial, selectedSize],
   );
@@ -125,60 +144,66 @@ export function usePartWizard() {
       partsBySize.filter((part) => {
         if (
           !hasCategorySelection ||
-          !selectedPartTypeCategory ||
-          selectedPartTypeCategory.categoryId === null
+          !selectedCategory ||
+          selectedCategory.categoryId === null
         ) {
           return true;
         }
 
-        return part.categoryId === selectedPartTypeCategory.categoryId;
+        return part.categoryId === selectedCategory.categoryId;
       }),
-    [hasCategorySelection, partsBySize, selectedPartTypeCategory],
+    [hasCategorySelection, partsBySize, selectedCategory],
   );
 
+  const partDisplayNameMatchesQuery = useCallback((part: PreloadedPart, query: string) => {
+    if (!query) return true;
+    return part.displayName.toLowerCase().includes(query);
+  }, []);
+
   const catalogsWithCounts = useMemo(() => {
-    const query = wizardSearchQuery.trim().toLowerCase();
+    const query = deferredWizardSearchQuery.trim().toLowerCase();
     const countMap = new Map<string, number>();
 
     for (const part of allParts ?? []) {
+      if (!partDisplayNameMatchesQuery(part, query)) continue;
       countMap.set(part.catalogId, (countMap.get(part.catalogId) ?? 0) + 1);
     }
 
     return (catalogs ?? [])
-      .filter((catalog) => !query || catalog.name.toLowerCase().includes(query))
       .map((catalog) => ({
         ...catalog,
         count: countMap.get(catalog.id) ?? 0,
       }))
       .filter((catalog) => catalog.count > 0 || selectedCatalogId === catalog.id);
-  }, [allParts, catalogs, selectedCatalogId, wizardSearchQuery]);
+  }, [allParts, catalogs, selectedCatalogId, deferredWizardSearchQuery, partDisplayNameMatchesQuery]);
 
   const materialCounts = useMemo(() => {
+    const query = deferredWizardSearchQuery.trim().toLowerCase();
     const counts = new Map<string, number>();
     for (const part of partsByCatalog) {
+      if (!partDisplayNameMatchesQuery(part, query)) continue;
       if (part.materialId) {
         counts.set(part.materialId, (counts.get(part.materialId) ?? 0) + 1);
       }
     }
     return counts;
-  }, [partsByCatalog]);
+  }, [partsByCatalog, deferredWizardSearchQuery, partDisplayNameMatchesQuery]);
 
   const materialsWithCounts = useMemo(() => {
-    const query = wizardSearchQuery.trim().toLowerCase();
     return (materials ?? [])
-      .filter((mat) => !query || mat.name.toLowerCase().includes(query))
       .map((mat) => ({
         ...mat,
         count: materialCounts.get(mat.id) ?? 0,
       }))
       .filter((material) => material.count > 0 || selectedMaterialId === material.id);
-  }, [materials, materialCounts, selectedMaterialId, wizardSearchQuery]);
+  }, [materials, materialCounts, selectedMaterialId]);
 
   const categoriesWithCounts = useMemo(() => {
-    const query = wizardSearchQuery.trim().toLowerCase();
+    const query = deferredWizardSearchQuery.trim().toLowerCase();
     const countMap = new Map<string | null, number>();
 
     for (const part of partsBySize) {
+      if (!partDisplayNameMatchesQuery(part, query)) continue;
       countMap.set(part.categoryId, (countMap.get(part.categoryId) ?? 0) + 1);
     }
 
@@ -188,62 +213,72 @@ export function usePartWizard() {
         name: category.name,
         count: countMap.get(category.id) ?? 0,
       }))
-      .filter((cat) => !query || cat.name.toLowerCase().includes(query))
       .filter(
-        (category) => category.count > 0 || selectedPartTypeCategory?.categoryId === category.categoryId,
+        (category) => category.count > 0 || selectedCategory?.categoryId === category.categoryId,
       );
-  }, [categoryTree, partsBySize, selectedPartTypeCategory, wizardSearchQuery]);
+  }, [categoryTree, partsBySize, selectedCategory, deferredWizardSearchQuery, partDisplayNameMatchesQuery]);
 
   const filteredAvailableSizes = useMemo(() => {
-    const query = wizardSearchQuery.trim().toLowerCase();
-    const counts = new Map<string, number>();
+    const query = deferredWizardSearchQuery.trim().toLowerCase();
+    const sizeMap = new Map<
+      string,
+      {
+        nominal: number;
+        unit: string;
+        count: number;
+        subSizes: Array<{ label: string; count: number }>;
+        subSizeMap: Map<string, number>;
+      }
+    >();
 
     for (const part of partsByMaterial) {
+      if (!partDisplayNameMatchesQuery(part, query)) continue;
       const nominal = part.sizeNominal === null ? null : Number(part.sizeNominal);
       if (nominal === null || !part.sizeUnit) {
         continue;
       }
 
       const key = `${nominal}:${part.sizeUnit}`;
-      counts.set(key, (counts.get(key) ?? 0) + 1);
+      const current =
+        sizeMap.get(key) ??
+        {
+          nominal,
+          unit: part.sizeUnit,
+          count: 0,
+          subSizes: [],
+          subSizeMap: new Map<string, number>(),
+        };
+      current.count += 1;
+
+      const label = part.sizeLabel ?? part.size;
+      if (label) {
+        current.subSizeMap.set(label, (current.subSizeMap.get(label) ?? 0) + 1);
+      }
+
+      sizeMap.set(key, current);
     }
 
-    return partsByMaterial
-      .flatMap((part) => {
-        const nominal = part.sizeNominal === null ? null : Number(part.sizeNominal);
-        if (nominal === null || !part.sizeUnit) {
-          return [];
-        }
-
-        const key = `${nominal}:${part.sizeUnit}`;
-        const count = counts.get(key) ?? 0;
-        if (count === 0) {
-          return [];
-        }
-        counts.delete(key);
-
-        return [{ nominal, unit: part.sizeUnit, count }];
-      })
-      .filter(
-        (size) => !query || `${size.nominal} ${size.unit}`.toLowerCase().includes(query),
-      )
+    return Array.from(sizeMap.values())
+      .map((size) => ({
+        nominal: size.nominal,
+        unit: size.unit,
+        count: size.count,
+        subSizes: Array.from(size.subSizeMap.entries())
+          .map(([label, count]) => ({ label, count }))
+          .sort((a, b) => a.label.localeCompare(b.label, undefined, { numeric: true })),
+      }))
       .sort((a, b) => {
         if (a.nominal !== b.nominal) {
           return a.nominal - b.nominal;
         }
         return a.unit.localeCompare(b.unit);
       });
-  }, [partsByMaterial, wizardSearchQuery]);
+  }, [partsByMaterial, deferredWizardSearchQuery, partDisplayNameMatchesQuery]);
 
   const filteredPartsForSelection = useMemo(() => {
-    const query = wizardSearchQuery.trim().toLowerCase();
-    return partsByCategory.filter((part) => {
-      if (!query) return true;
-      return [part.displayName, part.description, part.material, part.size]
-        .filter(Boolean)
-        .some((value) => value!.toLowerCase().includes(query));
-    });
-  }, [partsByCategory, wizardSearchQuery]);
+    const query = deferredWizardSearchQuery.trim().toLowerCase();
+    return partsByCategory.filter((part) => partDisplayNameMatchesQuery(part, query));
+  }, [partsByCategory, deferredWizardSearchQuery, partDisplayNameMatchesQuery]);
 
   const createCatalog = api.catalogue.createCatalog.useMutation({
     onSuccess: (newCatalog) => {
@@ -282,7 +317,7 @@ export function usePartWizard() {
         setCustomSizeInput("");
         setCustomSizeUnitId(null);
         setShowCustomSize(false);
-        setWizardStage("partTypeCategory");
+        setWizardStage("category");
       }
       void utils.catalogue.getAvailableSizes.invalidate();
     },
@@ -291,15 +326,15 @@ export function usePartWizard() {
   const createCategory = api.catalogue.createCategoryType.useMutation({
     onSuccess: (newCategory) => {
       if (!newCategory) return;
-      setSelectedPartTypeCategory({
+      setSelectedCategory({
         categoryId: newCategory.id,
         name: newCategory.name,
       });
       setHasCategorySelection(true);
-      setCustomPartTypeName("");
-      setShowCustomPartTypeInput(false);
+      setCustomCategoryName("");
+      setShowCustomCategoryInput(false);
       setWizardStage("part");
-      void utils.catalogue.getPartTypeCategories.invalidate();
+      void utils.catalogue.getCategories.invalidate();
     },
   });
 
@@ -310,7 +345,7 @@ export function usePartWizard() {
     setHasMaterialSelection(false);
     setSelectedSize(null);
     setHasSizeSelection(false);
-    setSelectedPartTypeCategory(null);
+    setSelectedCategory(null);
     setHasCategorySelection(false);
     setWizardStage("material");
   };
@@ -320,29 +355,29 @@ export function usePartWizard() {
     setHasMaterialSelection(true);
     setSelectedSize(null);
     setHasSizeSelection(false);
-    setSelectedPartTypeCategory(null);
+    setSelectedCategory(null);
     setHasCategorySelection(false);
     setShowCustomSize(false);
     setCustomSizeInput("");
     setWizardStage("size");
   };
 
-  const handleSizeSelect = (size: { nominal: number; unit: string } | null) => {
+  const handleSizeSelect = (size: { nominal: number; unit: string; sizeLabel?: string | null } | null) => {
     setSelectedSize(size);
     setHasSizeSelection(true);
-    setSelectedPartTypeCategory(null);
+    setSelectedCategory(null);
     setHasCategorySelection(false);
     setShowCustomSize(false);
     setCustomSizeInput("");
     setCustomSizeUnitId(null);
-    setWizardStage("partTypeCategory");
+    setWizardStage("category");
   };
 
-  const handlePartTypeCategorySelection = (category: {
+  const handleCategorySelection = (category: {
     categoryId: string | null;
     name: string;
   }) => {
-    setSelectedPartTypeCategory({
+    setSelectedCategory({
       categoryId: category.categoryId,
       name: category.name,
     });
@@ -351,8 +386,8 @@ export function usePartWizard() {
   };
 
   const handleCustomCategorySubmit = () => {
-    if (customPartTypeName.trim()) {
-      createCategory.mutate({ name: customPartTypeName.trim() });
+    if (customCategoryName.trim()) {
+      createCategory.mutate({ name: customCategoryName.trim() });
     }
   };
 
@@ -364,12 +399,12 @@ export function usePartWizard() {
     } else if (stage === "size" && hasCatalogSelection && hasMaterialSelection) {
       setWizardStage("size");
     } else if (
-      stage === "partTypeCategory" &&
+      stage === "category" &&
       hasCatalogSelection &&
       hasMaterialSelection &&
       hasSizeSelection
     ) {
-      setWizardStage("partTypeCategory");
+      setWizardStage("category");
     } else if (
       stage === "part" &&
       hasCatalogSelection &&
@@ -389,7 +424,7 @@ export function usePartWizard() {
     setHasMaterialSelection(false);
     setSelectedSize(null);
     setHasSizeSelection(false);
-    setSelectedPartTypeCategory(null);
+    setSelectedCategory(null);
     setHasCategorySelection(false);
     setShowCustomCatalogInput(false);
     setCustomCatalogName("");
@@ -398,14 +433,63 @@ export function usePartWizard() {
     setShowCustomSize(false);
     setCustomSizeInput("");
     setCustomSizeUnitId(null);
-    setShowCustomPartTypeInput(false);
-    setCustomPartTypeName("");
+    setShowCustomCategoryInput(false);
+    setCustomCategoryName("");
     setWizardSearchQuery("");
   }, []);
 
   useEffect(() => {
     setWizardSearchQuery("");
   }, [wizardStage]);
+
+  useEffect(() => {
+    if (deferredWizardSearchQuery.trim()) return;
+    if (!allParts) return;
+
+    if (wizardStage === "catalog") {
+      if (catalogs === undefined) return;
+      if (catalogsWithCounts.length === 0) {
+        handleCatalogSelect(null);
+      }
+      return;
+    }
+
+    if (wizardStage === "material" && hasCatalogSelection) {
+      if (materials === undefined) return;
+      if (materialsWithCounts.length === 0) {
+        handleMaterialSelect(null);
+      }
+      return;
+    }
+
+    if (wizardStage === "size" && hasCatalogSelection && hasMaterialSelection) {
+      if (filteredAvailableSizes.length === 0) {
+        handleSizeSelect(null);
+      }
+      return;
+    }
+
+    if (wizardStage === "category" && hasCatalogSelection && hasMaterialSelection && hasSizeSelection) {
+      if (categoryTree === undefined) return;
+      if (categoriesWithCounts.length === 0) {
+        handleCategorySelection({ categoryId: null, name: "All Categories" });
+      }
+    }
+  }, [
+    allParts,
+    catalogs,
+    catalogsWithCounts.length,
+    categoriesWithCounts.length,
+    categoryTree,
+    deferredWizardSearchQuery,
+    filteredAvailableSizes.length,
+    hasCatalogSelection,
+    hasMaterialSelection,
+    hasSizeSelection,
+    materials,
+    materialsWithCounts.length,
+    wizardStage,
+  ]);
 
   const selectedCatalogName = hasCatalogSelection
     ? selectedCatalogId
@@ -424,21 +508,11 @@ export function usePartWizard() {
     : null;
 
   const selectedCategoryName = hasCategorySelection
-    ? selectedPartTypeCategory ?? { categoryId: null, name: "All Categories" }
+    ? selectedCategory ?? { categoryId: null, name: "All Categories" }
     : null;
 
   const wizardSearchPlaceholder =
-    wizardStage === "catalog"
-      ? "Search catalogs..."
-      : wizardStage === "material"
-        ? "Search materials..."
-        : wizardStage === "size"
-          ? "Search sizes..."
-          : wizardStage === "partTypeCategory"
-            ? "Search categories..."
-            : wizardStage === "part"
-              ? "Search parts..."
-              : "";
+    wizardStage === "review" ? "" : "Search part names...";
 
   return {
     wizardStage,
@@ -449,9 +523,9 @@ export function usePartWizard() {
     hasMaterialSelection,
     selectedSize,
     hasSizeSelection,
-    selectedPartTypeCategory,
+    selectedCategory,
     hasCategorySelection,
-    setSelectedPartTypeCategory,
+    setSelectedCategory,
     showCustomCatalogInput,
     setShowCustomCatalogInput,
     customCatalogName,
@@ -466,10 +540,10 @@ export function usePartWizard() {
     setCustomSizeInput,
     customSizeUnitId,
     setCustomSizeUnitId,
-    showCustomPartTypeInput,
-    setShowCustomPartTypeInput,
-    customPartTypeName,
-    setCustomPartTypeName,
+    showCustomCategoryInput,
+    setShowCustomCategoryInput,
+    customCategoryName,
+    setCustomCategoryName,
     wizardSearchQuery,
     setWizardSearchQuery,
     catalogs,
@@ -486,7 +560,7 @@ export function usePartWizard() {
     handleCatalogSelect,
     handleMaterialSelect,
     handleSizeSelect,
-    handlePartTypeCategorySelection,
+    handleCategorySelection,
     handleCustomCategorySubmit,
     handleStageClick,
     resetWizard,

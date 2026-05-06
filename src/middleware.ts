@@ -1,45 +1,63 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 
-// Define public routes that don't require authentication
+const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
+const AGENT_AUTH_COOKIE = "foremenhq_agent_auth";
+const AGENT_AUTH_HEADER = "x-foremenhq-agent-auth";
+
+function hasAgentAuthBypass(req: NextRequest) {
+  if (process.env.FOREMENHQ_AGENT_AUTH_BYPASS !== "true") return false;
+
+  const expectedSecret = process.env.FOREMENHQ_AGENT_AUTH_SECRET?.trim() ?? "";
+  if (expectedSecret.length < 32) return false;
+
+  const providedToken =
+    req.headers.get(AGENT_AUTH_HEADER)?.trim() ??
+    req.cookies.get(AGENT_AUTH_COOKIE)?.value.trim() ??
+    "";
+
+  return providedToken === expectedSecret;
+}
+
 const isPublicRoute = createRouteMatcher([
   "/",
   "/sign-in(.*)",
   "/sign-up(.*)",
   "/pricing",
+  "/api/health",
+  "/api/catalogue/images(.*)",
   "/api/webhooks(.*)",
-  "/api/auth(.*)", // Allow Clerk auth routes (they redirect to /sign-in)
+  "/api/auth(.*)",
 ]);
 
-
-export default clerkMiddleware(async (auth, req) => {
+const clerkProtectedMiddleware = clerkMiddleware(async (auth, req) => {
   if (process.env.NODE_ENV !== "production") {
     return NextResponse.next();
   }
 
-  // Protect all routes except public ones
+  if (hasAgentAuthBypass(req)) {
+    return NextResponse.next();
+  }
+
   if (!isPublicRoute(req)) {
     const { userId } = await auth();
 
     if (!userId) {
-      // Use absolute URL for redirect in middleware
       const signInUrl = new URL("/sign-in", req.url);
       return NextResponse.redirect(signInUrl);
     }
-
-    // Dashboard routes - let the layout handle organizationId checks
-    // Middleware just ensures user is authenticated
-
-    // Onboarding route is accessible to authenticated users without org
-    // (handled by layout, not middleware)
   }
+
+  return NextResponse.next();
 });
+
+export default function middleware(req: NextRequest, evt: Parameters<typeof clerkProtectedMiddleware>[1]) {
+  return clerkProtectedMiddleware(req, evt);
+}
 
 export const config = {
   matcher: [
-    // Skip Next.js internals and all static files, unless found in search params
     "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
-    // Always run for API routes
     "/(api|trpc)(.*)",
   ],
 };

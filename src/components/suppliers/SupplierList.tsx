@@ -11,7 +11,9 @@ import {
 } from "~/components/ui/dropdown-menu";
 import { SupplierFormDialog } from "./SupplierFormDialog";
 import { SupplierPartsDialog } from "./SupplierPartsDialog";
-import { MoreVerticalIcon, PlusIcon, TrashIcon, EditIcon, PackageIcon } from "lucide-react";
+import { MoreVerticalIcon, PlusIcon, TrashIcon, EditIcon, PackageIcon, WifiOffIcon } from "lucide-react";
+import { useOnlineStatus } from "~/hooks/use-online-status";
+import { useOfflineSuppliers } from "~/hooks/use-offline-suppliers";
 
 export function SupplierList() {
   const [editSupplierId, setEditSupplierId] = useState<string | undefined>();
@@ -20,7 +22,11 @@ export function SupplierList() {
   >();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
-  const { data: suppliers, isLoading } = api.supplier.list.useQuery();
+  const isBrowserOnline = useOnlineStatus();
+  const { data: serverSuppliers, isLoading } = api.supplier.list.useQuery(undefined, {
+    enabled: isBrowserOnline,
+  });
+  const { data: suppliers, cacheLoaded, isOfflineFallback } = useOfflineSuppliers(serverSuppliers);
   const utils = api.useUtils();
   const deleteSupplier = api.supplier.delete.useMutation({
     onMutate: async (variables) => {
@@ -61,7 +67,7 @@ export function SupplierList() {
 
   const editingSupplier = suppliers?.find((s) => s.id === editSupplierId);
 
-  if (isLoading) {
+  if ((isLoading || !cacheLoaded) && !suppliers) {
     return (
       <div className="flex items-center justify-center py-12">
         <p className="text-muted-foreground">Loading suppliers...</p>
@@ -117,6 +123,11 @@ export function SupplierList() {
           <p className="text-muted-foreground mt-1 text-sm sm:text-base">
             Manage your suppliers and their parts
           </p>
+          {isOfflineFallback && (
+            <p className="mt-2 inline-flex items-center gap-2 rounded-full bg-orange-100 px-3 py-1 text-xs font-medium text-orange-900">
+              <WifiOffIcon className="h-3 w-3" /> Offline cached suppliers
+            </p>
+          )}
         </div>
         <Button
           onClick={() => setIsCreateDialogOpen(true)}
@@ -132,9 +143,9 @@ export function SupplierList() {
           {suppliers.map((supplier) => (
             <div
               key={supplier.id}
-              className="flex flex-col gap-3 p-4 hover:bg-gray-50 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
+              className="flex items-center justify-between gap-3 p-4 hover:bg-gray-50 sm:gap-4"
             >
-              <div className="flex-1 min-w-0">
+              <div className="min-w-0 flex-1">
                 <h3 className="text-base font-semibold sm:text-lg">
                   {supplier.name}
                 </h3>
@@ -146,8 +157,11 @@ export function SupplierList() {
                         ? ` - ${[supplier.location.city, supplier.location.region]
                             .filter(Boolean)
                             .join(", ")}`
-                        : ""}
+                      : ""}
                     </span>
+                  )}
+                  {supplier.contactName && (
+                    <span className="truncate">{supplier.contactName}</span>
                   )}
                   {supplier.contactEmail && (
                     <span className="truncate">{supplier.contactEmail}</span>
@@ -162,7 +176,7 @@ export function SupplierList() {
                   </p>
                 )}
               </div>
-              <div className="flex items-center gap-2">
+              <div className="ml-auto flex shrink-0 items-center gap-2">
                 <Button
                   variant="outline"
                   size="sm"
@@ -174,7 +188,12 @@ export function SupplierList() {
                 </Button>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-11 w-11">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-11 w-11"
+                      aria-label={`Actions for ${supplier.name}`}
+                    >
                       <MoreVerticalIcon className="h-5 w-5" />
                     </Button>
                   </DropdownMenuTrigger>
@@ -221,6 +240,7 @@ export function SupplierList() {
           supplierId={editSupplierId}
           initialData={{
             name: editingSupplier.name,
+            contactName: editingSupplier.contactName,
             contactEmail: editingSupplier.contactEmail,
             contactPhone: editingSupplier.contactPhone,
             orderingNotes: editingSupplier.orderingNotes,
@@ -241,4 +261,3 @@ export function SupplierList() {
     </div>
   );
 }
-

@@ -21,6 +21,7 @@ import {
 } from "~/components/ui/dropdown-menu";
 import { Search, ChevronDownIcon } from "lucide-react";
 import { LocationFormDialog } from "./LocationFormDialog";
+import { useOnlineStatus } from "~/hooks/use-online-status";
 
 interface JobInfoModalProps {
   open: boolean;
@@ -41,8 +42,12 @@ export function JobInfoModal({
   const [selectedLocation, setSelectedLocation] = useState<{
     id: string;
     name: string;
+    address1?: string | null;
+    address2?: string | null;
     city?: string | null;
     region?: string | null;
+    postalCode?: string | null;
+    country?: string | null;
   } | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
@@ -58,9 +63,10 @@ export function JobInfoModal({
   }, [searchQuery]);
 
   const utils = api.useUtils();
+  const isOnline = useOnlineStatus();
   const { data: materialList } = api.materialList.getMaterialList.useQuery(
     { materialListId },
-    { enabled: open && !!materialListId },
+    { enabled: isOnline && open && !!materialListId },
   );
   const updateJobInfo = api.materialList.updateMaterialListJobInfo.useMutation({
     onMutate: async (variables) => {
@@ -81,6 +87,12 @@ export function JobInfoModal({
         ? {
             id: selectedLocation.id,
             name: selectedLocation.name,
+            address1: selectedLocation.address1 ?? null,
+            address2: selectedLocation.address2 ?? null,
+            city: selectedLocation.city ?? null,
+            region: selectedLocation.region ?? null,
+            postalCode: selectedLocation.postalCode ?? null,
+            country: selectedLocation.country ?? null,
           }
         : null;
 
@@ -179,7 +191,7 @@ export function JobInfoModal({
       { query: debouncedSearchQuery || undefined },
       {
         enabled:
-          isDropdownOpen || !!debouncedSearchQuery || !!initialLocationId,
+          isOnline && (isDropdownOpen || !!debouncedSearchQuery || !!initialLocationId),
       },
     );
 
@@ -191,8 +203,12 @@ export function JobInfoModal({
         setSelectedLocation({
           id: found.id,
           name: found.name,
+          address1: found.address1,
+          address2: found.address2,
           city: found.city,
           region: found.region,
+          postalCode: found.postalCode,
+          country: found.country,
         });
       }
     }
@@ -201,8 +217,12 @@ export function JobInfoModal({
   const handleLocationSelect = (location: {
     id: string;
     name: string;
+    address1?: string | null;
+    address2?: string | null;
     city?: string | null;
     region?: string | null;
+    postalCode?: string | null;
+    country?: string | null;
   }) => {
     setSelectedLocation(location);
     setIsDropdownOpen(false);
@@ -226,8 +246,12 @@ export function JobInfoModal({
       handleLocationSelect({
         id: newLocation.id,
         name: newLocation.name,
+        address1: newLocation.address1,
+        address2: newLocation.address2,
         city: newLocation.city,
         region: newLocation.region,
+        postalCode: newLocation.postalCode,
+        country: newLocation.country,
       });
     }
   };

@@ -1,5 +1,3 @@
-"use client";
-
 import "~/styles/globals.css";
 
 import { type Metadata, type Viewport } from "next";
@@ -8,7 +6,8 @@ import { Geist } from "next/font/google";
 import { SessionProviderWrapper } from "./_components/SessionProviderWrapper";
 import { TRPCReactProvider } from "~/trpc/react";
 import { APP_NAME } from "~/constants/app";
-import { useOfflineMaterialListSync } from "~/hooks/use-offline-material-list-sync";
+import { OfflineSyncBootstrap } from "~/components/offline/OfflineSyncBootstrap";
+import { ServiceWorkerRegistration } from "~/components/offline/ServiceWorkerRegistration";
 
 export const metadata: Metadata = {
   title: `${APP_NAME} - Simplified Parts Ordering for Trades Foremen`,
@@ -27,6 +26,16 @@ export const metadata: Metadata = {
     "construction tools",
     "order tracking",
   ],
+  manifest: "/manifest.webmanifest",
+  applicationName: APP_NAME,
+  appleWebApp: {
+    capable: true,
+    title: APP_NAME,
+    statusBarStyle: "default",
+  },
+  formatDetection: {
+    telephone: false,
+  },
   icons: [
     { rel: "icon", url: "/foremanhq/favicon.ico" },
     { rel: "icon", type: "image/png", sizes: "16x16", url: "/foremanhq/favicon-16x16.png" },
@@ -48,11 +57,6 @@ const geist = Geist({
   variable: "--font-geist-sans",
 });
 
-function OfflineSyncBootstrap() {
-  useOfflineMaterialListSync();
-  return null;
-}
-
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
@@ -61,6 +65,7 @@ export default function RootLayout({
       <body>
         <SessionProviderWrapper>
           <TRPCReactProvider>
+            <ServiceWorkerRegistration />
             <OfflineSyncBootstrap />
             {children}
           </TRPCReactProvider>

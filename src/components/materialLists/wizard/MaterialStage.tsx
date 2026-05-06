@@ -36,7 +36,7 @@ export function MaterialStage({
   return (
     <div className="space-y-3 sm:space-y-4">
       <h3 className="text-base font-semibold sm:text-lg">Select Material</h3>
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3 md:grid-cols-3 lg:grid-cols-4 lg:gap-4">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(12rem,1fr))] gap-3">
         <Card
           className={`cursor-pointer transition-all hover:shadow-md ${
             allSelected ? "border-primary border-2 shadow-md" : ""

@@ -21,6 +21,7 @@ interface SupplierFormDialogProps {
   initialName?: string;
   initialData?: {
     name: string;
+    contactName?: string | null;
     contactEmail?: string | null;
     contactPhone?: string | null;
     orderingNotes?: string | null;
@@ -38,6 +39,9 @@ export function SupplierFormDialog({
   onSupplierCreated,
 }: SupplierFormDialogProps) {
   const [name, setName] = useState(initialData?.name || initialName || "");
+  const [contactName, setContactName] = useState(
+    initialData?.contactName || "",
+  );
   const [contactEmail, setContactEmail] = useState(
     initialData?.contactEmail || "",
   );
@@ -66,6 +70,7 @@ export function SupplierFormDialog({
         id: tempId,
         organizationId: "",
         name: variables.name,
+        contactName: variables.contactName ?? null,
         contactEmail: variables.contactEmail ?? null,
         contactPhone: variables.contactPhone ?? null,
         orderingNotes: variables.orderingNotes ?? null,
@@ -102,6 +107,7 @@ export function SupplierFormDialog({
       onOpenChange(false);
       // Reset form but preserve initialName if provided
       setName(initialName || "");
+      setContactName("");
       setContactEmail("");
       setContactPhone("");
       setOrderingNotes("");
@@ -114,6 +120,21 @@ export function SupplierFormDialog({
     if (open) {
       if (initialName && !initialData?.name) {
         setName(initialName);
+      }
+      if (initialData?.name !== undefined) {
+        setName(initialData.name);
+      }
+      if (initialData?.contactName !== undefined) {
+        setContactName(initialData.contactName ?? "");
+      }
+      if (initialData?.contactEmail !== undefined) {
+        setContactEmail(initialData.contactEmail ?? "");
+      }
+      if (initialData?.contactPhone !== undefined) {
+        setContactPhone(initialData.contactPhone ?? "");
+      }
+      if (initialData?.orderingNotes !== undefined) {
+        setOrderingNotes(initialData.orderingNotes ?? "");
       }
       if (initialData?.locationId !== undefined) {
         setLocationId(initialData.locationId);
@@ -145,6 +166,7 @@ export function SupplierFormDialog({
           return {
             ...old,
             name: variables.name,
+            contactName: variables.contactName ?? null,
             contactEmail: variables.contactEmail ?? null,
             contactPhone: variables.contactPhone ?? null,
             orderingNotes: variables.orderingNotes ?? null,
@@ -182,6 +204,7 @@ export function SupplierFormDialog({
       updateSupplier.mutate({
         id: supplierId,
         name,
+        contactName: contactName || undefined,
         contactEmail: contactEmail || undefined,
         contactPhone: contactPhone || undefined,
         orderingNotes: orderingNotes || undefined,
@@ -190,6 +213,7 @@ export function SupplierFormDialog({
     } else {
       createSupplier.mutate({
         name,
+        contactName: contactName || undefined,
         contactEmail: contactEmail || undefined,
         contactPhone: contactPhone || undefined,
         orderingNotes: orderingNotes || undefined,
@@ -225,6 +249,18 @@ export function SupplierFormDialog({
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Enter supplier name"
                 required
+                disabled={isLoading}
+              />
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="contactName" className="text-sm font-medium">
+                Contact Name
+              </label>
+              <Input
+                id="contactName"
+                value={contactName}
+                onChange={(e) => setContactName(e.target.value)}
+                placeholder="Enter contact name"
                 disabled={isLoading}
               />
             </div>
@@ -301,4 +337,3 @@ export function SupplierFormDialog({
     </Dialog>
   );
 }
-

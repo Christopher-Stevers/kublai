@@ -1,7 +1,7 @@
 "use client";
 
-import { use } from "react";
-import { useRouter } from "next/navigation";
+import { use, useEffect } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { api } from "~/trpc/react";
 import { Button, LargeButton } from "~/components/ui/button";
 import { MaterialListItem } from "~/components/materialLists/MaterialListItem";
@@ -12,24 +12,138 @@ import { AddPartDialog } from "~/components/materialLists/AddPartDialog";
 import { MaterialListNameModal } from "~/components/materialLists/MaterialListNameModal";
 import { ExistingQuotesOrdersDialog } from "~/components/materialLists/ExistingQuotesOrdersDialog";
 import { useState } from "react";
-import { PlusIcon, FileTextIcon, ShoppingCartIcon, WifiOffIcon } from "lucide-react";
+import {
+  CheckCircle2Icon,
+  Clock3Icon,
+  FileTextIcon,
+  Loader2Icon,
+  PlusIcon,
+  ShoppingCartIcon,
+  WifiOffIcon,
+} from "lucide-react";
 import { ViewToggle } from "~/components/ui/view-toggle";
 import { QuantityControls } from "~/components/materialLists/QuantityControls";
 import { SupplierSelector } from "~/components/materialLists/SupplierSelector";
 import { TrashIcon } from "lucide-react";
-import { useOfflineMaterialList } from "~/hooks/use-offline-material-list";
+import {
+  useOfflineMaterialList,
+  type MaterialListSyncStatus,
+} from "~/hooks/use-offline-material-list";
+import { useOnlineStatus } from "~/hooks/use-online-status";
 import Image from "next/image";
 import {
   applyOfflineRemoveItem,
   enqueueOfflineMutation,
 } from "~/lib/offline-material-list-mutations";
 
+function MaterialListSyncBadge({ status }: { status: MaterialListSyncStatus }) {
+  if (status === "syncing") {
+    return (
+      <div className="inline-flex items-center gap-1.5 rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-900">
+        <Loader2Icon className="h-3.5 w-3.5 animate-spin" />
+        Syncing material list
+      </div>
+    );
+  }
+
+  if (status === "pending") {
+    return (
+      <div className="inline-flex items-center gap-1.5 rounded-full bg-orange-100 px-2.5 py-0.5 text-xs font-medium text-orange-900">
+        <Clock3Icon className="h-3.5 w-3.5" />
+        Pending sync
+      </div>
+    );
+  }
+
+  return (
+    <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-900">
+      <CheckCircle2Icon className="h-3.5 w-3.5" />
+      Synced
+    </div>
+  );
+}
+
+function ItemSyncBadge({ status }: { status: MaterialListSyncStatus }) {
+  if (status === "syncing") {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-medium text-blue-900">
+        <Loader2Icon className="h-3 w-3 animate-spin" />
+        Syncing
+      </span>
+    );
+  }
+
+  if (status === "pending") {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-orange-100 px-2 py-0.5 text-[11px] font-medium text-orange-900">
+        <Clock3Icon className="h-3 w-3" />
+        Pending
+      </span>
+    );
+  }
+
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-medium text-emerald-900">
+      <CheckCircle2Icon className="h-3 w-3" />
+      Synced
+    </span>
+  );
+}
+
+function normalizeSignatureValue(value: unknown) {
+  if (value === null || value === undefined) return null;
+  if (value instanceof Date) return value.toISOString();
+  if (typeof value === "number") return value.toString();
+  return String(value);
+}
+
+function normalizeQuantity(value: unknown) {
+  const numeric = Number(value ?? 0);
+  return Number.isFinite(numeric) ? numeric.toFixed(6) : normalizeSignatureValue(value);
+}
+
+function nestedId(value: unknown) {
+  if (!value || typeof value !== "object") return null;
+  const record = value as Record<string, unknown>;
+  return normalizeSignatureValue(record.id);
+}
+
+function buildMaterialListOrderSignature(
+  materialList: { items?: unknown[] } | null | undefined,
+) {
+  if (!materialList?.items) return null;
+
+  return JSON.stringify(
+    materialList.items
+      .map((item) => {
+        const record = item as Record<string, unknown>;
+        const partDefinition = record.partDefinition as Record<string, unknown> | null;
+        const supplierPart = record.supplierPart as Record<string, unknown> | null;
+        const uom = record.uom as Record<string, unknown> | null;
+
+        return {
+          id: normalizeSignatureValue(record.id),
+          quantity: normalizeQuantity(record.quantity),
+          unitCost: normalizeSignatureValue(record.unitCost),
+          extendedPrice: normalizeSignatureValue(record.extendedPrice),
+          partDefinitionId: nestedId(partDefinition),
+          supplierPartId: nestedId(supplierPart),
+          supplierId: normalizeSignatureValue(supplierPart?.supplierId),
+          uomId: nestedId(uom),
+        };
+      })
+      .sort((a, b) => String(a.id).localeCompare(String(b.id))),
+  );
+}
+
 export default function MaterialListDetailPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const { id } = use(params);
+  const { id: paramId } = use(params);
+  const pathname = usePathname();
+  const id = pathname.match(/^\/dashboard\/material-lists\/([^/?#]+)/)?.[1] ?? paramId;
   const router = useRouter();
   const [showJobInfoModal, setShowJobInfoModal] = useState(false);
   const [showQuoteSheet, setShowQuoteSheet] = useState(false);
@@ -44,19 +158,78 @@ export default function MaterialListDetailPage({
   const [selectedQuoteId, setSelectedQuoteId] = useState<string | undefined>();
   const [selectedOrderId, setSelectedOrderId] = useState<string | undefined>();
   const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
+  const [isRealtimeRefreshing, setIsRealtimeRefreshing] = useState(false);
+  const isBrowserOnline = useOnlineStatus();
 
-  const { data: serverMaterialList, isLoading } =
+  useEffect(() => {
+    if (!id.startsWith("offline-list-") || typeof window === "undefined") return;
+
+    const redirectIfMapped = () => {
+      const idMap = JSON.parse(
+        window.localStorage.getItem("foremanhq.offline.id-map") ?? "{}",
+      ) as Record<string, string>;
+      const mappedId = idMap[id];
+      if (mappedId) router.replace(`/dashboard/material-lists/${mappedId}`);
+    };
+
+    redirectIfMapped();
+    window.addEventListener("foremanhq:offline-id-map-changed", redirectIfMapped);
+    return () => window.removeEventListener("foremanhq:offline-id-map-changed", redirectIfMapped);
+  }, [id, router]);
+
+  const { data: serverMaterialList, isLoading, isFetching } =
     api.materialList.getMaterialList.useQuery(
       { materialListId: id },
-      { enabled: !!id },
+      {
+        enabled: !!id && isBrowserOnline,
+        refetchOnWindowFocus: true,
+        refetchOnReconnect: true,
+      },
     );
 
-  const { data: materialList, isOfflineFallback, isOnline } =
-    useOfflineMaterialList(id, serverMaterialList);
+  const {
+    data: materialList,
+    cached,
+    cacheLoaded,
+    isOfflineFallback,
+    isOnline,
+    syncStatus,
+    itemSyncStatuses,
+  } = useOfflineMaterialList(id, serverMaterialList);
 
   const utils = api.useUtils();
 
-  if (isLoading && !materialList) {
+  useEffect(() => {
+    if (!id || !isBrowserOnline || id.startsWith("offline-list-") || typeof window === "undefined") {
+      return;
+    }
+
+    const eventSource = new EventSource(`/api/material-lists/${id}/events`);
+    let cancelled = false;
+
+    const refreshMaterialList = () => {
+      setIsRealtimeRefreshing(true);
+      void utils.materialList.getMaterialList
+        .invalidate({ materialListId: id })
+        .finally(() => {
+          if (cancelled) return;
+          window.setTimeout(() => {
+            if (!cancelled) setIsRealtimeRefreshing(false);
+          }, 450);
+        });
+    };
+
+    eventSource.addEventListener("material-list-updated", refreshMaterialList);
+
+    return () => {
+      cancelled = true;
+      eventSource.removeEventListener("material-list-updated", refreshMaterialList);
+      eventSource.close();
+      setIsRealtimeRefreshing(false);
+    };
+  }, [id, isBrowserOnline, utils.materialList.getMaterialList]);
+
+  if ((isLoading || !cacheLoaded) && !materialList) {
     return (
       <div className="flex h-[calc(100vh-4rem)] items-center justify-center">
         <p className="text-muted-foreground">Loading material list...</p>
@@ -77,11 +250,37 @@ export default function MaterialListDetailPage({
     );
   }
 
+  const canonicalMaterialListId = materialList.materialList.id;
+  const hasUnsyncedItems = Array.from(itemSyncStatuses.values()).some(
+    (status) => status !== "synced",
+  );
+  const visibleSyncStatus: MaterialListSyncStatus =
+    (isRealtimeRefreshing || (isFetching && !isLoading)) && isOnline
+      ? "syncing"
+      : syncStatus;
+  const displayedAndServerMaterialListMatch =
+    !!materialList &&
+    !!serverMaterialList &&
+    buildMaterialListOrderSignature(materialList) ===
+      buildMaterialListOrderSignature(serverMaterialList);
+  const generationBlockReason = !isOnline
+    ? "Reconnect before generating quotes or orders."
+    : isLoading || !serverMaterialList
+      ? "Checking the online database before quote/order generation."
+      : visibleSyncStatus !== "synced" || hasUnsyncedItems || cached?.pendingSync
+        ? "Finish syncing this material list before generating a quote or order."
+        : !displayedAndServerMaterialListMatch
+          ? "Waiting for the displayed material list to match the online database."
+          : null;
+  const canGenerateQuoteOrOrder = !generationBlockReason;
+
   const handleJobInfoClick = () => {
     setShowJobInfoModal(true);
   };
 
   const handleGenerateQuote = () => {
+    if (!canGenerateQuoteOrOrder) return;
+
     const jobName = (materialList?.job as { name?: string } | undefined)?.name;
     if (!jobName) {
       setShowJobInfoModal(true);
@@ -91,6 +290,8 @@ export default function MaterialListDetailPage({
   };
 
   const handleGenerateOrder = () => {
+    if (!canGenerateQuoteOrOrder) return;
+
     const jobName = (materialList?.job as { name?: string } | undefined)?.name;
     if (!jobName) {
       setShowJobInfoModal(true);
@@ -120,31 +321,32 @@ export default function MaterialListDetailPage({
   };
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] flex-col">
+    <div className="flex h-[calc(100dvh-4rem)] flex-col">
       {/* Top Bar */}
-      <div className="border-b bg-white px-4 py-3 sm:px-6 sm:py-4">
+      <div className="border-b bg-white px-4 py-2 sm:px-6 sm:py-3">
         <div className="mx-auto max-w-6xl">
-          <div className="mb-3 flex flex-wrap items-center gap-2">
+          <div className="mb-1 flex flex-wrap items-center gap-1.5">
             {!isOnline && (
-              <div className="inline-flex items-center gap-2 rounded-full bg-amber-100 px-3 py-1 text-sm font-medium text-amber-900">
+              <div className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-900">
                 <WifiOffIcon className="h-4 w-4" />
                 Offline mode
               </div>
             )}
             {isOfflineFallback && (
-              <div className="inline-flex items-center rounded-full bg-blue-100 px-3 py-1 text-sm font-medium text-blue-900">
+              <div className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-900">
                 Showing cached material list data
               </div>
             )}
+
           </div>
-          <div className="flex items-center justify-between">
+          <div className="flex items-end justify-between gap-3">
             <div>
-              <div className="flex flex-col content-start items-start gap-2">
+              <div className="flex flex-col content-start items-start gap-0.5">
                 <button
                   onClick={() => setShowMaterialListNameModal(true)}
                   className="text-left"
                 >
-                  <h1 className="cursor-pointer text-xl font-bold text-gray-900 transition-colors hover:text-gray-700 sm:text-2xl">
+                  <h1 className="cursor-pointer text-lg font-bold leading-tight text-gray-900 transition-colors hover:text-gray-700 sm:text-xl">
                     {(materialList.materialList as { name?: string } | undefined)?.name || "Material List"}
                   </h1>
                 </button>
@@ -157,13 +359,29 @@ export default function MaterialListDetailPage({
                       handleJobInfoClick();
                     }
                   }}
-                  className="text-muted-foreground mt-1 h-11 text-sm hover:text-gray-900"
+                  className="text-muted-foreground h-auto text-sm leading-tight hover:text-gray-900"
                 >
                   Job: {(materialList.job as { name?: string } | undefined)?.name || "Not set"}
                 </button>
+                {(
+                  materialList.materialList as unknown as {
+                    createdBy?: { name?: string | null } | null;
+                  } | undefined
+                )?.createdBy?.name && (
+                  <div className="text-muted-foreground text-xs leading-tight">
+                    Created by: {
+                      (materialList.materialList as unknown as {
+                        createdBy: { name: string };
+                      }).createdBy.name
+                    }
+                  </div>
+                )}
               </div>
             </div>
-            <ViewToggle view={viewMode} onViewChange={setViewMode} showOnMobile />
+            <div className="flex shrink-0 flex-col items-end gap-1">
+              <MaterialListSyncBadge status={visibleSyncStatus} />
+              <ViewToggle view={viewMode} onViewChange={setViewMode} showOnMobile />
+            </div>
           </div>
         </div>
       </div>
@@ -194,6 +412,9 @@ export default function MaterialListDetailPage({
                           unitCost: string | null;
                           extendedPrice: string | null;
                           descriptionSnapshot: string | null;
+                          createdAt?: string | Date | null;
+                          updatedAt?: string | Date | null;
+                          syncVersion?: string | null;
                           partDefinition: {
                             id: string;
                             displayName: string;
@@ -218,6 +439,7 @@ export default function MaterialListDetailPage({
                         }
                       }
                       materialListId={id}
+                      syncStatus={itemSyncStatuses.get(String(item.id)) ?? "synced"}
                     />
                   ))}
                 </div>
@@ -232,6 +454,9 @@ export default function MaterialListDetailPage({
                       unitCost: string | null;
                       extendedPrice: string | null;
                       descriptionSnapshot: string | null;
+                      createdAt?: string | Date | null;
+                      updatedAt?: string | Date | null;
+                      syncVersion?: string | null;
                       partDefinition: {
                         id: string;
                         displayName: string;
@@ -256,6 +481,7 @@ export default function MaterialListDetailPage({
                     }>
                   }
                   materialListId={id}
+                  itemSyncStatuses={itemSyncStatuses}
                 />
               )}
             </>
@@ -264,40 +490,49 @@ export default function MaterialListDetailPage({
       </div>
 
       {/* Footer - Always Visible */}
-      <div className="border-t bg-white px-4 py-4 sm:px-6">
+      <div className="shrink-0 border-t bg-white px-4 pt-3 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:px-6 sm:pt-4">
         <div className="mx-auto max-w-6xl">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Material Total</p>
-              <p className="text-xl font-bold sm:text-2xl">
+          <div className="space-y-3">
+            <div className="flex items-baseline gap-2">
+              <span className="text-xl text-gray-600 sm:text-2xl">Material Total</span>
+              <span className="text-xl font-bold sm:text-2xl">
                 ${materialList.materialTotal.toFixed(2)}
-              </p>
+              </span>
             </div>
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <Button
-                variant="outline"
-                onClick={() => setShowAddPartDialog(true)}
-                className="h-11 w-full sm:w-auto"
-              >
-                <PlusIcon className="mr-2 h-4 w-4" />
-                Add Part
-              </Button>
+            <div className="grid grid-cols-3 gap-2">
               <Button
                 variant="outline"
                 onClick={handleGenerateQuote}
-                className="h-11 w-full sm:w-auto"
+                disabled={!canGenerateQuoteOrOrder}
+                title={generationBlockReason ?? "Generate quote"}
+                className="min-h-12 w-full whitespace-normal px-2 py-2 text-xs leading-tight sm:h-11 sm:text-sm"
               >
-                <FileTextIcon className="mr-2 h-4 w-4" />
-                Generate Quote
+                <FileTextIcon className="mr-1 h-4 w-4 shrink-0 sm:mr-2" />
+                <span className="text-center leading-tight">Generate Quote</span>
               </Button>
               <Button
                 onClick={handleGenerateOrder}
-                className="h-11 w-full sm:w-auto"
+                disabled={!canGenerateQuoteOrOrder}
+                title={generationBlockReason ?? "Generate order"}
+                className="min-h-12 w-full whitespace-normal px-2 py-2 text-xs leading-tight sm:h-11 sm:text-sm"
               >
-                <ShoppingCartIcon className="mr-2 h-4 w-4" />
-                Generate Order
+                <ShoppingCartIcon className="mr-1 h-4 w-4 shrink-0 sm:mr-2" />
+                <span className="text-center leading-tight">Generate Order</span>
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setShowAddPartDialog(true)}
+                className="min-h-12 w-full whitespace-normal px-2 py-2 text-xs leading-tight sm:h-11 sm:text-sm"
+              >
+                <PlusIcon className="mr-1 h-4 w-4 shrink-0 sm:mr-2" />
+                <span className="text-center leading-tight">Add Part</span>
               </Button>
             </div>
+            {generationBlockReason && (
+              <p className="text-muted-foreground text-xs leading-tight">
+                Quote/order generation unavailable: {generationBlockReason}
+              </p>
+            )}
           </div>
         </div>
       </div>
@@ -335,16 +570,18 @@ export default function MaterialListDetailPage({
               setSelectedOrderId(undefined);
             }
           }}
-          materialListId={id}
+          materialListId={canonicalMaterialListId}
           orderId={selectedOrderId}
         />
       )}
 
-      <AddPartDialog
-        open={showAddPartDialog}
-        onOpenChange={setShowAddPartDialog}
-        materialListId={id}
-      />
+      {showAddPartDialog && (
+        <AddPartDialog
+          open={showAddPartDialog}
+          onOpenChange={setShowAddPartDialog}
+          materialListId={id}
+        />
+      )}
 
       <MaterialListNameModal
         open={showMaterialListNameModal}
@@ -367,7 +604,7 @@ export default function MaterialListDetailPage({
       <ExistingQuotesOrdersDialog
         open={showExistingOrdersDialog}
         onOpenChange={setShowExistingOrdersDialog}
-        materialListId={id}
+        materialListId={canonicalMaterialListId}
         type="order"
         onGenerateNew={handleGenerateNewOrder}
         onOpenExisting={handleOpenExistingOrder}
@@ -377,9 +614,13 @@ export default function MaterialListDetailPage({
 }
 
 // Material List Table View Component
+const MATERIAL_LIST_TABLE_COLUMNS =
+  "grid-cols-[2rem_8rem_24rem_12rem_8.5rem_2.25rem] sm:grid-cols-[2rem_8.5rem_30rem_14rem_9rem_2.25rem]";
+
 function MaterialListTableView({
   items,
   materialListId,
+  itemSyncStatuses,
 }: {
   items: Array<{
     id: string;
@@ -387,6 +628,9 @@ function MaterialListTableView({
     unitCost: string | null;
     extendedPrice: string | null;
     descriptionSnapshot: string | null;
+    createdAt?: string | Date | null;
+    updatedAt?: string | Date | null;
+    syncVersion?: string | null;
     partDefinition: {
       id: string;
       displayName: string;
@@ -410,6 +654,7 @@ function MaterialListTableView({
     } | null;
   }>;
   materialListId: string;
+  itemSyncStatuses: Map<string, MaterialListSyncStatus>;
 }) {
   const utils = api.useUtils();
   const removeItem = api.materialList.removeMaterialListItem.useMutation({
@@ -456,10 +701,27 @@ function MaterialListTableView({
     },
   });
 
-  const handleRemove = (itemId: string) => {
+  const handleRemove = async (itemId: string) => {
     if (typeof window !== "undefined" && !window.navigator.onLine) {
-      applyOfflineRemoveItem(materialListId, itemId);
-      enqueueOfflineMutation({
+      utils.materialList.getMaterialList.setData({ materialListId }, (old) => {
+        if (!old) return old;
+
+        const updatedItems = old.items.filter((item) => item.id !== itemId);
+        const materialTotal = updatedItems.reduce((sum, item) => {
+          const price = item.extendedPrice
+            ? parseFloat(item.extendedPrice.toString())
+            : 0;
+          return sum + price;
+        }, 0);
+
+        return {
+          ...old,
+          items: updatedItems,
+          materialTotal,
+        };
+      });
+      await applyOfflineRemoveItem(materialListId, itemId);
+      await enqueueOfflineMutation({
         type: "removeItem",
         materialListId,
         itemId,
@@ -473,72 +735,100 @@ function MaterialListTableView({
   };
 
   return (
-    <div className="space-y-2 overflow-x-auto">
-      {items.map((item) => (
+    <div className="overflow-x-auto pb-2">
+      <div className="w-max space-y-2">
         <div
-          key={item.id}
-          className="flex min-w-max flex-nowrap items-center gap-2 rounded-lg border p-2 sm:gap-3"
+          className={`grid ${MATERIAL_LIST_TABLE_COLUMNS} items-center gap-2 px-2 text-xs font-medium uppercase tracking-wide text-gray-500 sm:gap-3`}
         >
-          <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-md bg-gray-100">
-            {item.partDefinition?.imageUrl ? (
-              <Image
-                src={item.partDefinition.imageUrl}
-                alt={item.partDefinition.displayName}
-                fill
-                className="object-cover"
+          <span aria-hidden="true" />
+          <span className="text-center">Qty</span>
+          <span>Part</span>
+          <span>Supplier</span>
+          <span className="text-right">Total</span>
+          <span aria-label="Actions" />
+        </div>
+        {items.map((item) => {
+          const quantity = parseFloat(item.quantity);
+          const unitCost = item.unitCost ? parseFloat(item.unitCost) : 0;
+          const lineTotal = item.extendedPrice
+            ? parseFloat(item.extendedPrice)
+            : quantity * unitCost;
+
+          return (
+          <div
+            key={item.id}
+            className={`grid ${MATERIAL_LIST_TABLE_COLUMNS} items-center gap-2 rounded-lg border p-1.5 sm:gap-3`}
+          >
+            <div className="relative h-8 w-8 overflow-hidden rounded-md bg-gray-100">
+              {item.partDefinition?.imageUrl ? (
+                <Image
+                  src={item.partDefinition.imageUrl}
+                  alt={item.partDefinition.displayName}
+                  fill
+                  className="object-cover"
+                />
+              ) : (
+                <div className="flex h-full items-center justify-center text-gray-400">
+                  <svg
+                    className="h-4 w-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
+                    />
+                  </svg>
+                </div>
+              )}
+            </div>
+            <div className="flex h-8 min-w-0 items-center justify-center self-center">
+              <QuantityControls
+                itemId={item.id}
+                quantity={parseFloat(item.quantity)}
+                materialListId={materialListId}
+                compact
               />
-            ) : (
-              <div className="flex h-full items-center justify-center text-gray-400">
-                <svg
-                  className="h-4 w-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
-                  />
-                </svg>
+            </div>
+            <div className="min-w-0 py-0.5">
+              <div className="line-clamp-2 whitespace-normal break-words text-sm font-medium leading-tight sm:text-base">
+                {item.partDefinition?.displayName ||
+                  item.descriptionSnapshot ||
+                  "Unknown Part"}
               </div>
-            )}
-          </div>
-          <div className="min-w-max flex-1">
-            <div className="whitespace-nowrap text-sm font-medium sm:text-base">
-              {item.partDefinition?.displayName ||
-                item.descriptionSnapshot ||
-                "Unknown Part"}
+            </div>
+            <div className="flex h-8 min-w-0 items-center self-center">
+              <SupplierSelector
+                itemId={item.id}
+                partDefinitionId={item.partDefinition?.id ?? ""}
+                currentSupplierPartId={item.supplierPart?.id}
+                materialListId={materialListId}
+                compact
+              />
+            </div>
+            <div className="flex h-8 min-w-0 items-center justify-end gap-1.5 self-center overflow-hidden whitespace-nowrap text-sm font-semibold text-gray-900">
+              <span className="shrink-0">${lineTotal.toFixed(2)}</span>
+              <ItemSyncBadge status={itemSyncStatuses.get(String(item.id)) ?? "synced"} />
+            </div>
+            <div className="flex h-8 items-center justify-center self-center">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleRemove(item.id)}
+                disabled={removeItem.isPending}
+                className="h-8 w-8 p-0"
+                aria-label="Remove item"
+              >
+                <TrashIcon className="h-4 w-4" />
+              </Button>
             </div>
           </div>
-          <div className="flex shrink-0 items-center gap-1">
-            <QuantityControls
-              itemId={item.id}
-              quantity={parseFloat(item.quantity)}
-              materialListId={materialListId}
-            />
-          </div>
-          <div className="min-w-[11rem] shrink-0 sm:min-w-[13rem]">
-            <SupplierSelector
-              itemId={item.id}
-              partDefinitionId={item.partDefinition?.id ?? ""}
-              currentSupplierPartId={item.supplierPart?.id}
-              materialListId={materialListId}
-            />
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => handleRemove(item.id)}
-            disabled={removeItem.isPending}
-            className="shrink-0"
-            aria-label="Remove item"
-          >
-            <TrashIcon className="h-4 w-4" />
-          </Button>
-        </div>
-      ))}
+          );
+        })}
+      </div>
     </div>
   );
 }

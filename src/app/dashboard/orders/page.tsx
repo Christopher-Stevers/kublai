@@ -22,13 +22,24 @@ import {
   ExternalLinkIcon,
   RefreshCwIcon,
   SendIcon,
+  WifiOffIcon,
 } from "lucide-react";
 import { format } from "date-fns";
 import { Badge } from "~/components/ui/badge";
+import { useOnlineStatus } from "~/hooks/use-online-status";
+import { useOfflineOrders } from "~/hooks/use-offline-documents";
 
 export default function OrdersPage() {
   const utils = api.useUtils();
-  const { data: orders, isLoading } = api.materialList.listOrders.useQuery();
+  const isOnline = useOnlineStatus();
+  const { data: serverOrders, isLoading } = api.materialList.listOrders.useQuery(undefined, {
+    enabled: isOnline,
+  });
+  const {
+    data: orders,
+    cacheLoaded,
+    isOfflineFallback,
+  } = useOfflineOrders(serverOrders);
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<{
     id: string;
@@ -96,7 +107,7 @@ export default function OrdersPage() {
     void sendOrderWithEmail(selectedOrder.id, email);
   };
 
-  if (isLoading) {
+  if ((isLoading || !cacheLoaded) && !orders) {
     return (
       <div className="px-4 py-6 sm:px-6 sm:py-8">
         <div className="mx-auto max-w-6xl">
@@ -118,6 +129,11 @@ export default function OrdersPage() {
           <p className="text-muted-foreground mt-2 text-sm sm:text-base">
             View and manage your material orders
           </p>
+          {isOfflineFallback && (
+            <p className="mt-3 inline-flex items-center gap-2 rounded-full bg-orange-100 px-3 py-1 text-xs font-medium text-orange-900">
+              <WifiOffIcon className="h-3 w-3" /> Offline cached orders
+            </p>
+          )}
         </div>
 
         {!orders || orders.length === 0 ? (
@@ -227,7 +243,7 @@ export default function OrdersPage() {
                             order.supplier?.contactEmail ?? null,
                           )
                         }
-                        disabled={markOrderSent.isPending}
+                        disabled={!isOnline || markOrderSent.isPending}
                       >
                         {order.status === "draft" ? (
                           <>
@@ -286,7 +302,7 @@ export default function OrdersPage() {
             >
               Cancel
             </Button>
-            <Button onClick={handleDialogSend} disabled={markOrderSent.isPending}>
+            <Button onClick={handleDialogSend} disabled={!isOnline || markOrderSent.isPending}>
               {markOrderSent.isPending ? "Sending..." : "Send Order"}
             </Button>
           </DialogFooter>

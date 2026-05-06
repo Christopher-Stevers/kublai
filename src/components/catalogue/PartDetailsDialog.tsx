@@ -1,9 +1,16 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { ChevronDown, Package, Upload } from "lucide-react";
 import { api } from "~/trpc/react";
-import { formatSize, parseSizeInput } from "~/lib/size-utils";
+import {
+  formatSize,
+  formatSizeDecimal,
+  formatSizeDimensions,
+  generatePartDisplayName,
+  parseSizeInput,
+} from "~/lib/size-utils";
+import { useOnlineStatus } from "~/hooks/use-online-status";
 import Image from "next/image";
 import {
   Dialog,
@@ -16,6 +23,7 @@ import {
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
+import { Textarea } from "~/components/ui/textarea";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -30,7 +38,7 @@ function FieldHeader({
   onAdd,
   addLabel = "+ Add",
 }: {
-  label: string;
+  label: ReactNode;
   onAdd?: () => void;
   addLabel?: string;
 }) {
@@ -41,7 +49,7 @@ function FieldHeader({
         <button
           type="button"
           onClick={onAdd}
-          className="text-xs font-medium text-primary hover:underline"
+          className="text-primary text-xs font-medium hover:underline"
         >
           {addLabel}
         </button>
@@ -61,41 +69,34 @@ function buildPartName({
   sizeValue: string;
   sizeUnitCode?: string | null;
 }) {
-  return [sizeValue && sizeUnitCode ? `${sizeValue} ${sizeUnitCode}` : sizeValue, materialName, description]
-    .map((value) => value?.trim())
-    .filter((value): value is string => !!value)
-    .join(" ");
+  return generatePartDisplayName({
+    sizeNominal: sizeValue,
+    sizeUnit: sizeUnitCode,
+    material: materialName,
+    description,
+  });
 }
 
-async function fileToWebpDataUrl(file: File): Promise<string> {
-  const imageBitmap = await createImageBitmap(file);
+async function uploadPartImage(file: File): Promise<string> {
+  const formData = new FormData();
+  formData.append("file", file);
 
-  const maxDimension = 1200;
-  const scale = Math.min(1, maxDimension / Math.max(imageBitmap.width, imageBitmap.height));
-  const width = Math.max(1, Math.round(imageBitmap.width * scale));
-  const height = Math.max(1, Math.round(imageBitmap.height * scale));
+  const response = await fetch("/api/catalogue/images", {
+    method: "POST",
+    body: formData,
+  });
 
-  const canvas = document.createElement("canvas");
-  canvas.width = width;
-  canvas.height = height;
-
-  const ctx = canvas.getContext("2d");
-  if (!ctx) {
-    throw new Error("Could not create canvas context");
+  if (!response.ok) {
+    const errorBody = await response.json().catch(() => null) as { error?: string } | null;
+    throw new Error(errorBody?.error ?? "Image upload failed");
   }
 
-  ctx.drawImage(imageBitmap, 0, 0, width, height);
-
-  const qualitySteps = [0.82, 0.72, 0.62, 0.52, 0.42];
-  for (const quality of qualitySteps) {
-    const dataUrl = canvas.toDataURL("image/webp", quality);
-    const estimatedBytes = Math.ceil((dataUrl.length * 3) / 4);
-    if (estimatedBytes <= 250 * 1024 || quality === qualitySteps[qualitySteps.length - 1]) {
-      return dataUrl;
-    }
+  const body = await response.json() as { url?: string };
+  if (!body.url) {
+    throw new Error("Image upload did not return a URL");
   }
 
-  return canvas.toDataURL("image/webp", 0.42);
+  return body.url;
 }
 
 type PartSummary = {
@@ -107,9 +108,10 @@ type PartSummary = {
   categoryId: string | null;
   material: string | null;
   sizeNominal: string | null;
+  sizeLabel?: string | null;
   sizeUnitId: string | null;
-  defaultUomId: string | null;
   isActive: boolean;
+  aliases?: { id: string; synonym: string }[];
   sizeUnit: {
     id: string;
     code: string | null;
@@ -126,7 +128,7 @@ interface PartDetailsDialogProps {
   initialContext?: {
     catalogId?: string | null;
     materialId?: string | null;
-    size?: { nominal: number; unit: string } | null;
+    size?: { nominal: number; unit: string; sizeLabel?: string | null } | null;
     categoryId?: string | null;
     categoryName?: string | null;
   };
@@ -149,37 +151,49 @@ export function PartDetailsDialog({
   onPartCreated,
 }: PartDetailsDialogProps) {
   const utils = api.useUtils();
+  const isOnline = useOnlineStatus();
   const isEditMode = mode === "edit";
 
-  const { data: part, isLoading: isLoadingPart } = api.catalogue.getPart.useQuery(
-    { partId: partId! },
-    { enabled: open && isEditMode && !!partId },
-  );
+  const { data: part, isLoading: isLoadingPart } =
+    api.catalogue.getPart.useQuery(
+      { partId: partId! },
+      { enabled: isOnline && open && isEditMode && !!partId },
+    );
 
   const { data: catalogs } = api.catalogue.getCatalogs.useQuery(undefined, {
-    enabled: open,
+    enabled: isOnline && open,
   });
   const { data: materials } = api.catalogue.getMaterials.useQuery(undefined, {
-    enabled: open,
+    enabled: isOnline && open,
   });
-  const { data: categoryTree } = api.catalogue.getCategoryTree.useQuery(undefined, {
-    enabled: open,
-  });
+  const { data: categoryTree } = api.catalogue.getCategoryTree.useQuery(
+    undefined,
+    {
+      enabled: isOnline && open,
+    },
+  );
   const { data: allUnits } = api.catalogue.getAllUnits.useQuery(undefined, {
-    enabled: open,
+    enabled: isOnline && open,
   });
   const { data: suppliers } = api.supplier.list.useQuery(undefined, {
-    enabled: open,
+    enabled: isOnline && open,
   });
   const { data: supplierInfo } = api.catalogue.getPartsSupplierInfo.useQuery(
     { partIds: partId ? [partId] : [] },
-    { enabled: open && isEditMode && !!partId },
+    { enabled: isOnline && open && isEditMode && !!partId },
   );
+  const { data: duplicateCandidates } =
+    api.catalogue.findDuplicateCandidates.useQuery(
+      { partId: partId!, limit: 6 },
+      { enabled: isOnline && open && isEditMode && !!partId },
+    );
 
   const [displayName, setDisplayName] = useState("");
-  const [hasManuallyEditedDisplayName, setHasManuallyEditedDisplayName] = useState(false);
+  const [hasManuallyEditedDisplayName, setHasManuallyEditedDisplayName] =
+    useState(false);
   const [description, setDescription] = useState("");
   const [imageUrl, setImageUrl] = useState("");
+  const [aliasesText, setAliasesText] = useState("");
   const [catalogId, setCatalogId] = useState<string | null>(null);
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [materialId, setMaterialId] = useState<string | null>(null);
@@ -199,7 +213,7 @@ export function PartDetailsDialog({
   const [newMaterialName, setNewMaterialName] = useState("");
 
   const sizeUnits = useMemo(
-    () => (allUnits?.filter((u) => u.kind === "length") ?? []),
+    () => allUnits?.filter((u) => u.kind === "length") ?? [],
     [allUnits],
   );
   const imageInputRef = useRef<HTMLInputElement | null>(null);
@@ -218,11 +232,16 @@ export function PartDetailsDialog({
       setDisplayName(part.displayName ?? "");
       setDescription(part.description ?? "");
       setImageUrl(part.imageUrl ?? "");
+      setAliasesText(
+        part.aliases?.map((alias) => alias.synonym).join("\n") ?? "",
+      );
       setCatalogId(part.catalogId ?? null);
       setCategoryId(part.categoryId ?? null);
-      const matchedMaterial = materials?.find((material) => material.name === part.material);
+      const matchedMaterial = materials?.find(
+        (material) => material.name === part.material,
+      );
       setMaterialId(matchedMaterial?.id ?? null);
-      setSizeValue(part.sizeNominal?.toString() ?? "");
+      setSizeValue(part.sizeLabel ?? formatSizeDecimal(part.sizeNominal));
       setSizeUnitId(part.sizeUnitId ?? null);
       setIsActive(part.isActive ?? true);
       setSupplierId(null);
@@ -237,10 +256,11 @@ export function PartDetailsDialog({
       setDisplayName("");
       setDescription("");
       setImageUrl("");
+      setAliasesText("");
       setCatalogId(initialContext?.catalogId ?? null);
       setCategoryId(initialContext?.categoryId ?? null);
       setMaterialId(initialContext?.materialId ?? null);
-      setSizeValue(initialContext?.size?.nominal?.toString() ?? "");
+      setSizeValue(initialContext?.size?.sizeLabel ?? formatSizeDecimal(initialContext?.size?.nominal ?? null));
       setIsActive(true);
       setSupplierId(null);
       setSupplierSku("");
@@ -248,7 +268,9 @@ export function PartDetailsDialog({
       setHasManuallyEditedDisplayName(false);
 
       if (initialContext?.size?.unit && allUnits) {
-        const matchedUnit = allUnits.find((unit) => unit.code === initialContext.size?.unit);
+        const matchedUnit = allUnits.find(
+          (unit) => unit.code === initialContext.size?.unit,
+        );
         setSizeUnitId(matchedUnit?.id ?? null);
       } else {
         setSizeUnitId(null);
@@ -265,7 +287,8 @@ export function PartDetailsDialog({
     setDisplayName(
       buildPartName({
         description,
-        materialName: materials?.find((material) => material.id === materialId)?.name,
+        materialName: materials?.find((material) => material.id === materialId)
+          ?.name,
         sizeValue,
         sizeUnitCode: sizeUnits.find((unit) => unit.id === sizeUnitId)?.code,
       }),
@@ -287,10 +310,13 @@ export function PartDetailsDialog({
       let supplierPartId: string | undefined;
       if (supplierId) {
         try {
-          const supplierParts = await utils.supplier.getSupplierPartsByPart.fetch({
-            partDefinitionId: newPart.id,
-          });
-          supplierPartId = supplierParts.find((sp) => sp.supplierId === supplierId)?.id;
+          const supplierParts =
+            await utils.supplier.getSupplierPartsByPart.fetch({
+              partDefinitionId: newPart.id,
+            });
+          supplierPartId = supplierParts.find(
+            (sp) => sp.supplierId === supplierId,
+          )?.id;
         } catch (error) {
           console.error("Error fetching supplier part", error);
         }
@@ -301,9 +327,9 @@ export function PartDetailsDialog({
         displayName: newPart.displayName,
         imageUrl: newPart.imageUrl,
         material: newPart.material,
-        size: newPart.sizeUnit
+        size: newPart.sizeLabel ?? (newPart.sizeUnit
           ? formatSize(newPart.sizeNominal, newPart.sizeUnit.code)
-          : null,
+          : null),
         supplierPartId,
       });
 
@@ -317,6 +343,15 @@ export function PartDetailsDialog({
     onSuccess: () => {
       void utils.catalogue.searchParts.invalidate();
       void utils.catalogue.getPart.invalidate();
+      onOpenChange(false);
+    },
+  });
+
+  const mergeDuplicatePart = api.catalogue.mergeDuplicatePart.useMutation({
+    onSuccess: () => {
+      void utils.catalogue.searchParts.invalidate();
+      void utils.catalogue.getPart.invalidate();
+      void utils.catalogue.findDuplicateCandidates.invalidate();
       onOpenChange(false);
     },
   });
@@ -374,11 +409,18 @@ export function PartDetailsDialog({
     },
   });
 
-  const parsedSizeNominal = sizeValue.trim() ? parseSizeInput(sizeValue.trim()) : null;
-  const isLoading = createPart.isPending || updatePart.isPending || isProcessingImage;
+  const parsedSizeNominal = sizeValue.trim()
+    ? parseSizeInput(sizeValue.trim())
+    : null;
+  const isLoading =
+    createPart.isPending || updatePart.isPending || isProcessingImage;
   const selectedCatalog = catalogs?.find((catalog) => catalog.id === catalogId);
-  const selectedCategory = categoryTree?.find((category) => category.id === categoryId);
-  const selectedMaterial = materials?.find((material) => material.id === materialId);
+  const selectedCategory = categoryTree?.find(
+    (category) => category.id === categoryId,
+  );
+  const selectedMaterial = materials?.find(
+    (material) => material.id === materialId,
+  );
   const selectedSizeUnit = sizeUnits.find((unit) => unit.id === sizeUnitId);
   const hasSuppliers =
     !!partId && !!supplierInfo?.[partId]?.availableSuppliers?.length;
@@ -440,14 +482,16 @@ export function PartDetailsDialog({
     createCategory.mutate({ name });
   };
 
-  const handleImageFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageFileChange = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
     try {
       setIsProcessingImage(true);
-      const dataUrl = await fileToWebpDataUrl(file);
-      setImageUrl(dataUrl);
+      const uploadedUrl = await uploadPartImage(file);
+      setImageUrl(uploadedUrl);
     } catch (error) {
       console.error("Failed to process image", error);
     } finally {
@@ -469,8 +513,13 @@ export function PartDetailsDialog({
       categoryId,
       materialId,
       sizeNominal: parsedSizeNominal,
+      sizeLabel: formatSizeDimensions(sizeValue.trim(), selectedSizeUnit?.code ?? null) || null,
       sizeUnitId: parsedSizeNominal ? sizeUnitId : null,
       isActive,
+      aliases: aliasesText
+        .split(/[\n;]/)
+        .map((alias) => alias.trim())
+        .filter(Boolean),
     };
 
     if (isEditMode) {
@@ -495,7 +544,9 @@ export function PartDetailsDialog({
           <DialogHeader>
             <DialogTitle>Edit Part</DialogTitle>
           </DialogHeader>
-          <div className="py-8 text-center text-muted-foreground">Loading part details...</div>
+          <div className="text-muted-foreground py-8 text-center">
+            Loading part details...
+          </div>
         </DialogContent>
       </Dialog>
     );
@@ -504,9 +555,11 @@ export function PartDetailsDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
+        <DialogContent className="max-h-[90vh] w-[calc(100vw-1rem)] max-w-2xl overflow-x-hidden overflow-y-auto p-4 sm:p-6">
           <DialogHeader>
-            <DialogTitle>{isEditMode ? "Edit Part" : "Create Part"}</DialogTitle>
+            <DialogTitle>
+              {isEditMode ? "Edit Part" : "Create Part"}
+            </DialogTitle>
             <DialogDescription>
               {isEditMode
                 ? "Update every editable part field in one place."
@@ -514,25 +567,34 @@ export function PartDetailsDialog({
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 py-4">
+          <div className="min-w-0 space-y-4 py-4">
             <div>
               <FieldHeader
-                label="Catalog *"
+                label={
+                  <>
+                    Catalog <span className="text-red-600">*</span>
+                  </>
+                }
                 onAdd={() => setShowNewCatalogInput((value) => !value)}
               />
               {showNewCatalogInput ? (
-                <div className="mt-2 flex gap-2">
+                <div className="mt-2 flex min-w-0 gap-2">
                   <Input
                     value={newCatalogName}
                     onChange={(e) => setNewCatalogName(e.target.value)}
                     placeholder="New catalog name"
+                    className="min-w-0 flex-1"
                     disabled={isLoading || createCatalog.isPending}
                   />
                   <Button
                     type="button"
                     variant="outline"
                     onClick={handleCatalogAdd}
-                    disabled={!newCatalogName.trim() || isLoading || createCatalog.isPending}
+                    disabled={
+                      !newCatalogName.trim() ||
+                      isLoading ||
+                      createCatalog.isPending
+                    }
                   >
                     Add
                   </Button>
@@ -540,14 +602,21 @@ export function PartDetailsDialog({
               ) : (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline" className="mt-1 w-full justify-between" disabled={isLoading}>
+                    <Button
+                      variant="outline"
+                      className="mt-1 w-full justify-between"
+                      disabled={isLoading}
+                    >
                       {selectedCatalog?.name ?? "Select catalog"}
                       <ChevronDown className="h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent className="max-h-60 overflow-y-auto">
                     {catalogs?.map((catalog) => (
-                      <DropdownMenuItem key={catalog.id} onClick={() => setCatalogId(catalog.id)}>
+                      <DropdownMenuItem
+                        key={catalog.id}
+                        onClick={() => setCatalogId(catalog.id)}
+                      >
                         {catalog.name}
                       </DropdownMenuItem>
                     ))}
@@ -556,13 +625,19 @@ export function PartDetailsDialog({
               )}
             </div>
 
-            <div className={`grid gap-4 ${sizeValue.trim() ? "sm:grid-cols-[1fr_140px]" : "sm:grid-cols-1"}`}>
+            <div
+              className={`grid gap-4 ${sizeValue.trim() ? "sm:grid-cols-[1fr_140px]" : "sm:grid-cols-1"}`}
+            >
               <div>
                 <FieldHeader
                   label="Size"
+                  addLabel="+Add"
                   onAdd={() => {
                     if (parsedSizeNominal !== null && sizeUnitId) {
-                      createSize.mutate({ nominal: parsedSizeNominal, unitId: sizeUnitId });
+                      createSize.mutate({
+                        nominal: parsedSizeNominal,
+                        unitId: sizeUnitId,
+                      });
                     }
                   }}
                 />
@@ -579,42 +654,60 @@ export function PartDetailsDialog({
                   <Label>Size Unit</Label>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="outline" className="mt-1 w-full justify-between" disabled={isLoading}>
+                      <Button
+                        variant="outline"
+                        className="mt-1 w-full justify-between"
+                        disabled={isLoading}
+                      >
                         {selectedSizeUnit?.code ?? "Unit"}
                         <ChevronDown className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent className="max-h-60 overflow-y-auto">
-                      <DropdownMenuItem onClick={() => setSizeUnitId(null)}>None</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setSizeUnitId(null)}>
+                        None
+                      </DropdownMenuItem>
                       {sizeUnits.map((unit) => (
-                        <DropdownMenuItem key={unit.id} onClick={() => setSizeUnitId(unit.id)}>
+                        <DropdownMenuItem
+                          key={unit.id}
+                          onClick={() => setSizeUnitId(unit.id)}
+                        >
                           {unit.displayName ?? unit.code} ({unit.code})
                         </DropdownMenuItem>
                       ))}
                     </DropdownMenuContent>
                   </DropdownMenu>
                   <p className="mt-1 text-xs text-gray-500">
-                    Pick a size and unit, then click + Add to save it as a reusable size.
+                    Pick a size and unit, then click + Add to save it as a
+                    reusable size.
                   </p>
                 </div>
               )}
             </div>
 
             <div>
-              <FieldHeader label="Material" onAdd={() => setShowNewMaterialInput((value) => !value)} />
+              <FieldHeader
+                label="Material"
+                onAdd={() => setShowNewMaterialInput((value) => !value)}
+              />
               {showNewMaterialInput ? (
-                <div className="mt-2 flex gap-2">
+                <div className="mt-2 flex min-w-0 gap-2">
                   <Input
                     value={newMaterialName}
                     onChange={(e) => setNewMaterialName(e.target.value)}
                     placeholder="New material name"
+                    className="min-w-0 flex-1"
                     disabled={isLoading || createMaterial.isPending}
                   />
                   <Button
                     type="button"
                     variant="outline"
                     onClick={handleMaterialAdd}
-                    disabled={!newMaterialName.trim() || isLoading || createMaterial.isPending}
+                    disabled={
+                      !newMaterialName.trim() ||
+                      isLoading ||
+                      createMaterial.isPending
+                    }
                   >
                     Add
                   </Button>
@@ -622,15 +715,24 @@ export function PartDetailsDialog({
               ) : (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline" className="mt-1 w-full justify-between" disabled={isLoading}>
+                    <Button
+                      variant="outline"
+                      className="mt-1 w-full justify-between"
+                      disabled={isLoading}
+                    >
                       {selectedMaterial?.name ?? "Select material"}
                       <ChevronDown className="h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent className="max-h-60 overflow-y-auto">
-                    <DropdownMenuItem onClick={() => setMaterialId(null)}>None</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setMaterialId(null)}>
+                      None
+                    </DropdownMenuItem>
                     {materials?.map((material) => (
-                      <DropdownMenuItem key={material.id} onClick={() => setMaterialId(material.id)}>
+                      <DropdownMenuItem
+                        key={material.id}
+                        onClick={() => setMaterialId(material.id)}
+                      >
                         {material.name}
                       </DropdownMenuItem>
                     ))}
@@ -651,20 +753,28 @@ export function PartDetailsDialog({
             </div>
 
             <div>
-              <FieldHeader label="Category" onAdd={() => setShowNewCategoryInput((value) => !value)} />
+              <FieldHeader
+                label="Category"
+                onAdd={() => setShowNewCategoryInput((value) => !value)}
+              />
               {showNewCategoryInput ? (
-                <div className="mt-2 flex gap-2">
+                <div className="mt-2 flex min-w-0 gap-2">
                   <Input
                     value={newCategoryName}
                     onChange={(e) => setNewCategoryName(e.target.value)}
                     placeholder="New category name"
+                    className="min-w-0 flex-1"
                     disabled={isLoading || createCategory.isPending}
                   />
                   <Button
                     type="button"
                     variant="outline"
                     onClick={handleCategoryAdd}
-                    disabled={!newCategoryName.trim() || isLoading || createCategory.isPending}
+                    disabled={
+                      !newCategoryName.trim() ||
+                      isLoading ||
+                      createCategory.isPending
+                    }
                   >
                     Add
                   </Button>
@@ -672,15 +782,24 @@ export function PartDetailsDialog({
               ) : (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline" className="mt-1 w-full justify-between" disabled={isLoading}>
+                    <Button
+                      variant="outline"
+                      className="mt-1 w-full justify-between"
+                      disabled={isLoading}
+                    >
                       {selectedCategory?.name ?? "Select category"}
                       <ChevronDown className="h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent className="max-h-60 overflow-y-auto">
-                    <DropdownMenuItem onClick={() => setCategoryId(null)}>None</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setCategoryId(null)}>
+                      None
+                    </DropdownMenuItem>
                     {categoryTree?.map((category) => (
-                      <DropdownMenuItem key={category.id} onClick={() => setCategoryId(category.id)}>
+                      <DropdownMenuItem
+                        key={category.id}
+                        onClick={() => setCategoryId(category.id)}
+                      >
                         {category.name}
                       </DropdownMenuItem>
                     ))}
@@ -706,7 +825,8 @@ export function PartDetailsDialog({
               />
               {!isEditMode && (
                 <p className="mt-1 text-xs text-gray-500">
-                  Auto-generated from size, material, and description. You can still override it.
+                  Auto-generated from size, material, and description. You can
+                  still override it.
                 </p>
               )}
             </div>
@@ -717,23 +837,40 @@ export function PartDetailsDialog({
                 <div className="mt-1 flex gap-2">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="outline" className="flex-1 justify-between" disabled={isLoading}>
+                      <Button
+                        variant="outline"
+                        className="flex-1 justify-between"
+                        disabled={isLoading}
+                      >
                         {supplierId
-                          ? suppliers?.find((supplier) => supplier.id === supplierId)?.name ?? "Select supplier"
+                          ? (suppliers?.find(
+                              (supplier) => supplier.id === supplierId,
+                            )?.name ?? "Select supplier")
                           : "Select supplier"}
                         <ChevronDown className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent className="max-h-60 overflow-y-auto">
-                      <DropdownMenuItem onClick={() => setSupplierId(null)}>None</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setSupplierId(null)}>
+                        None
+                      </DropdownMenuItem>
                       {suppliers?.map((supplier) => (
-                        <DropdownMenuItem key={supplier.id} onClick={() => setSupplierId(supplier.id)}>
+                        <DropdownMenuItem
+                          key={supplier.id}
+                          onClick={() => setSupplierId(supplier.id)}
+                        >
                           {supplier.name}
                         </DropdownMenuItem>
                       ))}
                     </DropdownMenuContent>
                   </DropdownMenu>
-                  <Button type="button" variant="outline" size="sm" onClick={() => setIsSupplierDialogOpen(true)} disabled={isLoading}>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsSupplierDialogOpen(true)}
+                    disabled={isLoading}
+                  >
                     New
                   </Button>
                 </div>
@@ -746,22 +883,29 @@ export function PartDetailsDialog({
                 type="button"
                 onClick={() => imageInputRef.current?.click()}
                 disabled={isLoading}
-                className="mt-1 flex w-full items-center gap-4 rounded-lg border bg-gray-50 p-3 text-left transition-colors hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-60"
+                className="mt-1 flex w-full min-w-0 items-center gap-3 rounded-lg border bg-gray-50 p-3 text-left transition-colors hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-60 sm:gap-4"
               >
-                <div className="relative flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-md bg-white">
+                <div className="relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-md bg-white sm:h-24 sm:w-24">
                   {imageUrl ? (
-                    <Image src={imageUrl} alt="Part preview" fill className="object-cover" unoptimized />
+                    <Image
+                      src={imageUrl}
+                      alt="Part preview"
+                      fill
+                      className="object-cover"
+                      unoptimized
+                    />
                   ) : (
                     <Package className="h-8 w-8 text-gray-400" />
                   )}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 text-sm font-medium text-gray-900">
-                    <Upload className="h-4 w-4" />
+                  <div className="flex min-w-0 items-center gap-2 text-sm font-medium text-gray-900">
+                    <Upload className="h-4 w-4 shrink-0" />
                     {imageUrl ? "Change image" : "Upload image"}
                   </div>
                   <p className="mt-1 text-xs text-gray-500">
-                    Click to choose an image. It will be resized and saved as WebP automatically.
+                    Click to choose an image. It will be resized, saved as WebP,
+                    and stored as a short app URL.
                   </p>
                 </div>
               </button>
@@ -785,6 +929,75 @@ export function PartDetailsDialog({
                 disabled={isLoading}
               />
             </div>
+
+            {isEditMode && (
+              <div>
+                <Label>Aliases / Search Terms</Label>
+                <Textarea
+                  value={aliasesText}
+                  onChange={(e) => setAliasesText(e.target.value)}
+                  placeholder="One alias per line, e.g. copper 90, 90 elbow"
+                  className="mt-1"
+                  disabled={isLoading}
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  Aliases are used by catalogue search and XLSX round-trips.
+                </p>
+              </div>
+            )}
+
+            {isEditMode &&
+              duplicateCandidates &&
+              duplicateCandidates.length > 0 && (
+                <div className="rounded-lg border bg-amber-50 p-3">
+                  <Label>Possible duplicates</Label>
+                  <div className="mt-2 space-y-2">
+                    {duplicateCandidates.map((candidate) => (
+                      <div
+                        key={candidate.id}
+                        className="flex min-w-0 flex-col gap-3 rounded-md bg-white p-2 text-sm sm:flex-row sm:items-center sm:justify-between"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate font-medium text-gray-900">
+                            {candidate.displayName}
+                          </p>
+                          <p className="truncate text-xs text-gray-600">
+                            {[
+                              candidate.material,
+                              candidate.size,
+                              ...candidate.reasons,
+                            ]
+                              .filter(Boolean)
+                              .join(" • ")}
+                          </p>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="shrink-0"
+                          disabled={
+                            isLoading || mergeDuplicatePart.isPending || !partId
+                          }
+                          onClick={() => {
+                            if (!partId) return;
+                            mergeDuplicatePart.mutate({
+                              sourcePartId: candidate.id,
+                              targetPartId: partId,
+                            });
+                          }}
+                        >
+                          Merge into this
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="mt-2 text-xs text-gray-600">
+                    Merging moves old quote/order/supplier links to this part,
+                    keeps the old name as an alias, and hides the duplicate.
+                  </p>
+                </div>
+              )}
 
             {!isEditMode && (
               <div className="grid gap-4 sm:grid-cols-2">
@@ -832,8 +1045,12 @@ export function PartDetailsDialog({
                 <div className="mt-1" onClick={(e) => e.stopPropagation()}>
                   <PartSuppliersDropdown
                     partDefinitionId={partId}
-                    currentPreferredSupplierId={supplierInfo?.[partId]?.preferredSupplier?.id ?? null}
-                    availableSuppliers={supplierInfo?.[partId]?.availableSuppliers ?? []}
+                    currentPreferredSupplierId={
+                      supplierInfo?.[partId]?.preferredSupplier?.id ?? null
+                    }
+                    availableSuppliers={
+                      supplierInfo?.[partId]?.availableSuppliers ?? []
+                    }
                   />
                 </div>
                 <p className="mt-1 text-xs text-gray-500">
@@ -846,7 +1063,11 @@ export function PartDetailsDialog({
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
+            <Button
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              disabled={isLoading}
+            >
               Cancel
             </Button>
             <Button
@@ -855,7 +1076,8 @@ export function PartDetailsDialog({
                 isLoading ||
                 !displayName.trim() ||
                 !catalogId ||
-                (sizeValue.trim() !== "" && (parsedSizeNominal === null || !sizeUnitId))
+                (sizeValue.trim() !== "" &&
+                  (parsedSizeNominal === null || !sizeUnitId))
               }
             >
               {isLoading
