@@ -30,6 +30,7 @@ import {
   enqueueOfflineMutation,
 } from "~/lib/offline-material-list-mutations";
 import { useOnlineStatus } from "~/hooks/use-online-status";
+import { useOfflineMaterialListSyncRunner } from "~/hooks/use-offline-material-list-sync";
 import {
   getOfflineSupplierPartsByPart,
   setOfflineSupplierPartsByPart,
@@ -138,7 +139,7 @@ export function AddPartDialog({
     { enabled: isOnline && wizardStage === "size" && hasCatalogSelection && hasMaterialSelection },
   );
 
-  const addItems = api.materialList.addItemsToMaterialList.useMutation();
+  const syncOfflineMaterialLists = useOfflineMaterialListSyncRunner();
 
   const addItem = api.materialList.addItemToMaterialList.useMutation({
     onMutate: async (variables) => {
@@ -710,125 +711,97 @@ export function AddPartDialog({
           pendingPart.supplierPartId ?? resolvedSupplierPartIds.get(pendingPart.partId),
       }));
 
-    // Validate that all parts have a supplier selected
-    const partsWithoutSupplier = partsReadyToAdd.filter(
-      (p) => !p.supplierPartId,
-    );
-    if (partsWithoutSupplier.length > 0) {
-      // This should be prevented by UI, but add as a safety check
-      console.error(
-        "Cannot add parts without suppliers:",
-        partsWithoutSupplier.map((p) => p.partDefinition.displayName),
-      );
-      setIsAddingParts(false);
-      return;
-    }
-
-      if (!isOnline) {
-        for (const pendingPart of partsReadyToAdd) {
-          const localItemId = `offline-${Date.now()}-${pendingPart.partId}-${Math.random().toString(36).slice(2, 8)}`;
-          const selectedSupplierPart = (supplierPartsData.get(pendingPart.partId) ?? []).find(
-            (supplierPart) => supplierPart.id === pendingPart.supplierPartId,
-          );
-          const unitCost = selectedSupplierPart?.lastKnownUnitCost
-            ? parseFloat(selectedSupplierPart.lastKnownUnitCost)
-            : 0;
-          const partDefinitionSnapshot = {
-            id: pendingPart.partDefinition.id,
-            displayName: pendingPart.partDefinition.displayName,
-            imageUrl: pendingPart.partDefinition.imageUrl,
-            material: pendingPart.partDefinition.material,
-          };
-          const supplierPartSnapshot = selectedSupplierPart
-            ? {
-                id: selectedSupplierPart.id,
-                supplierId: selectedSupplierPart.supplierId,
-                supplierSku: selectedSupplierPart.supplierSku,
-                lastKnownUnitCost: selectedSupplierPart.lastKnownUnitCost,
-                supplier: selectedSupplierPart.supplier,
-              }
-            : null;
-
-          await applyOfflineAddItem(materialListId, {
-            localItemId,
-            quantity: pendingPart.quantity,
-            unitCost,
-            partDefinitionSnapshot,
-            supplierPartSnapshot,
-          });
-
-          await enqueueOfflineMutation({
-            type: "addItem",
-            materialListId,
-            localItemId,
-            partDefinitionId: pendingPart.partId,
-            quantity: pendingPart.quantity,
-            supplierPartId: pendingPart.supplierPartId!,
-            unitCost,
-            partDefinitionSnapshot,
-            supplierPartSnapshot,
-            queuedAt: new Date().toISOString(),
-          });
-        }
-
-        setPendingParts([]);
-        resetWizard();
-        onOpenChange(false);
+      const partsWithoutSupplier = partsReadyToAdd.filter((p) => !p.supplierPartId);
+      if (partsWithoutSupplier.length > 0) {
+        console.error(
+          "Cannot add parts without suppliers:",
+          partsWithoutSupplier.map((p) => p.partDefinition.displayName),
+        );
+        setIsAddingParts(false);
         return;
       }
 
       await utils.materialList.getMaterialList.cancel({ materialListId });
-      const previousMaterialList = utils.materialList.getMaterialList.getData({
-        materialListId,
-      });
       const now = new Date();
-      const partsToAdd = partsReadyToAdd.map((pendingPart) => {
+      const localItems = partsReadyToAdd.map((pendingPart) => {
         const selectedSupplierPart = (supplierPartsData.get(pendingPart.partId) ?? []).find(
           (supplierPart) => supplierPart.id === pendingPart.supplierPartId,
         );
         const unitCost = selectedSupplierPart?.lastKnownUnitCost
           ? parseFloat(selectedSupplierPart.lastKnownUnitCost)
           : 0;
-        const extendedPrice = pendingPart.quantity * unitCost;
+        const partDefinitionSnapshot = {
+          id: pendingPart.partDefinition.id,
+          displayName: pendingPart.partDefinition.displayName,
+          imageUrl: pendingPart.partDefinition.imageUrl,
+          material: pendingPart.partDefinition.material,
+        };
+        const supplierPartSnapshot = selectedSupplierPart
+          ? {
+              id: selectedSupplierPart.id,
+              supplierId: selectedSupplierPart.supplierId,
+              supplierSku: selectedSupplierPart.supplierSku,
+              lastKnownUnitCost: selectedSupplierPart.lastKnownUnitCost,
+              supplier: selectedSupplierPart.supplier,
+            }
+          : null;
 
         return {
-          id: `temp-${Date.now()}-${pendingPart.partId}-${Math.random().toString(36).slice(2, 8)}`,
-          quantity: pendingPart.quantity.toString(),
-          unitCost: unitCost.toString(),
-          extendedPrice: extendedPrice.toString(),
-          descriptionSnapshot: pendingPart.partDefinition.displayName,
-          createdAt: now,
-          updatedAt: now,
-          syncVersion: now.toISOString(),
-          partDefinition: {
-            id: pendingPart.partDefinition.id,
-            displayName: pendingPart.partDefinition.displayName,
-            imageUrl: pendingPart.partDefinition.imageUrl,
-            material: pendingPart.partDefinition.material,
-          },
-          oneOff: null,
-          supplierPart: selectedSupplierPart
-            ? {
-                id: selectedSupplierPart.id,
-                supplierId: selectedSupplierPart.supplierId,
-                supplierSku: selectedSupplierPart.supplierSku,
-                lastKnownUnitCost: selectedSupplierPart.lastKnownUnitCost,
-                supplier: selectedSupplierPart.supplier,
-              }
-            : null,
-          uom: null,
-          addedBy: null,
+          localItemId: `offline-${Date.now()}-${pendingPart.partId}-${Math.random().toString(36).slice(2, 8)}`,
+          pendingPart,
+          unitCost,
+          partDefinitionSnapshot,
+          supplierPartSnapshot,
         };
       });
+
+      for (const item of localItems) {
+        await applyOfflineAddItem(materialListId, {
+          localItemId: item.localItemId,
+          quantity: item.pendingPart.quantity,
+          unitCost: item.unitCost,
+          partDefinitionSnapshot: item.partDefinitionSnapshot,
+          supplierPartSnapshot: item.supplierPartSnapshot,
+        });
+
+        await enqueueOfflineMutation({
+          type: "addItem",
+          materialListId,
+          localItemId: item.localItemId,
+          partDefinitionId: item.pendingPart.partId,
+          quantity: item.pendingPart.quantity,
+          supplierPartId: item.pendingPart.supplierPartId!,
+          unitCost: item.unitCost,
+          partDefinitionSnapshot: item.partDefinitionSnapshot,
+          supplierPartSnapshot: item.supplierPartSnapshot,
+          queuedAt: now.toISOString(),
+        });
+      }
 
       utils.materialList.getMaterialList.setData({ materialListId }, (old) => {
         if (!old) return old;
 
-        const updatedItems = [...old.items, ...partsToAdd];
+        const optimisticItems = localItems.map((item) => {
+          const extendedPrice = item.pendingPart.quantity * item.unitCost;
+          return {
+            id: item.localItemId,
+            quantity: item.pendingPart.quantity.toString(),
+            unitCost: item.unitCost.toString(),
+            extendedPrice: extendedPrice.toString(),
+            descriptionSnapshot: item.pendingPart.partDefinition.displayName,
+            createdAt: now,
+            updatedAt: now,
+            syncVersion: now.toISOString(),
+            partDefinition: item.partDefinitionSnapshot,
+            oneOff: null,
+            supplierPart: item.supplierPartSnapshot,
+            uom: null,
+            addedBy: null,
+          };
+        });
+        const updatedItems = [...old.items, ...optimisticItems];
         const materialTotal = updatedItems.reduce((sum, item) => {
-          const price = item.extendedPrice
-            ? parseFloat(item.extendedPrice.toString())
-            : 0;
+          const price = item.extendedPrice ? parseFloat(item.extendedPrice.toString()) : 0;
           return sum + price;
         }, 0);
 
@@ -839,34 +812,16 @@ export function AddPartDialog({
         };
       });
 
-      const mutationInput = {
-        materialListId,
-        items: partsReadyToAdd.map((pendingPart) => ({
-          partDefinitionId: pendingPart.partId,
-          quantity: pendingPart.quantity,
-          supplierPartId: pendingPart.supplierPartId!,
-        })),
-      };
-
       setPendingParts([]);
       resetWizard();
       onOpenChange(false);
       setIsAddingParts(false);
 
-      void (async () => {
-        try {
-          await addItems.mutateAsync(mutationInput);
-          await utils.materialList.getMaterialList.invalidate({ materialListId });
-        } catch (error) {
-          if (previousMaterialList) {
-            utils.materialList.getMaterialList.setData(
-              { materialListId },
-              previousMaterialList,
-            );
-          }
-          console.error("Error confirming added parts:", error);
-        }
-      })();
+      if (isOnline) {
+        void syncOfflineMaterialLists().catch((error) => {
+          console.error("Error syncing added parts:", error);
+        });
+      }
     } catch (error) {
       console.error("Error adding parts:", error);
       setIsAddingParts(false);
@@ -1190,7 +1145,6 @@ export function AddPartDialog({
                     pendingParts.length === 0 ||
                     !allPartsHaveSuppliers ||
                     addItem.isPending ||
-                    addItems.isPending ||
                     isAddingParts
                   }
                   title={
@@ -1200,7 +1154,7 @@ export function AddPartDialog({
                   }
                   className="w-full text-xs sm:w-auto sm:text-sm"
                 >
-                  {addItem.isPending || addItems.isPending || isAddingParts
+                  {addItem.isPending || isAddingParts
                     ? "Adding..."
                     : `Add ${pendingParts.length} Part${pendingParts.length !== 1 ? "s" : ""}`}
                 </Button>
