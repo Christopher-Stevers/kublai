@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import { eq, and, desc, asc, isNull, or } from "drizzle-orm";
+import { eq, and, desc, asc, isNull, or, inArray } from "drizzle-orm";
 import { z } from "zod";
 
 import { createTRPCRouter, hasDashboardAccess } from "~/server/api/trpc";
@@ -830,6 +830,56 @@ export const supplierRouter = createTRPCRouter({
         .orderBy(desc(supplierParts.isPreferred), asc(suppliers.name));
 
       return parts;
+    }),
+
+  /**
+   * Get supplier parts for several part definitions so the client can cache
+   * supplier choices for offline review/add flows.
+   */
+  getSupplierPartsByParts: hasDashboardAccess
+    .input(z.object({ partDefinitionIds: z.array(z.string().uuid()).max(1000) }))
+    .query(async ({ ctx, input }) => {
+      if (!ctx.user.organizationId) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "User must belong to an organization",
+        });
+      }
+
+      const partDefinitionIds = Array.from(new Set(input.partDefinitionIds));
+      if (partDefinitionIds.length === 0) return {};
+
+      const rows = await ctx.db
+        .select({
+          partDefinitionId: supplierParts.partDefinitionId,
+          id: supplierParts.id,
+          supplierId: supplierParts.supplierId,
+          supplierSku: supplierParts.supplierSku,
+          lastKnownUnitCost: supplierParts.lastKnownUnitCost,
+          isPreferred: supplierParts.isPreferred,
+          supplier: {
+            id: suppliers.id,
+            name: suppliers.name,
+          },
+        })
+        .from(supplierParts)
+        .innerJoin(suppliers, eq(supplierParts.supplierId, suppliers.id))
+        .where(
+          and(
+            eq(supplierParts.organizationId, ctx.user.organizationId),
+            inArray(supplierParts.partDefinitionId, partDefinitionIds),
+          ),
+        )
+        .orderBy(supplierParts.partDefinitionId, desc(supplierParts.isPreferred), asc(suppliers.name));
+
+      return rows.reduce<Record<string, Array<Omit<(typeof rows)[number], "partDefinitionId">>>>(
+        (acc, row) => {
+          const { partDefinitionId, ...supplierPart } = row;
+          (acc[partDefinitionId] ??= []).push(supplierPart);
+          return acc;
+        },
+        {},
+      );
     }),
 
   /**
