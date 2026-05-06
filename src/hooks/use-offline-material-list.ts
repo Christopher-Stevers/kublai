@@ -207,7 +207,7 @@ export function useOfflineMaterialList(
       const hasQueuedListChanges = queue.some(
         (mutation) => mutation.materialListId === materialListId,
       );
-      const isSyncing = (await getSyncingMaterialListIds()).includes(materialListId);
+      const isSyncing = isOnline && (await getSyncingMaterialListIds()).includes(materialListId);
 
       const itemStatuses = new Map<string, MaterialListSyncStatus>();
 
@@ -218,7 +218,7 @@ export function useOfflineMaterialList(
         const activeStatus = activeStatuses[itemId];
 
         if (activeStatus) {
-          itemStatuses.set(itemId, activeStatus);
+          itemStatuses.set(itemId, activeStatus === "syncing" && !isOnline ? "pending" : activeStatus);
         } else if (isSyncing && queuedItems.has(itemId)) {
           itemStatuses.set(itemId, "syncing");
         } else if (queuedItems.has(itemId)) {
@@ -229,7 +229,7 @@ export function useOfflineMaterialList(
       }
 
       const listStatus: MaterialListSyncStatus =
-        activeStatusValues.includes("syncing") || isSyncing
+        (isOnline && activeStatusValues.includes("syncing")) || isSyncing
           ? "syncing"
           : activeStatusValues.includes("pending") || hasQueuedListChanges || !!cached?.pendingSync
             ? "pending"
@@ -241,7 +241,7 @@ export function useOfflineMaterialList(
     return () => {
       cancelled = true;
     };
-  }, [cached?.pendingSync, data?.items, materialListId, syncStateVersion]);
+  }, [cached?.pendingSync, data?.items, isOnline, materialListId, syncStateVersion]);
 
   return {
     data,
