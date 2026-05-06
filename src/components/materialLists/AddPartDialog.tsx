@@ -848,23 +848,25 @@ export function AddPartDialog({
         })),
       };
 
-      try {
-        await addItems.mutateAsync(mutationInput);
-        await utils.materialList.getMaterialList.invalidate({ materialListId });
-      } catch (error) {
-        if (previousMaterialList) {
-          utils.materialList.getMaterialList.setData(
-            { materialListId },
-            previousMaterialList,
-          );
-        }
-        throw error;
-      }
-
       setPendingParts([]);
       resetWizard();
       onOpenChange(false);
       setIsAddingParts(false);
+
+      void (async () => {
+        try {
+          await addItems.mutateAsync(mutationInput);
+          await utils.materialList.getMaterialList.invalidate({ materialListId });
+        } catch (error) {
+          if (previousMaterialList) {
+            utils.materialList.getMaterialList.setData(
+              { materialListId },
+              previousMaterialList,
+            );
+          }
+          console.error("Error confirming added parts:", error);
+        }
+      })();
     } catch (error) {
       console.error("Error adding parts:", error);
       setIsAddingParts(false);
