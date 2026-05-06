@@ -4,6 +4,7 @@ import { useCallback, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { api } from "~/trpc/react";
 import { setOfflineIdMappings } from "~/lib/offline-id-map";
+import { parseOfflineSupplierPartId } from "~/lib/offline-suppliers";
 import {
   getOfflineMutationQueue,
   notifyOfflineMaterialListSyncStateChanged,
@@ -378,11 +379,27 @@ export function useOfflineMaterialListSyncRunner() {
         try {
           switch (mutation.type) {
             case "addItem": {
+              let supplierPartId = mutation.supplierPartId;
+              const offlineSupplierPart = supplierPartId
+                ? parseOfflineSupplierPartId(supplierPartId)
+                : null;
+
+              if (offlineSupplierPart) {
+                const supplierPart = await utils.client.supplier.addSupplierPart.mutate({
+                  supplierId: mutation.supplierId ?? offlineSupplierPart.supplierId,
+                  partDefinitionId: mutation.partDefinitionId ?? offlineSupplierPart.partDefinitionId,
+                });
+                if (!supplierPart) {
+                  throw new Error("Offline supplier-part sync did not return a supplier part");
+                }
+                supplierPartId = supplierPart.id;
+              }
+
               const created = await utils.client.materialList.addItemToMaterialList.mutate({
                 materialListId: mutation.materialListId,
                 partDefinitionId: mutation.partDefinitionId,
                 quantity: mutation.quantity,
-                supplierPartId: mutation.supplierPartId,
+                supplierPartId,
                 unitCost: mutation.unitCost,
                 oneOffDisplayName: mutation.oneOffDisplayName,
                 oneOffDescription: mutation.oneOffDescription,

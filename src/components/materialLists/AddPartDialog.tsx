@@ -35,6 +35,7 @@ import {
   getOfflineSupplierPartsByPart,
   setOfflineSupplierPartsByPart,
 } from "~/lib/offline-supplier-parts";
+import { parseOfflineSupplierPartId } from "~/lib/offline-suppliers";
 
 interface AddPartDialogProps {
   open: boolean;
@@ -641,6 +642,26 @@ export function AddPartDialog({
     );
   };
 
+  const handleCacheSupplierPart = (
+    partId: string,
+    supplierPart: {
+      id: string;
+      supplierId: string;
+      supplierSku: string | null;
+      lastKnownUnitCost: string | null;
+      isPreferred: boolean;
+      supplier: { id: string; name: string };
+    },
+  ) => {
+    setSupplierPartsData((prev) => {
+      const existing = prev.get(partId) ?? [];
+      if (existing.some((sp) => sp.id === supplierPart.id)) return prev;
+      const next = new Map(prev);
+      next.set(partId, [...existing, supplierPart]);
+      return next;
+    });
+  };
+
   const handleSupplierPartResolutionStart = (
     partId: string,
     resolution: Promise<string>,
@@ -771,6 +792,7 @@ export function AddPartDialog({
           partDefinitionId: item.pendingPart.partId,
           quantity: item.pendingPart.quantity,
           supplierPartId: item.pendingPart.supplierPartId!,
+          supplierId: parseOfflineSupplierPartId(item.pendingPart.supplierPartId!)?.supplierId,
           unitCost: item.unitCost,
           partDefinitionSnapshot: item.partDefinitionSnapshot,
           supplierPartSnapshot: item.supplierPartSnapshot,
@@ -1036,6 +1058,7 @@ export function AddPartDialog({
                 onUpdateQuantity={handleUpdateQuantity}
                 onSetQuantity={handleSetQuantity}
                 onUpdateSupplier={handleUpdateSupplier}
+                onCacheSupplierPart={handleCacheSupplierPart}
                 onSupplierPartResolutionStart={handleSupplierPartResolutionStart}
                 onRemovePendingPart={handleRemovePendingPart}
                 allPartsHaveSuppliers={allPartsHaveSuppliers}

@@ -14,6 +14,7 @@ export type OfflineMaterialListMutation =
       partDefinitionId?: string;
       quantity: number;
       supplierPartId?: string;
+      supplierId?: string;
       unitCost?: number;
       oneOffDisplayName?: string;
       oneOffDescription?: string;

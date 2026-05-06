@@ -28,6 +28,7 @@ import { PartSuppliersDropdown } from "~/components/catalogue/PartSuppliersDropd
 import { ViewToggle } from "~/components/ui/view-toggle";
 import { Card, CardContent } from "~/components/ui/card";
 import { useOnlineStatus } from "~/hooks/use-online-status";
+import { getOfflineSuppliers, makeOfflineSupplierPartId } from "~/lib/offline-suppliers";
 
 const MATERIAL_LIST_TABLE_COLUMNS =
   "grid-cols-[2rem_8rem_24rem_12rem_8.5rem_2.25rem] sm:grid-cols-[2rem_8.5rem_30rem_14rem_9rem_2.25rem]";
@@ -56,6 +57,7 @@ export interface ReviewStageProps {
   onUpdateQuantity: (partId: string, delta: number) => void;
   onSetQuantity: (partId: string, quantity: number) => void;
   onUpdateSupplier: (partId: string, supplierPartId: string) => void;
+  onCacheSupplierPart: (partId: string, supplierPart: SupplierPartOption) => void;
   onSupplierPartResolutionStart: (
     partId: string,
     resolution: Promise<string>,
@@ -144,6 +146,7 @@ export function ReviewStage({
   onUpdateQuantity,
   onSetQuantity,
   onUpdateSupplier,
+  onCacheSupplierPart,
   onSupplierPartResolutionStart,
   onRemovePendingPart,
   allPartsHaveSuppliers,
@@ -157,9 +160,15 @@ export function ReviewStage({
 
   const utils = api.useUtils();
   const isOnline = useOnlineStatus();
-  const { data: allSuppliers } = api.supplier.list.useQuery(undefined, {
+  const [cachedSuppliers, setCachedSuppliers] = useState(() => getOfflineSuppliers() ?? []);
+  const { data: serverSuppliers } = api.supplier.list.useQuery(undefined, {
     enabled: isOnline,
   });
+  const allSuppliers = isOnline ? (serverSuppliers ?? cachedSuppliers) : cachedSuppliers;
+
+  useEffect(() => {
+    setCachedSuppliers(getOfflineSuppliers() ?? []);
+  }, [isOnline]);
 
   const addSupplierPart = api.supplier.addSupplierPart.useMutation({
     onSuccess: (supplierPart) => {
@@ -321,7 +330,7 @@ export function ReviewStage({
               {sp.isPreferred && " ⭐"}
             </DropdownMenuItem>
           ))}
-          {isOnline && allSuppliers
+          {allSuppliers
             ?.filter(
               (supplier) => !partsData.some((sp) => sp.supplierId === supplier.id),
             )
@@ -329,6 +338,28 @@ export function ReviewStage({
               <DropdownMenuItem
                 key={supplier.id}
                 onClick={() => {
+                  if (!isOnline) {
+                    const localSupplierPart: SupplierPartOption = {
+                      id: makeOfflineSupplierPartId(pendingPart.partId, supplier.id),
+                      supplierId: supplier.id,
+                      supplierSku: null,
+                      lastKnownUnitCost: null,
+                      isPreferred: false,
+                      supplier,
+                    };
+                    onCacheSupplierPart(pendingPart.partId, localSupplierPart);
+                    setOptimisticSupplierSelections((prev) => ({
+                      ...prev,
+                      [pendingPart.partId]: {
+                        supplierPartId: localSupplierPart.id,
+                        label: supplier.name,
+                        lastKnownUnitCost: null,
+                      },
+                    }));
+                    onUpdateSupplier(pendingPart.partId, localSupplierPart.id);
+                    return;
+                  }
+
                   setOptimisticSupplierSelections((prev) => ({
                     ...prev,
                     [pendingPart.partId]: {
@@ -355,9 +386,9 @@ export function ReviewStage({
                 {supplier.name}
               </DropdownMenuItem>
             ))}
-          {!hasAvailableSuppliers && !isOnline && (
+          {!hasAvailableSuppliers && !isOnline && allSuppliers.length === 0 && (
             <DropdownMenuItem disabled>
-              No cached suppliers for this part
+              No cached suppliers available
             </DropdownMenuItem>
           )}
           {!hasAvailableSuppliers && isOnline && (!allSuppliers || allSuppliers.length === 0) && (

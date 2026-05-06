@@ -17,7 +17,7 @@ export function useOfflineSuppliers(serverData?: OfflineSupplier[]) {
     if (typeof window === "undefined") return;
 
     setIsOnline(window.navigator.onLine);
-    setCached(getOfflineSuppliers()?.data ?? null);
+    setCached(getOfflineSuppliers() ?? null);
     setCacheLoaded(true);
 
     const onOnline = () => setIsOnline(true);
