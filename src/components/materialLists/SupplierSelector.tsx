@@ -19,6 +19,15 @@ import {
   setActiveItemSyncStatus,
 } from "~/lib/offline-material-list-mutations";
 import { useOnlineStatus } from "~/hooks/use-online-status";
+import { useOfflineSuppliers } from "~/hooks/use-offline-suppliers";
+import {
+  getOfflineSupplierPartsByPart,
+  setOfflineSupplierPartsByPart,
+} from "~/lib/offline-supplier-parts";
+import {
+  makeOfflineSupplierPartId,
+  parseOfflineSupplierPartId,
+} from "~/lib/offline-suppliers";
 
 interface SupplierSelectorProps {
   itemId: string;
@@ -44,6 +53,16 @@ export function SupplierSelector({
     currentSupplierPartId ?? null,
   );
   const [optimisticDisplayLabel, setOptimisticDisplayLabel] = useState<string | null>(null);
+  const [cachedSupplierParts, setCachedSupplierParts] = useState<
+    Array<{
+      id: string;
+      supplierId: string;
+      supplierSku: string | null;
+      lastKnownUnitCost: string | null;
+      isPreferred: boolean;
+      supplier: { id: string; name: string };
+    }>
+  >([]);
 
   // Debounce search query
   useEffect(() => {
@@ -153,15 +172,28 @@ export function SupplierSelector({
   };
 
   // Get all suppliers for the organization
-  const { data: allSuppliers } = api.supplier.list.useQuery(undefined, {
+  const { data: serverSuppliers } = api.supplier.list.useQuery(undefined, {
     enabled: isOnline,
   });
+  const { data: allSuppliers } = useOfflineSuppliers(serverSuppliers);
 
   // Get supplier parts for this part definition
-  const { data: supplierParts } = api.supplier.getSupplierPartsByPart.useQuery(
+  const { data: serverSupplierParts } = api.supplier.getSupplierPartsByPart.useQuery(
     { partDefinitionId },
     { enabled: isOnline && !!partDefinitionId },
   );
+
+  useEffect(() => {
+    setCachedSupplierParts(getOfflineSupplierPartsByPart(partDefinitionId) ?? []);
+  }, [partDefinitionId, isOnline]);
+
+  useEffect(() => {
+    if (!isOnline || !serverSupplierParts) return;
+    setOfflineSupplierPartsByPart(partDefinitionId, serverSupplierParts);
+    setCachedSupplierParts(serverSupplierParts);
+  }, [isOnline, partDefinitionId, serverSupplierParts]);
+
+  const supplierParts = isOnline ? (serverSupplierParts ?? cachedSupplierParts) : cachedSupplierParts;
 
   // Find current supplier part
   const currentSupplierPart = supplierParts?.find(
@@ -258,7 +290,7 @@ export function SupplierSelector({
     const selectedSupplierPart =
       supplierPartId === "none"
         ? null
-        : supplierParts?.find((supplierPart) => supplierPart.id === supplierPartId) ?? null;
+        : supplierParts.find((supplierPart) => supplierPart.id === supplierPartId) ?? null;
     const nextSupplierPartId = supplierPartId === "none" ? null : supplierPartId;
 
     setOptimisticSupplierPartId(nextSupplierPartId);
@@ -298,6 +330,8 @@ export function SupplierSelector({
         materialListId,
         itemId,
         supplierPartId: nextSupplierPartId,
+        supplierId: nextSupplierPartId ? parseOfflineSupplierPartId(nextSupplierPartId)?.supplierId : undefined,
+        partDefinitionId,
         unitCost,
         supplierPartSnapshot: selectedSupplierPart
           ? {
@@ -323,11 +357,64 @@ export function SupplierSelector({
 
   const handleSupplierSelect = (supplierId: string) => {
     const selectedSupplier = allSuppliers?.find((supplier) => supplier.id === supplierId);
-    if (selectedSupplier) {
+    if (!selectedSupplier) return;
+
+    if (!isOnline) {
+      const localSupplierPart = {
+        id: makeOfflineSupplierPartId(partDefinitionId, supplierId),
+        supplierId,
+        supplierSku: null,
+        lastKnownUnitCost: null,
+        isPreferred: false,
+        supplier: { id: selectedSupplier.id, name: selectedSupplier.name },
+      };
+      setCachedSupplierParts((prev) => {
+        if (prev.some((supplierPart) => supplierPart.id === localSupplierPart.id)) return prev;
+        const next = [...prev, localSupplierPart];
+        setOfflineSupplierPartsByPart(partDefinitionId, next);
+        return next;
+      });
+      setOptimisticSupplierPartId(localSupplierPart.id);
       setOptimisticDisplayLabel(selectedSupplier.name);
+      updateCachedSupplierPart(localSupplierPart);
       setIsDropdownOpen(false);
       setSearchQuery("");
+
+      void applyOfflineSupplierPartUpdate(materialListId, itemId, {
+        supplierPartId: localSupplierPart.id,
+        unitCost: 0,
+        supplierPartSnapshot: {
+          id: localSupplierPart.id,
+          supplierId: localSupplierPart.supplierId,
+          supplierSku: null,
+          lastKnownUnitCost: null,
+          supplier: localSupplierPart.supplier,
+        },
+      });
+      void enqueueOfflineMutation({
+        type: "updateItemSupplierPart",
+        materialListId,
+        itemId,
+        supplierPartId: localSupplierPart.id,
+        supplierId,
+        partDefinitionId,
+        unitCost: 0,
+        supplierPartSnapshot: {
+          id: localSupplierPart.id,
+          supplierId: localSupplierPart.supplierId,
+          supplierSku: null,
+          lastKnownUnitCost: null,
+          supplier: localSupplierPart.supplier,
+        },
+        queuedAt: new Date().toISOString(),
+      });
+      void utils.materialList.getMaterialList.invalidate({ materialListId });
+      return;
     }
+
+    setOptimisticDisplayLabel(selectedSupplier.name);
+    setIsDropdownOpen(false);
+    setSearchQuery("");
 
     // Create supplier part for this supplier and part
     void setActiveItemSyncStatus(materialListId, itemId, "pending");

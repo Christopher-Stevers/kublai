@@ -57,6 +57,8 @@ export type OfflineMaterialListMutation =
       materialListId: string;
       itemId: string;
       supplierPartId: string | null;
+      supplierId?: string;
+      partDefinitionId?: string;
       unitCost: number | null;
       supplierPartSnapshot: {
         id: string;

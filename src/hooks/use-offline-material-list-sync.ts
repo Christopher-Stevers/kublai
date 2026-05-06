@@ -435,9 +435,25 @@ export function useOfflineMaterialListSyncRunner() {
                 break;
               }
 
+              let supplierPartId = mutation.supplierPartId;
+              const offlineSupplierPart = supplierPartId
+                ? parseOfflineSupplierPartId(supplierPartId)
+                : null;
+
+              if (offlineSupplierPart) {
+                const supplierPart = await utils.client.supplier.addSupplierPart.mutate({
+                  supplierId: mutation.supplierId ?? offlineSupplierPart.supplierId,
+                  partDefinitionId: mutation.partDefinitionId ?? offlineSupplierPart.partDefinitionId,
+                });
+                if (!supplierPart) {
+                  throw new Error("Offline supplier-part sync did not return a supplier part");
+                }
+                supplierPartId = supplierPart.id;
+              }
+
               await utils.client.materialList.updateMaterialListItem.mutate({
                 itemId: resolvedItemId,
-                supplierPartId: mutation.supplierPartId,
+                supplierPartId,
               });
               touchedMaterialLists.add(mutation.materialListId);
               break;
