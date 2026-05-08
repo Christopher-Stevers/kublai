@@ -69,6 +69,8 @@ export default function Dashboard() {
       refetchOnMount: true,
       refetchOnWindowFocus: false,
     });
+  const canDeleteCoreRecords =
+    userData?.permissions.canDeleteCoreRecords ?? true;
 
   // Redirect to onboarding if user has no organizationId
   // This is a fallback in case server-side redirect didn't work
@@ -183,7 +185,7 @@ export default function Dashboard() {
   };
 
   const handleConfirmDeleteJob = () => {
-    if (!jobToDelete) return;
+    if (!jobToDelete || !canDeleteCoreRecords) return;
 
     const { id } = jobToDelete;
     hasAttemptedCreate.current = true;
@@ -385,23 +387,25 @@ export default function Dashboard() {
                     <CardTitle className="line-clamp-1 min-w-0">
                       {job.name}
                     </CardTitle>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-10 w-10 shrink-0 text-red-600 hover:bg-red-50 hover:text-red-700"
-                      aria-label={`Delete job ${job.name}`}
-                      disabled={deleteJob.isPending}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setJobToDelete({
-                          id: job.id,
-                          name: job.name,
-                          materialListCount: job.materialListCount,
-                        });
-                      }}
-                    >
-                      <TrashIcon className="h-4 w-4" />
-                    </Button>
+                    {canDeleteCoreRecords && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-10 w-10 shrink-0 text-red-600 hover:bg-red-50 hover:text-red-700"
+                        aria-label={`Delete job ${job.name}`}
+                        disabled={deleteJob.isPending}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setJobToDelete({
+                            id: job.id,
+                            name: job.name,
+                            materialListCount: job.materialListCount,
+                          });
+                        }}
+                      >
+                        <TrashIcon className="h-4 w-4" />
+                      </Button>
+                    )}
                   </div>
                 </CardHeader>
                 <CardContent>

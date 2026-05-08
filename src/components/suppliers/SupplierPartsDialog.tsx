@@ -26,7 +26,10 @@ import {
   StarIcon,
   SearchIcon,
 } from "lucide-react";
-import { ListPagination, useClientPagination } from "~/components/ui/list-pagination";
+import {
+  ListPagination,
+  useClientPagination,
+} from "~/components/ui/list-pagination";
 import { useOnlineStatus } from "~/hooks/use-online-status";
 
 interface SupplierPartsDialogProps {
@@ -44,6 +47,11 @@ export function SupplierPartsDialog({
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedPartId, setSelectedPartId] = useState<string>("");
   const isOnline = useOnlineStatus();
+  const { data: userData } = api.user.getMyRole.useQuery(undefined, {
+    enabled: isOnline && open,
+  });
+  const canDeleteCoreRecords =
+    userData?.permissions.canDeleteCoreRecords ?? true;
 
   const { data: supplierData, isLoading } = api.supplier.getById.useQuery(
     { id: supplierId },
@@ -54,7 +62,9 @@ export function SupplierPartsDialog({
     { query: searchQuery },
     { enabled: isOnline && isAddDialogOpen && searchQuery.length > 0 },
   );
-  const paginatedSupplierParts = useClientPagination(supplierData?.supplierParts ?? []);
+  const paginatedSupplierParts = useClientPagination(
+    supplierData?.supplierParts ?? [],
+  );
   const paginatedSearchResults = useClientPagination(searchResults ?? []);
 
   const utils = api.useUtils();
@@ -64,7 +74,9 @@ export function SupplierPartsDialog({
       await utils.supplier.getById.cancel({ id: supplierId });
 
       // Snapshot previous value
-      const previousSupplier = utils.supplier.getById.getData({ id: supplierId });
+      const previousSupplier = utils.supplier.getById.getData({
+        id: supplierId,
+      });
 
       // Optimistically remove supplier part
       utils.supplier.getById.setData({ id: supplierId }, (old) => {
@@ -82,7 +94,10 @@ export function SupplierPartsDialog({
     onError: (err, variables, context) => {
       // Rollback on error
       if (context?.previousSupplier) {
-        utils.supplier.getById.setData({ id: supplierId }, context.previousSupplier);
+        utils.supplier.getById.setData(
+          { id: supplierId },
+          context.previousSupplier,
+        );
       }
     },
     onSettled: () => {
@@ -96,7 +111,9 @@ export function SupplierPartsDialog({
       await utils.supplier.getById.cancel({ id: supplierId });
 
       // Snapshot previous value
-      const previousSupplier = utils.supplier.getById.getData({ id: supplierId });
+      const previousSupplier = utils.supplier.getById.getData({
+        id: supplierId,
+      });
 
       // Optimistically update supplier part
       utils.supplier.getById.setData({ id: supplierId }, (old) => {
@@ -130,7 +147,10 @@ export function SupplierPartsDialog({
     onError: (err, variables, context) => {
       // Rollback on error
       if (context?.previousSupplier) {
-        utils.supplier.getById.setData({ id: supplierId }, context.previousSupplier);
+        utils.supplier.getById.setData(
+          { id: supplierId },
+          context.previousSupplier,
+        );
       }
     },
     onSettled: () => {
@@ -144,10 +164,14 @@ export function SupplierPartsDialog({
       await utils.supplier.getById.cancel({ id: supplierId });
 
       // Snapshot previous value
-      const previousSupplier = utils.supplier.getById.getData({ id: supplierId });
+      const previousSupplier = utils.supplier.getById.getData({
+        id: supplierId,
+      });
 
       // Find part definition from search results
-      const partDef = searchResults?.find((p) => p.id === variables.partDefinitionId);
+      const partDef = searchResults?.find(
+        (p) => p.id === variables.partDefinitionId,
+      );
 
       // Create temporary supplier part with all required fields
       const tempId = `temp-${Date.now()}`;
@@ -188,7 +212,10 @@ export function SupplierPartsDialog({
     onError: (err, variables, context) => {
       // Rollback on error
       if (context?.previousSupplier) {
-        utils.supplier.getById.setData({ id: supplierId }, context.previousSupplier);
+        utils.supplier.getById.setData(
+          { id: supplierId },
+          context.previousSupplier,
+        );
       }
     },
     onSettled: () => {
@@ -223,6 +250,8 @@ export function SupplierPartsDialog({
   };
 
   const handleDelete = (id: string) => {
+    if (!canDeleteCoreRecords) return;
+
     if (
       confirm("Are you sure you want to remove this part from the supplier?")
     ) {
@@ -327,13 +356,15 @@ export function SupplierPartsDialog({
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                              variant="destructive"
-                              onClick={() => handleDelete(sp.id)}
-                            >
-                              <TrashIcon className="mr-2 h-4 w-4" />
-                              Remove
-                            </DropdownMenuItem>
+                            {canDeleteCoreRecords && (
+                              <DropdownMenuItem
+                                variant="destructive"
+                                onClick={() => handleDelete(sp.id)}
+                              >
+                                <TrashIcon className="mr-2 h-4 w-4" />
+                                Remove
+                              </DropdownMenuItem>
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </div>

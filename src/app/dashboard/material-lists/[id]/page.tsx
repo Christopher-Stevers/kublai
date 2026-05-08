@@ -30,7 +30,10 @@ import {
   type MaterialListSyncStatus,
 } from "~/hooks/use-offline-material-list";
 import { useOnlineStatus } from "~/hooks/use-online-status";
-import { OFFLINE_ID_MAP_CHANGED_EVENT, resolveOfflineId } from "~/lib/offline-id-map";
+import {
+  OFFLINE_ID_MAP_CHANGED_EVENT,
+  resolveOfflineId,
+} from "~/lib/offline-id-map";
 import Image from "next/image";
 import {
   applyOfflineRemoveItem,
@@ -100,7 +103,9 @@ function normalizeSignatureValue(value: unknown) {
 
 function normalizeQuantity(value: unknown) {
   const numeric = Number(value ?? 0);
-  return Number.isFinite(numeric) ? numeric.toFixed(6) : normalizeSignatureValue(value);
+  return Number.isFinite(numeric)
+    ? numeric.toFixed(6)
+    : normalizeSignatureValue(value);
 }
 
 function nestedId(value: unknown) {
@@ -118,8 +123,14 @@ function buildMaterialListOrderSignature(
     materialList.items
       .map((item) => {
         const record = item as Record<string, unknown>;
-        const partDefinition = record.partDefinition as Record<string, unknown> | null;
-        const supplierPart = record.supplierPart as Record<string, unknown> | null;
+        const partDefinition = record.partDefinition as Record<
+          string,
+          unknown
+        > | null;
+        const supplierPart = record.supplierPart as Record<
+          string,
+          unknown
+        > | null;
         const uom = record.uom as Record<string, unknown> | null;
 
         return {
@@ -144,7 +155,8 @@ export default function MaterialListDetailPage({
 }) {
   const { id: paramId } = use(params);
   const pathname = usePathname();
-  const id = pathname.match(/^\/dashboard\/material-lists\/([^/?#]+)/)?.[1] ?? paramId;
+  const id =
+    pathname.match(/^\/dashboard\/material-lists\/([^/?#]+)/)?.[1] ?? paramId;
   const router = useRouter();
   const [showJobInfoModal, setShowJobInfoModal] = useState(false);
   const [showQuoteSheet, setShowQuoteSheet] = useState(false);
@@ -163,27 +175,36 @@ export default function MaterialListDetailPage({
   const isBrowserOnline = useOnlineStatus();
 
   useEffect(() => {
-    if (!id.startsWith("offline-list-") || typeof window === "undefined") return;
+    if (!id.startsWith("offline-list-") || typeof window === "undefined")
+      return;
 
     const redirectIfMapped = () => {
       const mappedId = resolveOfflineId(id);
-      if (mappedId !== id) router.replace(`/dashboard/material-lists/${mappedId}`);
+      if (mappedId !== id)
+        router.replace(`/dashboard/material-lists/${mappedId}`);
     };
 
     redirectIfMapped();
     window.addEventListener(OFFLINE_ID_MAP_CHANGED_EVENT, redirectIfMapped);
-    return () => window.removeEventListener(OFFLINE_ID_MAP_CHANGED_EVENT, redirectIfMapped);
+    return () =>
+      window.removeEventListener(
+        OFFLINE_ID_MAP_CHANGED_EVENT,
+        redirectIfMapped,
+      );
   }, [id, router]);
 
-  const { data: serverMaterialList, isLoading, isFetching } =
-    api.materialList.getMaterialList.useQuery(
-      { materialListId: id },
-      {
-        enabled: !!id && isBrowserOnline,
-        refetchOnWindowFocus: true,
-        refetchOnReconnect: true,
-      },
-    );
+  const {
+    data: serverMaterialList,
+    isLoading,
+    isFetching,
+  } = api.materialList.getMaterialList.useQuery(
+    { materialListId: id },
+    {
+      enabled: !!id && isBrowserOnline,
+      refetchOnWindowFocus: true,
+      refetchOnReconnect: true,
+    },
+  );
 
   const {
     data: materialList,
@@ -196,9 +217,19 @@ export default function MaterialListDetailPage({
   } = useOfflineMaterialList(id, serverMaterialList);
 
   const utils = api.useUtils();
+  const { data: userData } = api.user.getMyRole.useQuery(undefined, {
+    enabled: isBrowserOnline,
+  });
+  const canGenerateDocuments =
+    userData?.permissions.canGenerateDocuments ?? true;
 
   useEffect(() => {
-    if (!id || !isBrowserOnline || id.startsWith("offline-list-") || typeof window === "undefined") {
+    if (
+      !id ||
+      !isBrowserOnline ||
+      id.startsWith("offline-list-") ||
+      typeof window === "undefined"
+    ) {
       return;
     }
 
@@ -221,7 +252,10 @@ export default function MaterialListDetailPage({
 
     return () => {
       cancelled = true;
-      eventSource.removeEventListener("material-list-updated", refreshMaterialList);
+      eventSource.removeEventListener(
+        "material-list-updated",
+        refreshMaterialList,
+      );
       eventSource.close();
       setIsRealtimeRefreshing(false);
     };
@@ -263,13 +297,17 @@ export default function MaterialListDetailPage({
       buildMaterialListOrderSignature(serverMaterialList);
   const generationBlockReason = !isOnline
     ? "Reconnect before generating quotes or orders."
-    : isLoading || !serverMaterialList
-      ? "Checking the online database before quote/order generation."
-      : visibleSyncStatus !== "synced" || hasUnsyncedItems || cached?.pendingSync
-        ? "Finish syncing this material list before generating a quote or order."
-        : !displayedAndServerMaterialListMatch
-          ? "Waiting for the displayed material list to match the online database."
-          : null;
+    : !canGenerateDocuments
+      ? "Workers and beta testers cannot generate quotes or orders."
+      : isLoading || !serverMaterialList
+        ? "Checking the online database before quote/order generation."
+        : visibleSyncStatus !== "synced" ||
+            hasUnsyncedItems ||
+            cached?.pendingSync
+          ? "Finish syncing this material list before generating a quote or order."
+          : !displayedAndServerMaterialListMatch
+            ? "Waiting for the displayed material list to match the online database."
+            : null;
   const canGenerateQuoteOrOrder = !generationBlockReason;
 
   const handleJobInfoClick = () => {
@@ -335,7 +373,6 @@ export default function MaterialListDetailPage({
                 Showing cached material list data
               </div>
             )}
-
           </div>
           <div className="flex items-end justify-between gap-3">
             <div>
@@ -344,13 +381,17 @@ export default function MaterialListDetailPage({
                   onClick={() => setShowMaterialListNameModal(true)}
                   className="text-left"
                 >
-                  <h1 className="cursor-pointer text-lg font-bold leading-tight text-gray-900 transition-colors hover:text-gray-700 sm:text-xl">
-                    {(materialList.materialList as { name?: string } | undefined)?.name || "Material List"}
+                  <h1 className="cursor-pointer text-lg leading-tight font-bold text-gray-900 transition-colors hover:text-gray-700 sm:text-xl">
+                    {(
+                      materialList.materialList as { name?: string } | undefined
+                    )?.name || "Material List"}
                   </h1>
                 </button>
                 <button
                   onClick={() => {
-                    const jobId = (materialList.job as { id?: string } | undefined)?.id;
+                    const jobId = (
+                      materialList.job as { id?: string } | undefined
+                    )?.id;
                     if (jobId) {
                       router.push(`/dashboard/jobs/${jobId}`);
                     } else {
@@ -359,18 +400,25 @@ export default function MaterialListDetailPage({
                   }}
                   className="text-muted-foreground h-auto text-sm leading-tight hover:text-gray-900"
                 >
-                  Job: {(materialList.job as { name?: string } | undefined)?.name || "Not set"}
+                  Job:{" "}
+                  {(materialList.job as { name?: string } | undefined)?.name ||
+                    "Not set"}
                 </button>
                 {(
-                  materialList.materialList as unknown as {
-                    createdBy?: { name?: string | null } | null;
-                  } | undefined
+                  materialList.materialList as unknown as
+                    | {
+                        createdBy?: { name?: string | null } | null;
+                      }
+                    | undefined
                 )?.createdBy?.name && (
                   <div className="text-muted-foreground text-xs leading-tight">
-                    Created by: {
-                      (materialList.materialList as unknown as {
-                        createdBy: { name: string };
-                      }).createdBy.name
+                    Created by:{" "}
+                    {
+                      (
+                        materialList.materialList as unknown as {
+                          createdBy: { name: string };
+                        }
+                      ).createdBy.name
                     }
                   </div>
                 )}
@@ -378,7 +426,11 @@ export default function MaterialListDetailPage({
             </div>
             <div className="flex shrink-0 flex-col items-end gap-1">
               <MaterialListSyncBadge status={visibleSyncStatus} />
-              <ViewToggle view={viewMode} onViewChange={setViewMode} showOnMobile />
+              <ViewToggle
+                view={viewMode}
+                onViewChange={setViewMode}
+                showOnMobile
+              />
             </div>
           </div>
         </div>
@@ -437,7 +489,9 @@ export default function MaterialListDetailPage({
                         }
                       }
                       materialListId={id}
-                      syncStatus={itemSyncStatuses.get(String(item.id)) ?? "synced"}
+                      syncStatus={
+                        itemSyncStatuses.get(String(item.id)) ?? "synced"
+                      }
                     />
                   ))}
                 </div>
@@ -492,7 +546,9 @@ export default function MaterialListDetailPage({
         <div className="mx-auto max-w-6xl">
           <div className="space-y-3">
             <div className="flex items-baseline gap-2">
-              <span className="text-xl text-gray-600 sm:text-2xl">Material Total</span>
+              <span className="text-xl text-gray-600 sm:text-2xl">
+                Material Total
+              </span>
               <span className="text-xl font-bold sm:text-2xl">
                 ${materialList.materialTotal.toFixed(2)}
               </span>
@@ -503,24 +559,28 @@ export default function MaterialListDetailPage({
                 onClick={handleGenerateQuote}
                 disabled={!canGenerateQuoteOrOrder}
                 title={generationBlockReason ?? "Generate quote"}
-                className="min-h-12 w-full whitespace-normal px-2 py-2 text-xs leading-tight sm:h-11 sm:text-sm"
+                className="min-h-12 w-full px-2 py-2 text-xs leading-tight whitespace-normal sm:h-11 sm:text-sm"
               >
                 <FileTextIcon className="mr-1 h-4 w-4 shrink-0 sm:mr-2" />
-                <span className="text-center leading-tight">Generate Quote</span>
+                <span className="text-center leading-tight">
+                  Generate Quote
+                </span>
               </Button>
               <Button
                 onClick={handleGenerateOrder}
                 disabled={!canGenerateQuoteOrOrder}
                 title={generationBlockReason ?? "Generate order"}
-                className="min-h-12 w-full whitespace-normal px-2 py-2 text-xs leading-tight sm:h-11 sm:text-sm"
+                className="min-h-12 w-full px-2 py-2 text-xs leading-tight whitespace-normal sm:h-11 sm:text-sm"
               >
                 <ShoppingCartIcon className="mr-1 h-4 w-4 shrink-0 sm:mr-2" />
-                <span className="text-center leading-tight">Generate Order</span>
+                <span className="text-center leading-tight">
+                  Generate Order
+                </span>
               </Button>
               <Button
                 variant="outline"
                 onClick={() => setShowAddPartDialog(true)}
-                className="min-h-12 w-full whitespace-normal px-2 py-2 text-xs leading-tight sm:h-11 sm:text-sm"
+                className="min-h-12 w-full px-2 py-2 text-xs leading-tight whitespace-normal sm:h-11 sm:text-sm"
               >
                 <PlusIcon className="mr-1 h-4 w-4 shrink-0 sm:mr-2" />
                 <span className="text-center leading-tight">Add Part</span>
@@ -540,8 +600,14 @@ export default function MaterialListDetailPage({
         open={showJobInfoModal}
         onOpenChange={setShowJobInfoModal}
         materialListId={id}
-        initialName={(materialList?.job as { name?: string } | undefined)?.name ?? undefined}
-        initialLocationId={(materialList?.job as { locationId?: string } | undefined)?.locationId ?? undefined}
+        initialName={
+          (materialList?.job as { name?: string } | undefined)?.name ??
+          undefined
+        }
+        initialLocationId={
+          (materialList?.job as { locationId?: string } | undefined)
+            ?.locationId ?? undefined
+        }
       />
 
       {showQuoteSheet && (
@@ -554,7 +620,9 @@ export default function MaterialListDetailPage({
             }
           }}
           materialListId={id}
-          jobName={(materialList?.job as { name?: string } | undefined)?.name ?? ""}
+          jobName={
+            (materialList?.job as { name?: string } | undefined)?.name ?? ""
+          }
           quoteId={selectedQuoteId}
         />
       )}
@@ -736,7 +804,7 @@ function MaterialListTableView({
     <div className="overflow-x-auto pb-2">
       <div className="w-max space-y-2">
         <div
-          className={`grid ${MATERIAL_LIST_TABLE_COLUMNS} items-center gap-2 px-2 text-xs font-medium uppercase tracking-wide text-gray-500 sm:gap-3`}
+          className={`grid ${MATERIAL_LIST_TABLE_COLUMNS} items-center gap-2 px-2 text-xs font-medium tracking-wide text-gray-500 uppercase sm:gap-3`}
         >
           <span aria-hidden="true" />
           <span className="text-center">Qty</span>
@@ -753,77 +821,79 @@ function MaterialListTableView({
             : quantity * unitCost;
 
           return (
-          <div
-            key={item.id}
-            className={`grid ${MATERIAL_LIST_TABLE_COLUMNS} items-center gap-2 rounded-lg border p-1.5 sm:gap-3`}
-          >
-            <div className="relative h-8 w-8 overflow-hidden rounded-md bg-gray-100">
-              {item.partDefinition?.imageUrl ? (
-                <Image
-                  src={item.partDefinition.imageUrl}
-                  alt={item.partDefinition.displayName}
-                  fill
-                  className="object-cover"
+            <div
+              key={item.id}
+              className={`grid ${MATERIAL_LIST_TABLE_COLUMNS} items-center gap-2 rounded-lg border p-1.5 sm:gap-3`}
+            >
+              <div className="relative h-8 w-8 overflow-hidden rounded-md bg-gray-100">
+                {item.partDefinition?.imageUrl ? (
+                  <Image
+                    src={item.partDefinition.imageUrl}
+                    alt={item.partDefinition.displayName}
+                    fill
+                    className="object-cover"
+                  />
+                ) : (
+                  <div className="flex h-full items-center justify-center text-gray-400">
+                    <svg
+                      className="h-4 w-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
+                      />
+                    </svg>
+                  </div>
+                )}
+              </div>
+              <div className="flex h-8 min-w-0 items-center justify-center self-center">
+                <QuantityControls
+                  itemId={item.id}
+                  quantity={parseFloat(item.quantity)}
+                  materialListId={materialListId}
+                  compact
                 />
-              ) : (
-                <div className="flex h-full items-center justify-center text-gray-400">
-                  <svg
-                    className="h-4 w-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
-                    />
-                  </svg>
+              </div>
+              <div className="min-w-0 py-0.5">
+                <div className="line-clamp-2 text-sm leading-tight font-medium break-words whitespace-normal sm:text-base">
+                  {item.partDefinition?.displayName ||
+                    item.descriptionSnapshot ||
+                    "Unknown Part"}
                 </div>
-              )}
-            </div>
-            <div className="flex h-8 min-w-0 items-center justify-center self-center">
-              <QuantityControls
-                itemId={item.id}
-                quantity={parseFloat(item.quantity)}
-                materialListId={materialListId}
-                compact
-              />
-            </div>
-            <div className="min-w-0 py-0.5">
-              <div className="line-clamp-2 whitespace-normal break-words text-sm font-medium leading-tight sm:text-base">
-                {item.partDefinition?.displayName ||
-                  item.descriptionSnapshot ||
-                  "Unknown Part"}
+              </div>
+              <div className="flex h-8 min-w-0 items-center self-center">
+                <SupplierSelector
+                  itemId={item.id}
+                  partDefinitionId={item.partDefinition?.id ?? ""}
+                  currentSupplierPartId={item.supplierPart?.id}
+                  materialListId={materialListId}
+                  compact
+                />
+              </div>
+              <div className="flex h-8 min-w-0 items-center justify-end gap-1.5 self-center overflow-hidden text-sm font-semibold whitespace-nowrap text-gray-900">
+                <span className="shrink-0">${lineTotal.toFixed(2)}</span>
+                <ItemSyncBadge
+                  status={itemSyncStatuses.get(String(item.id)) ?? "synced"}
+                />
+              </div>
+              <div className="flex h-8 items-center justify-center self-center">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleRemove(item.id)}
+                  disabled={removeItem.isPending}
+                  className="h-8 w-8 p-0"
+                  aria-label="Remove item"
+                >
+                  <TrashIcon className="h-4 w-4" />
+                </Button>
               </div>
             </div>
-            <div className="flex h-8 min-w-0 items-center self-center">
-              <SupplierSelector
-                itemId={item.id}
-                partDefinitionId={item.partDefinition?.id ?? ""}
-                currentSupplierPartId={item.supplierPart?.id}
-                materialListId={materialListId}
-                compact
-              />
-            </div>
-            <div className="flex h-8 min-w-0 items-center justify-end gap-1.5 self-center overflow-hidden whitespace-nowrap text-sm font-semibold text-gray-900">
-              <span className="shrink-0">${lineTotal.toFixed(2)}</span>
-              <ItemSyncBadge status={itemSyncStatuses.get(String(item.id)) ?? "synced"} />
-            </div>
-            <div className="flex h-8 items-center justify-center self-center">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleRemove(item.id)}
-                disabled={removeItem.isPending}
-                className="h-8 w-8 p-0"
-                aria-label="Remove item"
-              >
-                <TrashIcon className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
           );
         })}
       </div>

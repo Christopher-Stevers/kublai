@@ -3,6 +3,7 @@ import { eq, and, desc, sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { createTRPCRouter, hasDashboardAccess } from "~/server/api/trpc";
+import { assertCanDeleteCoreRecords } from "~/server/auth/permissions";
 import {
   jobs,
   materialLists,
@@ -245,6 +246,8 @@ export const jobRouter = createTRPCRouter({
   deleteJob: hasDashboardAccess
     .input(z.object({ jobId: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
+      assertCanDeleteCoreRecords(ctx.user);
+
       if (!ctx.user.organizationId) {
         throw new TRPCError({
           code: "BAD_REQUEST",

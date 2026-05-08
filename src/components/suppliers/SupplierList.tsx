@@ -11,7 +11,14 @@ import {
 } from "~/components/ui/dropdown-menu";
 import { SupplierFormDialog } from "./SupplierFormDialog";
 import { SupplierPartsDialog } from "./SupplierPartsDialog";
-import { MoreVerticalIcon, PlusIcon, TrashIcon, EditIcon, PackageIcon, WifiOffIcon } from "lucide-react";
+import {
+  MoreVerticalIcon,
+  PlusIcon,
+  TrashIcon,
+  EditIcon,
+  PackageIcon,
+  WifiOffIcon,
+} from "lucide-react";
 import { useOnlineStatus } from "~/hooks/use-online-status";
 import { useOfflineSuppliers } from "~/hooks/use-offline-suppliers";
 
@@ -23,10 +30,22 @@ export function SupplierList() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
   const isBrowserOnline = useOnlineStatus();
-  const { data: serverSuppliers, isLoading } = api.supplier.list.useQuery(undefined, {
+  const { data: serverSuppliers, isLoading } = api.supplier.list.useQuery(
+    undefined,
+    {
+      enabled: isBrowserOnline,
+    },
+  );
+  const { data: userData } = api.user.getMyRole.useQuery(undefined, {
     enabled: isBrowserOnline,
   });
-  const { data: suppliers, cacheLoaded, isOfflineFallback } = useOfflineSuppliers(serverSuppliers);
+  const canDeleteCoreRecords =
+    userData?.permissions.canDeleteCoreRecords ?? true;
+  const {
+    data: suppliers,
+    cacheLoaded,
+    isOfflineFallback,
+  } = useOfflineSuppliers(serverSuppliers);
   const utils = api.useUtils();
   const deleteSupplier = api.supplier.delete.useMutation({
     onMutate: async (variables) => {
@@ -56,6 +75,8 @@ export function SupplierList() {
   });
 
   const handleDelete = (id: string, name: string) => {
+    if (!canDeleteCoreRecords) return;
+
     if (
       confirm(
         `Are you sure you want to delete "${name}"? This will also remove all parts associated with this supplier.`,
@@ -94,15 +115,12 @@ export function SupplierList() {
           </Button>
         </div>
         <div className="rounded-lg border border-dashed p-12 text-center">
-          <PackageIcon className="mx-auto h-12 w-12 text-muted-foreground" />
+          <PackageIcon className="text-muted-foreground mx-auto h-12 w-12" />
           <h3 className="mt-4 text-lg font-semibold">No suppliers yet</h3>
           <p className="text-muted-foreground mt-2">
             Get started by adding your first supplier.
           </p>
-          <Button
-            onClick={() => setIsCreateDialogOpen(true)}
-            className="mt-4"
-          >
+          <Button onClick={() => setIsCreateDialogOpen(true)} className="mt-4">
             <PlusIcon className="mr-2 h-4 w-4" />
             Add Supplier
           </Button>
@@ -149,15 +167,18 @@ export function SupplierList() {
                 <h3 className="text-base font-semibold sm:text-lg">
                   {supplier.name}
                 </h3>
-                <div className="mt-1 flex flex-col gap-1 text-xs text-muted-foreground sm:flex-row sm:flex-wrap sm:gap-4 sm:text-sm">
+                <div className="text-muted-foreground mt-1 flex flex-col gap-1 text-xs sm:flex-row sm:flex-wrap sm:gap-4 sm:text-sm">
                   {supplier.location && (
                     <span className="truncate">
                       📍 {supplier.location.name}
                       {supplier.location.city || supplier.location.region
-                        ? ` - ${[supplier.location.city, supplier.location.region]
+                        ? ` - ${[
+                            supplier.location.city,
+                            supplier.location.region,
+                          ]
                             .filter(Boolean)
                             .join(", ")}`
-                      : ""}
+                        : ""}
                     </span>
                   )}
                   {supplier.contactName && (
@@ -171,7 +192,7 @@ export function SupplierList() {
                   )}
                 </div>
                 {supplier.orderingNotes && (
-                  <p className="mt-2 text-xs text-muted-foreground sm:text-sm">
+                  <p className="text-muted-foreground mt-2 text-xs sm:text-sm">
                     {supplier.orderingNotes}
                   </p>
                 )}
@@ -211,13 +232,15 @@ export function SupplierList() {
                       <PackageIcon className="mr-2 h-4 w-4" />
                       View Parts
                     </DropdownMenuItem>
-                    <DropdownMenuItem
-                      variant="destructive"
-                      onClick={() => handleDelete(supplier.id, supplier.name)}
-                    >
-                      <TrashIcon className="mr-2 h-4 w-4" />
-                      Delete
-                    </DropdownMenuItem>
+                    {canDeleteCoreRecords && (
+                      <DropdownMenuItem
+                        variant="destructive"
+                        onClick={() => handleDelete(supplier.id, supplier.name)}
+                      >
+                        <TrashIcon className="mr-2 h-4 w-4" />
+                        Delete
+                      </DropdownMenuItem>
+                    )}
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>

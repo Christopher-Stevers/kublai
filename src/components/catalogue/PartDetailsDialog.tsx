@@ -117,11 +117,13 @@ async function uploadPartImage(file: File): Promise<string> {
   });
 
   if (!response.ok) {
-    const errorBody = await response.json().catch(() => null) as { error?: string } | null;
+    const errorBody = (await response.json().catch(() => null)) as {
+      error?: string;
+    } | null;
     throw new Error(errorBody?.error ?? "Image upload failed");
   }
 
-  const body = await response.json() as { url?: string };
+  const body = (await response.json()) as { url?: string };
   if (!body.url) {
     throw new Error("Image upload did not return a URL");
   }
@@ -241,6 +243,7 @@ export function PartDetailsDialog({
   const [newCategoryName, setNewCategoryName] = useState("");
   const [showNewMaterialInput, setShowNewMaterialInput] = useState(false);
   const [newMaterialName, setNewMaterialName] = useState("");
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const sizeUnits = useMemo(
     () => allUnits?.filter((u) => u.kind === "length") ?? [],
@@ -252,6 +255,7 @@ export function PartDetailsDialog({
   useEffect(() => {
     if (!open) {
       initializedForOpenRef.current = false;
+      setSubmitError(null);
     }
   }, [open]);
 
@@ -283,6 +287,10 @@ export function PartDetailsDialog({
     }
 
     if (!isEditMode) {
+      if (initialContext?.size?.unit && !allUnits) {
+        return;
+      }
+
       setDisplayName("");
       setDescription("");
       setImageUrl("");
@@ -290,7 +298,10 @@ export function PartDetailsDialog({
       setCatalogId(initialContext?.catalogId ?? null);
       setCategoryId(initialContext?.categoryId ?? null);
       setMaterialId(initialContext?.materialId ?? null);
-      setSizeValue(initialContext?.size?.sizeLabel ?? formatSizeDecimal(initialContext?.size?.nominal ?? null));
+      setSizeValue(
+        initialContext?.size?.sizeLabel ??
+          formatSizeDecimal(initialContext?.size?.nominal ?? null),
+      );
       setIsActive(true);
       setSupplierId(null);
       setSupplierSku("");
@@ -357,15 +368,22 @@ export function PartDetailsDialog({
         displayName: newPart.displayName,
         imageUrl: newPart.imageUrl,
         material: newPart.material,
-        size: newPart.sizeLabel ?? (newPart.sizeUnit
-          ? formatSize(newPart.sizeNominal, newPart.sizeUnit.code)
-          : null),
+        size:
+          newPart.sizeLabel ??
+          (newPart.sizeUnit
+            ? formatSize(newPart.sizeNominal, newPart.sizeUnit.code)
+            : null),
         supplierPartId,
       });
 
       void utils.catalogue.searchParts.invalidate();
       void utils.catalogue.getPart.invalidate();
       onOpenChange(false);
+    },
+    onError: (error) => {
+      setSubmitError(
+        error.message || "Could not create part. Please try again.",
+      );
     },
   });
 
@@ -375,6 +393,9 @@ export function PartDetailsDialog({
       void utils.catalogue.getPart.invalidate();
       onOpenChange(false);
     },
+    onError: (error) => {
+      setSubmitError(error.message || "Could not save part. Please try again.");
+    },
   });
 
   const mergeDuplicatePart = api.catalogue.mergeDuplicatePart.useMutation({
@@ -383,6 +404,11 @@ export function PartDetailsDialog({
       void utils.catalogue.getPart.invalidate();
       void utils.catalogue.findDuplicateCandidates.invalidate();
       onOpenChange(false);
+    },
+    onError: (error) => {
+      setSubmitError(
+        error.message || "Could not merge duplicate part. Please try again.",
+      );
     },
   });
 
@@ -455,38 +481,41 @@ export function PartDetailsDialog({
   const hasSuppliers =
     !!partId && !!supplierInfo?.[partId]?.availableSuppliers?.length;
 
-  const handleCatalogAdd = () => handleAddableLookup({
-    name: newCatalogName,
-    items: catalogs,
-    select: setCatalogId,
-    reset: () => {
-      setNewCatalogName("");
-      setShowNewCatalogInput(false);
-    },
-    create: (name) => createCatalog.mutate({ name }),
-  });
+  const handleCatalogAdd = () =>
+    handleAddableLookup({
+      name: newCatalogName,
+      items: catalogs,
+      select: setCatalogId,
+      reset: () => {
+        setNewCatalogName("");
+        setShowNewCatalogInput(false);
+      },
+      create: (name) => createCatalog.mutate({ name }),
+    });
 
-  const handleMaterialAdd = () => handleAddableLookup({
-    name: newMaterialName,
-    items: materials,
-    select: setMaterialId,
-    reset: () => {
-      setNewMaterialName("");
-      setShowNewMaterialInput(false);
-    },
-    create: (name) => createMaterial.mutate({ name }),
-  });
+  const handleMaterialAdd = () =>
+    handleAddableLookup({
+      name: newMaterialName,
+      items: materials,
+      select: setMaterialId,
+      reset: () => {
+        setNewMaterialName("");
+        setShowNewMaterialInput(false);
+      },
+      create: (name) => createMaterial.mutate({ name }),
+    });
 
-  const handleCategoryAdd = () => handleAddableLookup({
-    name: newCategoryName,
-    items: categoryTree,
-    select: setCategoryId,
-    reset: () => {
-      setNewCategoryName("");
-      setShowNewCategoryInput(false);
-    },
-    create: (name) => createCategory.mutate({ name }),
-  });
+  const handleCategoryAdd = () =>
+    handleAddableLookup({
+      name: newCategoryName,
+      items: categoryTree,
+      select: setCategoryId,
+      reset: () => {
+        setNewCategoryName("");
+        setShowNewCategoryInput(false);
+      },
+      create: (name) => createCategory.mutate({ name }),
+    });
 
   const handleImageFileChange = async (
     event: React.ChangeEvent<HTMLInputElement>,
@@ -500,6 +529,9 @@ export function PartDetailsDialog({
       setImageUrl(uploadedUrl);
     } catch (error) {
       console.error("Failed to process image", error);
+      setSubmitError(
+        error instanceof Error ? error.message : "Failed to process image",
+      );
     } finally {
       setIsProcessingImage(false);
       event.target.value = "";
@@ -507,6 +539,8 @@ export function PartDetailsDialog({
   };
 
   const handleSubmit = () => {
+    setSubmitError(null);
+
     if (!displayName.trim() || !catalogId) {
       return;
     }
@@ -519,7 +553,11 @@ export function PartDetailsDialog({
       categoryId,
       materialId,
       sizeNominal: parsedSizeNominal,
-      sizeLabel: formatSizeDimensions(sizeValue.trim(), selectedSizeUnit?.code ?? null) || null,
+      sizeLabel:
+        formatSizeDimensions(
+          sizeValue.trim(),
+          selectedSizeUnit?.code ?? null,
+        ) || null,
       sizeUnitId: parsedSizeNominal ? sizeUnitId : null,
       isActive,
       aliases: aliasesText
@@ -1067,6 +1105,12 @@ export function PartDetailsDialog({
               </div>
             )}
           </div>
+
+          {submitError && (
+            <p className="text-sm text-red-600" role="alert">
+              {submitError}
+            </p>
+          )}
 
           <DialogFooter>
             <Button

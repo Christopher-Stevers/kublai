@@ -83,6 +83,9 @@ export default function CataloguePage() {
     wizardSearchPlaceholder,
   } = usePartWizard();
 
+  const isWizardSearchActive =
+    wizardStage !== "review" && wizardSearchQuery.trim().length > 0;
+
   const handleExport = async () => {
     try {
       setIsExporting(true);
@@ -213,14 +216,29 @@ export default function CataloguePage() {
           searchQuery={wizardSearchQuery}
           onSearchChange={setWizardSearchQuery}
           searchPlaceholder={wizardSearchPlaceholder}
-          hideSearch={wizardStage === "part"}
           actionLabel="Create Part"
           onActionClick={() => setIsCreatePartDialogOpen(true)}
         />
       </div>
 
       <div className="flex-1 overflow-y-auto bg-gray-50 p-4 sm:p-6">
-        {wizardStage === "catalog" && (
+        {isWizardSearchActive ? (
+          <PartStage
+            partsForSelection={filteredPartsForSelection}
+            pendingParts={[]}
+            onPartSelect={(part) => setEditingPartId(part.id)}
+            onPartQuantitySet={() => undefined}
+            onQuantityPickerPreviewChange={() => undefined}
+            onEditPart={setEditingPartId}
+            selectedMaterialId={selectedMaterialId}
+            selectedSize={selectedSize}
+            selectedCategory={selectedCategory}
+            onContinueToReview={() => undefined}
+            actionMode="edit"
+            title="Matching Parts"
+            actionLabel="Edit"
+          />
+        ) : wizardStage === "catalog" && (
           <CatalogStage
             catalogs={catalogsWithCounts}
             selectedCatalogId={selectedCatalogId}
@@ -234,7 +252,7 @@ export default function CataloguePage() {
           />
         )}
 
-        {wizardStage === "material" && hasCatalogSelection && (
+        {!isWizardSearchActive && wizardStage === "material" && hasCatalogSelection && (
           <MaterialStage
             materials={materialsWithCounts}
             selectedMaterialId={selectedMaterialId}
@@ -248,7 +266,7 @@ export default function CataloguePage() {
           />
         )}
 
-        {wizardStage === "size" && hasCatalogSelection && hasMaterialSelection && (
+        {!isWizardSearchActive && wizardStage === "size" && hasCatalogSelection && hasMaterialSelection && (
           <SizeStage
             availableSizes={filteredAvailableSizes}
             selectedSize={selectedSize}
@@ -265,7 +283,7 @@ export default function CataloguePage() {
           />
         )}
 
-        {wizardStage === "category" && hasCatalogSelection && hasMaterialSelection && hasSizeSelection && (
+        {!isWizardSearchActive && wizardStage === "category" && hasCatalogSelection && hasMaterialSelection && hasSizeSelection && (
           <CategoryStage
             categories={categoriesWithCounts}
             selectedCategory={selectedCategory}
@@ -279,7 +297,7 @@ export default function CataloguePage() {
           />
         )}
 
-        {wizardStage === "part" && hasCatalogSelection && hasMaterialSelection && hasSizeSelection && hasCategorySelection && (
+        {!isWizardSearchActive && wizardStage === "part" && hasCatalogSelection && hasMaterialSelection && hasSizeSelection && hasCategorySelection && (
           <PartStage
             partsForSelection={filteredPartsForSelection}
             pendingParts={[]}

@@ -16,6 +16,7 @@ interface QuantityControlsProps {
   quantity: number;
   materialListId: string;
   compact?: boolean;
+  orientation?: "horizontal" | "vertical";
 }
 
 export function QuantityControls({
@@ -23,6 +24,7 @@ export function QuantityControls({
   quantity,
   materialListId,
   compact = false,
+  orientation = "horizontal",
 }: QuantityControlsProps) {
   const utils = api.useUtils();
   const [displayedQuantity, setDisplayedQuantity] = useState(quantity);
@@ -36,24 +38,27 @@ export function QuantityControls({
     },
     onSuccess: (updatedItem, variables) => {
       if (updatedItem?.updatedAt) {
-        utils.materialList.getMaterialList.setData({ materialListId }, (old) => {
-          if (!old) return old;
-          return {
-            ...old,
-            items: old.items.map((item) =>
-              item.id === itemId
-                ? {
-                    ...item,
-                    updatedAt: updatedItem.updatedAt,
-                    syncVersion:
-                      updatedItem.updatedAt instanceof Date
-                        ? updatedItem.updatedAt.toISOString()
-                        : String(updatedItem.updatedAt),
-                  }
-                : item,
-            ),
-          };
-        });
+        utils.materialList.getMaterialList.setData(
+          { materialListId },
+          (old) => {
+            if (!old) return old;
+            return {
+              ...old,
+              items: old.items.map((item) =>
+                item.id === itemId
+                  ? {
+                      ...item,
+                      updatedAt: updatedItem.updatedAt,
+                      syncVersion:
+                        updatedItem.updatedAt instanceof Date
+                          ? updatedItem.updatedAt.toISOString()
+                          : String(updatedItem.updatedAt),
+                    }
+                  : item,
+              ),
+            };
+          },
+        );
       }
 
       if (variables.quantity === displayedQuantityRef.current) {
@@ -87,7 +92,9 @@ export function QuantityControls({
       const updatedItems = old.items.map((item) => {
         if (item.id !== itemId) return item;
 
-        const unitCost = item.unitCost ? parseFloat(item.unitCost.toString()) : 0;
+        const unitCost = item.unitCost
+          ? parseFloat(item.unitCost.toString())
+          : 0;
         const extendedPrice = nextQuantity * unitCost;
 
         return {
@@ -200,6 +207,47 @@ export function QuantityControls({
   const inputClassName = compact
     ? "h-8 w-11 [appearance:textfield] px-1 text-center text-sm font-medium [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
     : "h-10 w-12 [appearance:textfield] px-1 text-center font-medium sm:h-11 sm:w-14 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none";
+
+  if (orientation === "vertical") {
+    return (
+      <div className="flex flex-col items-center justify-center gap-1">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleIncrease}
+          className={buttonClassName}
+          aria-label="Increase quantity"
+        >
+          <PlusIcon className="h-4 w-4" />
+        </Button>
+        <Input
+          type="text"
+          inputMode="numeric"
+          pattern="[0-9]*"
+          value={inputValue}
+          onChange={(event) => handleInputChange(event.target.value)}
+          onBlur={(event) => commitInputQuantity(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              event.currentTarget.blur();
+            }
+          }}
+          className={inputClassName}
+          aria-label="Quantity"
+        />
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleDecrease}
+          disabled={displayedQuantity <= 1}
+          className={buttonClassName}
+          aria-label="Decrease quantity"
+        >
+          <MinusIcon className="h-4 w-4" />
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="flex items-center justify-center gap-1">

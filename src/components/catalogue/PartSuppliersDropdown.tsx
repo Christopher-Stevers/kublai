@@ -11,7 +11,13 @@ import {
 } from "~/components/ui/dropdown-menu";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
-import { CheckIcon, StarIcon, PlusIcon, SearchIcon, ChevronDownIcon } from "lucide-react";
+import {
+  CheckIcon,
+  StarIcon,
+  PlusIcon,
+  SearchIcon,
+  ChevronDownIcon,
+} from "lucide-react";
 import { SupplierFormDialog } from "~/components/suppliers/SupplierFormDialog";
 import { useOnlineStatus } from "~/hooks/use-online-status";
 
@@ -45,6 +51,11 @@ export function PartSuppliersDropdown({
 
   const utils = api.useUtils();
   const isOnline = useOnlineStatus();
+  const { data: userData } = api.user.getMyRole.useQuery(undefined, {
+    enabled: isOnline && isDropdownOpen,
+  });
+  const canDeleteCoreRecords =
+    userData?.permissions.canDeleteCoreRecords ?? true;
 
   // Get suppliers for this part
   const { data: supplierParts } = api.supplier.getSupplierPartsByPart.useQuery(
@@ -65,12 +76,15 @@ export function PartSuppliersDropdown({
       await utils.catalogue.getPartsSupplierInfo.cancel();
 
       // Snapshot previous values
-      const previousSupplierParts = utils.supplier.getSupplierPartsByPart.getData({
-        partDefinitionId,
-      });
-      const previousSupplierInfo = utils.catalogue.getPartsSupplierInfo.getData({
-        partIds: [partDefinitionId],
-      });
+      const previousSupplierParts =
+        utils.supplier.getSupplierPartsByPart.getData({
+          partDefinitionId,
+        });
+      const previousSupplierInfo = utils.catalogue.getPartsSupplierInfo.getData(
+        {
+          partIds: [partDefinitionId],
+        },
+      );
 
       // Find supplier info
       const supplier = allSuppliers?.find((s) => s.id === variables.supplierId);
@@ -165,12 +179,15 @@ export function PartSuppliersDropdown({
       await utils.catalogue.getPartsSupplierInfo.cancel();
 
       // Snapshot previous values
-      const previousSupplierParts = utils.supplier.getSupplierPartsByPart.getData({
-        partDefinitionId,
-      });
-      const previousSupplierInfo = utils.catalogue.getPartsSupplierInfo.getData({
-        partIds: [partDefinitionId],
-      });
+      const previousSupplierParts =
+        utils.supplier.getSupplierPartsByPart.getData({
+          partDefinitionId,
+        });
+      const previousSupplierInfo = utils.catalogue.getPartsSupplierInfo.getData(
+        {
+          partIds: [partDefinitionId],
+        },
+      );
 
       // Find supplier part to get supplier ID
       const supplierPart = supplierParts?.find((sp) => sp.id === variables.id);
@@ -219,7 +236,7 @@ export function PartSuppliersDropdown({
                 availableSuppliers: remainingSuppliers,
                 preferredSupplier:
                   current.preferredSupplier?.id === supplierId
-                    ? remainingSuppliers[0] ?? null // Set first remaining as preferred if removing preferred
+                    ? (remainingSuppliers[0] ?? null) // Set first remaining as preferred if removing preferred
                     : current.preferredSupplier,
               },
             };
@@ -260,12 +277,15 @@ export function PartSuppliersDropdown({
       await utils.catalogue.getPartsSupplierInfo.cancel();
 
       // Snapshot previous values
-      const previousSupplierParts = utils.supplier.getSupplierPartsByPart.getData({
-        partDefinitionId,
-      });
-      const previousSupplierInfo = utils.catalogue.getPartsSupplierInfo.getData({
-        partIds: [partDefinitionId],
-      });
+      const previousSupplierParts =
+        utils.supplier.getSupplierPartsByPart.getData({
+          partDefinitionId,
+        });
+      const previousSupplierInfo = utils.catalogue.getPartsSupplierInfo.getData(
+        {
+          partIds: [partDefinitionId],
+        },
+      );
 
       // Find supplier
       const supplier = allSuppliers?.find((s) => s.id === variables.supplierId);
@@ -350,15 +370,19 @@ export function PartSuppliersDropdown({
 
   const handleToggleSupplier = (supplierId: string) => {
     const hasPart = supplierIdsWithPart.has(supplierId);
-    
+
     if (hasPart) {
+      if (!canDeleteCoreRecords) {
+        return;
+      }
+
       // Prevent removing the last supplier
       const supplierCount = supplierParts?.length ?? 0;
       if (supplierCount <= 1) {
         // Cannot remove the last supplier
         return;
       }
-      
+
       // Remove supplier
       const supplierPart = supplierParts?.find(
         (sp) => sp.supplierId === supplierId,
@@ -459,7 +483,7 @@ export function PartSuppliersDropdown({
                       : "No suppliers available"}
                   </div>
                   {!debouncedSearchQuery.trim() && (
-                    <div className="text-xs text-muted-foreground">
+                    <div className="text-muted-foreground text-xs">
                       Connect an existing supplier or create a new one below.
                     </div>
                   )}
@@ -483,24 +507,32 @@ export function PartSuppliersDropdown({
                             handleToggleSupplier(supplier.id);
                           }}
                           disabled={
-                            hasPart && (supplierParts?.length ?? 0) <= 1
+                            hasPart &&
+                            (!canDeleteCoreRecords ||
+                              (supplierParts?.length ?? 0) <= 1)
                           }
                           className={`flex h-4 w-4 items-center justify-center rounded border border-gray-300 transition-colors ${
-                            hasPart && (supplierParts?.length ?? 0) <= 1
+                            hasPart &&
+                            (!canDeleteCoreRecords ||
+                              (supplierParts?.length ?? 0) <= 1)
                               ? "cursor-not-allowed opacity-50"
                               : "hover:border-gray-400"
                           }`}
                           aria-label={
                             hasPart
-                              ? (supplierParts?.length ?? 0) <= 1
-                                ? "Cannot remove last supplier"
-                                : "Remove supplier"
+                              ? !canDeleteCoreRecords
+                                ? "Cannot remove supplier"
+                                : (supplierParts?.length ?? 0) <= 1
+                                  ? "Cannot remove last supplier"
+                                  : "Remove supplier"
                               : "Add supplier"
                           }
                           title={
-                            hasPart && (supplierParts?.length ?? 0) <= 1
-                              ? "Cannot remove the last supplier"
-                              : undefined
+                            hasPart && !canDeleteCoreRecords
+                              ? "Workers and beta testers cannot remove parts from suppliers"
+                              : hasPart && (supplierParts?.length ?? 0) <= 1
+                                ? "Cannot remove the last supplier"
+                                : undefined
                           }
                         >
                           {hasPart && (
@@ -571,4 +603,3 @@ export function PartSuppliersDropdown({
     </>
   );
 }
-

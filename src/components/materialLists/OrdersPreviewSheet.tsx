@@ -17,7 +17,11 @@ import { useOnlineStatus } from "~/hooks/use-online-status";
 
 const GENERATE_ORDER_TIMEOUT_MS = 20_000;
 
-function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string) {
+function withTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  message: string,
+) {
   let timeoutId: number | undefined;
   const timeout = new Promise<never>((_, reject) => {
     timeoutId = window.setTimeout(() => reject(new Error(message)), timeoutMs);
@@ -48,6 +52,11 @@ export function OrdersPreviewSheet({
 
   const utils = api.useUtils();
   const isOnline = useOnlineStatus();
+  const { data: userData } = api.user.getMyRole.useQuery(undefined, {
+    enabled: isOnline && open,
+  });
+  const canGenerateDocuments =
+    userData?.permissions.canGenerateDocuments ?? true;
   const [orders, setOrders] = useState<
     Array<{
       id: string;
@@ -125,19 +134,24 @@ export function OrdersPreviewSheet({
       open &&
       materialListId &&
       !providedOrderId &&
+      canGenerateDocuments &&
       orders.length === 0 &&
       !isGenerating
     ) {
       void (async () => {
         if (!isOnline) {
-          setSyncError("Reconnect before generating orders. Orders are generated from the online database.");
+          setSyncError(
+            "Reconnect before generating orders. Orders are generated from the online database.",
+          );
           return;
         }
 
         setIsGenerating(true);
 
         try {
-          await utils.materialList.getMaterialList.invalidate({ materialListId });
+          await utils.materialList.getMaterialList.invalidate({
+            materialListId,
+          });
           const data = await withTimeout(
             generateOrders.mutateAsync({ materialListId }),
             GENERATE_ORDER_TIMEOUT_MS,
@@ -156,7 +170,9 @@ export function OrdersPreviewSheet({
           });
           setOrderNotes(notesMap);
           setSyncError(null);
-          void utils.materialList.getMaterialList.invalidate({ materialListId });
+          void utils.materialList.getMaterialList.invalidate({
+            materialListId,
+          });
         } catch (error) {
           generateOrders.reset();
           setSyncError(
@@ -170,7 +186,15 @@ export function OrdersPreviewSheet({
       })();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, materialListId, orders.length, providedOrderId, isGenerating, isOnline]);
+  }, [
+    open,
+    materialListId,
+    orders.length,
+    providedOrderId,
+    isGenerating,
+    isOnline,
+    canGenerateDocuments,
+  ]);
 
   const toggleSupplier = (supplierId: string) => {
     setExpandedSuppliers((prev) => {
@@ -188,6 +212,11 @@ export function OrdersPreviewSheet({
     orderId: string,
     order: (typeof orders)[0],
   ) => {
+    if (!canGenerateDocuments) {
+      setSyncError("Workers and beta testers cannot generate orders.");
+      return;
+    }
+
     const supplierEmail =
       (order as { supplier?: { contactEmail: string | null } | null })?.supplier
         ?.contactEmail || undefined;
@@ -247,11 +276,19 @@ export function OrdersPreviewSheet({
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{syncError ? "Sync Required" : "No Orders to Send"}</DialogTitle>
+            <DialogTitle>
+              {!canGenerateDocuments
+                ? "Not Allowed"
+                : syncError
+                  ? "Sync Required"
+                  : "No Orders to Send"}
+            </DialogTitle>
             <DialogDescription>
-              {syncError
-                ? syncError
-                : "No items have suppliers assigned. Please assign suppliers to items before generating orders."}
+              {!canGenerateDocuments
+                ? "Workers and beta testers cannot generate orders."
+                : syncError
+                  ? syncError
+                  : "No items have suppliers assigned. Please assign suppliers to items before generating orders."}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -279,6 +316,11 @@ export function OrdersPreviewSheet({
         </DialogHeader>
 
         <div className="space-y-4 py-4">
+          {!canGenerateDocuments && (
+            <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+              Workers and beta testers cannot generate orders.
+            </div>
+          )}
           {orders.map((order) => {
             const isExpanded = expandedSuppliers.has(order.id);
             const isSent = emailSent.has(order.id);
@@ -306,7 +348,7 @@ export function OrdersPreviewSheet({
                   <Button
                     size="sm"
                     onClick={() => handleEmailOrder(order.id, order)}
-                    disabled={isSent}
+                    disabled={!canGenerateDocuments || isSent}
                   >
                     Email Order
                   </Button>
@@ -331,7 +373,7 @@ export function OrdersPreviewSheet({
                         );
                       })}
                     </div>
-                    
+
                     {/* Notes */}
                     <div className="space-y-2 border-t pt-4">
                       <label

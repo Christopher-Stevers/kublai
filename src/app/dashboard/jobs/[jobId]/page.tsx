@@ -31,7 +31,10 @@ import {
   createOfflineMaterialList,
   tombstoneOfflineMaterialList,
 } from "~/lib/offline-jobs";
-import { clearOfflineMaterialList, setOfflineMaterialList } from "~/lib/offline-material-list";
+import {
+  clearOfflineMaterialList,
+  setOfflineMaterialList,
+} from "~/lib/offline-material-list";
 import {
   getOfflineMutationQueue,
   setOfflineMutationQueue,
@@ -47,7 +50,9 @@ type JobLocationDisplay = {
   country?: string | null;
 };
 
-function formatLocationAddress(location: JobLocationDisplay | null | undefined) {
+function formatLocationAddress(
+  location: JobLocationDisplay | null | undefined,
+) {
   if (!location) return null;
 
   const addressLine = [location.address1, location.address2]
@@ -57,7 +62,10 @@ function formatLocationAddress(location: JobLocationDisplay | null | undefined) 
     .filter(Boolean)
     .join(", ");
 
-  return [addressLine, cityLine, location.country].filter(Boolean).join(" • ") || null;
+  return (
+    [addressLine, cityLine, location.country].filter(Boolean).join(" • ") ||
+    null
+  );
 }
 
 export default function JobDetailPage({
@@ -67,7 +75,8 @@ export default function JobDetailPage({
 }) {
   const { jobId: paramJobId } = use(params);
   const pathname = usePathname();
-  const jobId = pathname.match(/^\/dashboard\/jobs\/([^/?#]+)/)?.[1] ?? paramJobId;
+  const jobId =
+    pathname.match(/^\/dashboard\/jobs\/([^/?#]+)/)?.[1] ?? paramJobId;
   const router = useRouter();
   const utils = api.useUtils();
   const [showEditDialog, setShowEditDialog] = useState(false);
@@ -77,9 +86,15 @@ export default function JobDetailPage({
     itemCount?: number | null;
   } | null>(null);
   const isBrowserOnline = useOnlineStatus();
+  const { data: userData } = api.user.getMyRole.useQuery(undefined, {
+    enabled: isBrowserOnline,
+  });
+  const canDeleteCoreRecords =
+    userData?.permissions.canDeleteCoreRecords ?? true;
 
   useEffect(() => {
-    if (!jobId.startsWith("offline-job-") || typeof window === "undefined") return;
+    if (!jobId.startsWith("offline-job-") || typeof window === "undefined")
+      return;
 
     const redirectIfMapped = () => {
       const idMap = JSON.parse(
@@ -90,8 +105,15 @@ export default function JobDetailPage({
     };
 
     redirectIfMapped();
-    window.addEventListener("foremanhq:offline-id-map-changed", redirectIfMapped);
-    return () => window.removeEventListener("foremanhq:offline-id-map-changed", redirectIfMapped);
+    window.addEventListener(
+      "foremanhq:offline-id-map-changed",
+      redirectIfMapped,
+    );
+    return () =>
+      window.removeEventListener(
+        "foremanhq:offline-id-map-changed",
+        redirectIfMapped,
+      );
   }, [jobId, router]);
 
   // Get job details
@@ -165,6 +187,10 @@ export default function JobDetailPage({
       return;
     }
 
+    if (!canDeleteCoreRecords) {
+      return;
+    }
+
     const { id } = materialListToDelete;
     setMaterialListToDelete(null);
 
@@ -172,7 +198,9 @@ export default function JobDetailPage({
       tombstoneOfflineMaterialList(jobId, id);
       void clearOfflineMaterialList(id);
       void getOfflineMutationQueue().then((queue) =>
-        setOfflineMutationQueue(queue.filter((mutation) => mutation.materialListId !== id)),
+        setOfflineMutationQueue(
+          queue.filter((mutation) => mutation.materialListId !== id),
+        ),
       );
       return;
     }
@@ -201,7 +229,9 @@ export default function JobDetailPage({
         <div className="mx-auto max-w-6xl">
           <div className="flex flex-col items-center justify-center py-12">
             <p className="text-muted-foreground mb-4">Job not found</p>
-            <Button onClick={() => router.push("/dashboard")}>Back to Jobs</Button>
+            <Button onClick={() => router.push("/dashboard")}>
+              Back to Jobs
+            </Button>
           </div>
         </div>
       </div>
@@ -226,7 +256,7 @@ export default function JobDetailPage({
         </div>
         {/* Job Header */}
         <div className="mb-6">
-          <div className="flex items-center gap-3 mb-2">
+          <div className="mb-2 flex items-center gap-3">
             <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">
               {job.name}
             </h1>
@@ -259,7 +289,6 @@ export default function JobDetailPage({
                 <span>{job.poNumber}</span>
               </div>
             )}
-
           </div>
         </div>
 
@@ -299,7 +328,9 @@ export default function JobDetailPage({
                 disabled={createMaterialList.isPending}
               >
                 <PlusIcon className="mr-2 h-4 w-4" />
-                {createMaterialList.isPending ? "Creating..." : "New Material List"}
+                {createMaterialList.isPending
+                  ? "Creating..."
+                  : "New Material List"}
               </Button>
             </CardContent>
           </Card>
@@ -315,24 +346,28 @@ export default function JobDetailPage({
               >
                 <CardHeader>
                   <div className="flex items-start justify-between gap-3">
-                    <CardTitle className="line-clamp-1 min-w-0">{list.name}</CardTitle>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-10 w-10 shrink-0 text-red-600 hover:bg-red-50 hover:text-red-700"
-                      aria-label={`Delete material list ${list.name}`}
-                      disabled={deleteMaterialList.isPending}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setMaterialListToDelete({
-                          id: list.id,
-                          name: list.name,
-                          itemCount: list.itemCount,
-                        });
-                      }}
-                    >
-                      <TrashIcon className="h-4 w-4" />
-                    </Button>
+                    <CardTitle className="line-clamp-1 min-w-0">
+                      {list.name}
+                    </CardTitle>
+                    {canDeleteCoreRecords && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-10 w-10 shrink-0 text-red-600 hover:bg-red-50 hover:text-red-700"
+                        aria-label={`Delete material list ${list.name}`}
+                        disabled={deleteMaterialList.isPending}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setMaterialListToDelete({
+                            id: list.id,
+                            name: list.name,
+                            itemCount: list.itemCount,
+                          });
+                        }}
+                      >
+                        <TrashIcon className="h-4 w-4" />
+                      </Button>
+                    )}
                   </div>
                 </CardHeader>
                 <CardContent>
@@ -351,13 +386,15 @@ export default function JobDetailPage({
                         <span>{list.foreman.name}</span>
                       </div>
                     )}
-                    {((list as unknown as { createdBy?: { name: string } | null }).createdBy) && (
+                    {(
+                      list as unknown as { createdBy?: { name: string } | null }
+                    ).createdBy && (
                       <div className="flex items-center gap-2">
                         <span className="font-semibold">Created by:</span>
                         <span>
                           {
-                            (list as unknown as { createdBy: { name: string } }).createdBy
-                              .name
+                            (list as unknown as { createdBy: { name: string } })
+                              .createdBy.name
                           }
                         </span>
                       </div>
@@ -398,7 +435,10 @@ export default function JobDetailPage({
             <DialogHeader>
               <DialogTitle>Delete material list?</DialogTitle>
               <DialogDescription>
-                This will permanently delete {materialListToDelete ? `"${materialListToDelete.name}"` : "this material list"}
+                This will permanently delete{" "}
+                {materialListToDelete
+                  ? `"${materialListToDelete.name}"`
+                  : "this material list"}
                 {materialListToDelete?.itemCount
                   ? ` and ${materialListToDelete.itemCount} ${
                       materialListToDelete.itemCount === 1 ? "item" : "items"
@@ -422,7 +462,9 @@ export default function JobDetailPage({
                 disabled={!materialListToDelete || deleteMaterialList.isPending}
                 onClick={handleConfirmDeleteMaterialList}
               >
-                {deleteMaterialList.isPending ? "Deleting..." : "Delete Material List"}
+                {deleteMaterialList.isPending
+                  ? "Deleting..."
+                  : "Delete Material List"}
               </Button>
             </DialogFooter>
           </DialogContent>

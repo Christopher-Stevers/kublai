@@ -52,7 +52,9 @@ export function SupplierSelector({
   const [optimisticSupplierPartId, setOptimisticSupplierPartId] = useState(
     currentSupplierPartId ?? null,
   );
-  const [optimisticDisplayLabel, setOptimisticDisplayLabel] = useState<string | null>(null);
+  const [optimisticDisplayLabel, setOptimisticDisplayLabel] = useState<
+    string | null
+  >(null);
   const [cachedSupplierParts, setCachedSupplierParts] = useState<
     Array<{
       id: string;
@@ -88,24 +90,27 @@ export function SupplierSelector({
     },
     onSuccess: (updatedItem) => {
       if (updatedItem?.updatedAt) {
-        utils.materialList.getMaterialList.setData({ materialListId }, (old) => {
-          if (!old) return old;
-          return {
-            ...old,
-            items: old.items.map((item) =>
-              item.id === itemId
-                ? {
-                    ...item,
-                    updatedAt: updatedItem.updatedAt,
-                    syncVersion:
-                      updatedItem.updatedAt instanceof Date
-                        ? updatedItem.updatedAt.toISOString()
-                        : String(updatedItem.updatedAt),
-                  }
-                : item,
-            ),
-          };
-        });
+        utils.materialList.getMaterialList.setData(
+          { materialListId },
+          (old) => {
+            if (!old) return old;
+            return {
+              ...old,
+              items: old.items.map((item) =>
+                item.id === itemId
+                  ? {
+                      ...item,
+                      updatedAt: updatedItem.updatedAt,
+                      syncVersion:
+                        updatedItem.updatedAt instanceof Date
+                          ? updatedItem.updatedAt.toISOString()
+                          : String(updatedItem.updatedAt),
+                    }
+                  : item,
+              ),
+            };
+          },
+        );
       }
       void setActiveItemSyncStatus(materialListId, itemId, "synced");
       void utils.supplier.getSupplierPartsByPart.invalidate({
@@ -178,13 +183,16 @@ export function SupplierSelector({
   const { data: allSuppliers } = useOfflineSuppliers(serverSuppliers);
 
   // Get supplier parts for this part definition
-  const { data: serverSupplierParts } = api.supplier.getSupplierPartsByPart.useQuery(
-    { partDefinitionId },
-    { enabled: isOnline && !!partDefinitionId },
-  );
+  const { data: serverSupplierParts } =
+    api.supplier.getSupplierPartsByPart.useQuery(
+      { partDefinitionId },
+      { enabled: isOnline && !!partDefinitionId },
+    );
 
   useEffect(() => {
-    setCachedSupplierParts(getOfflineSupplierPartsByPart(partDefinitionId) ?? []);
+    setCachedSupplierParts(
+      getOfflineSupplierPartsByPart(partDefinitionId) ?? [],
+    );
   }, [partDefinitionId, isOnline]);
 
   useEffect(() => {
@@ -193,20 +201,24 @@ export function SupplierSelector({
     setCachedSupplierParts(serverSupplierParts);
   }, [isOnline, partDefinitionId, serverSupplierParts]);
 
-  const supplierParts = isOnline ? (serverSupplierParts ?? cachedSupplierParts) : cachedSupplierParts;
+  const supplierParts = isOnline
+    ? (serverSupplierParts ?? cachedSupplierParts)
+    : cachedSupplierParts;
 
   // Find current supplier part
   const currentSupplierPart = supplierParts?.find(
     (sp) => sp.id === optimisticSupplierPartId,
   );
 
-  const displayValue = optimisticDisplayLabel ?? (currentSupplierPart
-    ? `${currentSupplierPart.supplier.name}${
-        currentSupplierPart.supplierSku
-          ? ` (${currentSupplierPart.supplierSku})`
-          : ""
-      }`
-    : "No supplier");
+  const displayValue =
+    optimisticDisplayLabel ??
+    (currentSupplierPart
+      ? `${currentSupplierPart.supplier.name}${
+          currentSupplierPart.supplierSku
+            ? ` (${currentSupplierPart.supplierSku})`
+            : ""
+        }`
+      : "No supplier");
 
   const updateCachedSupplierPart = (
     selectedSupplierPart: NonNullable<typeof supplierParts>[number] | null,
@@ -221,7 +233,9 @@ export function SupplierSelector({
       const updatedItems = old.items.map((item) => {
         if (item.id !== itemId) return item;
 
-        const quantity = item.quantity ? parseFloat(item.quantity.toString()) : 0;
+        const quantity = item.quantity
+          ? parseFloat(item.quantity.toString())
+          : 0;
         const extendedPrice = quantity * unitCost;
 
         return {
@@ -290,8 +304,11 @@ export function SupplierSelector({
     const selectedSupplierPart =
       supplierPartId === "none"
         ? null
-        : supplierParts.find((supplierPart) => supplierPart.id === supplierPartId) ?? null;
-    const nextSupplierPartId = supplierPartId === "none" ? null : supplierPartId;
+        : (supplierParts.find(
+            (supplierPart) => supplierPart.id === supplierPartId,
+          ) ?? null);
+    const nextSupplierPartId =
+      supplierPartId === "none" ? null : supplierPartId;
 
     setOptimisticSupplierPartId(nextSupplierPartId);
     setOptimisticDisplayLabel(
@@ -330,7 +347,9 @@ export function SupplierSelector({
         materialListId,
         itemId,
         supplierPartId: nextSupplierPartId,
-        supplierId: nextSupplierPartId ? parseOfflineSupplierPartId(nextSupplierPartId)?.supplierId : undefined,
+        supplierId: nextSupplierPartId
+          ? parseOfflineSupplierPartId(nextSupplierPartId)?.supplierId
+          : undefined,
         partDefinitionId,
         unitCost,
         supplierPartSnapshot: selectedSupplierPart
@@ -356,7 +375,9 @@ export function SupplierSelector({
   };
 
   const handleSupplierSelect = (supplierId: string) => {
-    const selectedSupplier = allSuppliers?.find((supplier) => supplier.id === supplierId);
+    const selectedSupplier = allSuppliers?.find(
+      (supplier) => supplier.id === supplierId,
+    );
     if (!selectedSupplier) return;
 
     if (!isOnline) {
@@ -369,7 +390,10 @@ export function SupplierSelector({
         supplier: { id: selectedSupplier.id, name: selectedSupplier.name },
       };
       setCachedSupplierParts((prev) => {
-        if (prev.some((supplierPart) => supplierPart.id === localSupplierPart.id)) return prev;
+        if (
+          prev.some((supplierPart) => supplierPart.id === localSupplierPart.id)
+        )
+          return prev;
         const next = [...prev, localSupplierPart];
         setOfflineSupplierPartsByPart(partDefinitionId, next);
         return next;
@@ -430,14 +454,13 @@ export function SupplierSelector({
     setIsSupplierDialogOpen(true);
   };
 
-
   return (
     <div className="w-full">
       <DropdownMenu open={isDropdownOpen} onOpenChange={setIsDropdownOpen}>
         <DropdownMenuTrigger asChild>
           <Button
             variant="outline"
-            className={`${compact ? "h-8 text-xs" : "h-11"} w-full justify-between`}
+            className={`${compact ? "h-8 text-xs" : "h-10 sm:h-11"} w-full justify-between`}
             style={compact ? { touchAction: "auto" } : undefined}
           >
             <span className="truncate">{displayValue}</span>

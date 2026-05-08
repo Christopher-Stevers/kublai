@@ -6,6 +6,8 @@ import { users } from "~/server/db/schema";
 
 const AGENT_AUTH_COOKIE = "foremenhq_agent_auth";
 const AGENT_AUTH_HEADER = "x-foremenhq-agent-auth";
+const BETA_MARKER_COOKIE = "foremenhq_beta_access";
+const DEFAULT_BETA_AUTH_EMAIL = "halvorhalstrom@gmail.com";
 
 function isAgentBypassEnabled() {
   return process.env.FOREMENHQ_AGENT_AUTH_BYPASS === "true";
@@ -53,7 +55,14 @@ export function hasValidAgentAuthBypass(headers: Headers) {
 export async function getAgentBypassUser(headers: Headers) {
   if (!hasValidAgentAuthBypass(headers)) return null;
 
-  const preferredEmail = process.env.DEV_AUTH_EMAIL?.trim().toLowerCase();
+  const isBetaAccess = extractCookie(headers, BETA_MARKER_COOKIE) === "1";
+  const preferredEmail = (
+    isBetaAccess
+      ? (process.env.FOREMENHQ_BETA_AUTH_EMAIL ?? DEFAULT_BETA_AUTH_EMAIL)
+      : process.env.DEV_AUTH_EMAIL
+  )
+    ?.trim()
+    .toLowerCase();
 
   if (preferredEmail) {
     const [preferredUser] = await db

@@ -69,6 +69,10 @@ function firstName(name: string | null | undefined) {
 }
 
 import { createTRPCRouter, hasDashboardAccess } from "~/server/api/trpc";
+import {
+  assertCanDeleteCoreRecords,
+  assertCanGenerateDocuments,
+} from "~/server/auth/permissions";
 import { publishMaterialListEvent } from "~/server/material-list-events";
 import {
   jobs,
@@ -93,7 +97,9 @@ async function recalculateQuoteTotals(database: typeof appDb, quoteId: string) {
     .where(eq(quoteItems.quoteId, quoteId));
 
   const subtotal = allItems.reduce((sum, item) => {
-    const price = item.extendedPrice ? parseFloat(item.extendedPrice.toString()) : 0;
+    const price = item.extendedPrice
+      ? parseFloat(item.extendedPrice.toString())
+      : 0;
     return sum + price;
   }, 0);
 
@@ -451,7 +457,9 @@ export const materialListRouter = createTRPCRouter({
           name: materialList.name,
           createdAt: materialList.createdAt,
           updatedAt: materialList.updatedAt,
-          syncVersion: materialList.updatedAt?.toISOString?.() ?? String(materialList.updatedAt),
+          syncVersion:
+            materialList.updatedAt?.toISOString?.() ??
+            String(materialList.updatedAt),
           createdBy: createdBy
             ? {
                 id: createdBy.id,
@@ -568,7 +576,9 @@ export const materialListRouter = createTRPCRouter({
             .where(inArray(users.id, createdByIds))
         : [];
 
-      const createdByMap = new Map(createdByUsers.map((user) => [user.id, user]));
+      const createdByMap = new Map(
+        createdByUsers.map((user) => [user.id, user]),
+      );
 
       // Get item counts and totals for each material list
       const listsWithDetails = await Promise.all(
@@ -581,7 +591,7 @@ export const materialListRouter = createTRPCRouter({
             .limit(1);
 
           const createdBy = list.createdByUserId
-            ? createdByMap.get(list.createdByUserId) ?? null
+            ? (createdByMap.get(list.createdByUserId) ?? null)
             : null;
 
           if (!materialListWithQuote?.quoteId) {
@@ -752,6 +762,8 @@ export const materialListRouter = createTRPCRouter({
   deleteMaterialList: hasDashboardAccess
     .input(z.object({ materialListId: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
+      assertCanDeleteCoreRecords(ctx.user);
+
       if (!ctx.user.organizationId) {
         throw new TRPCError({
           code: "BAD_REQUEST",
@@ -1034,8 +1046,12 @@ export const materialListRouter = createTRPCRouter({
         });
       }
 
-      const partDefinitionIds = [...new Set(input.items.map((item) => item.partDefinitionId))];
-      const supplierPartIds = [...new Set(input.items.map((item) => item.supplierPartId))];
+      const partDefinitionIds = [
+        ...new Set(input.items.map((item) => item.partDefinitionId)),
+      ];
+      const supplierPartIds = [
+        ...new Set(input.items.map((item) => item.supplierPartId)),
+      ];
 
       const [partDefs, selectedSupplierParts] = await Promise.all([
         ctx.db
@@ -1053,9 +1069,14 @@ export const materialListRouter = createTRPCRouter({
           ),
       ]);
 
-      const partDefById = new Map(partDefs.map((partDef) => [partDef.id, partDef]));
+      const partDefById = new Map(
+        partDefs.map((partDef) => [partDef.id, partDef]),
+      );
       const supplierPartById = new Map(
-        selectedSupplierParts.map((supplierPart) => [supplierPart.id, supplierPart]),
+        selectedSupplierParts.map((supplierPart) => [
+          supplierPart.id,
+          supplierPart,
+        ]),
       );
 
       const values = input.items.map((item) => {
@@ -1068,10 +1089,14 @@ export const materialListRouter = createTRPCRouter({
         }
 
         const supplierPart = supplierPartById.get(item.supplierPartId);
-        if (!supplierPart || supplierPart.partDefinitionId !== item.partDefinitionId) {
+        if (
+          !supplierPart ||
+          supplierPart.partDefinitionId !== item.partDefinitionId
+        ) {
           throw new TRPCError({
             code: "BAD_REQUEST",
-            message: "Selected supplier does not match one of the selected parts",
+            message:
+              "Selected supplier does not match one of the selected parts",
           });
         }
 
@@ -1092,7 +1117,10 @@ export const materialListRouter = createTRPCRouter({
         };
       });
 
-      const insertedItems = await ctx.db.insert(quoteItems).values(values).returning();
+      const insertedItems = await ctx.db
+        .insert(quoteItems)
+        .values(values)
+        .returning();
 
       await recalculateQuoteTotals(ctx.db, quote.id);
 
@@ -1282,6 +1310,8 @@ export const materialListRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      assertCanGenerateDocuments(ctx.user);
+
       if (!ctx.user.organizationId) {
         throw new TRPCError({
           code: "BAD_REQUEST",
@@ -1552,6 +1582,8 @@ ${foremanName}`;
   generateOrders: hasDashboardAccess
     .input(z.object({ materialListId: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
+      assertCanGenerateDocuments(ctx.user);
+
       if (!ctx.user.organizationId) {
         throw new TRPCError({
           code: "BAD_REQUEST",
@@ -1677,7 +1709,10 @@ ${foremanName}`;
           },
         );
 
-        const insertedOrders = await tx.insert(orders).values(orderInputs).returning();
+        const insertedOrders = await tx
+          .insert(orders)
+          .values(orderInputs)
+          .returning();
 
         if (insertedOrders.length !== orderInputs.length) {
           throw new TRPCError({
@@ -1687,16 +1722,18 @@ ${foremanName}`;
         }
 
         const orderItemInputs = insertedOrders.flatMap((order) =>
-          (orderableItemsBySupplier.get(order.supplierId ?? "") ?? []).map((item) => ({
-            orderId: order.id,
-            supplierPartId: item.supplierPartId ?? undefined,
-            partDefinitionId: item.partDefinitionId!,
-            quantity: item.quantity ?? "1",
-            uomId: item.uomId ?? undefined,
-            unitCostAtOrderTime: item.unitCost ?? undefined,
-            descriptionSnapshot: item.descriptionSnapshot ?? undefined,
-            supplierSkuSnapshot: item.supplierSku ?? undefined,
-          })),
+          (orderableItemsBySupplier.get(order.supplierId ?? "") ?? []).map(
+            (item) => ({
+              orderId: order.id,
+              supplierPartId: item.supplierPartId ?? undefined,
+              partDefinitionId: item.partDefinitionId!,
+              quantity: item.quantity ?? "1",
+              uomId: item.uomId ?? undefined,
+              unitCostAtOrderTime: item.unitCost ?? undefined,
+              descriptionSnapshot: item.descriptionSnapshot ?? undefined,
+              supplierSkuSnapshot: item.supplierSku ?? undefined,
+            }),
+          ),
         );
 
         if (orderItemInputs.length > 0) {
@@ -1718,7 +1755,9 @@ ${foremanName}`;
               .from(suppliers)
               .where(inArray(suppliers.id, supplierIds))
           : [];
-        const suppliersById = new Map(supplierRows.map((supplier) => [supplier.id, supplier]));
+        const suppliersById = new Map(
+          supplierRows.map((supplier) => [supplier.id, supplier]),
+        );
 
         const orderItemRows = await tx
           .select({
@@ -1740,8 +1779,12 @@ ${foremanName}`;
 
         return insertedOrders.map((order) => ({
           ...order,
-          supplier: order.supplierId ? (suppliersById.get(order.supplierId) ?? null) : null,
-          items: (itemsByOrderId.get(order.id) ?? []).map(({ orderId, ...item }) => item),
+          supplier: order.supplierId
+            ? (suppliersById.get(order.supplierId) ?? null)
+            : null,
+          items: (itemsByOrderId.get(order.id) ?? []).map(
+            ({ orderId, ...item }) => item,
+          ),
         }));
       });
 

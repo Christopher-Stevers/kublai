@@ -24,6 +24,7 @@ const isPublicRoute = createRouteMatcher([
   "/sign-in(.*)",
   "/sign-up(.*)",
   "/pricing",
+  "/beta(.*)",
   "/api/health",
   "/api/catalogue/images(.*)",
   "/api/webhooks(.*)",
@@ -51,7 +52,10 @@ const clerkProtectedMiddleware = clerkMiddleware(async (auth, req) => {
   return NextResponse.next();
 });
 
-export default function middleware(req: NextRequest, evt: Parameters<typeof clerkProtectedMiddleware>[1]) {
+export default function middleware(
+  req: NextRequest,
+  evt: Parameters<typeof clerkProtectedMiddleware>[1],
+) {
   return clerkProtectedMiddleware(req, evt);
 }
 

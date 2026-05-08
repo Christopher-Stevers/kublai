@@ -3,6 +3,7 @@ import { eq, and, desc, asc, isNull, or, inArray } from "drizzle-orm";
 import { z } from "zod";
 
 import { createTRPCRouter, hasDashboardAccess } from "~/server/api/trpc";
+import { assertCanDeleteCoreRecords } from "~/server/auth/permissions";
 import {
   suppliers,
   supplierParts,
@@ -283,6 +284,8 @@ export const supplierRouter = createTRPCRouter({
   delete: hasDashboardAccess
     .input(z.object({ id: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
+      assertCanDeleteCoreRecords(ctx.user);
+
       if (!ctx.user.organizationId) {
         throw new TRPCError({
           code: "BAD_REQUEST",
@@ -414,9 +417,10 @@ export const supplierRouter = createTRPCRouter({
       }
 
       // Normalize supplierSku: convert empty strings to null
-      const normalizedSku = input.supplierSku && input.supplierSku.trim() !== "" 
-        ? input.supplierSku.trim() 
-        : null;
+      const normalizedSku =
+        input.supplierSku && input.supplierSku.trim() !== ""
+          ? input.supplierSku.trim()
+          : null;
 
       // Optionally find another supplier part for the same part definition to copy pricing from
       const [existingPartWithPricing] = await ctx.db
@@ -648,6 +652,8 @@ export const supplierRouter = createTRPCRouter({
   removeSupplierPart: hasDashboardAccess
     .input(z.object({ id: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
+      assertCanDeleteCoreRecords(ctx.user);
+
       if (!ctx.user.organizationId) {
         throw new TRPCError({
           code: "BAD_REQUEST",
@@ -837,7 +843,9 @@ export const supplierRouter = createTRPCRouter({
    * supplier choices for offline review/add flows.
    */
   getSupplierPartsByParts: hasDashboardAccess
-    .input(z.object({ partDefinitionIds: z.array(z.string().uuid()).max(1000) }))
+    .input(
+      z.object({ partDefinitionIds: z.array(z.string().uuid()).max(1000) }),
+    )
     .query(async ({ ctx, input }) => {
       if (!ctx.user.organizationId) {
         throw new TRPCError({
@@ -870,16 +878,19 @@ export const supplierRouter = createTRPCRouter({
             inArray(supplierParts.partDefinitionId, partDefinitionIds),
           ),
         )
-        .orderBy(supplierParts.partDefinitionId, desc(supplierParts.isPreferred), asc(suppliers.name));
+        .orderBy(
+          supplierParts.partDefinitionId,
+          desc(supplierParts.isPreferred),
+          asc(suppliers.name),
+        );
 
-      return rows.reduce<Record<string, Array<Omit<(typeof rows)[number], "partDefinitionId">>>>(
-        (acc, row) => {
-          const { partDefinitionId, ...supplierPart } = row;
-          (acc[partDefinitionId] ??= []).push(supplierPart);
-          return acc;
-        },
-        {},
-      );
+      return rows.reduce<
+        Record<string, Array<Omit<(typeof rows)[number], "partDefinitionId">>>
+      >((acc, row) => {
+        const { partDefinitionId, ...supplierPart } = row;
+        (acc[partDefinitionId] ??= []).push(supplierPart);
+        return acc;
+      }, {});
     }),
 
   /**

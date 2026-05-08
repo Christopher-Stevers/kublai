@@ -39,7 +39,8 @@ function isStandaloneApp() {
   return (
     window.matchMedia("(display-mode: standalone)").matches ||
     ("standalone" in window.navigator &&
-      (window.navigator as Navigator & { standalone?: boolean }).standalone === true)
+      (window.navigator as Navigator & { standalone?: boolean }).standalone ===
+        true)
   );
 }
 
@@ -62,7 +63,8 @@ function HeaderFrame({
 }) {
   const router = useRouter();
   const isOnline = useOnlineStatus();
-  const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [installPrompt, setInstallPrompt] =
+    useState<BeforeInstallPromptEvent | null>(null);
   const [isInstalled, setIsInstalled] = useState(false);
   const navLinks = [
     { href: "/dashboard", label: "Dashboard" },
@@ -104,7 +106,10 @@ function HeaderFrame({
     window.addEventListener("appinstalled", handleAppInstalled);
 
     return () => {
-      window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+      window.removeEventListener(
+        "beforeinstallprompt",
+        handleBeforeInstallPrompt,
+      );
       window.removeEventListener("appinstalled", handleAppInstalled);
     };
   }, []);
@@ -116,6 +121,10 @@ function HeaderFrame({
     }
 
     router.push(href);
+  };
+
+  const handleSignOut = async () => {
+    await signOut?.();
   };
 
   const handleInstallApp = async () => {
@@ -186,7 +195,9 @@ function HeaderFrame({
             <DropdownMenuLabel>
               <div className="flex items-center gap-3">
                 <UserIcon className="text-muted-foreground h-5 w-5" />
-                <span className="truncate text-sm text-gray-700">{userEmail}</span>
+                <span className="truncate text-sm text-gray-700">
+                  {userEmail}
+                </span>
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
@@ -202,7 +213,7 @@ function HeaderFrame({
             {signOut ? (
               <DropdownMenuItem
                 onClick={() => {
-                  void signOut();
+                  void handleSignOut();
                 }}
               >
                 Sign out
@@ -271,7 +282,9 @@ function HeaderFrame({
               <div className="border-t px-4 py-4">
                 <div className="mb-3 flex items-center gap-3 rounded-md px-3 py-2">
                   <UserIcon className="text-muted-foreground h-5 w-5" />
-                  <span className="truncate text-sm text-gray-700">{userEmail}</span>
+                  <span className="truncate text-sm text-gray-700">
+                    {userEmail}
+                  </span>
                 </div>
                 <div className="space-y-1">
                   {showAccount ? (
@@ -301,7 +314,7 @@ function HeaderFrame({
                     <button
                       onClick={() => {
                         setMobileMenuOpen(false);
-                        void signOut();
+                        void handleSignOut();
                       }}
                       className="block w-full rounded-md px-3 py-2 text-left text-base font-medium text-gray-700 transition-colors hover:bg-gray-50 hover:text-gray-900"
                     >
@@ -334,7 +347,13 @@ function HeaderWithClerk() {
       mobileMenuOpen={mobileMenuOpen}
       setMobileMenuOpen={setMobileMenuOpen}
       userEmail={user?.primaryEmailAddress?.emailAddress ?? "Not signed in"}
-      signOut={() => signOut()}
+      signOut={async () => {
+        try {
+          await fetch("/api/auth/signout", { method: "POST" });
+        } finally {
+          await signOut({ redirectUrl: "/sign-in" });
+        }
+      }}
       showAccount={true}
       showAdmin={userRole?.role === "admin"}
     />

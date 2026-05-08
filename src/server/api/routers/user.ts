@@ -1,13 +1,18 @@
 import { z } from "zod";
 import { eq } from "drizzle-orm";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
+import { getUserPermissions } from "~/server/auth/permissions";
 import { users } from "~/server/db/schema";
 
 export const userRouter = createTRPCRouter({
   getMyRole: protectedProcedure.query(async ({ ctx }) => {
+    const permissions = getUserPermissions(ctx.user);
+
     return {
       role: ctx.user.role,
       organizationId: ctx.user.organizationId,
+      hasOneTimeAccess: ctx.user.hasOneTimeAccess,
+      permissions,
     };
   }),
 

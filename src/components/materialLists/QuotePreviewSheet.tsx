@@ -39,6 +39,11 @@ export function QuotePreviewSheet({
   const utils = api.useUtils();
   const isOnline = useOnlineStatus();
   const syncOfflineChanges = useOfflineMaterialListSyncRunner();
+  const { data: userData } = api.user.getMyRole.useQuery(undefined, {
+    enabled: isOnline && open,
+  });
+  const canGenerateDocuments =
+    userData?.permissions.canGenerateDocuments ?? true;
   const { data: materialList } = api.materialList.getMaterialList.useQuery(
     { materialListId },
     { enabled: isOnline && open && !!materialListId && !providedQuoteId },
@@ -111,17 +116,22 @@ export function QuotePreviewSheet({
       open &&
       materialListId &&
       !providedQuoteId &&
+      canGenerateDocuments &&
       !generateQuote.isPending
     ) {
       void (async () => {
         if (typeof window !== "undefined" && !window.navigator.onLine) {
-          setSyncError("Reconnect to sync offline changes before generating a quote.");
+          setSyncError(
+            "Reconnect to sync offline changes before generating a quote.",
+          );
           return;
         }
 
         const syncResult = await syncOfflineChanges();
         if (syncResult.remaining > 0) {
-          setSyncError("Queued changes still need to sync before quote generation.");
+          setSyncError(
+            "Queued changes still need to sync before quote generation.",
+          );
           return;
         }
 
@@ -134,7 +144,15 @@ export function QuotePreviewSheet({
       })();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, materialListId, markupPercent, notes, providedQuoteId, syncOfflineChanges]);
+  }, [
+    open,
+    materialListId,
+    markupPercent,
+    notes,
+    providedQuoteId,
+    syncOfflineChanges,
+    canGenerateDocuments,
+  ]);
 
   // Get quote email content
   const quoteId = providedQuoteId ?? materialList?.quote.id;
@@ -145,6 +163,10 @@ export function QuotePreviewSheet({
 
   const handleEmailQuote = async () => {
     if (!quoteId) return;
+    if (!canGenerateDocuments) {
+      setSyncError("Workers and beta testers cannot generate quotes.");
+      return;
+    }
 
     // Save notes before emailing (update existing quote or generate new one)
     await generateQuote.mutateAsync({
@@ -155,9 +177,10 @@ export function QuotePreviewSheet({
     });
 
     // Refetch email content to get updated notes
-    const updatedEmailContent = await utils.materialList.getQuoteEmailContent.fetch({
-      quoteId,
-    });
+    const updatedEmailContent =
+      await utils.materialList.getQuoteEmailContent.fetch({
+        quoteId,
+      });
 
     if (!updatedEmailContent) return;
 
@@ -168,10 +191,17 @@ export function QuotePreviewSheet({
   };
 
   // If viewing existing quote, we need to get material list for items
-  const { data: materialListForQuote } = api.materialList.getMaterialList.useQuery(
-    { materialListId: existingQuote?.materialListId ?? materialListId },
-    { enabled: isOnline && open && !!providedQuoteId && !!existingQuote?.materialListId },
-  );
+  const { data: materialListForQuote } =
+    api.materialList.getMaterialList.useQuery(
+      { materialListId: existingQuote?.materialListId ?? materialListId },
+      {
+        enabled:
+          isOnline &&
+          open &&
+          !!providedQuoteId &&
+          !!existingQuote?.materialListId,
+      },
+    );
 
   const displayMaterialList = providedQuoteId
     ? materialListForQuote
@@ -212,34 +242,39 @@ export function QuotePreviewSheet({
               {syncError}
             </div>
           )}
+          {!canGenerateDocuments && (
+            <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+              Workers and beta testers cannot generate quotes.
+            </div>
+          )}
           {/* Line Items */}
           {displayMaterialList && (
             <div>
               <h3 className="mb-2 font-semibold">Materials:</h3>
               <div className="space-y-2">
                 {displayMaterialList.items.map((item) => {
-                const qty = parseFloat(String(item.quantity));
-                const price = item.extendedPrice
-                  ? parseFloat(String(item.extendedPrice))
-                  : 0;
-                const partDef = item.partDefinition as
-                  | { displayName?: string }
-                  | null
-                  | undefined;
-                const displayName = String(
-                  partDef?.displayName || item.descriptionSnapshot || "Item",
-                );
-                return (
-                  <div
-                    key={String(item.id)}
-                    className="flex justify-between border-b pb-2 text-sm"
-                  >
-                    <span>
-                      {displayName} × {qty}
-                    </span>
-                    <span>${price.toFixed(2)}</span>
-                  </div>
-                );
+                  const qty = parseFloat(String(item.quantity));
+                  const price = item.extendedPrice
+                    ? parseFloat(String(item.extendedPrice))
+                    : 0;
+                  const partDef = item.partDefinition as
+                    | { displayName?: string }
+                    | null
+                    | undefined;
+                  const displayName = String(
+                    partDef?.displayName || item.descriptionSnapshot || "Item",
+                  );
+                  return (
+                    <div
+                      key={String(item.id)}
+                      className="flex justify-between border-b pb-2 text-sm"
+                    >
+                      <span>
+                        {displayName} × {qty}
+                      </span>
+                      <span>${price.toFixed(2)}</span>
+                    </div>
+                  );
                 })}
               </div>
             </div>
@@ -252,7 +287,9 @@ export function QuotePreviewSheet({
               <span>${subtotal.toFixed(2)}</span>
             </div>
             <div className="flex items-center justify-between">
-              <span>Markup(this will be auto applied to each item in the quote):</span>
+              <span>
+                Markup(this will be auto applied to each item in the quote):
+              </span>
               {isEditingMarkup ? (
                 <div className="flex items-center gap-2">
                   <Input
@@ -278,6 +315,7 @@ export function QuotePreviewSheet({
                         quoteId: providedQuoteId,
                       });
                     }}
+                    disabled={!canGenerateDocuments}
                   >
                     Save
                   </Button>
@@ -322,7 +360,7 @@ export function QuotePreviewSheet({
           </Button>
           <Button
             onClick={handleEmailQuote}
-            disabled={!emailContent || !quoteId}
+            disabled={!emailContent || !quoteId || !canGenerateDocuments}
           >
             Email Quote
           </Button>
