@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { api } from "~/trpc/react";
 import { Card, CardContent } from "~/components/ui/card";
 import { QuantityControls } from "~/components/materialLists/QuantityControls";
@@ -95,7 +96,7 @@ function ItemSyncBadge({ status }: { status: MaterialListSyncStatus }) {
   );
 }
 
-export function MaterialListItem({
+function MaterialListItemComponent({
   item,
   materialListId,
   syncStatus = "synced",
@@ -141,7 +142,8 @@ export function MaterialListItem({
       }
     },
     onSettled: () => {
-      void utils.materialList.getMaterialList.invalidate({ materialListId });
+      // Keep the optimistic cache as the immediate source of truth. SSE/background
+      // refresh will reconcile later without forcing a post-click spinner/refetch.
     },
   });
 
@@ -179,7 +181,6 @@ export function MaterialListItem({
         itemId: item.id,
         queuedAt: new Date().toISOString(),
       });
-      void utils.materialList.getMaterialList.invalidate({ materialListId });
       return;
     }
 
@@ -197,7 +198,7 @@ export function MaterialListItem({
   const subtitle = subtitleParts.join(" · ");
 
   return (
-    <Card className="group overflow-hidden rounded-2xl border-gray-200 bg-gradient-to-br from-white to-gray-50/60 shadow-sm transition-all hover:border-gray-300 hover:shadow-md">
+    <Card className="group overflow-hidden rounded-2xl border-gray-200 bg-gradient-to-br from-white to-gray-50/60 shadow-sm transition-all [content-visibility:auto] [contain-intrinsic-size:9rem] hover:border-gray-300 hover:shadow-md">
       <CardContent className="p-3 sm:p-4">
         <div className="grid h-[7.25rem] grid-cols-[7.25rem_minmax(0,1fr)_2rem] gap-3 sm:h-32 sm:grid-cols-[8rem_minmax(0,1fr)_2rem] sm:gap-4">
           {/* Image — anchors card height */}
@@ -295,3 +296,5 @@ export function MaterialListItem({
     </Card>
   );
 }
+
+export const MaterialListItem = memo(MaterialListItemComponent);

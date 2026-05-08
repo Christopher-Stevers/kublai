@@ -39,6 +39,7 @@ import {
   applyOfflineRemoveItem,
   enqueueOfflineMutation,
 } from "~/lib/offline-material-list-mutations";
+import { markUserAction } from "~/lib/performance-marks";
 
 function MaterialListSyncBadge({ status }: { status: MaterialListSyncStatus }) {
   if (status === "syncing") {
@@ -220,6 +221,19 @@ export default function MaterialListDetailPage({
   const { data: userData } = api.user.getMyRole.useQuery(undefined, {
     enabled: isBrowserOnline,
   });
+
+  useEffect(() => {
+    if (!isBrowserOnline) return;
+
+    void Promise.allSettled([
+      utils.catalogue.getCatalogs.prefetch(),
+      utils.catalogue.getMaterials.prefetch(),
+      utils.catalogue.getAllUnits.prefetch(),
+      utils.catalogue.getCategoryTree.prefetch(),
+      utils.catalogue.searchParts.prefetch({}),
+      utils.supplier.list.prefetch(),
+    ]);
+  }, [isBrowserOnline, utils]);
   const canGenerateDocuments =
     userData?.permissions.canGenerateDocuments ?? true;
 
@@ -442,7 +456,12 @@ export default function MaterialListDetailPage({
           {materialList.items.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12">
               <p className="text-muted-foreground mb-4">No parts added</p>
-              <LargeButton onClick={() => setShowAddPartDialog(true)}>
+              <LargeButton
+                onClick={() => {
+                  markUserAction("add-part-open", { materialListId: id });
+                  setShowAddPartDialog(true);
+                }}
+              >
                 <PlusIcon className="mr-2 h-4 w-4" />
                 Add Part now
               </LargeButton>
@@ -579,7 +598,10 @@ export default function MaterialListDetailPage({
               </Button>
               <Button
                 variant="outline"
-                onClick={() => setShowAddPartDialog(true)}
+                onClick={() => {
+                  markUserAction("add-part-open", { materialListId: id });
+                  setShowAddPartDialog(true);
+                }}
                 className="min-h-12 w-full px-2 py-2 text-xs leading-tight whitespace-normal sm:h-11 sm:text-sm"
               >
                 <PlusIcon className="mr-1 h-4 w-4 shrink-0 sm:mr-2" />

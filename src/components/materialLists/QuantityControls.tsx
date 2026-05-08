@@ -10,6 +10,7 @@ import {
   enqueueOfflineMutation,
   setActiveItemSyncStatus,
 } from "~/lib/offline-material-list-mutations";
+import { markUserAction } from "~/lib/performance-marks";
 
 interface QuantityControlsProps {
   itemId: string;
@@ -128,7 +129,6 @@ export function QuantityControls({
       quantity: nextQuantity,
       queuedAt: new Date().toISOString(),
     });
-    void utils.materialList.getMaterialList.invalidate({ materialListId });
   };
 
   const saveQuantity = (nextQuantity: number) => {
@@ -148,6 +148,7 @@ export function QuantityControls({
   const setQuantityImmediately = (nextQuantity: number) => {
     if (nextQuantity < 1) return;
 
+    markUserAction("quantity-change", { itemId, materialListId, quantity: nextQuantity });
     displayedQuantityRef.current = nextQuantity;
     setDisplayedQuantity(nextQuantity);
     setInputValue(nextQuantity.toString());

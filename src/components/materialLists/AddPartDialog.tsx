@@ -36,6 +36,7 @@ import {
   setOfflineSupplierPartsByPart,
 } from "~/lib/offline-supplier-parts";
 import { parseOfflineSupplierPartId } from "~/lib/offline-suppliers";
+import { markUserAction, measureUserAction } from "~/lib/performance-marks";
 
 interface AddPartDialogProps {
   open: boolean;
@@ -834,6 +835,10 @@ export function AddPartDialog({
         };
       });
 
+      markUserAction("add-parts-optimistic-commit", {
+        materialListId,
+        count: localItems.length,
+      });
       setPendingParts([]);
       resetWizard();
       onOpenChange(false);
@@ -873,6 +878,11 @@ export function AddPartDialog({
 
   // Reset state when dialog closes
   useEffect(() => {
+    if (open) {
+      measureUserAction("add-part-dialog-ready", "add-part-open", { materialListId });
+      return;
+    }
+
     if (!open) {
       setPendingParts((prev) => (prev.length === 0 ? prev : []));
       setIsPendingTrayOpen(false);

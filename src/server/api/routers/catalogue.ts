@@ -436,6 +436,7 @@ export const catalogueRouter = createTRPCRouter({
         attributeValueMin: z.number().optional(),
         attributeValueMax: z.number().optional(),
         attributeUnit: z.string().optional(),
+        limit: z.number().int().positive().max(1000).optional(),
       }),
     )
     .query(async ({ ctx, input }) => {
@@ -618,7 +619,8 @@ export const catalogueRouter = createTRPCRouter({
             ...conditions,
             ...(sizeJoinConditions.length > 0 ? sizeJoinConditions : []),
           ),
-        );
+        )
+        .limit(input.limit ?? 5000);
 
       // Sort: org-specific first, then global, then by name
       const parts = allParts.sort((a, b) => {

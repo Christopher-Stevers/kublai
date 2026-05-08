@@ -375,7 +375,113 @@ export function useOfflineMaterialListSyncRunner() {
         });
       }
 
-      for (const mutation of queue) {
+      const canBatchAddItem = (mutation: OfflineMaterialListMutation) =>
+        mutation.type === "addItem" &&
+        !!mutation.partDefinitionId &&
+        !!mutation.supplierPartId &&
+        !parseOfflineSupplierPartId(mutation.supplierPartId);
+
+      for (let index = 0; index < queue.length; index += 1) {
+        const mutation = queue[index]!;
+
+        if (canBatchAddItem(mutation)) {
+          const batch: Array<Extract<OfflineMaterialListMutation, { type: "addItem" }>> = [
+            mutation as Extract<OfflineMaterialListMutation, { type: "addItem" }>,
+          ];
+          let nextIndex = index + 1;
+
+          while (nextIndex < queue.length) {
+            const candidate = queue[nextIndex]!;
+            if (
+              !canBatchAddItem(candidate) ||
+              candidate.materialListId !== mutation.materialListId
+            ) {
+              break;
+            }
+            batch.push(candidate as Extract<OfflineMaterialListMutation, { type: "addItem" }>);
+            nextIndex += 1;
+          }
+
+          try {
+            const createdItems = await utils.client.materialList.addItemsToMaterialList.mutate({
+              materialListId: mutation.materialListId,
+              items: batch.map((item) => ({
+                partDefinitionId: item.partDefinitionId!,
+                quantity: item.quantity,
+                supplierPartId: item.supplierPartId!,
+              })),
+            });
+
+            createdItems.forEach((created, createdIndex) => {
+              const queued = batch[createdIndex];
+              if (queued) localItemIdMap.set(queued.localItemId, created.id);
+            });
+            touchedMaterialLists.add(mutation.materialListId);
+            index = nextIndex - 1;
+            continue;
+          } catch (error) {
+            console.error("Failed to replay batched offline add-item mutations", batch, error);
+            remaining.push(...batch);
+            index = nextIndex - 1;
+            continue;
+          }
+        }
+
+        if (
+          mutation.type === "updateItemQuantity" ||
+          mutation.type === "removeItem" ||
+          mutation.type === "renameMaterialList"
+        ) {
+          const batch: Array<
+            | { type: "updateItemQuantity"; itemId: string; quantity: number }
+            | { type: "removeItem"; itemId: string }
+            | { type: "renameMaterialList"; name: string }
+          > = [];
+          let nextIndex = index;
+
+          while (nextIndex < queue.length) {
+            const candidate = queue[nextIndex]!;
+            if (candidate.materialListId !== mutation.materialListId) break;
+
+            if (candidate.type === "updateItemQuantity") {
+              const resolvedItemId = localItemIdMap.get(candidate.itemId) ?? candidate.itemId;
+              if (isLocalOnlyItemId(resolvedItemId)) break;
+              batch.push({
+                type: "updateItemQuantity",
+                itemId: resolvedItemId,
+                quantity: candidate.quantity,
+              });
+            } else if (candidate.type === "removeItem") {
+              const resolvedItemId = localItemIdMap.get(candidate.itemId) ?? candidate.itemId;
+              if (isLocalOnlyItemId(resolvedItemId)) break;
+              batch.push({ type: "removeItem", itemId: resolvedItemId });
+            } else if (candidate.type === "renameMaterialList") {
+              batch.push({ type: "renameMaterialList", name: candidate.name });
+            } else {
+              break;
+            }
+
+            nextIndex += 1;
+          }
+
+          if (batch.length > 1) {
+            try {
+              await utils.client.materialList.applyMaterialListMutationsBatch.mutate({
+                materialListId: mutation.materialListId,
+                mutations: batch,
+              });
+              touchedMaterialLists.add(mutation.materialListId);
+              index = nextIndex - 1;
+              continue;
+            } catch (error) {
+              console.error("Failed to replay batched offline material-list mutations", batch, error);
+              remaining.push(...queue.slice(index, nextIndex));
+              index = nextIndex - 1;
+              continue;
+            }
+          }
+        }
+
         try {
           switch (mutation.type) {
             case "addItem": {
@@ -470,9 +576,6 @@ export function useOfflineMaterialListSyncRunner() {
                   itemId: resolvedItemId,
                 });
               } catch (error) {
-                // Offline deletes should be idempotent. If the item is already gone
-                // on the server, the user's intended end state is satisfied, so do
-                // not keep retrying forever and pin the list in "syncing".
                 if (!isNotFoundError(error)) {
                   const itemStillExists = await serverMaterialListStillHasItem(
                     utils.client.materialList.getMaterialList,

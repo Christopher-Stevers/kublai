@@ -1297,6 +1297,133 @@ export const materialListRouter = createTRPCRouter({
       return { success: true };
     }),
 
+
+  /**
+   * Apply several latency-sensitive material-list edits in one server round trip.
+   * The client still updates locally first; this endpoint is for background sync.
+   */
+  applyMaterialListMutationsBatch: hasDashboardAccess
+    .input(
+      z.object({
+        materialListId: z.string().uuid(),
+        mutations: z
+          .array(
+            z.discriminatedUnion("type", [
+              z.object({
+                type: z.literal("updateItemQuantity"),
+                itemId: z.string().uuid(),
+                quantity: z.number().positive(),
+              }),
+              z.object({
+                type: z.literal("removeItem"),
+                itemId: z.string().uuid(),
+              }),
+              z.object({
+                type: z.literal("renameMaterialList"),
+                name: z.string().min(1).max(255),
+              }),
+            ]),
+          )
+          .min(1),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (!ctx.user.organizationId) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "User must belong to an organization",
+        });
+      }
+
+      const [materialList] = await ctx.db
+        .select({ id: materialLists.id, quoteId: materialLists.quoteId })
+        .from(materialLists)
+        .where(
+          and(
+            eq(materialLists.id, input.materialListId),
+            eq(materialLists.organizationId, ctx.user.organizationId),
+          ),
+        )
+        .limit(1);
+
+      if (!materialList?.quoteId) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Material list not found",
+        });
+      }
+
+      const quantityUpdates = input.mutations.filter(
+        (
+          mutation,
+        ): mutation is Extract<
+          (typeof input.mutations)[number],
+          { type: "updateItemQuantity" }
+        > => mutation.type === "updateItemQuantity",
+      );
+      const removeItemIds = input.mutations
+        .filter((mutation) => mutation.type === "removeItem")
+        .map((mutation) => mutation.itemId);
+      const latestRename = [...input.mutations]
+        .reverse()
+        .find((mutation) => mutation.type === "renameMaterialList");
+
+      if (latestRename?.type === "renameMaterialList") {
+        await ctx.db
+          .update(materialLists)
+          .set({ name: latestRename.name })
+          .where(eq(materialLists.id, input.materialListId));
+      }
+
+      if (quantityUpdates.length > 0) {
+        const itemIds = quantityUpdates.map((mutation) => mutation.itemId);
+        const currentItems = await ctx.db
+          .select({
+            id: quoteItems.id,
+            quoteId: quoteItems.quoteId,
+            unitCost: quoteItems.unitCost,
+          })
+          .from(quoteItems)
+          .where(inArray(quoteItems.id, itemIds));
+        const itemById = new Map(currentItems.map((item) => [item.id, item]));
+
+        for (const mutation of quantityUpdates) {
+          const item = itemById.get(mutation.itemId);
+          if (!item || item.quoteId !== materialList.quoteId) continue;
+
+          const unitCost = item.unitCost ? parseFloat(item.unitCost.toString()) : 0;
+          const extendedPrice = mutation.quantity * unitCost;
+          await ctx.db
+            .update(quoteItems)
+            .set({
+              quantity: mutation.quantity.toString(),
+              extendedPrice: extendedPrice.toString(),
+              updatedAt: new Date(),
+            })
+            .where(eq(quoteItems.id, mutation.itemId));
+        }
+      }
+
+      if (removeItemIds.length > 0) {
+        const removableItems = await ctx.db
+          .select({ id: quoteItems.id, quoteId: quoteItems.quoteId })
+          .from(quoteItems)
+          .where(inArray(quoteItems.id, removeItemIds));
+        const verifiedIds = removableItems
+          .filter((item) => item.quoteId === materialList.quoteId)
+          .map((item) => item.id);
+
+        if (verifiedIds.length > 0) {
+          await ctx.db.delete(quoteItems).where(inArray(quoteItems.id, verifiedIds));
+        }
+      }
+
+      await recalculateQuoteTotals(ctx.db, materialList.quoteId);
+      publishMaterialListEvent(input.materialListId);
+
+      return { success: true };
+    }),
+
   /**
    * Generate quote from material list
    */
