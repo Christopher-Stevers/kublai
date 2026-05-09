@@ -280,6 +280,7 @@ function MaterialListItemComponent({
           {/* Action rail — same rows as content, so icons line up */}
           <div className="grid h-[7.25rem] w-8 grid-rows-[1fr_2rem_2rem] gap-2 sm:h-32">
             <div />
+            <div />
             <div className="flex items-center justify-center">
               <Button
                 variant="ghost"
@@ -292,7 +293,6 @@ function MaterialListItemComponent({
                 <TrashIcon className="h-4 w-4" />
               </Button>
             </div>
-            <div />
           </div>
         </div>
       </CardContent>
