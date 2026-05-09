@@ -636,12 +636,12 @@ export default function MaterialListDetailPage({
               <Button
                 onClick={handleGenerateOrder}
                 disabled={!canGenerateQuoteOrOrder}
-                title={generationBlockReason ?? "Generate order"}
+                title={generationBlockReason ?? "Order"}
                 className="h-9 min-h-9 w-full px-1.5 py-1 text-[11px] leading-tight whitespace-normal sm:h-9 sm:text-xs"
               >
                 <ShoppingCartIcon className="mr-1 h-3.5 w-3.5 shrink-0" />
                 <span className="text-center leading-tight">
-                  Generate Order
+                  Order
                 </span>
               </Button>
               <Button
