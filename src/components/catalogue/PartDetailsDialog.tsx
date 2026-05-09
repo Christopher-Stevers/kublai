@@ -670,7 +670,7 @@ export function PartDetailsDialog({
             </div>
 
             <div
-              className={`grid gap-4 ${sizeValue.trim() ? "sm:grid-cols-[1fr_140px]" : "sm:grid-cols-1"}`}
+              className={`grid gap-3 ${sizeValue.trim() ? "grid-cols-[minmax(0,1fr)_7rem] sm:grid-cols-[minmax(0,1fr)_140px]" : "grid-cols-1"}`}
             >
               <div>
                 <FieldHeader
@@ -721,10 +721,6 @@ export function PartDetailsDialog({
                       ))}
                     </DropdownMenuContent>
                   </DropdownMenu>
-                  <p className="mt-1 text-xs text-gray-500">
-                    Pick a size and unit, then click + Add to save it as a
-                    reusable size.
-                  </p>
                 </div>
               )}
             </div>
