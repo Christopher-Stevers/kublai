@@ -250,6 +250,11 @@ export function PartDetailsDialog({
   const [newMaterialName, setNewMaterialName] = useState("");
   const [submitError, setSubmitError] = useState<string | null>(null);
 
+  const { data: selectedSupplierDetails } = api.supplier.getById.useQuery(
+    { id: supplierId! },
+    { enabled: isOnline && open && !isEditMode && !!supplierId },
+  );
+
   const sizeUnits = useMemo(
     () => allUnits?.filter((u) => u.kind === "length") ?? [],
     [allUnits],
@@ -350,6 +355,27 @@ export function PartDetailsDialog({
     sizeUnits,
     sizeUnitId,
   ]);
+
+  const matchingSelectedSupplierPart = useMemo(() => {
+    const normalizedName = displayName.trim().toLowerCase();
+    if (!normalizedName || !selectedSupplierDetails?.supplierParts) return null;
+    return (
+      selectedSupplierDetails.supplierParts.find(
+        (supplierPart) =>
+          supplierPart.partDefinition?.displayName.trim().toLowerCase() ===
+          normalizedName,
+      ) ?? null
+    );
+  }, [displayName, selectedSupplierDetails]);
+
+  useEffect(() => {
+    if (isEditMode || !supplierId) return;
+
+    setSupplierSku(matchingSelectedSupplierPart?.supplierSku ?? "");
+    setLastKnownUnitCost(
+      matchingSelectedSupplierPart?.lastKnownUnitCost?.toString() ?? "",
+    );
+  }, [isEditMode, matchingSelectedSupplierPart, supplierId]);
 
   const createPart = api.catalogue.createPart.useMutation({
     onSuccess: async (newPart) => {
@@ -898,7 +924,13 @@ export function PartDetailsDialog({
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent className="max-h-60 overflow-y-auto">
-                    <DropdownMenuItem onClick={() => setSupplierId(null)}>
+                    <DropdownMenuItem
+                      onClick={() => {
+                        setSupplierId(null);
+                        setSupplierSku("");
+                        setLastKnownUnitCost("");
+                      }}
+                    >
                       None
                     </DropdownMenuItem>
                     {suppliers?.map((supplier) => (
