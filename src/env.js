@@ -10,6 +10,7 @@ export const env = createEnv({
     NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: z.string(),
     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: z.string(),
     NEXT_PUBLIC_ENABLE_OFFLINE_TEST_TOGGLE: z.enum(["true", "false"]).optional(),
+    NEXT_PUBLIC_DEXIE_CLOUD_DATABASE_URL: z.string().url().optional(),
   },
   server: {
     DATABASE_URL: z.string().url(),
@@ -55,6 +56,8 @@ export const env = createEnv({
       process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
     NEXT_PUBLIC_ENABLE_OFFLINE_TEST_TOGGLE:
       process.env.NEXT_PUBLIC_ENABLE_OFFLINE_TEST_TOGGLE,
+    NEXT_PUBLIC_DEXIE_CLOUD_DATABASE_URL:
+      process.env.NEXT_PUBLIC_DEXIE_CLOUD_DATABASE_URL,
     DATABASE_URL: process.env.DATABASE_URL,
     STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY,
     STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET,
