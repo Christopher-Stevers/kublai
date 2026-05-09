@@ -76,7 +76,7 @@ export function WizardProgressIndicator({
   };
 
   return (
-    <div className="flex min-w-0 flex-wrap items-center gap-1 sm:gap-1.5">
+    <div className="flex w-full min-w-0 flex-wrap items-center gap-1 sm:gap-1.5">
         {stages.map((stage) => {
           const isCompleted = stage.step < currentStep;
           const isCurrent = stage.step === currentStep;
@@ -86,7 +86,10 @@ export function WizardProgressIndicator({
             currentStage !== "review";
 
           return (
-            <div key={stage.id} className="flex min-w-0 items-center gap-1 sm:gap-1.5">
+            <div
+              key={stage.id}
+              className="flex min-w-max flex-[1_1_auto] items-center gap-1 sm:gap-1.5"
+            >
               <button
                 onClick={() => {
                   if (isClickable) {
@@ -94,7 +97,7 @@ export function WizardProgressIndicator({
                   }
                 }}
                 disabled={!isClickable}
-                className={`flex h-8 min-w-0 items-center gap-1 rounded-lg px-1.5 text-xs font-medium transition-colors sm:h-9 sm:gap-1.5 sm:px-2.5 sm:text-sm ${
+                className={`flex h-8 w-full min-w-max items-center justify-center gap-1 rounded-lg px-1.5 text-xs font-medium transition-colors sm:h-9 sm:gap-1.5 sm:px-2.5 sm:text-sm ${
                   isCurrent
                     ? "bg-primary text-primary-foreground"
                     : isCompleted
