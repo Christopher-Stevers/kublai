@@ -561,26 +561,26 @@ export default function MaterialListDetailPage({
       </div>
 
       {/* Footer - Always Visible */}
-      <div className="shrink-0 border-t bg-white px-4 pt-2 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:px-6 sm:pt-3">
+      <div className="shrink-0 border-t bg-white px-4 pt-1.5 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:px-6 sm:pt-2">
         <div className="mx-auto max-w-6xl">
-          <div className="space-y-2">
-            <div className="flex items-baseline gap-2">
-              <span className="text-lg text-gray-600 sm:text-xl">
+          <div className="space-y-1.5">
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-base text-gray-600 sm:text-lg">
                 Material Total
               </span>
-              <span className="text-lg font-bold sm:text-xl">
+              <span className="text-base font-bold sm:text-lg">
                 ${materialList.materialTotal.toFixed(2)}
               </span>
             </div>
-            <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
+            <div className="grid grid-cols-3 gap-1.5">
               <Button
                 variant="outline"
                 onClick={handleGenerateQuote}
                 disabled={!canGenerateQuoteOrOrder}
                 title={generationBlockReason ?? "Generate quote"}
-                className="min-h-10 w-full px-2 py-1.5 text-xs leading-tight whitespace-normal sm:h-10 sm:text-sm"
+                className="h-9 min-h-9 w-full px-1.5 py-1 text-[11px] leading-tight whitespace-normal sm:h-9 sm:text-xs"
               >
-                <FileTextIcon className="mr-1 h-4 w-4 shrink-0 sm:mr-2" />
+                <FileTextIcon className="mr-1 h-3.5 w-3.5 shrink-0" />
                 <span className="text-center leading-tight">
                   Generate Quote
                 </span>
@@ -589,9 +589,9 @@ export default function MaterialListDetailPage({
                 onClick={handleGenerateOrder}
                 disabled={!canGenerateQuoteOrOrder}
                 title={generationBlockReason ?? "Generate order"}
-                className="min-h-10 w-full px-2 py-1.5 text-xs leading-tight whitespace-normal sm:h-10 sm:text-sm"
+                className="h-9 min-h-9 w-full px-1.5 py-1 text-[11px] leading-tight whitespace-normal sm:h-9 sm:text-xs"
               >
-                <ShoppingCartIcon className="mr-1 h-4 w-4 shrink-0 sm:mr-2" />
+                <ShoppingCartIcon className="mr-1 h-3.5 w-3.5 shrink-0" />
                 <span className="text-center leading-tight">
                   Generate Order
                 </span>
@@ -602,9 +602,9 @@ export default function MaterialListDetailPage({
                   markUserAction("add-part-open", { materialListId: id });
                   setShowAddPartDialog(true);
                 }}
-                className="min-h-10 w-full px-2 py-1.5 text-xs leading-tight whitespace-normal sm:h-10 sm:text-sm"
+                className="h-9 min-h-9 w-full px-1.5 py-1 text-[11px] leading-tight whitespace-normal sm:h-9 sm:text-xs"
               >
-                <PlusIcon className="mr-1 h-4 w-4 shrink-0 sm:mr-2" />
+                <PlusIcon className="mr-1 h-3.5 w-3.5 shrink-0" />
                 <span className="text-center leading-tight">Add Part</span>
               </Button>
             </div>
