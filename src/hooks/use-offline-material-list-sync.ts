@@ -97,6 +97,37 @@ function isLocalOnlyItemId(itemId: string) {
   return itemId.startsWith("temp-") || itemId.startsWith("offline-");
 }
 
+function isUuid(value: string | null | undefined) {
+  return !!value && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
+function canPushThroughSyncEngine(mutation: OfflineMaterialListMutation) {
+  if (!isUuid(mutation.materialListId)) return false;
+
+  if (mutation.type === "addItem") {
+    return (
+      !!mutation.clientMutationId &&
+      (!mutation.supplierPartId || isUuid(mutation.supplierPartId)) &&
+      (!mutation.supplierId || isUuid(mutation.supplierId))
+    );
+  }
+
+  if (mutation.type === "updateItemQuantity" || mutation.type === "removeItem") {
+    return !!mutation.clientMutationId && isUuid(mutation.itemId);
+  }
+
+  if (mutation.type === "updateItemSupplierPart") {
+    return (
+      !!mutation.clientMutationId &&
+      isUuid(mutation.itemId) &&
+      (!mutation.supplierPartId || isUuid(mutation.supplierPartId)) &&
+      (!mutation.supplierId || isUuid(mutation.supplierId))
+    );
+  }
+
+  return !!mutation.clientMutationId;
+}
+
 function isNotFoundError(error: unknown) {
   if (!(error instanceof Error)) return false;
 
@@ -377,6 +408,59 @@ export function useOfflineMaterialListSyncRunner() {
         });
       }
 
+      if (queue.length > 0 && queue.every(canPushThroughSyncEngine)) {
+        const remainingByClientMutationId = new Set<string>();
+
+        for (const materialListId of Array.from(new Set(queue.map((item) => item.materialListId)))) {
+          const mutationsForList = queue.filter((item) => item.materialListId === materialListId);
+          try {
+            const result = await utils.client.materialList.syncMaterialListMutations.mutate({
+              materialListId,
+              mutations: mutationsForList.map((mutation) => ({
+                ...mutation,
+                clientMutationId: mutation.clientMutationId!,
+              })),
+            });
+
+            for (const applied of result.applied) {
+              if (applied.localItemId && applied.serverItemId) {
+                localItemIdMap.set(applied.localItemId, applied.serverItemId);
+                syncedItemStatuses.push({ materialListId, itemId: applied.localItemId });
+              }
+            }
+
+            for (const failed of result.failed) {
+              remainingByClientMutationId.add(failed.clientMutationId);
+            }
+
+            if (result.applied.length > 0) {
+              touchedMaterialLists.add(materialListId);
+              for (const mutation of mutationsForList) {
+                if (
+                  mutation.type === "updateItemQuantity" ||
+                  mutation.type === "updateItemSupplierPart" ||
+                  mutation.type === "removeItem"
+                ) {
+                  syncedItemStatuses.push({ materialListId, itemId: mutation.itemId });
+                }
+              }
+            }
+          } catch (error) {
+            console.error("Failed to push material-list sync batch", materialListId, error);
+            for (const mutation of mutationsForList) {
+              if (mutation.clientMutationId) remainingByClientMutationId.add(mutation.clientMutationId);
+            }
+          }
+        }
+
+        remaining.push(
+          ...queue.filter(
+            (mutation) =>
+              !mutation.clientMutationId || remainingByClientMutationId.has(mutation.clientMutationId),
+          ),
+        );
+      } else {
+
       const canBatchAddItem = (mutation: OfflineMaterialListMutation) =>
         mutation.type === "addItem" &&
         !!mutation.partDefinitionId &&
@@ -652,6 +736,7 @@ export function useOfflineMaterialListSyncRunner() {
           console.error("Failed to replay offline material list mutation", mutation, error);
           remaining.push(mutation);
         }
+      }
       }
 
       if (remaining.length === 0) {

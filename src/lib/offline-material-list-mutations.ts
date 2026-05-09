@@ -9,6 +9,7 @@ import { getOfflineDexieDb } from "~/lib/offline-dexie-db";
 
 export type OfflineMaterialListMutation =
   | {
+      clientMutationId?: string;
       type: "addItem";
       materialListId: string;
       localItemId: string;
@@ -41,6 +42,7 @@ export type OfflineMaterialListMutation =
       queuedAt: string;
     }
   | {
+      clientMutationId?: string;
       type: "updateItemQuantity";
       materialListId: string;
       itemId: string;
@@ -48,12 +50,14 @@ export type OfflineMaterialListMutation =
       queuedAt: string;
     }
   | {
+      clientMutationId?: string;
       type: "removeItem";
       materialListId: string;
       itemId: string;
       queuedAt: string;
     }
   | {
+      clientMutationId?: string;
       type: "updateItemSupplierPart";
       materialListId: string;
       itemId: string;
@@ -74,6 +78,7 @@ export type OfflineMaterialListMutation =
       queuedAt: string;
     }
   | {
+      clientMutationId?: string;
       type: "renameMaterialList";
       materialListId: string;
       name: string;
@@ -440,7 +445,12 @@ export async function setOfflineMutationQueue(queue: OfflineMaterialListMutation
 }
 
 export async function enqueueOfflineMutation(mutation: OfflineMaterialListMutation) {
-  const queue = compactOfflineMutationQueue(await getOfflineMutationQueue(), mutation);
+  const queue = compactOfflineMutationQueue(await getOfflineMutationQueue(), {
+    ...mutation,
+    clientMutationId:
+      mutation.clientMutationId ??
+      `${mutation.materialListId}:${mutation.type}:${mutation.queuedAt}:${crypto.randomUUID()}`,
+  } as OfflineMaterialListMutation);
   await setOfflineMutationQueue(queue);
 }
 

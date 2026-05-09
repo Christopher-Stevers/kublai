@@ -88,6 +88,7 @@ import {
   locations,
   users,
   materials,
+  materialListSyncMutations,
 } from "~/server/db/schema";
 
 async function recalculateQuoteTotals(database: typeof appDb, quoteId: string) {
@@ -113,6 +114,52 @@ async function recalculateQuoteTotals(database: typeof appDb, quoteId: string) {
 
   return subtotal;
 }
+
+const materialListSyncMutationInput = z.discriminatedUnion("type", [
+  z.object({
+    type: z.literal("addItem"),
+    clientMutationId: z.string().min(1).max(255),
+    queuedAt: z.string(),
+    localItemId: z.string().min(1).max(255),
+    partDefinitionId: z.string().uuid().optional(),
+    quantity: z.number().positive(),
+    supplierPartId: z.string().uuid().optional().nullable(),
+    supplierId: z.string().uuid().optional().nullable(),
+    unitCost: z.number().optional(),
+    oneOffDisplayName: z.string().min(1).optional(),
+    oneOffDescription: z.string().optional(),
+    oneOffMaterial: z.string().optional(),
+    oneOffSizeNominal: z.number().optional(),
+    oneOffSizeUnitId: z.string().uuid().optional(),
+  }),
+  z.object({
+    type: z.literal("updateItemQuantity"),
+    clientMutationId: z.string().min(1).max(255),
+    queuedAt: z.string(),
+    itemId: z.string().uuid(),
+    quantity: z.number().positive(),
+  }),
+  z.object({
+    type: z.literal("updateItemSupplierPart"),
+    clientMutationId: z.string().min(1).max(255),
+    queuedAt: z.string(),
+    itemId: z.string().uuid(),
+    supplierPartId: z.string().uuid().nullable(),
+    supplierId: z.string().uuid().optional().nullable(),
+  }),
+  z.object({
+    type: z.literal("removeItem"),
+    clientMutationId: z.string().min(1).max(255),
+    queuedAt: z.string(),
+    itemId: z.string().uuid(),
+  }),
+  z.object({
+    type: z.literal("renameMaterialList"),
+    clientMutationId: z.string().min(1).max(255),
+    queuedAt: z.string(),
+    name: z.string().min(1).max(255),
+  }),
+]);
 
 export const materialListRouter = createTRPCRouter({
   /**
@@ -1453,6 +1500,261 @@ export const materialListRouter = createTRPCRouter({
       publishMaterialListEvent(input.materialListId);
 
       return { success: true };
+    }),
+
+  /**
+   * Custom local-first sync push endpoint for material-list edits.
+   *
+   * Client mutations are idempotent by organization + clientMutationId. This is
+   * the server-side sync boundary that lets Dexie stay the local source of truth
+   * while Postgres remains authoritative after reconnect.
+   */
+  syncMaterialListMutations: hasDashboardAccess
+    .input(
+      z.object({
+        materialListId: z.string().uuid(),
+        mutations: z.array(materialListSyncMutationInput).min(1),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (!ctx.user.organizationId) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "User must belong to an organization",
+        });
+      }
+
+      const [materialList] = await ctx.db
+        .select({ id: materialLists.id, quoteId: materialLists.quoteId })
+        .from(materialLists)
+        .where(
+          and(
+            eq(materialLists.id, input.materialListId),
+            eq(materialLists.organizationId, ctx.user.organizationId),
+          ),
+        )
+        .limit(1);
+
+      if (!materialList?.quoteId) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Material list not found",
+        });
+      }
+
+      const applied: Array<{
+        clientMutationId: string;
+        type: string;
+        localItemId?: string;
+        serverItemId?: string | null;
+        duplicate?: boolean;
+      }> = [];
+      const failed: Array<{ clientMutationId: string; message: string }> = [];
+      let needsTotalRecalc = false;
+
+      for (const mutation of input.mutations) {
+        const [existing] = await ctx.db
+          .select({
+            serverItemId: materialListSyncMutations.serverItemId,
+            clientItemId: materialListSyncMutations.clientItemId,
+            mutationType: materialListSyncMutations.mutationType,
+          })
+          .from(materialListSyncMutations)
+          .where(
+            and(
+              eq(materialListSyncMutations.organizationId, ctx.user.organizationId),
+              eq(materialListSyncMutations.clientMutationId, mutation.clientMutationId),
+            ),
+          )
+          .limit(1);
+
+        if (existing) {
+          applied.push({
+            clientMutationId: mutation.clientMutationId,
+            type: existing.mutationType,
+            localItemId: existing.clientItemId ?? undefined,
+            serverItemId: existing.serverItemId,
+            duplicate: true,
+          });
+          continue;
+        }
+
+        try {
+          let serverItemId: string | null = null;
+          let clientItemId: string | null = null;
+
+          switch (mutation.type) {
+            case "addItem": {
+              if (!mutation.partDefinitionId && !mutation.oneOffDisplayName) {
+                throw new Error("Add item requires a part definition or one-off name");
+              }
+
+              let unitCost = mutation.unitCost?.toString() ?? null;
+              let descriptionSnapshot = mutation.oneOffDisplayName ?? "";
+
+              if (mutation.partDefinitionId) {
+                const [partDef] = await ctx.db
+                  .select({ displayName: partDefinitions.displayName })
+                  .from(partDefinitions)
+                  .where(eq(partDefinitions.id, mutation.partDefinitionId))
+                  .limit(1);
+
+                if (!partDef) throw new Error("Part definition not found");
+                descriptionSnapshot = partDef.displayName;
+
+                if (mutation.supplierPartId) {
+                  const [supplierPart] = await ctx.db
+                    .select({ lastKnownUnitCost: supplierParts.lastKnownUnitCost })
+                    .from(supplierParts)
+                    .where(eq(supplierParts.id, mutation.supplierPartId))
+                    .limit(1);
+                  unitCost = supplierPart?.lastKnownUnitCost ?? unitCost;
+                }
+              }
+
+              const cost = unitCost ? parseFloat(unitCost.toString()) : 0;
+              const extendedPrice = mutation.quantity * cost;
+              const [quoteItem] = await ctx.db
+                .insert(quoteItems)
+                .values({
+                  quoteId: materialList.quoteId,
+                  supplierPartId: mutation.supplierPartId ?? null,
+                  supplierId: mutation.supplierId ?? null,
+                  partDefinitionId: mutation.partDefinitionId ?? null,
+                  quantity: mutation.quantity.toString(),
+                  unitCost,
+                  extendedPrice: extendedPrice.toString(),
+                  descriptionSnapshot,
+                  oneOffDisplayName: mutation.oneOffDisplayName ?? null,
+                  oneOffDescription: mutation.oneOffDescription ?? null,
+                  oneOffMaterial: mutation.oneOffMaterial ?? null,
+                  oneOffSizeNominal:
+                    mutation.oneOffSizeNominal !== undefined
+                      ? mutation.oneOffSizeNominal.toString()
+                      : null,
+                  oneOffSizeUnitId: mutation.oneOffSizeUnitId ?? null,
+                  addedByUserId: ctx.userId,
+                })
+                .returning({ id: quoteItems.id });
+
+              if (!quoteItem) throw new Error("Failed to create quote item");
+              serverItemId = quoteItem.id;
+              clientItemId = mutation.localItemId;
+              needsTotalRecalc = true;
+              break;
+            }
+            case "updateItemQuantity": {
+              const [item] = await ctx.db
+                .select({ quoteId: quoteItems.quoteId, unitCost: quoteItems.unitCost })
+                .from(quoteItems)
+                .where(eq(quoteItems.id, mutation.itemId))
+                .limit(1);
+              if (!item || item.quoteId !== materialList.quoteId) {
+                throw new Error("Quote item not found");
+              }
+
+              const cost = item.unitCost ? parseFloat(item.unitCost.toString()) : 0;
+              await ctx.db
+                .update(quoteItems)
+                .set({
+                  quantity: mutation.quantity.toString(),
+                  extendedPrice: (mutation.quantity * cost).toString(),
+                  updatedAt: new Date(),
+                })
+                .where(eq(quoteItems.id, mutation.itemId));
+              serverItemId = mutation.itemId;
+              needsTotalRecalc = true;
+              break;
+            }
+            case "updateItemSupplierPart": {
+              const [item] = await ctx.db
+                .select({ quoteId: quoteItems.quoteId, quantity: quoteItems.quantity })
+                .from(quoteItems)
+                .where(eq(quoteItems.id, mutation.itemId))
+                .limit(1);
+              if (!item || item.quoteId !== materialList.quoteId) {
+                throw new Error("Quote item not found");
+              }
+
+              let unitCost: string | null = null;
+              if (mutation.supplierPartId) {
+                const [supplierPart] = await ctx.db
+                  .select({ lastKnownUnitCost: supplierParts.lastKnownUnitCost })
+                  .from(supplierParts)
+                  .where(eq(supplierParts.id, mutation.supplierPartId))
+                  .limit(1);
+                unitCost = supplierPart?.lastKnownUnitCost ?? null;
+              }
+
+              const quantity = item.quantity ? parseFloat(item.quantity.toString()) : 0;
+              const cost = unitCost ? parseFloat(unitCost.toString()) : 0;
+              await ctx.db
+                .update(quoteItems)
+                .set({
+                  supplierPartId: mutation.supplierPartId,
+                  supplierId: mutation.supplierId ?? null,
+                  unitCost,
+                  extendedPrice: (quantity * cost).toString(),
+                  updatedAt: new Date(),
+                })
+                .where(eq(quoteItems.id, mutation.itemId));
+              serverItemId = mutation.itemId;
+              needsTotalRecalc = true;
+              break;
+            }
+            case "removeItem": {
+              const [item] = await ctx.db
+                .select({ quoteId: quoteItems.quoteId })
+                .from(quoteItems)
+                .where(eq(quoteItems.id, mutation.itemId))
+                .limit(1);
+              if (item?.quoteId === materialList.quoteId) {
+                await ctx.db.delete(quoteItems).where(eq(quoteItems.id, mutation.itemId));
+                needsTotalRecalc = true;
+              }
+              serverItemId = mutation.itemId;
+              break;
+            }
+            case "renameMaterialList": {
+              await ctx.db
+                .update(materialLists)
+                .set({ name: mutation.name })
+                .where(eq(materialLists.id, input.materialListId));
+              break;
+            }
+          }
+
+          await ctx.db.insert(materialListSyncMutations).values({
+            organizationId: ctx.user.organizationId,
+            userId: ctx.userId,
+            materialListId: input.materialListId,
+            clientMutationId: mutation.clientMutationId,
+            mutationType: mutation.type,
+            serverItemId,
+            clientItemId,
+            payload: mutation,
+          });
+
+          applied.push({
+            clientMutationId: mutation.clientMutationId,
+            type: mutation.type,
+            localItemId: clientItemId ?? undefined,
+            serverItemId,
+          });
+        } catch (error) {
+          const message = error instanceof Error ? error.message : "Sync mutation failed";
+          failed.push({ clientMutationId: mutation.clientMutationId, message });
+        }
+      }
+
+      if (needsTotalRecalc) {
+        await recalculateQuoteTotals(ctx.db, materialList.quoteId);
+      }
+      if (applied.length > 0) {
+        publishMaterialListEvent(input.materialListId);
+      }
+
+      return { applied, failed };
     }),
 
   /**

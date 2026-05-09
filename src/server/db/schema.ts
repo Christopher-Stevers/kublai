@@ -1051,6 +1051,46 @@ export const quoteItems = createTable(
   ],
 );
 
+export const materialListSyncMutations = createTable(
+  "material_list_sync_mutation",
+  (d) => ({
+    id: d
+      .uuid()
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    organizationId: d
+      .uuid()
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    userId: d.varchar({ length: 255 }).references(() => users.id, {
+      onDelete: "set null",
+    }),
+    materialListId: d
+      .uuid()
+      .notNull()
+      .references(() => materialLists.id, { onDelete: "cascade" }),
+    clientMutationId: d.varchar({ length: 255 }).notNull(),
+    mutationType: d.varchar({ length: 80 }).notNull(),
+    serverItemId: d.uuid(),
+    clientItemId: d.varchar({ length: 255 }),
+    status: d.varchar({ length: 40 }).notNull().default("applied"),
+    error: d.text(),
+    payload: d.jsonb(),
+    appliedAt: d
+      .timestamp({ withTimezone: true })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  }),
+  (t) => [
+    unique("material_list_sync_mutation_client_uniq").on(
+      t.organizationId,
+      t.clientMutationId,
+    ),
+    index("material_list_sync_mutation_list_idx").on(t.materialListId),
+  ],
+);
+
 export const quoteItemsRelations = relations(quoteItems, ({ one }) => ({
   quote: one(quotes, { fields: [quoteItems.quoteId], references: [quotes.id] }),
   supplierPart: one(supplierParts, {
