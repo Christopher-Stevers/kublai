@@ -271,6 +271,7 @@ export function PartDetailsDialog({
   const [showNewMaterialInput, setShowNewMaterialInput] = useState(false);
   const [newMaterialName, setNewMaterialName] = useState("");
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [copiedPartUuid, setCopiedPartUuid] = useState(false);
 
   const { data: selectedSupplierDetails } = api.supplier.getById.useQuery(
     { id: supplierId! },
@@ -288,6 +289,7 @@ export function PartDetailsDialog({
     if (!open) {
       initializedForOpenRef.current = false;
       setSubmitError(null);
+      setCopiedPartUuid(false);
     }
   }, [open]);
 
@@ -654,6 +656,18 @@ export function PartDetailsDialog({
       setIsProcessingImage(false);
       event.target.value = "";
     }
+  };
+
+
+  const handlePartUuidCopy = async () => {
+    const uuid = partId ?? part?.id;
+    if (!uuid || typeof navigator === "undefined" || !navigator.clipboard) {
+      return;
+    }
+
+    await navigator.clipboard.writeText(uuid);
+    setCopiedPartUuid(true);
+    window.setTimeout(() => setCopiedPartUuid(false), 1500);
   };
 
   const handleSubmit = () => {
@@ -1234,6 +1248,27 @@ export function PartDetailsDialog({
                 disabled={isLoading}
               />
               <Label htmlFor="isActive">Active (visible in catalogue)</Label>
+            </div>
+
+            <div>
+              <Label>UUID</Label>
+              {partId || part?.id ? (
+                <button
+                  type="button"
+                  onClick={handlePartUuidCopy}
+                  className="mt-1 w-full rounded-md border bg-gray-50 px-3 py-2 text-left font-mono text-xs break-all text-gray-700 transition-colors hover:bg-gray-100"
+                  title="Click to copy UUID"
+                >
+                  {partId ?? part?.id}
+                  <span className="ml-2 font-sans text-xs text-gray-500">
+                    {copiedPartUuid ? "Copied" : "Click to copy"}
+                  </span>
+                </button>
+              ) : (
+                <div className="mt-1 rounded-md border bg-gray-50 px-3 py-2 text-xs text-gray-500">
+                  Generated when the part is saved
+                </div>
+              )}
             </div>
 
             {isEditMode && partId && (
