@@ -97,7 +97,7 @@ export function PartSuppliersDropdown({
         partDefinitionId: variables.partDefinitionId,
         supplierSku: variables.supplierSku ?? null,
         lastKnownUnitCost: null,
-        isPreferred: false,
+        isPreferred: variables.isPreferred ?? false,
         supplier: supplier
           ? {
               id: supplier.id,
@@ -114,7 +114,12 @@ export function PartSuppliersDropdown({
         { partDefinitionId },
         (old) => {
           if (!old) return [tempSupplierPart];
-          return [...old, tempSupplierPart];
+          return variables.isPreferred
+            ? [
+                ...old.map((sp) => ({ ...sp, isPreferred: false })),
+                tempSupplierPart,
+              ]
+            : [...old, tempSupplierPart];
         },
       );
 
@@ -125,7 +130,7 @@ export function PartSuppliersDropdown({
           if (!old) {
             return {
               [partDefinitionId]: {
-                preferredSupplier: null,
+                preferredSupplier: variables.isPreferred && supplier ? supplier : null,
                 availableSuppliers: supplier ? [supplier] : [],
               },
             };
@@ -138,6 +143,10 @@ export function PartSuppliersDropdown({
             ...old,
             [partDefinitionId]: {
               ...current,
+              preferredSupplier:
+                variables.isPreferred && supplier
+                  ? supplier
+                  : current.preferredSupplier,
               availableSuppliers: supplier
                 ? [...current.availableSuppliers, supplier]
                 : current.availableSuppliers,
@@ -391,11 +400,13 @@ export function PartSuppliersDropdown({
         removeSupplierPart.mutate({ id: supplierPart.id });
       }
     } else {
-      // Add supplier (API will use default price)
+      const shouldAutoPrefer =
+        !preferredSupplierId || (supplierParts?.length ?? 0) === 0;
       addSupplierPart.mutate({
         supplierId,
         partDefinitionId,
         supplierSku: "",
+        isPreferred: shouldAutoPrefer,
         currency: "CAD",
       });
     }
@@ -416,10 +427,13 @@ export function PartSuppliersDropdown({
 
   const handleSupplierCreated = (newSupplierId: string) => {
     // Automatically add the new supplier to this part
+    const shouldAutoPrefer =
+      !preferredSupplierId || (supplierParts?.length ?? 0) === 0;
     addSupplierPart.mutate({
       supplierId: newSupplierId,
       partDefinitionId,
       supplierSku: "",
+      isPreferred: shouldAutoPrefer,
       currency: "CAD",
     });
     setIsSupplierDialogOpen(false);

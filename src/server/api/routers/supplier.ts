@@ -376,6 +376,7 @@ export const supplierRouter = createTRPCRouter({
         packSize: z.string().optional(),
         packUomId: z.string().uuid().optional(),
         lastKnownUnitCost: z.string().optional(),
+        isPreferred: z.boolean().optional(),
         currency: z.string().max(10).default("CAD"),
         notes: z.string().optional(),
       }),
@@ -422,15 +423,42 @@ export const supplierRouter = createTRPCRouter({
           ? input.supplierSku.trim()
           : null;
 
-      // Optionally find another supplier part for the same part definition to copy pricing from
-      const [existingPartWithPricing] = await ctx.db
+      const existingSupplierPartsForPart = await ctx.db
         .select({
+          id: supplierParts.id,
           lastKnownUnitCost: supplierParts.lastKnownUnitCost,
           currency: supplierParts.currency,
+          isPreferred: supplierParts.isPreferred,
         })
         .from(supplierParts)
-        .where(and(eq(supplierParts.partDefinitionId, input.partDefinitionId)))
-        .limit(1);
+        .where(
+          and(
+            eq(supplierParts.organizationId, ctx.user.organizationId),
+            eq(supplierParts.partDefinitionId, input.partDefinitionId),
+          ),
+        );
+
+      const existingPartWithPricing = existingSupplierPartsForPart.find(
+        (supplierPart) => supplierPart.lastKnownUnitCost !== null,
+      );
+      const shouldSetPreferred =
+        input.isPreferred === true ||
+        !existingSupplierPartsForPart.some(
+          (supplierPart) => supplierPart.isPreferred,
+        );
+
+      if (shouldSetPreferred) {
+        await ctx.db
+          .update(supplierParts)
+          .set({ isPreferred: false })
+          .where(
+            and(
+              eq(supplierParts.organizationId, ctx.user.organizationId),
+              eq(supplierParts.partDefinitionId, input.partDefinitionId),
+              eq(supplierParts.isPreferred, true),
+            ),
+          );
+      }
 
       // Check if this supplier already has this part (by supplierId + partDefinitionId)
       const [existingSupplierPart] = await ctx.db
@@ -466,7 +494,9 @@ export const supplierRouter = createTRPCRouter({
               existingPartWithPricing?.currency ??
               "CAD",
             notes: input.notes ?? existingSupplierPart.notes,
-            // Don't change isPreferred on update
+            isPreferred: shouldSetPreferred
+              ? true
+              : existingSupplierPart.isPreferred,
           })
           .where(eq(supplierParts.id, existingSupplierPart.id))
           .returning();
@@ -493,7 +523,7 @@ export const supplierRouter = createTRPCRouter({
             currency:
               input.currency ?? existingPartWithPricing?.currency ?? "CAD",
             notes: input.notes ?? null,
-            isPreferred: false, // New supplier parts are not preferred by default
+            isPreferred: shouldSetPreferred,
           })
           .returning();
 
@@ -541,7 +571,9 @@ export const supplierRouter = createTRPCRouter({
                   existingPartWithPricing?.currency ??
                   "CAD",
                 notes: input.notes ?? existingBySku.notes,
-                // Don't change isPreferred on update
+                isPreferred: shouldSetPreferred
+                  ? true
+                  : existingBySku.isPreferred,
               })
               .where(eq(supplierParts.id, existingBySku.id))
               .returning();
