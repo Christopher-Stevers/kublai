@@ -58,6 +58,22 @@ function FieldHeader({
   );
 }
 
+
+function normalizeCurrencyInput(value: string) {
+  return value.replace(/[^0-9.-]/g, "").trim();
+}
+
+function formatCurrencyInput(value: string) {
+  const normalized = normalizeCurrencyInput(value);
+  if (!normalized) return "";
+  const amount = Number(normalized);
+  if (!Number.isFinite(amount)) return value;
+  return new Intl.NumberFormat("en-CA", {
+    style: "currency",
+    currency: "CAD",
+  }).format(amount);
+}
+
 function buildPartName({
   description,
   materialName,
@@ -678,7 +694,7 @@ export function PartDetailsDialog({
       ...payload,
       supplierId: supplierId ?? undefined,
       supplierSku: supplierSku.trim() || undefined,
-      lastKnownUnitCost: lastKnownUnitCost.trim() || undefined,
+      lastKnownUnitCost: normalizeCurrencyInput(lastKnownUnitCost) || undefined,
       supplierIsPreferred: !!supplierId && preferredSupplierId === supplierId,
       currency: "CAD",
     });
@@ -1026,13 +1042,18 @@ export function PartDetailsDialog({
                     <div className="min-w-0">
                       <Label>Unit Cost</Label>
                       <Input
-                        type="number"
-                        step="0.01"
+                        type="text"
+                        inputMode="decimal"
                         value={lastKnownUnitCost}
                         onChange={(e) =>
                           handleLastKnownUnitCostChange(e.target.value)
                         }
-                        placeholder="0.00"
+                        onBlur={() =>
+                          handleLastKnownUnitCostChange(
+                            formatCurrencyInput(lastKnownUnitCost),
+                          )
+                        }
+                        placeholder="$0.00"
                         className="mt-1 bg-white"
                         disabled={isLoading}
                       />
