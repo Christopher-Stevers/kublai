@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import { eq, and, sql, desc, inArray, gt } from "drizzle-orm";
+import { eq, and, sql, desc, asc, inArray, gt } from "drizzle-orm";
 import { z } from "zod";
 import type { db as appDb } from "~/server/db";
 
@@ -454,7 +454,8 @@ export const materialListRouter = createTRPCRouter({
         .leftJoin(units, eq(quoteItems.uomId, units.id))
         .leftJoin(materials, eq(partDefinitions.materialId, materials.id))
         .leftJoin(users, eq(quoteItems.addedByUserId, users.id))
-        .where(eq(quoteItems.quoteId, quote.id));
+        .where(eq(quoteItems.quoteId, quote.id))
+        .orderBy(asc(quoteItems.createdAt), asc(quoteItems.id));
 
       // Transform to nested structure
       const items = itemsRaw.map((item) => ({
