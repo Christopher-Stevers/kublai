@@ -14,9 +14,33 @@ export interface OfflineDexieMetaRow<T = unknown> {
   value: T;
 }
 
+export interface OfflineDexieMutationRow<T = unknown> {
+  id: string;
+  order: number;
+  materialListId: string;
+  type: string;
+  queuedAt: string;
+  value: T;
+}
+
+export interface OfflineDexieActiveItemSyncRow {
+  id: string;
+  materialListId: string;
+  itemId: string;
+  status: "pending" | "syncing";
+  updatedAt: number;
+}
+
+export interface OfflineDexieSyncingMaterialListRow {
+  id: string;
+}
+
 class ForemanHqOfflineDb extends Dexie {
   materialLists!: Table<OfflineDexieMaterialListRow, string>;
   meta!: Table<OfflineDexieMetaRow, string>;
+  mutationQueue!: Table<OfflineDexieMutationRow, string>;
+  activeItemSync!: Table<OfflineDexieActiveItemSyncRow, string>;
+  syncingMaterialLists!: Table<OfflineDexieSyncingMaterialListRow, string>;
 
   constructor() {
     super(DB_NAME, { addons: [dexieCloud] });
@@ -24,6 +48,14 @@ class ForemanHqOfflineDb extends Dexie {
     this.version(1).stores({
       materialLists: "id",
       meta: "key",
+    });
+
+    this.version(2).stores({
+      materialLists: "id",
+      meta: "key",
+      mutationQueue: "id, order, materialListId, type, queuedAt",
+      activeItemSync: "id, materialListId, itemId, status, updatedAt",
+      syncingMaterialLists: "id",
     });
 
     if (env.NEXT_PUBLIC_DEXIE_CLOUD_DATABASE_URL) {
