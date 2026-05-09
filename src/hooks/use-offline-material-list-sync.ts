@@ -8,6 +8,7 @@ import { parseOfflineSupplierPartId } from "~/lib/offline-suppliers";
 import {
   getOfflineMutationQueue,
   notifyOfflineMaterialListSyncStateChanged,
+  setActiveItemSyncStatus,
   setOfflineMutationQueue,
   setSyncingMaterialListIds,
   type OfflineMaterialListMutation,
@@ -194,6 +195,7 @@ export function useOfflineMaterialListSyncRunner() {
     const remaining: OfflineMaterialListMutation[] = [];
     const touchedMaterialLists = new Set<string>();
     const localItemIdMap = new Map<string, string>();
+    const syncedItemStatuses: Array<{ materialListId: string; itemId: string }> = [];
 
     try {
       const localJobIdMap = new Map<string, string>();
@@ -518,6 +520,10 @@ export function useOfflineMaterialListSyncRunner() {
               }
               touchedMaterialLists.add(mutation.materialListId);
               localItemIdMap.set(mutation.localItemId, created.id);
+              syncedItemStatuses.push({
+                materialListId: mutation.materialListId,
+                itemId: mutation.localItemId,
+              });
               break;
             }
             case "updateItemQuantity": {
@@ -532,6 +538,10 @@ export function useOfflineMaterialListSyncRunner() {
                 quantity: mutation.quantity,
               });
               touchedMaterialLists.add(mutation.materialListId);
+              syncedItemStatuses.push({
+                materialListId: mutation.materialListId,
+                itemId: mutation.itemId,
+              });
               break;
             }
             case "updateItemSupplierPart": {
@@ -560,8 +570,13 @@ export function useOfflineMaterialListSyncRunner() {
               await utils.client.materialList.updateMaterialListItem.mutate({
                 itemId: resolvedItemId,
                 supplierPartId,
+                supplierId: mutation.supplierId ?? null,
               });
               touchedMaterialLists.add(mutation.materialListId);
+              syncedItemStatuses.push({
+                materialListId: mutation.materialListId,
+                itemId: mutation.itemId,
+              });
               break;
             }
             case "removeItem": {
@@ -600,6 +615,10 @@ export function useOfflineMaterialListSyncRunner() {
               }
 
               touchedMaterialLists.add(mutation.materialListId);
+              syncedItemStatuses.push({
+                materialListId: mutation.materialListId,
+                itemId: mutation.itemId,
+              });
               break;
             }
             case "renameMaterialList":
@@ -621,6 +640,12 @@ export function useOfflineMaterialListSyncRunner() {
       } else {
         await setQueue(remaining);
       }
+
+      await Promise.all(
+        syncedItemStatuses.map(({ materialListId, itemId }) =>
+          setActiveItemSyncStatus(materialListId, itemId, "synced"),
+        ),
+      );
 
       const materialListsToRefresh = new Set([
         ...queuedMaterialListIds.map(

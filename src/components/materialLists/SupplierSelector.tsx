@@ -302,6 +302,7 @@ export function SupplierSelector({
 
       void applyOfflineSupplierPartUpdate(materialListId, itemId, {
         supplierPartId: nextSupplierPartId,
+        supplierId: selectedSupplierPart?.supplierId ?? null,
         unitCost,
         supplierPartSnapshot: selectedSupplierPart
           ? {
@@ -318,9 +319,10 @@ export function SupplierSelector({
         materialListId,
         itemId,
         supplierPartId: nextSupplierPartId,
-        supplierId: nextSupplierPartId
-          ? parseOfflineSupplierPartId(nextSupplierPartId)?.supplierId
-          : undefined,
+        supplierId: selectedSupplierPart?.supplierId ??
+          (nextSupplierPartId
+            ? parseOfflineSupplierPartId(nextSupplierPartId)?.supplierId
+            : undefined),
         partDefinitionId,
         unitCost,
         supplierPartSnapshot: selectedSupplierPart
@@ -358,6 +360,28 @@ export function SupplierSelector({
     updateCachedSupplierPart(null);
     setIsDropdownOpen(false);
     setSearchQuery("");
+
+    if (typeof window !== "undefined" && !window.navigator.onLine) {
+      void applyOfflineSupplierPartUpdate(materialListId, itemId, {
+        supplierPartId: null,
+        supplierId: selectedSupplier.id,
+        unitCost: 0,
+        supplierPartSnapshot: null,
+      });
+      void enqueueOfflineMutation({
+        type: "updateItemSupplierPart",
+        materialListId,
+        itemId,
+        supplierPartId: null,
+        supplierId: selectedSupplier.id,
+        partDefinitionId,
+        unitCost: 0,
+        supplierPartSnapshot: null,
+        queuedAt: new Date().toISOString(),
+      });
+      void utils.materialList.getMaterialList.invalidate({ materialListId });
+      return;
+    }
 
     void setActiveItemSyncStatus(materialListId, itemId, "pending");
     updateItem.mutate({

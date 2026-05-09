@@ -512,6 +512,7 @@ export function applyOfflineSupplierPartUpdate(
   itemId: string,
   supplierPart: {
     supplierPartId: string | null;
+    supplierId?: string | null;
     unitCost: number | null;
     supplierPartSnapshot: {
       id: string;
@@ -539,6 +540,10 @@ export function applyOfflineSupplierPartUpdate(
           ...item,
           unitCost: nextUnitCost.toString(),
           extendedPrice: nextExtendedPrice.toString(),
+          selectedSupplierId:
+            supplierPart.supplierId ??
+            supplierPart.supplierPartSnapshot?.supplierId ??
+            null,
           supplierPart: supplierPart.supplierPartSnapshot
             ? {
                 id: supplierPart.supplierPartSnapshot.id,
