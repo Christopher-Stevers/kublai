@@ -23,7 +23,6 @@ import {
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
-import { Textarea } from "~/components/ui/textarea";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,7 +30,6 @@ import {
   DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu";
 import { SupplierFormDialog } from "~/components/suppliers/SupplierFormDialog";
-import { PartSuppliersDropdown } from "~/components/catalogue/PartSuppliersDropdown";
 
 function FieldHeader({
   label,
@@ -226,21 +224,11 @@ export function PartDetailsDialog({
   const { data: suppliers } = api.supplier.list.useQuery(undefined, {
     enabled: isOnline && open,
   });
-  const { data: supplierInfo } = api.catalogue.getPartsSupplierInfo.useQuery(
-    { partIds: partId ? [partId] : [] },
-    { enabled: isOnline && open && isEditMode && !!partId },
-  );
   const { data: partSupplierParts } =
     api.supplier.getSupplierPartsByPart.useQuery(
       { partDefinitionId: partId! },
       { enabled: isOnline && open && isEditMode && !!partId },
     );
-  const { data: duplicateCandidates } =
-    api.catalogue.findDuplicateCandidates.useQuery(
-      { partId: partId!, limit: 6 },
-      { enabled: isOnline && open && isEditMode && !!partId },
-    );
-
   const [displayName, setDisplayName] = useState("");
   const [hasManuallyEditedDisplayName, setHasManuallyEditedDisplayName] =
     useState(false);
@@ -401,7 +389,7 @@ export function PartDetailsDialog({
     : undefined;
 
   useEffect(() => {
-    if (isEditMode || !supplierId) return;
+    if (!supplierId) return;
 
     if (selectedSupplierDraft) {
       setSupplierSku(selectedSupplierDraft.supplierSku);
@@ -414,11 +402,28 @@ export function PartDetailsDialog({
       matchingSelectedSupplierPart?.lastKnownUnitCost?.toString() ?? "",
     );
   }, [
-    isEditMode,
     matchingSelectedSupplierPart,
     selectedSupplierDraft,
     supplierId,
   ]);
+
+  useEffect(() => {
+    if (!open || !isEditMode || !partSupplierParts?.length || supplierId) return;
+
+    const initialSupplierPart =
+      partSupplierParts.find((supplierPart) => supplierPart.isPreferred) ??
+      partSupplierParts[0];
+    if (!initialSupplierPart) return;
+
+    setSupplierId(initialSupplierPart.supplierId);
+    setSupplierSku(initialSupplierPart.supplierSku ?? "");
+    setLastKnownUnitCost(
+      initialSupplierPart.lastKnownUnitCost?.toString() ?? "",
+    );
+    if (initialSupplierPart.isPreferred) {
+      setPreferredSupplierId(initialSupplierPart.supplierId);
+    }
+  }, [isEditMode, open, partSupplierParts, supplierId]);
 
   const saveSupplierFieldDraft = (draftSupplierId: string) => {
     setSupplierFieldDrafts((current) => ({
@@ -518,20 +523,6 @@ export function PartDetailsDialog({
     },
   });
 
-  const mergeDuplicatePart = api.catalogue.mergeDuplicatePart.useMutation({
-    onSuccess: () => {
-      void utils.catalogue.searchParts.invalidate();
-      void utils.catalogue.getPart.invalidate();
-      void utils.catalogue.findDuplicateCandidates.invalidate();
-      onOpenChange(false);
-    },
-    onError: (error) => {
-      setSubmitError(
-        error.message || "Could not merge duplicate part. Please try again.",
-      );
-    },
-  });
-
   const handleSupplierCreated = (newSupplierId: string) => {
     handleSupplierSelect(newSupplierId);
     setIsSupplierDialogOpen(false);
@@ -598,8 +589,6 @@ export function PartDetailsDialog({
     (material) => material.id === materialId,
   );
   const selectedSizeUnit = sizeUnits.find((unit) => unit.id === sizeUnitId);
-  const hasSuppliers =
-    !!partId && !!supplierInfo?.[partId]?.availableSuppliers?.length;
 
   const handleCatalogAdd = () =>
     handleAddableLookup({
@@ -698,19 +687,26 @@ export function PartDetailsDialog({
         .filter(Boolean),
     };
 
+    const supplierPayload = supplierId
+      ? {
+          supplierId,
+          supplierSku: supplierSku.trim() || undefined,
+          lastKnownUnitCost:
+            normalizeCurrencyInput(lastKnownUnitCost) || undefined,
+          supplierIsPreferred: preferredSupplierId === supplierId,
+          currency: "CAD",
+        }
+      : {};
+
     if (isEditMode) {
       if (!partId) return;
-      updatePart.mutate({ partId, ...payload });
+      updatePart.mutate({ partId, ...payload, ...supplierPayload });
       return;
     }
 
     createPart.mutate({
       ...payload,
-      supplierId: supplierId ?? undefined,
-      supplierSku: supplierSku.trim() || undefined,
-      lastKnownUnitCost: normalizeCurrencyInput(lastKnownUnitCost) || undefined,
-      supplierIsPreferred: !!supplierId && preferredSupplierId === supplierId,
-      currency: "CAD",
+      ...supplierPayload,
     });
   };
 
@@ -738,9 +734,7 @@ export function PartDetailsDialog({
               {isEditMode ? "Edit Part" : "Create Part"}
             </DialogTitle>
             <DialogDescription>
-              {isEditMode
-                ? "Update every editable part field in one place."
-                : "Create a part and fill in all available part fields."}
+              Fill in all available part fields.
             </DialogDescription>
           </DialogHeader>
 
@@ -997,28 +991,25 @@ export function PartDetailsDialog({
                 disabled={isLoading}
               />
               {!isEditMode && (
-                <>
-                  <p className="mt-1 text-xs text-gray-500">
-                    Auto-generated from size, material, and description. You can
-                    still override it.
-                  </p>
-                  <div className="mt-3">
-                    <Label title="Add aliases separated by comma">Aliases</Label>
-                    <Input
-                      value={aliasesText}
-                      onChange={(e) => setAliasesText(e.target.value)}
-                      placeholder="copper 90, 90 elbow"
-                      className="mt-1"
-                      disabled={isLoading}
-                      title="Add aliases separated by comma"
-                    />
-                  </div>
-                </>
+                <p className="mt-1 text-xs text-gray-500">
+                  Auto-generated from size, material, and description. You can
+                  still override it.
+                </p>
               )}
+              <div className="mt-3">
+                <Label title="Add aliases separated by comma">Aliases</Label>
+                <Input
+                  value={aliasesText}
+                  onChange={(e) => setAliasesText(e.target.value)}
+                  placeholder="copper 90, 90 elbow"
+                  className="mt-1"
+                  disabled={isLoading}
+                  title="Add aliases separated by comma"
+                />
+              </div>
             </div>
 
-            {!isEditMode && (
-              <div className="rounded-lg border bg-gray-50/50 p-3">
+            <div className="rounded-lg border bg-gray-50/50 p-3">
                 <FieldHeader
                   label="Suppliers"
                   onAdd={() => setIsSupplierDialogOpen(true)}
@@ -1039,9 +1030,6 @@ export function PartDetailsDialog({
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent className="max-h-60 overflow-y-auto">
-                    <DropdownMenuItem onClick={() => handleSupplierSelect(null)}>
-                      None
-                    </DropdownMenuItem>
                     {suppliers?.map((supplier) => (
                       <DropdownMenuItem
                         key={supplier.id}
@@ -1114,7 +1102,6 @@ export function PartDetailsDialog({
                   </p>
                 )}
               </div>
-            )}
 
             <div>
               <Label>Part Image</Label>
@@ -1169,75 +1156,6 @@ export function PartDetailsDialog({
               />
             </div>
 
-            {isEditMode && (
-              <div>
-                <Label>Aliases / Search Terms</Label>
-                <Textarea
-                  value={aliasesText}
-                  onChange={(e) => setAliasesText(e.target.value)}
-                  placeholder="One alias per line, e.g. copper 90, 90 elbow"
-                  className="mt-1"
-                  disabled={isLoading}
-                />
-                <p className="mt-1 text-xs text-gray-500">
-                  Aliases are used by catalogue search and XLSX round-trips.
-                </p>
-              </div>
-            )}
-
-            {isEditMode &&
-              duplicateCandidates &&
-              duplicateCandidates.length > 0 && (
-                <div className="rounded-lg border bg-amber-50 p-3">
-                  <Label>Possible duplicates</Label>
-                  <div className="mt-2 space-y-2">
-                    {duplicateCandidates.map((candidate) => (
-                      <div
-                        key={candidate.id}
-                        className="flex min-w-0 flex-col gap-3 rounded-md bg-white p-2 text-sm sm:flex-row sm:items-center sm:justify-between"
-                      >
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate font-medium text-gray-900">
-                            {candidate.displayName}
-                          </p>
-                          <p className="truncate text-xs text-gray-600">
-                            {[
-                              candidate.material,
-                              candidate.size,
-                              ...candidate.reasons,
-                            ]
-                              .filter(Boolean)
-                              .join(" • ")}
-                          </p>
-                        </div>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="shrink-0"
-                          disabled={
-                            isLoading || mergeDuplicatePart.isPending || !partId
-                          }
-                          onClick={() => {
-                            if (!partId) return;
-                            mergeDuplicatePart.mutate({
-                              sourcePartId: candidate.id,
-                              targetPartId: partId,
-                            });
-                          }}
-                        >
-                          Merge into this
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                  <p className="mt-2 text-xs text-gray-600">
-                    Merging moves old quote/order/supplier links to this part,
-                    keeps the old name as an alias, and hides the duplicate.
-                  </p>
-                </div>
-              )}
-
             <div className="flex items-center gap-2">
               <input
                 id="isActive"
@@ -1270,54 +1188,6 @@ export function PartDetailsDialog({
                 </div>
               )}
             </div>
-
-            {isEditMode && partId && (
-              <div className="rounded-lg border bg-gray-50/50 p-3">
-                <FieldHeader label="Suppliers" />
-                <div className="mt-1" onClick={(e) => e.stopPropagation()}>
-                  <PartSuppliersDropdown
-                    partDefinitionId={partId}
-                    currentPreferredSupplierId={
-                      supplierInfo?.[partId]?.preferredSupplier?.id ?? null
-                    }
-                    availableSuppliers={
-                      supplierInfo?.[partId]?.availableSuppliers ?? []
-                    }
-                  />
-                </div>
-                {partSupplierParts && partSupplierParts.length > 0 ? (
-                  <div className="mt-3 space-y-2">
-                    {partSupplierParts.map((supplierPart) => (
-                      <div
-                        key={supplierPart.id}
-                        className="rounded-md border bg-white p-2 text-sm"
-                      >
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="font-medium">
-                            {supplierPart.supplier.name}
-                          </span>
-                          {supplierPart.isPreferred && (
-                            <span className="rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-800">
-                              Preferred
-                            </span>
-                          )}
-                        </div>
-                        <div className="mt-1 grid gap-1 text-xs text-gray-600 sm:grid-cols-2">
-                          <span>SKU: {supplierPart.supplierSku || "—"}</span>
-                          <span>
-                            Cost: {supplierPart.lastKnownUnitCost ?? "—"}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="mt-2 text-xs text-gray-500">
-                    This part does not have any suppliers yet.
-                  </p>
-                )}
-              </div>
-            )}
           </div>
 
           {submitError && (
@@ -1349,8 +1219,8 @@ export function PartDetailsDialog({
                   ? "Saving..."
                   : "Creating..."
                 : isEditMode
-                  ? "Save Changes"
-                  : "Create Part"}
+                  ? "Save"
+                  : "Create"}
             </Button>
           </DialogFooter>
         </DialogContent>

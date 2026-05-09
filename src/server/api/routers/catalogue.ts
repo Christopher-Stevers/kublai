@@ -1176,6 +1176,12 @@ export const catalogueRouter = createTRPCRouter({
         sizeUnitId: z.string().uuid().optional().nullable(),
         isActive: z.boolean().optional(),
         aliases: z.array(z.string().min(1).max(255)).optional(),
+        supplierId: z.string().uuid().optional(),
+        supplierSku: z.string().max(255).optional(),
+        supplierName: z.string().optional(),
+        lastKnownUnitCost: z.string().optional(),
+        supplierIsPreferred: z.boolean().optional(),
+        currency: z.string().max(10).default("CAD"),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -1328,6 +1334,67 @@ export const catalogueRouter = createTRPCRouter({
 
       if (input.aliases !== undefined) {
         await syncPartAliases(ctx.db, updated.id, input.aliases);
+      }
+
+      if (input.supplierId && organizationId) {
+        const [supplier] = await ctx.db
+          .select()
+          .from(suppliers)
+          .where(
+            and(
+              eq(suppliers.id, input.supplierId),
+              eq(suppliers.organizationId, organizationId),
+            ),
+          )
+          .limit(1);
+
+        if (supplier) {
+          const [existingSupplierPart] = await ctx.db
+            .select()
+            .from(supplierParts)
+            .where(
+              and(
+                eq(supplierParts.organizationId, organizationId),
+                eq(supplierParts.supplierId, input.supplierId),
+                eq(supplierParts.partDefinitionId, updated.id),
+              ),
+            )
+            .limit(1);
+
+          if (input.supplierIsPreferred) {
+            await ctx.db
+              .update(supplierParts)
+              .set({ isPreferred: false })
+              .where(
+                and(
+                  eq(supplierParts.organizationId, organizationId),
+                  eq(supplierParts.partDefinitionId, updated.id),
+                ),
+              );
+          }
+
+          const supplierPartValues = {
+            supplierSku: input.supplierSku ?? null,
+            supplierName: input.supplierName ?? null,
+            lastKnownUnitCost: input.lastKnownUnitCost ?? null,
+            currency: input.currency ?? "CAD",
+            isPreferred: input.supplierIsPreferred ?? false,
+          };
+
+          if (existingSupplierPart) {
+            await ctx.db
+              .update(supplierParts)
+              .set(supplierPartValues)
+              .where(eq(supplierParts.id, existingSupplierPart.id));
+          } else {
+            await ctx.db.insert(supplierParts).values({
+              organizationId,
+              supplierId: input.supplierId,
+              partDefinitionId: updated.id,
+              ...supplierPartValues,
+            });
+          }
+        }
       }
 
       return updated;
