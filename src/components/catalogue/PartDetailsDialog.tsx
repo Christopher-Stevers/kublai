@@ -240,7 +240,9 @@ export function PartDetailsDialog({
   const [supplierId, setSupplierId] = useState<string | null>(null);
   const [supplierSku, setSupplierSku] = useState("");
   const [lastKnownUnitCost, setLastKnownUnitCost] = useState("");
-  const [isPreferredSupplier, setIsPreferredSupplier] = useState(true);
+  const [preferredSupplierId, setPreferredSupplierId] = useState<string | null>(
+    null,
+  );
   const [supplierFieldDrafts, setSupplierFieldDrafts] = useState<
     Record<string, { supplierSku: string; lastKnownUnitCost: string }>
   >({});
@@ -295,7 +297,7 @@ export function PartDetailsDialog({
       setSupplierId(null);
       setSupplierSku("");
       setLastKnownUnitCost("");
-      setIsPreferredSupplier(true);
+      setPreferredSupplierId(null);
       setSupplierFieldDrafts({});
       setHasManuallyEditedDisplayName(true);
       initializedForOpenRef.current = true;
@@ -322,7 +324,7 @@ export function PartDetailsDialog({
       setSupplierId(null);
       setSupplierSku("");
       setLastKnownUnitCost("");
-      setIsPreferredSupplier(true);
+      setPreferredSupplierId(null);
       setSupplierFieldDrafts({});
       setHasManuallyEditedDisplayName(false);
 
@@ -413,10 +415,12 @@ export function PartDetailsDialog({
     }
 
     setSupplierId(nextSupplierId);
+    if (nextSupplierId && !preferredSupplierId) {
+      setPreferredSupplierId(nextSupplierId);
+    }
     if (!nextSupplierId) {
       setSupplierSku("");
       setLastKnownUnitCost("");
-      setIsPreferredSupplier(true);
     }
   };
 
@@ -675,7 +679,7 @@ export function PartDetailsDialog({
       supplierId: supplierId ?? undefined,
       supplierSku: supplierSku.trim() || undefined,
       lastKnownUnitCost: lastKnownUnitCost.trim() || undefined,
-      supplierIsPreferred: isPreferredSupplier,
+      supplierIsPreferred: !!supplierId && preferredSupplierId === supplierId,
       currency: "CAD",
     });
   };
@@ -1038,15 +1042,17 @@ export function PartDetailsDialog({
                       <Label>Preferred</Label>
                       <button
                         type="button"
-                        onClick={() => setIsPreferredSupplier((value) => !value)}
+                        onClick={() => {
+                          if (supplierId) setPreferredSupplierId(supplierId);
+                        }}
                         className="mt-1 flex h-9 w-9 items-center justify-center rounded-md border bg-white transition-colors hover:bg-gray-50"
                         disabled={isLoading}
-                        aria-pressed={isPreferredSupplier}
+                        aria-pressed={preferredSupplierId === supplierId}
                         aria-label="Preferred supplier"
                       >
                         <Star
                           className={`h-4 w-4 ${
-                            isPreferredSupplier
+                            preferredSupplierId === supplierId
                               ? "fill-yellow-400 text-yellow-400"
                               : "text-gray-400"
                           }`}
