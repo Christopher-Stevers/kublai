@@ -778,30 +778,6 @@ export function AddPartDialog({
         };
       });
 
-      for (const item of localItems) {
-        await applyOfflineAddItem(materialListId, {
-          localItemId: item.localItemId,
-          quantity: item.pendingPart.quantity,
-          unitCost: item.unitCost,
-          partDefinitionSnapshot: item.partDefinitionSnapshot,
-          supplierPartSnapshot: item.supplierPartSnapshot,
-        });
-
-        await enqueueOfflineMutation({
-          type: "addItem",
-          materialListId,
-          localItemId: item.localItemId,
-          partDefinitionId: item.pendingPart.partId,
-          quantity: item.pendingPart.quantity,
-          supplierPartId: item.pendingPart.supplierPartId!,
-          supplierId: parseOfflineSupplierPartId(item.pendingPart.supplierPartId!)?.supplierId,
-          unitCost: item.unitCost,
-          partDefinitionSnapshot: item.partDefinitionSnapshot,
-          supplierPartSnapshot: item.supplierPartSnapshot,
-          queuedAt: now.toISOString(),
-        });
-      }
-
       utils.materialList.getMaterialList.setData({ materialListId }, (old) => {
         if (!old) return old;
 
@@ -848,11 +824,37 @@ export function AddPartDialog({
       onOpenChange(false);
       setIsAddingParts(false);
 
-      if (isOnline) {
-        void syncOfflineMaterialLists().catch((error) => {
-          console.error("Error syncing added parts:", error);
-        });
-      }
+      void (async () => {
+        for (const item of localItems) {
+          await applyOfflineAddItem(materialListId, {
+            localItemId: item.localItemId,
+            quantity: item.pendingPart.quantity,
+            unitCost: item.unitCost,
+            partDefinitionSnapshot: item.partDefinitionSnapshot,
+            supplierPartSnapshot: item.supplierPartSnapshot,
+          });
+
+          await enqueueOfflineMutation({
+            type: "addItem",
+            materialListId,
+            localItemId: item.localItemId,
+            partDefinitionId: item.pendingPart.partId,
+            quantity: item.pendingPart.quantity,
+            supplierPartId: item.pendingPart.supplierPartId!,
+            supplierId: parseOfflineSupplierPartId(item.pendingPart.supplierPartId!)?.supplierId,
+            unitCost: item.unitCost,
+            partDefinitionSnapshot: item.partDefinitionSnapshot,
+            supplierPartSnapshot: item.supplierPartSnapshot,
+            queuedAt: now.toISOString(),
+          });
+        }
+
+        if (isOnline) {
+          await syncOfflineMaterialLists();
+        }
+      })().catch((error) => {
+        console.error("Error syncing added parts:", error);
+      });
     } catch (error) {
       console.error("Error adding parts:", error);
       setIsAddingParts(false);
