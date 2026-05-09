@@ -679,7 +679,7 @@ export function PartDetailsDialog({
       sizeUnitId: parsedSizeNominal ? sizeUnitId : null,
       isActive,
       aliases: aliasesText
-        .split(/[\n;]/)
+        .split(/[\n;,]/)
         .map((alias) => alias.trim())
         .filter(Boolean),
     };
@@ -983,10 +983,23 @@ export function PartDetailsDialog({
                 disabled={isLoading}
               />
               {!isEditMode && (
-                <p className="mt-1 text-xs text-gray-500">
-                  Auto-generated from size, material, and description. You can
-                  still override it.
-                </p>
+                <>
+                  <p className="mt-1 text-xs text-gray-500">
+                    Auto-generated from size, material, and description. You can
+                    still override it.
+                  </p>
+                  <div className="mt-3">
+                    <Label title="Add aliases separated by comma">Aliases</Label>
+                    <Input
+                      value={aliasesText}
+                      onChange={(e) => setAliasesText(e.target.value)}
+                      placeholder="copper 90, 90 elbow"
+                      className="mt-1"
+                      disabled={isLoading}
+                      title="Add aliases separated by comma"
+                    />
+                  </div>
+                </>
               )}
             </div>
 
