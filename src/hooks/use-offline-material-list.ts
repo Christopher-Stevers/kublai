@@ -15,6 +15,7 @@ import {
   OFFLINE_MATERIAL_LIST_SYNC_EVENT,
   pruneActiveItemSyncStatuses,
   setActiveItemSyncStatus,
+  ACTIVE_ITEM_SYNC_STATUS_TTL_MS,
 } from "~/lib/offline-material-list-mutations";
 
 export type MaterialListSyncStatus = "synced" | "pending" | "syncing";
@@ -204,7 +205,23 @@ export function useOfflineMaterialList(
       const activeStatuses = Object.fromEntries(
         Object.entries(rawActiveStatuses).filter(([itemId]) => currentItemIds.has(itemId)),
       );
-      const activeStatusValues = Object.values(activeStatuses);
+      const activeStatusValues = Object.values(activeStatuses).map((state) => state.status);
+      const staleActiveStatusItemIds = Object.entries(activeStatuses)
+        .filter(([itemId, state]) => {
+          if (queuedItems.has(itemId)) return false;
+          if (!isOnline) return false;
+          if (state.updatedAt === 0) return true;
+          return Date.now() - state.updatedAt > ACTIVE_ITEM_SYNC_STATUS_TTL_MS;
+        })
+        .map(([itemId]) => itemId);
+      const freshActiveStatuses = Object.fromEntries(
+        Object.entries(activeStatuses).filter(
+          ([itemId]) => !staleActiveStatusItemIds.includes(itemId),
+        ),
+      );
+      const freshActiveStatusValues = Object.values(freshActiveStatuses).map(
+        (state) => state.status,
+      );
       const hasQueuedListChanges = queue.some(
         (mutation) => mutation.materialListId === materialListId,
       );
@@ -220,11 +237,15 @@ export function useOfflineMaterialList(
         !isSyncing &&
         !hasQueuedListChanges &&
         !cached?.pendingSync &&
-        activeStatusValues.length > 0;
+        freshActiveStatusValues.length > 0;
 
-      if (hasStaleActiveStatuses) {
+      const itemIdsToClear = hasStaleActiveStatuses
+        ? Object.keys(freshActiveStatuses).concat(staleActiveStatusItemIds)
+        : staleActiveStatusItemIds;
+
+      if (itemIdsToClear.length > 0) {
         await Promise.all(
-          Object.keys(activeStatuses).map((itemId) =>
+          itemIdsToClear.map((itemId) =>
             setActiveItemSyncStatus(materialListId, itemId, "synced"),
           ),
         );
@@ -232,7 +253,7 @@ export function useOfflineMaterialList(
 
       for (const item of data?.items ?? []) {
         const itemId = String(item.id);
-        const activeStatus = activeStatuses[itemId];
+        const activeStatus = freshActiveStatuses[itemId]?.status;
 
         if (activeStatus && !hasStaleActiveStatuses) {
           itemStatuses.set(itemId, activeStatus === "syncing" && !isOnline ? "pending" : activeStatus);
@@ -246,9 +267,9 @@ export function useOfflineMaterialList(
       }
 
       const listStatus: MaterialListSyncStatus =
-        (isOnline && !hasStaleActiveStatuses && activeStatusValues.includes("syncing")) || isSyncing
+        (isOnline && !hasStaleActiveStatuses && freshActiveStatusValues.includes("syncing")) || isSyncing
           ? "syncing"
-          : (!hasStaleActiveStatuses && activeStatusValues.includes("pending")) || hasQueuedListChanges || !!cached?.pendingSync
+          : (!hasStaleActiveStatuses && freshActiveStatusValues.includes("pending")) || hasQueuedListChanges || !!cached?.pendingSync
             ? "pending"
             : "synced";
 

@@ -135,7 +135,36 @@ async function migrateLegacySyncMeta() {
 }
 
 export const OFFLINE_MATERIAL_LIST_SYNC_EVENT = "foremanhq:offline-material-list-sync";
+export const ACTIVE_ITEM_SYNC_STATUS_TTL_MS = 2 * 60 * 1000;
 export type MaterialListItemSyncStatus = "pending" | "syncing";
+export interface MaterialListItemSyncState {
+  status: MaterialListItemSyncStatus;
+  updatedAt: number;
+}
+type StoredMaterialListItemSyncState =
+  | MaterialListItemSyncStatus
+  | MaterialListItemSyncState;
+
+function normalizeItemSyncState(
+  value: StoredMaterialListItemSyncState,
+): MaterialListItemSyncState | null {
+  if (value === "pending" || value === "syncing") {
+    return { status: value, updatedAt: 0 };
+  }
+
+  if (
+    value &&
+    typeof value === "object" &&
+    (value.status === "pending" || value.status === "syncing")
+  ) {
+    return {
+      status: value.status,
+      updatedAt: Number.isFinite(value.updatedAt) ? value.updatedAt : 0,
+    };
+  }
+
+  return null;
+}
 
 export function notifyOfflineMaterialListSyncStateChanged() {
   if (typeof window === "undefined") return;
@@ -171,10 +200,24 @@ export function getQueuedItemIdsForMaterialList(
 
 export async function getActiveItemSyncStatuses() {
   await migrateLegacySyncMeta();
-  return idbGetMeta<Record<string, Record<string, MaterialListItemSyncStatus>>>(
+  const stored = await idbGetMeta<Record<string, Record<string, StoredMaterialListItemSyncState>>>(
     ACTIVE_ITEM_SYNC_META_KEY,
     {},
   );
+  const normalized: Record<string, Record<string, MaterialListItemSyncState>> = {};
+
+  for (const [materialListId, listStatuses] of Object.entries(stored)) {
+    const normalizedList: Record<string, MaterialListItemSyncState> = {};
+    for (const [itemId, value] of Object.entries(listStatuses)) {
+      const state = normalizeItemSyncState(value);
+      if (state) normalizedList[itemId] = state;
+    }
+    if (Object.keys(normalizedList).length > 0) {
+      normalized[materialListId] = normalizedList;
+    }
+  }
+
+  return normalized;
 }
 
 export async function setActiveItemSyncStatus(
@@ -188,7 +231,7 @@ export async function setActiveItemSyncStatus(
   if (status === "synced") {
     delete listStatuses[itemId];
   } else {
-    listStatuses[itemId] = status;
+    listStatuses[itemId] = { status, updatedAt: Date.now() };
   }
 
   if (Object.keys(listStatuses).length === 0) {
@@ -216,11 +259,11 @@ export async function pruneActiveItemSyncStatuses(
   if (!listStatuses) return;
 
   let changed = false;
-  const nextListStatuses: Record<string, MaterialListItemSyncStatus> = {};
+  const nextListStatuses: Record<string, MaterialListItemSyncState> = {};
 
-  for (const [itemId, status] of Object.entries(listStatuses)) {
+  for (const [itemId, state] of Object.entries(listStatuses)) {
     if (validItemIds.has(itemId)) {
-      nextListStatuses[itemId] = status;
+      nextListStatuses[itemId] = state;
     } else {
       changed = true;
     }
