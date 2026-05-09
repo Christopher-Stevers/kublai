@@ -562,19 +562,6 @@ export function SupplierSelector({
                 )}
             </div>
 
-            {/* Clear selection */}
-            {optimisticSupplierPartId && (
-              <>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={() => handleSupplierPartSelect("none")}
-                  className="text-muted-foreground cursor-pointer"
-                >
-                  Clear selection
-                </DropdownMenuItem>
-              </>
-            )}
-
             {/* Create new supplier option */}
             {showCreateOption && (
               <>
