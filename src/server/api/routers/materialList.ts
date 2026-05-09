@@ -1690,7 +1690,8 @@ export const materialListRouter = createTRPCRouter({
                 .where(eq(quoteItems.id, mutation.itemId))
                 .limit(1);
               if (!item || item.quoteId !== materialList.quoteId) {
-                throw new Error("Quote item not found");
+                serverItemId = mutation.itemId;
+                break;
               }
 
               const cost = item.unitCost ? parseFloat(item.unitCost.toString()) : 0;
@@ -1713,7 +1714,8 @@ export const materialListRouter = createTRPCRouter({
                 .where(eq(quoteItems.id, mutation.itemId))
                 .limit(1);
               if (!item || item.quoteId !== materialList.quoteId) {
-                throw new Error("Quote item not found");
+                serverItemId = mutation.itemId;
+                break;
               }
 
               let unitCost: string | null = null;

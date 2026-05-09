@@ -30,6 +30,7 @@ import {
 } from "~/hooks/use-offline-material-list";
 import { useOnlineStatus } from "~/hooks/use-online-status";
 import { useDexieCloudSyncState } from "~/hooks/use-dexie-cloud-sync-state";
+import { useMaterialListSyncInspector } from "~/hooks/use-material-list-sync-inspector";
 import {
   OFFLINE_ID_MAP_CHANGED_EVENT,
   resolveOfflineId,
@@ -175,6 +176,7 @@ export default function MaterialListDetailPage({
   const [isRealtimeRefreshing, setIsRealtimeRefreshing] = useState(false);
   const isBrowserOnline = useOnlineStatus();
   const dexieCloudSync = useDexieCloudSyncState();
+  const syncInspector = useMaterialListSyncInspector(id);
   const showAddPartDialogRef = useRef(false);
 
   const openAddPartDialog = () => {
@@ -442,6 +444,31 @@ export default function MaterialListDetailPage({
               <div className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-700">
                 Dexie Cloud: {dexieCloudSync.status}
               </div>
+            )}
+            {(syncInspector.queuedForListCount > 0 || syncInspector.activeItemCount > 0) && (
+              <details className="rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-700">
+                <summary className="cursor-pointer font-medium">
+                  Sync details: {syncInspector.queuedForListCount} queued
+                  {syncInspector.syncing ? " · syncing" : ""}
+                </summary>
+                <div className="mt-1 space-y-0.5">
+                  <div>Total queue: {syncInspector.queuedCount}</div>
+                  <div>Active item badges: {syncInspector.activeItemCount}</div>
+                  {syncInspector.oldestQueuedAt && (
+                    <div>Oldest queued: {new Date(syncInspector.oldestQueuedAt).toLocaleString()}</div>
+                  )}
+                  {Object.keys(syncInspector.queuedTypes).length > 0 && (
+                    <div>
+                      Types: {Object.entries(syncInspector.queuedTypes)
+                        .map(([type, count]) => `${type}×${count}`)
+                        .join(", ")}
+                    </div>
+                  )}
+                  {syncInspector.lastPullCursor && (
+                    <div>Last pull: {new Date(syncInspector.lastPullCursor).toLocaleString()}</div>
+                  )}
+                </div>
+              </details>
             )}
           </div>
           <div className="flex items-start justify-between gap-3">
