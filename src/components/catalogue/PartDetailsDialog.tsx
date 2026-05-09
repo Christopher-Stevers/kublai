@@ -240,6 +240,9 @@ export function PartDetailsDialog({
   const [supplierId, setSupplierId] = useState<string | null>(null);
   const [supplierSku, setSupplierSku] = useState("");
   const [lastKnownUnitCost, setLastKnownUnitCost] = useState("");
+  const [supplierFieldDrafts, setSupplierFieldDrafts] = useState<
+    Record<string, { supplierSku: string; lastKnownUnitCost: string }>
+  >({});
   const [isSupplierDialogOpen, setIsSupplierDialogOpen] = useState(false);
   const [isProcessingImage, setIsProcessingImage] = useState(false);
   const [showNewCatalogInput, setShowNewCatalogInput] = useState(false);
@@ -291,6 +294,7 @@ export function PartDetailsDialog({
       setSupplierId(null);
       setSupplierSku("");
       setLastKnownUnitCost("");
+      setSupplierFieldDrafts({});
       setHasManuallyEditedDisplayName(true);
       initializedForOpenRef.current = true;
       return;
@@ -316,6 +320,7 @@ export function PartDetailsDialog({
       setSupplierId(null);
       setSupplierSku("");
       setLastKnownUnitCost("");
+      setSupplierFieldDrafts({});
       setHasManuallyEditedDisplayName(false);
 
       if (initialContext?.size?.unit && allUnits) {
@@ -368,14 +373,72 @@ export function PartDetailsDialog({
     );
   }, [displayName, selectedSupplierDetails]);
 
+  const selectedSupplierDraft = supplierId
+    ? supplierFieldDrafts[supplierId]
+    : undefined;
+
   useEffect(() => {
     if (isEditMode || !supplierId) return;
+
+    if (selectedSupplierDraft) {
+      setSupplierSku(selectedSupplierDraft.supplierSku);
+      setLastKnownUnitCost(selectedSupplierDraft.lastKnownUnitCost);
+      return;
+    }
 
     setSupplierSku(matchingSelectedSupplierPart?.supplierSku ?? "");
     setLastKnownUnitCost(
       matchingSelectedSupplierPart?.lastKnownUnitCost?.toString() ?? "",
     );
-  }, [isEditMode, matchingSelectedSupplierPart, supplierId]);
+  }, [
+    isEditMode,
+    matchingSelectedSupplierPart,
+    selectedSupplierDraft,
+    supplierId,
+  ]);
+
+  const saveSupplierFieldDraft = (draftSupplierId: string) => {
+    setSupplierFieldDrafts((current) => ({
+      ...current,
+      [draftSupplierId]: { supplierSku, lastKnownUnitCost },
+    }));
+  };
+
+  const handleSupplierSelect = (nextSupplierId: string | null) => {
+    if (supplierId) {
+      saveSupplierFieldDraft(supplierId);
+    }
+
+    setSupplierId(nextSupplierId);
+    if (!nextSupplierId) {
+      setSupplierSku("");
+      setLastKnownUnitCost("");
+    }
+  };
+
+  const handleSupplierSkuChange = (value: string) => {
+    setSupplierSku(value);
+    if (!supplierId) return;
+    setSupplierFieldDrafts((current) => ({
+      ...current,
+      [supplierId]: {
+        supplierSku: value,
+        lastKnownUnitCost,
+      },
+    }));
+  };
+
+  const handleLastKnownUnitCostChange = (value: string) => {
+    setLastKnownUnitCost(value);
+    if (!supplierId) return;
+    setSupplierFieldDrafts((current) => ({
+      ...current,
+      [supplierId]: {
+        supplierSku,
+        lastKnownUnitCost: value,
+      },
+    }));
+  };
 
   const createPart = api.catalogue.createPart.useMutation({
     onSuccess: async (newPart) => {
@@ -444,7 +507,7 @@ export function PartDetailsDialog({
   });
 
   const handleSupplierCreated = (newSupplierId: string) => {
-    setSupplierId(newSupplierId);
+    handleSupplierSelect(newSupplierId);
     setIsSupplierDialogOpen(false);
   };
 
@@ -924,19 +987,13 @@ export function PartDetailsDialog({
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent className="max-h-60 overflow-y-auto">
-                    <DropdownMenuItem
-                      onClick={() => {
-                        setSupplierId(null);
-                        setSupplierSku("");
-                        setLastKnownUnitCost("");
-                      }}
-                    >
+                    <DropdownMenuItem onClick={() => handleSupplierSelect(null)}>
                       None
                     </DropdownMenuItem>
                     {suppliers?.map((supplier) => (
                       <DropdownMenuItem
                         key={supplier.id}
-                        onClick={() => setSupplierId(supplier.id)}
+                        onClick={() => handleSupplierSelect(supplier.id)}
                       >
                         {supplier.name}
                       </DropdownMenuItem>
@@ -950,7 +1007,7 @@ export function PartDetailsDialog({
                       <Label>Supplier SKU</Label>
                       <Input
                         value={supplierSku}
-                        onChange={(e) => setSupplierSku(e.target.value)}
+                        onChange={(e) => handleSupplierSkuChange(e.target.value)}
                         placeholder="Supplier SKU"
                         className="mt-1 bg-white"
                         disabled={isLoading}
@@ -963,7 +1020,9 @@ export function PartDetailsDialog({
                         type="number"
                         step="0.01"
                         value={lastKnownUnitCost}
-                        onChange={(e) => setLastKnownUnitCost(e.target.value)}
+                        onChange={(e) =>
+                          handleLastKnownUnitCostChange(e.target.value)
+                        }
                         placeholder="0.00"
                         className="mt-1 bg-white"
                         disabled={isLoading}
