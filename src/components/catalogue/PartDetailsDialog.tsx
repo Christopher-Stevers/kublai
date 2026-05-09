@@ -873,47 +873,39 @@ export function PartDetailsDialog({
 
             {!isEditMode && (
               <div>
-                <Label>Supplier</Label>
-                <div className="mt-1 flex gap-2">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className="flex-1 justify-between"
-                        disabled={isLoading}
+                <FieldHeader
+                  label="Supplier"
+                  onAdd={() => setIsSupplierDialogOpen(true)}
+                />
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="mt-1 w-full justify-between"
+                      disabled={isLoading}
+                    >
+                      {supplierId
+                        ? (suppliers?.find(
+                            (supplier) => supplier.id === supplierId,
+                          )?.name ?? "Select supplier")
+                        : "Select supplier"}
+                      <ChevronDown className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="max-h-60 overflow-y-auto">
+                    <DropdownMenuItem onClick={() => setSupplierId(null)}>
+                      None
+                    </DropdownMenuItem>
+                    {suppliers?.map((supplier) => (
+                      <DropdownMenuItem
+                        key={supplier.id}
+                        onClick={() => setSupplierId(supplier.id)}
                       >
-                        {supplierId
-                          ? (suppliers?.find(
-                              (supplier) => supplier.id === supplierId,
-                            )?.name ?? "Select supplier")
-                          : "Select supplier"}
-                        <ChevronDown className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent className="max-h-60 overflow-y-auto">
-                      <DropdownMenuItem onClick={() => setSupplierId(null)}>
-                        None
+                        {supplier.name}
                       </DropdownMenuItem>
-                      {suppliers?.map((supplier) => (
-                        <DropdownMenuItem
-                          key={supplier.id}
-                          onClick={() => setSupplierId(supplier.id)}
-                        >
-                          {supplier.name}
-                        </DropdownMenuItem>
-                      ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setIsSupplierDialogOpen(true)}
-                    disabled={isLoading}
-                  >
-                    New
-                  </Button>
-                </div>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             )}
 
