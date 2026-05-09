@@ -33,6 +33,8 @@ export function QuantityControls({
   const displayedQuantityRef = useRef(quantity);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const syncClearTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const saveSequenceRef = useRef(0);
+  const latestSubmittedSaveRef = useRef(0);
 
   const clearSyncedStatus = () => {
     void setActiveItemSyncStatus(materialListId, itemId, "synced");
@@ -44,44 +46,36 @@ export function QuantityControls({
     }, 750);
   };
 
-  const updateItem = api.materialList.updateMaterialListItem.useMutation({
-    onMutate: () => {
-      void setActiveItemSyncStatus(materialListId, itemId, "syncing");
-    },
-    onSuccess: (updatedItem, variables) => {
-      if (updatedItem?.updatedAt) {
-        utils.materialList.getMaterialList.setData(
-          { materialListId },
-          (old) => {
-            if (!old) return old;
-            return {
-              ...old,
-              items: old.items.map((item) =>
-                item.id === itemId
-                  ? {
-                      ...item,
-                      updatedAt: updatedItem.updatedAt,
-                      syncVersion:
-                        updatedItem.updatedAt instanceof Date
-                          ? updatedItem.updatedAt.toISOString()
-                          : String(updatedItem.updatedAt),
-                    }
-                  : item,
-              ),
-            };
-          },
-        );
-      }
+  const updateItem = api.materialList.updateMaterialListItem.useMutation();
 
-      if (variables.quantity === displayedQuantityRef.current) {
-        clearSyncedStatus();
-      }
-    },
-    onError: () => {
-      void setActiveItemSyncStatus(materialListId, itemId, "pending");
-      void utils.materialList.getMaterialList.invalidate({ materialListId });
-    },
-  });
+  const applyServerTimestamp = (updatedItem: { updatedAt?: Date | string | null } | null | undefined) => {
+    if (!updatedItem?.updatedAt) return;
+
+    const updatedAt =
+      updatedItem.updatedAt instanceof Date
+        ? updatedItem.updatedAt
+        : new Date(updatedItem.updatedAt);
+    const syncVersion = updatedAt.toISOString();
+
+    utils.materialList.getMaterialList.setData(
+      { materialListId },
+      (old) => {
+        if (!old) return old;
+        return {
+          ...old,
+          items: old.items.map((item) =>
+            item.id === itemId
+              ? {
+                  ...item,
+                  updatedAt,
+                  syncVersion,
+                }
+              : item,
+          ),
+        };
+      },
+    );
+  };
 
   useEffect(() => {
     displayedQuantityRef.current = quantity;
@@ -151,11 +145,32 @@ export function QuantityControls({
     }
 
     saveTimerRef.current = setTimeout(() => {
+      const saveId = saveSequenceRef.current + 1;
+      saveSequenceRef.current = saveId;
+      latestSubmittedSaveRef.current = saveId;
       void setActiveItemSyncStatus(materialListId, itemId, "syncing");
-      updateItem.mutate({
-        itemId,
-        quantity: nextQuantity,
-      });
+      updateItem.mutate(
+        {
+          itemId,
+          quantity: nextQuantity,
+        },
+        {
+          onSuccess: (updatedItem) => {
+            if (saveId !== latestSubmittedSaveRef.current) return;
+
+            applyServerTimestamp(updatedItem);
+            if (nextQuantity === displayedQuantityRef.current) {
+              clearSyncedStatus();
+            }
+          },
+          onError: () => {
+            if (saveId !== latestSubmittedSaveRef.current) return;
+
+            void setActiveItemSyncStatus(materialListId, itemId, "pending");
+            void utils.materialList.getMaterialList.invalidate({ materialListId });
+          },
+        },
+      );
     }, 200);
   };
 
