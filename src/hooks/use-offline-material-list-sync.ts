@@ -416,7 +416,13 @@ export function useOfflineMaterialListSyncRunner() {
 
             createdItems.forEach((created, createdIndex) => {
               const queued = batch[createdIndex];
-              if (queued) localItemIdMap.set(queued.localItemId, created.id);
+              if (queued) {
+                localItemIdMap.set(queued.localItemId, created.id);
+                syncedItemStatuses.push({
+                  materialListId: queued.materialListId,
+                  itemId: queued.localItemId,
+                });
+              }
             });
             touchedMaterialLists.add(mutation.materialListId);
             index = nextIndex - 1;
@@ -472,6 +478,19 @@ export function useOfflineMaterialListSyncRunner() {
                 materialListId: mutation.materialListId,
                 mutations: batch,
               });
+              for (const queued of queue.slice(index, nextIndex)) {
+                if (
+                  queued.type === "updateItemQuantity" ||
+                  queued.type === "updateItemSupplierPart" ||
+                  queued.type === "removeItem" ||
+                  queued.type === "addItem"
+                ) {
+                  syncedItemStatuses.push({
+                    materialListId: queued.materialListId,
+                    itemId: queued.type === "addItem" ? queued.localItemId : queued.itemId,
+                  });
+                }
+              }
               touchedMaterialLists.add(mutation.materialListId);
               index = nextIndex - 1;
               continue;
