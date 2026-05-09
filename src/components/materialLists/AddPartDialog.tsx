@@ -916,6 +916,124 @@ export function AddPartDialog({
 
   const isWizardSearchActive = wizardStage !== "review" && wizardSearchQuery.trim().length > 0;
 
+  const addPartsBackStateRef = useRef<History["state"]>(null);
+  const addPartsDialogStateRef = useRef({
+    editingPartId,
+    isCreateCustomPartDialogOpen,
+    isPendingTrayOpen,
+    quantityPickerPreview,
+    wizardStage,
+  });
+
+  useEffect(() => {
+    addPartsDialogStateRef.current = {
+      editingPartId,
+      isCreateCustomPartDialogOpen,
+      isPendingTrayOpen,
+      quantityPickerPreview,
+      wizardStage,
+    };
+  }, [
+    editingPartId,
+    isCreateCustomPartDialogOpen,
+    isPendingTrayOpen,
+    quantityPickerPreview,
+    wizardStage,
+  ]);
+
+  useEffect(() => {
+    if (!open || typeof window === "undefined") return;
+
+    const dialogState = {
+      ...(window.history.state ?? {}),
+      foremenAddPartsDialog: true,
+    };
+    addPartsBackStateRef.current = dialogState;
+    window.history.pushState(dialogState, "");
+
+    const keepDialogOnPage = () => {
+      window.history.pushState(addPartsBackStateRef.current ?? dialogState, "");
+    };
+
+    const handlePopState = () => {
+      const current = addPartsDialogStateRef.current;
+
+      if (current.isCreateCustomPartDialogOpen) {
+        setIsCreateCustomPartDialogOpen(false);
+        keepDialogOnPage();
+        return;
+      }
+      if (current.editingPartId !== null) {
+        setEditingPartId(null);
+        keepDialogOnPage();
+        return;
+      }
+      if (current.quantityPickerPreview) {
+        setQuantityPickerPreview(null);
+        keepDialogOnPage();
+        return;
+      }
+      if (current.isPendingTrayOpen) {
+        setIsPendingTrayOpen(false);
+        keepDialogOnPage();
+        return;
+      }
+
+      if (current.wizardStage === "review") {
+        setWizardStage("part");
+        keepDialogOnPage();
+        return;
+      }
+      if (current.wizardStage === "part") {
+        setWizardStage("category");
+        keepDialogOnPage();
+        return;
+      }
+      if (current.wizardStage === "category") {
+        setSelectedCategory(null);
+        setShowCustomCategoryInput(false);
+        setCustomCategoryName("");
+        setWizardStage("size");
+        keepDialogOnPage();
+        return;
+      }
+      if (current.wizardStage === "size") {
+        setShowCustomSize(false);
+        setCustomSizeInput("");
+        setCustomSizeUnitId(null);
+        setWizardStage("material");
+        keepDialogOnPage();
+        return;
+      }
+      if (current.wizardStage === "material") {
+        setShowCustomMaterialInput(false);
+        setCustomMaterialName("");
+        setWizardStage("catalog");
+        keepDialogOnPage();
+        return;
+      }
+
+      onOpenChange(false);
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, [
+    onOpenChange,
+    open,
+    setCustomCategoryName,
+    setCustomMaterialName,
+    setCustomSizeInput,
+    setCustomSizeUnitId,
+    setSelectedCategory,
+    setShowCustomCategoryInput,
+    setShowCustomMaterialInput,
+    setShowCustomSize,
+    setWizardStage,
+  ]);
+
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
