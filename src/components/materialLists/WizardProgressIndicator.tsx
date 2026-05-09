@@ -97,7 +97,7 @@ export function WizardProgressIndicator({
                   }
                 }}
                 disabled={!isClickable}
-                className={`flex h-8 w-full min-w-max items-center justify-center gap-1 rounded-lg px-1.5 text-xs font-medium transition-colors sm:h-9 sm:gap-1.5 sm:px-2.5 sm:text-sm ${
+                className={`flex h-9 w-full min-w-max items-center justify-center gap-1 rounded-lg px-1.5 text-xs font-medium transition-colors sm:gap-1.5 sm:px-2.5 sm:text-sm ${
                   isCurrent
                     ? "bg-primary text-primary-foreground"
                     : isCompleted
