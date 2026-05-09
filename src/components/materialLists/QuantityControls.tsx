@@ -206,7 +206,7 @@ export function QuantityControls({
     ? "h-8 w-8 p-0"
     : "h-10 w-10 p-0 sm:h-11 sm:w-11";
   const inputClassName = compact
-    ? "h-8 w-11 [appearance:textfield] px-1 text-center text-sm font-medium [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+    ? "h-8 w-16 [appearance:textfield] px-1.5 text-center text-sm font-medium [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
     : "h-10 w-12 [appearance:textfield] px-1 text-center font-medium sm:h-11 sm:w-14 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none";
 
   if (orientation === "vertical") {
