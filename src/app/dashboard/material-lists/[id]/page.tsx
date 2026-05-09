@@ -561,24 +561,24 @@ export default function MaterialListDetailPage({
       </div>
 
       {/* Footer - Always Visible */}
-      <div className="shrink-0 border-t bg-white px-4 pt-3 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:px-6 sm:pt-4">
+      <div className="shrink-0 border-t bg-white px-4 pt-2 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:px-6 sm:pt-3">
         <div className="mx-auto max-w-6xl">
-          <div className="space-y-3">
+          <div className="space-y-2">
             <div className="flex items-baseline gap-2">
-              <span className="text-xl text-gray-600 sm:text-2xl">
+              <span className="text-lg text-gray-600 sm:text-xl">
                 Material Total
               </span>
-              <span className="text-xl font-bold sm:text-2xl">
+              <span className="text-lg font-bold sm:text-xl">
                 ${materialList.materialTotal.toFixed(2)}
               </span>
             </div>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
               <Button
                 variant="outline"
                 onClick={handleGenerateQuote}
                 disabled={!canGenerateQuoteOrOrder}
                 title={generationBlockReason ?? "Generate quote"}
-                className="min-h-12 w-full px-2 py-2 text-xs leading-tight whitespace-normal sm:h-11 sm:text-sm"
+                className="min-h-10 w-full px-2 py-1.5 text-xs leading-tight whitespace-normal sm:h-10 sm:text-sm"
               >
                 <FileTextIcon className="mr-1 h-4 w-4 shrink-0 sm:mr-2" />
                 <span className="text-center leading-tight">
@@ -589,7 +589,7 @@ export default function MaterialListDetailPage({
                 onClick={handleGenerateOrder}
                 disabled={!canGenerateQuoteOrOrder}
                 title={generationBlockReason ?? "Generate order"}
-                className="min-h-12 w-full px-2 py-2 text-xs leading-tight whitespace-normal sm:h-11 sm:text-sm"
+                className="min-h-10 w-full px-2 py-1.5 text-xs leading-tight whitespace-normal sm:h-10 sm:text-sm"
               >
                 <ShoppingCartIcon className="mr-1 h-4 w-4 shrink-0 sm:mr-2" />
                 <span className="text-center leading-tight">
@@ -602,7 +602,7 @@ export default function MaterialListDetailPage({
                   markUserAction("add-part-open", { materialListId: id });
                   setShowAddPartDialog(true);
                 }}
-                className="min-h-12 w-full px-2 py-2 text-xs leading-tight whitespace-normal sm:h-11 sm:text-sm"
+                className="min-h-10 w-full px-2 py-1.5 text-xs leading-tight whitespace-normal sm:h-10 sm:text-sm"
               >
                 <PlusIcon className="mr-1 h-4 w-4 shrink-0 sm:mr-2" />
                 <span className="text-center leading-tight">Add Part</span>
