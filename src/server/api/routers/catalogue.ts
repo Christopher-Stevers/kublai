@@ -1722,7 +1722,15 @@ export const catalogueRouter = createTRPCRouter({
     return newCategory.id;
   }),
 
-  exportCatalogueRows: hasDashboardAccess.query(async ({ ctx }) => {
+  exportCatalogueRows: hasDashboardAccess
+    .input(
+      z
+        .object({
+          catalogId: z.string().uuid().nullable().optional(),
+        })
+        .optional(),
+    )
+    .query(async ({ ctx, input }) => {
     const organizationId = ctx.user.organizationId;
 
     if (!organizationId) {
@@ -1749,7 +1757,12 @@ export const catalogueRouter = createTRPCRouter({
       .leftJoin(materials, eq(partDefinitions.materialId, materials.id))
       .leftJoin(sizes, eq(partDefinitions.sizeId, sizes.id))
       .leftJoin(units, eq(sizes.unitId, units.id))
-      .where(eq(partDefinitions.organizationId, organizationId))
+      .where(
+        and(
+          eq(partDefinitions.organizationId, organizationId),
+          input?.catalogId ? eq(partDefinitions.catalogId, input.catalogId) : undefined,
+        ),
+      )
       .orderBy(
         catalogs.sortOrder,
         categories.sortOrder,

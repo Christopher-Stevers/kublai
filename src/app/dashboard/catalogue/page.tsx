@@ -3,6 +3,14 @@
 import { useRef, useState } from "react";
 import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "~/components/ui/dialog";
 import { EditPartDialog } from "~/components/catalogue/EditPartDialog";
 import { CreateCustomPartDialog } from "~/components/materialLists/CreateCustomPartDialog";
 import { CatalogStage } from "~/components/materialLists/wizard/CatalogStage";
@@ -21,6 +29,8 @@ export default function CataloguePage() {
   const [editingPartId, setEditingPartId] = useState<string | null>(null);
   const [isCreatePartDialogOpen, setIsCreatePartDialogOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [isExportOptionsOpen, setIsExportOptionsOpen] = useState(false);
+  const [exportCatalogId, setExportCatalogId] = useState<string | null>(null);
   const [isImporting, setIsImporting] = useState(false);
   const [importProgress, setImportProgress] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -83,14 +93,32 @@ export default function CataloguePage() {
     wizardSearchPlaceholder,
   } = usePartWizard();
 
+  const catalogOptions = catalogs ?? [];
+
   const isWizardSearchActive =
     wizardStage !== "review" && wizardSearchQuery.trim().length > 0;
 
+  const handleExportClick = () => {
+    setExportCatalogId(null);
+    setIsExportOptionsOpen(true);
+  };
+
   const handleExport = async () => {
+    const selectedCatalog = catalogOptions.find((catalog) => catalog.id === exportCatalogId);
+    const filenameSuffix = selectedCatalog
+      ? selectedCatalog.name
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-|-$/g, "") || "catalog"
+      : "full-catalog";
+
     try {
       setIsExporting(true);
-      const rows = await utils.catalogue.exportCatalogueRows.fetch();
-      await downloadCatalogueRowsAsXlsx(rows, "foremenhq-catalogue.xlsx");
+      const rows = await utils.catalogue.exportCatalogueRows.fetch({
+        catalogId: exportCatalogId,
+      });
+      await downloadCatalogueRowsAsXlsx(rows, `foremenhq-${filenameSuffix}.xlsx`);
+      setIsExportOptionsOpen(false);
     } finally {
       setIsExporting(false);
     }
@@ -118,7 +146,9 @@ export default function CataloguePage() {
       }
 
       setImportProgress("Preparing local backup...");
-      const existingRows = await utils.catalogue.exportCatalogueRows.fetch();
+      const existingRows = await utils.catalogue.exportCatalogueRows.fetch({
+        catalogId: null,
+      });
       const existingPartIds = new Set(
         existingRows
           .map((row) => String(row.partId ?? "").trim())
@@ -201,7 +231,7 @@ export default function CataloguePage() {
               </Button>
               {importProgress && <div className="text-xs font-medium text-slate-600">{importProgress}</div>}
             </div>
-            <Button variant="outline" onClick={handleExport} disabled={isExporting}>
+            <Button variant="outline" onClick={handleExportClick} disabled={isExporting}>
               {isExporting ? "Exporting..." : "Export XLSX"}
             </Button>
           </div>
@@ -315,6 +345,66 @@ export default function CataloguePage() {
           />
         )}
       </div>
+
+      <Dialog open={isExportOptionsOpen} onOpenChange={setIsExportOptionsOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Export Catalogue</DialogTitle>
+            <DialogDescription>
+              Choose which catalogue to include in the XLSX export.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-2">
+            <button
+              type="button"
+              onClick={() => setExportCatalogId(null)}
+              className={`flex w-full items-center justify-between rounded-xl border px-4 py-3 text-left text-sm transition ${
+                exportCatalogId === null
+                  ? "border-gray-900 bg-gray-50 text-gray-950"
+                  : "border-gray-200 bg-white text-gray-700 hover:border-gray-300"
+              }`}
+            >
+              <span className="font-medium">Full Catalog</span>
+              {exportCatalogId === null && <span className="text-xs font-semibold">Selected</span>}
+            </button>
+
+            <div className="max-h-72 space-y-2 overflow-y-auto pr-1">
+              {catalogOptions.map((catalog) => (
+                <button
+                  key={catalog.id}
+                  type="button"
+                  onClick={() => setExportCatalogId(catalog.id)}
+                  className={`flex w-full items-center justify-between rounded-xl border px-4 py-3 text-left text-sm transition ${
+                    exportCatalogId === catalog.id
+                      ? "border-gray-900 bg-gray-50 text-gray-950"
+                      : "border-gray-200 bg-white text-gray-700 hover:border-gray-300"
+                  }`}
+                >
+                  <span className="font-medium">{catalog.name}</span>
+                  {exportCatalogId === catalog.id && (
+                    <span className="text-xs font-semibold">Selected</span>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsExportOptionsOpen(false)}
+              disabled={isExporting}
+            >
+              Cancel
+            </Button>
+            <Button type="button" onClick={handleExport} disabled={isExporting}>
+              {isExporting ? "Exporting..." : "Export XLSX"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <EditPartDialog
         open={editingPartId !== null}
