@@ -408,9 +408,12 @@ export function SupplierSelector({
               />
             </div>
             <div className="max-h-[200px] overflow-y-auto">
-              {/* Existing supplier parts */}
+              {/* Suppliers with part-specific information */}
               {supplierParts && supplierParts.length > 0 && (
                 <>
+                  <div className="text-muted-foreground px-2 py-1 text-xs font-medium">
+                    Suppliers with part info
+                  </div>
                   {supplierParts
                     .filter((sp) => {
                       if (!debouncedSearchQuery.trim()) return true;
@@ -434,22 +437,22 @@ export function SupplierSelector({
                 </>
               )}
 
-              {/* Suppliers without supplier parts (can be linked) */}
+              {/* Suppliers without part-specific information */}
               {suppliersWithoutParts.length > 0 && (
                 <>
                   {supplierParts && supplierParts.length > 0 && (
                     <DropdownMenuSeparator />
                   )}
+                  <div className="text-muted-foreground px-2 py-1 text-xs font-medium">
+                    Other suppliers
+                  </div>
                   {suppliersWithoutParts.map((supplier) => (
                     <DropdownMenuItem
                       key={supplier.id}
                       onClick={() => handleSupplierSelect(supplier.id)}
-                      className="flex cursor-pointer flex-col items-start gap-0.5"
+                      className="cursor-pointer"
                     >
-                      <span>{supplier.name}</span>
-                      <span className="text-muted-foreground text-xs">
-                        Use for this order
-                      </span>
+                      {supplier.name}
                     </DropdownMenuItem>
                   ))}
                 </>
