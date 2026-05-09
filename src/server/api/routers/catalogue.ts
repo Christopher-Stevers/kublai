@@ -1969,6 +1969,7 @@ export const catalogueRouter = createTRPCRouter({
         sizeLabel: z.string().optional().nullable(),
         sizeUnitId: z.string().uuid().optional().nullable(),
         isActive: z.boolean().optional(),
+        aliases: z.array(z.string().min(1).max(255)).optional(),
         supplierId: z.string().uuid().optional(),
         supplierSku: z.string().max(255).optional(),
         supplierName: z.string().optional(),
@@ -2057,6 +2058,10 @@ export const catalogueRouter = createTRPCRouter({
 
       if (!newPart) {
         throw new Error("Failed to create part definition");
+      }
+
+      if (input.aliases !== undefined) {
+        await syncPartAliases(ctx.db, newPart.id, input.aliases);
       }
 
       // If supplier info provided, create supplier part link
