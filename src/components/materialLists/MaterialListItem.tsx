@@ -199,8 +199,11 @@ function MaterialListItemComponent({
   const subtitle = subtitleParts.join(" · ");
 
   return (
-    <Card className="group overflow-hidden rounded-2xl border-gray-200 bg-gradient-to-br from-white to-gray-50/60 shadow-sm transition-all [content-visibility:auto] [contain-intrinsic-size:9rem] hover:border-gray-300 hover:shadow-md">
-      <CardContent className="p-3 sm:p-4">
+    <Card className="group relative overflow-hidden rounded-2xl border-gray-200 bg-gradient-to-br from-white to-gray-50/60 shadow-sm transition-all [content-visibility:auto] [contain-intrinsic-size:9rem] hover:border-gray-300 hover:shadow-md">
+      <CardContent className="relative p-3 sm:p-4">
+        <div className="absolute top-2 right-2 z-10 sm:top-2.5 sm:right-2.5">
+          <ItemSyncBadge status={syncStatus} />
+        </div>
         <div className="grid h-[7.25rem] grid-cols-[7.25rem_minmax(0,1fr)_2rem] gap-3 sm:h-32 sm:grid-cols-[8rem_minmax(0,1fr)_2rem] sm:gap-4">
           {/* Image — anchors card height */}
           <div className="relative h-[7.25rem] w-[7.25rem] overflow-hidden rounded-2xl bg-gradient-to-br from-gray-50 to-gray-100 shadow-sm ring-1 ring-gray-200 ring-inset sm:h-32 sm:w-32">
@@ -276,9 +279,7 @@ function MaterialListItemComponent({
 
           {/* Action rail — same rows as content, so icons line up */}
           <div className="grid h-[7.25rem] w-8 grid-rows-[1fr_2rem_2rem] gap-2 sm:h-32">
-            <div className="flex items-start justify-center pt-0.5">
-              <ItemSyncBadge status={syncStatus} />
-            </div>
+            <div />
             <div className="flex items-center justify-center">
               <Button
                 variant="ghost"
