@@ -32,6 +32,17 @@ export function QuantityControls({
   const [inputValue, setInputValue] = useState(quantity.toString());
   const displayedQuantityRef = useRef(quantity);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const syncClearTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearSyncedStatus = () => {
+    void setActiveItemSyncStatus(materialListId, itemId, "synced");
+    if (syncClearTimerRef.current) {
+      clearTimeout(syncClearTimerRef.current);
+    }
+    syncClearTimerRef.current = setTimeout(() => {
+      void setActiveItemSyncStatus(materialListId, itemId, "synced");
+    }, 750);
+  };
 
   const updateItem = api.materialList.updateMaterialListItem.useMutation({
     onMutate: () => {
@@ -63,7 +74,7 @@ export function QuantityControls({
       }
 
       if (variables.quantity === displayedQuantityRef.current) {
-        void setActiveItemSyncStatus(materialListId, itemId, "synced");
+        clearSyncedStatus();
       }
     },
     onError: () => {
@@ -82,6 +93,9 @@ export function QuantityControls({
     return () => {
       if (saveTimerRef.current) {
         clearTimeout(saveTimerRef.current);
+      }
+      if (syncClearTimerRef.current) {
+        clearTimeout(syncClearTimerRef.current);
       }
     };
   }, []);
