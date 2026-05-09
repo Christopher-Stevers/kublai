@@ -1035,17 +1035,17 @@ export function PartDetailsDialog({
                     </div>
 
                     <div>
-                      <Label>Preferred supplier</Label>
+                      <Label>Preferred</Label>
                       <button
                         type="button"
                         onClick={() => setIsPreferredSupplier((value) => !value)}
-                        className="mt-1 flex h-10 w-10 items-center justify-center rounded-md border bg-white transition-colors hover:bg-gray-50"
+                        className="mt-1 flex h-9 w-9 items-center justify-center rounded-md border bg-white transition-colors hover:bg-gray-50"
                         disabled={isLoading}
                         aria-pressed={isPreferredSupplier}
                         aria-label="Preferred supplier"
                       >
                         <Star
-                          className={`h-5 w-5 ${
+                          className={`h-4 w-4 ${
                             isPreferredSupplier
                               ? "fill-yellow-400 text-yellow-400"
                               : "text-gray-400"
