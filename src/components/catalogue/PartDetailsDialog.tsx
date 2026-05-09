@@ -876,17 +876,6 @@ export function PartDetailsDialog({
             </div>
 
             <div>
-              <Label>Description</Label>
-              <Input
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Part description"
-                className="mt-1"
-                disabled={isLoading}
-              />
-            </div>
-
-            <div>
               <FieldHeader
                 label="Category"
                 onAdd={() => setShowNewCategoryInput((value) => !value)}
@@ -940,6 +929,17 @@ export function PartDetailsDialog({
                   </DropdownMenuContent>
                 </DropdownMenu>
               )}
+            </div>
+
+            <div>
+              <Label>Description</Label>
+              <Input
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Part description"
+                className="mt-1"
+                disabled={isLoading}
+              />
             </div>
 
             <div>
