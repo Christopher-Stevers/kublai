@@ -1206,9 +1206,12 @@ export const catalogueRouter = createTRPCRouter({
       const isGlobal = !existing.organizationId;
       const isOrgSpecific = existing.organizationId === organizationId;
 
-      // Handle size: find or create size record
+      // Handle size: find/create size records, or clear size when the client
+      // explicitly sends nulls. Undefined means "leave existing value alone".
       let sizeId: string | null = null;
-      if (input.sizeNominal !== undefined || input.sizeUnitId !== undefined) {
+      const sizeTouched =
+        input.sizeNominal !== undefined || input.sizeUnitId !== undefined;
+      if (sizeTouched) {
         // Get current part to use existing size if new values not provided
         const [currentPart] = await ctx.db
           .select()
@@ -1233,7 +1236,9 @@ export const catalogueRouter = createTRPCRouter({
                 ? parseFloat(currentSize.nominal)
                 : null;
           const finalSizeUnitId =
-            input.sizeUnitId ?? currentSize?.unitId ?? null;
+            input.sizeUnitId !== undefined
+              ? input.sizeUnitId
+              : currentSize?.unitId ?? null;
 
           sizeId = await findOrCreateSize(
             ctx.db,
@@ -1257,8 +1262,9 @@ export const catalogueRouter = createTRPCRouter({
           throw new Error("Part not found");
         }
 
-        // Use provided sizeId or original part's sizeId
-        const finalSizeId = sizeId ?? originalPart.sizeId;
+        // Use provided sizeId, including explicit null to clear it, or keep original
+        // when size fields were not part of the edit payload.
+        const finalSizeId = sizeTouched ? sizeId : originalPart.sizeId;
 
         // Create org-specific copy
         const [newPart] = await ctx.db
@@ -1266,12 +1272,25 @@ export const catalogueRouter = createTRPCRouter({
           .values({
             organizationId: organizationId,
             catalogId: input.catalogId ?? originalPart.catalogId,
-            categoryId: input.categoryId ?? originalPart.categoryId,
+            categoryId:
+              input.categoryId !== undefined
+                ? input.categoryId
+                : originalPart.categoryId,
             displayName: input.displayName ?? originalPart.displayName,
-            description: input.description ?? originalPart.description,
-            imageUrl: input.imageUrl ?? originalPart.imageUrl,
-            sizeLabel: input.sizeLabel?.trim() || originalPart.sizeLabel,
-            materialId: input.materialId ?? originalPart.materialId,
+            description:
+              input.description !== undefined
+                ? input.description
+                : originalPart.description,
+            imageUrl:
+              input.imageUrl !== undefined ? input.imageUrl : originalPart.imageUrl,
+            sizeLabel:
+              input.sizeLabel !== undefined
+                ? input.sizeLabel?.trim() || null
+                : originalPart.sizeLabel,
+            materialId:
+              input.materialId !== undefined
+                ? input.materialId
+                : originalPart.materialId,
             sizeId: finalSizeId,
             isActive: input.isActive ?? originalPart.isActive,
           })
@@ -1294,7 +1313,7 @@ export const catalogueRouter = createTRPCRouter({
         updateData.categoryId = input.categoryId;
       if (input.materialId !== undefined)
         updateData.materialId = input.materialId;
-      if (sizeId !== null) updateData.sizeId = sizeId;
+      if (sizeTouched) updateData.sizeId = sizeId;
       if (input.isActive !== undefined) updateData.isActive = input.isActive;
 
       const [updated] = await ctx.db
