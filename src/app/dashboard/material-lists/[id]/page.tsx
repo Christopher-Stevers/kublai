@@ -608,11 +608,6 @@ export default function MaterialListDetailPage({
                 <span className="text-center leading-tight">Add Part</span>
               </Button>
             </div>
-            {generationBlockReason && (
-              <p className="text-muted-foreground text-xs leading-tight">
-                Quote/order generation unavailable: {generationBlockReason}
-              </p>
-            )}
           </div>
         </div>
       </div>
