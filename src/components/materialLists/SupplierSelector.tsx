@@ -468,7 +468,11 @@ export function SupplierSelector({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent
-          className="w-(--radix-dropdown-menu-trigger-width) p-2"
+          className="p-2"
+          style={{
+            width:
+              "min(max(calc(var(--radix-dropdown-menu-trigger-width) * 2), 18rem), calc(100vw - 2rem))",
+          }}
           align="start"
           onCloseAutoFocus={(e) => e.preventDefault()}
         >
@@ -521,9 +525,12 @@ export function SupplierSelector({
                     <DropdownMenuItem
                       key={supplier.id}
                       onClick={() => handleSupplierSelect(supplier.id)}
-                      className="cursor-pointer"
+                      className="flex cursor-pointer flex-col items-start gap-0.5"
                     >
-                      {supplier.name} (Link to part)
+                      <span>{supplier.name}</span>
+                      <span className="text-muted-foreground text-xs">
+                        Add supplier to this part
+                      </span>
                     </DropdownMenuItem>
                   ))}
                 </>
