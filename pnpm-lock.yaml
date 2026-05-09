@@ -56,6 +56,9 @@ importers:
       dexie-cloud-addon:
         specifier: ^4.4.11
         version: 4.4.11(dexie@4.4.2)
+      dexie-react-hooks:
+        specifier: ^4.4.0
+        version: 4.4.0(dexie@4.4.2)(react@19.2.3)
       drizzle-orm:
         specifier: ^0.45.1
         version: 0.45.1(gel@2.2.0)(postgres@3.4.8)
@@ -3514,6 +3517,12 @@ packages:
 
   dexie-cloud-common@1.0.59:
     resolution: {integrity: sha512-XX59WK7nLU1oCvQNLK4XO4BkITo7KL2a1HHWsxr0wvDqW3ONgyUnzR+06z/RozuTMNtiDiVtAGeTNk4i9KjwZw==}
+
+  dexie-react-hooks@4.4.0:
+    resolution: {integrity: sha512-ObLXBS5+4BJU8vtSvBx6b9fY6zZYgniAtwxzjCHsUQadgbqYN6935X2/1TWw4Rf2N1aZV1io5/ziox4vKuxABA==}
+    peerDependencies:
+      dexie: '>=4.2.0-alpha.1 <5.0.0'
+      react: '>=16'
 
   dexie@4.4.2:
     resolution: {integrity: sha512-zMtV8q79EFE5U8FKZvt0Y/77PCU/Hr/RDxv1EDeo228L+m/HTbeN2AjoQm674rhQCX8n3ljK87lajt7UQuZfvw==}
@@ -9593,6 +9602,11 @@ snapshots:
   dexie-cloud-common@1.0.59:
     dependencies:
       lib0: 0.2.117
+
+  dexie-react-hooks@4.4.0(dexie@4.4.2)(react@19.2.3):
+    dependencies:
+      dexie: 4.4.2
+      react: 19.2.3
 
   dexie@4.4.2: {}
 

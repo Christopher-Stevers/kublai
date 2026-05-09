@@ -35,12 +35,44 @@ export interface OfflineDexieSyncingMaterialListRow {
   id: string;
 }
 
+export interface DexieMaterialListHeaderRow {
+  id: string;
+  name: string;
+  jobId: string;
+  jobName: string;
+  quoteId: string | null;
+  materialTotal: number;
+  pendingSync: boolean;
+  pendingDeletedItemIds: string[];
+  updatedAt: string;
+  serverUpdatedAt: string | null;
+  syncVersion: string | null;
+}
+
+export interface DexieMaterialListItemRow {
+  id: string;
+  materialListId: string;
+  quantity: string;
+  unitCost: string | null;
+  extendedPrice: string | null;
+  descriptionSnapshot: string | null;
+  partDefinitionId: string | null;
+  partDefinitionDisplayName: string | null;
+  supplierPartId: string | null;
+  selectedSupplierId: string | null;
+  updatedAt: string | null;
+  syncVersion: string | null;
+  value: unknown;
+}
+
 class ForemanHqOfflineDb extends Dexie {
   materialLists!: Table<OfflineDexieMaterialListRow, string>;
   meta!: Table<OfflineDexieMetaRow, string>;
   mutationQueue!: Table<OfflineDexieMutationRow, string>;
   activeItemSync!: Table<OfflineDexieActiveItemSyncRow, string>;
   syncingMaterialLists!: Table<OfflineDexieSyncingMaterialListRow, string>;
+  materialListHeaders!: Table<DexieMaterialListHeaderRow, string>;
+  materialListItems!: Table<DexieMaterialListItemRow, string>;
 
   constructor() {
     super(DB_NAME, { addons: [dexieCloud] });
@@ -56,6 +88,17 @@ class ForemanHqOfflineDb extends Dexie {
       mutationQueue: "id, order, materialListId, type, queuedAt",
       activeItemSync: "id, materialListId, itemId, status, updatedAt",
       syncingMaterialLists: "id",
+    });
+
+    this.version(3).stores({
+      materialLists: "id",
+      meta: "key",
+      mutationQueue: "id, order, materialListId, type, queuedAt",
+      activeItemSync: "id, materialListId, itemId, status, updatedAt",
+      syncingMaterialLists: "id",
+      materialListHeaders: "id, jobId, quoteId, pendingSync, updatedAt",
+      materialListItems:
+        "id, materialListId, partDefinitionId, supplierPartId, selectedSupplierId, updatedAt",
     });
 
     if (env.NEXT_PUBLIC_DEXIE_CLOUD_DATABASE_URL) {

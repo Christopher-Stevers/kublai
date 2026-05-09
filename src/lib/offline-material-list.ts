@@ -4,6 +4,7 @@ import {
   idbGetMaterialListIds,
   idbSetMaterialList,
 } from "~/lib/offline-indexed-db";
+import { getOfflineDexieDb } from "~/lib/offline-dexie-db";
 
 export interface OfflineMaterialListItem {
   id: string;
@@ -96,6 +97,72 @@ function legacyStorageKey(materialListId: string) {
   return `${STORAGE_PREFIX}:${materialListId}`;
 }
 
+function toIsoString(value: string | Date | null | undefined) {
+  if (!value) return null;
+  return value instanceof Date ? value.toISOString() : String(value);
+}
+
+async function writeNormalizedMaterialListToDexie(envelope: OfflineMaterialListEnvelope) {
+  const db = getOfflineDexieDb();
+  if (!db) return;
+
+  const data = envelope.data;
+  await db.transaction(
+    "rw",
+    db.materialListHeaders,
+    db.materialListItems,
+    async () => {
+      await db.materialListHeaders.put({
+        id: data.materialList.id,
+        name: data.materialList.name,
+        jobId: data.job.id,
+        jobName: data.job.name,
+        quoteId: data.quote?.id ?? null,
+        materialTotal: data.materialTotal,
+        pendingSync: envelope.pendingSync,
+        pendingDeletedItemIds: envelope.pendingDeletedItemIds ?? [],
+        updatedAt: envelope.updatedAt,
+        serverUpdatedAt: toIsoString(data.materialList.updatedAt),
+        syncVersion: data.materialList.syncVersion ?? null,
+      });
+
+      const existingItems = await db.materialListItems
+        .where("materialListId")
+        .equals(data.materialList.id)
+        .toArray();
+      const nextItemIds = new Set(data.items.map((item) => item.id));
+      const removedItemIds = existingItems
+        .filter((item) => !nextItemIds.has(item.id))
+        .map((item) => item.id);
+
+      if (removedItemIds.length > 0) {
+        await db.materialListItems.bulkDelete(removedItemIds);
+      }
+
+      await db.materialListItems.bulkPut(
+        data.items.map((item) => ({
+          id: item.id,
+          materialListId: data.materialList.id,
+          quantity: item.quantity,
+          unitCost: item.unitCost,
+          extendedPrice: item.extendedPrice,
+          descriptionSnapshot: item.descriptionSnapshot,
+          partDefinitionId: item.partDefinition?.id ?? null,
+          partDefinitionDisplayName: item.partDefinition?.displayName ?? null,
+          supplierPartId: item.supplierPart?.id ?? null,
+          selectedSupplierId:
+            item.supplierPart?.supplierId ??
+            (item as { selectedSupplierId?: string | null }).selectedSupplierId ??
+            null,
+          updatedAt: toIsoString(item.updatedAt),
+          syncVersion: item.syncVersion ?? null,
+          value: item,
+        })),
+      );
+    },
+  );
+}
+
 async function migrateLegacyMaterialLists() {
   if (migratedLegacyLocalStorage || typeof window === "undefined") return;
   migratedLegacyLocalStorage = true;
@@ -114,7 +181,11 @@ async function migrateLegacyMaterialLists() {
         try {
           const existing = await idbGetMaterialList<OfflineMaterialListEnvelope>(materialListId);
           if (!existing) {
-            await idbSetMaterialList(materialListId, JSON.parse(raw) as OfflineMaterialListEnvelope);
+            const envelope = JSON.parse(raw) as OfflineMaterialListEnvelope;
+            await idbSetMaterialList(materialListId, envelope);
+            await writeNormalizedMaterialListToDexie(envelope);
+          } else {
+            await writeNormalizedMaterialListToDexie(existing);
           }
         } catch {
           // Ignore malformed legacy cache entries.
@@ -147,6 +218,7 @@ export async function setOfflineMaterialList(
   };
 
   await idbSetMaterialList(materialListId, envelope);
+  await writeNormalizedMaterialListToDexie(envelope);
   if (typeof window !== "undefined") {
     window.localStorage.setItem(legacyStorageKey(materialListId), JSON.stringify(envelope));
   }
@@ -173,6 +245,17 @@ export async function patchOfflineMaterialList(
 
 export async function clearOfflineMaterialList(materialListId: string) {
   await idbDeleteMaterialList(materialListId);
+  const db = getOfflineDexieDb();
+  if (db) {
+    await db.transaction("rw", db.materialListHeaders, db.materialListItems, async () => {
+      await db.materialListHeaders.delete(materialListId);
+      const itemIds = await db.materialListItems
+        .where("materialListId")
+        .equals(materialListId)
+        .primaryKeys();
+      if (itemIds.length > 0) await db.materialListItems.bulkDelete(itemIds.map(String));
+    });
+  }
   if (typeof window !== "undefined") {
     window.localStorage.removeItem(legacyStorageKey(materialListId));
   }
