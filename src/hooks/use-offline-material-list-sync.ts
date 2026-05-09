@@ -130,6 +130,18 @@ function canPushThroughSyncEngine(mutation: OfflineMaterialListMutation) {
   return !!mutation.clientMutationId;
 }
 
+function getMutationItemId(mutation: OfflineMaterialListMutation) {
+  if (mutation.type === "addItem") return mutation.localItemId;
+  if (
+    mutation.type === "updateItemQuantity" ||
+    mutation.type === "updateItemSupplierPart" ||
+    mutation.type === "removeItem"
+  ) {
+    return mutation.itemId;
+  }
+  return null;
+}
+
 function isNotFoundError(error: unknown) {
   if (!(error instanceof Error)) return false;
 
@@ -240,6 +252,12 @@ export function useOfflineMaterialListSyncRunner() {
 
     materialListSyncInFlight = true;
     await setSyncingMaterialListIds(queuedMaterialListIds);
+    await Promise.all(
+      queue.flatMap((mutation) => {
+        const itemId = getMutationItemId(mutation);
+        return itemId ? [setActiveItemSyncStatus(mutation.materialListId, itemId, "syncing")] : [];
+      }),
+    );
 
     const remaining: OfflineMaterialListMutation[] = [];
     const touchedMaterialLists = new Set<string>();
@@ -763,11 +781,15 @@ export function useOfflineMaterialListSyncRunner() {
         await setQueue(remaining);
       }
 
-      await Promise.all(
-        syncedItemStatuses.map(({ materialListId, itemId }) =>
+      await Promise.all([
+        ...remaining.flatMap((mutation) => {
+          const itemId = getMutationItemId(mutation);
+          return itemId ? [setActiveItemSyncStatus(mutation.materialListId, itemId, "pending")] : [];
+        }),
+        ...syncedItemStatuses.map(({ materialListId, itemId }) =>
           setActiveItemSyncStatus(materialListId, itemId, "synced"),
         ),
-      );
+      ]);
 
       const materialListsToRefresh = new Set([
         ...queuedMaterialListIds.map(

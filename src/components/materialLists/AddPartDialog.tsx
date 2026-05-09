@@ -28,6 +28,7 @@ import { VerticalPickerOverlay } from "./wizard/VerticalPickerOverlay";
 import {
   applyOfflineAddItem,
   enqueueOfflineMutation,
+  setActiveItemSyncStatus,
 } from "~/lib/offline-material-list-mutations";
 import { useOnlineStatus } from "~/hooks/use-online-status";
 import { useOfflineMaterialListSyncRunner } from "~/hooks/use-offline-material-list-sync";
@@ -825,6 +826,12 @@ export function AddPartDialog({
       setIsAddingParts(false);
 
       void (async () => {
+        await Promise.all(
+          localItems.map((item) =>
+            setActiveItemSyncStatus(materialListId, item.localItemId, "pending"),
+          ),
+        );
+
         for (const item of localItems) {
           await applyOfflineAddItem(materialListId, {
             localItemId: item.localItemId,
