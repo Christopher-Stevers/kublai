@@ -878,7 +878,7 @@ export function PartDetailsDialog({
               </div>
               {sizeValue.trim() && (
                 <div>
-                  <Label>Size Unit</Label>
+                  <FieldHeader label="Size Unit" />
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button
