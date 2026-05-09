@@ -788,62 +788,6 @@ export function PartDetailsDialog({
               )}
             </div>
 
-            <div
-              className={`grid gap-3 ${sizeValue.trim() ? "grid-cols-[minmax(0,1fr)_7rem] sm:grid-cols-[minmax(0,1fr)_140px]" : "grid-cols-1"}`}
-            >
-              <div>
-                <FieldHeader
-                  label="Size"
-                  addLabel="+Add"
-                  onAdd={() => {
-                    if (parsedSizeNominal !== null && sizeUnitId) {
-                      createSize.mutate({
-                        nominal: parsedSizeNominal,
-                        unitId: sizeUnitId,
-                      });
-                    }
-                  }}
-                />
-                <Input
-                  value={sizeValue}
-                  onChange={(e) => setSizeValue(e.target.value)}
-                  placeholder="1/2 or 0.5"
-                  className="mt-1"
-                  disabled={isLoading}
-                />
-              </div>
-              {sizeValue.trim() && (
-                <div>
-                  <Label>Size Unit</Label>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className="mt-1 w-full justify-between"
-                        disabled={isLoading}
-                      >
-                        {selectedSizeUnit?.code ?? "Unit"}
-                        <ChevronDown className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent className="max-h-60 overflow-y-auto">
-                      <DropdownMenuItem onClick={() => setSizeUnitId(null)}>
-                        None
-                      </DropdownMenuItem>
-                      {sizeUnits.map((unit) => (
-                        <DropdownMenuItem
-                          key={unit.id}
-                          onClick={() => setSizeUnitId(unit.id)}
-                        >
-                          {unit.displayName ?? unit.code} ({unit.code})
-                        </DropdownMenuItem>
-                      ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              )}
-            </div>
-
             <div>
               <FieldHeader
                 label="Material"
@@ -897,6 +841,62 @@ export function PartDetailsDialog({
                     ))}
                   </DropdownMenuContent>
                 </DropdownMenu>
+              )}
+            </div>
+
+            <div
+              className={`grid gap-3 ${sizeValue.trim() ? "grid-cols-[minmax(0,1fr)_7rem] sm:grid-cols-[minmax(0,1fr)_140px]" : "grid-cols-1"}`}
+            >
+              <div>
+                <FieldHeader
+                  label="Size"
+                  addLabel="+Add"
+                  onAdd={() => {
+                    if (parsedSizeNominal !== null && sizeUnitId) {
+                      createSize.mutate({
+                        nominal: parsedSizeNominal,
+                        unitId: sizeUnitId,
+                      });
+                    }
+                  }}
+                />
+                <Input
+                  value={sizeValue}
+                  onChange={(e) => setSizeValue(e.target.value)}
+                  placeholder="1/2 or 0.5"
+                  className="mt-1"
+                  disabled={isLoading}
+                />
+              </div>
+              {sizeValue.trim() && (
+                <div>
+                  <Label>Size Unit</Label>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className="mt-1 w-full justify-between"
+                        disabled={isLoading}
+                      >
+                        {selectedSizeUnit?.code ?? "Unit"}
+                        <ChevronDown className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="max-h-60 overflow-y-auto">
+                      <DropdownMenuItem onClick={() => setSizeUnitId(null)}>
+                        None
+                      </DropdownMenuItem>
+                      {sizeUnits.map((unit) => (
+                        <DropdownMenuItem
+                          key={unit.id}
+                          onClick={() => setSizeUnitId(unit.id)}
+                        >
+                          {unit.displayName ?? unit.code} ({unit.code})
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
               )}
             </div>
 
