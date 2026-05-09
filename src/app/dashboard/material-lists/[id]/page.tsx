@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useEffect } from "react";
+import { use, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { api } from "~/trpc/react";
 import { Button, LargeButton } from "~/components/ui/button";
@@ -11,7 +11,6 @@ import { OrdersPreviewSheet } from "~/components/materialLists/OrdersPreviewShee
 import { AddPartDialog } from "~/components/materialLists/AddPartDialog";
 import { MaterialListNameModal } from "~/components/materialLists/MaterialListNameModal";
 import { ExistingQuotesOrdersDialog } from "~/components/materialLists/ExistingQuotesOrdersDialog";
-import { useState } from "react";
 import {
   CheckCircle2Icon,
   Clock3Icon,
@@ -174,6 +173,56 @@ export default function MaterialListDetailPage({
   const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
   const [isRealtimeRefreshing, setIsRealtimeRefreshing] = useState(false);
   const isBrowserOnline = useOnlineStatus();
+  const showAddPartDialogRef = useRef(false);
+
+  const openAddPartDialog = () => {
+    markUserAction("add-part-open", { materialListId: id });
+    setShowAddPartDialog(true);
+
+    if (typeof window === "undefined") return;
+
+    const currentState =
+      window.history.state && typeof window.history.state === "object"
+        ? window.history.state
+        : {};
+
+    if (currentState.foremenhqDialog === "add-part") return;
+
+    window.history.pushState(
+      { ...currentState, foremenhqDialog: "add-part" },
+      "",
+      window.location.href,
+    );
+  };
+
+  const closeAddPartDialog = () => {
+    if (
+      typeof window !== "undefined" &&
+      window.history.state?.foremenhqDialog === "add-part"
+    ) {
+      window.history.back();
+      return;
+    }
+
+    setShowAddPartDialog(false);
+  };
+
+  useEffect(() => {
+    showAddPartDialogRef.current = showAddPartDialog;
+  }, [showAddPartDialog]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const handlePopState = () => {
+      if (showAddPartDialogRef.current) {
+        setShowAddPartDialog(false);
+      }
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
 
   useEffect(() => {
     if (!id.startsWith("offline-list-") || typeof window === "undefined")
@@ -458,8 +507,7 @@ export default function MaterialListDetailPage({
               <p className="text-muted-foreground mb-4">No parts added</p>
               <LargeButton
                 onClick={() => {
-                  markUserAction("add-part-open", { materialListId: id });
-                  setShowAddPartDialog(true);
+                  openAddPartDialog();
                 }}
               >
                 <PlusIcon className="mr-2 h-4 w-4" />
@@ -599,8 +647,7 @@ export default function MaterialListDetailPage({
               <Button
                 variant="outline"
                 onClick={() => {
-                  markUserAction("add-part-open", { materialListId: id });
-                  setShowAddPartDialog(true);
+                  openAddPartDialog();
                 }}
                 className="h-9 min-h-9 w-full px-1.5 py-1 text-[11px] leading-tight whitespace-normal sm:h-9 sm:text-xs"
               >
@@ -661,7 +708,13 @@ export default function MaterialListDetailPage({
       {showAddPartDialog && (
         <AddPartDialog
           open={showAddPartDialog}
-          onOpenChange={setShowAddPartDialog}
+          onOpenChange={(open) => {
+            if (open) {
+              openAddPartDialog();
+            } else {
+              closeAddPartDialog();
+            }
+          }}
           materialListId={id}
         />
       )}
