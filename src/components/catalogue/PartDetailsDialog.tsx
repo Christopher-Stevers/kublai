@@ -214,6 +214,11 @@ export function PartDetailsDialog({
     { partIds: partId ? [partId] : [] },
     { enabled: isOnline && open && isEditMode && !!partId },
   );
+  const { data: partSupplierParts } =
+    api.supplier.getSupplierPartsByPart.useQuery(
+      { partDefinitionId: partId! },
+      { enabled: isOnline && open && isEditMode && !!partId },
+    );
   const { data: duplicateCandidates } =
     api.catalogue.findDuplicateCandidates.useQuery(
       { partId: partId!, limit: 6 },
@@ -872,16 +877,16 @@ export function PartDetailsDialog({
             </div>
 
             {!isEditMode && (
-              <div>
+              <div className="rounded-lg border bg-gray-50/50 p-3">
                 <FieldHeader
-                  label="Supplier"
+                  label="Suppliers"
                   onAdd={() => setIsSupplierDialogOpen(true)}
                 />
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button
                       variant="outline"
-                      className="mt-1 w-full justify-between"
+                      className="mt-1 w-full justify-between bg-white"
                       disabled={isLoading}
                     >
                       {supplierId
@@ -906,6 +911,38 @@ export function PartDetailsDialog({
                     ))}
                   </DropdownMenuContent>
                 </DropdownMenu>
+
+                {supplierId ? (
+                  <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <Label>Supplier SKU</Label>
+                      <Input
+                        value={supplierSku}
+                        onChange={(e) => setSupplierSku(e.target.value)}
+                        placeholder="Supplier SKU"
+                        className="mt-1 bg-white"
+                        disabled={isLoading}
+                      />
+                    </div>
+
+                    <div>
+                      <Label>Unit Cost</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={lastKnownUnitCost}
+                        onChange={(e) => setLastKnownUnitCost(e.target.value)}
+                        placeholder="0.00"
+                        className="mt-1 bg-white"
+                        disabled={isLoading}
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <p className="mt-2 text-xs text-gray-500">
+                    Choose a supplier to enter its SKU and cost for this part.
+                  </p>
+                )}
               </div>
             )}
 
@@ -1031,34 +1068,6 @@ export function PartDetailsDialog({
                 </div>
               )}
 
-            {!isEditMode && (
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div>
-                  <Label>Supplier SKU</Label>
-                  <Input
-                    value={supplierSku}
-                    onChange={(e) => setSupplierSku(e.target.value)}
-                    placeholder="Supplier SKU"
-                    className="mt-1"
-                    disabled={isLoading}
-                  />
-                </div>
-
-                <div>
-                  <Label>Unit Cost</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    value={lastKnownUnitCost}
-                    onChange={(e) => setLastKnownUnitCost(e.target.value)}
-                    placeholder="0.00"
-                    className="mt-1"
-                    disabled={isLoading}
-                  />
-                </div>
-              </div>
-            )}
-
             <div className="flex items-center gap-2">
               <input
                 id="isActive"
@@ -1072,8 +1081,8 @@ export function PartDetailsDialog({
             </div>
 
             {isEditMode && partId && (
-              <div>
-                <Label>Suppliers</Label>
+              <div className="rounded-lg border bg-gray-50/50 p-3">
+                <FieldHeader label="Suppliers" />
                 <div className="mt-1" onClick={(e) => e.stopPropagation()}>
                   <PartSuppliersDropdown
                     partDefinitionId={partId}
@@ -1085,11 +1094,37 @@ export function PartDetailsDialog({
                     }
                   />
                 </div>
-                <p className="mt-1 text-xs text-gray-500">
-                  {hasSuppliers
-                    ? "Manage suppliers for this part and set the preferred one."
-                    : "This part does not have any suppliers yet."}
-                </p>
+                {partSupplierParts && partSupplierParts.length > 0 ? (
+                  <div className="mt-3 space-y-2">
+                    {partSupplierParts.map((supplierPart) => (
+                      <div
+                        key={supplierPart.id}
+                        className="rounded-md border bg-white p-2 text-sm"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-medium">
+                            {supplierPart.supplier.name}
+                          </span>
+                          {supplierPart.isPreferred && (
+                            <span className="rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-800">
+                              Preferred
+                            </span>
+                          )}
+                        </div>
+                        <div className="mt-1 grid gap-1 text-xs text-gray-600 sm:grid-cols-2">
+                          <span>SKU: {supplierPart.supplierSku || "—"}</span>
+                          <span>
+                            Cost: {supplierPart.lastKnownUnitCost ?? "—"}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="mt-2 text-xs text-gray-500">
+                    This part does not have any suppliers yet.
+                  </p>
+                )}
               </div>
             )}
           </div>
