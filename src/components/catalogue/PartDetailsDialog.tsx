@@ -1007,25 +1007,8 @@ export function PartDetailsDialog({
                 </DropdownMenu>
 
                 {supplierId ? (
-                  <div className="mt-3 space-y-3">
-                    <button
-                      type="button"
-                      onClick={() => setIsPreferredSupplier((value) => !value)}
-                      className="flex w-full items-center justify-between rounded-md border bg-white px-3 py-2 text-sm transition-colors hover:bg-gray-50"
-                      disabled={isLoading}
-                    >
-                      <span className="font-medium">Preferred supplier</span>
-                      <Star
-                        className={`h-5 w-5 ${
-                          isPreferredSupplier
-                            ? "fill-yellow-400 text-yellow-400"
-                            : "text-gray-400"
-                        }`}
-                      />
-                    </button>
-
-                    <div className="grid gap-3 sm:grid-cols-2">
-                    <div>
+                  <div className="mt-3 grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] items-end gap-3">
+                    <div className="min-w-0">
                       <Label>Supplier SKU</Label>
                       <Input
                         value={supplierSku}
@@ -1036,7 +1019,7 @@ export function PartDetailsDialog({
                       />
                     </div>
 
-                    <div>
+                    <div className="min-w-0">
                       <Label>Unit Cost</Label>
                       <Input
                         type="number"
@@ -1050,8 +1033,27 @@ export function PartDetailsDialog({
                         disabled={isLoading}
                       />
                     </div>
+
+                    <div>
+                      <Label>Preferred supplier</Label>
+                      <button
+                        type="button"
+                        onClick={() => setIsPreferredSupplier((value) => !value)}
+                        className="mt-1 flex h-10 w-10 items-center justify-center rounded-md border bg-white transition-colors hover:bg-gray-50"
+                        disabled={isLoading}
+                        aria-pressed={isPreferredSupplier}
+                        aria-label="Preferred supplier"
+                      >
+                        <Star
+                          className={`h-5 w-5 ${
+                            isPreferredSupplier
+                              ? "fill-yellow-400 text-yellow-400"
+                              : "text-gray-400"
+                          }`}
+                        />
+                      </button>
+                    </div>
                   </div>
-                </div>
                 ) : (
                   <p className="mt-2 text-xs text-gray-500">
                     Choose a supplier to enter its SKU and cost for this part.
