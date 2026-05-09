@@ -76,7 +76,7 @@ export function WizardProgressIndicator({
   };
 
   return (
-    <div className="flex min-w-0 flex-wrap items-center gap-1.5 sm:gap-2">
+    <div className="flex min-w-0 flex-wrap items-center gap-1 sm:gap-1.5">
         {stages.map((stage) => {
           const isCompleted = stage.step < currentStep;
           const isCurrent = stage.step === currentStep;
@@ -86,7 +86,7 @@ export function WizardProgressIndicator({
             currentStage !== "review";
 
           return (
-            <div key={stage.id} className="flex min-w-0 items-center gap-1.5 sm:gap-2">
+            <div key={stage.id} className="flex min-w-0 items-center gap-1 sm:gap-1.5">
               <button
                 onClick={() => {
                   if (isClickable) {
@@ -94,7 +94,7 @@ export function WizardProgressIndicator({
                   }
                 }}
                 disabled={!isClickable}
-                className={`flex h-9 min-w-0 items-center gap-1.5 rounded-lg px-2 text-xs font-medium transition-colors sm:gap-2 sm:px-3 sm:text-sm ${
+                className={`flex h-8 min-w-0 items-center gap-1 rounded-lg px-1.5 text-xs font-medium transition-colors sm:h-9 sm:gap-1.5 sm:px-2.5 sm:text-sm ${
                   isCurrent
                     ? "bg-primary text-primary-foreground"
                     : isCompleted
@@ -103,7 +103,7 @@ export function WizardProgressIndicator({
                 } ${isClickable ? "cursor-pointer" : "cursor-default"}`}
               >
                 <div
-                  className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs sm:h-6 sm:w-6 sm:text-sm ${
+                  className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs sm:h-5.5 sm:w-5.5 sm:text-sm ${
                     isCurrent
                       ? "bg-primary-foreground text-primary"
                       : isCompleted
@@ -113,7 +113,7 @@ export function WizardProgressIndicator({
                 >
                   {isCompleted ? "✓" : stage.step}
                 </div>
-                <span className="max-w-[8.5rem] truncate whitespace-nowrap sm:max-w-none">
+                <span className="max-w-[6.5rem] truncate whitespace-nowrap sm:max-w-[8.5rem] md:max-w-none">
                   {getStageLabel(stage)}
                 </span>
               </button>
