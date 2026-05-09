@@ -421,7 +421,7 @@ export function PartDetailsDialog({
     setSupplierId(initialSupplierPart.supplierId);
     setSupplierSku(initialSupplierPart.supplierSku ?? "");
     setLastKnownUnitCost(
-      initialSupplierPart.lastKnownUnitCost?.toString() ?? "",
+      formatCurrencyInput(initialSupplierPart.lastKnownUnitCost?.toString() ?? ""),
     );
     if (initialSupplierPart.isPreferred) {
       setPreferredSupplierId(initialSupplierPart.supplierId);
