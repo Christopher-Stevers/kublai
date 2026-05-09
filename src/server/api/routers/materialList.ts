@@ -352,6 +352,7 @@ export const materialListRouter = createTRPCRouter({
           partDefinitionMaterialId: partDefinitions.materialId,
           partDefinitionMaterialName: materials.name,
           supplierPartId: supplierParts.id,
+          selectedSupplierId: quoteItems.supplierId,
           supplierPartSupplierId: supplierParts.supplierId,
           supplierPartSku: supplierParts.supplierSku,
           supplierPartLastKnownUnitCost: supplierParts.lastKnownUnitCost,
@@ -413,6 +414,7 @@ export const materialListRouter = createTRPCRouter({
               sizeUnitId: item.oneOffSizeUnitId,
             }
           : null,
+        selectedSupplierId: item.selectedSupplierId ?? item.supplierPartSupplierId ?? null,
         supplierPart: item.supplierPartId
           ? {
               id: item.supplierPartId,
@@ -1137,6 +1139,7 @@ export const materialListRouter = createTRPCRouter({
         itemId: z.string().uuid(),
         quantity: z.number().positive().optional(),
         supplierPartId: z.string().uuid().optional().nullable(),
+        supplierId: z.string().uuid().optional().nullable(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -1155,6 +1158,7 @@ export const materialListRouter = createTRPCRouter({
           quantity: quoteItems.quantity,
           unitCost: quoteItems.unitCost,
           supplierPartId: quoteItems.supplierPartId,
+          supplierId: quoteItems.supplierId,
         })
         .from(quoteItems)
         .where(eq(quoteItems.id, input.itemId))
@@ -1195,6 +1199,9 @@ export const materialListRouter = createTRPCRouter({
         : 0;
 
       // If supplier changed, get new unit cost
+      let nextSupplierPartId = quoteItem.supplierPartId;
+      let nextSupplierId = quoteItem.supplierId;
+
       if (input.supplierPartId !== undefined) {
         if (input.supplierPartId) {
           const [supplierPart] = await ctx.db
@@ -1209,12 +1216,38 @@ export const materialListRouter = createTRPCRouter({
             .limit(1);
 
           if (supplierPart) {
+            nextSupplierPartId = supplierPart.id;
+            nextSupplierId = supplierPart.supplierId;
             unitCost = supplierPart.lastKnownUnitCost
               ? parseFloat(supplierPart.lastKnownUnitCost.toString())
               : 0;
           }
         } else {
+          nextSupplierPartId = null;
           unitCost = 0;
+        }
+      }
+
+      if (input.supplierId !== undefined) {
+        if (input.supplierId) {
+          const [supplier] = await ctx.db
+            .select({ id: suppliers.id })
+            .from(suppliers)
+            .where(
+              and(
+                eq(suppliers.id, input.supplierId),
+                eq(suppliers.organizationId, ctx.user.organizationId),
+              ),
+            )
+            .limit(1);
+
+          if (supplier) {
+            nextSupplierId = supplier.id;
+            nextSupplierPartId = null;
+            unitCost = 0;
+          }
+        } else {
+          nextSupplierId = null;
         }
       }
 
@@ -1225,10 +1258,8 @@ export const materialListRouter = createTRPCRouter({
         .update(quoteItems)
         .set({
           quantity: quantity.toString(),
-          supplierPartId:
-            input.supplierPartId === undefined
-              ? quoteItem.supplierPartId
-              : input.supplierPartId,
+          supplierPartId: nextSupplierPartId,
+          supplierId: nextSupplierId,
           unitCost: unitCost.toString(),
           extendedPrice: extendedPrice.toString(),
           updatedAt: new Date(),
@@ -1766,12 +1797,13 @@ ${foremanName}`;
         .select({
           id: quoteItems.id,
           supplierPartId: quoteItems.supplierPartId,
+          selectedSupplierId: quoteItems.supplierId,
           partDefinitionId: quoteItems.partDefinitionId,
           quantity: quoteItems.quantity,
           uomId: quoteItems.uomId,
           unitCost: quoteItems.unitCost,
           descriptionSnapshot: quoteItems.descriptionSnapshot,
-          supplierId: supplierParts.supplierId,
+          supplierPartSupplierId: supplierParts.supplierId,
           supplierSku: supplierParts.supplierSku,
         })
         .from(quoteItems)
@@ -1784,11 +1816,11 @@ ${foremanName}`;
       // Group by supplier
       const itemsBySupplier = new Map<string, typeof quoteItemsList>();
       for (const item of quoteItemsList) {
-        if (!item.supplierId) {
+        const supplierId = item.selectedSupplierId ?? item.supplierPartSupplierId;
+        if (!supplierId) {
           // Skip items without supplier
           continue;
         }
-        const supplierId = item.supplierId;
         if (!itemsBySupplier.has(supplierId)) {
           itemsBySupplier.set(supplierId, []);
         }

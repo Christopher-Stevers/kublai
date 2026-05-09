@@ -1007,6 +1007,7 @@ export const quoteItems = createTable(
     supplierPartId: d
       .uuid()
       .references(() => supplierParts.id, { onDelete: "set null" }),
+    supplierId: d.uuid().references(() => suppliers.id, { onDelete: "set null" }),
     partDefinitionId: d
       .uuid()
       .references(() => partDefinitions.id, { onDelete: "restrict" }),
@@ -1045,6 +1046,7 @@ export const quoteItems = createTable(
   (t) => [
     index("quote_item_quote_idx").on(t.quoteId),
     index("quote_item_part_idx").on(t.partDefinitionId),
+    index("quote_item_supplier_idx").on(t.supplierId),
     index("quote_item_added_by_idx").on(t.addedByUserId),
   ],
 );
@@ -1054,6 +1056,10 @@ export const quoteItemsRelations = relations(quoteItems, ({ one }) => ({
   supplierPart: one(supplierParts, {
     fields: [quoteItems.supplierPartId],
     references: [supplierParts.id],
+  }),
+  supplier: one(suppliers, {
+    fields: [quoteItems.supplierId],
+    references: [suppliers.id],
   }),
   partDefinition: one(partDefinitions, {
     fields: [quoteItems.partDefinitionId],

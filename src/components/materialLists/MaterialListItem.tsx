@@ -35,6 +35,7 @@ interface MaterialListItemProps {
       imageUrl: string | null;
       material: string | null;
     } | null;
+    selectedSupplierId?: string | null;
     supplierPart: {
       id: string;
       supplierId: string;
@@ -257,6 +258,7 @@ function MaterialListItemComponent({
                   itemId={item.id}
                   partDefinitionId={item.partDefinition?.id ?? ""}
                   currentSupplierPartId={item.supplierPart?.id}
+                  currentSupplierId={item.selectedSupplierId}
                   materialListId={materialListId}
                   compact
                 />

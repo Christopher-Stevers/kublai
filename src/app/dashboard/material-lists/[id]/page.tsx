@@ -941,6 +941,7 @@ function MaterialListTableView({
                   itemId={item.id}
                   partDefinitionId={item.partDefinition?.id ?? ""}
                   currentSupplierPartId={item.supplierPart?.id}
+                  currentSupplierId={(item as { selectedSupplierId?: string | null }).selectedSupplierId}
                   materialListId={materialListId}
                   compact
                 />

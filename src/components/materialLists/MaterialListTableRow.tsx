@@ -26,6 +26,7 @@ interface MaterialListTableRowProps {
       sizeNominal: string | null;
       sizeUnitId: string | null;
     } | null;
+    selectedSupplierId?: string | null;
     supplierPart: {
       id: string;
       supplierId: string;
@@ -147,6 +148,7 @@ export function MaterialListTableRow({
               itemId={item.id}
               partDefinitionId={item.partDefinition.id}
               currentSupplierPartId={item.supplierPart?.id}
+              currentSupplierId={item.selectedSupplierId}
               materialListId={materialListId}
             />
           ) : (

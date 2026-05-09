@@ -33,6 +33,7 @@ interface SupplierSelectorProps {
   itemId: string;
   partDefinitionId: string;
   currentSupplierPartId: string | null | undefined;
+  currentSupplierId?: string | null;
   materialListId: string;
   compact?: boolean;
 }
@@ -41,6 +42,7 @@ export function SupplierSelector({
   itemId,
   partDefinitionId,
   currentSupplierPartId,
+  currentSupplierId,
   materialListId,
   compact = false,
 }: SupplierSelectorProps) {
@@ -51,6 +53,9 @@ export function SupplierSelector({
   const [pendingSupplierName, setPendingSupplierName] = useState("");
   const [optimisticSupplierPartId, setOptimisticSupplierPartId] = useState(
     currentSupplierPartId ?? null,
+  );
+  const [optimisticSupplierId, setOptimisticSupplierId] = useState(
+    currentSupplierId ?? null,
   );
   const [optimisticDisplayLabel, setOptimisticDisplayLabel] = useState<
     string | null
@@ -76,7 +81,8 @@ export function SupplierSelector({
 
   useEffect(() => {
     setOptimisticSupplierPartId(currentSupplierPartId ?? null);
-  }, [currentSupplierPartId]);
+    setOptimisticSupplierId(currentSupplierId ?? null);
+  }, [currentSupplierPartId, currentSupplierId]);
 
   const utils = api.useUtils();
   const isOnline = useOnlineStatus();
@@ -119,61 +125,22 @@ export function SupplierSelector({
     },
   });
 
-  const addSupplierPart = api.supplier.addSupplierPart.useMutation({
-    onSuccess: (supplierPart) => {
-      if (!supplierPart) return;
-
-      const supplier = allSuppliers?.find(
-        (candidate) => candidate.id === supplierPart.supplierId,
-      );
-
-      if (supplier) {
-        const optimisticSupplierPart = {
-          id: supplierPart.id,
-          supplierId: supplierPart.supplierId,
-          supplierSku: supplierPart.supplierSku,
-          lastKnownUnitCost: supplierPart.lastKnownUnitCost,
-          isPreferred: supplierPart.isPreferred,
-          supplier: {
-            id: supplier.id,
-            name: supplier.name,
-          },
-        } satisfies NonNullable<typeof supplierParts>[number];
-
-        setOptimisticSupplierPartId(supplierPart.id);
-        setOptimisticDisplayLabel(
-          `${supplier.name}${supplierPart.supplierSku ? ` (${supplierPart.supplierSku})` : ""}`,
-        );
-        updateCachedSupplierPart(optimisticSupplierPart);
-      }
-
-      // Assign the supplier part to the material list item
-      void setActiveItemSyncStatus(materialListId, itemId, "pending");
-      updateItem.mutate({
-        itemId,
-        supplierPartId: supplierPart.id,
-      });
-      void utils.supplier.getSupplierPartsByPart.invalidate({
-        partDefinitionId,
-      });
-      setIsDropdownOpen(false);
-      setSearchQuery("");
-    },
-  });
-
   // Handle supplier creation - this will be called from SupplierFormDialog callback
   const handleSupplierCreated = async (supplierId: string) => {
-    try {
-      // Create supplier part linking supplier to part definition
-      addSupplierPart.mutate({
-        supplierId,
-        partDefinitionId,
-      });
-      setIsSupplierDialogOpen(false);
-      setPendingSupplierName("");
-    } catch (error) {
-      console.error("Error creating supplier part:", error);
-    }
+    const supplierName = pendingSupplierName.trim();
+    setOptimisticSupplierPartId(null);
+    setOptimisticSupplierId(supplierId);
+    setOptimisticDisplayLabel(supplierName || "Supplier");
+    setIsSupplierDialogOpen(false);
+    setPendingSupplierName("");
+    setSearchQuery("");
+
+    void setActiveItemSyncStatus(materialListId, itemId, "pending");
+    updateItem.mutate({
+      itemId,
+      supplierPartId: null,
+      supplierId,
+    });
   };
 
   // Get all suppliers for the organization
@@ -209,6 +176,9 @@ export function SupplierSelector({
   const currentSupplierPart = supplierParts?.find(
     (sp) => sp.id === optimisticSupplierPartId,
   );
+  const currentSupplier = allSuppliers?.find(
+    (supplier) => supplier.id === optimisticSupplierId,
+  );
 
   const displayValue =
     optimisticDisplayLabel ??
@@ -218,7 +188,7 @@ export function SupplierSelector({
             ? ` (${currentSupplierPart.supplierSku})`
             : ""
         }`
-      : "No supplier");
+      : (currentSupplier?.name ?? "No supplier"));
 
   const updateCachedSupplierPart = (
     selectedSupplierPart: NonNullable<typeof supplierParts>[number] | null,
@@ -311,6 +281,7 @@ export function SupplierSelector({
       supplierPartId === "none" ? null : supplierPartId;
 
     setOptimisticSupplierPartId(nextSupplierPartId);
+    setOptimisticSupplierId(selectedSupplierPart?.supplierId ?? null);
     setOptimisticDisplayLabel(
       selectedSupplierPart
         ? `${selectedSupplierPart.supplier.name}${
@@ -371,6 +342,7 @@ export function SupplierSelector({
     updateItem.mutate({
       itemId,
       supplierPartId: nextSupplierPartId,
+      supplierId: selectedSupplierPart?.supplierId ?? null,
     });
   };
 
@@ -380,71 +352,18 @@ export function SupplierSelector({
     );
     if (!selectedSupplier) return;
 
-    if (!isOnline) {
-      const localSupplierPart = {
-        id: makeOfflineSupplierPartId(partDefinitionId, supplierId),
-        supplierId,
-        supplierSku: null,
-        lastKnownUnitCost: null,
-        isPreferred: false,
-        supplier: { id: selectedSupplier.id, name: selectedSupplier.name },
-      };
-      setCachedSupplierParts((prev) => {
-        if (
-          prev.some((supplierPart) => supplierPart.id === localSupplierPart.id)
-        )
-          return prev;
-        const next = [...prev, localSupplierPart];
-        setOfflineSupplierPartsByPart(partDefinitionId, next);
-        return next;
-      });
-      setOptimisticSupplierPartId(localSupplierPart.id);
-      setOptimisticDisplayLabel(selectedSupplier.name);
-      updateCachedSupplierPart(localSupplierPart);
-      setIsDropdownOpen(false);
-      setSearchQuery("");
-
-      void applyOfflineSupplierPartUpdate(materialListId, itemId, {
-        supplierPartId: localSupplierPart.id,
-        unitCost: 0,
-        supplierPartSnapshot: {
-          id: localSupplierPart.id,
-          supplierId: localSupplierPart.supplierId,
-          supplierSku: null,
-          lastKnownUnitCost: null,
-          supplier: localSupplierPart.supplier,
-        },
-      });
-      void enqueueOfflineMutation({
-        type: "updateItemSupplierPart",
-        materialListId,
-        itemId,
-        supplierPartId: localSupplierPart.id,
-        supplierId,
-        partDefinitionId,
-        unitCost: 0,
-        supplierPartSnapshot: {
-          id: localSupplierPart.id,
-          supplierId: localSupplierPart.supplierId,
-          supplierSku: null,
-          lastKnownUnitCost: null,
-          supplier: localSupplierPart.supplier,
-        },
-        queuedAt: new Date().toISOString(),
-      });
-      void utils.materialList.getMaterialList.invalidate({ materialListId });
-      return;
-    }
-
+    setOptimisticSupplierPartId(null);
+    setOptimisticSupplierId(selectedSupplier.id);
     setOptimisticDisplayLabel(selectedSupplier.name);
+    updateCachedSupplierPart(null);
     setIsDropdownOpen(false);
     setSearchQuery("");
 
-    // Create supplier part for this supplier and part
     void setActiveItemSyncStatus(materialListId, itemId, "pending");
-    addSupplierPart.mutate({
-      supplierId,
-      partDefinitionId,
+    updateItem.mutate({
+      itemId,
+      supplierPartId: null,
+      supplierId: selectedSupplier.id,
     });
   };
 
@@ -529,7 +448,7 @@ export function SupplierSelector({
                     >
                       <span>{supplier.name}</span>
                       <span className="text-muted-foreground text-xs">
-                        Add supplier to this part
+                        Use for this order
                       </span>
                     </DropdownMenuItem>
                   ))}

@@ -187,6 +187,7 @@ export function AddPartDialog({
               sizeUnitId: variables.oneOffSizeUnitId ?? null,
             }
           : null,
+        selectedSupplierId: null,
         supplierPart: variables.supplierPartId
           ? {
               id: variables.supplierPartId,
@@ -817,6 +818,9 @@ export function AddPartDialog({
             syncVersion: now.toISOString(),
             partDefinition: item.partDefinitionSnapshot,
             oneOff: null,
+            selectedSupplierId:
+              parseOfflineSupplierPartId(item.pendingPart.supplierPartId!)
+                ?.supplierId ?? null,
             supplierPart: item.supplierPartSnapshot,
             uom: null,
             addedBy: null,
