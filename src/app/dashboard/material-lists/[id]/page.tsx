@@ -29,6 +29,7 @@ import {
   type MaterialListSyncStatus,
 } from "~/hooks/use-offline-material-list";
 import { useOnlineStatus } from "~/hooks/use-online-status";
+import { useDexieCloudSyncState } from "~/hooks/use-dexie-cloud-sync-state";
 import {
   OFFLINE_ID_MAP_CHANGED_EVENT,
   resolveOfflineId,
@@ -173,6 +174,7 @@ export default function MaterialListDetailPage({
   const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
   const [isRealtimeRefreshing, setIsRealtimeRefreshing] = useState(false);
   const isBrowserOnline = useOnlineStatus();
+  const dexieCloudSync = useDexieCloudSyncState();
   const showAddPartDialogRef = useRef(false);
 
   const openAddPartDialog = () => {
@@ -434,6 +436,11 @@ export default function MaterialListDetailPage({
             {isOfflineFallback && (
               <div className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-900">
                 Showing cached material list data
+              </div>
+            )}
+            {dexieCloudSync.configured && (
+              <div className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-700">
+                Dexie Cloud: {dexieCloudSync.status}
               </div>
             )}
           </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useLiveQuery } from "dexie-react-hooks";
 import {
   getOfflineMaterialList,
   setOfflineMaterialList,
@@ -17,6 +18,7 @@ import {
   setActiveItemSyncStatus,
   ACTIVE_ITEM_SYNC_STATUS_TTL_MS,
 } from "~/lib/offline-material-list-mutations";
+import { getOfflineDexieDb } from "~/lib/offline-dexie-db";
 
 export type MaterialListSyncStatus = "synced" | "pending" | "syncing";
 
@@ -37,6 +39,22 @@ export function useOfflineMaterialList(
   const [hiddenRemovedItemIds, setHiddenRemovedItemIds] = useState<Set<string>>(
     () => new Set(),
   );
+  const liveCached = useLiveQuery(
+    async () => {
+      const db = getOfflineDexieDb();
+      if (!db) return null;
+      const row = await db.materialLists.get(materialListId);
+      return (row?.value as OfflineMaterialListEnvelope | undefined) ?? null;
+    },
+    [materialListId],
+    undefined,
+  );
+
+  useEffect(() => {
+    if (liveCached === undefined) return;
+    setCached(liveCached);
+    setCacheLoaded(true);
+  }, [liveCached]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
