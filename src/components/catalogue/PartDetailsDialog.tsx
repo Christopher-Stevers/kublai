@@ -260,6 +260,7 @@ export function PartDetailsDialog({
   const [newMaterialName, setNewMaterialName] = useState("");
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [copiedPartUuid, setCopiedPartUuid] = useState(false);
+  const [isSubmittingInBackground, setIsSubmittingInBackground] = useState(false);
 
   const { data: selectedSupplierDetails } = api.supplier.getById.useQuery(
     { id: supplierId! },
@@ -278,6 +279,7 @@ export function PartDetailsDialog({
       initializedForOpenRef.current = false;
       setSubmitError(null);
       setCopiedPartUuid(false);
+      setIsSubmittingInBackground(false);
     }
   }, [open]);
 
@@ -503,12 +505,13 @@ export function PartDetailsDialog({
 
       void utils.catalogue.searchParts.invalidate();
       void utils.catalogue.getPart.invalidate();
-      onOpenChange(false);
     },
     onError: (error) => {
+      console.error("Could not create part", error);
       setSubmitError(
         error.message || "Could not create part. Please try again.",
       );
+      setIsSubmittingInBackground(false);
     },
   });
 
@@ -516,10 +519,11 @@ export function PartDetailsDialog({
     onSuccess: () => {
       void utils.catalogue.searchParts.invalidate();
       void utils.catalogue.getPart.invalidate();
-      onOpenChange(false);
     },
     onError: (error) => {
+      console.error("Could not save part", error);
       setSubmitError(error.message || "Could not save part. Please try again.");
+      setIsSubmittingInBackground(false);
     },
   });
 
@@ -580,7 +584,10 @@ export function PartDetailsDialog({
     ? parseSizeInput(sizeValue.trim())
     : null;
   const isLoading =
-    createPart.isPending || updatePart.isPending || isProcessingImage;
+    createPart.isPending ||
+    updatePart.isPending ||
+    isProcessingImage ||
+    isSubmittingInBackground;
   const selectedCatalog = catalogs?.find((catalog) => catalog.id === catalogId);
   const selectedCategory = categoryTree?.find(
     (category) => category.id === categoryId,
@@ -698,9 +705,12 @@ export function PartDetailsDialog({
         }
       : {};
 
+    setIsSubmittingInBackground(true);
+
     if (isEditMode) {
       if (!partId) return;
       updatePart.mutate({ partId, ...payload, ...supplierPayload });
+      window.setTimeout(() => onOpenChange(false), 0);
       return;
     }
 
@@ -708,6 +718,7 @@ export function PartDetailsDialog({
       ...payload,
       ...supplierPayload,
     });
+    window.setTimeout(() => onOpenChange(false), 0);
   };
 
   if (isEditMode && open && isLoadingPart) {
