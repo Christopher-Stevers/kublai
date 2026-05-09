@@ -192,12 +192,6 @@ function MaterialListItemComponent({
     item.partDefinition?.displayName ||
     item.descriptionSnapshot ||
     "Unknown Part";
-  const subtitleParts = [
-    item.partDefinition?.material ?? null,
-    item.uom?.code ?? null,
-  ].filter((value): value is string => Boolean(value));
-  const subtitle = subtitleParts.join(" · ");
-
   return (
     <Card className="group relative overflow-hidden rounded-2xl border-gray-200 bg-gradient-to-br from-white to-gray-50/60 shadow-sm transition-all [content-visibility:auto] [contain-intrinsic-size:9rem] hover:border-gray-300 hover:shadow-md">
       <CardContent className="relative p-3 sm:p-4">
@@ -239,11 +233,7 @@ function MaterialListItemComponent({
               <h3 className="line-clamp-1 text-sm leading-tight font-semibold tracking-tight text-gray-900 sm:text-base">
                 {partName}
               </h3>
-              {subtitle && (
-                <p className="mt-0.5 truncate text-xs text-gray-500">
-                  {subtitle}
-                </p>
-              )}
+
             </div>
 
             <div className="flex h-8 items-center rounded-xl bg-white/70">
