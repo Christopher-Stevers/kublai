@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { ChevronDown, Package, Upload } from "lucide-react";
+import { ChevronDown, Package, Star, Upload } from "lucide-react";
 import { api } from "~/trpc/react";
 import {
   formatSize,
@@ -240,6 +240,7 @@ export function PartDetailsDialog({
   const [supplierId, setSupplierId] = useState<string | null>(null);
   const [supplierSku, setSupplierSku] = useState("");
   const [lastKnownUnitCost, setLastKnownUnitCost] = useState("");
+  const [isPreferredSupplier, setIsPreferredSupplier] = useState(true);
   const [supplierFieldDrafts, setSupplierFieldDrafts] = useState<
     Record<string, { supplierSku: string; lastKnownUnitCost: string }>
   >({});
@@ -294,6 +295,7 @@ export function PartDetailsDialog({
       setSupplierId(null);
       setSupplierSku("");
       setLastKnownUnitCost("");
+      setIsPreferredSupplier(true);
       setSupplierFieldDrafts({});
       setHasManuallyEditedDisplayName(true);
       initializedForOpenRef.current = true;
@@ -320,6 +322,7 @@ export function PartDetailsDialog({
       setSupplierId(null);
       setSupplierSku("");
       setLastKnownUnitCost("");
+      setIsPreferredSupplier(true);
       setSupplierFieldDrafts({});
       setHasManuallyEditedDisplayName(false);
 
@@ -413,6 +416,7 @@ export function PartDetailsDialog({
     if (!nextSupplierId) {
       setSupplierSku("");
       setLastKnownUnitCost("");
+      setIsPreferredSupplier(true);
     }
   };
 
@@ -671,6 +675,7 @@ export function PartDetailsDialog({
       supplierId: supplierId ?? undefined,
       supplierSku: supplierSku.trim() || undefined,
       lastKnownUnitCost: lastKnownUnitCost.trim() || undefined,
+      supplierIsPreferred: isPreferredSupplier,
       currency: "CAD",
     });
   };
@@ -1002,7 +1007,24 @@ export function PartDetailsDialog({
                 </DropdownMenu>
 
                 {supplierId ? (
-                  <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  <div className="mt-3 space-y-3">
+                    <button
+                      type="button"
+                      onClick={() => setIsPreferredSupplier((value) => !value)}
+                      className="flex w-full items-center justify-between rounded-md border bg-white px-3 py-2 text-sm transition-colors hover:bg-gray-50"
+                      disabled={isLoading}
+                    >
+                      <span className="font-medium">Preferred supplier</span>
+                      <Star
+                        className={`h-5 w-5 ${
+                          isPreferredSupplier
+                            ? "fill-yellow-400 text-yellow-400"
+                            : "text-gray-400"
+                        }`}
+                      />
+                    </button>
+
+                    <div className="grid gap-3 sm:grid-cols-2">
                     <div>
                       <Label>Supplier SKU</Label>
                       <Input
@@ -1029,6 +1051,7 @@ export function PartDetailsDialog({
                       />
                     </div>
                   </div>
+                </div>
                 ) : (
                   <p className="mt-2 text-xs text-gray-500">
                     Choose a supplier to enter its SKU and cost for this part.

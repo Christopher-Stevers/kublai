@@ -1973,6 +1973,7 @@ export const catalogueRouter = createTRPCRouter({
         supplierSku: z.string().max(255).optional(),
         supplierName: z.string().optional(),
         lastKnownUnitCost: z.string().optional(),
+        supplierIsPreferred: z.boolean().optional(),
         currency: z.string().max(10).default("CAD"),
       }),
     )
@@ -2091,7 +2092,7 @@ export const catalogueRouter = createTRPCRouter({
               supplierName: input.supplierName ?? null,
               lastKnownUnitCost: input.lastKnownUnitCost ?? null,
               currency: input.currency ?? "CAD",
-              isPreferred: false,
+              isPreferred: input.supplierIsPreferred ?? false,
             });
           }
         }
