@@ -1091,6 +1091,40 @@ export const materialListSyncMutations = createTable(
   ],
 );
 
+export const materialListSyncTombstones = createTable(
+  "material_list_sync_tombstone",
+  (d) => ({
+    id: d
+      .uuid()
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    organizationId: d
+      .uuid()
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    materialListId: d
+      .uuid()
+      .notNull()
+      .references(() => materialLists.id, { onDelete: "cascade" }),
+    entityType: d.varchar({ length: 40 }).notNull(),
+    entityId: d.varchar({ length: 255 }).notNull(),
+    deletedAt: d
+      .timestamp({ withTimezone: true })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  }),
+  (t) => [
+    unique("material_list_sync_tombstone_entity_uniq").on(
+      t.organizationId,
+      t.entityType,
+      t.entityId,
+    ),
+    index("material_list_sync_tombstone_list_idx").on(t.materialListId),
+    index("material_list_sync_tombstone_deleted_idx").on(t.deletedAt),
+  ],
+);
+
 export const quoteItemsRelations = relations(quoteItems, ({ one }) => ({
   quote: one(quotes, { fields: [quoteItems.quoteId], references: [quotes.id] }),
   supplierPart: one(supplierParts, {

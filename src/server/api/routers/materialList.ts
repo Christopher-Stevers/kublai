@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import { eq, and, sql, desc, inArray } from "drizzle-orm";
+import { eq, and, sql, desc, inArray, gt } from "drizzle-orm";
 import { z } from "zod";
 import type { db as appDb } from "~/server/db";
 
@@ -89,6 +89,7 @@ import {
   users,
   materials,
   materialListSyncMutations,
+  materialListSyncTombstones,
 } from "~/server/db/schema";
 
 async function recalculateQuoteTotals(database: typeof appDb, quoteId: string) {
@@ -113,6 +114,28 @@ async function recalculateQuoteTotals(database: typeof appDb, quoteId: string) {
     .where(eq(quotes.id, quoteId));
 
   return subtotal;
+}
+
+async function touchMaterialList(database: typeof appDb, materialListId: string) {
+  await database
+    .update(materialLists)
+    .set({ updatedAt: new Date() })
+    .where(eq(materialLists.id, materialListId));
+}
+
+async function recordMaterialListItemTombstone(
+  database: typeof appDb,
+  input: { organizationId: string; materialListId: string; itemId: string },
+) {
+  await database
+    .insert(materialListSyncTombstones)
+    .values({
+      organizationId: input.organizationId,
+      materialListId: input.materialListId,
+      entityType: "quoteItem",
+      entityId: input.itemId,
+    })
+    .onConflictDoNothing();
 }
 
 const materialListSyncMutationInput = z.discriminatedUnion("type", [
@@ -1370,6 +1393,14 @@ export const materialListRouter = createTRPCRouter({
       await ctx.db.delete(quoteItems).where(eq(quoteItems.id, input.itemId));
 
       await recalculateQuoteTotals(ctx.db, quote.id);
+      if (quote.materialListId) {
+        await recordMaterialListItemTombstone(ctx.db, {
+          organizationId: ctx.user.organizationId,
+          materialListId: quote.materialListId,
+          itemId: input.itemId,
+        });
+        await touchMaterialList(ctx.db, quote.materialListId);
+      }
 
       if (quote.materialListId) publishMaterialListEvent(quote.materialListId);
       return { success: true };
@@ -1493,6 +1524,15 @@ export const materialListRouter = createTRPCRouter({
 
         if (verifiedIds.length > 0) {
           await ctx.db.delete(quoteItems).where(inArray(quoteItems.id, verifiedIds));
+          await Promise.all(
+            verifiedIds.map((itemId) =>
+              recordMaterialListItemTombstone(ctx.db, {
+                organizationId: ctx.user.organizationId!,
+                materialListId: input.materialListId,
+                itemId,
+              }),
+            ),
+          );
         }
       }
 
@@ -1710,6 +1750,11 @@ export const materialListRouter = createTRPCRouter({
                 .limit(1);
               if (item?.quoteId === materialList.quoteId) {
                 await ctx.db.delete(quoteItems).where(eq(quoteItems.id, mutation.itemId));
+                await recordMaterialListItemTombstone(ctx.db, {
+                  organizationId: ctx.user.organizationId,
+                  materialListId: input.materialListId,
+                  itemId: mutation.itemId,
+                });
                 needsTotalRecalc = true;
               }
               serverItemId = mutation.itemId;
@@ -1751,10 +1796,105 @@ export const materialListRouter = createTRPCRouter({
         await recalculateQuoteTotals(ctx.db, materialList.quoteId);
       }
       if (applied.length > 0) {
+        await touchMaterialList(ctx.db, input.materialListId);
+      }
+      if (applied.length > 0) {
         publishMaterialListEvent(input.materialListId);
       }
 
       return { applied, failed };
+    }),
+
+  pullMaterialListSyncChanges: hasDashboardAccess
+    .input(
+      z.object({
+        since: z.string().datetime().optional(),
+        materialListIds: z.array(z.string().uuid()).optional(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      if (!ctx.user.organizationId) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "User must belong to an organization",
+        });
+      }
+
+      const since = input.since ? new Date(input.since) : new Date(0);
+      const now = new Date();
+      const scopedMaterialListIds = input.materialListIds?.length
+        ? Array.from(new Set(input.materialListIds))
+        : null;
+
+      const materialListFilters = [
+        eq(materialLists.organizationId, ctx.user.organizationId),
+        gt(materialLists.updatedAt, since),
+      ];
+      if (scopedMaterialListIds) {
+        materialListFilters.push(inArray(materialLists.id, scopedMaterialListIds));
+      }
+
+      const changedLists = await ctx.db
+        .select({ id: materialLists.id, updatedAt: materialLists.updatedAt })
+        .from(materialLists)
+        .where(and(...materialListFilters))
+        .limit(200);
+
+      const changedItemFilters = [
+        eq(materialLists.organizationId, ctx.user.organizationId),
+        gt(quoteItems.updatedAt, since),
+      ];
+      if (scopedMaterialListIds) {
+        changedItemFilters.push(inArray(materialLists.id, scopedMaterialListIds));
+      }
+
+      const changedItems = await ctx.db
+        .select({ materialListId: materialLists.id, updatedAt: quoteItems.updatedAt })
+        .from(quoteItems)
+        .innerJoin(quotes, eq(quoteItems.quoteId, quotes.id))
+        .innerJoin(materialLists, eq(quotes.materialListId, materialLists.id))
+        .where(and(...changedItemFilters))
+        .limit(500);
+
+      const tombstoneFilters = [
+        eq(materialListSyncTombstones.organizationId, ctx.user.organizationId),
+        gt(materialListSyncTombstones.deletedAt, since),
+      ];
+      if (scopedMaterialListIds) {
+        tombstoneFilters.push(
+          inArray(materialListSyncTombstones.materialListId, scopedMaterialListIds),
+        );
+      }
+
+      const tombstones = await ctx.db
+        .select({
+          materialListId: materialListSyncTombstones.materialListId,
+          entityType: materialListSyncTombstones.entityType,
+          entityId: materialListSyncTombstones.entityId,
+          deletedAt: materialListSyncTombstones.deletedAt,
+        })
+        .from(materialListSyncTombstones)
+        .where(and(...tombstoneFilters))
+        .limit(500);
+
+      const changedMaterialListIds = Array.from(
+        new Set([
+          ...changedLists.map((row) => row.id),
+          ...changedItems.map((row) => row.materialListId),
+          ...tombstones.map((row) => row.materialListId),
+        ]),
+      );
+
+      return {
+        cursor: now.toISOString(),
+        changedMaterialListIds,
+        tombstones: tombstones.map((row) => ({
+          materialListId: row.materialListId,
+          entityType: row.entityType,
+          entityId: row.entityId,
+          deletedAt: row.deletedAt.toISOString(),
+        })),
+      };
     }),
 
   /**

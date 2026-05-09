@@ -19,6 +19,7 @@ import {
   getOfflineMaterialListIds,
   setOfflineMaterialList,
 } from "~/lib/offline-material-list";
+import { idbGetMeta, idbSetMeta } from "~/lib/offline-indexed-db";
 import {
   getOfflineEntityMutationQueue,
   getOfflineJobDetail,
@@ -34,6 +35,7 @@ let materialListSyncInFlight = false;
 
 const wait = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms));
 const SYNC_LOCK_KEY = "foremanhq.offline.material-list-sync-lock";
+const PULL_CURSOR_META_KEY = "material-list-sync-pull-cursor";
 
 function readPersistentSyncLock() {
   if (typeof window === "undefined") return null;
@@ -212,6 +214,22 @@ export function useOfflineMaterialListSyncRunner() {
     }
 
     if (queue.length === 0 && entityQueue.length === 0) {
+      const cachedIds = await getOfflineMaterialListIds();
+      const since = await idbGetMeta<string | null>(PULL_CURSOR_META_KEY, null);
+      const changes = await utils.client.materialList.pullMaterialListSyncChanges.query({
+        since: since ?? undefined,
+        materialListIds: cachedIds.filter(isUuid),
+      });
+
+      for (const materialListId of changes.changedMaterialListIds) {
+        const refreshed = await utils.client.materialList.getMaterialList.query({ materialListId });
+        if (refreshed) {
+          await setOfflineMaterialList(materialListId, refreshed, { pendingSync: false });
+          utils.materialList.getMaterialList.setData({ materialListId }, refreshed);
+        }
+      }
+
+      await idbSetMeta(PULL_CURSOR_META_KEY, changes.cursor);
       await setSyncingMaterialListIds([]);
       return { synced: true, remaining: 0 };
     }
@@ -785,6 +803,29 @@ export function useOfflineMaterialListSyncRunner() {
           });
         }
       }
+
+      const cachedIdsForPull = await getOfflineMaterialListIds();
+      const pullCursor = await idbGetMeta<string | null>(PULL_CURSOR_META_KEY, null);
+      const pullChanges = await utils.client.materialList.pullMaterialListSyncChanges.query({
+        since: pullCursor ?? undefined,
+        materialListIds: cachedIdsForPull.filter(isUuid),
+      });
+
+      for (const materialListId of pullChanges.changedMaterialListIds) {
+        if (materialListsToRefresh.has(materialListId)) continue;
+        const remainingForList = remaining.filter(
+          (item) => item.materialListId === materialListId,
+        );
+        if (remainingForList.length > 0) continue;
+
+        const refreshed = await utils.client.materialList.getMaterialList.query({ materialListId });
+        if (refreshed) {
+          await setOfflineMaterialList(materialListId, refreshed, { pendingSync: false });
+          utils.materialList.getMaterialList.setData({ materialListId }, refreshed);
+        }
+      }
+
+      await idbSetMeta(PULL_CURSOR_META_KEY, pullChanges.cursor);
 
       if (localMaterialListIdMap.size > 0 && typeof window !== "undefined") {
         const pathname = window.location.pathname;
