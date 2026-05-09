@@ -391,7 +391,7 @@ export function PartDetailsDialog({
     : undefined;
 
   useEffect(() => {
-    if (!supplierId) return;
+    if (isEditMode || !supplierId) return;
 
     if (selectedSupplierDraft) {
       setSupplierSku(selectedSupplierDraft.supplierSku);
@@ -404,6 +404,7 @@ export function PartDetailsDialog({
       matchingSelectedSupplierPart?.lastKnownUnitCost?.toString() ?? "",
     );
   }, [
+    isEditMode,
     matchingSelectedSupplierPart,
     selectedSupplierDraft,
     supplierId,
