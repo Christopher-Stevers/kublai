@@ -437,7 +437,7 @@ export default function MaterialListDetailPage({
               </div>
             )}
           </div>
-          <div className="flex items-end justify-between gap-3">
+          <div className="flex items-start justify-between gap-3">
             <div>
               <div className="flex flex-col content-start items-start gap-0.5">
                 <button
