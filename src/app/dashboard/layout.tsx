@@ -9,7 +9,6 @@ import { getDevBypassUser } from "~/server/utils/get-dev-bypass-user";
 import { getAgentBypassUser } from "~/server/utils/get-agent-bypass-user";
 import { OfflineSyncDebugPanel } from "~/components/offline/OfflineSyncDebugPanel";
 
-const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
 const allowDevDashboardAccess = process.env.NODE_ENV !== "production";
 
 export default async function DashboardLayout({

@@ -71,6 +71,41 @@ export function getOfflineCatalogueSnapshot(): OfflineCatalogueSnapshotEnvelope 
   }
 }
 
+function updateOfflineCatalogueSnapshot(
+  updater: (data: OfflineCatalogueSnapshotData) => OfflineCatalogueSnapshotData,
+) {
+  const current = getOfflineCatalogueSnapshot()?.data;
+  if (!current) return;
+  setOfflineCatalogueSnapshot(updater(current));
+}
+
+export function addOfflineCatalogueCatalog(catalog: OfflineCatalogueCatalog) {
+  updateOfflineCatalogueSnapshot((data) => ({
+    ...data,
+    catalogs: [...data.catalogs.filter((item) => item.id !== catalog.id), catalog].sort((a, b) =>
+      a.name.localeCompare(b.name),
+    ),
+  }));
+}
+
+export function addOfflineCatalogueCategory(category: OfflineCatalogueCategory) {
+  updateOfflineCatalogueSnapshot((data) => ({
+    ...data,
+    categories: [...data.categories.filter((item) => item.id !== category.id), category].sort((a, b) =>
+      a.name.localeCompare(b.name),
+    ),
+  }));
+}
+
+export function addOfflineCatalogueMaterial(material: OfflineCatalogueMaterial) {
+  updateOfflineCatalogueSnapshot((data) => ({
+    ...data,
+    materials: [...data.materials.filter((item) => item.id !== material.id), material].sort((a, b) =>
+      a.name.localeCompare(b.name),
+    ),
+  }));
+}
+
 export function setOfflineCatalogueSnapshot(data: OfflineCatalogueSnapshotData) {
   if (typeof window === "undefined") return;
 

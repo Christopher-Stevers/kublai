@@ -24,6 +24,8 @@ import {
   downloadCatalogueRowsAsXlsx,
   readCatalogueImportWorkbook,
 } from "~/lib/catalogue-xlsx";
+import { useOnlineStatus } from "~/hooks/use-online-status";
+import { TEMPORARILY_DISCONNECT_BROWSER_FROM_SERVER } from "~/lib/server-connection-mode";
 
 export default function CataloguePage() {
   const [editingPartId, setEditingPartId] = useState<string | null>(null);
@@ -34,6 +36,8 @@ export default function CataloguePage() {
   const [isImporting, setIsImporting] = useState(false);
   const [importProgress, setImportProgress] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const isBrowserOnline = useOnlineStatus();
+  const isCatalogueOnline = isBrowserOnline && !TEMPORARILY_DISCONNECT_BROWSER_FROM_SERVER;
   const utils = api.useUtils();
 
   const importCatalogueRows = api.catalogue.importCatalogueRows.useMutation();
@@ -48,7 +52,6 @@ export default function CataloguePage() {
     hasSizeSelection,
     selectedCategory,
     hasCategorySelection,
-    setSelectedCategory,
     showCustomCatalogInput,
     setShowCustomCatalogInput,
     customCatalogName,
@@ -71,7 +74,6 @@ export default function CataloguePage() {
     setWizardSearchQuery,
     catalogs,
     catalogsWithCounts,
-    materials,
     materialsWithCounts,
     allUnits,
     categoriesWithCounts,
@@ -211,6 +213,19 @@ export default function CataloguePage() {
       setImportProgress(null);
     }
   };
+
+  if (!isCatalogueOnline) {
+    return (
+      <div className="flex h-[calc(100vh-4rem)] items-center justify-center bg-gray-50 p-6">
+        <div className="max-w-md rounded-2xl border bg-white p-6 text-center shadow-sm">
+          <h1 className="text-xl font-bold text-gray-900">Parts Catalogue is online-only</h1>
+          <p className="mt-2 text-sm text-gray-600">
+            Catalogue browsing, imports, exports, and edits require a server connection. Material-list field work can continue from local data.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-[calc(100vh-4rem)] flex-col overflow-hidden">

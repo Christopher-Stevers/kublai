@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
@@ -10,7 +9,6 @@ import { MarketingHeader } from "../_components/MarketingHeader";
 import { Loader2 } from "lucide-react";
 
 export default function PricingPage() {
-  const router = useRouter();
   const [isCreatingCheckout, setIsCreatingCheckout] = useState<string | null>(null);
 
   const createOneTimeCheckout = api.payment.createOneTimeCheckout.useMutation({

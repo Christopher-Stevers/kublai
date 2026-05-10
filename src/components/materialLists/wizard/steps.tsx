@@ -1,7 +1,5 @@
 "use client";
 
-import { useState } from "react";
-import { api } from "~/trpc/react";
 import { parseSizeInput, formatSize, formatSizeAsFraction } from "~/lib/size-utils";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";

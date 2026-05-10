@@ -243,6 +243,30 @@ export async function patchOfflineMaterialList(
   return nextData;
 }
 
+export async function remapOfflineMaterialListCacheId(
+  localMaterialListId: string,
+  serverMaterialListId: string,
+) {
+  const existing = await getOfflineMaterialList(localMaterialListId);
+  if (!existing) return;
+
+  await setOfflineMaterialList(
+    serverMaterialListId,
+    {
+      ...existing.data,
+      materialList: {
+        ...existing.data.materialList,
+        id: serverMaterialListId,
+      },
+    },
+    {
+      pendingSync: existing.pendingSync,
+      pendingDeletedItemIds: existing.pendingDeletedItemIds ?? [],
+    },
+  );
+  await clearOfflineMaterialList(localMaterialListId);
+}
+
 export async function clearOfflineMaterialList(materialListId: string) {
   await idbDeleteMaterialList(materialListId);
   const db = getOfflineDexieDb();

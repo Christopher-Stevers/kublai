@@ -142,6 +142,7 @@ async function migrateLegacySyncMeta() {
 
 export const OFFLINE_MATERIAL_LIST_SYNC_EVENT = "foremanhq:offline-material-list-sync";
 export const ACTIVE_ITEM_SYNC_STATUS_TTL_MS = 2 * 60 * 1000;
+const SYNCING_MATERIAL_LIST_TTL_MS = 2 * 60 * 1000;
 export type MaterialListItemSyncStatus = "pending" | "syncing";
 export interface MaterialListItemSyncState {
   status: MaterialListItemSyncStatus;
@@ -175,6 +176,19 @@ function normalizeItemSyncState(
 export function notifyOfflineMaterialListSyncStateChanged() {
   if (typeof window === "undefined") return;
   window.dispatchEvent(new Event(OFFLINE_MATERIAL_LIST_SYNC_EVENT));
+}
+
+export function notifyMaterialListItemSyncStatusChanged(
+  materialListId: string,
+  itemId: string,
+  status: MaterialListItemSyncStatus | "synced",
+) {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(
+    new CustomEvent(OFFLINE_MATERIAL_LIST_SYNC_EVENT, {
+      detail: { materialListId, itemId, status },
+    }),
+  );
 }
 
 export function getQueuedMaterialListIds(queue: OfflineMaterialListMutation[]) {
@@ -262,6 +276,7 @@ export async function setActiveItemSyncStatus(
   itemId: string,
   status: MaterialListItemSyncStatus | "synced",
 ) {
+  notifyMaterialListItemSyncStatusChanged(materialListId, itemId, status);
   await migrateLegacySyncMeta();
   const db = getOfflineDexieDb();
   const id = `${materialListId}:${itemId}`;
@@ -362,12 +377,29 @@ export async function getSyncingMaterialListIds() {
 
   if (db) {
     const rows = await db.syncingMaterialLists.toArray();
-    if (rows.length > 0) return rows.map((row) => row.id);
+    if (rows.length > 0) {
+      const now = Date.now();
+      const freshRows = rows.filter(
+        (row) =>
+          typeof row.updatedAt === "number" &&
+          now - row.updatedAt <= SYNCING_MATERIAL_LIST_TTL_MS,
+      );
+      const staleRows = rows.filter((row) => !freshRows.includes(row));
+
+      if (staleRows.length > 0) {
+        await db.syncingMaterialLists.bulkDelete(staleRows.map((row) => row.id));
+        notifyOfflineMaterialListSyncStateChanged();
+      }
+
+      if (freshRows.length > 0) return freshRows.map((row) => row.id);
+    }
   }
 
   const legacyIds = await idbGetMeta<string[]>(SYNCING_LISTS_META_KEY, []);
   if (db && legacyIds.length > 0) {
-    await db.syncingMaterialLists.bulkPut(legacyIds.map((id) => ({ id })));
+    await idbDeleteMeta(SYNCING_LISTS_META_KEY);
+    notifyOfflineMaterialListSyncStateChanged();
+    return [];
   }
   return legacyIds;
 }
@@ -380,7 +412,8 @@ export async function setSyncingMaterialListIds(materialListIds: string[]) {
   if (db) {
     await db.syncingMaterialLists.clear();
     if (uniqueIds.length > 0) {
-      await db.syncingMaterialLists.bulkPut(uniqueIds.map((id) => ({ id })));
+      const updatedAt = Date.now();
+      await db.syncingMaterialLists.bulkPut(uniqueIds.map((id) => ({ id, updatedAt })));
     }
   } else if (uniqueIds.length === 0) {
     await idbDeleteMeta(SYNCING_LISTS_META_KEY);
@@ -442,6 +475,20 @@ export async function setOfflineMutationQueue(queue: OfflineMaterialListMutation
     await idbSetMeta(QUEUE_META_KEY, queue);
   }
   notifyOfflineMaterialListSyncStateChanged();
+}
+
+export async function remapOfflineMutationMaterialListId(
+  localMaterialListId: string,
+  serverMaterialListId: string,
+) {
+  const queue = await getOfflineMutationQueue();
+  await setOfflineMutationQueue(
+    queue.map((mutation) =>
+      mutation.materialListId === localMaterialListId
+        ? { ...mutation, materialListId: serverMaterialListId }
+        : mutation,
+    ),
+  );
 }
 
 export async function enqueueOfflineMutation(mutation: OfflineMaterialListMutation) {
@@ -600,6 +647,10 @@ export function applyOfflineAddItem(
   return patchOfflineMaterialList(
     materialListId,
     (current) => {
+      if (current.items.some((existingItem) => existingItem.id === item.localItemId)) {
+        return current;
+      }
+
       const unitCost = item.unitCost ?? 0;
       const extendedPrice = item.quantity * unitCost;
 

@@ -16,7 +16,7 @@ import { Plus, Minus, ChevronDown, ChevronUp } from "lucide-react";
 import { CreateCustomPartDialog } from "./CreateCustomPartDialog";
 import { WizardHeader } from "./WizardHeader";
 import { EditPartDialog } from "~/components/catalogue/EditPartDialog";
-import type { PendingPart } from "./wizard/types";
+import type { PendingPart, PendingSupplierPartSnapshot } from "./wizard/types";
 import { CatalogStage } from "./wizard/CatalogStage";
 import { MaterialStage } from "./wizard/MaterialStage";
 import { SizeStage } from "./wizard/SizeStage";
@@ -105,9 +105,7 @@ export function AddPartDialog({
     setCustomCategoryName,
     wizardSearchQuery,
     setWizardSearchQuery,
-    catalogs,
     catalogsWithCounts,
-    materials,
     materialsWithCounts,
     allUnits,
     categoriesWithCounts,
@@ -132,115 +130,7 @@ export function AddPartDialog({
 
   const utils = api.useUtils();
   const isOnline = useOnlineStatus();
-
-  // Fetch parts for size selection (filtered by material) - for counting parts per size
-  const { data: partsForSize } = api.catalogue.searchParts.useQuery(
-    {
-      catalogId: selectedCatalogId ?? undefined,
-      materialId: selectedMaterialId ?? undefined,
-    },
-    { enabled: isOnline && wizardStage === "size" && hasCatalogSelection && hasMaterialSelection },
-  );
-
   const syncOfflineMaterialLists = useOfflineMaterialListSyncRunner();
-
-  const addItem = api.materialList.addItemToMaterialList.useMutation({
-    onMutate: async (variables) => {
-      // Cancel outgoing refetches
-      await utils.materialList.getMaterialList.cancel({ materialListId });
-
-      // Snapshot previous value
-      const previousMaterialList = utils.materialList.getMaterialList.getData({
-        materialListId,
-      });
-
-      // Try to get part definition from cache or use minimal structure
-      // The server will return the full structure, so we use a placeholder
-      const tempId = `temp-${Date.now()}-${Math.random()}`;
-      const now = new Date();
-      const unitCost = variables.unitCost ?? null;
-      const cost = unitCost ?? 0;
-      const extendedPrice = variables.quantity * cost;
-
-      const newItem = {
-        id: tempId,
-        quantity: variables.quantity.toString(),
-        unitCost: unitCost?.toString() ?? null,
-        extendedPrice: extendedPrice.toString(),
-        descriptionSnapshot: variables.oneOffDisplayName ?? null,
-        createdAt: now,
-        updatedAt: now,
-        syncVersion: now.toISOString(),
-        partDefinition: variables.partDefinitionId
-          ? {
-              id: variables.partDefinitionId,
-              displayName: null,
-              imageUrl: null,
-              material: null,
-            }
-          : null,
-        oneOff: variables.oneOffDisplayName
-          ? {
-              displayName: variables.oneOffDisplayName,
-              description: variables.oneOffDescription ?? null,
-              material: variables.oneOffMaterial ?? null,
-              sizeNominal: variables.oneOffSizeNominal?.toString() ?? null,
-              sizeUnitId: variables.oneOffSizeUnitId ?? null,
-            }
-          : null,
-        selectedSupplierId: null,
-        supplierPart: variables.supplierPartId
-          ? {
-              id: variables.supplierPartId,
-              supplierId: "",
-              supplierSku: null,
-              lastKnownUnitCost: unitCost?.toString() ?? null,
-              supplier: {
-                id: "",
-                name: "",
-              },
-            }
-          : null,
-        uom: null, // Will be set by server
-        addedBy: null,
-      };
-
-      // Optimistically add item to material list
-      utils.materialList.getMaterialList.setData({ materialListId }, (old) => {
-        if (!old) return old;
-
-        const updatedItems = [...old.items, newItem];
-
-        // Recalculate material total
-        const newMaterialTotal = updatedItems.reduce((sum, item) => {
-          const price = item.extendedPrice
-            ? parseFloat(item.extendedPrice.toString())
-            : 0;
-          return sum + price;
-        }, 0);
-
-        return {
-          ...old,
-          items: updatedItems,
-          materialTotal: newMaterialTotal,
-        };
-      });
-
-      return { previousMaterialList };
-    },
-    onError: (err, variables, context) => {
-      // Rollback on error
-      if (context?.previousMaterialList) {
-        utils.materialList.getMaterialList.setData(
-          { materialListId },
-          context.previousMaterialList,
-        );
-      }
-    },
-    onSettled: () => {
-      void utils.materialList.getMaterialList.invalidate({ materialListId });
-    },
-  });
 
   // Store supplier parts data
   const [supplierPartsData, setSupplierPartsData] = useState<
@@ -265,9 +155,7 @@ export function AddPartDialog({
   const fetchingPartsRef = useRef(fetchingParts);
   const fetchSupplierPartsRef = useRef(utils.supplier.getSupplierPartsByPart.fetch);
   const supplierPartResolutionPromisesRef = useRef(new Map<string, Promise<string>>());
-  const [resolvingSupplierPartIds, setResolvingSupplierPartIds] = useState<Set<string>>(
-    () => new Set(),
-  );
+  const [, setResolvingSupplierPartIds] = useState<Set<string>>(() => new Set());
   const pendingPartIdsKey = useMemo(
     () => pendingParts.map((p) => p.partId).sort().join("|"),
     [pendingParts],
@@ -634,11 +522,15 @@ export function AddPartDialog({
     );
   };
 
-  const handleUpdateSupplier = (partId: string, supplierPartId: string) => {
+  const handleUpdateSupplier = (
+    partId: string,
+    supplierPartId: string,
+    supplierPartSnapshot?: PendingSupplierPartSnapshot | null,
+  ) => {
     setPendingParts((prev) =>
       prev.map((p) => {
         if (p.partId === partId) {
-          return { ...p, supplierPartId };
+          return { ...p, supplierPartId, supplierPartSnapshot: supplierPartSnapshot ?? null };
         }
         return p;
       }),
@@ -658,9 +550,12 @@ export function AddPartDialog({
   ) => {
     setSupplierPartsData((prev) => {
       const existing = prev.get(partId) ?? [];
-      if (existing.some((sp) => sp.id === supplierPart.id)) return prev;
+      const nextParts = existing.some((sp) => sp.id === supplierPart.id)
+        ? existing.map((sp) => (sp.id === supplierPart.id ? supplierPart : sp))
+        : [...existing, supplierPart];
       const next = new Map(prev);
-      next.set(partId, [...existing, supplierPart]);
+      next.set(partId, nextParts);
+      setOfflineSupplierPartsByPart(partId, nextParts);
       return next;
     });
   };
@@ -745,12 +640,14 @@ export function AddPartDialog({
         return;
       }
 
-      await utils.materialList.getMaterialList.cancel({ materialListId });
       const now = new Date();
       const localItems = partsReadyToAdd.map((pendingPart) => {
-        const selectedSupplierPart = (supplierPartsData.get(pendingPart.partId) ?? []).find(
-          (supplierPart) => supplierPart.id === pendingPart.supplierPartId,
-        );
+        const selectedSupplierPart =
+          pendingPart.supplierPartSnapshot ??
+          (supplierPartsData.get(pendingPart.partId) ?? []).find(
+            (supplierPart) => supplierPart.id === pendingPart.supplierPartId,
+          ) ??
+          null;
         const unitCost = selectedSupplierPart?.lastKnownUnitCost
           ? parseFloat(selectedSupplierPart.lastKnownUnitCost)
           : 0;
@@ -779,51 +676,16 @@ export function AddPartDialog({
         };
       });
 
-      utils.materialList.getMaterialList.setData({ materialListId }, (old) => {
-        if (!old) return old;
-
-        const optimisticItems = localItems.map((item) => {
-          const extendedPrice = item.pendingPart.quantity * item.unitCost;
-          return {
-            id: item.localItemId,
-            quantity: item.pendingPart.quantity.toString(),
-            unitCost: item.unitCost.toString(),
-            extendedPrice: extendedPrice.toString(),
-            descriptionSnapshot: item.pendingPart.partDefinition.displayName,
-            createdAt: now,
-            updatedAt: now,
-            syncVersion: now.toISOString(),
-            partDefinition: item.partDefinitionSnapshot,
-            oneOff: null,
-            selectedSupplierId:
-              parseOfflineSupplierPartId(item.pendingPart.supplierPartId!)
-                ?.supplierId ?? null,
-            supplierPart: item.supplierPartSnapshot,
-            uom: null,
-            addedBy: null,
-          };
-        });
-        const updatedItems = [...old.items, ...optimisticItems];
-        const materialTotal = updatedItems.reduce((sum, item) => {
-          const price = item.extendedPrice ? parseFloat(item.extendedPrice.toString()) : 0;
-          return sum + price;
-        }, 0);
-
-        return {
-          ...old,
-          items: updatedItems,
-          materialTotal,
-        };
-      });
-
       markUserAction("add-parts-optimistic-commit", {
         materialListId,
         count: localItems.length,
       });
-      setPendingParts([]);
-      resetWizard();
-      onOpenChange(false);
+      closeDialogAndCleanHistory();
       setIsAddingParts(false);
+      window.setTimeout(() => {
+        setPendingParts([]);
+        resetWizard();
+      }, 0);
 
       void (async () => {
         await Promise.all(
@@ -878,9 +740,12 @@ export function AddPartDialog({
 
   const reviewedPartsTotal = useMemo(() => {
     return pendingParts.reduce((sum, pendingPart) => {
-      const selectedSupplierPart = (supplierPartsData.get(pendingPart.partId) ?? []).find(
-        (supplierPart) => supplierPart.id === pendingPart.supplierPartId,
-      );
+      const selectedSupplierPart =
+        pendingPart.supplierPartSnapshot ??
+        (supplierPartsData.get(pendingPart.partId) ?? []).find(
+          (supplierPart) => supplierPart.id === pendingPart.supplierPartId,
+        ) ??
+        null;
       const unitCost = selectedSupplierPart?.lastKnownUnitCost
         ? parseFloat(selectedSupplierPart.lastKnownUnitCost)
         : 0;
@@ -930,6 +795,7 @@ export function AddPartDialog({
   const isWizardSearchActive = wizardStage !== "review" && wizardSearchQuery.trim().length > 0;
 
   const addPartsBackStateRef = useRef<History["state"]>(null);
+  const suppressNextDialogPopRef = useRef(false);
   const addPartsDialogStateRef = useRef({
     editingPartId,
     isCreateCustomPartDialogOpen,
@@ -969,6 +835,12 @@ export function AddPartDialog({
     };
 
     const handlePopState = () => {
+      if (suppressNextDialogPopRef.current) {
+        suppressNextDialogPopRef.current = false;
+        onOpenChange(false);
+        return;
+      }
+
       const current = addPartsDialogStateRef.current;
 
       if (current.isCreateCustomPartDialogOpen) {
@@ -1047,9 +919,34 @@ export function AddPartDialog({
     setWizardStage,
   ]);
 
+  const closeDialogAndCleanHistory = () => {
+    if (
+      typeof window !== "undefined" &&
+      window.history.state?.foremenAddPartsDialog
+    ) {
+      // Let the popstate handler close the dialog so the synthetic wizard history
+      // entry is actually consumed. Closing first can leave a duplicate same-URL
+      // entry behind, making mobile back/swipe appear to do nothing.
+      suppressNextDialogPopRef.current = true;
+      window.history.back();
+      return;
+    }
+
+    onOpenChange(false);
+  };
+
   return (
     <>
-      <Dialog open={open} onOpenChange={onOpenChange}>
+      <Dialog
+        open={open}
+        onOpenChange={(nextOpen) => {
+          if (nextOpen) {
+            onOpenChange(true);
+          } else {
+            closeDialogAndCleanHistory();
+          }
+        }}
+      >
         <DialogContent
           className={`relative flex h-[calc(100dvh-1rem)] max-h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-none flex-col overflow-hidden p-0 sm:h-[90vh] sm:max-h-[90vh] sm:w-[calc(100vw-3rem)] sm:max-w-[90rem] ${quantityPickerPreview ? "touch-none" : ""}`}
           style={
@@ -1308,7 +1205,6 @@ export function AddPartDialog({
                   disabled={
                     pendingParts.length === 0 ||
                     !allPartsHaveSuppliers ||
-                    addItem.isPending ||
                     isAddingParts
                   }
                   title={
@@ -1318,7 +1214,7 @@ export function AddPartDialog({
                   }
                   className="w-full text-xs sm:w-auto sm:text-sm"
                 >
-                  {addItem.isPending || isAddingParts
+                  {isAddingParts
                     ? "Adding..."
                     : `Add ${pendingParts.length} Part${pendingParts.length !== 1 ? "s" : ""}`}
                 </Button>

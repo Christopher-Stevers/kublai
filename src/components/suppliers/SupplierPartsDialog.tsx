@@ -69,159 +69,20 @@ export function SupplierPartsDialog({
 
   const utils = api.useUtils();
   const removeSupplierPart = api.supplier.removeSupplierPart.useMutation({
-    onMutate: async (variables) => {
-      // Cancel outgoing refetches
-      await utils.supplier.getById.cancel({ id: supplierId });
-
-      // Snapshot previous value
-      const previousSupplier = utils.supplier.getById.getData({
-        id: supplierId,
-      });
-
-      // Optimistically remove supplier part
-      utils.supplier.getById.setData({ id: supplierId }, (old) => {
-        if (!old) return old;
-        return {
-          ...old,
-          supplierParts: old.supplierParts.filter(
-            (sp) => sp.id !== variables.id,
-          ),
-        };
-      });
-
-      return { previousSupplier };
-    },
-    onError: (err, variables, context) => {
-      // Rollback on error
-      if (context?.previousSupplier) {
-        utils.supplier.getById.setData(
-          { id: supplierId },
-          context.previousSupplier,
-        );
-      }
-    },
-    onSettled: () => {
+    onSuccess: () => {
       void utils.supplier.getById.invalidate({ id: supplierId });
     },
   });
 
   const updateSupplierPart = api.supplier.updateSupplierPart.useMutation({
-    onMutate: async (variables) => {
-      // Cancel outgoing refetches
-      await utils.supplier.getById.cancel({ id: supplierId });
-
-      // Snapshot previous value
-      const previousSupplier = utils.supplier.getById.getData({
-        id: supplierId,
-      });
-
-      // Optimistically update supplier part
-      utils.supplier.getById.setData({ id: supplierId }, (old) => {
-        if (!old) return old;
-        return {
-          ...old,
-          supplierParts: old.supplierParts.map((sp) =>
-            sp.id === variables.id
-              ? {
-                  ...sp,
-                  isPreferred:
-                    variables.isPreferred !== undefined
-                      ? variables.isPreferred
-                      : sp.isPreferred,
-                  supplierSku:
-                    variables.supplierSku !== undefined
-                      ? variables.supplierSku
-                      : sp.supplierSku,
-                  lastKnownUnitCost:
-                    variables.lastKnownUnitCost !== undefined
-                      ? variables.lastKnownUnitCost
-                      : sp.lastKnownUnitCost,
-                }
-              : sp,
-          ),
-        };
-      });
-
-      return { previousSupplier };
-    },
-    onError: (err, variables, context) => {
-      // Rollback on error
-      if (context?.previousSupplier) {
-        utils.supplier.getById.setData(
-          { id: supplierId },
-          context.previousSupplier,
-        );
-      }
-    },
-    onSettled: () => {
+    onSuccess: () => {
       void utils.supplier.getById.invalidate({ id: supplierId });
     },
   });
 
   const addSupplierPart = api.supplier.addSupplierPart.useMutation({
-    onMutate: async (variables) => {
-      // Cancel outgoing refetches
-      await utils.supplier.getById.cancel({ id: supplierId });
-
-      // Snapshot previous value
-      const previousSupplier = utils.supplier.getById.getData({
-        id: supplierId,
-      });
-
-      // Find part definition from search results
-      const partDef = searchResults?.find(
-        (p) => p.id === variables.partDefinitionId,
-      );
-
-      // Create temporary supplier part with all required fields
-      const tempId = `temp-${Date.now()}`;
-      const tempSupplierPart = {
-        id: tempId,
-        supplierId: variables.supplierId,
-        partDefinitionId: variables.partDefinitionId,
-        supplierSku: variables.supplierSku ?? null,
-        supplierName: null,
-        packSize: null,
-        packUomId: null,
-        lastKnownUnitCost: null,
-        currency: "CAD",
-        notes: null,
-        isPreferred: false,
-        createdAt: new Date(),
-        partDefinition: partDef
-          ? {
-              id: partDef.id,
-              displayName: partDef.displayName,
-              description: partDef.description,
-            }
-          : null,
-        packUom: null,
-      };
-
-      // Optimistically add supplier part
-      utils.supplier.getById.setData({ id: supplierId }, (old) => {
-        if (!old) return old;
-        return {
-          ...old,
-          supplierParts: [...old.supplierParts, tempSupplierPart],
-        };
-      });
-
-      return { previousSupplier };
-    },
-    onError: (err, variables, context) => {
-      // Rollback on error
-      if (context?.previousSupplier) {
-        utils.supplier.getById.setData(
-          { id: supplierId },
-          context.previousSupplier,
-        );
-      }
-    },
-    onSettled: () => {
-      void utils.supplier.getById.invalidate({ id: supplierId });
-    },
     onSuccess: () => {
+      void utils.supplier.getById.invalidate({ id: supplierId });
       setIsAddDialogOpen(false);
       setSearchQuery("");
       setSelectedPartId("");

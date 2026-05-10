@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 
-const OFFLINE_CACHE_NAME = "foremenhq-offline-shell-v8";
+const OFFLINE_CACHE_NAME = "foremenhq-offline-shell-v11";
 
 const APP_SHELL_ROUTES: Array<{ url: string; fallback?: string }> = [
   { url: "/dashboard" },
@@ -39,7 +39,18 @@ export function ServiceWorkerRegistration() {
 
     const register = async () => {
       try {
-        await navigator.serviceWorker.register("/sw.js");
+        let reloadedForControllerChange = false;
+        navigator.serviceWorker.addEventListener("controllerchange", () => {
+          if (reloadedForControllerChange) return;
+          reloadedForControllerChange = true;
+          window.location.reload();
+        });
+
+        const registration = await navigator.serviceWorker.register("/sw.js", {
+          updateViaCache: "none",
+        });
+        await registration.update();
+        registration.waiting?.postMessage({ type: "SKIP_WAITING" });
         await navigator.serviceWorker.ready;
 
         if (window.location.pathname.startsWith("/dashboard")) {

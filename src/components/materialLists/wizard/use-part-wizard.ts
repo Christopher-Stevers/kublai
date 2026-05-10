@@ -3,6 +3,9 @@
 import { useCallback, useDeferredValue, useEffect, useMemo, useState } from "react";
 import { api } from "~/trpc/react";
 import {
+  addOfflineCatalogueCatalog,
+  addOfflineCatalogueCategory,
+  addOfflineCatalogueMaterial,
   getOfflineCatalogueSnapshot,
   setOfflineCatalogueSnapshot,
 } from "~/lib/offline-catalogue";
@@ -106,11 +109,11 @@ export function usePartWizard() {
     setOfflineSuppliers(serverSuppliers);
   }, [isOnline, serverSuppliers]);
 
-  const catalogs = isOnline ? (serverCatalogs ?? cachedCatalogueData?.catalogs) : cachedCatalogueData?.catalogs;
-  const materials = isOnline ? (serverMaterials ?? cachedCatalogueData?.materials) : cachedCatalogueData?.materials;
-  const allUnits = isOnline ? (serverAllUnits ?? cachedCatalogueData?.allUnits) : cachedCatalogueData?.allUnits;
-  const categoryTree = isOnline ? (serverCategoryTree ?? cachedCatalogueData?.categories) : cachedCatalogueData?.categories;
-  const allParts = isOnline ? (serverAllParts ?? cachedCatalogueData?.parts) : cachedCatalogueData?.parts;
+  const catalogs = cachedCatalogueData?.catalogs ?? serverCatalogs;
+  const materials = cachedCatalogueData?.materials ?? serverMaterials;
+  const allUnits = cachedCatalogueData?.allUnits ?? serverAllUnits;
+  const categoryTree = cachedCatalogueData?.categories ?? serverCategoryTree;
+  const allParts = cachedCatalogueData?.parts ?? serverAllParts;
 
   const partsByCatalog = useMemo(
     () =>
@@ -292,6 +295,8 @@ export function usePartWizard() {
   const createCatalog = api.catalogue.createCatalog.useMutation({
     onSuccess: (newCatalog) => {
       if (!newCatalog) return;
+      addOfflineCatalogueCatalog(newCatalog);
+      setCachedCatalogueData(getOfflineCatalogueSnapshot()?.data ?? null);
       setSelectedCatalogId(newCatalog.id);
       setHasCatalogSelection(true);
       setCustomCatalogName("");
@@ -304,6 +309,8 @@ export function usePartWizard() {
   const createMaterial = api.catalogue.createMaterial.useMutation({
     onSuccess: (newMaterial) => {
       if (!newMaterial) return;
+      addOfflineCatalogueMaterial(newMaterial);
+      setCachedCatalogueData(getOfflineCatalogueSnapshot()?.data ?? null);
       setSelectedMaterialId(newMaterial.id);
       setHasMaterialSelection(true);
       setCustomMaterialName("");
@@ -335,6 +342,8 @@ export function usePartWizard() {
   const createCategory = api.catalogue.createCategoryType.useMutation({
     onSuccess: (newCategory) => {
       if (!newCategory) return;
+      addOfflineCatalogueCategory(newCategory);
+      setCachedCatalogueData(getOfflineCatalogueSnapshot()?.data ?? null);
       setSelectedCategory({
         categoryId: newCategory.id,
         name: newCategory.name,

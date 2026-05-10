@@ -1,10 +1,13 @@
 "use client";
 
-import { api } from "~/trpc/react";
 import { QuantityControls } from "~/components/materialLists/QuantityControls";
 import { SupplierSelector } from "~/components/materialLists/SupplierSelector";
 import { Button } from "~/components/ui/button";
 import { TrashIcon } from "lucide-react";
+import {
+  applyOfflineRemoveItem,
+  enqueueOfflineMutation,
+} from "~/lib/offline-material-list-mutations";
 
 interface MaterialListTableRowProps {
   item: {
@@ -50,55 +53,15 @@ export function MaterialListTableRow({
   item,
   materialListId,
 }: MaterialListTableRowProps) {
-  const utils = api.useUtils();
-  const removeItem = api.materialList.removeMaterialListItem.useMutation({
-    onMutate: async (variables) => {
-      // Cancel outgoing refetches
-      await utils.materialList.getMaterialList.cancel({ materialListId });
-
-      // Snapshot previous value
-      const previousMaterialList = utils.materialList.getMaterialList.getData({
-        materialListId,
-      });
-
-      // Optimistically remove item and recalculate totals
-      utils.materialList.getMaterialList.setData({ materialListId }, (old) => {
-        if (!old) return old;
-
-        const updatedItems = old.items.filter(
-          (item) => item.id !== variables.itemId,
-        );
-
-        // Recalculate material total
-        const newMaterialTotal = updatedItems.reduce((sum, item) => {
-          const price = item.extendedPrice
-            ? parseFloat(item.extendedPrice.toString())
-            : 0;
-          return sum + price;
-        }, 0);
-
-        return {
-          ...old,
-          items: updatedItems,
-          materialTotal: newMaterialTotal,
-        };
-      });
-
-      return { previousMaterialList };
-    },
-    onError: (err, variables, context) => {
-      // Rollback on error
-      if (context?.previousMaterialList) {
-        utils.materialList.getMaterialList.setData(
-          { materialListId },
-          context.previousMaterialList,
-        );
-      }
-    },
-    onSettled: () => {
-      void utils.materialList.getMaterialList.invalidate({ materialListId });
-    },
-  });
+  const removeItem = async () => {
+    await applyOfflineRemoveItem(materialListId, item.id);
+    await enqueueOfflineMutation({
+      type: "removeItem",
+      materialListId,
+      itemId: item.id,
+      queuedAt: new Date().toISOString(),
+    });
+  };
 
   const quantity = parseFloat(item.quantity);
   const unitCost = item.unitCost ? parseFloat(item.unitCost) : 0;
@@ -172,8 +135,7 @@ export function MaterialListTableRow({
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => removeItem.mutate({ itemId: item.id })}
-          disabled={removeItem.isPending}
+          onClick={() => void removeItem()}
           className="h-8 w-8 p-0"
           aria-label="Remove item"
         >

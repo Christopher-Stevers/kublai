@@ -92,7 +92,6 @@ export const paymentRouter = createTRPCRouter({
    */
   createOneTimeCheckout: protectedProcedure.mutation(async ({ ctx }) => {
     const stripe = getStripeClient();
-    const userId = ctx.userId;
     const user = ctx.user;
 
     if (!user) {
@@ -184,7 +183,6 @@ export const paymentRouter = createTRPCRouter({
    */
   createSubscriptionCheckout: protectedProcedure.mutation(async ({ ctx }) => {
     const stripe = getStripeClient();
-    const userId = ctx.userId;
     const user = ctx.user;
 
     if (!user) {

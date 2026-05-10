@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { MinusIcon, PlusIcon } from "lucide-react";
@@ -27,55 +26,10 @@ export function QuantityControls({
   compact = false,
   orientation = "horizontal",
 }: QuantityControlsProps) {
-  const utils = api.useUtils();
   const [displayedQuantity, setDisplayedQuantity] = useState(quantity);
   const [inputValue, setInputValue] = useState(quantity.toString());
   const displayedQuantityRef = useRef(quantity);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const syncClearTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const saveSequenceRef = useRef(0);
-  const latestSubmittedSaveRef = useRef(0);
-
-  const clearSyncedStatus = () => {
-    void setActiveItemSyncStatus(materialListId, itemId, "synced");
-    if (syncClearTimerRef.current) {
-      clearTimeout(syncClearTimerRef.current);
-    }
-    syncClearTimerRef.current = setTimeout(() => {
-      void setActiveItemSyncStatus(materialListId, itemId, "synced");
-    }, 750);
-  };
-
-  const updateItem = api.materialList.updateMaterialListItem.useMutation();
-
-  const applyServerTimestamp = (updatedItem: { updatedAt?: Date | string | null } | null | undefined) => {
-    if (!updatedItem?.updatedAt) return;
-
-    const updatedAt =
-      updatedItem.updatedAt instanceof Date
-        ? updatedItem.updatedAt
-        : new Date(updatedItem.updatedAt);
-    const syncVersion = updatedAt.toISOString();
-
-    utils.materialList.getMaterialList.setData(
-      { materialListId },
-      (old) => {
-        if (!old) return old;
-        return {
-          ...old,
-          items: old.items.map((item) =>
-            item.id === itemId
-              ? {
-                  ...item,
-                  updatedAt,
-                  syncVersion,
-                }
-              : item,
-          ),
-        };
-      },
-    );
-  };
 
   useEffect(() => {
     displayedQuantityRef.current = quantity;
@@ -88,45 +42,8 @@ export function QuantityControls({
       if (saveTimerRef.current) {
         clearTimeout(saveTimerRef.current);
       }
-      if (syncClearTimerRef.current) {
-        clearTimeout(syncClearTimerRef.current);
-      }
     };
   }, []);
-
-  const updateCachedQuantity = (nextQuantity: number) => {
-    utils.materialList.getMaterialList.setData({ materialListId }, (old) => {
-      if (!old) return old;
-
-      const updatedItems = old.items.map((item) => {
-        if (item.id !== itemId) return item;
-
-        const unitCost = item.unitCost
-          ? parseFloat(item.unitCost.toString())
-          : 0;
-        const extendedPrice = nextQuantity * unitCost;
-
-        return {
-          ...item,
-          quantity: nextQuantity.toString(),
-          extendedPrice: extendedPrice.toString(),
-        };
-      });
-
-      const materialTotal = updatedItems.reduce((sum, item) => {
-        const price = item.extendedPrice
-          ? parseFloat(item.extendedPrice.toString())
-          : 0;
-        return sum + price;
-      }, 0);
-
-      return {
-        ...old,
-        items: updatedItems,
-        materialTotal,
-      };
-    });
-  };
 
   const queueOfflineQuantityChange = (nextQuantity: number) => {
     void applyOfflineQuantityUpdate(materialListId, itemId, nextQuantity);
@@ -139,41 +56,6 @@ export function QuantityControls({
     });
   };
 
-  const saveQuantity = (nextQuantity: number) => {
-    if (saveTimerRef.current) {
-      clearTimeout(saveTimerRef.current);
-    }
-
-    saveTimerRef.current = setTimeout(() => {
-      const saveId = saveSequenceRef.current + 1;
-      saveSequenceRef.current = saveId;
-      latestSubmittedSaveRef.current = saveId;
-      void setActiveItemSyncStatus(materialListId, itemId, "syncing");
-      updateItem.mutate(
-        {
-          itemId,
-          quantity: nextQuantity,
-        },
-        {
-          onSuccess: (updatedItem) => {
-            if (saveId !== latestSubmittedSaveRef.current) return;
-
-            applyServerTimestamp(updatedItem);
-            if (nextQuantity === displayedQuantityRef.current) {
-              clearSyncedStatus();
-            }
-          },
-          onError: () => {
-            if (saveId !== latestSubmittedSaveRef.current) return;
-
-            void setActiveItemSyncStatus(materialListId, itemId, "pending");
-            void utils.materialList.getMaterialList.invalidate({ materialListId });
-          },
-        },
-      );
-    }, 200);
-  };
-
   const setQuantityImmediately = (nextQuantity: number) => {
     if (nextQuantity < 1) return;
 
@@ -181,15 +63,8 @@ export function QuantityControls({
     displayedQuantityRef.current = nextQuantity;
     setDisplayedQuantity(nextQuantity);
     setInputValue(nextQuantity.toString());
-    updateCachedQuantity(nextQuantity);
-
-    if (typeof window !== "undefined" && !window.navigator.onLine) {
-      queueOfflineQuantityChange(nextQuantity);
-      return;
-    }
-
+    queueOfflineQuantityChange(nextQuantity);
     void setActiveItemSyncStatus(materialListId, itemId, "pending");
-    saveQuantity(nextQuantity);
   };
 
   const commitInputQuantity = (rawValue: string) => {
@@ -211,15 +86,8 @@ export function QuantityControls({
     if (Number.isFinite(parsedQuantity) && parsedQuantity >= 1) {
       displayedQuantityRef.current = parsedQuantity;
       setDisplayedQuantity(parsedQuantity);
-      updateCachedQuantity(parsedQuantity);
-
-      if (typeof window !== "undefined" && !window.navigator.onLine) {
-        queueOfflineQuantityChange(parsedQuantity);
-        return;
-      }
-
+      queueOfflineQuantityChange(parsedQuantity);
       void setActiveItemSyncStatus(materialListId, itemId, "pending");
-      saveQuantity(parsedQuantity);
     }
   };
 
@@ -235,7 +103,7 @@ export function QuantityControls({
     ? "h-8 w-8 p-0"
     : "h-10 w-10 p-0 sm:h-11 sm:w-11";
   const inputClassName = compact
-    ? "h-8 w-16 [appearance:textfield] px-1.5 text-center text-sm font-medium [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+    ? "h-8 w-8 [appearance:textfield] px-1 text-center text-sm font-medium [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
     : "h-10 w-12 [appearance:textfield] px-1 text-center font-medium sm:h-11 sm:w-14 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none";
 
   if (orientation === "vertical") {

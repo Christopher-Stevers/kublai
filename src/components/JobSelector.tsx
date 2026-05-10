@@ -1,6 +1,5 @@
 "use client";
 
-import { api } from "~/trpc/react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,82 +10,26 @@ import {
 } from "~/components/ui/dropdown-menu";
 import { Button } from "~/components/ui/button";
 import { BriefcaseIcon, ChevronDownIcon } from "lucide-react";
-import { useOnlineStatus } from "~/hooks/use-online-status";
+import { useOfflineJobsList } from "~/hooks/use-offline-jobs";
 
 export function JobSelector() {
-  const utils = api.useUtils();
-  const isOnline = useOnlineStatus();
-  const { data: currentJob } = api.job.getCurrentJob.useQuery(undefined, {
-    enabled: isOnline,
-  });
-  const { data: jobs } = api.job.listJobs.useQuery(undefined, {
-    enabled: isOnline,
-  });
-  const setCurrentJob = api.job.setCurrentJob.useMutation({
-    onMutate: async (variables) => {
-      // Cancel outgoing refetches
-      await utils.job.getCurrentJob.cancel();
-
-      // Snapshot previous value
-      const previousCurrentJob = utils.job.getCurrentJob.getData();
-
-      // Optimistically update current job
-      if (variables.jobId) {
-        const selectedJob = jobs?.find((j) => j.id === variables.jobId);
-        if (selectedJob) {
-          utils.job.getCurrentJob.setData(undefined, {
-            id: selectedJob.id,
-            name: selectedJob.name,
-            locationId: selectedJob.locationId,
-            status: selectedJob.status,
-          });
-        }
-      } else {
-        // Can't set data without query params, just invalidate
-        void utils.job.getCurrentJob.invalidate();
-      }
-
-      return { previousCurrentJob };
-    },
-    onError: (err, variables, context) => {
-      // Rollback on error
-      if (context?.previousCurrentJob !== undefined) {
-        utils.job.getCurrentJob.setData(undefined, context.previousCurrentJob);
-      }
-    },
-    onSettled: () => {
-      void utils.job.getCurrentJob.invalidate();
-      void utils.materialList.listMaterialLists.invalidate();
-    },
-  });
-
-  const handleJobSelect = (jobId: string) => {
-    setCurrentJob.mutate({ jobId });
-  };
+  const { data: jobs } = useOfflineJobsList(undefined);
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="outline" className="gap-2">
           <BriefcaseIcon className="h-4 w-4" />
-          <span className="max-w-[200px] truncate">
-            {currentJob?.name ?? "Select Job"}
-          </span>
+          <span className="max-w-[200px] truncate">Select Job</span>
           <ChevronDownIcon className="h-4 w-4" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-64">
-        <DropdownMenuLabel>Select Job</DropdownMenuLabel>
+        <DropdownMenuLabel>Local Jobs</DropdownMenuLabel>
         <DropdownMenuSeparator />
         {jobs && jobs.length > 0 ? (
           jobs.map((job) => (
-            <DropdownMenuItem
-              key={job.id}
-              onClick={() => handleJobSelect(job.id)}
-              className={
-                currentJob?.id === job.id ? "bg-gray-100 font-medium" : ""
-              }
-            >
+            <DropdownMenuItem key={job.id} disabled>
               <div className="flex flex-col">
                 <span>{job.name}</span>
                 {job.location && (
@@ -98,10 +41,9 @@ export function JobSelector() {
             </DropdownMenuItem>
           ))
         ) : (
-          <DropdownMenuItem disabled>No jobs available</DropdownMenuItem>
+          <DropdownMenuItem disabled>No local jobs available</DropdownMenuItem>
         )}
       </DropdownMenuContent>
     </DropdownMenu>
   );
 }
-

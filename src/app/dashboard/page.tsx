@@ -28,27 +28,46 @@ import { format } from "date-fns";
 import { useOfflineJobsList } from "~/hooks/use-offline-jobs";
 import { useOnlineStatus } from "~/hooks/use-online-status";
 import {
-  clearPendingOfflineJobDelete,
   createOfflineJob,
   getOfflineJobDetail,
   getOfflineJobsList,
-  getPendingDeletedJobIds,
-  removeOfflineJobFromCache,
-  setOfflineJobDetail,
-  setOfflineJobsList,
   tombstoneOfflineJob,
 } from "~/lib/offline-jobs";
-import { setOfflineMaterialList } from "~/lib/offline-material-list";
 import {
   getOfflineMutationQueue,
   setOfflineMutationQueue,
 } from "~/lib/offline-material-list-mutations";
 
+type JobLocationDisplay = {
+  name?: string | null;
+  address1?: string | null;
+  address2?: string | null;
+  city?: string | null;
+  region?: string | null;
+  postalCode?: string | null;
+  country?: string | null;
+};
+
+function formatLocationAddress(location: JobLocationDisplay | null | undefined) {
+  if (!location) return null;
+
+  const addressLine = [location.address1, location.address2]
+    .filter(Boolean)
+    .join(" ");
+  const cityLine = [location.city, location.region, location.postalCode]
+    .filter(Boolean)
+    .join(", ");
+
+  return (
+    [addressLine, cityLine, location.country].filter(Boolean).join(" • ") ||
+    location.name ||
+    null
+  );
+}
+
 export default function Dashboard() {
   const router = useRouter();
   const pathname = usePathname();
-  const utils = api.useUtils();
-  const hasAttemptedCreate = useRef(false);
   const pollingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const hasRedirectedRef = useRef(false);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -106,59 +125,14 @@ export default function Dashboard() {
   }, [userData, isLoadingUser]);
 
   // Get all jobs
-  const { data: serverJobs, isLoading } = api.job.listJobs.useQuery(undefined, {
-    enabled: isBrowserOnline,
-  });
+  const serverJobs = undefined;
+  const isLoading = false;
   const {
     data: jobs,
     cacheLoaded,
     isOnline,
     isOfflineFallback,
   } = useOfflineJobsList(serverJobs);
-
-  // Create job mutation
-  const createJob = api.job.createJob.useMutation({
-    onSuccess: (newJob) => {
-      hasAttemptedCreate.current = false; // Reset on success
-      void utils.job.listJobs.invalidate();
-      setShowCreateDialog(false);
-      setNewJobName("");
-      // Navigate to the new job
-      if (newJob?.id) {
-        router.push(`/dashboard/jobs/${newJob.id}`);
-      }
-    },
-    onError: () => {
-      hasAttemptedCreate.current = false; // Reset on error so user can retry
-    },
-  });
-
-  const deleteJob = api.job.deleteJob.useMutation({
-    onMutate: async ({ jobId }) => {
-      await utils.job.listJobs.cancel();
-      const previousJobs = utils.job.listJobs.getData();
-
-      utils.job.listJobs.setData(
-        undefined,
-        (oldJobs) => oldJobs?.filter((job) => job.id !== jobId) ?? oldJobs,
-      );
-      removeOfflineJobFromCache(jobId);
-
-      return { previousJobs };
-    },
-    onError: (_error, { jobId }, context) => {
-      clearPendingOfflineJobDelete(jobId);
-      if (context?.previousJobs) {
-        utils.job.listJobs.setData(undefined, context.previousJobs);
-        setOfflineJobsList(context.previousJobs);
-      }
-    },
-    onSuccess: (_data, { jobId }) => {
-      clearPendingOfflineJobDelete(jobId);
-      void utils.job.listJobs.invalidate();
-      setJobToDelete(null);
-    },
-  });
 
   const openJob = (jobId: string) => {
     const href = `/dashboard/jobs/${jobId}`;
@@ -172,15 +146,11 @@ export default function Dashboard() {
 
   const handleCreateJob = () => {
     if (newJobName.trim()) {
-      if (!isBrowserOnline) {
-        const job = createOfflineJob(newJobName.trim());
-        setShowCreateDialog(false);
-        setNewJobName("");
-        router.push(`/dashboard/jobs/${job.id}`);
-        return;
-      }
-
-      createJob.mutate({ name: newJobName.trim() });
+      const job = createOfflineJob(newJobName.trim());
+      setShowCreateDialog(false);
+      setNewJobName("");
+      router.push(`/dashboard/jobs/${job.id}`);
+      return;
     }
   };
 
@@ -188,7 +158,6 @@ export default function Dashboard() {
     if (!jobToDelete || !canDeleteCoreRecords) return;
 
     const { id } = jobToDelete;
-    hasAttemptedCreate.current = true;
     setJobToDelete(null);
 
     const deletedMaterialListIds =
@@ -203,96 +172,14 @@ export default function Dashboard() {
       ),
     );
 
-    if (!isBrowserOnline) {
-      return;
-    }
-
-    deleteJob.mutate({ jobId: id });
+    return;
   };
 
-  // Auto-create a job if user has no jobs
-  useEffect(() => {
-    if (
-      !isLoading &&
-      (!jobs || jobs.length === 0) &&
-      !createJob.isPending &&
-      isOnline &&
-      getPendingDeletedJobIds().size === 0 &&
-      !hasAttemptedCreate.current
-    ) {
-      hasAttemptedCreate.current = true;
-      createJob.mutate({ name: "New Job" });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLoading, jobs]);
+  // Do not auto-create placeholder jobs. In local-first mode those placeholders
+  // can become stale local ghosts if the browser cache/outbox is interrupted.
 
-  useEffect(() => {
-    if (!isOnline || !jobs || jobs.length === 0) return;
+  // Hard local-only mode for jobs/material lists: do not warm/import from server.
 
-    let cancelled = false;
-
-    void (async () => {
-      for (const jobSummary of jobs) {
-        if (cancelled) return;
-
-        try {
-          const job = await utils.client.job.getJob.query({
-            jobId: jobSummary.id,
-          });
-          if (cancelled) return;
-
-          const materialLists =
-            await utils.client.materialList.listMaterialLists.query({
-              jobId: jobSummary.id,
-            });
-          if (cancelled) return;
-
-          utils.job.getJob.setData({ jobId: jobSummary.id }, job);
-          utils.materialList.listMaterialLists.setData(
-            { jobId: jobSummary.id },
-            materialLists,
-          );
-          setOfflineJobDetail(
-            jobSummary.id,
-            { job, materialLists },
-            { notify: false },
-          );
-
-          for (const materialList of materialLists) {
-            if (cancelled) return;
-
-            const detail =
-              await utils.client.materialList.getMaterialList.query({
-                materialListId: materialList.id,
-              });
-            if (cancelled) return;
-
-            utils.materialList.getMaterialList.setData(
-              { materialListId: materialList.id },
-              detail,
-            );
-            await setOfflineMaterialList(materialList.id, detail, {
-              pendingSync: false,
-            });
-          }
-        } catch (error) {
-          console.error(
-            "Failed to warm cached job material lists",
-            jobSummary.id,
-            error,
-          );
-        }
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-    // Keep this warmup stable while it sequentially fills the offline cache.
-    // Including the tRPC utils object can restart the effect after setData calls
-    // and cancel the material-list detail pass before it writes the cache.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOnline, jobs]);
 
   if (routedJobId) {
     return <OfflineJobRouteFallback jobId={routedJobId} />;
@@ -313,15 +200,13 @@ export default function Dashboard() {
     );
   }
 
-  if (((isLoading || !cacheLoaded) && !jobs) || createJob.isPending) {
+  if ((isLoading || !cacheLoaded) && !jobs) {
     return (
       <div className="px-4 py-6 sm:px-6 sm:py-8">
         <div className="mx-auto max-w-6xl">
           <div className="flex items-center justify-center py-12">
             <p className="text-muted-foreground">
-              {createJob.isPending
-                ? "Creating your first job..."
-                : "Loading jobs..."}
+              Loading jobs...
             </p>
           </div>
         </div>
@@ -393,7 +278,7 @@ export default function Dashboard() {
                         size="icon"
                         className="h-10 w-10 shrink-0 text-red-600 hover:bg-red-50 hover:text-red-700"
                         aria-label={`Delete job ${job.name}`}
-                        disabled={deleteJob.isPending}
+
                         onClick={(e) => {
                           e.stopPropagation();
                           setJobToDelete({
@@ -414,7 +299,7 @@ export default function Dashboard() {
                       <div className="flex items-center gap-2">
                         <MapPinIcon className="h-4 w-4" />
                         <span className="line-clamp-1">
-                          {job.location.name}
+                          {formatLocationAddress(job.location)}
                         </span>
                       </div>
                     )}
@@ -430,10 +315,6 @@ export default function Dashboard() {
                         {job.materialListCount ?? 0}{" "}
                         {job.materialListCount === 1 ? "list" : "lists"}
                       </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">Status:</span>
-                      <span className="capitalize">{job.status}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <CalendarIcon className="h-4 w-4" />
@@ -468,7 +349,7 @@ export default function Dashboard() {
                   onChange={(e) => setNewJobName(e.target.value)}
                   placeholder="e.g., Smith Bathroom Reno"
                   className="mt-1"
-                  disabled={createJob.isPending}
+
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && newJobName.trim()) {
                       handleCreateJob();
@@ -481,15 +362,15 @@ export default function Dashboard() {
               <Button
                 variant="outline"
                 onClick={() => setShowCreateDialog(false)}
-                disabled={createJob.isPending}
+
               >
                 Cancel
               </Button>
               <Button
                 onClick={handleCreateJob}
-                disabled={!newJobName.trim() || createJob.isPending}
+                disabled={!newJobName.trim()}
               >
-                {createJob.isPending ? "Creating..." : "Create Job"}
+                Create Job
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -498,7 +379,7 @@ export default function Dashboard() {
         <Dialog
           open={!!jobToDelete}
           onOpenChange={(open) => {
-            if (!open && !deleteJob.isPending) setJobToDelete(null);
+            if (!open) setJobToDelete(null);
           }}
         >
           <DialogContent>
@@ -520,17 +401,17 @@ export default function Dashboard() {
                 type="button"
                 variant="outline"
                 onClick={() => setJobToDelete(null)}
-                disabled={deleteJob.isPending}
+
               >
                 Cancel
               </Button>
               <Button
                 type="button"
                 variant="destructive"
-                disabled={!jobToDelete || deleteJob.isPending}
+                disabled={!jobToDelete}
                 onClick={handleConfirmDeleteJob}
               >
-                {deleteJob.isPending ? "Deleting..." : "Delete Job"}
+                Delete Job
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -608,10 +489,6 @@ function OfflineJobRouteFallback({ jobId }: { jobId: string }) {
                 {job.foreman.name}
               </span>
             )}
-            <span className="inline-flex items-center gap-1 capitalize">
-              <BriefcaseIcon className="h-4 w-4" />
-              {job.status ?? "draft"}
-            </span>
           </div>
         </div>
 

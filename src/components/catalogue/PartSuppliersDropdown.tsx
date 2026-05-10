@@ -20,6 +20,16 @@ import {
 } from "lucide-react";
 import { SupplierFormDialog } from "~/components/suppliers/SupplierFormDialog";
 import { useOnlineStatus } from "~/hooks/use-online-status";
+import { useOfflineSuppliers } from "~/hooks/use-offline-suppliers";
+import {
+  OFFLINE_SUPPLIERS_EVENT,
+  addOfflinePartSupplier,
+  getOfflinePartSuppliers,
+  removeOfflinePartSupplier,
+  setOfflinePartSuppliers,
+  setOfflinePreferredSupplier,
+  type OfflinePartSupplier,
+} from "~/lib/offline-suppliers";
 
 interface PartSuppliersDropdownProps {
   partDefinitionId: string;
@@ -40,368 +50,103 @@ export function PartSuppliersDropdown({
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isSupplierDialogOpen, setIsSupplierDialogOpen] = useState(false);
+  const [localSupplierParts, setLocalSupplierParts] = useState<OfflinePartSupplier[]>([]);
 
-  // Debounce search query
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearchQuery(searchQuery);
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [searchQuery]);
-
-  const utils = api.useUtils();
   const isOnline = useOnlineStatus();
   const { data: userData } = api.user.getMyRole.useQuery(undefined, {
     enabled: isOnline && isDropdownOpen,
   });
-  const canDeleteCoreRecords =
-    userData?.permissions.canDeleteCoreRecords ?? true;
+  const canDeleteCoreRecords = userData?.permissions.canDeleteCoreRecords ?? true;
 
-  // Get suppliers for this part
-  const { data: supplierParts } = api.supplier.getSupplierPartsByPart.useQuery(
+  const { data: serverSupplierParts } = api.supplier.getSupplierPartsByPart.useQuery(
     { partDefinitionId },
     { enabled: isOnline && isDropdownOpen && !!partDefinitionId },
   );
-
-  // Get all suppliers
-  const { data: allSuppliers } = api.supplier.list.useQuery(undefined, {
+  const { data: serverSuppliers } = api.supplier.list.useQuery(undefined, {
     enabled: isOnline && isDropdownOpen,
   });
+  const { data: offlineSuppliers } = useOfflineSuppliers(serverSuppliers);
 
-  // Add supplier mutation
-  const addSupplierPart = api.supplier.addSupplierPart.useMutation({
-    onMutate: async (variables) => {
-      // Cancel outgoing refetches
-      await utils.supplier.getSupplierPartsByPart.cancel({ partDefinitionId });
-      await utils.catalogue.getPartsSupplierInfo.cancel();
+  const addSupplierPart = api.supplier.addSupplierPart.useMutation();
+  const removeSupplierPart = api.supplier.removeSupplierPart.useMutation();
+  const setPreferredSupplier = api.supplier.setPreferredSupplier.useMutation();
 
-      // Snapshot previous values
-      const previousSupplierParts =
-        utils.supplier.getSupplierPartsByPart.getData({
-          partDefinitionId,
-        });
-      const previousSupplierInfo = utils.catalogue.getPartsSupplierInfo.getData(
-        {
-          partIds: [partDefinitionId],
-        },
-      );
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearchQuery(searchQuery), 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
-      // Find supplier info
-      const supplier = allSuppliers?.find((s) => s.id === variables.supplierId);
+  useEffect(() => {
+    const cached = getOfflinePartSuppliers(partDefinitionId);
+    if (cached) setLocalSupplierParts(cached);
+  }, [partDefinitionId]);
 
-      // Create temporary supplier part
-      const tempId = `temp-${Date.now()}`;
-      const tempSupplierPart = {
-        id: tempId,
-        supplierId: variables.supplierId,
-        partDefinitionId: variables.partDefinitionId,
-        supplierSku: variables.supplierSku ?? null,
-        lastKnownUnitCost: null,
-        isPreferred: variables.isPreferred ?? false,
-        supplier: supplier
-          ? {
-              id: supplier.id,
-              name: supplier.name,
-            }
-          : {
-              id: variables.supplierId,
-              name: "Unknown Supplier",
-            },
-      };
+  useEffect(() => {
+    if (!serverSupplierParts) return;
+    const normalized = serverSupplierParts.map((part) => ({
+      ...part,
+      partDefinitionId,
+    }));
+    setOfflinePartSuppliers(partDefinitionId, normalized);
+    setLocalSupplierParts(normalized);
+  }, [partDefinitionId, serverSupplierParts]);
 
-      // Optimistically add to supplier parts
-      utils.supplier.getSupplierPartsByPart.setData(
-        { partDefinitionId },
-        (old) => {
-          if (!old) return [tempSupplierPart];
-          return variables.isPreferred
-            ? [
-                ...old.map((sp) => ({ ...sp, isPreferred: false })),
-                tempSupplierPart,
-              ]
-            : [...old, tempSupplierPart];
-        },
-      );
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const onChange = () => setLocalSupplierParts(getOfflinePartSuppliers(partDefinitionId) ?? []);
+    window.addEventListener(OFFLINE_SUPPLIERS_EVENT, onChange);
+    return () => window.removeEventListener(OFFLINE_SUPPLIERS_EVENT, onChange);
+  }, [partDefinitionId]);
 
-      // Optimistically update supplier info
-      utils.catalogue.getPartsSupplierInfo.setData(
-        { partIds: [partDefinitionId] },
-        (old) => {
-          if (!old) {
-            return {
-              [partDefinitionId]: {
-                preferredSupplier: variables.isPreferred && supplier ? supplier : null,
-                availableSuppliers: supplier ? [supplier] : [],
-              },
-            };
-          }
-          const current = old[partDefinitionId] || {
-            preferredSupplier: null,
-            availableSuppliers: [],
-          };
-          return {
-            ...old,
-            [partDefinitionId]: {
-              ...current,
-              preferredSupplier:
-                variables.isPreferred && supplier
-                  ? supplier
-                  : current.preferredSupplier,
-              availableSuppliers: supplier
-                ? [...current.availableSuppliers, supplier]
-                : current.availableSuppliers,
-            },
-          };
-        },
-      );
+  useEffect(() => {
+    if (!isDropdownOpen) {
+      setSearchQuery("");
+      setDebouncedSearchQuery("");
+    }
+  }, [isDropdownOpen]);
 
-      return { previousSupplierParts, previousSupplierInfo };
-    },
-    onError: (err, variables, context) => {
-      // Rollback on error
-      if (context?.previousSupplierParts !== undefined) {
-        utils.supplier.getSupplierPartsByPart.setData(
-          { partDefinitionId },
-          context.previousSupplierParts,
-        );
-      }
-      if (context?.previousSupplierInfo !== undefined) {
-        utils.catalogue.getPartsSupplierInfo.setData(
-          { partIds: [partDefinitionId] },
-          context.previousSupplierInfo,
-        );
-      }
-    },
-    onSettled: () => {
-      void utils.supplier.getSupplierPartsByPart.invalidate({
-        partDefinitionId,
-      });
-      void utils.catalogue.getPartsSupplierInfo.invalidate();
-    },
-  });
+  const allSuppliers = useMemo(() => {
+    const byId = new Map<string, { id: string; name: string; contactEmail?: string | null }>();
+    for (const supplier of availableSuppliers) byId.set(supplier.id, supplier);
+    for (const supplier of offlineSuppliers ?? []) byId.set(supplier.id, supplier);
+    return Array.from(byId.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [availableSuppliers, offlineSuppliers]);
 
-  // Remove supplier mutation
-  const removeSupplierPart = api.supplier.removeSupplierPart.useMutation({
-    onMutate: async (variables) => {
-      // Cancel outgoing refetches
-      await utils.supplier.getSupplierPartsByPart.cancel({ partDefinitionId });
-      await utils.catalogue.getPartsSupplierInfo.cancel();
-
-      // Snapshot previous values
-      const previousSupplierParts =
-        utils.supplier.getSupplierPartsByPart.getData({
-          partDefinitionId,
-        });
-      const previousSupplierInfo = utils.catalogue.getPartsSupplierInfo.getData(
-        {
-          partIds: [partDefinitionId],
-        },
-      );
-
-      // Find supplier part to get supplier ID
-      const supplierPart = supplierParts?.find((sp) => sp.id === variables.id);
-      const supplierId = supplierPart?.supplierId;
-
-      // Prevent removing the last supplier (defensive check)
-      const supplierCount = supplierParts?.length ?? 0;
-      if (supplierCount <= 1) {
-        // Don't proceed with removal if it's the last supplier
-        throw new Error("Cannot remove the last supplier");
-      }
-
-      // Optimistically remove from supplier parts
-      utils.supplier.getSupplierPartsByPart.setData(
-        { partDefinitionId },
-        (old) => {
-          if (!old) return old;
-          const filtered = old.filter((sp) => sp.id !== variables.id);
-          // Ensure at least one supplier remains
-          if (filtered.length === 0) {
-            return old; // Don't remove if it would leave zero suppliers
-          }
-          return filtered;
-        },
-      );
-
-      // Optimistically update supplier info
-      if (supplierId) {
-        utils.catalogue.getPartsSupplierInfo.setData(
-          { partIds: [partDefinitionId] },
-          (old) => {
-            if (!old) return old;
-            const current = old[partDefinitionId];
-            if (!current) return old;
-            const remainingSuppliers = current.availableSuppliers.filter(
-              (s) => s.id !== supplierId,
-            );
-            // Ensure at least one supplier remains
-            if (remainingSuppliers.length === 0) {
-              return old; // Don't update if it would leave zero suppliers
-            }
-            return {
-              ...old,
-              [partDefinitionId]: {
-                ...current,
-                availableSuppliers: remainingSuppliers,
-                preferredSupplier:
-                  current.preferredSupplier?.id === supplierId
-                    ? (remainingSuppliers[0] ?? null) // Set first remaining as preferred if removing preferred
-                    : current.preferredSupplier,
-              },
-            };
-          },
-        );
-      }
-
-      return { previousSupplierParts, previousSupplierInfo };
-    },
-    onError: (err, variables, context) => {
-      // Rollback on error
-      if (context?.previousSupplierParts !== undefined) {
-        utils.supplier.getSupplierPartsByPart.setData(
-          { partDefinitionId },
-          context.previousSupplierParts,
-        );
-      }
-      if (context?.previousSupplierInfo !== undefined) {
-        utils.catalogue.getPartsSupplierInfo.setData(
-          { partIds: [partDefinitionId] },
-          context.previousSupplierInfo,
-        );
-      }
-    },
-    onSettled: () => {
-      void utils.supplier.getSupplierPartsByPart.invalidate({
-        partDefinitionId,
-      });
-      void utils.catalogue.getPartsSupplierInfo.invalidate();
-    },
-  });
-
-  // Set preferred supplier mutation
-  const setPreferredSupplier = api.supplier.setPreferredSupplier.useMutation({
-    onMutate: async (variables) => {
-      // Cancel outgoing refetches
-      await utils.supplier.getSupplierPartsByPart.cancel({ partDefinitionId });
-      await utils.catalogue.getPartsSupplierInfo.cancel();
-
-      // Snapshot previous values
-      const previousSupplierParts =
-        utils.supplier.getSupplierPartsByPart.getData({
-          partDefinitionId,
-        });
-      const previousSupplierInfo = utils.catalogue.getPartsSupplierInfo.getData(
-        {
-          partIds: [partDefinitionId],
-        },
-      );
-
-      // Find supplier
-      const supplier = allSuppliers?.find((s) => s.id === variables.supplierId);
-
-      // Optimistically update supplier parts (set all to not preferred, then set selected)
-      utils.supplier.getSupplierPartsByPart.setData(
-        { partDefinitionId },
-        (old) => {
-          if (!old) return old;
-          return old.map((sp) => ({
-            ...sp,
-            isPreferred: sp.supplierId === variables.supplierId,
-          }));
-        },
-      );
-
-      // Optimistically update supplier info
-      if (supplier) {
-        utils.catalogue.getPartsSupplierInfo.setData(
-          { partIds: [partDefinitionId] },
-          (old) => {
-            const current = old?.[partDefinitionId] || {
-              preferredSupplier: null,
-              availableSuppliers: [],
-            };
-            return {
-              ...old,
-              [partDefinitionId]: {
-                ...current,
-                preferredSupplier: supplier,
-              },
-            };
-          },
-        );
-      }
-
-      return { previousSupplierParts, previousSupplierInfo };
-    },
-    onError: (err, variables, context) => {
-      // Rollback on error
-      if (context?.previousSupplierParts !== undefined) {
-        utils.supplier.getSupplierPartsByPart.setData(
-          { partDefinitionId },
-          context.previousSupplierParts,
-        );
-      }
-      if (context?.previousSupplierInfo !== undefined) {
-        utils.catalogue.getPartsSupplierInfo.setData(
-          { partIds: [partDefinitionId] },
-          context.previousSupplierInfo,
-        );
-      }
-    },
-    onSettled: () => {
-      void utils.supplier.getSupplierPartsByPart.invalidate({
-        partDefinitionId,
-      });
-      void utils.catalogue.getPartsSupplierInfo.invalidate();
-    },
-  });
-
-  // Get supplier IDs that have this part
-  const supplierIdsWithPart = new Set(
-    supplierParts?.map((sp) => sp.supplierId) ?? [],
-  );
-
-  // Get preferred supplier ID
+  const supplierIdsWithPart = new Set(localSupplierParts.map((sp) => sp.supplierId));
   const preferredSupplierId =
-    supplierParts?.find((sp) => sp.isPreferred)?.supplierId ??
-    currentPreferredSupplierId;
+    localSupplierParts.find((sp) => sp.isPreferred)?.supplierId ?? currentPreferredSupplierId;
 
-  // Filter suppliers based on search
   const filteredSuppliers = useMemo(() => {
-    if (!allSuppliers) return [];
     if (!debouncedSearchQuery.trim()) return allSuppliers;
-
     const query = debouncedSearchQuery.toLowerCase().trim();
-    return allSuppliers.filter((supplier) =>
-      supplier.name.toLowerCase().includes(query),
-    );
+    return allSuppliers.filter((supplier) => supplier.name.toLowerCase().includes(query));
   }, [allSuppliers, debouncedSearchQuery]);
+
+  const refreshLocalSupplierParts = () => {
+    setLocalSupplierParts(getOfflinePartSuppliers(partDefinitionId) ?? []);
+  };
 
   const handleToggleSupplier = (supplierId: string) => {
     const hasPart = supplierIdsWithPart.has(supplierId);
 
     if (hasPart) {
-      if (!canDeleteCoreRecords) {
-        return;
-      }
-
-      // Prevent removing the last supplier
-      const supplierCount = supplierParts?.length ?? 0;
-      if (supplierCount <= 1) {
-        // Cannot remove the last supplier
-        return;
-      }
-
-      // Remove supplier
-      const supplierPart = supplierParts?.find(
-        (sp) => sp.supplierId === supplierId,
-      );
-      if (supplierPart) {
+      if (!canDeleteCoreRecords || localSupplierParts.length <= 1) return;
+      const supplierPart = localSupplierParts.find((sp) => sp.supplierId === supplierId);
+      if (!supplierPart) return;
+      removeOfflinePartSupplier(partDefinitionId, supplierPart.id);
+      refreshLocalSupplierParts();
+      if (isOnline && !supplierPart.id.startsWith("offline-supplier-part:")) {
         removeSupplierPart.mutate({ id: supplierPart.id });
       }
-    } else {
-      const shouldAutoPrefer =
-        !preferredSupplierId || (supplierParts?.length ?? 0) === 0;
+      return;
+    }
+
+    const supplier = allSuppliers.find((item) => item.id === supplierId);
+    if (!supplier) return;
+    const shouldAutoPrefer = !preferredSupplierId || localSupplierParts.length === 0;
+    addOfflinePartSupplier(partDefinitionId, supplier, { isPreferred: shouldAutoPrefer, supplierSku: "" });
+    refreshLocalSupplierParts();
+    if (isOnline && /^[0-9a-f-]{36}$/i.test(supplierId)) {
       addSupplierPart.mutate({
         supplierId,
         partDefinitionId,
@@ -413,47 +158,27 @@ export function PartSuppliersDropdown({
   };
 
   const handleTogglePreferred = (supplierId: string) => {
-    // Only set as preferred if not already preferred
-    // If already preferred, do nothing (or could cycle to next if multiple suppliers)
-    if (preferredSupplierId !== supplierId) {
-      setPreferredSupplier.mutate({
-        partDefinitionId,
-        supplierId,
-      });
+    if (preferredSupplierId === supplierId) return;
+    setOfflinePreferredSupplier(partDefinitionId, supplierId);
+    refreshLocalSupplierParts();
+    if (isOnline && /^[0-9a-f-]{36}$/i.test(supplierId)) {
+      setPreferredSupplier.mutate({ partDefinitionId, supplierId });
     }
-    // Note: We don't allow unsetting preferred if it's the only supplier
-    // This is handled by preventing removal of the last supplier
   };
 
   const handleSupplierCreated = (newSupplierId: string) => {
-    // Automatically add the new supplier to this part
-    const shouldAutoPrefer =
-      !preferredSupplierId || (supplierParts?.length ?? 0) === 0;
-    addSupplierPart.mutate({
-      supplierId: newSupplierId,
-      partDefinitionId,
-      supplierSku: "",
-      isPreferred: shouldAutoPrefer,
-      currency: "CAD",
-    });
+    const supplier = allSuppliers.find((item) => item.id === newSupplierId) ?? {
+      id: newSupplierId,
+      name: "New Supplier",
+    };
+    const shouldAutoPrefer = !preferredSupplierId || localSupplierParts.length === 0;
+    addOfflinePartSupplier(partDefinitionId, supplier, { isPreferred: shouldAutoPrefer, supplierSku: "" });
+    refreshLocalSupplierParts();
     setIsSupplierDialogOpen(false);
   };
 
-  const currentSupplier = availableSuppliers.find(
-    (s) => s.id === preferredSupplierId,
-  );
-
-  const displayValue = currentSupplier
-    ? `${currentSupplier.name}`
-    : "Select supplier";
-
-  // Reset search when dropdown closes
-  useEffect(() => {
-    if (!isDropdownOpen) {
-      setSearchQuery("");
-      setDebouncedSearchQuery("");
-    }
-  }, [isDropdownOpen]);
+  const currentSupplier = allSuppliers.find((s) => s.id === preferredSupplierId);
+  const displayValue = currentSupplier ? currentSupplier.name : "Select supplier";
 
   return (
     <>
@@ -474,7 +199,6 @@ export function PartSuppliersDropdown({
           align="start"
         >
           <div className="space-y-2 p-2">
-            {/* Search Input */}
             <div className="relative">
               <SearchIcon className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
               <Input
@@ -487,14 +211,11 @@ export function PartSuppliersDropdown({
               />
             </div>
 
-            {/* Suppliers List */}
             <div className="max-h-[300px] overflow-y-auto">
               {filteredSuppliers.length === 0 ? (
                 <div className="space-y-2 px-2 py-2">
                   <div className="text-muted-foreground text-sm">
-                    {debouncedSearchQuery.trim()
-                      ? "No suppliers found"
-                      : "No suppliers available"}
+                    {debouncedSearchQuery.trim() ? "No suppliers found" : "No suppliers available"}
                   </div>
                   {!debouncedSearchQuery.trim() && (
                     <div className="text-muted-foreground text-xs">
@@ -514,74 +235,38 @@ export function PartSuppliersDropdown({
                       onSelect={(e) => e.preventDefault()}
                     >
                       <div className="flex flex-1 items-center gap-2">
-                        {/* Checkbox */}
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
                             handleToggleSupplier(supplier.id);
                           }}
-                          disabled={
-                            hasPart &&
-                            (!canDeleteCoreRecords ||
-                              (supplierParts?.length ?? 0) <= 1)
-                          }
+                          disabled={hasPart && (!canDeleteCoreRecords || localSupplierParts.length <= 1)}
                           className={`flex h-4 w-4 items-center justify-center rounded border border-gray-300 transition-colors ${
-                            hasPart &&
-                            (!canDeleteCoreRecords ||
-                              (supplierParts?.length ?? 0) <= 1)
+                            hasPart && (!canDeleteCoreRecords || localSupplierParts.length <= 1)
                               ? "cursor-not-allowed opacity-50"
                               : "hover:border-gray-400"
                           }`}
-                          aria-label={
-                            hasPart
-                              ? !canDeleteCoreRecords
-                                ? "Cannot remove supplier"
-                                : (supplierParts?.length ?? 0) <= 1
-                                  ? "Cannot remove last supplier"
-                                  : "Remove supplier"
-                              : "Add supplier"
-                          }
-                          title={
-                            hasPart && !canDeleteCoreRecords
-                              ? "Workers and beta testers cannot remove parts from suppliers"
-                              : hasPart && (supplierParts?.length ?? 0) <= 1
-                                ? "Cannot remove the last supplier"
-                                : undefined
-                          }
+                          aria-label={hasPart ? "Remove supplier" : "Add supplier"}
                         >
-                          {hasPart && (
-                            <CheckIcon className="h-3 w-3 text-gray-900" />
-                          )}
+                          {hasPart && <CheckIcon className="h-3 w-3 text-gray-900" />}
                         </button>
 
-                        {/* Supplier Name */}
                         <span className="flex-1 text-sm">{supplier.name}</span>
 
-                        {/* Star Icon */}
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            if (hasPart) {
-                              handleTogglePreferred(supplier.id);
-                            }
+                            if (hasPart) handleTogglePreferred(supplier.id);
                           }}
                           className={`flex h-4 w-4 items-center justify-center transition-colors ${
-                            hasPart
-                              ? "cursor-pointer hover:opacity-70"
-                              : "cursor-not-allowed opacity-30"
+                            hasPart ? "cursor-pointer hover:opacity-70" : "cursor-not-allowed opacity-30"
                           }`}
                           disabled={!hasPart}
-                          aria-label={
-                            isPreferred
-                              ? "Unset as preferred"
-                              : "Set as preferred"
-                          }
+                          aria-label={isPreferred ? "Preferred supplier" : "Set as preferred"}
                         >
                           <StarIcon
                             className={`h-4 w-4 ${
-                              isPreferred
-                                ? "fill-yellow-400 text-yellow-400"
-                                : "text-gray-400"
+                              isPreferred ? "fill-yellow-400 text-yellow-400" : "text-gray-400"
                             }`}
                           />
                         </button>
@@ -592,7 +277,6 @@ export function PartSuppliersDropdown({
               )}
             </div>
 
-            {/* Add New Supplier */}
             <DropdownMenuSeparator />
             <DropdownMenuItem
               onClick={() => {
@@ -608,7 +292,6 @@ export function PartSuppliersDropdown({
         </DropdownMenuContent>
       </DropdownMenu>
 
-      {/* Supplier Form Dialog */}
       <SupplierFormDialog
         open={isSupplierDialogOpen}
         onOpenChange={setIsSupplierDialogOpen}

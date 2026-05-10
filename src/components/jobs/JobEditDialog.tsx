@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { api } from "~/trpc/react";
 import {
   Dialog,
   DialogContent,
@@ -13,6 +12,7 @@ import {
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { LocationSelector } from "~/components/ui/LocationSelector";
+import { updateOfflineJob } from "~/lib/offline-jobs";
 
 interface JobEditDialogProps {
   open: boolean;
@@ -48,88 +48,21 @@ export function JobEditDialog({
     setForemanName(initialForemanName || "");
   }, [initialName, initialLocationId, initialForemanName, initialPoNumber, open]);
 
-  const utils = api.useUtils();
-  const updateJob = api.job.updateJob.useMutation({
-    onMutate: async (variables) => {
-      // Cancel outgoing refetches
-      await utils.job.getJob.cancel({ jobId });
-      await utils.job.listJobs.cancel();
-
-      // Snapshot previous values
-      const previousJob = utils.job.getJob.getData({ jobId });
-      const previousJobsList = utils.job.listJobs.getData();
-
-      // Optimistically update job detail
-      utils.job.getJob.setData({ jobId }, (old) => {
-        if (!old) return old;
-        return {
-          ...old,
-          name: variables.name ?? old.name,
-          poNumber: variables.poNumber ?? old.poNumber,
-          locationId: variables.locationId ?? old.locationId,
-          foremanName: variables.foremanName ?? old.foremanName,
-          foreman: {
-            id: old.foreman?.id ?? "",
-            name: variables.foremanName ?? old.foreman?.name ?? "",
-          },
-        };
-      });
-
-      // Optimistically update job in list
-      utils.job.listJobs.setData(undefined, (old) => {
-        if (!old) return old;
-        return old.map((job) =>
-          job.id === jobId
-            ? {
-                ...job,
-                name: variables.name ?? job.name,
-                poNumber: variables.poNumber ?? job.poNumber,
-                locationId: variables.locationId ?? job.locationId,
-                foremanName: variables.foremanName ?? job.foremanName,
-                foreman: {
-                  id: job.foreman?.id ?? "",
-                  name: variables.foremanName ?? job.foreman?.name ?? "",
-                },
-              }
-            : job,
-        );
-      });
-
-      return { previousJob, previousJobsList };
-    },
-    onError: (err, variables, context) => {
-      // Rollback on error
-      if (context?.previousJob) {
-        utils.job.getJob.setData({ jobId }, context.previousJob);
-      }
-      if (context?.previousJobsList) {
-        utils.job.listJobs.setData(undefined, context.previousJobsList);
-      }
-    },
-    onSettled: () => {
-      void utils.job.getJob.invalidate({ jobId });
-      void utils.job.listJobs.invalidate();
-    },
-    onSuccess: () => {
-      onOpenChange(false);
-    },
-  });
-
   const handleSave = () => {
     if (!jobName.trim()) {
       return;
     }
 
-    updateJob.mutate({
-      jobId,
+    updateOfflineJob(jobId, {
       name: jobName.trim(),
       locationId: locationId,
       poNumber: poNumber.trim() || null,
       foremanName: foremanName.trim() || null,
     });
+    onOpenChange(false);
   };
 
-  const isLoading = updateJob.isPending;
+  const isLoading = false;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

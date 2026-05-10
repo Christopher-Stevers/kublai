@@ -1,7 +1,6 @@
 "use client";
 
 import { memo } from "react";
-import { api } from "~/trpc/react";
 import { Card, CardContent } from "~/components/ui/card";
 import { QuantityControls } from "~/components/materialLists/QuantityControls";
 import { SupplierSelector } from "~/components/materialLists/SupplierSelector";
@@ -11,6 +10,7 @@ import {
   Clock3Icon,
   Loader2Icon,
   TrashIcon,
+  UserIcon,
 } from "lucide-react";
 import Image from "next/image";
 import {
@@ -102,52 +102,6 @@ function MaterialListItemComponent({
   materialListId,
   syncStatus = "synced",
 }: MaterialListItemProps) {
-  const utils = api.useUtils();
-  const removeItem = api.materialList.removeMaterialListItem.useMutation({
-    onMutate: async (variables) => {
-      await utils.materialList.getMaterialList.cancel({ materialListId });
-
-      const previousMaterialList = utils.materialList.getMaterialList.getData({
-        materialListId,
-      });
-
-      utils.materialList.getMaterialList.setData({ materialListId }, (old) => {
-        if (!old) return old;
-
-        const updatedItems = old.items.filter(
-          (item) => item.id !== variables.itemId,
-        );
-
-        const newMaterialTotal = updatedItems.reduce((sum, item) => {
-          const price = item.extendedPrice
-            ? parseFloat(item.extendedPrice.toString())
-            : 0;
-          return sum + price;
-        }, 0);
-
-        return {
-          ...old,
-          items: updatedItems,
-          materialTotal: newMaterialTotal,
-        };
-      });
-
-      return { previousMaterialList };
-    },
-    onError: (_err, _variables, context) => {
-      if (context?.previousMaterialList) {
-        utils.materialList.getMaterialList.setData(
-          { materialListId },
-          context.previousMaterialList,
-        );
-      }
-    },
-    onSettled: () => {
-      // Keep the optimistic cache as the immediate source of truth. SSE/background
-      // refresh will reconcile later without forcing a post-click spinner/refetch.
-    },
-  });
-
   const quantity = parseFloat(item.quantity);
   const unitCost = item.unitCost ? parseFloat(item.unitCost) : 0;
   const lineTotal = item.extendedPrice
@@ -155,43 +109,21 @@ function MaterialListItemComponent({
     : quantity * unitCost;
 
   const handleRemove = async () => {
-    if (typeof window !== "undefined" && !window.navigator.onLine) {
-      utils.materialList.getMaterialList.setData({ materialListId }, (old) => {
-        if (!old) return old;
-
-        const updatedItems = old.items.filter(
-          (candidate) => candidate.id !== item.id,
-        );
-        const materialTotal = updatedItems.reduce((sum, candidate) => {
-          const price = candidate.extendedPrice
-            ? parseFloat(candidate.extendedPrice.toString())
-            : 0;
-          return sum + price;
-        }, 0);
-
-        return {
-          ...old,
-          items: updatedItems,
-          materialTotal,
-        };
-      });
-      await applyOfflineRemoveItem(materialListId, item.id);
-      await enqueueOfflineMutation({
-        type: "removeItem",
-        materialListId,
-        itemId: item.id,
-        queuedAt: new Date().toISOString(),
-      });
-      return;
-    }
-
-    removeItem.mutate({ itemId: item.id });
+    await applyOfflineRemoveItem(materialListId, item.id);
+    await enqueueOfflineMutation({
+      type: "removeItem",
+      materialListId,
+      itemId: item.id,
+      queuedAt: new Date().toISOString(),
+    });
+    return;
   };
 
   const partName =
     item.partDefinition?.displayName ||
     item.descriptionSnapshot ||
     "Unknown Part";
+  const creatorName = item.addedBy?.name?.trim() || item.addedBy?.email?.trim();
   return (
     <Card className="group relative overflow-hidden rounded-2xl border-gray-200 bg-gradient-to-br from-white to-gray-50/60 shadow-sm transition-all [content-visibility:auto] [contain-intrinsic-size:9rem] hover:border-gray-300 hover:shadow-md">
       <CardContent className="relative p-3 sm:p-4">
@@ -228,7 +160,7 @@ function MaterialListItemComponent({
           </div>
 
           {/* Content column — evenly spaced rows pinned to image height */}
-          <div className="grid min-w-0 grid-rows-[1fr_2rem_2rem] gap-2">
+          <div className="grid min-w-0 grid-rows-[1fr_2rem_2rem] gap-2 overflow-hidden">
             <div className="flex min-w-0 flex-col justify-center">
               <h3 className="line-clamp-1 text-sm leading-tight font-semibold tracking-tight text-gray-900 sm:text-base">
                 {partName}
@@ -236,17 +168,28 @@ function MaterialListItemComponent({
 
             </div>
 
-            <div className="flex h-8 items-center rounded-xl bg-white/70">
-              <QuantityControls
-                itemId={item.id}
-                quantity={quantity}
-                materialListId={materialListId}
-                compact
-              />
+            <div className="grid h-8 min-w-0 max-w-full grid-cols-[6.5rem_minmax(0,1fr)] items-center gap-2 overflow-hidden rounded-xl bg-white/70 pr-1">
+              <div className="w-[6.5rem] shrink-0">
+                <QuantityControls
+                  itemId={item.id}
+                  quantity={quantity}
+                  materialListId={materialListId}
+                  compact
+                />
+              </div>
+              {creatorName && (
+                <div
+                  className="text-muted-foreground flex min-w-0 items-center gap-1 overflow-hidden pr-2 text-xs"
+                  title={`Added by ${creatorName}`}
+                >
+                  <UserIcon className="h-3.5 w-3.5 shrink-0" />
+                  <span className="block min-w-0 truncate">{creatorName}</span>
+                </div>
+              )}
             </div>
 
-            <div className="flex h-8 min-w-0 items-center gap-2">
-              <div className="min-w-0 flex-1">
+            <div className="grid h-8 min-w-0 grid-cols-[6.5rem_minmax(0,1fr)] items-center gap-2">
+              <div className="w-[6.5rem] min-w-0 shrink-0">
                 <SupplierSelector
                   itemId={item.id}
                   partDefinitionId={item.partDefinition?.id ?? ""}
@@ -256,11 +199,11 @@ function MaterialListItemComponent({
                   compact
                 />
               </div>
-              <div className="flex h-8 shrink-0 items-center gap-1.5 rounded-xl bg-white/70 px-2 ring-1 ring-gray-100">
+              <div className="flex h-8 min-w-0 items-center justify-end gap-1.5 rounded-xl bg-white/70 px-2 ring-1 ring-gray-100">
                 <span className="text-[10px] font-medium tracking-wide text-gray-400 uppercase">
                   Total
                 </span>
-                <span className="min-w-[3.5rem] text-right text-sm font-semibold text-gray-900 tabular-nums sm:text-base">
+                <span className="min-w-0 truncate text-right text-sm font-semibold text-gray-900 tabular-nums sm:text-base">
                   ${lineTotal.toFixed(2)}
                 </span>
               </div>
@@ -277,7 +220,6 @@ function MaterialListItemComponent({
                 size="sm"
                 className="h-8 w-8 p-0 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600"
                 onClick={handleRemove}
-                disabled={removeItem.isPending}
                 aria-label="Remove item"
               >
                 <TrashIcon className="h-4 w-4" />

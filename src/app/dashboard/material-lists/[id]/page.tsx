@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useEffect, useRef, useState } from "react";
+import { use, useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { api } from "~/trpc/react";
 import { Button, LargeButton } from "~/components/ui/button";
@@ -18,6 +18,7 @@ import {
   Loader2Icon,
   PlusIcon,
   ShoppingCartIcon,
+  UsersIcon,
   WifiOffIcon,
 } from "lucide-react";
 import { ViewToggle } from "~/components/ui/view-toggle";
@@ -42,30 +43,78 @@ import {
 } from "~/lib/offline-material-list-mutations";
 import { markUserAction } from "~/lib/performance-marks";
 
-function MaterialListSyncBadge({ status }: { status: MaterialListSyncStatus }) {
-  if (status === "syncing") {
-    return (
-      <div className="inline-flex items-center gap-1.5 rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-900">
-        <Loader2Icon className="h-3.5 w-3.5 animate-spin" />
-        Syncing material list
-      </div>
-    );
-  }
+function MaterialListSyncBadge({
+  status,
+  syncInspector,
+}: {
+  status: MaterialListSyncStatus;
+  syncInspector?: ReturnType<typeof useMaterialListSyncInspector>;
+}) {
+  const hasDetails =
+    !!syncInspector &&
+    (syncInspector.queuedForListCount > 0 || syncInspector.activeItemCount > 0);
+  const style =
+    status === "syncing"
+      ? {
+          className: "bg-blue-100 text-blue-900",
+          icon: <Loader2Icon className="h-3.5 w-3.5 shrink-0 animate-spin" />,
+          label: "Syncing material list",
+        }
+      : status === "pending"
+        ? {
+            className: "bg-orange-100 text-orange-900",
+            icon: <Clock3Icon className="h-3.5 w-3.5 shrink-0" />,
+            label: "Pending sync",
+          }
+        : {
+            className: "bg-emerald-100 text-emerald-900",
+            icon: <CheckCircle2Icon className="h-3.5 w-3.5 shrink-0" />,
+            label: "Synced",
+          };
 
-  if (status === "pending") {
+  const badgeClass = `inline-flex h-6 min-w-[5.75rem] items-center justify-center gap-1.5 rounded-full px-2.5 py-0 text-xs leading-none font-medium whitespace-nowrap ${style.className}`;
+
+  if (!hasDetails) {
     return (
-      <div className="inline-flex items-center gap-1.5 rounded-full bg-orange-100 px-2.5 py-0.5 text-xs font-medium text-orange-900">
-        <Clock3Icon className="h-3.5 w-3.5" />
-        Pending sync
+      <div className="h-6 min-w-[5.75rem] shrink-0 overflow-visible leading-none">
+        <div className={badgeClass}>
+          {style.icon}
+          <span className="leading-none">{style.label}</span>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-900">
-      <CheckCircle2Icon className="h-3.5 w-3.5" />
-      Synced
-    </div>
+    <details className="relative h-6 min-w-[5.75rem] shrink-0 overflow-visible leading-none">
+      <summary className={`${badgeClass} cursor-pointer list-none [&::-webkit-details-marker]:hidden`}>
+        {style.icon}
+        <span className="leading-none">{style.label}</span>
+      </summary>
+      <div className="absolute top-full right-0 z-20 mt-1 w-56 rounded-lg border border-slate-200 bg-white p-2 text-xs text-slate-700 shadow-lg">
+        <div className="font-medium">
+          Sync details: {syncInspector.queuedForListCount} queued
+          {syncInspector.syncing ? " · syncing" : ""}
+        </div>
+        <div className="mt-1 space-y-0.5">
+          <div>Total queue: {syncInspector.queuedCount}</div>
+          <div>Active item badges: {syncInspector.activeItemCount}</div>
+          {syncInspector.oldestQueuedAt && (
+            <div>Oldest queued: {new Date(syncInspector.oldestQueuedAt).toLocaleString()}</div>
+          )}
+          {Object.keys(syncInspector.queuedTypes).length > 0 && (
+            <div>
+              Types: {Object.entries(syncInspector.queuedTypes)
+                .map(([type, count]) => `${type}×${count}`)
+                .join(", ")}
+            </div>
+          )}
+          {syncInspector.lastPullCursor && (
+            <div>Last pull: {new Date(syncInspector.lastPullCursor).toLocaleString()}</div>
+          )}
+        </div>
+      </div>
+    </details>
   );
 }
 
@@ -173,60 +222,18 @@ export default function MaterialListDetailPage({
   const [selectedQuoteId, setSelectedQuoteId] = useState<string | undefined>();
   const [selectedOrderId, setSelectedOrderId] = useState<string | undefined>();
   const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
-  const [isRealtimeRefreshing, setIsRealtimeRefreshing] = useState(false);
   const isBrowserOnline = useOnlineStatus();
   const dexieCloudSync = useDexieCloudSyncState();
   const syncInspector = useMaterialListSyncInspector(id);
-  const showAddPartDialogRef = useRef(false);
 
   const openAddPartDialog = () => {
     markUserAction("add-part-open", { materialListId: id });
     setShowAddPartDialog(true);
-
-    if (typeof window === "undefined") return;
-
-    const currentState =
-      window.history.state && typeof window.history.state === "object"
-        ? window.history.state
-        : {};
-
-    if (currentState.foremenhqDialog === "add-part") return;
-
-    window.history.pushState(
-      { ...currentState, foremenhqDialog: "add-part" },
-      "",
-      window.location.href,
-    );
   };
 
   const closeAddPartDialog = () => {
-    if (
-      typeof window !== "undefined" &&
-      window.history.state?.foremenhqDialog === "add-part"
-    ) {
-      window.history.back();
-      return;
-    }
-
     setShowAddPartDialog(false);
   };
-
-  useEffect(() => {
-    showAddPartDialogRef.current = showAddPartDialog;
-  }, [showAddPartDialog]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    const handlePopState = () => {
-      if (showAddPartDialogRef.current) {
-        setShowAddPartDialog(false);
-      }
-    };
-
-    window.addEventListener("popstate", handlePopState);
-    return () => window.removeEventListener("popstate", handlePopState);
-  }, []);
 
   useEffect(() => {
     if (!id.startsWith("offline-list-") || typeof window === "undefined")
@@ -247,18 +254,8 @@ export default function MaterialListDetailPage({
       );
   }, [id, router]);
 
-  const {
-    data: serverMaterialList,
-    isLoading,
-    isFetching,
-  } = api.materialList.getMaterialList.useQuery(
-    { materialListId: id },
-    {
-      enabled: !!id && isBrowserOnline,
-      refetchOnWindowFocus: true,
-      refetchOnReconnect: true,
-    },
-  );
+  const serverMaterialList = undefined;
+  const isLoading = false;
 
   const {
     data: materialList,
@@ -270,68 +267,48 @@ export default function MaterialListDetailPage({
     itemSyncStatuses,
   } = useOfflineMaterialList(id, serverMaterialList);
 
-  const utils = api.useUtils();
   const { data: userData } = api.user.getMyRole.useQuery(undefined, {
     enabled: isBrowserOnline,
   });
 
-  useEffect(() => {
-    if (!isBrowserOnline) return;
-
-    void Promise.allSettled([
-      utils.catalogue.getCatalogs.prefetch(),
-      utils.catalogue.getMaterials.prefetch(),
-      utils.catalogue.getAllUnits.prefetch(),
-      utils.catalogue.getCategoryTree.prefetch(),
-      utils.catalogue.searchParts.prefetch({}),
-      utils.supplier.list.prefetch(),
-    ]);
-  }, [isBrowserOnline, utils]);
   const canGenerateDocuments =
     userData?.permissions.canGenerateDocuments ?? true;
 
-  useEffect(() => {
-    if (
-      !id ||
-      !isBrowserOnline ||
-      id.startsWith("offline-list-") ||
-      typeof window === "undefined"
-    ) {
-      return;
-    }
-
-    const eventSource = new EventSource(`/api/material-lists/${id}/events`);
-    let cancelled = false;
-
-    const refreshMaterialList = () => {
-      setIsRealtimeRefreshing(true);
-      void utils.materialList.getMaterialList
-        .invalidate({ materialListId: id })
-        .finally(() => {
-          if (cancelled) return;
-          window.setTimeout(() => {
-            if (!cancelled) setIsRealtimeRefreshing(false);
-          }, 450);
-        });
-    };
-
-    eventSource.addEventListener("material-list-updated", refreshMaterialList);
-
-    return () => {
-      cancelled = true;
-      eventSource.removeEventListener(
-        "material-list-updated",
-        refreshMaterialList,
-      );
-      eventSource.close();
-      setIsRealtimeRefreshing(false);
-    };
-  }, [id, isBrowserOnline, utils.materialList.getMaterialList]);
-
   if ((isLoading || !cacheLoaded) && !materialList) {
     return (
-      <div className="flex h-[calc(100vh-4rem)] items-center justify-center">
-        <p className="text-muted-foreground">Loading material list...</p>
+      <div className="flex h-[calc(100dvh-4rem)] flex-col">
+        <div className="border-b bg-white px-4 py-2 sm:px-6 sm:py-3">
+          <div className="mx-auto max-w-6xl animate-pulse">
+            <div className="flex items-start justify-between gap-3">
+              <div className="space-y-2">
+                <div className="h-5 w-44 rounded bg-gray-200" />
+                <div className="h-4 w-28 rounded bg-gray-100" />
+                <div className="h-3 w-36 rounded bg-gray-100" />
+              </div>
+              <div className="flex flex-col items-end gap-1">
+                <div className="h-6 w-24 rounded-full bg-gray-100" />
+                <div className="h-8 w-20 rounded-lg bg-gray-100" />
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="flex-1 px-4 py-4 sm:px-6">
+          <div className="mx-auto max-w-6xl animate-pulse space-y-2">
+            <div className="h-32 rounded-2xl bg-gray-100" />
+            <div className="h-32 rounded-2xl bg-gray-100" />
+            <div className="h-32 rounded-2xl bg-gray-100" />
+          </div>
+        </div>
+        <div className="shrink-0 border-t bg-white px-4 py-3 sm:px-6">
+          <div className="mx-auto max-w-6xl animate-pulse space-y-2">
+            <div className="h-5 w-36 rounded bg-gray-100" />
+            <div className="grid grid-cols-3 gap-1.5">
+              <div className="h-9 rounded bg-gray-100" />
+              <div className="h-9 rounded bg-gray-100" />
+              <div className="h-9 rounded bg-gray-100" />
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -350,13 +327,31 @@ export default function MaterialListDetailPage({
   }
 
   const canonicalMaterialListId = materialList.materialList.id;
+  const contributorNames = Array.from(
+    new Set(
+      [
+        (
+          materialList.materialList as unknown as {
+            createdBy?: { name?: string | null; email?: string | null } | null;
+          }
+        )?.createdBy,
+        ...materialList.items.map(
+          (item) =>
+            (item as unknown as {
+              addedBy?: { name?: string | null; email?: string | null } | null;
+            }).addedBy,
+        ),
+      ]
+        .map((user) => user?.name?.trim() || user?.email?.trim() || null)
+        .filter((name): name is string => !!name),
+    ),
+  );
   const hasUnsyncedItems = Array.from(itemSyncStatuses.values()).some(
     (status) => status !== "synced",
   );
-  const visibleSyncStatus: MaterialListSyncStatus =
-    (isRealtimeRefreshing || (isFetching && !isLoading)) && isOnline
-      ? "syncing"
-      : syncStatus;
+  const visibleSyncStatus: MaterialListSyncStatus = syncInspector.syncing
+    ? "syncing"
+    : syncStatus;
   const displayedAndServerMaterialListMatch =
     !!materialList &&
     !!serverMaterialList &&
@@ -445,31 +440,6 @@ export default function MaterialListDetailPage({
                 Dexie Cloud: {dexieCloudSync.status}
               </div>
             )}
-            {(syncInspector.queuedForListCount > 0 || syncInspector.activeItemCount > 0) && (
-              <details className="rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-700">
-                <summary className="cursor-pointer font-medium">
-                  Sync details: {syncInspector.queuedForListCount} queued
-                  {syncInspector.syncing ? " · syncing" : ""}
-                </summary>
-                <div className="mt-1 space-y-0.5">
-                  <div>Total queue: {syncInspector.queuedCount}</div>
-                  <div>Active item badges: {syncInspector.activeItemCount}</div>
-                  {syncInspector.oldestQueuedAt && (
-                    <div>Oldest queued: {new Date(syncInspector.oldestQueuedAt).toLocaleString()}</div>
-                  )}
-                  {Object.keys(syncInspector.queuedTypes).length > 0 && (
-                    <div>
-                      Types: {Object.entries(syncInspector.queuedTypes)
-                        .map(([type, count]) => `${type}×${count}`)
-                        .join(", ")}
-                    </div>
-                  )}
-                  {syncInspector.lastPullCursor && (
-                    <div>Last pull: {new Date(syncInspector.lastPullCursor).toLocaleString()}</div>
-                  )}
-                </div>
-              </details>
-            )}
           </div>
           <div className="flex items-start justify-between gap-3">
             <div>
@@ -501,28 +471,19 @@ export default function MaterialListDetailPage({
                   {(materialList.job as { name?: string } | undefined)?.name ||
                     "Not set"}
                 </button>
-                {(
-                  materialList.materialList as unknown as
-                    | {
-                        createdBy?: { name?: string | null } | null;
-                      }
-                    | undefined
-                )?.createdBy?.name && (
-                  <div className="text-muted-foreground text-xs leading-tight">
-                    Created by:{" "}
-                    {
-                      (
-                        materialList.materialList as unknown as {
-                          createdBy: { name: string };
-                        }
-                      ).createdBy.name
-                    }
+                {contributorNames.length > 0 && (
+                  <div className="text-muted-foreground flex items-start gap-1.5 text-xs leading-tight">
+                    <UsersIcon className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                    <span>{contributorNames.join(", ")}</span>
                   </div>
                 )}
               </div>
             </div>
-            <div className="flex shrink-0 flex-col items-end gap-1">
-              <MaterialListSyncBadge status={visibleSyncStatus} />
+            <div className="flex min-w-[5.75rem] shrink-0 flex-col items-end gap-1">
+              <MaterialListSyncBadge
+                status={visibleSyncStatus}
+                syncInspector={syncInspector}
+              />
               <ViewToggle
                 view={viewMode}
                 onViewChange={setViewMode}
@@ -545,7 +506,7 @@ export default function MaterialListDetailPage({
                 }}
               >
                 <PlusIcon className="mr-2 h-4 w-4" />
-                Add Part now
+                Add Part Now
               </LargeButton>
             </div>
           ) : (
@@ -664,7 +625,7 @@ export default function MaterialListDetailPage({
               >
                 <FileTextIcon className="mr-1 h-3.5 w-3.5 shrink-0" />
                 <span className="text-center leading-tight">
-                  Generate Quote
+                  Quote
                 </span>
               </Button>
               <Button
@@ -826,82 +787,15 @@ function MaterialListTableView({
   materialListId: string;
   itemSyncStatuses: Map<string, MaterialListSyncStatus>;
 }) {
-  const utils = api.useUtils();
-  const removeItem = api.materialList.removeMaterialListItem.useMutation({
-    onMutate: async (variables) => {
-      await utils.materialList.getMaterialList.cancel({ materialListId });
-
-      const previousMaterialList = utils.materialList.getMaterialList.getData({
-        materialListId,
-      });
-
-      utils.materialList.getMaterialList.setData({ materialListId }, (old) => {
-        if (!old) return old;
-
-        const updatedItems = old.items.filter(
-          (item) => item.id !== variables.itemId,
-        );
-
-        const newMaterialTotal = updatedItems.reduce((sum, item) => {
-          const price = item.extendedPrice
-            ? parseFloat(item.extendedPrice.toString())
-            : 0;
-          return sum + price;
-        }, 0);
-
-        return {
-          ...old,
-          items: updatedItems,
-          materialTotal: newMaterialTotal,
-        };
-      });
-
-      return { previousMaterialList };
-    },
-    onError: (_err, _variables, context) => {
-      if (context?.previousMaterialList) {
-        utils.materialList.getMaterialList.setData(
-          { materialListId },
-          context.previousMaterialList,
-        );
-      }
-    },
-    onSettled: () => {
-      void utils.materialList.getMaterialList.invalidate({ materialListId });
-    },
-  });
-
   const handleRemove = async (itemId: string) => {
-    if (typeof window !== "undefined" && !window.navigator.onLine) {
-      utils.materialList.getMaterialList.setData({ materialListId }, (old) => {
-        if (!old) return old;
-
-        const updatedItems = old.items.filter((item) => item.id !== itemId);
-        const materialTotal = updatedItems.reduce((sum, item) => {
-          const price = item.extendedPrice
-            ? parseFloat(item.extendedPrice.toString())
-            : 0;
-          return sum + price;
-        }, 0);
-
-        return {
-          ...old,
-          items: updatedItems,
-          materialTotal,
-        };
-      });
-      await applyOfflineRemoveItem(materialListId, itemId);
-      await enqueueOfflineMutation({
-        type: "removeItem",
-        materialListId,
-        itemId,
-        queuedAt: new Date().toISOString(),
-      });
-      void utils.materialList.getMaterialList.invalidate({ materialListId });
-      return;
-    }
-
-    removeItem.mutate({ itemId });
+    await applyOfflineRemoveItem(materialListId, itemId);
+    await enqueueOfflineMutation({
+      type: "removeItem",
+      materialListId,
+      itemId,
+      queuedAt: new Date().toISOString(),
+    });
+    return;
   };
 
   return (
@@ -991,7 +885,6 @@ function MaterialListTableView({
                   variant="outline"
                   size="sm"
                   onClick={() => handleRemove(item.id)}
-                  disabled={removeItem.isPending}
                   className="h-8 w-8 p-0"
                   aria-label="Remove item"
                 >

@@ -13,6 +13,7 @@ import {
   MapPinIcon,
   PencilIcon,
   TrashIcon,
+  UsersIcon,
   WifiOffIcon,
 } from "lucide-react";
 import {
@@ -78,7 +79,6 @@ export default function JobDetailPage({
   const jobId =
     pathname.match(/^\/dashboard\/jobs\/([^/?#]+)/)?.[1] ?? paramJobId;
   const router = useRouter();
-  const utils = api.useUtils();
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [materialListToDelete, setMaterialListToDelete] = useState<{
     id: string;
@@ -117,17 +117,10 @@ export default function JobDetailPage({
   }, [jobId, router]);
 
   // Get job details
-  const { data: serverJob, isLoading: jobLoading } = api.job.getJob.useQuery(
-    { jobId },
-    { enabled: !!jobId && isBrowserOnline },
-  );
-
-  // Get material lists for this job
-  const { data: serverMaterialLists, isLoading: listsLoading } =
-    api.materialList.listMaterialLists.useQuery(
-      { jobId },
-      { enabled: !!jobId && isBrowserOnline },
-    );
+  const serverJob = undefined;
+  const serverMaterialLists = undefined;
+  const jobLoading = false;
+  const listsLoading = false;
 
   const {
     data: offlineJobData,
@@ -139,47 +132,28 @@ export default function JobDetailPage({
   const job = offlineJobData?.job ?? null;
   const materialLists = offlineJobData?.materialLists ?? null;
 
-  const createMaterialList = api.materialList.createMaterialList.useMutation({
-    onSuccess: (data) => {
-      void utils.materialList.listMaterialLists.invalidate({ jobId });
-      void utils.job.getJob.invalidate({ jobId });
-      router.push(`/dashboard/material-lists/${data.materialListId}`);
-    },
-  });
-
-  const deleteMaterialList = api.materialList.deleteMaterialList.useMutation({
-    onSuccess: () => {
-      void utils.materialList.listMaterialLists.invalidate({ jobId });
-      void utils.job.getJob.invalidate({ jobId });
-    },
-  });
-
   const handleCreateNew = () => {
-    if (createMaterialList.isPending || !job?.id) {
+    if (!job?.id) {
       return;
     }
 
-    if (!isBrowserOnline) {
-      const materialList = createOfflineMaterialList(job.id);
-      void setOfflineMaterialList(
-        materialList.id,
-        {
-          materialList: {
-            id: materialList.id,
-            name: materialList.name,
-            createdAt: materialList.createdAt,
-          },
-          job,
-          quote: { id: `offline-quote-${materialList.id}` },
-          items: [],
-          materialTotal: 0,
+    const materialList = createOfflineMaterialList(job.id);
+    void setOfflineMaterialList(
+      materialList.id,
+      {
+        materialList: {
+          id: materialList.id,
+          name: materialList.name,
+          createdAt: materialList.createdAt,
         },
-        { pendingSync: true },
-      ).then(() => router.push(`/dashboard/material-lists/${materialList.id}`));
-      return;
-    }
-
-    createMaterialList.mutate({ jobId: job.id });
+        job,
+        quote: { id: `offline-quote-${materialList.id}` },
+        items: [],
+        materialTotal: 0,
+      },
+      { pendingSync: true },
+    ).then(() => router.push(`/dashboard/material-lists/${materialList.id}`));
+    return;
   };
 
   const handleConfirmDeleteMaterialList = () => {
@@ -194,18 +168,14 @@ export default function JobDetailPage({
     const { id } = materialListToDelete;
     setMaterialListToDelete(null);
 
-    if (!isBrowserOnline) {
-      tombstoneOfflineMaterialList(jobId, id);
-      void clearOfflineMaterialList(id);
-      void getOfflineMutationQueue().then((queue) =>
-        setOfflineMutationQueue(
-          queue.filter((mutation) => mutation.materialListId !== id),
-        ),
-      );
-      return;
-    }
-
-    deleteMaterialList.mutate({ materialListId: id });
+    tombstoneOfflineMaterialList(jobId, id);
+    void clearOfflineMaterialList(id);
+    void getOfflineMutationQueue().then((queue) =>
+      setOfflineMutationQueue(
+        queue.filter((mutation) => mutation.materialListId !== id),
+      ),
+    );
+    return;
   };
 
   const isLoading = jobLoading || listsLoading;
@@ -306,10 +276,10 @@ export default function JobDetailPage({
             onClick={handleCreateNew}
             size="lg"
             className="h-11 w-full sm:w-auto"
-            disabled={createMaterialList.isPending}
+
           >
             <PlusIcon className="mr-2 h-5 w-5" />
-            {createMaterialList.isPending ? "Creating..." : "New Material List"}
+            New Material List
           </Button>
         </div>
 
@@ -323,14 +293,9 @@ export default function JobDetailPage({
               <p className="text-muted-foreground mb-4 text-center">
                 Create your first material list to get started
               </p>
-              <Button
-                onClick={handleCreateNew}
-                disabled={createMaterialList.isPending}
-              >
+              <Button onClick={handleCreateNew}>
                 <PlusIcon className="mr-2 h-4 w-4" />
-                {createMaterialList.isPending
-                  ? "Creating..."
-                  : "New Material List"}
+                New Material List
               </Button>
             </CardContent>
           </Card>
@@ -353,9 +318,9 @@ export default function JobDetailPage({
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-10 w-10 shrink-0 text-red-600 hover:bg-red-50 hover:text-red-700"
+                        className="-mt-3 -mr-3 h-10 w-10 shrink-0 text-red-600 hover:bg-red-50 hover:text-red-700"
                         aria-label={`Delete material list ${list.name}`}
-                        disabled={deleteMaterialList.isPending}
+
                         onClick={(e) => {
                           e.stopPropagation();
                           setMaterialListToDelete({
@@ -380,25 +345,57 @@ export default function JobDetailPage({
                       <span className="font-semibold">Total:</span>
                       <span>${list.materialTotal.toFixed(2)}</span>
                     </div>
-                    {list.foreman && (
-                      <div className="flex items-center gap-2">
-                        <UserIcon className="h-4 w-4" />
-                        <span>{list.foreman.name}</span>
-                      </div>
-                    )}
                     {(
-                      list as unknown as { createdBy?: { name: string } | null }
+                      list as unknown as {
+                        createdBy?: { name?: string | null; email?: string | null } | null;
+                      }
                     ).createdBy && (
                       <div className="flex items-center gap-2">
-                        <span className="font-semibold">Created by:</span>
+                        <UserIcon className="h-4 w-4" />
                         <span>
-                          {
-                            (list as unknown as { createdBy: { name: string } })
-                              .createdBy.name
-                          }
+                          {(
+                            list as unknown as {
+                              createdBy: { name?: string | null; email?: string | null };
+                            }
+                          ).createdBy.name?.trim() ||
+                            (
+                              list as unknown as {
+                                createdBy: { name?: string | null; email?: string | null };
+                              }
+                            ).createdBy.email?.trim() ||
+                            "Unknown"}
                         </span>
                       </div>
                     )}
+                    {(
+                      list as unknown as {
+                        contributors?: Array<{
+                          name?: string | null;
+                          email?: string | null;
+                        }>;
+                      }
+                    ).contributors?.length ? (
+                      <div className="flex items-start gap-2">
+                        <UsersIcon className="mt-0.5 h-4 w-4 shrink-0" />
+                        <span className="min-w-0 break-words">
+                          {(
+                            list as unknown as {
+                              contributors: Array<{
+                                name?: string | null;
+                                email?: string | null;
+                              }>;
+                            }
+                          ).contributors
+                            .map(
+                              (contributor) =>
+                                contributor.name?.trim() ||
+                                contributor.email?.trim(),
+                            )
+                            .filter(Boolean)
+                            .join(", ")}
+                        </span>
+                      </div>
+                    ) : null}
                     <div className="flex items-center gap-2">
                       <CalendarIcon className="h-4 w-4" />
                       <span>
@@ -426,7 +423,7 @@ export default function JobDetailPage({
         <Dialog
           open={!!materialListToDelete}
           onOpenChange={(open) => {
-            if (!open && !deleteMaterialList.isPending) {
+            if (!open) {
               setMaterialListToDelete(null);
             }
           }}
@@ -452,19 +449,17 @@ export default function JobDetailPage({
                 type="button"
                 variant="outline"
                 onClick={() => setMaterialListToDelete(null)}
-                disabled={deleteMaterialList.isPending}
+
               >
                 Cancel
               </Button>
               <Button
                 type="button"
                 variant="destructive"
-                disabled={!materialListToDelete || deleteMaterialList.isPending}
+                disabled={!materialListToDelete}
                 onClick={handleConfirmDeleteMaterialList}
               >
-                {deleteMaterialList.isPending
-                  ? "Deleting..."
-                  : "Delete Material List"}
+                Delete Material List
               </Button>
             </DialogFooter>
           </DialogContent>

@@ -1,8 +1,7 @@
 // @ts-nocheck
-const CACHE_NAME = "foremenhq-offline-shell-v8";
+const CACHE_NAME = "foremenhq-offline-shell-v11";
 const APP_SHELL_ROUTES = [
   "/dashboard",
-  "/dashboard/catalogue",
   "/dashboard/suppliers",
   "/dashboard/quotes",
   "/dashboard/orders",
@@ -25,6 +24,12 @@ const PWA_ASSETS = [
   "/foremanhq/android-chrome-512x512.png",
 ];
 const NAVIGATION_FALLBACKS = ["/dashboard", "/"];
+
+self.addEventListener("message", (event) => {
+  if (event.data?.type === "SKIP_WAITING") {
+    self.skipWaiting();
+  }
+});
 
 self.addEventListener("install", (event) => {
   event.waitUntil(

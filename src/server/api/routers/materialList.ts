@@ -68,6 +68,17 @@ function firstName(name: string | null | undefined) {
   return name?.trim().split(/\s+/)[0] ?? "";
 }
 
+function isUuid(value: string | null | undefined) {
+  return !!value && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{12}$/i.test(value);
+}
+
+function parseOfflineSupplierPartId(value: string | null | undefined) {
+  if (!value) return null;
+  const match = /^offline-supplier-part:([^:]+):([^:]+)$/.exec(value);
+  if (!match?.[1] || !match[2]) return null;
+  return { partDefinitionId: match[1], supplierId: match[2] };
+}
+
 import { createTRPCRouter, hasDashboardAccess } from "~/server/api/trpc";
 import {
   assertCanDeleteCoreRecords,
@@ -146,8 +157,8 @@ const materialListSyncMutationInput = z.discriminatedUnion("type", [
     localItemId: z.string().min(1).max(255),
     partDefinitionId: z.string().uuid().optional(),
     quantity: z.number().positive(),
-    supplierPartId: z.string().uuid().optional().nullable(),
-    supplierId: z.string().uuid().optional().nullable(),
+    supplierPartId: z.string().optional().nullable(),
+    supplierId: z.string().optional().nullable(),
     unitCost: z.number().optional(),
     oneOffDisplayName: z.string().min(1).optional(),
     oneOffDescription: z.string().optional(),
@@ -167,8 +178,8 @@ const materialListSyncMutationInput = z.discriminatedUnion("type", [
     clientMutationId: z.string().min(1).max(255),
     queuedAt: z.string(),
     itemId: z.string().uuid(),
-    supplierPartId: z.string().uuid().nullable(),
-    supplierId: z.string().uuid().optional().nullable(),
+    supplierPartId: z.string().nullable(),
+    supplierId: z.string().optional().nullable(),
   }),
   z.object({
     type: z.literal("removeItem"),
@@ -668,6 +679,16 @@ export const materialListRouter = createTRPCRouter({
             : null;
 
           if (!materialListWithQuote?.quoteId) {
+            const contributors = createdBy
+              ? [
+                  {
+                    id: createdBy.id,
+                    name: createdBy.name ?? createdBy.email ?? "Unknown",
+                    email: createdBy.email,
+                  },
+                ]
+              : [];
+
             return {
               ...list,
               createdBy: createdBy
@@ -675,8 +696,9 @@ export const materialListRouter = createTRPCRouter({
                     id: createdBy.id,
                     name: createdBy.name ?? "Unknown",
                     email: createdBy.email,
-                  }
+                }
                 : null,
+              contributors,
               itemCount: 0,
               materialTotal: 0,
             };
@@ -686,9 +708,39 @@ export const materialListRouter = createTRPCRouter({
           const items = await ctx.db
             .select({
               extendedPrice: quoteItems.extendedPrice,
+              addedByUserId: quoteItems.addedByUserId,
             })
             .from(quoteItems)
             .where(eq(quoteItems.quoteId, materialListWithQuote.quoteId));
+
+          const contributorIds = Array.from(
+            new Set(
+              [list.createdByUserId, ...items.map((item) => item.addedByUserId)].filter(
+                (value): value is string => Boolean(value),
+              ),
+            ),
+          );
+          const contributorUsers = contributorIds.length
+            ? await ctx.db
+                .select({
+                  id: users.id,
+                  name: users.name,
+                  email: users.email,
+                })
+                .from(users)
+                .where(inArray(users.id, contributorIds))
+            : [];
+          const contributorUserMap = new Map(
+            contributorUsers.map((user) => [user.id, user]),
+          );
+          const contributors = contributorIds
+            .map((id) => contributorUserMap.get(id))
+            .filter((user): user is NonNullable<typeof user> => Boolean(user))
+            .map((user) => ({
+              id: user.id,
+              name: user.name ?? user.email ?? "Unknown",
+              email: user.email,
+            }));
 
           const itemCount = items.length;
           const materialTotal = items.reduce((sum, item) => {
@@ -705,8 +757,9 @@ export const materialListRouter = createTRPCRouter({
                   id: createdBy.id,
                   name: createdBy.name ?? "Unknown",
                   email: createdBy.email,
-                }
+              }
               : null,
+            contributors,
             itemCount,
             materialTotal,
           };
@@ -950,9 +1003,7 @@ export const materialListRouter = createTRPCRouter({
         });
       }
 
-      let partDef = null;
       let supplierPartId = input.supplierPartId;
-      let supplierPart = null;
       let unitCost = input.unitCost ? input.unitCost.toString() : null;
       let uomId = null;
       let descriptionSnapshot = null;
@@ -972,7 +1023,6 @@ export const materialListRouter = createTRPCRouter({
           });
         }
 
-        partDef = pd;
         uomId = null;
         descriptionSnapshot = pd.displayName;
 
@@ -984,7 +1034,6 @@ export const materialListRouter = createTRPCRouter({
             .from(supplierParts)
             .where(and(eq(supplierParts.id, supplierPartId)))
             .limit(1);
-          supplierPart = sp;
           if (sp) {
             unitCost = sp.lastKnownUnitCost;
           }
@@ -1003,7 +1052,6 @@ export const materialListRouter = createTRPCRouter({
 
           if (preferred) {
             supplierPartId = preferred.id;
-            supplierPart = preferred;
             unitCost = preferred.lastKnownUnitCost;
           }
         }
@@ -1591,6 +1639,7 @@ export const materialListRouter = createTRPCRouter({
         duplicate?: boolean;
       }> = [];
       const failed: Array<{ clientMutationId: string; message: string }> = [];
+      const batchItemIdMap = new Map<string, string>();
       let needsTotalRecalc = false;
 
       for (const mutation of input.mutations) {
@@ -1610,6 +1659,9 @@ export const materialListRouter = createTRPCRouter({
           .limit(1);
 
         if (existing) {
+          if (existing.clientItemId && existing.serverItemId) {
+            batchItemIdMap.set(existing.clientItemId, existing.serverItemId);
+          }
           applied.push({
             clientMutationId: mutation.clientMutationId,
             type: existing.mutationType,
@@ -1632,6 +1684,12 @@ export const materialListRouter = createTRPCRouter({
 
               let unitCost = mutation.unitCost?.toString() ?? null;
               let descriptionSnapshot = mutation.oneOffDisplayName ?? "";
+              const offlineSupplierPart = parseOfflineSupplierPartId(mutation.supplierPartId);
+              const serverSupplierPartId = isUuid(mutation.supplierPartId)
+                ? mutation.supplierPartId
+                : null;
+              const resolvedSupplierId =
+                mutation.supplierId ?? offlineSupplierPart?.supplierId ?? null;
 
               if (mutation.partDefinitionId) {
                 const [partDef] = await ctx.db
@@ -1643,11 +1701,11 @@ export const materialListRouter = createTRPCRouter({
                 if (!partDef) throw new Error("Part definition not found");
                 descriptionSnapshot = partDef.displayName;
 
-                if (mutation.supplierPartId) {
+                if (serverSupplierPartId) {
                   const [supplierPart] = await ctx.db
                     .select({ lastKnownUnitCost: supplierParts.lastKnownUnitCost })
                     .from(supplierParts)
-                    .where(eq(supplierParts.id, mutation.supplierPartId))
+                    .where(eq(supplierParts.id, serverSupplierPartId))
                     .limit(1);
                   unitCost = supplierPart?.lastKnownUnitCost ?? unitCost;
                 }
@@ -1659,8 +1717,8 @@ export const materialListRouter = createTRPCRouter({
                 .insert(quoteItems)
                 .values({
                   quoteId: materialList.quoteId,
-                  supplierPartId: mutation.supplierPartId ?? null,
-                  supplierId: mutation.supplierId ?? null,
+                  supplierPartId: serverSupplierPartId,
+                  supplierId: resolvedSupplierId,
                   partDefinitionId: mutation.partDefinitionId ?? null,
                   quantity: mutation.quantity.toString(),
                   unitCost,
@@ -1681,17 +1739,20 @@ export const materialListRouter = createTRPCRouter({
               if (!quoteItem) throw new Error("Failed to create quote item");
               serverItemId = quoteItem.id;
               clientItemId = mutation.localItemId;
+              batchItemIdMap.set(mutation.localItemId, quoteItem.id);
               needsTotalRecalc = true;
               break;
             }
             case "updateItemQuantity": {
+              const resolvedItemId = batchItemIdMap.get(mutation.itemId) ?? mutation.itemId;
               const [item] = await ctx.db
                 .select({ quoteId: quoteItems.quoteId, unitCost: quoteItems.unitCost })
                 .from(quoteItems)
-                .where(eq(quoteItems.id, mutation.itemId))
+                .where(eq(quoteItems.id, resolvedItemId))
                 .limit(1);
               if (!item || item.quoteId !== materialList.quoteId) {
-                serverItemId = mutation.itemId;
+                serverItemId = resolvedItemId;
+                clientItemId = mutation.itemId;
                 break;
               }
 
@@ -1703,28 +1764,38 @@ export const materialListRouter = createTRPCRouter({
                   extendedPrice: (mutation.quantity * cost).toString(),
                   updatedAt: new Date(),
                 })
-                .where(eq(quoteItems.id, mutation.itemId));
-              serverItemId = mutation.itemId;
+                .where(eq(quoteItems.id, resolvedItemId));
+              serverItemId = resolvedItemId;
+              clientItemId = mutation.itemId;
               needsTotalRecalc = true;
               break;
             }
             case "updateItemSupplierPart": {
+              const resolvedItemId = batchItemIdMap.get(mutation.itemId) ?? mutation.itemId;
               const [item] = await ctx.db
                 .select({ quoteId: quoteItems.quoteId, quantity: quoteItems.quantity })
                 .from(quoteItems)
-                .where(eq(quoteItems.id, mutation.itemId))
+                .where(eq(quoteItems.id, resolvedItemId))
                 .limit(1);
               if (!item || item.quoteId !== materialList.quoteId) {
-                serverItemId = mutation.itemId;
+                serverItemId = resolvedItemId;
+                clientItemId = mutation.itemId;
                 break;
               }
 
               let unitCost: string | null = null;
-              if (mutation.supplierPartId) {
+              const offlineSupplierPart = parseOfflineSupplierPartId(mutation.supplierPartId);
+              const serverSupplierPartId = isUuid(mutation.supplierPartId)
+                ? mutation.supplierPartId
+                : null;
+              const resolvedSupplierId =
+                mutation.supplierId ?? offlineSupplierPart?.supplierId ?? null;
+
+              if (serverSupplierPartId) {
                 const [supplierPart] = await ctx.db
                   .select({ lastKnownUnitCost: supplierParts.lastKnownUnitCost })
                   .from(supplierParts)
-                  .where(eq(supplierParts.id, mutation.supplierPartId))
+                  .where(eq(supplierParts.id, serverSupplierPartId))
                   .limit(1);
                 unitCost = supplierPart?.lastKnownUnitCost ?? null;
               }
@@ -1734,33 +1805,36 @@ export const materialListRouter = createTRPCRouter({
               await ctx.db
                 .update(quoteItems)
                 .set({
-                  supplierPartId: mutation.supplierPartId,
-                  supplierId: mutation.supplierId ?? null,
+                  supplierPartId: serverSupplierPartId,
+                  supplierId: resolvedSupplierId,
                   unitCost,
                   extendedPrice: (quantity * cost).toString(),
                   updatedAt: new Date(),
                 })
-                .where(eq(quoteItems.id, mutation.itemId));
-              serverItemId = mutation.itemId;
+                .where(eq(quoteItems.id, resolvedItemId));
+              serverItemId = resolvedItemId;
+              clientItemId = mutation.itemId;
               needsTotalRecalc = true;
               break;
             }
             case "removeItem": {
+              const resolvedItemId = batchItemIdMap.get(mutation.itemId) ?? mutation.itemId;
               const [item] = await ctx.db
                 .select({ quoteId: quoteItems.quoteId })
                 .from(quoteItems)
-                .where(eq(quoteItems.id, mutation.itemId))
+                .where(eq(quoteItems.id, resolvedItemId))
                 .limit(1);
               if (item?.quoteId === materialList.quoteId) {
-                await ctx.db.delete(quoteItems).where(eq(quoteItems.id, mutation.itemId));
+                await ctx.db.delete(quoteItems).where(eq(quoteItems.id, resolvedItemId));
                 await recordMaterialListItemTombstone(ctx.db, {
                   organizationId: ctx.user.organizationId,
                   materialListId: input.materialListId,
-                  itemId: mutation.itemId,
+                  itemId: resolvedItemId,
                 });
                 needsTotalRecalc = true;
               }
-              serverItemId = mutation.itemId;
+              serverItemId = resolvedItemId;
+              clientItemId = mutation.itemId;
               break;
             }
             case "renameMaterialList": {
@@ -1791,6 +1865,12 @@ export const materialListRouter = createTRPCRouter({
           });
         } catch (error) {
           const message = error instanceof Error ? error.message : "Sync mutation failed";
+          console.warn("Material-list sync mutation failed", {
+            materialListId: input.materialListId,
+            clientMutationId: mutation.clientMutationId,
+            type: mutation.type,
+            message,
+          });
           failed.push({ clientMutationId: mutation.clientMutationId, message });
         }
       }

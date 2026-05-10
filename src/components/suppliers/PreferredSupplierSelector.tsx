@@ -16,10 +16,14 @@ import {
   DialogTitle,
 } from "~/components/ui/dialog";
 import { Button } from "~/components/ui/button";
-import { Badge } from "~/components/ui/badge";
 import { ChevronDownIcon, StarIcon, CheckIcon, AlertCircle } from "lucide-react";
 import { useOnlineStatus } from "~/hooks/use-online-status";
 import { PartSuppliersDropdown } from "~/components/catalogue/PartSuppliersDropdown";
+import {
+  getOfflinePartSuppliers,
+  setOfflinePartSuppliers,
+  setOfflinePreferredSupplier,
+} from "~/lib/offline-suppliers";
 
 interface PreferredSupplierSelectorProps {
   partDefinitionId: string;
@@ -36,83 +40,46 @@ export function PreferredSupplierSelector({
   partDefinitionId,
   currentPreferredSupplierId,
   availableSuppliers,
-  onManageSuppliers,
 }: PreferredSupplierSelectorProps) {
   const [isSupplierDialogOpen, setIsSupplierDialogOpen] = useState(false);
-  const utils = api.useUtils();
-  const setPreferredSupplier = api.supplier.setPreferredSupplier.useMutation({
-    onMutate: async (variables) => {
-      // Cancel outgoing refetches
-      await utils.catalogue.getPartsSupplierInfo.cancel();
-
-      // Snapshot previous value
-      const previousSupplierInfo = utils.catalogue.getPartsSupplierInfo.getData({
-        partIds: [partDefinitionId],
-      });
-
-      // Find supplier
-      const supplier = availableSuppliers.find(
-        (s) => s.id === variables.supplierId,
-      );
-
-      // Optimistically update supplier info
-      if (supplier) {
-        utils.catalogue.getPartsSupplierInfo.setData(
-          { partIds: [partDefinitionId] },
-          (old) => {
-            const current = old?.[partDefinitionId] || {
-              preferredSupplier: null,
-              availableSuppliers: [],
-            };
-            // Find the full supplier object from availableSuppliers to match the expected type
-            const fullSupplier = current.availableSuppliers.find(
-              (s) => s.id === supplier.id,
-            ) || supplier;
-            return {
-              ...old,
-              [partDefinitionId]: {
-                ...current,
-                preferredSupplier: fullSupplier as typeof current.preferredSupplier,
-              },
-            };
-          },
-        );
-      }
-
-      return { previousSupplierInfo };
-    },
-    onError: (err, variables, context) => {
-      // Rollback on error
-      if (context?.previousSupplierInfo !== undefined) {
-        utils.catalogue.getPartsSupplierInfo.setData(
-          { partIds: [partDefinitionId] },
-          context.previousSupplierInfo,
-        );
-      }
-    },
-    onSettled: () => {
-      void utils.supplier.getAllPartsWithPreferred.invalidate();
-      void utils.catalogue.getPartsSupplierInfo.invalidate();
-    },
-  });
-
   const isOnline = useOnlineStatus();
+  const setPreferredSupplier = api.supplier.setPreferredSupplier.useMutation();
+
+  const localSupplierParts = getOfflinePartSuppliers(partDefinitionId) ?? [];
+  const effectivePreferredSupplierId =
+    localSupplierParts.find((part) => part.isPreferred)?.supplierId ?? currentPreferredSupplierId;
 
   const currentSupplier = availableSuppliers.find(
-    (s) => s.id === currentPreferredSupplierId,
+    (s) => s.id === effectivePreferredSupplierId,
   );
 
-  // Get supplier info for PartSuppliersDropdown
   const { data: supplierInfo } = api.catalogue.getPartsSupplierInfo.useQuery(
     { partIds: [partDefinitionId] },
     { enabled: isOnline && !!partDefinitionId },
   );
 
   const handleSelect = (supplierId: string) => {
-    setPreferredSupplier.mutate({
-      partDefinitionId,
-      supplierId,
-    });
+    const cached = getOfflinePartSuppliers(partDefinitionId);
+    if (cached) {
+      setOfflinePreferredSupplier(partDefinitionId, supplierId);
+    } else {
+      setOfflinePartSuppliers(
+        partDefinitionId,
+        availableSuppliers.map((supplier) => ({
+          id: `offline-supplier-part:${partDefinitionId}:${supplier.id}`,
+          supplierId: supplier.id,
+          partDefinitionId,
+          supplierSku: null,
+          lastKnownUnitCost: null,
+          isPreferred: supplier.id === supplierId,
+          supplier: { id: supplier.id, name: supplier.name },
+        })),
+      );
+    }
+
+    if (isOnline) {
+      setPreferredSupplier.mutate({ partDefinitionId, supplierId });
+    }
   };
 
   if (availableSuppliers.length === 0) {
@@ -128,16 +95,7 @@ export function PreferredSupplierSelector({
             <span>No suppliers available. Click to add suppliers.</span>
           </div>
         </button>
-        <Dialog 
-          open={isSupplierDialogOpen} 
-          onOpenChange={(open) => {
-            setIsSupplierDialogOpen(open);
-            if (!open) {
-              void utils.catalogue.getPartsSupplierInfo.invalidate();
-              void utils.supplier.getAllPartsWithPreferred.invalidate();
-            }
-          }}
-        >
+        <Dialog open={isSupplierDialogOpen} onOpenChange={setIsSupplierDialogOpen}>
           <DialogContent className="max-w-md">
             <DialogHeader>
               <DialogTitle className="text-base sm:text-lg">Manage Suppliers</DialogTitle>
@@ -146,25 +104,21 @@ export function PreferredSupplierSelector({
               </DialogDescription>
             </DialogHeader>
             <div className="py-2 sm:py-4">
-              <div>
-                <label className="text-xs font-medium sm:text-sm">
-                  Suppliers
-                </label>
-                <div className="mt-1" onClick={(e) => e.stopPropagation()}>
-                  <PartSuppliersDropdown
-                    partDefinitionId={partDefinitionId}
-                    currentPreferredSupplierId={
-                      supplierInfo?.[partDefinitionId]?.preferredSupplier?.id || null
-                    }
-                    availableSuppliers={
-                      supplierInfo?.[partDefinitionId]?.availableSuppliers ?? []
-                    }
-                  />
-                </div>
-                <p className="mt-1 text-xs text-gray-500">
-                  Select suppliers that provide this part and set a preferred supplier.
-                </p>
+              <label className="text-xs font-medium sm:text-sm">Suppliers</label>
+              <div className="mt-1" onClick={(e) => e.stopPropagation()}>
+                <PartSuppliersDropdown
+                  partDefinitionId={partDefinitionId}
+                  currentPreferredSupplierId={
+                    supplierInfo?.[partDefinitionId]?.preferredSupplier?.id || null
+                  }
+                  availableSuppliers={
+                    supplierInfo?.[partDefinitionId]?.availableSuppliers ?? []
+                  }
+                />
               </div>
+              <p className="mt-1 text-xs text-gray-500">
+                Select suppliers that provide this part and set a preferred supplier.
+              </p>
             </div>
           </DialogContent>
         </Dialog>
@@ -197,12 +151,12 @@ export function PreferredSupplierSelector({
             className="flex items-center justify-between"
           >
             <span className="flex items-center gap-2">
-              {currentPreferredSupplierId === supplier.id && (
+              {effectivePreferredSupplierId === supplier.id && (
                 <StarIcon className="h-4 w-4 fill-yellow-400 text-yellow-400" />
               )}
               {supplier.name}
             </span>
-            {currentPreferredSupplierId === supplier.id && (
+            {effectivePreferredSupplierId === supplier.id && (
               <CheckIcon className="h-4 w-4" />
             )}
           </DropdownMenuItem>
@@ -211,5 +165,3 @@ export function PreferredSupplierSelector({
     </DropdownMenu>
   );
 }
-
-

@@ -22,6 +22,7 @@ import {
 import { Search, ChevronDownIcon } from "lucide-react";
 import { LocationFormDialog } from "./LocationFormDialog";
 import { useOnlineStatus } from "~/hooks/use-online-status";
+import { updateOfflineJob } from "~/lib/offline-jobs";
 
 interface JobInfoModalProps {
   open: boolean;
@@ -68,123 +69,6 @@ export function JobInfoModal({
     { materialListId },
     { enabled: isOnline && open && !!materialListId },
   );
-  const updateJobInfo = api.materialList.updateMaterialListJobInfo.useMutation({
-    onMutate: async (variables) => {
-      // Cancel outgoing refetches
-      await utils.materialList.getMaterialList.cancel({ materialListId });
-      await utils.job.getCurrentJob.cancel();
-      await utils.job.listJobs.cancel();
-
-      // Snapshot previous values
-      const previousMaterialList = utils.materialList.getMaterialList.getData({
-        materialListId,
-      });
-      const previousCurrentJob = utils.job.getCurrentJob.getData();
-      const previousJobsList = utils.job.listJobs.getData();
-
-      // Get location info if provided
-      const location = selectedLocation
-        ? {
-            id: selectedLocation.id,
-            name: selectedLocation.name,
-            address1: selectedLocation.address1 ?? null,
-            address2: selectedLocation.address2 ?? null,
-            city: selectedLocation.city ?? null,
-            region: selectedLocation.region ?? null,
-            postalCode: selectedLocation.postalCode ?? null,
-            country: selectedLocation.country ?? null,
-          }
-        : null;
-
-      const jobId =
-        materialList?.job &&
-        typeof materialList.job === "object" &&
-        "id" in materialList.job
-          ? materialList.job.id
-          : undefined;
-
-      // Optimistically update material list job
-      utils.materialList.getMaterialList.setData({ materialListId }, (old) => {
-        if (
-          !old ||
-          !old.job ||
-          typeof old.job !== "object" ||
-          !("id" in old.job)
-        )
-          return old;
-        return {
-          ...old,
-          job: {
-            ...old.job,
-            name: variables.name,
-            locationId:
-              variables.locationId ??
-              ("locationId" in old.job ? old.job.locationId : null) ??
-              null,
-            location:
-              location ??
-              ("location" in old.job ? old.job.location : null) ??
-              null,
-          },
-        };
-      });
-
-      // Optimistically update current job if it matches
-      if (jobId) {
-        utils.job.getCurrentJob.setData(undefined, (old) => {
-          if (!old || old.id !== jobId) return old;
-          return {
-            ...old,
-            name: variables.name,
-            locationId: variables.locationId ?? old.locationId ?? null,
-          };
-        });
-      }
-
-      // Optimistically update job in list
-      if (jobId) {
-        utils.job.listJobs.setData(undefined, (old) => {
-          if (!old) return old;
-          return old.map((job) =>
-            job.id === jobId
-              ? {
-                  ...job,
-                  name: variables.name,
-                  locationId: variables.locationId ?? job.locationId ?? null,
-                  location: location ?? job.location ?? null,
-                }
-              : job,
-          );
-        });
-      }
-
-      return { previousMaterialList, previousCurrentJob, previousJobsList };
-    },
-    onError: (err, variables, context) => {
-      // Rollback on error
-      if (context?.previousMaterialList) {
-        utils.materialList.getMaterialList.setData(
-          { materialListId },
-          context.previousMaterialList,
-        );
-      }
-      if (context?.previousCurrentJob !== undefined) {
-        utils.job.getCurrentJob.setData(undefined, context.previousCurrentJob);
-      }
-      if (context?.previousJobsList !== undefined) {
-        utils.job.listJobs.setData(undefined, context.previousJobsList);
-      }
-    },
-    onSettled: () => {
-      void utils.materialList.getMaterialList.invalidate({ materialListId });
-      void utils.job.getCurrentJob.invalidate();
-      void utils.job.listJobs.invalidate();
-    },
-    onSuccess: () => {
-      onOpenChange(false);
-    },
-  });
-
   // Search locations - always enabled to load initial location if needed
   const { data: locations, isLoading: locationsLoading } =
     api.location.searchLocations.useQuery(
@@ -262,11 +146,20 @@ export function JobInfoModal({
       return;
     }
 
-    updateJobInfo.mutate({
-      materialListId,
-      name: jobName.trim(),
-      locationId: selectedLocation?.id ?? null,
-    });
+    const jobId =
+      materialList?.job &&
+      typeof materialList.job === "object" &&
+      "id" in materialList.job
+        ? materialList.job.id
+        : null;
+
+    if (jobId) {
+      updateOfflineJob(jobId, {
+        name: jobName.trim(),
+        locationId: selectedLocation?.id ?? null,
+      });
+    }
+    onOpenChange(false);
   };
 
   const displayLocationName = useMemo(() => {
@@ -419,7 +312,7 @@ export function JobInfoModal({
           </Button>
           <Button
             onClick={handleSave}
-            disabled={!jobName.trim() || updateJobInfo.isPending}
+            disabled={!jobName.trim()}
           >
             Save & Continue
           </Button>

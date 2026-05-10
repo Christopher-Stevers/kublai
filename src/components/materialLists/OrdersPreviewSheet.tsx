@@ -123,9 +123,6 @@ export function OrdersPreviewSheet({
         return next;
       });
     },
-    onSettled: () => {
-      void utils.materialList.getMaterialList.invalidate({ materialListId });
-    },
   });
 
   // Generate orders when sheet opens (only if not viewing existing order)
@@ -149,9 +146,6 @@ export function OrdersPreviewSheet({
         setIsGenerating(true);
 
         try {
-          await utils.materialList.getMaterialList.invalidate({
-            materialListId,
-          });
           const data = await withTimeout(
             generateOrders.mutateAsync({ materialListId }),
             GENERATE_ORDER_TIMEOUT_MS,
@@ -170,9 +164,6 @@ export function OrdersPreviewSheet({
           });
           setOrderNotes(notesMap);
           setSyncError(null);
-          void utils.materialList.getMaterialList.invalidate({
-            materialListId,
-          });
         } catch (error) {
           generateOrders.reset();
           setSyncError(

@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { useOnlineStatus } from "~/hooks/use-online-status";
 import { useOfflineSuppliers } from "~/hooks/use-offline-suppliers";
+import { tombstoneOfflineSupplier } from "~/lib/offline-suppliers";
 
 export function SupplierList() {
   const [editSupplierId, setEditSupplierId] = useState<string | undefined>();
@@ -46,34 +47,6 @@ export function SupplierList() {
     cacheLoaded,
     isOfflineFallback,
   } = useOfflineSuppliers(serverSuppliers);
-  const utils = api.useUtils();
-  const deleteSupplier = api.supplier.delete.useMutation({
-    onMutate: async (variables) => {
-      // Cancel outgoing refetches
-      await utils.supplier.list.cancel();
-
-      // Snapshot previous value
-      const previousSuppliers = utils.supplier.list.getData();
-
-      // Optimistically remove supplier from list
-      utils.supplier.list.setData(undefined, (old) => {
-        if (!old) return old;
-        return old.filter((supplier) => supplier.id !== variables.id);
-      });
-
-      return { previousSuppliers };
-    },
-    onError: (err, variables, context) => {
-      // Rollback on error
-      if (context?.previousSuppliers !== undefined) {
-        utils.supplier.list.setData(undefined, context.previousSuppliers);
-      }
-    },
-    onSettled: () => {
-      void utils.supplier.list.invalidate();
-    },
-  });
-
   const handleDelete = (id: string, name: string) => {
     if (!canDeleteCoreRecords) return;
 
@@ -82,7 +55,7 @@ export function SupplierList() {
         `Are you sure you want to delete "${name}"? This will also remove all parts associated with this supplier.`,
       )
     ) {
-      deleteSupplier.mutate({ id });
+      tombstoneOfflineSupplier(id);
     }
   };
 

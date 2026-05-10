@@ -1,3 +1,6 @@
+import { getOfflineDexieDb } from "~/lib/offline-dexie-db";
+import { setOfflineIdMappings } from "~/lib/offline-id-map";
+
 export interface OfflineJobSummary {
   id: string;
   name: string;
@@ -33,6 +36,11 @@ export interface OfflineJobMaterialListSummary {
     id: string;
     name: string;
   } | null;
+  contributors?: Array<{
+    id: string;
+    name: string;
+    email?: string | null;
+  }>;
 }
 
 export interface OfflineJobDetail {
@@ -81,6 +89,15 @@ export type OfflineEntityMutation =
       localJobId: string;
       name: string;
       locationId?: string | null;
+      queuedAt: string;
+    }
+  | {
+      type: "updateJob";
+      jobId: string;
+      name?: string | null;
+      locationId?: string | null;
+      poNumber?: string | null;
+      foremanName?: string | null;
       queuedAt: string;
     }
   | {
@@ -139,7 +156,39 @@ export function setOfflineJobsList(data: OfflineJobSummary[]) {
   };
 
   window.localStorage.setItem(JOBS_LIST_KEY, JSON.stringify(envelope));
+  void writeJobsListToDexie(envelope);
   notifyOfflineJobsChanged();
+}
+
+async function writeJobsListToDexie(envelope: OfflineJobsListEnvelope) {
+  const db = getOfflineDexieDb();
+  if (!db) return;
+
+  const nextJobIds = new Set(envelope.data.map((job) => job.id));
+  const existingRows = await db.jobSummaries.toArray();
+  const removedJobIds = existingRows
+    .filter((row) => !nextJobIds.has(row.id))
+    .map((row) => row.id);
+
+  await db.transaction("rw", db.jobSummaries, db.jobDetails, async () => {
+    if (removedJobIds.length > 0) {
+      await db.jobSummaries.bulkDelete(removedJobIds);
+      await db.jobDetails.bulkDelete(removedJobIds);
+    }
+
+    await db.jobSummaries.bulkPut(
+      envelope.data.map((job) => ({
+        id: job.id,
+        name: job.name,
+        locationId: job.locationId,
+        status: job.status,
+        createdAt:
+          job.createdAt instanceof Date ? job.createdAt.toISOString() : String(job.createdAt),
+        updatedAt: envelope.updatedAt,
+        value: job,
+      })),
+    );
+  });
 }
 
 export function getOfflineJobDetail(
@@ -171,14 +220,31 @@ export function setOfflineJobDetail(
   };
 
   window.localStorage.setItem(jobDetailKey(jobId), JSON.stringify(envelope));
+  void writeJobDetailToDexie(jobId, envelope);
   if (options?.notify !== false) {
     notifyOfflineJobsChanged();
   }
 }
 
+async function writeJobDetailToDexie(
+  jobId: string,
+  envelope: OfflineJobDetailEnvelope,
+) {
+  const db = getOfflineDexieDb();
+  if (!db) return;
+
+  await db.jobDetails.put({
+    id: jobId,
+    updatedAt: envelope.updatedAt,
+    value: envelope.data,
+  });
+}
+
 export function removeOfflineJobDetail(jobId: string) {
   if (typeof window === "undefined") return;
   window.localStorage.removeItem(jobDetailKey(jobId));
+  const db = getOfflineDexieDb();
+  if (db) void db.jobDetails.delete(jobId);
   notifyOfflineJobsChanged();
 }
 
@@ -186,6 +252,8 @@ export function removeOfflineJobFromCache(jobId: string) {
   setOfflineJobsList(
     (getOfflineJobsList()?.data ?? []).filter((job) => job.id !== jobId),
   );
+  const db = getOfflineDexieDb();
+  if (db) void db.jobSummaries.delete(jobId);
   removeOfflineJobDetail(jobId);
 }
 
@@ -333,6 +401,94 @@ export function tombstoneOfflineJob(jobId: string) {
   ]);
 }
 
+export function purgeAutoCreatedOfflineJobGhosts(serverJobs: OfflineJobSummary[]) {
+  const serverJobIds = new Set(serverJobs.map((job) => job.id));
+  const jobs = getOfflineJobsList()?.data ?? [];
+  const ghostJobIds = new Set(
+    jobs
+      .filter(
+        (job) =>
+          job.name.trim().toLowerCase() === "new job" && !serverJobIds.has(job.id),
+      )
+      .map((job) => job.id),
+  );
+
+  for (const jobId of getOfflineJobDetailIds()) {
+    const detail = getOfflineJobDetail(jobId)?.data;
+    if (detail?.job.name.trim().toLowerCase() === "new job" && !serverJobIds.has(jobId)) {
+      ghostJobIds.add(jobId);
+    }
+  }
+
+  void (async () => {
+    const db = getOfflineDexieDb();
+    if (!db) return;
+
+    const rows = await db.jobSummaries.toArray();
+    for (const row of rows) {
+      const job = row.value as OfflineJobSummary;
+      if (job.name.trim().toLowerCase() === "new job" && !serverJobIds.has(job.id)) {
+        ghostJobIds.add(job.id);
+      }
+    }
+
+    const detailRows = await db.jobDetails.toArray();
+    for (const row of detailRows) {
+      const detail = row.value as OfflineJobDetailEnvelope["data"];
+      if (detail.job.name.trim().toLowerCase() === "new job" && !serverJobIds.has(row.id)) {
+        ghostJobIds.add(row.id);
+      }
+    }
+
+    const ids = Array.from(ghostJobIds);
+    if (ids.length === 0) return;
+
+    const materialListHeaders = await db.materialListHeaders
+      .where("jobId")
+      .anyOf(ids)
+      .toArray();
+    const materialListIds = materialListHeaders.map((header) => header.id);
+
+    await db.jobSummaries.bulkDelete(ids);
+    await db.jobDetails.bulkDelete(ids);
+    if (materialListIds.length > 0) {
+      await db.materialListHeaders.bulkDelete(materialListIds);
+      await db.materialLists.bulkDelete(materialListIds);
+      await db.materialListItems.where("materialListId").anyOf(materialListIds).delete();
+    }
+
+    notifyOfflineJobsChanged();
+  })();
+
+  const ids = Array.from(ghostJobIds);
+  if (ids.length === 0) return;
+
+  setOfflineJobsList(jobs.filter((job) => !ids.includes(job.id)));
+  for (const jobId of ids) {
+    removeOfflineJobDetail(jobId);
+  }
+  setOfflineEntityMutationQueue(
+    getOfflineEntityMutationQueue().filter((mutation) => {
+      if (mutation.type === "createJob" && ids.includes(mutation.localJobId)) {
+        return false;
+      }
+      if (mutation.type === "createMaterialList" && ids.includes(mutation.localJobId)) {
+        return false;
+      }
+      if (
+        (mutation.type === "updateJob" || mutation.type === "deleteJob") &&
+        ids.includes(mutation.jobId)
+      ) {
+        return false;
+      }
+      if (mutation.type === "deleteMaterialList" && ids.includes(mutation.jobId)) {
+        return false;
+      }
+      return true;
+    }),
+  );
+}
+
 export function clearPendingOfflineJobDelete(jobId: string) {
   setOfflineEntityMutationQueue(
     getOfflineEntityMutationQueue().filter(
@@ -418,13 +574,181 @@ export function createOfflineJob(name: string, locationId?: string | null) {
   return job;
 }
 
+export function updateOfflineJob(
+  jobId: string,
+  updates: {
+    name?: string | null;
+    locationId?: string | null;
+    poNumber?: string | null;
+    foremanName?: string | null;
+  },
+) {
+  const now = new Date().toISOString();
+  const list = getOfflineJobsList()?.data ?? [];
+  setOfflineJobsList(
+    list.map((job) =>
+      job.id === jobId
+        ? {
+            ...job,
+            name: updates.name ?? job.name,
+            locationId: updates.locationId ?? job.locationId,
+            poNumber: updates.poNumber ?? job.poNumber,
+            foremanName: updates.foremanName ?? job.foremanName,
+            foreman: {
+              id: job.foreman?.id ?? "",
+              name: updates.foremanName ?? job.foreman?.name ?? "",
+            },
+          }
+        : job,
+    ),
+  );
+
+  const detail = getOfflineJobDetail(jobId)?.data;
+  if (detail) {
+    setOfflineJobDetail(jobId, {
+      job: {
+        ...detail.job,
+        name: updates.name ?? detail.job.name,
+        locationId: updates.locationId ?? detail.job.locationId,
+        poNumber: updates.poNumber ?? detail.job.poNumber,
+        foremanName: updates.foremanName ?? detail.job.foremanName,
+        foreman: {
+          id: detail.job.foreman?.id ?? "",
+          name: updates.foremanName ?? detail.job.foreman?.name ?? "",
+        },
+      },
+      materialLists: detail.materialLists,
+    });
+  }
+
+  enqueueOfflineEntityMutation({
+    type: "updateJob",
+    jobId,
+    name: updates.name,
+    locationId: updates.locationId,
+    poNumber: updates.poNumber,
+    foremanName: updates.foremanName,
+    queuedAt: now,
+  });
+}
+
+export function remapOfflineJobId(
+  localJobId: string,
+  serverJob: OfflineJobDetail,
+  serverMaterialLists: OfflineJobMaterialListSummary[] = [],
+) {
+  const localDetail = getOfflineJobDetail(localJobId)?.data;
+  const mergedDetail = {
+    job: {
+      ...(localDetail?.job ?? serverJob),
+      ...serverJob,
+      id: serverJob.id,
+    },
+    materialLists:
+      localDetail?.materialLists.map((list) => ({ ...list })) ?? serverMaterialLists,
+  };
+
+  const remappedJobs = (getOfflineJobsList()?.data ?? []).map((job) =>
+    job.id === localJobId
+      ? {
+          ...job,
+          id: serverJob.id,
+          name: serverJob.name,
+          locationId: serverJob.locationId,
+          poNumber: serverJob.poNumber,
+          foremanName: serverJob.foremanName,
+          status: serverJob.status,
+          location: serverJob.location,
+          foreman: serverJob.foreman,
+        }
+      : job,
+  );
+  setOfflineJobsList(
+    Array.from(new Map(remappedJobs.map((job) => [job.id, job])).values()),
+  );
+  setOfflineJobDetail(serverJob.id, mergedDetail);
+  if (localJobId !== serverJob.id) {
+    setOfflineIdMappings({ [localJobId]: serverJob.id });
+    removeOfflineJobDetail(localJobId);
+  }
+
+  setOfflineEntityMutationQueue(
+    getOfflineEntityMutationQueue().map((mutation) => {
+      if (mutation.type === "createMaterialList" && mutation.localJobId === localJobId) {
+        return { ...mutation, localJobId: serverJob.id };
+      }
+      if (mutation.type === "updateJob" && mutation.jobId === localJobId) {
+        return { ...mutation, jobId: serverJob.id };
+      }
+      if (mutation.type === "deleteJob" && mutation.jobId === localJobId) {
+        return { ...mutation, jobId: serverJob.id };
+      }
+      if (mutation.type === "deleteMaterialList" && mutation.jobId === localJobId) {
+        return { ...mutation, jobId: serverJob.id };
+      }
+      return mutation;
+    }),
+  );
+}
+
+export function remapOfflineMaterialListId(
+  jobId: string,
+  localMaterialListId: string,
+  serverMaterialListId: string,
+) {
+  const detail = getOfflineJobDetail(jobId)?.data;
+  if (detail) {
+    setOfflineJobDetail(jobId, {
+      job: detail.job,
+      materialLists: detail.materialLists.map((list) =>
+        list.id === localMaterialListId ? { ...list, id: serverMaterialListId } : list,
+      ),
+    });
+  }
+  if (localMaterialListId !== serverMaterialListId) {
+    setOfflineIdMappings({ [localMaterialListId]: serverMaterialListId });
+  }
+
+  setOfflineEntityMutationQueue(
+    getOfflineEntityMutationQueue().map((mutation) => {
+      if (
+        mutation.type === "deleteMaterialList" &&
+        mutation.materialListId === localMaterialListId
+      ) {
+        return { ...mutation, materialListId: serverMaterialListId };
+      }
+      return mutation;
+    }),
+  );
+}
+
+function formatTorontoMaterialListDate(from = new Date()) {
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Toronto",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  }).format(from);
+}
+
+export function formatDefaultMaterialListName(listNumber: number, from = new Date()) {
+  return `${formatTorontoMaterialListDate(from)} -${listNumber.toString()}`;
+}
+
+export function normalizeLegacyOfflineMaterialListName(name: string, createdAt?: string | Date | null) {
+  const match = name.match(/^Offline Material List\s+(\d+)$/i);
+  if (!match?.[1]) return name;
+
+  const date = createdAt ? new Date(createdAt) : new Date();
+  return formatDefaultMaterialListName(Number(match[1]), Number.isNaN(date.getTime()) ? new Date() : date);
+}
+
 export function createOfflineMaterialList(jobId: string, name?: string) {
   const now = new Date().toISOString();
   const localMaterialListId = `offline-list-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   const detail = getOfflineJobDetail(jobId)?.data;
   const materialListName =
-    name?.trim() ||
-    `Offline Material List ${((detail?.materialLists.length ?? 0) + 1).toString()}`;
+    name?.trim() || formatDefaultMaterialListName((detail?.materialLists.length ?? 0) + 1, new Date(now));
   const summary: OfflineJobMaterialListSummary = {
     id: localMaterialListId,
     name: materialListName,
@@ -432,6 +756,7 @@ export function createOfflineMaterialList(jobId: string, name?: string) {
     itemCount: 0,
     materialTotal: 0,
     foreman: detail?.job.foreman ?? null,
+    contributors: [],
   };
 
   if (detail) {

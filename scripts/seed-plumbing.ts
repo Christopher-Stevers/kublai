@@ -7,27 +7,17 @@ import { join } from "path";
 import {
   categories,
   catalogs,
-  locations,
   organizations,
   partDefinitions,
   partSynonyms,
-  supplierParts,
-  suppliers,
   units,
-  jobs,
-  materialLists,
-  quotes,
   materials,
   sizes,
 } from "../src/server/db/schema";
-import { and, eq, isNull, sql } from "drizzle-orm";
-import { exec } from "child_process";
-import { promisify } from "util";
+import { and, eq, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { env } from "~/env";
-
-const execAsync = promisify(exec);
 
 // Lock file to prevent concurrent execution
 const lockFile = join(process.cwd(), ".seed-lock");
@@ -272,76 +262,6 @@ const partDefinitionsData = [
   },
 ];
 
-// Location definitions
-const locationDefinitions = [
-  {
-    name: "Main Warehouse",
-    address1: "123 Industrial Blvd",
-    city: "Vancouver",
-    region: "BC",
-    postalCode: "V6B 1A1",
-    country: "Canada",
-  },
-  {
-    name: "Downtown Branch",
-    address1: "456 Main Street",
-    city: "Vancouver",
-    region: "BC",
-    postalCode: "V6B 2B2",
-    country: "Canada",
-  },
-  {
-    name: "East Side Distribution",
-    address1: "789 Commerce Way",
-    city: "Burnaby",
-    region: "BC",
-    postalCode: "V5C 3C3",
-    country: "Canada",
-  },
-  {
-    name: "North Shore Location",
-    address1: "321 Marine Drive",
-    city: "North Vancouver",
-    region: "BC",
-    postalCode: "V7M 4D4",
-    country: "Canada",
-  },
-];
-
-// Supplier definitions
-const supplierDefinitions = [
-  {
-    name: "ABC Plumbing Supply",
-    contactEmail: "orders@abcplumbing.com",
-    contactPhone: "555-0100",
-    orderingNotes: "Minimum order $100. Same-day delivery available.",
-    locationName: "Main Warehouse",
-  },
-  {
-    name: "Metro Hardware & Supply",
-    contactEmail: "wholesale@metrohardware.com",
-    contactPhone: "555-0200",
-    orderingNotes: "Bulk pricing available. 2-3 day delivery.",
-    locationName: "Downtown Branch",
-  },
-  {
-    name: "Professional Plumbing Distributors",
-    contactEmail: "sales@proplumbdist.com",
-    contactPhone: "555-0300",
-    orderingNotes:
-      "Trade accounts only. Next-day delivery for orders before 2 PM.",
-    locationName: "East Side Distribution",
-  },
-  {
-    name: "Coastal Supply Co.",
-    contactEmail: "info@coastalsupply.com",
-    contactPhone: "555-0400",
-    orderingNotes:
-      "Free shipping on orders over $250. Extended warranty available.",
-    locationName: "North Shore Location",
-  },
-];
-
 async function ensureDatabaseExists() {
   console.log("🔍 Checking if database exists...");
 
@@ -388,14 +308,6 @@ async function ensureDatabaseExists() {
   }
 
   console.log("✅ Database check complete");
-}
-
-async function runDbPush() {
-  console.log("🔄 Pushing schema to database...");
-  const { stdout, stderr } = await execAsync("pnpm db:push");
-  if (stdout) console.log(stdout);
-  if (stderr) console.error(stderr);
-  console.log("✅ Schema pushed successfully!");
 }
 
 async function truncateTables(db: ReturnType<typeof drizzle>) {

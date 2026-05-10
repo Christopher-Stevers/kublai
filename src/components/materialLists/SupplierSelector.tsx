@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { api } from "~/trpc/react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,16 +17,11 @@ import {
   enqueueOfflineMutation,
   setActiveItemSyncStatus,
 } from "~/lib/offline-material-list-mutations";
-import { useOnlineStatus } from "~/hooks/use-online-status";
 import { useOfflineSuppliers } from "~/hooks/use-offline-suppliers";
 import {
   getOfflineSupplierPartsByPart,
-  setOfflineSupplierPartsByPart,
 } from "~/lib/offline-supplier-parts";
-import {
-  makeOfflineSupplierPartId,
-  parseOfflineSupplierPartId,
-} from "~/lib/offline-suppliers";
+import { parseOfflineSupplierPartId } from "~/lib/offline-suppliers";
 
 interface SupplierSelectorProps {
   itemId: string;
@@ -84,47 +78,6 @@ export function SupplierSelector({
     setOptimisticSupplierId(currentSupplierId ?? null);
   }, [currentSupplierPartId, currentSupplierId]);
 
-  const utils = api.useUtils();
-  const isOnline = useOnlineStatus();
-  const updateItem = api.materialList.updateMaterialListItem.useMutation({
-    onMutate: () => {
-      void setActiveItemSyncStatus(materialListId, itemId, "syncing");
-    },
-    onError: () => {
-      void setActiveItemSyncStatus(materialListId, itemId, "pending");
-      void utils.materialList.getMaterialList.invalidate({ materialListId });
-    },
-    onSuccess: (updatedItem) => {
-      if (updatedItem?.updatedAt) {
-        utils.materialList.getMaterialList.setData(
-          { materialListId },
-          (old) => {
-            if (!old) return old;
-            return {
-              ...old,
-              items: old.items.map((item) =>
-                item.id === itemId
-                  ? {
-                      ...item,
-                      updatedAt: updatedItem.updatedAt,
-                      syncVersion:
-                        updatedItem.updatedAt instanceof Date
-                          ? updatedItem.updatedAt.toISOString()
-                          : String(updatedItem.updatedAt),
-                    }
-                  : item,
-              ),
-            };
-          },
-        );
-      }
-      void setActiveItemSyncStatus(materialListId, itemId, "synced");
-      void utils.supplier.getSupplierPartsByPart.invalidate({
-        partDefinitionId,
-      });
-    },
-  });
-
   // Handle supplier creation - this will be called from SupplierFormDialog callback
   const handleSupplierCreated = async (supplierId: string) => {
     const supplierName = pendingSupplierName.trim();
@@ -136,41 +89,35 @@ export function SupplierSelector({
     setSearchQuery("");
 
     void setActiveItemSyncStatus(materialListId, itemId, "pending");
-    updateItem.mutate({
+    void applyOfflineSupplierPartUpdate(materialListId, itemId, {
+      supplierPartId: null,
+      supplierId,
+      unitCost: 0,
+      supplierPartSnapshot: null,
+    });
+    void enqueueOfflineMutation({
+      type: "updateItemSupplierPart",
+      materialListId,
       itemId,
       supplierPartId: null,
       supplierId,
+      partDefinitionId,
+      unitCost: 0,
+      supplierPartSnapshot: null,
+      queuedAt: new Date().toISOString(),
     });
   };
 
-  // Get all suppliers for the organization
-  const { data: serverSuppliers } = api.supplier.list.useQuery(undefined, {
-    enabled: isOnline,
-  });
-  const { data: allSuppliers } = useOfflineSuppliers(serverSuppliers);
-
-  // Get supplier parts for this part definition
-  const { data: serverSupplierParts } =
-    api.supplier.getSupplierPartsByPart.useQuery(
-      { partDefinitionId },
-      { enabled: isOnline && !!partDefinitionId },
-    );
+  // Local-first: supplier selection reads only from Dexie/local snapshots. The
+  // temporary server disconnect means this component must not issue supplier
+  // tRPC reads just to open or select a supplier.
+  const { data: allSuppliers } = useOfflineSuppliers(undefined);
 
   useEffect(() => {
-    setCachedSupplierParts(
-      getOfflineSupplierPartsByPart(partDefinitionId) ?? [],
-    );
-  }, [partDefinitionId, isOnline]);
+    setCachedSupplierParts(getOfflineSupplierPartsByPart(partDefinitionId) ?? []);
+  }, [partDefinitionId, isDropdownOpen]);
 
-  useEffect(() => {
-    if (!isOnline || !serverSupplierParts) return;
-    setOfflineSupplierPartsByPart(partDefinitionId, serverSupplierParts);
-    setCachedSupplierParts(serverSupplierParts);
-  }, [isOnline, partDefinitionId, serverSupplierParts]);
-
-  const supplierParts = isOnline
-    ? (serverSupplierParts ?? cachedSupplierParts)
-    : cachedSupplierParts;
+  const supplierParts = cachedSupplierParts;
 
   // Find current supplier part
   const currentSupplierPart = supplierParts?.find(
@@ -189,55 +136,6 @@ export function SupplierSelector({
             : ""
         }`
       : (currentSupplier?.name ?? "No supplier"));
-
-  const updateCachedSupplierPart = (
-    selectedSupplierPart: NonNullable<typeof supplierParts>[number] | null,
-  ) => {
-    const unitCost = selectedSupplierPart?.lastKnownUnitCost
-      ? parseFloat(selectedSupplierPart.lastKnownUnitCost)
-      : 0;
-
-    utils.materialList.getMaterialList.setData({ materialListId }, (old) => {
-      if (!old) return old;
-
-      const updatedItems = old.items.map((item) => {
-        if (item.id !== itemId) return item;
-
-        const quantity = item.quantity
-          ? parseFloat(item.quantity.toString())
-          : 0;
-        const extendedPrice = quantity * unitCost;
-
-        return {
-          ...item,
-          supplierPart: selectedSupplierPart
-            ? {
-                id: selectedSupplierPart.id,
-                supplierId: selectedSupplierPart.supplierId,
-                supplierSku: selectedSupplierPart.supplierSku,
-                lastKnownUnitCost: selectedSupplierPart.lastKnownUnitCost,
-                supplier: selectedSupplierPart.supplier,
-              }
-            : null,
-          unitCost: unitCost.toString(),
-          extendedPrice: extendedPrice.toString(),
-        };
-      });
-
-      const materialTotal = updatedItems.reduce((sum, item) => {
-        const price = item.extendedPrice
-          ? parseFloat(item.extendedPrice.toString())
-          : 0;
-        return sum + price;
-      }, 0);
-
-      return {
-        ...old,
-        items: updatedItems,
-        materialTotal,
-      };
-    });
-  };
 
   // Filter suppliers based on search query
   const filteredSuppliers = useMemo(() => {
@@ -291,16 +189,15 @@ export function SupplierSelector({
           }`
         : "No supplier",
     );
-    updateCachedSupplierPart(selectedSupplierPart);
     setIsDropdownOpen(false);
     setSearchQuery("");
 
-    if (typeof window !== "undefined" && !window.navigator.onLine) {
-      const unitCost = selectedSupplierPart?.lastKnownUnitCost
-        ? parseFloat(selectedSupplierPart.lastKnownUnitCost)
-        : 0;
+    const unitCost = selectedSupplierPart?.lastKnownUnitCost
+      ? parseFloat(selectedSupplierPart.lastKnownUnitCost)
+      : 0;
 
-      void applyOfflineSupplierPartUpdate(materialListId, itemId, {
+    void setActiveItemSyncStatus(materialListId, itemId, "pending");
+    void applyOfflineSupplierPartUpdate(materialListId, itemId, {
         supplierPartId: nextSupplierPartId,
         supplierId: selectedSupplierPart?.supplierId ?? null,
         unitCost,
@@ -314,7 +211,7 @@ export function SupplierSelector({
             }
           : null,
       });
-      void enqueueOfflineMutation({
+    void enqueueOfflineMutation({
         type: "updateItemSupplierPart",
         materialListId,
         itemId,
@@ -336,16 +233,7 @@ export function SupplierSelector({
           : null,
         queuedAt: new Date().toISOString(),
       });
-      void utils.materialList.getMaterialList.invalidate({ materialListId });
-      return;
-    }
-
-    void setActiveItemSyncStatus(materialListId, itemId, "pending");
-    updateItem.mutate({
-      itemId,
-      supplierPartId: nextSupplierPartId,
-      supplierId: selectedSupplierPart?.supplierId ?? null,
-    });
+    return;
   };
 
   const handleSupplierSelect = (supplierId: string) => {
@@ -357,18 +245,17 @@ export function SupplierSelector({
     setOptimisticSupplierPartId(null);
     setOptimisticSupplierId(selectedSupplier.id);
     setOptimisticDisplayLabel(selectedSupplier.name);
-    updateCachedSupplierPart(null);
     setIsDropdownOpen(false);
     setSearchQuery("");
 
-    if (typeof window !== "undefined" && !window.navigator.onLine) {
-      void applyOfflineSupplierPartUpdate(materialListId, itemId, {
+    void setActiveItemSyncStatus(materialListId, itemId, "pending");
+    void applyOfflineSupplierPartUpdate(materialListId, itemId, {
         supplierPartId: null,
         supplierId: selectedSupplier.id,
         unitCost: 0,
         supplierPartSnapshot: null,
       });
-      void enqueueOfflineMutation({
+    void enqueueOfflineMutation({
         type: "updateItemSupplierPart",
         materialListId,
         itemId,
@@ -379,16 +266,7 @@ export function SupplierSelector({
         supplierPartSnapshot: null,
         queuedAt: new Date().toISOString(),
       });
-      void utils.materialList.getMaterialList.invalidate({ materialListId });
-      return;
-    }
-
-    void setActiveItemSyncStatus(materialListId, itemId, "pending");
-    updateItem.mutate({
-      itemId,
-      supplierPartId: null,
-      supplierId: selectedSupplier.id,
-    });
+    return;
   };
 
   const handleCreateSupplier = () => {

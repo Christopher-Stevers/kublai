@@ -1,7 +1,5 @@
 "use client";
 
-import { useState } from "react";
-import { ChevronRight, ChevronDown } from "lucide-react";
 
 interface CategoryTreeProps {
   categories: Array<{
@@ -18,18 +16,6 @@ export function CategoryTree({
   selectedCategoryId,
   onSelectCategory,
 }: CategoryTreeProps) {
-  const [expanded, setExpanded] = useState<Set<string>>(new Set());
-
-  const toggleExpanded = (id: string) => {
-    const newExpanded = new Set(expanded);
-    if (newExpanded.has(id)) {
-      newExpanded.delete(id);
-    } else {
-      newExpanded.add(id);
-    }
-    setExpanded(newExpanded);
-  };
-
   const renderCategory = (
     category: {
       id: string;

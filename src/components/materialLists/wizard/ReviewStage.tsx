@@ -23,7 +23,7 @@ import {
   Trash2,
 } from "lucide-react";
 import Image from "next/image";
-import type { PendingPart } from "./types";
+import type { PendingPart, PendingSupplierPartSnapshot } from "./types";
 import { PartSuppliersDropdown } from "~/components/catalogue/PartSuppliersDropdown";
 import { ViewToggle } from "~/components/ui/view-toggle";
 import { Card, CardContent } from "~/components/ui/card";
@@ -56,7 +56,11 @@ export interface ReviewStageProps {
   supplierPartsData: Map<string, SupplierPartOption[]>;
   onUpdateQuantity: (partId: string, delta: number) => void;
   onSetQuantity: (partId: string, quantity: number) => void;
-  onUpdateSupplier: (partId: string, supplierPartId: string) => void;
+  onUpdateSupplier: (
+    partId: string,
+    supplierPartId: string,
+    supplierPartSnapshot?: PendingSupplierPartSnapshot | null,
+  ) => void;
   onCacheSupplierPart: (partId: string, supplierPart: SupplierPartOption) => void;
   onSupplierPartResolutionStart: (
     partId: string,
@@ -147,7 +151,6 @@ export function ReviewStage({
   onSetQuantity,
   onUpdateSupplier,
   onCacheSupplierPart,
-  onSupplierPartResolutionStart,
   onRemovePendingPart,
   allPartsHaveSuppliers,
 }: ReviewStageProps) {
@@ -169,37 +172,6 @@ export function ReviewStage({
   useEffect(() => {
     setCachedSuppliers(getOfflineSuppliers() ?? []);
   }, [isOnline]);
-
-  const addSupplierPart = api.supplier.addSupplierPart.useMutation({
-    onSuccess: (supplierPart) => {
-      if (!supplierPart) return;
-      const pendingPart = pendingParts.find(
-        (part) => part.partId === supplierPart.partDefinitionId,
-      );
-      if (pendingPart) {
-        const supplier = allSuppliers?.find(
-          (candidate) => candidate.id === supplierPart.supplierId,
-        );
-
-        if (supplier) {
-          setOptimisticSupplierSelections((prev) => ({
-            ...prev,
-            [pendingPart.partId]: {
-              supplierPartId: supplierPart.id,
-              label: `${supplier.name}${supplierPart.supplierSku ? ` (${supplierPart.supplierSku})` : ""}`,
-              lastKnownUnitCost: supplierPart.lastKnownUnitCost,
-            },
-          }));
-        }
-
-        onUpdateSupplier(pendingPart.partId, supplierPart.id);
-      }
-      void utils.supplier.getSupplierPartsByPart.invalidate({
-        partDefinitionId: supplierPart.partDefinitionId,
-      });
-      void utils.catalogue.getPartsSupplierInfo.invalidate();
-    },
-  });
 
   useEffect(() => {
     setOptimisticSupplierSelections((prev) => {
@@ -322,7 +294,13 @@ export function ReviewStage({
                     lastKnownUnitCost: sp.lastKnownUnitCost,
                   },
                 }));
-                onUpdateSupplier(pendingPart.partId, sp.id);
+                onUpdateSupplier(pendingPart.partId, sp.id, {
+                  id: sp.id,
+                  supplierId: sp.supplierId,
+                  supplierSku: sp.supplierSku,
+                  lastKnownUnitCost: sp.lastKnownUnitCost,
+                  supplier: sp.supplier,
+                });
               }}
             >
               {sp.supplier.name}
@@ -338,49 +316,30 @@ export function ReviewStage({
               <DropdownMenuItem
                 key={supplier.id}
                 onClick={() => {
-                  if (!isOnline) {
-                    const localSupplierPart: SupplierPartOption = {
-                      id: makeOfflineSupplierPartId(pendingPart.partId, supplier.id),
-                      supplierId: supplier.id,
-                      supplierSku: null,
-                      lastKnownUnitCost: null,
-                      isPreferred: false,
-                      supplier,
-                    };
-                    onCacheSupplierPart(pendingPart.partId, localSupplierPart);
-                    setOptimisticSupplierSelections((prev) => ({
-                      ...prev,
-                      [pendingPart.partId]: {
-                        supplierPartId: localSupplierPart.id,
-                        label: supplier.name,
-                        lastKnownUnitCost: null,
-                      },
-                    }));
-                    onUpdateSupplier(pendingPart.partId, localSupplierPart.id);
-                    return;
-                  }
-
+                  const localSupplierPart: SupplierPartOption = {
+                    id: makeOfflineSupplierPartId(pendingPart.partId, supplier.id),
+                    supplierId: supplier.id,
+                    supplierSku: null,
+                    lastKnownUnitCost: null,
+                    isPreferred: false,
+                    supplier,
+                  };
+                  onCacheSupplierPart(pendingPart.partId, localSupplierPart);
                   setOptimisticSupplierSelections((prev) => ({
                     ...prev,
                     [pendingPart.partId]: {
-                      supplierPartId: pendingPart.supplierPartId ?? "pending",
-                      label: `Linking ${supplier.name}...`,
+                      supplierPartId: localSupplierPart.id,
+                      label: supplier.name,
                       lastKnownUnitCost: null,
                     },
                   }));
-                  const resolution = addSupplierPart
-                    .mutateAsync({
-                      supplierId: supplier.id,
-                      partDefinitionId: pendingPart.partId,
-                    })
-                    .then((supplierPart) => {
-                      if (!supplierPart) {
-                        throw new Error("Supplier part creation did not return a supplier part");
-                      }
-                      return supplierPart.id;
-                    });
-
-                  onSupplierPartResolutionStart(pendingPart.partId, resolution);
+                  onUpdateSupplier(pendingPart.partId, localSupplierPart.id, {
+                    id: localSupplierPart.id,
+                    supplierId: localSupplierPart.supplierId,
+                    supplierSku: localSupplierPart.supplierSku,
+                    lastKnownUnitCost: localSupplierPart.lastKnownUnitCost,
+                    supplier: localSupplierPart.supplier,
+                  });
                 }}
               >
                 {supplier.name}

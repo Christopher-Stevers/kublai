@@ -30,6 +30,11 @@ import {
   DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu";
 import { SupplierFormDialog } from "~/components/suppliers/SupplierFormDialog";
+import {
+  addOfflineCatalogueCatalog,
+  addOfflineCatalogueCategory,
+  addOfflineCatalogueMaterial,
+} from "~/lib/offline-catalogue";
 
 function FieldHeader({
   label,
@@ -144,27 +149,6 @@ async function uploadPartImage(file: File): Promise<string> {
 
   return body.url;
 }
-
-type PartSummary = {
-  id: string;
-  displayName: string;
-  description: string | null;
-  imageUrl: string | null;
-  catalogId: string;
-  categoryId: string | null;
-  material: string | null;
-  sizeNominal: string | null;
-  sizeLabel?: string | null;
-  sizeUnitId: string | null;
-  isActive: boolean;
-  aliases?: { id: string; synonym: string }[];
-  sizeUnit: {
-    id: string;
-    code: string | null;
-    displayName: string | null;
-  } | null;
-  isOrgSpecific: boolean;
-};
 
 interface PartDetailsDialogProps {
   mode: "create" | "edit";
@@ -536,10 +520,7 @@ export function PartDetailsDialog({
   const createCatalog = api.catalogue.createCatalog.useMutation({
     onSuccess: (newCatalog) => {
       if (!newCatalog) return;
-      utils.catalogue.getCatalogs.setData(undefined, (old) => {
-        const next = [...(old ?? []), newCatalog];
-        return next.sort((a, b) => a.name.localeCompare(b.name));
-      });
+      addOfflineCatalogueCatalog(newCatalog);
       setCatalogId(newCatalog.id);
       setNewCatalogName("");
       setShowNewCatalogInput(false);
@@ -550,10 +531,7 @@ export function PartDetailsDialog({
   const createCategory = api.catalogue.createCategoryType.useMutation({
     onSuccess: (newCategory) => {
       if (!newCategory) return;
-      utils.catalogue.getCategoryTree.setData(undefined, (old) => {
-        const next = [...(old ?? []), newCategory];
-        return next.sort((a, b) => a.name.localeCompare(b.name));
-      });
+      addOfflineCatalogueCategory(newCategory);
       void utils.catalogue.getCategoryTree.invalidate();
       setCategoryId(newCategory.id);
       setNewCategoryName("");
@@ -564,10 +542,7 @@ export function PartDetailsDialog({
   const createMaterial = api.catalogue.createMaterial.useMutation({
     onSuccess: (newMaterial) => {
       if (!newMaterial) return;
-      utils.catalogue.getMaterials.setData(undefined, (old) => {
-        const next = [...(old ?? []), newMaterial];
-        return next.sort((a, b) => a.name.localeCompare(b.name));
-      });
+      addOfflineCatalogueMaterial(newMaterial);
       setMaterialId(newMaterial.id);
       setNewMaterialName("");
       setShowNewMaterialInput(false);

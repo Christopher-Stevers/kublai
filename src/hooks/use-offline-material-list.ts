@@ -9,16 +9,15 @@ import {
   type OfflineMaterialListRecord,
 } from "~/lib/offline-material-list";
 import {
-  getActiveItemSyncStatuses,
   getOfflineMutationQueue,
   getQueuedItemIdsForMaterialList,
-  getSyncingMaterialListIds,
   OFFLINE_MATERIAL_LIST_SYNC_EVENT,
   pruneActiveItemSyncStatuses,
-  setActiveItemSyncStatus,
-  ACTIVE_ITEM_SYNC_STATUS_TTL_MS,
 } from "~/lib/offline-material-list-mutations";
 import { getOfflineDexieDb } from "~/lib/offline-dexie-db";
+import { projectMaterialListWithMutations } from "~/lib/material-list-projector";
+import type { OfflineMaterialListMutation } from "~/lib/offline-material-list-mutations";
+import { normalizeLegacyOfflineMaterialListName } from "~/lib/offline-jobs";
 
 export type MaterialListSyncStatus = "synced" | "pending" | "syncing";
 
@@ -36,9 +35,7 @@ export function useOfflineMaterialList(
     itemStatuses: Map<string, MaterialListSyncStatus>;
     listStatus: MaterialListSyncStatus;
   }>({ itemStatuses: new Map(), listStatus: "synced" });
-  const [hiddenRemovedItemIds, setHiddenRemovedItemIds] = useState<Set<string>>(
-    () => new Set(),
-  );
+  const [queueSnapshot, setQueueSnapshot] = useState<OfflineMaterialListMutation[]>([]);
   const liveCached = useLiveQuery(
     async () => {
       const db = getOfflineDexieDb();
@@ -49,12 +46,37 @@ export function useOfflineMaterialList(
     [materialListId],
     undefined,
   );
+  const liveQueue = useLiveQuery(
+    async () => {
+      const db = getOfflineDexieDb();
+      if (!db) return null;
+      const rows = await db.mutationQueue
+        .where("materialListId")
+        .equals(materialListId)
+        .sortBy("order");
+      return rows.map((row) => row.value as OfflineMaterialListMutation);
+    },
+    [materialListId],
+    undefined,
+  );
 
   useEffect(() => {
     if (liveCached === undefined) return;
     setCached(liveCached);
     setCacheLoaded(true);
   }, [liveCached]);
+
+  useEffect(() => {
+    if (liveQueue === undefined) return;
+    if (liveQueue) {
+      setQueueSnapshot(liveQueue);
+      return;
+    }
+
+    void getOfflineMutationQueue().then((queue) => {
+      setQueueSnapshot(queue.filter((mutation) => mutation.materialListId === materialListId));
+    });
+  }, [liveQueue, materialListId]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -72,8 +94,50 @@ export function useOfflineMaterialList(
 
     const onOnline = () => setIsOnline(true);
     const onOffline = () => setIsOnline(false);
-    const onSyncStateChanged = () => {
+    const onSyncStateChanged = (event: Event) => {
+      const detail =
+        event instanceof CustomEvent
+          ? (event.detail as
+              | {
+                  materialListId?: string;
+                  itemId?: string;
+                  status?: MaterialListSyncStatus;
+                }
+              | undefined)
+          : undefined;
+
+      if (
+        detail?.materialListId === materialListId &&
+        detail.itemId &&
+        (detail.status === "pending" ||
+          detail.status === "syncing" ||
+          detail.status === "synced")
+      ) {
+        setSyncSnapshot((current) => {
+          const itemStatuses = new Map(current.itemStatuses);
+          if (detail.status === "synced") {
+            itemStatuses.delete(detail.itemId!);
+          } else {
+            itemStatuses.set(detail.itemId!, detail.status!);
+          }
+
+          const statusValues = Array.from(itemStatuses.values());
+          const listStatus: MaterialListSyncStatus = statusValues.includes("syncing")
+            ? "syncing"
+            : statusValues.includes("pending")
+              ? "pending"
+              : "synced";
+
+          return { itemStatuses, listStatus };
+        });
+      }
+
       setSyncStateVersion((version) => version + 1);
+      void getOfflineMutationQueue().then((queue) => {
+        if (!cancelled) {
+          setQueueSnapshot(queue.filter((mutation) => mutation.materialListId === materialListId));
+        }
+      });
       void getOfflineMaterialList(materialListId).then((offlineMaterialList) => {
         if (!cancelled) setCached(offlineMaterialList);
       });
@@ -102,18 +166,56 @@ export function useOfflineMaterialList(
       const current = await getOfflineMaterialList(materialListId);
       if (cancelled) return;
 
-      if (current?.pendingSync) {
-        const queue = await getOfflineMutationQueue();
-        const hasQueuedChangesForList = queue.some(
-          (mutation) => mutation.materialListId === materialListId,
-        );
-        const hasPendingDeletedItems =
-          (current.pendingDeletedItemIds?.length ?? 0) > 0;
+      const queue = await getOfflineMutationQueue();
+      const queueForList = queue.filter(
+        (mutation) => mutation.materialListId === materialListId,
+      );
+      const hasQueuedChangesForList = queueForList.length > 0;
 
-        if (hasQueuedChangesForList || hasPendingDeletedItems) {
-          setCached(current);
+      // Local-first stabilization mode: server data may repair/seed local cache
+      // only when there are no queued local edits. If local mutations exist,
+      // keep the local cache/projection authoritative.
+      if (current?.data && !hasQueuedChangesForList && !current.pendingSync) {
+        const currentItemCount = current.data.items.length;
+        const serverItemCount = serverData.items.length;
+        const currentUpdatedAt = current.data.materialList.updatedAt
+          ? new Date(current.data.materialList.updatedAt).getTime()
+          : 0;
+        const serverUpdatedAt = serverData.materialList.updatedAt
+          ? new Date(serverData.materialList.updatedAt).getTime()
+          : 0;
+
+        if (serverItemCount !== currentItemCount || serverUpdatedAt > currentUpdatedAt) {
+          await setOfflineMaterialList(materialListId, serverData, { pendingSync: false });
+          if (!cancelled) {
+            setCached(await getOfflineMaterialList(materialListId));
+          }
           return;
         }
+
+        setCached(current);
+        return;
+      }
+
+      if (current?.pendingSync || hasQueuedChangesForList) {
+        const hasPendingDeletedItems =
+          (current?.pendingDeletedItemIds?.length ?? 0) > 0;
+
+        if (hasQueuedChangesForList || hasPendingDeletedItems) {
+          await setOfflineMaterialList(materialListId, serverData, {
+            pendingSync: true,
+            pendingDeletedItemIds: current?.pendingDeletedItemIds ?? [],
+          });
+          if (!cancelled) {
+            setCached(await getOfflineMaterialList(materialListId));
+          }
+          return;
+        }
+      }
+
+      if (current?.data) {
+        if (!cancelled) setCached(current);
+        return;
       }
 
       await setOfflineMaterialList(materialListId, serverData, { pendingSync: false });
@@ -127,167 +229,59 @@ export function useOfflineMaterialList(
     };
   }, [isOnline, materialListId, serverData]);
 
-  const rawData = useMemo(() => {
-    if (isOnline && serverData && !cached?.pendingSync) return serverData;
-    if (cacheLoaded && cached?.data) return cached.data;
-    if (!isOnline) return cacheLoaded ? null : null;
-    return cached?.data ?? serverData ?? null;
-  }, [cacheLoaded, cached?.data, cached?.pendingSync, isOnline, serverData]);
+  const baseRawData = useMemo(() => {
+    const data = cacheLoaded && cached?.data ? cached.data : !isOnline ? null : (serverData ?? null);
+    if (!data) return data;
 
-  const data = useMemo(() => {
-    if (!rawData || hiddenRemovedItemIds.size === 0) return rawData;
-
-    const items = rawData.items.filter(
-      (item) => !hiddenRemovedItemIds.has(String(item.id)),
+    const normalizedName = normalizeLegacyOfflineMaterialListName(
+      data.materialList.name,
+      data.materialList.createdAt,
     );
-
-    if (items.length === rawData.items.length) return rawData;
-
-    const materialTotal = items.reduce((sum, item) => {
-      const price = item.extendedPrice ? parseFloat(item.extendedPrice.toString()) : 0;
-      return sum + price;
-    }, 0);
+    if (normalizedName === data.materialList.name) return data;
 
     return {
-      ...rawData,
-      items,
-      materialTotal,
+      ...data,
+      materialList: {
+        ...data.materialList,
+        name: normalizedName,
+      },
     };
-  }, [hiddenRemovedItemIds, rawData]);
+  }, [cacheLoaded, cached?.data, isOnline, serverData]);
 
-  useEffect(() => {
-    const pendingDeletedItemIds = cached?.pendingDeletedItemIds ?? [];
-    if (pendingDeletedItemIds.length === 0) return;
+  const rawData = useMemo(() => {
+    if (!baseRawData) return baseRawData;
+    return projectMaterialListWithMutations(baseRawData, queueSnapshot);
+  }, [baseRawData, queueSnapshot]);
 
-    setHiddenRemovedItemIds((current) => {
-      const next = new Set(current);
-      let changed = false;
-
-      for (const itemId of pendingDeletedItemIds) {
-        if (!next.has(itemId)) {
-          next.add(itemId);
-          changed = true;
-        }
-      }
-
-      return changed ? next : current;
-    });
-  }, [cached?.pendingDeletedItemIds]);
-
-  useEffect(() => {
-    if (!rawData || hiddenRemovedItemIds.size === 0) return;
-
-    const rawItemIds = new Set(rawData.items.map((item) => String(item.id)));
-    const pendingDeletedItemIds = new Set(cached?.pendingDeletedItemIds ?? []);
-    setHiddenRemovedItemIds((current) => {
-      let changed = false;
-      const next = new Set<string>();
-
-      for (const itemId of current) {
-        if (rawItemIds.has(itemId) || pendingDeletedItemIds.has(itemId)) {
-          next.add(itemId);
-        } else {
-          changed = true;
-        }
-      }
-
-      return changed ? next : current;
-    });
-  }, [cached?.pendingDeletedItemIds, hiddenRemovedItemIds.size, rawData]);
+  const data = rawData;
 
   useEffect(() => {
     let cancelled = false;
 
     void (async () => {
       const queue = await getOfflineMutationQueue();
-      const queuedRemoveIds = new Set<string>();
-      for (const mutation of queue) {
-        if (mutation.materialListId === materialListId && mutation.type === "removeItem") {
-          queuedRemoveIds.add(mutation.itemId);
-        }
-      }
-
-      if (!cancelled && queuedRemoveIds.size > 0) {
-        setHiddenRemovedItemIds((current) => {
-          const next = new Set(current);
-          for (const itemId of queuedRemoveIds) {
-            next.add(itemId);
-          }
-          return next;
-        });
-      }
-
       const queuedItems = getQueuedItemIdsForMaterialList(materialListId, queue);
-      const rawActiveStatuses = (await getActiveItemSyncStatuses())[materialListId] ?? {};
       const currentItemIds = new Set((data?.items ?? []).map((item) => String(item.id)));
-      const activeStatuses = Object.fromEntries(
-        Object.entries(rawActiveStatuses).filter(([itemId]) => currentItemIds.has(itemId)),
-      );
-      const activeStatusValues = Object.values(activeStatuses).map((state) => state.status);
-      const staleActiveStatusItemIds = Object.entries(activeStatuses)
-        .filter(([itemId, state]) => {
-          if (queuedItems.has(itemId)) return false;
-          if (!isOnline) return false;
-          if (state.updatedAt === 0) return true;
-          return Date.now() - state.updatedAt > ACTIVE_ITEM_SYNC_STATUS_TTL_MS;
-        })
-        .map(([itemId]) => itemId);
-      const freshActiveStatuses = Object.fromEntries(
-        Object.entries(activeStatuses).filter(
-          ([itemId]) => !staleActiveStatusItemIds.includes(itemId),
-        ),
-      );
-      const freshActiveStatusValues = Object.values(freshActiveStatuses).map(
-        (state) => state.status,
-      );
       const hasQueuedListChanges = queue.some(
         (mutation) => mutation.materialListId === materialListId,
       );
-      const isSyncing = isOnline && (await getSyncingMaterialListIds()).includes(materialListId);
 
       const itemStatuses = new Map<string, MaterialListSyncStatus>();
 
       await pruneActiveItemSyncStatuses(materialListId, currentItemIds);
 
-      const hasStaleActiveStatuses =
-        isOnline &&
-        !!serverData &&
-        !isSyncing &&
-        !hasQueuedListChanges &&
-        !cached?.pendingSync &&
-        freshActiveStatusValues.length > 0;
-
-      const itemIdsToClear = hasStaleActiveStatuses
-        ? Object.keys(freshActiveStatuses).concat(staleActiveStatusItemIds)
-        : staleActiveStatusItemIds;
-
-      if (itemIdsToClear.length > 0) {
-        await Promise.all(
-          itemIdsToClear.map((itemId) =>
-            setActiveItemSyncStatus(materialListId, itemId, "synced"),
-          ),
-        );
-      }
-
       for (const item of data?.items ?? []) {
         const itemId = String(item.id);
-        const activeStatus = freshActiveStatuses[itemId]?.status;
-
-        if (activeStatus && !hasStaleActiveStatuses) {
-          itemStatuses.set(itemId, activeStatus === "syncing" && !isOnline ? "pending" : activeStatus);
-        } else if (isSyncing && queuedItems.has(itemId)) {
-          itemStatuses.set(itemId, "syncing");
-        } else if (queuedItems.has(itemId)) {
+        if (queuedItems.has(itemId)) {
           itemStatuses.set(itemId, "pending");
         } else {
           itemStatuses.set(itemId, "synced");
         }
       }
 
+      const hasPendingCachedChanges = !!cached?.pendingSync && (!isOnline || hasQueuedListChanges);
       const listStatus: MaterialListSyncStatus =
-        (isOnline && !hasStaleActiveStatuses && freshActiveStatusValues.includes("syncing")) || isSyncing
-          ? "syncing"
-          : (!hasStaleActiveStatuses && freshActiveStatusValues.includes("pending")) || hasQueuedListChanges || !!cached?.pendingSync
+        hasQueuedListChanges || hasPendingCachedChanges
             ? "pending"
             : "synced";
 

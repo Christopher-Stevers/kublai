@@ -17,7 +17,6 @@ import { ensureUser } from "~/server/utils/ensure-user";
 import { getDevBypassUser } from "~/server/utils/get-dev-bypass-user";
 import { getAgentBypassUser } from "~/server/utils/get-agent-bypass-user";
 
-const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
 
 /**
  * 1. CONTEXT

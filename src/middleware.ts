@@ -1,7 +1,6 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse, type NextRequest } from "next/server";
 
-const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
 const AGENT_AUTH_COOKIE = "foremenhq_agent_auth";
 const AGENT_AUTH_HEADER = "x-foremenhq-agent-auth";
 

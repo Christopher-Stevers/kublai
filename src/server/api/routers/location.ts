@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import { eq, and, or, ilike, asc } from "drizzle-orm";
+import { and, or, ilike, asc } from "drizzle-orm";
 import { z } from "zod";
 
 import { createTRPCRouter, hasDashboardAccess } from "~/server/api/trpc";

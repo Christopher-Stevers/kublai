@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import { eq, and, desc, asc, isNull, or, inArray } from "drizzle-orm";
+import { eq, and, desc, asc, isNull, inArray } from "drizzle-orm";
 import { z } from "zod";
 
 import { createTRPCRouter, hasDashboardAccess } from "~/server/api/trpc";

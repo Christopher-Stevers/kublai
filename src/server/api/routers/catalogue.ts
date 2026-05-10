@@ -1210,8 +1210,6 @@ export const catalogueRouter = createTRPCRouter({
 
       // Only allow editing org-specific parts or creating org-specific copies of global parts
       const isGlobal = !existing.organizationId;
-      const isOrgSpecific = existing.organizationId === organizationId;
-
       // Handle size: find/create size records, or clear size when the client
       // explicitly sends nulls. Undefined means "leave existing value alone".
       let sizeId: string | null = null;

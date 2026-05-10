@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { api } from "~/trpc/react";
 import {
   Dialog,
   DialogContent,
@@ -39,82 +38,20 @@ export function MaterialListNameModal({
     }
   }, [initialName]);
 
-  const utils = api.useUtils();
-  const updateName = api.materialList.updateMaterialListName.useMutation({
-    onMutate: async (variables) => {
-      // Cancel outgoing refetches
-      await utils.materialList.getMaterialList.cancel({ materialListId });
-      await utils.materialList.listMaterialLists.cancel();
-
-      // Snapshot previous values
-      const previousMaterialList = utils.materialList.getMaterialList.getData({
-        materialListId,
-      });
-      const previousList = utils.materialList.listMaterialLists.getData();
-
-      // Optimistically update material list detail
-      utils.materialList.getMaterialList.setData({ materialListId }, (old) => {
-        if (!old) return old;
-        return {
-          ...old,
-          materialList: {
-            ...old.materialList,
-            name: variables.name,
-          },
-        };
-      });
-
-      // Invalidate material lists to refetch with updated name
-      void utils.materialList.listMaterialLists.invalidate();
-
-      return { previousMaterialList, previousList };
-    },
-    onError: (err, variables, context) => {
-      // Rollback on error
-      if (context?.previousMaterialList) {
-        utils.materialList.getMaterialList.setData(
-          { materialListId },
-          context.previousMaterialList,
-        );
-      }
-      if (context?.previousList) {
-        // Can't rollback without query params, just invalidate
-        void utils.materialList.listMaterialLists.invalidate();
-      }
-    },
-    onSettled: () => {
-      void utils.materialList.getMaterialList.invalidate({ materialListId });
-      void utils.materialList.listMaterialLists.invalidate();
-    },
-    onSuccess: () => {
-      onOpenChange(false);
-    },
-  });
-
   const handleSave = () => {
     const trimmedName = name.trim();
     if (!trimmedName) {
       return;
     }
 
-    if (typeof window !== "undefined" && !window.navigator.onLine) {
-      void applyOfflineRenameMaterialList(materialListId, trimmedName);
-      void enqueueOfflineMutation({
-        type: "renameMaterialList",
-        materialListId,
-        name: trimmedName,
-        queuedAt: new Date().toISOString(),
-      });
-      void utils.materialList.getMaterialList.invalidate({ materialListId });
-      void utils.materialList.listMaterialLists.invalidate();
-      onOpenChange(false);
-      return;
-    }
-
-    updateName.mutate({
+    void applyOfflineRenameMaterialList(materialListId, trimmedName);
+    void enqueueOfflineMutation({
+      type: "renameMaterialList",
       materialListId,
       name: trimmedName,
+      queuedAt: new Date().toISOString(),
     });
+    onOpenChange(false);
   };
 
   return (
@@ -151,7 +88,7 @@ export function MaterialListNameModal({
           </Button>
           <Button
             onClick={handleSave}
-            disabled={!name.trim() || updateName.isPending}
+            disabled={!name.trim()}
           >
             Save
           </Button>
@@ -160,4 +97,3 @@ export function MaterialListNameModal({
     </Dialog>
   );
 }
-
