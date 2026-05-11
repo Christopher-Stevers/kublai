@@ -857,6 +857,27 @@ export function useOfflineMaterialListSyncRunner() {
         }
       }
 
+      queue = (await getOfflineMutationQueue()).map(withClientMutationId);
+      const entityQueueAfterPush = getOfflineEntityMutationQueue().length;
+      const remainingAfterPush = queue.length + entityQueueAfterPush;
+      if (remainingAfterPush > 0) {
+        addSyncDebugEvent({
+          phase: "done",
+          status: "warning",
+          message: `${remainingAfterPush} sticky note(s) still left; skipping fresh-copy pull until they deliver`,
+          queueLength: queue.length,
+          details: { pushed, pulled, entityQueueCount: entityQueueAfterPush, reason },
+        });
+        await setSyncingMaterialListIds([]);
+        notifyOfflineMaterialListSyncStateChanged();
+        return {
+          synced: false,
+          pushed,
+          pulled,
+          remaining: remainingAfterPush,
+        };
+      }
+
       const cursor = await idbGetMeta<string | null>(PULL_CURSOR_META_KEY, null);
       if (!quietIdlePull) {
         addSyncDebugEvent({
