@@ -401,7 +401,10 @@ export function useOfflineMaterialListSyncRunner() {
   const runningRef = useRef(false);
 
   return useCallback(
-    async (reason: SyncRunReason = "pending"): Promise<SyncResult> => {
+    async (
+      reason: SyncRunReason = "pending",
+      forcedMaterialListIds: string[] = [],
+    ): Promise<SyncResult> => {
       const runStartedAt = Date.now();
       const initialQueue = await getOfflineMutationQueue();
       const entityQueueCount = getOfflineEntityMutationQueue().length;
@@ -454,7 +457,9 @@ export function useOfflineMaterialListSyncRunner() {
         busy: true,
       } satisfies SyncResult;
 
-      const runWithLocalFallbackLock = async (): Promise<SyncResult> => {
+      const runWithLocalFallbackLock = async (
+        forcedMaterialListIds: string[] = [],
+      ): Promise<SyncResult> => {
         const lockOwner = crypto.randomUUID();
         if (
           !acquireSyncLock(lockOwner, { oldestQueuedAt: initialOldestQueuedAt })
@@ -579,9 +584,10 @@ export function useOfflineMaterialListSyncRunner() {
         if (initialQueue.some((mutation) => !mutation.clientMutationId)) {
           await setOfflineMutationQueue(normalizedInitialQueue);
         }
-        const touchedMaterialListIds = new Set<string>(
-          getQueuedMaterialListIds(normalizedInitialQueue),
-        );
+        const touchedMaterialListIds = new Set<string>([
+          ...getQueuedMaterialListIds(normalizedInitialQueue),
+          ...forcedMaterialListIds.filter(isUuid),
+        ]);
         const appliedDeletedItemIdsByList = new Map<string, Set<string>>();
 
         try {
@@ -1408,7 +1414,7 @@ export function useOfflineMaterialListSyncRunner() {
       // Web Locks can be held forever by an old/hung tab and have no TTL we can
       // clear from a fresh bundle. Use our heartbeat-backed local lock instead;
       // it preserves one-sync-at-a-time behavior but self-heals after expiry.
-      return runWithLocalFallbackLock();
+      return runWithLocalFallbackLock(forcedMaterialListIds);
     },
     [createJob, createMaterialList, syncEntityMutations, syncMutations, utils],
   );
@@ -1423,12 +1429,16 @@ export function useOfflineMaterialListSync() {
     let cancelled = false;
     let timeout: ReturnType<typeof setTimeout> | null = null;
 
-    const schedule = (delay = 0, reason: SyncRunReason = "pending") => {
+    const schedule = (
+      delay = 0,
+      reason: SyncRunReason = "pending",
+      forcedMaterialListIds: string[] = [],
+    ) => {
       if (timeout) clearTimeout(timeout);
       timeout = setTimeout(() => {
         if (cancelled || !canReachServer()) return;
         void (async () => {
-          const result = await runSync(reason);
+          const result = await runSync(reason, forcedMaterialListIds);
           if (cancelled || !canReachServer()) return;
           if (result.remaining > 0) {
             addSyncDebugEvent({
@@ -1473,7 +1483,12 @@ export function useOfflineMaterialListSync() {
         (event.detail as { serverChanged?: boolean } | undefined)
           ?.serverChanged;
       if (serverChanged) {
-        schedule(0, "background");
+        const materialListId =
+          event instanceof CustomEvent
+            ? (event.detail as { materialListId?: string } | undefined)
+                ?.materialListId
+            : undefined;
+        schedule(0, "background", materialListId ? [materialListId] : []);
         return;
       }
       scheduleIfPendingWork(500);
