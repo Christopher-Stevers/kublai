@@ -923,6 +923,48 @@ export function applyOfflineRemoveItem(materialListId: string, itemId: string) {
   })();
 }
 
+export async function cleanupStaleMaterialListSyncFlags() {
+  const [queue, materialListIds] = await Promise.all([
+    getOfflineMutationQueue(),
+    import("~/lib/offline-material-list").then((module) => module.getOfflineMaterialListIds()),
+  ]);
+
+  const queuedRemoveItemIdsByList = new Map<string, Set<string>>();
+  const queuedListIds = new Set<string>();
+  for (const mutation of queue) {
+    queuedListIds.add(mutation.materialListId);
+    if (mutation.type !== "removeItem") continue;
+    const itemIds = queuedRemoveItemIdsByList.get(mutation.materialListId) ?? new Set<string>();
+    itemIds.add(mutation.itemId);
+    queuedRemoveItemIdsByList.set(mutation.materialListId, itemIds);
+  }
+
+  await Promise.all(
+    materialListIds.map(async (materialListId) => {
+      const envelope = await getOfflineMaterialList(materialListId);
+      if (!envelope) return;
+
+      const queuedRemoveItemIds = queuedRemoveItemIdsByList.get(materialListId) ?? new Set<string>();
+      const pendingDeletedItemIds = (envelope.pendingDeletedItemIds ?? []).filter((itemId) =>
+        queuedRemoveItemIds.has(itemId),
+      );
+      const pendingSync = queuedListIds.has(materialListId);
+
+      if (
+        envelope.pendingSync === pendingSync &&
+        pendingDeletedItemIds.length === (envelope.pendingDeletedItemIds ?? []).length
+      ) {
+        return;
+      }
+
+      await setOfflineMaterialList(materialListId, envelope.data, {
+        pendingSync,
+        pendingDeletedItemIds,
+      });
+    }),
+  );
+}
+
 export function applyOfflineSupplierPartUpdate(
   materialListId: string,
   itemId: string,
