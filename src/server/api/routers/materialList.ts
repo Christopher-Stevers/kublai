@@ -69,7 +69,12 @@ function firstName(name: string | null | undefined) {
 }
 
 function isUuid(value: string | null | undefined) {
-  return !!value && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+  return (
+    !!value &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+      value,
+    )
+  );
 }
 
 function parseOfflineSupplierPartId(value: string | null | undefined) {
@@ -112,18 +117,24 @@ import {
   materialListSyncTombstones,
 } from "~/server/db/schema";
 
-async function recalculateQuoteTotals(database: typeof appDb | any, quoteId: string) {
+async function recalculateQuoteTotals(
+  database: typeof appDb | any,
+  quoteId: string,
+) {
   const allItems = await database
     .select({ extendedPrice: quoteItems.extendedPrice })
     .from(quoteItems)
     .where(eq(quoteItems.quoteId, quoteId));
 
-  const subtotal = allItems.reduce((sum: number, item: { extendedPrice: unknown }) => {
-    const price = item.extendedPrice
-      ? parseFloat(item.extendedPrice.toString())
-      : 0;
-    return sum + price;
-  }, 0);
+  const subtotal = allItems.reduce(
+    (sum: number, item: { extendedPrice: unknown }) => {
+      const price = item.extendedPrice
+        ? parseFloat(item.extendedPrice.toString())
+        : 0;
+      return sum + price;
+    },
+    0,
+  );
 
   await database
     .update(quotes)
@@ -136,7 +147,10 @@ async function recalculateQuoteTotals(database: typeof appDb | any, quoteId: str
   return subtotal;
 }
 
-async function touchMaterialList(database: typeof appDb | any, materialListId: string) {
+async function touchMaterialList(
+  database: typeof appDb | any,
+  materialListId: string,
+) {
   await database
     .update(materialLists)
     .set({ updatedAt: new Date() })
@@ -514,7 +528,8 @@ export const materialListRouter = createTRPCRouter({
               sizeUnitId: item.oneOffSizeUnitId,
             }
           : null,
-        selectedSupplierId: item.selectedSupplierId ?? item.supplierPartSupplierId ?? null,
+        selectedSupplierId:
+          item.selectedSupplierId ?? item.supplierPartSupplierId ?? null,
         supplierPart: item.supplierPartId
           ? {
               id: item.supplierPartId,
@@ -714,7 +729,7 @@ export const materialListRouter = createTRPCRouter({
                     id: createdBy.id,
                     name: createdBy.name ?? "Unknown",
                     email: createdBy.email,
-                }
+                  }
                 : null,
               contributors,
               itemCount: 0,
@@ -733,9 +748,10 @@ export const materialListRouter = createTRPCRouter({
 
           const contributorIds = Array.from(
             new Set(
-              [list.createdByUserId, ...items.map((item) => item.addedByUserId)].filter(
-                (value): value is string => Boolean(value),
-              ),
+              [
+                list.createdByUserId,
+                ...items.map((item) => item.addedByUserId),
+              ].filter((value): value is string => Boolean(value)),
             ),
           );
           const contributorUsers = contributorIds.length
@@ -775,7 +791,7 @@ export const materialListRouter = createTRPCRouter({
                   id: createdBy.id,
                   name: createdBy.name ?? "Unknown",
                   email: createdBy.email,
-              }
+                }
               : null,
             contributors,
             itemCount,
@@ -845,7 +861,11 @@ export const materialListRouter = createTRPCRouter({
         .set(jobUpdates)
         .where(eq(jobs.id, existing.jobId));
 
-      publishMaterialListEvent(input.materialListId);
+      publishMaterialListEvent(
+        input.materialListId,
+        "updated",
+        ctx.user.organizationId,
+      );
       return { success: true };
     }),
 
@@ -896,7 +916,11 @@ export const materialListRouter = createTRPCRouter({
         })
         .where(eq(materialLists.id, input.materialListId));
 
-      publishMaterialListEvent(input.materialListId);
+      publishMaterialListEvent(
+        input.materialListId,
+        "updated",
+        ctx.user.organizationId,
+      );
       return { success: true };
     }),
 
@@ -937,7 +961,11 @@ export const materialListRouter = createTRPCRouter({
         .delete(materialLists)
         .where(eq(materialLists.id, input.materialListId));
 
-      publishMaterialListEvent(input.materialListId, "deleted");
+      publishMaterialListEvent(
+        input.materialListId,
+        "deleted",
+        ctx.user.organizationId,
+      );
       return { success: true };
     }),
 
@@ -1112,7 +1140,11 @@ export const materialListRouter = createTRPCRouter({
 
       await recalculateQuoteTotals(ctx.db, quote.id);
 
-      publishMaterialListEvent(input.materialListId);
+      publishMaterialListEvent(
+        input.materialListId,
+        "updated",
+        ctx.user.organizationId,
+      );
       return quoteItem;
     }),
 
@@ -1263,7 +1295,11 @@ export const materialListRouter = createTRPCRouter({
 
       await recalculateQuoteTotals(ctx.db, quote.id);
 
-      publishMaterialListEvent(input.materialListId);
+      publishMaterialListEvent(
+        input.materialListId,
+        "updated",
+        ctx.user.organizationId,
+      );
       return insertedItems;
     }),
 
@@ -1406,7 +1442,12 @@ export const materialListRouter = createTRPCRouter({
 
       await recalculateQuoteTotals(ctx.db, quote.id);
 
-      if (quote.materialListId) publishMaterialListEvent(quote.materialListId);
+      if (quote.materialListId)
+        publishMaterialListEvent(
+          quote.materialListId,
+          "updated",
+          ctx.user.organizationId,
+        );
       return updated;
     }),
 
@@ -1469,10 +1510,14 @@ export const materialListRouter = createTRPCRouter({
         await touchMaterialList(ctx.db, quote.materialListId);
       }
 
-      if (quote.materialListId) publishMaterialListEvent(quote.materialListId);
+      if (quote.materialListId)
+        publishMaterialListEvent(
+          quote.materialListId,
+          "updated",
+          ctx.user.organizationId,
+        );
       return { success: true };
     }),
-
 
   /**
    * Apply several latency-sensitive material-list edits in one server round trip.
@@ -1567,7 +1612,9 @@ export const materialListRouter = createTRPCRouter({
           const item = itemById.get(mutation.itemId);
           if (!item || item.quoteId !== materialList.quoteId) continue;
 
-          const unitCost = item.unitCost ? parseFloat(item.unitCost.toString()) : 0;
+          const unitCost = item.unitCost
+            ? parseFloat(item.unitCost.toString())
+            : 0;
           const extendedPrice = mutation.quantity * unitCost;
           await ctx.db
             .update(quoteItems)
@@ -1590,7 +1637,9 @@ export const materialListRouter = createTRPCRouter({
           .map((item) => item.id);
 
         if (verifiedIds.length > 0) {
-          await ctx.db.delete(quoteItems).where(inArray(quoteItems.id, verifiedIds));
+          await ctx.db
+            .delete(quoteItems)
+            .where(inArray(quoteItems.id, verifiedIds));
           await Promise.all(
             verifiedIds.map((itemId) =>
               recordMaterialListItemTombstone(ctx.db, {
@@ -1604,7 +1653,11 @@ export const materialListRouter = createTRPCRouter({
       }
 
       await recalculateQuoteTotals(ctx.db, materialList.quoteId);
-      publishMaterialListEvent(input.materialListId);
+      publishMaterialListEvent(
+        input.materialListId,
+        "updated",
+        ctx.user.organizationId,
+      );
 
       return { success: true };
     }),
@@ -1635,7 +1688,9 @@ export const materialListRouter = createTRPCRouter({
         materialListId: input.materialListId,
         mutationCount: input.mutations.length,
         mutationTypes: input.mutations.map((mutation) => mutation.type),
-        clientMutationIds: input.mutations.map((mutation) => mutation.clientMutationId),
+        clientMutationIds: input.mutations.map(
+          (mutation) => mutation.clientMutationId,
+        ),
         organizationId: ctx.user.organizationId,
         userId: ctx.userId,
       });
@@ -1656,7 +1711,11 @@ export const materialListRouter = createTRPCRouter({
           materialListId: input.materialListId,
           organizationId: ctx.user.organizationId,
           knownRecentLists: await ctx.db
-            .select({ id: materialLists.id, name: materialLists.name, jobId: materialLists.jobId })
+            .select({
+              id: materialLists.id,
+              name: materialLists.name,
+              jobId: materialLists.jobId,
+            })
             .from(materialLists)
             .where(eq(materialLists.organizationId, ctx.user.organizationId))
             .orderBy(desc(materialLists.updatedAt))
@@ -1690,15 +1749,27 @@ export const materialListRouter = createTRPCRouter({
             .from(materialListSyncMutations)
             .where(
               and(
-                eq(materialListSyncMutations.organizationId, ctx.user.organizationId),
-                eq(materialListSyncMutations.materialListId, input.materialListId),
-                eq(materialListSyncMutations.clientItemId, clientOrServerItemId),
+                eq(
+                  materialListSyncMutations.organizationId,
+                  ctx.user.organizationId,
+                ),
+                eq(
+                  materialListSyncMutations.materialListId,
+                  input.materialListId,
+                ),
+                eq(
+                  materialListSyncMutations.clientItemId,
+                  clientOrServerItemId,
+                ),
               ),
             )
             .limit(1);
 
           if (existingMapping?.serverItemId) {
-            batchItemIdMap.set(clientOrServerItemId, existingMapping.serverItemId);
+            batchItemIdMap.set(
+              clientOrServerItemId,
+              existingMapping.serverItemId,
+            );
             return existingMapping.serverItemId;
           }
 
@@ -1715,8 +1786,14 @@ export const materialListRouter = createTRPCRouter({
             .from(materialListSyncMutations)
             .where(
               and(
-                eq(materialListSyncMutations.organizationId, ctx.user.organizationId),
-                eq(materialListSyncMutations.clientMutationId, mutation.clientMutationId),
+                eq(
+                  materialListSyncMutations.organizationId,
+                  ctx.user.organizationId,
+                ),
+                eq(
+                  materialListSyncMutations.clientMutationId,
+                  mutation.clientMutationId,
+                ),
               ),
             )
             .limit(1);
@@ -1746,13 +1823,19 @@ export const materialListRouter = createTRPCRouter({
                   !mutation.oneOffDisplayName &&
                   !mutation.partDefinitionSnapshot?.displayName
                 ) {
-                  throw new Error("Add item requires a part definition, snapshot, or one-off name");
+                  throw new Error(
+                    "Add item requires a part definition, snapshot, or one-off name",
+                  );
                 }
 
                 let unitCost = mutation.unitCost?.toString() ?? null;
                 let descriptionSnapshot =
-                  mutation.oneOffDisplayName ?? mutation.partDefinitionSnapshot?.displayName ?? "";
-                const offlineSupplierPart = parseOfflineSupplierPartId(mutation.supplierPartId);
+                  mutation.oneOffDisplayName ??
+                  mutation.partDefinitionSnapshot?.displayName ??
+                  "";
+                const offlineSupplierPart = parseOfflineSupplierPartId(
+                  mutation.supplierPartId,
+                );
                 const serverSupplierPartId = isUuid(mutation.supplierPartId)
                   ? mutation.supplierPartId
                   : null;
@@ -1760,7 +1843,9 @@ export const materialListRouter = createTRPCRouter({
                   ? mutation.partDefinitionId
                   : null;
                 const resolvedSupplierId =
-                  mutation.supplierId ?? offlineSupplierPart?.supplierId ?? null;
+                  mutation.supplierId ??
+                  offlineSupplierPart?.supplierId ??
+                  null;
 
                 if (serverPartDefinitionId) {
                   const [partDef] = await tx
@@ -1774,7 +1859,9 @@ export const materialListRouter = createTRPCRouter({
 
                   if (serverSupplierPartId) {
                     const [supplierPart] = await tx
-                      .select({ lastKnownUnitCost: supplierParts.lastKnownUnitCost })
+                      .select({
+                        lastKnownUnitCost: supplierParts.lastKnownUnitCost,
+                      })
                       .from(supplierParts)
                       .where(eq(supplierParts.id, serverSupplierPartId))
                       .limit(1);
@@ -1783,7 +1870,9 @@ export const materialListRouter = createTRPCRouter({
                 }
 
                 if (!serverPartDefinitionId && !descriptionSnapshot) {
-                  throw new Error("Add item requires a server part definition or snapshot name");
+                  throw new Error(
+                    "Add item requires a server part definition or snapshot name",
+                  );
                 }
 
                 const cost = unitCost ? parseFloat(unitCost.toString()) : 0;
@@ -1819,9 +1908,14 @@ export const materialListRouter = createTRPCRouter({
                 break;
               }
               case "updateItemQuantity": {
-                const resolvedItemId = await resolveServerItemId(mutation.itemId);
+                const resolvedItemId = await resolveServerItemId(
+                  mutation.itemId,
+                );
                 const [item] = await tx
-                  .select({ quoteId: quoteItems.quoteId, unitCost: quoteItems.unitCost })
+                  .select({
+                    quoteId: quoteItems.quoteId,
+                    unitCost: quoteItems.unitCost,
+                  })
                   .from(quoteItems)
                   .where(eq(quoteItems.id, resolvedItemId))
                   .limit(1);
@@ -1829,7 +1923,9 @@ export const materialListRouter = createTRPCRouter({
                   throw new Error("Quote item not found for quantity update");
                 }
 
-                const cost = item.unitCost ? parseFloat(item.unitCost.toString()) : 0;
+                const cost = item.unitCost
+                  ? parseFloat(item.unitCost.toString())
+                  : 0;
                 await tx
                   .update(quoteItems)
                   .set({
@@ -1844,9 +1940,14 @@ export const materialListRouter = createTRPCRouter({
                 break;
               }
               case "updateItemSupplierPart": {
-                const resolvedItemId = await resolveServerItemId(mutation.itemId);
+                const resolvedItemId = await resolveServerItemId(
+                  mutation.itemId,
+                );
                 const [item] = await tx
-                  .select({ quoteId: quoteItems.quoteId, quantity: quoteItems.quantity })
+                  .select({
+                    quoteId: quoteItems.quoteId,
+                    quantity: quoteItems.quantity,
+                  })
                   .from(quoteItems)
                   .where(eq(quoteItems.id, resolvedItemId))
                   .limit(1);
@@ -1855,23 +1956,31 @@ export const materialListRouter = createTRPCRouter({
                 }
 
                 let unitCost: string | null = null;
-                const offlineSupplierPart = parseOfflineSupplierPartId(mutation.supplierPartId);
+                const offlineSupplierPart = parseOfflineSupplierPartId(
+                  mutation.supplierPartId,
+                );
                 const serverSupplierPartId = isUuid(mutation.supplierPartId)
                   ? mutation.supplierPartId
                   : null;
                 const resolvedSupplierId =
-                  mutation.supplierId ?? offlineSupplierPart?.supplierId ?? null;
+                  mutation.supplierId ??
+                  offlineSupplierPart?.supplierId ??
+                  null;
 
                 if (serverSupplierPartId) {
                   const [supplierPart] = await tx
-                    .select({ lastKnownUnitCost: supplierParts.lastKnownUnitCost })
+                    .select({
+                      lastKnownUnitCost: supplierParts.lastKnownUnitCost,
+                    })
                     .from(supplierParts)
                     .where(eq(supplierParts.id, serverSupplierPartId))
                     .limit(1);
                   unitCost = supplierPart?.lastKnownUnitCost ?? null;
                 }
 
-                const quantity = item.quantity ? parseFloat(item.quantity.toString()) : 0;
+                const quantity = item.quantity
+                  ? parseFloat(item.quantity.toString())
+                  : 0;
                 const cost = unitCost ? parseFloat(unitCost.toString()) : 0;
                 await tx
                   .update(quoteItems)
@@ -1892,14 +2001,18 @@ export const materialListRouter = createTRPCRouter({
                 clientItemId = mutation.itemId;
 
                 try {
-                  const resolvedItemId = await resolveServerItemId(mutation.itemId);
+                  const resolvedItemId = await resolveServerItemId(
+                    mutation.itemId,
+                  );
                   const [item] = await tx
                     .select({ quoteId: quoteItems.quoteId })
                     .from(quoteItems)
                     .where(eq(quoteItems.id, resolvedItemId))
                     .limit(1);
                   if (item?.quoteId === materialList.quoteId) {
-                    await tx.delete(quoteItems).where(eq(quoteItems.id, resolvedItemId));
+                    await tx
+                      .delete(quoteItems)
+                      .where(eq(quoteItems.id, resolvedItemId));
                     await recordMaterialListItemTombstone(tx, {
                       organizationId: ctx.user.organizationId,
                       materialListId: input.materialListId,
@@ -1953,7 +2066,8 @@ export const materialListRouter = createTRPCRouter({
               serverItemId,
             });
           } catch (error) {
-            const message = error instanceof Error ? error.message : "Sync mutation failed";
+            const message =
+              error instanceof Error ? error.message : "Sync mutation failed";
             const logContext = {
               materialListId: input.materialListId,
               clientMutationId: mutation.clientMutationId,
@@ -1964,11 +2078,17 @@ export const materialListRouter = createTRPCRouter({
               // This is an expected stale/offline mutation outcome. The client
               // dead-letters it and continues draining the queue, so don't log it
               // like a runtime exception for the repair watchdog.
-              console.info("[material-list-sync] permanent mutation skipped", logContext);
+              console.info(
+                "[material-list-sync] permanent mutation skipped",
+                logContext,
+              );
             } else {
               console.warn("Material-list sync mutation failed", logContext);
             }
-            failed.push({ clientMutationId: mutation.clientMutationId, message });
+            failed.push({
+              clientMutationId: mutation.clientMutationId,
+              message,
+            });
           }
         }
 
@@ -1982,7 +2102,11 @@ export const materialListRouter = createTRPCRouter({
       });
 
       if (syncResult.applied.length > 0) {
-        publishMaterialListEvent(input.materialListId);
+        publishMaterialListEvent(
+          input.materialListId,
+          "updated",
+          ctx.user.organizationId,
+        );
       }
 
       return syncResult;
@@ -2013,7 +2137,9 @@ export const materialListRouter = createTRPCRouter({
         gt(materialLists.updatedAt, since),
       ];
       if (scopedMaterialListIds) {
-        materialListFilters.push(inArray(materialLists.id, scopedMaterialListIds));
+        materialListFilters.push(
+          inArray(materialLists.id, scopedMaterialListIds),
+        );
       }
 
       const changedLists = await ctx.db
@@ -2027,11 +2153,16 @@ export const materialListRouter = createTRPCRouter({
         gt(quoteItems.updatedAt, since),
       ];
       if (scopedMaterialListIds) {
-        changedItemFilters.push(inArray(materialLists.id, scopedMaterialListIds));
+        changedItemFilters.push(
+          inArray(materialLists.id, scopedMaterialListIds),
+        );
       }
 
       const changedItems = await ctx.db
-        .select({ materialListId: materialLists.id, updatedAt: quoteItems.updatedAt })
+        .select({
+          materialListId: materialLists.id,
+          updatedAt: quoteItems.updatedAt,
+        })
         .from(quoteItems)
         .innerJoin(quotes, eq(quoteItems.quoteId, quotes.id))
         .innerJoin(materialLists, eq(quotes.materialListId, materialLists.id))
@@ -2044,7 +2175,10 @@ export const materialListRouter = createTRPCRouter({
       ];
       if (scopedMaterialListIds) {
         tombstoneFilters.push(
-          inArray(materialListSyncTombstones.materialListId, scopedMaterialListIds),
+          inArray(
+            materialListSyncTombstones.materialListId,
+            scopedMaterialListIds,
+          ),
         );
       }
 
@@ -2448,7 +2582,8 @@ ${foremanName}`;
       // Group by supplier
       const itemsBySupplier = new Map<string, typeof quoteItemsList>();
       for (const item of quoteItemsList) {
-        const supplierId = item.selectedSupplierId ?? item.supplierPartSupplierId;
+        const supplierId =
+          item.selectedSupplierId ?? item.supplierPartSupplierId;
         if (!supplierId) {
           // Skip items without supplier
           continue;

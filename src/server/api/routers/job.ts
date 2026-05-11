@@ -12,6 +12,7 @@ import {
   locations,
   users,
 } from "~/server/db/schema";
+import { publishMaterialListEvent } from "~/server/material-list-events";
 
 const entitySyncMutationInput = z.discriminatedUnion("type", [
   z.object({
@@ -348,6 +349,14 @@ export const jobRouter = createTRPCRouter({
             localEntityId: result.clientEntityId,
             serverEntityId: result.serverEntityId,
           });
+
+          if (result.entityType === "materialList" && result.serverEntityId) {
+            publishMaterialListEvent(
+              result.serverEntityId,
+              mutation.type === "deleteMaterialList" ? "deleted" : "created",
+              ctx.user.organizationId,
+            );
+          }
         } catch (error) {
           const message =
             error instanceof Error ? error.message : String(error);

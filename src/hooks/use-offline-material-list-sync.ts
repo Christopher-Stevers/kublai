@@ -1459,7 +1459,17 @@ export function useOfflineMaterialListSync() {
 
     const onOnline = () => scheduleIfPendingWork(0);
     const onFocus = () => schedule(250, "focus");
-    const onSyncStateChanged = () => scheduleIfPendingWork(500);
+    const onSyncStateChanged = (event: Event) => {
+      const serverChanged =
+        event instanceof CustomEvent &&
+        (event.detail as { serverChanged?: boolean } | undefined)
+          ?.serverChanged;
+      if (serverChanged) {
+        schedule(0, "background");
+        return;
+      }
+      scheduleIfPendingWork(500);
+    };
 
     schedule(750, "startup");
     const interval = setInterval(
