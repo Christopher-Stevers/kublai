@@ -39,6 +39,7 @@ const PULL_CURSOR_META_KEY = "material-list-sync-pull-cursor";
 const BACKGROUND_PULL_INTERVAL_MS = 60_000;
 const SYNC_LOCK_KEY = "foremenhq.material-list-sync.lock";
 const SYNC_LOCK_TTL_MS = 20_000;
+const SYNC_LOCK_STEAL_QUEUED_AGE_MS = 45_000;
 const SYNC_REQUEST_TIMEOUT_MS = 30_000;
 
 type SyncResult = {
@@ -150,7 +151,7 @@ function withClientMutationId(mutation: OfflineMaterialListMutation) {
   } as OfflineMaterialListMutation & { clientMutationId: string };
 }
 
-function acquireSyncLock(owner: string) {
+function acquireSyncLock(owner: string, options?: { oldestQueuedAt?: number }) {
   if (typeof window === "undefined") return true;
 
   const now = Date.now();
@@ -158,7 +159,11 @@ function acquireSyncLock(owner: string) {
   if (raw) {
     try {
       const lock = JSON.parse(raw) as { owner?: string; expiresAt?: number };
-      if (lock.owner && lock.expiresAt && lock.expiresAt > now) return false;
+      const queuedAge = options?.oldestQueuedAt ? now - options.oldestQueuedAt : 0;
+      const canStealForOldQueue = queuedAge > SYNC_LOCK_STEAL_QUEUED_AGE_MS;
+      if (lock.owner && lock.expiresAt && lock.expiresAt > now && !canStealForOldQueue) {
+        return false;
+      }
     } catch {
       // Replace malformed locks.
     }
@@ -166,7 +171,7 @@ function acquireSyncLock(owner: string) {
 
   window.localStorage.setItem(
     SYNC_LOCK_KEY,
-    JSON.stringify({ owner, expiresAt: now + SYNC_LOCK_TTL_MS }),
+    JSON.stringify({ owner, expiresAt: now + SYNC_LOCK_TTL_MS, acquiredAt: now }),
   );
 
   try {
@@ -194,7 +199,7 @@ function extendSyncLock(owner: string) {
     if (lock.owner !== owner) return;
     window.localStorage.setItem(
       SYNC_LOCK_KEY,
-      JSON.stringify({ owner, expiresAt: Date.now() + SYNC_LOCK_TTL_MS }),
+      JSON.stringify({ owner, expiresAt: Date.now() + SYNC_LOCK_TTL_MS, acquiredAt: lock.acquiredAt ?? Date.now() }),
     );
   } catch {
     // Ignore malformed fallback locks; acquire/release handles replacement.
@@ -370,25 +375,28 @@ export function useOfflineMaterialListSyncRunner() {
       };
     }
 
+    const initialRemaining = initialQueue.length + entityQueueCount;
+    const initialOldestQueuedAtRaw = latestQueuedAt(initialQueue);
+    const initialOldestQueuedAt = initialOldestQueuedAtRaw
+      ? new Date(initialOldestQueuedAtRaw).getTime()
+      : undefined;
     const busyResult = {
       synced: false,
       pushed: 0,
       pulled: 0,
-      // Another tab already owns the queue. Do not make this runner schedule a
-      // tight retry loop or spam the server-side debug log with lock-busy rows.
-      remaining: 0,
+      remaining: initialRemaining,
       busy: true,
     } satisfies SyncResult;
 
     const runWithLocalFallbackLock = async (): Promise<SyncResult> => {
       const lockOwner = crypto.randomUUID();
-      if (!acquireSyncLock(lockOwner)) {
+      if (!acquireSyncLock(lockOwner, { oldestQueuedAt: initialOldestQueuedAt })) {
         addSyncDebugEvent({
           phase: "blocked",
           status: "info",
           message: "Sync guy found another tab already working",
           queueLength: initialQueue.length,
-          details: { entityQueueCount },
+          details: { entityQueueCount, remaining: initialRemaining, oldestQueuedAt: initialOldestQueuedAt },
         });
         return busyResult;
       }
@@ -1134,15 +1142,20 @@ export function useOfflineMaterialListSync() {
         void (async () => {
           const result = await runSync(reason);
           if (cancelled || !canReachServer()) return;
-          if (result.remaining > 0 && !result.busy) {
+          if (result.remaining > 0) {
             addSyncDebugEvent({
               phase: "wake",
               status: "info",
-              message: `Still ${result.remaining} sticky note(s) left; scheduling another sync pass`,
+              message: result.busy
+                ? `Sync is busy; retrying ${result.remaining} sticky note(s)`
+                : `Still ${result.remaining} sticky note(s) left; scheduling another sync pass`,
               queueLength: result.remaining,
               details: result,
             });
-            schedule(result.pushed === 0 && result.pulled === 0 ? 5_000 : 750, "pending");
+            schedule(
+              result.busy ? 2_000 : result.pushed === 0 && result.pulled === 0 ? 5_000 : 750,
+              "pending",
+            );
           }
         })();
       }, delay);
