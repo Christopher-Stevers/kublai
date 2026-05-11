@@ -418,6 +418,7 @@ export function useOfflineMaterialListSyncRunner() {
       const touchedMaterialListIds = new Set<string>(
         getQueuedMaterialListIds(normalizedInitialQueue),
       );
+      const appliedDeletedItemIdsByList = new Map<string, Set<string>>();
 
     try {
       if (normalizedInitialQueue.length > 0 || entityQueueCount > 0) {
@@ -839,6 +840,12 @@ export function useOfflineMaterialListSyncRunner() {
           if (appliedIds.size > 0) {
             pushed += appliedIds.size;
             for (const applied of result.applied) {
+              if (applied.type === "removeItem" && applied.serverItemId) {
+                const deletedIds =
+                  appliedDeletedItemIdsByList.get(materialListId) ?? new Set<string>();
+                deletedIds.add(applied.serverItemId);
+                appliedDeletedItemIdsByList.set(materialListId, deletedIds);
+              }
               if (applied.localItemId && applied.serverItemId) {
                 await remapOfflineMaterialListItemId(
                   materialListId,
@@ -930,15 +937,16 @@ export function useOfflineMaterialListSyncRunner() {
           }
           throw error;
         }
-        const tombstonedItemIds = new Set(
-          pull.tombstones
+        const tombstonedItemIds = new Set([
+          ...Array.from(appliedDeletedItemIdsByList.get(materialListId) ?? []),
+          ...pull.tombstones
             .filter(
               (tombstone) =>
                 tombstone.materialListId === materialListId &&
                 tombstone.entityType === "quoteItem",
             )
             .map((tombstone) => tombstone.entityId),
-        );
+        ]);
         if (tombstonedItemIds.size > 0) {
           serverData = {
             ...serverData,
