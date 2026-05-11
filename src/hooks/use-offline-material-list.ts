@@ -9,6 +9,7 @@ import {
   type OfflineMaterialListRecord,
 } from "~/lib/offline-material-list";
 import {
+  getActiveItemSyncStatuses,
   getOfflineMutationQueue,
   getQueuedItemIdsForMaterialList,
   OFFLINE_MATERIAL_LIST_SYNC_EVENT,
@@ -246,8 +247,12 @@ export function useOfflineMaterialList(
     let cancelled = false;
 
     void (async () => {
-      const queue = await getOfflineMutationQueue();
+      const [queue, activeStatuses] = await Promise.all([
+        getOfflineMutationQueue(),
+        getActiveItemSyncStatuses(),
+      ]);
       const queuedItems = getQueuedItemIdsForMaterialList(materialListId, queue);
+      const activeListStatuses = activeStatuses[materialListId] ?? {};
       const currentItemIds = new Set((data?.items ?? []).map((item) => String(item.id)));
       const hasQueuedListChanges = queue.some(
         (mutation) => mutation.materialListId === materialListId,
@@ -259,7 +264,10 @@ export function useOfflineMaterialList(
 
       for (const item of data?.items ?? []) {
         const itemId = String(item.id);
-        if (queuedItems.has(itemId)) {
+        const activeStatus = activeListStatuses[itemId]?.status;
+        if (activeStatus === "syncing") {
+          itemStatuses.set(itemId, "syncing");
+        } else if (activeStatus === "pending" || queuedItems.has(itemId)) {
           itemStatuses.set(itemId, "pending");
         } else {
           itemStatuses.set(itemId, "synced");
