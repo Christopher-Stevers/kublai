@@ -116,11 +116,28 @@ export default function JobDetailPage({
       );
   }, [jobId, router]);
 
-  // Get job details
-  const serverJob = undefined;
-  const serverMaterialLists = undefined;
-  const jobLoading = false;
-  const listsLoading = false;
+  // Get job details for fresh browser/profile bootstrap. The hook seeds Dexie
+  // and still renders from local state after import.
+  const isServerJobId = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(jobId);
+  const { data: serverJobResult, isLoading: jobLoading } = api.job.getJob.useQuery(
+    { jobId },
+    {
+      enabled: isBrowserOnline && isServerJobId,
+      refetchOnMount: true,
+      refetchOnWindowFocus: false,
+    },
+  );
+  const serverJob = serverJobResult
+    ? (({ materialLists: _materialLists, ...job }) => job)(serverJobResult)
+    : undefined;
+  const serverMaterialLists = serverJobResult?.materialLists.map((list) => ({
+    ...list,
+    itemCount: 0,
+    materialTotal: 0,
+    foreman: serverJob?.foreman ?? null,
+    contributors: [],
+  }));
+  const listsLoading = jobLoading;
 
   const {
     data: offlineJobData,

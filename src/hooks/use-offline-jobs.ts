@@ -12,6 +12,8 @@ import {
   getPendingDeletedMaterialListIds,
   purgeAutoCreatedOfflineJobGhosts,
   normalizeLegacyOfflineMaterialListName,
+  setOfflineJobDetail,
+  setOfflineJobsList,
   type OfflineJobDetail,
   type OfflineJobMaterialListSummary,
   type OfflineJobSummary,
@@ -67,9 +69,18 @@ export function useOfflineJobsList(serverData?: OfflineJobSummary[]) {
     purgeAutoCreatedOfflineJobGhosts([]);
   }, []);
 
-  // Hard local-only mode for jobs: do not import server job lists into the UI
-  // cache. Server calls may still exist for auth/account/quote workflows, but
-  // jobs render strictly from local storage.
+  useEffect(() => {
+    if (!isOnline || !serverData || serverData.length === 0) return;
+    if (!cacheLoaded) return;
+
+    const hasLocalJobs = (liveJobs?.length ?? 0) > 0 || (getOfflineJobsList()?.data.length ?? 0) > 0;
+    if (hasLocalJobs || cached?.length) return;
+
+    // Fresh browser/profile bootstrap: seed Dexie/localStorage once from the
+    // server snapshot, then keep rendering from local state.
+    setOfflineJobsList(serverData);
+    setCached(serverData);
+  }, [cacheLoaded, cached?.length, isOnline, liveJobs?.length, serverData]);
 
   const data = useMemo(() => {
     const pendingDeletedJobIds = getPendingDeletedJobIds();
@@ -169,8 +180,17 @@ export function useOfflineJobDetail(
     };
   }, [jobId, liveDetail]);
 
-  // Hard local-only mode for job detail: do not import server job/material-list
-  // detail into the rendered local cache.
+  useEffect(() => {
+    if (!isOnline || !serverJob || !serverMaterialLists) return;
+    if (!cacheLoaded || cached) return;
+    if (getOfflineJobDetail(jobId)?.data) return;
+
+    // Fresh browser/profile bootstrap for direct job URLs. This imports the
+    // server detail into local storage first; UI still reads the local copy.
+    const detail = { job: serverJob, materialLists: serverMaterialLists };
+    setOfflineJobDetail(jobId, detail);
+    setCached(detail);
+  }, [cacheLoaded, cached, isOnline, jobId, serverJob, serverMaterialLists]);
 
   const data = useMemo(() => {
     if (getPendingDeletedJobIds().has(jobId)) return null;

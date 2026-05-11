@@ -124,9 +124,13 @@ export default function Dashboard() {
     };
   }, [userData, isLoadingUser]);
 
-  // Get all jobs
-  const serverJobs = undefined;
-  const isLoading = false;
+  // Get all jobs for fresh browser/profile bootstrap. The hook seeds Dexie and
+  // still renders from local state after import.
+  const { data: serverJobs, isLoading } = api.job.listJobs.useQuery(undefined, {
+    enabled: isBrowserOnline,
+    refetchOnMount: true,
+    refetchOnWindowFocus: false,
+  });
   const {
     data: jobs,
     cacheLoaded,
