@@ -24,6 +24,7 @@ export type MaterialListSyncStatus = "synced" | "pending" | "syncing";
 
 const DELETE_SHADOW_TTL_MS = 2 * 60 * 1000;
 const ADD_SHADOW_TTL_MS = 2 * 60 * 1000;
+const QUANTITY_SHADOW_TTL_MS = 2 * 60 * 1000;
 
 export function useOfflineMaterialList(
   materialListId: string,
@@ -49,6 +50,12 @@ export function useOfflineMaterialList(
   >(new Map());
   const [addShadowByItemId, setAddShadowByItemId] = useState<
     Map<string, Extract<OfflineMaterialListMutation, { type: "addItem" }>>
+  >(new Map());
+  const [quantityShadowByItemId, setQuantityShadowByItemId] = useState<
+    Map<
+      string,
+      Extract<OfflineMaterialListMutation, { type: "updateItemQuantity" }>
+    >
   >(new Map());
   const liveCached = useLiveQuery(
     async () => {
@@ -110,6 +117,24 @@ export function useOfflineMaterialList(
         const next = new Map(current);
         for (const mutation of addMutations) {
           next.set(mutation.localItemId, mutation);
+        }
+        return next;
+      });
+    }
+
+    const quantityMutations = mutations.filter(
+      (
+        mutation,
+      ): mutation is Extract<
+        OfflineMaterialListMutation,
+        { type: "updateItemQuantity" }
+      > => mutation.type === "updateItemQuantity",
+    );
+    if (quantityMutations.length > 0) {
+      setQuantityShadowByItemId((current) => {
+        const next = new Map(current);
+        for (const mutation of quantityMutations) {
+          next.set(mutation.itemId, mutation);
         }
         return next;
       });
@@ -322,6 +347,33 @@ export function useOfflineMaterialList(
   }, [addShadowByItemId.size, baseRawData]);
 
   useEffect(() => {
+    if (!baseRawData || quantityShadowByItemId.size === 0) return;
+
+    setQuantityShadowByItemId((current) => {
+      let changed = false;
+      const next = new Map(current);
+      const now = Date.now();
+
+      for (const [itemId, mutation] of next) {
+        const serverItem = baseRawData.items.find(
+          (item) => String(item.id) === itemId,
+        );
+        const serverConfirmedQuantity =
+          serverItem && Number(serverItem.quantity) === mutation.quantity;
+        const expired =
+          now - new Date(mutation.queuedAt).getTime() > QUANTITY_SHADOW_TTL_MS;
+
+        if (serverConfirmedQuantity || expired) {
+          next.delete(itemId);
+          changed = true;
+        }
+      }
+
+      return changed ? next : current;
+    });
+  }, [baseRawData, quantityShadowByItemId.size]);
+
+  useEffect(() => {
     if (!baseRawData || deleteShadowByItemId.size === 0) return;
 
     const serverItemIds = new Set(
@@ -357,14 +409,27 @@ export function useOfflineMaterialList(
         .filter((mutation) => mutation.type === "addItem")
         .map((mutation) => mutation.localItemId),
     );
+    const queuedQuantityItemIds = new Set(
+      queueSnapshot
+        .filter((mutation) => mutation.type === "updateItemQuantity")
+        .map((mutation) => mutation.itemId),
+    );
     const now = Date.now();
     const addShadowMutations = Array.from(addShadowByItemId.values()).filter(
       (mutation) =>
         !queuedAddItemIds.has(mutation.localItemId) &&
         now - new Date(mutation.queuedAt).getTime() <= ADD_SHADOW_TTL_MS,
     );
+    const quantityShadowMutations = Array.from(
+      quantityShadowByItemId.values(),
+    ).filter(
+      (mutation) =>
+        !queuedQuantityItemIds.has(mutation.itemId) &&
+        now - new Date(mutation.queuedAt).getTime() <= QUANTITY_SHADOW_TTL_MS,
+    );
     const projected = projectMaterialListWithMutations(baseRawData, [
       ...addShadowMutations,
+      ...quantityShadowMutations,
       ...queueSnapshot,
     ]);
 
@@ -392,7 +457,13 @@ export function useOfflineMaterialList(
       items,
       materialTotal,
     };
-  }, [addShadowByItemId, baseRawData, deleteShadowByItemId, queueSnapshot]);
+  }, [
+    addShadowByItemId,
+    baseRawData,
+    deleteShadowByItemId,
+    quantityShadowByItemId,
+    queueSnapshot,
+  ]);
 
   const data = rawData;
 
