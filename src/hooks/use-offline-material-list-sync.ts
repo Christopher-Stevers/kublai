@@ -930,6 +930,27 @@ export function useOfflineMaterialListSyncRunner() {
           }
           throw error;
         }
+        const tombstonedItemIds = new Set(
+          pull.tombstones
+            .filter(
+              (tombstone) =>
+                tombstone.materialListId === materialListId &&
+                tombstone.entityType === "quoteItem",
+            )
+            .map((tombstone) => tombstone.entityId),
+        );
+        if (tombstonedItemIds.size > 0) {
+          serverData = {
+            ...serverData,
+            items: serverData.items.filter((item) => !tombstonedItemIds.has(String(item.id))),
+            materialTotal: serverData.items
+              .filter((item) => !tombstonedItemIds.has(String(item.id)))
+              .reduce((sum, item) => {
+                const price = item.extendedPrice ? parseFloat(item.extendedPrice) : 0;
+                return sum + (Number.isFinite(price) ? price : 0);
+              }, 0),
+          };
+        }
         const latestQueue = await getOfflineMutationQueue();
         const queuedForList = latestQueue.filter(
           (mutation) => mutation.materialListId === materialListId,
@@ -976,6 +997,7 @@ export function useOfflineMaterialListSyncRunner() {
             pendingForList: queuedForList.length,
             localChangedDuringThisRun,
             hasNewQueuedWorkForList,
+            tombstonedItemIds: Array.from(tombstonedItemIds),
           },
         });
       }
