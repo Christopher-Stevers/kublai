@@ -413,6 +413,80 @@ export function getPendingDeletedMaterialListIds(jobId?: string) {
   );
 }
 
+export function hasPendingOfflineJobMutation(jobId: string) {
+  return getOfflineEntityMutationQueue().some((mutation) => {
+    if (mutation.type === "createJob") return mutation.localJobId === jobId;
+    if (mutation.type === "updateJob" || mutation.type === "deleteJob") {
+      return mutation.jobId === jobId;
+    }
+    if (mutation.type === "createMaterialList")
+      return mutation.localJobId === jobId;
+    if (mutation.type === "deleteMaterialList") return mutation.jobId === jobId;
+    return false;
+  });
+}
+
+export function mergeServerJobsIntoOfflineCache(
+  serverJobs: OfflineJobSummary[],
+) {
+  const localJobs = getOfflineJobsList()?.data ?? [];
+  const localJobsById = new Map(localJobs.map((job) => [job.id, job]));
+  const serverJobIds = new Set(serverJobs.map((job) => job.id));
+  const queue = getOfflineEntityMutationQueue();
+  const deletedJobIds = getPendingDeletedJobIds();
+  const protectedJobIds = new Set<string>();
+
+  for (const mutation of queue) {
+    if (mutation.type === "createJob") protectedJobIds.add(mutation.localJobId);
+    if (mutation.type === "updateJob") protectedJobIds.add(mutation.jobId);
+    if (mutation.type === "createMaterialList")
+      protectedJobIds.add(mutation.localJobId);
+    if (mutation.type === "deleteMaterialList")
+      protectedJobIds.add(mutation.jobId);
+  }
+
+  const merged = serverJobs
+    .filter((job) => !deletedJobIds.has(job.id))
+    .map((job) =>
+      protectedJobIds.has(job.id) ? (localJobsById.get(job.id) ?? job) : job,
+    );
+
+  for (const localJob of localJobs) {
+    if (serverJobIds.has(localJob.id) || deletedJobIds.has(localJob.id))
+      continue;
+    if (
+      localJob.id.startsWith("offline-job-") ||
+      protectedJobIds.has(localJob.id)
+    ) {
+      merged.unshift(localJob);
+    }
+  }
+
+  setOfflineJobsList(merged);
+  return merged;
+}
+
+export function mergeServerJobDetailIntoOfflineCache(
+  jobId: string,
+  detail: {
+    job: OfflineJobDetail;
+    materialLists: OfflineJobMaterialListSummary[];
+  },
+) {
+  if (hasPendingOfflineJobMutation(jobId))
+    return getOfflineJobDetail(jobId)?.data ?? null;
+
+  const pendingDeletedMaterialListIds = getPendingDeletedMaterialListIds(jobId);
+  const merged = {
+    job: detail.job,
+    materialLists: detail.materialLists.filter(
+      (list) => !pendingDeletedMaterialListIds.has(list.id),
+    ),
+  };
+  setOfflineJobDetail(jobId, merged);
+  return merged;
+}
+
 function removeMaterialListFromCachedJob(
   jobId: string,
   materialListId: string,

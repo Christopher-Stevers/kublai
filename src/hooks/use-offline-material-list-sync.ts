@@ -28,11 +28,15 @@ import {
 } from "~/lib/offline-material-list-mutations";
 import {
   getOfflineEntityMutationQueue,
+  getOfflineJobDetailIds,
+  mergeServerJobDetailIntoOfflineCache,
+  mergeServerJobsIntoOfflineCache,
   remapOfflineJobId,
   remapOfflineMaterialListId,
   setOfflineEntityMutationQueue,
   type OfflineEntityMutation,
   type OfflineJobDetail,
+  type OfflineJobMaterialListSummary,
 } from "~/lib/offline-jobs";
 
 const PULL_CURSOR_META_KEY = "material-list-sync-pull-cursor";
@@ -71,8 +75,11 @@ function toOfflineJobDetail(job: {
   locationId?: string | null;
   poNumber?: string | null;
   foremanUserId?: string | null;
+  foremanName?: string | null;
   status?: string | null;
   createdAt?: string | Date;
+  location?: OfflineJobDetail["location"];
+  foreman?: OfflineJobDetail["foreman"];
 }): OfflineJobDetail {
   return {
     id: job.id,
@@ -80,11 +87,35 @@ function toOfflineJobDetail(job: {
     locationId: job.locationId ?? null,
     poNumber: job.poNumber ?? null,
     foremanUserId: job.foremanUserId ?? null,
+    foremanName: job.foremanName ?? null,
     status: job.status ?? "draft",
     createdAt: job.createdAt ?? new Date().toISOString(),
-    location: null,
-    foreman: null,
+    location: job.location ?? null,
+    foreman: job.foreman ?? null,
   };
+}
+
+function toOfflineJobMaterialListSummaries(
+  job: OfflineJobDetail | undefined,
+  lists:
+    | Array<{
+        id: string;
+        name: string;
+        createdAt: string | Date;
+        itemCount?: number | null;
+        materialTotal?: number | string | null;
+      }>
+    | undefined,
+): OfflineJobMaterialListSummary[] {
+  return (lists ?? []).map((list) => ({
+    id: list.id,
+    name: list.name,
+    createdAt: list.createdAt,
+    itemCount: Number(list.itemCount ?? 0),
+    materialTotal: Number(list.materialTotal ?? 0),
+    foreman: job?.foreman ?? null,
+    contributors: [],
+  }));
 }
 
 async function getCachedMaterialListRecord(
@@ -460,6 +491,57 @@ export function useOfflineMaterialListSyncRunner() {
         let pushed = 0;
         let pulled = 0;
         const normalizedInitialQueue = initialQueue.map(withClientMutationId);
+
+        const pullParentEntitiesIntoDexie = async () => {
+          if ((await getOfflineMutationQueue()).length > 0) return 0;
+          if (getOfflineEntityMutationQueue().length > 0) return 0;
+
+          const serverJobs = await withSyncTimeout(
+            utils.job.listJobs.fetch(),
+            "listJobs",
+          );
+          mergeServerJobsIntoOfflineCache(serverJobs);
+
+          const detailIds = getOfflineJobDetailIds().filter(isUuid);
+          let detailPulls = 0;
+          for (const jobId of detailIds) {
+            try {
+              const serverJobResult = await withSyncTimeout(
+                utils.job.getJob.fetch({ jobId }),
+                "getJob",
+              );
+              const { materialLists, ...job } = serverJobResult;
+              const offlineJob = toOfflineJobDetail(job);
+              mergeServerJobDetailIntoOfflineCache(jobId, {
+                job: offlineJob,
+                materialLists: toOfflineJobMaterialListSummaries(
+                  offlineJob,
+                  materialLists,
+                ),
+              });
+              detailPulls += 1;
+            } catch (error) {
+              const message =
+                error instanceof Error ? error.message : String(error);
+              if (
+                !message.includes("NOT_FOUND") &&
+                !message.includes("Job not found")
+              ) {
+                throw error;
+              }
+            }
+          }
+
+          addSyncDebugEvent({
+            phase: "pull",
+            status: "success",
+            message: `Server refreshed ${serverJobs.length} job(s) into Dexie`,
+            queueLength: 0,
+            details: { jobCount: serverJobs.length, detailPulls },
+          });
+          return serverJobs.length + detailPulls;
+        };
+
         if (initialQueue.some((mutation) => !mutation.clientMutationId)) {
           await setOfflineMutationQueue(normalizedInitialQueue);
         }
@@ -1011,6 +1093,7 @@ export function useOfflineMaterialListSyncRunner() {
                 pendingDeletedItemIds: [],
               });
             }
+            pulled += await pullParentEntitiesIntoDexie();
             await setSyncingMaterialListIds([]);
             notifyOfflineMaterialListSyncStateChanged();
             addSyncDebugEvent({
@@ -1035,6 +1118,7 @@ export function useOfflineMaterialListSyncRunner() {
           }
 
           if (touchedMaterialListIds.size === 0) {
+            pulled += await pullParentEntitiesIntoDexie();
             await setSyncingMaterialListIds([]);
             notifyOfflineMaterialListSyncStateChanged();
             return {
@@ -1194,6 +1278,7 @@ export function useOfflineMaterialListSyncRunner() {
             });
           }
 
+          pulled += await pullParentEntitiesIntoDexie();
           await idbSetMeta(PULL_CURSOR_META_KEY, pull.cursor);
           await setSyncingMaterialListIds([]);
           notifyOfflineMaterialListSyncStateChanged();
