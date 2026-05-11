@@ -158,6 +158,63 @@ export const jobRouter = createTRPCRouter({
             .limit(1);
 
           if (existing[0]) {
+            let serverEntityId = existing[0].serverEntityId;
+
+            // Idempotency rows can outlive the entity they originally pointed
+            // at (for example, an offline-created job later deleted while a
+            // browser still has the create mutation cached). Returning that
+            // stale server id teaches the client to navigate to a job that no
+            // longer exists, which shows up as repeated job.getJob NOT_FOUND
+            // failures after sync. If a duplicate createJob points at a missing
+            // row, repair the idempotency mapping by creating the job again and
+            // returning the fresh id.
+            if (mutation.type === "createJob" && serverEntityId) {
+              const [existingJob] = await ctx.db
+                .select({ id: jobs.id })
+                .from(jobs)
+                .where(
+                  and(
+                    eq(jobs.id, serverEntityId),
+                    eq(jobs.organizationId, ctx.user.organizationId),
+                  ),
+                )
+                .limit(1);
+
+              if (!existingJob) {
+                const [job] = await ctx.db
+                  .insert(jobs)
+                  .values({
+                    organizationId: ctx.user.organizationId,
+                    name: mutation.name,
+                    locationId: isUuid(mutation.locationId)
+                      ? mutation.locationId
+                      : null,
+                    foremanUserId: ctx.userId,
+                    createdByUserId: ctx.userId,
+                    status: "draft",
+                  })
+                  .returning();
+                if (!job) throw new Error("Failed to recreate job");
+
+                serverEntityId = job.id;
+                await ctx.db
+                  .update(entitySyncMutations)
+                  .set({ serverEntityId, payload: mutation })
+                  .where(
+                    and(
+                      eq(
+                        entitySyncMutations.organizationId,
+                        ctx.user.organizationId,
+                      ),
+                      eq(
+                        entitySyncMutations.clientMutationId,
+                        mutation.clientMutationId,
+                      ),
+                    ),
+                  );
+              }
+            }
+
             applied.push({
               clientMutationId: mutation.clientMutationId,
               type: mutation.type,
@@ -169,7 +226,7 @@ export const jobRouter = createTRPCRouter({
                     : mutation.type === "deleteMaterialList"
                       ? mutation.materialListId
                       : mutation.jobId,
-              serverEntityId: existing[0].serverEntityId,
+              serverEntityId,
               duplicate: true,
             });
             continue;
