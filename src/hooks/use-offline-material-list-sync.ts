@@ -57,7 +57,12 @@ function canReachServer() {
 }
 
 function isUuid(value: string | null | undefined) {
-  return !!value && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+  return (
+    !!value &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+      value,
+    )
+  );
 }
 
 function toOfflineJobDetail(job: {
@@ -119,13 +124,16 @@ async function getCachedMaterialListRecord(
       foreman: null,
     },
     quote: header.quoteId ? { id: header.quoteId } : null,
-    items: itemRows.map((row) => row.value as OfflineMaterialListRecord["items"][number]),
+    items: itemRows.map(
+      (row) => row.value as OfflineMaterialListRecord["items"][number],
+    ),
     materialTotal: header.materialTotal,
   };
 }
 
 function debugOfflineSync(label: string, payload: unknown) {
-  if (process.env.NODE_ENV === "production" || typeof window === "undefined") return;
+  if (process.env.NODE_ENV === "production" || typeof window === "undefined")
+    return;
 
   void fetch("/api/debug/offline-sync", {
     method: "POST",
@@ -147,7 +155,8 @@ function deterministicClientMutationId(mutation: OfflineMaterialListMutation) {
 function withClientMutationId(mutation: OfflineMaterialListMutation) {
   return {
     ...mutation,
-    clientMutationId: mutation.clientMutationId ?? deterministicClientMutationId(mutation),
+    clientMutationId:
+      mutation.clientMutationId ?? deterministicClientMutationId(mutation),
   } as OfflineMaterialListMutation & { clientMutationId: string };
 }
 
@@ -159,9 +168,16 @@ function acquireSyncLock(owner: string, options?: { oldestQueuedAt?: number }) {
   if (raw) {
     try {
       const lock = JSON.parse(raw) as { owner?: string; expiresAt?: number };
-      const queuedAge = options?.oldestQueuedAt ? now - options.oldestQueuedAt : 0;
+      const queuedAge = options?.oldestQueuedAt
+        ? now - options.oldestQueuedAt
+        : 0;
       const canStealForOldQueue = queuedAge > SYNC_LOCK_STEAL_QUEUED_AGE_MS;
-      if (lock.owner && lock.expiresAt && lock.expiresAt > now && !canStealForOldQueue) {
+      if (
+        lock.owner &&
+        lock.expiresAt &&
+        lock.expiresAt > now &&
+        !canStealForOldQueue
+      ) {
         return false;
       }
     } catch {
@@ -171,7 +187,11 @@ function acquireSyncLock(owner: string, options?: { oldestQueuedAt?: number }) {
 
   window.localStorage.setItem(
     SYNC_LOCK_KEY,
-    JSON.stringify({ owner, expiresAt: now + SYNC_LOCK_TTL_MS, acquiredAt: now }),
+    JSON.stringify({
+      owner,
+      expiresAt: now + SYNC_LOCK_TTL_MS,
+      acquiredAt: now,
+    }),
   );
 
   try {
@@ -199,7 +219,11 @@ function extendSyncLock(owner: string) {
     if (lock.owner !== owner) return;
     window.localStorage.setItem(
       SYNC_LOCK_KEY,
-      JSON.stringify({ owner, expiresAt: Date.now() + SYNC_LOCK_TTL_MS, acquiredAt: lock.acquiredAt ?? Date.now() }),
+      JSON.stringify({
+        owner,
+        expiresAt: Date.now() + SYNC_LOCK_TTL_MS,
+        acquiredAt: lock.acquiredAt ?? Date.now(),
+      }),
     );
   } catch {
     // Ignore malformed fallback locks; acquire/release handles replacement.
@@ -209,7 +233,9 @@ function extendSyncLock(owner: string) {
 function withSyncTimeout<T>(promise: Promise<T>, label: string): Promise<T> {
   return new Promise<T>((resolve, reject) => {
     const timeout = window.setTimeout(() => {
-      reject(new Error(`${label} timed out after ${SYNC_REQUEST_TIMEOUT_MS}ms`));
+      reject(
+        new Error(`${label} timed out after ${SYNC_REQUEST_TIMEOUT_MS}ms`),
+      );
     }, SYNC_REQUEST_TIMEOUT_MS);
 
     promise.then(
@@ -238,7 +264,10 @@ function toServerMutation(mutation: OfflineMaterialListMutation) {
         partDefinitionId: normalized.partDefinitionId,
         quantity: normalized.quantity,
         supplierPartId: normalized.supplierPartId ?? null,
-        supplierId: normalized.supplierId ?? normalized.supplierPartSnapshot?.supplierId ?? null,
+        supplierId:
+          normalized.supplierId ??
+          normalized.supplierPartSnapshot?.supplierId ??
+          null,
         unitCost: normalized.unitCost,
         oneOffDisplayName: normalized.oneOffDisplayName,
         oneOffDescription: normalized.oneOffDescription,
@@ -262,7 +291,10 @@ function toServerMutation(mutation: OfflineMaterialListMutation) {
         queuedAt: normalized.queuedAt,
         itemId: normalized.itemId,
         supplierPartId: normalized.supplierPartId,
-        supplierId: normalized.supplierId ?? normalized.supplierPartSnapshot?.supplierId ?? null,
+        supplierId:
+          normalized.supplierId ??
+          normalized.supplierPartSnapshot?.supplierId ??
+          null,
       };
     case "removeItem":
       return {
@@ -329,801 +361,918 @@ function isPermanentSyncFailure(message: string) {
 
 export function useOfflineMaterialListSyncRunner() {
   const utils = api.useUtils();
+  const syncEntityMutations = api.job.syncEntityMutations.useMutation();
   const createJob = api.job.createJob.useMutation();
-  const updateJob = api.job.updateJob.useMutation();
-  const deleteJob = api.job.deleteJob.useMutation();
   const createMaterialList = api.materialList.createMaterialList.useMutation();
-  const deleteMaterialList = api.materialList.deleteMaterialList.useMutation();
-  const syncMutations = api.materialList.syncMaterialListMutations.useMutation();
+  const syncMutations =
+    api.materialList.syncMaterialListMutations.useMutation();
   const runningRef = useRef(false);
 
-  return useCallback(async (reason: SyncRunReason = "pending"): Promise<SyncResult> => {
-    const runStartedAt = Date.now();
-    const initialQueue = await getOfflineMutationQueue();
-    const entityQueueCount = getOfflineEntityMutationQueue().length;
-    const quietIdlePull =
-      reason === "background" && initialQueue.length === 0 && entityQueueCount === 0;
+  return useCallback(
+    async (reason: SyncRunReason = "pending"): Promise<SyncResult> => {
+      const runStartedAt = Date.now();
+      const initialQueue = await getOfflineMutationQueue();
+      const entityQueueCount = getOfflineEntityMutationQueue().length;
+      const quietIdlePull =
+        reason === "background" &&
+        initialQueue.length === 0 &&
+        entityQueueCount === 0;
 
-    if (!canReachServer()) {
-      if (initialQueue.length > 0 || entityQueueCount > 0) {
-        debugOfflineSync("sync-skip-offline", {
-          queueLength: initialQueue.length,
-          entityQueueCount,
-        });
-        addSyncDebugEvent({
-          phase: "blocked",
-          status: "warning",
-          message: "Sync guy is asleep: phone says it is offline",
-          queueLength: initialQueue.length,
-          details: { entityQueueCount },
-        });
+      if (!canReachServer()) {
+        if (initialQueue.length > 0 || entityQueueCount > 0) {
+          debugOfflineSync("sync-skip-offline", {
+            queueLength: initialQueue.length,
+            entityQueueCount,
+          });
+          addSyncDebugEvent({
+            phase: "blocked",
+            status: "warning",
+            message: "Sync guy is asleep: phone says it is offline",
+            queueLength: initialQueue.length,
+            details: { entityQueueCount },
+          });
+        }
+        return {
+          synced: false,
+          pushed: 0,
+          pulled: 0,
+          remaining: initialQueue.length + entityQueueCount,
+        };
       }
-      return {
+
+      if (runningRef.current) {
+        return {
+          synced: false,
+          pushed: 0,
+          pulled: 0,
+          remaining: initialQueue.length + entityQueueCount,
+        };
+      }
+
+      const initialRemaining = initialQueue.length + entityQueueCount;
+      const initialOldestQueuedAtRaw = latestQueuedAt(initialQueue);
+      const initialOldestQueuedAt = initialOldestQueuedAtRaw
+        ? new Date(initialOldestQueuedAtRaw).getTime()
+        : undefined;
+      const busyResult = {
         synced: false,
         pushed: 0,
         pulled: 0,
-        remaining: initialQueue.length + entityQueueCount,
-      };
-    }
+        remaining: initialRemaining,
+        busy: true,
+      } satisfies SyncResult;
 
-    if (runningRef.current) {
-      return {
-        synced: false,
-        pushed: 0,
-        pulled: 0,
-        remaining: initialQueue.length + entityQueueCount,
-      };
-    }
+      const runWithLocalFallbackLock = async (): Promise<SyncResult> => {
+        const lockOwner = crypto.randomUUID();
+        if (
+          !acquireSyncLock(lockOwner, { oldestQueuedAt: initialOldestQueuedAt })
+        ) {
+          addSyncDebugEvent({
+            phase: "blocked",
+            status: "info",
+            message: "Sync guy found another tab already working",
+            queueLength: initialQueue.length,
+            details: {
+              entityQueueCount,
+              remaining: initialRemaining,
+              oldestQueuedAt: initialOldestQueuedAt,
+            },
+          });
+          return busyResult;
+        }
 
-    const initialRemaining = initialQueue.length + entityQueueCount;
-    const initialOldestQueuedAtRaw = latestQueuedAt(initialQueue);
-    const initialOldestQueuedAt = initialOldestQueuedAtRaw
-      ? new Date(initialOldestQueuedAtRaw).getTime()
-      : undefined;
-    const busyResult = {
-      synced: false,
-      pushed: 0,
-      pulled: 0,
-      remaining: initialRemaining,
-      busy: true,
-    } satisfies SyncResult;
+        if (!quietIdlePull) {
+          addSyncDebugEvent({
+            phase: "lock",
+            status: "success",
+            message: "Only one sync guy allowed: lock acquired",
+            queueLength: initialQueue.length,
+            details: { entityQueueCount, reason },
+          });
+        }
 
-    const runWithLocalFallbackLock = async (): Promise<SyncResult> => {
-      const lockOwner = crypto.randomUUID();
-      if (!acquireSyncLock(lockOwner, { oldestQueuedAt: initialOldestQueuedAt })) {
-        addSyncDebugEvent({
-          phase: "blocked",
-          status: "info",
-          message: "Sync guy found another tab already working",
-          queueLength: initialQueue.length,
-          details: { entityQueueCount, remaining: initialRemaining, oldestQueuedAt: initialOldestQueuedAt },
-        });
-        return busyResult;
-      }
+        const lockHeartbeat = window.setInterval(
+          () => extendSyncLock(lockOwner),
+          Math.floor(SYNC_LOCK_TTL_MS / 2),
+        );
 
-      if (!quietIdlePull) {
-        addSyncDebugEvent({
-          phase: "lock",
-          status: "success",
-          message: "Only one sync guy allowed: lock acquired",
-          queueLength: initialQueue.length,
-          details: { entityQueueCount, reason },
-        });
-      }
+        runningRef.current = true;
+        let pushed = 0;
+        let pulled = 0;
+        const normalizedInitialQueue = initialQueue.map(withClientMutationId);
+        if (initialQueue.some((mutation) => !mutation.clientMutationId)) {
+          await setOfflineMutationQueue(normalizedInitialQueue);
+        }
+        const touchedMaterialListIds = new Set<string>(
+          getQueuedMaterialListIds(normalizedInitialQueue),
+        );
+        const appliedDeletedItemIdsByList = new Map<string, Set<string>>();
 
-      const lockHeartbeat = window.setInterval(
-        () => extendSyncLock(lockOwner),
-        Math.floor(SYNC_LOCK_TTL_MS / 2),
-      );
+        try {
+          if (normalizedInitialQueue.length > 0 || entityQueueCount > 0) {
+            const materialListIds = getQueuedMaterialListIds(
+              normalizedInitialQueue,
+            );
+            debugOfflineSync("sync-start", {
+              queueLength: normalizedInitialQueue.length,
+              entityQueueCount,
+              materialListIds,
+            });
+            addSyncDebugEvent({
+              phase: "wake",
+              status: "info",
+              message: `Sync guy woke up and found ${normalizedInitialQueue.length} sticky note(s)`,
+              materialListId: materialListIds[0],
+              mutationIds: normalizedInitialQueue
+                .map((mutation) => mutation.clientMutationId)
+                .filter((id): id is string => !!id),
+              queueLength: normalizedInitialQueue.length,
+              details: { entityQueueCount, materialListIds },
+            });
+          }
+          for (let pass = 0; pass < 5; pass += 1) {
+            const entityQueue = getOfflineEntityMutationQueue();
+            if (entityQueue.length === 0) break;
 
-      runningRef.current = true;
-      let pushed = 0;
-      let pulled = 0;
-      const normalizedInitialQueue = initialQueue.map(withClientMutationId);
-      if (initialQueue.some((mutation) => !mutation.clientMutationId)) {
-        await setOfflineMutationQueue(normalizedInitialQueue);
-      }
-      const touchedMaterialListIds = new Set<string>(
-        getQueuedMaterialListIds(normalizedInitialQueue),
-      );
-      const appliedDeletedItemIdsByList = new Map<string, Set<string>>();
+            addSyncDebugEvent({
+              phase: "parent-sync",
+              status: "info",
+              message: `Checking parent sticky notes: ${entityQueue.length}`,
+              queueLength: normalizedInitialQueue.length,
+              details: { pass, entityQueue },
+            });
 
-    try {
-      if (normalizedInitialQueue.length > 0 || entityQueueCount > 0) {
-        const materialListIds = getQueuedMaterialListIds(normalizedInitialQueue);
-        debugOfflineSync("sync-start", {
-          queueLength: normalizedInitialQueue.length,
-          entityQueueCount,
-          materialListIds,
-        });
-        addSyncDebugEvent({
-          phase: "wake",
-          status: "info",
-          message: `Sync guy woke up and found ${normalizedInitialQueue.length} sticky note(s)`,
-          materialListId: materialListIds[0],
-          mutationIds: normalizedInitialQueue
-            .map((mutation) => mutation.clientMutationId)
-            .filter((id): id is string => !!id),
-          queueLength: normalizedInitialQueue.length,
-          details: { entityQueueCount, materialListIds },
-        });
-      }
-      for (let pass = 0; pass < 5; pass += 1) {
-        const entityQueue = getOfflineEntityMutationQueue();
-        if (entityQueue.length === 0) break;
+            const queueByMutationId = new Map(
+              entityQueue
+                .filter((mutation) => mutation.clientMutationId)
+                .map((mutation) => [mutation.clientMutationId!, mutation]),
+            );
+            const syncableEntityQueue = entityQueue.filter((mutation) => {
+              if (mutation.type === "createMaterialList")
+                return isUuid(mutation.localJobId);
+              if (mutation.type === "updateJob") return isUuid(mutation.jobId);
+              return true;
+            });
 
-        addSyncDebugEvent({
-          phase: "parent-sync",
-          status: "info",
-          message: `Checking parent sticky notes: ${entityQueue.length}`,
-          queueLength: normalizedInitialQueue.length,
-          details: { pass, entityQueue },
-        });
+            const locallyDrainedIds = new Set(
+              entityQueue
+                .filter(
+                  (mutation) =>
+                    (mutation.type === "deleteJob" &&
+                      !isUuid(mutation.jobId)) ||
+                    (mutation.type === "deleteMaterialList" &&
+                      !isUuid(mutation.materialListId)),
+                )
+                .map((mutation) => mutation.clientMutationId)
+                .filter((id): id is string => !!id),
+            );
 
-        const remainingEntityQueue: OfflineEntityMutation[] = [];
-        let progressed = false;
+            const syncResult = syncableEntityQueue.length
+              ? await syncEntityMutations.mutateAsync({
+                  mutations: syncableEntityQueue as any,
+                })
+              : { applied: [], failed: [] };
 
-        for (const mutation of entityQueue) {
-          try {
-            if (mutation.type === "createJob") {
-              const locationId = isUuid(mutation.locationId)
-                ? String(mutation.locationId)
-                : undefined;
-              const serverJob = await createJob.mutateAsync({
-                name: mutation.name,
-                locationId,
+            const appliedEntityIds = new Set<string>(locallyDrainedIds);
+            for (const appliedMutation of syncResult.applied) {
+              appliedEntityIds.add(appliedMutation.clientMutationId);
+              const original = queueByMutationId.get(
+                appliedMutation.clientMutationId,
+              );
+              if (!original || !appliedMutation.serverEntityId) continue;
+
+              if (original.type === "createJob") {
+                remapOfflineJobId(
+                  original.localJobId,
+                  toOfflineJobDetail({
+                    id: appliedMutation.serverEntityId,
+                    name: original.name,
+                    locationId: isUuid(original.locationId)
+                      ? original.locationId
+                      : null,
+                    foremanUserId: null,
+                    status: "draft",
+                    createdAt: original.queuedAt,
+                  }),
+                );
+              }
+
+              if (original.type === "createMaterialList") {
+                remapOfflineMaterialListId(
+                  original.localJobId,
+                  original.localMaterialListId,
+                  appliedMutation.serverEntityId,
+                );
+                await remapOfflineMaterialListCacheId(
+                  original.localMaterialListId,
+                  appliedMutation.serverEntityId,
+                );
+                await remapOfflineMutationMaterialListId(
+                  original.localMaterialListId,
+                  appliedMutation.serverEntityId,
+                );
+                touchedMaterialListIds.add(appliedMutation.serverEntityId);
+              }
+
+              if (original.type === "deleteMaterialList") {
+                touchedMaterialListIds.delete(original.materialListId);
+              }
+            }
+
+            for (const failedMutation of syncResult.failed) {
+              if (failedMutation.permanent)
+                appliedEntityIds.add(failedMutation.clientMutationId);
+            }
+
+            const remainingEntityQueue = entityQueue.filter(
+              (mutation) =>
+                !mutation.clientMutationId ||
+                !appliedEntityIds.has(mutation.clientMutationId),
+            );
+
+            setOfflineEntityMutationQueue(remainingEntityQueue);
+            const progressed = remainingEntityQueue.length < entityQueue.length;
+            if (!progressed) break;
+          }
+
+          let queue = (await getOfflineMutationQueue()).map(
+            withClientMutationId,
+          );
+
+          let localOnlyMaterialListIds = getQueuedMaterialListIds(queue).filter(
+            (materialListId) => !isUuid(materialListId),
+          );
+          if (localOnlyMaterialListIds.length > 0) {
+            debugOfflineSync("local-only-material-lists-before-backfill", {
+              localOnlyMaterialListIds,
+              queue: queue.map((mutation) => ({
+                materialListId: mutation.materialListId,
+                type: mutation.type,
+                clientMutationId: mutation.clientMutationId,
+                queuedAt: mutation.queuedAt,
+              })),
+              entityQueue: getOfflineEntityMutationQueue(),
+            });
+          }
+          for (const localMaterialListId of localOnlyMaterialListIds) {
+            const cachedData =
+              await getCachedMaterialListRecord(localMaterialListId);
+            if (!cachedData) {
+              const db = getOfflineDexieDb();
+              const diagnostics = db
+                ? {
+                    materialListHeader:
+                      await db.materialListHeaders.get(localMaterialListId),
+                    materialListRow:
+                      await db.materialLists.get(localMaterialListId),
+                    materialListItemCount: await db.materialListItems
+                      .where("materialListId")
+                      .equals(localMaterialListId)
+                      .count(),
+                    jobDetailIds: (await db.jobDetails.toArray()).map(
+                      (row) => row.id,
+                    ),
+                  }
+                : { dexie: "unavailable" };
+              debugOfflineSync("parent-backfill-missing-cache", {
+                localMaterialListId,
+                diagnostics,
               });
-              remapOfflineJobId(mutation.localJobId, toOfflineJobDetail(serverJob));
-              progressed = true;
+              console.warn(
+                "ForemenHQ material-list parent backfill missing cache",
+                {
+                  localMaterialListId,
+                  diagnostics,
+                },
+              );
               continue;
             }
 
-            if (mutation.type === "updateJob") {
-              if (!isUuid(mutation.jobId)) {
-                remainingEntityQueue.push(mutation);
-                continue;
+            try {
+              let serverJobId = cachedData.job.id;
+              if (!isUuid(serverJobId)) {
+                const serverJob = await createJob.mutateAsync({
+                  name: cachedData.job.name || "New Job",
+                  locationId: isUuid(cachedData.job.locationId)
+                    ? String(cachedData.job.locationId)
+                    : undefined,
+                });
+                remapOfflineJobId(serverJobId, toOfflineJobDetail(serverJob));
+                serverJobId = serverJob.id;
               }
-              await updateJob.mutateAsync({
-                jobId: mutation.jobId,
-                name: mutation.name ?? undefined,
-                locationId: isUuid(mutation.locationId) ? mutation.locationId : null,
-                poNumber: mutation.poNumber ?? undefined,
-                foremanName: mutation.foremanName ?? undefined,
-              });
-              progressed = true;
-              continue;
-            }
 
-            if (mutation.type === "createMaterialList") {
-              if (!isUuid(mutation.localJobId)) {
-                remainingEntityQueue.push(mutation);
-                continue;
-              }
               const created = await createMaterialList.mutateAsync({
-                jobId: mutation.localJobId,
-                name: mutation.name,
+                jobId: serverJobId,
+                name: cachedData.materialList.name,
               });
               remapOfflineMaterialListId(
-                mutation.localJobId,
-                mutation.localMaterialListId,
+                serverJobId,
+                localMaterialListId,
                 created.materialListId,
               );
               await remapOfflineMaterialListCacheId(
-                mutation.localMaterialListId,
+                localMaterialListId,
                 created.materialListId,
               );
               await remapOfflineMutationMaterialListId(
-                mutation.localMaterialListId,
+                localMaterialListId,
                 created.materialListId,
               );
+              touchedMaterialListIds.delete(localMaterialListId);
               touchedMaterialListIds.add(created.materialListId);
-              progressed = true;
-              continue;
+              debugOfflineSync("parent-backfill-created-material-list", {
+                localMaterialListId,
+                serverMaterialListId: created.materialListId,
+                serverJobId,
+              });
+            } catch (error) {
+              console.warn("ForemenHQ material-list parent backfill failed", {
+                localMaterialListId,
+                jobId: cachedData.job.id,
+                error,
+              });
             }
+          }
 
-            if (mutation.type === "deleteMaterialList") {
-              if (!isUuid(mutation.materialListId)) {
-                progressed = true;
+          queue = (await getOfflineMutationQueue()).map(withClientMutationId);
+          localOnlyMaterialListIds = getQueuedMaterialListIds(queue).filter(
+            (materialListId) => !isUuid(materialListId),
+          );
+          if (localOnlyMaterialListIds.length > 0) {
+            debugOfflineSync("local-only-material-lists-after-backfill", {
+              localOnlyMaterialListIds,
+              queue: queue.map((mutation) => ({
+                materialListId: mutation.materialListId,
+                type: mutation.type,
+                clientMutationId: mutation.clientMutationId,
+                queuedAt: mutation.queuedAt,
+              })),
+              entityQueue: getOfflineEntityMutationQueue(),
+            });
+          }
+
+          if (queue.length > 0) {
+            const queuedIds = getQueuedMaterialListIds(queue);
+            await setSyncingMaterialListIds(queuedIds);
+
+            for (const materialListId of queuedIds) {
+              const mutationsForList = queue.filter(
+                (mutation) => mutation.materialListId === materialListId,
+              );
+              if (mutationsForList.length === 0) continue;
+              if (!isUuid(materialListId)) {
+                debugOfflineSync("skip-local-only-item-sync", {
+                  materialListId,
+                  mutationCount: mutationsForList.length,
+                });
                 continue;
               }
-              try {
-                await deleteMaterialList.mutateAsync({ materialListId: mutation.materialListId });
-              } catch (error) {
-                if (!isMaterialListNotFoundError(error)) throw error;
-              }
-              touchedMaterialListIds.delete(mutation.materialListId);
-              progressed = true;
-              continue;
-            }
 
-            if (mutation.type === "deleteJob") {
-              if (!isUuid(mutation.jobId)) {
-                progressed = true;
-                continue;
-              }
-              try {
-                await deleteJob.mutateAsync({ jobId: mutation.jobId });
-              } catch (error) {
-                const message = error instanceof Error ? error.message : String(error);
-                if (!message.includes("Job not found")) throw error;
-              }
-              progressed = true;
-              continue;
-            }
-
-            remainingEntityQueue.push(mutation);
-          } catch (error) {
-            console.warn("ForemenHQ entity sync failed", { mutation, error });
-            remainingEntityQueue.push(mutation);
-          }
-        }
-
-        setOfflineEntityMutationQueue(remainingEntityQueue);
-        if (!progressed) break;
-      }
-
-      let queue = (await getOfflineMutationQueue()).map(withClientMutationId);
-
-      let localOnlyMaterialListIds = getQueuedMaterialListIds(queue).filter(
-        (materialListId) => !isUuid(materialListId),
-      );
-      if (localOnlyMaterialListIds.length > 0) {
-        debugOfflineSync("local-only-material-lists-before-backfill", {
-          localOnlyMaterialListIds,
-          queue: queue.map((mutation) => ({
-            materialListId: mutation.materialListId,
-            type: mutation.type,
-            clientMutationId: mutation.clientMutationId,
-            queuedAt: mutation.queuedAt,
-          })),
-          entityQueue: getOfflineEntityMutationQueue(),
-        });
-      }
-      for (const localMaterialListId of localOnlyMaterialListIds) {
-        const cachedData = await getCachedMaterialListRecord(localMaterialListId);
-        if (!cachedData) {
-          const db = getOfflineDexieDb();
-          const diagnostics = db
-            ? {
-                materialListHeader: await db.materialListHeaders.get(localMaterialListId),
-                materialListRow: await db.materialLists.get(localMaterialListId),
-                materialListItemCount: await db.materialListItems
-                  .where("materialListId")
-                  .equals(localMaterialListId)
-                  .count(),
-                jobDetailIds: (await db.jobDetails.toArray()).map((row) => row.id),
-              }
-            : { dexie: "unavailable" };
-          debugOfflineSync("parent-backfill-missing-cache", {
-            localMaterialListId,
-            diagnostics,
-          });
-          console.warn("ForemenHQ material-list parent backfill missing cache", {
-            localMaterialListId,
-            diagnostics,
-          });
-          continue;
-        }
-
-        try {
-          let serverJobId = cachedData.job.id;
-          if (!isUuid(serverJobId)) {
-            const serverJob = await createJob.mutateAsync({
-              name: cachedData.job.name || "New Job",
-              locationId: isUuid(cachedData.job.locationId)
-                ? String(cachedData.job.locationId)
-                : undefined,
-            });
-            remapOfflineJobId(serverJobId, toOfflineJobDetail(serverJob));
-            serverJobId = serverJob.id;
-          }
-
-          const created = await createMaterialList.mutateAsync({
-            jobId: serverJobId,
-            name: cachedData.materialList.name,
-          });
-          remapOfflineMaterialListId(
-            serverJobId,
-            localMaterialListId,
-            created.materialListId,
-          );
-          await remapOfflineMaterialListCacheId(
-            localMaterialListId,
-            created.materialListId,
-          );
-          await remapOfflineMutationMaterialListId(
-            localMaterialListId,
-            created.materialListId,
-          );
-          touchedMaterialListIds.delete(localMaterialListId);
-          touchedMaterialListIds.add(created.materialListId);
-          debugOfflineSync("parent-backfill-created-material-list", {
-            localMaterialListId,
-            serverMaterialListId: created.materialListId,
-            serverJobId,
-          });
-        } catch (error) {
-          console.warn("ForemenHQ material-list parent backfill failed", {
-            localMaterialListId,
-            jobId: cachedData.job.id,
-            error,
-          });
-        }
-      }
-
-      queue = (await getOfflineMutationQueue()).map(withClientMutationId);
-      localOnlyMaterialListIds = getQueuedMaterialListIds(queue).filter(
-        (materialListId) => !isUuid(materialListId),
-      );
-      if (localOnlyMaterialListIds.length > 0) {
-        debugOfflineSync("local-only-material-lists-after-backfill", {
-          localOnlyMaterialListIds,
-          queue: queue.map((mutation) => ({
-            materialListId: mutation.materialListId,
-            type: mutation.type,
-            clientMutationId: mutation.clientMutationId,
-            queuedAt: mutation.queuedAt,
-          })),
-          entityQueue: getOfflineEntityMutationQueue(),
-        });
-      }
-
-      if (queue.length > 0) {
-        const queuedIds = getQueuedMaterialListIds(queue);
-        await setSyncingMaterialListIds(queuedIds);
-
-        for (const materialListId of queuedIds) {
-          const mutationsForList = queue.filter(
-            (mutation) => mutation.materialListId === materialListId,
-          );
-          if (mutationsForList.length === 0) continue;
-          if (!isUuid(materialListId)) {
-            debugOfflineSync("skip-local-only-item-sync", {
-              materialListId,
-              mutationCount: mutationsForList.length,
-            });
-            continue;
-          }
-
-          addSyncDebugEvent({
-            phase: "push",
-            status: "info",
-            message: `Preparing ${mutationsForList.length} sticky note(s) for delivery`,
-            materialListId,
-            mutationIds: mutationsForList
-              .map((mutation) => mutation.clientMutationId)
-              .filter((id): id is string => !!id),
-            queueLength: queue.length,
-            details: { types: mutationsForList.map((mutation) => mutation.type) },
-          });
-
-          for (const mutation of mutationsForList) {
-            for (const itemId of mutationItemIds(mutation)) {
-              await setActiveItemSyncStatus(materialListId, itemId, "syncing");
-            }
-          }
-
-          let result: Awaited<ReturnType<typeof syncMutations.mutateAsync>>;
-          try {
-            addSyncDebugEvent({
-              phase: "push",
-              status: "info",
-              message: `Mailman delivering ${mutationsForList.length} sticky note(s) to server`,
-              materialListId,
-              mutationIds: mutationsForList
-                .map((mutation) => mutation.clientMutationId)
-                .filter((id): id is string => !!id),
-              queueLength: queue.length,
-              details: { types: mutationsForList.map((mutation) => mutation.type) },
-            });
-            result = await withSyncTimeout(
-              syncMutations.mutateAsync({
+              addSyncDebugEvent({
+                phase: "push",
+                status: "info",
+                message: `Preparing ${mutationsForList.length} sticky note(s) for delivery`,
                 materialListId,
-                mutations: mutationsForList.map(toServerMutation),
-              }),
-              "material list mutation push",
-            );
-          } catch (error) {
-            if (!isMaterialListNotFoundError(error)) {
+                mutationIds: mutationsForList
+                  .map((mutation) => mutation.clientMutationId)
+                  .filter((id): id is string => !!id),
+                queueLength: queue.length,
+                details: {
+                  types: mutationsForList.map((mutation) => mutation.type),
+                },
+              });
+
+              for (const mutation of mutationsForList) {
+                for (const itemId of mutationItemIds(mutation)) {
+                  await setActiveItemSyncStatus(
+                    materialListId,
+                    itemId,
+                    "syncing",
+                  );
+                }
+              }
+
+              let result: Awaited<ReturnType<typeof syncMutations.mutateAsync>>;
+              try {
+                addSyncDebugEvent({
+                  phase: "push",
+                  status: "info",
+                  message: `Mailman delivering ${mutationsForList.length} sticky note(s) to server`,
+                  materialListId,
+                  mutationIds: mutationsForList
+                    .map((mutation) => mutation.clientMutationId)
+                    .filter((id): id is string => !!id),
+                  queueLength: queue.length,
+                  details: {
+                    types: mutationsForList.map((mutation) => mutation.type),
+                  },
+                });
+                result = await withSyncTimeout(
+                  syncMutations.mutateAsync({
+                    materialListId,
+                    mutations: mutationsForList.map(toServerMutation),
+                  }),
+                  "material list mutation push",
+                );
+              } catch (error) {
+                if (!isMaterialListNotFoundError(error)) {
+                  throw error;
+                }
+
+                // Old local queues can contain mutations for server material lists that
+                // were deleted while offline. Do not let that stale list abort syncing
+                // newer lists behind it in the queue.
+                debugOfflineSync(
+                  "drop-missing-server-material-list-mutations",
+                  {
+                    materialListId,
+                    mutationCount: mutationsForList.length,
+                    mutationTypes: mutationsForList.map(
+                      (mutation) => mutation.type,
+                    ),
+                    queuedAt: mutationsForList.map(
+                      (mutation) => mutation.queuedAt,
+                    ),
+                  },
+                );
+                addSyncDebugEvent({
+                  phase: "server-result",
+                  status: "warning",
+                  message:
+                    "Server says this material list is gone; dropping stale sticky notes",
+                  materialListId,
+                  mutationIds: mutationsForList
+                    .map((mutation) => mutation.clientMutationId)
+                    .filter((id): id is string => !!id),
+                  queueLength: queue.length,
+                });
+                console.warn(
+                  "ForemenHQ dropping stale material-list mutations",
+                  {
+                    materialListId,
+                    mutationCount: mutationsForList.length,
+                    error,
+                  },
+                );
+
+                for (const mutation of mutationsForList) {
+                  for (const itemId of mutationItemIds(mutation)) {
+                    await setActiveItemSyncStatus(
+                      materialListId,
+                      itemId,
+                      "synced",
+                    );
+                  }
+                }
+
+                queue = queue.filter(
+                  (mutation) => mutation.materialListId !== materialListId,
+                );
+                touchedMaterialListIds.delete(materialListId);
+                await setOfflineMutationQueue(queue);
+                continue;
+              }
+
+              const appliedIds = new Set(
+                result.applied.map((item) => item.clientMutationId),
+              );
+              const failedIds = new Set(
+                result.failed.map((item) => item.clientMutationId),
+              );
+              const permanentFailedIds = new Set(
+                result.failed
+                  .filter((item) => isPermanentSyncFailure(item.message))
+                  .map((item) => item.clientMutationId),
+              );
+              const temporaryFailureCount =
+                result.failed.length - permanentFailedIds.size;
+              addSyncDebugEvent({
+                phase: "server-result",
+                status: temporaryFailureCount > 0 ? "warning" : "success",
+                message:
+                  permanentFailedIds.size > 0
+                    ? `Server stamped ${result.applied.length} done, ${permanentFailedIds.size} stale sticky note(s) skipped`
+                    : `Server stamped ${result.applied.length} done, ${temporaryFailureCount} failed`,
+                materialListId,
+                mutationIds: mutationsForList
+                  .map((mutation) => mutation.clientMutationId)
+                  .filter((id): id is string => !!id),
+                queueLength: queue.length,
+                details: result,
+              });
+
+              if (permanentFailedIds.size > 0) {
+                debugOfflineSync("dead-letter-permanent-sync-mutations", {
+                  materialListId,
+                  mutations: result.failed.filter((item) =>
+                    permanentFailedIds.has(item.clientMutationId),
+                  ),
+                });
+              }
+
+              const beforeDrainCount = queue.length;
+              const removableIds = new Set<string>();
+              for (const mutation of queue) {
+                if (mutation.materialListId !== materialListId) continue;
+                if (permanentFailedIds.has(mutation.clientMutationId)) {
+                  removableIds.add(mutation.clientMutationId);
+                  continue;
+                }
+                if (failedIds.has(mutation.clientMutationId)) continue;
+                if (appliedIds.has(mutation.clientMutationId)) {
+                  removableIds.add(mutation.clientMutationId);
+                }
+              }
+
+              addSyncDebugEvent({
+                phase: "queue-drain",
+                status: removableIds.size > 0 ? "info" : "warning",
+                message: `Phone is about to throw away ${removableIds.size} finished sticky note(s)`,
+                materialListId,
+                queueLength: beforeDrainCount,
+                details: {
+                  removableIds: Array.from(removableIds),
+                  applied: result.applied,
+                  failed: result.failed,
+                },
+              });
+
+              await removeOfflineMutationsFromQueue(removableIds);
+              queue = (await getOfflineMutationQueue()).map(
+                withClientMutationId,
+              );
+              const stillPresentRemovableCount = queue.filter((mutation) =>
+                removableIds.has(mutation.clientMutationId),
+              ).length;
+              const actuallyRemovedCount =
+                removableIds.size - stillPresentRemovableCount;
+              const concurrentlyAddedCount = Math.max(
+                0,
+                queue.length - (beforeDrainCount - actuallyRemovedCount),
+              );
+              addSyncDebugEvent({
+                phase: "queue-drain",
+                status: actuallyRemovedCount > 0 ? "success" : "warning",
+                message:
+                  concurrentlyAddedCount > 0
+                    ? `Phone threw away ${actuallyRemovedCount} finished sticky note(s); ${queue.length} left (${concurrentlyAddedCount} new during sync)`
+                    : `Phone threw away ${actuallyRemovedCount} finished sticky note(s); ${queue.length} left`,
+                materialListId,
+                queueLength: queue.length,
+                details: {
+                  beforeDrainCount,
+                  actuallyRemovedCount,
+                  concurrentlyAddedCount,
+                  removableIds: Array.from(removableIds),
+                  applied: result.applied,
+                  failed: result.failed,
+                },
+              });
+
+              if (appliedIds.size > 0) {
+                pushed += appliedIds.size;
+                for (const applied of result.applied) {
+                  if (applied.type === "removeItem" && applied.serverItemId) {
+                    const deletedIds =
+                      appliedDeletedItemIdsByList.get(materialListId) ??
+                      new Set<string>();
+                    deletedIds.add(applied.serverItemId);
+                    appliedDeletedItemIdsByList.set(materialListId, deletedIds);
+                  }
+                  if (applied.localItemId && applied.serverItemId) {
+                    await remapOfflineMaterialListItemId(
+                      materialListId,
+                      applied.localItemId,
+                      applied.serverItemId,
+                    );
+                  }
+                }
+                for (const mutation of mutationsForList) {
+                  if (!appliedIds.has(mutation.clientMutationId)) continue;
+                  for (const itemId of mutationItemIds(mutation)) {
+                    await setActiveItemSyncStatus(
+                      materialListId,
+                      itemId,
+                      "synced",
+                    );
+                  }
+                }
+              }
+            }
+          }
+
+          queue = (await getOfflineMutationQueue()).map(withClientMutationId);
+          const entityQueueAfterPush = getOfflineEntityMutationQueue().length;
+          const remainingAfterPush = queue.length + entityQueueAfterPush;
+          if (remainingAfterPush > 0) {
+            addSyncDebugEvent({
+              phase: "done",
+              status: "warning",
+              message: `${remainingAfterPush} sticky note(s) still left; skipping fresh-copy pull until they deliver`,
+              queueLength: queue.length,
+              details: {
+                pushed,
+                pulled,
+                entityQueueCount: entityQueueAfterPush,
+                reason,
+              },
+            });
+            await setSyncingMaterialListIds([]);
+            notifyOfflineMaterialListSyncStateChanged();
+            return {
+              synced: false,
+              pushed,
+              pulled,
+              remaining: remainingAfterPush,
+            };
+          }
+
+          if (pushed > 0) {
+            for (const materialListId of touchedMaterialListIds) {
+              const existing = await getOfflineMaterialList(materialListId);
+              if (!existing?.data) continue;
+              await setOfflineMaterialList(materialListId, existing.data, {
+                pendingSync: false,
+                pendingDeletedItemIds: [],
+              });
+            }
+            await setSyncingMaterialListIds([]);
+            notifyOfflineMaterialListSyncStateChanged();
+            addSyncDebugEvent({
+              phase: "done",
+              status: "success",
+              message:
+                "All sticky notes delivered. Local notebook kept as truth.",
+              queueLength: queue.length,
+              details: {
+                pushed,
+                pulled,
+                entityQueueCount: entityQueueAfterPush,
+                reason,
+              },
+            });
+            return {
+              synced: true,
+              pushed,
+              pulled,
+              remaining: 0,
+            };
+          }
+
+          if (touchedMaterialListIds.size === 0) {
+            await setSyncingMaterialListIds([]);
+            notifyOfflineMaterialListSyncStateChanged();
+            return {
+              synced: true,
+              pushed,
+              pulled,
+              remaining: 0,
+            };
+          }
+
+          const cursor = await idbGetMeta<string | null>(
+            PULL_CURSOR_META_KEY,
+            null,
+          );
+          if (!quietIdlePull) {
+            addSyncDebugEvent({
+              phase: "pull",
+              status: "info",
+              message: "Phone asks server for a fresh copy",
+              queueLength: queue.length,
+              details: {
+                cursor,
+                touchedMaterialListIds: Array.from(touchedMaterialListIds),
+                reason,
+              },
+            });
+          }
+          const pull = await withSyncTimeout(
+            utils.materialList.pullMaterialListSyncChanges.fetch({
+              since: cursor ?? undefined,
+              materialListIds: touchedMaterialListIds.size
+                ? Array.from(touchedMaterialListIds)
+                : undefined,
+            }),
+            "pullMaterialListSyncChanges",
+          );
+          if (
+            !quietIdlePull ||
+            pull.changedMaterialListIds.length > 0 ||
+            pull.tombstones.length > 0
+          ) {
+            addSyncDebugEvent({
+              phase: "pull",
+              status: "success",
+              message: `Server sent ${pull.changedMaterialListIds.length} changed list(s) and ${pull.tombstones.length} delete note(s)`,
+              queueLength: queue.length,
+              details: { ...pull, reason },
+            });
+          }
+
+          for (const tombstone of pull.tombstones) {
+            touchedMaterialListIds.add(tombstone.materialListId);
+          }
+          for (const materialListId of pull.changedMaterialListIds) {
+            touchedMaterialListIds.add(materialListId);
+          }
+
+          for (const materialListId of touchedMaterialListIds) {
+            let serverData: OfflineMaterialListRecord;
+            try {
+              serverData = (await withSyncTimeout(
+                utils.materialList.getMaterialList.fetch({
+                  materialListId,
+                }),
+                `getMaterialList(${materialListId})`,
+              )) as OfflineMaterialListRecord;
+            } catch (error) {
+              if (isMaterialListNotFoundError(error)) {
+                debugOfflineSync("skip-missing-material-list-pull", {
+                  materialListId,
+                });
+                continue;
+              }
               throw error;
             }
-
-            // Old local queues can contain mutations for server material lists that
-            // were deleted while offline. Do not let that stale list abort syncing
-            // newer lists behind it in the queue.
-            debugOfflineSync("drop-missing-server-material-list-mutations", {
-              materialListId,
-              mutationCount: mutationsForList.length,
-              mutationTypes: mutationsForList.map((mutation) => mutation.type),
-              queuedAt: mutationsForList.map((mutation) => mutation.queuedAt),
-            });
-            addSyncDebugEvent({
-              phase: "server-result",
-              status: "warning",
-              message: "Server says this material list is gone; dropping stale sticky notes",
-              materialListId,
-              mutationIds: mutationsForList
-                .map((mutation) => mutation.clientMutationId)
-                .filter((id): id is string => !!id),
-              queueLength: queue.length,
-            });
-            console.warn("ForemenHQ dropping stale material-list mutations", {
-              materialListId,
-              mutationCount: mutationsForList.length,
-              error,
-            });
-
-            for (const mutation of mutationsForList) {
-              for (const itemId of mutationItemIds(mutation)) {
-                await setActiveItemSyncStatus(materialListId, itemId, "synced");
-              }
+            const tombstonedItemIds = new Set([
+              ...Array.from(
+                appliedDeletedItemIdsByList.get(materialListId) ?? [],
+              ),
+              ...pull.tombstones
+                .filter(
+                  (tombstone) =>
+                    tombstone.materialListId === materialListId &&
+                    tombstone.entityType === "quoteItem",
+                )
+                .map((tombstone) => tombstone.entityId),
+            ]);
+            if (tombstonedItemIds.size > 0) {
+              serverData = {
+                ...serverData,
+                items: serverData.items.filter(
+                  (item) => !tombstonedItemIds.has(String(item.id)),
+                ),
+                materialTotal: serverData.items
+                  .filter((item) => !tombstonedItemIds.has(String(item.id)))
+                  .reduce((sum, item) => {
+                    const price = item.extendedPrice
+                      ? parseFloat(item.extendedPrice)
+                      : 0;
+                    return sum + (Number.isFinite(price) ? price : 0);
+                  }, 0),
+              };
             }
-
-            queue = queue.filter((mutation) => mutation.materialListId !== materialListId);
-            touchedMaterialListIds.delete(materialListId);
-            await setOfflineMutationQueue(queue);
-            continue;
-          }
-
-          const appliedIds = new Set(result.applied.map((item) => item.clientMutationId));
-          const failedIds = new Set(result.failed.map((item) => item.clientMutationId));
-          const permanentFailedIds = new Set(
-            result.failed
-              .filter((item) => isPermanentSyncFailure(item.message))
-              .map((item) => item.clientMutationId),
-          );
-          const temporaryFailureCount = result.failed.length - permanentFailedIds.size;
-          addSyncDebugEvent({
-            phase: "server-result",
-            status: temporaryFailureCount > 0 ? "warning" : "success",
-            message:
-              permanentFailedIds.size > 0
-                ? `Server stamped ${result.applied.length} done, ${permanentFailedIds.size} stale sticky note(s) skipped`
-                : `Server stamped ${result.applied.length} done, ${temporaryFailureCount} failed`,
-            materialListId,
-            mutationIds: mutationsForList
-              .map((mutation) => mutation.clientMutationId)
-              .filter((id): id is string => !!id),
-            queueLength: queue.length,
-            details: result,
-          });
-
-          if (permanentFailedIds.size > 0) {
-            debugOfflineSync("dead-letter-permanent-sync-mutations", {
+            const latestQueue = await getOfflineMutationQueue();
+            const queuedForList = latestQueue.filter(
+              (mutation) => mutation.materialListId === materialListId,
+            );
+            const existing = await getOfflineMaterialList(materialListId);
+            const existingUpdatedAt = existing?.updatedAt
+              ? new Date(existing.updatedAt).getTime()
+              : 0;
+            const localChangedDuringThisRun = existingUpdatedAt > runStartedAt;
+            const queuedItemIds = getQueuedItemIdsForMaterialList(
               materialListId,
-              mutations: result.failed.filter((item) =>
-                permanentFailedIds.has(item.clientMutationId),
+              latestQueue,
+            );
+            const hasNewQueuedWorkForList = queuedForList.some(
+              (mutation) =>
+                new Date(mutation.queuedAt).getTime() >= runStartedAt,
+            );
+
+            // If this run successfully pushed all known work, the fresh server
+            // snapshot is authoritative and must clear pendingSync. Only preserve
+            // local data over the server snapshot when genuinely new local work was
+            // queued while this run was already in flight.
+            const shouldPreserveLocalInFlightChange =
+              queuedForList.length > 0 ||
+              (hasNewQueuedWorkForList && localChangedDuringThisRun);
+
+            const hydratedData =
+              queuedForList.length > 0
+                ? projectMaterialListWithMutations(serverData, queuedForList)
+                : shouldPreserveLocalInFlightChange && existing?.data
+                  ? existing.data
+                  : serverData;
+
+            await setOfflineMaterialList(materialListId, hydratedData, {
+              pendingSync: queuedForList.length > 0,
+              pendingDeletedItemIds: existing?.pendingDeletedItemIds?.filter(
+                (itemId) => queuedItemIds.has(itemId),
               ),
             });
-          }
-
-          const beforeDrainCount = queue.length;
-          const removableIds = new Set<string>();
-          for (const mutation of queue) {
-            if (mutation.materialListId !== materialListId) continue;
-            if (permanentFailedIds.has(mutation.clientMutationId)) {
-              removableIds.add(mutation.clientMutationId);
-              continue;
-            }
-            if (failedIds.has(mutation.clientMutationId)) continue;
-            if (appliedIds.has(mutation.clientMutationId)) {
-              removableIds.add(mutation.clientMutationId);
-            }
-          }
-
-          addSyncDebugEvent({
-            phase: "queue-drain",
-            status: removableIds.size > 0 ? "info" : "warning",
-            message: `Phone is about to throw away ${removableIds.size} finished sticky note(s)`,
-            materialListId,
-            queueLength: beforeDrainCount,
-            details: { removableIds: Array.from(removableIds), applied: result.applied, failed: result.failed },
-          });
-
-          await removeOfflineMutationsFromQueue(removableIds);
-          queue = (await getOfflineMutationQueue()).map(withClientMutationId);
-          const stillPresentRemovableCount = queue.filter((mutation) =>
-            removableIds.has(mutation.clientMutationId),
-          ).length;
-          const actuallyRemovedCount = removableIds.size - stillPresentRemovableCount;
-          const concurrentlyAddedCount = Math.max(
-            0,
-            queue.length - (beforeDrainCount - actuallyRemovedCount),
-          );
-          addSyncDebugEvent({
-            phase: "queue-drain",
-            status: actuallyRemovedCount > 0 ? "success" : "warning",
-            message:
-              concurrentlyAddedCount > 0
-                ? `Phone threw away ${actuallyRemovedCount} finished sticky note(s); ${queue.length} left (${concurrentlyAddedCount} new during sync)`
-                : `Phone threw away ${actuallyRemovedCount} finished sticky note(s); ${queue.length} left`,
-            materialListId,
-            queueLength: queue.length,
-            details: {
-              beforeDrainCount,
-              actuallyRemovedCount,
-              concurrentlyAddedCount,
-              removableIds: Array.from(removableIds),
-              applied: result.applied,
-              failed: result.failed,
-            },
-          });
-
-          if (appliedIds.size > 0) {
-            pushed += appliedIds.size;
-            for (const applied of result.applied) {
-              if (applied.type === "removeItem" && applied.serverItemId) {
-                const deletedIds =
-                  appliedDeletedItemIdsByList.get(materialListId) ?? new Set<string>();
-                deletedIds.add(applied.serverItemId);
-                appliedDeletedItemIdsByList.set(materialListId, deletedIds);
-              }
-              if (applied.localItemId && applied.serverItemId) {
-                await remapOfflineMaterialListItemId(
-                  materialListId,
-                  applied.localItemId,
-                  applied.serverItemId,
-                );
-              }
-            }
-            for (const mutation of mutationsForList) {
-              if (!appliedIds.has(mutation.clientMutationId)) continue;
-              for (const itemId of mutationItemIds(mutation)) {
-                await setActiveItemSyncStatus(materialListId, itemId, "synced");
-              }
-            }
-          }
-        }
-      }
-
-      queue = (await getOfflineMutationQueue()).map(withClientMutationId);
-      const entityQueueAfterPush = getOfflineEntityMutationQueue().length;
-      const remainingAfterPush = queue.length + entityQueueAfterPush;
-      if (remainingAfterPush > 0) {
-        addSyncDebugEvent({
-          phase: "done",
-          status: "warning",
-          message: `${remainingAfterPush} sticky note(s) still left; skipping fresh-copy pull until they deliver`,
-          queueLength: queue.length,
-          details: { pushed, pulled, entityQueueCount: entityQueueAfterPush, reason },
-        });
-        await setSyncingMaterialListIds([]);
-        notifyOfflineMaterialListSyncStateChanged();
-        return {
-          synced: false,
-          pushed,
-          pulled,
-          remaining: remainingAfterPush,
-        };
-      }
-
-      if (pushed > 0) {
-        for (const materialListId of touchedMaterialListIds) {
-          const existing = await getOfflineMaterialList(materialListId);
-          if (!existing?.data) continue;
-          await setOfflineMaterialList(materialListId, existing.data, {
-            pendingSync: false,
-            pendingDeletedItemIds: [],
-          });
-        }
-        await setSyncingMaterialListIds([]);
-        notifyOfflineMaterialListSyncStateChanged();
-        addSyncDebugEvent({
-          phase: "done",
-          status: "success",
-          message: "All sticky notes delivered. Local notebook kept as truth.",
-          queueLength: queue.length,
-          details: { pushed, pulled, entityQueueCount: entityQueueAfterPush, reason },
-        });
-        return {
-          synced: true,
-          pushed,
-          pulled,
-          remaining: 0,
-        };
-      }
-
-      if (touchedMaterialListIds.size === 0) {
-        await setSyncingMaterialListIds([]);
-        notifyOfflineMaterialListSyncStateChanged();
-        return {
-          synced: true,
-          pushed,
-          pulled,
-          remaining: 0,
-        };
-      }
-
-      const cursor = await idbGetMeta<string | null>(PULL_CURSOR_META_KEY, null);
-      if (!quietIdlePull) {
-        addSyncDebugEvent({
-          phase: "pull",
-          status: "info",
-          message: "Phone asks server for a fresh copy",
-          queueLength: queue.length,
-          details: { cursor, touchedMaterialListIds: Array.from(touchedMaterialListIds), reason },
-        });
-      }
-      const pull = await withSyncTimeout(
-        utils.materialList.pullMaterialListSyncChanges.fetch({
-          since: cursor ?? undefined,
-          materialListIds: touchedMaterialListIds.size
-            ? Array.from(touchedMaterialListIds)
-            : undefined,
-        }),
-        "pullMaterialListSyncChanges",
-      );
-      if (!quietIdlePull || pull.changedMaterialListIds.length > 0 || pull.tombstones.length > 0) {
-        addSyncDebugEvent({
-          phase: "pull",
-          status: "success",
-          message: `Server sent ${pull.changedMaterialListIds.length} changed list(s) and ${pull.tombstones.length} delete note(s)`,
-          queueLength: queue.length,
-          details: { ...pull, reason },
-        });
-      }
-
-      for (const tombstone of pull.tombstones) {
-        touchedMaterialListIds.add(tombstone.materialListId);
-      }
-      for (const materialListId of pull.changedMaterialListIds) {
-        touchedMaterialListIds.add(materialListId);
-      }
-
-      for (const materialListId of touchedMaterialListIds) {
-        let serverData: OfflineMaterialListRecord;
-        try {
-          serverData = (await withSyncTimeout(
-            utils.materialList.getMaterialList.fetch({
+            pulled += 1;
+            addSyncDebugEvent({
+              phase: "hydrate",
+              status: "success",
+              message: `Phone notebook updated from server (${queuedForList.length} sticky note(s) still pending for this list)`,
               materialListId,
-            }),
-            `getMaterialList(${materialListId})`,
-          )) as OfflineMaterialListRecord;
-        } catch (error) {
-          if (isMaterialListNotFoundError(error)) {
-            debugOfflineSync("skip-missing-material-list-pull", { materialListId });
-            continue;
+              queueLength: latestQueue.length,
+              details: {
+                itemCount: serverData.items.length,
+                pendingForList: queuedForList.length,
+                localChangedDuringThisRun,
+                hasNewQueuedWorkForList,
+                tombstonedItemIds: Array.from(tombstonedItemIds),
+              },
+            });
           }
-          throw error;
-        }
-        const tombstonedItemIds = new Set([
-          ...Array.from(appliedDeletedItemIdsByList.get(materialListId) ?? []),
-          ...pull.tombstones
-            .filter(
-              (tombstone) =>
-                tombstone.materialListId === materialListId &&
-                tombstone.entityType === "quoteItem",
-            )
-            .map((tombstone) => tombstone.entityId),
-        ]);
-        if (tombstonedItemIds.size > 0) {
-          serverData = {
-            ...serverData,
-            items: serverData.items.filter((item) => !tombstonedItemIds.has(String(item.id))),
-            materialTotal: serverData.items
-              .filter((item) => !tombstonedItemIds.has(String(item.id)))
-              .reduce((sum, item) => {
-                const price = item.extendedPrice ? parseFloat(item.extendedPrice) : 0;
-                return sum + (Number.isFinite(price) ? price : 0);
-              }, 0),
+
+          await idbSetMeta(PULL_CURSOR_META_KEY, pull.cursor);
+          await setSyncingMaterialListIds([]);
+          notifyOfflineMaterialListSyncStateChanged();
+
+          const finalQueue = await getOfflineMutationQueue();
+          const remaining =
+            finalQueue.length + getOfflineEntityMutationQueue().length;
+          if (!quietIdlePull || remaining > 0 || pushed > 0 || pulled > 0) {
+            addSyncDebugEvent({
+              phase: "done",
+              status: remaining === 0 ? "success" : "warning",
+              message:
+                remaining === 0
+                  ? "All sticky notes delivered. Synced."
+                  : `${remaining} sticky note(s) still left after sync`,
+              queueLength: finalQueue.length,
+              details: {
+                pushed,
+                pulled,
+                entityQueueCount: getOfflineEntityMutationQueue().length,
+                reason,
+              },
+            });
+          }
+          return {
+            synced: finalQueue.length === 0,
+            pushed,
+            pulled,
+            remaining,
           };
+        } catch (error) {
+          await setSyncingMaterialListIds([]);
+          const queue = await getOfflineMutationQueue();
+          const remaining =
+            queue.length + getOfflineEntityMutationQueue().length;
+          const queuedAt = latestQueuedAt(queue);
+          const errorMessage =
+            error instanceof Error ? error.message : String(error);
+          console.warn("ForemenHQ material-list sync failed", {
+            queuedAt,
+            error,
+          });
+
+          if (remaining > 0 || pushed > 0) {
+            addSyncDebugEvent({
+              phase: "blocked",
+              status: "error",
+              message: "Sync crashed before finishing",
+              queueLength: queue.length,
+              details: {
+                queuedAt,
+                error: errorMessage,
+                pushed,
+                pulled,
+                reason,
+              },
+            });
+          } else if (!quietIdlePull) {
+            addSyncDebugEvent({
+              phase: "blocked",
+              status: "warning",
+              message:
+                "Fresh-copy check failed, but no sticky notes are waiting",
+              queueLength: queue.length,
+              details: {
+                queuedAt,
+                error: errorMessage,
+                pushed,
+                pulled,
+                reason,
+              },
+            });
+          }
+
+          return {
+            synced: false,
+            pushed,
+            pulled,
+            remaining,
+          };
+        } finally {
+          runningRef.current = false;
+          window.clearInterval(lockHeartbeat);
+          releaseSyncLock(lockOwner);
         }
-        const latestQueue = await getOfflineMutationQueue();
-        const queuedForList = latestQueue.filter(
-          (mutation) => mutation.materialListId === materialListId,
-        );
-        const existing = await getOfflineMaterialList(materialListId);
-        const existingUpdatedAt = existing?.updatedAt
-          ? new Date(existing.updatedAt).getTime()
-          : 0;
-        const localChangedDuringThisRun = existingUpdatedAt > runStartedAt;
-        const queuedItemIds = getQueuedItemIdsForMaterialList(materialListId, latestQueue);
-        const hasNewQueuedWorkForList = queuedForList.some(
-          (mutation) => new Date(mutation.queuedAt).getTime() >= runStartedAt,
-        );
-
-        // If this run successfully pushed all known work, the fresh server
-        // snapshot is authoritative and must clear pendingSync. Only preserve
-        // local data over the server snapshot when genuinely new local work was
-        // queued while this run was already in flight.
-        const shouldPreserveLocalInFlightChange =
-          queuedForList.length > 0 || (hasNewQueuedWorkForList && localChangedDuringThisRun);
-
-        const hydratedData =
-          queuedForList.length > 0
-            ? projectMaterialListWithMutations(serverData, queuedForList)
-            : shouldPreserveLocalInFlightChange && existing?.data
-              ? existing.data
-              : serverData;
-
-        await setOfflineMaterialList(materialListId, hydratedData, {
-          pendingSync: queuedForList.length > 0,
-          pendingDeletedItemIds: existing?.pendingDeletedItemIds?.filter((itemId) =>
-            queuedItemIds.has(itemId),
-          ),
-        });
-        pulled += 1;
-        addSyncDebugEvent({
-          phase: "hydrate",
-          status: "success",
-          message: `Phone notebook updated from server (${queuedForList.length} sticky note(s) still pending for this list)`,
-          materialListId,
-          queueLength: latestQueue.length,
-          details: {
-            itemCount: serverData.items.length,
-            pendingForList: queuedForList.length,
-            localChangedDuringThisRun,
-            hasNewQueuedWorkForList,
-            tombstonedItemIds: Array.from(tombstonedItemIds),
-          },
-        });
-      }
-
-      await idbSetMeta(PULL_CURSOR_META_KEY, pull.cursor);
-      await setSyncingMaterialListIds([]);
-      notifyOfflineMaterialListSyncStateChanged();
-
-      const finalQueue = await getOfflineMutationQueue();
-      const remaining = finalQueue.length + getOfflineEntityMutationQueue().length;
-      if (!quietIdlePull || remaining > 0 || pushed > 0 || pulled > 0) {
-        addSyncDebugEvent({
-          phase: "done",
-          status: remaining === 0 ? "success" : "warning",
-          message: remaining === 0 ? "All sticky notes delivered. Synced." : `${remaining} sticky note(s) still left after sync`,
-          queueLength: finalQueue.length,
-          details: { pushed, pulled, entityQueueCount: getOfflineEntityMutationQueue().length, reason },
-        });
-      }
-      return {
-        synced: finalQueue.length === 0,
-        pushed,
-        pulled,
-        remaining,
       };
-    } catch (error) {
-      await setSyncingMaterialListIds([]);
-      const queue = await getOfflineMutationQueue();
-      const remaining = queue.length + getOfflineEntityMutationQueue().length;
-      const queuedAt = latestQueuedAt(queue);
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      console.warn("ForemenHQ material-list sync failed", { queuedAt, error });
 
-      if (remaining > 0 || pushed > 0) {
-        addSyncDebugEvent({
-          phase: "blocked",
-          status: "error",
-          message: "Sync crashed before finishing",
-          queueLength: queue.length,
-          details: { queuedAt, error: errorMessage, pushed, pulled, reason },
-        });
-      } else if (!quietIdlePull) {
-        addSyncDebugEvent({
-          phase: "blocked",
-          status: "warning",
-          message: "Fresh-copy check failed, but no sticky notes are waiting",
-          queueLength: queue.length,
-          details: { queuedAt, error: errorMessage, pushed, pulled, reason },
-        });
-      }
-
-      return {
-        synced: false,
-        pushed,
-        pulled,
-        remaining,
-      };
-    } finally {
-      runningRef.current = false;
-      window.clearInterval(lockHeartbeat);
-      releaseSyncLock(lockOwner);
-    }
-    };
-
-    // Web Locks can be held forever by an old/hung tab and have no TTL we can
-    // clear from a fresh bundle. Use our heartbeat-backed local lock instead;
-    // it preserves one-sync-at-a-time behavior but self-heals after expiry.
-    return runWithLocalFallbackLock();
-  }, [createJob, createMaterialList, deleteJob, deleteMaterialList, syncMutations, updateJob, utils]);
+      // Web Locks can be held forever by an old/hung tab and have no TTL we can
+      // clear from a fresh bundle. Use our heartbeat-backed local lock instead;
+      // it preserves one-sync-at-a-time behavior but self-heals after expiry.
+      return runWithLocalFallbackLock();
+    },
+    [createJob, createMaterialList, syncEntityMutations, syncMutations, utils],
+  );
 }
 
 export function useOfflineMaterialListSync() {
@@ -1153,7 +1302,11 @@ export function useOfflineMaterialListSync() {
               details: result,
             });
             schedule(
-              result.busy ? 2_000 : result.pushed === 0 && result.pulled === 0 ? 5_000 : 750,
+              result.busy
+                ? 2_000
+                : result.pushed === 0 && result.pulled === 0
+                  ? 5_000
+                  : 750,
               "pending",
             );
           }
@@ -1178,10 +1331,16 @@ export function useOfflineMaterialListSync() {
     const onSyncStateChanged = () => scheduleIfPendingWork(500);
 
     schedule(750, "startup");
-    const interval = setInterval(() => schedule(0, "background"), BACKGROUND_PULL_INTERVAL_MS);
+    const interval = setInterval(
+      () => schedule(0, "background"),
+      BACKGROUND_PULL_INTERVAL_MS,
+    );
     window.addEventListener("online", onOnline);
     window.addEventListener("focus", onFocus);
-    window.addEventListener(OFFLINE_MATERIAL_LIST_SYNC_EVENT, onSyncStateChanged);
+    window.addEventListener(
+      OFFLINE_MATERIAL_LIST_SYNC_EVENT,
+      onSyncStateChanged,
+    );
 
     return () => {
       cancelled = true;
@@ -1189,7 +1348,10 @@ export function useOfflineMaterialListSync() {
       clearInterval(interval);
       window.removeEventListener("online", onOnline);
       window.removeEventListener("focus", onFocus);
-      window.removeEventListener(OFFLINE_MATERIAL_LIST_SYNC_EVENT, onSyncStateChanged);
+      window.removeEventListener(
+        OFFLINE_MATERIAL_LIST_SYNC_EVENT,
+        onSyncStateChanged,
+      );
     };
   }, [runSync]);
 }

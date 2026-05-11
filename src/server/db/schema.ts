@@ -544,9 +544,7 @@ export const partDefinitions = createTable(
     materialId: d
       .uuid()
       .references(() => materials.id, { onDelete: "set null" }),
-    sizeId: d
-      .uuid()
-      .references(() => sizes.id, { onDelete: "set null" }),
+    sizeId: d.uuid().references(() => sizes.id, { onDelete: "set null" }),
 
     isActive: d.boolean().notNull().default(true),
 
@@ -1007,7 +1005,9 @@ export const quoteItems = createTable(
     supplierPartId: d
       .uuid()
       .references(() => supplierParts.id, { onDelete: "set null" }),
-    supplierId: d.uuid().references(() => suppliers.id, { onDelete: "set null" }),
+    supplierId: d
+      .uuid()
+      .references(() => suppliers.id, { onDelete: "set null" }),
     partDefinitionId: d
       .uuid()
       .references(() => partDefinitions.id, { onDelete: "restrict" }),
@@ -1088,6 +1088,47 @@ export const materialListSyncMutations = createTable(
       t.clientMutationId,
     ),
     index("material_list_sync_mutation_list_idx").on(t.materialListId),
+  ],
+);
+
+export const entitySyncMutations = createTable(
+  "entity_sync_mutation",
+  (d) => ({
+    id: d
+      .uuid()
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    organizationId: d
+      .uuid()
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    userId: d.varchar({ length: 255 }).references(() => users.id, {
+      onDelete: "set null",
+    }),
+    clientMutationId: d.varchar({ length: 255 }).notNull(),
+    mutationType: d.varchar({ length: 80 }).notNull(),
+    entityType: d.varchar({ length: 80 }).notNull(),
+    clientEntityId: d.varchar({ length: 255 }).notNull(),
+    serverEntityId: d.uuid(),
+    status: d.varchar({ length: 40 }).notNull().default("applied"),
+    error: d.text(),
+    payload: d.jsonb(),
+    appliedAt: d
+      .timestamp({ withTimezone: true })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  }),
+  (t) => [
+    unique("entity_sync_mutation_client_uniq").on(
+      t.organizationId,
+      t.clientMutationId,
+    ),
+    index("entity_sync_mutation_entity_idx").on(
+      t.organizationId,
+      t.entityType,
+      t.serverEntityId,
+    ),
   ],
 );
 

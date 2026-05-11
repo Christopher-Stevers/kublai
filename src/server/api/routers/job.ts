@@ -5,11 +5,64 @@ import { z } from "zod";
 import { createTRPCRouter, hasDashboardAccess } from "~/server/api/trpc";
 import { assertCanDeleteCoreRecords } from "~/server/auth/permissions";
 import {
+  entitySyncMutations,
   jobs,
   materialLists,
+  quotes,
   locations,
   users,
 } from "~/server/db/schema";
+
+const entitySyncMutationInput = z.discriminatedUnion("type", [
+  z.object({
+    type: z.literal("createJob"),
+    clientMutationId: z.string().min(1).max(255),
+    localJobId: z.string().min(1).max(255),
+    name: z.string().min(1),
+    locationId: z.string().uuid().nullable().optional(),
+    queuedAt: z.string(),
+  }),
+  z.object({
+    type: z.literal("updateJob"),
+    clientMutationId: z.string().min(1).max(255),
+    jobId: z.string().min(1).max(255),
+    name: z.string().min(1).nullable().optional(),
+    locationId: z.string().uuid().nullable().optional(),
+    poNumber: z.string().nullable().optional(),
+    foremanName: z.string().nullable().optional(),
+    queuedAt: z.string(),
+  }),
+  z.object({
+    type: z.literal("createMaterialList"),
+    clientMutationId: z.string().min(1).max(255),
+    localMaterialListId: z.string().min(1).max(255),
+    localJobId: z.string().uuid(),
+    name: z.string().min(1).optional(),
+    queuedAt: z.string(),
+  }),
+  z.object({
+    type: z.literal("deleteJob"),
+    clientMutationId: z.string().min(1).max(255),
+    jobId: z.string().min(1).max(255),
+    queuedAt: z.string(),
+  }),
+  z.object({
+    type: z.literal("deleteMaterialList"),
+    clientMutationId: z.string().min(1).max(255),
+    materialListId: z.string().min(1).max(255),
+    jobId: z.string().min(1).max(255),
+    queuedAt: z.string(),
+  }),
+]);
+
+function isUuid(value: string | null | undefined) {
+  return (
+    !!value &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+      value,
+    )
+  );
+}
 
 export const jobRouter = createTRPCRouter({
   /**
@@ -61,6 +114,231 @@ export const jobRouter = createTRPCRouter({
 
     return jobsList;
   }),
+
+  syncEntityMutations: hasDashboardAccess
+    .input(z.object({ mutations: z.array(entitySyncMutationInput).max(100) }))
+    .mutation(async ({ ctx, input }) => {
+      if (!ctx.user.organizationId) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "User must belong to an organization",
+        });
+      }
+
+      const applied: Array<{
+        clientMutationId: string;
+        type: string;
+        localEntityId: string;
+        serverEntityId: string | null;
+        duplicate?: boolean;
+      }> = [];
+      const failed: Array<{
+        clientMutationId: string;
+        message: string;
+        permanent: boolean;
+      }> = [];
+
+      for (const mutation of input.mutations) {
+        try {
+          const existing = await ctx.db
+            .select({
+              serverEntityId: entitySyncMutations.serverEntityId,
+              entityType: entitySyncMutations.entityType,
+            })
+            .from(entitySyncMutations)
+            .where(
+              and(
+                eq(entitySyncMutations.organizationId, ctx.user.organizationId),
+                eq(
+                  entitySyncMutations.clientMutationId,
+                  mutation.clientMutationId,
+                ),
+              ),
+            )
+            .limit(1);
+
+          if (existing[0]) {
+            applied.push({
+              clientMutationId: mutation.clientMutationId,
+              type: mutation.type,
+              localEntityId:
+                mutation.type === "createJob"
+                  ? mutation.localJobId
+                  : mutation.type === "createMaterialList"
+                    ? mutation.localMaterialListId
+                    : mutation.type === "deleteMaterialList"
+                      ? mutation.materialListId
+                      : mutation.jobId,
+              serverEntityId: existing[0].serverEntityId,
+              duplicate: true,
+            });
+            continue;
+          }
+
+          const result = await ctx.db.transaction(async (tx) => {
+            let entityType: "job" | "materialList";
+            let clientEntityId: string;
+            let serverEntityId: string | null = null;
+
+            if (mutation.type === "createJob") {
+              entityType = "job";
+              clientEntityId = mutation.localJobId;
+              const [job] = await tx
+                .insert(jobs)
+                .values({
+                  organizationId: ctx.user.organizationId!,
+                  name: mutation.name,
+                  locationId: isUuid(mutation.locationId)
+                    ? mutation.locationId
+                    : null,
+                  foremanUserId: ctx.userId,
+                  createdByUserId: ctx.userId,
+                  status: "draft",
+                })
+                .returning();
+              if (!job) throw new Error("Failed to create job");
+              serverEntityId = job.id;
+            } else if (mutation.type === "updateJob") {
+              entityType = "job";
+              clientEntityId = mutation.jobId;
+              if (!isUuid(mutation.jobId))
+                throw new Error("Update job requires server job id");
+              const [job] = await tx
+                .select({ id: jobs.id })
+                .from(jobs)
+                .where(
+                  and(
+                    eq(jobs.id, mutation.jobId),
+                    eq(jobs.organizationId, ctx.user.organizationId!),
+                  ),
+                )
+                .limit(1);
+              if (!job) throw new Error("Job not found");
+              await tx
+                .update(jobs)
+                .set({
+                  name: mutation.name ?? undefined,
+                  locationId: mutation.locationId ?? undefined,
+                  poNumber: mutation.poNumber?.trim() || undefined,
+                  foremanName: mutation.foremanName?.trim() || undefined,
+                })
+                .where(eq(jobs.id, mutation.jobId));
+              serverEntityId = mutation.jobId;
+            } else if (mutation.type === "createMaterialList") {
+              entityType = "materialList";
+              clientEntityId = mutation.localMaterialListId;
+              const [job] = await tx
+                .select({ id: jobs.id })
+                .from(jobs)
+                .where(
+                  and(
+                    eq(jobs.id, mutation.localJobId),
+                    eq(jobs.organizationId, ctx.user.organizationId!),
+                  ),
+                )
+                .limit(1);
+              if (!job) throw new Error("Job not found");
+              const [materialList] = await tx
+                .insert(materialLists)
+                .values({
+                  organizationId: ctx.user.organizationId!,
+                  jobId: mutation.localJobId,
+                  name: mutation.name?.trim() || "Material List",
+                  createdByUserId: ctx.userId,
+                })
+                .returning();
+              if (!materialList)
+                throw new Error("Failed to create material list");
+              const [quote] = await tx
+                .insert(quotes)
+                .values({
+                  organizationId: ctx.user.organizationId!,
+                  materialListId: materialList.id,
+                  jobId: mutation.localJobId,
+                  createdByUserId: ctx.userId,
+                  subtotalMaterials: "0",
+                  total: "0",
+                })
+                .returning();
+              if (!quote) throw new Error("Failed to create quote");
+              await tx
+                .update(materialLists)
+                .set({ quoteId: quote.id })
+                .where(eq(materialLists.id, materialList.id));
+              serverEntityId = materialList.id;
+            } else if (mutation.type === "deleteMaterialList") {
+              entityType = "materialList";
+              clientEntityId = mutation.materialListId;
+              if (isUuid(mutation.materialListId)) {
+                await tx
+                  .delete(materialLists)
+                  .where(
+                    and(
+                      eq(materialLists.id, mutation.materialListId),
+                      eq(
+                        materialLists.organizationId,
+                        ctx.user.organizationId!,
+                      ),
+                    ),
+                  );
+                serverEntityId = mutation.materialListId;
+              }
+            } else {
+              entityType = "job";
+              clientEntityId = mutation.jobId;
+              if (isUuid(mutation.jobId)) {
+                await tx
+                  .update(users)
+                  .set({ currentJobId: null })
+                  .where(eq(users.currentJobId, mutation.jobId));
+                await tx
+                  .delete(jobs)
+                  .where(
+                    and(
+                      eq(jobs.id, mutation.jobId),
+                      eq(jobs.organizationId, ctx.user.organizationId!),
+                    ),
+                  );
+                serverEntityId = mutation.jobId;
+              }
+            }
+
+            await tx.insert(entitySyncMutations).values({
+              organizationId: ctx.user.organizationId!,
+              userId: ctx.userId,
+              clientMutationId: mutation.clientMutationId,
+              mutationType: mutation.type,
+              entityType,
+              clientEntityId,
+              serverEntityId,
+              payload: mutation,
+            });
+
+            return { entityType, clientEntityId, serverEntityId };
+          });
+
+          applied.push({
+            clientMutationId: mutation.clientMutationId,
+            type: mutation.type,
+            localEntityId: result.clientEntityId,
+            serverEntityId: result.serverEntityId,
+          });
+        } catch (error) {
+          const message =
+            error instanceof Error ? error.message : String(error);
+          failed.push({
+            clientMutationId: mutation.clientMutationId,
+            message,
+            permanent:
+              message.includes("requires server") ||
+              message.includes("not found") ||
+              message.includes("Failed to create"),
+          });
+        }
+      }
+
+      return { applied, failed };
+    }),
 
   /**
    * Get a single job with material lists

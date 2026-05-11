@@ -23,6 +23,16 @@ export interface OfflineDexieMutationRow<T = unknown> {
   value: T;
 }
 
+export interface OfflineDexieEntityMutationRow<T = unknown> {
+  id: string;
+  order: number;
+  entityType: "job" | "materialList";
+  entityId: string;
+  type: string;
+  queuedAt: string;
+  value: T;
+}
+
 export interface OfflineDexieActiveItemSyncRow {
   id: string;
   materialListId: string;
@@ -94,6 +104,7 @@ class ForemanHqOfflineDb extends Dexie {
   materialLists!: Table<OfflineDexieMaterialListRow, string>;
   meta!: Table<OfflineDexieMetaRow, string>;
   mutationQueue!: Table<OfflineDexieMutationRow, string>;
+  entityMutationQueue!: Table<OfflineDexieEntityMutationRow, string>;
   activeItemSync!: Table<OfflineDexieActiveItemSyncRow, string>;
   syncingMaterialLists!: Table<OfflineDexieSyncingMaterialListRow, string>;
   materialListHeaders!: Table<DexieMaterialListHeaderRow, string>;
@@ -146,6 +157,21 @@ class ForemanHqOfflineDb extends Dexie {
       materialLists: "id",
       meta: "key",
       mutationQueue: "id, order, materialListId, type, queuedAt",
+      activeItemSync: "id, materialListId, itemId, status, updatedAt",
+      syncingMaterialLists: "id",
+      materialListHeaders: "id, jobId, quoteId, pendingSync, updatedAt",
+      materialListItems:
+        "id, materialListId, partDefinitionId, supplierPartId, selectedSupplierId, updatedAt",
+      jobSummaries: "id, locationId, status, createdAt, updatedAt",
+      jobDetails: "id, updatedAt",
+      suppliers: "id, name, locationId, updatedAt",
+    });
+
+    this.version(6).stores({
+      materialLists: "id",
+      meta: "key",
+      mutationQueue: "id, order, materialListId, type, queuedAt",
+      entityMutationQueue: "id, order, entityType, entityId, type, queuedAt",
       activeItemSync: "id, materialListId, itemId, status, updatedAt",
       syncingMaterialLists: "id",
       materialListHeaders: "id, jobId, quoteId, pendingSync, updatedAt",
