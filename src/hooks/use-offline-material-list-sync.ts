@@ -28,7 +28,6 @@ import {
 } from "~/lib/offline-material-list-mutations";
 import {
   getOfflineEntityMutationQueue,
-  getOfflineJobDetailIds,
   mergeServerJobDetailIntoOfflineCache,
   mergeServerJobsIntoOfflineCache,
   remapOfflineJobId,
@@ -502,7 +501,7 @@ export function useOfflineMaterialListSyncRunner() {
           );
           mergeServerJobsIntoOfflineCache(serverJobs);
 
-          const detailIds = getOfflineJobDetailIds().filter(isUuid);
+          const detailIds = serverJobs.map((job) => job.id).filter(isUuid);
           let detailPulls = 0;
           for (const jobId of detailIds) {
             try {
