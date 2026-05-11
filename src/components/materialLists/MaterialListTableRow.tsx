@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef } from "react";
 import { QuantityControls } from "~/components/materialLists/QuantityControls";
 import { SupplierSelector } from "~/components/materialLists/SupplierSelector";
 import { Button } from "~/components/ui/button";
@@ -53,14 +54,23 @@ export function MaterialListTableRow({
   item,
   materialListId,
 }: MaterialListTableRowProps) {
+  const removeInFlightRef = useRef(false);
+
   const removeItem = async () => {
-    await applyOfflineRemoveItem(materialListId, item.id);
-    await enqueueOfflineMutation({
-      type: "removeItem",
-      materialListId,
-      itemId: item.id,
-      queuedAt: new Date().toISOString(),
-    });
+    if (removeInFlightRef.current) return;
+    removeInFlightRef.current = true;
+    try {
+      await applyOfflineRemoveItem(materialListId, item.id);
+      await enqueueOfflineMutation({
+        type: "removeItem",
+        materialListId,
+        itemId: item.id,
+        queuedAt: new Date().toISOString(),
+      });
+    } catch (error) {
+      removeInFlightRef.current = false;
+      throw error;
+    }
   };
 
   const quantity = parseFloat(item.quantity);

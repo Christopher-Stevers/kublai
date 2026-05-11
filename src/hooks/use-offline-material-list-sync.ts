@@ -809,13 +809,31 @@ export function useOfflineMaterialListSyncRunner() {
 
           await removeOfflineMutationsFromQueue(removableIds);
           queue = (await getOfflineMutationQueue()).map(withClientMutationId);
+          const stillPresentRemovableCount = queue.filter((mutation) =>
+            removableIds.has(mutation.clientMutationId),
+          ).length;
+          const actuallyRemovedCount = removableIds.size - stillPresentRemovableCount;
+          const concurrentlyAddedCount = Math.max(
+            0,
+            queue.length - (beforeDrainCount - actuallyRemovedCount),
+          );
           addSyncDebugEvent({
             phase: "queue-drain",
-            status: queue.length < beforeDrainCount ? "success" : "warning",
-            message: `Phone threw away ${beforeDrainCount - queue.length} finished sticky note(s); ${queue.length} left`,
+            status: actuallyRemovedCount > 0 ? "success" : "warning",
+            message:
+              concurrentlyAddedCount > 0
+                ? `Phone threw away ${actuallyRemovedCount} finished sticky note(s); ${queue.length} left (${concurrentlyAddedCount} new during sync)`
+                : `Phone threw away ${actuallyRemovedCount} finished sticky note(s); ${queue.length} left`,
             materialListId,
             queueLength: queue.length,
-            details: { beforeDrainCount, removableIds: Array.from(removableIds), applied: result.applied, failed: result.failed },
+            details: {
+              beforeDrainCount,
+              actuallyRemovedCount,
+              concurrentlyAddedCount,
+              removableIds: Array.from(removableIds),
+              applied: result.applied,
+              failed: result.failed,
+            },
           });
 
           if (appliedIds.size > 0) {

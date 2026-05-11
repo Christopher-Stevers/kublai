@@ -1,6 +1,6 @@
 "use client";
 
-import { memo } from "react";
+import { memo, useRef } from "react";
 import { Card, CardContent } from "~/components/ui/card";
 import { QuantityControls } from "~/components/materialLists/QuantityControls";
 import { SupplierSelector } from "~/components/materialLists/SupplierSelector";
@@ -102,6 +102,7 @@ function MaterialListItemComponent({
   materialListId,
   syncStatus = "synced",
 }: MaterialListItemProps) {
+  const removeInFlightRef = useRef(false);
   const quantity = parseFloat(item.quantity);
   const unitCost = item.unitCost ? parseFloat(item.unitCost) : 0;
   const lineTotal = item.extendedPrice
@@ -109,14 +110,20 @@ function MaterialListItemComponent({
     : quantity * unitCost;
 
   const handleRemove = async () => {
-    await applyOfflineRemoveItem(materialListId, item.id);
-    await enqueueOfflineMutation({
-      type: "removeItem",
-      materialListId,
-      itemId: item.id,
-      queuedAt: new Date().toISOString(),
-    });
-    return;
+    if (removeInFlightRef.current) return;
+    removeInFlightRef.current = true;
+    try {
+      await applyOfflineRemoveItem(materialListId, item.id);
+      await enqueueOfflineMutation({
+        type: "removeItem",
+        materialListId,
+        itemId: item.id,
+        queuedAt: new Date().toISOString(),
+      });
+    } catch (error) {
+      removeInFlightRef.current = false;
+      throw error;
+    }
   };
 
   const partName =

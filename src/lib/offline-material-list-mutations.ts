@@ -725,6 +725,18 @@ function compactOfflineMutationQueue(
   }
 
   if (incoming.type === "removeItem") {
+    const existingRemoveIndex = nextQueue.findIndex(
+      (item) =>
+        item.type === "removeItem" &&
+        item.materialListId === incoming.materialListId &&
+        item.itemId === incoming.itemId,
+    );
+
+    if (existingRemoveIndex >= 0) {
+      nextQueue[existingRemoveIndex] = incoming;
+      return nextQueue;
+    }
+
     const addIndex = nextQueue.findIndex(
       (item) =>
         item.type === "addItem" &&
