@@ -22,6 +22,8 @@ import { normalizeLegacyOfflineMaterialListName } from "~/lib/offline-jobs";
 
 export type MaterialListSyncStatus = "synced" | "pending" | "syncing";
 
+const DELETE_SHADOW_TTL_MS = 2 * 60 * 1000;
+
 export function useOfflineMaterialList(
   materialListId: string,
   serverData?: OfflineMaterialListRecord,
@@ -41,6 +43,9 @@ export function useOfflineMaterialList(
   const [queueSnapshot, setQueueSnapshot] = useState<
     OfflineMaterialListMutation[]
   >([]);
+  const [deleteShadowByItemId, setDeleteShadowByItemId] = useState<
+    Map<string, number>
+  >(new Map());
   const liveCached = useLiveQuery(
     async () => {
       const db = getOfflineDexieDb();
@@ -71,17 +76,36 @@ export function useOfflineMaterialList(
     setCacheLoaded(true);
   }, [liveCached]);
 
+  const rememberDeleteShadows = (mutations: OfflineMaterialListMutation[]) => {
+    const removeMutations = mutations.filter(
+      (mutation) => mutation.type === "removeItem",
+    );
+    if (removeMutations.length === 0) return;
+
+    const now = Date.now();
+    setDeleteShadowByItemId((current) => {
+      const next = new Map(current);
+      for (const mutation of removeMutations) {
+        next.set(mutation.itemId, now);
+      }
+      return next;
+    });
+  };
+
   useEffect(() => {
     if (liveQueue === undefined) return;
     if (liveQueue) {
       setQueueSnapshot(liveQueue);
+      rememberDeleteShadows(liveQueue);
       return;
     }
 
     void getOfflineMutationQueue().then((queue) => {
-      setQueueSnapshot(
-        queue.filter((mutation) => mutation.materialListId === materialListId),
+      const queueForList = queue.filter(
+        (mutation) => mutation.materialListId === materialListId,
       );
+      setQueueSnapshot(queueForList);
+      rememberDeleteShadows(queueForList);
     });
   }, [liveQueue, materialListId]);
 
@@ -144,11 +168,11 @@ export function useOfflineMaterialList(
       setSyncStateVersion((version) => version + 1);
       void getOfflineMutationQueue().then((queue) => {
         if (!cancelled) {
-          setQueueSnapshot(
-            queue.filter(
-              (mutation) => mutation.materialListId === materialListId,
-            ),
+          const queueForList = queue.filter(
+            (mutation) => mutation.materialListId === materialListId,
           );
+          setQueueSnapshot(queueForList);
+          rememberDeleteShadows(queueForList);
         }
       });
       void getOfflineMaterialList(materialListId).then(
@@ -231,6 +255,30 @@ export function useOfflineMaterialList(
     };
   }, [cacheLoaded, cached?.data, isOnline, serverData]);
 
+  useEffect(() => {
+    if (!baseRawData || deleteShadowByItemId.size === 0) return;
+
+    const serverItemIds = new Set(
+      baseRawData.items.map((item) => String(item.id)),
+    );
+    setDeleteShadowByItemId((current) => {
+      let changed = false;
+      const next = new Map(current);
+      const now = Date.now();
+
+      for (const [itemId, shadowedAt] of next) {
+        const serverConfirmedDeleted = !serverItemIds.has(itemId);
+        const expired = now - shadowedAt > DELETE_SHADOW_TTL_MS;
+        if (serverConfirmedDeleted || expired) {
+          next.delete(itemId);
+          changed = true;
+        }
+      }
+
+      return changed ? next : current;
+    });
+  }, [baseRawData, deleteShadowByItemId.size]);
+
   const rawData = useMemo(() => {
     if (!baseRawData) return baseRawData;
 
@@ -238,8 +286,37 @@ export function useOfflineMaterialList(
     // rows should feel instant, but Dexie still stores only clean server
     // snapshots while online. Other devices see the change after server ack +
     // refetch; this device drops the overlay as soon as its local queue drains.
-    return projectMaterialListWithMutations(baseRawData, queueSnapshot);
-  }, [baseRawData, queueSnapshot]);
+    const projected = projectMaterialListWithMutations(
+      baseRawData,
+      queueSnapshot,
+    );
+
+    if (deleteShadowByItemId.size === 0) return projected;
+
+    const now = Date.now();
+    const shadowedDeleteIds = new Set(
+      Array.from(deleteShadowByItemId.entries())
+        .filter(([, shadowedAt]) => now - shadowedAt <= DELETE_SHADOW_TTL_MS)
+        .map(([itemId]) => itemId),
+    );
+    if (shadowedDeleteIds.size === 0) return projected;
+
+    const items = projected.items.filter(
+      (item) => !shadowedDeleteIds.has(String(item.id)),
+    );
+    const materialTotal = items.reduce((sum, item) => {
+      const price = item.extendedPrice
+        ? parseFloat(item.extendedPrice.toString())
+        : 0;
+      return sum + (Number.isFinite(price) ? price : 0);
+    }, 0);
+
+    return {
+      ...projected,
+      items,
+      materialTotal,
+    };
+  }, [baseRawData, deleteShadowByItemId, queueSnapshot]);
 
   const data = rawData;
 
