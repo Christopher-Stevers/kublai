@@ -26,7 +26,9 @@ export function useOfflineMaterialList(
   materialListId: string,
   serverData?: OfflineMaterialListRecord,
 ) {
-  const [cached, setCached] = useState<OfflineMaterialListEnvelope | null>(null);
+  const [cached, setCached] = useState<OfflineMaterialListEnvelope | null>(
+    null,
+  );
   const [cacheLoaded, setCacheLoaded] = useState(false);
   const [isOnline, setIsOnline] = useState(() =>
     typeof window === "undefined" ? true : window.navigator.onLine,
@@ -36,7 +38,9 @@ export function useOfflineMaterialList(
     itemStatuses: Map<string, MaterialListSyncStatus>;
     listStatus: MaterialListSyncStatus;
   }>({ itemStatuses: new Map(), listStatus: "synced" });
-  const [queueSnapshot, setQueueSnapshot] = useState<OfflineMaterialListMutation[]>([]);
+  const [queueSnapshot, setQueueSnapshot] = useState<
+    OfflineMaterialListMutation[]
+  >([]);
   const liveCached = useLiveQuery(
     async () => {
       const db = getOfflineDexieDb();
@@ -75,7 +79,9 @@ export function useOfflineMaterialList(
     }
 
     void getOfflineMutationQueue().then((queue) => {
-      setQueueSnapshot(queue.filter((mutation) => mutation.materialListId === materialListId));
+      setQueueSnapshot(
+        queue.filter((mutation) => mutation.materialListId === materialListId),
+      );
     });
   }, [liveQueue, materialListId]);
 
@@ -123,7 +129,9 @@ export function useOfflineMaterialList(
           }
 
           const statusValues = Array.from(itemStatuses.values());
-          const listStatus: MaterialListSyncStatus = statusValues.includes("syncing")
+          const listStatus: MaterialListSyncStatus = statusValues.includes(
+            "syncing",
+          )
             ? "syncing"
             : statusValues.includes("pending")
               ? "pending"
@@ -136,24 +144,36 @@ export function useOfflineMaterialList(
       setSyncStateVersion((version) => version + 1);
       void getOfflineMutationQueue().then((queue) => {
         if (!cancelled) {
-          setQueueSnapshot(queue.filter((mutation) => mutation.materialListId === materialListId));
+          setQueueSnapshot(
+            queue.filter(
+              (mutation) => mutation.materialListId === materialListId,
+            ),
+          );
         }
       });
-      void getOfflineMaterialList(materialListId).then((offlineMaterialList) => {
-        if (!cancelled) setCached(offlineMaterialList);
-      });
+      void getOfflineMaterialList(materialListId).then(
+        (offlineMaterialList) => {
+          if (!cancelled) setCached(offlineMaterialList);
+        },
+      );
     };
 
     window.addEventListener("online", onOnline);
     window.addEventListener("offline", onOffline);
-    window.addEventListener(OFFLINE_MATERIAL_LIST_SYNC_EVENT, onSyncStateChanged);
+    window.addEventListener(
+      OFFLINE_MATERIAL_LIST_SYNC_EVENT,
+      onSyncStateChanged,
+    );
     window.addEventListener("storage", onSyncStateChanged);
 
     return () => {
       cancelled = true;
       window.removeEventListener("online", onOnline);
       window.removeEventListener("offline", onOffline);
-      window.removeEventListener(OFFLINE_MATERIAL_LIST_SYNC_EVENT, onSyncStateChanged);
+      window.removeEventListener(
+        OFFLINE_MATERIAL_LIST_SYNC_EVENT,
+        onSyncStateChanged,
+      );
       window.removeEventListener("storage", onSyncStateChanged);
     };
   }, [materialListId]);
@@ -173,40 +193,13 @@ export function useOfflineMaterialList(
       );
       const hasQueuedChangesForList = queueForList.length > 0;
 
-      // Strict local-first stabilization mode: once a material list exists in
-      // Dexie, server props must not rewrite it directly. Sync transport may
-      // push local outbox changes, but UI/local data remains authoritative.
-      if (current?.data) {
-        setCached(current);
-        return;
-      }
-
-      if (current?.pendingSync || hasQueuedChangesForList) {
-        const hasPendingDeletedItems =
-          (current?.pendingDeletedItemIds?.length ?? 0) > 0;
-
-        if (hasQueuedChangesForList || hasPendingDeletedItems) {
-          await setOfflineMaterialList(
-            materialListId,
-            projectMaterialListWithMutations(serverData, queueForList),
-            {
-              pendingSync: true,
-              pendingDeletedItemIds: current?.pendingDeletedItemIds ?? [],
-            },
-          );
-          if (!cancelled) {
-            setCached(await getOfflineMaterialList(materialListId));
-          }
-          return;
-        }
-      }
-
-      if (current?.data) {
-        if (!cancelled) setCached(current);
-        return;
-      }
-
-      await setOfflineMaterialList(materialListId, serverData, { pendingSync: false });
+      // New source-of-truth model: when online, the server snapshot is the
+      // clean base. Dexie is a cache plus outbox, and pending local sticky notes
+      // are overlaid on top until the server accepts them.
+      await setOfflineMaterialList(materialListId, serverData, {
+        pendingSync: hasQueuedChangesForList,
+        pendingDeletedItemIds: current?.pendingDeletedItemIds ?? [],
+      });
       if (!cancelled) {
         setCached(await getOfflineMaterialList(materialListId));
       }
@@ -218,7 +211,9 @@ export function useOfflineMaterialList(
   }, [isOnline, materialListId, serverData]);
 
   const baseRawData = useMemo(() => {
-    const data = cacheLoaded && cached?.data ? cached.data : !isOnline ? null : (serverData ?? null);
+    const data = isOnline
+      ? (serverData ?? cached?.data ?? null)
+      : (cached?.data ?? null);
     if (!data) return data;
 
     const normalizedName = normalizeLegacyOfflineMaterialListName(
@@ -251,9 +246,14 @@ export function useOfflineMaterialList(
         getOfflineMutationQueue(),
         getActiveItemSyncStatuses(),
       ]);
-      const queuedItems = getQueuedItemIdsForMaterialList(materialListId, queue);
+      const queuedItems = getQueuedItemIdsForMaterialList(
+        materialListId,
+        queue,
+      );
       const activeListStatuses = activeStatuses[materialListId] ?? {};
-      const currentItemIds = new Set((data?.items ?? []).map((item) => String(item.id)));
+      const currentItemIds = new Set(
+        (data?.items ?? []).map((item) => String(item.id)),
+      );
       const hasQueuedListChanges = queue.some(
         (mutation) => mutation.materialListId === materialListId,
       );
@@ -274,11 +274,10 @@ export function useOfflineMaterialList(
         }
       }
 
-      const hasPendingCachedChanges = !!cached?.pendingSync && (!isOnline || hasQueuedListChanges);
+      const hasPendingCachedChanges =
+        !!cached?.pendingSync && (!isOnline || hasQueuedListChanges);
       const listStatus: MaterialListSyncStatus =
-        hasQueuedListChanges || hasPendingCachedChanges
-            ? "pending"
-            : "synced";
+        hasQueuedListChanges || hasPendingCachedChanges ? "pending" : "synced";
 
       if (!cancelled) setSyncSnapshot({ itemStatuses, listStatus });
     })();
@@ -286,7 +285,13 @@ export function useOfflineMaterialList(
     return () => {
       cancelled = true;
     };
-  }, [cached?.pendingSync, data?.items, isOnline, materialListId, syncStateVersion]);
+  }, [
+    cached?.pendingSync,
+    data?.items,
+    isOnline,
+    materialListId,
+    syncStateVersion,
+  ]);
 
   return {
     data,

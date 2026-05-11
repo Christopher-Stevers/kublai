@@ -272,6 +272,16 @@ export default function MaterialListDetailPage({
       );
   }, [id, router]);
 
+  const serverMaterialListQuery = api.materialList.getMaterialList.useQuery(
+    { materialListId: id },
+    {
+      enabled: isBrowserOnline && isUuid(id),
+      retry: false,
+    },
+  );
+  const serverMaterialList = serverMaterialListQuery.data;
+  const isLoading = serverMaterialListQuery.isLoading;
+
   const {
     data: materialList,
     cached,
@@ -280,24 +290,14 @@ export default function MaterialListDetailPage({
     isOnline,
     syncStatus,
     itemSyncStatuses,
-  } = useOfflineMaterialList(id);
-
-  const serverMaterialListQuery = api.materialList.getMaterialList.useQuery(
-    { materialListId: id },
-    {
-      enabled: isBrowserOnline && isUuid(id) && cacheLoaded && !cached?.data,
-      retry: false,
-    },
-  );
-  const serverMaterialList = serverMaterialListQuery.data;
-  const isLoading = serverMaterialListQuery.isLoading;
+  } = useOfflineMaterialList(id, serverMaterialList);
 
   useEffect(() => {
-    if (cached?.data || !serverMaterialListQuery.data) return;
+    if (!serverMaterialListQuery.data) return;
     void setOfflineMaterialList(id, serverMaterialListQuery.data, {
-      pendingSync: false,
+      pendingSync: syncInspector.queuedForListCount > 0,
     });
-  }, [cached?.data, id, serverMaterialListQuery.data]);
+  }, [id, serverMaterialListQuery.data, syncInspector.queuedForListCount]);
 
   const { data: userData } = api.user.getMyRole.useQuery(undefined, {
     enabled: isBrowserOnline,

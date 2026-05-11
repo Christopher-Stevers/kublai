@@ -14,12 +14,10 @@ import {
 } from "~/lib/offline-material-list";
 import {
   OFFLINE_MATERIAL_LIST_SYNC_EVENT,
-  getLastMaterialListLocalEditAt,
   getOfflineMutationQueue,
   getQueuedItemIdsForMaterialList,
   getQueuedMaterialListIds,
   notifyOfflineMaterialListSyncStateChanged,
-  RECENT_LOCAL_EDIT_TTL_MS,
   removeOfflineMutationsFromQueue,
   remapOfflineMaterialListItemId,
   remapOfflineMutationMaterialListId,
@@ -1124,39 +1122,6 @@ export function useOfflineMaterialListSyncRunner() {
             };
           }
 
-          if (pushed > 0) {
-            for (const materialListId of touchedMaterialListIds) {
-              const existing = await getOfflineMaterialList(materialListId);
-              if (!existing?.data) continue;
-              await setOfflineMaterialList(materialListId, existing.data, {
-                pendingSync: false,
-                pendingDeletedItemIds: [],
-              });
-            }
-            pulled += await pullParentEntitiesIntoDexie();
-            await setSyncingMaterialListIds([]);
-            notifyOfflineMaterialListSyncStateChanged();
-            addSyncDebugEvent({
-              phase: "done",
-              status: "success",
-              message:
-                "All sticky notes delivered. Local notebook kept as truth.",
-              queueLength: queue.length,
-              details: {
-                pushed,
-                pulled,
-                entityQueueCount: entityQueueAfterPush,
-                reason,
-              },
-            });
-            return {
-              synced: true,
-              pushed,
-              pulled,
-              remaining: 0,
-            };
-          }
-
           if (touchedMaterialListIds.size === 0) {
             pulled += await pullParentEntitiesIntoDexie();
             await setSyncingMaterialListIds([]);
@@ -1280,24 +1245,12 @@ export function useOfflineMaterialListSyncRunner() {
                 new Date(mutation.queuedAt).getTime() >= runStartedAt,
             );
 
-            // If this run successfully pushed all known work, the fresh server
-            // snapshot is authoritative and must clear pendingSync. Only preserve
-            // local data over the server snapshot when genuinely new local work was
-            // queued while this run was already in flight.
-            const localEditedRecently =
-              Date.now() - getLastMaterialListLocalEditAt(materialListId) <
-              RECENT_LOCAL_EDIT_TTL_MS;
-            const shouldPreserveLocalInFlightChange =
-              queuedForList.length > 0 ||
-              localEditedRecently ||
-              (hasNewQueuedWorkForList && localChangedDuringThisRun);
-
+            // Server is canonical once online. Pending local sticky notes are
+            // the only thing allowed to sit on top of the server snapshot.
             const hydratedData =
               queuedForList.length > 0
                 ? projectMaterialListWithMutations(serverData, queuedForList)
-                : shouldPreserveLocalInFlightChange && existing?.data
-                  ? existing.data
-                  : serverData;
+                : serverData;
 
             await setOfflineMaterialList(materialListId, hydratedData, {
               pendingSync: queuedForList.length > 0,
@@ -1317,7 +1270,6 @@ export function useOfflineMaterialListSyncRunner() {
                 pendingForList: queuedForList.length,
                 localChangedDuringThisRun,
                 hasNewQueuedWorkForList,
-                localEditedRecently,
                 tombstonedItemIds: Array.from(tombstonedItemIds),
               },
             });
