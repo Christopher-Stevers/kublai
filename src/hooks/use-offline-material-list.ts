@@ -23,6 +23,7 @@ import { normalizeLegacyOfflineMaterialListName } from "~/lib/offline-jobs";
 export type MaterialListSyncStatus = "synced" | "pending" | "syncing";
 
 const DELETE_SHADOW_TTL_MS = 2 * 60 * 1000;
+const ADD_SHADOW_TTL_MS = 2 * 60 * 1000;
 
 export function useOfflineMaterialList(
   materialListId: string,
@@ -45,6 +46,9 @@ export function useOfflineMaterialList(
   >([]);
   const [deleteShadowByItemId, setDeleteShadowByItemId] = useState<
     Map<string, number>
+  >(new Map());
+  const [addShadowByItemId, setAddShadowByItemId] = useState<
+    Map<string, Extract<OfflineMaterialListMutation, { type: "addItem" }>>
   >(new Map());
   const liveCached = useLiveQuery(
     async () => {
@@ -76,27 +80,47 @@ export function useOfflineMaterialList(
     setCacheLoaded(true);
   }, [liveCached]);
 
-  const rememberDeleteShadows = (mutations: OfflineMaterialListMutation[]) => {
+  const rememberOptimisticShadows = (
+    mutations: OfflineMaterialListMutation[],
+  ) => {
     const removeMutations = mutations.filter(
       (mutation) => mutation.type === "removeItem",
     );
-    if (removeMutations.length === 0) return;
+    if (removeMutations.length > 0) {
+      const now = Date.now();
+      setDeleteShadowByItemId((current) => {
+        const next = new Map(current);
+        for (const mutation of removeMutations) {
+          next.set(mutation.itemId, now);
+        }
+        return next;
+      });
+    }
 
-    const now = Date.now();
-    setDeleteShadowByItemId((current) => {
-      const next = new Map(current);
-      for (const mutation of removeMutations) {
-        next.set(mutation.itemId, now);
-      }
-      return next;
-    });
+    const addMutations = mutations.filter(
+      (
+        mutation,
+      ): mutation is Extract<
+        OfflineMaterialListMutation,
+        { type: "addItem" }
+      > => mutation.type === "addItem",
+    );
+    if (addMutations.length > 0) {
+      setAddShadowByItemId((current) => {
+        const next = new Map(current);
+        for (const mutation of addMutations) {
+          next.set(mutation.localItemId, mutation);
+        }
+        return next;
+      });
+    }
   };
 
   useEffect(() => {
     if (liveQueue === undefined) return;
     if (liveQueue) {
       setQueueSnapshot(liveQueue);
-      rememberDeleteShadows(liveQueue);
+      rememberOptimisticShadows(liveQueue);
       return;
     }
 
@@ -105,7 +129,7 @@ export function useOfflineMaterialList(
         (mutation) => mutation.materialListId === materialListId,
       );
       setQueueSnapshot(queueForList);
-      rememberDeleteShadows(queueForList);
+      rememberOptimisticShadows(queueForList);
     });
   }, [liveQueue, materialListId]);
 
@@ -172,7 +196,7 @@ export function useOfflineMaterialList(
             (mutation) => mutation.materialListId === materialListId,
           );
           setQueueSnapshot(queueForList);
-          rememberDeleteShadows(queueForList);
+          rememberOptimisticShadows(queueForList);
         }
       });
       void getOfflineMaterialList(materialListId).then(
@@ -256,6 +280,48 @@ export function useOfflineMaterialList(
   }, [cacheLoaded, cached?.data, isOnline, serverData]);
 
   useEffect(() => {
+    if (!baseRawData || addShadowByItemId.size === 0) return;
+
+    setAddShadowByItemId((current) => {
+      let changed = false;
+      const next = new Map(current);
+      const now = Date.now();
+
+      for (const [localItemId, mutation] of next) {
+        const queuedAt = new Date(mutation.queuedAt).getTime();
+        const serverConfirmedAdded = baseRawData.items.some((item) => {
+          if (String(item.id) === localItemId) return true;
+
+          const createdAt = item.createdAt
+            ? new Date(item.createdAt).getTime()
+            : 0;
+          if (createdAt && createdAt < queuedAt - 30_000) return false;
+
+          const samePart = mutation.partDefinitionId
+            ? item.partDefinition?.id === mutation.partDefinitionId
+            : item.descriptionSnapshot ===
+              (mutation.oneOffDisplayName ??
+                mutation.partDefinitionSnapshot?.displayName);
+          const sameSupplier = mutation.supplierPartId
+            ? item.supplierPart?.id === mutation.supplierPartId
+            : true;
+          const sameQuantity = Number(item.quantity) === mutation.quantity;
+
+          return samePart && sameSupplier && sameQuantity;
+        });
+        const expired = now - queuedAt > ADD_SHADOW_TTL_MS;
+
+        if (serverConfirmedAdded || expired) {
+          next.delete(localItemId);
+          changed = true;
+        }
+      }
+
+      return changed ? next : current;
+    });
+  }, [addShadowByItemId.size, baseRawData]);
+
+  useEffect(() => {
     if (!baseRawData || deleteShadowByItemId.size === 0) return;
 
     const serverItemIds = new Set(
@@ -286,14 +352,24 @@ export function useOfflineMaterialList(
     // rows should feel instant, but Dexie still stores only clean server
     // snapshots while online. Other devices see the change after server ack +
     // refetch; this device drops the overlay as soon as its local queue drains.
-    const projected = projectMaterialListWithMutations(
-      baseRawData,
-      queueSnapshot,
+    const queuedAddItemIds = new Set(
+      queueSnapshot
+        .filter((mutation) => mutation.type === "addItem")
+        .map((mutation) => mutation.localItemId),
     );
+    const now = Date.now();
+    const addShadowMutations = Array.from(addShadowByItemId.values()).filter(
+      (mutation) =>
+        !queuedAddItemIds.has(mutation.localItemId) &&
+        now - new Date(mutation.queuedAt).getTime() <= ADD_SHADOW_TTL_MS,
+    );
+    const projected = projectMaterialListWithMutations(baseRawData, [
+      ...addShadowMutations,
+      ...queueSnapshot,
+    ]);
 
     if (deleteShadowByItemId.size === 0) return projected;
 
-    const now = Date.now();
     const shadowedDeleteIds = new Set(
       Array.from(deleteShadowByItemId.entries())
         .filter(([, shadowedAt]) => now - shadowedAt <= DELETE_SHADOW_TTL_MS)
@@ -316,7 +392,7 @@ export function useOfflineMaterialList(
       items,
       materialTotal,
     };
-  }, [baseRawData, deleteShadowByItemId, queueSnapshot]);
+  }, [addShadowByItemId, baseRawData, deleteShadowByItemId, queueSnapshot]);
 
   const data = rawData;
 
