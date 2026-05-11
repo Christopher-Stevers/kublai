@@ -533,6 +533,17 @@ export function useOfflineMaterialListSyncRunner() {
                 })
               : { applied: [], failed: [] };
 
+            addSyncDebugEvent({
+              phase: "parent-sync",
+              status: syncResult.failed.length > 0 ? "warning" : "success",
+              message:
+                syncResult.failed.length > 0
+                  ? `Parent sync delivered ${syncResult.applied.length}, dead-lettered ${syncResult.failed.length}`
+                  : `Parent sync delivered ${syncResult.applied.length}`,
+              queueLength: entityQueue.length,
+              details: syncResult,
+            });
+
             const appliedEntityIds = new Set<string>(locallyDrainedIds);
             for (const appliedMutation of syncResult.applied) {
               appliedEntityIds.add(appliedMutation.clientMutationId);
@@ -580,8 +591,12 @@ export function useOfflineMaterialListSyncRunner() {
             }
 
             for (const failedMutation of syncResult.failed) {
-              if (failedMutation.permanent)
-                appliedEntityIds.add(failedMutation.clientMutationId);
+              // Parent mutations must not jam the shared sync loop forever. The
+              // server endpoint returns per-row failures after trying the row;
+              // once a parent row has reached that point, dead-letter it and
+              // let later independent work continue like material-list item
+              // sync does for poison rows.
+              appliedEntityIds.add(failedMutation.clientMutationId);
             }
 
             const remainingEntityQueue = entityQueue.filter(
