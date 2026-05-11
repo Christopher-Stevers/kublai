@@ -193,12 +193,12 @@ export function useOfflineMaterialList(
       );
       const hasQueuedChangesForList = queueForList.length > 0;
 
-      // New source-of-truth model: when online, the server snapshot is the
-      // clean base. Dexie is a cache plus outbox, and pending local sticky notes
-      // are overlaid on top until the server accepts them.
+      // Online must stay boring: write the latest server snapshot into Dexie as
+      // cache, but do not carry stale local delete shadows forward. The durable
+      // queue is the only pending state.
       await setOfflineMaterialList(materialListId, serverData, {
         pendingSync: hasQueuedChangesForList,
-        pendingDeletedItemIds: current?.pendingDeletedItemIds ?? [],
+        pendingDeletedItemIds: [],
       });
       if (!cancelled) {
         setCached(await getOfflineMaterialList(materialListId));
@@ -233,8 +233,16 @@ export function useOfflineMaterialList(
 
   const rawData = useMemo(() => {
     if (!baseRawData) return baseRawData;
+
+    // Stop the mixed-truth flicker: while online, render exactly what the
+    // server query returned. Pending local mutations may still sync in the
+    // background, but they do not get to invent a second on-screen reality.
+    // Offline keeps the sticky-note overlay so field edits still work without a
+    // connection.
+    if (isOnline) return baseRawData;
+
     return projectMaterialListWithMutations(baseRawData, queueSnapshot);
-  }, [baseRawData, queueSnapshot]);
+  }, [baseRawData, isOnline, queueSnapshot]);
 
   const data = rawData;
 

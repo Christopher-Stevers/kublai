@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useRef } from "react";
 import { api } from "~/trpc/react";
 import { getOfflineDexieDb } from "~/lib/offline-dexie-db";
-import { projectMaterialListWithMutations } from "~/lib/material-list-projector";
 import { idbGetMeta, idbSetMeta } from "~/lib/offline-indexed-db";
 import { addSyncDebugEvent } from "~/lib/offline-sync-debug-timeline";
 import {
@@ -15,7 +14,6 @@ import {
 import {
   OFFLINE_MATERIAL_LIST_SYNC_EVENT,
   getOfflineMutationQueue,
-  getQueuedItemIdsForMaterialList,
   getQueuedMaterialListIds,
   notifyOfflineMaterialListSyncStateChanged,
   removeOfflineMutationsFromQueue,
@@ -1236,27 +1234,21 @@ export function useOfflineMaterialListSyncRunner() {
               ? new Date(existing.updatedAt).getTime()
               : 0;
             const localChangedDuringThisRun = existingUpdatedAt > runStartedAt;
-            const queuedItemIds = getQueuedItemIdsForMaterialList(
-              materialListId,
-              latestQueue,
-            );
             const hasNewQueuedWorkForList = queuedForList.some(
               (mutation) =>
                 new Date(mutation.queuedAt).getTime() >= runStartedAt,
             );
 
-            // Server is canonical once online. Pending local sticky notes are
-            // the only thing allowed to sit on top of the server snapshot.
-            const hydratedData =
-              queuedForList.length > 0
-                ? projectMaterialListWithMutations(serverData, queuedForList)
-                : serverData;
-
-            await setOfflineMaterialList(materialListId, hydratedData, {
+            // Server is canonical once online. Dexie stores the clean server
+            // snapshot as cache; the queue remains the only source of pending
+            // state. Do not hydrate projected queue data back into the cache,
+            // or old sticky notes can make items disappear/reappear.
+            await setOfflineMaterialList(materialListId, serverData, {
               pendingSync: queuedForList.length > 0,
-              pendingDeletedItemIds: existing?.pendingDeletedItemIds?.filter(
-                (itemId) => queuedItemIds.has(itemId),
-              ),
+              pendingDeletedItemIds: [],
+            });
+            await utils.materialList.getMaterialList.invalidate({
+              materialListId,
             });
             pulled += 1;
             addSyncDebugEvent({

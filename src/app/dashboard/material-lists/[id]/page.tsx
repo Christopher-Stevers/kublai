@@ -39,6 +39,7 @@ import {
 } from "~/lib/offline-id-map";
 import Image from "next/image";
 import {
+  OFFLINE_MATERIAL_LIST_SYNC_EVENT,
   applyOfflineRemoveItem,
   enqueueOfflineMutation,
 } from "~/lib/offline-material-list-mutations";
@@ -281,6 +282,33 @@ export default function MaterialListDetailPage({
   );
   const serverMaterialList = serverMaterialListQuery.data;
   const isLoading = serverMaterialListQuery.isLoading;
+
+  useEffect(() => {
+    if (!isBrowserOnline) return;
+
+    const refetchOnServerChange = (event: Event) => {
+      const detail =
+        event instanceof CustomEvent
+          ? (event.detail as
+              | { materialListId?: string; serverChanged?: boolean }
+              | undefined)
+          : undefined;
+      if (detail?.serverChanged && detail.materialListId === id) {
+        void serverMaterialListQuery.refetch();
+      }
+    };
+
+    window.addEventListener(
+      OFFLINE_MATERIAL_LIST_SYNC_EVENT,
+      refetchOnServerChange,
+    );
+    return () => {
+      window.removeEventListener(
+        OFFLINE_MATERIAL_LIST_SYNC_EVENT,
+        refetchOnServerChange,
+      );
+    };
+  }, [id, isBrowserOnline, serverMaterialListQuery]);
 
   const {
     data: materialList,
