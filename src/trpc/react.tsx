@@ -93,9 +93,21 @@ export function TRPCReactProvider(props: { children: React.ReactNode }) {
     api.createClient({
       links: [
         loggerLink({
-          enabled: (op) =>
-            process.env.NODE_ENV === "development" ||
-            (op.direction === "down" && op.result instanceof Error),
+          enabled: (op) => {
+            const path = "path" in op ? op.path : undefined;
+            const isOfflinePullFetchFailure =
+              op.direction === "down" &&
+              path === "materialList.pullMaterialListSyncChanges" &&
+              op.result instanceof Error &&
+              op.result.message === "Failed to fetch";
+
+            if (isOfflinePullFetchFailure) return false;
+
+            return (
+              process.env.NODE_ENV === "development" ||
+              (op.direction === "down" && op.result instanceof Error)
+            );
+          },
         }),
         httpBatchStreamLink({
           transformer: SuperJSON,

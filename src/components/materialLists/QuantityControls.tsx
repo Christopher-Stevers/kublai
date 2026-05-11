@@ -30,8 +30,35 @@ export function QuantityControls({
   const [inputValue, setInputValue] = useState(quantity.toString());
   const displayedQuantityRef = useRef(quantity);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingInputQuantityRef = useRef<number | null>(null);
+  const lastQueuedQuantityRef = useRef<{ quantity: number; at: number } | null>(null);
 
   useEffect(() => {
+    const locallyQueuedQuantity = lastQueuedQuantityRef.current;
+    const localQuantityStillSettling =
+      locallyQueuedQuantity !== null && Date.now() - locallyQueuedQuantity.at < 15_000;
+
+    // A parent render can briefly hand this control an older quantity while
+    // Dexie/outbox hydration is catching up. Do not let that stale prop snap
+    // the button/input back after the user already picked a newer local value.
+    // After a short grace window, accept the prop again so a real server/error
+    // correction does not freeze the control forever.
+    if (
+      localQuantityStillSettling &&
+      locallyQueuedQuantity !== null &&
+      quantity !== locallyQueuedQuantity.quantity
+    ) {
+      return;
+    }
+
+    if (
+      locallyQueuedQuantity !== null &&
+      !localQuantityStillSettling &&
+      quantity === locallyQueuedQuantity.quantity
+    ) {
+      lastQueuedQuantityRef.current = null;
+    }
+
     displayedQuantityRef.current = quantity;
     setDisplayedQuantity(quantity);
     setInputValue(quantity.toString());
@@ -42,11 +69,13 @@ export function QuantityControls({
       if (saveTimerRef.current) {
         clearTimeout(saveTimerRef.current);
       }
+      pendingInputQuantityRef.current = null;
     };
   }, []);
 
-  const queueOfflineQuantityChange = (nextQuantity: number) => {
-    void applyOfflineQuantityUpdate(materialListId, itemId, nextQuantity);
+  const enqueueQuantityChange = (nextQuantity: number) => {
+    if (lastQueuedQuantityRef.current?.quantity === nextQuantity) return;
+    lastQueuedQuantityRef.current = { quantity: nextQuantity, at: Date.now() };
     void enqueueOfflineMutation({
       type: "updateItemQuantity",
       materialListId,
@@ -54,6 +83,33 @@ export function QuantityControls({
       quantity: nextQuantity,
       queuedAt: new Date().toISOString(),
     });
+  };
+
+  const queueOfflineQuantityChange = (nextQuantity: number) => {
+    void setActiveItemSyncStatus(materialListId, itemId, "pending");
+    enqueueQuantityChange(nextQuantity);
+    void applyOfflineQuantityUpdate(materialListId, itemId, nextQuantity);
+  };
+
+  const scheduleInputQuantityChange = (nextQuantity: number) => {
+    pendingInputQuantityRef.current = nextQuantity;
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      const quantityToQueue = pendingInputQuantityRef.current;
+      pendingInputQuantityRef.current = null;
+      saveTimerRef.current = null;
+      if (quantityToQueue !== null) enqueueQuantityChange(quantityToQueue);
+    }, 650);
+  };
+
+  const flushInputQuantityChange = () => {
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
+    }
+    const quantityToQueue = pendingInputQuantityRef.current;
+    pendingInputQuantityRef.current = null;
+    if (quantityToQueue !== null) enqueueQuantityChange(quantityToQueue);
   };
 
   const setQuantityImmediately = (nextQuantity: number) => {
@@ -64,7 +120,6 @@ export function QuantityControls({
     setDisplayedQuantity(nextQuantity);
     setInputValue(nextQuantity.toString());
     queueOfflineQuantityChange(nextQuantity);
-    void setActiveItemSyncStatus(materialListId, itemId, "pending");
   };
 
   const commitInputQuantity = (rawValue: string) => {
@@ -75,7 +130,12 @@ export function QuantityControls({
       return;
     }
 
-    setQuantityImmediately(parsedQuantity);
+    displayedQuantityRef.current = parsedQuantity;
+    setDisplayedQuantity(parsedQuantity);
+    setInputValue(parsedQuantity.toString());
+    void applyOfflineQuantityUpdate(materialListId, itemId, parsedQuantity);
+    void setActiveItemSyncStatus(materialListId, itemId, "pending");
+    flushInputQuantityChange();
   };
 
   const handleInputChange = (value: string) => {
@@ -86,8 +146,9 @@ export function QuantityControls({
     if (Number.isFinite(parsedQuantity) && parsedQuantity >= 1) {
       displayedQuantityRef.current = parsedQuantity;
       setDisplayedQuantity(parsedQuantity);
-      queueOfflineQuantityChange(parsedQuantity);
+      void applyOfflineQuantityUpdate(materialListId, itemId, parsedQuantity);
       void setActiveItemSyncStatus(materialListId, itemId, "pending");
+      scheduleInputQuantityChange(parsedQuantity);
     }
   };
 

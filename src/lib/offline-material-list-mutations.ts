@@ -6,6 +6,7 @@ import {
 } from "~/lib/offline-material-list";
 import { idbDeleteMeta, idbGetMeta, idbSetMeta } from "~/lib/offline-indexed-db";
 import { getOfflineDexieDb } from "~/lib/offline-dexie-db";
+import { addSyncDebugEvent } from "~/lib/offline-sync-debug-timeline";
 
 export type OfflineMaterialListMutation =
   | {
@@ -97,6 +98,7 @@ async function migrateLegacySyncMeta() {
   if (legacyMetaMigrated || typeof window === "undefined") return;
   legacyMetaMigrated = true;
 
+  const db = getOfflineDexieDb();
   const legacyQueue = window.localStorage.getItem(QUEUE_STORAGE_KEY);
   if (legacyQueue) {
     try {
@@ -106,6 +108,8 @@ async function migrateLegacySyncMeta() {
       }
     } catch {
       // Ignore malformed legacy queue.
+    } finally {
+      if (db) window.localStorage.removeItem(QUEUE_STORAGE_KEY);
     }
   }
 
@@ -124,6 +128,8 @@ async function migrateLegacySyncMeta() {
       }
     } catch {
       // Ignore malformed legacy sync state.
+    } finally {
+      if (db) window.localStorage.removeItem(ACTIVE_ITEM_SYNC_STORAGE_KEY);
     }
   }
 
@@ -136,6 +142,8 @@ async function migrateLegacySyncMeta() {
       }
     } catch {
       // Ignore malformed legacy sync state.
+    } finally {
+      if (db) window.localStorage.removeItem(SYNCING_LISTS_STORAGE_KEY);
     }
   }
 }
@@ -437,30 +445,11 @@ export async function getOfflineMutationQueue(): Promise<OfflineMaterialListMuta
 
   const legacyQueue = await idbGetMeta<OfflineMaterialListMutation[]>(QUEUE_META_KEY, []);
   if (db && legacyQueue.length > 0) {
-    await db.mutationQueue.bulkPut(
-      legacyQueue.map((mutation, index) => ({
-        id: `${mutation.queuedAt}:${index}:${mutation.type}`,
-        order: index,
-        materialListId: mutation.materialListId,
-        type: mutation.type,
-        queuedAt: mutation.queuedAt,
-        value: mutation,
-      })),
-    );
-  }
-  return legacyQueue;
-}
-
-export async function setOfflineMutationQueue(queue: OfflineMaterialListMutation[]) {
-  await migrateLegacySyncMeta();
-  const db = getOfflineDexieDb();
-
-  if (db) {
-    await db.mutationQueue.clear();
-    if (queue.length > 0) {
+    const normalizedLegacyQueue = normalizeOfflineMutationQueue(legacyQueue);
+    await db.transaction("rw", db.mutationQueue, async () => {
       await db.mutationQueue.bulkPut(
-        queue.map((mutation, index) => ({
-          id: `${mutation.queuedAt}:${index}:${mutation.type}`,
+        normalizedLegacyQueue.map((mutation, index) => ({
+          id: mutation.clientMutationId!,
           order: index,
           materialListId: mutation.materialListId,
           type: mutation.type,
@@ -468,13 +457,67 @@ export async function setOfflineMutationQueue(queue: OfflineMaterialListMutation
           value: mutation,
         })),
       );
-    }
-  } else if (queue.length === 0) {
+    });
+    await idbDeleteMeta(QUEUE_META_KEY);
+    return normalizedLegacyQueue;
+  }
+  return legacyQueue;
+}
+
+export async function setOfflineMutationQueue(queue: OfflineMaterialListMutation[]) {
+  await migrateLegacySyncMeta();
+  const db = getOfflineDexieDb();
+  const normalizedQueue = normalizeOfflineMutationQueue(queue);
+
+  if (db) {
+    await db.transaction("rw", db.mutationQueue, async () => {
+      await db.mutationQueue.clear();
+      if (normalizedQueue.length > 0) {
+        await db.mutationQueue.bulkPut(
+          normalizedQueue.map((mutation, index) => ({
+            id: mutation.clientMutationId!,
+            order: index,
+            materialListId: mutation.materialListId,
+            type: mutation.type,
+            queuedAt: mutation.queuedAt,
+            value: mutation,
+          })),
+        );
+      }
+    });
+  } else if (normalizedQueue.length === 0) {
     await idbDeleteMeta(QUEUE_META_KEY);
   } else {
-    await idbSetMeta(QUEUE_META_KEY, queue);
+    await idbSetMeta(QUEUE_META_KEY, normalizedQueue);
   }
   notifyOfflineMaterialListSyncStateChanged();
+}
+
+export async function removeOfflineMutationsFromQueue(clientMutationIds: Set<string>) {
+  if (clientMutationIds.size === 0) return;
+
+  await migrateLegacySyncMeta();
+  const db = getOfflineDexieDb();
+
+  if (db) {
+    await db.transaction("rw", db.mutationQueue, async () => {
+      await db.mutationQueue.bulkDelete(Array.from(clientMutationIds));
+      const rows = await db.mutationQueue.orderBy("order").toArray();
+      await db.mutationQueue.bulkPut(
+        rows.map((row, index) => ({
+          ...row,
+          order: index,
+        })),
+      );
+    });
+    notifyOfflineMaterialListSyncStateChanged();
+    return;
+  }
+
+  const queue = await getOfflineMutationQueue();
+  await setOfflineMutationQueue(
+    queue.filter((mutation) => !clientMutationIds.has(mutation.clientMutationId ?? "")),
+  );
 }
 
 export async function remapOfflineMutationMaterialListId(
@@ -491,13 +534,146 @@ export async function remapOfflineMutationMaterialListId(
   );
 }
 
+function remapMutationItemId(
+  mutation: OfflineMaterialListMutation,
+  localItemId: string,
+  serverItemId: string,
+): OfflineMaterialListMutation {
+  if (mutation.type === "addItem" && mutation.localItemId === localItemId) {
+    return { ...mutation, localItemId: serverItemId };
+  }
+  if (
+    (mutation.type === "updateItemQuantity" ||
+      mutation.type === "updateItemSupplierPart" ||
+      mutation.type === "removeItem") &&
+    mutation.itemId === localItemId
+  ) {
+    return { ...mutation, itemId: serverItemId };
+  }
+  return mutation;
+}
+
+export async function remapOfflineMaterialListItemId(
+  materialListId: string,
+  localItemId: string,
+  serverItemId: string,
+) {
+  if (localItemId === serverItemId) return;
+
+  await patchOfflineMaterialList(materialListId, (current) => ({
+    ...current,
+    items: current.items.map((item) =>
+      item.id === localItemId ? { ...item, id: serverItemId } : item,
+    ),
+  }));
+
+  const queue = await getOfflineMutationQueue();
+  await setOfflineMutationQueue(
+    queue.map((mutation) =>
+      mutation.materialListId === materialListId
+        ? remapMutationItemId(mutation, localItemId, serverItemId)
+        : mutation,
+    ),
+  );
+
+  const db = getOfflineDexieDb();
+  if (db) {
+    await db.transaction(
+      "rw",
+      db.materialListItems,
+      db.activeItemSync,
+      async () => {
+        const row = await db.materialListItems.get(localItemId);
+        if (row) {
+          await db.materialListItems.put({ ...row, id: serverItemId });
+          await db.materialListItems.delete(localItemId);
+        }
+
+        const activeRow = await db.activeItemSync.get(`${materialListId}:${localItemId}`);
+        if (activeRow) {
+          await db.activeItemSync.put({
+            ...activeRow,
+            id: `${materialListId}:${serverItemId}`,
+            itemId: serverItemId,
+          });
+          await db.activeItemSync.delete(`${materialListId}:${localItemId}`);
+        }
+      },
+    );
+  }
+}
+
+function deterministicClientMutationId(mutation: OfflineMaterialListMutation) {
+  const itemPart =
+    mutation.type === "addItem"
+      ? mutation.localItemId
+      : mutation.type === "renameMaterialList"
+        ? mutation.name
+        : mutation.itemId;
+  return `${mutation.materialListId}:${mutation.type}:${mutation.queuedAt}:${itemPart}`;
+}
+
+function normalizeOfflineMutationQueue(queue: OfflineMaterialListMutation[]) {
+  return Array.from(
+    new Map(
+      queue
+        .map(
+          (mutation) =>
+            ({
+              ...mutation,
+              clientMutationId:
+                mutation.clientMutationId ?? deterministicClientMutationId(mutation),
+            }) as OfflineMaterialListMutation,
+        )
+        .map((mutation) => [mutation.clientMutationId, mutation]),
+    ).values(),
+  );
+}
+
 export async function enqueueOfflineMutation(mutation: OfflineMaterialListMutation) {
-  const queue = compactOfflineMutationQueue(await getOfflineMutationQueue(), {
+  await migrateLegacySyncMeta();
+  const db = getOfflineDexieDb();
+  const incoming = {
     ...mutation,
-    clientMutationId:
-      mutation.clientMutationId ??
-      `${mutation.materialListId}:${mutation.type}:${mutation.queuedAt}:${crypto.randomUUID()}`,
-  } as OfflineMaterialListMutation);
+    clientMutationId: mutation.clientMutationId ?? crypto.randomUUID(),
+  } as OfflineMaterialListMutation;
+
+  addSyncDebugEvent({
+    phase: "queued",
+    status: "info",
+    message: `Sticky note created: ${incoming.type}`,
+    materialListId: incoming.materialListId,
+    mutationIds: [incoming.clientMutationId!],
+    details: incoming,
+  });
+
+  if (db) {
+    await db.transaction("rw", db.mutationQueue, async () => {
+      const queue = (await db.mutationQueue.orderBy("order").toArray()).map(
+        (row) => row.value as OfflineMaterialListMutation,
+      );
+      const nextQueue = normalizeOfflineMutationQueue(
+        compactOfflineMutationQueue(queue, incoming),
+      );
+      await db.mutationQueue.clear();
+      if (nextQueue.length > 0) {
+        await db.mutationQueue.bulkPut(
+          nextQueue.map((queuedMutation, index) => ({
+            id: queuedMutation.clientMutationId!,
+            order: index,
+            materialListId: queuedMutation.materialListId,
+            type: queuedMutation.type,
+            queuedAt: queuedMutation.queuedAt,
+            value: queuedMutation,
+          })),
+        );
+      }
+    });
+    notifyOfflineMaterialListSyncStateChanged();
+    return;
+  }
+
+  const queue = compactOfflineMutationQueue(await getOfflineMutationQueue(), incoming);
   await setOfflineMutationQueue(queue);
 }
 

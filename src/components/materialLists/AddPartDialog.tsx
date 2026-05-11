@@ -680,6 +680,37 @@ export function AddPartDialog({
         materialListId,
         count: localItems.length,
       });
+
+      await Promise.all(
+        localItems.map((item) =>
+          setActiveItemSyncStatus(materialListId, item.localItemId, "pending"),
+        ),
+      );
+
+      for (const item of localItems) {
+        await applyOfflineAddItem(materialListId, {
+          localItemId: item.localItemId,
+          quantity: item.pendingPart.quantity,
+          unitCost: item.unitCost,
+          partDefinitionSnapshot: item.partDefinitionSnapshot,
+          supplierPartSnapshot: item.supplierPartSnapshot,
+        });
+
+        await enqueueOfflineMutation({
+          type: "addItem",
+          materialListId,
+          localItemId: item.localItemId,
+          partDefinitionId: item.pendingPart.partId,
+          quantity: item.pendingPart.quantity,
+          supplierPartId: item.pendingPart.supplierPartId!,
+          supplierId: parseOfflineSupplierPartId(item.pendingPart.supplierPartId!)?.supplierId,
+          unitCost: item.unitCost,
+          partDefinitionSnapshot: item.partDefinitionSnapshot,
+          supplierPartSnapshot: item.supplierPartSnapshot,
+          queuedAt: now.toISOString(),
+        });
+      }
+
       closeDialogAndCleanHistory();
       setIsAddingParts(false);
       window.setTimeout(() => {
@@ -687,43 +718,11 @@ export function AddPartDialog({
         resetWizard();
       }, 0);
 
-      void (async () => {
-        await Promise.all(
-          localItems.map((item) =>
-            setActiveItemSyncStatus(materialListId, item.localItemId, "pending"),
-          ),
-        );
-
-        for (const item of localItems) {
-          await applyOfflineAddItem(materialListId, {
-            localItemId: item.localItemId,
-            quantity: item.pendingPart.quantity,
-            unitCost: item.unitCost,
-            partDefinitionSnapshot: item.partDefinitionSnapshot,
-            supplierPartSnapshot: item.supplierPartSnapshot,
-          });
-
-          await enqueueOfflineMutation({
-            type: "addItem",
-            materialListId,
-            localItemId: item.localItemId,
-            partDefinitionId: item.pendingPart.partId,
-            quantity: item.pendingPart.quantity,
-            supplierPartId: item.pendingPart.supplierPartId!,
-            supplierId: parseOfflineSupplierPartId(item.pendingPart.supplierPartId!)?.supplierId,
-            unitCost: item.unitCost,
-            partDefinitionSnapshot: item.partDefinitionSnapshot,
-            supplierPartSnapshot: item.supplierPartSnapshot,
-            queuedAt: now.toISOString(),
-          });
-        }
-
-        if (isOnline) {
-          await syncOfflineMaterialLists();
-        }
-      })().catch((error) => {
-        console.error("Error syncing added parts:", error);
-      });
+      if (isOnline) {
+        void syncOfflineMaterialLists().catch((error) => {
+          console.error("Error syncing added parts:", error);
+        });
+      }
     } catch (error) {
       console.error("Error adding parts:", error);
       setIsAddingParts(false);
@@ -794,110 +793,30 @@ export function AddPartDialog({
 
   const isWizardSearchActive = wizardStage !== "review" && wizardSearchQuery.trim().length > 0;
 
-  const addPartsBackStateRef = useRef<History["state"]>(null);
-  const suppressNextDialogPopRef = useRef(false);
-  const addPartsDialogStateRef = useRef({
-    editingPartId,
-    isCreateCustomPartDialogOpen,
-    isPendingTrayOpen,
-    quantityPickerPreview,
-    wizardStage,
-  });
-
-  useEffect(() => {
-    addPartsDialogStateRef.current = {
-      editingPartId,
-      isCreateCustomPartDialogOpen,
-      isPendingTrayOpen,
-      quantityPickerPreview,
-      wizardStage,
-    };
-  }, [
-    editingPartId,
-    isCreateCustomPartDialogOpen,
-    isPendingTrayOpen,
-    quantityPickerPreview,
-    wizardStage,
-  ]);
+  const addPartsHistoryEntryRef = useRef(false);
+  const suppressNextAddPartsPopRef = useRef(false);
 
   useEffect(() => {
     if (!open || typeof window === "undefined") return;
+    if (window.history.state?.foremenAddPartsDialog) {
+      addPartsHistoryEntryRef.current = true;
+      return;
+    }
 
     const dialogState = {
       ...(window.history.state ?? {}),
       foremenAddPartsDialog: true,
     };
-    addPartsBackStateRef.current = dialogState;
+    addPartsHistoryEntryRef.current = true;
     window.history.pushState(dialogState, "");
 
-    const keepDialogOnPage = () => {
-      window.history.pushState(addPartsBackStateRef.current ?? dialogState, "");
-    };
-
     const handlePopState = () => {
-      if (suppressNextDialogPopRef.current) {
-        suppressNextDialogPopRef.current = false;
-        onOpenChange(false);
+      if (suppressNextAddPartsPopRef.current) {
+        suppressNextAddPartsPopRef.current = false;
         return;
       }
 
-      const current = addPartsDialogStateRef.current;
-
-      if (current.isCreateCustomPartDialogOpen) {
-        setIsCreateCustomPartDialogOpen(false);
-        keepDialogOnPage();
-        return;
-      }
-      if (current.editingPartId !== null) {
-        setEditingPartId(null);
-        keepDialogOnPage();
-        return;
-      }
-      if (current.quantityPickerPreview) {
-        setQuantityPickerPreview(null);
-        keepDialogOnPage();
-        return;
-      }
-      if (current.isPendingTrayOpen) {
-        setIsPendingTrayOpen(false);
-        keepDialogOnPage();
-        return;
-      }
-
-      if (current.wizardStage === "review") {
-        setWizardStage("part");
-        keepDialogOnPage();
-        return;
-      }
-      if (current.wizardStage === "part") {
-        setWizardStage("category");
-        keepDialogOnPage();
-        return;
-      }
-      if (current.wizardStage === "category") {
-        setSelectedCategory(null);
-        setShowCustomCategoryInput(false);
-        setCustomCategoryName("");
-        setWizardStage("size");
-        keepDialogOnPage();
-        return;
-      }
-      if (current.wizardStage === "size") {
-        setShowCustomSize(false);
-        setCustomSizeInput("");
-        setCustomSizeUnitId(null);
-        setWizardStage("material");
-        keepDialogOnPage();
-        return;
-      }
-      if (current.wizardStage === "material") {
-        setShowCustomMaterialInput(false);
-        setCustomMaterialName("");
-        setWizardStage("catalog");
-        keepDialogOnPage();
-        return;
-      }
-
+      addPartsHistoryEntryRef.current = false;
       onOpenChange(false);
     };
 
@@ -905,31 +824,17 @@ export function AddPartDialog({
     return () => {
       window.removeEventListener("popstate", handlePopState);
     };
-  }, [
-    onOpenChange,
-    open,
-    setCustomCategoryName,
-    setCustomMaterialName,
-    setCustomSizeInput,
-    setCustomSizeUnitId,
-    setSelectedCategory,
-    setShowCustomCategoryInput,
-    setShowCustomMaterialInput,
-    setShowCustomSize,
-    setWizardStage,
-  ]);
+  }, [onOpenChange, open]);
 
   const closeDialogAndCleanHistory = () => {
     if (
       typeof window !== "undefined" &&
+      addPartsHistoryEntryRef.current &&
       window.history.state?.foremenAddPartsDialog
     ) {
-      // Let the popstate handler close the dialog so the synthetic wizard history
-      // entry is actually consumed. Closing first can leave a duplicate same-URL
-      // entry behind, making mobile back/swipe appear to do nothing.
-      suppressNextDialogPopRef.current = true;
+      addPartsHistoryEntryRef.current = false;
+      suppressNextAddPartsPopRef.current = true;
       window.history.back();
-      return;
     }
 
     onOpenChange(false);
@@ -1107,34 +1012,31 @@ export function AddPartDialog({
           {/* Pending Parts Tray */}
           {pendingParts.length > 0 && wizardStage !== "review" && (
             <div className="shrink-0 border-t bg-gray-50">
-              <button
-                type="button"
-                onClick={() => setIsPendingTrayOpen((open) => !open)}
-                className="flex w-full items-center justify-between gap-2 px-2 py-3 text-left sm:px-4 sm:py-4 md:px-6"
-              >
-                <div className="text-sm font-semibold sm:text-base">
-                  Pending Parts ({pendingParts.length})
-                </div>
-                <div className="ml-auto flex items-center gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      handleReviewAndAdd();
-                    }}
-                    className="h-8 px-2.5 text-xs sm:h-9 sm:text-sm"
-                  >
-                    Review Parts
-                  </Button>
+              <div className="flex w-full items-center justify-between gap-2 px-2 py-3 text-left sm:px-4 sm:py-4 md:px-6">
+                <button
+                  type="button"
+                  onClick={() => setIsPendingTrayOpen((open) => !open)}
+                  className="flex min-w-0 flex-1 items-center justify-between gap-2 text-left"
+                >
+                  <div className="text-sm font-semibold sm:text-base">
+                    Pending Parts ({pendingParts.length})
+                  </div>
                   {isPendingTrayOpen ? (
-                    <ChevronDown className="h-4 w-4 text-gray-500" />
+                    <ChevronDown className="h-4 w-4 shrink-0 text-gray-500" />
                   ) : (
-                    <ChevronUp className="h-4 w-4 text-gray-500" />
+                    <ChevronUp className="h-4 w-4 shrink-0 text-gray-500" />
                   )}
-                </div>
-              </button>
+                </button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleReviewAndAdd}
+                  className="h-8 shrink-0 px-2.5 text-xs sm:h-9 sm:text-sm"
+                >
+                  Review Parts
+                </Button>
+              </div>
 
               <div
                 className={`grid transition-all duration-200 ease-out ${

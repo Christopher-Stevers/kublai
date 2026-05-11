@@ -4,7 +4,10 @@ import { useMemo } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { getOfflineDexieDb } from "~/lib/offline-dexie-db";
 import { idbGetMeta } from "~/lib/offline-indexed-db";
-import type { OfflineMaterialListMutation } from "~/lib/offline-material-list-mutations";
+import {
+  ACTIVE_ITEM_SYNC_STATUS_TTL_MS,
+  type OfflineMaterialListMutation,
+} from "~/lib/offline-material-list-mutations";
 
 const PULL_CURSOR_META_KEY = "material-list-sync-pull-cursor";
 
@@ -46,12 +49,23 @@ export function useMaterialListSyncInspector(materialListId: string) {
         .filter(Boolean)
         .sort()[0] ?? null;
 
+      const now = Date.now();
+      const freshActiveRows = activeRows.filter(
+        (row) =>
+          typeof row.updatedAt === "number" &&
+          now - row.updatedAt <= ACTIVE_ITEM_SYNC_STATUS_TTL_MS,
+      );
+      const freshSyncingIds = syncingRows
+        .filter((row) => typeof row.updatedAt === "number" && now - row.updatedAt <= 2 * 60 * 1000)
+        .map((row) => row.id);
+
       return {
         queuedCount: mutations.length,
         queuedForListCount: mutationsForList.length,
         queuedTypes,
-        syncing: syncingRows.some((row) => row.id === materialListId),
-        activeItemCount: activeRows.length,
+        // A stale syncing row should never keep the badge spinning after the outbox is empty.
+        syncing: mutationsForList.length > 0 && freshSyncingIds.includes(materialListId),
+        activeItemCount: freshActiveRows.length,
         lastPullCursor,
         oldestQueuedAt,
       };

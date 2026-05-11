@@ -69,7 +69,7 @@ function firstName(name: string | null | undefined) {
 }
 
 function isUuid(value: string | null | undefined) {
-  return !!value && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{12}$/i.test(value);
+  return !!value && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }
 
 function parseOfflineSupplierPartId(value: string | null | undefined) {
@@ -103,13 +103,13 @@ import {
   materialListSyncTombstones,
 } from "~/server/db/schema";
 
-async function recalculateQuoteTotals(database: typeof appDb, quoteId: string) {
+async function recalculateQuoteTotals(database: typeof appDb | any, quoteId: string) {
   const allItems = await database
     .select({ extendedPrice: quoteItems.extendedPrice })
     .from(quoteItems)
     .where(eq(quoteItems.quoteId, quoteId));
 
-  const subtotal = allItems.reduce((sum, item) => {
+  const subtotal = allItems.reduce((sum: number, item: { extendedPrice: unknown }) => {
     const price = item.extendedPrice
       ? parseFloat(item.extendedPrice.toString())
       : 0;
@@ -127,7 +127,7 @@ async function recalculateQuoteTotals(database: typeof appDb, quoteId: string) {
   return subtotal;
 }
 
-async function touchMaterialList(database: typeof appDb, materialListId: string) {
+async function touchMaterialList(database: typeof appDb | any, materialListId: string) {
   await database
     .update(materialLists)
     .set({ updatedAt: new Date() })
@@ -135,7 +135,7 @@ async function touchMaterialList(database: typeof appDb, materialListId: string)
 }
 
 async function recordMaterialListItemTombstone(
-  database: typeof appDb,
+  database: typeof appDb | any,
   input: { organizationId: string; materialListId: string; itemId: string },
 ) {
   await database
@@ -155,7 +155,7 @@ const materialListSyncMutationInput = z.discriminatedUnion("type", [
     clientMutationId: z.string().min(1).max(255),
     queuedAt: z.string(),
     localItemId: z.string().min(1).max(255),
-    partDefinitionId: z.string().uuid().optional(),
+    partDefinitionId: z.string().min(1).optional(),
     quantity: z.number().positive(),
     supplierPartId: z.string().optional().nullable(),
     supplierId: z.string().optional().nullable(),
@@ -165,19 +165,28 @@ const materialListSyncMutationInput = z.discriminatedUnion("type", [
     oneOffMaterial: z.string().optional(),
     oneOffSizeNominal: z.number().optional(),
     oneOffSizeUnitId: z.string().uuid().optional(),
+    partDefinitionSnapshot: z
+      .object({
+        id: z.string(),
+        displayName: z.string(),
+        imageUrl: z.string().nullable(),
+        material: z.string().nullable(),
+      })
+      .optional()
+      .nullable(),
   }),
   z.object({
     type: z.literal("updateItemQuantity"),
     clientMutationId: z.string().min(1).max(255),
     queuedAt: z.string(),
-    itemId: z.string().uuid(),
+    itemId: z.string().min(1).max(255),
     quantity: z.number().positive(),
   }),
   z.object({
     type: z.literal("updateItemSupplierPart"),
     clientMutationId: z.string().min(1).max(255),
     queuedAt: z.string(),
-    itemId: z.string().uuid(),
+    itemId: z.string().min(1).max(255),
     supplierPartId: z.string().nullable(),
     supplierId: z.string().optional().nullable(),
   }),
@@ -185,7 +194,7 @@ const materialListSyncMutationInput = z.discriminatedUnion("type", [
     type: z.literal("removeItem"),
     clientMutationId: z.string().min(1).max(255),
     queuedAt: z.string(),
-    itemId: z.string().uuid(),
+    itemId: z.string().min(1).max(255),
   }),
   z.object({
     type: z.literal("renameMaterialList"),
@@ -1613,6 +1622,15 @@ export const materialListRouter = createTRPCRouter({
         });
       }
 
+      console.log("[material-list-sync] request", {
+        materialListId: input.materialListId,
+        mutationCount: input.mutations.length,
+        mutationTypes: input.mutations.map((mutation) => mutation.type),
+        clientMutationIds: input.mutations.map((mutation) => mutation.clientMutationId),
+        organizationId: ctx.user.organizationId,
+        userId: ctx.userId,
+      });
+
       const [materialList] = await ctx.db
         .select({ id: materialLists.id, quoteId: materialLists.quoteId })
         .from(materialLists)
@@ -1625,267 +1643,332 @@ export const materialListRouter = createTRPCRouter({
         .limit(1);
 
       if (!materialList?.quoteId) {
+        console.warn("[material-list-sync] material list not found", {
+          materialListId: input.materialListId,
+          organizationId: ctx.user.organizationId,
+          knownRecentLists: await ctx.db
+            .select({ id: materialLists.id, name: materialLists.name, jobId: materialLists.jobId })
+            .from(materialLists)
+            .where(eq(materialLists.organizationId, ctx.user.organizationId))
+            .orderBy(desc(materialLists.updatedAt))
+            .limit(8),
+        });
         throw new TRPCError({
           code: "NOT_FOUND",
           message: "Material list not found",
         });
       }
 
-      const applied: Array<{
-        clientMutationId: string;
-        type: string;
-        localItemId?: string;
-        serverItemId?: string | null;
-        duplicate?: boolean;
-      }> = [];
-      const failed: Array<{ clientMutationId: string; message: string }> = [];
-      const batchItemIdMap = new Map<string, string>();
-      let needsTotalRecalc = false;
+      const syncResult = await ctx.db.transaction(async (tx) => {
+        const applied: Array<{
+          clientMutationId: string;
+          type: string;
+          localItemId?: string;
+          serverItemId?: string | null;
+          duplicate?: boolean;
+        }> = [];
+        const failed: Array<{ clientMutationId: string; message: string }> = [];
+        const batchItemIdMap = new Map<string, string>();
+        let needsTotalRecalc = false;
 
-      for (const mutation of input.mutations) {
-        const [existing] = await ctx.db
-          .select({
-            serverItemId: materialListSyncMutations.serverItemId,
-            clientItemId: materialListSyncMutations.clientItemId,
-            mutationType: materialListSyncMutations.mutationType,
-          })
-          .from(materialListSyncMutations)
-          .where(
-            and(
-              eq(materialListSyncMutations.organizationId, ctx.user.organizationId),
-              eq(materialListSyncMutations.clientMutationId, mutation.clientMutationId),
-            ),
-          )
-          .limit(1);
+        const resolveServerItemId = async (clientOrServerItemId: string) => {
+          const batchMapped = batchItemIdMap.get(clientOrServerItemId);
+          if (batchMapped) return batchMapped;
+          if (isUuid(clientOrServerItemId)) return clientOrServerItemId;
 
-        if (existing) {
-          if (existing.clientItemId && existing.serverItemId) {
-            batchItemIdMap.set(existing.clientItemId, existing.serverItemId);
+          const [existingMapping] = await tx
+            .select({ serverItemId: materialListSyncMutations.serverItemId })
+            .from(materialListSyncMutations)
+            .where(
+              and(
+                eq(materialListSyncMutations.organizationId, ctx.user.organizationId),
+                eq(materialListSyncMutations.materialListId, input.materialListId),
+                eq(materialListSyncMutations.clientItemId, clientOrServerItemId),
+              ),
+            )
+            .limit(1);
+
+          if (existingMapping?.serverItemId) {
+            batchItemIdMap.set(clientOrServerItemId, existingMapping.serverItemId);
+            return existingMapping.serverItemId;
           }
-          applied.push({
-            clientMutationId: mutation.clientMutationId,
-            type: existing.mutationType,
-            localItemId: existing.clientItemId ?? undefined,
-            serverItemId: existing.serverItemId,
-            duplicate: true,
-          });
-          continue;
-        }
 
-        try {
-          let serverItemId: string | null = null;
-          let clientItemId: string | null = null;
+          throw new Error("No server item mapping for local item id");
+        };
 
-          switch (mutation.type) {
-            case "addItem": {
-              if (!mutation.partDefinitionId && !mutation.oneOffDisplayName) {
-                throw new Error("Add item requires a part definition or one-off name");
+        for (const mutation of input.mutations) {
+          const [existing] = await tx
+            .select({
+              serverItemId: materialListSyncMutations.serverItemId,
+              clientItemId: materialListSyncMutations.clientItemId,
+              mutationType: materialListSyncMutations.mutationType,
+            })
+            .from(materialListSyncMutations)
+            .where(
+              and(
+                eq(materialListSyncMutations.organizationId, ctx.user.organizationId),
+                eq(materialListSyncMutations.clientMutationId, mutation.clientMutationId),
+              ),
+            )
+            .limit(1);
+
+          if (existing) {
+            if (existing.clientItemId && existing.serverItemId) {
+              batchItemIdMap.set(existing.clientItemId, existing.serverItemId);
+            }
+            applied.push({
+              clientMutationId: mutation.clientMutationId,
+              type: existing.mutationType,
+              localItemId: existing.clientItemId ?? undefined,
+              serverItemId: existing.serverItemId,
+              duplicate: true,
+            });
+            continue;
+          }
+
+          try {
+            let serverItemId: string | null = null;
+            let clientItemId: string | null = null;
+
+            switch (mutation.type) {
+              case "addItem": {
+                if (
+                  !mutation.partDefinitionId &&
+                  !mutation.oneOffDisplayName &&
+                  !mutation.partDefinitionSnapshot?.displayName
+                ) {
+                  throw new Error("Add item requires a part definition, snapshot, or one-off name");
+                }
+
+                let unitCost = mutation.unitCost?.toString() ?? null;
+                let descriptionSnapshot =
+                  mutation.oneOffDisplayName ?? mutation.partDefinitionSnapshot?.displayName ?? "";
+                const offlineSupplierPart = parseOfflineSupplierPartId(mutation.supplierPartId);
+                const serverSupplierPartId = isUuid(mutation.supplierPartId)
+                  ? mutation.supplierPartId
+                  : null;
+                const serverPartDefinitionId = isUuid(mutation.partDefinitionId)
+                  ? mutation.partDefinitionId
+                  : null;
+                const resolvedSupplierId =
+                  mutation.supplierId ?? offlineSupplierPart?.supplierId ?? null;
+
+                if (serverPartDefinitionId) {
+                  const [partDef] = await tx
+                    .select({ displayName: partDefinitions.displayName })
+                    .from(partDefinitions)
+                    .where(eq(partDefinitions.id, serverPartDefinitionId))
+                    .limit(1);
+
+                  if (!partDef) throw new Error("Part definition not found");
+                  descriptionSnapshot = partDef.displayName;
+
+                  if (serverSupplierPartId) {
+                    const [supplierPart] = await tx
+                      .select({ lastKnownUnitCost: supplierParts.lastKnownUnitCost })
+                      .from(supplierParts)
+                      .where(eq(supplierParts.id, serverSupplierPartId))
+                      .limit(1);
+                    unitCost = supplierPart?.lastKnownUnitCost ?? unitCost;
+                  }
+                }
+
+                if (!serverPartDefinitionId && !descriptionSnapshot) {
+                  throw new Error("Add item requires a server part definition or snapshot name");
+                }
+
+                const cost = unitCost ? parseFloat(unitCost.toString()) : 0;
+                const extendedPrice = mutation.quantity * cost;
+                const [quoteItem] = await tx
+                  .insert(quoteItems)
+                  .values({
+                    quoteId: materialList.quoteId,
+                    supplierPartId: serverSupplierPartId,
+                    supplierId: resolvedSupplierId,
+                    partDefinitionId: serverPartDefinitionId,
+                    quantity: mutation.quantity.toString(),
+                    unitCost,
+                    extendedPrice: extendedPrice.toString(),
+                    descriptionSnapshot,
+                    oneOffDisplayName: mutation.oneOffDisplayName ?? null,
+                    oneOffDescription: mutation.oneOffDescription ?? null,
+                    oneOffMaterial: mutation.oneOffMaterial ?? null,
+                    oneOffSizeNominal:
+                      mutation.oneOffSizeNominal !== undefined
+                        ? mutation.oneOffSizeNominal.toString()
+                        : null,
+                    oneOffSizeUnitId: mutation.oneOffSizeUnitId ?? null,
+                    addedByUserId: ctx.userId,
+                  })
+                  .returning({ id: quoteItems.id });
+
+                if (!quoteItem) throw new Error("Failed to create quote item");
+                serverItemId = quoteItem.id;
+                clientItemId = mutation.localItemId;
+                batchItemIdMap.set(mutation.localItemId, quoteItem.id);
+                needsTotalRecalc = true;
+                break;
               }
-
-              let unitCost = mutation.unitCost?.toString() ?? null;
-              let descriptionSnapshot = mutation.oneOffDisplayName ?? "";
-              const offlineSupplierPart = parseOfflineSupplierPartId(mutation.supplierPartId);
-              const serverSupplierPartId = isUuid(mutation.supplierPartId)
-                ? mutation.supplierPartId
-                : null;
-              const resolvedSupplierId =
-                mutation.supplierId ?? offlineSupplierPart?.supplierId ?? null;
-
-              if (mutation.partDefinitionId) {
-                const [partDef] = await ctx.db
-                  .select({ displayName: partDefinitions.displayName })
-                  .from(partDefinitions)
-                  .where(eq(partDefinitions.id, mutation.partDefinitionId))
+              case "updateItemQuantity": {
+                const resolvedItemId = await resolveServerItemId(mutation.itemId);
+                const [item] = await tx
+                  .select({ quoteId: quoteItems.quoteId, unitCost: quoteItems.unitCost })
+                  .from(quoteItems)
+                  .where(eq(quoteItems.id, resolvedItemId))
                   .limit(1);
+                if (!item || item.quoteId !== materialList.quoteId) {
+                  throw new Error("Quote item not found for quantity update");
+                }
 
-                if (!partDef) throw new Error("Part definition not found");
-                descriptionSnapshot = partDef.displayName;
+                const cost = item.unitCost ? parseFloat(item.unitCost.toString()) : 0;
+                await tx
+                  .update(quoteItems)
+                  .set({
+                    quantity: mutation.quantity.toString(),
+                    extendedPrice: (mutation.quantity * cost).toString(),
+                    updatedAt: new Date(),
+                  })
+                  .where(eq(quoteItems.id, resolvedItemId));
+                serverItemId = resolvedItemId;
+                clientItemId = mutation.itemId;
+                needsTotalRecalc = true;
+                break;
+              }
+              case "updateItemSupplierPart": {
+                const resolvedItemId = await resolveServerItemId(mutation.itemId);
+                const [item] = await tx
+                  .select({ quoteId: quoteItems.quoteId, quantity: quoteItems.quantity })
+                  .from(quoteItems)
+                  .where(eq(quoteItems.id, resolvedItemId))
+                  .limit(1);
+                if (!item || item.quoteId !== materialList.quoteId) {
+                  throw new Error("Quote item not found for supplier update");
+                }
+
+                let unitCost: string | null = null;
+                const offlineSupplierPart = parseOfflineSupplierPartId(mutation.supplierPartId);
+                const serverSupplierPartId = isUuid(mutation.supplierPartId)
+                  ? mutation.supplierPartId
+                  : null;
+                const resolvedSupplierId =
+                  mutation.supplierId ?? offlineSupplierPart?.supplierId ?? null;
 
                 if (serverSupplierPartId) {
-                  const [supplierPart] = await ctx.db
+                  const [supplierPart] = await tx
                     .select({ lastKnownUnitCost: supplierParts.lastKnownUnitCost })
                     .from(supplierParts)
                     .where(eq(supplierParts.id, serverSupplierPartId))
                     .limit(1);
-                  unitCost = supplierPart?.lastKnownUnitCost ?? unitCost;
+                  unitCost = supplierPart?.lastKnownUnitCost ?? null;
                 }
-              }
 
-              const cost = unitCost ? parseFloat(unitCost.toString()) : 0;
-              const extendedPrice = mutation.quantity * cost;
-              const [quoteItem] = await ctx.db
-                .insert(quoteItems)
-                .values({
-                  quoteId: materialList.quoteId,
-                  supplierPartId: serverSupplierPartId,
-                  supplierId: resolvedSupplierId,
-                  partDefinitionId: mutation.partDefinitionId ?? null,
-                  quantity: mutation.quantity.toString(),
-                  unitCost,
-                  extendedPrice: extendedPrice.toString(),
-                  descriptionSnapshot,
-                  oneOffDisplayName: mutation.oneOffDisplayName ?? null,
-                  oneOffDescription: mutation.oneOffDescription ?? null,
-                  oneOffMaterial: mutation.oneOffMaterial ?? null,
-                  oneOffSizeNominal:
-                    mutation.oneOffSizeNominal !== undefined
-                      ? mutation.oneOffSizeNominal.toString()
-                      : null,
-                  oneOffSizeUnitId: mutation.oneOffSizeUnitId ?? null,
-                  addedByUserId: ctx.userId,
-                })
-                .returning({ id: quoteItems.id });
-
-              if (!quoteItem) throw new Error("Failed to create quote item");
-              serverItemId = quoteItem.id;
-              clientItemId = mutation.localItemId;
-              batchItemIdMap.set(mutation.localItemId, quoteItem.id);
-              needsTotalRecalc = true;
-              break;
-            }
-            case "updateItemQuantity": {
-              const resolvedItemId = batchItemIdMap.get(mutation.itemId) ?? mutation.itemId;
-              const [item] = await ctx.db
-                .select({ quoteId: quoteItems.quoteId, unitCost: quoteItems.unitCost })
-                .from(quoteItems)
-                .where(eq(quoteItems.id, resolvedItemId))
-                .limit(1);
-              if (!item || item.quoteId !== materialList.quoteId) {
+                const quantity = item.quantity ? parseFloat(item.quantity.toString()) : 0;
+                const cost = unitCost ? parseFloat(unitCost.toString()) : 0;
+                await tx
+                  .update(quoteItems)
+                  .set({
+                    supplierPartId: serverSupplierPartId,
+                    supplierId: resolvedSupplierId,
+                    unitCost,
+                    extendedPrice: (quantity * cost).toString(),
+                    updatedAt: new Date(),
+                  })
+                  .where(eq(quoteItems.id, resolvedItemId));
                 serverItemId = resolvedItemId;
                 clientItemId = mutation.itemId;
-                break;
-              }
-
-              const cost = item.unitCost ? parseFloat(item.unitCost.toString()) : 0;
-              await ctx.db
-                .update(quoteItems)
-                .set({
-                  quantity: mutation.quantity.toString(),
-                  extendedPrice: (mutation.quantity * cost).toString(),
-                  updatedAt: new Date(),
-                })
-                .where(eq(quoteItems.id, resolvedItemId));
-              serverItemId = resolvedItemId;
-              clientItemId = mutation.itemId;
-              needsTotalRecalc = true;
-              break;
-            }
-            case "updateItemSupplierPart": {
-              const resolvedItemId = batchItemIdMap.get(mutation.itemId) ?? mutation.itemId;
-              const [item] = await ctx.db
-                .select({ quoteId: quoteItems.quoteId, quantity: quoteItems.quantity })
-                .from(quoteItems)
-                .where(eq(quoteItems.id, resolvedItemId))
-                .limit(1);
-              if (!item || item.quoteId !== materialList.quoteId) {
-                serverItemId = resolvedItemId;
-                clientItemId = mutation.itemId;
-                break;
-              }
-
-              let unitCost: string | null = null;
-              const offlineSupplierPart = parseOfflineSupplierPartId(mutation.supplierPartId);
-              const serverSupplierPartId = isUuid(mutation.supplierPartId)
-                ? mutation.supplierPartId
-                : null;
-              const resolvedSupplierId =
-                mutation.supplierId ?? offlineSupplierPart?.supplierId ?? null;
-
-              if (serverSupplierPartId) {
-                const [supplierPart] = await ctx.db
-                  .select({ lastKnownUnitCost: supplierParts.lastKnownUnitCost })
-                  .from(supplierParts)
-                  .where(eq(supplierParts.id, serverSupplierPartId))
-                  .limit(1);
-                unitCost = supplierPart?.lastKnownUnitCost ?? null;
-              }
-
-              const quantity = item.quantity ? parseFloat(item.quantity.toString()) : 0;
-              const cost = unitCost ? parseFloat(unitCost.toString()) : 0;
-              await ctx.db
-                .update(quoteItems)
-                .set({
-                  supplierPartId: serverSupplierPartId,
-                  supplierId: resolvedSupplierId,
-                  unitCost,
-                  extendedPrice: (quantity * cost).toString(),
-                  updatedAt: new Date(),
-                })
-                .where(eq(quoteItems.id, resolvedItemId));
-              serverItemId = resolvedItemId;
-              clientItemId = mutation.itemId;
-              needsTotalRecalc = true;
-              break;
-            }
-            case "removeItem": {
-              const resolvedItemId = batchItemIdMap.get(mutation.itemId) ?? mutation.itemId;
-              const [item] = await ctx.db
-                .select({ quoteId: quoteItems.quoteId })
-                .from(quoteItems)
-                .where(eq(quoteItems.id, resolvedItemId))
-                .limit(1);
-              if (item?.quoteId === materialList.quoteId) {
-                await ctx.db.delete(quoteItems).where(eq(quoteItems.id, resolvedItemId));
-                await recordMaterialListItemTombstone(ctx.db, {
-                  organizationId: ctx.user.organizationId,
-                  materialListId: input.materialListId,
-                  itemId: resolvedItemId,
-                });
                 needsTotalRecalc = true;
+                break;
               }
-              serverItemId = resolvedItemId;
-              clientItemId = mutation.itemId;
-              break;
+              case "removeItem": {
+                clientItemId = mutation.itemId;
+
+                try {
+                  const resolvedItemId = await resolveServerItemId(mutation.itemId);
+                  const [item] = await tx
+                    .select({ quoteId: quoteItems.quoteId })
+                    .from(quoteItems)
+                    .where(eq(quoteItems.id, resolvedItemId))
+                    .limit(1);
+                  if (item?.quoteId === materialList.quoteId) {
+                    await tx.delete(quoteItems).where(eq(quoteItems.id, resolvedItemId));
+                    await recordMaterialListItemTombstone(tx, {
+                      organizationId: ctx.user.organizationId,
+                      materialListId: input.materialListId,
+                      itemId: resolvedItemId,
+                    });
+                    needsTotalRecalc = true;
+                  }
+                  serverItemId = resolvedItemId;
+                } catch (error) {
+                  if (
+                    isUuid(mutation.itemId) ||
+                    !(error instanceof Error) ||
+                    error.message !== "No server item mapping for local item id"
+                  ) {
+                    throw error;
+                  }
+
+                  // A queued remove for a local-only item means the item was never
+                  // created on the server (for example after add/remove queue
+                  // compaction or an older stale client queue). Treat it as an
+                  // idempotent no-op so sync can clear the mutation instead of
+                  // dead-lettering forever.
+                  serverItemId = null;
+                }
+                break;
+              }
+              case "renameMaterialList": {
+                await tx
+                  .update(materialLists)
+                  .set({ name: mutation.name })
+                  .where(eq(materialLists.id, input.materialListId));
+                break;
+              }
             }
-            case "renameMaterialList": {
-              await ctx.db
-                .update(materialLists)
-                .set({ name: mutation.name })
-                .where(eq(materialLists.id, input.materialListId));
-              break;
-            }
+
+            await tx.insert(materialListSyncMutations).values({
+              organizationId: ctx.user.organizationId,
+              userId: ctx.userId,
+              materialListId: input.materialListId,
+              clientMutationId: mutation.clientMutationId,
+              mutationType: mutation.type,
+              serverItemId,
+              clientItemId,
+              payload: mutation,
+            });
+
+            applied.push({
+              clientMutationId: mutation.clientMutationId,
+              type: mutation.type,
+              localItemId: clientItemId ?? undefined,
+              serverItemId,
+            });
+          } catch (error) {
+            const message = error instanceof Error ? error.message : "Sync mutation failed";
+            console.warn("Material-list sync mutation failed", {
+              materialListId: input.materialListId,
+              clientMutationId: mutation.clientMutationId,
+              type: mutation.type,
+              message,
+            });
+            failed.push({ clientMutationId: mutation.clientMutationId, message });
           }
-
-          await ctx.db.insert(materialListSyncMutations).values({
-            organizationId: ctx.user.organizationId,
-            userId: ctx.userId,
-            materialListId: input.materialListId,
-            clientMutationId: mutation.clientMutationId,
-            mutationType: mutation.type,
-            serverItemId,
-            clientItemId,
-            payload: mutation,
-          });
-
-          applied.push({
-            clientMutationId: mutation.clientMutationId,
-            type: mutation.type,
-            localItemId: clientItemId ?? undefined,
-            serverItemId,
-          });
-        } catch (error) {
-          const message = error instanceof Error ? error.message : "Sync mutation failed";
-          console.warn("Material-list sync mutation failed", {
-            materialListId: input.materialListId,
-            clientMutationId: mutation.clientMutationId,
-            type: mutation.type,
-            message,
-          });
-          failed.push({ clientMutationId: mutation.clientMutationId, message });
         }
-      }
 
-      if (needsTotalRecalc) {
-        await recalculateQuoteTotals(ctx.db, materialList.quoteId);
-      }
-      if (applied.length > 0) {
-        await touchMaterialList(ctx.db, input.materialListId);
-      }
-      if (applied.length > 0) {
+        if (needsTotalRecalc) {
+          await recalculateQuoteTotals(tx, materialList.quoteId);
+        }
+        if (applied.length > 0) {
+          await touchMaterialList(tx, input.materialListId);
+        }
+        return { applied, failed };
+      });
+
+      if (syncResult.applied.length > 0) {
         publishMaterialListEvent(input.materialListId);
       }
 
-      return { applied, failed };
+      return syncResult;
     }),
 
   pullMaterialListSyncChanges: hasDashboardAccess
@@ -1904,7 +1987,6 @@ export const materialListRouter = createTRPCRouter({
       }
 
       const since = input.since ? new Date(input.since) : new Date(0);
-      const now = new Date();
       const scopedMaterialListIds = input.materialListIds?.length
         ? Array.from(new Set(input.materialListIds))
         : null;
@@ -1967,9 +2049,17 @@ export const materialListRouter = createTRPCRouter({
           ...tombstones.map((row) => row.materialListId),
         ]),
       );
+      const maxReturnedTimestamp = [
+        ...changedLists.map((row) => row.updatedAt),
+        ...changedItems.map((row) => row.updatedAt),
+        ...tombstones.map((row) => row.deletedAt),
+      ]
+        .filter((value): value is Date => value instanceof Date)
+        .sort((a, b) => a.getTime() - b.getTime())
+        .at(-1);
 
       return {
-        cursor: now.toISOString(),
+        cursor: (maxReturnedTimestamp ?? since).toISOString(),
         changedMaterialListIds,
         tombstones: tombstones.map((row) => ({
           materialListId: row.materialListId,

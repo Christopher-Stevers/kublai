@@ -202,10 +202,14 @@ export function useOfflineMaterialList(
           (current?.pendingDeletedItemIds?.length ?? 0) > 0;
 
         if (hasQueuedChangesForList || hasPendingDeletedItems) {
-          await setOfflineMaterialList(materialListId, serverData, {
-            pendingSync: true,
-            pendingDeletedItemIds: current?.pendingDeletedItemIds ?? [],
-          });
+          await setOfflineMaterialList(
+            materialListId,
+            projectMaterialListWithMutations(serverData, queueForList),
+            {
+              pendingSync: true,
+              pendingDeletedItemIds: current?.pendingDeletedItemIds ?? [],
+            },
+          );
           if (!cancelled) {
             setCached(await getOfflineMaterialList(materialListId));
           }

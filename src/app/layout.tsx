@@ -6,6 +6,7 @@ import { Geist } from "next/font/google";
 import { SessionProviderWrapper } from "./_components/SessionProviderWrapper";
 import { TRPCReactProvider } from "~/trpc/react";
 import { APP_NAME } from "~/constants/app";
+import { ClientConsoleErrorReporter } from "~/components/debug/ClientConsoleErrorReporter";
 import { OfflineSyncBootstrap } from "~/components/offline/OfflineSyncBootstrap";
 import { ServiceWorkerRegistration } from "~/components/offline/ServiceWorkerRegistration";
 
@@ -65,6 +66,7 @@ export default function RootLayout({
       <body>
         <SessionProviderWrapper>
           <TRPCReactProvider>
+            <ClientConsoleErrorReporter />
             <ServiceWorkerRegistration />
             <OfflineSyncBootstrap />
             {children}

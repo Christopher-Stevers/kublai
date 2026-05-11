@@ -349,9 +349,20 @@ export default function MaterialListDetailPage({
   const hasUnsyncedItems = Array.from(itemSyncStatuses.values()).some(
     (status) => status !== "synced",
   );
+  const inspectorHasPendingWork =
+    syncInspector.queuedForListCount > 0 || syncInspector.activeItemCount > 0 || !!cached?.pendingSync;
+  const inspectorLooksSettled =
+    !syncInspector.syncing &&
+    syncInspector.queuedForListCount === 0 &&
+    syncInspector.activeItemCount === 0 &&
+    !cached?.pendingSync;
   const visibleSyncStatus: MaterialListSyncStatus = syncInspector.syncing
     ? "syncing"
-    : syncStatus;
+    : inspectorHasPendingWork
+      ? "pending"
+      : inspectorLooksSettled
+        ? "synced"
+        : syncStatus;
   const displayedAndServerMaterialListMatch =
     !!materialList &&
     !!serverMaterialList &&

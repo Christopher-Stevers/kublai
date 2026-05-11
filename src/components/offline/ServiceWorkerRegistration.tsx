@@ -39,6 +39,16 @@ export function ServiceWorkerRegistration() {
 
     const register = async () => {
       try {
+        if (process.env.NODE_ENV !== "production") {
+          const registrations = await navigator.serviceWorker.getRegistrations();
+          await Promise.all(registrations.map((registration) => registration.unregister()));
+          if (window.caches) {
+            const keys = await window.caches.keys();
+            await Promise.all(keys.map((key) => window.caches.delete(key)));
+          }
+          return;
+        }
+
         let reloadedForControllerChange = false;
         navigator.serviceWorker.addEventListener("controllerchange", () => {
           if (reloadedForControllerChange) return;
