@@ -114,6 +114,9 @@ export function useOfflineJobsList(serverData?: OfflineJobSummary[]) {
     const filterDeletedJobs = (jobs: OfflineJobSummary[] | null | undefined) =>
       jobs?.filter((job) => !pendingDeletedJobIds.has(job.id)) ?? jobs ?? null;
 
+    // Server is canonical online; cached jobs are the offline/outbox overlay
+    // after mergeServerJobsIntoOfflineCache has protected pending local rows.
+    if (isOnline && serverData) return filterDeletedJobs(cached ?? serverData);
     if (cacheLoaded && cached) return filterDeletedJobs(cached);
     if (!isOnline) return cacheLoaded ? filterDeletedJobs(cached) : null;
     return filterDeletedJobs(cached ?? null);
@@ -263,6 +266,27 @@ export function useOfflineJobDetail(
             list.createdAt,
           ),
         }));
+
+    if (isOnline && serverJob && serverMaterialLists) {
+      const serverListIds = new Set(serverMaterialLists.map((list) => list.id));
+      const pendingLocalMaterialLists =
+        cached?.materialLists.filter((list) => {
+          if (serverListIds.has(list.id)) return false;
+          return getOfflineEntityMutationQueue().some(
+            (mutation) =>
+              mutation.type === "createMaterialList" &&
+              mutation.localMaterialListId === list.id,
+          );
+        }) ?? [];
+
+      return {
+        job: serverJob,
+        materialLists: filterDeletedMaterialLists([
+          ...pendingLocalMaterialLists,
+          ...serverMaterialLists,
+        ]),
+      };
+    }
 
     if (cacheLoaded && cached) {
       return {
