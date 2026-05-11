@@ -31,6 +31,7 @@ import {
 } from "~/hooks/use-offline-material-list";
 import { useOnlineStatus } from "~/hooks/use-online-status";
 import { useDexieCloudSyncState } from "~/hooks/use-dexie-cloud-sync-state";
+import { useMaterialListRealtimeEvents } from "~/hooks/use-material-list-realtime-events";
 import { useMaterialListSyncInspector } from "~/hooks/use-material-list-sync-inspector";
 import {
   OFFLINE_ID_MAP_CHANGED_EVENT,
@@ -241,6 +242,7 @@ export default function MaterialListDetailPage({
   const isBrowserOnline = useOnlineStatus();
   const dexieCloudSync = useDexieCloudSyncState();
   const syncInspector = useMaterialListSyncInspector(id);
+  useMaterialListRealtimeEvents(isUuid(id) ? id : undefined);
 
   const openAddPartDialog = () => {
     markUserAction("add-part-open", { materialListId: id });

@@ -12,7 +12,7 @@ type MaterialListRealtimeEvent = {
   changedAt: string;
 };
 
-export function useMaterialListRealtimeEvents() {
+export function useMaterialListRealtimeEvents(materialListId?: string) {
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (!window.EventSource) return;
@@ -23,7 +23,10 @@ export function useMaterialListRealtimeEvents() {
 
     const connect = () => {
       source?.close();
-      source = new EventSource("/api/material-lists/events");
+      const url = materialListId
+        ? `/api/material-lists/${encodeURIComponent(materialListId)}/events`
+        : "/api/material-lists/events";
+      source = new EventSource(url);
 
       source.addEventListener("material-list-updated", (message) => {
         let event: MaterialListRealtimeEvent | null = null;
@@ -67,5 +70,5 @@ export function useMaterialListRealtimeEvents() {
       if (reconnectTimer) clearTimeout(reconnectTimer);
       source?.close();
     };
-  }, []);
+  }, [materialListId]);
 }
