@@ -41,6 +41,7 @@ import {
   applyOfflineRemoveItem,
   enqueueOfflineMutation,
 } from "~/lib/offline-material-list-mutations";
+import { setOfflineMaterialList } from "~/lib/offline-material-list";
 import { markUserAction } from "~/lib/performance-marks";
 
 function MaterialListSyncBadge({
@@ -269,16 +270,6 @@ export default function MaterialListDetailPage({
       );
   }, [id, router]);
 
-  const serverMaterialListQuery = api.materialList.getMaterialList.useQuery(
-    { materialListId: id },
-    {
-      enabled: isBrowserOnline && isUuid(id),
-      retry: false,
-    },
-  );
-  const serverMaterialList = serverMaterialListQuery.data;
-  const isLoading = serverMaterialListQuery.isLoading;
-
   const {
     data: materialList,
     cached,
@@ -287,7 +278,24 @@ export default function MaterialListDetailPage({
     isOnline,
     syncStatus,
     itemSyncStatuses,
-  } = useOfflineMaterialList(id, serverMaterialList);
+  } = useOfflineMaterialList(id);
+
+  const serverMaterialListQuery = api.materialList.getMaterialList.useQuery(
+    { materialListId: id },
+    {
+      enabled: isBrowserOnline && isUuid(id) && cacheLoaded && !cached?.data,
+      retry: false,
+    },
+  );
+  const serverMaterialList = serverMaterialListQuery.data;
+  const isLoading = serverMaterialListQuery.isLoading;
+
+  useEffect(() => {
+    if (cached?.data || !serverMaterialListQuery.data) return;
+    void setOfflineMaterialList(id, serverMaterialListQuery.data, {
+      pendingSync: false,
+    });
+  }, [cached?.data, id, serverMaterialListQuery.data]);
 
   const { data: userData } = api.user.getMyRole.useQuery(undefined, {
     enabled: isBrowserOnline,

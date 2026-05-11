@@ -14,10 +14,12 @@ import {
 } from "~/lib/offline-material-list";
 import {
   OFFLINE_MATERIAL_LIST_SYNC_EVENT,
+  getLastMaterialListLocalEditAt,
   getOfflineMutationQueue,
   getQueuedItemIdsForMaterialList,
   getQueuedMaterialListIds,
   notifyOfflineMaterialListSyncStateChanged,
+  RECENT_LOCAL_EDIT_TTL_MS,
   removeOfflineMutationsFromQueue,
   remapOfflineMaterialListItemId,
   remapOfflineMutationMaterialListId,
@@ -527,7 +529,8 @@ export function useOfflineMaterialListSyncRunner() {
                   (mutation) => mutation.materialListId === list.id,
                 );
                 const existing = await getOfflineMaterialList(list.id);
-                if (queuedForList || existing?.pendingSync) continue;
+                if (queuedForList || existing?.pendingSync || existing?.data)
+                  continue;
 
                 try {
                   const serverList = (await withSyncTimeout(
@@ -1275,8 +1278,12 @@ export function useOfflineMaterialListSyncRunner() {
             // snapshot is authoritative and must clear pendingSync. Only preserve
             // local data over the server snapshot when genuinely new local work was
             // queued while this run was already in flight.
+            const localEditedRecently =
+              Date.now() - getLastMaterialListLocalEditAt(materialListId) <
+              RECENT_LOCAL_EDIT_TTL_MS;
             const shouldPreserveLocalInFlightChange =
               queuedForList.length > 0 ||
+              localEditedRecently ||
               (hasNewQueuedWorkForList && localChangedDuringThisRun);
 
             const hydratedData =
@@ -1304,6 +1311,7 @@ export function useOfflineMaterialListSyncRunner() {
                 pendingForList: queuedForList.length,
                 localChangedDuringThisRun,
                 hasNewQueuedWorkForList,
+                localEditedRecently,
                 tombstonedItemIds: Array.from(tombstonedItemIds),
               },
             });
