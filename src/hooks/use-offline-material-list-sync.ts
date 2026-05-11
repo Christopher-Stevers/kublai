@@ -519,6 +519,37 @@ export function useOfflineMaterialListSyncRunner() {
                   materialLists,
                 ),
               });
+
+              for (const list of materialLists ?? []) {
+                if (!isUuid(list.id)) continue;
+                const latestQueue = await getOfflineMutationQueue();
+                const queuedForList = latestQueue.some(
+                  (mutation) => mutation.materialListId === list.id,
+                );
+                const existing = await getOfflineMaterialList(list.id);
+                if (queuedForList || existing?.pendingSync) continue;
+
+                try {
+                  const serverList = (await withSyncTimeout(
+                    utils.materialList.getMaterialList.fetch({
+                      materialListId: list.id,
+                    }),
+                    `getMaterialList(${list.id})`,
+                  )) as OfflineMaterialListRecord;
+                  await setOfflineMaterialList(list.id, serverList, {
+                    pendingSync: false,
+                  });
+                } catch (error) {
+                  if (isMaterialListNotFoundError(error)) {
+                    debugOfflineSync("skip-missing-parent-material-list", {
+                      materialListId: list.id,
+                      jobId,
+                    });
+                    continue;
+                  }
+                  throw error;
+                }
+              }
               detailPulls += 1;
             } catch (error) {
               const message =

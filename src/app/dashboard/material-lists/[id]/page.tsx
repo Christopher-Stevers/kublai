@@ -87,7 +87,9 @@ function MaterialListSyncBadge({
 
   return (
     <details className="relative h-6 min-w-[5.75rem] shrink-0 overflow-visible leading-none">
-      <summary className={`${badgeClass} cursor-pointer list-none [&::-webkit-details-marker]:hidden`}>
+      <summary
+        className={`${badgeClass} cursor-pointer list-none [&::-webkit-details-marker]:hidden`}
+      >
         {style.icon}
         <span className="leading-none">{style.label}</span>
       </summary>
@@ -100,17 +102,24 @@ function MaterialListSyncBadge({
           <div>Total queue: {syncInspector.queuedCount}</div>
           <div>Active item badges: {syncInspector.activeItemCount}</div>
           {syncInspector.oldestQueuedAt && (
-            <div>Oldest queued: {new Date(syncInspector.oldestQueuedAt).toLocaleString()}</div>
+            <div>
+              Oldest queued:{" "}
+              {new Date(syncInspector.oldestQueuedAt).toLocaleString()}
+            </div>
           )}
           {Object.keys(syncInspector.queuedTypes).length > 0 && (
             <div>
-              Types: {Object.entries(syncInspector.queuedTypes)
+              Types:{" "}
+              {Object.entries(syncInspector.queuedTypes)
                 .map(([type, count]) => `${type}×${count}`)
                 .join(", ")}
             </div>
           )}
           {syncInspector.lastPullCursor && (
-            <div>Last pull: {new Date(syncInspector.lastPullCursor).toLocaleString()}</div>
+            <div>
+              Last pull:{" "}
+              {new Date(syncInspector.lastPullCursor).toLocaleString()}
+            </div>
           )}
         </div>
       </div>
@@ -157,6 +166,12 @@ function normalizeQuantity(value: unknown) {
   return Number.isFinite(numeric)
     ? numeric.toFixed(6)
     : normalizeSignatureValue(value);
+}
+
+function isUuid(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{12}$/i.test(
+    value,
+  );
 }
 
 function nestedId(value: unknown) {
@@ -254,8 +269,15 @@ export default function MaterialListDetailPage({
       );
   }, [id, router]);
 
-  const serverMaterialList = undefined;
-  const isLoading = false;
+  const serverMaterialListQuery = api.materialList.getMaterialList.useQuery(
+    { materialListId: id },
+    {
+      enabled: isBrowserOnline && isUuid(id),
+      retry: false,
+    },
+  );
+  const serverMaterialList = serverMaterialListQuery.data;
+  const isLoading = serverMaterialListQuery.isLoading;
 
   const {
     data: materialList,
@@ -337,9 +359,14 @@ export default function MaterialListDetailPage({
         )?.createdBy,
         ...materialList.items.map(
           (item) =>
-            (item as unknown as {
-              addedBy?: { name?: string | null; email?: string | null } | null;
-            }).addedBy,
+            (
+              item as unknown as {
+                addedBy?: {
+                  name?: string | null;
+                  email?: string | null;
+                } | null;
+              }
+            ).addedBy,
         ),
       ]
         .map((user) => user?.name?.trim() || user?.email?.trim() || null)
@@ -350,7 +377,9 @@ export default function MaterialListDetailPage({
     (status) => status !== "synced",
   );
   const inspectorHasPendingWork =
-    syncInspector.queuedForListCount > 0 || syncInspector.activeItemCount > 0 || !!cached?.pendingSync;
+    syncInspector.queuedForListCount > 0 ||
+    syncInspector.activeItemCount > 0 ||
+    !!cached?.pendingSync;
   const inspectorLooksSettled =
     !syncInspector.syncing &&
     syncInspector.queuedForListCount === 0 &&
@@ -635,9 +664,7 @@ export default function MaterialListDetailPage({
                 className="h-9 min-h-9 w-full px-1.5 py-1 text-[11px] leading-tight whitespace-normal sm:h-9 sm:text-xs"
               >
                 <FileTextIcon className="mr-1 h-3.5 w-3.5 shrink-0" />
-                <span className="text-center leading-tight">
-                  Quote
-                </span>
+                <span className="text-center leading-tight">Quote</span>
               </Button>
               <Button
                 onClick={handleGenerateOrder}
@@ -646,9 +673,7 @@ export default function MaterialListDetailPage({
                 className="h-9 min-h-9 w-full px-1.5 py-1 text-[11px] leading-tight whitespace-normal sm:h-9 sm:text-xs"
               >
                 <ShoppingCartIcon className="mr-1 h-3.5 w-3.5 shrink-0" />
-                <span className="text-center leading-tight">
-                  Order
-                </span>
+                <span className="text-center leading-tight">Order</span>
               </Button>
               <Button
                 variant="outline"
@@ -880,7 +905,10 @@ function MaterialListTableView({
                   itemId={item.id}
                   partDefinitionId={item.partDefinition?.id ?? ""}
                   currentSupplierPartId={item.supplierPart?.id}
-                  currentSupplierId={(item as { selectedSupplierId?: string | null }).selectedSupplierId}
+                  currentSupplierId={
+                    (item as { selectedSupplierId?: string | null })
+                      .selectedSupplierId
+                  }
                   materialListId={materialListId}
                   compact
                 />
