@@ -172,27 +172,10 @@ export function useOfflineMaterialList(
       );
       const hasQueuedChangesForList = queueForList.length > 0;
 
-      // Local-first stabilization mode: server data may repair/seed local cache
-      // only when there are no queued local edits. If local mutations exist,
-      // keep the local cache/projection authoritative.
-      if (current?.data && !hasQueuedChangesForList && !current.pendingSync) {
-        const currentItemCount = current.data.items.length;
-        const serverItemCount = serverData.items.length;
-        const currentUpdatedAt = current.data.materialList.updatedAt
-          ? new Date(current.data.materialList.updatedAt).getTime()
-          : 0;
-        const serverUpdatedAt = serverData.materialList.updatedAt
-          ? new Date(serverData.materialList.updatedAt).getTime()
-          : 0;
-
-        if (serverItemCount !== currentItemCount || serverUpdatedAt > currentUpdatedAt) {
-          await setOfflineMaterialList(materialListId, serverData, { pendingSync: false });
-          if (!cancelled) {
-            setCached(await getOfflineMaterialList(materialListId));
-          }
-          return;
-        }
-
+      // Strict local-first stabilization mode: once a material list exists in
+      // Dexie, server props must not rewrite it directly. Sync transport may
+      // push local outbox changes, but UI/local data remains authoritative.
+      if (current?.data) {
         setCached(current);
         return;
       }

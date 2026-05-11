@@ -759,10 +759,19 @@ export function useOfflineMaterialListSyncRunner() {
 
           const appliedIds = new Set(result.applied.map((item) => item.clientMutationId));
           const failedIds = new Set(result.failed.map((item) => item.clientMutationId));
+          const permanentFailedIds = new Set(
+            result.failed
+              .filter((item) => isPermanentSyncFailure(item.message))
+              .map((item) => item.clientMutationId),
+          );
+          const temporaryFailureCount = result.failed.length - permanentFailedIds.size;
           addSyncDebugEvent({
             phase: "server-result",
-            status: result.failed.length > 0 ? "warning" : "success",
-            message: `Server stamped ${result.applied.length} done, ${result.failed.length} failed`,
+            status: temporaryFailureCount > 0 ? "warning" : "success",
+            message:
+              permanentFailedIds.size > 0
+                ? `Server stamped ${result.applied.length} done, ${permanentFailedIds.size} stale sticky note(s) skipped`
+                : `Server stamped ${result.applied.length} done, ${temporaryFailureCount} failed`,
             materialListId,
             mutationIds: mutationsForList
               .map((mutation) => mutation.clientMutationId)
@@ -770,16 +779,11 @@ export function useOfflineMaterialListSyncRunner() {
             queueLength: queue.length,
             details: result,
           });
-          const permanentFailedIds = new Set(
-            result.failed
-              .filter((item) => isPermanentSyncFailure(item.message))
-              .map((item) => item.clientMutationId),
-          );
 
           if (permanentFailedIds.size > 0) {
-            debugOfflineSync("dead-letter-permanent-sync-failures", {
+            debugOfflineSync("dead-letter-permanent-sync-mutations", {
               materialListId,
-              failures: result.failed.filter((item) =>
+              mutations: result.failed.filter((item) =>
                 permanentFailedIds.has(item.clientMutationId),
               ),
             });
@@ -882,6 +886,43 @@ export function useOfflineMaterialListSyncRunner() {
           pushed,
           pulled,
           remaining: remainingAfterPush,
+        };
+      }
+
+      if (pushed > 0) {
+        for (const materialListId of touchedMaterialListIds) {
+          const existing = await getOfflineMaterialList(materialListId);
+          if (!existing?.data) continue;
+          await setOfflineMaterialList(materialListId, existing.data, {
+            pendingSync: false,
+            pendingDeletedItemIds: [],
+          });
+        }
+        await setSyncingMaterialListIds([]);
+        notifyOfflineMaterialListSyncStateChanged();
+        addSyncDebugEvent({
+          phase: "done",
+          status: "success",
+          message: "All sticky notes delivered. Local notebook kept as truth.",
+          queueLength: queue.length,
+          details: { pushed, pulled, entityQueueCount: entityQueueAfterPush, reason },
+        });
+        return {
+          synced: true,
+          pushed,
+          pulled,
+          remaining: 0,
+        };
+      }
+
+      if (touchedMaterialListIds.size === 0) {
+        await setSyncingMaterialListIds([]);
+        notifyOfflineMaterialListSyncStateChanged();
+        return {
+          synced: true,
+          pushed,
+          pulled,
+          remaining: 0,
         };
       }
 

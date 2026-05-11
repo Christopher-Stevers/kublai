@@ -79,6 +79,15 @@ function parseOfflineSupplierPartId(value: string | null | undefined) {
   return { partDefinitionId: match[1], supplierId: match[2] };
 }
 
+function isPermanentMaterialListSyncFailure(message: string) {
+  return (
+    message.includes("No server item mapping for local item id") ||
+    message.includes("Quote item not found") ||
+    message.includes("Part definition not found") ||
+    message.includes("Add item requires")
+  );
+}
+
 import { createTRPCRouter, hasDashboardAccess } from "~/server/api/trpc";
 import {
   assertCanDeleteCoreRecords,
@@ -1945,12 +1954,20 @@ export const materialListRouter = createTRPCRouter({
             });
           } catch (error) {
             const message = error instanceof Error ? error.message : "Sync mutation failed";
-            console.warn("Material-list sync mutation failed", {
+            const logContext = {
               materialListId: input.materialListId,
               clientMutationId: mutation.clientMutationId,
               type: mutation.type,
               message,
-            });
+            };
+            if (isPermanentMaterialListSyncFailure(message)) {
+              // This is an expected stale/offline mutation outcome. The client
+              // dead-letters it and continues draining the queue, so don't log it
+              // like a runtime exception for the repair watchdog.
+              console.info("[material-list-sync] permanent mutation skipped", logContext);
+            } else {
+              console.warn("Material-list sync mutation failed", logContext);
+            }
             failed.push({ clientMutationId: mutation.clientMutationId, message });
           }
         }
