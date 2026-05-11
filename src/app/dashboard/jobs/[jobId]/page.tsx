@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useEffect, useState } from "react";
+import { use, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
@@ -118,25 +118,37 @@ export default function JobDetailPage({
 
   // Get job details for fresh browser/profile bootstrap. The hook seeds Dexie
   // and still renders from local state after import.
-  const isServerJobId = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(jobId);
-  const { data: serverJobResult, isLoading: jobLoading } = api.job.getJob.useQuery(
-    { jobId },
-    {
-      enabled: isBrowserOnline && isServerJobId,
-      refetchOnMount: true,
-      refetchOnWindowFocus: false,
-    },
+  const isServerJobId =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+      jobId,
+    );
+  const { data: serverJobResult, isLoading: jobLoading } =
+    api.job.getJob.useQuery(
+      { jobId },
+      {
+        enabled: isBrowserOnline && isServerJobId,
+        refetchOnMount: true,
+        refetchOnWindowFocus: false,
+      },
+    );
+  const serverJob = useMemo(
+    () =>
+      serverJobResult
+        ? (({ materialLists: _materialLists, ...job }) => job)(serverJobResult)
+        : undefined,
+    [serverJobResult],
   );
-  const serverJob = serverJobResult
-    ? (({ materialLists: _materialLists, ...job }) => job)(serverJobResult)
-    : undefined;
-  const serverMaterialLists = serverJobResult?.materialLists.map((list) => ({
-    ...list,
-    itemCount: 0,
-    materialTotal: 0,
-    foreman: serverJob?.foreman ?? null,
-    contributors: [],
-  }));
+  const serverMaterialLists = useMemo(
+    () =>
+      serverJobResult?.materialLists.map((list) => ({
+        ...list,
+        itemCount: 0,
+        materialTotal: 0,
+        foreman: serverJob?.foreman ?? null,
+        contributors: [],
+      })),
+    [serverJob?.foreman, serverJobResult?.materialLists],
+  );
   const listsLoading = jobLoading;
 
   const {
@@ -293,7 +305,6 @@ export default function JobDetailPage({
             onClick={handleCreateNew}
             size="lg"
             className="h-11 w-full sm:w-auto"
-
           >
             <PlusIcon className="mr-2 h-5 w-5" />
             New Material List
@@ -337,7 +348,6 @@ export default function JobDetailPage({
                         size="icon"
                         className="-mt-3 -mr-3 h-10 w-10 shrink-0 text-red-600 hover:bg-red-50 hover:text-red-700"
                         aria-label={`Delete material list ${list.name}`}
-
                         onClick={(e) => {
                           e.stopPropagation();
                           setMaterialListToDelete({
@@ -364,7 +374,10 @@ export default function JobDetailPage({
                     </div>
                     {(
                       list as unknown as {
-                        createdBy?: { name?: string | null; email?: string | null } | null;
+                        createdBy?: {
+                          name?: string | null;
+                          email?: string | null;
+                        } | null;
                       }
                     ).createdBy && (
                       <div className="flex items-center gap-2">
@@ -372,12 +385,18 @@ export default function JobDetailPage({
                         <span>
                           {(
                             list as unknown as {
-                              createdBy: { name?: string | null; email?: string | null };
+                              createdBy: {
+                                name?: string | null;
+                                email?: string | null;
+                              };
                             }
                           ).createdBy.name?.trim() ||
                             (
                               list as unknown as {
-                                createdBy: { name?: string | null; email?: string | null };
+                                createdBy: {
+                                  name?: string | null;
+                                  email?: string | null;
+                                };
                               }
                             ).createdBy.email?.trim() ||
                             "Unknown"}
@@ -466,7 +485,6 @@ export default function JobDetailPage({
                 type="button"
                 variant="outline"
                 onClick={() => setMaterialListToDelete(null)}
-
               >
                 Cancel
               </Button>

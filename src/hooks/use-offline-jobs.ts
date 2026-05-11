@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { getBrowserOnlineStatus } from "~/hooks/use-online-status";
 import { getOfflineDexieDb } from "~/lib/offline-dexie-db";
 import {
   OFFLINE_JOBS_EVENT,
+  getOfflineEntityMutationQueue,
   getOfflineJobDetail,
   getOfflineJobsList,
   getPendingDeletedJobIds,
@@ -19,7 +20,57 @@ import {
   type OfflineJobSummary,
 } from "~/lib/offline-jobs";
 
+function mergeServerJobsIntoLocal(serverData: OfflineJobSummary[]) {
+  const localJobs = getOfflineJobsList()?.data ?? [];
+  const localJobsById = new Map(localJobs.map((job) => [job.id, job]));
+  const serverJobIds = new Set(serverData.map((job) => job.id));
+  const queue = getOfflineEntityMutationQueue();
+  const deletedJobIds = getPendingDeletedJobIds();
+  const protectedJobIds = new Set<string>();
+
+  for (const mutation of queue) {
+    if (mutation.type === "createJob") protectedJobIds.add(mutation.localJobId);
+    if (mutation.type === "updateJob") protectedJobIds.add(mutation.jobId);
+    if (mutation.type === "createMaterialList")
+      protectedJobIds.add(mutation.localJobId);
+    if (mutation.type === "deleteMaterialList")
+      protectedJobIds.add(mutation.jobId);
+  }
+
+  const merged = serverData
+    .filter((job) => !deletedJobIds.has(job.id))
+    .map((job) =>
+      protectedJobIds.has(job.id) ? (localJobsById.get(job.id) ?? job) : job,
+    );
+
+  for (const localJob of localJobs) {
+    if (serverJobIds.has(localJob.id) || deletedJobIds.has(localJob.id))
+      continue;
+    if (
+      localJob.id.startsWith("offline-job-") ||
+      protectedJobIds.has(localJob.id)
+    ) {
+      merged.unshift(localJob);
+    }
+  }
+
+  return merged;
+}
+
+function hasPendingJobDetailMutation(jobId: string) {
+  return getOfflineEntityMutationQueue().some((mutation) => {
+    if (mutation.type === "createJob") return mutation.localJobId === jobId;
+    if (mutation.type === "updateJob" || mutation.type === "deleteJob")
+      return mutation.jobId === jobId;
+    if (mutation.type === "createMaterialList")
+      return mutation.localJobId === jobId;
+    if (mutation.type === "deleteMaterialList") return mutation.jobId === jobId;
+    return false;
+  });
+}
+
 export function useOfflineJobsList(serverData?: OfflineJobSummary[]) {
+  const lastServerSeedSignatureRef = useRef<string | null>(null);
   const [cached, setCached] = useState<OfflineJobSummary[] | null>(null);
   const [cacheLoaded, setCacheLoaded] = useState(false);
   const [isOnline, setIsOnline] = useState(getBrowserOnlineStatus);
@@ -27,7 +78,10 @@ export function useOfflineJobsList(serverData?: OfflineJobSummary[]) {
     async () => {
       const db = getOfflineDexieDb();
       if (!db) return undefined;
-      const rows = await db.jobSummaries.orderBy("createdAt").reverse().toArray();
+      const rows = await db.jobSummaries
+        .orderBy("createdAt")
+        .reverse()
+        .toArray();
       return rows.map((row) => row.value as OfflineJobSummary);
     },
     [],
@@ -36,7 +90,9 @@ export function useOfflineJobsList(serverData?: OfflineJobSummary[]) {
 
   useEffect(() => {
     if (liveJobs === undefined) return;
-    setCached(liveJobs.length > 0 ? liveJobs : getOfflineJobsList()?.data ?? null);
+    setCached(
+      liveJobs.length > 0 ? liveJobs : (getOfflineJobsList()?.data ?? null),
+    );
     setCacheLoaded(true);
   }, [liveJobs]);
 
@@ -49,7 +105,8 @@ export function useOfflineJobsList(serverData?: OfflineJobSummary[]) {
 
     const onOnline = () => setIsOnline(true);
     const onOffline = () => setIsOnline(false);
-    const onOfflineJobsChanged = () => setCached(getOfflineJobsList()?.data ?? null);
+    const onOfflineJobsChanged = () =>
+      setCached(getOfflineJobsList()?.data ?? null);
 
     window.addEventListener("online", onOnline);
     window.addEventListener("offline", onOffline);
@@ -70,17 +127,25 @@ export function useOfflineJobsList(serverData?: OfflineJobSummary[]) {
   }, []);
 
   useEffect(() => {
-    if (!isOnline || !serverData || serverData.length === 0) return;
+    if (!isOnline || !serverData) return;
     if (!cacheLoaded) return;
 
-    const hasLocalJobs = (liveJobs?.length ?? 0) > 0 || (getOfflineJobsList()?.data.length ?? 0) > 0;
-    if (hasLocalJobs || cached?.length) return;
+    const signature = serverData
+      .map(
+        (job) =>
+          `${job.id}:${String(job.createdAt)}:${job.name}:${job.materialListCount ?? ""}`,
+      )
+      .join("|");
+    if (lastServerSeedSignatureRef.current === signature) return;
+    lastServerSeedSignatureRef.current = signature;
 
-    // Fresh browser/profile bootstrap: seed Dexie/localStorage once from the
-    // server snapshot, then keep rendering from local state.
-    setOfflineJobsList(serverData);
-    setCached(serverData);
-  }, [cacheLoaded, cached?.length, isOnline, liveJobs?.length, serverData]);
+    // Initial online load checks the server for updates and writes the merged
+    // snapshot into Dexie/localStorage. Local pending work still wins, then UI
+    // renders from Dexie instead of directly from the server response.
+    const mergedJobs = mergeServerJobsIntoLocal(serverData);
+    setOfflineJobsList(mergedJobs);
+    setCached(mergedJobs);
+  }, [cacheLoaded, isOnline, serverData]);
 
   const data = useMemo(() => {
     const pendingDeletedJobIds = getPendingDeletedJobIds();
@@ -106,6 +171,7 @@ export function useOfflineJobDetail(
   serverJob?: OfflineJobDetail,
   serverMaterialLists?: OfflineJobMaterialListSummary[],
 ) {
+  const lastServerDetailSeedSignatureRef = useRef<string | null>(null);
   const [cached, setCached] = useState<{
     job: OfflineJobDetail;
     materialLists: OfflineJobMaterialListSummary[];
@@ -125,14 +191,20 @@ export function useOfflineJobDetail(
         | undefined;
       if (!detail) return undefined;
 
-      const headers = await db.materialListHeaders.where("jobId").equals(jobId).toArray();
+      const headers = await db.materialListHeaders
+        .where("jobId")
+        .equals(jobId)
+        .toArray();
       const headersById = new Map(headers.map((header) => [header.id, header]));
       const itemCounts = new Map<string, number>();
       await Promise.all(
         detail.materialLists.map(async (list) => {
           itemCounts.set(
             list.id,
-            await db.materialListItems.where("materialListId").equals(list.id).count(),
+            await db.materialListItems
+              .where("materialListId")
+              .equals(list.id)
+              .count(),
           );
         }),
       );
@@ -142,7 +214,8 @@ export function useOfflineJobDetail(
         materialLists: detail.materialLists.map((list) => ({
           ...list,
           itemCount: itemCounts.get(list.id) ?? list.itemCount,
-          materialTotal: headersById.get(list.id)?.materialTotal ?? list.materialTotal,
+          materialTotal:
+            headersById.get(list.id)?.materialTotal ?? list.materialTotal,
         })),
       };
     },
@@ -167,7 +240,8 @@ export function useOfflineJobDetail(
 
     const onOnline = () => setIsOnline(true);
     const onOffline = () => setIsOnline(false);
-    const onOfflineJobsChanged = () => setCached(getOfflineJobDetail(jobId)?.data ?? null);
+    const onOfflineJobsChanged = () =>
+      setCached(getOfflineJobDetail(jobId)?.data ?? null);
 
     window.addEventListener("online", onOnline);
     window.addEventListener("offline", onOffline);
@@ -182,26 +256,50 @@ export function useOfflineJobDetail(
 
   useEffect(() => {
     if (!isOnline || !serverJob || !serverMaterialLists) return;
-    if (!cacheLoaded || cached) return;
-    if (getOfflineJobDetail(jobId)?.data) return;
+    if (!cacheLoaded) return;
+    if (hasPendingJobDetailMutation(jobId)) return;
 
-    // Fresh browser/profile bootstrap for direct job URLs. This imports the
-    // server detail into local storage first; UI still reads the local copy.
-    const detail = { job: serverJob, materialLists: serverMaterialLists };
+    const signature = [
+      serverJob.id,
+      serverJob.name,
+      String(serverJob.createdAt),
+      serverMaterialLists
+        .map((list) => `${list.id}:${list.name}:${String(list.createdAt)}`)
+        .join("|"),
+    ].join("::");
+    if (lastServerDetailSeedSignatureRef.current === signature) return;
+    lastServerDetailSeedSignatureRef.current = signature;
+
+    // Initial online load checks server detail and refreshes the local Dexie
+    // copy when no local job/material-list mutation is waiting for this job.
+    const pendingDeletedMaterialListIds =
+      getPendingDeletedMaterialListIds(jobId);
+    const detail = {
+      job: serverJob,
+      materialLists: serverMaterialLists.filter(
+        (list) => !pendingDeletedMaterialListIds.has(list.id),
+      ),
+    };
     setOfflineJobDetail(jobId, detail);
     setCached(detail);
-  }, [cacheLoaded, cached, isOnline, jobId, serverJob, serverMaterialLists]);
+  }, [cacheLoaded, isOnline, jobId, serverJob, serverMaterialLists]);
 
   const data = useMemo(() => {
     if (getPendingDeletedJobIds().has(jobId)) return null;
 
-    const pendingDeletedMaterialListIds = getPendingDeletedMaterialListIds(jobId);
-    const filterDeletedMaterialLists = (materialLists: OfflineJobMaterialListSummary[]) =>
+    const pendingDeletedMaterialListIds =
+      getPendingDeletedMaterialListIds(jobId);
+    const filterDeletedMaterialLists = (
+      materialLists: OfflineJobMaterialListSummary[],
+    ) =>
       materialLists
         .filter((list) => !pendingDeletedMaterialListIds.has(list.id))
         .map((list) => ({
           ...list,
-          name: normalizeLegacyOfflineMaterialListName(list.name, list.createdAt),
+          name: normalizeLegacyOfflineMaterialListName(
+            list.name,
+            list.createdAt,
+          ),
         }));
 
     if (cacheLoaded && cached) {
@@ -211,7 +309,9 @@ export function useOfflineJobDetail(
       };
     }
     if (cacheLoaded && !cached) {
-      const summary = getOfflineJobsList()?.data.find((job) => job.id === jobId);
+      const summary = getOfflineJobsList()?.data.find(
+        (job) => job.id === jobId,
+      );
       if (summary) {
         return {
           job: {

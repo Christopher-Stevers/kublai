@@ -266,10 +266,10 @@ export const jobRouter = createTRPCRouter({
         .limit(1);
 
       if (!existingJob) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Job not found",
-        });
+        // Offline sync may replay a queued delete after the server has already
+        // removed the job. Treat deletes as idempotent so the outbox can drain
+        // without surfacing a spurious tRPC failure to the dev/error log.
+        return { success: true };
       }
 
       await ctx.db
