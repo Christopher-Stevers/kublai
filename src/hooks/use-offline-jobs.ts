@@ -13,49 +13,12 @@ import {
   getPendingDeletedMaterialListIds,
   purgeAutoCreatedOfflineJobGhosts,
   normalizeLegacyOfflineMaterialListName,
+  mergeServerJobsIntoOfflineCache,
   setOfflineJobDetail,
-  setOfflineJobsList,
   type OfflineJobDetail,
   type OfflineJobMaterialListSummary,
   type OfflineJobSummary,
 } from "~/lib/offline-jobs";
-
-function mergeServerJobsIntoLocal(serverData: OfflineJobSummary[]) {
-  const localJobs = getOfflineJobsList()?.data ?? [];
-  const localJobsById = new Map(localJobs.map((job) => [job.id, job]));
-  const serverJobIds = new Set(serverData.map((job) => job.id));
-  const queue = getOfflineEntityMutationQueue();
-  const deletedJobIds = getPendingDeletedJobIds();
-  const protectedJobIds = new Set<string>();
-
-  for (const mutation of queue) {
-    if (mutation.type === "createJob") protectedJobIds.add(mutation.localJobId);
-    if (mutation.type === "updateJob") protectedJobIds.add(mutation.jobId);
-    if (mutation.type === "createMaterialList")
-      protectedJobIds.add(mutation.localJobId);
-    if (mutation.type === "deleteMaterialList")
-      protectedJobIds.add(mutation.jobId);
-  }
-
-  const merged = serverData
-    .filter((job) => !deletedJobIds.has(job.id))
-    .map((job) =>
-      protectedJobIds.has(job.id) ? (localJobsById.get(job.id) ?? job) : job,
-    );
-
-  for (const localJob of localJobs) {
-    if (serverJobIds.has(localJob.id) || deletedJobIds.has(localJob.id))
-      continue;
-    if (
-      localJob.id.startsWith("offline-job-") ||
-      protectedJobIds.has(localJob.id)
-    ) {
-      merged.unshift(localJob);
-    }
-  }
-
-  return merged;
-}
 
 function hasPendingJobDetailMutation(jobId: string) {
   return getOfflineEntityMutationQueue().some((mutation) => {
@@ -142,8 +105,7 @@ export function useOfflineJobsList(serverData?: OfflineJobSummary[]) {
     // Initial online load checks the server for updates and writes the merged
     // snapshot into Dexie/localStorage. Local pending work still wins, then UI
     // renders from Dexie instead of directly from the server response.
-    const mergedJobs = mergeServerJobsIntoLocal(serverData);
-    setOfflineJobsList(mergedJobs);
+    const mergedJobs = mergeServerJobsIntoOfflineCache(serverData);
     setCached(mergedJobs);
   }, [cacheLoaded, isOnline, serverData]);
 

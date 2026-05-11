@@ -509,6 +509,7 @@ export function useOfflineMaterialListSyncRunner() {
                 utils.job.getJob.fetch({ jobId }),
                 "getJob",
               );
+              if (!serverJobResult) continue;
               const { materialLists, ...job } = serverJobResult;
               const offlineJob = toOfflineJobDetail(job);
               mergeServerJobDetailIntoOfflineCache(jobId, {

@@ -454,12 +454,15 @@ export function mergeServerJobsIntoOfflineCache(
   for (const localJob of localJobs) {
     if (serverJobIds.has(localJob.id) || deletedJobIds.has(localJob.id))
       continue;
-    if (
-      localJob.id.startsWith("offline-job-") ||
-      protectedJobIds.has(localJob.id)
-    ) {
+    if (protectedJobIds.has(localJob.id)) {
       merged.unshift(localJob);
     }
+  }
+
+  const mergedIds = new Set(merged.map((job) => job.id));
+  for (const detailId of getOfflineJobDetailIds()) {
+    if (mergedIds.has(detailId) || protectedJobIds.has(detailId)) continue;
+    window.localStorage.removeItem(jobDetailKey(detailId));
   }
 
   setOfflineJobsList(merged);
