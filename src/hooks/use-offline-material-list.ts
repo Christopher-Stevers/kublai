@@ -234,15 +234,12 @@ export function useOfflineMaterialList(
   const rawData = useMemo(() => {
     if (!baseRawData) return baseRawData;
 
-    // Stop the mixed-truth flicker: while online, render exactly what the
-    // server query returned. Pending local mutations may still sync in the
-    // background, but they do not get to invent a second on-screen reality.
-    // Offline keeps the sticky-note overlay so field edits still work without a
-    // connection.
-    if (isOnline) return baseRawData;
-
+    // Render-only optimistic overlay: the device that created pending queue
+    // rows should feel instant, but Dexie still stores only clean server
+    // snapshots while online. Other devices see the change after server ack +
+    // refetch; this device drops the overlay as soon as its local queue drains.
     return projectMaterialListWithMutations(baseRawData, queueSnapshot);
-  }, [baseRawData, isOnline, queueSnapshot]);
+  }, [baseRawData, queueSnapshot]);
 
   const data = rawData;
 
