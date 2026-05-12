@@ -11,10 +11,7 @@ import {
 } from "~/components/ui/dialog";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
-import {
-  applyOfflineRenameMaterialList,
-  enqueueOfflineMutation,
-} from "~/lib/offline-material-list-mutations";
+import { getMaterialListReplicache } from "~/lib/replicache-material-list";
 
 interface MaterialListNameModalProps {
   open: boolean;
@@ -31,7 +28,6 @@ export function MaterialListNameModal({
 }: MaterialListNameModalProps) {
   const [name, setName] = useState(initialName || "");
 
-  // Update name when initialName changes
   useEffect(() => {
     if (initialName !== undefined) {
       setName(initialName || "");
@@ -40,16 +36,11 @@ export function MaterialListNameModal({
 
   const handleSave = () => {
     const trimmedName = name.trim();
-    if (!trimmedName) {
-      return;
-    }
+    if (!trimmedName) return;
 
-    void applyOfflineRenameMaterialList(materialListId, trimmedName);
-    void enqueueOfflineMutation({
-      type: "renameMaterialList",
+    void getMaterialListReplicache().mutate.renameMaterialList({
       materialListId,
       name: trimmedName,
-      queuedAt: new Date().toISOString(),
     });
     onOpenChange(false);
   };
@@ -86,10 +77,7 @@ export function MaterialListNameModal({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button
-            onClick={handleSave}
-            disabled={!name.trim()}
-          >
+          <Button onClick={handleSave} disabled={!name.trim()}>
             Save
           </Button>
         </DialogFooter>

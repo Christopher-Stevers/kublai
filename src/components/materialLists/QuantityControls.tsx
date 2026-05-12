@@ -4,11 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { MinusIcon, PlusIcon } from "lucide-react";
-import {
-  applyOfflineQuantityUpdate,
-  enqueueOfflineMutation,
-  setActiveItemSyncStatus,
-} from "~/lib/offline-material-list-mutations";
+import { getMaterialListReplicache } from "~/lib/replicache-material-list";
 import { markUserAction } from "~/lib/performance-marks";
 
 interface QuantityControlsProps {
@@ -38,11 +34,6 @@ export function QuantityControls({
     const localQuantityStillSettling =
       locallyQueuedQuantity !== null && Date.now() - locallyQueuedQuantity.at < 15_000;
 
-    // A parent render can briefly hand this control an older quantity while
-    // Dexie/outbox hydration is catching up. Do not let that stale prop snap
-    // the button/input back after the user already picked a newer local value.
-    // After a short grace window, accept the prop again so a real server/error
-    // correction does not freeze the control forever.
     if (
       localQuantityStillSettling &&
       locallyQueuedQuantity !== null &&
@@ -66,39 +57,29 @@ export function QuantityControls({
 
   useEffect(() => {
     return () => {
-      if (saveTimerRef.current) {
-        clearTimeout(saveTimerRef.current);
-      }
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
       pendingInputQuantityRef.current = null;
     };
   }, []);
 
-  const enqueueQuantityChange = (nextQuantity: number) => {
+  const commitQuantity = (nextQuantity: number) => {
     if (lastQueuedQuantityRef.current?.quantity === nextQuantity) return;
     lastQueuedQuantityRef.current = { quantity: nextQuantity, at: Date.now() };
-    void enqueueOfflineMutation({
-      type: "updateItemQuantity",
+    void getMaterialListReplicache().mutate.updateItemQuantity({
       materialListId,
       itemId,
       quantity: nextQuantity,
-      queuedAt: new Date().toISOString(),
     });
-  };
-
-  const queueOfflineQuantityChange = (nextQuantity: number) => {
-    void setActiveItemSyncStatus(materialListId, itemId, "pending");
-    enqueueQuantityChange(nextQuantity);
-    void applyOfflineQuantityUpdate(materialListId, itemId, nextQuantity);
   };
 
   const scheduleInputQuantityChange = (nextQuantity: number) => {
     pendingInputQuantityRef.current = nextQuantity;
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(() => {
-      const quantityToQueue = pendingInputQuantityRef.current;
+      const q = pendingInputQuantityRef.current;
       pendingInputQuantityRef.current = null;
       saveTimerRef.current = null;
-      if (quantityToQueue !== null) enqueueQuantityChange(quantityToQueue);
+      if (q !== null) commitQuantity(q);
     }, 650);
   };
 
@@ -107,62 +88,44 @@ export function QuantityControls({
       clearTimeout(saveTimerRef.current);
       saveTimerRef.current = null;
     }
-    const quantityToQueue = pendingInputQuantityRef.current;
+    const q = pendingInputQuantityRef.current;
     pendingInputQuantityRef.current = null;
-    if (quantityToQueue !== null) enqueueQuantityChange(quantityToQueue);
+    if (q !== null) commitQuantity(q);
   };
 
   const setQuantityImmediately = (nextQuantity: number) => {
     if (nextQuantity < 1) return;
-
     markUserAction("quantity-change", { itemId, materialListId, quantity: nextQuantity });
     displayedQuantityRef.current = nextQuantity;
     setDisplayedQuantity(nextQuantity);
     setInputValue(nextQuantity.toString());
-    queueOfflineQuantityChange(nextQuantity);
+    commitQuantity(nextQuantity);
   };
 
   const commitInputQuantity = (rawValue: string) => {
     const parsedQuantity = Number.parseInt(rawValue, 10);
-
     if (!Number.isFinite(parsedQuantity) || parsedQuantity < 1) {
       setInputValue(displayedQuantity.toString());
       return;
     }
-
     displayedQuantityRef.current = parsedQuantity;
     setDisplayedQuantity(parsedQuantity);
     setInputValue(parsedQuantity.toString());
-    void applyOfflineQuantityUpdate(materialListId, itemId, parsedQuantity);
-    void setActiveItemSyncStatus(materialListId, itemId, "pending");
     flushInputQuantityChange();
   };
 
   const handleInputChange = (value: string) => {
     const numericValue = value.replace(/[^0-9]/g, "");
     setInputValue(numericValue);
-
     const parsedQuantity = Number.parseInt(numericValue, 10);
     if (Number.isFinite(parsedQuantity) && parsedQuantity >= 1) {
       displayedQuantityRef.current = parsedQuantity;
       setDisplayedQuantity(parsedQuantity);
-      void applyOfflineQuantityUpdate(materialListId, itemId, parsedQuantity);
-      void setActiveItemSyncStatus(materialListId, itemId, "pending");
       scheduleInputQuantityChange(parsedQuantity);
     }
   };
 
-  const handleDecrease = () => {
-    setQuantityImmediately(displayedQuantity - 1);
-  };
-
-  const handleIncrease = () => {
-    setQuantityImmediately(displayedQuantity + 1);
-  };
-
-  const buttonClassName = compact
-    ? "h-8 w-8 p-0"
-    : "h-10 w-10 p-0 sm:h-11 sm:w-11";
+  const buttonClassName = compact ? "h-8 w-8 p-0" : "h-10 w-10 p-0 sm:h-11 sm:w-11";
   const inputClassName = compact
     ? "h-8 w-8 [appearance:textfield] px-1 text-center text-sm font-medium [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
     : "h-10 w-12 [appearance:textfield] px-1 text-center font-medium sm:h-11 sm:w-14 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none";
@@ -173,7 +136,7 @@ export function QuantityControls({
         <Button
           variant="outline"
           size="sm"
-          onClick={handleIncrease}
+          onClick={() => setQuantityImmediately(displayedQuantity + 1)}
           className={buttonClassName}
           aria-label="Increase quantity"
         >
@@ -187,9 +150,7 @@ export function QuantityControls({
           onChange={(event) => handleInputChange(event.target.value)}
           onBlur={(event) => commitInputQuantity(event.target.value)}
           onKeyDown={(event) => {
-            if (event.key === "Enter") {
-              event.currentTarget.blur();
-            }
+            if (event.key === "Enter") event.currentTarget.blur();
           }}
           className={inputClassName}
           aria-label="Quantity"
@@ -197,7 +158,7 @@ export function QuantityControls({
         <Button
           variant="outline"
           size="sm"
-          onClick={handleDecrease}
+          onClick={() => setQuantityImmediately(displayedQuantity - 1)}
           disabled={displayedQuantity <= 1}
           className={buttonClassName}
           aria-label="Decrease quantity"
@@ -213,7 +174,7 @@ export function QuantityControls({
       <Button
         variant="outline"
         size="sm"
-        onClick={handleDecrease}
+        onClick={() => setQuantityImmediately(displayedQuantity - 1)}
         disabled={displayedQuantity <= 1}
         className={buttonClassName}
         aria-label="Decrease quantity"
@@ -228,9 +189,7 @@ export function QuantityControls({
         onChange={(event) => handleInputChange(event.target.value)}
         onBlur={(event) => commitInputQuantity(event.target.value)}
         onKeyDown={(event) => {
-          if (event.key === "Enter") {
-            event.currentTarget.blur();
-          }
+          if (event.key === "Enter") event.currentTarget.blur();
         }}
         className={inputClassName}
         aria-label="Quantity"
@@ -238,7 +197,7 @@ export function QuantityControls({
       <Button
         variant="outline"
         size="sm"
-        onClick={handleIncrease}
+        onClick={() => setQuantityImmediately(displayedQuantity + 1)}
         className={buttonClassName}
         aria-label="Increase quantity"
       >

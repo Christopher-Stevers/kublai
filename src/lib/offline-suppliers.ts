@@ -1,5 +1,3 @@
-import { getOfflineDexieDb } from "~/lib/offline-dexie-db";
-
 export interface OfflineSupplierOption {
   id: string;
   name: string;
@@ -75,27 +73,6 @@ function sortSuppliers(suppliers: OfflineSupplierOption[]) {
   return [...suppliers].sort((a, b) => a.name.localeCompare(b.name));
 }
 
-async function writeSuppliersToDexie(suppliers: OfflineSupplierOption[]) {
-  const db = getOfflineDexieDb();
-  if (!db) return;
-  const updatedAt = new Date().toISOString();
-  await db.transaction("rw", db.suppliers, async () => {
-    const existingIds = new Set((await db.suppliers.toArray()).map((row) => row.id));
-    const nextIds = new Set(suppliers.map((supplier) => supplier.id));
-    const removedIds = [...existingIds].filter((id) => !nextIds.has(id));
-    if (removedIds.length > 0) await db.suppliers.bulkDelete(removedIds);
-    await db.suppliers.bulkPut(
-      suppliers.map((supplier) => ({
-        id: supplier.id,
-        name: supplier.name,
-        locationId: supplier.locationId ?? null,
-        updatedAt,
-        value: supplier,
-      })),
-    );
-  });
-}
-
 export function getOfflineSuppliers() {
   if (typeof window === "undefined") return null;
 
@@ -119,7 +96,6 @@ export function setOfflineSuppliers(suppliers: OfflineSupplierOption[]) {
   };
 
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(envelope));
-  void writeSuppliersToDexie(envelope.data);
   notifyOfflineSuppliersChanged();
 }
 

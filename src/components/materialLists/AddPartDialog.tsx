@@ -25,18 +25,12 @@ import { PartStage } from "./wizard/PartStage";
 import { ReviewStage } from "./wizard/ReviewStage";
 import { usePartWizard } from "./wizard/use-part-wizard";
 import { VerticalPickerOverlay } from "./wizard/VerticalPickerOverlay";
-import {
-  applyOfflineAddItem,
-  enqueueOfflineMutation,
-  setActiveItemSyncStatus,
-} from "~/lib/offline-material-list-mutations";
+import { getMaterialListReplicache } from "~/lib/replicache-material-list";
 import { useOnlineStatus } from "~/hooks/use-online-status";
-import { useOfflineMaterialListSyncRunner } from "~/hooks/use-offline-material-list-sync";
 import {
   getOfflineSupplierPartsByPart,
   setOfflineSupplierPartsByPart,
 } from "~/lib/offline-supplier-parts";
-import { parseOfflineSupplierPartId } from "~/lib/offline-suppliers";
 import { markUserAction, measureUserAction } from "~/lib/performance-marks";
 
 interface AddPartDialogProps {
@@ -130,7 +124,6 @@ export function AddPartDialog({
 
   const utils = api.useUtils();
   const isOnline = useOnlineStatus();
-  const syncOfflineMaterialLists = useOfflineMaterialListSyncRunner();
 
   // Store supplier parts data
   const [supplierPartsData, setSupplierPartsData] = useState<
@@ -640,7 +633,6 @@ export function AddPartDialog({
         return;
       }
 
-      const now = new Date();
       const localItems = partsReadyToAdd.map((pendingPart) => {
         const selectedSupplierPart =
           pendingPart.supplierPartSnapshot ??
@@ -668,9 +660,10 @@ export function AddPartDialog({
           : null;
 
         return {
-          localItemId: `offline-${Date.now()}-${pendingPart.partId}-${Math.random().toString(36).slice(2, 8)}`,
+          localItemId: crypto.randomUUID(),
           pendingPart,
           unitCost,
+          supplierId: selectedSupplierPart?.supplierId ?? null,
           partDefinitionSnapshot,
           supplierPartSnapshot,
         };
@@ -681,33 +674,17 @@ export function AddPartDialog({
         count: localItems.length,
       });
 
-      await Promise.all(
-        localItems.map((item) =>
-          setActiveItemSyncStatus(materialListId, item.localItemId, "pending"),
-        ),
-      );
-
       for (const item of localItems) {
-        await applyOfflineAddItem(materialListId, {
-          localItemId: item.localItemId,
-          quantity: item.pendingPart.quantity,
-          unitCost: item.unitCost,
-          partDefinitionSnapshot: item.partDefinitionSnapshot,
-          supplierPartSnapshot: item.supplierPartSnapshot,
-        });
-
-        await enqueueOfflineMutation({
-          type: "addItem",
+        void getMaterialListReplicache().mutate.addItem({
           materialListId,
-          localItemId: item.localItemId,
+          itemId: item.localItemId,
           partDefinitionId: item.pendingPart.partId,
+          supplierPartId: item.pendingPart.supplierPartId ?? null,
+          supplierId: item.supplierId,
           quantity: item.pendingPart.quantity,
-          supplierPartId: item.pendingPart.supplierPartId!,
-          supplierId: parseOfflineSupplierPartId(item.pendingPart.supplierPartId!)?.supplierId,
           unitCost: item.unitCost,
           partDefinitionSnapshot: item.partDefinitionSnapshot,
           supplierPartSnapshot: item.supplierPartSnapshot,
-          queuedAt: now.toISOString(),
         });
       }
 
@@ -717,12 +694,6 @@ export function AddPartDialog({
         setPendingParts([]);
         resetWizard();
       }, 0);
-
-      if (isOnline) {
-        void syncOfflineMaterialLists().catch((error) => {
-          console.error("Error syncing added parts:", error);
-        });
-      }
     } catch (error) {
       console.error("Error adding parts:", error);
       setIsAddingParts(false);

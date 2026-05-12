@@ -7,7 +7,7 @@ import { SessionProviderWrapper } from "./_components/SessionProviderWrapper";
 import { TRPCReactProvider } from "~/trpc/react";
 import { APP_NAME } from "~/constants/app";
 import { ClientConsoleErrorReporter } from "~/components/debug/ClientConsoleErrorReporter";
-import { OfflineSyncBootstrap } from "~/components/offline/OfflineSyncBootstrap";
+import { ReplicacheSyncBootstrap } from "~/components/offline/ReplicacheSyncBootstrap";
 import { ServiceWorkerRegistration } from "~/components/offline/ServiceWorkerRegistration";
 
 export const metadata: Metadata = {
@@ -68,7 +68,7 @@ export default function RootLayout({
           <TRPCReactProvider>
             <ClientConsoleErrorReporter />
             <ServiceWorkerRegistration />
-            <OfflineSyncBootstrap />
+            <ReplicacheSyncBootstrap />
             {children}
           </TRPCReactProvider>
         </SessionProviderWrapper>

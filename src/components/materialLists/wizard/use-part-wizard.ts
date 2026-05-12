@@ -9,7 +9,6 @@ import {
   getOfflineCatalogueSnapshot,
   setOfflineCatalogueSnapshot,
 } from "~/lib/offline-catalogue";
-import { setOfflineSuppliers } from "~/lib/offline-suppliers";
 import { useOnlineStatus } from "~/hooks/use-online-status";
 import type { WizardStage } from "./types";
 
@@ -75,10 +74,6 @@ export function usePartWizard() {
   const { data: serverCategoryTree } = api.catalogue.getCategoryTree.useQuery(undefined, {
     enabled: isOnline,
   });
-  const { data: serverSuppliers } = api.supplier.list.useQuery(undefined, {
-    enabled: isOnline,
-    staleTime: 1000 * 60 * 5,
-  });
   const { data: serverAllParts } = api.catalogue.searchParts.useQuery({}, {
     enabled: isOnline,
     staleTime: 1000 * 60 * 5,
@@ -103,11 +98,6 @@ export function usePartWizard() {
     setOfflineCatalogueSnapshot(nextSnapshot);
     setCachedCatalogueData(nextSnapshot);
   }, [isOnline, serverAllParts, serverAllUnits, serverCatalogs, serverCategoryTree, serverMaterials]);
-
-  useEffect(() => {
-    if (!isOnline || !serverSuppliers) return;
-    setOfflineSuppliers(serverSuppliers);
-  }, [isOnline, serverSuppliers]);
 
   const catalogs = cachedCatalogueData?.catalogs ?? serverCatalogs;
   const materials = cachedCatalogueData?.materials ?? serverMaterials;

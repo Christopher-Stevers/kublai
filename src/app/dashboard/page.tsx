@@ -1,6 +1,6 @@
 "use client";
 
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { api } from "~/trpc/react";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
@@ -25,18 +25,9 @@ import {
   WifiOffIcon,
 } from "lucide-react";
 import { format } from "date-fns";
-import { useOfflineJobsList } from "~/hooks/use-offline-jobs";
+import { useReplicacheJobsList } from "~/hooks/use-replicache-jobs";
 import { useOnlineStatus } from "~/hooks/use-online-status";
-import {
-  createOfflineJob,
-  getOfflineJobDetail,
-  getOfflineJobsList,
-  tombstoneOfflineJob,
-} from "~/lib/offline-jobs";
-import {
-  getOfflineMutationQueue,
-  setOfflineMutationQueue,
-} from "~/lib/offline-material-list-mutations";
+import { getMaterialListReplicache } from "~/lib/replicache-material-list";
 
 type JobLocationDisplay = {
   name?: string | null;
@@ -67,7 +58,6 @@ function formatLocationAddress(location: JobLocationDisplay | null | undefined) 
 
 export default function Dashboard() {
   const router = useRouter();
-  const pathname = usePathname();
   const pollingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const hasRedirectedRef = useRef(false);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -78,8 +68,6 @@ export default function Dashboard() {
     materialListCount?: number | null;
   } | null>(null);
   const isBrowserOnline = useOnlineStatus();
-  const routedJobId =
-    pathname.match(/^\/dashboard\/jobs\/([^/?#]+)/)?.[1] ?? null;
 
   // Check user's organizationId status
   const { data: userData, isLoading: isLoadingUser } =
@@ -92,13 +80,11 @@ export default function Dashboard() {
     userData?.permissions.canDeleteCoreRecords ?? true;
 
   // Redirect to onboarding if user has no organizationId
-  // This is a fallback in case server-side redirect didn't work
   useEffect(() => {
     if (hasRedirectedRef.current) {
       return;
     }
 
-    // If we have user data and no organizationId, redirect immediately
     if (userData && !userData.organizationId) {
       if (typeof window !== "undefined") {
         hasRedirectedRef.current = true;
@@ -107,7 +93,6 @@ export default function Dashboard() {
       return;
     }
 
-    // If still loading after 2 seconds, redirect anyway
     if (isLoadingUser && !userData) {
       pollingTimeoutRef.current = setTimeout(() => {
         if (!hasRedirectedRef.current && typeof window !== "undefined") {
@@ -124,72 +109,32 @@ export default function Dashboard() {
     };
   }, [userData, isLoadingUser]);
 
-  // Get all jobs for fresh browser/profile bootstrap. The hook seeds Dexie and
-  // still renders from local state after import.
-  const { data: serverJobs, isLoading } = api.job.listJobs.useQuery(undefined, {
-    enabled: isBrowserOnline,
-    refetchOnMount: true,
-    refetchOnWindowFocus: false,
-  });
-  const {
-    data: jobs,
-    cacheLoaded,
-    isOnline,
-    isOfflineFallback,
-  } = useOfflineJobsList(serverJobs);
+  const jobs = useReplicacheJobsList();
 
   const openJob = (jobId: string) => {
-    const href = `/dashboard/jobs/${jobId}`;
-    if (!isOnline) {
-      window.location.href = href;
-      return;
-    }
-
-    router.push(href);
+    router.push(`/dashboard/jobs/${jobId}`);
   };
 
   const handleCreateJob = () => {
     if (newJobName.trim()) {
-      const job = createOfflineJob(newJobName.trim());
+      const jobId = crypto.randomUUID();
+      void getMaterialListReplicache().mutate.createJob({
+        jobId,
+        name: newJobName.trim(),
+      });
       setShowCreateDialog(false);
       setNewJobName("");
-      router.push(`/dashboard/jobs/${job.id}`);
-      return;
+      router.push(`/dashboard/jobs/${jobId}`);
     }
   };
 
   const handleConfirmDeleteJob = () => {
     if (!jobToDelete || !canDeleteCoreRecords) return;
-
     const { id } = jobToDelete;
     setJobToDelete(null);
-
-    const deletedMaterialListIds =
-      getOfflineJobDetail(id)?.data.materialLists.map((list) => list.id) ?? [];
-    tombstoneOfflineJob(id);
-    void getOfflineMutationQueue().then((queue) =>
-      setOfflineMutationQueue(
-        queue.filter(
-          (mutation) =>
-            !deletedMaterialListIds.includes(mutation.materialListId),
-        ),
-      ),
-    );
-
-    return;
+    void getMaterialListReplicache().mutate.deleteJob({ jobId: id });
   };
 
-  // Do not auto-create placeholder jobs. In local-first mode those placeholders
-  // can become stale local ghosts if the browser cache/outbox is interrupted.
-
-  // Hard local-only mode for jobs/material lists: do not warm/import from server.
-
-
-  if (routedJobId) {
-    return <OfflineJobRouteFallback jobId={routedJobId} />;
-  }
-
-  // Show loading state while checking if onboarding is needed
   if (isLoadingUser || (userData && !userData.organizationId)) {
     return (
       <div className="px-4 py-6 sm:px-6 sm:py-8">
@@ -204,36 +149,17 @@ export default function Dashboard() {
     );
   }
 
-  if ((isLoading || !cacheLoaded) && !jobs) {
-    return (
-      <div className="px-4 py-6 sm:px-6 sm:py-8">
-        <div className="mx-auto max-w-6xl">
-          <div className="flex items-center justify-center py-12">
-            <p className="text-muted-foreground">
-              Loading jobs...
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="px-4 py-6 sm:px-6 sm:py-8">
       <div className="mx-auto max-w-6xl">
-        <div className="mb-4 flex flex-wrap items-center gap-2">
-          {!isOnline && (
+        {!isBrowserOnline && (
+          <div className="mb-4 flex flex-wrap items-center gap-2">
             <div className="inline-flex items-center gap-2 rounded-full bg-amber-100 px-3 py-1 text-sm font-medium text-amber-900">
               <WifiOffIcon className="h-4 w-4" />
               Offline mode
             </div>
-          )}
-          {isOfflineFallback && (
-            <div className="inline-flex items-center rounded-full bg-blue-100 px-3 py-1 text-sm font-medium text-blue-900">
-              Showing cached jobs
-            </div>
-          )}
-        </div>
+          </div>
+        )}
         <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">
@@ -253,7 +179,7 @@ export default function Dashboard() {
           </Button>
         </div>
 
-        {!jobs || jobs.length === 0 ? (
+        {jobs.length === 0 ? (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12">
               <BriefcaseIcon className="mb-4 h-12 w-12 text-gray-400" />
@@ -282,7 +208,6 @@ export default function Dashboard() {
                         size="icon"
                         className="h-10 w-10 shrink-0 text-red-600 hover:bg-red-50 hover:text-red-700"
                         aria-label={`Delete job ${job.name}`}
-
                         onClick={(e) => {
                           e.stopPropagation();
                           setJobToDelete({
@@ -307,10 +232,10 @@ export default function Dashboard() {
                         </span>
                       </div>
                     )}
-                    {job.foreman && (
+                    {job.foremanName && (
                       <div className="flex items-center gap-2">
                         <UserIcon className="h-4 w-4" />
-                        <span>{job.foreman.name}</span>
+                        <span>{job.foremanName}</span>
                       </div>
                     )}
                     <div className="flex items-center gap-2">
@@ -353,7 +278,6 @@ export default function Dashboard() {
                   onChange={(e) => setNewJobName(e.target.value)}
                   placeholder="e.g., Smith Bathroom Reno"
                   className="mt-1"
-
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && newJobName.trim()) {
                       handleCreateJob();
@@ -366,7 +290,6 @@ export default function Dashboard() {
               <Button
                 variant="outline"
                 onClick={() => setShowCreateDialog(false)}
-
               >
                 Cancel
               </Button>
@@ -405,7 +328,6 @@ export default function Dashboard() {
                 type="button"
                 variant="outline"
                 onClick={() => setJobToDelete(null)}
-
               >
                 Cancel
               </Button>
@@ -420,125 +342,6 @@ export default function Dashboard() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
-      </div>
-    </div>
-  );
-}
-
-function OfflineJobRouteFallback({ jobId }: { jobId: string }) {
-  const router = useRouter();
-  const [detail, setDetail] = useState(
-    () => getOfflineJobDetail(jobId)?.data ?? null,
-  );
-
-  useEffect(() => {
-    setDetail(getOfflineJobDetail(jobId)?.data ?? null);
-  }, [jobId]);
-
-  const summary =
-    getOfflineJobsList()?.data.find((job) => job.id === jobId) ?? null;
-  const job = detail?.job ?? summary;
-  const materialLists = detail?.materialLists ?? [];
-
-  if (!job) {
-    return (
-      <div className="px-4 py-6 sm:px-6 sm:py-8">
-        <div className="mx-auto max-w-6xl">
-          <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-amber-100 px-3 py-1 text-sm font-medium text-amber-900">
-            <WifiOffIcon className="h-4 w-4" />
-            Offline mode
-          </div>
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-12">
-              <p className="text-muted-foreground mb-4">
-                This job is not cached for offline use yet.
-              </p>
-              <Button onClick={() => router.push("/dashboard")}>
-                Back to Jobs
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="px-4 py-6 sm:px-6 sm:py-8">
-      <div className="mx-auto max-w-6xl">
-        <div className="mb-4 flex flex-wrap items-center gap-2">
-          <div className="inline-flex items-center gap-2 rounded-full bg-amber-100 px-3 py-1 text-sm font-medium text-amber-900">
-            <WifiOffIcon className="h-4 w-4" />
-            Offline mode
-          </div>
-          <div className="inline-flex items-center rounded-full bg-blue-100 px-3 py-1 text-sm font-medium text-blue-900">
-            Showing cached job
-          </div>
-        </div>
-
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">
-            {job.name}
-          </h1>
-          <div className="text-muted-foreground mt-3 flex flex-wrap gap-4 text-sm">
-            {job.location && (
-              <span className="inline-flex items-center gap-1">
-                <MapPinIcon className="h-4 w-4" />
-                {job.location.name}
-              </span>
-            )}
-            {job.foreman && (
-              <span className="inline-flex items-center gap-1">
-                <UserIcon className="h-4 w-4" />
-                {job.foreman.name}
-              </span>
-            )}
-          </div>
-        </div>
-
-        {materialLists.length === 0 ? (
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-12">
-              <PackageIcon className="mb-4 h-12 w-12 text-gray-400" />
-              <p className="text-muted-foreground text-center">
-                No cached material lists for this job yet.
-              </p>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {materialLists.map((list) => (
-              <Card
-                key={list.id}
-                className="cursor-pointer transition-shadow hover:shadow-md"
-                onClick={() => {
-                  window.location.href = `/dashboard/material-lists/${list.id}`;
-                }}
-              >
-                <CardHeader>
-                  <CardTitle className="line-clamp-1">{list.name}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2 text-sm text-gray-600">
-                    <div className="flex items-center gap-2">
-                      <PackageIcon className="h-4 w-4" />
-                      <span>
-                        {list.itemCount ?? 0}{" "}
-                        {list.itemCount === 1 ? "item" : "items"}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <CalendarIcon className="h-4 w-4" />
-                      <span>
-                        {format(new Date(list.createdAt), "MMM d, yyyy")}
-                      </span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
       </div>
     </div>
   );

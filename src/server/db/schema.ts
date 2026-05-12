@@ -1166,6 +1166,56 @@ export const materialListSyncTombstones = createTable(
   ],
 );
 
+export const replicacheClientGroups = createTable(
+  "replicache_client_group",
+  (d) => ({
+    id: d.varchar({ length: 255 }).notNull().primaryKey(),
+    organizationId: d
+      .uuid()
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    userId: d.varchar({ length: 255 }).references(() => users.id, {
+      onDelete: "set null",
+    }),
+    schemaVersion: d.varchar({ length: 80 }).notNull(),
+    cvrVersion: d.integer().notNull().default(0),
+    updatedAt: d
+      .timestamp({ withTimezone: true })
+      .notNull()
+      .$defaultFn(() => new Date())
+      .$onUpdate(() => new Date()),
+  }),
+  (t) => [index("replicache_client_group_org_idx").on(t.organizationId)],
+);
+
+export const replicacheClients = createTable(
+  "replicache_client",
+  (d) => ({
+    id: d.varchar({ length: 255 }).notNull().primaryKey(),
+    clientGroupId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => replicacheClientGroups.id, { onDelete: "cascade" }),
+    organizationId: d
+      .uuid()
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    userId: d.varchar({ length: 255 }).references(() => users.id, {
+      onDelete: "set null",
+    }),
+    lastMutationId: d.integer().notNull().default(0),
+    updatedAt: d
+      .timestamp({ withTimezone: true })
+      .notNull()
+      .$defaultFn(() => new Date())
+      .$onUpdate(() => new Date()),
+  }),
+  (t) => [
+    index("replicache_client_group_idx").on(t.clientGroupId),
+    index("replicache_client_org_idx").on(t.organizationId),
+  ],
+);
+
 export const quoteItemsRelations = relations(quoteItems, ({ one }) => ({
   quote: one(quotes, { fields: [quoteItems.quoteId], references: [quotes.id] }),
   supplierPart: one(supplierParts, {

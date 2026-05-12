@@ -5,10 +5,7 @@ import { QuantityControls } from "~/components/materialLists/QuantityControls";
 import { SupplierSelector } from "~/components/materialLists/SupplierSelector";
 import { Button } from "~/components/ui/button";
 import { TrashIcon } from "lucide-react";
-import {
-  applyOfflineRemoveItem,
-  enqueueOfflineMutation,
-} from "~/lib/offline-material-list-mutations";
+import { getMaterialListReplicache } from "~/lib/replicache-material-list";
 
 interface MaterialListTableRowProps {
   item: {
@@ -56,21 +53,10 @@ export function MaterialListTableRow({
 }: MaterialListTableRowProps) {
   const removeInFlightRef = useRef(false);
 
-  const removeItem = async () => {
+  const removeItem = () => {
     if (removeInFlightRef.current) return;
     removeInFlightRef.current = true;
-    try {
-      await applyOfflineRemoveItem(materialListId, item.id);
-      await enqueueOfflineMutation({
-        type: "removeItem",
-        materialListId,
-        itemId: item.id,
-        queuedAt: new Date().toISOString(),
-      });
-    } catch (error) {
-      removeInFlightRef.current = false;
-      throw error;
-    }
+    void getMaterialListReplicache().mutate.removeItem({ materialListId, itemId: item.id });
   };
 
   const quantity = parseFloat(item.quantity);
@@ -145,7 +131,7 @@ export function MaterialListTableRow({
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => void removeItem()}
+          onClick={removeItem}
           className="h-8 w-8 p-0"
           aria-label="Remove item"
         >

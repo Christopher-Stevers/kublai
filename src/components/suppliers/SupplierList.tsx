@@ -17,11 +17,10 @@ import {
   TrashIcon,
   EditIcon,
   PackageIcon,
-  WifiOffIcon,
 } from "lucide-react";
 import { useOnlineStatus } from "~/hooks/use-online-status";
-import { useOfflineSuppliers } from "~/hooks/use-offline-suppliers";
-import { tombstoneOfflineSupplier } from "~/lib/offline-suppliers";
+import { useReplicacheSuppliers } from "~/hooks/use-replicache-suppliers";
+import { getMaterialListReplicache } from "~/lib/replicache-material-list";
 
 export function SupplierList() {
   const [editSupplierId, setEditSupplierId] = useState<string | undefined>();
@@ -31,22 +30,13 @@ export function SupplierList() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
   const isBrowserOnline = useOnlineStatus();
-  const { data: serverSuppliers, isLoading } = api.supplier.list.useQuery(
-    undefined,
-    {
-      enabled: isBrowserOnline,
-    },
-  );
   const { data: userData } = api.user.getMyRole.useQuery(undefined, {
     enabled: isBrowserOnline,
   });
   const canDeleteCoreRecords =
     userData?.permissions.canDeleteCoreRecords ?? true;
-  const {
-    data: suppliers,
-    cacheLoaded,
-    isOfflineFallback,
-  } = useOfflineSuppliers(serverSuppliers);
+  const suppliers = useReplicacheSuppliers();
+
   const handleDelete = (id: string, name: string) => {
     if (!canDeleteCoreRecords) return;
 
@@ -55,21 +45,13 @@ export function SupplierList() {
         `Are you sure you want to delete "${name}"? This will also remove all parts associated with this supplier.`,
       )
     ) {
-      tombstoneOfflineSupplier(id);
+      void getMaterialListReplicache().mutate.deleteSupplier({ supplierId: id });
     }
   };
 
-  const editingSupplier = suppliers?.find((s) => s.id === editSupplierId);
+  const editingSupplier = suppliers.find((s) => s.id === editSupplierId);
 
-  if ((isLoading || !cacheLoaded) && !suppliers) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <p className="text-muted-foreground">Loading suppliers...</p>
-      </div>
-    );
-  }
-
-  if (!suppliers || suppliers.length === 0) {
+  if (suppliers.length === 0) {
     return (
       <div className="space-y-4">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -114,11 +96,6 @@ export function SupplierList() {
           <p className="text-muted-foreground mt-1 text-sm sm:text-base">
             Manage your suppliers and their parts
           </p>
-          {isOfflineFallback && (
-            <p className="mt-2 inline-flex items-center gap-2 rounded-full bg-orange-100 px-3 py-1 text-xs font-medium text-orange-900">
-              <WifiOffIcon className="h-3 w-3" /> Offline cached suppliers
-            </p>
-          )}
         </div>
         <Button
           onClick={() => setIsCreateDialogOpen(true)}
@@ -141,19 +118,6 @@ export function SupplierList() {
                   {supplier.name}
                 </h3>
                 <div className="text-muted-foreground mt-1 flex flex-col gap-1 text-xs sm:flex-row sm:flex-wrap sm:gap-4 sm:text-sm">
-                  {supplier.location && (
-                    <span className="truncate">
-                      📍 {supplier.location.name}
-                      {supplier.location.city || supplier.location.region
-                        ? ` - ${[
-                            supplier.location.city,
-                            supplier.location.region,
-                          ]
-                            .filter(Boolean)
-                            .join(", ")}`
-                        : ""}
-                    </span>
-                  )}
                   {supplier.contactName && (
                     <span className="truncate">{supplier.contactName}</span>
                   )}

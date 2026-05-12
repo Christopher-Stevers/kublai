@@ -7,7 +7,6 @@ import { ensureUser } from "~/server/utils/ensure-user";
 import { waitForUser } from "~/server/utils/wait-for-user";
 import { getDevBypassUser } from "~/server/utils/get-dev-bypass-user";
 import { getAgentBypassUser } from "~/server/utils/get-agent-bypass-user";
-import { OfflineSyncDebugPanel } from "~/components/offline/OfflineSyncDebugPanel";
 
 const allowDevDashboardAccess = process.env.NODE_ENV !== "production";
 
@@ -76,7 +75,6 @@ export default async function DashboardLayout({
       <div className="flex min-h-screen flex-col bg-gray-50">
         <Header />
         <main className="flex-1">{children}</main>
-        <OfflineSyncDebugPanel />
       </div>
     </HydrateClient>
   );

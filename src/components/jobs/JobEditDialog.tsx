@@ -12,7 +12,7 @@ import {
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { LocationSelector } from "~/components/ui/LocationSelector";
-import { updateOfflineJob } from "~/lib/offline-jobs";
+import { getMaterialListReplicache } from "~/lib/replicache-material-list";
 
 interface JobEditDialogProps {
   open: boolean;
@@ -53,7 +53,8 @@ export function JobEditDialog({
       return;
     }
 
-    updateOfflineJob(jobId, {
+    void getMaterialListReplicache().mutate.updateJob({
+      jobId,
       name: jobName.trim(),
       locationId: locationId,
       poNumber: poNumber.trim() || null,

@@ -10,10 +10,10 @@ import {
 } from "~/components/ui/dropdown-menu";
 import { Button } from "~/components/ui/button";
 import { BriefcaseIcon, ChevronDownIcon } from "lucide-react";
-import { useOfflineJobsList } from "~/hooks/use-offline-jobs";
+import { useReplicacheJobsList } from "~/hooks/use-replicache-jobs";
 
 export function JobSelector() {
-  const { data: jobs } = useOfflineJobsList(undefined);
+  const jobs = useReplicacheJobsList();
 
   return (
     <DropdownMenu>
@@ -27,7 +27,7 @@ export function JobSelector() {
       <DropdownMenuContent align="end" className="w-64">
         <DropdownMenuLabel>Local Jobs</DropdownMenuLabel>
         <DropdownMenuSeparator />
-        {jobs && jobs.length > 0 ? (
+        {jobs.length > 0 ? (
           jobs.map((job) => (
             <DropdownMenuItem key={job.id} disabled>
               <div className="flex flex-col">

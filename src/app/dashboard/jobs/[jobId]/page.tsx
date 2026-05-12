@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useEffect, useMemo, useState } from "react";
+import { use, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
@@ -13,7 +13,6 @@ import {
   MapPinIcon,
   PencilIcon,
   TrashIcon,
-  UsersIcon,
   WifiOffIcon,
 } from "lucide-react";
 import {
@@ -26,20 +25,9 @@ import {
 } from "~/components/ui/dialog";
 import { format } from "date-fns";
 import { JobEditDialog } from "~/components/jobs/JobEditDialog";
-import { useOfflineJobDetail } from "~/hooks/use-offline-jobs";
+import { useReplicacheJobDetail } from "~/hooks/use-replicache-jobs";
 import { useOnlineStatus } from "~/hooks/use-online-status";
-import {
-  createOfflineMaterialList,
-  tombstoneOfflineMaterialList,
-} from "~/lib/offline-jobs";
-import {
-  clearOfflineMaterialList,
-  setOfflineMaterialList,
-} from "~/lib/offline-material-list";
-import {
-  getOfflineMutationQueue,
-  setOfflineMutationQueue,
-} from "~/lib/offline-material-list-mutations";
+import { getMaterialListReplicache } from "~/lib/replicache-material-list";
 
 type JobLocationDisplay = {
   name?: string | null;
@@ -92,125 +80,35 @@ export default function JobDetailPage({
   const canDeleteCoreRecords =
     userData?.permissions.canDeleteCoreRecords ?? true;
 
-  useEffect(() => {
-    if (!jobId.startsWith("offline-job-") || typeof window === "undefined")
-      return;
-
-    const redirectIfMapped = () => {
-      const idMap = JSON.parse(
-        window.localStorage.getItem("foremanhq.offline.id-map") ?? "{}",
-      ) as Record<string, string>;
-      const mappedId = idMap[jobId];
-      if (mappedId) router.replace(`/dashboard/jobs/${mappedId}`);
-    };
-
-    redirectIfMapped();
-    window.addEventListener(
-      "foremanhq:offline-id-map-changed",
-      redirectIfMapped,
-    );
-    return () =>
-      window.removeEventListener(
-        "foremanhq:offline-id-map-changed",
-        redirectIfMapped,
-      );
-  }, [jobId, router]);
-
-  // Get job details for fresh browser/profile bootstrap. The hook seeds Dexie
-  // and still renders from local state after import.
-  const isServerJobId =
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-      jobId,
-    );
-  const { data: serverJobResult, isLoading: jobLoading } =
-    api.job.getJob.useQuery(
-      { jobId },
-      {
-        enabled: isBrowserOnline && isServerJobId,
-        refetchOnMount: true,
-        refetchOnWindowFocus: false,
-      },
-    );
-  const serverJob = useMemo(
-    () =>
-      serverJobResult
-        ? (({ materialLists: _materialLists, ...job }) => job)(serverJobResult)
-        : undefined,
-    [serverJobResult],
-  );
-  const serverMaterialLists = useMemo(
-    () =>
-      serverJobResult?.materialLists.map((list) => ({
-        ...list,
-        itemCount: 0,
-        materialTotal: 0,
-        foreman: serverJob?.foreman ?? null,
-        contributors: [],
-      })),
-    [serverJob?.foreman, serverJobResult?.materialLists],
-  );
-  const listsLoading = jobLoading;
-
-  const {
-    data: offlineJobData,
-    cacheLoaded,
-    isOnline,
-    isOfflineFallback,
-  } = useOfflineJobDetail(jobId, serverJob, serverMaterialLists);
-
-  const job = offlineJobData?.job ?? null;
-  const materialLists = offlineJobData?.materialLists ?? null;
+  const jobDetail = useReplicacheJobDetail(jobId);
+  const job = jobDetail?.job ?? null;
+  const materialLists = jobDetail?.materialLists ?? null;
 
   const handleCreateNew = () => {
-    if (!job?.id) {
-      return;
-    }
+    if (!job?.id) return;
 
-    const materialList = createOfflineMaterialList(job.id);
-    void setOfflineMaterialList(
-      materialList.id,
-      {
-        materialList: {
-          id: materialList.id,
-          name: materialList.name,
-          createdAt: materialList.createdAt,
-        },
-        job,
-        quote: { id: `offline-quote-${materialList.id}` },
-        items: [],
-        materialTotal: 0,
-      },
-      { pendingSync: true },
-    ).then(() => router.push(`/dashboard/material-lists/${materialList.id}`));
-    return;
+    const materialListId = crypto.randomUUID();
+    void getMaterialListReplicache().mutate.createMaterialList({
+      materialListId,
+      jobId: job.id,
+      name: "Material List",
+    });
+    router.push(`/dashboard/material-lists/${materialListId}`);
   };
 
   const handleConfirmDeleteMaterialList = () => {
-    if (!materialListToDelete) {
-      return;
-    }
-
-    if (!canDeleteCoreRecords) {
-      return;
-    }
+    if (!materialListToDelete || !canDeleteCoreRecords) return;
 
     const { id } = materialListToDelete;
     setMaterialListToDelete(null);
-
-    tombstoneOfflineMaterialList(jobId, id);
-    void clearOfflineMaterialList(id);
-    void getOfflineMutationQueue().then((queue) =>
-      setOfflineMutationQueue(
-        queue.filter((mutation) => mutation.materialListId !== id),
-      ),
-    );
-    return;
+    void getMaterialListReplicache().mutate.deleteMaterialList({
+      materialListId: id,
+    });
   };
 
-  const isLoading = jobLoading || listsLoading;
   const jobLocationAddress = formatLocationAddress(job?.location);
 
-  if ((isLoading || !cacheLoaded) && !job) {
+  if (!job && jobDetail === null) {
     return (
       <div className="px-4 py-6 sm:px-6 sm:py-8">
         <div className="mx-auto max-w-6xl">
@@ -240,19 +138,15 @@ export default function JobDetailPage({
   return (
     <div className="px-4 py-6 sm:px-6 sm:py-8">
       <div className="mx-auto max-w-6xl">
-        <div className="mb-4 flex flex-wrap items-center gap-2">
-          {!isOnline && (
+        {!isBrowserOnline && (
+          <div className="mb-4 flex flex-wrap items-center gap-2">
             <div className="inline-flex items-center gap-2 rounded-full bg-amber-100 px-3 py-1 text-sm font-medium text-amber-900">
               <WifiOffIcon className="h-4 w-4" />
               Offline mode
             </div>
-          )}
-          {isOfflineFallback && (
-            <div className="inline-flex items-center rounded-full bg-blue-100 px-3 py-1 text-sm font-medium text-blue-900">
-              Showing cached job and material lists
-            </div>
-          )}
-        </div>
+          </div>
+        )}
+
         {/* Job Header */}
         <div className="mb-6">
           <div className="mb-2 flex items-center gap-3">
@@ -276,10 +170,10 @@ export default function JobDetailPage({
                 <span>{jobLocationAddress}</span>
               </div>
             )}
-            {(job.foremanName || job.foreman?.name) && (
+            {job.foremanName && (
               <div className="flex items-center gap-2">
                 <UserIcon className="h-4 w-4" />
-                <span>{job.foremanName ?? job.foreman?.name}</span>
+                <span>{job.foremanName}</span>
               </div>
             )}
             {job.poNumber && (
@@ -372,66 +266,6 @@ export default function JobDetailPage({
                       <span className="font-semibold">Total:</span>
                       <span>${list.materialTotal.toFixed(2)}</span>
                     </div>
-                    {(
-                      list as unknown as {
-                        createdBy?: {
-                          name?: string | null;
-                          email?: string | null;
-                        } | null;
-                      }
-                    ).createdBy && (
-                      <div className="flex items-center gap-2">
-                        <UserIcon className="h-4 w-4" />
-                        <span>
-                          {(
-                            list as unknown as {
-                              createdBy: {
-                                name?: string | null;
-                                email?: string | null;
-                              };
-                            }
-                          ).createdBy.name?.trim() ||
-                            (
-                              list as unknown as {
-                                createdBy: {
-                                  name?: string | null;
-                                  email?: string | null;
-                                };
-                              }
-                            ).createdBy.email?.trim() ||
-                            "Unknown"}
-                        </span>
-                      </div>
-                    )}
-                    {(
-                      list as unknown as {
-                        contributors?: Array<{
-                          name?: string | null;
-                          email?: string | null;
-                        }>;
-                      }
-                    ).contributors?.length ? (
-                      <div className="flex items-start gap-2">
-                        <UsersIcon className="mt-0.5 h-4 w-4 shrink-0" />
-                        <span className="min-w-0 break-words">
-                          {(
-                            list as unknown as {
-                              contributors: Array<{
-                                name?: string | null;
-                                email?: string | null;
-                              }>;
-                            }
-                          ).contributors
-                            .map(
-                              (contributor) =>
-                                contributor.name?.trim() ||
-                                contributor.email?.trim(),
-                            )
-                            .filter(Boolean)
-                            .join(", ")}
-                        </span>
-                      </div>
-                    ) : null}
                     <div className="flex items-center gap-2">
                       <CalendarIcon className="h-4 w-4" />
                       <span>
@@ -452,7 +286,7 @@ export default function JobDetailPage({
           jobId={jobId}
           initialName={job.name}
           initialLocationId={job.locationId}
-          initialForemanName={job.foremanName ?? job.foreman?.name ?? null}
+          initialForemanName={job.foremanName ?? null}
           initialPoNumber={job.poNumber ?? null}
         />
 

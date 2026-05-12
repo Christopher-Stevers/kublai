@@ -13,11 +13,9 @@ import {
   UserIcon,
 } from "lucide-react";
 import Image from "next/image";
-import {
-  applyOfflineRemoveItem,
-  enqueueOfflineMutation,
-} from "~/lib/offline-material-list-mutations";
-import type { MaterialListSyncStatus } from "~/hooks/use-offline-material-list";
+import { getMaterialListReplicache } from "~/lib/replicache-material-list";
+
+type MaterialListSyncStatus = "synced" | "pending" | "syncing";
 
 interface MaterialListItemProps {
   item: {
@@ -28,7 +26,7 @@ interface MaterialListItemProps {
     descriptionSnapshot: string | null;
     createdAt?: string | Date | null;
     updatedAt?: string | Date | null;
-    syncVersion?: string | null;
+    pendingSync?: boolean;
     partDefinition: {
       id: string;
       displayName: string;
@@ -46,7 +44,7 @@ interface MaterialListItemProps {
         name: string;
       } | null;
     } | null;
-    uom: {
+    uom?: {
       id: string;
       code: string;
       displayName: string | null;
@@ -100,7 +98,7 @@ function ItemSyncBadge({ status }: { status: MaterialListSyncStatus }) {
 function MaterialListItemComponent({
   item,
   materialListId,
-  syncStatus = "synced",
+  syncStatus,
 }: MaterialListItemProps) {
   const removeInFlightRef = useRef(false);
   const quantity = parseFloat(item.quantity);
@@ -109,21 +107,13 @@ function MaterialListItemComponent({
     ? parseFloat(item.extendedPrice)
     : quantity * unitCost;
 
-  const handleRemove = async () => {
+  const handleRemove = () => {
     if (removeInFlightRef.current) return;
     removeInFlightRef.current = true;
-    try {
-      await applyOfflineRemoveItem(materialListId, item.id);
-      await enqueueOfflineMutation({
-        type: "removeItem",
-        materialListId,
-        itemId: item.id,
-        queuedAt: new Date().toISOString(),
-      });
-    } catch (error) {
-      removeInFlightRef.current = false;
-      throw error;
-    }
+    void getMaterialListReplicache().mutate.removeItem({
+      materialListId,
+      itemId: item.id,
+    });
   };
 
   const partName =
@@ -135,7 +125,7 @@ function MaterialListItemComponent({
     <Card className="group relative overflow-hidden rounded-2xl border-gray-200 bg-gradient-to-br from-white to-gray-50/60 shadow-sm transition-all [content-visibility:auto] [contain-intrinsic-size:9rem] hover:border-gray-300 hover:shadow-md">
       <CardContent className="relative p-3 sm:p-4">
         <div className="absolute top-2 right-2 z-10 sm:top-2.5 sm:right-2.5">
-          <ItemSyncBadge status={syncStatus} />
+          <ItemSyncBadge status={syncStatus ?? (item.pendingSync ? "pending" : "synced")} />
         </div>
         <div className="grid h-[7.25rem] grid-cols-[7.25rem_minmax(0,1fr)_2rem] gap-3 sm:h-32 sm:grid-cols-[8rem_minmax(0,1fr)_2rem] sm:gap-4">
           {/* Image — anchors card height */}

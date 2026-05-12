@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { api } from "~/trpc/react";
-import { useOfflineMaterialListSyncRunner } from "~/hooks/use-offline-material-list-sync";
 import {
   Dialog,
   DialogContent,
@@ -38,7 +37,6 @@ export function QuotePreviewSheet({
 
   const utils = api.useUtils();
   const isOnline = useOnlineStatus();
-  const syncOfflineChanges = useOfflineMaterialListSyncRunner();
   const { data: userData } = api.user.getMyRole.useQuery(undefined, {
     enabled: isOnline && open,
   });
@@ -88,14 +86,6 @@ export function QuotePreviewSheet({
           return;
         }
 
-        const syncResult = await syncOfflineChanges();
-        if (syncResult.remaining > 0) {
-          setSyncError(
-            "Queued changes still need to sync before quote generation.",
-          );
-          return;
-        }
-
         setSyncError(null);
         generateQuote.mutate({
           materialListId,
@@ -111,7 +101,6 @@ export function QuotePreviewSheet({
     markupPercent,
     notes,
     providedQuoteId,
-    syncOfflineChanges,
     canGenerateDocuments,
   ]);
 

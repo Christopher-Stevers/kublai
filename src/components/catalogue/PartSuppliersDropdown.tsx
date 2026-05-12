@@ -20,9 +20,8 @@ import {
 } from "lucide-react";
 import { SupplierFormDialog } from "~/components/suppliers/SupplierFormDialog";
 import { useOnlineStatus } from "~/hooks/use-online-status";
-import { useOfflineSuppliers } from "~/hooks/use-offline-suppliers";
+import { useReplicacheSuppliers } from "~/hooks/use-replicache-suppliers";
 import {
-  OFFLINE_SUPPLIERS_EVENT,
   addOfflinePartSupplier,
   getOfflinePartSuppliers,
   removeOfflinePartSupplier,
@@ -62,10 +61,8 @@ export function PartSuppliersDropdown({
     { partDefinitionId },
     { enabled: isOnline && isDropdownOpen && !!partDefinitionId },
   );
-  const { data: serverSuppliers } = api.supplier.list.useQuery(undefined, {
-    enabled: isOnline && isDropdownOpen,
-  });
-  const { data: offlineSuppliers } = useOfflineSuppliers(serverSuppliers);
+
+  const replicacheSuppliers = useReplicacheSuppliers();
 
   const addSupplierPart = api.supplier.addSupplierPart.useMutation();
   const removeSupplierPart = api.supplier.removeSupplierPart.useMutation();
@@ -92,13 +89,6 @@ export function PartSuppliersDropdown({
   }, [partDefinitionId, serverSupplierParts]);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    const onChange = () => setLocalSupplierParts(getOfflinePartSuppliers(partDefinitionId) ?? []);
-    window.addEventListener(OFFLINE_SUPPLIERS_EVENT, onChange);
-    return () => window.removeEventListener(OFFLINE_SUPPLIERS_EVENT, onChange);
-  }, [partDefinitionId]);
-
-  useEffect(() => {
     if (!isDropdownOpen) {
       setSearchQuery("");
       setDebouncedSearchQuery("");
@@ -108,9 +98,9 @@ export function PartSuppliersDropdown({
   const allSuppliers = useMemo(() => {
     const byId = new Map<string, { id: string; name: string; contactEmail?: string | null }>();
     for (const supplier of availableSuppliers) byId.set(supplier.id, supplier);
-    for (const supplier of offlineSuppliers ?? []) byId.set(supplier.id, supplier);
+    for (const supplier of replicacheSuppliers) byId.set(supplier.id, { id: supplier.id, name: supplier.name });
     return Array.from(byId.values()).sort((a, b) => a.name.localeCompare(b.name));
-  }, [availableSuppliers, offlineSuppliers]);
+  }, [availableSuppliers, replicacheSuppliers]);
 
   const supplierIdsWithPart = new Set(localSupplierParts.map((sp) => sp.supplierId));
   const preferredSupplierId =

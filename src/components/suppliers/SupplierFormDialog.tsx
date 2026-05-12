@@ -1,10 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import {
-  createOfflineSupplier,
-  updateOfflineSupplier,
-} from "~/lib/offline-suppliers";
+import { getMaterialListReplicache } from "~/lib/replicache-material-list";
 import {
   Dialog,
   DialogContent,
@@ -97,10 +94,17 @@ export function SupplierFormDialog({
     };
 
     if (supplierId) {
-      updateOfflineSupplier(supplierId, fields);
+      void getMaterialListReplicache().mutate.updateSupplier({
+        supplierId,
+        ...fields,
+      });
     } else {
-      const supplier = createOfflineSupplier(fields);
-      onSupplierCreated?.(supplier.id);
+      const newId = crypto.randomUUID();
+      void getMaterialListReplicache().mutate.createSupplier({
+        supplierId: newId,
+        ...fields,
+      });
+      onSupplierCreated?.(newId);
     }
 
     onOpenChange(false);

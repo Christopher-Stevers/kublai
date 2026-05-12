@@ -83,6 +83,13 @@
       "when": 1778467810479,
       "tag": "0022_entity_sync_mutations",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1778496663696,
+      "tag": "0023_replicache_client_tables",
+      "breakpoints": true
     }
   ]
 }

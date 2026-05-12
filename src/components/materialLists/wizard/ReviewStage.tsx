@@ -28,7 +28,8 @@ import { PartSuppliersDropdown } from "~/components/catalogue/PartSuppliersDropd
 import { ViewToggle } from "~/components/ui/view-toggle";
 import { Card, CardContent } from "~/components/ui/card";
 import { useOnlineStatus } from "~/hooks/use-online-status";
-import { getOfflineSuppliers, makeOfflineSupplierPartId } from "~/lib/offline-suppliers";
+import { makeOfflineSupplierPartId } from "~/lib/offline-suppliers";
+import { useReplicacheSuppliers } from "~/hooks/use-replicache-suppliers";
 
 const MATERIAL_LIST_TABLE_COLUMNS =
   "grid-cols-[2rem_8rem_24rem_12rem_8.5rem_2.25rem] sm:grid-cols-[2rem_8.5rem_30rem_14rem_9rem_2.25rem]";
@@ -163,15 +164,7 @@ export function ReviewStage({
 
   const utils = api.useUtils();
   const isOnline = useOnlineStatus();
-  const [cachedSuppliers, setCachedSuppliers] = useState(() => getOfflineSuppliers() ?? []);
-  const { data: serverSuppliers } = api.supplier.list.useQuery(undefined, {
-    enabled: isOnline,
-  });
-  const allSuppliers = isOnline ? (serverSuppliers ?? cachedSuppliers) : cachedSuppliers;
-
-  useEffect(() => {
-    setCachedSuppliers(getOfflineSuppliers() ?? []);
-  }, [isOnline]);
+  const allSuppliers = useReplicacheSuppliers();
 
   useEffect(() => {
     setOptimisticSupplierSelections((prev) => {
