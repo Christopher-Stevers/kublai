@@ -1,17 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
-import { parseSizeInput, formatSize } from "~/lib/size-utils";
-import { Button } from "~/components/ui/button";
-import { Input } from "~/components/ui/input";
+import { formatSize } from "~/lib/size-utils";
 import { Card, CardContent } from "~/components/ui/card";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "~/components/ui/dropdown-menu";
-import { ChevronDown } from "lucide-react";
 import { useClientPagination } from "~/components/ui/list-pagination";
 import {
   WIZARD_OPTION_GRID_CLASS,
@@ -48,6 +39,7 @@ export interface SizeStageProps {
     mutate: (variables: { nominal: number; unitId: string }) => void;
     isPending: boolean;
   };
+  isOnline?: boolean;
 }
 
 function SizeCard({
@@ -130,6 +122,14 @@ function SizeCard({
 
   function handleWindowPointerUp(event: PointerEvent) {
     if (activePointerIdRef.current !== event.pointerId) return;
+
+    if (
+      longPressTriggeredRef.current &&
+      activePointerTypeRef.current === "touch"
+    ) {
+      return;
+    }
+
     event.preventDefault();
     clearTimer();
     if (longPressTriggeredRef.current) finishSubSizeSelection();
@@ -137,6 +137,14 @@ function SizeCard({
 
   function handleWindowPointerCancel(event: PointerEvent) {
     if (activePointerIdRef.current !== event.pointerId) return;
+
+    if (
+      longPressTriggeredRef.current &&
+      activePointerTypeRef.current === "touch"
+    ) {
+      return;
+    }
+
     clearTimer();
     cancelSubSizeSelection();
   }
@@ -179,6 +187,10 @@ function SizeCard({
   const handlePointerUp = () => {
     clearTimer();
     if (longPressTriggeredRef.current) {
+      if (activePointerTypeRef.current === "touch") {
+        return;
+      }
+
       finishSubSizeSelection();
       return;
     }
@@ -188,6 +200,14 @@ function SizeCard({
 
   const handlePointerCancel = () => {
     clearTimer();
+
+    if (
+      longPressTriggeredRef.current &&
+      activePointerTypeRef.current === "touch"
+    ) {
+      return;
+    }
+
     cancelSubSizeSelection();
   };
 
@@ -200,8 +220,12 @@ function SizeCard({
 
   return (
     <Card
-      className={`cursor-pointer transition-all hover:shadow-md ${isSelected ? WIZARD_OPTION_SELECTED_CLASS : ""}`}
-      style={{ WebkitTouchCallout: "none", WebkitUserSelect: "none", userSelect: "none", touchAction: "none" }}
+      className={`min-w-0 cursor-pointer overflow-hidden transition-all hover:shadow-md ${isSelected ? WIZARD_OPTION_SELECTED_CLASS : ""}`}
+      style={{
+        WebkitTouchCallout: "none",
+        WebkitUserSelect: "none",
+        userSelect: "none",
+      }}
       onContextMenu={(event) => event.preventDefault()}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
@@ -212,8 +236,8 @@ function SizeCard({
         clearTimer();
       }}
     >
-      <CardContent className="p-3 text-center sm:p-4">
-        <p className="text-sm font-medium sm:text-base">{formatSize(size.nominal, size.unit)}</p>
+      <CardContent className="min-w-0 p-3 text-center sm:p-4">
+        <p className="truncate text-sm font-medium sm:text-base">{formatSize(size.nominal, size.unit)}</p>
         <p className="mt-1 text-xs text-gray-500">
           {size.count} part{size.count !== 1 ? "s" : ""}
         </p>
@@ -238,9 +262,108 @@ export function SizeStage({
   onCustomSizeUnitIdChange,
   allUnits,
   onCreateSize,
+  isOnline = true,
 }: SizeStageProps) {
   const pagination = useClientPagination(availableSizes ?? []);
   const [subSizePreview, setSubSizePreview] = useState<SubSizePreview | null>(null);
+  const subSizePreviewRef = useRef<SubSizePreview | null>(null);
+  const pickerTouchYRef = useRef<number | null>(null);
+  const pickerTouchAccumulatorRef = useRef(0);
+  void showCustomSize;
+  void onShowCustomSize;
+  void customSizeInput;
+  void onCustomSizeInputChange;
+  void customSizeUnitId;
+  void onCustomSizeUnitIdChange;
+  void allUnits;
+  void onCreateSize;
+  void isOnline;
+
+  useEffect(() => {
+    subSizePreviewRef.current = subSizePreview;
+  }, [subSizePreview]);
+
+  useEffect(() => {
+    if (!subSizePreview) {
+      pickerTouchYRef.current = null;
+      pickerTouchAccumulatorRef.current = 0;
+      return;
+    }
+
+    const handleTouchMove = (event: TouchEvent) => {
+      if (event.touches.length === 0) {
+        return;
+      }
+
+      event.preventDefault();
+
+      const touchY = event.touches[0]?.clientY;
+      if (touchY === undefined) {
+        return;
+      }
+
+      if (pickerTouchYRef.current === null) {
+        pickerTouchYRef.current = touchY;
+        return;
+      }
+
+      const deltaY = touchY - pickerTouchYRef.current;
+      pickerTouchAccumulatorRef.current += deltaY;
+      pickerTouchYRef.current = touchY;
+
+      const stepSize = 34;
+      const stepDelta = Math.trunc(pickerTouchAccumulatorRef.current / stepSize);
+      if (stepDelta === 0) {
+        return;
+      }
+
+      pickerTouchAccumulatorRef.current -= stepDelta * stepSize;
+
+      setSubSizePreview((prev) => {
+        if (!prev) {
+          return prev;
+        }
+
+        const lastIndex = (prev.size.subSizes?.length ?? 1) - 1;
+        return {
+          ...prev,
+          selectedIndex: Math.max(
+            0,
+            Math.min(lastIndex, prev.selectedIndex + stepDelta),
+          ),
+        };
+      });
+    };
+
+    const handleTouchEnd = (event: TouchEvent) => {
+      event.preventDefault();
+
+      const preview = subSizePreviewRef.current;
+      const selectedSubSize = preview?.size.subSizes?.[preview.selectedIndex];
+
+      if (preview && selectedSubSize) {
+        onSizeSelect({
+          nominal: preview.size.nominal,
+          unit: preview.size.unit,
+          sizeLabel: selectedSubSize.label,
+        });
+      }
+
+      pickerTouchYRef.current = null;
+      pickerTouchAccumulatorRef.current = 0;
+      setSubSizePreview(null);
+    };
+
+    window.addEventListener("touchmove", handleTouchMove, { passive: false });
+    window.addEventListener("touchend", handleTouchEnd, { passive: false });
+    window.addEventListener("touchcancel", handleTouchEnd, { passive: false });
+
+    return () => {
+      window.removeEventListener("touchmove", handleTouchMove);
+      window.removeEventListener("touchend", handleTouchEnd);
+      window.removeEventListener("touchcancel", handleTouchEnd);
+    };
+  }, [onSizeSelect, subSizePreview]);
 
   return (
     <div className={`relative space-y-3 sm:space-y-4 ${subSizePreview ? "touch-none" : ""}`}>
@@ -257,74 +380,6 @@ export function SizeStage({
           />
         ))}
       </div>
-      {showCustomSize && (
-        <div className="mt-3 space-y-2 sm:mt-4">
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            <div>
-              <label className="text-xs font-medium text-gray-700 sm:text-sm">
-                Size (number required)
-              </label>
-              <Input
-                type="text"
-                placeholder="Enter size (e.g., 1 ½, 2.5)"
-                value={customSizeInput}
-                onChange={(e) => onCustomSizeInputChange(e.target.value)}
-                className="mt-1 text-sm sm:text-base"
-                autoFocus
-                disabled={onCreateSize.isPending}
-              />
-            </div>
-            <div>
-              <label className="text-xs font-medium text-gray-700 sm:text-sm">Unit</label>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="mt-1 w-full justify-between text-xs sm:text-sm"
-                    disabled={onCreateSize.isPending}
-                  >
-                    {customSizeUnitId
-                      ? (allUnits.find((u) => u.id === customSizeUnitId)
-                          ?.code ?? "Select unit")
-                      : "Select unit"}
-                    <ChevronDown className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  {allUnits.map((unit) => (
-                    <DropdownMenuItem
-                      key={unit.id}
-                      onClick={() => onCustomSizeUnitIdChange(unit.id)}
-                    >
-                      {unit.code}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          </div>
-          <Button
-            onClick={() => {
-              const parsed = parseSizeInput(customSizeInput);
-              if (parsed !== null && customSizeUnitId) {
-                onCreateSize.mutate({
-                  nominal: parsed,
-                  unitId: customSizeUnitId,
-                });
-              }
-            }}
-            disabled={
-              !customSizeInput.trim() ||
-              !customSizeUnitId ||
-              onCreateSize.isPending ||
-              parseSizeInput(customSizeInput) === null
-            }
-            className="w-full text-xs sm:text-sm"
-          >
-            {onCreateSize.isPending ? "Adding..." : "Add Size"}
-          </Button>
-        </div>
-      )}
       <WizardOptionPagination pagination={pagination} itemLabel="sizes" />
       {subSizePreview && (
         <VerticalPickerOverlay
@@ -332,10 +387,23 @@ export function SizeStage({
           subtitle={`${formatSize(subSizePreview.size.nominal, subSizePreview.size.unit)} fittings`}
           centerIndex={subSizePreview.selectedIndex}
           getItem={(index) => subSizePreview.size.subSizes?.[index] ?? null}
+          getItemFontSize={(subSize, distance) => {
+            const labelLength = subSize.label.length;
+
+            if (labelLength >= 22) {
+              return distance === 0 ? "1.35rem" : distance === 1 ? "0.85rem" : "0.65rem";
+            }
+
+            if (labelLength >= 16) {
+              return distance === 0 ? "1.7rem" : distance === 1 ? "1rem" : "0.75rem";
+            }
+
+            return undefined;
+          }}
           renderItem={(subSize) => subSize.label}
-          activeFontSize="3.7rem"
-          nearFontSize="2.35rem"
-          farFontSize="1.35rem"
+          activeFontSize="2.25rem"
+          nearFontSize="1.25rem"
+          farFontSize="0.85rem"
         />
       )}
     </div>

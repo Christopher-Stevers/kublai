@@ -6,8 +6,8 @@ import { Card, CardContent } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
 import { ListPagination, type UseClientPaginationResult } from "~/components/ui/list-pagination";
 
-export const WIZARD_OPTION_GRID_CLASS = "grid grid-cols-[repeat(auto-fit,minmax(12rem,1fr))] gap-3";
-export const WIZARD_OPTION_CARD_CLASS = "cursor-pointer transition-all hover:shadow-md";
+export const WIZARD_OPTION_GRID_CLASS = "grid grid-cols-[repeat(auto-fill,minmax(min(1.5in,100%),1fr))] gap-3";
+export const WIZARD_OPTION_CARD_CLASS = "w-full max-w-[4in] cursor-pointer transition-all hover:shadow-md";
 export const WIZARD_OPTION_SELECTED_CLASS = "border-primary border-2 shadow-md";
 
 export function WizardOptionCard({

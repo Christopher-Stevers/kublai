@@ -2,7 +2,6 @@
 
 import { useClientPagination } from "~/components/ui/list-pagination";
 import {
-  CustomOptionForm,
   PartCount,
   WizardAllOption,
   WizardOptionCard,
@@ -26,6 +25,7 @@ export interface CategoryStageProps {
   customCategoryName: string;
   onCustomCategoryNameChange: (name: string) => void;
   onCustomCategorySubmit: () => void;
+  isOnline?: boolean;
 }
 
 export function CategoryStage({
@@ -34,11 +34,19 @@ export function CategoryStage({
   allSelected = false,
   onCategorySelect,
   showCustomCategoryInput,
+  onShowCustomCategoryInput,
   customCategoryName,
   onCustomCategoryNameChange,
   onCustomCategorySubmit,
+  isOnline = true,
 }: CategoryStageProps) {
   const pagination = useClientPagination(categories);
+  void showCustomCategoryInput;
+  void onShowCustomCategoryInput;
+  void customCategoryName;
+  void onCustomCategoryNameChange;
+  void onCustomCategorySubmit;
+  void isOnline;
 
   return (
     <div className="space-y-3 sm:space-y-4">
@@ -59,15 +67,6 @@ export function CategoryStage({
           </WizardOptionCard>
         ))}
       </div>
-      {showCustomCategoryInput && (
-        <CustomOptionForm
-          value={customCategoryName}
-          placeholder="Enter custom category name"
-          buttonLabel="Add Category"
-          onChange={onCustomCategoryNameChange}
-          onSubmit={onCustomCategorySubmit}
-        />
-      )}
       <WizardOptionPagination pagination={pagination} itemLabel="categories" />
     </div>
   );

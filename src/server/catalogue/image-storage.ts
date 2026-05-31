@@ -2,11 +2,10 @@ import { randomUUID } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import sharp from "sharp";
-
 export const CATALOGUE_IMAGE_PUBLIC_PREFIX = "/api/catalogue/images";
 export const CATALOGUE_IMAGE_CONTENT_TYPE = "image/webp";
 export const MAX_CATALOGUE_IMAGE_UPLOAD_BYTES = 8 * 1024 * 1024;
+export const MAX_REMOTE_CATALOGUE_IMAGE_BYTES = 12 * 1024 * 1024;
 
 const UPLOAD_DIR = path.join(process.cwd(), "public", "images", "catalog", "uploads");
 const UPLOAD_FILENAME_PATTERN = /^part-[0-9a-f-]+\.webp$/i;
@@ -36,12 +35,63 @@ export function getCatalogueImageUrl(filename: string) {
 }
 
 export async function convertCatalogueImageUpload(file: File) {
-  const inputBuffer = Buffer.from(await file.arrayBuffer());
+  return convertRemoteCatalogueImage(Buffer.from(await file.arrayBuffer()));
+}
+
+export async function convertRemoteCatalogueImage(inputBuffer: Buffer) {
+  const sharp = (await import("sharp")).default;
+
   return sharp(inputBuffer)
     .rotate()
-    .resize({ width: 1200, height: 1200, fit: "inside", withoutEnlargement: true })
-    .webp({ quality: 78 })
+    .resize({
+      width: 1200,
+      height: 1200,
+      fit: "inside",
+      withoutEnlargement: true,
+    })
+    .webp({ quality: 80 })
     .toBuffer();
+}
+
+export async function downloadRemoteCatalogueImage(imageUrl: string) {
+  const url = new URL(imageUrl);
+  if (!["http:", "https:"].includes(url.protocol)) {
+    throw new Error("Image URL must be HTTP or HTTPS");
+  }
+
+  const blockedHosts = new Set(["localhost", "127.0.0.1", "0.0.0.0", "::1"]);
+  if (blockedHosts.has(url.hostname.toLowerCase())) {
+    throw new Error("Local image URLs are not allowed");
+  }
+
+  const response = await fetch(url, {
+    headers: {
+      "User-Agent": "ForemenHQ catalogue image picker",
+      Accept: "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
+    },
+    redirect: "follow",
+  });
+
+  if (!response.ok) {
+    throw new Error(`Could not download selected image: ${response.status}`);
+  }
+
+  const contentType = response.headers.get("content-type") ?? "";
+  if (contentType && !contentType.toLowerCase().startsWith("image/")) {
+    throw new Error("Selected URL did not return an image");
+  }
+
+  const contentLength = Number(response.headers.get("content-length") ?? "0");
+  if (contentLength > MAX_REMOTE_CATALOGUE_IMAGE_BYTES) {
+    throw new Error("Selected image is too large");
+  }
+
+  const buffer = Buffer.from(await response.arrayBuffer());
+  if (buffer.byteLength > MAX_REMOTE_CATALOGUE_IMAGE_BYTES) {
+    throw new Error("Selected image is too large");
+  }
+
+  return convertRemoteCatalogueImage(buffer);
 }
 
 export async function writeCatalogueImage(filename: string, buffer: Buffer) {

@@ -2,7 +2,6 @@
 
 import { useClientPagination } from "~/components/ui/list-pagination";
 import {
-  CustomOptionForm,
   PartCount,
   WizardAllOption,
   WizardOptionCard,
@@ -23,6 +22,7 @@ export interface MaterialStageProps {
     mutate: (variables: { name: string }) => void;
     isPending: boolean;
   };
+  isOnline?: boolean;
 }
 
 export function MaterialStage({
@@ -31,16 +31,19 @@ export function MaterialStage({
   allSelected = false,
   onMaterialSelect,
   showCustomMaterialInput,
+  onShowCustomMaterialInput,
   customMaterialName,
   onCustomMaterialNameChange,
   onCreateMaterial,
+  isOnline = true,
 }: MaterialStageProps) {
   const pagination = useClientPagination(materials);
-  const submitCustomMaterial = () => {
-    if (customMaterialName.trim()) {
-      onCreateMaterial.mutate({ name: customMaterialName.trim() });
-    }
-  };
+  void showCustomMaterialInput;
+  void onShowCustomMaterialInput;
+  void customMaterialName;
+  void onCustomMaterialNameChange;
+  void onCreateMaterial;
+  void isOnline;
 
   return (
     <div className="space-y-3 sm:space-y-4">
@@ -58,16 +61,6 @@ export function MaterialStage({
           </WizardOptionCard>
         ))}
       </div>
-      {showCustomMaterialInput && (
-        <CustomOptionForm
-          value={customMaterialName}
-          placeholder="Enter custom material name"
-          buttonLabel="Add Material"
-          isPending={onCreateMaterial.isPending}
-          onChange={onCustomMaterialNameChange}
-          onSubmit={submitCustomMaterial}
-        />
-      )}
       <WizardOptionPagination pagination={pagination} itemLabel="materials" />
     </div>
   );

@@ -26,8 +26,12 @@ import { SupplierSelector } from "~/components/materialLists/SupplierSelector";
 import { TrashIcon } from "lucide-react";
 import { useReplicacheMaterialList } from "~/hooks/use-replicache-material-list";
 import { useReplicacheJobDetail } from "~/hooks/use-replicache-jobs";
+import { useReplicacheSuppliers } from "~/hooks/use-replicache-suppliers";
 import { useOnlineStatus } from "~/hooks/use-online-status";
-import { getMaterialListReplicache } from "~/lib/replicache-material-list";
+import {
+  getMaterialListReplicache,
+  mutateMaterialListAndSync,
+} from "~/lib/replicache-material-list";
 import Image from "next/image";
 import { markUserAction } from "~/lib/performance-marks";
 
@@ -46,6 +50,30 @@ function MaterialListSyncBadge({ isPending }: { isPending: boolean }) {
       <CheckCircle2Icon className="h-3.5 w-3.5 shrink-0" />
       <span className="leading-none">Synced</span>
     </div>
+  );
+}
+
+function MaterialListSyncIndicator({ isPending }: { isPending: boolean }) {
+  if (isPending) {
+    return (
+      <span
+        className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-orange-100 text-orange-900 ring-1 ring-orange-200"
+        title="Pending sync"
+        aria-label="Pending sync"
+      >
+        <Clock3Icon className="h-3.5 w-3.5" />
+      </span>
+    );
+  }
+
+  return (
+    <span
+      className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-emerald-100 text-emerald-900 ring-1 ring-emerald-200"
+      title="Synced"
+      aria-label="Synced"
+    >
+      <CheckCircle2Icon className="h-3.5 w-3.5" />
+    </span>
   );
 }
 
@@ -76,6 +104,7 @@ export default function MaterialListDetailPage({
 
   const { materialList: mlHeader, items, materialTotal, isLoading } =
     useReplicacheMaterialList(id);
+  const suppliers = useReplicacheSuppliers();
   const jobDetail = useReplicacheJobDetail(mlHeader?.jobId ?? "");
   const jobName = jobDetail?.job.name;
 
@@ -262,7 +291,7 @@ export default function MaterialListDetailPage({
             <>
               {/* Grid View */}
               {viewMode === "grid" && (
-                <div className="space-y-2">
+                <div className="grid grid-cols-[repeat(auto-fit,minmax(12rem,1fr))] gap-3">
                   {items.map((item) => (
                     <MaterialListItem
                       key={item.id}
@@ -276,9 +305,11 @@ export default function MaterialListDetailPage({
                         updatedAt: item.updatedAt,
                         pendingSync: item.pendingSync,
                         partDefinition: item.partDefinition ?? null,
+                        selectedSupplierId: item.supplierId,
                         supplierPart: item.supplierPart ?? null,
                       }}
                       materialListId={id}
+                      suppliers={suppliers}
                     />
                   ))}
                 </div>
@@ -288,6 +319,7 @@ export default function MaterialListDetailPage({
                 <MaterialListTableView
                   items={items}
                   materialListId={id}
+                  suppliers={suppliers}
                 />
               )}
             </>
@@ -418,7 +450,7 @@ export default function MaterialListDetailPage({
 
 // Material List Table View Component
 const MATERIAL_LIST_TABLE_COLUMNS =
-  "grid-cols-[2rem_8rem_24rem_12rem_8.5rem_2.25rem] sm:grid-cols-[2rem_8.5rem_30rem_14rem_9rem_2.25rem]";
+  "grid-cols-[2rem_7rem_minmax(14rem,1.6fr)_minmax(9rem,1fr)_5rem_6rem_1.75rem_2rem]";
 
 type TableItem = {
   id: string;
@@ -427,6 +459,7 @@ type TableItem = {
   extendedPrice: string | null;
   descriptionSnapshot: string | null;
   pendingSync?: boolean;
+  supplierId?: string | null;
   partDefinition?: {
     id: string;
     displayName: string;
@@ -445,28 +478,32 @@ type TableItem = {
 function MaterialListTableView({
   items,
   materialListId,
+  suppliers,
 }: {
   items: TableItem[];
   materialListId: string;
+  suppliers: ReturnType<typeof useReplicacheSuppliers>;
 }) {
   const handleRemove = (itemId: string) => {
-    void getMaterialListReplicache().mutate.removeItem({
+    void mutateMaterialListAndSync(getMaterialListReplicache().mutate.removeItem({
       materialListId,
       itemId,
-    });
+    }));
   };
 
   return (
     <div className="overflow-x-auto pb-2">
-      <div className="w-max space-y-2">
+      <div className="w-full min-w-[52rem] space-y-2">
         <div
-          className={`grid ${MATERIAL_LIST_TABLE_COLUMNS} items-center gap-2 px-2 text-xs font-medium tracking-wide text-gray-500 uppercase sm:gap-3`}
+          className={`grid ${MATERIAL_LIST_TABLE_COLUMNS} items-center gap-2 px-1.5 text-xs font-medium tracking-wide text-gray-500 uppercase`}
         >
           <span aria-hidden="true" />
           <span className="text-center">Qty</span>
           <span>Part</span>
           <span>Supplier</span>
+          <span className="text-right">Each</span>
           <span className="text-right">Total</span>
+          <span className="text-center">Sync</span>
           <span aria-label="Actions" />
         </div>
         {items.map((item) => {
@@ -479,7 +516,7 @@ function MaterialListTableView({
           return (
             <div
               key={item.id}
-              className={`grid ${MATERIAL_LIST_TABLE_COLUMNS} items-center gap-2 rounded-lg border p-1.5 sm:gap-3`}
+              className={`grid ${MATERIAL_LIST_TABLE_COLUMNS} items-center gap-2 rounded-lg border p-1.5`}
             >
               <div className="relative h-8 w-8 overflow-hidden rounded-md bg-gray-100">
                 {item.partDefinition?.imageUrl ? (
@@ -512,6 +549,7 @@ function MaterialListTableView({
                   itemId={item.id}
                   quantity={parseFloat(item.quantity)}
                   materialListId={materialListId}
+                  pendingSync={item.pendingSync}
                   compact
                 />
               </div>
@@ -527,13 +565,20 @@ function MaterialListTableView({
                   itemId={item.id}
                   partDefinitionId={item.partDefinition?.id ?? ""}
                   currentSupplierPartId={item.supplierPart?.id}
-                  currentSupplierId={item.supplierPart?.supplierId ?? null}
+                  currentSupplierId={item.supplierId ?? item.supplierPart?.supplierId ?? null}
                   materialListId={materialListId}
+                  suppliers={suppliers}
                   compact
                 />
               </div>
+              <div className="flex h-8 min-w-0 items-center justify-end self-center overflow-hidden text-sm whitespace-nowrap text-gray-700">
+                <span className="shrink-0">{unitCost > 0 ? `$${unitCost.toFixed(2)}` : "—"}</span>
+              </div>
               <div className="flex h-8 min-w-0 items-center justify-end self-center overflow-hidden text-sm font-semibold whitespace-nowrap text-gray-900">
                 <span className="shrink-0">${lineTotal.toFixed(2)}</span>
+              </div>
+              <div className="flex h-8 items-center justify-center self-center">
+                <MaterialListSyncIndicator isPending={Boolean(item.pendingSync)} />
               </div>
               <div className="flex h-8 items-center justify-center self-center">
                 <Button

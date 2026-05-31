@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import { eq, and, sql, desc, asc, inArray, gt } from "drizzle-orm";
+import { eq, and, sql, desc, asc, inArray, gt, gte } from "drizzle-orm";
 import { z } from "zod";
 import type { db as appDb } from "~/server/db";
 
@@ -12,22 +12,10 @@ function getNextBusinessDay(from = new Date()) {
   return next;
 }
 
-function formatTorontoDate(from = new Date()) {
-  return new Intl.DateTimeFormat("en-US", {
-    timeZone: "America/Toronto",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  }).format(from);
-}
-
-function formatMaterialListName(listNumber: number, from = new Date()) {
-  return `${formatTorontoDate(from)} -${listNumber}`;
-}
-
 function formatEmailItemLine(item: {
   quantity: string | null;
   descriptionSnapshot: string | null;
+  partDefinitionDisplayName?: string | null;
 }) {
   const rawQty = item.quantity ? item.quantity.toString().trim() : "0";
   const parsedQty = Number(rawQty);
@@ -37,7 +25,10 @@ function formatEmailItemLine(item: {
         maximumFractionDigits: 6,
       })
     : rawQty;
-  const description = item.descriptionSnapshot?.trim() || "Item";
+  const description =
+    item.descriptionSnapshot?.trim() ||
+    item.partDefinitionDisplayName?.trim() ||
+    "Item";
 
   return `${qty} - ${description}`;
 }
@@ -98,6 +89,10 @@ import {
   assertCanDeleteCoreRecords,
   assertCanGenerateDocuments,
 } from "~/server/auth/permissions";
+import {
+  getNextDefaultMaterialListName,
+  isDefaultMaterialListName,
+} from "~/server/material-list-names";
 import { publishMaterialListEvent } from "~/server/material-list-events";
 import {
   jobs,
@@ -298,21 +293,12 @@ export const materialListRouter = createTRPCRouter({
         });
       }
 
-      const [materialListCountResult] = await ctx.db
-        .select({
-          count: sql<number>`count(*)::int`,
-        })
-        .from(materialLists)
-        .where(
-          and(
-            eq(materialLists.jobId, jobId),
-            eq(materialLists.organizationId, ctx.user.organizationId),
-          ),
-        );
-
-      const nextMaterialListNumber = (materialListCountResult?.count ?? 0) + 1;
-      const materialListName =
-        input.name?.trim() || formatMaterialListName(nextMaterialListNumber);
+      const materialListName = isDefaultMaterialListName(input.name)
+          ? await getNextDefaultMaterialListName(ctx.db, {
+            organizationId: ctx.user.organizationId,
+            jobId,
+          })
+        : input.name!.trim();
 
       // Create material list
       const [materialList] = await ctx.db
@@ -658,6 +644,7 @@ export const materialListRouter = createTRPCRouter({
           name: materialLists.name,
           createdAt: materialLists.createdAt,
           createdByUserId: materialLists.createdByUserId,
+          quoteId: materialLists.quoteId,
           foreman: {
             id: users.id,
             name: users.name,
@@ -674,15 +661,38 @@ export const materialListRouter = createTRPCRouter({
         )
         .orderBy(desc(materialLists.createdAt));
 
-      const createdByIds = Array.from(
+      const quoteIds = materialListsData
+        .map((list) => list.quoteId)
+        .filter((value): value is string => Boolean(value));
+
+      const allItems = quoteIds.length
+        ? await ctx.db
+            .select({
+              quoteId: quoteItems.quoteId,
+              extendedPrice: quoteItems.extendedPrice,
+              addedByUserId: quoteItems.addedByUserId,
+            })
+            .from(quoteItems)
+            .where(inArray(quoteItems.quoteId, quoteIds))
+        : [];
+
+      const itemsByQuoteId = new Map<string, typeof allItems>();
+      for (const item of allItems) {
+        const items = itemsByQuoteId.get(item.quoteId) ?? [];
+        items.push(item);
+        itemsByQuoteId.set(item.quoteId, items);
+      }
+
+      const userIds = Array.from(
         new Set(
-          materialListsData
-            .map((list) => list.createdByUserId)
-            .filter((value): value is string => Boolean(value)),
+          [
+            ...materialListsData.map((list) => list.createdByUserId),
+            ...allItems.map((item) => item.addedByUserId),
+          ].filter((value): value is string => Boolean(value)),
         ),
       );
 
-      const createdByUsers = createdByIds.length
+      const relevantUsers = userIds.length
         ? await ctx.db
             .select({
               id: users.id,
@@ -690,115 +700,53 @@ export const materialListRouter = createTRPCRouter({
               email: users.email,
             })
             .from(users)
-            .where(inArray(users.id, createdByIds))
+            .where(inArray(users.id, userIds))
         : [];
 
-      const createdByMap = new Map(
-        createdByUsers.map((user) => [user.id, user]),
-      );
+      const userMap = new Map(relevantUsers.map((user) => [user.id, user]));
 
-      // Get item counts and totals for each material list
-      const listsWithDetails = await Promise.all(
-        materialListsData.map(async (list) => {
-          // Get quote for this material list
-          const [materialListWithQuote] = await ctx.db
-            .select({ quoteId: materialLists.quoteId })
-            .from(materialLists)
-            .where(eq(materialLists.id, list.id))
-            .limit(1);
+      const listsWithDetails = materialListsData.map((list) => {
+        const items = list.quoteId ? (itemsByQuoteId.get(list.quoteId) ?? []) : [];
+        const contributorIds = Array.from(
+          new Set(
+            [
+              list.createdByUserId,
+              ...items.map((item) => item.addedByUserId),
+            ].filter((value): value is string => Boolean(value)),
+          ),
+        );
+        const contributors = contributorIds
+          .map((id) => userMap.get(id))
+          .filter((user): user is NonNullable<typeof user> => Boolean(user))
+          .map((user) => ({
+            id: user.id,
+            name: user.name ?? user.email ?? "Unknown",
+            email: user.email,
+          }));
+        const createdBy = list.createdByUserId
+          ? (userMap.get(list.createdByUserId) ?? null)
+          : null;
+        const materialTotal = items.reduce((sum, item) => {
+          const price = item.extendedPrice
+            ? parseFloat(item.extendedPrice.toString())
+            : 0;
+          return sum + price;
+        }, 0);
 
-          const createdBy = list.createdByUserId
-            ? (createdByMap.get(list.createdByUserId) ?? null)
-            : null;
-
-          if (!materialListWithQuote?.quoteId) {
-            const contributors = createdBy
-              ? [
-                  {
-                    id: createdBy.id,
-                    name: createdBy.name ?? createdBy.email ?? "Unknown",
-                    email: createdBy.email,
-                  },
-                ]
-              : [];
-
-            return {
-              ...list,
-              createdBy: createdBy
-                ? {
-                    id: createdBy.id,
-                    name: createdBy.name ?? "Unknown",
-                    email: createdBy.email,
-                  }
-                : null,
-              contributors,
-              itemCount: 0,
-              materialTotal: 0,
-            };
-          }
-
-          // Get items count and total
-          const items = await ctx.db
-            .select({
-              extendedPrice: quoteItems.extendedPrice,
-              addedByUserId: quoteItems.addedByUserId,
-            })
-            .from(quoteItems)
-            .where(eq(quoteItems.quoteId, materialListWithQuote.quoteId));
-
-          const contributorIds = Array.from(
-            new Set(
-              [
-                list.createdByUserId,
-                ...items.map((item) => item.addedByUserId),
-              ].filter((value): value is string => Boolean(value)),
-            ),
-          );
-          const contributorUsers = contributorIds.length
-            ? await ctx.db
-                .select({
-                  id: users.id,
-                  name: users.name,
-                  email: users.email,
-                })
-                .from(users)
-                .where(inArray(users.id, contributorIds))
-            : [];
-          const contributorUserMap = new Map(
-            contributorUsers.map((user) => [user.id, user]),
-          );
-          const contributors = contributorIds
-            .map((id) => contributorUserMap.get(id))
-            .filter((user): user is NonNullable<typeof user> => Boolean(user))
-            .map((user) => ({
-              id: user.id,
-              name: user.name ?? user.email ?? "Unknown",
-              email: user.email,
-            }));
-
-          const itemCount = items.length;
-          const materialTotal = items.reduce((sum, item) => {
-            const price = item.extendedPrice
-              ? parseFloat(item.extendedPrice.toString())
-              : 0;
-            return sum + price;
-          }, 0);
-
-          return {
-            ...list,
-            createdBy: createdBy
-              ? {
-                  id: createdBy.id,
-                  name: createdBy.name ?? "Unknown",
-                  email: createdBy.email,
-                }
-              : null,
-            contributors,
-            itemCount,
-            materialTotal,
-          };
-        }),
-      );
+        return {
+          ...list,
+          createdBy: createdBy
+            ? {
+                id: createdBy.id,
+                name: createdBy.name ?? "Unknown",
+                email: createdBy.email,
+              }
+            : null,
+          contributors,
+          itemCount: items.length,
+          materialTotal,
+        };
+      });
 
       return listsWithDetails;
     }),
@@ -848,8 +796,10 @@ export const materialListRouter = createTRPCRouter({
       const jobUpdates: {
         name: string;
         locationId?: string | null;
+        updatedAt: Date;
       } = {
         name: input.name,
+        updatedAt: new Date(),
       };
 
       if (input.locationId !== undefined) {
@@ -2134,7 +2084,7 @@ export const materialListRouter = createTRPCRouter({
 
       const materialListFilters = [
         eq(materialLists.organizationId, ctx.user.organizationId),
-        gt(materialLists.updatedAt, since),
+        gte(materialLists.updatedAt, since),
       ];
       if (scopedMaterialListIds) {
         materialListFilters.push(
@@ -2146,11 +2096,12 @@ export const materialListRouter = createTRPCRouter({
         .select({ id: materialLists.id, updatedAt: materialLists.updatedAt })
         .from(materialLists)
         .where(and(...materialListFilters))
+        .orderBy(asc(materialLists.updatedAt), asc(materialLists.id))
         .limit(200);
 
       const changedItemFilters = [
         eq(materialLists.organizationId, ctx.user.organizationId),
-        gt(quoteItems.updatedAt, since),
+        gte(quoteItems.updatedAt, since),
       ];
       if (scopedMaterialListIds) {
         changedItemFilters.push(
@@ -2167,11 +2118,12 @@ export const materialListRouter = createTRPCRouter({
         .innerJoin(quotes, eq(quoteItems.quoteId, quotes.id))
         .innerJoin(materialLists, eq(quotes.materialListId, materialLists.id))
         .where(and(...changedItemFilters))
+        .orderBy(asc(quoteItems.updatedAt), asc(quoteItems.id))
         .limit(500);
 
       const tombstoneFilters = [
         eq(materialListSyncTombstones.organizationId, ctx.user.organizationId),
-        gt(materialListSyncTombstones.deletedAt, since),
+        gte(materialListSyncTombstones.deletedAt, since),
       ];
       if (scopedMaterialListIds) {
         tombstoneFilters.push(
@@ -2191,6 +2143,10 @@ export const materialListRouter = createTRPCRouter({
         })
         .from(materialListSyncTombstones)
         .where(and(...tombstoneFilters))
+        .orderBy(
+          asc(materialListSyncTombstones.deletedAt),
+          asc(materialListSyncTombstones.entityId),
+        )
         .limit(500);
 
       const changedMaterialListIds = Array.from(
@@ -2446,10 +2402,15 @@ export const materialListRouter = createTRPCRouter({
       const items = await ctx.db
         .select({
           descriptionSnapshot: quoteItems.descriptionSnapshot,
+          partDefinitionDisplayName: partDefinitions.displayName,
           quantity: quoteItems.quantity,
           extendedPrice: quoteItems.extendedPrice,
         })
         .from(quoteItems)
+        .leftJoin(
+          partDefinitions,
+          eq(quoteItems.partDefinitionId, partDefinitions.id),
+        )
         .where(eq(quoteItems.quoteId, input.quoteId));
 
       const foremanName = quote.foreman?.name || "Foreman";
@@ -2471,7 +2432,11 @@ export const materialListRouter = createTRPCRouter({
           // Apply markup to get the customer-facing price
           const adjustedPrice = basePrice * markupMultiplier;
           adjustedTotal += adjustedPrice;
-          return `- ${item.descriptionSnapshot || "Item"} × ${qty}     $${adjustedPrice.toFixed(2)}`;
+          const description =
+            item.descriptionSnapshot?.trim() ||
+            item.partDefinitionDisplayName?.trim() ||
+            "Item";
+          return `- ${description} × ${qty}     $${adjustedPrice.toFixed(2)}`;
         })
         .join("\n");
 
@@ -2565,6 +2530,7 @@ ${foremanName}`;
           supplierPartId: quoteItems.supplierPartId,
           selectedSupplierId: quoteItems.supplierId,
           partDefinitionId: quoteItems.partDefinitionId,
+          partDefinitionDisplayName: partDefinitions.displayName,
           quantity: quoteItems.quantity,
           uomId: quoteItems.uomId,
           unitCost: quoteItems.unitCost,
@@ -2576,6 +2542,10 @@ ${foremanName}`;
         .leftJoin(
           supplierParts,
           eq(quoteItems.supplierPartId, supplierParts.id),
+        )
+        .leftJoin(
+          partDefinitions,
+          eq(quoteItems.partDefinitionId, partDefinitions.id),
         )
         .where(eq(quoteItems.quoteId, quote.id));
 
@@ -2607,6 +2577,10 @@ ${foremanName}`;
       }
 
       const createdOrders = await ctx.db.transaction(async (tx) => {
+        await tx.execute(
+          sql`select pg_advisory_xact_lock(hashtext(${`${ctx.user.organizationId}:${materialList.jobId}:orders`}))`,
+        );
+
         const [existingOrderCountResult] = await tx
           .select({
             count: sql<number>`count(*)::int`,
@@ -2656,7 +2630,10 @@ ${foremanName}`;
               quantity: item.quantity ?? "1",
               uomId: item.uomId ?? undefined,
               unitCostAtOrderTime: item.unitCost ?? undefined,
-              descriptionSnapshot: item.descriptionSnapshot ?? undefined,
+              descriptionSnapshot:
+                item.descriptionSnapshot?.trim() ||
+                item.partDefinitionDisplayName?.trim() ||
+                undefined,
               supplierSkuSnapshot: item.supplierSku ?? undefined,
             }),
           ),
@@ -2780,9 +2757,14 @@ ${foremanName}`;
       const items = await ctx.db
         .select({
           descriptionSnapshot: orderItems.descriptionSnapshot,
+          partDefinitionDisplayName: partDefinitions.displayName,
           quantity: orderItems.quantity,
         })
         .from(orderItems)
+        .leftJoin(
+          partDefinitions,
+          eq(orderItems.partDefinitionId, partDefinitions.id),
+        )
         .where(eq(orderItems.orderId, input.orderId));
 
       const jobName = order.job?.name || "Job";
@@ -3132,9 +3114,14 @@ ${foremanName}`;
           id: orderItems.id,
           quantity: orderItems.quantity,
           descriptionSnapshot: orderItems.descriptionSnapshot,
+          partDefinitionDisplayName: partDefinitions.displayName,
           supplierSkuSnapshot: orderItems.supplierSkuSnapshot,
         })
         .from(orderItems)
+        .leftJoin(
+          partDefinitions,
+          eq(orderItems.partDefinitionId, partDefinitions.id),
+        )
         .where(eq(orderItems.orderId, input.orderId));
 
       return {
@@ -3151,7 +3138,15 @@ ${foremanName}`;
               contactEmail: order.supplierContactEmail,
             }
           : null,
-        items,
+        items: items.map((item) => ({
+          id: item.id,
+          quantity: item.quantity,
+          descriptionSnapshot:
+            item.descriptionSnapshot?.trim() ||
+            item.partDefinitionDisplayName?.trim() ||
+            null,
+          supplierSkuSnapshot: item.supplierSkuSnapshot,
+        })),
       };
     }),
 

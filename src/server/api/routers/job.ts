@@ -13,6 +13,10 @@ import {
   users,
 } from "~/server/db/schema";
 import { publishMaterialListEvent } from "~/server/material-list-events";
+import {
+  getNextDefaultMaterialListName,
+  isDefaultMaterialListName,
+} from "~/server/material-list-names";
 
 const entitySyncMutationInput = z.discriminatedUnion("type", [
   z.object({
@@ -247,6 +251,7 @@ export const jobRouter = createTRPCRouter({
                   locationId: mutation.locationId ?? undefined,
                   poNumber: mutation.poNumber?.trim() || undefined,
                   foremanName: mutation.foremanName?.trim() || undefined,
+                  updatedAt: new Date(),
                 })
                 .where(eq(jobs.id, mutation.jobId));
               serverEntityId = mutation.jobId;
@@ -264,12 +269,18 @@ export const jobRouter = createTRPCRouter({
                 )
                 .limit(1);
               if (!job) throw new Error("Job not found");
+              const materialListName = isDefaultMaterialListName(mutation.name)
+                ? await getNextDefaultMaterialListName(tx, {
+                    organizationId: ctx.user.organizationId!,
+                    jobId: mutation.localJobId,
+                  })
+                : mutation.name!.trim();
               const [materialList] = await tx
                 .insert(materialLists)
                 .values({
                   organizationId: ctx.user.organizationId!,
                   jobId: mutation.localJobId,
-                  name: mutation.name?.trim() || "Material List",
+                  name: materialListName,
                   createdByUserId: ctx.userId,
                 })
                 .returning();
@@ -541,7 +552,7 @@ export const jobRouter = createTRPCRouter({
 
       const [updatedJob] = await ctx.db
         .update(jobs)
-        .set(updates)
+        .set({ ...updates, updatedAt: new Date() })
         .where(eq(jobs.id, jobId))
         .returning();
 

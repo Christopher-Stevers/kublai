@@ -2,6 +2,8 @@
 
 import { useEffect } from "react";
 
+import { resetMaterialListReplicacheStorage } from "~/lib/replicache-material-list";
+
 type ClientErrorPayload = {
   source: "console.error" | "window.error" | "unhandledrejection";
   message: string;
@@ -81,7 +83,24 @@ function isIgnoredConsoleError(message: string) {
   // restarts or page transitions those often show up as transient `Failed to fetch`
   // diagnostics, not app exceptions. Keep reporting real unhandled errors/rejections,
   // but don't feed loggerLink noise back into the repair watchdog.
-  return message.startsWith("%c << ") && message.includes("TRPCClientError");
+  if (message.startsWith("%c << ") && message.includes("TRPCClientError")) return true;
+
+  // Replicache logs this when the server asks the browser to discard stale local sync
+  // state. The material-list Replicache instance handles it via onClientStateNotFound by
+  // closing and dropping the IndexedDB before reloading, so reporting it as an app error
+  // just wakes the auto-repair watchdog for a self-healing state reset.
+  return (
+    message.includes("name=foremenhq-material-lists") &&
+    message.includes("Client state not found on server")
+  );
+}
+
+function isMaterialListReplicacheIdbMissingError(message: string) {
+  return (
+    message.includes("name=foremenhq-material-lists") &&
+    message.includes("IDBNotFoundError") &&
+    message.includes("Replicache IndexedDB not found: rep:foremenhq-material-lists:")
+  );
 }
 
 function sendClientError(payload: ClientErrorPayload) {
@@ -105,8 +124,6 @@ function sendClientError(payload: ClientErrorPayload) {
 
 export function ClientConsoleErrorReporter() {
   useEffect(() => {
-    if (process.env.NODE_ENV === "production") return;
-
     const originalConsoleError = console.error;
     let lastSignature = "";
     let lastSentAt = 0;
@@ -126,6 +143,10 @@ export function ClientConsoleErrorReporter() {
     console.error = (...args: unknown[]) => {
       originalConsoleError(...args);
       const message = args.map(serializeValue).join(" ");
+      if (isMaterialListReplicacheIdbMissingError(message)) {
+        void resetMaterialListReplicacheStorage();
+        return;
+      }
       if (isIgnoredConsoleError(message)) return;
       const firstError = args.find((arg): arg is Error => arg instanceof Error);
       report(errorPayload("console.error", message, firstError?.stack));

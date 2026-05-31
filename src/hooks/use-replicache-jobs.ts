@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback } from "react";
-import { getMaterialListReplicache } from "~/lib/replicache-material-list";
+import { tryGetMaterialListReplicache } from "~/lib/replicache-material-list";
 import { useReplicacheSubscribe } from "~/hooks/use-replicache-subscribe";
 
 export interface ReplicacheJob {
@@ -69,7 +69,7 @@ function isMaterialListItemRecord(
 }
 
 export function useReplicacheJobsList() {
-  const rep = getMaterialListReplicache();
+  const rep = tryGetMaterialListReplicache();
 
   const jobs = useReplicacheSubscribe(
     rep,
@@ -107,7 +107,7 @@ export function useReplicacheJobsList() {
 }
 
 export function useReplicacheJobDetail(jobId: string) {
-  const rep = getMaterialListReplicache();
+  const rep = tryGetMaterialListReplicache();
 
   const result = useReplicacheSubscribe(
     rep,

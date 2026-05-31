@@ -5,7 +5,11 @@ import { QuantityControls } from "~/components/materialLists/QuantityControls";
 import { SupplierSelector } from "~/components/materialLists/SupplierSelector";
 import { Button } from "~/components/ui/button";
 import { TrashIcon } from "lucide-react";
-import { getMaterialListReplicache } from "~/lib/replicache-material-list";
+import {
+  getMaterialListReplicache,
+  mutateMaterialListAndSync,
+} from "~/lib/replicache-material-list";
+import type { ReplicacheSupplier } from "~/hooks/use-replicache-suppliers";
 
 interface MaterialListTableRowProps {
   item: {
@@ -43,20 +47,23 @@ interface MaterialListTableRowProps {
       code: string;
       displayName: string | null;
     } | null;
+    pendingSync?: boolean;
   };
   materialListId: string;
+  suppliers?: ReplicacheSupplier[];
 }
 
 export function MaterialListTableRow({
   item,
   materialListId,
+  suppliers,
 }: MaterialListTableRowProps) {
   const removeInFlightRef = useRef(false);
 
   const removeItem = () => {
     if (removeInFlightRef.current) return;
     removeInFlightRef.current = true;
-    void getMaterialListReplicache().mutate.removeItem({ materialListId, itemId: item.id });
+    void mutateMaterialListAndSync(getMaterialListReplicache().mutate.removeItem({ materialListId, itemId: item.id }));
   };
 
   const quantity = parseFloat(item.quantity);
@@ -93,6 +100,7 @@ export function MaterialListTableRow({
           itemId={item.id}
           quantity={quantity}
           materialListId={materialListId}
+          pendingSync={item.pendingSync}
         />
       </td>
       <td className="px-6 py-4 whitespace-nowrap">
@@ -109,6 +117,7 @@ export function MaterialListTableRow({
               currentSupplierPartId={item.supplierPart?.id}
               currentSupplierId={item.selectedSupplierId}
               materialListId={materialListId}
+              suppliers={suppliers}
             />
           ) : (
             <div className="text-sm text-gray-500">
@@ -141,4 +150,3 @@ export function MaterialListTableRow({
     </tr>
   );
 }
-

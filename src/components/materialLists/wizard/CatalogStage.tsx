@@ -2,7 +2,6 @@
 
 import { useClientPagination } from "~/components/ui/list-pagination";
 import {
-  CustomOptionForm,
   PartCount,
   WizardAllOption,
   WizardOptionCard,
@@ -23,6 +22,7 @@ export interface CatalogStageProps {
     mutate: (variables: { name: string }) => void;
     isPending: boolean;
   };
+  isOnline?: boolean;
 }
 
 export function CatalogStage({
@@ -31,16 +31,19 @@ export function CatalogStage({
   allSelected = false,
   onCatalogSelect,
   showCustomCatalogInput,
+  onShowCustomCatalogInput,
   customCatalogName,
   onCustomCatalogNameChange,
   onCreateCatalog,
+  isOnline = true,
 }: CatalogStageProps) {
   const pagination = useClientPagination(catalogs);
-  const submitCustomCatalog = () => {
-    if (customCatalogName.trim()) {
-      onCreateCatalog.mutate({ name: customCatalogName.trim() });
-    }
-  };
+  void showCustomCatalogInput;
+  void onShowCustomCatalogInput;
+  void customCatalogName;
+  void onCustomCatalogNameChange;
+  void onCreateCatalog;
+  void isOnline;
 
   return (
     <div className="space-y-3 sm:space-y-4">
@@ -58,16 +61,6 @@ export function CatalogStage({
           </WizardOptionCard>
         ))}
       </div>
-      {showCustomCatalogInput && (
-        <CustomOptionForm
-          value={customCatalogName}
-          placeholder="Enter catalog name"
-          buttonLabel="Add Catalog"
-          isPending={onCreateCatalog.isPending}
-          onChange={onCustomCatalogNameChange}
-          onSubmit={submitCustomCatalog}
-        />
-      )}
       <WizardOptionPagination pagination={pagination} itemLabel="catalogs" />
     </div>
   );

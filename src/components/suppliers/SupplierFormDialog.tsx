@@ -1,7 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { getMaterialListReplicache } from "~/lib/replicache-material-list";
+import {
+  getMaterialListReplicache,
+  mutateMaterialListAndSync,
+} from "~/lib/replicache-material-list";
 import {
   Dialog,
   DialogContent,
@@ -94,16 +97,16 @@ export function SupplierFormDialog({
     };
 
     if (supplierId) {
-      void getMaterialListReplicache().mutate.updateSupplier({
+      void mutateMaterialListAndSync(getMaterialListReplicache().mutate.updateSupplier({
         supplierId,
         ...fields,
-      });
+      }));
     } else {
       const newId = crypto.randomUUID();
-      void getMaterialListReplicache().mutate.createSupplier({
+      void mutateMaterialListAndSync(getMaterialListReplicache().mutate.createSupplier({
         supplierId: newId,
         ...fields,
-      });
+      }));
       onSupplierCreated?.(newId);
     }
 

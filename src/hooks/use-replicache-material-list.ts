@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback } from "react";
-import { getMaterialListReplicache } from "~/lib/replicache-material-list";
+import { tryGetMaterialListReplicache } from "~/lib/replicache-material-list";
 import { useReplicacheSubscribe } from "~/hooks/use-replicache-subscribe";
 
 export type ReplicacheSyncStatus = "synced" | "pending" | "syncing";
@@ -67,13 +67,22 @@ function isItemRecord(value: unknown): value is ReplicacheMaterialListItem {
 }
 
 export function useReplicacheMaterialList(materialListId: string) {
-  const rep = getMaterialListReplicache();
+  const rep = tryGetMaterialListReplicache();
 
   const result = useReplicacheSubscribe(
     rep,
     useCallback(async (tx) => {
       const mlValue = await tx.get(`materialList/${materialListId}`);
       const materialList = isMaterialListRecord(mlValue) ? mlValue : null;
+
+      if (!materialList) {
+        return {
+          materialList: null,
+          items: [] as ReplicacheMaterialListItem[],
+          materialTotal: 0,
+          isLoading: true,
+        };
+      }
 
       const itemEntries = await tx.scan({ prefix: "materialListItem/" }).entries().toArray();
       const items: ReplicacheMaterialListItem[] = [];

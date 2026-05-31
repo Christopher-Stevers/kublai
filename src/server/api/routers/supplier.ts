@@ -35,6 +35,7 @@ export const supplierRouter = createTRPCRouter({
         orderingNotes: suppliers.orderingNotes,
         locationId: suppliers.locationId,
         createdAt: suppliers.createdAt,
+        updatedAt: suppliers.updatedAt,
         location: {
           id: locations.id,
           name: locations.name,
@@ -82,7 +83,12 @@ export const supplierRouter = createTRPCRouter({
         })
         .from(suppliers)
         .leftJoin(locations, eq(suppliers.locationId, locations.id))
-        .where(and(eq(suppliers.id, input.id)))
+        .where(
+          and(
+            eq(suppliers.id, input.id),
+            eq(suppliers.organizationId, ctx.user.organizationId),
+          ),
+        )
         .limit(1);
 
       if (!supplier) {
@@ -124,7 +130,12 @@ export const supplierRouter = createTRPCRouter({
           eq(supplierParts.partDefinitionId, partDefinitions.id),
         )
         .leftJoin(units, eq(supplierParts.packUomId, units.id))
-        .where(and(eq(supplierParts.supplierId, input.id)))
+        .where(
+          and(
+            eq(supplierParts.supplierId, input.id),
+            eq(supplierParts.organizationId, ctx.user.organizationId),
+          ),
+        )
         .orderBy(supplierParts.supplierSku);
 
       return {
@@ -172,6 +183,7 @@ export const supplierRouter = createTRPCRouter({
             contactPhone: input.contactPhone ?? null,
             orderingNotes: input.orderingNotes ?? null,
             locationId: input.locationId ?? null,
+            updatedAt: new Date(),
           })
           .returning();
 

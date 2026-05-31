@@ -12,7 +12,7 @@ import {
 } from "~/components/ui/dialog";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
-import { Plus, Minus, ChevronDown, ChevronUp } from "lucide-react";
+import { AlertCircle, Plus, Minus, ChevronDown, ChevronUp } from "lucide-react";
 import { CreateCustomPartDialog } from "./CreateCustomPartDialog";
 import { WizardHeader } from "./WizardHeader";
 import { EditPartDialog } from "~/components/catalogue/EditPartDialog";
@@ -25,7 +25,10 @@ import { PartStage } from "./wizard/PartStage";
 import { ReviewStage } from "./wizard/ReviewStage";
 import { usePartWizard } from "./wizard/use-part-wizard";
 import { VerticalPickerOverlay } from "./wizard/VerticalPickerOverlay";
-import { getMaterialListReplicache } from "~/lib/replicache-material-list";
+import {
+  getMaterialListReplicache,
+  mutateMaterialListAndSync,
+} from "~/lib/replicache-material-list";
 import { useOnlineStatus } from "~/hooks/use-online-status";
 import {
   getOfflineSupplierPartsByPart,
@@ -332,8 +335,9 @@ export function AddPartDialog({
     });
   };
 
-  // Handler for editing a part
+  // Handler for editing a part. Catalogue/part editing is an online-only management flow.
   const handleEditPart = (partId: string) => {
+    if (!isOnline) return;
     setEditingPartId(partId);
   };
 
@@ -478,6 +482,7 @@ export function AddPartDialog({
       categoryId?: string | null;
     };
   }) => {
+    if (!isOnline) return;
     setCustomPartContext(
       context
         ? {
@@ -675,7 +680,7 @@ export function AddPartDialog({
       });
 
       for (const item of localItems) {
-        void getMaterialListReplicache().mutate.addItem({
+        void mutateMaterialListAndSync(getMaterialListReplicache().mutate.addItem({
           materialListId,
           itemId: item.localItemId,
           partDefinitionId: item.pendingPart.partId,
@@ -685,7 +690,7 @@ export function AddPartDialog({
           unitCost: item.unitCost,
           partDefinitionSnapshot: item.partDefinitionSnapshot,
           supplierPartSnapshot: item.supplierPartSnapshot,
-        });
+        }));
       }
 
       closeDialogAndCleanHistory();
@@ -845,7 +850,9 @@ export function AddPartDialog({
           <DialogHeader className="shrink-0 px-2 pt-3 pb-2 sm:px-4 sm:pt-4 sm:pb-3 md:px-6 md:pt-6 md:pb-4">
             <DialogTitle className="text-base sm:text-lg md:text-xl">Add Parts</DialogTitle>
             <DialogDescription className="text-xs sm:text-sm">
-              Select catalog, material, size, and category to add parts to your list
+              {isOnline
+                ? "Select catalog, material, size, and category to add parts to your list"
+                : "Offline: add cached parts and cached suppliers. Creation/editing is online-only."}
             </DialogDescription>
           </DialogHeader>
 
@@ -861,7 +868,8 @@ export function AddPartDialog({
                 searchQuery={wizardSearchQuery}
                 onSearchChange={setWizardSearchQuery}
                 searchPlaceholder={wizardSearchPlaceholder}
-                actionLabel="Create Part"
+                actionLabel={isOnline ? "Create Part" : "Create Part (online)"}
+                actionDisabled={!isOnline}
                 onActionClick={() =>
                   handleOpenCustomPartDialog({
                     materialId: selectedMaterialId,
@@ -879,6 +887,15 @@ export function AddPartDialog({
           )}
 
           <div className={`flex-1 space-y-3 overflow-y-auto overscroll-contain pt-3 pb-3 sm:space-y-4 sm:pt-4 sm:pb-4 ${wizardStage === "review" ? "px-4 sm:px-6" : "px-2 sm:px-4 md:px-6"} ${quantityPickerPreview ? "touch-none overflow-hidden" : ""}`}>
+            {!isOnline && (
+              <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 sm:text-sm">
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                <div>
+                  <p className="font-medium">Offline add uses the cached catalogue on this device.</p>
+                  <p>Reconnect once if the part, supplier, or price you need is missing.</p>
+                </div>
+              </div>
+            )}
             {isWizardSearchActive ? (
               <PartStage
                 partsForSelection={filteredPartsForSelection}
@@ -892,6 +909,11 @@ export function AddPartDialog({
                 selectedCategory={selectedCategory}
                 onContinueToReview={() => setWizardStage("review")}
                 title="Matching Parts"
+                emptyMessage={
+                  isOnline
+                    ? undefined
+                    : "No cached parts match this search/filter. Reconnect once to refresh the catalogue cache."
+                }
               />
             ) : wizardStage === "catalog" && (
               <CatalogStage
@@ -907,6 +929,7 @@ export function AddPartDialog({
                 customCatalogName={customCatalogName}
                 onCustomCatalogNameChange={setCustomCatalogName}
                 onCreateCatalog={createCatalog}
+                isOnline={isOnline}
               />
             )}
             {!isWizardSearchActive && wizardStage === "material" && (
@@ -920,6 +943,7 @@ export function AddPartDialog({
                 customMaterialName={customMaterialName}
                 onCustomMaterialNameChange={setCustomMaterialName}
                 onCreateMaterial={createMaterial}
+                isOnline={isOnline}
               />
             )}
             {!isWizardSearchActive && wizardStage === "size" && (
@@ -936,6 +960,7 @@ export function AddPartDialog({
                 onCustomSizeUnitIdChange={setCustomSizeUnitId}
                 allUnits={allUnits ?? []}
                 onCreateSize={createSize}
+                isOnline={isOnline}
               />
             )}
             {!isWizardSearchActive && wizardStage === "category" && (
@@ -949,6 +974,7 @@ export function AddPartDialog({
                 customCategoryName={customCategoryName}
                 onCustomCategoryNameChange={setCustomCategoryName}
                 onCustomCategorySubmit={handleCustomCategorySubmit}
+                isOnline={isOnline}
               />
             )}
             {!isWizardSearchActive && wizardStage === "part" && (
@@ -963,6 +989,11 @@ export function AddPartDialog({
                 selectedSize={selectedSize}
                 selectedCategory={selectedCategory}
                 onContinueToReview={() => setWizardStage("review")}
+                emptyMessage={
+                  isOnline
+                    ? undefined
+                    : "No cached parts match this selection. Reconnect once to refresh the catalogue cache."
+                }
               />
             )}
             {!isWizardSearchActive && wizardStage === "review" && (
@@ -1082,7 +1113,9 @@ export function AddPartDialog({
                   }
                   title={
                     !allPartsHaveSuppliers
-                      ? "Please select a supplier for all parts"
+                      ? isOnline
+                        ? "Please select a supplier for all parts"
+                        : "Missing cached supplier mapping. Reconnect once or select a cached supplier."
                       : undefined
                   }
                   className="w-full text-xs sm:w-auto sm:text-sm"

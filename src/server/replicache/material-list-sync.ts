@@ -1,4 +1,4 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, gte, inArray } from "drizzle-orm";
 import type {
   PatchOperation,
   PullRequestV1,
@@ -12,8 +12,10 @@ import { db } from "~/server/db";
 import {
   jobs,
   locations,
+  materials,
   materialLists,
   materialListSyncTombstones,
+  partDefinitions,
   quoteItems,
   quotes,
   replicacheClientGroups,
@@ -22,7 +24,14 @@ import {
   suppliers,
   users,
 } from "~/server/db/schema";
-import { publishMaterialListEvent } from "~/server/material-list-events";
+import {
+  publishMaterialListEvent,
+  publishOrganizationReplicachePoke,
+} from "~/server/material-list-events";
+import {
+  getNextDefaultMaterialListName,
+  isDefaultMaterialListName,
+} from "~/server/material-list-names";
 
 type ReplicacheUser = {
   id: string;
@@ -30,6 +39,35 @@ type ReplicacheUser = {
 };
 
 type ReplicacheTx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+type ReplicacheMutationSideEffects = {
+  quoteIdsToRecalculate: Set<string>;
+  materialListIdsToTouch: Set<string>;
+};
+
+type MaterialListPullCookie = {
+  order?: number;
+  cvr?: string;
+};
+
+function parseMaterialListPullCookie(cookie: PullRequestV1["cookie"]) {
+  if (!cookie || typeof cookie !== "object") return null;
+  const candidate = cookie as MaterialListPullCookie;
+  if (typeof candidate.order !== "number" || !Number.isFinite(candidate.order)) {
+    return null;
+  }
+  if (typeof candidate.cvr !== "string") return null;
+
+  return { order: candidate.order, cvr: candidate.cvr };
+}
+
+
+export class ReplicacheOwnershipError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ReplicacheOwnershipError";
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Zod schemas for all mutator args
@@ -51,11 +89,32 @@ const removeItemArgs = z.object({
   itemId: z.string().uuid(),
 });
 
+const uuidOrOfflineSupplierPartId = z.union([
+  z.string().uuid(),
+  z.string().regex(/^offline-supplier-part:[^:]+:[^:]+$/),
+]);
+
+function parseOfflineSupplierPartId(value: string | null | undefined) {
+  if (!value) return null;
+  const match = /^offline-supplier-part:([^:]+):([^:]+)$/.exec(value);
+  if (!match?.[1] || !match[2]) return null;
+  return { partDefinitionId: match[1], supplierId: match[2] };
+}
+
+function isUuid(value: string | null | undefined) {
+  return (
+    !!value &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+      value,
+    )
+  );
+}
+
 const addItemArgs = z.object({
   materialListId: z.string().uuid(),
   itemId: z.string().uuid(),
   partDefinitionId: z.string().uuid().nullable().optional(),
-  supplierPartId: z.string().uuid().nullable().optional(),
+  supplierPartId: uuidOrOfflineSupplierPartId.nullable().optional(),
   supplierId: z.string().uuid().nullable().optional(),
   quantity: z.number().positive(),
   unitCost: z.number().nullable().optional(),
@@ -65,8 +124,9 @@ const addItemArgs = z.object({
 const updateItemSupplierPartArgs = z.object({
   itemId: z.string().uuid(),
   materialListId: z.string().uuid().optional(),
-  supplierPartId: z.string().uuid().nullable(),
+  supplierPartId: uuidOrOfflineSupplierPartId.nullable(),
   supplierId: z.string().uuid().nullable(),
+  unitCost: z.number().nullable().optional(),
 });
 
 const createJobArgs = z.object({
@@ -134,6 +194,31 @@ async function ensureClientGroup(
     schemaVersion: string;
   },
 ) {
+  const [existing] = await tx
+    .select({
+      id: replicacheClientGroups.id,
+      organizationId: replicacheClientGroups.organizationId,
+      userId: replicacheClientGroups.userId,
+    })
+    .from(replicacheClientGroups)
+    .where(eq(replicacheClientGroups.id, input.clientGroupId))
+    .limit(1);
+
+  if (existing) {
+    if (
+      existing.organizationId !== input.organizationId ||
+      existing.userId !== input.userId
+    ) {
+      throw new ReplicacheOwnershipError("Replicache client group ownership mismatch");
+    }
+
+    await tx
+      .update(replicacheClientGroups)
+      .set({ schemaVersion: input.schemaVersion, updatedAt: new Date() })
+      .where(eq(replicacheClientGroups.id, input.clientGroupId));
+    return;
+  }
+
   await tx
     .insert(replicacheClientGroups)
     .values({
@@ -142,15 +227,7 @@ async function ensureClientGroup(
       userId: input.userId,
       schemaVersion: input.schemaVersion,
     })
-    .onConflictDoUpdate({
-      target: replicacheClientGroups.id,
-      set: {
-        organizationId: input.organizationId,
-        userId: input.userId,
-        schemaVersion: input.schemaVersion,
-        updatedAt: new Date(),
-      },
-    });
+    .onConflictDoNothing();
 }
 
 async function ensureClient(
@@ -162,6 +239,28 @@ async function ensureClient(
     userId: string;
   },
 ) {
+  const [existing] = await tx
+    .select({
+      id: replicacheClients.id,
+      clientGroupId: replicacheClients.clientGroupId,
+      organizationId: replicacheClients.organizationId,
+      userId: replicacheClients.userId,
+    })
+    .from(replicacheClients)
+    .where(eq(replicacheClients.id, input.clientId))
+    .limit(1);
+
+  if (existing) {
+    if (
+      existing.clientGroupId !== input.clientGroupId ||
+      existing.organizationId !== input.organizationId ||
+      existing.userId !== input.userId
+    ) {
+      throw new ReplicacheOwnershipError("Replicache client ownership mismatch");
+    }
+    return;
+  }
+
   await tx
     .insert(replicacheClients)
     .values({
@@ -174,11 +273,20 @@ async function ensureClient(
     .onConflictDoNothing();
 }
 
-async function getClientLastMutationId(tx: ReplicacheTx, clientId: string) {
+async function getClientLastMutationId(
+  tx: ReplicacheTx,
+  input: { clientId: string; clientGroupId: string; organizationId: string },
+) {
   const [client] = await tx
     .select({ lastMutationId: replicacheClients.lastMutationId })
     .from(replicacheClients)
-    .where(eq(replicacheClients.id, clientId))
+    .where(
+      and(
+        eq(replicacheClients.id, input.clientId),
+        eq(replicacheClients.clientGroupId, input.clientGroupId),
+        eq(replicacheClients.organizationId, input.organizationId),
+      ),
+    )
     .limit(1);
 
   return client?.lastMutationId ?? 0;
@@ -186,13 +294,23 @@ async function getClientLastMutationId(tx: ReplicacheTx, clientId: string) {
 
 async function setClientLastMutationId(
   tx: ReplicacheTx,
-  clientId: string,
-  lastMutationId: number,
+  input: {
+    clientId: string;
+    clientGroupId: string;
+    organizationId: string;
+    lastMutationId: number;
+  },
 ) {
   await tx
     .update(replicacheClients)
-    .set({ lastMutationId, updatedAt: new Date() })
-    .where(eq(replicacheClients.id, clientId));
+    .set({ lastMutationId: input.lastMutationId, updatedAt: new Date() })
+    .where(
+      and(
+        eq(replicacheClients.id, input.clientId),
+        eq(replicacheClients.clientGroupId, input.clientGroupId),
+        eq(replicacheClients.organizationId, input.organizationId),
+      ),
+    );
 }
 
 async function bumpClientGroupVersion(tx: ReplicacheTx, clientGroupId: string) {
@@ -262,6 +380,29 @@ async function recordMaterialListItemTombstone(
     });
 }
 
+async function recordMaterialListTombstone(
+  tx: ReplicacheTx,
+  input: { organizationId: string; materialListId: string },
+) {
+  await tx
+    .insert(materialListSyncTombstones)
+    .values({
+      organizationId: input.organizationId,
+      materialListId: input.materialListId,
+      entityType: "materialList",
+      entityId: input.materialListId,
+      deletedAt: new Date(),
+    })
+    .onConflictDoUpdate({
+      target: [
+        materialListSyncTombstones.organizationId,
+        materialListSyncTombstones.entityType,
+        materialListSyncTombstones.entityId,
+      ],
+      set: { deletedAt: new Date(), materialListId: input.materialListId },
+    });
+}
+
 async function getMaterialListForMutation(
   tx: ReplicacheTx,
   input: { organizationId: string; materialListId: string },
@@ -308,6 +449,7 @@ async function applyReplicacheMutation(
     args: unknown;
     organizationId: string;
     userId: string;
+    sideEffects: ReplicacheMutationSideEffects;
   },
 ) {
   switch (input.name) {
@@ -340,9 +482,11 @@ async function applyReplicacheMutation(
         .where(and(eq(quoteItems.id, args.itemId), eq(quotes.organizationId, input.organizationId)))
         .limit(1);
 
-      if (!item?.materialListId) throw new Error("Quote item not found");
+      if (!item?.materialListId) {
+        throw new Error(`Cannot update missing material-list item ${args.itemId}`);
+      }
       if (args.materialListId && item.materialListId !== args.materialListId) {
-        throw new Error("Quote item does not belong to material list");
+        throw new Error(`Material-list item ${args.itemId} does not belong to ${args.materialListId}`);
       }
 
       const unitCost = item.unitCost ? parseFloat(String(item.unitCost)) : 0;
@@ -355,18 +499,23 @@ async function applyReplicacheMutation(
           updatedAt: new Date(),
         })
         .where(eq(quoteItems.id, args.itemId));
-      await recalculateQuoteTotals(tx, item.quoteId);
-      await touchMaterialList(tx, item.materialListId);
+      input.sideEffects.quoteIdsToRecalculate.add(item.quoteId);
+      input.sideEffects.materialListIdsToTouch.add(item.materialListId);
       publishMaterialListEvent(item.materialListId, "updated", input.organizationId);
       return;
     }
     // -----------------------------------------------------------------------
     case "removeItem": {
       const args = removeItemArgs.parse(input.args);
-      const materialList = await getMaterialListForMutation(tx, {
-        organizationId: input.organizationId,
-        materialListId: args.materialListId,
-      });
+      let materialList: Awaited<ReturnType<typeof getMaterialListForMutation>>;
+      try {
+        materialList = await getMaterialListForMutation(tx, {
+          organizationId: input.organizationId,
+          materialListId: args.materialListId,
+        });
+      } catch {
+        return;
+      }
       const [item] = await tx
         .select({ id: quoteItems.id, quoteId: quoteItems.quoteId })
         .from(quoteItems)
@@ -388,22 +537,33 @@ async function applyReplicacheMutation(
         materialListId: args.materialListId,
         itemId: args.itemId,
       });
-      await recalculateQuoteTotals(tx, materialList.quoteId);
-      await touchMaterialList(tx, args.materialListId);
+      input.sideEffects.quoteIdsToRecalculate.add(materialList.quoteId);
+      input.sideEffects.materialListIdsToTouch.add(args.materialListId);
       publishMaterialListEvent(args.materialListId, "updated", input.organizationId);
       return;
     }
     // -----------------------------------------------------------------------
     case "addItem": {
       const args = addItemArgs.parse(input.args);
-      const materialList = await getMaterialListForMutation(tx, {
-        organizationId: input.organizationId,
-        materialListId: args.materialListId,
-      });
+      let materialList: Awaited<ReturnType<typeof getMaterialListForMutation>>;
+      try {
+        materialList = await getMaterialListForMutation(tx, {
+          organizationId: input.organizationId,
+          materialListId: args.materialListId,
+        });
+      } catch (error) {
+        throw new Error(`Cannot add item to missing material list ${args.materialListId}`, {
+          cause: error,
+        });
+      }
+
+      const offlineSupplierPart = parseOfflineSupplierPartId(args.supplierPartId);
+      const serverSupplierPartId = isUuid(args.supplierPartId) ? args.supplierPartId : null;
+      const resolvedSupplierId = args.supplierId ?? offlineSupplierPart?.supplierId ?? null;
 
       let unitCost = args.unitCost ?? 0;
-      if (args.supplierPartId) {
-        unitCost = await getUnitCostFromSupplierPart(tx, args.supplierPartId);
+      if (serverSupplierPartId) {
+        unitCost = await getUnitCostFromSupplierPart(tx, serverSupplierPartId);
       }
       if (!Number.isFinite(unitCost)) unitCost = 0;
 
@@ -415,8 +575,8 @@ async function applyReplicacheMutation(
           id: args.itemId,
           quoteId: materialList.quoteId,
           partDefinitionId: args.partDefinitionId ?? null,
-          supplierPartId: args.supplierPartId ?? null,
-          supplierId: args.supplierId ?? null,
+          supplierPartId: serverSupplierPartId,
+          supplierId: resolvedSupplierId,
           quantity: args.quantity.toString(),
           unitCost: unitCost.toString(),
           extendedPrice: extendedPrice.toString(),
@@ -425,8 +585,8 @@ async function applyReplicacheMutation(
         })
         .onConflictDoNothing(); // Idempotent: skip if already applied
 
-      await recalculateQuoteTotals(tx, materialList.quoteId);
-      await touchMaterialList(tx, args.materialListId);
+      input.sideEffects.quoteIdsToRecalculate.add(materialList.quoteId);
+      input.sideEffects.materialListIdsToTouch.add(args.materialListId);
       publishMaterialListEvent(args.materialListId, "updated", input.organizationId);
       return;
     }
@@ -447,12 +607,22 @@ async function applyReplicacheMutation(
         )
         .limit(1);
 
-      if (!item?.materialListId) throw new Error("Quote item not found");
-
-      let unitCost = 0;
-      if (args.supplierPartId) {
-        unitCost = await getUnitCostFromSupplierPart(tx, args.supplierPartId);
+      if (!item?.materialListId) {
+        throw new Error(`Cannot update supplier for missing material-list item ${args.itemId}`);
       }
+      if (args.materialListId && item.materialListId !== args.materialListId) {
+        throw new Error(`Material-list item ${args.itemId} does not belong to ${args.materialListId}`);
+      }
+
+      const offlineSupplierPart = parseOfflineSupplierPartId(args.supplierPartId);
+      const serverSupplierPartId = isUuid(args.supplierPartId) ? args.supplierPartId : null;
+      const resolvedSupplierId = args.supplierId ?? offlineSupplierPart?.supplierId ?? null;
+
+      let unitCost = args.unitCost ?? 0;
+      if (serverSupplierPartId) {
+        unitCost = await getUnitCostFromSupplierPart(tx, serverSupplierPartId);
+      }
+      if (!Number.isFinite(unitCost)) unitCost = 0;
 
       const quantity = parseFloat(String(item.quantity));
       const extendedPrice = (Number.isFinite(quantity) ? quantity : 0) * unitCost;
@@ -460,16 +630,16 @@ async function applyReplicacheMutation(
       await tx
         .update(quoteItems)
         .set({
-          supplierPartId: args.supplierPartId,
-          supplierId: args.supplierId,
+          supplierPartId: serverSupplierPartId,
+          supplierId: resolvedSupplierId,
           unitCost: unitCost.toString(),
           extendedPrice: extendedPrice.toString(),
           updatedAt: new Date(),
         })
         .where(eq(quoteItems.id, args.itemId));
 
-      await recalculateQuoteTotals(tx, item.quoteId);
-      await touchMaterialList(tx, item.materialListId);
+      input.sideEffects.quoteIdsToRecalculate.add(item.quoteId);
+      input.sideEffects.materialListIdsToTouch.add(item.materialListId);
       publishMaterialListEvent(item.materialListId, "updated", input.organizationId);
       return;
     }
@@ -498,6 +668,7 @@ async function applyReplicacheMutation(
       if ("poNumber" in args) setValues.poNumber = args.poNumber ?? null;
 
       if (Object.keys(setValues).length > 0) {
+        setValues.updatedAt = new Date();
         await tx
           .update(jobs)
           .set(setValues)
@@ -552,7 +723,16 @@ async function applyReplicacheMutation(
         .where(and(eq(jobs.id, args.jobId), eq(jobs.organizationId, input.organizationId)))
         .limit(1);
 
-      if (!job) throw new Error("Job not found");
+      if (!job) {
+        throw new Error(`Cannot create material list ${args.materialListId}; parent job ${args.jobId} is missing`);
+      }
+
+      const materialListName = isDefaultMaterialListName(args.name)
+        ? await getNextDefaultMaterialListName(tx, {
+            organizationId: input.organizationId,
+            jobId: args.jobId,
+          })
+        : args.name.trim();
 
       // Insert materialList first (quoteId null to break the circular FK)
       await tx
@@ -561,7 +741,7 @@ async function applyReplicacheMutation(
           id: args.materialListId,
           organizationId: input.organizationId,
           jobId: args.jobId,
-          name: args.name,
+          name: materialListName,
           quoteId: null,
           createdByUserId: input.userId,
         })
@@ -607,14 +787,48 @@ async function applyReplicacheMutation(
         )
         .limit(1);
 
-      if (!materialList) return; // Already gone — idempotent
+      if (!materialList) {
+        // The server may already have applied this delete before tombstones were
+        // recorded. Still emit a material-list tombstone so Replicache can clear
+        // any stale base value when the client retries the delete.
+        await recordMaterialListTombstone(tx, {
+          organizationId: input.organizationId,
+          materialListId: args.materialListId,
+        });
+        return;
+      }
 
       if (materialList.quoteId) {
+        const listItems = await tx
+          .select({ id: quoteItems.id })
+          .from(quoteItems)
+          .where(eq(quoteItems.quoteId, materialList.quoteId));
+
+        for (const item of listItems) {
+          await recordMaterialListItemTombstone(tx, {
+            organizationId: input.organizationId,
+            materialListId: materialList.id,
+            itemId: item.id,
+          });
+        }
+
         await tx.delete(quoteItems).where(eq(quoteItems.quoteId, materialList.quoteId));
         await tx.delete(quotes).where(eq(quotes.id, materialList.quoteId));
       }
 
-      await tx.delete(materialLists).where(eq(materialLists.id, args.materialListId));
+      await recordMaterialListTombstone(tx, {
+        organizationId: input.organizationId,
+        materialListId: materialList.id,
+      });
+
+      await tx
+        .delete(materialLists)
+        .where(
+          and(
+            eq(materialLists.id, args.materialListId),
+            eq(materialLists.organizationId, input.organizationId),
+          ),
+        );
       return;
     }
     // -----------------------------------------------------------------------
@@ -647,6 +861,7 @@ async function applyReplicacheMutation(
       if ("locationId" in args) setValues.locationId = args.locationId ?? null;
 
       if (Object.keys(setValues).length > 0) {
+        setValues.updatedAt = new Date();
         await tx
           .update(suppliers)
           .set(setValues)
@@ -686,6 +901,34 @@ function assertSupportedSchema(schemaVersion: string) {
   return null;
 }
 
+function isRetryableTransactionError(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const candidate = error as { code?: unknown; cause?: unknown };
+  if (candidate.code === "40P01" || candidate.code === "40001") return true;
+  return isRetryableTransactionError(candidate.cause);
+}
+
+async function sleep(ms: number) {
+  await new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function withRetryableReplicacheTransaction<T>(
+  work: (tx: ReplicacheTx) => Promise<T>,
+): Promise<T> {
+  const maxAttempts = 3;
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      return await db.transaction(work);
+    } catch (error) {
+      if (!isRetryableTransactionError(error) || attempt === maxAttempts) {
+        throw error;
+      }
+      await sleep(50 * attempt);
+    }
+  }
+  throw new Error("Unreachable retry state");
+}
+
 // ---------------------------------------------------------------------------
 // Push handler
 // ---------------------------------------------------------------------------
@@ -703,7 +946,14 @@ export async function handleMaterialListReplicachePush(
     return { error: "VersionNotSupported" as const, versionType: "push" as const };
   }
 
-  await db.transaction(async (tx) => {
+  let appliedMutationCount = 0;
+
+  await withRetryableReplicacheTransaction(async (tx) => {
+    const sideEffects: ReplicacheMutationSideEffects = {
+      quoteIdsToRecalculate: new Set(),
+      materialListIdsToTouch: new Set(),
+    };
+
     await ensureClientGroup(tx, {
       clientGroupId: request.clientGroupID,
       organizationId,
@@ -719,7 +969,12 @@ export async function handleMaterialListReplicachePush(
         userId: user.id,
       });
 
-      const lastMutationId = await getClientLastMutationId(tx, mutation.clientID);
+      const clientIdentity = {
+        clientId: mutation.clientID,
+        clientGroupId: request.clientGroupID,
+        organizationId,
+      };
+      const lastMutationId = await getClientLastMutationId(tx, clientIdentity);
       const nextMutationId = lastMutationId + 1;
 
       if (mutation.id < nextMutationId) continue;
@@ -734,14 +989,39 @@ export async function handleMaterialListReplicachePush(
         args: mutation.args,
         organizationId,
         userId: user.id,
+        sideEffects,
       });
-      await setClientLastMutationId(tx, mutation.clientID, mutation.id);
+      appliedMutationCount += 1;
+      await setClientLastMutationId(tx, {
+        ...clientIdentity,
+        lastMutationId: mutation.id,
+      });
+    }
+
+    // A single Replicache push can contain dozens of local mutations. Recomputing
+    // quote totals and touching the same material list after every mutation makes
+    // large offline batches degrade to O(n²), which was slow enough to trip
+    // Cloudflare's 100s origin timeout. Coalesce those side effects once per
+    // affected quote/list while staying inside the same transaction.
+    for (const quoteId of sideEffects.quoteIdsToRecalculate) {
+      await recalculateQuoteTotals(tx, quoteId);
+    }
+
+    for (const materialListId of sideEffects.materialListIdsToTouch) {
+      await touchMaterialList(tx, materialListId);
     }
 
     if (request.mutations.length > 0) {
       await bumpClientGroupVersion(tx, request.clientGroupID);
     }
   });
+
+  if (appliedMutationCount > 0) {
+    publishOrganizationReplicachePoke(organizationId, {
+      sourceClientGroupId: request.clientGroupID,
+      mutationCount: appliedMutationCount,
+    });
+  }
 
   return {};
 }
@@ -776,6 +1056,11 @@ export async function handleMaterialListReplicachePull(
       .from(replicacheClients)
       .where(eq(replicacheClients.clientGroupId, request.clientGroupID));
 
+    const parsedCookie = parseMaterialListPullCookie(request.cookie);
+    const canUseIncrementalPull = parsedCookie?.cvr === request.clientGroupID;
+    const changedSince = canUseIncrementalPull ? new Date(parsedCookie.order) : null;
+    const highWatermark = new Date();
+
     // Jobs with location + foreman joins
     const jobRows = await tx
       .select({
@@ -786,6 +1071,7 @@ export async function handleMaterialListReplicachePull(
         foremanName: jobs.foremanName,
         poNumber: jobs.poNumber,
         createdAt: jobs.createdAt,
+        updatedAt: jobs.updatedAt,
         locationName: locations.name,
         locationAddress1: locations.address1,
         locationCity: locations.city,
@@ -797,7 +1083,12 @@ export async function handleMaterialListReplicachePull(
       .from(jobs)
       .leftJoin(locations, eq(jobs.locationId, locations.id))
       .leftJoin(users, eq(jobs.foremanUserId, users.id))
-      .where(eq(jobs.organizationId, organizationId));
+      .where(
+        changedSince
+          ? and(eq(jobs.organizationId, organizationId), gte(jobs.updatedAt, changedSince))
+          : eq(jobs.organizationId, organizationId),
+      )
+      .orderBy(asc(jobs.updatedAt), asc(jobs.id));
 
     const materialListRows = await tx
       .select({
@@ -809,7 +1100,15 @@ export async function handleMaterialListReplicachePull(
         updatedAt: materialLists.updatedAt,
       })
       .from(materialLists)
-      .where(eq(materialLists.organizationId, organizationId));
+      .where(
+        changedSince
+          ? and(
+              eq(materialLists.organizationId, organizationId),
+              gte(materialLists.updatedAt, changedSince),
+            )
+          : eq(materialLists.organizationId, organizationId),
+      )
+      .orderBy(asc(materialLists.updatedAt), asc(materialLists.id));
 
     const itemRows = await tx
       .select({
@@ -821,14 +1120,29 @@ export async function handleMaterialListReplicachePull(
         extendedPrice: quoteItems.extendedPrice,
         descriptionSnapshot: quoteItems.descriptionSnapshot,
         partDefinitionId: quoteItems.partDefinitionId,
+        partDefinitionDisplayName: partDefinitions.displayName,
+        partDefinitionImageUrl: partDefinitions.imageUrl,
+        partDefinitionMaterial: materials.name,
         supplierPartId: quoteItems.supplierPartId,
         supplierId: quoteItems.supplierId,
+        supplierPartSku: supplierParts.supplierSku,
+        supplierPartLastKnownUnitCost: supplierParts.lastKnownUnitCost,
+        supplierName: suppliers.name,
         updatedAt: quoteItems.updatedAt,
         createdAt: quoteItems.createdAt,
       })
       .from(quoteItems)
       .innerJoin(quotes, eq(quoteItems.quoteId, quotes.id))
-      .where(eq(quotes.organizationId, organizationId));
+      .leftJoin(partDefinitions, eq(quoteItems.partDefinitionId, partDefinitions.id))
+      .leftJoin(materials, eq(partDefinitions.materialId, materials.id))
+      .leftJoin(supplierParts, eq(quoteItems.supplierPartId, supplierParts.id))
+      .leftJoin(suppliers, eq(quoteItems.supplierId, suppliers.id))
+      .where(
+        changedSince
+          ? and(eq(quotes.organizationId, organizationId), gte(quoteItems.updatedAt, changedSince))
+          : eq(quotes.organizationId, organizationId),
+      )
+      .orderBy(asc(quoteItems.updatedAt), asc(quoteItems.id));
 
     const supplierRows = await tx
       .select({
@@ -840,11 +1154,36 @@ export async function handleMaterialListReplicachePull(
         orderingNotes: suppliers.orderingNotes,
         locationId: suppliers.locationId,
         createdAt: suppliers.createdAt,
+        updatedAt: suppliers.updatedAt,
       })
       .from(suppliers)
-      .where(eq(suppliers.organizationId, organizationId));
+      .where(
+        changedSince
+          ? and(eq(suppliers.organizationId, organizationId), gte(suppliers.updatedAt, changedSince))
+          : eq(suppliers.organizationId, organizationId),
+      )
+      .orderBy(asc(suppliers.updatedAt), asc(suppliers.id));
 
-    const patch: PatchOperation[] = [{ op: "clear" }];
+    const tombstoneRows = changedSince
+      ? await tx
+          .select({
+            entityType: materialListSyncTombstones.entityType,
+            entityId: materialListSyncTombstones.entityId,
+          })
+          .from(materialListSyncTombstones)
+          .where(
+            and(
+              eq(materialListSyncTombstones.organizationId, organizationId),
+              gte(materialListSyncTombstones.deletedAt, changedSince),
+            ),
+          )
+          .orderBy(
+            asc(materialListSyncTombstones.deletedAt),
+            asc(materialListSyncTombstones.entityId),
+          )
+      : [];
+
+    const patch: PatchOperation[] = changedSince ? [] : [{ op: "clear" }];
 
     for (const job of jobRows) {
       patch.push({
@@ -858,6 +1197,7 @@ export async function handleMaterialListReplicachePull(
           foremanName: job.foremanName ?? job.foremanUserName ?? null,
           poNumber: job.poNumber ?? null,
           createdAt: job.createdAt?.toISOString?.() ?? String(job.createdAt),
+          updatedAt: job.updatedAt?.toISOString?.() ?? String(job.updatedAt),
           location: job.locationName
             ? {
                 name: job.locationName,
@@ -889,7 +1229,42 @@ export async function handleMaterialListReplicachePull(
         op: "put",
         key: `materialListItem/${item.id}`,
         value: {
-          ...item,
+          id: item.id,
+          quoteId: item.quoteId,
+          materialListId: item.materialListId,
+          quantity: item.quantity,
+          unitCost: item.unitCost,
+          extendedPrice: item.extendedPrice,
+          descriptionSnapshot: item.descriptionSnapshot,
+          partDefinitionId: item.partDefinitionId,
+          supplierPartId: item.supplierPartId,
+          supplierId: item.supplierId,
+          selectedSupplierId: item.supplierId,
+          partDefinition: item.partDefinitionId
+            ? {
+                id: item.partDefinitionId,
+                displayName:
+                  item.partDefinitionDisplayName ??
+                  item.descriptionSnapshot ??
+                  "Unknown Part",
+                imageUrl: item.partDefinitionImageUrl ?? null,
+                material: item.partDefinitionMaterial ?? null,
+              }
+            : null,
+          supplierPart: item.supplierPartId
+            ? {
+                id: item.supplierPartId,
+                supplierId: item.supplierId ?? "",
+                supplierSku: item.supplierPartSku ?? null,
+                lastKnownUnitCost: item.supplierPartLastKnownUnitCost ?? null,
+                supplier: item.supplierId
+                  ? {
+                      id: item.supplierId,
+                      name: item.supplierName ?? "Supplier",
+                    }
+                  : null,
+              }
+            : null,
           createdAt: item.createdAt?.toISOString?.() ?? String(item.createdAt),
           updatedAt: item.updatedAt?.toISOString?.() ?? String(item.updatedAt),
         },
@@ -903,8 +1278,20 @@ export async function handleMaterialListReplicachePull(
         value: {
           ...supplier,
           createdAt: supplier.createdAt?.toISOString?.() ?? String(supplier.createdAt),
+          updatedAt: supplier.updatedAt?.toISOString?.() ?? String(supplier.updatedAt),
         },
       });
+    }
+
+    for (const tombstone of tombstoneRows) {
+      const keyPrefix =
+        tombstone.entityType === "materialList"
+          ? "materialList"
+          : tombstone.entityType === "item" || tombstone.entityType === "quoteItem"
+            ? "materialListItem"
+            : tombstone.entityType;
+
+      patch.push({ op: "del", key: `${keyPrefix}/${tombstone.entityId}` });
     }
 
     return {
@@ -913,7 +1300,7 @@ export async function handleMaterialListReplicachePull(
         groupClients.map((client) => [client.id, client.lastMutationId]),
       ),
       cookie: {
-        order: Date.now(),
+        order: highWatermark.getTime(),
         cvr: request.clientGroupID,
       },
     };

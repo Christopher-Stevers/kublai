@@ -1,14 +1,23 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { ChevronDown, Package, Star, Upload } from "lucide-react";
+import {
+  Check,
+  ChevronDown,
+  ExternalLink,
+  Package,
+  Search,
+  Star,
+  Upload,
+  X,
+} from "lucide-react";
 import { api } from "~/trpc/react";
 import {
   formatSize,
   formatSizeDecimal,
   formatSizeDimensions,
   generatePartDisplayName,
-  parseSizeInput,
+  parsePrimarySizeInput,
 } from "~/lib/size-utils";
 import { useOnlineStatus } from "~/hooks/use-online-status";
 import Image from "next/image";
@@ -60,7 +69,6 @@ function FieldHeader({
     </div>
   );
 }
-
 
 function normalizeCurrencyInput(value: string) {
   return value.replace(/[^0-9.-]/g, "").trim();
@@ -243,8 +251,15 @@ export function PartDetailsDialog({
   const [showNewMaterialInput, setShowNewMaterialInput] = useState(false);
   const [newMaterialName, setNewMaterialName] = useState("");
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [isGoogleImagePickerOpen, setIsGoogleImagePickerOpen] = useState(false);
+  const [isFamilyImageSuggestionsOpen, setIsFamilyImageSuggestionsOpen] =
+    useState(false);
+  const [dismissedFamilySuggestionIds, setDismissedFamilySuggestionIds] =
+    useState<Set<string>>(() => new Set());
+  const [googleManualImageUrl, setGoogleManualImageUrl] = useState("");
   const [copiedPartUuid, setCopiedPartUuid] = useState(false);
-  const [isSubmittingInBackground, setIsSubmittingInBackground] = useState(false);
+  const [isSubmittingInBackground, setIsSubmittingInBackground] =
+    useState(false);
 
   const { data: selectedSupplierDetails } = api.supplier.getById.useQuery(
     { id: supplierId! },
@@ -262,6 +277,9 @@ export function PartDetailsDialog({
     if (!open) {
       initializedForOpenRef.current = false;
       setSubmitError(null);
+      setGoogleManualImageUrl("");
+      setIsFamilyImageSuggestionsOpen(false);
+      setDismissedFamilySuggestionIds(new Set());
       setCopiedPartUuid(false);
       setIsSubmittingInBackground(false);
     }
@@ -274,6 +292,7 @@ export function PartDetailsDialog({
       setDisplayName(part.displayName ?? "");
       setDescription(part.description ?? "");
       setImageUrl(part.imageUrl ?? "");
+      setGoogleManualImageUrl("");
       setAliasesText(
         part.aliases?.map((alias) => alias.synonym).join("\n") ?? "",
       );
@@ -304,6 +323,7 @@ export function PartDetailsDialog({
       setDisplayName("");
       setDescription("");
       setImageUrl("");
+      setGoogleManualImageUrl("");
       setAliasesText("");
       setCatalogId(initialContext?.catalogId ?? null);
       setCategoryId(initialContext?.categoryId ?? null);
@@ -395,7 +415,8 @@ export function PartDetailsDialog({
   ]);
 
   useEffect(() => {
-    if (!open || !isEditMode || !partSupplierParts?.length || supplierId) return;
+    if (!open || !isEditMode || !partSupplierParts?.length || supplierId)
+      return;
 
     const initialSupplierPart =
       partSupplierParts.find((supplierPart) => supplierPart.isPreferred) ??
@@ -405,7 +426,9 @@ export function PartDetailsDialog({
     setSupplierId(initialSupplierPart.supplierId);
     setSupplierSku(initialSupplierPart.supplierSku ?? "");
     setLastKnownUnitCost(
-      formatCurrencyInput(initialSupplierPart.lastKnownUnitCost?.toString() ?? ""),
+      formatCurrencyInput(
+        initialSupplierPart.lastKnownUnitCost?.toString() ?? "",
+      ),
     );
     if (initialSupplierPart.isPreferred) {
       setPreferredSupplierId(initialSupplierPart.supplierId);
@@ -512,6 +535,153 @@ export function PartDetailsDialog({
     },
   });
 
+  const applyGooglePartImage = api.catalogue.applyGooglePartImage.useMutation({
+    onSuccess: (result) => {
+      setImageUrl(result.imageUrl);
+      setIsGoogleImagePickerOpen(false);
+      setGoogleManualImageUrl("");
+      setSubmitError(null);
+      void utils.catalogue.searchParts.invalidate();
+      void utils.catalogue.getPart.invalidate();
+    },
+    onError: (error) => {
+      setSubmitError(error.message || "Could not add selected Google image.");
+    },
+  });
+
+  const {
+    data: familyImageSuggestions,
+    isFetching: isLoadingFamilySuggestions,
+  } = api.catalogue.getPartImageFamilySuggestions.useQuery(
+    { partId: partId! },
+    {
+      enabled:
+        isOnline &&
+        isFamilyImageSuggestionsOpen &&
+        isEditMode &&
+        !!partId &&
+        !!imageUrl.trim(),
+    },
+  );
+
+  const applyFamilyPartImage =
+    api.catalogue.applyPartImageToFamilyCandidate.useMutation({
+      onSuccess: () => {
+        void utils.catalogue.searchParts.invalidate();
+        void utils.catalogue.getPart.invalidate();
+      },
+      onError: (error) => {
+        setSubmitError(error.message || "Could not apply image to this part.");
+      },
+    });
+
+  const handleApplyManualGoogleImageUrl = () => {
+    if (!partId || !googleManualImageUrl.trim()) return;
+
+    applyRemoteGoogleImageUrl(googleManualImageUrl.trim());
+  };
+
+  const applyRemoteGoogleImageUrl = (remoteImageUrl: string) => {
+    if (!partId) return;
+
+    const trimmedUrl = remoteImageUrl.trim();
+    if (!trimmedUrl) return;
+
+    applyGooglePartImage.mutate({
+      partId,
+      imageUrl: trimmedUrl,
+      sourceUrl: trimmedUrl,
+      sourceTitle: "Google Images manual selection",
+    });
+  };
+
+  const attachUploadedImageToPart = async (file: File) => {
+    if (!partId) return;
+
+    const uploadedUrl = await uploadPartImage(file);
+    setImageUrl(uploadedUrl);
+    await updatePart.mutateAsync({ partId, imageUrl: uploadedUrl });
+    setIsGoogleImagePickerOpen(false);
+    setGoogleManualImageUrl("");
+  };
+
+  const handleGoogleClipboardPaste = async () => {
+    if (!partId) return;
+
+    if (typeof navigator === "undefined" || !navigator.clipboard) {
+      setSubmitError("Clipboard access is not available in this browser.");
+      return;
+    }
+
+    setSubmitError(null);
+
+    try {
+      setIsProcessingImage(true);
+
+      if ("read" in navigator.clipboard) {
+        const clipboardItems = await navigator.clipboard.read().catch(() => []);
+        for (const item of clipboardItems) {
+          const imageType = item.types.find((type) =>
+            type.toLowerCase().startsWith("image/"),
+          );
+          if (!imageType) continue;
+
+          const blob = await item.getType(imageType);
+          const extension = imageType.split("/")[1] || "png";
+          await attachUploadedImageToPart(
+            new File([blob], `google-image.${extension}`, { type: imageType }),
+          );
+          return;
+        }
+      }
+
+      const pastedText = (await navigator.clipboard.readText()).trim();
+      if (!pastedText) {
+        setSubmitError("Clipboard does not contain an image or image URL.");
+        return;
+      }
+
+      setGoogleManualImageUrl(pastedText);
+      applyRemoteGoogleImageUrl(pastedText);
+    } catch (error) {
+      console.error("Failed to read image from clipboard", error);
+      setSubmitError(
+        error instanceof Error
+          ? error.message
+          : "Failed to read image from clipboard",
+      );
+    } finally {
+      setIsProcessingImage(false);
+    }
+  };
+
+  const handleGoogleImagePaste = async (
+    event: React.ClipboardEvent<HTMLDivElement>,
+  ) => {
+    const pastedImage = Array.from(event.clipboardData.items)
+      .find((item) => item.kind === "file" && item.type.startsWith("image/"))
+      ?.getAsFile();
+
+    if (!pastedImage || !partId) return;
+
+    event.preventDefault();
+    setSubmitError(null);
+
+    try {
+      setIsProcessingImage(true);
+      await attachUploadedImageToPart(pastedImage);
+    } catch (error) {
+      console.error("Failed to process pasted image", error);
+      setSubmitError(
+        error instanceof Error
+          ? error.message
+          : "Failed to process pasted image",
+      );
+    } finally {
+      setIsProcessingImage(false);
+    }
+  };
+
   const handleSupplierCreated = (newSupplierId: string) => {
     handleSupplierSelect(newSupplierId);
     setIsSupplierDialogOpen(false);
@@ -557,13 +727,14 @@ export function PartDetailsDialog({
   });
 
   const parsedSizeNominal = sizeValue.trim()
-    ? parseSizeInput(sizeValue.trim())
+    ? parsePrimarySizeInput(sizeValue.trim())
     : null;
   const isLoading =
     createPart.isPending ||
     updatePart.isPending ||
     isProcessingImage ||
     isSubmittingInBackground;
+  const isReviewingPhoto = applyGooglePartImage.isPending;
   const selectedCatalog = catalogs?.find((catalog) => catalog.id === catalogId);
   const selectedCategory = categoryTree?.find(
     (category) => category.id === categoryId,
@@ -572,6 +743,63 @@ export function PartDetailsDialog({
     (material) => material.id === materialId,
   );
   const selectedSizeUnit = sizeUnits.find((unit) => unit.id === sizeUnitId);
+  const googleImageSearchQuery = [
+    displayName,
+    selectedMaterial?.name,
+    selectedCategory?.name,
+  ]
+    .map((value) => value?.trim())
+    .filter(Boolean)
+    .join(" ");
+  const googleImageSearchUrl =
+    "https://www.google.com/search?tbm=isch&q=" +
+    encodeURIComponent(googleImageSearchQuery || displayName);
+  const visibleFamilyImageSuggestions = useMemo(
+    () =>
+      familyImageSuggestions?.suggestions.filter(
+        (suggestion) => !dismissedFamilySuggestionIds.has(suggestion.id),
+      ) ?? [],
+    [familyImageSuggestions, dismissedFamilySuggestionIds],
+  );
+
+  const openGoogleImageSearch = () => {
+    window.open(googleImageSearchUrl, "_blank", "noopener,noreferrer");
+    setIsGoogleImagePickerOpen(true);
+  };
+
+  const openFamilyImageSuggestions = () => {
+    setDismissedFamilySuggestionIds(new Set());
+    setIsFamilyImageSuggestionsOpen(true);
+  };
+
+  const dismissFamilyImageSuggestion = (suggestionId: string) => {
+    setDismissedFamilySuggestionIds((current) => {
+      const next = new Set(current);
+      next.add(suggestionId);
+      return next;
+    });
+
+    if (visibleFamilyImageSuggestions.length <= 1) {
+      setIsFamilyImageSuggestionsOpen(false);
+    }
+  };
+
+  const approveFamilyImageSuggestion = async (suggestionId: string) => {
+    const approvedImageUrl = imageUrl.trim();
+    if (!approvedImageUrl) return;
+
+    setSubmitError(null);
+
+    try {
+      await applyFamilyPartImage.mutateAsync({
+        partId: suggestionId,
+        imageUrl: approvedImageUrl,
+      });
+      dismissFamilyImageSuggestion(suggestionId);
+    } catch {
+      // The mutation onError handler owns the visible error message.
+    }
+  };
 
   const handleCatalogAdd = () =>
     handleAddableLookup({
@@ -630,7 +858,6 @@ export function PartDetailsDialog({
     }
   };
 
-
   const handlePartUuidCopy = async () => {
     const uuid = partId ?? part?.id;
     if (!uuid || typeof navigator === "undefined" || !navigator.clipboard) {
@@ -649,20 +876,19 @@ export function PartDetailsDialog({
       return;
     }
 
+    const normalizedImageUrl = imageUrl.trim() || null;
+    const imageUrlToSave = normalizedImageUrl;
+
     const payload = {
       displayName: displayName.trim(),
       description: description.trim() || null,
-      imageUrl: imageUrl.trim() || null,
+      imageUrl: imageUrlToSave,
       catalogId,
       categoryId,
       materialId,
       sizeNominal: parsedSizeNominal,
-      sizeLabel:
-        formatSizeDimensions(
-          sizeValue.trim(),
-          selectedSizeUnit?.code ?? null,
-        ) || null,
-      sizeUnitId: parsedSizeNominal ? sizeUnitId : null,
+      sizeLabel: formatSizeDimensions(sizeValue.trim(), null) || null,
+      sizeUnitId: parsedSizeNominal !== null ? sizeUnitId : null,
       isActive,
       aliases: aliasesText
         .split(/[\n;,]/)
@@ -858,7 +1084,7 @@ export function PartDetailsDialog({
                 <Input
                   value={sizeValue}
                   onChange={(e) => setSizeValue(e.target.value)}
-                  placeholder="1/2 or 0.5"
+                  placeholder="1/2, 3 x 3 x 3, or 3x2x2"
                   className="mt-1"
                   disabled={isLoading}
                 />
@@ -997,101 +1223,132 @@ export function PartDetailsDialog({
             </div>
 
             <div className="rounded-lg border bg-gray-50/50 p-3">
-                <FieldHeader
-                  label="Suppliers"
-                  onAdd={() => setIsSupplierDialogOpen(true)}
-                />
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className="mt-1 w-full justify-between bg-white"
-                      disabled={isLoading}
+              <FieldHeader
+                label="Suppliers"
+                onAdd={() => setIsSupplierDialogOpen(true)}
+              />
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="mt-1 w-full justify-between bg-white"
+                    disabled={isLoading}
+                  >
+                    {supplierId
+                      ? (suppliers?.find(
+                          (supplier) => supplier.id === supplierId,
+                        )?.name ?? "Select supplier")
+                      : "Select supplier"}
+                    <ChevronDown className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="max-h-60 overflow-y-auto">
+                  {suppliers?.map((supplier) => (
+                    <DropdownMenuItem
+                      key={supplier.id}
+                      onClick={() => handleSupplierSelect(supplier.id)}
                     >
-                      {supplierId
-                        ? (suppliers?.find(
-                            (supplier) => supplier.id === supplierId,
-                          )?.name ?? "Select supplier")
-                        : "Select supplier"}
-                      <ChevronDown className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent className="max-h-60 overflow-y-auto">
-                    {suppliers?.map((supplier) => (
-                      <DropdownMenuItem
-                        key={supplier.id}
-                        onClick={() => handleSupplierSelect(supplier.id)}
-                      >
-                        {supplier.name}
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                      {supplier.name}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
 
-                {supplierId ? (
-                  <div className="mt-3 grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] items-end gap-3">
-                    <div className="min-w-0">
-                      <Label>Supplier SKU</Label>
-                      <Input
-                        value={supplierSku}
-                        onChange={(e) => handleSupplierSkuChange(e.target.value)}
-                        placeholder="Supplier SKU"
-                        className="mt-1 bg-white"
-                        disabled={isLoading}
-                      />
-                    </div>
-
-                    <div className="min-w-0">
-                      <Label>Unit Cost</Label>
-                      <Input
-                        type="text"
-                        inputMode="decimal"
-                        value={lastKnownUnitCost}
-                        onChange={(e) =>
-                          handleLastKnownUnitCostChange(e.target.value)
-                        }
-                        onBlur={() =>
-                          handleLastKnownUnitCostChange(
-                            formatCurrencyInput(lastKnownUnitCost),
-                          )
-                        }
-                        placeholder="$0.00"
-                        className="mt-1 bg-white"
-                        disabled={isLoading}
-                      />
-                    </div>
-
-                    <div>
-                      <Label>Preferred</Label>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (supplierId) setPreferredSupplierId(supplierId);
-                        }}
-                        className="mt-1 flex h-9 w-9 items-center justify-center rounded-md border bg-white transition-colors hover:bg-gray-50"
-                        disabled={isLoading}
-                        aria-pressed={preferredSupplierId === supplierId}
-                        aria-label="Preferred supplier"
-                      >
-                        <Star
-                          className={`h-4 w-4 ${
-                            preferredSupplierId === supplierId
-                              ? "fill-yellow-400 text-yellow-400"
-                              : "text-gray-400"
-                          }`}
-                        />
-                      </button>
-                    </div>
+              {supplierId ? (
+                <div className="mt-3 grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] items-end gap-3">
+                  <div className="min-w-0">
+                    <Label>Supplier SKU</Label>
+                    <Input
+                      value={supplierSku}
+                      onChange={(e) => handleSupplierSkuChange(e.target.value)}
+                      placeholder="Supplier SKU"
+                      className="mt-1 bg-white"
+                      disabled={isLoading}
+                    />
                   </div>
-                ) : (
-                  <p className="mt-2 text-xs text-gray-500">
-                    Choose a supplier to enter its SKU and cost for this part.
-                  </p>
-                )}
-              </div>
+
+                  <div className="min-w-0">
+                    <Label>Unit Cost</Label>
+                    <Input
+                      type="text"
+                      inputMode="decimal"
+                      value={lastKnownUnitCost}
+                      onChange={(e) =>
+                        handleLastKnownUnitCostChange(e.target.value)
+                      }
+                      onBlur={() =>
+                        handleLastKnownUnitCostChange(
+                          formatCurrencyInput(lastKnownUnitCost),
+                        )
+                      }
+                      placeholder="$0.00"
+                      className="mt-1 bg-white"
+                      disabled={isLoading}
+                    />
+                  </div>
+
+                  <div>
+                    <Label>Preferred</Label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (supplierId) setPreferredSupplierId(supplierId);
+                      }}
+                      className="mt-1 flex h-9 w-9 items-center justify-center rounded-md border bg-white transition-colors hover:bg-gray-50"
+                      disabled={isLoading}
+                      aria-pressed={preferredSupplierId === supplierId}
+                      aria-label="Preferred supplier"
+                    >
+                      <Star
+                        className={`h-4 w-4 ${
+                          preferredSupplierId === supplierId
+                            ? "fill-yellow-400 text-yellow-400"
+                            : "text-gray-400"
+                        }`}
+                      />
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <p className="mt-2 text-xs text-gray-500">
+                  Choose a supplier to enter its SKU and cost for this part.
+                </p>
+              )}
+            </div>
 
             <div>
-              <Label>Part Image</Label>
+              <div className="flex items-center justify-between gap-3">
+                <Label>Part Image</Label>
+                {isEditMode && partId && (
+                  <div className="flex flex-wrap justify-end gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={openGoogleImageSearch}
+                      disabled={isLoading || isReviewingPhoto}
+                    >
+                      <Search className="h-4 w-4" />
+                      Find with Google
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={openFamilyImageSuggestions}
+                      disabled={
+                        isLoading ||
+                        isReviewingPhoto ||
+                        applyFamilyPartImage.isPending ||
+                        !imageUrl.trim()
+                      }
+                    >
+                      <Check className="h-4 w-4" />
+                      Use for Family
+                    </Button>
+                  </div>
+                )}
+              </div>
               <button
                 type="button"
                 onClick={() => imageInputRef.current?.click()}
@@ -1117,8 +1374,8 @@ export function PartDetailsDialog({
                     {imageUrl ? "Change image" : "Upload image"}
                   </div>
                   <p className="mt-1 text-xs text-gray-500">
-                    Click to choose an image. It will be resized, saved as WebP,
-                    and stored as a short app URL.
+                    Upload or paste an image, or search Google and store the
+                    selected result as a local app image.
                   </p>
                 </div>
               </button>
@@ -1135,7 +1392,9 @@ export function PartDetailsDialog({
               <Label>Image URL</Label>
               <Input
                 value={imageUrl}
-                onChange={(e) => setImageUrl(e.target.value)}
+                onChange={(e) => {
+                  setImageUrl(e.target.value);
+                }}
                 placeholder="https://..."
                 type="url"
                 className="mt-1"
@@ -1210,6 +1469,174 @@ export function PartDetailsDialog({
                   : "Create"}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={isGoogleImagePickerOpen}
+        onOpenChange={setIsGoogleImagePickerOpen}
+      >
+        <DialogContent className="relative flex max-h-[90vh] max-w-2xl flex-col">
+          <DialogHeader className="pr-10">
+            <DialogTitle>Find Part Image with Google</DialogTitle>
+            <DialogDescription>
+              Google Images opened in a new tab for:{" "}
+              {googleImageSearchQuery || displayName}. Copy the image address
+              or copy the image itself, then press Paste to store it as this
+              part&apos;s image.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div
+            className="space-y-3 rounded-lg border bg-gray-50 p-3 text-sm"
+            onPaste={handleGoogleImagePaste}
+          >
+            <div className="flex items-center justify-between gap-3">
+              <span className="min-w-0 truncate text-gray-600">
+                Search: {googleImageSearchQuery || displayName}
+              </span>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="shrink-0"
+                onClick={openGoogleImageSearch}
+              >
+                <ExternalLink className="h-4 w-4" />
+                Reopen Google
+              </Button>
+            </div>
+            <div
+              className="focus:border-primary space-y-3 rounded-md border border-dashed bg-white p-4 text-center text-sm text-gray-600 outline-none"
+              tabIndex={0}
+            >
+              <div>
+                Copy an image from Google, or copy its image address. ForemenHQ
+                will convert copied images to WebP and attach them to this part.
+              </div>
+              <Button
+                type="button"
+                onClick={() => void handleGoogleClipboardPaste()}
+                disabled={applyGooglePartImage.isPending || isProcessingImage}
+              >
+                {applyGooglePartImage.isPending || isProcessingImage
+                  ? "Pasting..."
+                  : "Paste"}
+              </Button>
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Input
+                value={googleManualImageUrl}
+                onChange={(event) =>
+                  setGoogleManualImageUrl(event.target.value)
+                }
+                placeholder="Paste copied image address"
+                type="url"
+                disabled={applyGooglePartImage.isPending || isProcessingImage}
+                className="bg-white"
+              />
+              <Button
+                type="button"
+                onClick={handleApplyManualGoogleImageUrl}
+                disabled={
+                  applyGooglePartImage.isPending ||
+                  isProcessingImage ||
+                  !googleManualImageUrl.trim()
+                }
+                className="shrink-0"
+              >
+                {applyGooglePartImage.isPending || isProcessingImage
+                  ? "Adding..."
+                  : "Add Image"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={isFamilyImageSuggestionsOpen}
+        onOpenChange={setIsFamilyImageSuggestionsOpen}
+      >
+        <DialogContent className="relative flex max-h-[90vh] max-w-3xl flex-col">
+          <DialogHeader className="pr-10">
+            <DialogTitle>Apply Image to Matching Parts</DialogTitle>
+            <DialogDescription>
+              Review matching {familyImageSuggestions?.familyLabel ?? "family"}{" "}
+              parts with the same material. Approved parts will use this exact
+              image URL.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="min-h-0 flex-1 space-y-3 overflow-y-auto">
+            {isLoadingFamilySuggestions ? (
+              <div className="rounded-md border bg-gray-50 p-4 text-sm text-gray-600">
+                Finding matching parts...
+              </div>
+            ) : visibleFamilyImageSuggestions.length > 0 ? (
+              visibleFamilyImageSuggestions.map((suggestion) => (
+                <div
+                  key={suggestion.id}
+                  className="flex items-start gap-3 rounded-lg border bg-white p-3"
+                >
+                  <div className="relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-md bg-gray-50">
+                    <Image
+                      src={imageUrl}
+                      alt=""
+                      fill
+                      className="object-cover"
+                      unoptimized
+                    />
+                  </div>
+                  <div className="min-w-0 flex-1 space-y-1">
+                    <div className="text-sm font-medium break-words text-gray-900">
+                      {suggestion.displayName}
+                    </div>
+                    <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-500">
+                      {suggestion.size && <span>{suggestion.size}</span>}
+                      {suggestion.material && (
+                        <span>{suggestion.material}</span>
+                      )}
+                      {suggestion.description && (
+                        <span className="basis-full break-words text-gray-600">
+                          {suggestion.description}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex shrink-0 gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        dismissFamilyImageSuggestion(suggestion.id)
+                      }
+                      disabled={applyFamilyPartImage.isPending}
+                      aria-label={`Decline ${suggestion.displayName}`}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() =>
+                        void approveFamilyImageSuggestion(suggestion.id)
+                      }
+                      disabled={applyFamilyPartImage.isPending}
+                      aria-label={`Approve ${suggestion.displayName}`}
+                    >
+                      <Check className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="rounded-md border bg-gray-50 p-4 text-sm text-gray-600">
+                No matching parts need this image.
+              </div>
+            )}
+          </div>
         </DialogContent>
       </Dialog>
 

@@ -383,7 +383,11 @@ export function ReviewStage({
         {!allPartsHaveSuppliers && (
           <div className="flex items-center gap-2 rounded-md bg-amber-50 px-2 py-1.5 text-xs text-amber-800 sm:px-3 sm:text-sm">
             <AlertCircle className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" />
-            <span>Please select suppliers for all parts</span>
+            <span>
+              {isOnline
+                ? "Please select suppliers for all parts"
+                : "Select a cached supplier for each part. If none are cached, reconnect once to refresh supplier options."}
+            </span>
           </div>
         )}
       </div>

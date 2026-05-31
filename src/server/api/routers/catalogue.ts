@@ -11,6 +11,7 @@ import {
   isNotNull,
   gte,
   lte,
+  asc,
 } from "drizzle-orm";
 
 import { createTRPCRouter, hasDashboardAccess } from "~/server/api/trpc";
@@ -34,8 +35,15 @@ import {
   formatSize,
   formatSizeDimensions,
   generatePartDisplayName,
+  parsePrimarySizeInput,
   parseSizeInput,
 } from "~/lib/size-utils";
+import {
+  downloadRemoteCatalogueImage,
+  getCatalogueImageUrl,
+  makeCatalogueImageFilename,
+  writeCatalogueImage,
+} from "~/server/catalogue/image-storage";
 
 function normalizeAliases(input: string | string[] | null | undefined) {
   const aliases = Array.isArray(input) ? input : (input ?? "").split(/[;,\n]/);
@@ -73,6 +81,186 @@ const partImageUrlInput = z
         "Image URL must be an absolute URL or an uploaded catalogue image path",
     },
   );
+
+function buildGoogleImageSearchUrl(query: string) {
+  const url = new URL("https://www.google.com/search");
+  url.searchParams.set("tbm", "isch");
+  url.searchParams.set("q", query);
+  return url.toString();
+}
+
+function buildPartImageSearchQuery(part: {
+  displayName: string;
+  description: string | null;
+  categoryName: string | null;
+  materialName: string | null;
+}) {
+  return [part.displayName, part.materialName, part.categoryName]
+    .map((value) => value?.trim())
+    .filter(Boolean)
+    .join(" ");
+}
+
+function normalizePartImageFamilyText(
+  value: string,
+  materialName?: string | null,
+) {
+  const materialTokens = new Set(
+    (materialName ?? "")
+      .toLowerCase()
+      .replace(/[^a-z0-9.]+/g, " ")
+      .split(" ")
+      .filter(Boolean),
+  );
+
+  return value
+    .toLowerCase()
+    .replace(/°/g, " degree ")
+    .replace(/\b(22\.5|45|60|90)\s*(?:deg|degree|degrees)\b/g, "$1")
+    .replace(
+      /\b\d+(?:\.\d+)?(?:\s+\d+\/\d+|\/\d+)?\s*(?:in|inch|inches|ft|foot|feet|mm|cm|m)\b/g,
+      " ",
+    )
+    .replace(/\b(?:in|inch|inches|ft|foot|feet|mm|cm|m)\b/g, " ")
+    .replace(/[^a-z0-9.]+/g, " ")
+    .split(" ")
+    .filter((token) => token && !materialTokens.has(token))
+    .filter(
+      (token) =>
+        ![
+          "fitting",
+          "fittings",
+          "pipe",
+          "pipes",
+          "with",
+          "without",
+          "hub",
+          "sp",
+          "h",
+          "x",
+        ].includes(token),
+    )
+    .join(" ")
+    .trim();
+}
+
+function buildPartImageFamilyKey(part: {
+  displayName: string;
+  description: string | null;
+  categoryName: string | null;
+  materialName: string | null;
+}) {
+  if (part.categoryName?.trim().toLowerCase() === "pipe") {
+    return "pipe";
+  }
+
+  const searchableText = [part.description, part.displayName]
+    .map((value) => value?.trim())
+    .filter(Boolean)
+    .join(" ");
+
+  const angleMatch = searchableText.match(
+    /\b(22\.5|45|60|90)\s*(?:deg|degree|degrees)?\b/i,
+  );
+  if (angleMatch?.[1]) {
+    return angleMatch[1];
+  }
+
+  return normalizePartImageFamilyText(searchableText, part.materialName);
+}
+
+function getPartImageFamilyText(part: {
+  displayName: string;
+  description: string | null;
+  materialName: string | null;
+}) {
+  const descriptionText = part.description?.trim();
+  return normalizePartImageFamilyText(
+    descriptionText || part.displayName,
+    part.materialName,
+  );
+}
+
+function getPartImageFamilyTokens(part: {
+  displayName: string;
+  description: string | null;
+  materialName: string | null;
+}) {
+  return getPartImageFamilyText(part)
+    .split(" ")
+    .filter((token) => token.length >= 2);
+}
+
+function hasFuzzyPartImageFamilyMatch(
+  sourcePart: {
+    displayName: string;
+    description: string | null;
+    categoryName: string | null;
+    materialName: string | null;
+  },
+  candidate: {
+    displayName: string;
+    description: string | null;
+    categoryName: string | null;
+    materialName: string | null;
+  },
+) {
+  const sourceFamilyKey = buildPartImageFamilyKey(sourcePart);
+  if (!sourceFamilyKey) return false;
+
+  if (sourceFamilyKey === "pipe") {
+    return buildPartImageFamilyKey(candidate) === "pipe";
+  }
+
+  const angleFamilyKeys = new Set(["22.5", "45", "60", "90"]);
+  if (angleFamilyKeys.has(sourceFamilyKey)) {
+    return buildPartImageFamilyKey(candidate) === sourceFamilyKey;
+  }
+
+  const sourceText = getPartImageFamilyText(sourcePart);
+  const candidateText = getPartImageFamilyText(candidate);
+  if (!sourceText || !candidateText) return false;
+  if (sourceText === candidateText) return true;
+  if (sourceText.length >= 6 && candidateText.includes(sourceText)) return true;
+  if (candidateText.length >= 6 && sourceText.includes(candidateText))
+    return true;
+
+  const sourceTokens = new Set(getPartImageFamilyTokens(sourcePart));
+  const candidateTokens = new Set(getPartImageFamilyTokens(candidate));
+  if (sourceTokens.size === 0 || candidateTokens.size === 0) return false;
+
+  const sharedTokenCount = [...sourceTokens].filter((token) =>
+    candidateTokens.has(token),
+  ).length;
+
+  if (sourceTokens.size <= 2) {
+    return (
+      sharedTokenCount === sourceTokens.size &&
+      candidateTokens.size <= sourceTokens.size + 3
+    );
+  }
+
+  return sharedTokenCount / sourceTokens.size >= 0.67;
+}
+
+function assertSelectableRemoteImageUrl(value: string) {
+  const url = new URL(value);
+  if (!["http:", "https:"].includes(url.protocol)) {
+    throw new Error("Image URL must be HTTP or HTTPS");
+  }
+
+  const hostname = url.hostname.toLowerCase();
+  if (
+    hostname === "localhost" ||
+    hostname === "127.0.0.1" ||
+    hostname === "0.0.0.0" ||
+    hostname === "::1"
+  ) {
+    throw new Error("Local image URLs are not allowed");
+  }
+
+  return url.toString();
+}
 
 async function syncPartAliases(
   database: typeof appDb,
@@ -115,7 +303,7 @@ async function findOrCreateSize(
 
   const parsedSizeNominal =
     typeof sizeNominal === "string"
-      ? parseSizeInput(sizeNominal.split(/\s*(?:x|×)\s*/i)[0] ?? "")
+      ? parsePrimarySizeInput(sizeNominal)
       : sizeNominal;
 
   if (
@@ -436,7 +624,7 @@ export const catalogueRouter = createTRPCRouter({
         attributeValueMin: z.number().optional(),
         attributeValueMax: z.number().optional(),
         attributeUnit: z.string().optional(),
-        limit: z.number().int().positive().max(1000).optional(),
+        limit: z.number().int().positive().max(5000).optional(),
       }),
     )
     .query(async ({ ctx, input }) => {
@@ -620,23 +808,15 @@ export const catalogueRouter = createTRPCRouter({
             ...(sizeJoinConditions.length > 0 ? sizeJoinConditions : []),
           ),
         )
+        .orderBy(asc(partDefinitions.displayName), asc(partDefinitions.id))
         .limit(input.limit ?? 5000);
 
-      // Sort: org-specific first, then global, then by name
-      const parts = allParts.sort((a, b) => {
-        const aIsOrg = a.organizationId === organizationId;
-        const bIsOrg = b.organizationId === organizationId;
-        if (aIsOrg !== bIsOrg) {
-          return aIsOrg ? -1 : 1;
-        }
-        return a.displayName.localeCompare(b.displayName);
-      });
-
-      return parts.map((part) => ({
+      return allParts.map((part) => ({
         id: part.id,
         displayName: part.displayName,
         description: part.description,
         imageUrl: part.imageUrl,
+        approvedImageUrl: part.imageUrl,
         material: part.materialName,
         materialId: part.materialId,
         size:
@@ -1139,6 +1319,7 @@ export const catalogueRouter = createTRPCRouter({
         displayName: part.displayName,
         description: part.description,
         imageUrl: part.imageUrl,
+        approvedImageUrl: part.imageUrl,
         catalogId: part.catalogId,
         categoryId: part.categoryId,
         material: part.materialName,
@@ -1156,6 +1337,304 @@ export const catalogueRouter = createTRPCRouter({
           : null,
         aliases,
       };
+    }),
+
+  searchGooglePartImages: hasDashboardAccess
+    .input(
+      z.object({
+        partId: z.string().uuid(),
+        limit: z.number().int().min(1).max(20).default(12),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const organizationId = ctx.user.organizationId;
+      if (!organizationId) {
+        throw new Error("User must belong to an organization");
+      }
+
+      const [part] = await ctx.db
+        .select({
+          id: partDefinitions.id,
+          displayName: partDefinitions.displayName,
+          description: partDefinitions.description,
+          categoryName: categories.name,
+          materialName: materials.name,
+        })
+        .from(partDefinitions)
+        .leftJoin(categories, eq(partDefinitions.categoryId, categories.id))
+        .leftJoin(materials, eq(partDefinitions.materialId, materials.id))
+        .where(
+          and(
+            eq(partDefinitions.id, input.partId),
+            eq(partDefinitions.organizationId, organizationId),
+          ),
+        )
+        .limit(1);
+
+      if (!part) {
+        throw new Error("Part not found");
+      }
+
+      const query = buildPartImageSearchQuery(part);
+      const googleSearchUrl = buildGoogleImageSearchUrl(query);
+
+      if (!process.env.SERPAPI_API_KEY) {
+        return {
+          query,
+          googleSearchUrl,
+          images: [],
+          unavailableReason:
+            "Google image picker needs SERPAPI_API_KEY on the server.",
+        };
+      }
+
+      const url = new URL("https://serpapi.com/search.json");
+      url.searchParams.set("engine", "google_images");
+      url.searchParams.set("api_key", process.env.SERPAPI_API_KEY);
+      url.searchParams.set("q", query);
+      url.searchParams.set("safe", "active");
+      url.searchParams.set("num", String(input.limit));
+
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`Google image search failed: ${response.status}`);
+      }
+
+      const result = (await response.json()) as {
+        images_results?: Array<{
+          position?: number;
+          title?: string;
+          source?: string;
+          link?: string;
+          original?: string;
+          thumbnail?: string;
+          original_width?: number;
+          original_height?: number;
+        }>;
+      };
+
+      const images = (result.images_results ?? [])
+        .map((image, index) => {
+          const imageUrl = image.original ?? image.thumbnail;
+          if (!imageUrl) return null;
+
+          return {
+            id: String(image.position ?? index),
+            title: image.title ?? "Google image result",
+            source: image.source ?? null,
+            sourceUrl: image.link ?? null,
+            imageUrl,
+            thumbnailUrl: image.thumbnail ?? imageUrl,
+            width: image.original_width ?? null,
+            height: image.original_height ?? null,
+          };
+        })
+        .filter((image): image is NonNullable<typeof image> => image !== null)
+        .slice(0, input.limit);
+
+      return { query, googleSearchUrl, images, unavailableReason: null };
+    }),
+
+  applyGooglePartImage: hasDashboardAccess
+    .input(
+      z.object({
+        partId: z.string().uuid(),
+        imageUrl: z.string().url(),
+        sourceUrl: z.string().url().optional().nullable(),
+        sourceTitle: z.string().max(500).optional().nullable(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const organizationId = ctx.user.organizationId;
+      if (!organizationId) {
+        throw new Error("User must belong to an organization");
+      }
+
+      const selectedImageUrl = assertSelectableRemoteImageUrl(input.imageUrl);
+
+      const [part] = await ctx.db
+        .select({
+          id: partDefinitions.id,
+          displayName: partDefinitions.displayName,
+        })
+        .from(partDefinitions)
+        .where(
+          and(
+            eq(partDefinitions.id, input.partId),
+            eq(partDefinitions.organizationId, organizationId),
+          ),
+        )
+        .limit(1);
+
+      if (!part) {
+        throw new Error("Part not found");
+      }
+
+      const filename = makeCatalogueImageFilename();
+      const outputBuffer = await downloadRemoteCatalogueImage(selectedImageUrl);
+      await writeCatalogueImage(filename, outputBuffer);
+      const localImageUrl = getCatalogueImageUrl(filename);
+
+      await ctx.db
+        .update(partDefinitions)
+        .set({ imageUrl: localImageUrl })
+        .where(
+          and(
+            eq(partDefinitions.id, input.partId),
+            eq(partDefinitions.organizationId, organizationId),
+          ),
+        );
+
+      return { imageUrl: localImageUrl };
+    }),
+
+  getPartImageFamilySuggestions: hasDashboardAccess
+    .input(z.object({ partId: z.string().uuid() }))
+    .query(async ({ ctx, input }) => {
+      const organizationId = ctx.user.organizationId;
+      if (!organizationId) {
+        throw new Error("User must belong to an organization");
+      }
+
+      const [sourcePart] = await ctx.db
+        .select({
+          id: partDefinitions.id,
+          displayName: partDefinitions.displayName,
+          description: partDefinitions.description,
+          imageUrl: partDefinitions.imageUrl,
+          categoryId: partDefinitions.categoryId,
+          categoryName: categories.name,
+          materialId: partDefinitions.materialId,
+          materialName: materials.name,
+          sizeLabel: partDefinitions.sizeLabel,
+          sizeNominal: sizes.nominal,
+          sizeUnitCode: units.code,
+        })
+        .from(partDefinitions)
+        .leftJoin(categories, eq(partDefinitions.categoryId, categories.id))
+        .leftJoin(materials, eq(partDefinitions.materialId, materials.id))
+        .leftJoin(sizes, eq(partDefinitions.sizeId, sizes.id))
+        .leftJoin(units, eq(sizes.unitId, units.id))
+        .where(
+          and(
+            eq(partDefinitions.id, input.partId),
+            eq(partDefinitions.organizationId, organizationId),
+          ),
+        )
+        .limit(1);
+
+      if (!sourcePart) {
+        throw new Error("Part not found");
+      }
+
+      const familyKey = buildPartImageFamilyKey(sourcePart);
+      if (!familyKey) {
+        return {
+          familyLabel: sourcePart.categoryName ?? sourcePart.displayName,
+          suggestions: [],
+        };
+      }
+
+      const candidateConditions = [
+        eq(partDefinitions.organizationId, organizationId),
+        eq(partDefinitions.isActive, true),
+        sourcePart.materialId
+          ? eq(partDefinitions.materialId, sourcePart.materialId)
+          : isNull(partDefinitions.materialId),
+        or(isNull(partDefinitions.imageUrl), eq(partDefinitions.imageUrl, "")),
+      ].filter(
+        (condition): condition is NonNullable<typeof condition> =>
+          condition !== undefined,
+      );
+
+      const candidates = await ctx.db
+        .select({
+          id: partDefinitions.id,
+          displayName: partDefinitions.displayName,
+          description: partDefinitions.description,
+          imageUrl: partDefinitions.imageUrl,
+          categoryName: categories.name,
+          materialName: materials.name,
+          sizeLabel: partDefinitions.sizeLabel,
+          sizeNominal: sizes.nominal,
+          sizeUnitCode: units.code,
+        })
+        .from(partDefinitions)
+        .leftJoin(categories, eq(partDefinitions.categoryId, categories.id))
+        .leftJoin(materials, eq(partDefinitions.materialId, materials.id))
+        .leftJoin(sizes, eq(partDefinitions.sizeId, sizes.id))
+        .leftJoin(units, eq(sizes.unitId, units.id))
+        .where(and(...candidateConditions))
+        .orderBy(asc(partDefinitions.displayName), asc(partDefinitions.id))
+        .limit(250);
+
+      const suggestions = candidates
+        .filter((candidate) => candidate.id !== sourcePart.id)
+        .filter((candidate) =>
+          hasFuzzyPartImageFamilyMatch(sourcePart, candidate),
+        )
+        .map((candidate) => ({
+          id: candidate.id,
+          displayName: candidate.displayName,
+          description: candidate.description,
+          material: candidate.materialName,
+          size:
+            candidate.sizeLabel ??
+            (candidate.sizeNominal && candidate.sizeUnitCode
+              ? formatSize(
+                  Number(candidate.sizeNominal),
+                  candidate.sizeUnitCode,
+                )
+              : null),
+        }));
+
+      return {
+        familyLabel:
+          familyKey === "pipe"
+            ? "Pipe"
+            : sourcePart.description?.trim() || sourcePart.displayName,
+        suggestions,
+      };
+    }),
+
+  applyPartImageToFamilyCandidate: hasDashboardAccess
+    .input(
+      z.object({
+        partId: z.string().uuid(),
+        imageUrl: partImageUrlInput.refine((value) => !!value, {
+          message: "Image URL is required",
+        }),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const organizationId = ctx.user.organizationId;
+      if (!organizationId) {
+        throw new Error("User must belong to an organization");
+      }
+      const approvedImageUrl = input.imageUrl;
+      if (!approvedImageUrl) {
+        throw new Error("Image URL is required");
+      }
+
+      const [updated] = await ctx.db
+        .update(partDefinitions)
+        .set({ imageUrl: approvedImageUrl })
+        .where(
+          and(
+            eq(partDefinitions.id, input.partId),
+            eq(partDefinitions.organizationId, organizationId),
+          ),
+        )
+        .returning({
+          id: partDefinitions.id,
+          imageUrl: partDefinitions.imageUrl,
+        });
+
+      if (!updated) {
+        throw new Error("Part not found");
+      }
+
+      return updated;
     }),
 
   /**
@@ -1242,7 +1721,7 @@ export const catalogueRouter = createTRPCRouter({
           const finalSizeUnitId =
             input.sizeUnitId !== undefined
               ? input.sizeUnitId
-              : currentSize?.unitId ?? null;
+              : (currentSize?.unitId ?? null);
 
           sizeId = await findOrCreateSize(
             ctx.db,
@@ -1286,7 +1765,9 @@ export const catalogueRouter = createTRPCRouter({
                 ? input.description
                 : originalPart.description,
             imageUrl:
-              input.imageUrl !== undefined ? input.imageUrl : originalPart.imageUrl,
+              input.imageUrl !== undefined
+                ? input.imageUrl
+                : originalPart.imageUrl,
             sizeLabel:
               input.sizeLabel !== undefined
                 ? input.sizeLabel?.trim() || null
@@ -1729,85 +2210,87 @@ export const catalogueRouter = createTRPCRouter({
         .optional(),
     )
     .query(async ({ ctx, input }) => {
-    const organizationId = ctx.user.organizationId;
+      const organizationId = ctx.user.organizationId;
 
-    if (!organizationId) {
-      throw new Error("User must belong to an organization");
-    }
+      if (!organizationId) {
+        throw new Error("User must belong to an organization");
+      }
 
-    const rows = await ctx.db
-      .select({
-        partId: partDefinitions.id,
-        catalogName: catalogs.name,
-        categoryName: categories.name,
-        materialName: materials.name,
-        displayName: partDefinitions.displayName,
-        description: partDefinitions.description,
-        sizeNominal: sizes.nominal,
-        sizeLabel: partDefinitions.sizeLabel,
-        sizeUnitCode: units.code,
-        imageUrl: partDefinitions.imageUrl,
-        isActive: partDefinitions.isActive,
-      })
-      .from(partDefinitions)
-      .innerJoin(catalogs, eq(partDefinitions.catalogId, catalogs.id))
-      .leftJoin(categories, eq(partDefinitions.categoryId, categories.id))
-      .leftJoin(materials, eq(partDefinitions.materialId, materials.id))
-      .leftJoin(sizes, eq(partDefinitions.sizeId, sizes.id))
-      .leftJoin(units, eq(sizes.unitId, units.id))
-      .where(
-        and(
-          eq(partDefinitions.organizationId, organizationId),
-          input?.catalogId ? eq(partDefinitions.catalogId, input.catalogId) : undefined,
-        ),
-      )
-      .orderBy(
-        catalogs.sortOrder,
-        categories.sortOrder,
-        partDefinitions.displayName,
-      );
+      const rows = await ctx.db
+        .select({
+          partId: partDefinitions.id,
+          catalogName: catalogs.name,
+          categoryName: categories.name,
+          materialName: materials.name,
+          displayName: partDefinitions.displayName,
+          description: partDefinitions.description,
+          sizeNominal: sizes.nominal,
+          sizeLabel: partDefinitions.sizeLabel,
+          sizeUnitCode: units.code,
+          imageUrl: partDefinitions.imageUrl,
+          isActive: partDefinitions.isActive,
+        })
+        .from(partDefinitions)
+        .innerJoin(catalogs, eq(partDefinitions.catalogId, catalogs.id))
+        .leftJoin(categories, eq(partDefinitions.categoryId, categories.id))
+        .leftJoin(materials, eq(partDefinitions.materialId, materials.id))
+        .leftJoin(sizes, eq(partDefinitions.sizeId, sizes.id))
+        .leftJoin(units, eq(sizes.unitId, units.id))
+        .where(
+          and(
+            eq(partDefinitions.organizationId, organizationId),
+            input?.catalogId
+              ? eq(partDefinitions.catalogId, input.catalogId)
+              : undefined,
+          ),
+        )
+        .orderBy(
+          catalogs.sortOrder,
+          categories.sortOrder,
+          partDefinitions.displayName,
+        );
 
-    const aliases = rows.length
-      ? await ctx.db
-          .select({
-            partDefinitionId: partSynonyms.partDefinitionId,
-            synonym: partSynonyms.synonym,
-          })
-          .from(partSynonyms)
-          .where(
-            inArray(
-              partSynonyms.partDefinitionId,
-              rows.map((row) => row.partId),
-            ),
-          )
-      : [];
+      const aliases = rows.length
+        ? await ctx.db
+            .select({
+              partDefinitionId: partSynonyms.partDefinitionId,
+              synonym: partSynonyms.synonym,
+            })
+            .from(partSynonyms)
+            .where(
+              inArray(
+                partSynonyms.partDefinitionId,
+                rows.map((row) => row.partId),
+              ),
+            )
+        : [];
 
-    const aliasesByPartId = new Map<string, string[]>();
-    for (const alias of aliases) {
-      aliasesByPartId.set(alias.partDefinitionId, [
-        ...(aliasesByPartId.get(alias.partDefinitionId) ?? []),
-        alias.synonym,
-      ]);
-    }
+      const aliasesByPartId = new Map<string, string[]>();
+      for (const alias of aliases) {
+        aliasesByPartId.set(alias.partDefinitionId, [
+          ...(aliasesByPartId.get(alias.partDefinitionId) ?? []),
+          alias.synonym,
+        ]);
+      }
 
-    return rows.map((row) => ({
-      partId: row.partId,
-      catalog: row.catalogName,
-      category: row.categoryName ?? "",
-      material: row.materialName ?? "",
-      displayName: row.displayName,
-      description: row.description ?? "",
-      sizeNominal:
-        row.sizeLabel ??
-        (row.sizeNominal !== null && row.sizeNominal !== undefined
-          ? Number(row.sizeNominal)
-          : null),
-      sizeUnit: row.sizeUnitCode ?? "",
-      imageUrl: row.imageUrl ?? "",
-      aliases: (aliasesByPartId.get(row.partId) ?? []).join("; "),
-      isActive: row.isActive,
-    }));
-  }),
+      return rows.map((row) => ({
+        partId: row.partId,
+        catalog: row.catalogName,
+        category: row.categoryName ?? "",
+        material: row.materialName ?? "",
+        displayName: row.displayName,
+        description: row.description ?? "",
+        sizeNominal:
+          row.sizeLabel ??
+          (row.sizeNominal !== null && row.sizeNominal !== undefined
+            ? Number(row.sizeNominal)
+            : null),
+        sizeUnit: row.sizeUnitCode ?? "",
+        imageUrl: row.imageUrl ?? "",
+        aliases: (aliasesByPartId.get(row.partId) ?? []).join("; "),
+        isActive: row.isActive,
+      }));
+    }),
 
   importCatalogueRows: hasDashboardAccess
     .input(

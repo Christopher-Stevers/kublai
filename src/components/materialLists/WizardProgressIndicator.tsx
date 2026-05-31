@@ -76,7 +76,7 @@ export function WizardProgressIndicator({
   };
 
   return (
-    <div className="flex w-full min-w-0 flex-wrap items-center gap-1 sm:gap-1.5">
+    <div className="flex w-full min-w-0 items-center gap-1 overflow-x-auto pb-1 sm:gap-1.5">
         {stages.map((stage) => {
           const isCompleted = stage.step < currentStep;
           const isCurrent = stage.step === currentStep;
@@ -86,10 +86,7 @@ export function WizardProgressIndicator({
             currentStage !== "review";
 
           return (
-            <div
-              key={stage.id}
-              className="flex min-w-max flex-[1_1_auto] items-center gap-1 sm:gap-1.5"
-            >
+            <div key={stage.id} className="min-w-[4.75rem] flex-1">
               <button
                 onClick={() => {
                   if (isClickable) {
@@ -97,7 +94,7 @@ export function WizardProgressIndicator({
                   }
                 }}
                 disabled={!isClickable}
-                className={`flex h-9 w-full min-w-max items-center justify-center gap-1 rounded-lg px-1.5 text-xs font-medium transition-colors sm:gap-1.5 sm:px-2.5 sm:text-sm ${
+                className={`flex h-9 w-full min-w-0 items-center justify-center gap-1 rounded-lg px-1.5 text-xs font-medium transition-colors sm:gap-1.5 sm:px-2.5 sm:text-sm ${
                   isCurrent
                     ? "bg-primary text-primary-foreground"
                     : isCompleted
@@ -116,7 +113,7 @@ export function WizardProgressIndicator({
                 >
                   {isCompleted ? "✓" : stage.step}
                 </div>
-                <span className="max-w-[6.5rem] truncate whitespace-nowrap sm:max-w-[8.5rem] md:max-w-none">
+                <span className="min-w-0 flex-1 truncate whitespace-nowrap text-center">
                   {getStageLabel(stage)}
                 </span>
               </button>

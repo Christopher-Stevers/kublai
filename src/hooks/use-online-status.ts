@@ -13,7 +13,11 @@ let originalNavigatorOnlineDescriptor: PropertyDescriptor | undefined;
 
 function isDevForcedOffline() {
   if (!isDevOfflineToggleEnabled || typeof window === "undefined") return false;
-  return window.localStorage.getItem(DEV_OFFLINE_KEY) === "true";
+  try {
+    return window.localStorage.getItem(DEV_OFFLINE_KEY) === "true";
+  } catch {
+    return false;
+  }
 }
 
 function readNativeNavigatorOnline() {
@@ -63,7 +67,11 @@ export function setDevOfflineOverride(enabled: boolean) {
   if (!isDevOfflineToggleEnabled || typeof window === "undefined") return;
 
   ensureDevNavigatorOnlineOverride();
-  window.localStorage.setItem(DEV_OFFLINE_KEY, enabled ? "true" : "false");
+  try {
+    window.localStorage.setItem(DEV_OFFLINE_KEY, enabled ? "true" : "false");
+  } catch {
+    // Storage can be unavailable in private/locked-down mobile browsers.
+  }
   window.dispatchEvent(new Event(DEV_OFFLINE_EVENT));
   window.dispatchEvent(new Event(enabled ? "offline" : "online"));
 }

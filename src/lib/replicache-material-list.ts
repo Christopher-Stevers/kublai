@@ -1,4 +1,4 @@
-import { Replicache, type WriteTransaction } from "replicache";
+import { Replicache, dropDatabase, type WriteTransaction } from "replicache";
 
 import { MATERIAL_LIST_REPLICACHE_SCHEMA_VERSION } from "~/lib/replicache-schema";
 
@@ -118,6 +118,19 @@ export type MaterialListReplicacheMutators = {
 // ---------------------------------------------------------------------------
 
 let materialListReplicache: Replicache<MaterialListReplicacheMutators> | null = null;
+let materialListReplicacheResetting = false;
+let materialListReplicacheClosing = false;
+let materialListReplicacheSyncTimer: ReturnType<typeof setTimeout> | null = null;
+let materialListReplicacheSyncInFlight = false;
+let materialListReplicacheSyncRequested: "none" | "pull" | "push-pull" = "none";
+let materialListReplicacheScheduledMode: "pull" | "push-pull" = "pull";
+
+function mergeSyncMode(
+  current: "none" | "pull" | "push-pull",
+  next: "pull" | "push-pull",
+) {
+  return current === "push-pull" || next === "push-pull" ? "push-pull" : "pull";
+}
 
 function assertBrowser() {
   if (typeof window === "undefined") {
@@ -125,14 +138,57 @@ function assertBrowser() {
   }
 }
 
+function isReplicacheClosedError(error: unknown) {
+  return error instanceof Error && error.message === "Closed";
+}
+
+export async function resetMaterialListReplicacheStorage() {
+  if (materialListReplicacheResetting) return;
+  materialListReplicacheResetting = true;
+
+  if (materialListReplicacheSyncTimer) {
+    clearTimeout(materialListReplicacheSyncTimer);
+    materialListReplicacheSyncTimer = null;
+  }
+  materialListReplicacheSyncRequested = "none";
+  materialListReplicacheScheduledMode = "pull";
+
+  const staleReplicache = materialListReplicache;
+  const staleDbName = staleReplicache?.idbName;
+
+  materialListReplicache = null;
+  materialListReplicacheClosing = true;
+  try {
+    await staleReplicache?.close();
+  } catch (error) {
+    if (!isReplicacheClosedError(error)) throw error;
+  } finally {
+    materialListReplicacheClosing = false;
+  }
+
+  if (staleDbName) await dropDatabase(staleDbName);
+
+  window.location.reload();
+}
+
 export function getMaterialListReplicache() {
   assertBrowser();
-  materialListReplicache ??= new Replicache<MaterialListReplicacheMutators>({
+  if (materialListReplicache) return materialListReplicache;
+
+  const replicache = new Replicache<MaterialListReplicacheMutators>({
     name: "foremenhq-material-lists",
     schemaVersion: MATERIAL_LIST_REPLICACHE_SCHEMA_VERSION,
     pullURL: "/api/replicache/material-lists/pull",
     pushURL: "/api/replicache/material-lists/push",
-    pullInterval: 30_000,
+    // SSE pokes, online/visibility handlers, and user mutations request immediate
+    // sync. Keep polling as a low-frequency safety net instead of a competing
+    // foreground refresh loop.
+    pullInterval: 60_000,
+    pushDelay: 250,
+    requestOptions: {
+      minDelayMs: 100,
+      maxDelayMs: 2_000,
+    },
     mutators: {
       // -----------------------------------------------------------------
       // Material list operations
@@ -243,6 +299,7 @@ export function getMaterialListReplicache() {
       async deleteJob(tx, args) {
         // Delete all material lists and items for this job
         const allEntries = await tx.scan({ prefix: "materialList/" }).entries().toArray();
+        const itemEntries = await tx.scan({ prefix: "materialListItem/" }).entries().toArray();
         for (const [key, value] of allEntries) {
           if (
             value &&
@@ -253,10 +310,6 @@ export function getMaterialListReplicache() {
           ) {
             const mlId = (value as { id?: string }).id;
             if (mlId) {
-              const itemEntries = await tx
-                .scan({ prefix: "materialListItem/" })
-                .entries()
-                .toArray();
               for (const [itemKey, itemValue] of itemEntries) {
                 if (
                   itemValue &&
@@ -345,10 +398,110 @@ export function getMaterialListReplicache() {
     },
   });
 
+  replicache.onClientStateNotFound = () => {
+    void resetMaterialListReplicacheStorage();
+  };
+
+  materialListReplicache = replicache;
+
   return materialListReplicache;
 }
 
+export function tryGetMaterialListReplicache() {
+  if (typeof window === "undefined") return null;
+  try {
+    return getMaterialListReplicache();
+  } catch (error) {
+    console.error("Failed to initialize Replicache material-list sync", error);
+    return null;
+  }
+}
+
+async function flushMaterialListReplicacheNow(mode: "pull" | "push-pull") {
+  if (materialListReplicacheClosing) return;
+  if (materialListReplicacheSyncInFlight) {
+    materialListReplicacheSyncRequested = mergeSyncMode(
+      materialListReplicacheSyncRequested,
+      mode,
+    );
+    return;
+  }
+
+  materialListReplicacheSyncInFlight = true;
+  const replicache = getMaterialListReplicache();
+  try {
+    if (mode === "push-pull") {
+      await replicache.push({ now: true });
+    }
+    await replicache.pull({ now: true });
+  } catch (error) {
+    // Replicache keeps its own retry/backoff. This helper is latency sugar, not
+    // the source of durability, so don't throw into UI event handlers. A close
+    // during route teardown/React StrictMode is expected and should not be
+    // reported as a sync failure.
+    if (!isReplicacheClosedError(error)) {
+      console.error("Immediate Replicache sync failed", error);
+    }
+  } finally {
+    materialListReplicacheSyncInFlight = false;
+    if (materialListReplicacheSyncRequested !== "none") {
+      const requestedMode = materialListReplicacheSyncRequested;
+      materialListReplicacheSyncRequested = "none";
+      requestMaterialListReplicacheSync(0, requestedMode);
+    }
+  }
+}
+
+export function requestMaterialListReplicacheSync(
+  delayMs = 50,
+  mode: "pull" | "push-pull" = "push-pull",
+) {
+  assertBrowser();
+  materialListReplicacheScheduledMode = mergeSyncMode(
+    materialListReplicacheScheduledMode,
+    mode,
+  );
+  if (materialListReplicacheSyncTimer) {
+    clearTimeout(materialListReplicacheSyncTimer);
+  }
+  materialListReplicacheSyncTimer = setTimeout(() => {
+    const scheduledMode = materialListReplicacheScheduledMode;
+    materialListReplicacheScheduledMode = "pull";
+    materialListReplicacheSyncTimer = null;
+    void flushMaterialListReplicacheNow(scheduledMode);
+  }, delayMs);
+}
+
+export function requestMaterialListReplicachePull(delayMs = 0) {
+  requestMaterialListReplicacheSync(delayMs, "pull");
+}
+
+export async function mutateMaterialListAndSync<T>(mutation: Promise<T>) {
+  try {
+    return await mutation;
+  } finally {
+    requestMaterialListReplicacheSync(0, "push-pull");
+  }
+}
+
 export async function closeMaterialListReplicache() {
-  await materialListReplicache?.close();
+  if (materialListReplicacheSyncTimer) {
+    clearTimeout(materialListReplicacheSyncTimer);
+    materialListReplicacheSyncTimer = null;
+  }
+  materialListReplicacheSyncRequested = "none";
+  materialListReplicacheScheduledMode = "pull";
+
+  const replicache = materialListReplicache;
   materialListReplicache = null;
+  if (!replicache) return;
+
+  materialListReplicacheClosing = true;
+  try {
+    await replicache.close();
+  } catch (error) {
+    if (!isReplicacheClosedError(error)) throw error;
+  } finally {
+    materialListReplicacheClosing = false;
+  }
 }

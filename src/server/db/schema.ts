@@ -302,10 +302,16 @@ export const suppliers = createTable(
       .timestamp({ withTimezone: true })
       .notNull()
       .$defaultFn(() => new Date()),
+    updatedAt: d
+      .timestamp({ withTimezone: true })
+      .notNull()
+      .$defaultFn(() => new Date())
+      .$onUpdate(() => new Date()),
   }),
   (t) => [
     unique("supplier_org_name_uniq").on(t.organizationId, t.name),
     index("supplier_org_idx").on(t.organizationId),
+    index("supplier_org_updated_idx").on(t.organizationId, t.updatedAt, t.id),
     index("supplier_location_idx").on(t.locationId),
   ],
 );
@@ -779,9 +785,15 @@ export const jobs = createTable(
       .timestamp({ withTimezone: true })
       .notNull()
       .$defaultFn(() => new Date()),
+    updatedAt: d
+      .timestamp({ withTimezone: true })
+      .notNull()
+      .$defaultFn(() => new Date())
+      .$onUpdate(() => new Date()),
   }),
   (t) => [
     index("job_org_idx").on(t.organizationId),
+    index("job_org_updated_idx").on(t.organizationId, t.updatedAt, t.id),
     // @ts-expect-error - Drizzle type inference limitation with nullable columns
     index("job_location_idx").on(t.locationId as any),
     // @ts-expect-error - Drizzle type inference limitation with nullable columns
@@ -861,6 +873,11 @@ export const materialLists = createTable(
   (t) => [
     index("material_list_job_idx").on(t.jobId),
     index("material_list_org_idx").on(t.organizationId),
+    index("material_list_org_updated_idx").on(
+      t.organizationId,
+      t.updatedAt,
+      t.id,
+    ),
     // @ts-expect-error - Drizzle type inference limitation with nullable columns
     index("material_list_quote_idx").on(t.quoteId as any),
   ],
@@ -1045,6 +1062,7 @@ export const quoteItems = createTable(
   }),
   (t) => [
     index("quote_item_quote_idx").on(t.quoteId),
+    index("quote_item_updated_idx").on(t.updatedAt, t.id),
     index("quote_item_part_idx").on(t.partDefinitionId),
     index("quote_item_supplier_idx").on(t.supplierId),
     index("quote_item_added_by_idx").on(t.addedByUserId),
@@ -1144,10 +1162,7 @@ export const materialListSyncTombstones = createTable(
       .uuid()
       .notNull()
       .references(() => organizations.id, { onDelete: "cascade" }),
-    materialListId: d
-      .uuid()
-      .notNull()
-      .references(() => materialLists.id, { onDelete: "cascade" }),
+    materialListId: d.uuid().notNull(),
     entityType: d.varchar({ length: 40 }).notNull(),
     entityId: d.varchar({ length: 255 }).notNull(),
     deletedAt: d
@@ -1163,6 +1178,11 @@ export const materialListSyncTombstones = createTable(
     ),
     index("material_list_sync_tombstone_list_idx").on(t.materialListId),
     index("material_list_sync_tombstone_deleted_idx").on(t.deletedAt),
+    index("material_list_sync_tombstone_org_deleted_idx").on(
+      t.organizationId,
+      t.deletedAt,
+      t.entityId,
+    ),
   ],
 );
 
@@ -1301,6 +1321,11 @@ export const orders = createTable(
     index("order_material_list_idx").on(t.materialListId as any),
     index("order_supplier_idx").on(t.supplierId),
     index("order_org_idx").on(t.organizationId),
+    unique("order_org_job_number_uniq").on(
+      t.organizationId,
+      t.jobId,
+      t.orderNumber,
+    ),
   ],
 );
 

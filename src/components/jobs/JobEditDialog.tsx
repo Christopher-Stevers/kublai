@@ -12,7 +12,10 @@ import {
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { LocationSelector } from "~/components/ui/LocationSelector";
-import { getMaterialListReplicache } from "~/lib/replicache-material-list";
+import {
+  getMaterialListReplicache,
+  mutateMaterialListAndSync,
+} from "~/lib/replicache-material-list";
 
 interface JobEditDialogProps {
   open: boolean;
@@ -53,13 +56,13 @@ export function JobEditDialog({
       return;
     }
 
-    void getMaterialListReplicache().mutate.updateJob({
+    void mutateMaterialListAndSync(getMaterialListReplicache().mutate.updateJob({
       jobId,
       name: jobName.trim(),
       locationId: locationId,
       poNumber: poNumber.trim() || null,
       foremanName: foremanName.trim() || null,
-    });
+    }));
     onOpenChange(false);
   };
 

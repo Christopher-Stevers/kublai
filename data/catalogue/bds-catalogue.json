@@ -1,0 +1,3378 @@
+{
+  "source": {
+    "title": "IPEX Modern Niagara PVC BDS catalogue",
+    "url": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf",
+    "localPath": "tmp/bds-ipex/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+  },
+  "generatedAt": "2026-05-31T02:09:11.215Z",
+  "rows": [
+    {
+      "catalog": "Plumbing",
+      "category": "Pipe",
+      "material": "BDS",
+      "sizeNominal": "3",
+      "sizeUnit": "in",
+      "sizeLabel": "3\"",
+      "displayName": "3\" BDS Pipe SDR35",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "BDS Solvent Weld Sewer Pipe - Solid (10 ft lengths)",
+        "75 mm",
+        "IPEX Product Code 003530",
+        "003530"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "003530",
+      "sourcePage": 36,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Pipe",
+      "material": "BDS",
+      "sizeNominal": "4",
+      "sizeUnit": "in",
+      "sizeLabel": "4\"",
+      "displayName": "4\" BDS Pipe SDR35 White",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "BDS Solvent Weld Sewer Pipe - Solid (10 ft lengths)",
+        "White",
+        "100 mm",
+        "IPEX Product Code 003644",
+        "003644"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "003644",
+      "sourcePage": 36,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Pipe",
+      "material": "BDS",
+      "sizeNominal": "4",
+      "sizeUnit": "in",
+      "sizeLabel": "4\"",
+      "displayName": "4\" BDS Pipe SDR35 Green",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "BDS Solvent Weld Sewer Pipe - Solid (10 ft lengths)",
+        "Green",
+        "100 mm",
+        "IPEX Product Code 003645",
+        "003645"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "003645",
+      "sourcePage": 36,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Pipe",
+      "material": "BDS",
+      "sizeNominal": "6",
+      "sizeUnit": "in",
+      "sizeLabel": "6\"",
+      "displayName": "6\" BDS Pipe SDR35 White",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "BDS Solvent Weld Sewer Pipe - Solid (10 ft lengths)",
+        "White",
+        "150 mm",
+        "IPEX Product Code 003560",
+        "003560"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "003560",
+      "sourcePage": 36,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Pipe",
+      "material": "BDS",
+      "sizeNominal": "6",
+      "sizeUnit": "in",
+      "sizeLabel": "6\"",
+      "displayName": "6\" BDS Pipe SDR35 Green",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "BDS Solvent Weld Sewer Pipe - Solid (10 ft lengths)",
+        "Green",
+        "150 mm",
+        "IPEX Product Code 003561",
+        "003561"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "003561",
+      "sourcePage": 36,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Pipe",
+      "material": "BDS",
+      "sizeNominal": "3",
+      "sizeUnit": "in",
+      "sizeLabel": "3\"",
+      "displayName": "3\" BDS Perforated Pipe SDR35",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "BDS Solvent Weld Sewer Pipe - Perforated (10 ft lengths)",
+        "75 mm",
+        "IPEX Product Code 004530",
+        "004530"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "004530",
+      "sourcePage": 36,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Pipe",
+      "material": "BDS",
+      "sizeNominal": "4",
+      "sizeUnit": "in",
+      "sizeLabel": "4\"",
+      "displayName": "4\" BDS Perforated Pipe SDR35",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "BDS Solvent Weld Sewer Pipe - Perforated (10 ft lengths)",
+        "100 mm",
+        "IPEX Product Code 004140",
+        "004140"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "004140",
+      "sourcePage": 36,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Pipe",
+      "material": "BDS",
+      "sizeNominal": "6",
+      "sizeUnit": "in",
+      "sizeLabel": "6\"",
+      "displayName": "6\" BDS Perforated Pipe SDR35",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "BDS Solvent Weld Sewer Pipe - Perforated (10 ft lengths)",
+        "150 mm",
+        "IPEX Product Code 004565",
+        "004565"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "004565",
+      "sourcePage": 36,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "3 x 3 x 3",
+      "sizeUnit": "in",
+      "sizeLabel": "3\" x 3\" x 3\"",
+      "displayName": "3\" x 3\" x 3\" BDS Straight Tee",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "Straight Tee H x H x H",
+        "75 x 75 x 75 mm",
+        "IPEX Product Code 040102",
+        "040102"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040102",
+      "sourcePage": 36,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "4 x 4 x 3",
+      "sizeUnit": "in",
+      "sizeLabel": "4\" x 4\" x 3\"",
+      "displayName": "4\" x 4\" x 3\" BDS Straight Tee",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "Straight Tee H x H x H",
+        "100 x 100 x 75 mm",
+        "IPEX Product Code 040109",
+        "040109"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040109",
+      "sourcePage": 36,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "4 x 4 x 4",
+      "sizeUnit": "in",
+      "sizeLabel": "4\" x 4\" x 4\"",
+      "displayName": "4\" x 4\" x 4\" BDS Straight Tee",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "Straight Tee H x H x H",
+        "100 x 100 x 100 mm",
+        "IPEX Product Code 040104",
+        "040104"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040104",
+      "sourcePage": 36,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "6 x 6 x 4",
+      "sizeUnit": "in",
+      "sizeLabel": "6\" x 6\" x 4\"",
+      "displayName": "6\" x 6\" x 4\" BDS Straight Tee",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "Straight Tee H x H x H",
+        "150 x 150 x 100 mm",
+        "IPEX Product Code 040105",
+        "040105"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040105",
+      "sourcePage": 36,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "6 x 6 x 6",
+      "sizeUnit": "in",
+      "sizeLabel": "6\" x 6\" x 6\"",
+      "displayName": "6\" x 6\" x 6\" BDS Straight Tee",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "Straight Tee H x H x H",
+        "150 x 150 x 150 mm",
+        "IPEX Product Code 040106",
+        "040106"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040106",
+      "sourcePage": 36,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "8 x 8 x 4",
+      "sizeUnit": "in",
+      "sizeLabel": "8\" x 8\" x 4\"",
+      "displayName": "8\" x 8\" x 4\" BDS Straight Tee",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "Straight Tee H x H x H",
+        "200 x 200 x 100 mm",
+        "IPEX Product Code 040117",
+        "040117"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040117",
+      "sourcePage": 36,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "8 x 8 x 6",
+      "sizeUnit": "in",
+      "sizeLabel": "8\" x 8\" x 6\"",
+      "displayName": "8\" x 8\" x 6\" BDS Straight Tee",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "Straight Tee H x H x H",
+        "200 x 200 x 150 mm",
+        "IPEX Product Code 040118",
+        "040118"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040118",
+      "sourcePage": 36,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "8 x 8 x 8",
+      "sizeUnit": "in",
+      "sizeLabel": "8\" x 8\" x 8\"",
+      "displayName": "8\" x 8\" x 8\" BDS Straight Tee",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "Straight Tee H x H x H",
+        "200 x 200 x 200 mm",
+        "IPEX Product Code 040108",
+        "040108"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040108",
+      "sourcePage": 36,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "4 x 4 x 4",
+      "sizeUnit": "in",
+      "sizeLabel": "4\" x 4\" x 4\"",
+      "displayName": "4\" x 4\" x 4\" BDS Straight Tee Sp x H x H",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "Straight Tee Sp x H x H",
+        "100 x 100 x 100 mm",
+        "IPEX Product Code 040114",
+        "040114"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040114",
+      "sourcePage": 36,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "4",
+      "sizeUnit": "in",
+      "sizeLabel": "4\"",
+      "displayName": "4\" BDS Cleanout Tee H x",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "Cleanout Tee H x H x FPT",
+        "100 mm",
+        "IPEX Product Code 040922",
+        "040922"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040922",
+      "sourcePage": 36,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "4 x 4 x 4",
+      "sizeUnit": "in",
+      "sizeLabel": "4\" x 4\" x 4\"",
+      "displayName": "4\" x 4\" x 4\" BDS 2 Way Cleanout",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "2 Way Cleanout H x H x H",
+        "100 x 100 x 100 mm",
+        "IPEX Product Code 040350",
+        "040350"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040350",
+      "sourcePage": 36,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "3 x 3 x 3",
+      "sizeUnit": "in",
+      "sizeLabel": "3\" x 3\" x 3\"",
+      "displayName": "3\" x 3\" x 3\" BDS Sanitary Tee",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "Sanitary Tee H x H x H",
+        "75 x 75 x 75 mm",
+        "IPEX Product Code 040155",
+        "040155"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040155",
+      "sourcePage": 36,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "4 x 4 x 4",
+      "sizeUnit": "in",
+      "sizeLabel": "4\" x 4\" x 4\"",
+      "displayName": "4\" x 4\" x 4\" BDS Sanitary Tee",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "Sanitary Tee H x H x H",
+        "100 x 100 x 100 mm",
+        "IPEX Product Code 040156",
+        "040156"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040156",
+      "sourcePage": 36,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "6 x 6 x 4",
+      "sizeUnit": "in",
+      "sizeLabel": "6\" x 6\" x 4\"",
+      "displayName": "6\" x 6\" x 4\" BDS Sanitary Tee",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "Sanitary Tee H x H x H",
+        "150 x 150 x 100 mm",
+        "IPEX Product Code 040158",
+        "040158"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040158",
+      "sourcePage": 36,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "6 x 6 x 6",
+      "sizeUnit": "in",
+      "sizeLabel": "6\" x 6\" x 6\"",
+      "displayName": "6\" x 6\" x 6\" BDS Sanitary Tee",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "Sanitary Tee H x H x H",
+        "150 x 150 x 150 mm",
+        "IPEX Product Code 040159",
+        "040159"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040159",
+      "sourcePage": 36,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "4 x 4 x 4",
+      "sizeUnit": "in",
+      "sizeLabel": "4\" x 4\" x 4\"",
+      "displayName": "4\" x 4\" x 4\" BDS Sanitary Tee Sp x H x H",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "Sanitary Tee Sp x H x H",
+        "100 x 100 x 100 mm",
+        "IPEX Product Code 040157",
+        "040157"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040157",
+      "sourcePage": 36,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "3 x 3 x 2",
+      "sizeUnit": "in",
+      "sizeLabel": "3\" x 3\" x 2\"",
+      "displayName": "3\" x 3\" x 2\" BDS Wye",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "45° Wye H x H x H",
+        "75 x 75 x 50 mm",
+        "IPEX Product Code 040303",
+        "040303"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040303",
+      "sourcePage": 36,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "3 x 3 x 3",
+      "sizeUnit": "in",
+      "sizeLabel": "3\" x 3\" x 3\"",
+      "displayName": "3\" x 3\" x 3\" BDS Wye",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "45° Wye H x H x H",
+        "75 x 75 x 75 mm",
+        "IPEX Product Code 040302",
+        "040302"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040302",
+      "sourcePage": 36,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "4 x 4 x 2",
+      "sizeUnit": "in",
+      "sizeLabel": "4\" x 4\" x 2\"",
+      "displayName": "4\" x 4\" x 2\" BDS Wye",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "45° Wye H x H x H",
+        "100 x 100 x 50 mm",
+        "IPEX Product Code 040308",
+        "040308"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040308",
+      "sourcePage": 36,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "4 x 4 x 3",
+      "sizeUnit": "in",
+      "sizeLabel": "4\" x 4\" x 3\"",
+      "displayName": "4\" x 4\" x 3\" BDS Wye",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "45° Wye H x H x H",
+        "100 x 100 x 75 mm",
+        "IPEX Product Code 040309",
+        "040309"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040309",
+      "sourcePage": 36,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "4 x 4 x 4",
+      "sizeUnit": "in",
+      "sizeLabel": "4\" x 4\" x 4\"",
+      "displayName": "4\" x 4\" x 4\" BDS Wye",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "45° Wye H x H x H",
+        "100 x 100 x 100 mm",
+        "IPEX Product Code 040304",
+        "040304"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040304",
+      "sourcePage": 36,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "6 x 6 x 4",
+      "sizeUnit": "in",
+      "sizeLabel": "6\" x 6\" x 4\"",
+      "displayName": "6\" x 6\" x 4\" BDS Wye",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "45° Wye H x H x H",
+        "150 x 150 x 100 mm",
+        "IPEX Product Code 040307",
+        "040307"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040307",
+      "sourcePage": 36,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "6 x 6 x 6",
+      "sizeUnit": "in",
+      "sizeLabel": "6\" x 6\" x 6\"",
+      "displayName": "6\" x 6\" x 6\" BDS Wye",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "45° Wye H x H x H",
+        "150 x 150 x 150 mm",
+        "IPEX Product Code 040306",
+        "040306"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040306",
+      "sourcePage": 36,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "8 x 8 x 4",
+      "sizeUnit": "in",
+      "sizeLabel": "8\" x 8\" x 4\"",
+      "displayName": "8\" x 8\" x 4\" BDS Wye",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "45° Wye H x H x H",
+        "200 x 200 x 100 mm",
+        "IPEX Product Code 040310",
+        "040310"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040310",
+      "sourcePage": 36,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "8 x 8 x 6",
+      "sizeUnit": "in",
+      "sizeLabel": "8\" x 8\" x 6\"",
+      "displayName": "8\" x 8\" x 6\" BDS Wye",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "45° Wye H x H x H",
+        "200 x 200 x 150 mm",
+        "IPEX Product Code 040312",
+        "040312"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040312",
+      "sourcePage": 36,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "8 x 8 x 8",
+      "sizeUnit": "in",
+      "sizeLabel": "8\" x 8\" x 8\"",
+      "displayName": "8\" x 8\" x 8\" BDS Wye",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "45° Wye H x H x H",
+        "200 x 200 x 200 mm",
+        "IPEX Product Code 040311",
+        "040311"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040311",
+      "sourcePage": 36,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "10 x 10 x 10",
+      "sizeUnit": "in",
+      "sizeLabel": "10\" x 10\" x 10\"",
+      "displayName": "10\" x 10\" x 10\" BDS Wye",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "45° Wye H x H x H",
+        "250 x 250 x 250 mm",
+        "IPEX Product Code 040313",
+        "040313"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040313",
+      "sourcePage": 36,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "12 x 12 x 12",
+      "sizeUnit": "in",
+      "sizeLabel": "12\" x 12\" x 12\"",
+      "displayName": "12\" x 12\" x 12\" BDS Wye",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "45° Wye H x H x H",
+        "300 x 300 x 300 mm",
+        "IPEX Product Code 040314",
+        "040314"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040314",
+      "sourcePage": 36,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "3 x 3 x 3",
+      "sizeUnit": "in",
+      "sizeLabel": "3\" x 3\" x 3\"",
+      "displayName": "3\" x 3\" x 3\" BDS Fitting Wye",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "45° Wye Sp x H x H",
+        "75 x 75 x 75 mm",
+        "IPEX Product Code 040332",
+        "040332"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040332",
+      "sourcePage": 36,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "4 x 4 x 4",
+      "sizeUnit": "in",
+      "sizeLabel": "4\" x 4\" x 4\"",
+      "displayName": "4\" x 4\" x 4\" BDS Fitting Wye",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "45° Wye Sp x H x H",
+        "100 x 100 x 100 mm",
+        "IPEX Product Code 040334",
+        "040334"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040334",
+      "sourcePage": 36,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "6 x 6 x 6",
+      "sizeUnit": "in",
+      "sizeLabel": "6\" x 6\" x 6\"",
+      "displayName": "6\" x 6\" x 6\" BDS Fitting Wye",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "45° Wye Sp x H x H",
+        "150 x 150 x 150 mm",
+        "IPEX Product Code 040338",
+        "040338"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040338",
+      "sourcePage": 36,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "3",
+      "sizeUnit": "in",
+      "sizeLabel": "3\"",
+      "displayName": "3\" BDS Cross",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "Cross H x H x H x H",
+        "75 mm",
+        "IPEX Product Code 040975",
+        "040975"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040975",
+      "sourcePage": 36,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "4",
+      "sizeUnit": "in",
+      "sizeLabel": "4\"",
+      "displayName": "4\" BDS Cross",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "Cross H x H x H x H",
+        "100 mm",
+        "IPEX Product Code 040976",
+        "040976"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040976",
+      "sourcePage": 36,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "2",
+      "sizeUnit": "in",
+      "sizeLabel": "2\"",
+      "displayName": "2\" BDS 90",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "90° Elbow (1/4 Bend) H x H",
+        "50 mm",
+        "IPEX Product Code 040254",
+        "040254"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040254",
+      "sourcePage": 36,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "3",
+      "sizeUnit": "in",
+      "sizeLabel": "3\"",
+      "displayName": "3\" BDS 90",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "90° Elbow (1/4 Bend) H x H",
+        "75 mm",
+        "IPEX Product Code 040255",
+        "040255"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040255",
+      "sourcePage": 36,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "4",
+      "sizeUnit": "in",
+      "sizeLabel": "4\"",
+      "displayName": "4\" BDS 90",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "90° Elbow (1/4 Bend) H x H",
+        "100 mm",
+        "IPEX Product Code 040214",
+        "040214"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040214",
+      "sourcePage": 36,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "4 x 3",
+      "sizeUnit": "in",
+      "sizeLabel": "4\" x 3\"",
+      "displayName": "4\" x 3\" BDS Reducing 90",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "90° Elbow (1/4 Bend) H x H",
+        "100 x 75 mm",
+        "IPEX Product Code 040259",
+        "040259"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040259",
+      "sourcePage": 36,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "6",
+      "sizeUnit": "in",
+      "sizeLabel": "6\"",
+      "displayName": "6\" BDS 90",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "90° Elbow (1/4 Bend) H x H",
+        "150 mm",
+        "IPEX Product Code 040206",
+        "040206"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040206",
+      "sourcePage": 36,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "8",
+      "sizeUnit": "in",
+      "sizeLabel": "8\"",
+      "displayName": "8\" BDS 90",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "90° Elbow (1/4 Bend) H x H",
+        "200 mm",
+        "IPEX Product Code 040208",
+        "040208"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040208",
+      "sourcePage": 36,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "4",
+      "sizeUnit": "in",
+      "sizeLabel": "4\"",
+      "displayName": "4\" BDS 90 Short Radius",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "90° Elbow (1/4 Bend) H x H Short Radius (BNQ ONLY)",
+        "100 mm",
+        "IPEX Product Code 040256",
+        "040256"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040256",
+      "sourcePage": 36,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "2",
+      "sizeUnit": "in",
+      "sizeLabel": "2\"",
+      "displayName": "2\" BDS Fitting 90",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "90° Elbow (1/4 Bend) Sp x H",
+        "50 mm",
+        "IPEX Product Code 040270",
+        "040270"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040270",
+      "sourcePage": 36,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "3",
+      "sizeUnit": "in",
+      "sizeLabel": "3\"",
+      "displayName": "3\" BDS Fitting 90",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "90° Elbow (1/4 Bend) Sp x H",
+        "75 mm",
+        "IPEX Product Code 040272",
+        "040272"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040272",
+      "sourcePage": 36,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "4",
+      "sizeUnit": "in",
+      "sizeLabel": "4\"",
+      "displayName": "4\" BDS Fitting 90",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "90° Elbow (1/4 Bend) Sp x H",
+        "100 mm",
+        "IPEX Product Code 040234",
+        "040234"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040234",
+      "sourcePage": 36,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "6",
+      "sizeUnit": "in",
+      "sizeLabel": "6\"",
+      "displayName": "6\" BDS Fitting 90",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "90° Elbow (1/4 Bend) Sp x H",
+        "150 mm",
+        "IPEX Product Code 040236",
+        "040236"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040236",
+      "sourcePage": 36,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "4",
+      "sizeUnit": "in",
+      "sizeLabel": "4\"",
+      "displayName": "4\" BDS Fitting 90 Short Radius",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "90° Elbow (1/4 Bend) Sp x H Short Radius (BNQ ONLY)",
+        "100 mm",
+        "IPEX Product Code 040274",
+        "040274"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040274",
+      "sourcePage": 36,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "2",
+      "sizeUnit": "in",
+      "sizeLabel": "2\"",
+      "displayName": "2\" BDS 45",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "45° Elbow (1/8 Bend) H x H",
+        "50 mm",
+        "IPEX Product Code 040500",
+        "040500"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040500",
+      "sourcePage": 37,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "3",
+      "sizeUnit": "in",
+      "sizeLabel": "3\"",
+      "displayName": "3\" BDS 45",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "45° Elbow (1/8 Bend) H x H",
+        "75 mm",
+        "IPEX Product Code 040502",
+        "040502"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040502",
+      "sourcePage": 37,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "4",
+      "sizeUnit": "in",
+      "sizeLabel": "4\"",
+      "displayName": "4\" BDS 45",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "45° Elbow (1/8 Bend) H x H",
+        "100 mm",
+        "IPEX Product Code 040504",
+        "040504"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040504",
+      "sourcePage": 37,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "6",
+      "sizeUnit": "in",
+      "sizeLabel": "6\"",
+      "displayName": "6\" BDS 45",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "45° Elbow (1/8 Bend) H x H",
+        "150 mm",
+        "IPEX Product Code 040506",
+        "040506"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040506",
+      "sourcePage": 37,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "8",
+      "sizeUnit": "in",
+      "sizeLabel": "8\"",
+      "displayName": "8\" BDS 45",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "45° Elbow (1/8 Bend) H x H",
+        "200 mm",
+        "IPEX Product Code 040508",
+        "040508"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040508",
+      "sourcePage": 37,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "10",
+      "sizeUnit": "in",
+      "sizeLabel": "10\"",
+      "displayName": "10\" BDS 45",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "45° Elbow (1/8 Bend) H x H",
+        "250 mm",
+        "IPEX Product Code 040407",
+        "040407"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040407",
+      "sourcePage": 37,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "2",
+      "sizeUnit": "in",
+      "sizeLabel": "2\"",
+      "displayName": "2\" BDS Fitting 45",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "45° Elbow (1/8 Bend) Sp x H",
+        "50 mm",
+        "IPEX Product Code 040400",
+        "040400"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040400",
+      "sourcePage": 37,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "3",
+      "sizeUnit": "in",
+      "sizeLabel": "3\"",
+      "displayName": "3\" BDS Fitting 45",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "45° Elbow (1/8 Bend) Sp x H",
+        "75 mm",
+        "IPEX Product Code 040402",
+        "040402"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040402",
+      "sourcePage": 37,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "4",
+      "sizeUnit": "in",
+      "sizeLabel": "4\"",
+      "displayName": "4\" BDS Fitting 45",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "45° Elbow (1/8 Bend) Sp x H",
+        "100 mm",
+        "IPEX Product Code 040404",
+        "040404"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040404",
+      "sourcePage": 37,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "6",
+      "sizeUnit": "in",
+      "sizeLabel": "6\"",
+      "displayName": "6\" BDS Fitting 45",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "45° Elbow (1/8 Bend) Sp x H",
+        "150 mm",
+        "IPEX Product Code 040406",
+        "040406"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040406",
+      "sourcePage": 37,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "8",
+      "sizeUnit": "in",
+      "sizeLabel": "8\"",
+      "displayName": "8\" BDS Fitting 45",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "45° Elbow (1/8 Bend) Sp x H",
+        "200 mm",
+        "IPEX Product Code 040408",
+        "040408"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040408",
+      "sourcePage": 37,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "3",
+      "sizeUnit": "in",
+      "sizeLabel": "3\"",
+      "displayName": "3\" BDS 22-1/2°",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "22-1/2° Elbow (1/16 Bend) H x H",
+        "75 mm",
+        "IPEX Product Code 040963",
+        "040963"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040963",
+      "sourcePage": 37,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "4",
+      "sizeUnit": "in",
+      "sizeLabel": "4\"",
+      "displayName": "4\" BDS 22-1/2°",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "22-1/2° Elbow (1/16 Bend) H x H",
+        "100 mm",
+        "IPEX Product Code 040964",
+        "040964"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040964",
+      "sourcePage": 37,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "6",
+      "sizeUnit": "in",
+      "sizeLabel": "6\"",
+      "displayName": "6\" BDS 22-1/2°",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "22-1/2° Elbow (1/16 Bend) H x H",
+        "150 mm",
+        "IPEX Product Code 040969",
+        "040969"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040969",
+      "sourcePage": 37,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "4",
+      "sizeUnit": "in",
+      "sizeLabel": "4\"",
+      "displayName": "4\" BDS Fitting 22-1/2°",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "22-1/2° Elbow (1/16 Bend) Sp x H",
+        "100 mm",
+        "IPEX Product Code 040864",
+        "040864"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040864",
+      "sourcePage": 37,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "6",
+      "sizeUnit": "in",
+      "sizeLabel": "6\"",
+      "displayName": "6\" BDS Fitting 22-1/2°",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "22-1/2° Elbow (1/16 Bend) Sp x H",
+        "150 mm",
+        "IPEX Product Code 040866",
+        "040866"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040866",
+      "sourcePage": 37,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "2",
+      "sizeUnit": "in",
+      "sizeLabel": "2\"",
+      "displayName": "2\" BDS P-Trap",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "P Trap H x H",
+        "50 mm",
+        "IPEX Product Code 040978",
+        "040978"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040978",
+      "sourcePage": 37,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "3",
+      "sizeUnit": "in",
+      "sizeLabel": "3\"",
+      "displayName": "3\" BDS P-Trap",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "P Trap H x H",
+        "75 mm",
+        "IPEX Product Code 040979",
+        "040979"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040979",
+      "sourcePage": 37,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "4",
+      "sizeUnit": "in",
+      "sizeLabel": "4\"",
+      "displayName": "4\" BDS P-Trap",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "P Trap H x H",
+        "100 mm",
+        "IPEX Product Code 040980",
+        "040980"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040980",
+      "sourcePage": 37,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "2",
+      "sizeUnit": "in",
+      "sizeLabel": "2\"",
+      "displayName": "2\" BDS Coupling",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "Coupling with Pipe Stop H x H",
+        "50 mm",
+        "IPEX Product Code 040600",
+        "040600"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040600",
+      "sourcePage": 37,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "3",
+      "sizeUnit": "in",
+      "sizeLabel": "3\"",
+      "displayName": "3\" BDS Coupling",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "Coupling with Pipe Stop H x H",
+        "75 mm",
+        "IPEX Product Code 040602",
+        "040602"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040602",
+      "sourcePage": 37,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "4",
+      "sizeUnit": "in",
+      "sizeLabel": "4\"",
+      "displayName": "4\" BDS Coupling",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "Coupling with Pipe Stop H x H",
+        "100 mm",
+        "IPEX Product Code 040604",
+        "040604"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040604",
+      "sourcePage": 37,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "6",
+      "sizeUnit": "in",
+      "sizeLabel": "6\"",
+      "displayName": "6\" BDS Coupling",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "Coupling with Pipe Stop H x H",
+        "150 mm",
+        "IPEX Product Code 040606",
+        "040606"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040606",
+      "sourcePage": 37,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "8",
+      "sizeUnit": "in",
+      "sizeLabel": "8\"",
+      "displayName": "8\" BDS Coupling",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "Coupling with Pipe Stop H x H",
+        "200 mm",
+        "IPEX Product Code 040631",
+        "040631"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040631",
+      "sourcePage": 37,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "4",
+      "sizeUnit": "in",
+      "sizeLabel": "4\"",
+      "displayName": "4\" BDS Repair Coupling without Pipe Stop",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "Repair Coupling without Pipe Stop H x H",
+        "100 mm",
+        "IPEX Product Code 040624",
+        "040624"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040624",
+      "sourcePage": 37,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "6",
+      "sizeUnit": "in",
+      "sizeLabel": "6\"",
+      "displayName": "6\" BDS Repair Coupling without Pipe Stop",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "Repair Coupling without Pipe Stop H x H",
+        "150 mm",
+        "IPEX Product Code 040626",
+        "040626"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040626",
+      "sourcePage": 37,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "4 x 2",
+      "sizeUnit": "in",
+      "sizeLabel": "4\" x 2\"",
+      "displayName": "4\" x 2\" BDS Reducing Coupling",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "Reducer Coupling with Pipe Stop H x H",
+        "100 x 50 mm",
+        "IPEX Product Code 040656",
+        "040656"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040656",
+      "sourcePage": 37,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "4 x 3",
+      "sizeUnit": "in",
+      "sizeLabel": "4\" x 3\"",
+      "displayName": "4\" x 3\" BDS Reducing Coupling",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "Reducer Coupling with Pipe Stop H x H",
+        "100 x 75 mm",
+        "IPEX Product Code 040654",
+        "040654"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040654",
+      "sourcePage": 37,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "6 x 4",
+      "sizeUnit": "in",
+      "sizeLabel": "6\" x 4\"",
+      "displayName": "6\" x 4\" BDS Reducing Coupling",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "Reducer Coupling with Pipe Stop H x H",
+        "150 x 100 mm",
+        "IPEX Product Code 040661",
+        "040661"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040661",
+      "sourcePage": 37,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "3",
+      "sizeUnit": "in",
+      "sizeLabel": "3\"",
+      "displayName": "3\" BDS Cap",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "Cap H",
+        "75 mm",
+        "IPEX Product Code 040986",
+        "040986"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040986",
+      "sourcePage": 37,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "4",
+      "sizeUnit": "in",
+      "sizeLabel": "4\"",
+      "displayName": "4\" BDS Cap",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "Cap H",
+        "100 mm",
+        "IPEX Product Code 040959",
+        "040959"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040959",
+      "sourcePage": 37,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "6",
+      "sizeUnit": "in",
+      "sizeLabel": "6\"",
+      "displayName": "6\" BDS Cap",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "Cap H",
+        "150 mm",
+        "IPEX Product Code 040988",
+        "040988"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040988",
+      "sourcePage": 37,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "8",
+      "sizeUnit": "in",
+      "sizeLabel": "8\"",
+      "displayName": "8\" BDS Cap",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "Cap H",
+        "200 mm",
+        "IPEX Product Code 040990",
+        "040990"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040990",
+      "sourcePage": 37,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "3",
+      "sizeUnit": "in",
+      "sizeLabel": "3\"",
+      "displayName": "3\" BDS Cleanout Plug Male",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "Cleanout Plug MPT",
+        "75 mm",
+        "IPEX Product Code 040923",
+        "040923"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040923",
+      "sourcePage": 37,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "4",
+      "sizeUnit": "in",
+      "sizeLabel": "4\"",
+      "displayName": "4\" BDS Cleanout Plug Male",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "Cleanout Plug MPT",
+        "100 mm",
+        "IPEX Product Code 040924",
+        "040924"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040924",
+      "sourcePage": 37,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "6",
+      "sizeUnit": "in",
+      "sizeLabel": "6\"",
+      "displayName": "6\" BDS Cleanout Plug Male",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "Cleanout Plug MPT",
+        "150 mm",
+        "IPEX Product Code 040926",
+        "040926"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040926",
+      "sourcePage": 37,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "8",
+      "sizeUnit": "in",
+      "sizeLabel": "8\"",
+      "displayName": "8\" BDS Cleanout Plug Male",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "Cleanout Plug MPT",
+        "200 mm",
+        "IPEX Product Code 040927",
+        "040927"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040927",
+      "sourcePage": 37,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "12",
+      "sizeUnit": "in",
+      "sizeLabel": "12\"",
+      "displayName": "12\" BDS Cleanout Plug Male",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "Cleanout Plug MPT",
+        "300 mm",
+        "IPEX Product Code 040929",
+        "040929"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040929",
+      "sourcePage": 37,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "4",
+      "sizeUnit": "in",
+      "sizeLabel": "4\"",
+      "displayName": "4\" BDS Closet Flange",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "Closet Flange H",
+        "100 mm",
+        "IPEX Product Code 040965",
+        "040965"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040965",
+      "sourcePage": 37,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "3 x 2",
+      "sizeUnit": "in",
+      "sizeLabel": "3\" x 2\"",
+      "displayName": "3\" x 2\" BDS Reducer Bushing",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "Reducer Bushing Sp x H",
+        "75 x 50 mm",
+        "IPEX Product Code 040930",
+        "040930"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040930",
+      "sourcePage": 37,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "4 x 3",
+      "sizeUnit": "in",
+      "sizeLabel": "4\" x 3\"",
+      "displayName": "4\" x 3\" BDS Reducer Bushing",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "Reducer Bushing Sp x H",
+        "100 x 75 mm",
+        "IPEX Product Code 040933",
+        "040933"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040933",
+      "sourcePage": 37,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "6 x 4",
+      "sizeUnit": "in",
+      "sizeLabel": "6\" x 4\"",
+      "displayName": "6\" x 4\" BDS Reducer Bushing",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "Reducer Bushing Sp x H",
+        "150 x 100 mm",
+        "IPEX Product Code 040896",
+        "040896"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040896",
+      "sourcePage": 37,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "5 x 4",
+      "sizeUnit": "in",
+      "sizeLabel": "5\" x 4\"",
+      "displayName": "5\" x 4\" BDS Extended Bushing",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "Extended Bushing Sp x H",
+        "125 x 100 mm",
+        "IPEX Product Code 040994",
+        "040994"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040994",
+      "sourcePage": 37,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "6 x 4",
+      "sizeUnit": "in",
+      "sizeLabel": "6\" x 4\"",
+      "displayName": "6\" x 4\" BDS Extended Bushing",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "Extended Bushing Sp x H",
+        "150 x 100 mm",
+        "IPEX Product Code 040939",
+        "040939"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040939",
+      "sourcePage": 37,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "8 x 4",
+      "sizeUnit": "in",
+      "sizeLabel": "8\" x 4\"",
+      "displayName": "8\" x 4\" BDS Extended Bushing",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "Extended Bushing Sp x H",
+        "200 x 100 mm",
+        "IPEX Product Code 040897",
+        "040897"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040897",
+      "sourcePage": 37,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "8 x 6",
+      "sizeUnit": "in",
+      "sizeLabel": "8\" x 6\"",
+      "displayName": "8\" x 6\" BDS Extended Bushing",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "Extended Bushing Sp x H",
+        "200 x 150 mm",
+        "IPEX Product Code 040940",
+        "040940"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040940",
+      "sourcePage": 37,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "3 x 1.5",
+      "sizeUnit": "in",
+      "sizeLabel": "3\" x 1 1/2\"",
+      "displayName": "3\" x 1 1/2\" BDS Reducer Bushing S/D to ABS/DWV",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "Reducer Bushing S/D to ABS/DWV Sp x H",
+        "75 x 38 mm",
+        "IPEX Product Code 040932",
+        "040932"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040932",
+      "sourcePage": 37,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "3 x 2",
+      "sizeUnit": "in",
+      "sizeLabel": "3\" x 2\"",
+      "displayName": "3\" x 2\" BDS Reducer Bushing S/D to ABS/DWV",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "Reducer Bushing S/D to ABS/DWV Sp x H",
+        "75 x 50 mm",
+        "IPEX Product Code 040341",
+        "040341"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040341",
+      "sourcePage": 37,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "4 x 1.5",
+      "sizeUnit": "in",
+      "sizeLabel": "4\" x 1 1/2\"",
+      "displayName": "4\" x 1 1/2\" BDS Reducer Bushing S/D to ABS/DWV",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "Reducer Bushing S/D to ABS/DWV Sp x H",
+        "100 x 38 mm",
+        "IPEX Product Code 040415",
+        "040415"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040415",
+      "sourcePage": 37,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "4 x 2",
+      "sizeUnit": "in",
+      "sizeLabel": "4\" x 2\"",
+      "displayName": "4\" x 2\" BDS Reducer Bushing S/D to ABS/DWV",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "Reducer Bushing S/D to ABS/DWV Sp x H",
+        "100 x 50 mm",
+        "IPEX Product Code 040935",
+        "040935"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040935",
+      "sourcePage": 37,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "4 x 3",
+      "sizeUnit": "in",
+      "sizeLabel": "4\" x 3\"",
+      "displayName": "4\" x 3\" BDS Reducer Coupling S/D to ABS/DWV",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "Reducer Coupling S/D to ABS/DWV H x H",
+        "100 x 75 mm",
+        "IPEX Product Code 040655",
+        "040655"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040655",
+      "sourcePage": 38,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "4 x 4",
+      "sizeUnit": "in",
+      "sizeLabel": "4\" x 4\"",
+      "displayName": "4\" x 4\" BDS Reducer Coupling S/D to ABS/DWV",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "Reducer Coupling S/D to ABS/DWV H x H",
+        "100 x 100 mm",
+        "IPEX Product Code 040725",
+        "040725"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040725",
+      "sourcePage": 38,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "6 x 4",
+      "sizeUnit": "in",
+      "sizeLabel": "6\" x 4\"",
+      "displayName": "6\" x 4\" BDS Reducer Coupling S/D to ABS/DWV",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "Reducer Coupling S/D to ABS/DWV H x H",
+        "150 x 100 mm",
+        "IPEX Product Code 040727",
+        "040727"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040727",
+      "sourcePage": 38,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "6 x 6",
+      "sizeUnit": "in",
+      "sizeLabel": "6\" x 6\"",
+      "displayName": "6\" x 6\" BDS Reducer Coupling S/D to ABS/DWV",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "Reducer Coupling S/D to ABS/DWV H x H",
+        "150 x 150 mm",
+        "IPEX Product Code 040756",
+        "040756"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040756",
+      "sourcePage": 38,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "4",
+      "sizeUnit": "in",
+      "sizeLabel": "4\"",
+      "displayName": "4\" BDS Sleeve Adapter ABS/DWV Hub to S/D H x",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "Sleeve Adapter ABS/DWV Hub to S/D H x Sp",
+        "100 mm",
+        "IPEX Product Code 040342",
+        "040342"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040342",
+      "sourcePage": 38,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "4 x 3",
+      "sizeUnit": "in",
+      "sizeLabel": "4\" x 3\"",
+      "displayName": "4\" x 3\" BDS Adapter Bushing S/D to ABS/DWV",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "Adapter Bushing S/D to ABS/DWV Sp x H",
+        "100 x 75 mm",
+        "IPEX Product Code 040934",
+        "040934"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040934",
+      "sourcePage": 38,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "5 x 4",
+      "sizeUnit": "in",
+      "sizeLabel": "5\" x 4\"",
+      "displayName": "5\" x 4\" BDS Adapter Bushing S/D to ABS/DWV",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "Adapter Bushing S/D to ABS/DWV Sp x H",
+        "125 x 100 mm",
+        "IPEX Product Code 040895",
+        "040895"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040895",
+      "sourcePage": 38,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "6 x 4",
+      "sizeUnit": "in",
+      "sizeLabel": "6\" x 4\"",
+      "displayName": "6\" x 4\" BDS Adapter Bushing S/D to ABS/DWV",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "Adapter Bushing S/D to ABS/DWV Sp x H",
+        "150 x 100 mm",
+        "IPEX Product Code 040941",
+        "040941"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040941",
+      "sourcePage": 38,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "4 x 1.5",
+      "sizeUnit": "in",
+      "sizeLabel": "4\" x 1 1/2\"",
+      "displayName": "4\" x 1 1/2\" BDS Adapter Bushing S/D to Female IPS Sp x FIP Thread",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "Adapter Bushing S/D to Female IPS Sp x FIP Thread",
+        "100 x 40 mm",
+        "IPEX Product Code 040416",
+        "040416"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040416",
+      "sourcePage": 38,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "4",
+      "sizeUnit": "in",
+      "sizeLabel": "4\"",
+      "displayName": "4\" BDS Flush Plug Male",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "Flush Plug MPT",
+        "100 mm",
+        "IPEX Product Code 040992",
+        "040992"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040992",
+      "sourcePage": 38,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "6",
+      "sizeUnit": "in",
+      "sizeLabel": "6\"",
+      "displayName": "6\" BDS Plugs / Covers",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "Plugs / Covers",
+        "150 mm",
+        "IPEX Product Code 040024",
+        "040024"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040024",
+      "sourcePage": 38,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "8",
+      "sizeUnit": "in",
+      "sizeLabel": "8\"",
+      "displayName": "8\" BDS Plugs / Covers",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "Plugs / Covers",
+        "200 mm",
+        "IPEX Product Code 040025",
+        "040025"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040025",
+      "sourcePage": 38,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "10",
+      "sizeUnit": "in",
+      "sizeLabel": "10\"",
+      "displayName": "10\" BDS Plugs / Covers",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "Plugs / Covers",
+        "250 mm",
+        "IPEX Product Code 040026",
+        "040026"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040026",
+      "sourcePage": 38,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "3",
+      "sizeUnit": "in",
+      "sizeLabel": "3\"",
+      "displayName": "3\" BDS Floor Drain Grate",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "Floor Drain Grate Sp",
+        "75 mm",
+        "IPEX Product Code 040811",
+        "040811"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040811",
+      "sourcePage": 38,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "4",
+      "sizeUnit": "in",
+      "sizeLabel": "4\"",
+      "displayName": "4\" BDS Floor Drain Grate",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "Floor Drain Grate Sp",
+        "100 mm",
+        "IPEX Product Code 040911",
+        "040911"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040911",
+      "sourcePage": 38,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "6",
+      "sizeUnit": "in",
+      "sizeLabel": "6\"",
+      "displayName": "6\" BDS Floor Drain Grate",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "Floor Drain Grate Sp",
+        "150 mm",
+        "IPEX Product Code 040912",
+        "040912"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040912",
+      "sourcePage": 38,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "3",
+      "sizeUnit": "in",
+      "sizeLabel": "3\"",
+      "displayName": "3\" BDS Floor Grate White",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "Floor Grate (pp) Sp",
+        "White",
+        "75 mm",
+        "IPEX Product Code 040032",
+        "040032"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040032",
+      "sourcePage": 38,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "4",
+      "sizeUnit": "in",
+      "sizeLabel": "4\"",
+      "displayName": "4\" BDS Floor Grate White",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "Floor Grate (pp) Sp",
+        "White",
+        "100 mm",
+        "IPEX Product Code 040033",
+        "040033"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040033",
+      "sourcePage": 38,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "3",
+      "sizeUnit": "in",
+      "sizeLabel": "3\"",
+      "displayName": "3\" BDS Floor Grate Green",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "Floor Grate (pp) Sp",
+        "Green",
+        "75 mm",
+        "IPEX Product Code 040034",
+        "040034"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040034",
+      "sourcePage": 38,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "4",
+      "sizeUnit": "in",
+      "sizeLabel": "4\"",
+      "displayName": "4\" BDS Floor Grate Green",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "Floor Grate (pp) Sp",
+        "Green",
+        "100 mm",
+        "IPEX Product Code 040035",
+        "040035"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040035",
+      "sourcePage": 38,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "6",
+      "sizeUnit": "in",
+      "sizeLabel": "6\"",
+      "displayName": "6\" BDS Grate",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "Grates",
+        "150 mm",
+        "IPEX Product Code 040027",
+        "040027"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040027",
+      "sourcePage": 38,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "8",
+      "sizeUnit": "in",
+      "sizeLabel": "8\"",
+      "displayName": "8\" BDS Grate",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "Grates",
+        "200 mm",
+        "IPEX Product Code 040028",
+        "040028"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040028",
+      "sourcePage": 38,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "10",
+      "sizeUnit": "in",
+      "sizeLabel": "10\"",
+      "displayName": "10\" BDS Grate",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "Grates",
+        "250 mm",
+        "IPEX Product Code 040029",
+        "040029"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040029",
+      "sourcePage": 38,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "3",
+      "sizeUnit": "in",
+      "sizeLabel": "3\"",
+      "displayName": "3\" BDS Male Adapter H x Male",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "Male Adapter H x MPT",
+        "75 mm",
+        "IPEX Product Code 040720",
+        "040720"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040720",
+      "sourcePage": 38,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "4",
+      "sizeUnit": "in",
+      "sizeLabel": "4\"",
+      "displayName": "4\" BDS Male Adapter H x Male",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "Male Adapter H x MPT",
+        "100 mm",
+        "IPEX Product Code 040723",
+        "040723"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040723",
+      "sourcePage": 38,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "3",
+      "sizeUnit": "in",
+      "sizeLabel": "3\"",
+      "displayName": "3\" BDS Female Adapter S/D to Female IPS H x FIP Threads",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "Female Adapter S/D to Female IPS H x FIP Threads",
+        "75 mm",
+        "IPEX Product Code 040948",
+        "040948"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040948",
+      "sourcePage": 38,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "4",
+      "sizeUnit": "in",
+      "sizeLabel": "4\"",
+      "displayName": "4\" BDS Female Adapter S/D to Female IPS H x FIP Threads",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "Female Adapter S/D to Female IPS H x FIP Threads",
+        "100 mm",
+        "IPEX Product Code 040949",
+        "040949"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040949",
+      "sourcePage": 38,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "6",
+      "sizeUnit": "in",
+      "sizeLabel": "6\"",
+      "displayName": "6\" BDS Female Adapter S/D to Female IPS H x FIP Threads",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "Female Adapter S/D to Female IPS H x FIP Threads",
+        "150 mm",
+        "IPEX Product Code 040952",
+        "040952"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040952",
+      "sourcePage": 38,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "8",
+      "sizeUnit": "in",
+      "sizeLabel": "8\"",
+      "displayName": "8\" BDS Female Adapter S/D to Female IPS H x FIP Threads",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "Female Adapter S/D to Female IPS H x FIP Threads",
+        "200 mm",
+        "IPEX Product Code 040945",
+        "040945"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040945",
+      "sourcePage": 38,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "4",
+      "sizeUnit": "in",
+      "sizeLabel": "4\"",
+      "displayName": "4\" BDS Adapter S/D to AC Coupling. Or Crowle G x",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "Adapter S/D to AC Coupling. Or Crowle G x Sp",
+        "100 mm",
+        "IPEX Product Code 040724",
+        "040724"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040724",
+      "sourcePage": 38,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "4",
+      "sizeUnit": "in",
+      "sizeLabel": "4\"",
+      "displayName": "4\" BDS Adapter to Cast Iron S/D to CI Spigot H x H Caulk with Oakum & Mortar",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "Adapter to Cast Iron S/D to CI Spigot H x H Caulk with Oakum & Mortar",
+        "100 mm",
+        "IPEX Product Code 040704",
+        "040704"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040704",
+      "sourcePage": 38,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "4",
+      "sizeUnit": "in",
+      "sizeLabel": "4\"",
+      "displayName": "4\" BDS DWV Hub x Sewer Spigot 10” Long",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "DWV Hub x Sewer Spigot 10” Long",
+        "100 mm",
+        "IPEX Product Code 040808",
+        "040808"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040808",
+      "sourcePage": 38,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "3",
+      "sizeUnit": "in",
+      "sizeLabel": "3\"",
+      "displayName": "3\" BDS Cleanout Adapter Sp x FIP Thread",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "Cleanout Adapter Sp x FIP Thread",
+        "75 mm",
+        "IPEX Product Code 040953",
+        "040953"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040953",
+      "sourcePage": 38,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "4",
+      "sizeUnit": "in",
+      "sizeLabel": "4\"",
+      "displayName": "4\" BDS Cleanout Adapter Sp x FIP Thread",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "Cleanout Adapter Sp x FIP Thread",
+        "100 mm",
+        "IPEX Product Code 040954",
+        "040954"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040954",
+      "sourcePage": 38,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "6",
+      "sizeUnit": "in",
+      "sizeLabel": "6\"",
+      "displayName": "6\" BDS Cleanout Adapter Sp x FIP Thread",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "Cleanout Adapter Sp x FIP Thread",
+        "150 mm",
+        "IPEX Product Code 040956",
+        "040956"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040956",
+      "sourcePage": 38,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "4",
+      "sizeUnit": "in",
+      "sizeLabel": "4\"",
+      "displayName": "4\" BDS Spigot Adapter ABS/DWV to S.W. Sp x G",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "Spigot Adapter ABS/DWV to S.W. Sp x G",
+        "100 mm",
+        "IPEX Product Code 043150",
+        "043150"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "043150",
+      "sourcePage": 38,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Fitting",
+      "material": "BDS",
+      "sizeNominal": "4",
+      "sizeUnit": "in",
+      "sizeLabel": "4\"",
+      "displayName": "4\" BDS Rectangular Down Spout Adapter to BDS Down spout to corrugated",
+      "description": "",
+      "imageUrl": "",
+      "aliases": [
+        "Rectangular Down Spout Adapter to BDS Down spout to corrugated",
+        "100 mm",
+        "IPEX Product Code 040960",
+        "040960"
+      ],
+      "manufacturerSources": [
+        "ipexModernNiagaraPvcBdsCatalogue2023"
+      ],
+      "supplierParts": [],
+      "sourceCode": "040960",
+      "sourcePage": 38,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2023/05/catalogue-caen-ipex-modern-niagara-pvc-bds.pdf"
+    }
+  ]
+}

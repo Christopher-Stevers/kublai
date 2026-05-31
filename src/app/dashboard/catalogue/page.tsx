@@ -37,7 +37,8 @@ export default function CataloguePage() {
   const [importProgress, setImportProgress] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const isBrowserOnline = useOnlineStatus();
-  const isCatalogueOnline = isBrowserOnline && !TEMPORARILY_DISCONNECT_BROWSER_FROM_SERVER;
+  const isCatalogueOnline =
+    isBrowserOnline && !TEMPORARILY_DISCONNECT_BROWSER_FROM_SERVER;
   const utils = api.useUtils();
 
   const importCatalogueRows = api.catalogue.importCatalogueRows.useMutation();
@@ -106,7 +107,9 @@ export default function CataloguePage() {
   };
 
   const handleExport = async () => {
-    const selectedCatalog = catalogOptions.find((catalog) => catalog.id === exportCatalogId);
+    const selectedCatalog = catalogOptions.find(
+      (catalog) => catalog.id === exportCatalogId,
+    );
     const filenameSuffix = selectedCatalog
       ? selectedCatalog.name
           .toLowerCase()
@@ -119,7 +122,10 @@ export default function CataloguePage() {
       const rows = await utils.catalogue.exportCatalogueRows.fetch({
         catalogId: exportCatalogId,
       });
-      await downloadCatalogueRowsAsXlsx(rows, `foremenhq-${filenameSuffix}.xlsx`);
+      await downloadCatalogueRowsAsXlsx(
+        rows,
+        `foremenhq-${filenameSuffix}.xlsx`,
+      );
       setIsExportOptionsOpen(false);
     } finally {
       setIsExporting(false);
@@ -130,9 +136,7 @@ export default function CataloguePage() {
     fileInputRef.current?.click();
   };
 
-  const handleImportFile = async (
-    event: { target: HTMLInputElement },
-  ) => {
+  const handleImportFile = async (event: { target: HTMLInputElement }) => {
     const file = event.target.files?.[0];
     event.target.value = "";
     if (!file) return;
@@ -156,7 +160,9 @@ export default function CataloguePage() {
           .map((row) => String(row.partId ?? "").trim())
           .filter(Boolean),
       );
-      const overwriteRows = rows.filter((row) => row.partId && existingPartIds.has(row.partId));
+      const overwriteRows = rows.filter(
+        (row) => row.partId && existingPartIds.has(row.partId),
+      );
 
       if (overwriteRows.length > 0) {
         const sampleNames = overwriteRows
@@ -175,7 +181,10 @@ export default function CataloguePage() {
       }
 
       const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-      await downloadCatalogueRowsAsXlsx(existingRows, `foremenhq-catalogue-backup-${timestamp}.xlsx`);
+      await downloadCatalogueRowsAsXlsx(
+        existingRows,
+        `foremenhq-catalogue-backup-${timestamp}.xlsx`,
+      );
 
       const batchSize = 50;
       let created = 0;
@@ -204,10 +213,14 @@ export default function CataloguePage() {
         utils.catalogue.getMaterials.invalidate(),
       ]);
 
-      alert(`Catalogue import done. Created ${created}, updated ${updated}, skipped ${skipped}.`);
+      alert(
+        `Catalogue import done. Created ${created}, updated ${updated}, skipped ${skipped}.`,
+      );
     } catch (error) {
       console.error("Catalogue import failed", error);
-      alert("Catalogue import failed. Check the workbook format and try again.");
+      alert(
+        "Catalogue import failed. Check the workbook format and try again.",
+      );
     } finally {
       setIsImporting(false);
       setImportProgress(null);
@@ -218,9 +231,12 @@ export default function CataloguePage() {
     return (
       <div className="flex h-[calc(100vh-4rem)] items-center justify-center bg-gray-50 p-6">
         <div className="max-w-md rounded-2xl border bg-white p-6 text-center shadow-sm">
-          <h1 className="text-xl font-bold text-gray-900">Parts Catalogue is online-only</h1>
+          <h1 className="text-xl font-bold text-gray-900">
+            Parts Catalogue is online-only
+          </h1>
           <p className="mt-2 text-sm text-gray-600">
-            Catalogue browsing, imports, exports, and edits require a server connection. Material-list field work can continue from local data.
+            Catalogue browsing, imports, exports, and edits require a server
+            connection. Material-list field work can continue from local data.
           </p>
         </div>
       </div>
@@ -231,7 +247,9 @@ export default function CataloguePage() {
     <div className="flex h-[calc(100vh-4rem)] flex-col overflow-hidden">
       <div className="border-b bg-white p-4 sm:p-6">
         <div className="mb-4 flex items-center justify-between">
-          <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">Parts Catalogue</h1>
+          <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">
+            Parts Catalogue
+          </h1>
           <div className="flex items-center gap-2">
             <input
               ref={fileInputRef}
@@ -241,12 +259,24 @@ export default function CataloguePage() {
               onChange={handleImportFile}
             />
             <div className="flex flex-col items-end gap-1">
-              <Button variant="outline" onClick={handleImportClick} disabled={isImporting}>
+              <Button
+                variant="outline"
+                onClick={handleImportClick}
+                disabled={isImporting}
+              >
                 {isImporting ? "Importing..." : "Import XLSX"}
               </Button>
-              {importProgress && <div className="text-xs font-medium text-slate-600">{importProgress}</div>}
+              {importProgress && (
+                <div className="text-xs font-medium text-slate-600">
+                  {importProgress}
+                </div>
+              )}
             </div>
-            <Button variant="outline" onClick={handleExportClick} disabled={isExporting}>
+            <Button
+              variant="outline"
+              onClick={handleExportClick}
+              disabled={isExporting}
+            >
               {isExporting ? "Exporting..." : "Export XLSX"}
             </Button>
           </div>
@@ -283,82 +313,103 @@ export default function CataloguePage() {
             title="Matching Parts"
             actionLabel="Edit"
           />
-        ) : wizardStage === "catalog" && (
-          <CatalogStage
-            catalogs={catalogsWithCounts}
-            selectedCatalogId={selectedCatalogId}
-            allSelected={hasCatalogSelection && selectedCatalogId === null}
-            onCatalogSelect={handleCatalogSelect}
-            showCustomCatalogInput={showCustomCatalogInput}
-            onShowCustomCatalogInput={setShowCustomCatalogInput}
-            customCatalogName={customCatalogName}
-            onCustomCatalogNameChange={setCustomCatalogName}
-            onCreateCatalog={createCatalog}
-          />
+        ) : (
+          wizardStage === "catalog" && (
+            <CatalogStage
+              catalogs={catalogsWithCounts}
+              selectedCatalogId={selectedCatalogId}
+              allSelected={hasCatalogSelection && selectedCatalogId === null}
+              onCatalogSelect={handleCatalogSelect}
+              showCustomCatalogInput={showCustomCatalogInput}
+              onShowCustomCatalogInput={setShowCustomCatalogInput}
+              customCatalogName={customCatalogName}
+              onCustomCatalogNameChange={setCustomCatalogName}
+              onCreateCatalog={createCatalog}
+            />
+          )
         )}
 
-        {!isWizardSearchActive && wizardStage === "material" && hasCatalogSelection && (
-          <MaterialStage
-            materials={materialsWithCounts}
-            selectedMaterialId={selectedMaterialId}
-            allSelected={hasMaterialSelection && selectedMaterialId === null}
-            onMaterialSelect={handleMaterialSelect}
-            showCustomMaterialInput={showCustomMaterialInput}
-            onShowCustomMaterialInput={setShowCustomMaterialInput}
-            customMaterialName={customMaterialName}
-            onCustomMaterialNameChange={setCustomMaterialName}
-            onCreateMaterial={createMaterial}
-          />
-        )}
+        {!isWizardSearchActive &&
+          wizardStage === "material" &&
+          hasCatalogSelection && (
+            <MaterialStage
+              materials={materialsWithCounts}
+              selectedMaterialId={selectedMaterialId}
+              allSelected={hasMaterialSelection && selectedMaterialId === null}
+              onMaterialSelect={handleMaterialSelect}
+              showCustomMaterialInput={showCustomMaterialInput}
+              onShowCustomMaterialInput={setShowCustomMaterialInput}
+              customMaterialName={customMaterialName}
+              onCustomMaterialNameChange={setCustomMaterialName}
+              onCreateMaterial={createMaterial}
+            />
+          )}
 
-        {!isWizardSearchActive && wizardStage === "size" && hasCatalogSelection && hasMaterialSelection && (
-          <SizeStage
-            availableSizes={filteredAvailableSizes}
-            selectedSize={selectedSize}
-            allSelected={hasSizeSelection && selectedSize === null}
-            onSizeSelect={handleSizeSelect}
-            showCustomSize={showCustomSize}
-            onShowCustomSize={setShowCustomSize}
-            customSizeInput={customSizeInput}
-            onCustomSizeInputChange={setCustomSizeInput}
-            customSizeUnitId={customSizeUnitId}
-            onCustomSizeUnitIdChange={setCustomSizeUnitId}
-            allUnits={(allUnits ?? []).map((u) => ({ id: u.id, code: u.code }))}
-            onCreateSize={createSize}
-          />
-        )}
+        {!isWizardSearchActive &&
+          wizardStage === "size" &&
+          hasCatalogSelection &&
+          hasMaterialSelection && (
+            <SizeStage
+              availableSizes={filteredAvailableSizes}
+              selectedSize={selectedSize}
+              allSelected={hasSizeSelection && selectedSize === null}
+              onSizeSelect={handleSizeSelect}
+              showCustomSize={showCustomSize}
+              onShowCustomSize={setShowCustomSize}
+              customSizeInput={customSizeInput}
+              onCustomSizeInputChange={setCustomSizeInput}
+              customSizeUnitId={customSizeUnitId}
+              onCustomSizeUnitIdChange={setCustomSizeUnitId}
+              allUnits={(allUnits ?? []).map((u) => ({
+                id: u.id,
+                code: u.code,
+              }))}
+              onCreateSize={createSize}
+            />
+          )}
 
-        {!isWizardSearchActive && wizardStage === "category" && hasCatalogSelection && hasMaterialSelection && hasSizeSelection && (
-          <CategoryStage
-            categories={categoriesWithCounts}
-            selectedCategory={selectedCategory}
-            allSelected={hasCategorySelection && selectedCategory?.categoryId === null}
-            onCategorySelect={handleCategorySelection}
-            showCustomCategoryInput={showCustomCategoryInput}
-            onShowCustomCategoryInput={setShowCustomCategoryInput}
-            customCategoryName={customCategoryName}
-            onCustomCategoryNameChange={setCustomCategoryName}
-            onCustomCategorySubmit={handleCustomCategorySubmit}
-          />
-        )}
+        {!isWizardSearchActive &&
+          wizardStage === "category" &&
+          hasCatalogSelection &&
+          hasMaterialSelection &&
+          hasSizeSelection && (
+            <CategoryStage
+              categories={categoriesWithCounts}
+              selectedCategory={selectedCategory}
+              allSelected={
+                hasCategorySelection && selectedCategory?.categoryId === null
+              }
+              onCategorySelect={handleCategorySelection}
+              showCustomCategoryInput={showCustomCategoryInput}
+              onShowCustomCategoryInput={setShowCustomCategoryInput}
+              customCategoryName={customCategoryName}
+              onCustomCategoryNameChange={setCustomCategoryName}
+              onCustomCategorySubmit={handleCustomCategorySubmit}
+            />
+          )}
 
-        {!isWizardSearchActive && wizardStage === "part" && hasCatalogSelection && hasMaterialSelection && hasSizeSelection && hasCategorySelection && (
-          <PartStage
-            partsForSelection={filteredPartsForSelection}
-            pendingParts={[]}
-            onPartSelect={(part) => setEditingPartId(part.id)}
-            onPartQuantitySet={() => undefined}
-            onQuantityPickerPreviewChange={() => undefined}
-            onEditPart={setEditingPartId}
-            selectedMaterialId={selectedMaterialId}
-            selectedSize={selectedSize}
-            selectedCategory={selectedCategory}
-            onContinueToReview={() => undefined}
-            actionMode="edit"
-            title="Parts"
-            actionLabel="Edit"
-          />
-        )}
+        {!isWizardSearchActive &&
+          wizardStage === "part" &&
+          hasCatalogSelection &&
+          hasMaterialSelection &&
+          hasSizeSelection &&
+          hasCategorySelection && (
+            <PartStage
+              partsForSelection={filteredPartsForSelection}
+              pendingParts={[]}
+              onPartSelect={(part) => setEditingPartId(part.id)}
+              onPartQuantitySet={() => undefined}
+              onQuantityPickerPreviewChange={() => undefined}
+              onEditPart={setEditingPartId}
+              selectedMaterialId={selectedMaterialId}
+              selectedSize={selectedSize}
+              selectedCategory={selectedCategory}
+              onContinueToReview={() => undefined}
+              actionMode="edit"
+              title="Parts"
+              actionLabel="Edit"
+            />
+          )}
       </div>
 
       <Dialog open={isExportOptionsOpen} onOpenChange={setIsExportOptionsOpen}>
@@ -381,7 +432,9 @@ export default function CataloguePage() {
               }`}
             >
               <span className="font-medium">Full Catalog</span>
-              {exportCatalogId === null && <span className="text-xs font-semibold">Selected</span>}
+              {exportCatalogId === null && (
+                <span className="text-xs font-semibold">Selected</span>
+              )}
             </button>
 
             <div className="max-h-72 space-y-2 overflow-y-auto pr-1">

@@ -1,6 +1,6 @@
 "use client";
 
-import { parseSizeInput, formatSize, formatSizeAsFraction } from "~/lib/size-utils";
+import { formatSize, formatSizeAsFraction } from "~/lib/size-utils";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Card, CardContent } from "~/components/ui/card";
@@ -38,6 +38,13 @@ export function MaterialStep({
   onCreateMaterial,
   isCreatingMaterial,
 }: MaterialStepProps) {
+  void showCustomMaterialInput;
+  void onShowCustomMaterialInput;
+  void customMaterialName;
+  void onCustomMaterialNameChange;
+  void onCreateMaterial;
+  void isCreatingMaterial;
+
   return (
     <div className="space-y-4">
       <h3 className="text-lg font-semibold">Select Material</h3>
@@ -57,44 +64,7 @@ export function MaterialStep({
             </CardContent>
           </Card>
         ))}
-        <Card
-          className={`cursor-pointer border-dashed transition-all hover:shadow-md ${
-            showCustomMaterialInput ? "border-primary border-2" : ""
-          }`}
-          onClick={() => onShowCustomMaterialInput(true)}
-        >
-          <CardContent className="p-4 text-center">
-            <p className="font-medium">Other</p>
-          </CardContent>
-        </Card>
       </div>
-      {showCustomMaterialInput && (
-        <div className="mt-4 flex gap-2">
-          <Input
-            placeholder="Enter custom material name"
-            value={customMaterialName}
-            onChange={(e) => onCustomMaterialNameChange(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && customMaterialName.trim()) {
-                onCreateMaterial(customMaterialName.trim());
-              }
-            }}
-            className="flex-1"
-            autoFocus
-            disabled={isCreatingMaterial}
-          />
-          <Button
-            onClick={() => {
-              if (customMaterialName.trim()) {
-                onCreateMaterial(customMaterialName.trim());
-              }
-            }}
-            disabled={!customMaterialName.trim() || isCreatingMaterial}
-          >
-            {isCreatingMaterial ? "Adding..." : "Add Material"}
-          </Button>
-        </div>
-      )}
     </div>
   );
 }
@@ -129,6 +99,16 @@ export function SizeStep({
   onCreateSize,
   isCreatingSize,
 }: SizeStepProps) {
+  void showCustomSize;
+  void onShowCustomSize;
+  void customSizeInput;
+  void onCustomSizeInputChange;
+  void customSizeUnitId;
+  void onCustomSizeUnitIdChange;
+  void allUnits;
+  void onCreateSize;
+  void isCreatingSize;
+
   return (
     <div className="space-y-4">
       <h3 className="text-lg font-semibold">Select Size</h3>
@@ -154,82 +134,7 @@ export function SizeStep({
             </CardContent>
           </Card>
         ))}
-        <Card
-          className={`cursor-pointer transition-all hover:shadow-md ${
-            showCustomSize ? "border-primary border-2 shadow-md" : ""
-          }`}
-          onClick={() => onShowCustomSize(true)}
-        >
-          <CardContent className="p-4 text-center">
-            <p className="font-medium">Other</p>
-          </CardContent>
-        </Card>
       </div>
-      {showCustomSize && (
-        <div className="mt-4 space-y-2">
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label className="text-sm font-medium text-gray-700">
-                Size (number required)
-              </label>
-              <Input
-                type="text"
-                placeholder="Enter size (e.g., 1 ½, 2.5)"
-                value={customSizeInput}
-                onChange={(e) => onCustomSizeInputChange(e.target.value)}
-                className="mt-1"
-                autoFocus
-                disabled={isCreatingSize}
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium text-gray-700">Unit</label>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="mt-1 w-full justify-between"
-                    disabled={isCreatingSize}
-                  >
-                    {customSizeUnitId
-                      ? (allUnits?.find((u) => u.id === customSizeUnitId)
-                          ?.code ?? "Select unit")
-                      : "Select unit"}
-                    <ChevronDown className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  {allUnits?.map((unit) => (
-                    <DropdownMenuItem
-                      key={unit.id}
-                      onClick={() => onCustomSizeUnitIdChange(unit.id)}
-                    >
-                      {unit.code}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          </div>
-          <Button
-            onClick={() => {
-              const parsed = parseSizeInput(customSizeInput);
-              if (parsed !== null && customSizeUnitId) {
-                onCreateSize(parsed, customSizeUnitId);
-              }
-            }}
-            disabled={
-              !customSizeInput.trim() ||
-              !customSizeUnitId ||
-              isCreatingSize ||
-              parseSizeInput(customSizeInput) === null
-            }
-            className="w-full"
-          >
-            {isCreatingSize ? "Adding..." : "Add Size"}
-          </Button>
-        </div>
-      )}
     </div>
   );
 }
@@ -258,6 +163,12 @@ export function CategoryStep({
   onCustomCategoryNameChange,
   onCustomCategorySubmit,
 }: CategoryStepProps) {
+  void showCustomCategoryInput;
+  void onShowCustomCategoryInput;
+  void customCategoryName;
+  void onCustomCategoryNameChange;
+  void onCustomCategorySubmit;
+
   return (
     <div className="space-y-4">
       <h3 className="text-lg font-semibold">Select Part Category</h3>
@@ -285,39 +196,7 @@ export function CategoryStep({
             </Card>
           );
         })}
-        <Card
-          className={`cursor-pointer border-dashed transition-all hover:shadow-md ${
-            showCustomCategoryInput ? "border-primary border-2" : ""
-          }`}
-          onClick={() => onShowCustomCategoryInput(true)}
-        >
-          <CardContent className="p-4 text-center">
-            <p className="font-medium">Other</p>
-          </CardContent>
-        </Card>
       </div>
-      {showCustomCategoryInput && (
-        <div className="mt-4 flex gap-2">
-          <Input
-            placeholder="Enter custom category name"
-            value={customCategoryName}
-            onChange={(e) => onCustomCategoryNameChange(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && customCategoryName.trim()) {
-                onCustomCategorySubmit();
-              }
-            }}
-            className="flex-1"
-            autoFocus
-          />
-          <Button
-            onClick={onCustomCategorySubmit}
-            disabled={!customCategoryName.trim()}
-          >
-            Add Category
-          </Button>
-        </div>
-      )}
     </div>
   );
 }

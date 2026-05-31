@@ -15,6 +15,7 @@ export function VerticalPickerOverlay<T>({
   centerIndex,
   getItem,
   renderItem,
+  getItemFontSize,
   activeFontSize = "4.5rem",
   nearFontSize = "2.75rem",
   farFontSize = "1.6rem",
@@ -25,6 +26,7 @@ export function VerticalPickerOverlay<T>({
   centerIndex: number;
   getItem: (index: number) => T | null;
   renderItem: (item: T) => ReactNode;
+  getItemFontSize?: (item: T, distance: number) => string | undefined;
   activeFontSize?: string;
   nearFontSize?: string;
   farFontSize?: string;
@@ -58,7 +60,7 @@ export function VerticalPickerOverlay<T>({
           </div>
 
           <div className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden">
-            <div className="absolute inset-x-0 top-1/2 h-24 -translate-y-1/2 rounded-3xl border border-white/35 bg-white/20 shadow-inner sm:h-28" />
+            <div className="absolute inset-x-0 top-1/2 h-20 -translate-y-1/2 rounded-3xl border border-white/35 bg-white/20 shadow-inner sm:h-24" />
             <div className="absolute inset-x-0 flex flex-col items-center transition-transform duration-75 ease-out">
               {Array.from({ length: 13 }, (_, visibleIndex) => {
                 const rawIndex = centerIndex - 6 + visibleIndex;
@@ -67,16 +69,25 @@ export function VerticalPickerOverlay<T>({
                 const opacity = item === null ? 0 : Math.max(0.3, 1 - distance * 0.14);
                 const scale = Math.max(0.72, 1 - distance * 0.08);
                 const isActive = distance === 0;
+                const fontSize =
+                  item === null
+                    ? farFontSize
+                    : getItemFontSize?.(item, distance) ??
+                      (isActive
+                        ? activeFontSize
+                        : distance === 1
+                          ? nearFontSize
+                          : farFontSize);
 
                 return (
                   <div
                     key={`${centerIndex}-${rawIndex}-${visibleIndex}`}
-                    className="flex h-13 max-w-full select-none items-center justify-center px-3 text-center font-black leading-none tracking-tight sm:h-16"
+                    className="flex h-16 max-w-full select-none items-center justify-center px-3 text-center font-black leading-none tracking-normal sm:h-20"
                     style={{
                       opacity,
                       color: isActive ? "#020617" : "#0f172a",
                       transform: `scale(${scale})`,
-                      fontSize: isActive ? activeFontSize : distance === 1 ? nearFontSize : farFontSize,
+                      fontSize,
                       WebkitTextStroke: isActive
                         ? "1.35px rgba(255,255,255,0.92)"
                         : "0.75px rgba(255,255,255,0.62)",

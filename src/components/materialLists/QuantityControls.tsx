@@ -4,13 +4,17 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { MinusIcon, PlusIcon } from "lucide-react";
-import { getMaterialListReplicache } from "~/lib/replicache-material-list";
+import {
+  getMaterialListReplicache,
+  mutateMaterialListAndSync,
+} from "~/lib/replicache-material-list";
 import { markUserAction } from "~/lib/performance-marks";
 
 interface QuantityControlsProps {
   itemId: string;
   quantity: number;
   materialListId: string;
+  pendingSync?: boolean;
   compact?: boolean;
   orientation?: "horizontal" | "vertical";
 }
@@ -19,6 +23,7 @@ export function QuantityControls({
   itemId,
   quantity,
   materialListId,
+  pendingSync = false,
   compact = false,
   orientation = "horizontal",
 }: QuantityControlsProps) {
@@ -31,6 +36,15 @@ export function QuantityControls({
 
   useEffect(() => {
     const locallyQueuedQuantity = lastQueuedQuantityRef.current;
+
+    if (!pendingSync) {
+      lastQueuedQuantityRef.current = null;
+      displayedQuantityRef.current = quantity;
+      setDisplayedQuantity(quantity);
+      setInputValue(quantity.toString());
+      return;
+    }
+
     const localQuantityStillSettling =
       locallyQueuedQuantity !== null && Date.now() - locallyQueuedQuantity.at < 15_000;
 
@@ -53,7 +67,7 @@ export function QuantityControls({
     displayedQuantityRef.current = quantity;
     setDisplayedQuantity(quantity);
     setInputValue(quantity.toString());
-  }, [quantity]);
+  }, [pendingSync, quantity]);
 
   useEffect(() => {
     return () => {
@@ -65,11 +79,11 @@ export function QuantityControls({
   const commitQuantity = (nextQuantity: number) => {
     if (lastQueuedQuantityRef.current?.quantity === nextQuantity) return;
     lastQueuedQuantityRef.current = { quantity: nextQuantity, at: Date.now() };
-    void getMaterialListReplicache().mutate.updateItemQuantity({
+    void mutateMaterialListAndSync(getMaterialListReplicache().mutate.updateItemQuantity({
       materialListId,
       itemId,
       quantity: nextQuantity,
-    });
+    }));
   };
 
   const scheduleInputQuantityChange = (nextQuantity: number) => {
@@ -125,14 +139,14 @@ export function QuantityControls({
     }
   };
 
-  const buttonClassName = compact ? "h-8 w-8 p-0" : "h-10 w-10 p-0 sm:h-11 sm:w-11";
+  const buttonClassName = compact ? "h-8 w-8 shrink-0 p-0" : "h-10 w-10 p-0 sm:h-11 sm:w-11";
   const inputClassName = compact
-    ? "h-8 w-8 [appearance:textfield] px-1 text-center text-sm font-medium [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+    ? "h-8 min-w-0 flex-1 [appearance:textfield] px-1 text-center text-sm font-medium [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
     : "h-10 w-12 [appearance:textfield] px-1 text-center font-medium sm:h-11 sm:w-14 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none";
 
   if (orientation === "vertical") {
     return (
-      <div className="flex flex-col items-center justify-center gap-1">
+      <div className={compact ? "flex w-full flex-col items-center justify-center gap-1" : "flex flex-col items-center justify-center gap-1"}>
         <Button
           variant="outline"
           size="sm"
@@ -170,7 +184,7 @@ export function QuantityControls({
   }
 
   return (
-    <div className="flex items-center justify-center gap-1">
+    <div className={compact ? "flex w-full items-center justify-center gap-1" : "flex items-center justify-center gap-1"}>
       <Button
         variant="outline"
         size="sm"

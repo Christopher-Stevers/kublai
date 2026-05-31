@@ -8,6 +8,14 @@ export type MaterialListRealtimeEvent = {
   changedAt: string;
 };
 
+export type ReplicacheRealtimePokeEvent = {
+  organizationId: string;
+  sourceClientGroupId?: string | null;
+  mutationCount: number;
+  version: number;
+  changedAt: string;
+};
+
 type MaterialListEventMap = {
   version: number;
   emitter: EventEmitter;
@@ -47,6 +55,23 @@ export function publishMaterialListEvent(
   return event;
 }
 
+export function publishOrganizationReplicachePoke(
+  organizationId: string,
+  input: { sourceClientGroupId?: string | null; mutationCount?: number } = {},
+) {
+  state.version += 1;
+  const event: ReplicacheRealtimePokeEvent = {
+    organizationId,
+    sourceClientGroupId: input.sourceClientGroupId ?? null,
+    mutationCount: input.mutationCount ?? 0,
+    version: state.version,
+    changedAt: new Date().toISOString(),
+  };
+
+  state.emitter.emit(`replicache:${organizationId}`, event);
+  return event;
+}
+
 export function subscribeToMaterialListEvents(
   materialListId: string,
   listener: (event: MaterialListRealtimeEvent) => void,
@@ -60,6 +85,15 @@ export function subscribeToOrganizationMaterialListEvents(
   listener: (event: MaterialListRealtimeEvent) => void,
 ) {
   const key = `organization:${organizationId}`;
+  state.emitter.on(key, listener);
+  return () => state.emitter.off(key, listener);
+}
+
+export function subscribeToOrganizationReplicachePokes(
+  organizationId: string,
+  listener: (event: ReplicacheRealtimePokeEvent) => void,
+) {
+  const key = `replicache:${organizationId}`;
   state.emitter.on(key, listener);
   return () => state.emitter.off(key, listener);
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback } from "react";
-import { getMaterialListReplicache } from "~/lib/replicache-material-list";
+import { tryGetMaterialListReplicache } from "~/lib/replicache-material-list";
 import { useReplicacheSubscribe } from "~/hooks/use-replicache-subscribe";
 
 export interface ReplicacheSupplier {
@@ -26,8 +26,8 @@ function isSupplierRecord(value: unknown): value is ReplicacheSupplier {
   );
 }
 
-export function useReplicacheSuppliers() {
-  const rep = getMaterialListReplicache();
+export function useReplicacheSuppliers({ enabled = true }: { enabled?: boolean } = {}) {
+  const rep = enabled ? tryGetMaterialListReplicache() : null;
 
   const suppliers = useReplicacheSubscribe(
     rep,

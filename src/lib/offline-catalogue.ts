@@ -51,12 +51,13 @@ export interface OfflineCatalogueSnapshotData {
 }
 
 export interface OfflineCatalogueSnapshotEnvelope {
-  version: 1;
+  version: 2;
   updatedAt: string;
   data: OfflineCatalogueSnapshotData;
 }
 
 const STORAGE_KEY = "foremanhq.offline.catalogue-snapshot";
+const SNAPSHOT_VERSION = 2;
 
 export function getOfflineCatalogueSnapshot(): OfflineCatalogueSnapshotEnvelope | null {
   if (typeof window === "undefined") return null;
@@ -65,7 +66,14 @@ export function getOfflineCatalogueSnapshot(): OfflineCatalogueSnapshotEnvelope 
   if (!raw) return null;
 
   try {
-    return JSON.parse(raw) as OfflineCatalogueSnapshotEnvelope;
+    const snapshot = JSON.parse(raw) as OfflineCatalogueSnapshotEnvelope;
+
+    if (snapshot.version !== SNAPSHOT_VERSION) {
+      window.localStorage.removeItem(STORAGE_KEY);
+      return null;
+    }
+
+    return snapshot;
   } catch {
     return null;
   }
@@ -110,7 +118,7 @@ export function setOfflineCatalogueSnapshot(data: OfflineCatalogueSnapshotData) 
   if (typeof window === "undefined") return;
 
   const envelope: OfflineCatalogueSnapshotEnvelope = {
-    version: 1,
+    version: SNAPSHOT_VERSION,
     updatedAt: new Date().toISOString(),
     data,
   };

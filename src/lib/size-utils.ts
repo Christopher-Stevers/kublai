@@ -88,6 +88,19 @@ export function parseSizeInput(input: string): number | null {
 }
 
 /**
+ * Parse the first leg of a single- or multi-dimensional size.
+ * Examples: 3 x 2 x 2 -> 3, 1 1/2 x 2 -> 1.5.
+ */
+export function parsePrimarySizeInput(input: string): number | null {
+  if (!input || typeof input !== "string") {
+    return null;
+  }
+
+  const [primaryDimension] = input.split(/\s*(?:x|×)\s*/i);
+  return parseSizeInput(primaryDimension ?? "");
+}
+
+/**
  * Format size for display
  * Converts numeric values to readable format with fractions
  */
@@ -246,4 +259,3 @@ export function formatSizeAsFraction(sizeString: string | null): string {
 
   return formatSize(numericValue, unit);
 }
-

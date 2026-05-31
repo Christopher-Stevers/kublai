@@ -20,7 +20,10 @@ import {
 } from "lucide-react";
 import { useOnlineStatus } from "~/hooks/use-online-status";
 import { useReplicacheSuppliers } from "~/hooks/use-replicache-suppliers";
-import { getMaterialListReplicache } from "~/lib/replicache-material-list";
+import {
+  getMaterialListReplicache,
+  mutateMaterialListAndSync,
+} from "~/lib/replicache-material-list";
 
 export function SupplierList() {
   const [editSupplierId, setEditSupplierId] = useState<string | undefined>();
@@ -45,7 +48,7 @@ export function SupplierList() {
         `Are you sure you want to delete "${name}"? This will also remove all parts associated with this supplier.`,
       )
     ) {
-      void getMaterialListReplicache().mutate.deleteSupplier({ supplierId: id });
+      void mutateMaterialListAndSync(getMaterialListReplicache().mutate.deleteSupplier({ supplierId: id }));
     }
   };
 

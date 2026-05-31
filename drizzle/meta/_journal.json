@@ -90,6 +90,13 @@
       "when": 1778496663696,
       "tag": "0023_replicache_client_tables",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1778726628557,
+      "tag": "0024_sync_updated_at_indexes",
+      "breakpoints": true
     }
   ]
 }

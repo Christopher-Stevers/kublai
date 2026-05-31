@@ -22,7 +22,10 @@ import {
 import { Search, ChevronDownIcon } from "lucide-react";
 import { LocationFormDialog } from "./LocationFormDialog";
 import { useOnlineStatus } from "~/hooks/use-online-status";
-import { getMaterialListReplicache } from "~/lib/replicache-material-list";
+import {
+  getMaterialListReplicache,
+  mutateMaterialListAndSync,
+} from "~/lib/replicache-material-list";
 
 interface JobInfoModalProps {
   open: boolean;
@@ -154,11 +157,11 @@ export function JobInfoModal({
         : null;
 
     if (jobId) {
-      void getMaterialListReplicache().mutate.updateJob({
+      void mutateMaterialListAndSync(getMaterialListReplicache().mutate.updateJob({
         jobId,
         name: jobName.trim(),
         locationId: selectedLocation?.id ?? null,
-      });
+      }));
     }
     onOpenChange(false);
   };

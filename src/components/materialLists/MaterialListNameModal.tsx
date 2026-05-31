@@ -11,7 +11,10 @@ import {
 } from "~/components/ui/dialog";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
-import { getMaterialListReplicache } from "~/lib/replicache-material-list";
+import {
+  getMaterialListReplicache,
+  mutateMaterialListAndSync,
+} from "~/lib/replicache-material-list";
 
 interface MaterialListNameModalProps {
   open: boolean;
@@ -38,10 +41,10 @@ export function MaterialListNameModal({
     const trimmedName = name.trim();
     if (!trimmedName) return;
 
-    void getMaterialListReplicache().mutate.renameMaterialList({
+    void mutateMaterialListAndSync(getMaterialListReplicache().mutate.renameMaterialList({
       materialListId,
       name: trimmedName,
-    });
+    }));
     onOpenChange(false);
   };
 

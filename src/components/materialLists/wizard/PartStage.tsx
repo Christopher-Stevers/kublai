@@ -1,4 +1,9 @@
-import { useState, useEffect, useRef, type PointerEvent as ReactPointerEvent } from "react";
+import {
+  useState,
+  useEffect,
+  useRef,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
@@ -12,8 +17,6 @@ import {
   WizardOptionPagination,
 } from "./WizardOptionGrid";
 
-const TILE_FALLBACK_IMAGE_URL = "/images/plumbing-part-placeholder-v2.jpg";
-
 type PartStageActionMode = "select" | "edit";
 
 interface PartCardProps {
@@ -22,6 +25,7 @@ interface PartCardProps {
     displayName: string;
     description: string | null;
     imageUrl: string | null;
+    imageApprovalStatus?: "approved" | "suggested" | "missing";
     material: string | null;
     size: string | null;
   };
@@ -33,6 +37,7 @@ interface PartCardProps {
       displayName: string;
       description: string | null;
       imageUrl: string | null;
+      imageApprovalStatus?: "approved" | "suggested" | "missing";
       material: string | null;
       size: string | null;
     },
@@ -44,26 +49,35 @@ interface PartCardProps {
       displayName: string;
       description: string | null;
       imageUrl: string | null;
+      imageApprovalStatus?: "approved" | "suggested" | "missing";
       material: string | null;
       size: string | null;
     },
     quantity: number,
   ) => void;
   onQuantityPickerPreviewChange?: (
-    preview:
-      | {
-          partId: string;
-          partName: string;
-          quantity: number;
-        }
-      | null,
+    preview: {
+      partId: string;
+      partName: string;
+      quantity: number;
+    } | null,
   ) => void;
   onEditPart: (partId: string) => void;
   actionMode?: PartStageActionMode;
   actionLabel?: string;
+  emptyMessage?: string;
 }
 
-function PartCard({ part, isPending, pendingQuantity = 0, onPartSelect, onPartQuantitySet, onQuantityPickerPreviewChange, onEditPart, actionMode = "select" }: PartCardProps) {
+function PartCard({
+  part,
+  isPending,
+  pendingQuantity = 0,
+  onPartSelect,
+  onPartQuantitySet,
+  onQuantityPickerPreviewChange,
+  onEditPart,
+  actionMode = "select",
+}: PartCardProps) {
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressTriggeredRef = useRef(false);
   const pointerStartYRef = useRef<number | null>(null);
@@ -87,7 +101,8 @@ function PartCard({ part, isPending, pendingQuantity = 0, onPartSelect, onPartQu
   };
 
   const updateDragQuantity = (clientY: number) => {
-    if (!longPressTriggeredRef.current || pointerStartYRef.current === null) return;
+    if (!longPressTriggeredRef.current || pointerStartYRef.current === null)
+      return;
 
     const deltaY = clientY - pointerStartYRef.current;
     const steps = Math.round(deltaY / 18);
@@ -136,7 +151,10 @@ function PartCard({ part, isPending, pendingQuantity = 0, onPartSelect, onPartQu
   function handleWindowPointerUp(event: PointerEvent) {
     if (activePointerIdRef.current !== event.pointerId) return;
 
-    if (longPressTriggeredRef.current && activePointerTypeRef.current === "touch") {
+    if (
+      longPressTriggeredRef.current &&
+      activePointerTypeRef.current === "touch"
+    ) {
       return;
     }
 
@@ -151,7 +169,10 @@ function PartCard({ part, isPending, pendingQuantity = 0, onPartSelect, onPartQu
   function handleWindowPointerCancel(event: PointerEvent) {
     if (activePointerIdRef.current !== event.pointerId) return;
 
-    if (longPressTriggeredRef.current && activePointerTypeRef.current === "touch") {
+    if (
+      longPressTriggeredRef.current &&
+      activePointerTypeRef.current === "touch"
+    ) {
       return;
     }
 
@@ -187,7 +208,9 @@ function PartCard({ part, isPending, pendingQuantity = 0, onPartSelect, onPartQu
         activePointerIdRef.current !== null &&
         pointerElementRef.current.hasPointerCapture(activePointerIdRef.current)
       ) {
-        pointerElementRef.current.releasePointerCapture(activePointerIdRef.current);
+        pointerElementRef.current.releasePointerCapture(
+          activePointerIdRef.current,
+        );
       }
 
       onQuantityPickerPreviewChange?.({
@@ -195,8 +218,12 @@ function PartCard({ part, isPending, pendingQuantity = 0, onPartSelect, onPartQu
         partName: part.displayName,
         quantity: baseQuantityRef.current,
       });
-      window.addEventListener("pointermove", handleWindowPointerMove, { passive: false });
-      window.addEventListener("pointerup", handleWindowPointerUp, { passive: false });
+      window.addEventListener("pointermove", handleWindowPointerMove, {
+        passive: false,
+      });
+      window.addEventListener("pointerup", handleWindowPointerUp, {
+        passive: false,
+      });
       window.addEventListener("pointercancel", handleWindowPointerCancel);
     }, 100);
   };
@@ -238,7 +265,10 @@ function PartCard({ part, isPending, pendingQuantity = 0, onPartSelect, onPartQu
   const cancelPointerInteraction = () => {
     clearLongPressTimer();
 
-    if (longPressTriggeredRef.current && activePointerTypeRef.current === "touch") {
+    if (
+      longPressTriggeredRef.current &&
+      activePointerTypeRef.current === "touch"
+    ) {
       return;
     }
 
@@ -257,7 +287,11 @@ function PartCard({ part, isPending, pendingQuantity = 0, onPartSelect, onPartQu
       className={`relative w-full gap-0 overflow-hidden rounded-2xl py-0 transition-all hover:shadow-md ${
         isPending ? "border-primary border-2 shadow-md" : ""
       } cursor-pointer`}
-      style={{ WebkitTouchCallout: "none", WebkitUserSelect: "none", userSelect: "none" }}
+      style={{
+        WebkitTouchCallout: "none",
+        WebkitUserSelect: "none",
+        userSelect: "none",
+      }}
       onContextMenu={(event) => event.preventDefault()}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
@@ -271,13 +305,19 @@ function PartCard({ part, isPending, pendingQuantity = 0, onPartSelect, onPartQu
       <CardContent className="p-0">
         <div className="flex w-full flex-col p-3">
           <div className="relative mb-3 aspect-square w-full overflow-hidden rounded-xl bg-gray-100">
-            <Image
-              src={part.imageUrl ?? TILE_FALLBACK_IMAGE_URL}
-              alt={part.displayName}
-              fill
-              className="object-cover"
-              draggable={false}
-            />
+            {part.imageUrl ? (
+              <Image
+                src={part.imageUrl}
+                alt={part.displayName}
+                fill
+                className="object-cover"
+                draggable={false}
+              />
+            ) : (
+              <div className="flex h-full items-center justify-center text-gray-400">
+                <AlertCircle className="h-8 w-8" />
+              </div>
+            )}
 
             <div className="absolute top-2 right-2 flex justify-end">
               {pendingQuantity > 0 && (
@@ -286,10 +326,15 @@ function PartCard({ part, isPending, pendingQuantity = 0, onPartSelect, onPartQu
                 </div>
               )}
             </div>
+            {part.imageApprovalStatus === "suggested" && (
+              <div className="absolute right-2 bottom-2 rounded bg-amber-500 px-2 py-1 text-[11px] font-semibold text-white shadow">
+                Needs approval
+              </div>
+            )}
           </div>
 
           <div className="flex min-h-[2.75rem] items-start justify-center text-center text-black">
-            <h4 className="line-clamp-2 text-sm font-medium leading-snug">
+            <h4 className="line-clamp-2 text-sm leading-snug font-medium">
               {part.displayName}
             </h4>
           </div>
@@ -299,7 +344,16 @@ function PartCard({ part, isPending, pendingQuantity = 0, onPartSelect, onPartQu
   );
 }
 
-function PartListRow({ part, isPending, pendingQuantity = 0, onPartSelect, onPartQuantitySet, onEditPart, actionMode = "select", actionLabel }: PartCardProps) {
+function PartListRow({
+  part,
+  isPending,
+  pendingQuantity = 0,
+  onPartSelect,
+  onPartQuantitySet,
+  onEditPart,
+  actionMode = "select",
+  actionLabel,
+}: PartCardProps) {
   const [quantityInput, setQuantityInput] = useState(() =>
     pendingQuantity > 0 ? String(pendingQuantity) : "",
   );
@@ -317,17 +371,29 @@ function PartListRow({ part, isPending, pendingQuantity = 0, onPartSelect, onPar
       <div className="flex items-center gap-2 sm:gap-3">
         <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-md bg-gray-100 sm:h-12 sm:w-12">
           {part.imageUrl ? (
-            <Image src={part.imageUrl} alt={part.displayName} fill className="object-cover" />
+            <Image
+              src={part.imageUrl}
+              alt={part.displayName}
+              fill
+              className="object-cover"
+            />
           ) : (
             <div className="flex h-full items-center justify-center text-gray-400">
               <AlertCircle className="h-4 w-4" />
+            </div>
+          )}
+          {part.imageApprovalStatus === "suggested" && (
+            <div className="absolute inset-x-0 bottom-0 bg-amber-500 px-1 py-0.5 text-center text-[9px] font-semibold text-white">
+              Review
             </div>
           )}
         </div>
 
         <div className="min-w-0 flex-1 overflow-hidden">
           <div className="flex min-w-0 items-center gap-2">
-            <h4 className="truncate text-sm font-medium sm:text-[15px]">{part.displayName}</h4>
+            <h4 className="truncate text-sm font-medium sm:text-[15px]">
+              {part.displayName}
+            </h4>
           </div>
         </div>
 
@@ -359,7 +425,11 @@ function PartListRow({ part, isPending, pendingQuantity = 0, onPartSelect, onPar
                 onBlur={() => {
                   const parsedQuantity = parseInt(quantityInput);
 
-                  if (!quantityInput || Number.isNaN(parsedQuantity) || parsedQuantity <= 0) {
+                  if (
+                    !quantityInput ||
+                    Number.isNaN(parsedQuantity) ||
+                    parsedQuantity <= 0
+                  ) {
                     setQuantityInput("");
                     onPartQuantitySet?.(part, 0);
                     return;
@@ -402,38 +472,49 @@ export interface PartStageProps {
     displayName: string;
     description: string | null;
     imageUrl: string | null;
+    imageApprovalStatus?: "approved" | "suggested" | "missing";
     material: string | null;
     size: string | null;
   }>;
   pendingParts: PendingPart[];
-  onPartSelect: (part: {
-    id: string;
-    displayName: string;
-    description: string | null;
-    imageUrl: string | null;
-    material: string | null;
-    size: string | null;
-  }, supplierPartId?: string) => void;
-  onPartQuantitySet: (part: {
-    id: string;
-    displayName: string;
-    description: string | null;
-    imageUrl: string | null;
-    material: string | null;
-    size: string | null;
-  }, quantity: number) => void;
+  onPartSelect: (
+    part: {
+      id: string;
+      displayName: string;
+      description: string | null;
+      imageUrl: string | null;
+      imageApprovalStatus?: "approved" | "suggested" | "missing";
+      material: string | null;
+      size: string | null;
+    },
+    supplierPartId?: string,
+  ) => void;
+  onPartQuantitySet: (
+    part: {
+      id: string;
+      displayName: string;
+      description: string | null;
+      imageUrl: string | null;
+      imageApprovalStatus?: "approved" | "suggested" | "missing";
+      material: string | null;
+      size: string | null;
+    },
+    quantity: number,
+  ) => void;
   onQuantityPickerPreviewChange: (
-    preview:
-      | {
-          partId: string;
-          partName: string;
-          quantity: number;
-        }
-      | null,
+    preview: {
+      partId: string;
+      partName: string;
+      quantity: number;
+    } | null,
   ) => void;
   onEditPart: (partId: string) => void;
   selectedMaterialId: string | null;
-  selectedSize: { nominal: number; unit: string; sizeLabel?: string | null } | null;
+  selectedSize: {
+    nominal: number;
+    unit: string;
+    sizeLabel?: string | null;
+  } | null;
   selectedCategory: {
     categoryId: string | null;
     name: string;
@@ -442,6 +523,7 @@ export interface PartStageProps {
   actionMode?: PartStageActionMode;
   title?: string;
   actionLabel?: string;
+  emptyMessage?: string;
 }
 
 export function PartStage({
@@ -458,6 +540,7 @@ export function PartStage({
   actionMode = "select",
   title = "Select Parts",
   actionLabel,
+  emptyMessage,
 }: PartStageProps) {
   const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
   const pagination = useClientPagination(partsForSelection);
@@ -474,7 +557,8 @@ export function PartStage({
       <div className="space-y-3 sm:space-y-4">
         <h3 className="text-base font-semibold sm:text-lg">No Parts Found</h3>
         <p className="text-xs text-gray-500 sm:text-sm">
-          No parts found for the selected material, size, and category.
+          {emptyMessage ??
+            "No parts found for the selected material, size, and category."}
         </p>
       </div>
     );

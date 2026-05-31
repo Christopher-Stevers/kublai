@@ -27,7 +27,11 @@ import { format } from "date-fns";
 import { JobEditDialog } from "~/components/jobs/JobEditDialog";
 import { useReplicacheJobDetail } from "~/hooks/use-replicache-jobs";
 import { useOnlineStatus } from "~/hooks/use-online-status";
-import { getMaterialListReplicache } from "~/lib/replicache-material-list";
+import {
+  getMaterialListReplicache,
+  mutateMaterialListAndSync,
+} from "~/lib/replicache-material-list";
+import { getNextMaterialListNameFromNames } from "~/lib/material-list-names";
 
 type JobLocationDisplay = {
   name?: string | null;
@@ -81,18 +85,38 @@ export default function JobDetailPage({
     userData?.permissions.canDeleteCoreRecords ?? true;
 
   const jobDetail = useReplicacheJobDetail(jobId);
-  const job = jobDetail?.job ?? null;
-  const materialLists = jobDetail?.materialLists ?? null;
+  const { data: serverJob, isFetched: hasFetchedServerJob } = api.job.getJob.useQuery(
+    { jobId },
+    {
+      enabled: isBrowserOnline,
+      networkMode: "always",
+      refetchOnMount: true,
+      refetchOnWindowFocus: false,
+    },
+  );
+  const serverMaterialLists =
+    serverJob?.materialLists.map((list) => ({
+      ...list,
+      jobId,
+      quoteId: null,
+      updatedAt: list.createdAt,
+      itemCount: 0,
+      materialTotal: 0,
+    })) ?? null;
+  const job = jobDetail?.job ?? serverJob ?? null;
+  const materialLists = jobDetail?.materialLists ?? serverMaterialLists;
 
   const handleCreateNew = () => {
     if (!job?.id) return;
 
     const materialListId = crypto.randomUUID();
-    void getMaterialListReplicache().mutate.createMaterialList({
+    void mutateMaterialListAndSync(getMaterialListReplicache().mutate.createMaterialList({
       materialListId,
       jobId: job.id,
-      name: "Material List",
-    });
+      name: getNextMaterialListNameFromNames(
+        materialLists?.map((list) => list.name) ?? [],
+      ),
+    }));
     router.push(`/dashboard/material-lists/${materialListId}`);
   };
 
@@ -101,19 +125,35 @@ export default function JobDetailPage({
 
     const { id } = materialListToDelete;
     setMaterialListToDelete(null);
-    void getMaterialListReplicache().mutate.deleteMaterialList({
+    void mutateMaterialListAndSync(getMaterialListReplicache().mutate.deleteMaterialList({
       materialListId: id,
-    });
+    }));
   };
 
   const jobLocationAddress = formatLocationAddress(job?.location);
 
-  if (!job && jobDetail === null) {
+  if (!job && !hasFetchedServerJob) {
     return (
       <div className="px-4 py-6 sm:px-6 sm:py-8">
-        <div className="mx-auto max-w-6xl">
-          <div className="flex items-center justify-center py-12">
-            <p className="text-muted-foreground">Loading job details...</p>
+        <div className="mx-auto max-w-6xl space-y-6">
+          <div className="space-y-3">
+            <div className="h-8 w-64 animate-pulse rounded bg-gray-200" />
+            <div className="h-4 w-80 animate-pulse rounded bg-gray-200" />
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {[0, 1].map((index) => (
+              <Card key={index} className="animate-pulse">
+                <CardHeader>
+                  <div className="h-6 w-2/3 rounded bg-gray-200" />
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    <div className="h-4 w-1/2 rounded bg-gray-200" />
+                    <div className="h-4 w-1/3 rounded bg-gray-200" />
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
           </div>
         </div>
       </div>

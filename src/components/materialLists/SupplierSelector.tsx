@@ -12,8 +12,12 @@ import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Search, ChevronDownIcon } from "lucide-react";
 import { SupplierFormDialog } from "~/components/suppliers/SupplierFormDialog";
-import { getMaterialListReplicache } from "~/lib/replicache-material-list";
+import {
+  getMaterialListReplicache,
+  mutateMaterialListAndSync,
+} from "~/lib/replicache-material-list";
 import { useReplicacheSuppliers } from "~/hooks/use-replicache-suppliers";
+import type { ReplicacheSupplier } from "~/hooks/use-replicache-suppliers";
 import { getOfflineSupplierPartsByPart } from "~/lib/offline-supplier-parts";
 
 interface SupplierSelectorProps {
@@ -22,6 +26,7 @@ interface SupplierSelectorProps {
   currentSupplierPartId: string | null | undefined;
   currentSupplierId?: string | null;
   materialListId: string;
+  suppliers?: ReplicacheSupplier[];
   compact?: boolean;
 }
 
@@ -31,6 +36,7 @@ export function SupplierSelector({
   currentSupplierPartId,
   currentSupplierId,
   materialListId,
+  suppliers,
   compact = false,
 }: SupplierSelectorProps) {
   const [searchQuery, setSearchQuery] = useState("");
@@ -81,16 +87,17 @@ export function SupplierSelector({
     setPendingSupplierName("");
     setSearchQuery("");
 
-    void getMaterialListReplicache().mutate.updateItemSupplierPart({
+    void mutateMaterialListAndSync(getMaterialListReplicache().mutate.updateItemSupplierPart({
       materialListId,
       itemId,
       supplierPartId: null,
       supplierId,
       unitCost: 0,
-    });
+    }));
   };
 
-  const allSuppliers = useReplicacheSuppliers();
+  const subscribedSuppliers = useReplicacheSuppliers({ enabled: !suppliers });
+  const allSuppliers = suppliers ?? subscribedSuppliers;
 
   useEffect(() => {
     setCachedSupplierParts(getOfflineSupplierPartsByPart(partDefinitionId) ?? []);
@@ -174,13 +181,13 @@ export function SupplierSelector({
       ? parseFloat(selectedSupplierPart.lastKnownUnitCost)
       : 0;
 
-    void getMaterialListReplicache().mutate.updateItemSupplierPart({
+    void mutateMaterialListAndSync(getMaterialListReplicache().mutate.updateItemSupplierPart({
       materialListId,
       itemId,
       supplierPartId: nextSupplierPartId,
       supplierId: selectedSupplierPart?.supplierId ?? null,
       unitCost,
-    });
+    }));
   };
 
   const handleSupplierSelect = (supplierId: string) => {
@@ -195,13 +202,13 @@ export function SupplierSelector({
     setIsDropdownOpen(false);
     setSearchQuery("");
 
-    void getMaterialListReplicache().mutate.updateItemSupplierPart({
+    void mutateMaterialListAndSync(getMaterialListReplicache().mutate.updateItemSupplierPart({
       materialListId,
       itemId,
       supplierPartId: null,
       supplierId: selectedSupplier.id,
       unitCost: 0,
-    });
+    }));
   };
 
   const handleCreateSupplier = () => {

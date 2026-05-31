@@ -2,7 +2,10 @@ import { NextResponse } from "next/server";
 import type { PullRequest } from "replicache";
 
 import { createTRPCContext } from "~/server/api/trpc";
-import { handleMaterialListReplicachePull } from "~/server/replicache/material-list-sync";
+import {
+  ReplicacheOwnershipError,
+  handleMaterialListReplicachePull,
+} from "~/server/replicache/material-list-sync";
 
 export async function POST(request: Request) {
   const ctx = await createTRPCContext({ headers: request.headers });
@@ -19,6 +22,10 @@ export async function POST(request: Request) {
     const response = await handleMaterialListReplicachePull(body, ctx.user);
     return NextResponse.json(response);
   } catch (error) {
+    if (error instanceof ReplicacheOwnershipError) {
+      return NextResponse.json({ error: "ClientStateNotFound" });
+    }
+
     console.error("[replicache/material-lists/pull] failed", error);
     return NextResponse.json(
       { error: "PullFailed", message: error instanceof Error ? error.message : "Unknown error" },
