@@ -2,22 +2,42 @@ import {
   useState,
   useEffect,
   useRef,
+  useMemo,
+  type ReactNode,
   type PointerEvent as ReactPointerEvent,
 } from "react";
+import {
+  closestCenter,
+  DndContext,
+  KeyboardSensor,
+  MouseSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+  type DragMoveEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
-import { AlertCircle, Minus, Plus } from "lucide-react";
+import { AlertCircle, Check, GripVertical, Minus, Plus, X } from "lucide-react";
 import Image from "next/image";
 import type { PendingPart } from "./types";
 import { useClientPagination } from "~/components/ui/list-pagination";
 import { ViewToggle } from "~/components/ui/view-toggle";
-import {
-  WIZARD_OPTION_GRID_CLASS,
-  WizardOptionPagination,
-} from "./WizardOptionGrid";
+import { WizardOptionPagination } from "./WizardOptionGrid";
 
-type PartStageActionMode = "select" | "edit";
+const PART_TILE_GRID_CLASS =
+  "grid grid-cols-[repeat(auto-fill,minmax(min(1.5in,100%),2in))] justify-center justify-items-center gap-3";
+
+type PartStageActionMode = "select" | "edit" | "reorder";
 
 interface PartCardProps {
   part: {
@@ -66,6 +86,8 @@ interface PartCardProps {
   actionMode?: PartStageActionMode;
   actionLabel?: string;
   emptyMessage?: string;
+  reorderHandle?: ReactNode;
+  isDragging?: boolean;
 }
 
 function PartCard({
@@ -77,6 +99,8 @@ function PartCard({
   onQuantityPickerPreviewChange,
   onEditPart,
   actionMode = "select",
+  reorderHandle,
+  isDragging = false,
 }: PartCardProps) {
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressTriggeredRef = useRef(false);
@@ -181,6 +205,7 @@ function PartCard({
   }
 
   const handlePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (actionMode === "reorder") return;
     if (event.pointerType === "mouse" && event.button !== 0) return;
 
     if (actionMode === "edit") {
@@ -237,6 +262,10 @@ function PartCard({
   const finishPointerInteraction = () => {
     clearLongPressTimer();
 
+    if (actionMode === "reorder") {
+      return;
+    }
+
     if (actionMode === "edit") {
       onEditPart(part.id);
       pointerStartYRef.current = null;
@@ -284,9 +313,11 @@ function PartCard({
 
   return (
     <Card
-      className={`relative w-full gap-0 overflow-hidden rounded-2xl py-0 transition-all hover:shadow-md ${
+      className={`relative w-full max-w-[2in] gap-0 overflow-hidden rounded-2xl py-0 transition-all hover:shadow-md ${
         isPending ? "border-primary border-2 shadow-md" : ""
-      } cursor-pointer`}
+      } ${actionMode === "reorder" ? "cursor-grab" : "cursor-pointer"} ${
+        isDragging ? "border-gray-900 opacity-80 shadow-lg" : ""
+      }`}
       style={{
         WebkitTouchCallout: "none",
         WebkitUserSelect: "none",
@@ -305,6 +336,9 @@ function PartCard({
       <CardContent className="p-0">
         <div className="flex w-full flex-col p-3">
           <div className="relative mb-3 aspect-square w-full overflow-hidden rounded-xl bg-gray-100">
+            {reorderHandle && (
+              <div className="absolute top-2 left-2 z-10">{reorderHandle}</div>
+            )}
             {part.imageUrl ? (
               <Image
                 src={part.imageUrl}
@@ -353,6 +387,8 @@ function PartListRow({
   onEditPart,
   actionMode = "select",
   actionLabel,
+  reorderHandle,
+  isDragging = false,
 }: PartCardProps) {
   const [quantityInput, setQuantityInput] = useState(() =>
     pendingQuantity > 0 ? String(pendingQuantity) : "",
@@ -366,6 +402,8 @@ function PartListRow({
     <div
       className={`rounded-lg border bg-white px-2.5 py-2 transition-all sm:px-3 ${
         isPending ? "border-primary border-2 shadow-sm" : "hover:shadow-sm"
+      } ${actionMode === "reorder" ? "cursor-grab" : ""} ${
+        isDragging ? "border-gray-900 opacity-80 shadow-lg" : ""
       }`}
     >
       <div className="flex items-center gap-2 sm:gap-3">
@@ -398,7 +436,9 @@ function PartListRow({
         </div>
 
         <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
-          {isPending && actionMode === "select" ? (
+          {actionMode === "reorder" ? (
+            reorderHandle
+          ) : isPending && actionMode === "select" ? (
             <div className="flex items-center gap-1">
               <Button
                 variant="outline"
@@ -466,6 +506,122 @@ function PartListRow({
   );
 }
 
+function SortablePartListRow({
+  part,
+  isPending,
+  pendingQuantity,
+  onPartSelect,
+  onPartQuantitySet,
+  onEditPart,
+}: Omit<
+  PartCardProps,
+  | "actionMode"
+  | "reorderHandle"
+  | "isDragging"
+  | "onQuantityPickerPreviewChange"
+>) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: part.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  const reorderHandle = (
+    <div
+      className="pointer-events-none flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 bg-white/95 text-gray-700 shadow-sm"
+      aria-hidden="true"
+    >
+      <GripVertical className="h-4 w-4" />
+    </div>
+  );
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      aria-label={`Drag ${part.displayName}`}
+      {...attributes}
+      {...listeners}
+    >
+      <PartListRow
+        part={part}
+        isPending={isPending}
+        pendingQuantity={pendingQuantity}
+        onPartSelect={onPartSelect}
+        onPartQuantitySet={onPartQuantitySet}
+        onEditPart={onEditPart}
+        actionMode="reorder"
+        reorderHandle={reorderHandle}
+        isDragging={isDragging}
+      />
+    </div>
+  );
+}
+
+function SortablePartCard({
+  part,
+  isPending,
+  pendingQuantity,
+  onPartSelect,
+  onPartQuantitySet,
+  onQuantityPickerPreviewChange,
+  onEditPart,
+}: Omit<PartCardProps, "actionMode" | "reorderHandle" | "isDragging">) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: part.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  const reorderHandle = (
+    <div
+      className="pointer-events-none flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 bg-white/95 text-gray-700 shadow-sm"
+      aria-hidden="true"
+    >
+      <GripVertical className="h-4 w-4" />
+    </div>
+  );
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      aria-label={`Drag ${part.displayName}`}
+      {...attributes}
+      {...listeners}
+    >
+      <PartCard
+        part={part}
+        isPending={isPending}
+        pendingQuantity={pendingQuantity}
+        onPartSelect={onPartSelect}
+        onPartQuantitySet={onPartQuantitySet}
+        onQuantityPickerPreviewChange={onQuantityPickerPreviewChange}
+        onEditPart={onEditPart}
+        actionMode="reorder"
+        reorderHandle={reorderHandle}
+        isDragging={isDragging}
+      />
+    </div>
+  );
+}
+
 export interface PartStageProps {
   partsForSelection: Array<{
     id: string;
@@ -524,6 +680,13 @@ export interface PartStageProps {
   title?: string;
   actionLabel?: string;
   emptyMessage?: string;
+  reorderMode?: boolean;
+  canStartReorder?: boolean;
+  isReorderSaving?: boolean;
+  onReorderStart?: () => void;
+  onReorderOrderChange?: (partIds: string[]) => void;
+  onReorderSave?: (partIds: string[]) => void;
+  onReorderCancel?: () => void;
 }
 
 export function PartStage({
@@ -541,9 +704,112 @@ export function PartStage({
   title = "Select Parts",
   actionLabel,
   emptyMessage,
+  reorderMode = false,
+  canStartReorder = false,
+  isReorderSaving = false,
+  onReorderStart,
+  onReorderOrderChange,
+  onReorderSave,
+  onReorderCancel,
 }: PartStageProps) {
   const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
-  const pagination = useClientPagination(partsForSelection);
+  const partIdSignature = useMemo(
+    () => partsForSelection.map((part) => part.id).join("|"),
+    [partsForSelection],
+  );
+  const [orderedPartIds, setOrderedPartIds] = useState(() =>
+    partsForSelection.map((part) => part.id),
+  );
+  const sensors = useSensors(
+    useSensor(MouseSensor, {
+      activationConstraint: {
+        delay: 250,
+        tolerance: 8,
+      },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 350,
+        tolerance: 10,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
+  );
+  const orderedParts = useMemo(() => {
+    if (!reorderMode) return partsForSelection;
+
+    const partMap = new Map(partsForSelection.map((part) => [part.id, part]));
+    const sortedParts = orderedPartIds
+      .map((partId) => partMap.get(partId))
+      .filter((part): part is (typeof partsForSelection)[number] => !!part);
+    const sortedIds = new Set(sortedParts.map((part) => part.id));
+    const newParts = partsForSelection.filter(
+      (part) => !sortedIds.has(part.id),
+    );
+    return [...sortedParts, ...newParts];
+  }, [orderedPartIds, partsForSelection, reorderMode]);
+  const pagination = useClientPagination(
+    reorderMode ? orderedParts : partsForSelection,
+  );
+  const visibleParts = reorderMode ? orderedParts : pagination.paginatedItems;
+
+  useEffect(() => {
+    if (!reorderMode) return;
+    const nextIds = partIdSignature ? partIdSignature.split("|") : [];
+    setOrderedPartIds(nextIds);
+    onReorderOrderChange?.(nextIds);
+  }, [partIdSignature, reorderMode]);
+
+  const handleReorderDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    setOrderedPartIds((currentIds) => {
+      const oldIndex = currentIds.indexOf(String(active.id));
+      const newIndex = currentIds.indexOf(String(over.id));
+      if (oldIndex === -1 || newIndex === -1) return currentIds;
+      const nextIds = arrayMove(currentIds, oldIndex, newIndex);
+      onReorderOrderChange?.(nextIds);
+      return nextIds;
+    });
+  };
+
+  const handleReorderDragMove = (event: DragMoveEvent) => {
+    const activatorEvent = event.activatorEvent;
+    let startY: number | null = null;
+
+    if (
+      "clientY" in activatorEvent &&
+      typeof activatorEvent.clientY === "number"
+    ) {
+      startY = activatorEvent.clientY;
+    } else if (activatorEvent instanceof TouchEvent) {
+      startY = activatorEvent.touches[0]?.clientY ?? null;
+    }
+
+    if (startY === null) return;
+
+    const currentY = startY + event.delta.y;
+    const viewportHeight = window.innerHeight;
+    const edgeSize = Math.min(180, viewportHeight * 0.28);
+    const topDistance = currentY;
+    const bottomDistance = viewportHeight - currentY;
+    const scrollContainer =
+      document.scrollingElement ?? document.documentElement;
+
+    if (topDistance < edgeSize) {
+      const strength = (edgeSize - topDistance) / edgeSize;
+      scrollContainer.scrollBy({ top: -Math.ceil(10 + strength * 24) });
+      return;
+    }
+
+    if (bottomDistance < edgeSize) {
+      const strength = (edgeSize - bottomDistance) / edgeSize;
+      scrollContainer.scrollBy({ top: Math.ceil(10 + strength * 28) });
+    }
+  };
   const getPendingPartState = (partId: string) => {
     const pendingPart = pendingParts.find((part) => part.partId === partId);
     return {
@@ -568,11 +834,126 @@ export function PartStage({
     <div className="space-y-3 sm:space-y-4">
       <div className="flex items-center justify-between gap-3">
         <h3 className="text-base font-semibold sm:text-lg">{title}</h3>
-        <ViewToggle view={viewMode} onViewChange={setViewMode} showOnMobile />
+        {reorderMode ? (
+          <div className="flex shrink-0 items-center gap-2">
+            <ViewToggle
+              view={viewMode}
+              onViewChange={setViewMode}
+              showOnMobile
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onReorderCancel}
+              disabled={isReorderSaving}
+              className="h-8 px-2.5"
+            >
+              <X className="h-4 w-4" />
+              <span className="hidden sm:inline">Cancel</span>
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => onReorderSave?.(orderedPartIds)}
+              disabled={isReorderSaving}
+              className="h-8 px-2.5"
+            >
+              <Check className="h-4 w-4" />
+              <span>{isReorderSaving ? "Saving" : "Save"}</span>
+            </Button>
+          </div>
+        ) : (
+          <div className="flex shrink-0 items-center gap-2">
+            {onReorderStart && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={onReorderStart}
+                disabled={!canStartReorder || isReorderSaving}
+                title={
+                  canStartReorder
+                    ? "Reorder parts in this group"
+                    : "Choose a catalogue, material, size, and category first"
+                }
+                className="h-10 px-3 sm:h-8 sm:px-2.5"
+              >
+                <GripVertical className="h-4 w-4" />
+                <span>Reorder</span>
+              </Button>
+            )}
+            <ViewToggle
+              view={viewMode}
+              onViewChange={setViewMode}
+              showOnMobile
+            />
+          </div>
+        )}
       </div>
-      {viewMode === "grid" ? (
-        <div className={WIZARD_OPTION_GRID_CLASS}>
-          {pagination.paginatedItems.map((part) => {
+      {reorderMode ? (
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          autoScroll={{
+            threshold: {
+              x: 0.2,
+              y: 0.35,
+            },
+            acceleration: 16,
+            interval: 3,
+          }}
+          onDragMove={handleReorderDragMove}
+          onDragEnd={handleReorderDragEnd}
+        >
+          <SortableContext items={orderedPartIds}>
+            {viewMode === "grid" ? (
+              <div className={PART_TILE_GRID_CLASS}>
+                {visibleParts.map((part) => {
+                  const { isPending, pendingQuantity } = getPendingPartState(
+                    part.id,
+                  );
+                  return (
+                    <SortablePartCard
+                      key={part.id}
+                      part={part}
+                      isPending={isPending}
+                      pendingQuantity={pendingQuantity}
+                      onPartSelect={onPartSelect}
+                      onPartQuantitySet={onPartQuantitySet}
+                      onQuantityPickerPreviewChange={
+                        onQuantityPickerPreviewChange
+                      }
+                      onEditPart={onEditPart}
+                    />
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {visibleParts.map((part) => {
+                  const { isPending, pendingQuantity } = getPendingPartState(
+                    part.id,
+                  );
+                  return (
+                    <SortablePartListRow
+                      key={part.id}
+                      part={part}
+                      isPending={isPending}
+                      pendingQuantity={pendingQuantity}
+                      onPartSelect={onPartSelect}
+                      onPartQuantitySet={onPartQuantitySet}
+                      onEditPart={onEditPart}
+                    />
+                  );
+                })}
+              </div>
+            )}
+          </SortableContext>
+        </DndContext>
+      ) : viewMode === "grid" ? (
+        <div className={PART_TILE_GRID_CLASS}>
+          {visibleParts.map((part) => {
             const { isPending, pendingQuantity } = getPendingPartState(part.id);
             return (
               <PartCard
@@ -592,7 +973,7 @@ export function PartStage({
         </div>
       ) : (
         <div className="space-y-3">
-          {pagination.paginatedItems.map((part) => {
+          {visibleParts.map((part) => {
             const { isPending, pendingQuantity } = getPendingPartState(part.id);
             return (
               <PartListRow
@@ -610,7 +991,9 @@ export function PartStage({
           })}
         </div>
       )}
-      <WizardOptionPagination pagination={pagination} itemLabel="parts" />
+      {!reorderMode && (
+        <WizardOptionPagination pagination={pagination} itemLabel="parts" />
+      )}
     </div>
   );
 }

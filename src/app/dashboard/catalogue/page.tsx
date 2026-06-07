@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
 import {
@@ -26,6 +26,7 @@ import {
 } from "~/lib/catalogue-xlsx";
 import { useOnlineStatus } from "~/hooks/use-online-status";
 import { TEMPORARILY_DISCONNECT_BROWSER_FROM_SERVER } from "~/lib/server-connection-mode";
+import { GripVertical } from "lucide-react";
 
 export default function CataloguePage() {
   const [editingPartId, setEditingPartId] = useState<string | null>(null);
@@ -35,6 +36,10 @@ export default function CataloguePage() {
   const [exportCatalogId, setExportCatalogId] = useState<string | null>(null);
   const [isImporting, setIsImporting] = useState(false);
   const [importProgress, setImportProgress] = useState<string | null>(null);
+  const [isReorderMode, setIsReorderMode] = useState(false);
+  const [stagedReorderPartIds, setStagedReorderPartIds] = useState<string[]>(
+    [],
+  );
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const isBrowserOnline = useOnlineStatus();
   const isCatalogueOnline =
@@ -42,6 +47,7 @@ export default function CataloguePage() {
   const utils = api.useUtils();
 
   const importCatalogueRows = api.catalogue.importCatalogueRows.useMutation();
+  const reorderPartGroup = api.catalogue.reorderPartGroup.useMutation();
 
   const {
     wizardStage,
@@ -97,9 +103,99 @@ export default function CataloguePage() {
   } = usePartWizard();
 
   const catalogOptions = catalogs ?? [];
-
   const isWizardSearchActive =
     wizardStage !== "review" && wizardSearchQuery.trim().length > 0;
+  const selectedCategoryId = selectedCategory?.categoryId ?? null;
+  const canReorderCurrentGroup = Boolean(
+    wizardStage === "part" &&
+    !isWizardSearchActive &&
+    selectedCatalogId &&
+    selectedMaterialId &&
+    selectedSize &&
+    selectedCategoryId &&
+    filteredPartsForSelection.length > 1,
+  );
+
+  useEffect(() => {
+    if (canReorderCurrentGroup) return;
+    setIsReorderMode(false);
+    setStagedReorderPartIds([]);
+  }, [canReorderCurrentGroup]);
+
+  const handleStartReorder = () => {
+    setStagedReorderPartIds(filteredPartsForSelection.map((part) => part.id));
+    setIsReorderMode(true);
+  };
+
+  const handleCancelReorder = () => {
+    setIsReorderMode(false);
+    setStagedReorderPartIds([]);
+  };
+
+  const handleSaveReorder = async (currentPartIds?: string[]) => {
+    if (
+      !selectedCatalogId ||
+      !selectedMaterialId ||
+      !selectedSize ||
+      !selectedCategoryId
+    ) {
+      return;
+    }
+
+    const partIds =
+      currentPartIds && currentPartIds.length > 0
+        ? currentPartIds
+        : stagedReorderPartIds.length > 0
+          ? stagedReorderPartIds
+          : filteredPartsForSelection.map((part) => part.id);
+
+    const savedOrder = await reorderPartGroup.mutateAsync({
+      catalogId: selectedCatalogId,
+      materialId: selectedMaterialId,
+      sizeNominal: selectedSize.nominal,
+      sizeUnit: selectedSize.unit,
+      categoryId: selectedCategoryId,
+      partIds,
+    });
+    const savedPartIds =
+      savedOrder.partIds.length === partIds.length ? savedOrder.partIds : partIds;
+
+    utils.catalogue.searchParts.setData({ limit: 5000 }, (currentParts) => {
+      if (!currentParts) return currentParts;
+
+      const orderById = new Map(
+        savedPartIds.map((partId, index) => [partId, index]),
+      );
+      const sortOrderById = new Map(
+        savedOrder.sortOrders.map((part) => [part.id, part.sortOrder]),
+      );
+      const reorderedGroupParts = currentParts
+        .filter((part) => orderById.has(part.id))
+        .sort(
+          (a, b) =>
+            (orderById.get(a.id) ?? Number.MAX_SAFE_INTEGER) -
+            (orderById.get(b.id) ?? Number.MAX_SAFE_INTEGER),
+        );
+
+      if (reorderedGroupParts.length !== partIds.length) {
+        return currentParts;
+      }
+
+      let nextGroupPartIndex = 0;
+      return currentParts.map((part) => {
+        if (!orderById.has(part.id)) return part;
+
+        const nextPart = reorderedGroupParts[nextGroupPartIndex++] ?? part;
+        return {
+          ...nextPart,
+          sortOrder: sortOrderById.get(nextPart.id) ?? nextPart.sortOrder,
+        };
+      });
+    });
+    void utils.catalogue.searchParts.invalidate();
+    setIsReorderMode(false);
+    setStagedReorderPartIds([]);
+  };
 
   const handleExportClick = () => {
     setExportCatalogId(null);
@@ -251,6 +347,20 @@ export default function CataloguePage() {
             Parts Catalogue
           </h1>
           <div className="flex items-center gap-2">
+            <Button
+              variant={isReorderMode ? "default" : "outline"}
+              onClick={isReorderMode ? handleCancelReorder : handleStartReorder}
+              disabled={!canReorderCurrentGroup || reorderPartGroup.isPending}
+              className="hidden sm:inline-flex"
+              title={
+                canReorderCurrentGroup
+                  ? "Reorder parts in this group"
+                  : "Choose a catalogue, material, size, and category first"
+              }
+            >
+              <GripVertical className="h-4 w-4" />
+              {isReorderMode ? "Reordering" : "Reorder"}
+            </Button>
             <input
               ref={fileInputRef}
               type="file"
@@ -406,8 +516,15 @@ export default function CataloguePage() {
               selectedCategory={selectedCategory}
               onContinueToReview={() => undefined}
               actionMode="edit"
-              title="Parts"
+              title={isReorderMode ? "Reorder Parts" : "Parts"}
               actionLabel="Edit"
+              reorderMode={isReorderMode}
+              canStartReorder={canReorderCurrentGroup}
+              isReorderSaving={reorderPartGroup.isPending}
+              onReorderStart={handleStartReorder}
+              onReorderOrderChange={setStagedReorderPartIds}
+              onReorderSave={handleSaveReorder}
+              onReorderCancel={handleCancelReorder}
             />
           )}
       </div>

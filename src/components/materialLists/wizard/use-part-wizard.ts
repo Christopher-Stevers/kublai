@@ -31,10 +31,20 @@ type PreloadedPart = {
   sizeUnit: string | null;
   catalogId: string;
   categoryId: string | null;
+  sortOrder?: number;
   isOrgSpecific: boolean;
 };
 
-export function usePartWizard() {
+type PartFacet = {
+  materialId: string | null;
+  sizeLabel?: string | null;
+  sizeNominal: string | number | null;
+  sizeUnit: string | null;
+  catalogId: string;
+  categoryId: string | null;
+};
+
+export function usePartWizard(open = true) {
   const [wizardStage, setWizardStage] = useState<WizardStage>("catalog");
   const [selectedCatalogId, setSelectedCatalogId] = useState<string | null>(
     null,
@@ -69,36 +79,47 @@ export function usePartWizard() {
   const [cachedCatalogueData, setCachedCatalogueData] = useState(
     () => getOfflineCatalogueSnapshot()?.data ?? null,
   );
+  const [warmedSelectionParts, setWarmedSelectionParts] = useState<
+    PreloadedPart[] | null
+  >(null);
   const utils = api.useUtils();
   const isOnline = useOnlineStatus();
-  const { data: serverCatalogs } = api.catalogue.getCatalogs.useQuery(
+  const { data: serverSummary } = api.catalogue.getPartWizardSummary.useQuery(
     undefined,
     {
-      enabled: isOnline,
+      enabled: open && isOnline,
+      staleTime: 1000 * 60 * 5,
     },
   );
-  const { data: serverMaterials } = api.catalogue.getMaterials.useQuery(
-    undefined,
+  const shouldLoadSelectionParts =
+    open &&
+    isOnline &&
+    (hasCatalogSelection ||
+      wizardStage === "part" ||
+      deferredWizardSearchQuery.trim().length > 0);
+  const { data: serverSelectionParts } = api.catalogue.searchParts.useQuery(
     {
-      enabled: isOnline,
+      query: deferredWizardSearchQuery.trim() || undefined,
+      catalogId:
+        hasCatalogSelection && selectedCatalogId
+          ? selectedCatalogId
+          : undefined,
+      materialId:
+        hasMaterialSelection && selectedMaterialId
+          ? selectedMaterialId
+          : undefined,
+      sizeNominal:
+        hasSizeSelection && selectedSize ? selectedSize.nominal : undefined,
+      sizeUnit:
+        hasSizeSelection && selectedSize ? selectedSize.unit : undefined,
+      categoryId:
+        hasCategorySelection && selectedCategory
+          ? selectedCategory.categoryId
+          : undefined,
+      limit: 5000,
     },
-  );
-  const { data: serverAllUnits } = api.catalogue.getAllUnits.useQuery(
-    undefined,
     {
-      enabled: isOnline,
-    },
-  );
-  const { data: serverCategoryTree } = api.catalogue.getCategoryTree.useQuery(
-    undefined,
-    {
-      enabled: isOnline,
-    },
-  );
-  const { data: serverAllParts } = api.catalogue.searchParts.useQuery(
-    { limit: 5000 },
-    {
-      enabled: isOnline,
+      enabled: shouldLoadSelectionParts,
       staleTime: 1000 * 60 * 5,
     },
   );
@@ -107,58 +128,130 @@ export function usePartWizard() {
   }, []);
 
   useEffect(() => {
+    if (!serverSelectionParts) return;
+    setWarmedSelectionParts(serverSelectionParts);
+  }, [serverSelectionParts]);
+
+  useEffect(() => {
+    if (!open) {
+      setWarmedSelectionParts(null);
+    }
+  }, [open]);
+
+  useEffect(() => {
     if (
       !isOnline ||
-      !serverCatalogs ||
-      !serverMaterials ||
-      !serverAllUnits ||
-      !serverCategoryTree ||
-      !serverAllParts
+      !serverSummary ||
+      !serverSelectionParts ||
+      serverSelectionParts.length < (serverSummary.partCount ?? 0)
     ) {
       return;
     }
 
     const nextSnapshot = {
-      catalogs: serverCatalogs,
-      materials: serverMaterials,
-      categories: serverCategoryTree,
-      allUnits: serverAllUnits,
-      parts: serverAllParts,
+      catalogs: serverSummary.catalogs,
+      materials: serverSummary.materials,
+      categories: serverSummary.categories,
+      allUnits: serverSummary.allUnits,
+      parts: serverSelectionParts,
     };
 
     setOfflineCatalogueSnapshot(nextSnapshot);
     setCachedCatalogueData(nextSnapshot);
-  }, [
-    isOnline,
-    serverAllParts,
-    serverAllUnits,
-    serverCatalogs,
-    serverCategoryTree,
-    serverMaterials,
-  ]);
+  }, [isOnline, serverSelectionParts, serverSummary]);
 
   const catalogs = isOnline
-    ? (serverCatalogs ?? cachedCatalogueData?.catalogs)
+    ? (serverSummary?.catalogs ?? cachedCatalogueData?.catalogs)
     : cachedCatalogueData?.catalogs;
   const materials = isOnline
-    ? (serverMaterials ?? cachedCatalogueData?.materials)
+    ? (serverSummary?.materials ?? cachedCatalogueData?.materials)
     : cachedCatalogueData?.materials;
   const allUnits = isOnline
-    ? (serverAllUnits ?? cachedCatalogueData?.allUnits)
+    ? (serverSummary?.allUnits ?? cachedCatalogueData?.allUnits)
     : cachedCatalogueData?.allUnits;
   const categoryTree = isOnline
-    ? (serverCategoryTree ?? cachedCatalogueData?.categories)
+    ? (serverSummary?.categories ?? cachedCatalogueData?.categories)
     : cachedCatalogueData?.categories;
-  const allParts = isOnline ? serverAllParts : cachedCatalogueData?.parts;
+  const summaryParts: PartFacet[] | undefined = isOnline
+    ? (serverSummary?.parts ?? cachedCatalogueData?.parts)
+    : cachedCatalogueData?.parts;
+  const warmedFilteredSelectionParts = useMemo(() => {
+    if (!warmedSelectionParts) return undefined;
+
+    const query = deferredWizardSearchQuery.trim().toLowerCase();
+    return warmedSelectionParts.filter((part) => {
+      if (query && !part.displayName.toLowerCase().includes(query)) {
+        return false;
+      }
+
+      if (
+        hasCatalogSelection &&
+        selectedCatalogId !== null &&
+        part.catalogId !== selectedCatalogId
+      ) {
+        return false;
+      }
+
+      if (
+        hasMaterialSelection &&
+        selectedMaterialId !== null &&
+        part.materialId !== selectedMaterialId
+      ) {
+        return false;
+      }
+
+      if (hasSizeSelection && selectedSize !== null) {
+        const nominal =
+          part.sizeNominal === null ? null : Number(part.sizeNominal);
+        if (
+          nominal !== selectedSize.nominal ||
+          part.sizeUnit !== selectedSize.unit
+        ) {
+          return false;
+        }
+        if (
+          selectedSize.sizeLabel &&
+          part.sizeLabel !== selectedSize.sizeLabel
+        ) {
+          return false;
+        }
+      }
+
+      if (
+        hasCategorySelection &&
+        selectedCategory?.categoryId !== null &&
+        part.categoryId !== selectedCategory?.categoryId
+      ) {
+        return false;
+      }
+
+      return true;
+    });
+  }, [
+    deferredWizardSearchQuery,
+    hasCatalogSelection,
+    hasCategorySelection,
+    hasMaterialSelection,
+    hasSizeSelection,
+    selectedCatalogId,
+    selectedCategory,
+    selectedMaterialId,
+    selectedSize,
+    warmedSelectionParts,
+  ]);
+  const selectionParts = isOnline
+    ? (serverSelectionParts ??
+      (shouldLoadSelectionParts ? warmedFilteredSelectionParts : []))
+    : cachedCatalogueData?.parts;
 
   const partsByCatalog = useMemo(
     () =>
-      (allParts ?? []).filter((part) =>
+      (summaryParts ?? []).filter((part) =>
         !hasCatalogSelection || selectedCatalogId === null
           ? true
           : part.catalogId === selectedCatalogId,
       ),
-    [allParts, hasCatalogSelection, selectedCatalogId],
+    [summaryParts, hasCatalogSelection, selectedCatalogId],
   );
 
   const partsByMaterial = useMemo(
@@ -185,7 +278,7 @@ export function usePartWizard() {
           part.sizeUnit === selectedSize.unit;
         if (!primaryMatch) return false;
         if (!selectedSize.sizeLabel) return true;
-        return (part.sizeLabel ?? part.size) === selectedSize.sizeLabel;
+        return part.sizeLabel === selectedSize.sizeLabel;
       }),
     [hasSizeSelection, partsByMaterial, selectedSize],
   );
@@ -206,20 +299,10 @@ export function usePartWizard() {
     [hasCategorySelection, partsBySize, selectedCategory],
   );
 
-  const partDisplayNameMatchesQuery = useCallback(
-    (part: PreloadedPart, query: string) => {
-      if (!query) return true;
-      return part.displayName.toLowerCase().includes(query);
-    },
-    [],
-  );
-
   const catalogsWithCounts = useMemo(() => {
-    const query = deferredWizardSearchQuery.trim().toLowerCase();
     const countMap = new Map<string, number>();
 
-    for (const part of allParts ?? []) {
-      if (!partDisplayNameMatchesQuery(part, query)) continue;
+    for (const part of summaryParts ?? []) {
       countMap.set(part.catalogId, (countMap.get(part.catalogId) ?? 0) + 1);
     }
 
@@ -231,25 +314,17 @@ export function usePartWizard() {
       .filter(
         (catalog) => catalog.count > 0 || selectedCatalogId === catalog.id,
       );
-  }, [
-    allParts,
-    catalogs,
-    selectedCatalogId,
-    deferredWizardSearchQuery,
-    partDisplayNameMatchesQuery,
-  ]);
+  }, [summaryParts, catalogs, selectedCatalogId]);
 
   const materialCounts = useMemo(() => {
-    const query = deferredWizardSearchQuery.trim().toLowerCase();
     const counts = new Map<string, number>();
     for (const part of partsByCatalog) {
-      if (!partDisplayNameMatchesQuery(part, query)) continue;
       if (part.materialId) {
         counts.set(part.materialId, (counts.get(part.materialId) ?? 0) + 1);
       }
     }
     return counts;
-  }, [partsByCatalog, deferredWizardSearchQuery, partDisplayNameMatchesQuery]);
+  }, [partsByCatalog]);
 
   const materialsWithCounts = useMemo(() => {
     return (materials ?? [])
@@ -263,11 +338,9 @@ export function usePartWizard() {
   }, [materials, materialCounts, selectedMaterialId]);
 
   const categoriesWithCounts = useMemo(() => {
-    const query = deferredWizardSearchQuery.trim().toLowerCase();
     const countMap = new Map<string | null, number>();
 
     for (const part of partsBySize) {
-      if (!partDisplayNameMatchesQuery(part, query)) continue;
       countMap.set(part.categoryId, (countMap.get(part.categoryId) ?? 0) + 1);
     }
 
@@ -282,16 +355,9 @@ export function usePartWizard() {
           category.count > 0 ||
           selectedCategory?.categoryId === category.categoryId,
       );
-  }, [
-    categoryTree,
-    partsBySize,
-    selectedCategory,
-    deferredWizardSearchQuery,
-    partDisplayNameMatchesQuery,
-  ]);
+  }, [categoryTree, partsBySize, selectedCategory]);
 
   const filteredAvailableSizes = useMemo(() => {
-    const query = deferredWizardSearchQuery.trim().toLowerCase();
     const sizeMap = new Map<
       string,
       {
@@ -304,7 +370,6 @@ export function usePartWizard() {
     >();
 
     for (const part of partsByMaterial) {
-      if (!partDisplayNameMatchesQuery(part, query)) continue;
       const nominal =
         part.sizeNominal === null ? null : Number(part.sizeNominal);
       if (nominal === null || !part.sizeUnit) {
@@ -321,7 +386,7 @@ export function usePartWizard() {
       };
       current.count += 1;
 
-      const label = part.sizeLabel ?? part.size;
+      const label = part.sizeLabel;
       if (label) {
         current.subSizeMap.set(label, (current.subSizeMap.get(label) ?? 0) + 1);
       }
@@ -346,14 +411,11 @@ export function usePartWizard() {
         }
         return a.unit.localeCompare(b.unit);
       });
-  }, [partsByMaterial, deferredWizardSearchQuery, partDisplayNameMatchesQuery]);
+  }, [partsByMaterial]);
 
   const filteredPartsForSelection = useMemo(() => {
-    const query = deferredWizardSearchQuery.trim().toLowerCase();
-    return partsByCategory.filter((part) =>
-      partDisplayNameMatchesQuery(part, query),
-    );
-  }, [partsByCategory, deferredWizardSearchQuery, partDisplayNameMatchesQuery]);
+    return selectionParts ?? [];
+  }, [selectionParts]);
 
   const createCatalog = api.catalogue.createCatalog.useMutation({
     onSuccess: (newCatalog) => {
@@ -365,6 +427,7 @@ export function usePartWizard() {
       setCustomCatalogName("");
       setShowCustomCatalogInput(false);
       setWizardStage("material");
+      void utils.catalogue.getPartWizardSummary.invalidate();
       void utils.catalogue.getCatalogs.invalidate();
     },
   });
@@ -379,6 +442,7 @@ export function usePartWizard() {
       setCustomMaterialName("");
       setShowCustomMaterialInput(false);
       setWizardStage("size");
+      void utils.catalogue.getPartWizardSummary.invalidate();
       void utils.catalogue.getMaterials.invalidate();
     },
   });
@@ -415,6 +479,7 @@ export function usePartWizard() {
       setCustomCategoryName("");
       setShowCustomCategoryInput(false);
       setWizardStage("part");
+      void utils.catalogue.getPartWizardSummary.invalidate();
       void utils.catalogue.getCategories.invalidate();
     },
   });
@@ -531,7 +596,7 @@ export function usePartWizard() {
 
   useEffect(() => {
     if (deferredWizardSearchQuery.trim()) return;
-    if (!allParts) return;
+    if (!summaryParts) return;
 
     if (wizardStage === "catalog") {
       if (catalogs === undefined) return;
@@ -568,7 +633,7 @@ export function usePartWizard() {
       }
     }
   }, [
-    allParts,
+    summaryParts,
     catalogs,
     catalogsWithCounts.length,
     categoriesWithCounts.length,

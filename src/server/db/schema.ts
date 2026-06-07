@@ -551,6 +551,7 @@ export const partDefinitions = createTable(
       .uuid()
       .references(() => materials.id, { onDelete: "set null" }),
     sizeId: d.uuid().references(() => sizes.id, { onDelete: "set null" }),
+    sortOrder: d.integer().notNull().default(0),
 
     isActive: d.boolean().notNull().default(true),
 
@@ -566,6 +567,14 @@ export const partDefinitions = createTable(
     index("part_def_facets_idx").on(t.materialId, t.sizeId),
     index("part_def_material_idx").on(t.materialId),
     index("part_def_size_idx").on(t.sizeId),
+    index("part_def_group_sort_idx").on(
+      t.organizationId,
+      t.catalogId,
+      t.materialId,
+      t.sizeId,
+      t.categoryId,
+      t.sortOrder,
+    ),
   ],
 );
 

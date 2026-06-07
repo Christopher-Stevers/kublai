@@ -7,6 +7,7 @@ import {
   ExternalLink,
   Package,
   Search,
+  Share2,
   Star,
   Upload,
   X,
@@ -85,6 +86,21 @@ function formatCurrencyInput(value: string) {
   }).format(amount);
 }
 
+function isValidSizeInput(value: string) {
+  if (!/^[0-9xX./\s]*$/.test(value)) return false;
+
+  const normalizedValue = value.toLowerCase();
+  if (/^\s*x/.test(normalizedValue) || /x\s*x/.test(normalizedValue)) {
+    return false;
+  }
+
+  return normalizedValue.split("x").every((segment) => {
+    const trimmedSegment = segment.trim();
+    if (!trimmedSegment) return true;
+    return /^(?:\d*(?:\.\d*)?|\d+\/?\d*|\d+\s+\d+\/?\d*)$/.test(trimmedSegment);
+  });
+}
+
 function buildPartName({
   description,
   materialName,
@@ -156,6 +172,24 @@ async function uploadPartImage(file: File): Promise<string> {
   }
 
   return body.url;
+}
+
+function normalizePartImageUrlInput(value: string) {
+  const trimmed = value.trim();
+  if (trimmed.startsWith("api/catalogue/images/")) {
+    return `/${trimmed}`;
+  }
+  if (trimmed.startsWith("images/catalog/uploads/")) {
+    return `/${trimmed}`;
+  }
+  return trimmed;
+}
+
+function isStoredCatalogueImageUrl(value: string) {
+  return (
+    value.startsWith("/api/catalogue/images/") ||
+    value.startsWith("/images/catalog/uploads/")
+  );
 }
 
 interface PartDetailsDialogProps {
@@ -256,9 +290,10 @@ export function PartDetailsDialog({
     useState(false);
   const [dismissedFamilySuggestionIds, setDismissedFamilySuggestionIds] =
     useState<Set<string>>(() => new Set());
-  const [googleManualImageUrl, setGoogleManualImageUrl] = useState("");
   const [copiedPartUuid, setCopiedPartUuid] = useState(false);
   const [isSubmittingInBackground, setIsSubmittingInBackground] =
+    useState(false);
+  const [showInvalidSizeInputFlash, setShowInvalidSizeInputFlash] =
     useState(false);
 
   const { data: selectedSupplierDetails } = api.supplier.getById.useQuery(
@@ -272,18 +307,46 @@ export function PartDetailsDialog({
   );
   const imageInputRef = useRef<HTMLInputElement | null>(null);
   const initializedForOpenRef = useRef(false);
+  const sizeInputFlashTimeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (!open) {
       initializedForOpenRef.current = false;
       setSubmitError(null);
-      setGoogleManualImageUrl("");
       setIsFamilyImageSuggestionsOpen(false);
       setDismissedFamilySuggestionIds(new Set());
       setCopiedPartUuid(false);
       setIsSubmittingInBackground(false);
+      setShowInvalidSizeInputFlash(false);
+      if (sizeInputFlashTimeoutRef.current) {
+        clearTimeout(sizeInputFlashTimeoutRef.current);
+        sizeInputFlashTimeoutRef.current = null;
+      }
     }
   }, [open]);
+
+  const flashInvalidSizeInput = () => {
+    if (sizeInputFlashTimeoutRef.current) {
+      clearTimeout(sizeInputFlashTimeoutRef.current);
+    }
+    setShowInvalidSizeInputFlash(false);
+    window.setTimeout(() => {
+      setShowInvalidSizeInputFlash(true);
+      sizeInputFlashTimeoutRef.current = window.setTimeout(() => {
+        setShowInvalidSizeInputFlash(false);
+        sizeInputFlashTimeoutRef.current = null;
+      }, 450);
+    }, 0);
+  };
+
+  const handleSizeValueChange = (nextValue: string) => {
+    if (!isValidSizeInput(nextValue)) {
+      flashInvalidSizeInput();
+      return;
+    }
+
+    setSizeValue(nextValue.replace(/X/g, "x"));
+  };
 
   useEffect(() => {
     if (!open || initializedForOpenRef.current) return;
@@ -292,7 +355,6 @@ export function PartDetailsDialog({
       setDisplayName(part.displayName ?? "");
       setDescription(part.description ?? "");
       setImageUrl(part.imageUrl ?? "");
-      setGoogleManualImageUrl("");
       setAliasesText(
         part.aliases?.map((alias) => alias.synonym).join("\n") ?? "",
       );
@@ -323,7 +385,6 @@ export function PartDetailsDialog({
       setDisplayName("");
       setDescription("");
       setImageUrl("");
-      setGoogleManualImageUrl("");
       setAliasesText("");
       setCatalogId(initialContext?.catalogId ?? null);
       setCategoryId(initialContext?.categoryId ?? null);
@@ -539,7 +600,6 @@ export function PartDetailsDialog({
     onSuccess: (result) => {
       setImageUrl(result.imageUrl);
       setIsGoogleImagePickerOpen(false);
-      setGoogleManualImageUrl("");
       setSubmitError(null);
       void utils.catalogue.searchParts.invalidate();
       void utils.catalogue.getPart.invalidate();
@@ -549,18 +609,36 @@ export function PartDetailsDialog({
     },
   });
 
+  const selectedCategory = categoryTree?.find(
+    (category) => category.id === categoryId,
+  );
+  const selectedMaterial = materials?.find(
+    (material) => material.id === materialId,
+  );
+  const previewImageUrl = normalizePartImageUrlInput(imageUrl);
+  const familyImageSuggestionInput = isEditMode
+    ? { partId: partId! }
+    : {
+        draft: {
+          displayName: displayName.trim(),
+          description: description.trim() || null,
+          categoryName: selectedCategory?.name ?? null,
+          materialId,
+          materialName: selectedMaterial?.name ?? null,
+        },
+      };
+
   const {
     data: familyImageSuggestions,
     isFetching: isLoadingFamilySuggestions,
   } = api.catalogue.getPartImageFamilySuggestions.useQuery(
-    { partId: partId! },
+    familyImageSuggestionInput,
     {
       enabled:
         isOnline &&
         isFamilyImageSuggestionsOpen &&
-        isEditMode &&
-        !!partId &&
-        !!imageUrl.trim(),
+        !!previewImageUrl &&
+        (isEditMode ? !!partId : !!displayName.trim()),
     },
   );
 
@@ -575,17 +653,22 @@ export function PartDetailsDialog({
       },
     });
 
-  const handleApplyManualGoogleImageUrl = () => {
-    if (!partId || !googleManualImageUrl.trim()) return;
-
-    applyRemoteGoogleImageUrl(googleManualImageUrl.trim());
-  };
-
-  const applyRemoteGoogleImageUrl = (remoteImageUrl: string) => {
-    if (!partId) return;
-
-    const trimmedUrl = remoteImageUrl.trim();
+  const applyRemoteGoogleImageUrl = async (remoteImageUrl: string) => {
+    const trimmedUrl = normalizePartImageUrlInput(remoteImageUrl);
     if (!trimmedUrl) return;
+
+    if (!isEditMode || !partId) {
+      setImageUrl(trimmedUrl);
+      setIsGoogleImagePickerOpen(false);
+      return;
+    }
+
+    if (isStoredCatalogueImageUrl(trimmedUrl)) {
+      setImageUrl(trimmedUrl);
+      await updatePart.mutateAsync({ partId, imageUrl: trimmedUrl });
+      setIsGoogleImagePickerOpen(false);
+      return;
+    }
 
     applyGooglePartImage.mutate({
       partId,
@@ -596,18 +679,17 @@ export function PartDetailsDialog({
   };
 
   const attachUploadedImageToPart = async (file: File) => {
-    if (!partId) return;
-
     const uploadedUrl = await uploadPartImage(file);
     setImageUrl(uploadedUrl);
-    await updatePart.mutateAsync({ partId, imageUrl: uploadedUrl });
+
+    if (isEditMode && partId) {
+      await updatePart.mutateAsync({ partId, imageUrl: uploadedUrl });
+    }
+
     setIsGoogleImagePickerOpen(false);
-    setGoogleManualImageUrl("");
   };
 
   const handleGoogleClipboardPaste = async () => {
-    if (!partId) return;
-
     if (typeof navigator === "undefined" || !navigator.clipboard) {
       setSubmitError("Clipboard access is not available in this browser.");
       return;
@@ -641,8 +723,7 @@ export function PartDetailsDialog({
         return;
       }
 
-      setGoogleManualImageUrl(pastedText);
-      applyRemoteGoogleImageUrl(pastedText);
+      await applyRemoteGoogleImageUrl(pastedText);
     } catch (error) {
       console.error("Failed to read image from clipboard", error);
       setSubmitError(
@@ -662,7 +743,7 @@ export function PartDetailsDialog({
       .find((item) => item.kind === "file" && item.type.startsWith("image/"))
       ?.getAsFile();
 
-    if (!pastedImage || !partId) return;
+    if (!pastedImage) return;
 
     event.preventDefault();
     setSubmitError(null);
@@ -735,22 +816,12 @@ export function PartDetailsDialog({
     isProcessingImage ||
     isSubmittingInBackground;
   const isReviewingPhoto = applyGooglePartImage.isPending;
+  const hasFamilyImageSuggestionSource = isEditMode
+    ? !!partId
+    : !!displayName.trim();
   const selectedCatalog = catalogs?.find((catalog) => catalog.id === catalogId);
-  const selectedCategory = categoryTree?.find(
-    (category) => category.id === categoryId,
-  );
-  const selectedMaterial = materials?.find(
-    (material) => material.id === materialId,
-  );
   const selectedSizeUnit = sizeUnits.find((unit) => unit.id === sizeUnitId);
-  const googleImageSearchQuery = [
-    displayName,
-    selectedMaterial?.name,
-    selectedCategory?.name,
-  ]
-    .map((value) => value?.trim())
-    .filter(Boolean)
-    .join(" ");
+  const googleImageSearchQuery = displayName.trim();
   const googleImageSearchUrl =
     "https://www.google.com/search?tbm=isch&q=" +
     encodeURIComponent(googleImageSearchQuery || displayName);
@@ -772,6 +843,19 @@ export function PartDetailsDialog({
     setIsFamilyImageSuggestionsOpen(true);
   };
 
+  const handleDialogOpenChange = (nextOpen: boolean) => {
+    if (
+      !nextOpen &&
+      (isGoogleImagePickerOpen ||
+        isFamilyImageSuggestionsOpen ||
+        isSupplierDialogOpen)
+    ) {
+      return;
+    }
+
+    onOpenChange(nextOpen);
+  };
+
   const dismissFamilyImageSuggestion = (suggestionId: string) => {
     setDismissedFamilySuggestionIds((current) => {
       const next = new Set(current);
@@ -785,7 +869,7 @@ export function PartDetailsDialog({
   };
 
   const approveFamilyImageSuggestion = async (suggestionId: string) => {
-    const approvedImageUrl = imageUrl.trim();
+    const approvedImageUrl = normalizePartImageUrlInput(imageUrl);
     if (!approvedImageUrl) return;
 
     setSubmitError(null);
@@ -876,7 +960,7 @@ export function PartDetailsDialog({
       return;
     }
 
-    const normalizedImageUrl = imageUrl.trim() || null;
+    const normalizedImageUrl = normalizePartImageUrlInput(imageUrl) || null;
     const imageUrlToSave = normalizedImageUrl;
 
     const payload = {
@@ -925,7 +1009,7 @@ export function PartDetailsDialog({
 
   if (isEditMode && open && isLoadingPart) {
     return (
-      <Dialog open={open} onOpenChange={onOpenChange}>
+      <Dialog open={open} onOpenChange={handleDialogOpenChange}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Edit Part</DialogTitle>
@@ -952,307 +1036,373 @@ export function PartDetailsDialog({
           </DialogHeader>
 
           <div className="min-w-0 space-y-4 py-4">
-            <div>
-              <FieldHeader
-                label={
-                  <>
-                    Catalog <span className="text-red-600">*</span>
-                  </>
-                }
-                onAdd={() => setShowNewCatalogInput((value) => !value)}
-              />
-              {showNewCatalogInput ? (
-                <div className="mt-2 flex min-w-0 gap-2">
-                  <Input
-                    value={newCatalogName}
-                    onChange={(e) => setNewCatalogName(e.target.value)}
-                    placeholder="New catalog name"
-                    className="min-w-0 flex-1"
-                    disabled={isLoading || createCatalog.isPending}
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handleCatalogAdd}
-                    disabled={
-                      !newCatalogName.trim() ||
-                      isLoading ||
-                      createCatalog.isPending
-                    }
-                  >
-                    Add
-                  </Button>
-                </div>
-              ) : (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className="mt-1 w-full justify-between"
-                      disabled={isLoading}
-                    >
-                      {selectedCatalog?.name ?? "Select catalog"}
-                      <ChevronDown className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent className="max-h-60 overflow-y-auto">
-                    {catalogs?.map((catalog) => (
-                      <DropdownMenuItem
-                        key={catalog.id}
-                        onClick={() => setCatalogId(catalog.id)}
-                      >
-                        {catalog.name}
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
-            </div>
-
-            <div>
-              <FieldHeader
-                label="Material"
-                onAdd={() => setShowNewMaterialInput((value) => !value)}
-              />
-              {showNewMaterialInput ? (
-                <div className="mt-2 flex min-w-0 gap-2">
-                  <Input
-                    value={newMaterialName}
-                    onChange={(e) => setNewMaterialName(e.target.value)}
-                    placeholder="New material name"
-                    className="min-w-0 flex-1"
-                    disabled={isLoading || createMaterial.isPending}
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handleMaterialAdd}
-                    disabled={
-                      !newMaterialName.trim() ||
-                      isLoading ||
-                      createMaterial.isPending
-                    }
-                  >
-                    Add
-                  </Button>
-                </div>
-              ) : (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className="mt-1 w-full justify-between"
-                      disabled={isLoading}
-                    >
-                      {selectedMaterial?.name ?? "Select material"}
-                      <ChevronDown className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent className="max-h-60 overflow-y-auto">
-                    <DropdownMenuItem onClick={() => setMaterialId(null)}>
-                      None
-                    </DropdownMenuItem>
-                    {materials?.map((material) => (
-                      <DropdownMenuItem
-                        key={material.id}
-                        onClick={() => setMaterialId(material.id)}
-                      >
-                        {material.name}
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
-            </div>
-
-            <div
-              className={`grid gap-3 ${sizeValue.trim() ? "grid-cols-[minmax(0,1fr)_7rem] sm:grid-cols-[minmax(0,1fr)_140px]" : "grid-cols-1"}`}
-            >
-              <div>
-                <FieldHeader
-                  label="Size"
-                  addLabel="+Add"
-                  onAdd={() => {
-                    if (parsedSizeNominal !== null && sizeUnitId) {
-                      createSize.mutate({
-                        nominal: parsedSizeNominal,
-                        unitId: sizeUnitId,
-                      });
-                    }
-                  }}
-                />
-                <Input
-                  value={sizeValue}
-                  onChange={(e) => setSizeValue(e.target.value)}
-                  placeholder="1/2, 3 x 3 x 3, or 3x2x2"
-                  className="mt-1"
-                  disabled={isLoading}
-                />
-              </div>
-              {sizeValue.trim() && (
-                <div>
-                  <FieldHeader label="Size Unit" />
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className="mt-1 w-full justify-between"
-                        disabled={isLoading}
-                      >
-                        {selectedSizeUnit?.code ?? "Unit"}
-                        <ChevronDown className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent className="max-h-60 overflow-y-auto">
-                      <DropdownMenuItem onClick={() => setSizeUnitId(null)}>
-                        None
-                      </DropdownMenuItem>
-                      {sizeUnits.map((unit) => (
-                        <DropdownMenuItem
-                          key={unit.id}
-                          onClick={() => setSizeUnitId(unit.id)}
-                        >
-                          {unit.displayName ?? unit.code} ({unit.code})
-                        </DropdownMenuItem>
-                      ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              )}
-            </div>
-
-            <div>
-              <FieldHeader
-                label="Category"
-                onAdd={() => setShowNewCategoryInput((value) => !value)}
-              />
-              {showNewCategoryInput ? (
-                <div className="mt-2 flex min-w-0 gap-2">
-                  <Input
-                    value={newCategoryName}
-                    onChange={(e) => setNewCategoryName(e.target.value)}
-                    placeholder="New category name"
-                    className="min-w-0 flex-1"
-                    disabled={isLoading || createCategory.isPending}
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handleCategoryAdd}
-                    disabled={
-                      !newCategoryName.trim() ||
-                      isLoading ||
-                      createCategory.isPending
-                    }
-                  >
-                    Add
-                  </Button>
-                </div>
-              ) : (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className="mt-1 w-full justify-between"
-                      disabled={isLoading}
-                    >
-                      {selectedCategory?.name ?? "Select category"}
-                      <ChevronDown className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent className="max-h-60 overflow-y-auto">
-                    <DropdownMenuItem onClick={() => setCategoryId(null)}>
-                      None
-                    </DropdownMenuItem>
-                    {categoryTree?.map((category) => (
-                      <DropdownMenuItem
-                        key={category.id}
-                        onClick={() => setCategoryId(category.id)}
-                      >
-                        {category.name}
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
-            </div>
-
-            <div>
-              <Label>Description</Label>
-              <Input
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Part description"
-                className="mt-1"
-                disabled={isLoading}
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="displayName">
-                Part Name <span className="text-red-500">*</span>
+            <div className="rounded-lg border bg-gray-50/50 p-3">
+              <Label className="text-sm font-semibold text-gray-900">
+                Part Information
               </Label>
-              <Input
-                id="displayName"
-                value={displayName}
-                onChange={(e) => {
-                  setHasManuallyEditedDisplayName(true);
-                  setDisplayName(e.target.value);
-                }}
-                placeholder="e.g., 90° Copper Elbow"
-                className="mt-1"
-                disabled={isLoading}
-              />
-              {!isEditMode && (
-                <p className="mt-1 text-xs text-gray-500">
-                  Auto-generated from size, material, and description. You can
-                  still override it.
-                </p>
-              )}
-              <div className="mt-3">
-                <Label title="Add aliases separated by comma">Aliases</Label>
-                <Input
-                  value={aliasesText}
-                  onChange={(e) => setAliasesText(e.target.value)}
-                  placeholder="copper 90, 90 elbow"
-                  className="mt-1"
-                  disabled={isLoading}
-                  title="Add aliases separated by comma"
-                />
+              <div className="mt-3 space-y-4">
+                <div>
+                  <FieldHeader
+                    label={
+                      <>
+                        Catalog <span className="text-red-600">*</span>
+                      </>
+                    }
+                    onAdd={() => setShowNewCatalogInput((value) => !value)}
+                  />
+                  {showNewCatalogInput ? (
+                    <div className="mt-2 flex min-w-0 gap-2">
+                      <Input
+                        value={newCatalogName}
+                        onChange={(e) => setNewCatalogName(e.target.value)}
+                        placeholder="New catalog name"
+                        className="min-w-0 flex-1"
+                        disabled={isLoading || createCatalog.isPending}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={handleCatalogAdd}
+                        disabled={
+                          !newCatalogName.trim() ||
+                          isLoading ||
+                          createCatalog.isPending
+                        }
+                      >
+                        Add
+                      </Button>
+                    </div>
+                  ) : (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className="mt-1 w-full justify-between"
+                          disabled={isLoading}
+                        >
+                          {selectedCatalog?.name ?? "Select catalog"}
+                          <ChevronDown className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent className="max-h-60 overflow-y-auto">
+                        {catalogs?.map((catalog) => (
+                          <DropdownMenuItem
+                            key={catalog.id}
+                            onClick={() => setCatalogId(catalog.id)}
+                          >
+                            {catalog.name}
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
+                </div>
+
+                <div>
+                  <FieldHeader
+                    label="Material"
+                    onAdd={() => setShowNewMaterialInput((value) => !value)}
+                  />
+                  {showNewMaterialInput ? (
+                    <div className="mt-2 flex min-w-0 gap-2">
+                      <Input
+                        value={newMaterialName}
+                        onChange={(e) => setNewMaterialName(e.target.value)}
+                        placeholder="New material name"
+                        className="min-w-0 flex-1"
+                        disabled={isLoading || createMaterial.isPending}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={handleMaterialAdd}
+                        disabled={
+                          !newMaterialName.trim() ||
+                          isLoading ||
+                          createMaterial.isPending
+                        }
+                      >
+                        Add
+                      </Button>
+                    </div>
+                  ) : (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className="mt-1 w-full justify-between"
+                          disabled={isLoading}
+                        >
+                          {selectedMaterial?.name ?? "Select material"}
+                          <ChevronDown className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent className="max-h-60 overflow-y-auto">
+                        <DropdownMenuItem onClick={() => setMaterialId(null)}>
+                          None
+                        </DropdownMenuItem>
+                        {materials?.map((material) => (
+                          <DropdownMenuItem
+                            key={material.id}
+                            onClick={() => setMaterialId(material.id)}
+                          >
+                            {material.name}
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
+                </div>
+
+                <div
+                  className={`grid gap-3 ${sizeValue.trim() ? "grid-cols-[minmax(0,1fr)_7rem] sm:grid-cols-[minmax(0,1fr)_140px]" : "grid-cols-1"}`}
+                >
+                  <div>
+                    <FieldHeader
+                      label="Size"
+                      addLabel="+Add"
+                      onAdd={() => {
+                        if (parsedSizeNominal !== null && sizeUnitId) {
+                          createSize.mutate({
+                            nominal: parsedSizeNominal,
+                            unitId: sizeUnitId,
+                          });
+                        }
+                      }}
+                    />
+                    <div className="relative">
+                      <Input
+                        value={sizeValue}
+                        onChange={(e) => handleSizeValueChange(e.target.value)}
+                        placeholder="1/2, 1.5, 3 x 3 x 3, or 3x2x2"
+                        className="mt-1"
+                        disabled={isLoading}
+                      />
+                      {showInvalidSizeInputFlash && (
+                        <div
+                          className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-red-600"
+                          role="alert"
+                          aria-label="Invalid size input"
+                        >
+                          <X className="h-5 w-5 animate-ping" />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  {sizeValue.trim() && (
+                    <div>
+                      <FieldHeader label="Size Unit" />
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="outline"
+                            className="mt-1 w-full justify-between"
+                            disabled={isLoading}
+                          >
+                            {selectedSizeUnit?.code ?? "Unit"}
+                            <ChevronDown className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent className="max-h-60 overflow-y-auto">
+                          <DropdownMenuItem onClick={() => setSizeUnitId(null)}>
+                            None
+                          </DropdownMenuItem>
+                          {sizeUnits.map((unit) => (
+                            <DropdownMenuItem
+                              key={unit.id}
+                              onClick={() => setSizeUnitId(unit.id)}
+                            >
+                              {unit.displayName ?? unit.code} ({unit.code})
+                            </DropdownMenuItem>
+                          ))}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <FieldHeader
+                    label="Category"
+                    onAdd={() => setShowNewCategoryInput((value) => !value)}
+                  />
+                  {showNewCategoryInput ? (
+                    <div className="mt-2 flex min-w-0 gap-2">
+                      <Input
+                        value={newCategoryName}
+                        onChange={(e) => setNewCategoryName(e.target.value)}
+                        placeholder="New category name"
+                        className="min-w-0 flex-1"
+                        disabled={isLoading || createCategory.isPending}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={handleCategoryAdd}
+                        disabled={
+                          !newCategoryName.trim() ||
+                          isLoading ||
+                          createCategory.isPending
+                        }
+                      >
+                        Add
+                      </Button>
+                    </div>
+                  ) : (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className="mt-1 w-full justify-between"
+                          disabled={isLoading}
+                        >
+                          {selectedCategory?.name ?? "Select category"}
+                          <ChevronDown className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent className="max-h-60 overflow-y-auto">
+                        <DropdownMenuItem onClick={() => setCategoryId(null)}>
+                          None
+                        </DropdownMenuItem>
+                        {categoryTree?.map((category) => (
+                          <DropdownMenuItem
+                            key={category.id}
+                            onClick={() => setCategoryId(category.id)}
+                          >
+                            {category.name}
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
+                </div>
+
+                <div>
+                  <Label>Description</Label>
+                  <Input
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder="Part description"
+                    className="mt-1"
+                    disabled={isLoading}
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="displayName">
+                    Part Name <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    id="displayName"
+                    value={displayName}
+                    onChange={(e) => {
+                      setHasManuallyEditedDisplayName(true);
+                      setDisplayName(e.target.value);
+                    }}
+                    placeholder="e.g., 90° Copper Elbow"
+                    className="mt-1"
+                    disabled={isLoading}
+                  />
+                  {!isEditMode && (
+                    <p className="mt-1 text-xs text-gray-500">
+                      Auto-generated from size, material, and description. You
+                      can still override it.
+                    </p>
+                  )}
+                  <div className="mt-3">
+                    <Label title="Add aliases separated by comma">
+                      Aliases
+                    </Label>
+                    <Input
+                      value={aliasesText}
+                      onChange={(e) => setAliasesText(e.target.value)}
+                      placeholder="copper 90, 90 elbow"
+                      className="mt-1"
+                      disabled={isLoading}
+                      title="Add aliases separated by comma"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <input
+                    id="isActive"
+                    type="checkbox"
+                    checked={isActive}
+                    onChange={(e) => setIsActive(e.target.checked)}
+                    className="h-4 w-4"
+                    disabled={isLoading}
+                  />
+                  <Label htmlFor="isActive">
+                    Active (visible in catalogue)
+                  </Label>
+                </div>
+
+                <div>
+                  <Label>UUID</Label>
+                  {partId || part?.id ? (
+                    <button
+                      type="button"
+                      onClick={handlePartUuidCopy}
+                      className="mt-1 w-full rounded-md border bg-gray-50 px-3 py-2 text-left font-mono text-xs break-all text-gray-700 transition-colors hover:bg-gray-100"
+                      title="Click to copy UUID"
+                    >
+                      {partId ?? part?.id}
+                      <span className="ml-2 font-sans text-xs text-gray-500">
+                        {copiedPartUuid ? "Copied" : "Click to copy"}
+                      </span>
+                    </button>
+                  ) : (
+                    <div className="mt-1 rounded-md border bg-gray-50 px-3 py-2 text-xs text-gray-500">
+                      Generated when the part is saved
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
             <div className="rounded-lg border bg-gray-50/50 p-3">
-              <FieldHeader
-                label="Suppliers"
-                onAdd={() => setIsSupplierDialogOpen(true)}
-              />
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="mt-1 w-full justify-between bg-white"
-                    disabled={isLoading}
-                  >
-                    {supplierId
-                      ? (suppliers?.find(
-                          (supplier) => supplier.id === supplierId,
-                        )?.name ?? "Select supplier")
-                      : "Select supplier"}
-                    <ChevronDown className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="max-h-60 overflow-y-auto">
-                  {suppliers?.map((supplier) => (
-                    <DropdownMenuItem
-                      key={supplier.id}
-                      onClick={() => handleSupplierSelect(supplier.id)}
+              <div className="flex items-center justify-between gap-2">
+                <Label className="text-sm font-semibold text-gray-900">
+                  Supplier Information
+                </Label>
+                <button
+                  type="button"
+                  onClick={() => setIsSupplierDialogOpen(true)}
+                  className="text-primary text-xs font-medium hover:underline"
+                >
+                  + Add
+                </button>
+              </div>
+              <div className="mt-3">
+                <Label>Supplier</Label>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="mt-1 w-full justify-between bg-white"
+                      disabled={isLoading}
                     >
-                      {supplier.name}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
+                      {supplierId
+                        ? (suppliers?.find(
+                            (supplier) => supplier.id === supplierId,
+                          )?.name ?? "Select supplier")
+                        : "Select supplier"}
+                      <ChevronDown className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="max-h-60 overflow-y-auto">
+                    {suppliers?.map((supplier) => (
+                      <DropdownMenuItem
+                        key={supplier.id}
+                        onClick={() => handleSupplierSelect(supplier.id)}
+                      >
+                        {supplier.name}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
 
               {supplierId ? (
                 <div className="mt-3 grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] items-end gap-3">
@@ -1316,123 +1466,89 @@ export function PartDetailsDialog({
               )}
             </div>
 
-            <div>
-              <div className="flex items-center justify-between gap-3">
-                <Label>Part Image</Label>
-                {isEditMode && partId && (
-                  <div className="flex flex-wrap justify-end gap-2">
+            <div className="rounded-lg border bg-gray-50/50 p-3">
+              <Label className="text-sm font-semibold text-gray-900">
+                Image
+              </Label>
+              <div className="mt-3 space-y-4">
+                <div className="grid grid-cols-[10rem_minmax(0,1fr)] gap-3 sm:grid-cols-[12rem_minmax(0,1fr)]">
+                  <div className="relative flex aspect-square w-full items-center justify-center overflow-hidden rounded-md border bg-gray-50">
+                    {previewImageUrl ? (
+                      <Image
+                        src={previewImageUrl}
+                        alt="Part preview"
+                        fill
+                        className="object-cover"
+                        unoptimized
+                      />
+                    ) : (
+                      <Package className="h-8 w-8 text-gray-400" />
+                    )}
+                  </div>
+                  <div className="grid content-start gap-2">
                     <Button
                       type="button"
                       variant="outline"
                       size="sm"
+                      className="h-auto min-h-8 justify-start bg-white text-left whitespace-normal"
                       onClick={openGoogleImageSearch}
                       disabled={isLoading || isReviewingPhoto}
                     >
-                      <Search className="h-4 w-4" />
-                      Find with Google
+                      <Search className="h-4 w-4 shrink-0" />
+                      Search For Image
                     </Button>
                     <Button
                       type="button"
                       variant="outline"
                       size="sm"
+                      className="h-auto min-h-8 justify-start bg-white text-left whitespace-normal"
                       onClick={openFamilyImageSuggestions}
                       disabled={
                         isLoading ||
                         isReviewingPhoto ||
                         applyFamilyPartImage.isPending ||
-                        !imageUrl.trim()
+                        !previewImageUrl ||
+                        !hasFamilyImageSuggestionSource
                       }
                     >
-                      <Check className="h-4 w-4" />
-                      Use for Family
+                      <Share2 className="h-4 w-4 shrink-0" />
+                      Share Image With Similar Parts
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-auto min-h-8 justify-start bg-white text-left whitespace-normal"
+                      onClick={() => imageInputRef.current?.click()}
+                      disabled={isLoading || isProcessingImage}
+                    >
+                      <Upload className="h-4 w-4 shrink-0" />
+                      Upload From File
                     </Button>
                   </div>
-                )}
+                </div>
+                <input
+                  ref={imageInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleImageFileChange}
+                />
+
+                <div>
+                  <Label>Image URL</Label>
+                  <Input
+                    value={imageUrl}
+                    onChange={(e) => {
+                      setImageUrl(e.target.value);
+                    }}
+                    placeholder="https://..."
+                    type="url"
+                    className="mt-1 bg-white"
+                    disabled={isLoading}
+                  />
+                </div>
               </div>
-              <button
-                type="button"
-                onClick={() => imageInputRef.current?.click()}
-                disabled={isLoading}
-                className="mt-1 flex w-full min-w-0 items-center gap-3 rounded-lg border bg-gray-50 p-3 text-left transition-colors hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-60 sm:gap-4"
-              >
-                <div className="relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-md bg-white sm:h-24 sm:w-24">
-                  {imageUrl ? (
-                    <Image
-                      src={imageUrl}
-                      alt="Part preview"
-                      fill
-                      className="object-cover"
-                      unoptimized
-                    />
-                  ) : (
-                    <Package className="h-8 w-8 text-gray-400" />
-                  )}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex min-w-0 items-center gap-2 text-sm font-medium text-gray-900">
-                    <Upload className="h-4 w-4 shrink-0" />
-                    {imageUrl ? "Change image" : "Upload image"}
-                  </div>
-                  <p className="mt-1 text-xs text-gray-500">
-                    Upload or paste an image, or search Google and store the
-                    selected result as a local app image.
-                  </p>
-                </div>
-              </button>
-              <input
-                ref={imageInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={handleImageFileChange}
-              />
-            </div>
-
-            <div>
-              <Label>Image URL</Label>
-              <Input
-                value={imageUrl}
-                onChange={(e) => {
-                  setImageUrl(e.target.value);
-                }}
-                placeholder="https://..."
-                type="url"
-                className="mt-1"
-                disabled={isLoading}
-              />
-            </div>
-
-            <div className="flex items-center gap-2">
-              <input
-                id="isActive"
-                type="checkbox"
-                checked={isActive}
-                onChange={(e) => setIsActive(e.target.checked)}
-                className="h-4 w-4"
-                disabled={isLoading}
-              />
-              <Label htmlFor="isActive">Active (visible in catalogue)</Label>
-            </div>
-
-            <div>
-              <Label>UUID</Label>
-              {partId || part?.id ? (
-                <button
-                  type="button"
-                  onClick={handlePartUuidCopy}
-                  className="mt-1 w-full rounded-md border bg-gray-50 px-3 py-2 text-left font-mono text-xs break-all text-gray-700 transition-colors hover:bg-gray-100"
-                  title="Click to copy UUID"
-                >
-                  {partId ?? part?.id}
-                  <span className="ml-2 font-sans text-xs text-gray-500">
-                    {copiedPartUuid ? "Copied" : "Click to copy"}
-                  </span>
-                </button>
-              ) : (
-                <div className="mt-1 rounded-md border bg-gray-50 px-3 py-2 text-xs text-gray-500">
-                  Generated when the part is saved
-                </div>
-              )}
             </div>
           </div>
 
@@ -1481,8 +1597,8 @@ export function PartDetailsDialog({
             <DialogTitle>Find Part Image with Google</DialogTitle>
             <DialogDescription>
               Google Images opened in a new tab for:{" "}
-              {googleImageSearchQuery || displayName}. Copy the image address
-              or copy the image itself, then press Paste to store it as this
+              {googleImageSearchQuery || displayName}. Copy the image address or
+              copy the image itself, then press Paste to store it as this
               part&apos;s image.
             </DialogDescription>
           </DialogHeader>
@@ -1524,32 +1640,6 @@ export function PartDetailsDialog({
                   : "Paste"}
               </Button>
             </div>
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <Input
-                value={googleManualImageUrl}
-                onChange={(event) =>
-                  setGoogleManualImageUrl(event.target.value)
-                }
-                placeholder="Paste copied image address"
-                type="url"
-                disabled={applyGooglePartImage.isPending || isProcessingImage}
-                className="bg-white"
-              />
-              <Button
-                type="button"
-                onClick={handleApplyManualGoogleImageUrl}
-                disabled={
-                  applyGooglePartImage.isPending ||
-                  isProcessingImage ||
-                  !googleManualImageUrl.trim()
-                }
-                className="shrink-0"
-              >
-                {applyGooglePartImage.isPending || isProcessingImage
-                  ? "Adding..."
-                  : "Add Image"}
-              </Button>
-            </div>
           </div>
         </DialogContent>
       </Dialog>
@@ -1581,7 +1671,7 @@ export function PartDetailsDialog({
                 >
                   <div className="relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-md bg-gray-50">
                     <Image
-                      src={imageUrl}
+                      src={previewImageUrl}
                       alt=""
                       fill
                       className="object-cover"

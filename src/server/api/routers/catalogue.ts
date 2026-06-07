@@ -59,10 +59,20 @@ function normalizeAliases(input: string | string[] | null | undefined) {
 }
 
 const partImageUrlInput = z
-  .preprocess(
-    (value) => (value === "" ? null : value),
-    z.string().nullable().optional(),
-  )
+  .preprocess((value) => {
+    if (value === "") return null;
+    if (typeof value !== "string") return value;
+
+    const trimmed = value.trim();
+    if (trimmed.startsWith("api/catalogue/images/")) {
+      return `/${trimmed}`;
+    }
+    if (trimmed.startsWith("images/catalog/uploads/")) {
+      return `/${trimmed}`;
+    }
+
+    return trimmed;
+  }, z.string().nullable().optional())
   .refine(
     (value) => {
       if (!value) return true;
@@ -95,15 +105,13 @@ function buildPartImageSearchQuery(part: {
   categoryName: string | null;
   materialName: string | null;
 }) {
-  return [part.displayName, part.materialName, part.categoryName]
-    .map((value) => value?.trim())
-    .filter(Boolean)
-    .join(" ");
+  return part.displayName.trim();
 }
 
 function normalizePartImageFamilyText(
   value: string,
   materialName?: string | null,
+  options: { keepPipeToken?: boolean } = {},
 ) {
   const materialTokens = new Set(
     (materialName ?? "")
@@ -130,8 +138,7 @@ function normalizePartImageFamilyText(
         ![
           "fitting",
           "fittings",
-          "pipe",
-          "pipes",
+          ...(options.keepPipeToken ? [] : ["pipe", "pipes"]),
           "with",
           "without",
           "hub",
@@ -150,14 +157,20 @@ function buildPartImageFamilyKey(part: {
   categoryName: string | null;
   materialName: string | null;
 }) {
-  if (part.categoryName?.trim().toLowerCase() === "pipe") {
-    return "pipe";
-  }
-
   const searchableText = [part.description, part.displayName]
     .map((value) => value?.trim())
     .filter(Boolean)
     .join(" ");
+
+  if (part.categoryName?.trim().toLowerCase() === "pipe") {
+    const pipeSearchableText = part.description?.trim() || searchableText;
+    const pipeFamilyText = normalizePartImageFamilyText(
+      pipeSearchableText,
+      part.materialName,
+      { keepPipeToken: true },
+    );
+    return pipeFamilyText ? `pipe:${pipeFamilyText}` : "pipe";
+  }
 
   const angleMatch = searchableText.match(
     /\b(22\.5|45|60|90)\s*(?:deg|degree|degrees)?\b/i,
@@ -208,8 +221,8 @@ function hasFuzzyPartImageFamilyMatch(
   const sourceFamilyKey = buildPartImageFamilyKey(sourcePart);
   if (!sourceFamilyKey) return false;
 
-  if (sourceFamilyKey === "pipe") {
-    return buildPartImageFamilyKey(candidate) === "pipe";
+  if (sourceFamilyKey === "pipe" || sourceFamilyKey.startsWith("pipe:")) {
+    return buildPartImageFamilyKey(candidate) === sourceFamilyKey;
   }
 
   const angleFamilyKeys = new Set(["22.5", "45", "60", "90"]);
@@ -241,6 +254,87 @@ function hasFuzzyPartImageFamilyMatch(
   }
 
   return sharedTokenCount / sourceTokens.size >= 0.67;
+}
+
+async function getPartImageFamilySuggestionsForSource({
+  db,
+  organizationId,
+  sourcePart,
+}: {
+  db: typeof appDb;
+  organizationId: string;
+  sourcePart: {
+    id?: string | null;
+    displayName: string;
+    description: string | null;
+    categoryName: string | null;
+    materialId: string | null;
+    materialName: string | null;
+  };
+}) {
+  const familyKey = buildPartImageFamilyKey(sourcePart);
+  if (!familyKey) {
+    return {
+      familyLabel: sourcePart.categoryName ?? sourcePart.displayName,
+      suggestions: [],
+    };
+  }
+
+  const candidateConditions = [
+    eq(partDefinitions.organizationId, organizationId),
+    eq(partDefinitions.isActive, true),
+    sourcePart.materialId
+      ? eq(partDefinitions.materialId, sourcePart.materialId)
+      : isNull(partDefinitions.materialId),
+    or(isNull(partDefinitions.imageUrl), eq(partDefinitions.imageUrl, "")),
+  ].filter(
+    (condition): condition is NonNullable<typeof condition> =>
+      condition !== undefined,
+  );
+
+  const candidates = await db
+    .select({
+      id: partDefinitions.id,
+      displayName: partDefinitions.displayName,
+      description: partDefinitions.description,
+      imageUrl: partDefinitions.imageUrl,
+      categoryName: categories.name,
+      materialName: materials.name,
+      sizeLabel: partDefinitions.sizeLabel,
+      sizeNominal: sizes.nominal,
+      sizeUnitCode: units.code,
+    })
+    .from(partDefinitions)
+    .leftJoin(categories, eq(partDefinitions.categoryId, categories.id))
+    .leftJoin(materials, eq(partDefinitions.materialId, materials.id))
+    .leftJoin(sizes, eq(partDefinitions.sizeId, sizes.id))
+    .leftJoin(units, eq(sizes.unitId, units.id))
+    .where(and(...candidateConditions))
+    .orderBy(asc(partDefinitions.displayName), asc(partDefinitions.id))
+    .limit(250);
+
+  const suggestions = candidates
+    .filter((candidate) => candidate.id !== sourcePart.id)
+    .filter((candidate) => hasFuzzyPartImageFamilyMatch(sourcePart, candidate))
+    .map((candidate) => ({
+      id: candidate.id,
+      displayName: candidate.displayName,
+      description: candidate.description,
+      material: candidate.materialName,
+      size:
+        candidate.sizeLabel ??
+        (candidate.sizeNominal && candidate.sizeUnitCode
+          ? formatSize(Number(candidate.sizeNominal), candidate.sizeUnitCode)
+          : null),
+    }));
+
+  return {
+    familyLabel:
+      familyKey === "pipe"
+        ? "Pipe"
+        : sourcePart.description?.trim() || sourcePart.displayName,
+    suggestions,
+  };
 }
 
 function assertSelectableRemoteImageUrl(value: string) {
@@ -342,6 +436,49 @@ async function findOrCreateSize(
     .returning();
 
   return newSize?.id ?? null;
+}
+
+function nullablePartGroupCondition<TColumn>(
+  column: TColumn,
+  value: string | null,
+) {
+  return value === null ? isNull(column as never) : eq(column as never, value);
+}
+
+async function getNextPartGroupSortOrder(
+  db: Parameters<
+    Parameters<typeof hasDashboardAccess.query>[0]
+  >[0]["ctx"]["db"],
+  group: {
+    organizationId: string;
+    catalogId: string;
+    materialId: string | null;
+    sizeId: string | null;
+    categoryId: string | null;
+  },
+) {
+  const [row] = await db
+    .select({
+      maxSortOrder: sql<number>`coalesce(max(${partDefinitions.sortOrder}), -1)`,
+    })
+    .from(partDefinitions)
+    .where(
+      and(
+        eq(partDefinitions.organizationId, group.organizationId),
+        eq(partDefinitions.catalogId, group.catalogId),
+        nullablePartGroupCondition(
+          partDefinitions.materialId,
+          group.materialId,
+        ),
+        nullablePartGroupCondition(partDefinitions.sizeId, group.sizeId),
+        nullablePartGroupCondition(
+          partDefinitions.categoryId,
+          group.categoryId,
+        ),
+      ),
+    );
+
+  return (row?.maxSortOrder ?? -1) + 1;
 }
 
 // Type for category (flat structure, no hierarchy)
@@ -518,6 +655,125 @@ export const catalogueRouter = createTRPCRouter({
   }),
 
   /**
+   * Lightweight data for the add-parts wizard.
+   *
+   * The material-list dialog only needs facet ids/names/count inputs at first
+   * open. Full part rows include images and descriptions, so those stay behind
+   * searchParts and load only once the user searches or reaches part selection.
+   */
+  getPartWizardSummary: hasDashboardAccess.query(async ({ ctx }) => {
+    const organizationId = ctx.user.organizationId;
+
+    if (!organizationId) {
+      return {
+        catalogs: [],
+        materials: [],
+        categories: [],
+        allUnits: [],
+        parts: [],
+        partCount: 0,
+      };
+    }
+
+    const [allCatalogs, allMaterials, allCategories, allUnits, partFacets] =
+      await Promise.all([
+        ctx.db
+          .select({
+            id: catalogs.id,
+            name: catalogs.name,
+            sortOrder: catalogs.sortOrder,
+            organizationId: catalogs.organizationId,
+          })
+          .from(catalogs)
+          .where(eq(catalogs.organizationId, organizationId))
+          .orderBy(asc(catalogs.sortOrder), asc(catalogs.name)),
+        ctx.db
+          .select({
+            id: materials.id,
+            name: materials.name,
+          })
+          .from(materials)
+          .where(eq(materials.organizationId, organizationId))
+          .orderBy(asc(materials.name)),
+        ctx.db
+          .select({
+            id: categories.id,
+            name: categories.name,
+            sortOrder: categories.sortOrder,
+            organizationId: categories.organizationId,
+          })
+          .from(categories)
+          .where(eq(categories.organizationId, organizationId))
+          .orderBy(asc(categories.sortOrder), asc(categories.name)),
+        ctx.db
+          .select({
+            id: units.id,
+            code: units.code,
+            displayName: units.displayName,
+            kind: units.kind,
+          })
+          .from(units)
+          .orderBy(asc(units.code)),
+        ctx.db
+          .select({
+            materialId: partDefinitions.materialId,
+            sizeLabel: partDefinitions.sizeLabel,
+            sizeNominal: sizes.nominal,
+            sizeUnit: units.code,
+            catalogId: partDefinitions.catalogId,
+            categoryId: partDefinitions.categoryId,
+          })
+          .from(partDefinitions)
+          .leftJoin(sizes, eq(partDefinitions.sizeId, sizes.id))
+          .leftJoin(units, eq(sizes.unitId, units.id))
+          .where(
+            and(
+              eq(partDefinitions.isActive, true),
+              eq(partDefinitions.organizationId, organizationId),
+            ),
+          ),
+      ]);
+
+    const catalogCounts = new Map<string, number>();
+    const materialCounts = new Map<string, number>();
+    const categoryCounts = new Map<string, number>();
+
+    for (const part of partFacets) {
+      catalogCounts.set(
+        part.catalogId,
+        (catalogCounts.get(part.catalogId) ?? 0) + 1,
+      );
+      if (part.materialId) {
+        materialCounts.set(
+          part.materialId,
+          (materialCounts.get(part.materialId) ?? 0) + 1,
+        );
+      }
+      if (part.categoryId) {
+        categoryCounts.set(
+          part.categoryId,
+          (categoryCounts.get(part.categoryId) ?? 0) + 1,
+        );
+      }
+    }
+
+    return {
+      catalogs: allCatalogs.map((catalog) => ({
+        ...catalog,
+        partCount: catalogCounts.get(catalog.id) ?? 0,
+      })),
+      materials: allMaterials,
+      categories: allCategories.map((category) => ({
+        ...category,
+        partCount: categoryCounts.get(category.id) ?? 0,
+      })),
+      allUnits,
+      parts: partFacets,
+      partCount: partFacets.length,
+    };
+  }),
+
+  /**
    * Get parts for a specific category
    */
   getPartsByCategory: hasDashboardAccess
@@ -563,6 +819,7 @@ export const catalogueRouter = createTRPCRouter({
           sizeUnitId: sizes.unitId,
           catalogId: partDefinitions.catalogId,
           categoryId: partDefinitions.categoryId,
+          sortOrder: partDefinitions.sortOrder,
           organizationId: partDefinitions.organizationId,
           sizeUnitCode: units.code,
         })
@@ -572,12 +829,15 @@ export const catalogueRouter = createTRPCRouter({
         .leftJoin(materials, eq(partDefinitions.materialId, materials.id))
         .where(and(...conditions));
 
-      // Sort: org-specific first, then global, then by name
+      // Sort: org-specific first, then manual group order, then by name.
       const parts = allParts.sort((a, b) => {
         const aIsOrg = a.organizationId === organizationId;
         const bIsOrg = b.organizationId === organizationId;
         if (aIsOrg !== bIsOrg) {
           return aIsOrg ? -1 : 1;
+        }
+        if (a.sortOrder !== b.sortOrder) {
+          return a.sortOrder - b.sortOrder;
         }
         return a.displayName.localeCompare(b.displayName);
       });
@@ -597,6 +857,7 @@ export const catalogueRouter = createTRPCRouter({
         sizeUnit: part.sizeUnitCode,
         catalogId: part.catalogId,
         categoryId: part.categoryId,
+        sortOrder: part.sortOrder,
         isOrgSpecific: part.organizationId === organizationId,
       }));
     }),
@@ -795,20 +1056,41 @@ export const catalogueRouter = createTRPCRouter({
           sizeUnitId: sizes.unitId,
           catalogId: partDefinitions.catalogId,
           categoryId: partDefinitions.categoryId,
+          sortOrder: partDefinitions.sortOrder,
           organizationId: partDefinitions.organizationId,
           sizeUnitCode: units.code,
         })
         .from(partDefinitions)
+        .innerJoin(catalogs, eq(partDefinitions.catalogId, catalogs.id))
         .leftJoin(sizes, eq(partDefinitions.sizeId, sizes.id))
         .leftJoin(units, eq(sizes.unitId, units.id))
         .leftJoin(materials, eq(partDefinitions.materialId, materials.id))
+        .leftJoin(categories, eq(partDefinitions.categoryId, categories.id))
         .where(
           and(
             ...conditions,
             ...(sizeJoinConditions.length > 0 ? sizeJoinConditions : []),
           ),
         )
-        .orderBy(asc(partDefinitions.displayName), asc(partDefinitions.id))
+        .orderBy(
+          asc(catalogs.sortOrder),
+          asc(catalogs.name),
+          asc(materials.name),
+          asc(sizes.nominal),
+          asc(partDefinitions.sizeLabel),
+          asc(categories.sortOrder),
+          asc(categories.name),
+          asc(partDefinitions.sortOrder),
+          sql<number>`case
+            when lower(${materials.name}) = 'cast'
+              and lower(${categories.name}) = 'fitting'
+              and ${partDefinitions.description} ilike '%hub%'
+            then 1
+            else 0
+          end`,
+          asc(partDefinitions.displayName),
+          asc(partDefinitions.id),
+        )
         .limit(input.limit ?? 5000);
 
       return allParts.map((part) => ({
@@ -829,8 +1111,98 @@ export const catalogueRouter = createTRPCRouter({
         sizeUnit: part.sizeUnitCode,
         catalogId: part.catalogId,
         categoryId: part.categoryId,
+        sortOrder: part.sortOrder,
         isOrgSpecific: part.organizationId === organizationId,
       }));
+    }),
+
+  reorderPartGroup: hasDashboardAccess
+    .input(
+      z.object({
+        catalogId: z.string().uuid(),
+        materialId: z.string().uuid(),
+        sizeNominal: z.number(),
+        sizeUnit: z.string().min(1).max(20),
+        categoryId: z.string().uuid().nullable(),
+        partIds: z.array(z.string().uuid()).min(1).max(1000),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const organizationId = ctx.user.organizationId;
+      if (!organizationId) {
+        throw new Error("User must belong to an organization");
+      }
+
+      const orderedPartIds = Array.from(new Set(input.partIds));
+      if (orderedPartIds.length !== input.partIds.length) {
+        throw new Error("Part order contains duplicate parts");
+      }
+
+      const matchingParts = await ctx.db
+        .select({
+          id: partDefinitions.id,
+        })
+        .from(partDefinitions)
+        .innerJoin(sizes, eq(partDefinitions.sizeId, sizes.id))
+        .innerJoin(units, eq(sizes.unitId, units.id))
+        .where(
+          and(
+            eq(partDefinitions.isActive, true),
+            eq(partDefinitions.organizationId, organizationId),
+            eq(partDefinitions.catalogId, input.catalogId),
+            eq(partDefinitions.materialId, input.materialId),
+            input.categoryId === null
+              ? isNull(partDefinitions.categoryId)
+              : eq(partDefinitions.categoryId, input.categoryId),
+            gte(sizes.nominal, (input.sizeNominal - 0.01).toString()),
+            lte(sizes.nominal, (input.sizeNominal + 0.01).toString()),
+            eq(units.code, input.sizeUnit),
+          ),
+        );
+
+      const matchingPartIds = new Set(matchingParts.map((part) => part.id));
+      if (matchingPartIds.size !== orderedPartIds.length) {
+        throw new Error(
+          "Part order must include every part in the selected group",
+        );
+      }
+
+      for (const partId of orderedPartIds) {
+        if (!matchingPartIds.has(partId)) {
+          throw new Error(
+            "Part order includes a part outside the selected group",
+          );
+        }
+      }
+
+      await ctx.db.transaction(async (tx) => {
+        for (const [sortOrder, partId] of orderedPartIds.entries()) {
+          await tx
+            .update(partDefinitions)
+            .set({ sortOrder })
+            .where(
+              and(
+                eq(partDefinitions.id, partId),
+                eq(partDefinitions.organizationId, organizationId),
+              ),
+            );
+        }
+      });
+
+      const savedParts = await ctx.db
+        .select({
+          id: partDefinitions.id,
+          sortOrder: partDefinitions.sortOrder,
+        })
+        .from(partDefinitions)
+        .where(inArray(partDefinitions.id, orderedPartIds))
+        .orderBy(asc(partDefinitions.sortOrder), asc(partDefinitions.id));
+
+      return {
+        updated: orderedPartIds.length,
+        partIds: savedParts.map((part) => part.id),
+        sortOrders: savedParts,
+      };
     }),
 
   /**
@@ -1489,11 +1861,47 @@ export const catalogueRouter = createTRPCRouter({
     }),
 
   getPartImageFamilySuggestions: hasDashboardAccess
-    .input(z.object({ partId: z.string().uuid() }))
+    .input(
+      z
+        .object({
+          partId: z.string().uuid().optional(),
+          draft: z
+            .object({
+              displayName: z.string().min(1).max(255),
+              description: z.string().optional().nullable(),
+              categoryName: z.string().optional().nullable(),
+              materialId: z.string().uuid().optional().nullable(),
+              materialName: z.string().optional().nullable(),
+            })
+            .optional(),
+        })
+        .refine((value) => !!value.partId || !!value.draft, {
+          message: "Part id or draft part details are required",
+        }),
+    )
     .query(async ({ ctx, input }) => {
       const organizationId = ctx.user.organizationId;
       if (!organizationId) {
         throw new Error("User must belong to an organization");
+      }
+
+      if (!input.partId && input.draft) {
+        return getPartImageFamilySuggestionsForSource({
+          db: ctx.db,
+          organizationId,
+          sourcePart: {
+            displayName: input.draft.displayName,
+            description: input.draft.description ?? null,
+            categoryName: input.draft.categoryName ?? null,
+            materialId: input.draft.materialId ?? null,
+            materialName: input.draft.materialName ?? null,
+          },
+        });
+      }
+
+      const partId = input.partId;
+      if (!partId) {
+        throw new Error("Part id or draft part details are required");
       }
 
       const [sourcePart] = await ctx.db
@@ -1517,7 +1925,7 @@ export const catalogueRouter = createTRPCRouter({
         .leftJoin(units, eq(sizes.unitId, units.id))
         .where(
           and(
-            eq(partDefinitions.id, input.partId),
+            eq(partDefinitions.id, partId),
             eq(partDefinitions.organizationId, organizationId),
           ),
         )
@@ -1527,74 +1935,11 @@ export const catalogueRouter = createTRPCRouter({
         throw new Error("Part not found");
       }
 
-      const familyKey = buildPartImageFamilyKey(sourcePart);
-      if (!familyKey) {
-        return {
-          familyLabel: sourcePart.categoryName ?? sourcePart.displayName,
-          suggestions: [],
-        };
-      }
-
-      const candidateConditions = [
-        eq(partDefinitions.organizationId, organizationId),
-        eq(partDefinitions.isActive, true),
-        sourcePart.materialId
-          ? eq(partDefinitions.materialId, sourcePart.materialId)
-          : isNull(partDefinitions.materialId),
-        or(isNull(partDefinitions.imageUrl), eq(partDefinitions.imageUrl, "")),
-      ].filter(
-        (condition): condition is NonNullable<typeof condition> =>
-          condition !== undefined,
-      );
-
-      const candidates = await ctx.db
-        .select({
-          id: partDefinitions.id,
-          displayName: partDefinitions.displayName,
-          description: partDefinitions.description,
-          imageUrl: partDefinitions.imageUrl,
-          categoryName: categories.name,
-          materialName: materials.name,
-          sizeLabel: partDefinitions.sizeLabel,
-          sizeNominal: sizes.nominal,
-          sizeUnitCode: units.code,
-        })
-        .from(partDefinitions)
-        .leftJoin(categories, eq(partDefinitions.categoryId, categories.id))
-        .leftJoin(materials, eq(partDefinitions.materialId, materials.id))
-        .leftJoin(sizes, eq(partDefinitions.sizeId, sizes.id))
-        .leftJoin(units, eq(sizes.unitId, units.id))
-        .where(and(...candidateConditions))
-        .orderBy(asc(partDefinitions.displayName), asc(partDefinitions.id))
-        .limit(250);
-
-      const suggestions = candidates
-        .filter((candidate) => candidate.id !== sourcePart.id)
-        .filter((candidate) =>
-          hasFuzzyPartImageFamilyMatch(sourcePart, candidate),
-        )
-        .map((candidate) => ({
-          id: candidate.id,
-          displayName: candidate.displayName,
-          description: candidate.description,
-          material: candidate.materialName,
-          size:
-            candidate.sizeLabel ??
-            (candidate.sizeNominal && candidate.sizeUnitCode
-              ? formatSize(
-                  Number(candidate.sizeNominal),
-                  candidate.sizeUnitCode,
-                )
-              : null),
-        }));
-
-      return {
-        familyLabel:
-          familyKey === "pipe"
-            ? "Pipe"
-            : sourcePart.description?.trim() || sourcePart.displayName,
-        suggestions,
-      };
+      return getPartImageFamilySuggestionsForSource({
+        db: ctx.db,
+        organizationId,
+        sourcePart,
+      });
     }),
 
   applyPartImageToFamilyCandidate: hasDashboardAccess
@@ -1646,7 +1991,7 @@ export const catalogueRouter = createTRPCRouter({
         partId: z.string().uuid(),
         displayName: z.string().min(1).max(255).optional(),
         description: z.string().optional().nullable(),
-        imageUrl: z.string().optional().nullable(),
+        imageUrl: partImageUrlInput,
         catalogId: z.string().uuid().optional(),
         categoryId: z.string().uuid().optional().nullable(),
         materialId: z.string().uuid().optional().nullable(),
@@ -1671,6 +2016,10 @@ export const catalogueRouter = createTRPCRouter({
         .select({
           id: partDefinitions.id,
           organizationId: partDefinitions.organizationId,
+          catalogId: partDefinitions.catalogId,
+          materialId: partDefinitions.materialId,
+          sizeId: partDefinitions.sizeId,
+          categoryId: partDefinitions.categoryId,
         })
         .from(partDefinitions)
         .where(
@@ -1748,17 +2097,30 @@ export const catalogueRouter = createTRPCRouter({
         // Use provided sizeId, including explicit null to clear it, or keep original
         // when size fields were not part of the edit payload.
         const finalSizeId = sizeTouched ? sizeId : originalPart.sizeId;
+        const finalCatalogId = input.catalogId ?? originalPart.catalogId;
+        const finalMaterialId =
+          input.materialId !== undefined
+            ? input.materialId
+            : originalPart.materialId;
+        const finalCategoryId =
+          input.categoryId !== undefined
+            ? input.categoryId
+            : originalPart.categoryId;
+        const sortOrder = await getNextPartGroupSortOrder(ctx.db, {
+          organizationId,
+          catalogId: finalCatalogId,
+          materialId: finalMaterialId,
+          sizeId: finalSizeId,
+          categoryId: finalCategoryId,
+        });
 
         // Create org-specific copy
         const [newPart] = await ctx.db
           .insert(partDefinitions)
           .values({
             organizationId: organizationId,
-            catalogId: input.catalogId ?? originalPart.catalogId,
-            categoryId:
-              input.categoryId !== undefined
-                ? input.categoryId
-                : originalPart.categoryId,
+            catalogId: finalCatalogId,
+            categoryId: finalCategoryId,
             displayName: input.displayName ?? originalPart.displayName,
             description:
               input.description !== undefined
@@ -1777,6 +2139,7 @@ export const catalogueRouter = createTRPCRouter({
                 ? input.materialId
                 : originalPart.materialId,
             sizeId: finalSizeId,
+            sortOrder,
             isActive: input.isActive ?? originalPart.isActive,
           })
           .returning();
@@ -1800,6 +2163,28 @@ export const catalogueRouter = createTRPCRouter({
         updateData.materialId = input.materialId;
       if (sizeTouched) updateData.sizeId = sizeId;
       if (input.isActive !== undefined) updateData.isActive = input.isActive;
+
+      const finalCatalogId = input.catalogId ?? existing.catalogId;
+      const finalMaterialId =
+        input.materialId !== undefined ? input.materialId : existing.materialId;
+      const finalSizeId = sizeTouched ? sizeId : existing.sizeId;
+      const finalCategoryId =
+        input.categoryId !== undefined ? input.categoryId : existing.categoryId;
+      const groupChanged =
+        finalCatalogId !== existing.catalogId ||
+        finalMaterialId !== existing.materialId ||
+        finalSizeId !== existing.sizeId ||
+        finalCategoryId !== existing.categoryId;
+
+      if (organizationId && groupChanged) {
+        updateData.sortOrder = await getNextPartGroupSortOrder(ctx.db, {
+          organizationId,
+          catalogId: finalCatalogId,
+          materialId: finalMaterialId,
+          sizeId: finalSizeId,
+          categoryId: finalCategoryId,
+        });
+      }
 
       const [updated] = await ctx.db
         .update(partDefinitions)
@@ -2473,6 +2858,13 @@ export const catalogueRouter = createTRPCRouter({
           rawRow.sizeNominal ?? null,
           sizeUnitId,
         );
+        const sortOrder = await getNextPartGroupSortOrder(ctx.db, {
+          organizationId,
+          catalogId: catalog.id,
+          materialId,
+          sizeId,
+          categoryId,
+        });
 
         const values: typeof partDefinitions.$inferInsert = {
           organizationId,
@@ -2499,7 +2891,7 @@ export const catalogueRouter = createTRPCRouter({
 
         const [newPart] = await ctx.db
           .insert(partDefinitions)
-          .values(values)
+          .values({ ...values, sortOrder })
           .returning({ id: partDefinitions.id });
         if (newPart?.id) {
           await syncPartAliases(ctx.db, newPart.id, rawRow.aliases ?? "");
@@ -2597,6 +2989,13 @@ export const catalogueRouter = createTRPCRouter({
         input.sizeNominal ?? null,
         input.sizeUnitId ?? null,
       );
+      const sortOrder = await getNextPartGroupSortOrder(ctx.db, {
+        organizationId,
+        catalogId: catalog.id,
+        materialId: input.materialId ?? null,
+        sizeId,
+        categoryId,
+      });
 
       const [newPart] = await ctx.db
         .insert(partDefinitions)
@@ -2613,6 +3012,7 @@ export const catalogueRouter = createTRPCRouter({
           sizeLabel: input.sizeLabel?.trim() || null,
           materialId: input.materialId ?? null,
           sizeId: sizeId,
+          sortOrder,
           isActive: input.isActive ?? true,
         })
         .returning();

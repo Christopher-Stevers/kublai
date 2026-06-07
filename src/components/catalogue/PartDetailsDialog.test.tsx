@@ -174,12 +174,10 @@ vi.mock("~/trpc/react", () => {
         applyPartImageToFamilyCandidate: {
           useMutation: () => ({
             isPending: false,
-            mutateAsync: vi
-              .fn()
-              .mockResolvedValue({
-                id: "part-target",
-                imageUrl: "/api/catalogue/images/part-source.webp",
-              }),
+            mutateAsync: vi.fn().mockResolvedValue({
+              id: "part-target",
+              imageUrl: "/api/catalogue/images/part-source.webp",
+            }),
           }),
         },
         createCatalog: {
@@ -242,6 +240,62 @@ describe("PartDetailsDialog inline add", () => {
         { id: "u-in", code: "in", displayName: "Inches", kind: "length" },
       ],
     };
+  });
+
+  it("shows the shared photo controls while creating a part", () => {
+    render(
+      <PartDetailsDialog
+        mode="create"
+        open
+        onOpenChange={() => {}}
+        initialContext={{}}
+      />,
+    );
+
+    expect(
+      screen.getByRole("button", { name: /Search For Image/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Share Image With Similar Parts/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("rejects invalid size input and flashes an invalid marker", async () => {
+    render(
+      <PartDetailsDialog
+        mode="create"
+        open
+        onOpenChange={() => {}}
+        initialContext={{}}
+      />,
+    );
+
+    const sizeInput = screen.getAllByPlaceholderText(
+      "1/2, 1.5, 3 x 3 x 3, or 3x2x2",
+    )[0]!;
+
+    fireEvent.change(sizeInput, { target: { value: "3a" } });
+
+    expect(sizeInput).toHaveValue("");
+    expect(
+      await screen.findByLabelText("Invalid size input"),
+    ).toBeInTheDocument();
+
+    fireEvent.change(sizeInput, { target: { value: "3 x 2.5" } });
+
+    expect(sizeInput).toHaveValue("3 x 2.5");
+
+    fireEvent.change(sizeInput, { target: { value: "1/" } });
+
+    expect(sizeInput).toHaveValue("1/");
+
+    fireEvent.change(sizeInput, { target: { value: "1 1/" } });
+
+    expect(sizeInput).toHaveValue("1 1/");
+
+    fireEvent.change(sizeInput, { target: { value: "1 1/2 x 3/4" } });
+
+    expect(sizeInput).toHaveValue("1 1/2 x 3/4");
   });
 
   it("returns to dropdown mode and selects a newly added catalog", async () => {

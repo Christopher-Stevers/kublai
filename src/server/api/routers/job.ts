@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import { eq, and, desc, sql } from "drizzle-orm";
+import { eq, and, desc, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { createTRPCRouter, hasDashboardAccess } from "~/server/api/trpc";
@@ -8,7 +8,10 @@ import {
   entitySyncMutations,
   jobs,
   materialLists,
+  orders,
+  quoteItems,
   quotes,
+  supplierParts,
   locations,
   users,
 } from "~/server/db/schema";
@@ -443,6 +446,7 @@ export const jobRouter = createTRPCRouter({
         .select({
           id: materialLists.id,
           name: materialLists.name,
+          quoteId: materialLists.quoteId,
           createdAt: materialLists.createdAt,
         })
         .from(materialLists)
@@ -454,9 +458,75 @@ export const jobRouter = createTRPCRouter({
         )
         .orderBy(desc(materialLists.createdAt));
 
+      const listIds = lists.map((list) => list.id);
+      const quoteIds = lists
+        .map((list) => list.quoteId)
+        .filter((value): value is string => Boolean(value));
+
+      const supplierRows = quoteIds.length
+        ? await ctx.db
+            .select({
+              quoteId: quoteItems.quoteId,
+              selectedSupplierId: quoteItems.supplierId,
+              supplierPartSupplierId: supplierParts.supplierId,
+              partDefinitionId: quoteItems.partDefinitionId,
+            })
+            .from(quoteItems)
+            .leftJoin(
+              supplierParts,
+              eq(quoteItems.supplierPartId, supplierParts.id),
+            )
+            .where(inArray(quoteItems.quoteId, quoteIds))
+        : [];
+
+      const totalSupplierIdsByQuoteId = new Map<string, Set<string>>();
+      for (const row of supplierRows) {
+        if (!row.partDefinitionId) continue;
+
+        const supplierId = row.selectedSupplierId ?? row.supplierPartSupplierId;
+        if (!supplierId) continue;
+
+        const supplierIds =
+          totalSupplierIdsByQuoteId.get(row.quoteId) ?? new Set<string>();
+        supplierIds.add(supplierId);
+        totalSupplierIdsByQuoteId.set(row.quoteId, supplierIds);
+      }
+
+      const orderRows = listIds.length
+        ? await ctx.db
+            .select({
+              materialListId: orders.materialListId,
+              supplierId: orders.supplierId,
+              status: orders.status,
+              sentAt: orders.sentAt,
+            })
+            .from(orders)
+            .where(inArray(orders.materialListId, listIds))
+        : [];
+
+      const sentSupplierIdsByListId = new Map<string, Set<string>>();
+      for (const row of orderRows) {
+        if (!row.materialListId || !row.supplierId) continue;
+
+        const hasBeenSent =
+          !!row.sentAt || ["sent", "confirmed", "received"].includes(row.status);
+        if (!hasBeenSent) continue;
+
+        const supplierIds =
+          sentSupplierIdsByListId.get(row.materialListId) ?? new Set<string>();
+        supplierIds.add(row.supplierId);
+        sentSupplierIdsByListId.set(row.materialListId, supplierIds);
+      }
+
       return {
         ...job,
-        materialLists: lists,
+        materialLists: lists.map((list) => ({
+          ...list,
+          totalSupplierCount: list.quoteId
+            ? (totalSupplierIdsByQuoteId.get(list.quoteId)?.size ?? 0)
+            : 0,
+          sentSupplierCount: sentSupplierIdsByListId.get(list.id)?.size ?? 0,
+        })),
       };
     }),
 

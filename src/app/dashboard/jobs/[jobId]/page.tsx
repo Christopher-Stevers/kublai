@@ -12,6 +12,7 @@ import {
   UserIcon,
   MapPinIcon,
   PencilIcon,
+  SendIcon,
   TrashIcon,
   WifiOffIcon,
 } from "lucide-react";
@@ -42,6 +43,71 @@ type JobLocationDisplay = {
   postalCode?: string | null;
   country?: string | null;
 };
+
+function getSendStatusTone(sentSupplierCount: number, totalSupplierCount: number) {
+  if (totalSupplierCount === 0) {
+    return {
+      chip: "border-gray-200 bg-gray-50 text-gray-600",
+      bar: "bg-gray-300",
+    };
+  }
+
+  if (sentSupplierCount >= totalSupplierCount) {
+    return {
+      chip: "border-emerald-200 bg-emerald-50 text-emerald-700",
+      bar: "bg-emerald-500",
+    };
+  }
+
+  if (sentSupplierCount > 0) {
+    return {
+      chip: "border-amber-200 bg-amber-50 text-amber-700",
+      bar: "bg-amber-500",
+    };
+  }
+
+  return {
+    chip: "border-gray-200 bg-gray-50 text-gray-700",
+    bar: "bg-gray-400",
+  };
+}
+
+function MaterialListSendStatus({
+  sentSupplierCount = 0,
+  totalSupplierCount = 0,
+}: {
+  sentSupplierCount?: number;
+  totalSupplierCount?: number;
+}) {
+  const normalizedSentCount = Math.min(sentSupplierCount, totalSupplierCount);
+  const progress =
+    totalSupplierCount > 0
+      ? Math.round((normalizedSentCount / totalSupplierCount) * 100)
+      : 0;
+  const tone = getSendStatusTone(normalizedSentCount, totalSupplierCount);
+
+  return (
+    <div className="space-y-1">
+      <div
+        className={
+          "inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-xs font-medium " +
+          tone.chip
+        }
+      >
+        <SendIcon className="h-3.5 w-3.5" />
+        <span>
+          {normalizedSentCount}/{totalSupplierCount} sent
+        </span>
+      </div>
+      <div className="h-1.5 overflow-hidden rounded-full bg-gray-100">
+        <div
+          className={"h-full rounded-full transition-all " + tone.bar}
+          style={{ width: progress + "%" }}
+        />
+      </div>
+    </div>
+  );
+}
 
 function formatLocationAddress(
   location: JobLocationDisplay | null | undefined,
@@ -98,13 +164,27 @@ export default function JobDetailPage({
     serverJob?.materialLists.map((list) => ({
       ...list,
       jobId,
-      quoteId: null,
+      quoteId: list.quoteId,
       updatedAt: list.createdAt,
       itemCount: 0,
       materialTotal: 0,
     })) ?? null;
+  const serverSendStatusByListId = new Map(
+    serverJob?.materialLists.map((list) => [
+      list.id,
+      {
+        sentSupplierCount: list.sentSupplierCount,
+        totalSupplierCount: list.totalSupplierCount,
+      },
+    ]) ?? [],
+  );
   const job = jobDetail?.job ?? serverJob ?? null;
-  const materialLists = jobDetail?.materialLists ?? serverMaterialLists;
+  const materialLists = (jobDetail?.materialLists ?? serverMaterialLists)?.map(
+    (list) => ({
+      ...list,
+      ...serverSendStatusByListId.get(list.id),
+    }),
+  );
 
   const handleCreateNew = () => {
     if (!job?.id) return;
@@ -306,6 +386,10 @@ export default function JobDetailPage({
                       <span className="font-semibold">Total:</span>
                       <span>${list.materialTotal.toFixed(2)}</span>
                     </div>
+                    <MaterialListSendStatus
+                      sentSupplierCount={list.sentSupplierCount}
+                      totalSupplierCount={list.totalSupplierCount}
+                    />
                     <div className="flex items-center gap-2">
                       <CalendarIcon className="h-4 w-4" />
                       <span>

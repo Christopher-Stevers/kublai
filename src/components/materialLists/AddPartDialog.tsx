@@ -123,7 +123,7 @@ export function AddPartDialog({
     selectedSizeName,
     selectedCategoryName,
     wizardSearchPlaceholder,
-  } = usePartWizard();
+  } = usePartWizard(open);
 
   const utils = api.useUtils();
   const isOnline = useOnlineStatus();
@@ -149,11 +149,21 @@ export function AddPartDialog({
   const [fetchingParts, setFetchingParts] = useState<Set<string>>(new Set());
   const supplierPartsDataRef = useRef(supplierPartsData);
   const fetchingPartsRef = useRef(fetchingParts);
-  const fetchSupplierPartsRef = useRef(utils.supplier.getSupplierPartsByPart.fetch);
-  const supplierPartResolutionPromisesRef = useRef(new Map<string, Promise<string>>());
-  const [, setResolvingSupplierPartIds] = useState<Set<string>>(() => new Set());
+  const fetchSupplierPartsRef = useRef(
+    utils.supplier.getSupplierPartsByPart.fetch,
+  );
+  const supplierPartResolutionPromisesRef = useRef(
+    new Map<string, Promise<string>>(),
+  );
+  const [, setResolvingSupplierPartIds] = useState<Set<string>>(
+    () => new Set(),
+  );
   const pendingPartIdsKey = useMemo(
-    () => pendingParts.map((p) => p.partId).sort().join("|"),
+    () =>
+      pendingParts
+        .map((p) => p.partId)
+        .sort()
+        .join("|"),
     [pendingParts],
   );
 
@@ -204,7 +214,8 @@ export function AddPartDialog({
         return next;
       });
 
-      void fetchSupplierPartsRef.current({ partDefinitionId: partId })
+      void fetchSupplierPartsRef
+        .current({ partDefinitionId: partId })
         .then(
           (
             data: Array<{
@@ -304,7 +315,9 @@ export function AddPartDialog({
     quantity: number,
   ) => {
     setPendingParts((prev) => {
-      const existing = prev.find((pendingPart) => pendingPart.partId === part.id);
+      const existing = prev.find(
+        (pendingPart) => pendingPart.partId === part.id,
+      );
 
       if (quantity <= 0) {
         return prev.filter((pendingPart) => pendingPart.partId !== part.id);
@@ -372,7 +385,9 @@ export function AddPartDialog({
       pickerTouchYRef.current = touchY;
 
       const stepSize = 18;
-      const stepDelta = Math.trunc(pickerTouchAccumulatorRef.current / stepSize);
+      const stepDelta = Math.trunc(
+        pickerTouchAccumulatorRef.current / stepSize,
+      );
       if (stepDelta === 0) {
         return;
       }
@@ -528,7 +543,11 @@ export function AddPartDialog({
     setPendingParts((prev) =>
       prev.map((p) => {
         if (p.partId === partId) {
-          return { ...p, supplierPartId, supplierPartSnapshot: supplierPartSnapshot ?? null };
+          return {
+            ...p,
+            supplierPartId,
+            supplierPartSnapshot: supplierPartSnapshot ?? null,
+          };
         }
         return p;
       }),
@@ -599,7 +618,9 @@ export function AddPartDialog({
         .filter((pendingPart) => !pendingPart.supplierPartId)
         .map((pendingPart) => ({
           partId: pendingPart.partId,
-          resolution: supplierPartResolutionPromisesRef.current.get(pendingPart.partId),
+          resolution: supplierPartResolutionPromisesRef.current.get(
+            pendingPart.partId,
+          ),
         }));
 
       const missingSupplierSelections = pendingSupplierResolutions.filter(
@@ -625,10 +646,13 @@ export function AddPartDialog({
       const partsReadyToAdd = pendingParts.map((pendingPart) => ({
         ...pendingPart,
         supplierPartId:
-          pendingPart.supplierPartId ?? resolvedSupplierPartIds.get(pendingPart.partId),
+          pendingPart.supplierPartId ??
+          resolvedSupplierPartIds.get(pendingPart.partId),
       }));
 
-      const partsWithoutSupplier = partsReadyToAdd.filter((p) => !p.supplierPartId);
+      const partsWithoutSupplier = partsReadyToAdd.filter(
+        (p) => !p.supplierPartId,
+      );
       if (partsWithoutSupplier.length > 0) {
         console.error(
           "Cannot add parts without suppliers:",
@@ -680,17 +704,19 @@ export function AddPartDialog({
       });
 
       for (const item of localItems) {
-        void mutateMaterialListAndSync(getMaterialListReplicache().mutate.addItem({
-          materialListId,
-          itemId: item.localItemId,
-          partDefinitionId: item.pendingPart.partId,
-          supplierPartId: item.pendingPart.supplierPartId ?? null,
-          supplierId: item.supplierId,
-          quantity: item.pendingPart.quantity,
-          unitCost: item.unitCost,
-          partDefinitionSnapshot: item.partDefinitionSnapshot,
-          supplierPartSnapshot: item.supplierPartSnapshot,
-        }));
+        void mutateMaterialListAndSync(
+          getMaterialListReplicache().mutate.addItem({
+            materialListId,
+            itemId: item.localItemId,
+            partDefinitionId: item.pendingPart.partId,
+            supplierPartId: item.pendingPart.supplierPartId ?? null,
+            supplierId: item.supplierId,
+            quantity: item.pendingPart.quantity,
+            unitCost: item.unitCost,
+            partDefinitionSnapshot: item.partDefinitionSnapshot,
+            supplierPartSnapshot: item.supplierPartSnapshot,
+          }),
+        );
       }
 
       closeDialogAndCleanHistory();
@@ -732,7 +758,9 @@ export function AddPartDialog({
   // Reset state when dialog closes
   useEffect(() => {
     if (open) {
-      measureUserAction("add-part-dialog-ready", "add-part-open", { materialListId });
+      measureUserAction("add-part-dialog-ready", "add-part-open", {
+        materialListId,
+      });
       return;
     }
 
@@ -767,7 +795,8 @@ export function AddPartDialog({
     };
   }, []);
 
-  const isWizardSearchActive = wizardStage !== "review" && wizardSearchQuery.trim().length > 0;
+  const isWizardSearchActive =
+    wizardStage !== "review" && wizardSearchQuery.trim().length > 0;
 
   const addPartsHistoryEntryRef = useRef(false);
   const suppressNextAddPartsPopRef = useRef(false);
@@ -848,7 +877,9 @@ export function AddPartDialog({
           }
         >
           <DialogHeader className="shrink-0 px-2 pt-3 pb-2 sm:px-4 sm:pt-4 sm:pb-3 md:px-6 md:pt-6 md:pb-4">
-            <DialogTitle className="text-base sm:text-lg md:text-xl">Add Parts</DialogTitle>
+            <DialogTitle className="text-base sm:text-lg md:text-xl">
+              Add Parts
+            </DialogTitle>
             <DialogDescription className="text-xs sm:text-sm">
               {isOnline
                 ? "Select catalog, material, size, and category to add parts to your list"
@@ -886,13 +917,20 @@ export function AddPartDialog({
             </div>
           )}
 
-          <div className={`flex-1 space-y-3 overflow-y-auto overscroll-contain pt-3 pb-3 sm:space-y-4 sm:pt-4 sm:pb-4 ${wizardStage === "review" ? "px-4 sm:px-6" : "px-2 sm:px-4 md:px-6"} ${quantityPickerPreview ? "touch-none overflow-hidden" : ""}`}>
+          <div
+            className={`flex-1 space-y-3 overflow-y-auto overscroll-contain pt-3 pb-3 sm:space-y-4 sm:pt-4 sm:pb-4 ${wizardStage === "review" ? "px-4 sm:px-6" : "px-2 sm:px-4 md:px-6"} ${quantityPickerPreview ? "touch-none overflow-hidden" : ""}`}
+          >
             {!isOnline && (
               <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 sm:text-sm">
                 <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
                 <div>
-                  <p className="font-medium">Offline add uses the cached catalogue on this device.</p>
-                  <p>Reconnect once if the part, supplier, or price you need is missing.</p>
+                  <p className="font-medium">
+                    Offline add uses the cached catalogue on this device.
+                  </p>
+                  <p>
+                    Reconnect once if the part, supplier, or price you need is
+                    missing.
+                  </p>
                 </div>
               </div>
             )}
@@ -915,28 +953,34 @@ export function AddPartDialog({
                     : "No cached parts match this search/filter. Reconnect once to refresh the catalogue cache."
                 }
               />
-            ) : wizardStage === "catalog" && (
-              <CatalogStage
-                catalogs={catalogsWithCounts}
-                selectedCatalogId={selectedCatalogId}
-                allSelected={hasCatalogSelection && selectedCatalogId === null}
-                onCatalogSelect={(catalogId) => {
-                  handleCatalogSelect(catalogId);
-                  setPendingParts([]);
-                }}
-                showCustomCatalogInput={showCustomCatalogInput}
-                onShowCustomCatalogInput={setShowCustomCatalogInput}
-                customCatalogName={customCatalogName}
-                onCustomCatalogNameChange={setCustomCatalogName}
-                onCreateCatalog={createCatalog}
-                isOnline={isOnline}
-              />
+            ) : (
+              wizardStage === "catalog" && (
+                <CatalogStage
+                  catalogs={catalogsWithCounts}
+                  selectedCatalogId={selectedCatalogId}
+                  allSelected={
+                    hasCatalogSelection && selectedCatalogId === null
+                  }
+                  onCatalogSelect={(catalogId) => {
+                    handleCatalogSelect(catalogId);
+                    setPendingParts([]);
+                  }}
+                  showCustomCatalogInput={showCustomCatalogInput}
+                  onShowCustomCatalogInput={setShowCustomCatalogInput}
+                  customCatalogName={customCatalogName}
+                  onCustomCatalogNameChange={setCustomCatalogName}
+                  onCreateCatalog={createCatalog}
+                  isOnline={isOnline}
+                />
+              )
             )}
             {!isWizardSearchActive && wizardStage === "material" && (
               <MaterialStage
                 materials={materialsWithCounts}
                 selectedMaterialId={selectedMaterialId}
-                allSelected={hasMaterialSelection && selectedMaterialId === null}
+                allSelected={
+                  hasMaterialSelection && selectedMaterialId === null
+                }
                 onMaterialSelect={handleMaterialSelect}
                 showCustomMaterialInput={showCustomMaterialInput}
                 onShowCustomMaterialInput={setShowCustomMaterialInput}
@@ -967,7 +1011,9 @@ export function AddPartDialog({
               <CategoryStage
                 categories={categoriesWithCounts}
                 selectedCategory={selectedCategory}
-                allSelected={hasCategorySelection && selectedCategory?.categoryId === null}
+                allSelected={
+                  hasCategorySelection && selectedCategory?.categoryId === null
+                }
                 onCategorySelect={handleCategorySelection}
                 showCustomCategoryInput={showCustomCategoryInput}
                 onShowCustomCategoryInput={setShowCustomCategoryInput}
@@ -1004,7 +1050,9 @@ export function AddPartDialog({
                 onSetQuantity={handleSetQuantity}
                 onUpdateSupplier={handleUpdateSupplier}
                 onCacheSupplierPart={handleCacheSupplierPart}
-                onSupplierPartResolutionStart={handleSupplierPartResolutionStart}
+                onSupplierPartResolutionStart={
+                  handleSupplierPartResolutionStart
+                }
                 onRemovePendingPart={handleRemovePendingPart}
                 allPartsHaveSuppliers={allPartsHaveSuppliers}
               />
@@ -1060,7 +1108,9 @@ export function AddPartDialog({
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => handleUpdateQuantity(pendingPart.partId, -1)}
+                              onClick={() =>
+                                handleUpdateQuantity(pendingPart.partId, -1)
+                              }
                               className="h-6 w-6 p-0"
                             >
                               <Minus className="h-3 w-3" />
@@ -1080,7 +1130,9 @@ export function AddPartDialog({
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => handleUpdateQuantity(pendingPart.partId, 1)}
+                              onClick={() =>
+                                handleUpdateQuantity(pendingPart.partId, 1)
+                              }
                               className="h-6 w-6 p-0"
                             >
                               <Plus className="h-3 w-3" />
@@ -1099,7 +1151,9 @@ export function AddPartDialog({
             <DialogFooter className="shrink-0 border-t px-2 py-3 sm:px-4 sm:py-4 md:px-6">
               <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="text-left sm:text-right">
-                  <p className="text-xs text-gray-600 sm:text-sm">Review Total</p>
+                  <p className="text-xs text-gray-600 sm:text-sm">
+                    Review Total
+                  </p>
                   <p className="text-lg font-semibold sm:text-xl">
                     ${reviewedPartsTotal.toFixed(2)}
                   </p>

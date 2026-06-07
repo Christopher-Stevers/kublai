@@ -8,6 +8,7 @@ import { TRPCReactProvider } from "~/trpc/react";
 import { APP_NAME } from "~/constants/app";
 import { ClientConsoleErrorReporter } from "~/components/debug/ClientConsoleErrorReporter";
 import { ServiceWorkerRegistration } from "~/components/offline/ServiceWorkerRegistration";
+import { StartupSplash } from "~/components/app/StartupSplash";
 
 export const metadata: Metadata = {
   title: `${APP_NAME} - Simplified Parts Ordering for Trades Foremen`,
@@ -38,11 +39,31 @@ export const metadata: Metadata = {
   },
   icons: [
     { rel: "icon", url: "/foremanhq/favicon.ico" },
-    { rel: "icon", type: "image/png", sizes: "16x16", url: "/foremanhq/favicon-16x16.png" },
-    { rel: "icon", type: "image/png", sizes: "32x32", url: "/foremanhq/favicon-32x32.png" },
+    {
+      rel: "icon",
+      type: "image/png",
+      sizes: "16x16",
+      url: "/foremanhq/favicon-16x16.png",
+    },
+    {
+      rel: "icon",
+      type: "image/png",
+      sizes: "32x32",
+      url: "/foremanhq/favicon-32x32.png",
+    },
     { rel: "apple-touch-icon", url: "/foremanhq/apple-touch-icon.png" },
-    { rel: "icon", type: "image/png", sizes: "192x192", url: "/foremanhq/android-chrome-192x192.png" },
-    { rel: "icon", type: "image/png", sizes: "512x512", url: "/foremanhq/android-chrome-512x512.png" },
+    {
+      rel: "icon",
+      type: "image/png",
+      sizes: "192x192",
+      url: "/foremanhq/android-chrome-192x192.png",
+    },
+    {
+      rel: "icon",
+      type: "image/png",
+      sizes: "512x512",
+      url: "/foremanhq/android-chrome-512x512.png",
+    },
   ],
 };
 
@@ -50,6 +71,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 5,
+  themeColor: "#f9fafb",
 };
 
 const geist = Geist({
@@ -62,7 +84,8 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" className={`${geist.variable}`}>
-      <body>
+      <body style={{ backgroundColor: "#f9fafb" }}>
+        <StartupSplash />
         <SessionProviderWrapper>
           <TRPCReactProvider>
             <ClientConsoleErrorReporter />

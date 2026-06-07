@@ -4,13 +4,21 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme {
-  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif,
+  --font-sans:
+    var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif,
     "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
 }
 
 /* Smooth scroll behavior */
 html {
+  min-height: 100%;
+  background: #f9fafb;
   scroll-behavior: smooth;
+}
+
+body {
+  min-height: 100dvh;
+  background: #f9fafb;
 }
 
 /* Performance optimizations for animations */
@@ -150,6 +158,6 @@ html {
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply text-foreground bg-gray-50;
   }
 }
