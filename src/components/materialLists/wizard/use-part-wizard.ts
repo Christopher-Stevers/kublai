@@ -91,6 +91,19 @@ export function usePartWizard(open = true) {
       staleTime: 1000 * 60 * 5,
     },
   );
+  const shouldRefreshCatalogueSnapshot =
+    open &&
+    isOnline &&
+    !!serverSummary &&
+    (cachedCatalogueData?.parts.length ?? 0) < (serverSummary.partCount ?? 0);
+  const { data: serverCatalogueSnapshotParts } =
+    api.catalogue.searchParts.useQuery(
+      { limit: 5000 },
+      {
+        enabled: shouldRefreshCatalogueSnapshot,
+        staleTime: 1000 * 60 * 15,
+      },
+    );
   const shouldLoadSelectionParts =
     open &&
     isOnline &&
@@ -139,11 +152,18 @@ export function usePartWizard(open = true) {
   }, [open]);
 
   useEffect(() => {
+    const partCount = serverSummary?.partCount ?? 0;
+    const snapshotParts =
+      serverCatalogueSnapshotParts && serverCatalogueSnapshotParts.length >= partCount
+        ? serverCatalogueSnapshotParts
+        : serverSelectionParts && serverSelectionParts.length >= partCount
+          ? serverSelectionParts
+          : null;
+
     if (
       !isOnline ||
       !serverSummary ||
-      !serverSelectionParts ||
-      serverSelectionParts.length < (serverSummary.partCount ?? 0)
+      !snapshotParts
     ) {
       return;
     }
@@ -153,12 +173,17 @@ export function usePartWizard(open = true) {
       materials: serverSummary.materials,
       categories: serverSummary.categories,
       allUnits: serverSummary.allUnits,
-      parts: serverSelectionParts,
+      parts: snapshotParts,
     };
 
     setOfflineCatalogueSnapshot(nextSnapshot);
     setCachedCatalogueData(nextSnapshot);
-  }, [isOnline, serverSelectionParts, serverSummary]);
+  }, [
+    isOnline,
+    serverCatalogueSnapshotParts,
+    serverSelectionParts,
+    serverSummary,
+  ]);
 
   const catalogs = isOnline
     ? (serverSummary?.catalogs ?? cachedCatalogueData?.catalogs)
@@ -175,12 +200,21 @@ export function usePartWizard(open = true) {
   const summaryParts: PartFacet[] | undefined = isOnline
     ? (serverSummary?.parts ?? cachedCatalogueData?.parts)
     : cachedCatalogueData?.parts;
-  const warmedFilteredSelectionParts = useMemo(() => {
-    if (!warmedSelectionParts) return undefined;
-
+  const filterSelectionParts = useCallback((parts: PreloadedPart[]) => {
     const query = deferredWizardSearchQuery.trim().toLowerCase();
-    return warmedSelectionParts.filter((part) => {
-      if (query && !part.displayName.toLowerCase().includes(query)) {
+    return parts.filter((part) => {
+      const searchableText = [
+        part.displayName,
+        part.description,
+        part.material,
+        part.size,
+        part.sizeLabel,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+
+      if (query && !searchableText.includes(query)) {
         return false;
       }
 
@@ -237,12 +271,24 @@ export function usePartWizard(open = true) {
     selectedCategory,
     selectedMaterialId,
     selectedSize,
-    warmedSelectionParts,
   ]);
+
+  const cachedFilteredSelectionParts = useMemo(() => {
+    if (!cachedCatalogueData?.parts) return undefined;
+    return filterSelectionParts(cachedCatalogueData.parts);
+  }, [cachedCatalogueData?.parts, filterSelectionParts]);
+
+  const warmedFilteredSelectionParts = useMemo(() => {
+    if (!warmedSelectionParts) return undefined;
+    return filterSelectionParts(warmedSelectionParts);
+  }, [filterSelectionParts, warmedSelectionParts]);
+
   const selectionParts = isOnline
     ? (serverSelectionParts ??
-      (shouldLoadSelectionParts ? warmedFilteredSelectionParts : []))
-    : cachedCatalogueData?.parts;
+      (shouldLoadSelectionParts
+        ? (cachedFilteredSelectionParts ?? warmedFilteredSelectionParts)
+        : []))
+    : cachedFilteredSelectionParts;
 
   const partsByCatalog = useMemo(
     () =>
