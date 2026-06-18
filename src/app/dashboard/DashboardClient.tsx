@@ -18,12 +18,14 @@ import {
   BriefcaseIcon,
   CalendarIcon,
   CheckCircle2Icon,
+  FileTextIcon,
   UserIcon,
   MapPinIcon,
   PackageIcon,
   PencilIcon,
   PlusIcon,
   SendIcon,
+  ShoppingCartIcon,
   TrashIcon,
   WifiOffIcon,
 } from "lucide-react";
@@ -32,9 +34,14 @@ import { useReplicacheJobDetail, useReplicacheJobsList } from "~/hooks/use-repli
 import { useReplicacheMaterialList } from "~/hooks/use-replicache-material-list";
 import { useReplicacheSuppliers } from "~/hooks/use-replicache-suppliers";
 import { MaterialListItem } from "~/components/materialLists/MaterialListItem";
+import { MaterialListTableRow } from "~/components/materialLists/MaterialListTableRow";
 import { AddPartDialog } from "~/components/materialLists/AddPartDialog";
+import { QuotePreviewSheet } from "~/components/materialLists/QuotePreviewSheet";
+import { OrdersPreviewSheet } from "~/components/materialLists/OrdersPreviewSheet";
+import { ExistingQuotesOrdersDialog } from "~/components/materialLists/ExistingQuotesOrdersDialog";
 import { JobEditDialog } from "~/components/jobs/JobEditDialog";
 import { MaterialListNameModal } from "~/components/materialLists/MaterialListNameModal";
+import { ViewToggle } from "~/components/ui/view-toggle";
 import { getBrowserOnlineStatus, useOnlineStatus } from "~/hooks/use-online-status";
 import {
   getMaterialListReplicache,
@@ -182,6 +189,20 @@ export function DashboardClient({ initialJobs }: { initialJobs: DashboardJob[] }
   const [showOfflineJobEditDialog, setShowOfflineJobEditDialog] = useState(false);
   const [showOfflineMaterialListNameModal, setShowOfflineMaterialListNameModal] =
     useState(false);
+  const [offlineMaterialListViewMode, setOfflineMaterialListViewMode] =
+    useState<"grid" | "table">("grid");
+  const [showOfflineQuoteSheet, setShowOfflineQuoteSheet] = useState(false);
+  const [showOfflineOrdersSheet, setShowOfflineOrdersSheet] = useState(false);
+  const [showOfflineExistingQuotesDialog, setShowOfflineExistingQuotesDialog] =
+    useState(false);
+  const [showOfflineExistingOrdersDialog, setShowOfflineExistingOrdersDialog] =
+    useState(false);
+  const [selectedOfflineQuoteId, setSelectedOfflineQuoteId] = useState<
+    string | undefined
+  >();
+  const [selectedOfflineOrderId, setSelectedOfflineOrderId] = useState<
+    string | undefined
+  >();
   const [jobToDelete, setJobToDelete] = useState<{
     id: string;
     name: string;
@@ -334,7 +355,43 @@ export function DashboardClient({ initialJobs }: { initialJobs: DashboardJob[] }
     const offlineMaterialLists = offlineJobDetail?.materialLists ?? [];
     const selectedMaterialList = offlineMaterialListDetail.materialList;
     const selectedItems = offlineMaterialListDetail.items;
+    const selectedMaterialTotal = offlineMaterialListDetail.materialTotal;
+    const selectedMaterialListHasPendingSync =
+      Boolean(selectedMaterialList?.pendingSync) ||
+      selectedItems.some((item) => Boolean(item.pendingSync));
     const jobLocationAddress = formatLocationAddress(offlineJob?.location);
+    const canGenerateDocuments =
+      userData?.permissions.canGenerateDocuments ?? true;
+    const offlineGenerationBlockReason = !isBrowserOnline
+      ? "Reconnect before generating quotes or orders."
+      : !canGenerateDocuments
+        ? "Standard accounts cannot generate quotes or orders."
+        : selectedMaterialListHasPendingSync
+          ? "Finish syncing this material list before generating a quote or order."
+          : selectedItems.length === 0
+            ? "Add parts before generating a quote or order."
+            : null;
+    const canGenerateOfflineQuoteOrOrder = !offlineGenerationBlockReason;
+
+    const handleOfflineGenerateQuote = () => {
+      if (!canGenerateOfflineQuoteOrOrder) return;
+      setShowOfflineExistingQuotesDialog(true);
+    };
+
+    const handleOfflineGenerateOrder = () => {
+      if (!canGenerateOfflineQuoteOrOrder) return;
+      setShowOfflineExistingOrdersDialog(true);
+    };
+
+    const handleOfflineGenerateNewQuote = () => {
+      setSelectedOfflineQuoteId(undefined);
+      setShowOfflineQuoteSheet(true);
+    };
+
+    const handleOfflineGenerateNewOrder = () => {
+      setSelectedOfflineOrderId(undefined);
+      setShowOfflineOrdersSheet(true);
+    };
 
     return (
       <div className="px-4 py-6 sm:px-6 sm:py-8">
@@ -351,10 +408,10 @@ export function DashboardClient({ initialJobs }: { initialJobs: DashboardJob[] }
           {offlineMaterialListId ? (
             selectedMaterialList ? (
               <>
-                <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">
+                <div className="mb-6 flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <h1 className="min-w-0 text-2xl font-bold break-words text-gray-900 sm:text-3xl">
                         {selectedMaterialList.name}
                       </h1>
                       <Button
@@ -373,14 +430,11 @@ export function DashboardClient({ initialJobs }: { initialJobs: DashboardJob[] }
                         : "Offline material-list mode. Adds and edits queue locally and sync on reconnect."}
                     </p>
                   </div>
-                  <Button
-                    size="lg"
-                    className="h-11 w-full sm:w-auto"
-                    onClick={() => setShowOfflineAddPartDialog(true)}
-                  >
-                    <PlusIcon className="mr-2 h-5 w-5" />
-                    Add Part
-                  </Button>
+                  <ViewToggle
+                    view={offlineMaterialListViewMode}
+                    onViewChange={setOfflineMaterialListViewMode}
+                    showOnMobile
+                  />
                 </div>
 
                 {selectedItems.length === 0 ? (
@@ -398,28 +452,168 @@ export function DashboardClient({ initialJobs }: { initialJobs: DashboardJob[] }
                     </CardContent>
                   </Card>
                 ) : (
-                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-                    {selectedItems.map((item) => (
-                      <MaterialListItem
-                        key={item.id}
-                        materialListId={selectedMaterialList.id}
-                        suppliers={suppliers}
-                        syncStatus={item.pendingSync ? "pending" : "synced"}
-                        item={{
-                          ...item,
-                          selectedSupplierId: item.supplierId,
-                          partDefinition: item.partDefinition ?? null,
-                          supplierPart: item.supplierPart ?? null,
-                        }}
-                      />
-                    ))}
-                  </div>
+                  <>
+                    {offlineMaterialListViewMode === "grid" ? (
+                      <div className="grid grid-cols-2 gap-3 pb-24 sm:grid-cols-3 lg:grid-cols-4">
+                        {selectedItems.map((item) => (
+                          <MaterialListItem
+                            key={item.id}
+                            materialListId={selectedMaterialList.id}
+                            suppliers={suppliers}
+                            syncStatus={item.pendingSync ? "pending" : "synced"}
+                            item={{
+                              ...item,
+                              selectedSupplierId: item.supplierId,
+                              partDefinition: item.partDefinition ?? null,
+                              supplierPart: item.supplierPart ?? null,
+                            }}
+                          />
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto pb-24">
+                        <table className="min-w-[52rem] divide-y divide-gray-200">
+                          <thead className="bg-gray-50">
+                            <tr>
+                              <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
+                                Part
+                              </th>
+                              <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
+                                Qty
+                              </th>
+                              <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
+                                Unit
+                              </th>
+                              <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
+                                Supplier
+                              </th>
+                              <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
+                                Cost
+                              </th>
+                              <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
+                                Total
+                              </th>
+                              <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
+                                Actions
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-200 bg-white">
+                            {selectedItems.map((item) => (
+                              <MaterialListTableRow
+                                key={item.id}
+                                materialListId={selectedMaterialList.id}
+                                suppliers={suppliers}
+                                item={{
+                                  ...item,
+                                  oneOff: null,
+                                  uom: null,
+                                  selectedSupplierId: item.supplierId,
+                                  partDefinition: item.partDefinition ?? null,
+                                  supplierPart: item.supplierPart ?? null,
+                                }}
+                              />
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </>
                 )}
+
+                <div className="sticky bottom-0 z-10 -mx-4 mt-4 border-t bg-white px-4 pt-1.5 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:-mx-6 sm:px-6 sm:pt-2">
+                  <div className="mx-auto max-w-6xl">
+                    <div className="space-y-1.5">
+                      <div className="flex items-baseline gap-1.5">
+                        <span className="text-base text-gray-600 sm:text-lg">
+                          Material Total
+                        </span>
+                        <span className="text-base font-bold sm:text-lg">
+                          ${selectedMaterialTotal.toFixed(2)}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-3 gap-1.5">
+                        <Button
+                          variant="outline"
+                          onClick={handleOfflineGenerateQuote}
+                          disabled={!canGenerateOfflineQuoteOrOrder}
+                          title={offlineGenerationBlockReason ?? "Generate quote"}
+                          className="h-9 min-h-9 w-full px-1.5 py-1 text-[11px] leading-tight whitespace-normal sm:h-9 sm:text-xs"
+                        >
+                          <FileTextIcon className="mr-1 h-3.5 w-3.5 shrink-0" />
+                          <span className="text-center leading-tight">Quote</span>
+                        </Button>
+                        <Button
+                          onClick={handleOfflineGenerateOrder}
+                          disabled={!canGenerateOfflineQuoteOrOrder}
+                          title={offlineGenerationBlockReason ?? "Order"}
+                          className="h-9 min-h-9 w-full px-1.5 py-1 text-[11px] leading-tight whitespace-normal sm:h-9 sm:text-xs"
+                        >
+                          <ShoppingCartIcon className="mr-1 h-3.5 w-3.5 shrink-0" />
+                          <span className="text-center leading-tight">Order</span>
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={() => setShowOfflineAddPartDialog(true)}
+                          className="h-9 min-h-9 w-full px-1.5 py-1 text-[11px] leading-tight whitespace-normal sm:h-9 sm:text-xs"
+                        >
+                          <PlusIcon className="mr-1 h-3.5 w-3.5 shrink-0" />
+                          <span className="text-center leading-tight">Add Part</span>
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
 
                 <AddPartDialog
                   open={showOfflineAddPartDialog}
                   onOpenChange={setShowOfflineAddPartDialog}
                   materialListId={selectedMaterialList.id}
+                />
+                {showOfflineQuoteSheet && (
+                  <QuotePreviewSheet
+                    open={showOfflineQuoteSheet}
+                    onOpenChange={(open) => {
+                      setShowOfflineQuoteSheet(open);
+                      if (!open) setSelectedOfflineQuoteId(undefined);
+                    }}
+                    materialListId={selectedMaterialList.id}
+                    jobName={offlineJob?.name ?? ""}
+                    quoteId={selectedOfflineQuoteId}
+                  />
+                )}
+                {showOfflineOrdersSheet && (
+                  <OrdersPreviewSheet
+                    open={showOfflineOrdersSheet}
+                    onOpenChange={(open) => {
+                      setShowOfflineOrdersSheet(open);
+                      if (!open) setSelectedOfflineOrderId(undefined);
+                    }}
+                    materialListId={selectedMaterialList.id}
+                    orderId={selectedOfflineOrderId}
+                  />
+                )}
+                <ExistingQuotesOrdersDialog
+                  open={showOfflineExistingQuotesDialog}
+                  onOpenChange={setShowOfflineExistingQuotesDialog}
+                  materialListId={selectedMaterialList.id}
+                  type="quote"
+                  onGenerateNew={handleOfflineGenerateNewQuote}
+                  onOpenExisting={(quoteId) => {
+                    setSelectedOfflineQuoteId(quoteId);
+                    setShowOfflineQuoteSheet(true);
+                  }}
+                />
+                <ExistingQuotesOrdersDialog
+                  open={showOfflineExistingOrdersDialog}
+                  onOpenChange={setShowOfflineExistingOrdersDialog}
+                  materialListId={selectedMaterialList.id}
+                  type="order"
+                  onGenerateNew={handleOfflineGenerateNewOrder}
+                  onOpenExisting={(orderId) => {
+                    setSelectedOfflineOrderId(orderId);
+                    setShowOfflineOrdersSheet(true);
+                  }}
                 />
               </>
             ) : (
