@@ -21,6 +21,7 @@ import {
   UserIcon,
   MapPinIcon,
   PackageIcon,
+  PencilIcon,
   PlusIcon,
   SendIcon,
   TrashIcon,
@@ -32,6 +33,8 @@ import { useReplicacheMaterialList } from "~/hooks/use-replicache-material-list"
 import { useReplicacheSuppliers } from "~/hooks/use-replicache-suppliers";
 import { MaterialListItem } from "~/components/materialLists/MaterialListItem";
 import { AddPartDialog } from "~/components/materialLists/AddPartDialog";
+import { JobEditDialog } from "~/components/jobs/JobEditDialog";
+import { MaterialListNameModal } from "~/components/materialLists/MaterialListNameModal";
 import { getBrowserOnlineStatus, useOnlineStatus } from "~/hooks/use-online-status";
 import {
   getMaterialListReplicache,
@@ -176,6 +179,9 @@ export function DashboardClient({ initialJobs }: { initialJobs: DashboardJob[] }
   const hasRedirectedRef = useRef(false);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [newJobName, setNewJobName] = useState("");
+  const [showOfflineJobEditDialog, setShowOfflineJobEditDialog] = useState(false);
+  const [showOfflineMaterialListNameModal, setShowOfflineMaterialListNameModal] =
+    useState(false);
   const [jobToDelete, setJobToDelete] = useState<{
     id: string;
     name: string;
@@ -347,9 +353,20 @@ export function DashboardClient({ initialJobs }: { initialJobs: DashboardJob[] }
               <>
                 <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                   <div>
-                    <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">
-                      {selectedMaterialList.name}
-                    </h1>
+                    <div className="flex items-center gap-2">
+                      <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">
+                        {selectedMaterialList.name}
+                      </h1>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setShowOfflineMaterialListNameModal(true)}
+                        className="h-8 w-8 shrink-0"
+                        aria-label="Edit material list"
+                      >
+                        <PencilIcon className="h-4 w-4" />
+                      </Button>
+                    </div>
                     <p className="text-muted-foreground mt-1 text-sm">
                       {isBrowserOnline
                         ? "Local material-list mode. Adds and edits apply immediately and sync in the background."
@@ -419,9 +436,20 @@ export function DashboardClient({ initialJobs }: { initialJobs: DashboardJob[] }
           ) : offlineJob ? (
             <>
               <div className="mb-6">
-                <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">
-                  {offlineJob.name}
-                </h1>
+                <div className="mb-2 flex items-center gap-3">
+                  <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">
+                    {offlineJob.name}
+                  </h1>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setShowOfflineJobEditDialog(true)}
+                    className="h-8 w-8 p-0"
+                    aria-label="Edit job"
+                  >
+                    <PencilIcon className="h-4 w-4" />
+                  </Button>
+                </div>
                 <div className="mt-2 flex flex-wrap gap-4 text-sm text-gray-600">
                   {jobLocationAddress && (
                     <div className="flex items-center gap-2">
@@ -552,6 +580,27 @@ export function DashboardClient({ initialJobs }: { initialJobs: DashboardJob[] }
                 </p>
               </CardContent>
             </Card>
+          )}
+
+          {offlineJob && (
+            <JobEditDialog
+              open={showOfflineJobEditDialog}
+              onOpenChange={setShowOfflineJobEditDialog}
+              jobId={offlineJob.id}
+              initialName={offlineJob.name}
+              initialLocationId={offlineJob.locationId}
+              initialForemanName={offlineJob.foremanName ?? null}
+              initialPoNumber={offlineJob.poNumber ?? null}
+            />
+          )}
+
+          {selectedMaterialList && (
+            <MaterialListNameModal
+              open={showOfflineMaterialListNameModal}
+              onOpenChange={setShowOfflineMaterialListNameModal}
+              materialListId={selectedMaterialList.id}
+              initialName={selectedMaterialList.name ?? null}
+            />
           )}
 
           <Dialog

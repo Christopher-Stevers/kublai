@@ -24,15 +24,16 @@ import {
   CheckCircle2Icon,
   Clock3Icon,
   FileTextIcon,
+  PencilIcon,
   PlusIcon,
   ShoppingCartIcon,
+  TrashIcon,
   UsersIcon,
   WifiOffIcon,
 } from "lucide-react";
 import { ViewToggle } from "~/components/ui/view-toggle";
 import { QuantityControls } from "~/components/materialLists/QuantityControls";
 import { SupplierSelector } from "~/components/materialLists/SupplierSelector";
-import { TrashIcon } from "lucide-react";
 import { useReplicacheMaterialList } from "~/hooks/use-replicache-material-list";
 import { useReplicacheJobDetail } from "~/hooks/use-replicache-jobs";
 import { useReplicacheSuppliers } from "~/hooks/use-replicache-suppliers";
@@ -331,14 +332,20 @@ export default function MaterialListDetailPage({
           <div className="flex items-start justify-between gap-3">
             <div>
               <div className="flex flex-col content-start items-start gap-0.5">
-                <button
-                  onClick={() => setShowMaterialListNameModal(true)}
-                  className="text-left"
-                >
-                  <h1 className="cursor-pointer text-lg leading-tight font-bold text-gray-900 transition-colors hover:text-gray-700 sm:text-xl">
+                <div className="flex items-center gap-2">
+                  <h1 className="text-lg leading-tight font-bold text-gray-900 sm:text-xl">
                     {mlHeader.name || "Material List"}
                   </h1>
-                </button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setShowMaterialListNameModal(true)}
+                    className="h-8 w-8 shrink-0"
+                    aria-label="Edit material list"
+                  >
+                    <PencilIcon className="h-4 w-4" />
+                  </Button>
+                </div>
                 <button
                   onClick={() => {
                     if (mlHeader.jobId) {
