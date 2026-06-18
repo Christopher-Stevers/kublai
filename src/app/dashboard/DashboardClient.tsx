@@ -17,10 +17,12 @@ import { Input } from "~/components/ui/input";
 import {
   BriefcaseIcon,
   CalendarIcon,
+  CheckCircle2Icon,
   UserIcon,
   MapPinIcon,
   PackageIcon,
   PlusIcon,
+  SendIcon,
   TrashIcon,
   WifiOffIcon,
 } from "lucide-react";
@@ -66,6 +68,94 @@ function formatLocationAddress(location: JobLocationDisplay | null | undefined) 
     location.name ||
     null
   );
+}
+
+function getSendStatusTone(sentSupplierCount: number, totalSupplierCount: number) {
+  if (totalSupplierCount === 0) {
+    return {
+      chip: "border-gray-200 bg-gray-50 text-gray-600",
+      bar: "bg-gray-300",
+    };
+  }
+
+  if (sentSupplierCount >= totalSupplierCount) {
+    return {
+      chip: "border-emerald-200 bg-emerald-50 text-emerald-700",
+      bar: "bg-emerald-500",
+    };
+  }
+
+  if (sentSupplierCount > 0) {
+    return {
+      chip: "border-amber-200 bg-amber-50 text-amber-700",
+      bar: "bg-amber-500",
+    };
+  }
+
+  return {
+    chip: "border-gray-200 bg-gray-50 text-gray-700",
+    bar: "bg-gray-400",
+  };
+}
+
+function MaterialListSendStatus({
+  sentSupplierCount = 0,
+  totalSupplierCount = 0,
+  verifiedSupplierCount = 0,
+}: {
+  sentSupplierCount?: number;
+  totalSupplierCount?: number;
+  verifiedSupplierCount?: number;
+}) {
+  const normalizedSentCount = Math.min(sentSupplierCount, totalSupplierCount);
+  const normalizedVerifiedCount = Math.min(
+    verifiedSupplierCount,
+    normalizedSentCount,
+  );
+  const progress =
+    totalSupplierCount > 0
+      ? Math.round((normalizedSentCount / totalSupplierCount) * 100)
+      : 0;
+  const tone = getSendStatusTone(normalizedSentCount, totalSupplierCount);
+
+  return (
+    <div className="space-y-1">
+      <div className="flex flex-wrap items-center gap-1.5">
+        <div
+          className={
+            "inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-xs font-medium " +
+            tone.chip
+          }
+        >
+          <SendIcon className="h-3.5 w-3.5" />
+          <span>
+            {normalizedSentCount}/{totalSupplierCount} sent
+          </span>
+        </div>
+        {normalizedSentCount > 0 && (
+          <div className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-2 py-1 text-xs font-medium text-gray-700">
+            <CheckCircle2Icon className="h-3.5 w-3.5 text-gray-500" />
+            <span>
+              {normalizedVerifiedCount}/{normalizedSentCount} verified
+            </span>
+          </div>
+        )}
+      </div>
+      <div className="h-1.5 overflow-hidden rounded-full bg-gray-100">
+        <div
+          className={"h-full rounded-full transition-all " + tone.bar}
+          style={{ width: progress + "%" }}
+        />
+      </div>
+    </div>
+  );
+}
+
+function formatContributorName(contributor: {
+  name: string | null;
+  email: string | null;
+}) {
+  return contributor.name?.trim() || contributor.email?.trim() || "Unknown";
 }
 
 export type DashboardJob = {
@@ -394,6 +484,19 @@ export function DashboardClient({ initialJobs }: { initialJobs: DashboardJob[] }
                             <span className="font-semibold">Total:</span>
                             <span>${list.materialTotal.toFixed(2)}</span>
                           </div>
+                          {list.contributors && list.contributors.length > 0 && (
+                            <div className="flex items-start gap-2">
+                              <UserIcon className="mt-0.5 h-4 w-4 shrink-0" />
+                              <span className="min-w-0 leading-snug">
+                                {list.contributors.map(formatContributorName).join(", ")}
+                              </span>
+                            </div>
+                          )}
+                          <MaterialListSendStatus
+                            sentSupplierCount={list.sentSupplierCount}
+                            totalSupplierCount={list.totalSupplierCount}
+                            verifiedSupplierCount={list.verifiedSupplierCount}
+                          />
                           <div className="flex items-center gap-2">
                             <CalendarIcon className="h-4 w-4" />
                             <span>{format(new Date(list.createdAt), "MMM d, yyyy")}</span>

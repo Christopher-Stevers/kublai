@@ -15,6 +15,8 @@ import {
   materials,
   materialLists,
   materialListSyncTombstones,
+  orderItems,
+  orders,
   partDefinitions,
   quoteItems,
   quotes,
@@ -1151,6 +1153,87 @@ export async function handleMaterialListReplicachePull(
       contributorUserRows.map((user) => [user.id, user]),
     );
 
+    const totalSupplierIdsByQuoteId = new Map<string, Set<string>>();
+    for (const item of itemRows) {
+      const supplierId = item.supplierId;
+      if (!item.quoteId || !supplierId) continue;
+
+      const supplierIds =
+        totalSupplierIdsByQuoteId.get(item.quoteId) ?? new Set<string>();
+      supplierIds.add(supplierId);
+      totalSupplierIdsByQuoteId.set(item.quoteId, supplierIds);
+    }
+
+    const materialListIds = materialListRows.map((materialList) => materialList.id);
+    const orderRows = materialListIds.length
+      ? await tx
+          .select({
+            id: orders.id,
+            materialListId: orders.materialListId,
+            supplierId: orders.supplierId,
+            status: orders.status,
+            sentAt: orders.sentAt,
+          })
+          .from(orders)
+          .where(inArray(orders.materialListId, materialListIds))
+      : [];
+
+    const orderIds = orderRows.map((order) => order.id);
+    const orderItemRows = orderIds.length
+      ? await tx
+          .select({
+            orderId: orderItems.orderId,
+            verificationStatus: orderItems.verificationStatus,
+          })
+          .from(orderItems)
+          .where(inArray(orderItems.orderId, orderIds))
+      : [];
+
+    const verifiedStatuses = new Set(["complete", "partial", "problem"]);
+    const verificationByOrderId = new Map<
+      string,
+      { itemCount: number; verifiedItemCount: number }
+    >();
+
+    for (const item of orderItemRows) {
+      const counts = verificationByOrderId.get(item.orderId) ?? {
+        itemCount: 0,
+        verifiedItemCount: 0,
+      };
+      counts.itemCount += 1;
+      if (verifiedStatuses.has(item.verificationStatus)) {
+        counts.verifiedItemCount += 1;
+      }
+      verificationByOrderId.set(item.orderId, counts);
+    }
+
+    const sentSupplierIdsByListId = new Map<string, Set<string>>();
+    const verifiedSupplierIdsByListId = new Map<string, Set<string>>();
+    for (const order of orderRows) {
+      if (!order.materialListId || !order.supplierId) continue;
+
+      const hasBeenSent =
+        !!order.sentAt || ["sent", "confirmed", "received"].includes(order.status);
+      if (!hasBeenSent) continue;
+
+      const sentSupplierIds =
+        sentSupplierIdsByListId.get(order.materialListId) ?? new Set<string>();
+      sentSupplierIds.add(order.supplierId);
+      sentSupplierIdsByListId.set(order.materialListId, sentSupplierIds);
+
+      const verificationCounts = verificationByOrderId.get(order.id);
+      const isVerified =
+        !!verificationCounts &&
+        verificationCounts.itemCount > 0 &&
+        verificationCounts.verifiedItemCount === verificationCounts.itemCount;
+      if (!isVerified) continue;
+
+      const verifiedSupplierIds =
+        verifiedSupplierIdsByListId.get(order.materialListId) ?? new Set<string>();
+      verifiedSupplierIds.add(order.supplierId);
+      verifiedSupplierIdsByListId.set(order.materialListId, verifiedSupplierIds);
+    }
+
     // Timestamp-only incremental pulls can leave a device permanently stale if
     // it advances its cookie after receiving a partial patch. Until this uses a
     // real CVR diff, send a full organization snapshot so every pull self-heals
@@ -1190,6 +1273,12 @@ export async function handleMaterialListReplicachePull(
         key: `materialList/${materialList.id}`,
         value: {
           ...materialList,
+          totalSupplierCount: materialList.quoteId
+            ? (totalSupplierIdsByQuoteId.get(materialList.quoteId)?.size ?? 0)
+            : 0,
+          sentSupplierCount: sentSupplierIdsByListId.get(materialList.id)?.size ?? 0,
+          verifiedSupplierCount:
+            verifiedSupplierIdsByListId.get(materialList.id)?.size ?? 0,
           createdBy: materialList.createdByUserId
             ? (() => {
                 const createdByUser = contributorUserMap.get(
