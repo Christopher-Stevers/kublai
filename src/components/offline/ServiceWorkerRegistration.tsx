@@ -18,6 +18,18 @@ export function ServiceWorkerRegistration() {
         // for pages, so updated HTML/JS wins online while cached pages remain
         // available offline.
         await registration.update();
+
+        const readyRegistration = await navigator.serviceWorker.ready;
+        const worker =
+          readyRegistration.active ??
+          readyRegistration.waiting ??
+          readyRegistration.installing ??
+          navigator.serviceWorker.controller;
+
+        worker?.postMessage({
+          type: "FOREMENHQ_CACHE_APP_SHELL",
+          urls: [window.location.pathname],
+        });
       } catch (error) {
         console.warn("Failed to register ForemenHQ service worker", error);
       }

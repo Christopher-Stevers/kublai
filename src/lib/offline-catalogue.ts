@@ -59,6 +59,50 @@ export interface OfflineCatalogueSnapshotEnvelope {
 const STORAGE_KEY = "foremanhq.offline.catalogue-snapshot";
 const SNAPSHOT_VERSION = 2;
 
+function getCacheableCatalogueImageUrls(data: OfflineCatalogueSnapshotData) {
+  const urls = new Set<string>();
+
+  for (const part of data.parts) {
+    const imageUrl = part.imageUrl?.trim();
+    if (!imageUrl) continue;
+
+    if (
+      imageUrl.startsWith("/api/catalogue/images/") ||
+      imageUrl.startsWith("/images/")
+    ) {
+      urls.add(imageUrl);
+    }
+  }
+
+  return Array.from(urls);
+}
+
+export async function warmOfflineCatalogueImages(
+  data: OfflineCatalogueSnapshotData,
+) {
+  if (typeof window === "undefined") return;
+  if (!("serviceWorker" in navigator)) return;
+
+  const urls = getCacheableCatalogueImageUrls(data);
+  if (urls.length === 0) return;
+
+  try {
+    const registration = await navigator.serviceWorker.ready;
+    const worker =
+      registration.active ??
+      registration.waiting ??
+      registration.installing ??
+      navigator.serviceWorker.controller;
+
+    worker?.postMessage({
+      type: "FOREMENHQ_CACHE_CATALOGUE_IMAGES",
+      urls,
+    });
+  } catch (error) {
+    console.warn("Failed to warm offline catalogue images", error);
+  }
+}
+
 export function getOfflineCatalogueSnapshot(): OfflineCatalogueSnapshotEnvelope | null {
   if (typeof window === "undefined") return null;
 
@@ -124,4 +168,5 @@ export function setOfflineCatalogueSnapshot(data: OfflineCatalogueSnapshotData) 
   };
 
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(envelope));
+  void warmOfflineCatalogueImages(data);
 }

@@ -18,6 +18,28 @@ const config = {
   typescript: {
     ignoreBuildErrors: false, // Keep TypeScript checking during build
   },
+  async headers() {
+    return [
+      {
+        source: "/sw.js",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "no-cache, no-store, must-revalidate",
+          },
+        ],
+      },
+      {
+        source: "/offline.html",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "no-cache, no-store, must-revalidate",
+          },
+        ],
+      },
+    ];
+  },
 };
 
 export default config;
