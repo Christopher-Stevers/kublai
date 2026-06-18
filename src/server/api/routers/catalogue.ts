@@ -48,6 +48,7 @@ import {
   makeCatalogueImageFilename,
   writeCatalogueImage,
 } from "~/server/catalogue/image-storage";
+import { publishOrganizationCatalogueEvent } from "~/server/material-list-events";
 
 function normalizeAliases(input: string | string[] | null | undefined) {
   const aliases = Array.isArray(input) ? input : (input ?? "").split(/[;,\n]/);
@@ -381,6 +382,12 @@ async function syncPartAliases(
   }
 }
 
+function publishCatalogueChange(organizationId: string | null | undefined) {
+  if (organizationId) {
+    publishOrganizationCatalogueEvent(organizationId);
+  }
+}
+
 // Helper function to find or create a size record
 async function findOrCreateSize(
   db: Parameters<
@@ -597,6 +604,7 @@ export const catalogueRouter = createTRPCRouter({
         })
         .returning();
 
+      publishCatalogueChange(organizationId);
       return newCatalog;
     }),
   /**
@@ -1195,6 +1203,8 @@ export const catalogueRouter = createTRPCRouter({
         }
       });
 
+      publishCatalogueChange(organizationId);
+
       const savedParts = await ctx.db
         .select({
           id: partDefinitions.id,
@@ -1305,6 +1315,7 @@ export const catalogueRouter = createTRPCRouter({
         })
         .returning();
 
+      publishCatalogueChange(organizationId);
       return newMaterial;
     }),
 
@@ -1453,6 +1464,7 @@ export const catalogueRouter = createTRPCRouter({
         })
         .returning();
 
+      publishCatalogueChange(organizationId);
       return newSize;
     }),
 
@@ -1496,6 +1508,7 @@ export const catalogueRouter = createTRPCRouter({
         })
         .returning();
 
+      publishCatalogueChange(organizationId);
       return newCategory;
     }),
 
@@ -1865,6 +1878,7 @@ export const catalogueRouter = createTRPCRouter({
           ),
         );
 
+      publishCatalogueChange(organizationId);
       return { imageUrl: localImageUrl };
     }),
 
@@ -1989,6 +2003,7 @@ export const catalogueRouter = createTRPCRouter({
         throw new Error("Part not found");
       }
 
+      publishCatalogueChange(organizationId);
       return updated;
     }),
 
@@ -2160,6 +2175,7 @@ export const catalogueRouter = createTRPCRouter({
           })
           .returning();
 
+        publishCatalogueChange(organizationId);
         return newPart;
       }
 
@@ -2277,6 +2293,7 @@ export const catalogueRouter = createTRPCRouter({
         }
       }
 
+      publishCatalogueChange(organizationId);
       return updated;
     }),
 
@@ -2470,6 +2487,7 @@ export const catalogueRouter = createTRPCRouter({
         .set({ isActive: false })
         .where(eq(partDefinitions.id, input.sourcePartId));
 
+      publishCatalogueChange(organizationId);
       return {
         mergedPartId: input.sourcePartId,
         targetPartId: input.targetPartId,
@@ -2599,6 +2617,7 @@ export const catalogueRouter = createTRPCRouter({
       })
       .returning();
 
+    publishCatalogueChange(organizationId);
     return newCategory.id;
   }),
 
@@ -2921,6 +2940,10 @@ export const catalogueRouter = createTRPCRouter({
         }
       }
 
+      if (created + updated > 0) {
+        publishCatalogueChange(organizationId);
+      }
+
       return { created, updated, skipped, total: input.rows.length };
     }),
 
@@ -3115,6 +3138,7 @@ export const catalogueRouter = createTRPCRouter({
         throw new Error("Failed to retrieve created part");
       }
 
+      publishCatalogueChange(organizationId);
       return {
         id: part.id,
         displayName: part.displayName,

@@ -12,7 +12,9 @@ import {
   addOfflineCatalogueCatalog,
   addOfflineCatalogueCategory,
   addOfflineCatalogueMaterial,
+  CATALOGUE_SERVER_UPDATED_EVENT,
   getOfflineCatalogueSnapshot,
+  OFFLINE_CATALOGUE_CHANGED_EVENT,
   setOfflineCatalogueSnapshot,
 } from "~/lib/offline-catalogue";
 import { useOnlineStatus } from "~/hooks/use-online-status";
@@ -79,6 +81,10 @@ export function usePartWizard(open = true) {
   const [cachedCatalogueData, setCachedCatalogueData] = useState(
     () => getOfflineCatalogueSnapshot()?.data ?? null,
   );
+  const [
+    needsCatalogueSnapshotRefresh,
+    setNeedsCatalogueSnapshotRefresh,
+  ] = useState(false);
   const [warmedSelectionParts, setWarmedSelectionParts] = useState<
     PreloadedPart[] | null
   >(null);
@@ -95,7 +101,8 @@ export function usePartWizard(open = true) {
     open &&
     isOnline &&
     !!serverSummary &&
-    (cachedCatalogueData?.parts.length ?? 0) < (serverSummary.partCount ?? 0);
+    (needsCatalogueSnapshotRefresh ||
+      (cachedCatalogueData?.parts.length ?? 0) < (serverSummary.partCount ?? 0));
   const { data: serverCatalogueSnapshotParts } =
     api.catalogue.searchParts.useQuery(
       { limit: 5000 },
@@ -141,6 +148,38 @@ export function usePartWizard(open = true) {
   }, []);
 
   useEffect(() => {
+    const refreshCachedSnapshot = () => {
+      setCachedCatalogueData(getOfflineCatalogueSnapshot()?.data ?? null);
+    };
+    const handleServerCatalogueUpdated = () => {
+      setNeedsCatalogueSnapshotRefresh(true);
+      refreshCachedSnapshot();
+      void utils.catalogue.getPartWizardSummary.invalidate();
+      void utils.catalogue.searchParts.invalidate();
+    };
+
+    window.addEventListener(
+      OFFLINE_CATALOGUE_CHANGED_EVENT,
+      refreshCachedSnapshot,
+    );
+    window.addEventListener(
+      CATALOGUE_SERVER_UPDATED_EVENT,
+      handleServerCatalogueUpdated,
+    );
+
+    return () => {
+      window.removeEventListener(
+        OFFLINE_CATALOGUE_CHANGED_EVENT,
+        refreshCachedSnapshot,
+      );
+      window.removeEventListener(
+        CATALOGUE_SERVER_UPDATED_EVENT,
+        handleServerCatalogueUpdated,
+      );
+    };
+  }, [utils]);
+
+  useEffect(() => {
     if (!serverSelectionParts) return;
     setWarmedSelectionParts(serverSelectionParts);
   }, [serverSelectionParts]);
@@ -178,8 +217,10 @@ export function usePartWizard(open = true) {
 
     setOfflineCatalogueSnapshot(nextSnapshot);
     setCachedCatalogueData(nextSnapshot);
+    setNeedsCatalogueSnapshotRefresh(false);
   }, [
     isOnline,
+    needsCatalogueSnapshotRefresh,
     serverCatalogueSnapshotParts,
     serverSelectionParts,
     serverSummary,

@@ -1,6 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 
 import {
+  subscribeToOrganizationCatalogueEvents,
   subscribeToOrganizationMaterialListEvents,
   subscribeToOrganizationReplicachePokes,
 } from "~/server/material-list-events";
@@ -78,6 +79,12 @@ export async function GET(request: Request) {
           organizationId,
           (event) => {
             send(encodeSse("replicache-poke", event));
+          },
+        ),
+        subscribeToOrganizationCatalogueEvents(
+          organizationId,
+          (event) => {
+            send(encodeSse("catalogue-updated", event));
           },
         ),
       );

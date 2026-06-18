@@ -16,6 +16,12 @@ export type ReplicacheRealtimePokeEvent = {
   changedAt: string;
 };
 
+export type CatalogueRealtimeEvent = {
+  organizationId: string;
+  version: number;
+  changedAt: string;
+};
+
 type MaterialListEventMap = {
   version: number;
   emitter: EventEmitter;
@@ -72,6 +78,18 @@ export function publishOrganizationReplicachePoke(
   return event;
 }
 
+export function publishOrganizationCatalogueEvent(organizationId: string) {
+  state.version += 1;
+  const event: CatalogueRealtimeEvent = {
+    organizationId,
+    version: state.version,
+    changedAt: new Date().toISOString(),
+  };
+
+  state.emitter.emit(`catalogue:${organizationId}`, event);
+  return event;
+}
+
 export function subscribeToMaterialListEvents(
   materialListId: string,
   listener: (event: MaterialListRealtimeEvent) => void,
@@ -94,6 +112,15 @@ export function subscribeToOrganizationReplicachePokes(
   listener: (event: ReplicacheRealtimePokeEvent) => void,
 ) {
   const key = `replicache:${organizationId}`;
+  state.emitter.on(key, listener);
+  return () => state.emitter.off(key, listener);
+}
+
+export function subscribeToOrganizationCatalogueEvents(
+  organizationId: string,
+  listener: (event: CatalogueRealtimeEvent) => void,
+) {
+  const key = `catalogue:${organizationId}`;
   state.emitter.on(key, listener);
   return () => state.emitter.off(key, listener);
 }

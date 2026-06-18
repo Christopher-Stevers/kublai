@@ -58,6 +58,10 @@ export interface OfflineCatalogueSnapshotEnvelope {
 
 const STORAGE_KEY = "foremanhq.offline.catalogue-snapshot";
 const SNAPSHOT_VERSION = 2;
+export const OFFLINE_CATALOGUE_CHANGED_EVENT =
+  "foremanhq:offline-catalogue-changed";
+export const CATALOGUE_SERVER_UPDATED_EVENT =
+  "foremenhq:catalogue-server-updated";
 
 function getCacheableCatalogueImageUrls(data: OfflineCatalogueSnapshotData) {
   const urls = new Set<string>();
@@ -168,5 +172,6 @@ export function setOfflineCatalogueSnapshot(data: OfflineCatalogueSnapshotData) 
   };
 
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(envelope));
+  window.dispatchEvent(new Event(OFFLINE_CATALOGUE_CHANGED_EVENT));
   void warmOfflineCatalogueImages(data);
 }
