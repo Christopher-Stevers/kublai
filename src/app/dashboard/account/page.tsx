@@ -23,11 +23,22 @@ function isStandaloneApp() {
   );
 }
 
+function isAppleTouchDevice() {
+  if (typeof window === "undefined") return false;
+  const navigatorWithTouch = window.navigator as Navigator & { maxTouchPoints?: number };
+  return (
+    /iPad|iPhone|iPod/.test(window.navigator.userAgent) ||
+    (window.navigator.platform === "MacIntel" &&
+      (navigatorWithTouch.maxTouchPoints ?? 0) > 1)
+  );
+}
+
 export default function AccountPage() {
   const [isCreatingPortal, setIsCreatingPortal] = useState(false);
   const [name, setName] = useState("");
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isInstalled, setIsInstalled] = useState(false);
+  const [usesAppleInstallFlow, setUsesAppleInstallFlow] = useState(false);
   const isOnline = useOnlineStatus();
   const utils = api.useUtils();
 
@@ -41,6 +52,7 @@ export default function AccountPage() {
 
   useEffect(() => {
     setIsInstalled(isStandaloneApp());
+    setUsesAppleInstallFlow(isAppleTouchDevice());
 
     const handleBeforeInstallPrompt = (event: Event) => {
       event.preventDefault();
@@ -181,22 +193,25 @@ export default function AccountPage() {
                   <DownloadIcon className="mr-2 h-4 w-4" /> Install App
                 </Button>
               ) : (
-                <div className="space-y-2">
-                  <Button disabled variant="outline" className="w-full sm:w-auto">
-                    <DownloadIcon className="mr-2 h-4 w-4" /> Install App
-                  </Button>
-                  <p className="text-muted-foreground text-xs">
-                    If your browser supports installation, use its menu and choose “Install app” or “Add to Home Screen.”
+                <div className="rounded-md border border-gray-200 bg-gray-50 p-4 text-sm text-gray-700">
+                  <p className="font-medium text-gray-900">
+                    {usesAppleInstallFlow
+                      ? "Use Add to Home Screen"
+                      : "Install from the browser menu"}
+                  </p>
+                  <p className="mt-1 text-sm text-gray-600">
+                    {usesAppleInstallFlow
+                      ? "On iPad, open the browser share menu and choose Add to Home Screen."
+                      : "Open your browser menu and choose Install app or Add to Home Screen."}
                   </p>
                 </div>
               )}
             </CardContent>
           </Card>
 
-          {/* Payment Status */}
           <Card>
             <CardHeader>
-              <CardTitle>Payment Status</CardTitle>
+              <CardTitle>Account Type</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               {!isOnline && (
@@ -204,21 +219,23 @@ export default function AccountPage() {
                   <WifiOffIcon className="h-3 w-3" /> Account billing requires internet
                 </div>
               )}
-              {status?.hasAccess ? (
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                    Active
-                  </Badge>
-                  <span className="text-sm text-gray-600">You have dashboard access</span>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
-                    No Access
-                  </Badge>
-                  <span className="text-sm text-gray-600">Please purchase access to continue</span>
-                </div>
-              )}
+              <div className="flex items-center gap-2">
+                <Badge
+                  variant="outline"
+                  className={
+                    status?.hasManagingAccount
+                      ? "border-green-200 bg-green-50 text-green-700"
+                      : "border-gray-200 bg-gray-50 text-gray-700"
+                  }
+                >
+                  {status?.accountTypeLabel ?? "Standard Account"}
+                </Badge>
+                <span className="text-sm text-gray-600">
+                  {status?.hasManagingAccount
+                    ? "You can manage lists, generate quotes, and generate orders."
+                    : "You can use the dashboard with standard account permissions."}
+                </span>
+              </div>
 
               {status?.hasActiveSubscription && (
                 <div className="space-y-2">
@@ -272,9 +289,9 @@ export default function AccountPage() {
                 </div>
               )}
 
-              {isOnline && !status?.hasAccess && (
+              {isOnline && !status?.hasManagingAccount && (
                 <Button asChild className="w-full">
-                  <a href="/pricing">Get Access</a>
+                  <a href="/pricing">Upgrade to Managing Account</a>
                 </Button>
               )}
             </CardContent>

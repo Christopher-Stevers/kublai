@@ -21,6 +21,18 @@ body {
   background: #f9fafb;
 }
 
+html,
+body,
+body *:not(input):not(textarea):not([contenteditable="true"]) {
+  -webkit-touch-callout: none;
+}
+
+img,
+svg,
+a {
+  -webkit-user-drag: none;
+}
+
 /* Performance optimizations for animations */
 * {
   -webkit-font-smoothing: antialiased;

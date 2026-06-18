@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useState } from "react";
+import { use, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
@@ -9,6 +9,7 @@ import {
   PlusIcon,
   PackageIcon,
   CalendarIcon,
+  CheckCircle2Icon,
   UserIcon,
   MapPinIcon,
   PencilIcon,
@@ -75,11 +76,17 @@ function getSendStatusTone(sentSupplierCount: number, totalSupplierCount: number
 function MaterialListSendStatus({
   sentSupplierCount = 0,
   totalSupplierCount = 0,
+  verifiedSupplierCount = 0,
 }: {
   sentSupplierCount?: number;
   totalSupplierCount?: number;
+  verifiedSupplierCount?: number;
 }) {
   const normalizedSentCount = Math.min(sentSupplierCount, totalSupplierCount);
+  const normalizedVerifiedCount = Math.min(
+    verifiedSupplierCount,
+    normalizedSentCount,
+  );
   const progress =
     totalSupplierCount > 0
       ? Math.round((normalizedSentCount / totalSupplierCount) * 100)
@@ -88,16 +95,26 @@ function MaterialListSendStatus({
 
   return (
     <div className="space-y-1">
-      <div
-        className={
-          "inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-xs font-medium " +
-          tone.chip
-        }
-      >
-        <SendIcon className="h-3.5 w-3.5" />
-        <span>
-          {normalizedSentCount}/{totalSupplierCount} sent
-        </span>
+      <div className="flex flex-wrap items-center gap-1.5">
+        <div
+          className={
+            "inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-xs font-medium " +
+            tone.chip
+          }
+        >
+          <SendIcon className="h-3.5 w-3.5" />
+          <span>
+            {normalizedSentCount}/{totalSupplierCount} sent
+          </span>
+        </div>
+        {normalizedSentCount > 0 && (
+          <div className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-2 py-1 text-xs font-medium text-gray-700">
+            <CheckCircle2Icon className="h-3.5 w-3.5 text-gray-500" />
+            <span>
+              {normalizedVerifiedCount}/{normalizedSentCount} verified
+            </span>
+          </div>
+        )}
       </div>
       <div className="h-1.5 overflow-hidden rounded-full bg-gray-100">
         <div
@@ -106,6 +123,79 @@ function MaterialListSendStatus({
         />
       </div>
     </div>
+  );
+}
+
+function MaterialListOrderPickerDialog({
+  materialList,
+  open,
+  onOpenChange,
+  onVerifyOrder,
+}: {
+  materialList: { id: string; name: string } | null;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onVerifyOrder: (orderId: string) => void;
+}) {
+  const isBrowserOnline = useOnlineStatus();
+  const { data: orders, isLoading } =
+    api.materialList.getOrdersForMaterialList.useQuery(
+      { materialListId: materialList?.id ?? "" },
+      { enabled: open && isBrowserOnline && !!materialList?.id },
+    );
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Verify Order</DialogTitle>
+          <DialogDescription>Choose an order to verify</DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-2 py-2">
+          {isLoading ? (
+            <p className="text-muted-foreground text-sm">Loading orders...</p>
+          ) : !orders || orders.length === 0 ? (
+            <p className="text-muted-foreground text-sm">
+              No generated orders found for this material list.
+            </p>
+          ) : (
+            orders.map((order) => (
+              <button
+                key={order.id}
+                type="button"
+                onClick={() => {
+                  onOpenChange(false);
+                  onVerifyOrder(order.id);
+                }}
+                className="flex w-full items-center rounded-lg border p-3 text-left transition-colors hover:border-blue-200 hover:bg-blue-50 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none"
+              >
+                <div className="min-w-0">
+                  <div className="font-medium text-gray-900">
+                    {order.orderNumber || `Order #${order.id.slice(0, 8)}`}
+                    {order.supplier?.name && (
+                      <span className="text-muted-foreground ml-2">
+                        - {order.supplier.name}
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-muted-foreground text-sm">
+                    Created {format(new Date(order.createdAt), "MMM d, yyyy 'at' h:mm a")}
+                    {order.status && <span className="ml-2">({order.status})</span>}
+                  </div>
+                </div>
+              </button>
+            ))
+          )}
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -127,6 +217,13 @@ function formatLocationAddress(
   );
 }
 
+function formatContributorName(contributor: {
+  name: string | null;
+  email: string | null;
+}) {
+  return contributor.name?.trim() || contributor.email?.trim() || "Unknown";
+}
+
 export default function JobDetailPage({
   params,
 }: {
@@ -143,6 +240,12 @@ export default function JobDetailPage({
     name: string;
     itemCount?: number | null;
   } | null>(null);
+  const [materialListForOrders, setMaterialListForOrders] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressHandledRef = useRef(false);
   const isBrowserOnline = useOnlineStatus();
   const { data: userData } = api.user.getMyRole.useQuery(undefined, {
     enabled: isBrowserOnline,
@@ -168,6 +271,7 @@ export default function JobDetailPage({
       updatedAt: list.createdAt,
       itemCount: 0,
       materialTotal: 0,
+      contributors: [],
     })) ?? null;
   const serverSendStatusByListId = new Map(
     serverJob?.materialLists.map((list) => [
@@ -175,6 +279,7 @@ export default function JobDetailPage({
       {
         sentSupplierCount: list.sentSupplierCount,
         totalSupplierCount: list.totalSupplierCount,
+        verifiedSupplierCount: list.verifiedSupplierCount,
       },
     ]) ?? [],
   );
@@ -208,6 +313,22 @@ export default function JobDetailPage({
     void mutateMaterialListAndSync(getMaterialListReplicache().mutate.deleteMaterialList({
       materialListId: id,
     }));
+  };
+
+  const clearLongPressTimer = () => {
+    if (!longPressTimerRef.current) return;
+    clearTimeout(longPressTimerRef.current);
+    longPressTimerRef.current = null;
+  };
+
+  const startMaterialListLongPress = (list: { id: string; name: string }) => {
+    clearLongPressTimer();
+    longPressHandledRef.current = false;
+    longPressTimerRef.current = setTimeout(() => {
+      longPressHandledRef.current = true;
+      setMaterialListForOrders({ id: list.id, name: list.name });
+      longPressTimerRef.current = null;
+    }, 550);
   };
 
   const jobLocationAddress = formatLocationAddress(job?.location);
@@ -347,13 +468,29 @@ export default function JobDetailPage({
               <Card
                 key={list.id}
                 className="cursor-pointer transition-shadow hover:shadow-md"
-                onClick={() =>
-                  router.push(`/dashboard/material-lists/${list.id}`)
-                }
+                onPointerDown={() => startMaterialListLongPress(list)}
+                onPointerUp={clearLongPressTimer}
+                onPointerLeave={clearLongPressTimer}
+                onPointerCancel={clearLongPressTimer}
+                onContextMenu={(event) => {
+                  event.preventDefault();
+                  clearLongPressTimer();
+                  longPressHandledRef.current = true;
+                  setMaterialListForOrders({ id: list.id, name: list.name });
+                }}
+                onClick={(event) => {
+                  clearLongPressTimer();
+                  if (longPressHandledRef.current) {
+                    event.preventDefault();
+                    longPressHandledRef.current = false;
+                    return;
+                  }
+                  router.push(`/dashboard/material-lists/${list.id}`);
+                }}
               >
                 <CardHeader>
                   <div className="flex items-start justify-between gap-3">
-                    <CardTitle className="line-clamp-1 min-w-0">
+                    <CardTitle className="line-clamp-2 min-w-0 break-words leading-tight">
                       {list.name}
                     </CardTitle>
                     {canDeleteCoreRecords && (
@@ -362,6 +499,7 @@ export default function JobDetailPage({
                         size="icon"
                         className="-mt-3 -mr-3 h-10 w-10 shrink-0 text-red-600 hover:bg-red-50 hover:text-red-700"
                         aria-label={`Delete material list ${list.name}`}
+                        onPointerDown={(e) => e.stopPropagation()}
                         onClick={(e) => {
                           e.stopPropagation();
                           setMaterialListToDelete({
@@ -386,9 +524,18 @@ export default function JobDetailPage({
                       <span className="font-semibold">Total:</span>
                       <span>${list.materialTotal.toFixed(2)}</span>
                     </div>
+                    {list.contributors && list.contributors.length > 0 && (
+                      <div className="flex items-start gap-2">
+                        <UserIcon className="mt-0.5 h-4 w-4 shrink-0" />
+                        <span className="min-w-0 leading-snug">
+                          {list.contributors.map(formatContributorName).join(", ")}
+                        </span>
+                      </div>
+                    )}
                     <MaterialListSendStatus
                       sentSupplierCount={list.sentSupplierCount}
                       totalSupplierCount={list.totalSupplierCount}
+                      verifiedSupplierCount={list.verifiedSupplierCount}
                     />
                     <div className="flex items-center gap-2">
                       <CalendarIcon className="h-4 w-4" />
@@ -457,6 +604,20 @@ export default function JobDetailPage({
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        <MaterialListOrderPickerDialog
+          materialList={materialListForOrders}
+          open={!!materialListForOrders}
+          onOpenChange={(open) => {
+            if (!open) setMaterialListForOrders(null);
+          }}
+          onVerifyOrder={(orderId) => {
+            if (!materialListForOrders) return;
+            router.push(
+              `/dashboard/material-lists/${materialListForOrders.id}?orderId=${orderId}`,
+            );
+          }}
+        />
       </div>
     </div>
   );

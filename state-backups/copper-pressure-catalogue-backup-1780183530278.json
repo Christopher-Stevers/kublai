@@ -1,0 +1,458 @@
+{
+  "createdAt": "2026-05-30T23:25:30.278Z",
+  "sourcePath": "/home/halvor/.openclaw/workspace/kublai/data/catalogue/copper-pressure-catalogue.json",
+  "existingCopper": [
+    {
+      "id": "e6376d40-9577-4b4a-b7ee-83b1824f2992",
+      "displayName": "2 1/2\" Copper Companion Flange C Cast Class 300"
+    },
+    {
+      "id": "f3faff7f-1352-423c-a391-999220176d8a",
+      "displayName": "2 1/2\" Copper Fitting Adapter Ftg x F Cast"
+    },
+    {
+      "id": "b2454d32-c93e-4814-9709-c7b3fd97fef8",
+      "displayName": "2 1/2\" Copper Fitting Union C x F Cast"
+    },
+    {
+      "id": "b173f455-0be0-49b7-a0e5-0004ddc07eff",
+      "displayName": "2 1/2\" Copper Flush Adapter C x M Wrot"
+    },
+    {
+      "id": "c1fe5b3e-2ff8-4707-a0ae-9949e7ebecdf",
+      "displayName": "2 1/2\" Copper Pipe Type K 20 ft"
+    },
+    {
+      "id": "35fd1c00-818d-414c-b870-31d138013eb4",
+      "displayName": "2 1/2\" Copper Pipe Type L 20 ft"
+    },
+    {
+      "id": "5ec470ea-ebb9-43cb-91b3-1e8059b7a93d",
+      "displayName": "2 1/2\" Copper Pipe Type M 20 ft"
+    },
+    {
+      "id": "84b183db-a51f-48d3-b99f-0c00134e0788",
+      "displayName": "2 1/2\" Copper Tee C x C x C Wrot"
+    },
+    {
+      "id": "9ae5a8f4-c4cb-4314-a7c4-611c8f5b09a9",
+      "displayName": "2 1/2\" x 1 1/2\" Copper Air Chamber Ftg Wrot"
+    },
+    {
+      "id": "2a6444ea-8f44-4837-ba87-ed1669d3ba22",
+      "displayName": "2 1/2\" x 1 1/2\" x 2 1/2\" Copper Tee C x C x C Wrot"
+    },
+    {
+      "id": "0f1bfead-0a74-4e35-9a46-cad35d02459f",
+      "displayName": "2 1/2\" x 1 1/4\" x 2 1/2\" Copper Tee C x C x C Wrot"
+    },
+    {
+      "id": "d53e2d17-9139-4bf1-badb-4c99160f334f",
+      "displayName": "2 1/2\" x 1 1/4\" x 2\" Copper Tee C x C x C Wrot"
+    },
+    {
+      "id": "4c658f79-8001-4566-8a49-b972ac7897cb",
+      "displayName": "2 1/2\" x 1\" Copper Air Chamber Ftg Wrot"
+    },
+    {
+      "id": "dfb0c202-2b93-4d29-951d-6f348ee53d9d",
+      "displayName": "2 1/2\" x 1\" x 2 1/2\" Copper Tee C x C x C Wrot"
+    },
+    {
+      "id": "7311251d-3b7f-4814-8a26-9d2c6ed9b07f",
+      "displayName": "2 1/2\" x 2 1/2\" x 1 1/2\" Copper Tee C x C x C Wrot"
+    },
+    {
+      "id": "1e4b3783-46fb-4a46-be56-8f5eec506a63",
+      "displayName": "2 1/2\" x 2 1/2\" x 1 1/4\" Copper Tee C x C x C Wrot"
+    },
+    {
+      "id": "b5edc8f5-6594-42ee-9fd3-e7e1dfddc1c2",
+      "displayName": "2 1/2\" x 2 1/2\" x 1\" Copper Tee C x C x C Wrot"
+    },
+    {
+      "id": "303b6ef5-e3c3-4144-94a4-67204b75aa79",
+      "displayName": "2 1/2\" x 2 1/2\" x 1/2\" Copper Tee C x C x C Wrot"
+    },
+    {
+      "id": "dad3f9a8-ebd5-4785-b2f6-7c14da9dcf4c",
+      "displayName": "2 1/2\" x 2 1/2\" x 2\" Copper Tee C x C x C Wrot"
+    },
+    {
+      "id": "68cd25c5-cb85-44c3-992e-298fa9b30dfd",
+      "displayName": "2 1/2\" x 2 1/2\" x 3/4\" Copper Tee C x C x C Wrot"
+    },
+    {
+      "id": "64e4a734-7117-48b0-bee0-10c2950adf23",
+      "displayName": "2 1/2\" x 2\" Copper 90 Elbow Close Rough C x C Cast"
+    },
+    {
+      "id": "82603f35-6916-42ab-96e2-b78a48424574",
+      "displayName": "2 1/2\" x 2\" Copper 90 Elbow Long Radius C x C Wrot"
+    },
+    {
+      "id": "87f2b195-2726-4c85-9304-33ce116b8622",
+      "displayName": "2 1/2\" x 2\" Copper Adapter C x M Cast"
+    },
+    {
+      "id": "1b4bc0ef-eda7-4aa5-bdce-135d1036c234",
+      "displayName": "2 1/2\" x 2\" Copper Air Chamber Ftg Wrot"
+    },
+    {
+      "id": "e9e9eb78-fb56-4b8a-a09b-1fb8f519fcd3",
+      "displayName": "2 1/2\" x 2\" x 1 1/2\" Copper Tee C x C x C Wrot"
+    },
+    {
+      "id": "3b90efde-bce6-4283-a04c-f2ea963ac2db",
+      "displayName": "2 1/2\" x 2\" x 1 1/4\" Copper Tee C x C x C Wrot"
+    },
+    {
+      "id": "a047fef5-6c08-408d-a190-6eb2b5def1e8",
+      "displayName": "2 1/2\" x 2\" x 1\" Copper Tee C x C x C Wrot"
+    },
+    {
+      "id": "e46e38a0-5ce6-415d-bdb4-c33c1144fa05",
+      "displayName": "2 1/2\" x 2\" x 2 1/2\" Copper Tee C x C x C Wrot"
+    },
+    {
+      "id": "f23b5c13-5dcf-400f-9743-028e89cbe5f9",
+      "displayName": "2 1/2\" x 2\" x 2\" Copper Tee C x C x C Wrot"
+    },
+    {
+      "id": "5b98d866-1b95-424c-9215-84526f1d98b2",
+      "displayName": "2\" x 1 1/4\" x 2\" Copper Tee C x C x C Wrot"
+    },
+    {
+      "id": "f31bc27b-e6a8-4630-9dae-45dee4261610",
+      "displayName": "2\" x 1 1/4\" x 3/4\" Copper Tee C x C x C Wrot"
+    },
+    {
+      "id": "4fff88f7-7808-464b-8c25-719a16458437",
+      "displayName": "2\" x 1\" Copper 90 Elbow Close Rough C x C Cast"
+    },
+    {
+      "id": "ce2096cf-0b6d-4a09-a882-13dfd711a9d7",
+      "displayName": "2\" x 1\" Copper Air Chamber Ftg Wrot"
+    },
+    {
+      "id": "572c45e0-b001-4ec2-97da-75c217ed3eae",
+      "displayName": "2\" x 1\" x 1\" Copper Tee C x C x C Wrot"
+    },
+    {
+      "id": "81ffd2cc-ba2c-4589-89a3-5a2c5b7d5393",
+      "displayName": "2\" x 1\" x 2\" Copper Tee C x C x C Wrot"
+    },
+    {
+      "id": "51b80075-d074-4350-83a3-68d10ec6ec18",
+      "displayName": "2\" x 1/2\" Copper Air Chamber Ftg Wrot"
+    },
+    {
+      "id": "ea97aa57-a74b-4f1e-a827-03f6e6fda880",
+      "displayName": "2\" x 1/2\" x 2\" Copper Tee C x C x C Wrot"
+    },
+    {
+      "id": "96ec4f93-88aa-4f58-bd72-cb25b7783154",
+      "displayName": "2\" x 2 1/2\" Copper Adapter C x M Cast"
+    },
+    {
+      "id": "60c8a9df-3bde-4b20-ab8a-8852fe26ab33",
+      "displayName": "2\" x 2\" x 1 1/2\" Copper Tee C x C x C Wrot"
+    },
+    {
+      "id": "51ee2693-6342-463b-be58-994fdfb8deb3",
+      "displayName": "2\" x 2\" x 1 1/4\" Copper Tee C x C x C Wrot"
+    },
+    {
+      "id": "87322948-a517-4d8d-b028-891c1acb875f",
+      "displayName": "2\" x 2\" x 1\" Copper Tee C x C x C Wrot"
+    },
+    {
+      "id": "2a13d309-d24c-4abe-b288-a5cf23177685",
+      "displayName": "2\" x 2\" x 1/2\" Copper Tee C x C x C Wrot"
+    },
+    {
+      "id": "acd518dd-20e3-424a-8cfa-09221d529370",
+      "displayName": "2\" x 2\" x 2 1/2\" Copper Tee C x C x C Wrot"
+    },
+    {
+      "id": "e5bccb27-12df-48e2-aa3f-a8df7f227563",
+      "displayName": "2\" x 2\" x 3/4\" Copper Tee C x C x C Wrot"
+    },
+    {
+      "id": "d53a0c95-7529-4d3d-8435-af84a3ec36dd",
+      "displayName": "2\" x 3/4\" Copper 90 Elbow Close Rough C x C Cast"
+    },
+    {
+      "id": "db3d4764-f60d-4a54-9bde-363babf9ed1e",
+      "displayName": "2\" x 3/4\" Copper Air Chamber Ftg Wrot"
+    },
+    {
+      "id": "e9775660-2436-4753-b3de-40178ab7f92b",
+      "displayName": "2\" x 3/4\" x 2\" Copper Tee C x C x C Wrot"
+    },
+    {
+      "id": "92121a73-9832-4f4b-baa3-d32e6a279db6",
+      "displayName": "3 1/2\" Copper 90 Elbow Close Rough C x C Wrot"
+    },
+    {
+      "id": "5653101f-108f-4b3e-bd5a-be893d1ac928",
+      "displayName": "3 1/2\" Copper 90 Elbow Long Radius C x C Wrot"
+    },
+    {
+      "id": "409cd498-a7e7-49c5-b65e-0900207d139a",
+      "displayName": "3 1/2\" Copper Air Chamber Ftg Wrot"
+    },
+    {
+      "id": "dfc7d7d8-e6f6-488b-ba7b-6d243e769868",
+      "displayName": "3 1/2\" x 3\" Copper Air Chamber Ftg Wrot"
+    },
+    {
+      "id": "b29f11f4-2186-4138-b5ff-cf539e269bf4",
+      "displayName": "3\" Copper 90 Elbow Close Rough C x C Wrot"
+    },
+    {
+      "id": "64c2f446-d612-43cf-9ae6-e2d9c6c6a0a1",
+      "displayName": "3\" Copper 90 Elbow Long Radius C x C Wrot"
+    },
+    {
+      "id": "43cffa79-7184-46f7-bcaa-e61565cd1251",
+      "displayName": "3\" Copper 90 Fitting Elbow Close Rough Ftg x C Wrot"
+    },
+    {
+      "id": "2b4a7a93-446b-40e5-a84a-a8640da491e2",
+      "displayName": "3\" Copper 90 Fitting Elbow Long Radius Ftg x C Wrot"
+    },
+    {
+      "id": "bf1be2a4-c5ba-4323-8b42-8f30bf8ff837",
+      "displayName": "3\" Copper Adapter C x F Cast"
+    },
+    {
+      "id": "06c81ebc-8ec6-4d68-a4c3-d113ffef0b23",
+      "displayName": "3\" Copper Adapter C x F Wrot"
+    },
+    {
+      "id": "d0cad286-db00-4b9b-b6b8-e7af4038e868",
+      "displayName": "3/4\" Copper Fitting Tee C x Ftg x C Wrot"
+    },
+    {
+      "id": "2ac8ed3d-5e83-4f39-832d-ce496e80e067",
+      "displayName": "3/4\" Copper Fitting Union C x F Cast"
+    },
+    {
+      "id": "a38dba32-0a6b-4e66-837b-636a500417df",
+      "displayName": "3/4\" Copper Fitting Union Ftg x C Cast"
+    },
+    {
+      "id": "723f9c11-ddde-48f3-9e07-7162662a082f",
+      "displayName": "3/4\" Copper Flush Adapter C x M Wrot"
+    },
+    {
+      "id": "89f91239-b030-40d1-bcd7-6c566f0322df",
+      "displayName": "3/4\" Copper Hose Adapter C x Hose Cast"
+    },
+    {
+      "id": "98dc5387-39f6-4210-a4b0-db0c1b349899",
+      "displayName": "3/4\" Copper Hose Adapter Ftg x Hose Cast"
+    },
+    {
+      "id": "bf220ee6-e952-4fd1-9982-ad1347b89e42",
+      "displayName": "3/4\" Copper Hy-Set Hanger C Cast"
+    },
+    {
+      "id": "af13b3ff-804e-445f-844c-4e1a089c24e9",
+      "displayName": "3/4\" Copper Pipe Type K 20 ft"
+    },
+    {
+      "id": "33c875ee-ebc4-41b0-b32f-3e6753f17a0b",
+      "displayName": "3/4\" Copper Pipe Type L 20 ft"
+    },
+    {
+      "id": "2c4fa7c1-ac01-4d67-8b59-a86aba4bba4b",
+      "displayName": "3/4\" Copper Pipe Type M 20 ft"
+    },
+    {
+      "id": "2c280ed0-4922-4402-8834-87e6ae2cdd66",
+      "displayName": "3/4\" Copper Suction Line P-Trap C x C Wrot"
+    },
+    {
+      "id": "a73c20a6-5460-4e27-9790-fd401ae44ac4",
+      "displayName": "3/4\" Copper Tee F x F x C Cast"
+    },
+    {
+      "id": "ad29bdc3-75e1-452b-baf1-357bef0e9978",
+      "displayName": "3/4\" Copper Tube Strap"
+    },
+    {
+      "id": "e90eecba-0caf-4f56-b831-c7b0a381c2c6",
+      "displayName": "3/4\" Copper Venturi Insert Wrot"
+    },
+    {
+      "id": "d1d3c6ef-6641-4338-8099-455a95796d36",
+      "displayName": "3/4\" x 1 1/2\" Copper Adapter C x M Cast"
+    },
+    {
+      "id": "1b0c9453-2811-4b9e-887b-d637d8f64af0",
+      "displayName": "3/4\" x 1 1/4\" Copper Adapter C x F Cast"
+    },
+    {
+      "id": "f28fa1ae-bd3c-4d22-8d2d-bf22f4048c0f",
+      "displayName": "3/4\" x 1 1/4\" Copper Adapter C x M Cast"
+    },
+    {
+      "id": "8a636a1b-845e-4aea-8989-24fdd0c55e0f",
+      "displayName": "3/4\" x 1\" Copper 90 Elbow C x F Cast"
+    },
+    {
+      "id": "c0218db3-7c4e-47e8-b73b-b5b5dab04504",
+      "displayName": "3/4\" x 1\" Copper Adapter C x F Wrot"
+    },
+    {
+      "id": "50d00bf1-f46d-49fb-99e3-c459e034a145",
+      "displayName": "3/4\" x 1\" Copper Adapter C x M Wrot"
+    },
+    {
+      "id": "17b9efaf-4b1b-4d06-8c71-b0d838b5c36e",
+      "displayName": "3/4\" x 1\" Copper Flush Adapter C x M Wrot"
+    },
+    {
+      "id": "bae36b25-2c25-4f39-a8b7-6608b61221fd",
+      "displayName": "3/4\" x 1/2\" Copper 90 Drop Elbow C x F Cast"
+    },
+    {
+      "id": "cb41393b-3d1b-409d-85eb-218bd7c346c3",
+      "displayName": "3/4\" x 1/2\" Copper 90 Elbow C x F Cast"
+    },
+    {
+      "id": "f317504e-58b5-40e0-9079-b3cb51357729",
+      "displayName": "3/4\" x 1/2\" Copper 90 Elbow Close Rough C x C Wrot"
+    },
+    {
+      "id": "10a743f6-3350-4d92-be84-64ffaedf373b",
+      "displayName": "3/4\" x 1/2\" Copper 90 Elbow Long Radius C x C Wrot"
+    },
+    {
+      "id": "5d1f6d6e-bed2-43d8-b40b-2121729f3e99",
+      "displayName": "3/4\" x 1/2\" Copper Adapter C x F Wrot"
+    },
+    {
+      "id": "9feafefc-ccea-470e-8abe-ce2545573f6d",
+      "displayName": "3/4\" x 1/2\" Copper Adapter C x M Wrot"
+    },
+    {
+      "id": "6503dbfd-8db6-4c3a-ba4e-aabfa0882d19",
+      "displayName": "3/4\" x 1/2\" Copper Air Chamber Ftg Wrot"
+    },
+    {
+      "id": "cfa04303-7179-4d9a-ac6d-eeed95f29be6",
+      "displayName": "3/4\" Copper Drop Tee C x C x F Cast"
+    },
+    {
+      "id": "5d3cbf7c-36e2-4e75-baf1-5efc4c1c3240",
+      "displayName": "3/4\" Copper Fitted Plug Ftg Wrot"
+    },
+    {
+      "id": "74f33fbc-2aca-4139-a5cc-ad973037307d",
+      "displayName": "3/4\" Copper Fitting Adapter Ftg x F Cast"
+    },
+    {
+      "id": "75ebbddf-f755-44b9-aad6-0e347e1f7a0a",
+      "displayName": "3/4\" Copper Fitting Tee C x Ftg x C Wrot"
+    },
+    {
+      "id": "7f22c361-9385-4fbd-a397-5a3fa9b05c5d",
+      "displayName": "3/4\" Copper Fitting Union C x F Cast"
+    },
+    {
+      "id": "ce7c821a-aba8-4079-98f3-6393e4e94437",
+      "displayName": "3/4\" Copper Fitting Union Ftg x C Cast"
+    },
+    {
+      "id": "2440a2a4-b3e3-4b93-96a7-764c324ad5e8",
+      "displayName": "3/4\" Copper Flush Adapter C x M Wrot"
+    },
+    {
+      "id": "8649138c-225a-4d9e-8cf7-e0631adac40c",
+      "displayName": "3/4\" Copper Hose Adapter C x Hose Cast"
+    },
+    {
+      "id": "008d25d2-6360-4b90-ab6a-6b003648e502",
+      "displayName": "3/4\" Copper Hose Adapter Ftg x Hose Cast"
+    },
+    {
+      "id": "ac927718-0d31-4122-8922-4c2b7607e550",
+      "displayName": "3/4\" Copper Hy-Set Hanger C Cast"
+    },
+    {
+      "id": "c9a9d6e8-f63f-4e25-a0a6-9c6c68e38b4e",
+      "displayName": "3/4\" Copper Pipe Type K 20 ft"
+    },
+    {
+      "id": "644c979f-69d6-4643-9c84-331ac5c3c39a",
+      "displayName": "3/4\" Copper Pipe Type L 20 ft"
+    },
+    {
+      "id": "29ef1f2b-4a9f-489e-bdd3-b230162c0d38",
+      "displayName": "3/4\" Copper Pipe Type M 20 ft"
+    },
+    {
+      "id": "22fd3750-0292-4c3f-b48b-fc1b30dcd943",
+      "displayName": "3/4\" Copper Suction Line P-Trap C x C Wrot"
+    },
+    {
+      "id": "ca940c35-1b65-43c5-b8b6-599b5c30cd5d",
+      "displayName": "3/4\" Copper Tee F x F x C Cast"
+    },
+    {
+      "id": "0e0e353b-21da-43ba-9293-f347175395a3",
+      "displayName": "3/4\" Copper Tube Strap"
+    },
+    {
+      "id": "47e73f6a-ab64-4072-827d-406b2698a93b",
+      "displayName": "3/4\" Copper Venturi Insert Wrot"
+    },
+    {
+      "id": "b90c6b11-ba6e-49e1-994b-bb2e70cb7b31",
+      "displayName": "3/4\" x 1 1/2\" Copper Adapter C x M Cast"
+    },
+    {
+      "id": "7ebaabbe-a698-402d-aaee-9fa558bd02b6",
+      "displayName": "3/4\" x 1 1/4\" Copper Adapter C x F Cast"
+    },
+    {
+      "id": "26caa7c0-8e4d-4231-9ff0-10085f30cdb6",
+      "displayName": "3/4\" x 1 1/4\" Copper Adapter C x M Cast"
+    },
+    {
+      "id": "eac1a94d-6021-4c66-9909-9139d6b4b618",
+      "displayName": "3/4\" x 1\" Copper 90 Elbow C x F Cast"
+    },
+    {
+      "id": "4771139d-14bb-42ea-b725-3a186f2157a1",
+      "displayName": "3/4\" x 1\" Copper Adapter C x F Wrot"
+    },
+    {
+      "id": "c283a42b-f14c-40ad-922d-4f195f955f68",
+      "displayName": "3/4\" x 1\" Copper Adapter C x M Wrot"
+    },
+    {
+      "id": "715f27a6-9ca7-4dc0-b982-b375e7bbea31",
+      "displayName": "3/4\" x 1\" Copper Flush Adapter C x M Wrot"
+    },
+    {
+      "id": "91b100e4-d117-4649-8274-40144353f0c0",
+      "displayName": "3/4\" x 1/2\" Copper 90 Drop Elbow C x F Cast"
+    },
+    {
+      "id": "7f58fae6-74cd-49a2-916a-97ec0e097b22",
+      "displayName": "3/4\" x 1/2\" Copper 90 Elbow C x F Cast"
+    },
+    {
+      "id": "b63ca21a-14e3-4ddd-b5d2-991474c22da6",
+      "displayName": "3/4\" x 1/2\" Copper 90 Elbow Close Rough C x C Wrot"
+    },
+    {
+      "id": "555a42d6-a596-47e6-8429-139c3786ebcd",
+      "displayName": "3/4\" x 1/2\" Copper 90 Elbow Long Radius C x C Wrot"
+    }
+  ]
+}

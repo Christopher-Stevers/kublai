@@ -8,6 +8,7 @@ import {
   entitySyncMutations,
   jobs,
   materialLists,
+  orderItems,
   orders,
   quoteItems,
   quotes,
@@ -495,6 +496,7 @@ export const jobRouter = createTRPCRouter({
       const orderRows = listIds.length
         ? await ctx.db
             .select({
+              id: orders.id,
               materialListId: orders.materialListId,
               supplierId: orders.supplierId,
               status: orders.status,
@@ -504,7 +506,37 @@ export const jobRouter = createTRPCRouter({
             .where(inArray(orders.materialListId, listIds))
         : [];
 
+      const orderIds = orderRows.map((row) => row.id);
+      const orderItemRows = orderIds.length
+        ? await ctx.db
+            .select({
+              orderId: orderItems.orderId,
+              verificationStatus: orderItems.verificationStatus,
+            })
+            .from(orderItems)
+            .where(inArray(orderItems.orderId, orderIds))
+        : [];
+
+      const verifiedStatuses = new Set(["complete", "partial", "problem"]);
+      const verificationByOrderId = new Map<
+        string,
+        { itemCount: number; verifiedItemCount: number }
+      >();
+
+      for (const row of orderItemRows) {
+        const counts = verificationByOrderId.get(row.orderId) ?? {
+          itemCount: 0,
+          verifiedItemCount: 0,
+        };
+        counts.itemCount += 1;
+        if (verifiedStatuses.has(row.verificationStatus)) {
+          counts.verifiedItemCount += 1;
+        }
+        verificationByOrderId.set(row.orderId, counts);
+      }
+
       const sentSupplierIdsByListId = new Map<string, Set<string>>();
+      const verifiedSupplierIdsByListId = new Map<string, Set<string>>();
       for (const row of orderRows) {
         if (!row.materialListId || !row.supplierId) continue;
 
@@ -516,6 +548,20 @@ export const jobRouter = createTRPCRouter({
           sentSupplierIdsByListId.get(row.materialListId) ?? new Set<string>();
         supplierIds.add(row.supplierId);
         sentSupplierIdsByListId.set(row.materialListId, supplierIds);
+
+        const verificationCounts = verificationByOrderId.get(row.id);
+        const isVerified =
+          !!verificationCounts &&
+          verificationCounts.itemCount > 0 &&
+          verificationCounts.verifiedItemCount ===
+            verificationCounts.itemCount;
+        if (!isVerified) continue;
+
+        const verifiedSupplierIds =
+          verifiedSupplierIdsByListId.get(row.materialListId) ??
+          new Set<string>();
+        verifiedSupplierIds.add(row.supplierId);
+        verifiedSupplierIdsByListId.set(row.materialListId, verifiedSupplierIds);
       }
 
       return {
@@ -526,6 +572,8 @@ export const jobRouter = createTRPCRouter({
             ? (totalSupplierIdsByQuoteId.get(list.quoteId)?.size ?? 0)
             : 0,
           sentSupplierCount: sentSupplierIdsByListId.get(list.id)?.size ?? 0,
+          verifiedSupplierCount:
+            verifiedSupplierIdsByListId.get(list.id)?.size ?? 0,
         })),
       };
     }),

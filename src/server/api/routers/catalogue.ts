@@ -15,7 +15,11 @@ import {
 } from "drizzle-orm";
 
 import { createTRPCRouter, hasDashboardAccess } from "~/server/api/trpc";
-import { assertCanDeleteCoreRecords } from "~/server/auth/permissions";
+import {
+  assertCanCreateParts,
+  assertCanDeleteParts,
+  assertCanEditParts,
+} from "~/server/auth/permissions";
 import {
   categories,
   catalogs,
@@ -1128,6 +1132,8 @@ export const catalogueRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      assertCanEditParts(ctx.user);
+
       const organizationId = ctx.user.organizationId;
       if (!organizationId) {
         throw new Error("User must belong to an organization");
@@ -1817,6 +1823,8 @@ export const catalogueRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      assertCanEditParts(ctx.user);
+
       const organizationId = ctx.user.organizationId;
       if (!organizationId) {
         throw new Error("User must belong to an organization");
@@ -1952,6 +1960,8 @@ export const catalogueRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      assertCanEditParts(ctx.user);
+
       const organizationId = ctx.user.organizationId;
       if (!organizationId) {
         throw new Error("User must belong to an organization");
@@ -2009,6 +2019,12 @@ export const catalogueRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      if (input.isActive === false) {
+        assertCanDeleteParts(ctx.user);
+      } else {
+        assertCanEditParts(ctx.user);
+      }
+
       const organizationId = ctx.user.organizationId;
 
       // Verify part exists and user has access
@@ -2376,7 +2392,7 @@ export const catalogueRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      assertCanDeleteCoreRecords(ctx.user);
+      assertCanDeleteParts(ctx.user);
 
       const organizationId = ctx.user.organizationId;
       if (!organizationId) {
@@ -2701,6 +2717,9 @@ export const catalogueRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      assertCanCreateParts(ctx.user);
+      assertCanEditParts(ctx.user);
+
       const organizationId = ctx.user.organizationId;
 
       if (!organizationId) {
@@ -2932,6 +2951,8 @@ export const catalogueRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      assertCanCreateParts(ctx.user);
+
       const organizationId = ctx.user.organizationId;
 
       if (!organizationId) {

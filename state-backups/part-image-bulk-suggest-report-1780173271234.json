@@ -1,0 +1,1216 @@
+{
+  "backup": "state-backups/part-image-candidates-before-bulk-suggest-1780173245591.json",
+  "missing": 653,
+  "staged": [
+    {
+      "part": "1-1/2\" XFR Coupling",
+      "imageUrl": "/images/catalog/bds/bds-coupling.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "1-1/2\" XFR P-Trap",
+      "imageUrl": "/images/catalog/bds/bds-p-trap.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "10\" BDS Grate",
+      "imageUrl": "/images/catalog/bds/bds-45.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 55
+    },
+    {
+      "part": "10\" BDS Plugs / Covers",
+      "imageUrl": "/images/catalog/bds/bds-45.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 55
+    },
+    {
+      "part": "10\" XFR Coupling",
+      "imageUrl": "/images/catalog/bds/bds-coupling.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "10\" XFR Wye",
+      "imageUrl": "/images/catalog/bds/bds-fitting-wye.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "10\" XFR Wye SP x SP x SP",
+      "imageUrl": "/images/catalog/bds/bds-fitting-wye.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "10\" x 4\" XFR Fitting Wye",
+      "imageUrl": "/images/catalog/bds/bds-fitting-wye.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "10\" x 4\" XFR Reducing Coupling",
+      "imageUrl": "/images/catalog/bds/bds-reducing-coupling.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "10\" x 4\" XFR Wye",
+      "imageUrl": "/images/catalog/bds/bds-fitting-wye.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "10\" x 6\" XFR Reducing Coupling",
+      "imageUrl": "/images/catalog/bds/bds-reducing-coupling.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "10\" x 6\" XFR Wye",
+      "imageUrl": "/images/catalog/bds/bds-fitting-wye.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "10\" x 8\" XFR Reducing Coupling",
+      "imageUrl": "/images/catalog/bds/bds-reducing-coupling.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "10\" x 8\" XFR Wye SP x SP x SP",
+      "imageUrl": "/images/catalog/bds/bds-fitting-wye.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "12\" BDS Cleanout Plug Male",
+      "imageUrl": "/images/catalog/bds/bds-45.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 55
+    },
+    {
+      "part": "12\" XFR Coupling",
+      "imageUrl": "/images/catalog/bds/bds-coupling.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "12\" XFR Wye",
+      "imageUrl": "/images/catalog/bds/bds-fitting-wye.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "12\" XFR Wye SP x SP x SP",
+      "imageUrl": "/images/catalog/bds/bds-fitting-wye.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "12\" x 10\" XFR Reducing Coupling",
+      "imageUrl": "/images/catalog/bds/bds-reducing-coupling.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "12\" x 10\" XFR Wye",
+      "imageUrl": "/images/catalog/bds/bds-fitting-wye.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "12\" x 10\" XFR Wye SP x SP x SP",
+      "imageUrl": "/images/catalog/bds/bds-fitting-wye.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "12\" x 4\" XFR Wye",
+      "imageUrl": "/images/catalog/bds/bds-fitting-wye.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "12\" x 6\" XFR Reducing Coupling",
+      "imageUrl": "/images/catalog/bds/bds-reducing-coupling.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "12\" x 6\" XFR Wye",
+      "imageUrl": "/images/catalog/bds/bds-fitting-wye.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "12\" x 8\" XFR Reducing Coupling",
+      "imageUrl": "/images/catalog/bds/bds-reducing-coupling.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "12\" x 8\" XFR Wye",
+      "imageUrl": "/images/catalog/bds/bds-fitting-wye.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "12\" x 8\" XFR Wye SP x SP x SP",
+      "imageUrl": "/images/catalog/bds/bds-fitting-wye.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "14\" XFR Wye SP x SP x SP",
+      "imageUrl": "/images/catalog/bds/bds-fitting-wye.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "14\" x 10\" XFR Bushing",
+      "imageUrl": "/images/catalog/bds/bds-bushing.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "14\" x 12\" XFR Reducing Coupling",
+      "imageUrl": "/images/catalog/bds/bds-reducing-coupling.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "14\" x 12\" XFR Wye",
+      "imageUrl": "/images/catalog/bds/bds-fitting-wye.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "14\" x 12\" XFR Wye SP x SP x SP",
+      "imageUrl": "/images/catalog/bds/bds-fitting-wye.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "14\" x 4\" XFR Wye",
+      "imageUrl": "/images/catalog/bds/bds-fitting-wye.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "14\" x 4\" XFR Wye SP x SP x SP",
+      "imageUrl": "/images/catalog/bds/bds-fitting-wye.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "14\" x 6\" XFR Wye",
+      "imageUrl": "/images/catalog/bds/bds-fitting-wye.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "14\" x 6\" XFR Wye SP x SP x SP",
+      "imageUrl": "/images/catalog/bds/bds-fitting-wye.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "14\" x 8\" XFR Wye",
+      "imageUrl": "/images/catalog/bds/bds-fitting-wye.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "14\" x 8\" XFR Wye SP x SP x SP",
+      "imageUrl": "/images/catalog/bds/bds-fitting-wye.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "16\" XFR Cap",
+      "imageUrl": "/api/catalogue/images/part-fc3b112a-d042-4f04-a61e-34b0f21a674b.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "16\" XFR Coupling",
+      "imageUrl": "/images/catalog/bds/bds-coupling.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "16\" XFR Wye",
+      "imageUrl": "/images/catalog/bds/bds-fitting-wye.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "16\" XFR Wye SP x SP x SP",
+      "imageUrl": "/images/catalog/bds/bds-fitting-wye.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "16\" x 10\" XFR Wye",
+      "imageUrl": "/images/catalog/bds/bds-fitting-wye.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "16\" x 10\" XFR Wye SP x SP x SP",
+      "imageUrl": "/images/catalog/bds/bds-fitting-wye.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "16\" x 12\" XFR Bushing",
+      "imageUrl": "/images/catalog/bds/bds-bushing.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "16\" x 12\" XFR Wye",
+      "imageUrl": "/images/catalog/bds/bds-fitting-wye.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "16\" x 12\" XFR Wye SP x SP x SP",
+      "imageUrl": "/images/catalog/bds/bds-fitting-wye.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "16\" x 14\" XFR Bushing",
+      "imageUrl": "/images/catalog/bds/bds-bushing.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "16\" x 14\" XFR Wye",
+      "imageUrl": "/images/catalog/bds/bds-fitting-wye.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "16\" x 14\" XFR Wye SP x SP x SP",
+      "imageUrl": "/images/catalog/bds/bds-fitting-wye.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "16\" x 4\" XFR Wye",
+      "imageUrl": "/images/catalog/bds/bds-fitting-wye.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "16\" x 4\" XFR Wye SP x SP x SP",
+      "imageUrl": "/images/catalog/bds/bds-fitting-wye.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "16\" x 6\" XFR Wye",
+      "imageUrl": "/images/catalog/bds/bds-fitting-wye.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "16\" x 6\" XFR Wye SP x SP x SP",
+      "imageUrl": "/images/catalog/bds/bds-fitting-wye.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "16\" x 8\" XFR Wye",
+      "imageUrl": "/images/catalog/bds/bds-fitting-wye.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "16\" x 8\" XFR Wye SP x SP x SP",
+      "imageUrl": "/images/catalog/bds/bds-fitting-wye.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "18\" XFR Cap",
+      "imageUrl": "/api/catalogue/images/part-fc3b112a-d042-4f04-a61e-34b0f21a674b.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "18\" XFR Coupling",
+      "imageUrl": "/images/catalog/bds/bds-coupling.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "18\" XFR Wye",
+      "imageUrl": "/images/catalog/bds/bds-fitting-wye.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "18\" XFR Wye SP x SP x SP",
+      "imageUrl": "/images/catalog/bds/bds-fitting-wye.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "18\" x 10\" XFR Wye",
+      "imageUrl": "/images/catalog/bds/bds-fitting-wye.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "18\" x 10\" XFR Wye SP x SP x SP",
+      "imageUrl": "/images/catalog/bds/bds-fitting-wye.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "18\" x 12\" XFR Wye",
+      "imageUrl": "/images/catalog/bds/bds-fitting-wye.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "18\" x 12\" XFR Wye SP x SP x SP",
+      "imageUrl": "/images/catalog/bds/bds-fitting-wye.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "18\" x 14\" XFR Bushing",
+      "imageUrl": "/images/catalog/bds/bds-bushing.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "18\" x 14\" XFR Wye",
+      "imageUrl": "/images/catalog/bds/bds-fitting-wye.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "18\" x 14\" XFR Wye SP x SP x SP",
+      "imageUrl": "/images/catalog/bds/bds-fitting-wye.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "18\" x 16\" XFR Bushing",
+      "imageUrl": "/images/catalog/bds/bds-bushing.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "18\" x 16\" XFR Wye",
+      "imageUrl": "/images/catalog/bds/bds-fitting-wye.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "18\" x 16\" XFR Wye SP x SP x SP",
+      "imageUrl": "/images/catalog/bds/bds-fitting-wye.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "18\" x 4\" XFR Wye",
+      "imageUrl": "/images/catalog/bds/bds-fitting-wye.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "18\" x 4\" XFR Wye SP x SP x SP",
+      "imageUrl": "/images/catalog/bds/bds-fitting-wye.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "18\" x 6\" XFR Wye",
+      "imageUrl": "/images/catalog/bds/bds-fitting-wye.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "18\" x 6\" XFR Wye SP x SP x SP",
+      "imageUrl": "/images/catalog/bds/bds-fitting-wye.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "18\" x 8\" XFR Wye",
+      "imageUrl": "/images/catalog/bds/bds-fitting-wye.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "18\" x 8\" XFR Wye SP x SP x SP",
+      "imageUrl": "/images/catalog/bds/bds-fitting-wye.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "2\" XFR Ci Adapter SP x H",
+      "imageUrl": "/images/catalog/bds/bds-bushing.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "2\" XFR Coupling",
+      "imageUrl": "/images/catalog/bds/bds-coupling.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "2\" XFR P-Trap",
+      "imageUrl": "/images/catalog/bds/bds-p-trap.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "2\" x 1-1/2\" XFR Bushing",
+      "imageUrl": "/images/catalog/bds/bds-bushing.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "2\" x 1-1/2\" XFR Reducing Coupling",
+      "imageUrl": "/images/catalog/bds/bds-reducing-coupling.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "2\" x 1-1/2\" XFR Wye",
+      "imageUrl": "/images/catalog/bds/bds-fitting-wye.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "2\" x 1-1/2\" x 1-1/2\" XFR Wye",
+      "imageUrl": "/images/catalog/bds/bds-fitting-wye.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "3\" BDS Cap",
+      "imageUrl": "/api/catalogue/images/part-fc3b112a-d042-4f04-a61e-34b0f21a674b.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "3\" BDS Cleanout Plug Male",
+      "imageUrl": "/images/catalog/bds/bds-45.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 55
+    },
+    {
+      "part": "3\" BDS Floor Drain Grate",
+      "imageUrl": "/images/catalog/bds/bds-45.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 55
+    },
+    {
+      "part": "3\" BDS Floor Grate",
+      "imageUrl": "/images/catalog/bds/bds-45.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 55
+    },
+    {
+      "part": "3\" BDS Floor Grate",
+      "imageUrl": "/images/catalog/bds/bds-45.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 55
+    },
+    {
+      "part": "3\" BDS Male Adapter H x MPT",
+      "imageUrl": "/images/catalog/bds/bds-bushing.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 67
+    },
+    {
+      "part": "3\" XFR Ci Adapter SP x H",
+      "imageUrl": "/images/catalog/bds/bds-bushing.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "3\" XFR Coupling",
+      "imageUrl": "/images/catalog/bds/bds-coupling.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "3\" XFR P-Trap",
+      "imageUrl": "/images/catalog/bds/bds-p-trap.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "3\" x 1-1/2\" XFR Bushing",
+      "imageUrl": "/images/catalog/bds/bds-bushing.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "3\" x 1-1/2\" XFR Reducing Coupling",
+      "imageUrl": "/images/catalog/bds/bds-reducing-coupling.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "3\" x 1-1/2\" XFR Wye",
+      "imageUrl": "/images/catalog/bds/bds-fitting-wye.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "3\" x 2\" XFR Bushing",
+      "imageUrl": "/images/catalog/bds/bds-bushing.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "3\" x 2\" XFR Reducing Coupling",
+      "imageUrl": "/images/catalog/bds/bds-reducing-coupling.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "4\" BDS 2 Way Cleanout",
+      "imageUrl": "/images/catalog/bds/bds-45.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 55
+    },
+    {
+      "part": "4\" BDS Adapter to Cast Iron S/D to CI Spigot H x H Caulk with Oakum & Mortar",
+      "imageUrl": "/images/catalog/bds/bds-bushing.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "4\" BDS Cap",
+      "imageUrl": "/api/catalogue/images/part-fc3b112a-d042-4f04-a61e-34b0f21a674b.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "4\" BDS Cleanout Adapter Sp x FIP Thread",
+      "imageUrl": "/images/catalog/bds/bds-bushing.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 81
+    },
+    {
+      "part": "4\" BDS Cleanout Plug Male",
+      "imageUrl": "/images/catalog/bds/bds-45.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 55
+    },
+    {
+      "part": "4\" BDS DWV Hub x Sewer Spigot 10” Long",
+      "imageUrl": "/images/catalog/bds/bds-45.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 55
+    },
+    {
+      "part": "4\" BDS Female Adapter S/D to Female IPS H x FIP Threads",
+      "imageUrl": "/images/catalog/bds/bds-bushing.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 83
+    },
+    {
+      "part": "4\" BDS Floor Drain Grate",
+      "imageUrl": "/images/catalog/bds/bds-45.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 55
+    },
+    {
+      "part": "4\" BDS Floor Grate",
+      "imageUrl": "/images/catalog/bds/bds-45.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 55
+    },
+    {
+      "part": "4\" BDS Floor Grate",
+      "imageUrl": "/images/catalog/bds/bds-45.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 55
+    },
+    {
+      "part": "4\" BDS Flush Plug MPT",
+      "imageUrl": "/images/catalog/bds/bds-45.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 55
+    },
+    {
+      "part": "4\" BDS Line Cleanout",
+      "imageUrl": "/images/catalog/bds/bds-45.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 55
+    },
+    {
+      "part": "4\" BDS Male Adapter H x MPT",
+      "imageUrl": "/images/catalog/bds/bds-bushing.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 67
+    },
+    {
+      "part": "4\" BDS Rectangular Down Spout Adapter to BDS Down spout to corrugated",
+      "imageUrl": "/images/catalog/bds/bds-bushing.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 62
+    },
+    {
+      "part": "4\" BDS Sleeve Adapter ABS/DWV Hub to S/D",
+      "imageUrl": "/images/catalog/bds/bds-bushing.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 73
+    },
+    {
+      "part": "4\" BDS Spigot Adapter ABS/DWV to S.W. Sp x G",
+      "imageUrl": "/images/catalog/bds/bds-bushing.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 78
+    },
+    {
+      "part": "4\" PVC DWV Coupling",
+      "imageUrl": "/images/catalog/bds/bds-coupling.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "4\" XFR Ci Adapter SP x H",
+      "imageUrl": "/images/catalog/bds/bds-bushing.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "4\" XFR Coupling",
+      "imageUrl": "/images/catalog/bds/bds-coupling.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "4\" XFR P-Trap",
+      "imageUrl": "/images/catalog/bds/bds-p-trap.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "4\" XFR Wye",
+      "imageUrl": "/images/catalog/bds/bds-fitting-wye.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "4\" x 1-1/2\" XFR Reducing Coupling",
+      "imageUrl": "/images/catalog/bds/bds-reducing-coupling.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "4\" x 2\" XFR Bushing",
+      "imageUrl": "/images/catalog/bds/bds-bushing.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "4\" x 2\" XFR Reducing Coupling",
+      "imageUrl": "/images/catalog/bds/bds-reducing-coupling.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "4\" x 3\" XFR 90 Reducing",
+      "imageUrl": "/images/catalog/bds/bds-reducing-coupling.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "4\" x 3\" XFR Bushing",
+      "imageUrl": "/images/catalog/bds/bds-bushing.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "4\" x 3\" XFR Reducing Coupling",
+      "imageUrl": "/images/catalog/bds/bds-reducing-coupling.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "4\" x 4\" x 2\" XFR Wye",
+      "imageUrl": "/images/catalog/bds/bds-fitting-wye.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "4\" x 4\" x 3\" XFR Wye",
+      "imageUrl": "/images/catalog/bds/bds-fitting-wye.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "6\" BDS Cap",
+      "imageUrl": "/api/catalogue/images/part-fc3b112a-d042-4f04-a61e-34b0f21a674b.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "6\" BDS Cleanout Adapter Sp x FIP Thread",
+      "imageUrl": "/images/catalog/bds/bds-bushing.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 81
+    },
+    {
+      "part": "6\" BDS Cleanout Plug Male",
+      "imageUrl": "/images/catalog/bds/bds-45.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 55
+    },
+    {
+      "part": "6\" BDS Female Adapter S/D to Female IPS H x FIP Threads",
+      "imageUrl": "/images/catalog/bds/bds-bushing.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 83
+    },
+    {
+      "part": "6\" BDS Floor Drain Grate",
+      "imageUrl": "/images/catalog/bds/bds-45.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 55
+    },
+    {
+      "part": "6\" BDS Grate",
+      "imageUrl": "/images/catalog/bds/bds-45.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 55
+    },
+    {
+      "part": "6\" BDS Plugs / Covers",
+      "imageUrl": "/images/catalog/bds/bds-45.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 55
+    },
+    {
+      "part": "6\" XFR Coupling",
+      "imageUrl": "/images/catalog/bds/bds-coupling.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "6\" x 4\" XFR Bushing",
+      "imageUrl": "/images/catalog/bds/bds-bushing.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "6\" x 4\" XFR Reducing Coupling",
+      "imageUrl": "/images/catalog/bds/bds-reducing-coupling.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "6\" x 4\" XFR Wye",
+      "imageUrl": "/images/catalog/bds/bds-fitting-wye.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "8\" BDS Cap",
+      "imageUrl": "/api/catalogue/images/part-fc3b112a-d042-4f04-a61e-34b0f21a674b.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "8\" BDS Cleanout Plug Male",
+      "imageUrl": "/images/catalog/bds/bds-45.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 55
+    },
+    {
+      "part": "8\" BDS Female Adapter S/D to Female IPS H x FIP Threads",
+      "imageUrl": "/images/catalog/bds/bds-bushing.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 83
+    },
+    {
+      "part": "8\" BDS Grate",
+      "imageUrl": "/images/catalog/bds/bds-45.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 55
+    },
+    {
+      "part": "8\" BDS Plugs / Covers",
+      "imageUrl": "/images/catalog/bds/bds-45.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 55
+    },
+    {
+      "part": "8\" XFR Coupling",
+      "imageUrl": "/images/catalog/bds/bds-coupling.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "8\" XFR Wye SP x SP x SP",
+      "imageUrl": "/images/catalog/bds/bds-fitting-wye.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "8\" x 4\" XFR Bushing",
+      "imageUrl": "/images/catalog/bds/bds-bushing.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "8\" x 4\" XFR Reducing Coupling",
+      "imageUrl": "/images/catalog/bds/bds-reducing-coupling.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    },
+    {
+      "part": "8\" x 6\" XFR Reducing Coupling",
+      "imageUrl": "/images/catalog/bds/bds-reducing-coupling.webp",
+      "sourceKind": "existing-catalogue-photo",
+      "confidence": 60
+    }
+  ],
+  "skipped": 506,
+  "alreadyPending": 26,
+  "noSuggestion": 480,
+  "stagedByKind": {
+    "existing-catalogue-photo": 147
+  },
+  "skippedSamples": [
+    {
+      "part": "#2 X 3\" PHILLIPS INSERT BIT",
+      "reason": "no defensible local/source-backed suggestion"
+    },
+    {
+      "part": "#2 X 6\" ROBERTSON INSERT BIT",
+      "reason": "no defensible local/source-backed suggestion"
+    },
+    {
+      "part": "#8 X 1/2\" PAN HD DURODYNE SCRW BULK (Bulk Box = 14,000pcs)",
+      "reason": "no defensible local/source-backed suggestion"
+    },
+    {
+      "part": "#8 X 3 DECK SCREW, YELLOW ZINC                            (Box = 1500pcs)",
+      "reason": "no defensible local/source-backed suggestion"
+    },
+    {
+      "part": "#8 X 9/16 MOD TRUSS SHARP PT                                 (Box = 100pcs)",
+      "reason": "no defensible local/source-backed suggestion"
+    },
+    {
+      "part": "#8 X 9/16 MOD TRUSS SHARP PT - BULK     (Bulk Box = 10,000pcs)",
+      "reason": "no defensible local/source-backed suggestion"
+    },
+    {
+      "part": "1-1/2\" XFR 22-1/2",
+      "reason": "no defensible local/source-backed suggestion"
+    },
+    {
+      "part": "1-1/2\" XFR 60",
+      "reason": "no defensible local/source-backed suggestion"
+    },
+    {
+      "part": "1-1/2\" XFR 90",
+      "reason": "no defensible local/source-backed suggestion"
+    },
+    {
+      "part": "1-1/2\" XFR 90 Long",
+      "reason": "no defensible local/source-backed suggestion"
+    },
+    {
+      "part": "1-1/2\" XFR 90 Trap Adapter H x SJ",
+      "reason": "no defensible local/source-backed suggestion"
+    },
+    {
+      "part": "1-1/2\" XFR Cleanout Adapter SP x FPT",
+      "reason": "no defensible local/source-backed suggestion"
+    },
+    {
+      "part": "1-1/2\" XFR Cleanout Adapter With Plug Plug SP x Gasket",
+      "reason": "no defensible local/source-backed suggestion"
+    },
+    {
+      "part": "1-1/2\" XFR Cleanout Plug MPT",
+      "reason": "no defensible local/source-backed suggestion"
+    },
+    {
+      "part": "1-1/2\" XFR Double TY",
+      "reason": "no defensible local/source-backed suggestion"
+    },
+    {
+      "part": "1-1/2\" XFR Double Wye",
+      "reason": "no defensible local/source-backed suggestion"
+    },
+    {
+      "part": "1-1/2\" XFR Expansion Joint",
+      "reason": "no defensible local/source-backed suggestion"
+    },
+    {
+      "part": "1-1/2\" XFR Female Adapter H x FPT",
+      "reason": "no defensible local/source-backed suggestion"
+    },
+    {
+      "part": "1-1/2\" XFR Fitting 45 Short Turn",
+      "reason": "no defensible local/source-backed suggestion"
+    },
+    {
+      "part": "1-1/2\" XFR Fitting 90",
+      "reason": "no defensible local/source-backed suggestion"
+    },
+    {
+      "part": "1-1/2\" XFR Fitting Trap Adapter Grey SP x SJ",
+      "reason": "no defensible local/source-backed suggestion"
+    },
+    {
+      "part": "1-1/2\" XFR Line Cleanout With Plug Plug H x HXGasket",
+      "reason": "no defensible local/source-backed suggestion"
+    },
+    {
+      "part": "1-1/2\" XFR Male Adapter H x MPT",
+      "reason": "no defensible local/source-backed suggestion"
+    },
+    {
+      "part": "1-1/2\" XFR P-Trap Union",
+      "reason": "no defensible local/source-backed suggestion"
+    },
+    {
+      "part": "1-1/2\" XFR P-Trap Union With Cleanout",
+      "reason": "no defensible local/source-backed suggestion"
+    },
+    {
+      "part": "1-1/2\" XFR P-Trap With Cleanout",
+      "reason": "no defensible local/source-backed suggestion"
+    },
+    {
+      "part": "1-1/2\" XFR Slip Cap",
+      "reason": "no defensible local/source-backed suggestion"
+    },
+    {
+      "part": "1-1/2\" XFR Swivel Strainer Adapter Hxswiv. Nut H x Swivel Nut",
+      "reason": "no defensible local/source-backed suggestion"
+    },
+    {
+      "part": "1-1/2\" XFR TY",
+      "reason": "no defensible local/source-backed suggestion"
+    },
+    {
+      "part": "1-1/2\" XFR TY SP x",
+      "reason": "no defensible local/source-backed suggestion"
+    },
+    {
+      "part": "1-1/2\" XFR Tail Pieceadapter SP x SJ",
+      "reason": "no defensible local/source-backed suggestion"
+    },
+    {
+      "part": "1-1/2\" XFR Trap Adapter H x SJ",
+      "reason": "no defensible local/source-backed suggestion"
+    },
+    {
+      "part": "1-1/2\" XFR Tube End Cleanout Plug H x Gasket",
+      "reason": "no defensible local/source-backed suggestion"
+    },
+    {
+      "part": "1-1/2\" x 1-1/2\" x 3/4\" XFR Dishwasher Wye H x H x Hose Barb",
+      "reason": "no defensible local/source-backed suggestion"
+    },
+    {
+      "part": "1-1/2\" x 1-1/4\" XFR Copper To Adapter H x SJ",
+      "reason": "no defensible local/source-backed suggestion"
+    },
+    {
+      "part": "1-1/2\" x 1-1/4\" XFR Tail Piece Adapter SP x SJ",
+      "reason": "no defensible local/source-backed suggestion"
+    },
+    {
+      "part": "1-1/2\" x 1-1/4\" XFR Trap Adapter H x SJ",
+      "reason": "no defensible local/source-backed suggestion"
+    },
+    {
+      "part": "1-1/2\" x 1/2\" XFR Dishwasher Wye H x H x Hose Barb",
+      "reason": "no defensible local/source-backed suggestion"
+    },
+    {
+      "part": "1-1/2\" x 1/2\" XFR Reducing Bushing SP x FPT",
+      "reason": "no defensible local/source-backed suggestion"
+    },
+    {
+      "part": "1-1/2\" x 1/2\" XFR Waterline Guide",
+      "reason": "no defensible local/source-backed suggestion"
+    },
+    {
+      "part": "1-1/2\" x 3/4\" XFR Reducing Bushing SP x FPT",
+      "reason": "no defensible local/source-backed suggestion"
+    },
+    {
+      "part": "1-5/8 X 1-5/8 STRUT, STAINLESS STEEL, HALF SLOT X 10FT",
+      "reason": "no defensible local/source-backed suggestion"
+    },
+    {
+      "part": "1-5/8\" X 1-5/8 STRUT, HALF SLOT x 10FT",
+      "reason": "no defensible local/source-backed suggestion"
+    },
+    {
+      "part": "1-5/8\" X 1-5/8 STRUT, SOLID x 10FT",
+      "reason": "no defensible local/source-backed suggestion"
+    },
+    {
+      "part": "1/2 DEPTH CONTROL SDS BIT",
+      "reason": "no defensible local/source-backed suggestion"
+    },
+    {
+      "part": "1/2 JOBBER LENGTH DRILL",
+      "reason": "no defensible local/source-backed suggestion"
+    },
+    {
+      "part": "1/2 THREADED ROD, STAINLESS STEEL X 12FT",
+      "reason": "no defensible local/source-backed suggestion"
+    },
+    {
+      "part": "1/2 X 1\" BOLT, STAINLESS STEEL",
+      "reason": "no defensible local/source-backed suggestion"
+    },
+    {
+      "part": "1/2 X 1-1/2\" BOLT, STAINLESS STEEL",
+      "reason": "no defensible local/source-backed suggestion"
+    },
+    {
+      "part": "1/2 X 1-1/4\" BOLT, STAINLESS STEEL",
+      "reason": "no defensible local/source-backed suggestion"
+    },
+    {
+      "part": "1/2\" SPRING CLAMP NUT ZINC",
+      "reason": "no defensible local/source-backed suggestion"
+    },
+    {
+      "part": "1/2\" TOP BEAM CLAMP, BARE",
+      "reason": "no defensible local/source-backed suggestion"
+    },
+    {
+      "part": "1/2\" WIDE MOUTH BEAM CLAMP, BARE",
+      "reason": "no defensible local/source-backed suggestion"
+    },
+    {
+      "part": "1/2\" WIDE MOUTH BEAM CLAMP, ZINC",
+      "reason": "no defensible local/source-backed suggestion"
+    },
+    {
+      "part": "1/2\" Wirsbo x 1/2\" MIP Adapter",
+      "reason": "no defensible local/source-backed suggestion"
+    },
+    {
+      "part": "1/4 JOBBER LENGTH DRILL",
+      "reason": "no defensible local/source-backed suggestion"
+    },
+    {
+      "part": "1/4\" X 1-1/4 HEX HEAD SELF DRILL - BULK     (Bulk Box = 2000pcs)",
+      "reason": "no defensible local/source-backed suggestion"
+    },
+    {
+      "part": "1/8 JOBBER LENGTH DRILL",
+      "reason": "no defensible local/source-backed suggestion"
+    },
+    {
+      "part": "10\" XFR 11-1/4",
+      "reason": "no defensible local/source-backed suggestion"
+    },
+    {
+      "part": "10\" XFR 22-1/2",
+      "reason": "no defensible local/source-backed suggestion"
+    },
+    {
+      "part": "10\" XFR 22-1/2 Short Turn SP x SP",
+      "reason": "no defensible local/source-backed suggestion"
+    },
+    {
+      "part": "10\" XFR 45",
+      "reason": "no defensible local/source-backed suggestion"
+    },
+    {
+      "part": "10\" XFR 45 Short Turn SP x SP",
+      "reason": "no defensible local/source-backed suggestion"
+    },
+    {
+      "part": "10\" XFR 90",
+      "reason": "no defensible local/source-backed suggestion"
+    },
+    {
+      "part": "10\" XFR 90 SP x SP",
+      "reason": "no defensible local/source-backed suggestion"
+    },
+    {
+      "part": "10\" XFR Cleanout Adapter Bolted",
+      "reason": "no defensible local/source-backed suggestion"
+    },
+    {
+      "part": "10\" XFR Double Wye",
+      "reason": "no defensible local/source-backed suggestion"
+    },
+    {
+      "part": "10\" XFR Expansion Joint",
+      "reason": "no defensible local/source-backed suggestion"
+    },
+    {
+      "part": "10\" XFR Fitting 45 Short Turn",
+      "reason": "no defensible local/source-backed suggestion"
+    },
+    {
+      "part": "10\" XFR Fitting 90",
+      "reason": "no defensible local/source-backed suggestion"
+    },
+    {
+      "part": "10\" XFR Line Cleanout With Plug Plug H x HXGasket",
+      "reason": "no defensible local/source-backed suggestion"
+    },
+    {
+      "part": "10\" XFR Slip Cap",
+      "reason": "no defensible local/source-backed suggestion"
+    },
+    {
+      "part": "10\" XFR TY",
+      "reason": "no defensible local/source-backed suggestion"
+    },
+    {
+      "part": "10\" XFR TY SP x SP x SP",
+      "reason": "no defensible local/source-backed suggestion"
+    },
+    {
+      "part": "10\" x 4\" XFR Double Wye",
+      "reason": "no defensible local/source-backed suggestion"
+    },
+    {
+      "part": "10\" x 4\" XFR Ext Bushing",
+      "reason": "no defensible local/source-backed suggestion"
+    },
+    {
+      "part": "10\" x 4\" XFR Flushreducing Bushing",
+      "reason": "no defensible local/source-backed suggestion"
+    },
+    {
+      "part": "10\" x 4\" XFR TY",
+      "reason": "no defensible local/source-backed suggestion"
+    },
+    {
+      "part": "10\" x 4\" XFR TY SP x SP x H",
+      "reason": "no defensible local/source-backed suggestion"
+    },
+    {
+      "part": "10\" x 6\" XFR Ext Bushing",
+      "reason": "no defensible local/source-backed suggestion"
+    }
+  ]
+}

@@ -1,4 +1,4 @@
-import { and, asc, eq, gte, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray } from "drizzle-orm";
 import type {
   PatchOperation,
   PullRequestV1,
@@ -44,23 +44,6 @@ type ReplicacheMutationSideEffects = {
   quoteIdsToRecalculate: Set<string>;
   materialListIdsToTouch: Set<string>;
 };
-
-type MaterialListPullCookie = {
-  order?: number;
-  cvr?: string;
-};
-
-function parseMaterialListPullCookie(cookie: PullRequestV1["cookie"]) {
-  if (!cookie || typeof cookie !== "object") return null;
-  const candidate = cookie as MaterialListPullCookie;
-  if (typeof candidate.order !== "number" || !Number.isFinite(candidate.order)) {
-    return null;
-  }
-  if (typeof candidate.cvr !== "string") return null;
-
-  return { order: candidate.order, cvr: candidate.cvr };
-}
-
 
 export class ReplicacheOwnershipError extends Error {
   constructor(message: string) {
@@ -1056,9 +1039,6 @@ export async function handleMaterialListReplicachePull(
       .from(replicacheClients)
       .where(eq(replicacheClients.clientGroupId, request.clientGroupID));
 
-    const parsedCookie = parseMaterialListPullCookie(request.cookie);
-    const canUseIncrementalPull = parsedCookie?.cvr === request.clientGroupID;
-    const changedSince = canUseIncrementalPull ? new Date(parsedCookie.order) : null;
     const highWatermark = new Date();
 
     // Jobs with location + foreman joins
@@ -1083,11 +1063,7 @@ export async function handleMaterialListReplicachePull(
       .from(jobs)
       .leftJoin(locations, eq(jobs.locationId, locations.id))
       .leftJoin(users, eq(jobs.foremanUserId, users.id))
-      .where(
-        changedSince
-          ? and(eq(jobs.organizationId, organizationId), gte(jobs.updatedAt, changedSince))
-          : eq(jobs.organizationId, organizationId),
-      )
+      .where(eq(jobs.organizationId, organizationId))
       .orderBy(asc(jobs.updatedAt), asc(jobs.id));
 
     const materialListRows = await tx
@@ -1096,18 +1072,12 @@ export async function handleMaterialListReplicachePull(
         name: materialLists.name,
         jobId: materialLists.jobId,
         quoteId: materialLists.quoteId,
+        createdByUserId: materialLists.createdByUserId,
         createdAt: materialLists.createdAt,
         updatedAt: materialLists.updatedAt,
       })
       .from(materialLists)
-      .where(
-        changedSince
-          ? and(
-              eq(materialLists.organizationId, organizationId),
-              gte(materialLists.updatedAt, changedSince),
-            )
-          : eq(materialLists.organizationId, organizationId),
-      )
+      .where(eq(materialLists.organizationId, organizationId))
       .orderBy(asc(materialLists.updatedAt), asc(materialLists.id));
 
     const itemRows = await tx
@@ -1128,6 +1098,7 @@ export async function handleMaterialListReplicachePull(
         supplierPartSku: supplierParts.supplierSku,
         supplierPartLastKnownUnitCost: supplierParts.lastKnownUnitCost,
         supplierName: suppliers.name,
+        addedByUserId: quoteItems.addedByUserId,
         updatedAt: quoteItems.updatedAt,
         createdAt: quoteItems.createdAt,
       })
@@ -1137,11 +1108,7 @@ export async function handleMaterialListReplicachePull(
       .leftJoin(materials, eq(partDefinitions.materialId, materials.id))
       .leftJoin(supplierParts, eq(quoteItems.supplierPartId, supplierParts.id))
       .leftJoin(suppliers, eq(quoteItems.supplierId, suppliers.id))
-      .where(
-        changedSince
-          ? and(eq(quotes.organizationId, organizationId), gte(quoteItems.updatedAt, changedSince))
-          : eq(quotes.organizationId, organizationId),
-      )
+      .where(eq(quotes.organizationId, organizationId))
       .orderBy(asc(quoteItems.updatedAt), asc(quoteItems.id));
 
     const supplierRows = await tx
@@ -1157,33 +1124,38 @@ export async function handleMaterialListReplicachePull(
         updatedAt: suppliers.updatedAt,
       })
       .from(suppliers)
-      .where(
-        changedSince
-          ? and(eq(suppliers.organizationId, organizationId), gte(suppliers.updatedAt, changedSince))
-          : eq(suppliers.organizationId, organizationId),
-      )
+      .where(eq(suppliers.organizationId, organizationId))
       .orderBy(asc(suppliers.updatedAt), asc(suppliers.id));
 
-    const tombstoneRows = changedSince
-      ? await tx
-          .select({
-            entityType: materialListSyncTombstones.entityType,
-            entityId: materialListSyncTombstones.entityId,
-          })
-          .from(materialListSyncTombstones)
-          .where(
-            and(
-              eq(materialListSyncTombstones.organizationId, organizationId),
-              gte(materialListSyncTombstones.deletedAt, changedSince),
-            ),
-          )
-          .orderBy(
-            asc(materialListSyncTombstones.deletedAt),
-            asc(materialListSyncTombstones.entityId),
-          )
-      : [];
+    const contributorUserIds = Array.from(
+      new Set(
+        [
+          ...materialListRows.map((materialList) => materialList.createdByUserId),
+          ...itemRows.map((item) => item.addedByUserId),
+        ]
+          .filter((userId): userId is string => !!userId),
+      ),
+    );
+    const contributorUserRows =
+      contributorUserIds.length > 0
+        ? await tx
+            .select({
+              id: users.id,
+              name: users.name,
+              email: users.email,
+            })
+            .from(users)
+            .where(inArray(users.id, contributorUserIds))
+        : [];
+    const contributorUserMap = new Map(
+      contributorUserRows.map((user) => [user.id, user]),
+    );
 
-    const patch: PatchOperation[] = changedSince ? [] : [{ op: "clear" }];
+    // Timestamp-only incremental pulls can leave a device permanently stale if
+    // it advances its cookie after receiving a partial patch. Until this uses a
+    // real CVR diff, send a full organization snapshot so every pull self-heals
+    // local IndexedDB state.
+    const patch: PatchOperation[] = [{ op: "clear" }];
 
     for (const job of jobRows) {
       patch.push({
@@ -1218,6 +1190,18 @@ export async function handleMaterialListReplicachePull(
         key: `materialList/${materialList.id}`,
         value: {
           ...materialList,
+          createdBy: materialList.createdByUserId
+            ? (() => {
+                const createdByUser = contributorUserMap.get(
+                  materialList.createdByUserId,
+                );
+                return {
+                  id: materialList.createdByUserId,
+                  name: createdByUser?.name ?? createdByUser?.email ?? "Unknown",
+                  email: createdByUser?.email ?? null,
+                };
+              })()
+            : null,
           createdAt: materialList.createdAt?.toISOString?.() ?? String(materialList.createdAt),
           updatedAt: materialList.updatedAt?.toISOString?.() ?? String(materialList.updatedAt),
         },
@@ -1265,6 +1249,16 @@ export async function handleMaterialListReplicachePull(
                   : null,
               }
             : null,
+          addedBy: item.addedByUserId
+            ? (() => {
+                const addedByUser = contributorUserMap.get(item.addedByUserId);
+                return {
+                  id: item.addedByUserId,
+                  name: addedByUser?.name ?? addedByUser?.email ?? "Unknown",
+                  email: addedByUser?.email ?? null,
+                };
+              })()
+            : null,
           createdAt: item.createdAt?.toISOString?.() ?? String(item.createdAt),
           updatedAt: item.updatedAt?.toISOString?.() ?? String(item.updatedAt),
         },
@@ -1281,17 +1275,6 @@ export async function handleMaterialListReplicachePull(
           updatedAt: supplier.updatedAt?.toISOString?.() ?? String(supplier.updatedAt),
         },
       });
-    }
-
-    for (const tombstone of tombstoneRows) {
-      const keyPrefix =
-        tombstone.entityType === "materialList"
-          ? "materialList"
-          : tombstone.entityType === "item" || tombstone.entityType === "quoteItem"
-            ? "materialListItem"
-            : tombstone.entityType;
-
-      patch.push({ op: "del", key: `${keyPrefix}/${tombstone.entityId}` });
     }
 
     return {

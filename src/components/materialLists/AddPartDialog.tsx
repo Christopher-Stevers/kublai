@@ -27,7 +27,7 @@ import { usePartWizard } from "./wizard/use-part-wizard";
 import { VerticalPickerOverlay } from "./wizard/VerticalPickerOverlay";
 import {
   getMaterialListReplicache,
-  mutateMaterialListAndSync,
+  requestMaterialListReplicacheSync,
 } from "~/lib/replicache-material-list";
 import { useOnlineStatus } from "~/hooks/use-online-status";
 import {
@@ -127,6 +127,9 @@ export function AddPartDialog({
 
   const utils = api.useUtils();
   const isOnline = useOnlineStatus();
+  const { data: currentUser } = api.user.getMe.useQuery(undefined, {
+    enabled: open && isOnline,
+  });
 
   // Store supplier parts data
   const [supplierPartsData, setSupplierPartsData] = useState<
@@ -703,9 +706,10 @@ export function AddPartDialog({
         count: localItems.length,
       });
 
-      for (const item of localItems) {
-        void mutateMaterialListAndSync(
-          getMaterialListReplicache().mutate.addItem({
+      const replicache = getMaterialListReplicache();
+      await Promise.all(
+        localItems.map((item) =>
+          replicache.mutate.addItem({
             materialListId,
             itemId: item.localItemId,
             partDefinitionId: item.pendingPart.partId,
@@ -715,9 +719,17 @@ export function AddPartDialog({
             unitCost: item.unitCost,
             partDefinitionSnapshot: item.partDefinitionSnapshot,
             supplierPartSnapshot: item.supplierPartSnapshot,
+            addedBySnapshot: currentUser
+              ? {
+                  id: currentUser.id,
+                  name: currentUser.name,
+                  email: currentUser.email,
+                }
+              : null,
           }),
-        );
-      }
+        ),
+      );
+      requestMaterialListReplicacheSync(0, "push-pull");
 
       closeDialogAndCleanHistory();
       setIsAddingParts(false);
@@ -961,10 +973,7 @@ export function AddPartDialog({
                   allSelected={
                     hasCatalogSelection && selectedCatalogId === null
                   }
-                  onCatalogSelect={(catalogId) => {
-                    handleCatalogSelect(catalogId);
-                    setPendingParts([]);
-                  }}
+                  onCatalogSelect={handleCatalogSelect}
                   showCustomCatalogInput={showCustomCatalogInput}
                   onShowCustomCatalogInput={setShowCustomCatalogInput}
                   customCatalogName={customCatalogName}

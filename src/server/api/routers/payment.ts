@@ -292,8 +292,13 @@ export const paymentRouter = createTRPCRouter({
     // Check if user has one-time access
     const hasOneTimeAccess = user.hasOneTimeAccess === true;
 
+    const hasManagingAccount = Boolean(hasActiveSubscription);
+
     return {
-      hasAccess: hasActiveSubscription || hasOneTimeAccess,
+      hasAccess: true,
+      hasManagingAccount,
+      accountType: hasManagingAccount ? "managing" : "standard",
+      accountTypeLabel: hasManagingAccount ? "Managing Account" : "Standard Account",
       hasActiveSubscription: hasActiveSubscription ?? false,
       hasOneTimeAccess: hasOneTimeAccess,
       subscriptionStatus: user.subscriptionStatus,

@@ -1,5 +1,7 @@
 import { redirect } from "next/navigation";
 import { auth } from "@clerk/nextjs/server";
+import { cookies } from "next/headers";
+import { ORGANIZATION_INVITE_COOKIE } from "~/lib/organization-invite";
 import { ensureUser } from "~/server/utils/ensure-user";
 import { waitForUser } from "~/server/utils/wait-for-user";
 
@@ -51,6 +53,11 @@ export default async function OnboardingLayout({
         </div>
       </div>
     );
+  }
+
+  const inviteToken = (await cookies()).get(ORGANIZATION_INVITE_COOKIE)?.value;
+  if (inviteToken) {
+    redirect(`/join/${inviteToken}`);
   }
 
   // If user already has an organization, redirect to dashboard

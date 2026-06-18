@@ -1,0 +1,10 @@
+{
+  "createdAt": "2026-05-30T22:19:21.890Z",
+  "sourcePath": "/home/halvor/.openclaw/workspace/kublai/data/catalogue/pvc-dwv-catalogue.json",
+  "existingPvcDwv": [
+    {
+      "id": "a68397fd-5038-4e86-9dbf-97b498319692",
+      "displayName": "4\" PVC DWV Pipe"
+    }
+  ]
+}

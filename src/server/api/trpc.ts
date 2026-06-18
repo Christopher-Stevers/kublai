@@ -17,7 +17,6 @@ import { ensureUser } from "~/server/utils/ensure-user";
 import { getDevBypassUser } from "~/server/utils/get-dev-bypass-user";
 import { getAgentBypassUser } from "~/server/utils/get-agent-bypass-user";
 
-
 /**
  * 1. CONTEXT
  *
@@ -59,9 +58,6 @@ export const createTRPCContext = async (opts: { headers: Headers }) => {
  * ZodErrors so that you get typesafety on the frontend if your procedure fails due to validation
  * errors on the backend.
  */
-const allowDevDashboardAccess =
-  process.env.NODE_ENV !== "production";
-
 const t = initTRPC.context<typeof createTRPCContext>().create({
   transformer: superjson,
   errorFormatter({ shape, error }) {
@@ -180,8 +176,9 @@ export const adminProcedure = t.procedure
   });
 
 /**
- * Procedure that requires dashboard access (subscription or one-time purchase)
- * Checks if user has active subscription or one-time access
+ * Procedure that requires dashboard access.
+ * Standard accounts can use the dashboard; paid Managing Account permissions
+ * are enforced by feature-level permission checks.
  */
 export const hasDashboardAccess = t.procedure
   .use(timingMiddleware)
@@ -197,28 +194,20 @@ export const hasDashboardAccess = t.procedure
       });
     }
 
-    if (ctx.user.role === "admin" || allowDevDashboardAccess) {
-      return next({
-        ctx: {
-          userId: ctx.userId,
-          user: ctx.user,
-        },
+    if (!ctx.user.organizationId) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "Create or join an organization before using the dashboard.",
       });
     }
 
-    const hasActiveSubscription =
-      ctx.user.stripeSubscriptionId &&
-      ctx.user.subscriptionStatus === "active" &&
-      (!ctx.user.subscriptionEndsAt ||
-        new Date(ctx.user.subscriptionEndsAt) > new Date());
-
-    const hasOneTimeAccess = ctx.user.hasOneTimeAccess === true;
-
-    if (!hasActiveSubscription && !hasOneTimeAccess) {
+    if (
+      ctx.user.organizationAccessStatus &&
+      ctx.user.organizationAccessStatus !== "approved"
+    ) {
       throw new TRPCError({
         code: "FORBIDDEN",
-        message:
-          "Dashboard access required. Please purchase a subscription or one-time access.",
+        message: "Your organization access is waiting for approval.",
       });
     }
 

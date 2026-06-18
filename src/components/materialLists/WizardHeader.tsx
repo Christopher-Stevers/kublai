@@ -46,9 +46,9 @@ export function WizardHeader({
 }: WizardHeaderProps) {
   return (
     <div
-      className={`flex flex-wrap items-center gap-1.5 sm:gap-2 ${className}`.trim()}
+      className={`flex flex-col gap-2 xl:flex-row xl:items-start ${className}`.trim()}
     >
-      <div className="min-w-0 flex-[999_1_20rem]">
+      <div className="w-full min-w-0 flex-1">
         <WizardProgressIndicator
           currentStage={currentStage}
           selectedCatalog={selectedCatalog}
@@ -58,27 +58,31 @@ export function WizardHeader({
           onStageClick={onStageClick}
         />
       </div>
-      {!hideSearch && onSearchChange && (
-        <div className="relative min-w-[13rem] flex-[1_1_13rem]">
-          <Search className="absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2 text-gray-400" />
-          <Input
-            value={searchQuery}
-            onChange={(e) => onSearchChange(e.target.value)}
-            placeholder={searchPlaceholder}
-            className="h-9 w-full rounded-lg pl-8 text-sm"
-          />
+      {((!hideSearch && onSearchChange) || (actionLabel && onActionClick)) && (
+        <div className="flex w-full flex-wrap gap-2 xl:w-auto xl:max-w-[26rem] xl:min-w-[22rem] xl:justify-end">
+          {!hideSearch && onSearchChange && (
+            <div className="relative min-w-[min(100%,14rem)] flex-1 xl:min-w-0 xl:flex-[1_1_14rem]">
+              <Search className="absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <Input
+                value={searchQuery}
+                onChange={(e) => onSearchChange(e.target.value)}
+                placeholder={searchPlaceholder}
+                className="h-9 w-full rounded-lg pl-8 text-sm"
+              />
+            </div>
+          )}
+          {actionLabel && onActionClick && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onActionClick}
+              disabled={actionDisabled}
+              className="h-9 flex-1 rounded-lg px-3 text-sm sm:flex-none"
+            >
+              {actionLabel}
+            </Button>
+          )}
         </div>
-      )}
-      {actionLabel && onActionClick && (
-        <Button
-          type="button"
-          variant="outline"
-          onClick={onActionClick}
-          disabled={actionDisabled}
-          className="h-9 min-w-max flex-[1_1_8rem] rounded-lg px-3 text-sm"
-        >
-          {actionLabel}
-        </Button>
       )}
     </div>
   );

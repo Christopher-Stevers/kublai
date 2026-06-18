@@ -34,6 +34,11 @@ export interface ReplicacheMaterialListItem {
     lastKnownUnitCost: string | null;
     supplier: { id: string; name: string } | null;
   } | null;
+  addedBy?: {
+    id: string;
+    name: string | null;
+    email: string | null;
+  } | null;
 }
 
 export interface ReplicacheMaterialList {

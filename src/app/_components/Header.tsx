@@ -51,6 +51,7 @@ function HeaderFrame({
   userEmail,
   signOut,
   showAccount,
+  tabAccess,
   showAdmin,
 }: {
   pathname: string | null;
@@ -59,6 +60,14 @@ function HeaderFrame({
   userEmail: string;
   signOut?: () => void | Promise<void>;
   showAccount: boolean;
+  tabAccess: {
+    dashboard: boolean;
+    catalogue: boolean;
+    suppliers: boolean;
+    quotes: boolean;
+    orders: boolean;
+    organization: boolean;
+  };
   showAdmin: boolean;
 }) {
   const router = useRouter();
@@ -67,11 +76,24 @@ function HeaderFrame({
     useState<BeforeInstallPromptEvent | null>(null);
   const [isInstalled, setIsInstalled] = useState(false);
   const navLinks = [
-    { href: "/dashboard", label: "Dashboard" },
-    { href: "/dashboard/catalogue", label: "Catalogue" },
-    { href: "/dashboard/suppliers", label: "Suppliers" },
-    { href: "/dashboard/quotes", label: "Quotes" },
-    { href: "/dashboard/orders", label: "Orders" },
+    ...(tabAccess.dashboard
+      ? [{ href: "/dashboard", label: "Dashboard" }]
+      : []),
+    ...(tabAccess.catalogue
+      ? [{ href: "/dashboard/catalogue", label: "Catalogue" }]
+      : []),
+    ...(tabAccess.suppliers
+      ? [{ href: "/dashboard/suppliers", label: "Suppliers" }]
+      : []),
+    ...(tabAccess.quotes
+      ? [{ href: "/dashboard/quotes", label: "Quotes" }]
+      : []),
+    ...(tabAccess.orders
+      ? [{ href: "/dashboard/orders", label: "Orders" }]
+      : []),
+    ...(tabAccess.organization
+      ? [{ href: "/dashboard/organization", label: "Organization" }]
+      : []),
     ...(showAdmin ? [{ href: "/admin", label: "Admin" }] : []),
   ];
 
@@ -79,7 +101,8 @@ function HeaderFrame({
     if (href === "/dashboard") {
       return (
         pathname === "/dashboard" ||
-        (pathname?.startsWith("/dashboard/jobs/") ?? false)
+        (pathname?.startsWith("/dashboard/jobs/") ?? false) ||
+        (pathname?.startsWith("/dashboard/material-lists/") ?? false)
       );
     }
     return pathname?.startsWith(href);
@@ -355,6 +378,16 @@ function HeaderWithClerk() {
         }
       }}
       showAccount={true}
+      tabAccess={
+        userRole?.permissions.tabAccess ?? {
+          dashboard: true,
+          catalogue: true,
+          suppliers: true,
+          quotes: true,
+          orders: true,
+          organization: false,
+        }
+      }
       showAdmin={userRole?.role === "admin"}
     />
   );
@@ -371,6 +404,14 @@ function HeaderWithoutClerk() {
       setMobileMenuOpen={setMobileMenuOpen}
       userEmail="Auth disabled"
       showAccount={false}
+      tabAccess={{
+        dashboard: true,
+        catalogue: true,
+        suppliers: true,
+        quotes: true,
+        orders: true,
+        organization: false,
+      }}
       showAdmin={false}
     />
   );

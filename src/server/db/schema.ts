@@ -4,7 +4,13 @@
 // The build succeeds correctly - these are only strict TypeScript checking issues.
 
 import { relations } from "drizzle-orm";
-import { index, pgTableCreator, primaryKey, unique } from "drizzle-orm/pg-core";
+import {
+  index,
+  jsonb,
+  pgTableCreator,
+  primaryKey,
+  unique,
+} from "drizzle-orm/pg-core";
 
 /**
  * Trades MVP schema (ordering + quoting) in Drizzle format
@@ -31,6 +37,8 @@ export const users = createTable("user", (d) => ({
 
   // App fields
   role: d.varchar({ length: 50 }).default("user"), // user | admin | foreman etc.
+  permissionConfig: jsonb(),
+  organizationAccessStatus: d.varchar({ length: 50 }).default("approved"),
 
   // Org membership (single-org MVP; if you need multi-org later, use a join table)
   organizationId: d
@@ -174,6 +182,7 @@ export const organizations = createTable(
 
 export const organizationsRelations = relations(organizations, ({ many }) => ({
   users: many(users),
+  invites: many(organizationInvites),
   locations: many(locations),
   pricingProfiles: many(pricingProfiles),
   suppliers: many(suppliers),
@@ -185,6 +194,52 @@ export const organizationsRelations = relations(organizations, ({ many }) => ({
   quotes: many(quotes),
   orders: many(orders),
 }));
+
+export const organizationInvites = createTable(
+  "organization_invite",
+  (d) => ({
+    id: d
+      .uuid()
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    organizationId: d
+      .uuid()
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    token: d.varchar({ length: 128 }).notNull(),
+    name: d.varchar({ length: 255 }),
+    role: d.varchar({ length: 50 }).notNull().default("user"),
+    permissionConfig: jsonb(),
+    createdByUserId: d.varchar({ length: 255 }).references(() => users.id, {
+      onDelete: "set null",
+    }),
+    expiresAt: d.timestamp({ withTimezone: true }).notNull(),
+    revokedAt: d.timestamp({ withTimezone: true }),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  }),
+  (t) => [
+    unique("organization_invite_token_uniq").on(t.token),
+    index("organization_invite_org_idx").on(t.organizationId),
+  ],
+);
+
+export const organizationInvitesRelations = relations(
+  organizationInvites,
+  ({ one }) => ({
+    organization: one(organizations, {
+      fields: [organizationInvites.organizationId],
+      references: [organizations.id],
+    }),
+    createdBy: one(users, {
+      fields: [organizationInvites.createdByUserId],
+      references: [users.id],
+    }),
+  }),
+);
 
 // ============================
 // LOCATIONS
@@ -1382,6 +1437,11 @@ export const orderItems = createTable(
       .references(() => partDefinitions.id, { onDelete: "restrict" }),
 
     quantity: d.numeric({ precision: 12, scale: 6 }).notNull().default("1"),
+    receivedQuantity: d
+      .numeric({ precision: 12, scale: 6 })
+      .notNull()
+      .default("0"),
+    verificationStatus: d.varchar({ length: 50 }).notNull().default("pending"),
     uomId: d.uuid().references(() => units.id, { onDelete: "set null" }),
 
     unitCostAtOrderTime: d.numeric({ precision: 12, scale: 4 }),

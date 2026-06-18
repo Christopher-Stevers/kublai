@@ -367,8 +367,8 @@ function PartCard({
             )}
           </div>
 
-          <div className="flex min-h-[2.75rem] items-start justify-center text-center text-black">
-            <h4 className="line-clamp-2 text-sm leading-snug font-medium">
+          <div className="flex items-start justify-center text-center text-black">
+            <h4 className="line-clamp-4 text-sm leading-snug font-medium">
               {part.displayName}
             </h4>
           </div>

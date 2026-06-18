@@ -11,18 +11,6 @@ import { Loader2 } from "lucide-react";
 export default function PricingPage() {
   const [isCreatingCheckout, setIsCreatingCheckout] = useState<string | null>(null);
 
-  const createOneTimeCheckout = api.payment.createOneTimeCheckout.useMutation({
-    onSuccess: (data) => {
-      if (data.url) {
-        window.location.href = data.url;
-      }
-    },
-    onError: (error) => {
-      console.error("Failed to create checkout:", error);
-      setIsCreatingCheckout(null);
-    },
-  });
-
   const createSubscriptionCheckout = api.payment.createSubscriptionCheckout.useMutation({
     onSuccess: (data) => {
       if (data.url) {
@@ -34,11 +22,6 @@ export default function PricingPage() {
       setIsCreatingCheckout(null);
     },
   });
-
-  const handleOneTimePurchase = () => {
-    setIsCreatingCheckout("one-time");
-    createOneTimeCheckout.mutate();
-  };
 
   const handleSubscription = () => {
     setIsCreatingCheckout("subscription");
@@ -52,23 +35,21 @@ export default function PricingPage() {
         <div className="mx-auto max-w-6xl">
           <div className="mb-16 text-center">
             <h1 className="mb-4 text-5xl font-bold text-gray-900">
-              Choose Your Plan
+              Choose Your Account
             </h1>
             <p className="text-xl text-gray-600">
-              Get access to the dashboard with a one-time purchase or subscription
+              Standard Accounts are free. Managing Accounts require a paid subscription.
             </p>
           </div>
 
           <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-2">
-            {/* One-Time Purchase */}
             <Card className="relative">
               <CardHeader>
-                <CardTitle className="text-2xl">One-Time Purchase</CardTitle>
+                <CardTitle className="text-2xl">Standard Account</CardTitle>
                 <div className="mt-4">
                   <span className="text-4xl font-bold text-gray-900">
-                    $20
+                    Free
                   </span>
-                  <span className="text-gray-600"> one-time</span>
                 </div>
               </CardHeader>
               <CardContent>
@@ -87,7 +68,7 @@ export default function PricingPage() {
                         d="M5 13l4 4L19 7"
                       />
                     </svg>
-                    Lifetime dashboard access
+                    Dashboard access
                   </li>
                   <li className="flex items-center">
                     <svg
@@ -103,7 +84,7 @@ export default function PricingPage() {
                         d="M5 13l4 4L19 7"
                       />
                     </svg>
-                    No recurring charges
+                    Create jobs and material lists
                   </li>
                   <li className="flex items-center">
                     <svg
@@ -119,27 +100,15 @@ export default function PricingPage() {
                         d="M5 13l4 4L19 7"
                       />
                     </svg>
-                    All features included
+                    Add and track parts
                   </li>
                 </ul>
-                <Button
-                  className="w-full"
-                  onClick={handleOneTimePurchase}
-                  disabled={isCreatingCheckout !== null}
-                >
-                  {isCreatingCheckout === "one-time" ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Processing...
-                    </>
-                  ) : (
-                    "Purchase Now"
-                  )}
+                <Button asChild variant="outline" className="w-full">
+                  <Link href="/dashboard">Use Standard Account</Link>
                 </Button>
               </CardContent>
             </Card>
 
-            {/* Subscription */}
             <Card className="relative border-2 border-primary">
               <div className="absolute -top-4 left-1/2 -translate-x-1/2">
                 <span className="rounded-full bg-primary px-4 py-1 text-sm font-semibold text-white">
@@ -147,7 +116,7 @@ export default function PricingPage() {
                 </span>
               </div>
               <CardHeader>
-                <CardTitle className="text-2xl">Monthly Subscription</CardTitle>
+                <CardTitle className="text-2xl">Managing Account</CardTitle>
                 <div className="mt-4">
                   <span className="text-4xl font-bold text-gray-900">
                     $2
@@ -171,7 +140,39 @@ export default function PricingPage() {
                         d="M5 13l4 4L19 7"
                       />
                     </svg>
-                    Full dashboard access
+                    Generate quotes and orders
+                  </li>
+                  <li className="flex items-center">
+                    <svg
+                      className="mr-2 h-5 w-5 text-green-500"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M5 13l4 4L19 7"
+                      />
+                    </svg>
+                    Delete jobs, material lists, suppliers, and parts
+                  </li>
+                  <li className="flex items-center">
+                    <svg
+                      className="mr-2 h-5 w-5 text-green-500"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M5 13l4 4L19 7"
+                      />
+                    </svg>
+                    Full management permissions
                   </li>
                   <li className="flex items-center">
                     <svg
@@ -189,38 +190,6 @@ export default function PricingPage() {
                     </svg>
                     Cancel anytime
                   </li>
-                  <li className="flex items-center">
-                    <svg
-                      className="mr-2 h-5 w-5 text-green-500"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M5 13l4 4L19 7"
-                      />
-                    </svg>
-                    All features included
-                  </li>
-                  <li className="flex items-center">
-                    <svg
-                      className="mr-2 h-5 w-5 text-green-500"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M5 13l4 4L19 7"
-                      />
-                    </svg>
-                    Regular updates
-                  </li>
                 </ul>
                 <Button
                   className="w-full"
@@ -233,7 +202,7 @@ export default function PricingPage() {
                       Processing...
                     </>
                   ) : (
-                    "Subscribe Now"
+                    "Upgrade to Managing Account"
                   )}
                 </Button>
               </CardContent>
@@ -253,4 +222,3 @@ export default function PricingPage() {
     </div>
   );
 }
-

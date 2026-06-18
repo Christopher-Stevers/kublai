@@ -23,6 +23,12 @@ export interface ReplicacheJob {
   pendingSync?: boolean;
 }
 
+export interface ReplicacheContributor {
+  id: string;
+  name: string | null;
+  email: string | null;
+}
+
 export interface ReplicacheMaterialListSummary {
   id: string;
   name: string;
@@ -34,6 +40,9 @@ export interface ReplicacheMaterialListSummary {
   materialTotal: number;
   sentSupplierCount?: number;
   totalSupplierCount?: number;
+  verifiedSupplierCount?: number;
+  createdBy?: ReplicacheContributor | null;
+  contributors?: ReplicacheContributor[];
   pendingSync?: boolean;
 }
 
@@ -61,13 +70,27 @@ function isMaterialListRecord(
 
 function isMaterialListItemRecord(
   value: unknown,
-): value is { materialListId: string; extendedPrice: string | null } {
+): value is {
+  materialListId: string;
+  extendedPrice: string | null;
+  addedBy?: ReplicacheContributor | null;
+} {
   return (
     !!value &&
     typeof value === "object" &&
     !Array.isArray(value) &&
     "materialListId" in value
   );
+}
+
+function addContributor(
+  contributors: ReplicacheContributor[],
+  seenIds: Set<string>,
+  contributor: ReplicacheContributor | null | undefined,
+) {
+  if (!contributor?.id || seenIds.has(contributor.id)) return;
+  contributors.push(contributor);
+  seenIds.add(contributor.id);
 }
 
 export function useReplicacheJobsList() {
@@ -125,22 +148,38 @@ export function useReplicacheJobDetail(jobId: string) {
       // Build per-materialList item counts and totals
       const itemCountByList = new Map<string, number>();
       const totalByList = new Map<string, number>();
+      const itemContributorsByList = new Map<string, ReplicacheContributor[]>();
       for (const [, value] of itemEntries) {
         if (isMaterialListItemRecord(value)) {
           const mlId = value.materialListId;
           itemCountByList.set(mlId, (itemCountByList.get(mlId) ?? 0) + 1);
           const price = value.extendedPrice ? parseFloat(String(value.extendedPrice)) : 0;
           totalByList.set(mlId, (totalByList.get(mlId) ?? 0) + (Number.isFinite(price) ? price : 0));
+
+          if (value.addedBy?.id) {
+            const contributors = itemContributorsByList.get(mlId) ?? [];
+            const seenIds = new Set(contributors.map((contributor) => contributor.id));
+            addContributor(contributors, seenIds, value.addedBy);
+            itemContributorsByList.set(mlId, contributors);
+          }
         }
       }
 
       const materialLists: ReplicacheMaterialListSummary[] = [];
       for (const [, value] of mlEntries) {
         if (isMaterialListRecord(value) && value.jobId === jobId) {
+          const contributors: ReplicacheContributor[] = [];
+          const seenContributorIds = new Set<string>();
+          addContributor(contributors, seenContributorIds, value.createdBy);
+          for (const contributor of itemContributorsByList.get(value.id) ?? []) {
+            addContributor(contributors, seenContributorIds, contributor);
+          }
+
           materialLists.push({
             ...(value as ReplicacheMaterialListSummary),
             itemCount: itemCountByList.get(value.id) ?? 0,
             materialTotal: totalByList.get(value.id) ?? 0,
+            contributors,
           });
         }
       }

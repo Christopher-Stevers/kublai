@@ -573,6 +573,7 @@ export function PartDetailsDialog({
       });
 
       void utils.catalogue.searchParts.invalidate();
+      void utils.catalogue.getPartWizardSummary.invalidate();
       void utils.catalogue.getPart.invalidate();
     },
     onError: (error) => {
@@ -587,6 +588,7 @@ export function PartDetailsDialog({
   const updatePart = api.catalogue.updatePart.useMutation({
     onSuccess: () => {
       void utils.catalogue.searchParts.invalidate();
+      void utils.catalogue.getPartWizardSummary.invalidate();
       void utils.catalogue.getPart.invalidate();
     },
     onError: (error) => {
@@ -602,6 +604,7 @@ export function PartDetailsDialog({
       setIsGoogleImagePickerOpen(false);
       setSubmitError(null);
       void utils.catalogue.searchParts.invalidate();
+      void utils.catalogue.getPartWizardSummary.invalidate();
       void utils.catalogue.getPart.invalidate();
     },
     onError: (error) => {
@@ -646,6 +649,7 @@ export function PartDetailsDialog({
     api.catalogue.applyPartImageToFamilyCandidate.useMutation({
       onSuccess: () => {
         void utils.catalogue.searchParts.invalidate();
+        void utils.catalogue.getPartWizardSummary.invalidate();
         void utils.catalogue.getPart.invalidate();
       },
       onError: (error) => {
@@ -1471,14 +1475,14 @@ export function PartDetailsDialog({
                 Image
               </Label>
               <div className="mt-3 space-y-4">
-                <div className="grid grid-cols-[10rem_minmax(0,1fr)] gap-3 sm:grid-cols-[12rem_minmax(0,1fr)]">
-                  <div className="relative flex aspect-square w-full items-center justify-center overflow-hidden rounded-md border bg-gray-50">
+                <div className="grid grid-cols-[5rem_minmax(0,1fr)] gap-3 sm:grid-cols-[6rem_minmax(0,1fr)]">
+                  <div className="relative flex h-20 w-20 items-center justify-center overflow-hidden rounded-md border bg-white sm:h-24 sm:w-24">
                     {previewImageUrl ? (
                       <Image
                         src={previewImageUrl}
                         alt="Part preview"
                         fill
-                        className="object-cover"
+                        className="object-contain p-1"
                         unoptimized
                       />
                     ) : (

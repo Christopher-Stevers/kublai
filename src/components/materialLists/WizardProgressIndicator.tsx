@@ -3,7 +3,13 @@
 import { formatSize } from "~/lib/size-utils";
 
 interface WizardProgressIndicatorProps {
-  currentStage: "catalog" | "material" | "size" | "category" | "part" | "review";
+  currentStage:
+    | "catalog"
+    | "material"
+    | "size"
+    | "category"
+    | "part"
+    | "review";
   onStageClick?: (
     stage: "catalog" | "material" | "size" | "category" | "part",
   ) => void;
@@ -76,50 +82,53 @@ export function WizardProgressIndicator({
   };
 
   return (
-    <div className="flex w-full min-w-0 items-center gap-1 overflow-x-auto pb-1 sm:gap-1.5">
-        {stages.map((stage) => {
-          const isCompleted = stage.step < currentStep;
-          const isCurrent = stage.step === currentStep;
-          const isClickable =
-            onStageClick &&
-            (isCompleted || isCurrent) &&
-            currentStage !== "review";
+    <div className="flex w-full min-w-0 flex-wrap items-stretch gap-1.5 sm:gap-2">
+      {stages.map((stage) => {
+        const isCompleted = stage.step < currentStep;
+        const isCurrent = stage.step === currentStep;
+        const isClickable =
+          onStageClick &&
+          (isCompleted || isCurrent) &&
+          currentStage !== "review";
 
-          return (
-            <div key={stage.id} className="min-w-[4.75rem] flex-1">
-              <button
-                onClick={() => {
-                  if (isClickable) {
-                    onStageClick(stage.id);
-                  }
-                }}
-                disabled={!isClickable}
-                className={`flex h-9 w-full min-w-0 items-center justify-center gap-1 rounded-lg px-1.5 text-xs font-medium transition-colors sm:gap-1.5 sm:px-2.5 sm:text-sm ${
+        return (
+          <div
+            key={stage.id}
+            className="min-w-[5.75rem] flex-[1_1_5.75rem] sm:min-w-[6.75rem] sm:flex-[1_1_6.75rem] lg:min-w-[7.25rem]"
+          >
+            <button
+              onClick={() => {
+                if (isClickable) {
+                  onStageClick(stage.id);
+                }
+              }}
+              disabled={!isClickable}
+              className={`flex min-h-9 w-full min-w-0 items-center justify-center gap-1 rounded-lg px-2 py-1.5 text-xs leading-tight font-medium transition-colors sm:gap-1.5 sm:px-2.5 sm:text-sm ${
+                isCurrent
+                  ? "bg-primary text-primary-foreground"
+                  : isCompleted
+                    ? "bg-primary/10 text-primary hover:bg-primary/20"
+                    : "bg-gray-100 text-gray-500"
+              } ${isClickable ? "cursor-pointer" : "cursor-default"}`}
+            >
+              <div
+                className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs sm:h-5.5 sm:w-5.5 sm:text-sm ${
                   isCurrent
-                    ? "bg-primary text-primary-foreground"
+                    ? "bg-primary-foreground text-primary"
                     : isCompleted
-                      ? "bg-primary/10 text-primary hover:bg-primary/20"
-                      : "bg-gray-100 text-gray-500"
-                } ${isClickable ? "cursor-pointer" : "cursor-default"}`}
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-gray-300 text-gray-600"
+                }`}
               >
-                <div
-                  className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs sm:h-5.5 sm:w-5.5 sm:text-sm ${
-                    isCurrent
-                      ? "bg-primary-foreground text-primary"
-                      : isCompleted
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-gray-300 text-gray-600"
-                  }`}
-                >
-                  {isCompleted ? "✓" : stage.step}
-                </div>
-                <span className="min-w-0 flex-1 truncate whitespace-nowrap text-center">
-                  {getStageLabel(stage)}
-                </span>
-              </button>
-            </div>
-          );
-        })}
+                {isCompleted ? "✓" : stage.step}
+              </div>
+              <span className="[display:-webkit-box] min-w-0 flex-1 overflow-hidden text-center break-words whitespace-normal [-webkit-box-orient:vertical] [-webkit-line-clamp:2]">
+                {getStageLabel(stage)}
+              </span>
+            </button>
+          </div>
+        );
+      })}
     </div>
   );
 }

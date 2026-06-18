@@ -45,6 +45,11 @@ export type MaterialListReplicacheMutators = {
         lastKnownUnitCost: string | null;
         supplier: { id: string; name: string } | null;
       } | null;
+      addedBySnapshot?: {
+        id: string;
+        name: string | null;
+        email: string | null;
+      } | null;
     },
   ): Promise<void>;
   updateItemSupplierPart(
@@ -244,6 +249,7 @@ export function getMaterialListReplicache() {
           // Snapshot fields for optimistic display in UI
           partDefinition: args.partDefinitionSnapshot ?? null,
           supplierPart: args.supplierPartSnapshot ?? null,
+          addedBy: args.addedBySnapshot ?? null,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
           pendingSync: true,

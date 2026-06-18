@@ -364,7 +364,9 @@ export function DashboardClient({ initialJobs }: { initialJobs: DashboardJob[] }
                       onClick={() => setOfflineMaterialListId(list.id)}
                     >
                       <CardHeader>
-                        <CardTitle className="line-clamp-1">{list.name}</CardTitle>
+                        <CardTitle className="line-clamp-2 min-w-0 break-words leading-tight">
+                          {list.name}
+                        </CardTitle>
                       </CardHeader>
                       <CardContent>
                         <div className="space-y-2 text-sm text-gray-600">

@@ -2795,6 +2795,9 @@ ${foremanName}`;
         `Delivery Date: ${formattedDeliveryDate}`,
         "",
         lineItems || "No items",
+        ...(order.notes?.trim()
+          ? ["", "Notes:", order.notes.trim()]
+          : []),
         "",
         "Thanks,",
         ctx.user.name || "Foreman",
@@ -3087,6 +3090,7 @@ ${foremanName}`;
           notes: orders.notes,
           createdAt: orders.createdAt,
           sentAt: orders.sentAt,
+          materialListId: orders.materialListId,
           supplierId: orders.supplierId,
           supplierName: suppliers.name,
           supplierContactEmail: suppliers.contactEmail,
@@ -3112,7 +3116,11 @@ ${foremanName}`;
       const items = await ctx.db
         .select({
           id: orderItems.id,
+          supplierPartId: orderItems.supplierPartId,
+          partDefinitionId: orderItems.partDefinitionId,
           quantity: orderItems.quantity,
+          receivedQuantity: orderItems.receivedQuantity,
+          verificationStatus: orderItems.verificationStatus,
           descriptionSnapshot: orderItems.descriptionSnapshot,
           partDefinitionDisplayName: partDefinitions.displayName,
           supplierSkuSnapshot: orderItems.supplierSkuSnapshot,
@@ -3131,6 +3139,7 @@ ${foremanName}`;
         notes: order.notes,
         createdAt: order.createdAt,
         sentAt: order.sentAt,
+        materialListId: order.materialListId,
         supplier: order.supplierId
           ? {
               id: order.supplierId,
@@ -3140,7 +3149,11 @@ ${foremanName}`;
           : null,
         items: items.map((item) => ({
           id: item.id,
+          supplierPartId: item.supplierPartId,
+          partDefinitionId: item.partDefinitionId,
           quantity: item.quantity,
+          receivedQuantity: item.receivedQuantity,
+          verificationStatus: item.verificationStatus,
           descriptionSnapshot:
             item.descriptionSnapshot?.trim() ||
             item.partDefinitionDisplayName?.trim() ||
@@ -3148,6 +3161,107 @@ ${foremanName}`;
           supplierSkuSnapshot: item.supplierSkuSnapshot,
         })),
       };
+    }),
+
+  /**
+   * Update verification state for a single order item.
+   */
+  updateOrderItemVerification: hasDashboardAccess
+    .input(
+      z.object({
+        orderItemId: z.string().uuid(),
+        receivedQuantity: z.number().min(0),
+        verificationStatus: z.enum([
+          "pending",
+          "partial",
+          "complete",
+          "problem",
+        ]),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (!ctx.user.organizationId) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "User must belong to an organization",
+        });
+      }
+
+      const [existing] = await ctx.db
+        .select({ id: orderItems.id })
+        .from(orderItems)
+        .innerJoin(orders, eq(orderItems.orderId, orders.id))
+        .where(
+          and(
+            eq(orderItems.id, input.orderItemId),
+            eq(orders.organizationId, ctx.user.organizationId),
+          ),
+        )
+        .limit(1);
+
+      if (!existing) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Order item not found",
+        });
+      }
+
+      const [updated] = await ctx.db
+        .update(orderItems)
+        .set({
+          receivedQuantity: input.receivedQuantity.toString(),
+          verificationStatus: input.verificationStatus,
+        })
+        .where(eq(orderItems.id, input.orderItemId))
+        .returning({
+          id: orderItems.id,
+          receivedQuantity: orderItems.receivedQuantity,
+          verificationStatus: orderItems.verificationStatus,
+        });
+
+      return updated;
+    }),
+
+  /**
+   * Update internal notes for an order.
+   */
+  updateOrderNotes: hasDashboardAccess
+    .input(
+      z.object({
+        orderId: z.string().uuid(),
+        notes: z.string().max(10000).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (!ctx.user.organizationId) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "User must belong to an organization",
+        });
+      }
+
+      const [updated] = await ctx.db
+        .update(orders)
+        .set({ notes: input.notes?.trim() || null })
+        .where(
+          and(
+            eq(orders.id, input.orderId),
+            eq(orders.organizationId, ctx.user.organizationId),
+          ),
+        )
+        .returning({
+          id: orders.id,
+          notes: orders.notes,
+        });
+
+      if (!updated) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Order not found",
+        });
+      }
+
+      return updated;
     }),
 
   /**

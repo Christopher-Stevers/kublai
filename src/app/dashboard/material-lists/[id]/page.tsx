@@ -1,7 +1,7 @@
 "use client";
 
-import { use, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { use, useEffect, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { api } from "~/trpc/react";
 import { Button, LargeButton } from "~/components/ui/button";
 import { MaterialListItem } from "~/components/materialLists/MaterialListItem";
@@ -11,6 +11,15 @@ import { OrdersPreviewSheet } from "~/components/materialLists/OrdersPreviewShee
 import { AddPartDialog } from "~/components/materialLists/AddPartDialog";
 import { MaterialListNameModal } from "~/components/materialLists/MaterialListNameModal";
 import { ExistingQuotesOrdersDialog } from "~/components/materialLists/ExistingQuotesOrdersDialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "~/components/ui/dialog";
+import { Textarea } from "~/components/ui/textarea";
 import {
   CheckCircle2Icon,
   Clock3Icon,
@@ -84,8 +93,10 @@ export default function MaterialListDetailPage({
 }) {
   const { id: paramId } = use(params);
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const id =
     pathname.match(/^\/dashboard\/material-lists\/([^/?#]+)/)?.[1] ?? paramId;
+  const verifyOrderId = searchParams.get("orderId");
   const router = useRouter();
   const [showJobInfoModal, setShowJobInfoModal] = useState(false);
   const [showQuoteSheet, setShowQuoteSheet] = useState(false);
@@ -97,6 +108,8 @@ export default function MaterialListDetailPage({
     useState(false);
   const [showExistingOrdersDialog, setShowExistingOrdersDialog] =
     useState(false);
+  const [showVerifyNotesDialog, setShowVerifyNotesDialog] = useState(false);
+  const [verifyOrderNotes, setVerifyOrderNotes] = useState("");
   const [selectedQuoteId, setSelectedQuoteId] = useState<string | undefined>();
   const [selectedOrderId, setSelectedOrderId] = useState<string | undefined>();
   const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
@@ -104,6 +117,11 @@ export default function MaterialListDetailPage({
 
   const { materialList: mlHeader, items, materialTotal, isLoading } =
     useReplicacheMaterialList(id);
+  const { data: verifyOrder, isLoading: isLoadingVerifyOrder } =
+    api.materialList.getOrderById.useQuery(
+      { orderId: verifyOrderId ?? "" },
+      { enabled: isBrowserOnline && !!verifyOrderId },
+    );
   const suppliers = useReplicacheSuppliers();
   const jobDetail = useReplicacheJobDetail(mlHeader?.jobId ?? "");
   const jobName = jobDetail?.job.name;
@@ -111,11 +129,82 @@ export default function MaterialListDetailPage({
   const { data: userData } = api.user.getMyRole.useQuery(undefined, {
     enabled: isBrowserOnline,
   });
+  const utils = api.useUtils();
+  const updateOrderNotes = api.materialList.updateOrderNotes.useMutation({
+    onSuccess: (updatedOrder) => {
+      setVerifyOrderNotes(updatedOrder.notes ?? "");
+      if (verifyOrderId) {
+        void utils.materialList.getOrderById.invalidate({
+          orderId: verifyOrderId,
+        });
+      }
+      setShowVerifyNotesDialog(false);
+    },
+  });
+  const updateOrderItemVerification =
+    api.materialList.updateOrderItemVerification.useMutation();
   const canGenerateDocuments =
     userData?.permissions.canGenerateDocuments ?? true;
 
   const hasPendingSync =
     (mlHeader?.pendingSync ?? false) || items.some((i) => i.pendingSync);
+  const verifySupplierId = verifyOrder?.supplier?.id ?? null;
+  const verifyOrderPartDefinitionIds = new Set(
+    verifyOrder?.items
+      .map((item) => item.partDefinitionId)
+      .filter(
+        (partDefinitionId): partDefinitionId is string => !!partDefinitionId,
+      ) ?? [],
+  );
+  const verifyOrderSupplierPartIds = new Set(
+    verifyOrder?.items
+      .map((item) => item.supplierPartId)
+      .filter((supplierPartId): supplierPartId is string => !!supplierPartId) ??
+      [],
+  );
+  const visibleItems =
+    verifyOrderId
+      ? verifyOrder
+        ? items.filter((item) => {
+          if (
+            item.supplierPart?.id &&
+            verifyOrderSupplierPartIds.has(item.supplierPart.id)
+          ) {
+            return true;
+          }
+
+          const itemSupplierId =
+            item.supplierId ?? item.supplierPart?.supplierId ?? null;
+          return (
+            !!item.partDefinition?.id &&
+            verifyOrderPartDefinitionIds.has(item.partDefinition.id) &&
+            (!verifySupplierId || itemSupplierId === verifySupplierId)
+          );
+        })
+        : []
+      : items;
+  const visibleMaterialTotal = visibleItems.reduce((sum, item) => {
+    const extendedPrice = item.extendedPrice
+      ? Number.parseFloat(item.extendedPrice)
+      : Number.NaN;
+    if (Number.isFinite(extendedPrice)) return sum + extendedPrice;
+
+    const quantity = Number.parseFloat(item.quantity);
+    const unitCost = item.unitCost ? Number.parseFloat(item.unitCost) : 0;
+    return sum + (Number.isFinite(quantity) ? quantity : 0) * unitCost;
+  }, 0);
+  const footerMaterialTotal = verifyOrderId ? visibleMaterialTotal : materialTotal;
+
+  useEffect(() => {
+    if (!verifyOrderId) {
+      setVerifyOrderNotes("");
+      return;
+    }
+
+    if (verifyOrder) {
+      setVerifyOrderNotes(verifyOrder.notes ?? "");
+    }
+  }, [verifyOrderId, verifyOrder]);
 
   const openAddPartDialog = () => {
     markUserAction("add-part-open", { materialListId: id });
@@ -125,7 +214,7 @@ export default function MaterialListDetailPage({
   const generationBlockReason = !isBrowserOnline
     ? "Reconnect before generating quotes or orders."
     : !canGenerateDocuments
-      ? "Workers and beta testers cannot generate quotes or orders."
+      ? "Standard accounts cannot generate quotes or orders."
       : isLoading
         ? "Loading material list data..."
         : hasPendingSync
@@ -279,45 +368,109 @@ export default function MaterialListDetailPage({
       {/* Main Area - Parts List */}
       <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-6">
         <div className="mx-auto max-w-6xl">
-          {items.length === 0 ? (
+          {verifyOrderId && (
+            <div className="mb-3 rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-sm text-blue-950">
+              <span className="font-semibold">Verify Order</span>
+              {verifyOrder ? (
+                <span>
+                  {" "}
+                  {verifyOrder.orderNumber || `#${verifyOrder.id.slice(0, 8)}`}
+                  {verifyOrder.supplier?.name
+                    ? ` - ${verifyOrder.supplier.name}`
+                    : ""}
+                </span>
+              ) : isLoadingVerifyOrder ? (
+                <span> Loading order...</span>
+              ) : (
+                <span> Order unavailable</span>
+              )}
+            </div>
+          )}
+          {visibleItems.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12">
-              <p className="text-muted-foreground mb-4">No parts added</p>
-              <LargeButton onClick={openAddPartDialog}>
-                <PlusIcon className="mr-2 h-4 w-4" />
-                Add Part Now
-              </LargeButton>
+              <p className="text-muted-foreground mb-4">
+                {verifyOrderId && isLoadingVerifyOrder
+                  ? "Loading order items..."
+                  : verifyOrderId
+                  ? "No parts from this order are in the material list."
+                  : "No parts added"}
+              </p>
+              {!verifyOrderId && (
+                <LargeButton onClick={openAddPartDialog}>
+                  <PlusIcon className="mr-2 h-4 w-4" />
+                  Add Part Now
+                </LargeButton>
+              )}
             </div>
           ) : (
             <>
               {/* Grid View */}
               {viewMode === "grid" && (
-                <div className="grid grid-cols-[repeat(auto-fit,minmax(12rem,1fr))] gap-3">
-                  {items.map((item) => (
-                    <MaterialListItem
-                      key={item.id}
-                      item={{
-                        id: item.id,
-                        quantity: item.quantity,
-                        unitCost: item.unitCost,
-                        extendedPrice: item.extendedPrice,
-                        descriptionSnapshot: item.descriptionSnapshot,
-                        createdAt: item.createdAt,
-                        updatedAt: item.updatedAt,
-                        pendingSync: item.pendingSync,
-                        partDefinition: item.partDefinition ?? null,
-                        selectedSupplierId: item.supplierId,
-                        supplierPart: item.supplierPart ?? null,
-                      }}
-                      materialListId={id}
-                      suppliers={suppliers}
-                    />
-                  ))}
+                <div className="grid items-stretch grid-cols-[repeat(auto-fit,minmax(12rem,1fr))] gap-3">
+                  {visibleItems.map((item) => {
+                    const verifyOrderItem = verifyOrder?.items.find(
+                      (orderItem) => {
+                        if (
+                          item.supplierPart?.id &&
+                          orderItem.supplierPartId === item.supplierPart.id
+                        ) {
+                          return true;
+                        }
+
+                        const itemSupplierId =
+                          item.supplierId ?? item.supplierPart?.supplierId ?? null;
+                        return (
+                          orderItem.partDefinitionId === item.partDefinition?.id &&
+                          (!verifySupplierId || itemSupplierId === verifySupplierId)
+                        );
+                      },
+                    );
+
+                    return (
+                      <MaterialListItem
+                        key={item.id}
+                        item={{
+                          id: item.id,
+                          quantity: item.quantity,
+                          unitCost: item.unitCost,
+                          extendedPrice: item.extendedPrice,
+                          descriptionSnapshot: item.descriptionSnapshot,
+                          createdAt: item.createdAt,
+                          updatedAt: item.updatedAt,
+                          pendingSync: item.pendingSync,
+                          partDefinition: item.partDefinition ?? null,
+                          selectedSupplierId: item.supplierId,
+                          supplierPart: item.supplierPart ?? null,
+                          addedBy: item.addedBy ?? null,
+                        }}
+                        materialListId={id}
+                        suppliers={suppliers}
+                        verifyMode={!!verifyOrderId}
+                        verifyOrderedQuantity={verifyOrderItem?.quantity}
+                        verifyInitialReceivedQuantity={
+                          verifyOrderItem?.receivedQuantity
+                        }
+                        verifyInitialStatus={verifyOrderItem?.verificationStatus}
+                        onVerifyStateChange={
+                          verifyOrderItem
+                            ? (state) => {
+                                updateOrderItemVerification.mutate({
+                                  orderItemId: verifyOrderItem.id,
+                                  receivedQuantity: state.receivedQuantity,
+                                  verificationStatus: state.verificationStatus,
+                                });
+                              }
+                            : undefined
+                        }
+                      />
+                    );
+                  })}
                 </div>
               )}
               {/* Table View */}
               {viewMode === "table" && (
                 <MaterialListTableView
-                  items={items}
+                  items={visibleItems}
                   materialListId={id}
                   suppliers={suppliers}
                 />
@@ -331,48 +484,114 @@ export default function MaterialListDetailPage({
       <div className="shrink-0 border-t bg-white px-4 pt-1.5 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:px-6 sm:pt-2">
         <div className="mx-auto max-w-6xl">
           <div className="space-y-1.5">
-            <div className="flex items-baseline gap-1.5">
-              <span className="text-base text-gray-600 sm:text-lg">
-                Material Total
-              </span>
-              <span className="text-base font-bold sm:text-lg">
-                ${materialTotal.toFixed(2)}
-              </span>
-            </div>
+            {!verifyOrderId && (
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-base text-gray-600 sm:text-lg">
+                  Material Total
+                </span>
+                <span className="text-base font-bold sm:text-lg">
+                  ${footerMaterialTotal.toFixed(2)}
+                </span>
+              </div>
+            )}
             <div className="grid grid-cols-3 gap-1.5">
-              <Button
-                variant="outline"
-                onClick={handleGenerateQuote}
-                disabled={!canGenerateQuoteOrOrder}
-                title={generationBlockReason ?? "Generate quote"}
-                className="h-9 min-h-9 w-full px-1.5 py-1 text-[11px] leading-tight whitespace-normal sm:h-9 sm:text-xs"
-              >
-                <FileTextIcon className="mr-1 h-3.5 w-3.5 shrink-0" />
-                <span className="text-center leading-tight">Quote</span>
-              </Button>
-              <Button
-                onClick={handleGenerateOrder}
-                disabled={!canGenerateQuoteOrOrder}
-                title={generationBlockReason ?? "Order"}
-                className="h-9 min-h-9 w-full px-1.5 py-1 text-[11px] leading-tight whitespace-normal sm:h-9 sm:text-xs"
-              >
-                <ShoppingCartIcon className="mr-1 h-3.5 w-3.5 shrink-0" />
-                <span className="text-center leading-tight">Order</span>
-              </Button>
-              <Button
-                variant="outline"
-                onClick={openAddPartDialog}
-                className="h-9 min-h-9 w-full px-1.5 py-1 text-[11px] leading-tight whitespace-normal sm:h-9 sm:text-xs"
-              >
-                <PlusIcon className="mr-1 h-3.5 w-3.5 shrink-0" />
-                <span className="text-center leading-tight">Add Part</span>
-              </Button>
+              {verifyOrderId ? (
+                <Button
+                  variant="outline"
+                  onClick={() => setShowVerifyNotesDialog(true)}
+                  className="col-span-3 h-9 min-h-9 w-full px-1.5 py-1 text-[11px] leading-tight whitespace-normal sm:h-9 sm:text-xs"
+                >
+                  <FileTextIcon className="mr-1 h-3.5 w-3.5 shrink-0" />
+                  <span className="text-center leading-tight">Notes</span>
+                </Button>
+              ) : (
+                <>
+                  <Button
+                    variant="outline"
+                    onClick={handleGenerateQuote}
+                    disabled={!canGenerateQuoteOrOrder}
+                    title={generationBlockReason ?? "Generate quote"}
+                    className="h-9 min-h-9 w-full px-1.5 py-1 text-[11px] leading-tight whitespace-normal sm:h-9 sm:text-xs"
+                  >
+                    <FileTextIcon className="mr-1 h-3.5 w-3.5 shrink-0" />
+                    <span className="text-center leading-tight">Quote</span>
+                  </Button>
+                  <Button
+                    onClick={handleGenerateOrder}
+                    disabled={!canGenerateQuoteOrOrder}
+                    title={generationBlockReason ?? "Order"}
+                    className="h-9 min-h-9 w-full px-1.5 py-1 text-[11px] leading-tight whitespace-normal sm:h-9 sm:text-xs"
+                  >
+                    <ShoppingCartIcon className="mr-1 h-3.5 w-3.5 shrink-0" />
+                    <span className="text-center leading-tight">Order</span>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={openAddPartDialog}
+                    className="h-9 min-h-9 w-full px-1.5 py-1 text-[11px] leading-tight whitespace-normal sm:h-9 sm:text-xs"
+                  >
+                    <PlusIcon className="mr-1 h-3.5 w-3.5 shrink-0" />
+                    <span className="text-center leading-tight">Add Part</span>
+                  </Button>
+                </>
+              )}
             </div>
           </div>
         </div>
       </div>
 
       {/* Modals and Sheets */}
+      <Dialog
+        open={showVerifyNotesDialog}
+        onOpenChange={setShowVerifyNotesDialog}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Order Notes</DialogTitle>
+            <DialogDescription>
+              Notes saved on this order for verification.
+            </DialogDescription>
+          </DialogHeader>
+          <Textarea
+            id="verify-order-notes"
+            value={verifyOrderNotes}
+            onChange={(event) => setVerifyOrderNotes(event.target.value)}
+            placeholder="Type order verification notes..."
+            className="min-h-[10rem]"
+          />
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setVerifyOrderNotes(verifyOrder?.notes ?? "");
+                setShowVerifyNotesDialog(false);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (!verifyOrderId) return;
+                updateOrderNotes.mutate({
+                  orderId: verifyOrderId,
+                  notes: verifyOrderNotes,
+                });
+              }}
+              disabled={
+                !isBrowserOnline || !verifyOrderId || updateOrderNotes.isPending
+              }
+              title={
+                !isBrowserOnline
+                  ? "Reconnect before saving order notes."
+                  : undefined
+              }
+            >
+              {updateOrderNotes.isPending ? "Saving..." : "Save"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <JobInfoModal
         open={showJobInfoModal}
         onOpenChange={setShowJobInfoModal}

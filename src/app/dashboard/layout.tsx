@@ -8,8 +8,7 @@ import { waitForUser } from "~/server/utils/wait-for-user";
 import { getDevBypassUser } from "~/server/utils/get-dev-bypass-user";
 import { getAgentBypassUser } from "~/server/utils/get-agent-bypass-user";
 import { ReplicacheSyncBootstrap } from "~/components/offline/ReplicacheSyncBootstrap";
-
-const allowDevDashboardAccess = process.env.NODE_ENV !== "production";
+import { TabAccessGate } from "./_components/TabAccessGate";
 
 export default async function DashboardLayout({
   children,
@@ -56,19 +55,11 @@ export default async function DashboardLayout({
     redirect("/onboarding");
   }
 
-  // In dev/test Clerk environments, skip the pricing gate so sign-in links can reach the app.
-  if (!allowDevDashboardAccess && user.role !== "admin") {
-    const hasActiveSubscription =
-      user.stripeSubscriptionId &&
-      user.subscriptionStatus === "active" &&
-      (!user.subscriptionEndsAt ||
-        new Date(user.subscriptionEndsAt) > new Date());
-
-    const hasOneTimeAccess = user.hasOneTimeAccess === true;
-
-    if (!hasActiveSubscription && !hasOneTimeAccess) {
-      redirect("/pricing");
-    }
+  if (
+    user.organizationAccessStatus &&
+    user.organizationAccessStatus !== "approved"
+  ) {
+    redirect("/pending-approval");
   }
 
   return (
@@ -76,6 +67,7 @@ export default async function DashboardLayout({
       <div className="flex min-h-screen flex-col bg-gray-50">
         <ReplicacheSyncBootstrap />
         <Header />
+        <TabAccessGate />
         <main className="flex-1">{children}</main>
       </div>
     </HydrateClient>

@@ -11,6 +11,7 @@ import {
   DialogTitle,
 } from "~/components/ui/dialog";
 import { Button } from "~/components/ui/button";
+import { Input } from "~/components/ui/input";
 import { Textarea } from "~/components/ui/textarea";
 import { ChevronDownIcon, ChevronRightIcon } from "lucide-react";
 import { useOnlineStatus } from "~/hooks/use-online-status";
@@ -39,6 +40,28 @@ interface OrdersPreviewSheetProps {
   orderId?: string;
 }
 
+type OrderPreview = {
+  id: string;
+  notes?: string | null;
+  supplier: {
+    id: string;
+    name: string;
+    contactEmail: string | null;
+  } | null;
+  items: Array<{
+    id: string;
+    quantity: string;
+    descriptionSnapshot: string | null;
+    supplierSkuSnapshot: string | null;
+  }>;
+  sentAt?: Date | null;
+};
+
+type EmailDraft = {
+  subject: string;
+  body: string;
+};
+
 export function OrdersPreviewSheet({
   open,
   onOpenChange,
@@ -57,25 +80,15 @@ export function OrdersPreviewSheet({
   });
   const canGenerateDocuments =
     userData?.permissions.canGenerateDocuments ?? true;
-  const [orders, setOrders] = useState<
-    Array<{
-      id: string;
-      notes?: string | null;
-      supplier: {
-        id: string;
-        name: string;
-        contactEmail: string | null;
-      } | null;
-      items: Array<{
-        id: string;
-        quantity: string;
-        descriptionSnapshot: string | null;
-        supplierSkuSnapshot: string | null;
-      }>;
-      sentAt?: Date | null;
-    }>
-  >([]);
+  const [orders, setOrders] = useState<OrderPreview[]>([]);
   const [orderNotes, setOrderNotes] = useState<Map<string, string>>(new Map());
+  const [emailRecipients, setEmailRecipients] = useState<Map<string, string>>(
+    new Map(),
+  );
+  const [emailDrafts, setEmailDrafts] = useState<Map<string, EmailDraft>>(
+    new Map(),
+  );
+  const [loadingDrafts, setLoadingDrafts] = useState<Set<string>>(new Set());
   const [isGenerating, setIsGenerating] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
 
@@ -102,6 +115,14 @@ export function OrdersPreviewSheet({
         notesMap.set(existingOrder.id, existingOrder.notes);
         setOrderNotes(notesMap);
       }
+      setEmailRecipients(
+        new Map([
+          [
+            existingOrder.id,
+            existingOrder.supplier?.contactEmail?.trim() ?? "",
+          ],
+        ]),
+      );
       if (existingOrder.sentAt) {
         setEmailSent(new Set([existingOrder.id]));
       }
@@ -109,14 +130,11 @@ export function OrdersPreviewSheet({
   }, [existingOrder, providedOrderId]);
 
   const generateOrders = api.materialList.generateOrders.useMutation();
-
   const markOrderSent = api.materialList.markOrderSent.useMutation({
     onMutate: async (variables) => {
-      // Optimistically mark order as sent in local state
       setEmailSent((prev) => new Set(prev).add(variables.orderId));
     },
     onError: (err, variables) => {
-      // Rollback on error
       setEmailSent((prev) => {
         const next = new Set(prev);
         next.delete(variables.orderId);
@@ -163,6 +181,14 @@ export function OrdersPreviewSheet({
             }
           });
           setOrderNotes(notesMap);
+          setEmailRecipients(
+            new Map(
+              validOrders.map((order) => [
+                order.id,
+                order.supplier?.contactEmail?.trim() ?? "",
+              ]),
+            ),
+          );
           setSyncError(null);
         } catch (error) {
           generateOrders.reset();
@@ -187,6 +213,31 @@ export function OrdersPreviewSheet({
     canGenerateDocuments,
   ]);
 
+  const loadEmailDraft = async (orderId: string) => {
+    if (emailDrafts.has(orderId) || loadingDrafts.has(orderId)) return;
+
+    setLoadingDrafts((prev) => new Set(prev).add(orderId));
+    try {
+      const draft = await utils.materialList.getOrderEmailContent.fetch({
+        orderId,
+      });
+      setEmailDrafts((prev) => {
+        const next = new Map(prev);
+        next.set(orderId, draft);
+        return next;
+      });
+      setSyncError(null);
+    } catch (error) {
+      setSyncError("Could not load the order email draft.");
+    } finally {
+      setLoadingDrafts((prev) => {
+        const next = new Set(prev);
+        next.delete(orderId);
+        return next;
+      });
+    }
+  };
+
   const toggleSupplier = (supplierId: string) => {
     setExpandedSuppliers((prev) => {
       const next = new Set(prev);
@@ -194,6 +245,7 @@ export function OrdersPreviewSheet({
         next.delete(supplierId);
       } else {
         next.add(supplierId);
+        void loadEmailDraft(supplierId);
       }
       return next;
     });
@@ -201,38 +253,38 @@ export function OrdersPreviewSheet({
 
   const handleEmailOrder = async (
     orderId: string,
-    order: (typeof orders)[0],
+    order: OrderPreview,
   ) => {
     if (!canGenerateDocuments) {
-      setSyncError("Workers and beta testers cannot generate orders.");
+      setSyncError("Standard accounts cannot generate orders.");
       return;
     }
 
-    const supplierEmail =
-      (order as { supplier?: { contactEmail: string | null } | null })?.supplier
-        ?.contactEmail || undefined;
+    const draft = emailDrafts.get(orderId);
+    if (!draft) {
+      await loadEmailDraft(orderId);
+      return;
+    }
 
-    // Save notes before emailing
+    const recipient =
+      emailRecipients.get(orderId)?.trim() ||
+      order.supplier?.contactEmail?.trim() ||
+      "";
+    if (!recipient || !recipient.includes("@")) {
+      setSyncError("Enter a supplier email before sending this order.");
+      return;
+    }
+
     const notes = orderNotes.get(orderId) || "";
     await markOrderSent.mutateAsync({
       orderId,
-      sentTo: supplierEmail || "unknown@example.com",
+      sentTo: recipient,
       notes: notes.trim() || undefined,
     });
 
-    // Refetch email content to get updated notes
-    const emailContent = await utils.materialList.getOrderEmailContent.fetch({
-      orderId,
-    });
-
-    if (!emailContent) return;
-
-    const subject = encodeURIComponent(emailContent.subject);
-    const body = encodeURIComponent(emailContent.body);
-    const mailtoLink = supplierEmail
-      ? `mailto:${supplierEmail}?subject=${subject}&body=${body}`
-      : `mailto:?subject=${subject}&body=${body}`;
-    window.open(mailtoLink, "_blank");
+    const subject = encodeURIComponent(draft.subject);
+    const body = encodeURIComponent(draft.body);
+    window.open(`mailto:${recipient}?subject=${subject}&body=${body}`, "_blank");
   };
 
   if (isGenerating) {
@@ -276,7 +328,7 @@ export function OrdersPreviewSheet({
             </DialogTitle>
             <DialogDescription>
               {!canGenerateDocuments
-                ? "Workers and beta testers cannot generate orders."
+                ? "Standard accounts cannot generate orders."
                 : syncError
                   ? syncError
                   : "No items have suppliers assigned. Please assign suppliers to items before generating orders."}
@@ -309,12 +361,15 @@ export function OrdersPreviewSheet({
         <div className="space-y-4 py-4">
           {!canGenerateDocuments && (
             <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-              Workers and beta testers cannot generate orders.
+              Standard accounts cannot generate orders.
             </div>
           )}
           {orders.map((order) => {
             const isExpanded = expandedSuppliers.has(order.id);
             const isSent = emailSent.has(order.id);
+            const draft = emailDrafts.get(order.id);
+            const isDraftLoading = loadingDrafts.has(order.id);
+            const recipient = emailRecipients.get(order.id) ?? "";
 
             return (
               <div key={order.id} className="rounded-lg border p-4">
@@ -339,53 +394,113 @@ export function OrdersPreviewSheet({
                   <Button
                     size="sm"
                     onClick={() => handleEmailOrder(order.id, order)}
-                    disabled={!canGenerateDocuments || isSent}
+                    disabled={
+                      !canGenerateDocuments ||
+                      isSent ||
+                      isDraftLoading ||
+                      markOrderSent.isPending
+                    }
                   >
-                    Email Order
+                    {markOrderSent.isPending ? "Opening..." : "Email Order"}
                   </Button>
                 </div>
 
                 {isExpanded && (
                   <div className="mt-4 space-y-4 pl-6">
-                    <div className="space-y-2">
-                      {order.items.map((item) => {
-                        const qty = parseFloat(item.quantity);
-                        return (
-                          <div
-                            key={item.id}
-                            className="flex justify-between text-sm"
+                    {isDraftLoading || !draft ? (
+                      <p className="text-muted-foreground text-sm">
+                        Loading email draft...
+                      </p>
+                    ) : (
+                      <>
+                        <div className="space-y-2">
+                          <label
+                            htmlFor={`order-recipient-${order.id}`}
+                            className="text-sm font-medium"
                           >
-                            <span>
-                              {item.descriptionSnapshot || "Item"} × {qty}
-                              {item.supplierSkuSnapshot &&
-                                ` (SKU: ${item.supplierSkuSnapshot})`}
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
+                            To
+                          </label>
+                          <Input
+                            id={`order-recipient-${order.id}`}
+                            type="email"
+                            value={recipient}
+                            onChange={(event) => {
+                              const next = new Map(emailRecipients);
+                              next.set(order.id, event.target.value);
+                              setEmailRecipients(next);
+                            }}
+                            placeholder="supplier@example.com"
+                            disabled={isSent}
+                          />
+                        </div>
 
-                    {/* Notes */}
-                    <div className="space-y-2 border-t pt-4">
-                      <label
-                        htmlFor={`order-notes-${order.id}`}
-                        className="text-sm font-medium"
-                      >
-                        Notes (optional)
-                      </label>
-                      <Textarea
-                        id={`order-notes-${order.id}`}
-                        value={orderNotes.get(order.id) || ""}
-                        onChange={(e) => {
-                          const newNotes = new Map(orderNotes);
-                          newNotes.set(order.id, e.target.value);
-                          setOrderNotes(newNotes);
-                        }}
-                        placeholder="Add any additional notes for this order..."
-                        className="min-h-[80px]"
-                        disabled={isSent}
-                      />
-                    </div>
+                        <div className="space-y-2">
+                          <label
+                            htmlFor={`order-subject-${order.id}`}
+                            className="text-sm font-medium"
+                          >
+                            Subject
+                          </label>
+                          <Input
+                            id={`order-subject-${order.id}`}
+                            value={draft.subject}
+                            onChange={(event) => {
+                              const next = new Map(emailDrafts);
+                              next.set(order.id, {
+                                ...draft,
+                                subject: event.target.value,
+                              });
+                              setEmailDrafts(next);
+                            }}
+                            disabled={isSent}
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <label
+                            htmlFor={`order-body-${order.id}`}
+                            className="text-sm font-medium"
+                          >
+                            Email Draft
+                          </label>
+                          <Textarea
+                            id={`order-body-${order.id}`}
+                            value={draft.body}
+                            onChange={(event) => {
+                              const next = new Map(emailDrafts);
+                              next.set(order.id, {
+                                ...draft,
+                                body: event.target.value,
+                              });
+                              setEmailDrafts(next);
+                            }}
+                            className="min-h-[20rem] font-mono text-sm"
+                            disabled={isSent}
+                          />
+                        </div>
+
+                        <div className="space-y-2 border-t pt-4">
+                          <label
+                            htmlFor={`order-notes-${order.id}`}
+                            className="text-sm font-medium"
+                          >
+                            Internal Notes
+                          </label>
+                          <Textarea
+                            id={`order-notes-${order.id}`}
+                            value={orderNotes.get(order.id) || ""}
+                            onChange={(e) => {
+                              const newNotes = new Map(orderNotes);
+                              newNotes.set(order.id, e.target.value);
+                              setOrderNotes(newNotes);
+                            }}
+                            placeholder="Notes saved on the order record"
+                            className="min-h-[80px]"
+                            disabled={isSent}
+                          />
+                        </div>
+                      </>
+                    )}
                   </div>
                 )}
               </div>
