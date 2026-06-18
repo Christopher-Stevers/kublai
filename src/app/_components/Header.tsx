@@ -23,6 +23,11 @@ import {
 } from "lucide-react";
 import { APP_NAME } from "~/constants/app";
 import { useOnlineStatus } from "~/hooks/use-online-status";
+import {
+  HEADER_BACK_STATE_EVENT,
+  requestHeaderBack,
+  type HeaderBackStateDetail,
+} from "~/lib/header-back-events";
 
 const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
 const hasUsableClerkKey =
@@ -75,6 +80,7 @@ function HeaderFrame({
   const [installPrompt, setInstallPrompt] =
     useState<BeforeInstallPromptEvent | null>(null);
   const [isInstalled, setIsInstalled] = useState(false);
+  const [showRequestedBackButton, setShowRequestedBackButton] = useState(false);
   const navLinks = [
     ...(tabAccess.dashboard
       ? [{ href: "/dashboard", label: "Dashboard" }]
@@ -108,9 +114,10 @@ function HeaderFrame({
     return pathname?.startsWith(href);
   };
 
-  const showBackButton =
+  const showRouteBackButton =
     pathname?.startsWith("/dashboard/jobs/") ||
     pathname?.startsWith("/dashboard/material-lists/");
+  const showBackButton = showRouteBackButton || showRequestedBackButton;
 
   useEffect(() => {
     setIsInstalled(isStandaloneApp());
@@ -134,6 +141,19 @@ function HeaderFrame({
         handleBeforeInstallPrompt,
       );
       window.removeEventListener("appinstalled", handleAppInstalled);
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleBackState = (event: Event) => {
+      const detail = (event as CustomEvent<HeaderBackStateDetail>).detail;
+      setShowRequestedBackButton(Boolean(detail?.visible));
+    };
+
+    window.addEventListener(HEADER_BACK_STATE_EVENT, handleBackState);
+
+    return () => {
+      window.removeEventListener(HEADER_BACK_STATE_EVENT, handleBackState);
     };
   }, []);
 
@@ -166,19 +186,27 @@ function HeaderFrame({
     }
   };
 
+  const handleBack = () => {
+    if (showRequestedBackButton) {
+      requestHeaderBack();
+      return;
+    }
+
+    router.back();
+  };
+
   return (
     <header className="sticky top-0 z-50 flex items-center justify-between border-b border-gray-200 bg-white px-4 py-3 sm:px-6 sm:py-4">
       <div className="flex items-center gap-4 sm:gap-8">
         {showBackButton && (
           <Button
             variant="ghost"
-            size="sm"
-            onClick={() => router.back()}
-            className="h-10 px-2 sm:px-3"
+            size="icon"
+            onClick={handleBack}
+            className="h-10 w-10 shrink-0"
             aria-label="Go back"
           >
-            <ArrowLeftIcon className="h-4 w-4 sm:mr-2" />
-            <span className="hidden sm:inline">Back</span>
+            <ArrowLeftIcon className="h-5 w-5" />
           </Button>
         )}
         <button

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "~/trpc/react";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Button } from "~/components/ui/button";
@@ -36,6 +36,10 @@ import {
   mutateMaterialListAndSync,
 } from "~/lib/replicache-material-list";
 import { getNextMaterialListNameFromNames } from "~/lib/material-list-names";
+import {
+  HEADER_BACK_REQUEST_EVENT,
+  setHeaderBackVisible,
+} from "~/lib/header-back-events";
 
 type JobLocationDisplay = {
   name?: string | null;
@@ -188,6 +192,36 @@ export function DashboardClient({ initialJobs }: { initialJobs: DashboardJob[] }
     void mutateMaterialListAndSync(getMaterialListReplicache().mutate.deleteJob({ jobId: id }));
   };
 
+  const handleLocalWorkspaceBack = useCallback(() => {
+    if (offlineMaterialListId) {
+      setOfflineMaterialListId(null);
+      return;
+    }
+
+    setOfflineJobId(null);
+    setForceOfflineView(!getBrowserOnlineStatus());
+  }, [offlineMaterialListId]);
+
+  useEffect(() => {
+    const showBackButton = Boolean(offlineJobId && shouldUseOfflineView);
+    setHeaderBackVisible(showBackButton);
+
+    if (!showBackButton) {
+      return () => setHeaderBackVisible(false);
+    }
+
+    const handleHeaderBackRequest = () => {
+      handleLocalWorkspaceBack();
+    };
+
+    window.addEventListener(HEADER_BACK_REQUEST_EVENT, handleHeaderBackRequest);
+
+    return () => {
+      window.removeEventListener(HEADER_BACK_REQUEST_EVENT, handleHeaderBackRequest);
+      setHeaderBackVisible(false);
+    };
+  }, [handleLocalWorkspaceBack, offlineJobId, shouldUseOfflineView]);
+
   if (hasFetchedUser && userData && !userData.organizationId) return null;
 
 
@@ -210,21 +244,6 @@ export function DashboardClient({ initialJobs }: { initialJobs: DashboardJob[] }
               </div>
             </div>
           )}
-
-          <Button
-            variant="ghost"
-            className="mb-4 px-0"
-            onClick={() => {
-              if (offlineMaterialListId) {
-                setOfflineMaterialListId(null);
-                return;
-              }
-              setOfflineJobId(null);
-              setForceOfflineView(!getBrowserOnlineStatus());
-            }}
-          >
-            {offlineMaterialListId ? "← Back to Material Lists" : "← Back to Jobs"}
-          </Button>
 
           {offlineMaterialListId ? (
             selectedMaterialList ? (
