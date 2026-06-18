@@ -181,6 +181,11 @@ export function DashboardClient({ initialJobs }: { initialJobs: DashboardJob[] }
     name: string;
     materialListCount?: number | null;
   } | null>(null);
+  const [materialListToDelete, setMaterialListToDelete] = useState<{
+    id: string;
+    name: string;
+    itemCount?: number | null;
+  } | null>(null);
   const [offlineJobId, setOfflineJobId] = useState<string | null>(null);
   const [offlineMaterialListId, setOfflineMaterialListId] = useState<string | null>(null);
   const [forceOfflineView, setForceOfflineView] = useState(false);
@@ -273,6 +278,15 @@ export function DashboardClient({ initialJobs }: { initialJobs: DashboardJob[] }
     const { id } = jobToDelete;
     setJobToDelete(null);
     void mutateMaterialListAndSync(getMaterialListReplicache().mutate.deleteJob({ jobId: id }));
+  };
+
+  const handleConfirmDeleteMaterialList = () => {
+    if (!materialListToDelete || !canDeleteCoreRecords) return;
+    const { id } = materialListToDelete;
+    setMaterialListToDelete(null);
+    void mutateMaterialListAndSync(getMaterialListReplicache().mutate.deleteMaterialList({
+      materialListId: id,
+    }));
   };
 
   const handleLocalWorkspaceBack = useCallback(() => {
@@ -470,9 +484,29 @@ export function DashboardClient({ initialJobs }: { initialJobs: DashboardJob[] }
                       onClick={() => setOfflineMaterialListId(list.id)}
                     >
                       <CardHeader>
-                        <CardTitle className="line-clamp-2 min-w-0 break-words leading-tight">
-                          {list.name}
-                        </CardTitle>
+                        <div className="flex items-start justify-between gap-3">
+                          <CardTitle className="line-clamp-2 min-w-0 break-words leading-tight">
+                            {list.name}
+                          </CardTitle>
+                          {canDeleteCoreRecords && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="-mt-3 -mr-3 h-10 w-10 shrink-0 text-red-600 hover:bg-red-50 hover:text-red-700"
+                              aria-label={`Delete material list ${list.name}`}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                setMaterialListToDelete({
+                                  id: list.id,
+                                  name: list.name,
+                                  itemCount: list.itemCount,
+                                });
+                              }}
+                            >
+                              <TrashIcon className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
                       </CardHeader>
                       <CardContent>
                         <div className="space-y-2 text-sm text-gray-600">
@@ -519,6 +553,48 @@ export function DashboardClient({ initialJobs }: { initialJobs: DashboardJob[] }
               </CardContent>
             </Card>
           )}
+
+          <Dialog
+            open={!!materialListToDelete}
+            onOpenChange={(open) => {
+              if (!open) setMaterialListToDelete(null);
+            }}
+          >
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Delete material list?</DialogTitle>
+                <DialogDescription>
+                  This will permanently delete{" "}
+                  {materialListToDelete
+                    ? `"${materialListToDelete.name}"`
+                    : "this material list"}
+                  {materialListToDelete?.itemCount
+                    ? ` and ${materialListToDelete.itemCount} ${
+                        materialListToDelete.itemCount === 1 ? "item" : "items"
+                      }`
+                    : ""}
+                  . This action cannot be undone.
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setMaterialListToDelete(null)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  disabled={!materialListToDelete}
+                  onClick={handleConfirmDeleteMaterialList}
+                >
+                  Delete Material List
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
     );
@@ -730,6 +806,48 @@ export function DashboardClient({ initialJobs }: { initialJobs: DashboardJob[] }
                 onClick={handleConfirmDeleteJob}
               >
                 Delete Job
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog
+          open={!!materialListToDelete}
+          onOpenChange={(open) => {
+            if (!open) setMaterialListToDelete(null);
+          }}
+        >
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Delete material list?</DialogTitle>
+              <DialogDescription>
+                This will permanently delete{" "}
+                {materialListToDelete
+                  ? `"${materialListToDelete.name}"`
+                  : "this material list"}
+                {materialListToDelete?.itemCount
+                  ? ` and ${materialListToDelete.itemCount} ${
+                      materialListToDelete.itemCount === 1 ? "item" : "items"
+                    }`
+                  : ""}
+                . This action cannot be undone.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setMaterialListToDelete(null)}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                disabled={!materialListToDelete}
+                onClick={handleConfirmDeleteMaterialList}
+              >
+                Delete Material List
               </Button>
             </DialogFooter>
           </DialogContent>
