@@ -96,7 +96,8 @@ export function DashboardClient({ initialJobs }: { initialJobs: DashboardJob[] }
   const [forceOfflineView, setForceOfflineView] = useState(false);
   const [showOfflineAddPartDialog, setShowOfflineAddPartDialog] = useState(false);
   const isBrowserOnline = useOnlineStatus();
-  const shouldUseOfflineView = forceOfflineView || !isBrowserOnline;
+  const shouldUseLocalWorkspaceView =
+    forceOfflineView || offlineJobId !== null || !isBrowserOnline;
 
   // Check user's organizationId status
   const { data: userData, isFetched: hasFetchedUser } =
@@ -140,14 +141,9 @@ export function DashboardClient({ initialJobs }: { initialJobs: DashboardJob[] }
   }, [isBrowserOnline, jobs, router]);
 
   const openJob = (jobId: string) => {
-    if (!getBrowserOnlineStatus() || shouldUseOfflineView) {
-      setForceOfflineView(true);
-      setOfflineJobId(jobId);
-      setOfflineMaterialListId(null);
-      return;
-    }
-
-    router.push(`/dashboard/jobs/${jobId}`);
+    setForceOfflineView(true);
+    setOfflineJobId(jobId);
+    setOfflineMaterialListId(null);
   };
 
   const handleCreateJob = () => {
@@ -159,7 +155,9 @@ export function DashboardClient({ initialJobs }: { initialJobs: DashboardJob[] }
       }));
       setShowCreateDialog(false);
       setNewJobName("");
-      router.push(`/dashboard/jobs/${jobId}`);
+      setForceOfflineView(true);
+      setOfflineJobId(jobId);
+      setOfflineMaterialListId(null);
     }
   };
 
@@ -175,14 +173,9 @@ export function DashboardClient({ initialJobs }: { initialJobs: DashboardJob[] }
       name: getNextMaterialListNameFromNames(existingNames),
     }));
 
-    if (shouldUseOfflineView || !getBrowserOnlineStatus()) {
-      setForceOfflineView(true);
-      setOfflineJobId(jobId);
-      setOfflineMaterialListId(materialListId);
-      return;
-    }
-
-    router.push(`/dashboard/material-lists/${materialListId}`);
+    setForceOfflineView(true);
+    setOfflineJobId(jobId);
+    setOfflineMaterialListId(materialListId);
   };
 
   const handleConfirmDeleteJob = () => {
@@ -203,7 +196,7 @@ export function DashboardClient({ initialJobs }: { initialJobs: DashboardJob[] }
   }, [offlineMaterialListId]);
 
   useEffect(() => {
-    const showBackButton = Boolean(offlineJobId && shouldUseOfflineView);
+    const showBackButton = Boolean(offlineJobId && shouldUseLocalWorkspaceView);
     setHeaderBackVisible(showBackButton);
 
     if (!showBackButton) {
@@ -220,12 +213,12 @@ export function DashboardClient({ initialJobs }: { initialJobs: DashboardJob[] }
       window.removeEventListener(HEADER_BACK_REQUEST_EVENT, handleHeaderBackRequest);
       setHeaderBackVisible(false);
     };
-  }, [handleLocalWorkspaceBack, offlineJobId, shouldUseOfflineView]);
+  }, [handleLocalWorkspaceBack, offlineJobId, shouldUseLocalWorkspaceView]);
 
   if (hasFetchedUser && userData && !userData.organizationId) return null;
 
 
-  if (offlineJobId && shouldUseOfflineView) {
+  if (offlineJobId && shouldUseLocalWorkspaceView) {
     const fallbackJob = jobs.find((job) => job.id === offlineJobId) ?? null;
     const offlineJob = offlineJobDetail?.job ?? fallbackJob;
     const offlineMaterialLists = offlineJobDetail?.materialLists ?? [];
@@ -254,7 +247,9 @@ export function DashboardClient({ initialJobs }: { initialJobs: DashboardJob[] }
                       {selectedMaterialList.name}
                     </h1>
                     <p className="text-muted-foreground mt-1 text-sm">
-                      Offline material-list mode. Adds and edits queue locally and sync on reconnect.
+                      {isBrowserOnline
+                        ? "Local material-list mode. Adds and edits apply immediately and sync in the background."
+                        : "Offline material-list mode. Adds and edits queue locally and sync on reconnect."}
                     </p>
                   </div>
                   <Button
@@ -429,7 +424,7 @@ export function DashboardClient({ initialJobs }: { initialJobs: DashboardJob[] }
   return (
     <div className="px-4 py-6 sm:px-6 sm:py-8">
       <div className="mx-auto max-w-6xl">
-        {shouldUseOfflineView && (
+        {!isBrowserOnline && (
           <div className="mb-4 flex flex-wrap items-center gap-2">
             <div className="inline-flex items-center gap-2 rounded-full bg-amber-100 px-3 py-1 text-sm font-medium text-amber-900">
               <WifiOffIcon className="h-4 w-4" />
