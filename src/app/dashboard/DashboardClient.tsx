@@ -424,11 +424,6 @@ export function DashboardClient({ initialJobs }: { initialJobs: DashboardJob[] }
                         <PencilIcon className="h-4 w-4" />
                       </Button>
                     </div>
-                    <p className="text-muted-foreground mt-1 text-sm">
-                      {isBrowserOnline
-                        ? "Local material-list mode. Adds and edits apply immediately and sync in the background."
-                        : "Offline material-list mode. Adds and edits queue locally and sync on reconnect."}
-                    </p>
                   </div>
                   <ViewToggle
                     view={offlineMaterialListViewMode}
