@@ -888,11 +888,11 @@ export function AddPartDialog({
               : undefined
           }
         >
-          <DialogHeader className="shrink-0 px-2 pt-3 pb-2 sm:px-4 sm:pt-4 sm:pb-3 md:px-6 md:pt-6 md:pb-4">
+          <DialogHeader className="shrink-0 px-2 pt-2 pb-1.5 sm:px-4 sm:pt-4 sm:pb-3 md:px-6 md:pt-6 md:pb-4">
             <DialogTitle className="text-base sm:text-lg md:text-xl">
               Add Parts
             </DialogTitle>
-            <DialogDescription className="text-xs sm:text-sm">
+            <DialogDescription className="hidden text-xs sm:block sm:text-sm">
               {isOnline
                 ? "Select catalog, material, size, and category to add parts to your list"
                 : "Offline: add cached parts and cached suppliers. Creation/editing is online-only."}
@@ -900,7 +900,7 @@ export function AddPartDialog({
           </DialogHeader>
 
           {wizardStage !== "review" && (
-            <div className="shrink-0 border-b px-2 pb-3 sm:px-4 sm:pb-4 md:px-6">
+            <div className="shrink-0 border-b px-2 pb-2 sm:px-4 sm:pb-4 md:px-6">
               <WizardHeader
                 currentStage={wizardStage}
                 selectedCatalog={selectedCatalogName}
@@ -930,7 +930,7 @@ export function AddPartDialog({
           )}
 
           <div
-            className={`flex-1 space-y-3 overflow-y-auto overscroll-contain pt-3 pb-3 sm:space-y-4 sm:pt-4 sm:pb-4 ${wizardStage === "review" ? "px-4 sm:px-6" : "px-2 sm:px-4 md:px-6"} ${quantityPickerPreview ? "touch-none overflow-hidden" : ""}`}
+            className={`flex-1 space-y-2 overflow-y-auto overscroll-contain pt-2 pb-3 sm:space-y-4 sm:pt-4 sm:pb-4 ${wizardStage === "review" ? "px-4 sm:px-6" : "px-2 sm:px-4 md:px-6"} ${quantityPickerPreview ? "touch-none overflow-hidden" : ""}`}
           >
             {!isOnline && (
               <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 sm:text-sm">

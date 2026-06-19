@@ -82,7 +82,7 @@ export function WizardProgressIndicator({
   };
 
   return (
-    <div className="flex w-full min-w-0 flex-wrap items-stretch gap-1.5 sm:gap-2">
+    <div className="grid w-full min-w-0 grid-cols-5 items-stretch gap-1 sm:flex sm:flex-wrap sm:gap-2">
       {stages.map((stage) => {
         const isCompleted = stage.step < currentStep;
         const isCurrent = stage.step === currentStep;
@@ -94,7 +94,7 @@ export function WizardProgressIndicator({
         return (
           <div
             key={stage.id}
-            className="min-w-[5.75rem] flex-[1_1_5.75rem] sm:min-w-[6.75rem] sm:flex-[1_1_6.75rem] lg:min-w-[7.25rem]"
+            className="min-w-0 sm:min-w-[6.75rem] sm:flex-[1_1_6.75rem] lg:min-w-[7.25rem]"
           >
             <button
               onClick={() => {
@@ -103,7 +103,7 @@ export function WizardProgressIndicator({
                 }
               }}
               disabled={!isClickable}
-              className={`flex min-h-9 w-full min-w-0 items-center justify-center gap-1 rounded-lg px-2 py-1.5 text-xs leading-tight font-medium transition-colors sm:gap-1.5 sm:px-2.5 sm:text-sm ${
+              className={`flex min-h-8 w-full min-w-0 flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-1 text-[10px] leading-tight font-medium transition-colors sm:min-h-9 sm:flex-row sm:gap-1.5 sm:px-2.5 sm:text-sm ${
                 isCurrent
                   ? "bg-primary text-primary-foreground"
                   : isCompleted
@@ -112,7 +112,7 @@ export function WizardProgressIndicator({
               } ${isClickable ? "cursor-pointer" : "cursor-default"}`}
             >
               <div
-                className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs sm:h-5.5 sm:w-5.5 sm:text-sm ${
+                className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[10px] sm:h-5.5 sm:w-5.5 sm:text-sm ${
                   isCurrent
                     ? "bg-primary-foreground text-primary"
                     : isCompleted
@@ -122,7 +122,7 @@ export function WizardProgressIndicator({
               >
                 {isCompleted ? "✓" : stage.step}
               </div>
-              <span className="[display:-webkit-box] min-w-0 flex-1 overflow-hidden text-center break-words whitespace-normal [-webkit-box-orient:vertical] [-webkit-line-clamp:2]">
+              <span className="[display:-webkit-box] min-w-0 overflow-hidden text-center break-words whitespace-normal [-webkit-box-orient:vertical] [-webkit-line-clamp:1] sm:flex-1 sm:[-webkit-line-clamp:2]">
                 {getStageLabel(stage)}
               </span>
             </button>
