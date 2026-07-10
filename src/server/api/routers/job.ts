@@ -464,21 +464,35 @@ export const jobRouter = createTRPCRouter({
         .map((list) => list.quoteId)
         .filter((value): value is string => Boolean(value));
 
-      const supplierRows = quoteIds.length
-        ? await ctx.db
-            .select({
-              quoteId: quoteItems.quoteId,
-              selectedSupplierId: quoteItems.supplierId,
-              supplierPartSupplierId: supplierParts.supplierId,
-              partDefinitionId: quoteItems.partDefinitionId,
-            })
-            .from(quoteItems)
-            .leftJoin(
-              supplierParts,
-              eq(quoteItems.supplierPartId, supplierParts.id),
-            )
-            .where(inArray(quoteItems.quoteId, quoteIds))
-        : [];
+      const [supplierRows, orderRows] = await Promise.all([
+        quoteIds.length
+          ? ctx.db
+              .select({
+                quoteId: quoteItems.quoteId,
+                selectedSupplierId: quoteItems.supplierId,
+                supplierPartSupplierId: supplierParts.supplierId,
+                partDefinitionId: quoteItems.partDefinitionId,
+              })
+              .from(quoteItems)
+              .leftJoin(
+                supplierParts,
+                eq(quoteItems.supplierPartId, supplierParts.id),
+              )
+              .where(inArray(quoteItems.quoteId, quoteIds))
+          : Promise.resolve([]),
+        listIds.length
+          ? ctx.db
+              .select({
+                id: orders.id,
+                materialListId: orders.materialListId,
+                supplierId: orders.supplierId,
+                status: orders.status,
+                sentAt: orders.sentAt,
+              })
+              .from(orders)
+              .where(inArray(orders.materialListId, listIds))
+          : Promise.resolve([]),
+      ]);
 
       const totalSupplierIdsByQuoteId = new Map<string, Set<string>>();
       for (const row of supplierRows) {
@@ -492,19 +506,6 @@ export const jobRouter = createTRPCRouter({
         supplierIds.add(supplierId);
         totalSupplierIdsByQuoteId.set(row.quoteId, supplierIds);
       }
-
-      const orderRows = listIds.length
-        ? await ctx.db
-            .select({
-              id: orders.id,
-              materialListId: orders.materialListId,
-              supplierId: orders.supplierId,
-              status: orders.status,
-              sentAt: orders.sentAt,
-            })
-            .from(orders)
-            .where(inArray(orders.materialListId, listIds))
-        : [];
 
       const orderIds = orderRows.map((row) => row.id);
       const orderVerificationRows = orderIds.length
