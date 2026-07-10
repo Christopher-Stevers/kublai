@@ -45,7 +45,10 @@ type JobLocationDisplay = {
   country?: string | null;
 };
 
-function getSendStatusTone(sentSupplierCount: number, totalSupplierCount: number) {
+function getSendStatusTone(
+  sentSupplierCount: number,
+  totalSupplierCount: number,
+) {
   if (totalSupplierCount === 0) {
     return {
       chip: "border-gray-200 bg-gray-50 text-gray-600",
@@ -180,8 +183,14 @@ function MaterialListOrderPickerDialog({
                     )}
                   </div>
                   <div className="text-muted-foreground text-sm">
-                    Created {format(new Date(order.createdAt), "MMM d, yyyy 'at' h:mm a")}
-                    {order.status && <span className="ml-2">({order.status})</span>}
+                    Created{" "}
+                    {format(
+                      new Date(order.createdAt),
+                      "MMM d, yyyy 'at' h:mm a",
+                    )}
+                    {order.status && (
+                      <span className="ml-2">({order.status})</span>
+                    )}
                   </div>
                 </div>
               </button>
@@ -254,15 +263,16 @@ export default function JobDetailPage({
     userData?.permissions.canDeleteCoreRecords ?? true;
 
   const jobDetail = useReplicacheJobDetail(jobId);
-  const { data: serverJob, isFetched: hasFetchedServerJob } = api.job.getJob.useQuery(
-    { jobId },
-    {
-      enabled: isBrowserOnline,
-      networkMode: "always",
-      refetchOnMount: true,
-      refetchOnWindowFocus: false,
-    },
-  );
+  const { data: serverJob, isFetched: hasFetchedServerJob } =
+    api.job.getJob.useQuery(
+      { jobId },
+      {
+        enabled: isBrowserOnline,
+        networkMode: "always",
+        refetchOnMount: true,
+        refetchOnWindowFocus: false,
+      },
+    );
   const serverMaterialLists =
     serverJob?.materialLists.map((list) => ({
       ...list,
@@ -295,13 +305,15 @@ export default function JobDetailPage({
     if (!job?.id) return;
 
     const materialListId = crypto.randomUUID();
-    void mutateMaterialListAndSync(getMaterialListReplicache().mutate.createMaterialList({
-      materialListId,
-      jobId: job.id,
-      name: getNextMaterialListNameFromNames(
-        materialLists?.map((list) => list.name) ?? [],
-      ),
-    }));
+    void mutateMaterialListAndSync(
+      getMaterialListReplicache().mutate.createMaterialList({
+        materialListId,
+        jobId: job.id,
+        name: getNextMaterialListNameFromNames(
+          materialLists?.map((list) => list.name) ?? [],
+        ),
+      }),
+    );
     router.push(`/dashboard/material-lists/${materialListId}`);
   };
 
@@ -310,9 +322,11 @@ export default function JobDetailPage({
 
     const { id } = materialListToDelete;
     setMaterialListToDelete(null);
-    void mutateMaterialListAndSync(getMaterialListReplicache().mutate.deleteMaterialList({
-      materialListId: id,
-    }));
+    void mutateMaterialListAndSync(
+      getMaterialListReplicache().mutate.deleteMaterialList({
+        materialListId: id,
+      }),
+    );
   };
 
   const clearLongPressTimer = () => {
@@ -377,7 +391,7 @@ export default function JobDetailPage({
   }
 
   return (
-    <div className="px-4 py-6 sm:px-6 sm:py-8">
+    <div className="px-4 py-6 pb-24 sm:px-6 sm:py-8">
       <div className="mx-auto max-w-6xl">
         {!isBrowserOnline && (
           <div className="mb-4 flex flex-wrap items-center gap-2">
@@ -439,7 +453,7 @@ export default function JobDetailPage({
           <Button
             onClick={handleCreateNew}
             size="lg"
-            className="h-11 w-full sm:w-auto"
+            className={`h-11 w-full sm:w-auto ${materialLists && materialLists.length > 0 ? "hidden sm:inline-flex" : ""}`}
           >
             <PlusIcon className="mr-2 h-5 w-5" />
             New Material List
@@ -456,10 +470,6 @@ export default function JobDetailPage({
               <p className="text-muted-foreground mb-4 text-center">
                 Create your first material list to get started
               </p>
-              <Button onClick={handleCreateNew}>
-                <PlusIcon className="mr-2 h-4 w-4" />
-                New Material List
-              </Button>
             </CardContent>
           </Card>
         ) : (
@@ -490,7 +500,7 @@ export default function JobDetailPage({
               >
                 <CardHeader>
                   <div className="flex items-start justify-between gap-3">
-                    <CardTitle className="line-clamp-2 min-w-0 break-words leading-tight">
+                    <CardTitle className="line-clamp-2 min-w-0 leading-tight break-words">
                       {list.name}
                     </CardTitle>
                     {canDeleteCoreRecords && (
@@ -528,7 +538,9 @@ export default function JobDetailPage({
                       <div className="flex items-start gap-2">
                         <UserIcon className="mt-0.5 h-4 w-4 shrink-0" />
                         <span className="min-w-0 leading-snug">
-                          {list.contributors.map(formatContributorName).join(", ")}
+                          {list.contributors
+                            .map(formatContributorName)
+                            .join(", ")}
                         </span>
                       </div>
                     )}
@@ -547,6 +559,15 @@ export default function JobDetailPage({
                 </CardContent>
               </Card>
             ))}
+          </div>
+        )}
+
+        {materialLists && materialLists.length > 0 && (
+          <div className="bg-background fixed inset-x-0 bottom-0 z-40 border-t px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:hidden">
+            <Button onClick={handleCreateNew} size="lg" className="h-12 w-full">
+              <PlusIcon className="mr-2 h-5 w-5" />
+              New Material List
+            </Button>
           </div>
         )}
 

@@ -30,7 +30,10 @@ import {
   WifiOffIcon,
 } from "lucide-react";
 import { format } from "date-fns";
-import { useReplicacheJobDetail, useReplicacheJobsList } from "~/hooks/use-replicache-jobs";
+import {
+  useReplicacheJobDetail,
+  useReplicacheJobsList,
+} from "~/hooks/use-replicache-jobs";
 import { useReplicacheMaterialList } from "~/hooks/use-replicache-material-list";
 import { useReplicacheSuppliers } from "~/hooks/use-replicache-suppliers";
 import { MaterialListItem } from "~/components/materialLists/MaterialListItem";
@@ -42,7 +45,10 @@ import { ExistingQuotesOrdersDialog } from "~/components/materialLists/ExistingQ
 import { JobEditDialog } from "~/components/jobs/JobEditDialog";
 import { MaterialListNameModal } from "~/components/materialLists/MaterialListNameModal";
 import { ViewToggle } from "~/components/ui/view-toggle";
-import { getBrowserOnlineStatus, useOnlineStatus } from "~/hooks/use-online-status";
+import {
+  getBrowserOnlineStatus,
+  useOnlineStatus,
+} from "~/hooks/use-online-status";
 import {
   getMaterialListReplicache,
   mutateMaterialListAndSync,
@@ -63,7 +69,9 @@ type JobLocationDisplay = {
   country?: string | null;
 };
 
-function formatLocationAddress(location: JobLocationDisplay | null | undefined) {
+function formatLocationAddress(
+  location: JobLocationDisplay | null | undefined,
+) {
   if (!location) return null;
 
   const addressLine = [location.address1, location.address2]
@@ -80,7 +88,10 @@ function formatLocationAddress(location: JobLocationDisplay | null | undefined) 
   );
 }
 
-function getSendStatusTone(sentSupplierCount: number, totalSupplierCount: number) {
+function getSendStatusTone(
+  sentSupplierCount: number,
+  totalSupplierCount: number,
+) {
   if (totalSupplierCount === 0) {
     return {
       chip: "border-gray-200 bg-gray-50 text-gray-600",
@@ -181,14 +192,21 @@ export type DashboardJob = {
   materialListCount: number;
 };
 
-export function DashboardClient({ initialJobs }: { initialJobs: DashboardJob[] }) {
+export function DashboardClient({
+  initialJobs,
+}: {
+  initialJobs: DashboardJob[];
+}) {
   const router = useRouter();
   const hasRedirectedRef = useRef(false);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [newJobName, setNewJobName] = useState("");
-  const [showOfflineJobEditDialog, setShowOfflineJobEditDialog] = useState(false);
-  const [showOfflineMaterialListNameModal, setShowOfflineMaterialListNameModal] =
+  const [showOfflineJobEditDialog, setShowOfflineJobEditDialog] =
     useState(false);
+  const [
+    showOfflineMaterialListNameModal,
+    setShowOfflineMaterialListNameModal,
+  ] = useState(false);
   const [offlineMaterialListViewMode, setOfflineMaterialListViewMode] =
     useState<"grid" | "table">("grid");
   const [showOfflineQuoteSheet, setShowOfflineQuoteSheet] = useState(false);
@@ -214,9 +232,12 @@ export function DashboardClient({ initialJobs }: { initialJobs: DashboardJob[] }
     itemCount?: number | null;
   } | null>(null);
   const [offlineJobId, setOfflineJobId] = useState<string | null>(null);
-  const [offlineMaterialListId, setOfflineMaterialListId] = useState<string | null>(null);
+  const [offlineMaterialListId, setOfflineMaterialListId] = useState<
+    string | null
+  >(null);
   const [forceOfflineView, setForceOfflineView] = useState(false);
-  const [showOfflineAddPartDialog, setShowOfflineAddPartDialog] = useState(false);
+  const [showOfflineAddPartDialog, setShowOfflineAddPartDialog] =
+    useState(false);
   const isBrowserOnline = useOnlineStatus();
   const shouldUseLocalWorkspaceView =
     forceOfflineView || offlineJobId !== null || !isBrowserOnline;
@@ -247,7 +268,9 @@ export function DashboardClient({ initialJobs }: { initialJobs: DashboardJob[] }
 
   const replicacheJobs = useReplicacheJobsList();
   const offlineJobDetail = useReplicacheJobDetail(offlineJobId ?? "");
-  const offlineMaterialListDetail = useReplicacheMaterialList(offlineMaterialListId ?? "");
+  const offlineMaterialListDetail = useReplicacheMaterialList(
+    offlineMaterialListId ?? "",
+  );
   const suppliers = useReplicacheSuppliers();
   const jobs = replicacheJobs.length > 0 ? replicacheJobs : initialJobs;
   const isWaitingForJobs = false;
@@ -271,10 +294,12 @@ export function DashboardClient({ initialJobs }: { initialJobs: DashboardJob[] }
   const handleCreateJob = () => {
     if (newJobName.trim()) {
       const jobId = crypto.randomUUID();
-      void mutateMaterialListAndSync(getMaterialListReplicache().mutate.createJob({
-        jobId,
-        name: newJobName.trim(),
-      }));
+      void mutateMaterialListAndSync(
+        getMaterialListReplicache().mutate.createJob({
+          jobId,
+          name: newJobName.trim(),
+        }),
+      );
       setShowCreateDialog(false);
       setNewJobName("");
       setForceOfflineView(true);
@@ -289,11 +314,13 @@ export function DashboardClient({ initialJobs }: { initialJobs: DashboardJob[] }
       offlineJobDetail?.job?.id === jobId
         ? offlineJobDetail.materialLists.map((list) => list.name)
         : [];
-    void mutateMaterialListAndSync(getMaterialListReplicache().mutate.createMaterialList({
-      materialListId,
-      jobId,
-      name: getNextMaterialListNameFromNames(existingNames),
-    }));
+    void mutateMaterialListAndSync(
+      getMaterialListReplicache().mutate.createMaterialList({
+        materialListId,
+        jobId,
+        name: getNextMaterialListNameFromNames(existingNames),
+      }),
+    );
 
     setForceOfflineView(true);
     setOfflineJobId(jobId);
@@ -304,16 +331,20 @@ export function DashboardClient({ initialJobs }: { initialJobs: DashboardJob[] }
     if (!jobToDelete || !canDeleteCoreRecords) return;
     const { id } = jobToDelete;
     setJobToDelete(null);
-    void mutateMaterialListAndSync(getMaterialListReplicache().mutate.deleteJob({ jobId: id }));
+    void mutateMaterialListAndSync(
+      getMaterialListReplicache().mutate.deleteJob({ jobId: id }),
+    );
   };
 
   const handleConfirmDeleteMaterialList = () => {
     if (!materialListToDelete || !canDeleteCoreRecords) return;
     const { id } = materialListToDelete;
     setMaterialListToDelete(null);
-    void mutateMaterialListAndSync(getMaterialListReplicache().mutate.deleteMaterialList({
-      materialListId: id,
-    }));
+    void mutateMaterialListAndSync(
+      getMaterialListReplicache().mutate.deleteMaterialList({
+        materialListId: id,
+      }),
+    );
   };
 
   const handleLocalWorkspaceBack = useCallback(() => {
@@ -341,13 +372,15 @@ export function DashboardClient({ initialJobs }: { initialJobs: DashboardJob[] }
     window.addEventListener(HEADER_BACK_REQUEST_EVENT, handleHeaderBackRequest);
 
     return () => {
-      window.removeEventListener(HEADER_BACK_REQUEST_EVENT, handleHeaderBackRequest);
+      window.removeEventListener(
+        HEADER_BACK_REQUEST_EVENT,
+        handleHeaderBackRequest,
+      );
       setHeaderBackVisible(false);
     };
   }, [handleLocalWorkspaceBack, offlineJobId, shouldUseLocalWorkspaceView]);
 
   if (hasFetchedUser && userData && !userData.organizationId) return null;
-
 
   if (offlineJobId && shouldUseLocalWorkspaceView) {
     const fallbackJob = jobs.find((job) => job.id === offlineJobId) ?? null;
@@ -417,7 +450,9 @@ export function DashboardClient({ initialJobs }: { initialJobs: DashboardJob[] }
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => setShowOfflineMaterialListNameModal(true)}
+                        onClick={() =>
+                          setShowOfflineMaterialListNameModal(true)
+                        }
                         className="h-8 w-8 shrink-0"
                         aria-label="Edit material list"
                       >
@@ -436,9 +471,12 @@ export function DashboardClient({ initialJobs }: { initialJobs: DashboardJob[] }
                   <Card>
                     <CardContent className="flex flex-col items-center justify-center py-12">
                       <PackageIcon className="mb-4 h-12 w-12 text-gray-400" />
-                      <h3 className="mb-2 text-lg font-semibold">No items yet</h3>
+                      <h3 className="mb-2 text-lg font-semibold">
+                        No items yet
+                      </h3>
                       <p className="text-muted-foreground mb-4 text-center">
-                        Add parts now. They’ll stay on this device and sync when online.
+                        Add parts now. They’ll stay on this device and sync when
+                        online.
                       </p>
                       <Button onClick={() => setShowOfflineAddPartDialog(true)}>
                         <PlusIcon className="mr-2 h-4 w-4" />
@@ -532,11 +570,15 @@ export function DashboardClient({ initialJobs }: { initialJobs: DashboardJob[] }
                           variant="outline"
                           onClick={handleOfflineGenerateQuote}
                           disabled={!canGenerateOfflineQuoteOrOrder}
-                          title={offlineGenerationBlockReason ?? "Generate quote"}
+                          title={
+                            offlineGenerationBlockReason ?? "Generate quote"
+                          }
                           className="h-9 min-h-9 w-full px-1.5 py-1 text-[11px] leading-tight whitespace-normal sm:h-9 sm:text-xs"
                         >
                           <FileTextIcon className="mr-1 h-3.5 w-3.5 shrink-0" />
-                          <span className="text-center leading-tight">Quote</span>
+                          <span className="text-center leading-tight">
+                            Quote
+                          </span>
                         </Button>
                         <Button
                           onClick={handleOfflineGenerateOrder}
@@ -545,7 +587,9 @@ export function DashboardClient({ initialJobs }: { initialJobs: DashboardJob[] }
                           className="h-9 min-h-9 w-full px-1.5 py-1 text-[11px] leading-tight whitespace-normal sm:h-9 sm:text-xs"
                         >
                           <ShoppingCartIcon className="mr-1 h-3.5 w-3.5 shrink-0" />
-                          <span className="text-center leading-tight">Order</span>
+                          <span className="text-center leading-tight">
+                            Order
+                          </span>
                         </Button>
                         <Button
                           variant="outline"
@@ -553,7 +597,9 @@ export function DashboardClient({ initialJobs }: { initialJobs: DashboardJob[] }
                           className="h-9 min-h-9 w-full px-1.5 py-1 text-[11px] leading-tight whitespace-normal sm:h-9 sm:text-xs"
                         >
                           <PlusIcon className="mr-1 h-3.5 w-3.5 shrink-0" />
-                          <span className="text-center leading-tight">Add Part</span>
+                          <span className="text-center leading-tight">
+                            Add Part
+                          </span>
                         </Button>
                       </div>
                     </div>
@@ -615,7 +661,9 @@ export function DashboardClient({ initialJobs }: { initialJobs: DashboardJob[] }
               <Card>
                 <CardContent className="flex flex-col items-center justify-center py-12">
                   <PackageIcon className="mb-4 h-12 w-12 text-gray-400" />
-                  <h3 className="mb-2 text-lg font-semibold">Material list not cached</h3>
+                  <h3 className="mb-2 text-lg font-semibold">
+                    Material list not cached
+                  </h3>
                   <p className="text-muted-foreground text-center">
                     Reconnect once to cache this material list on this device.
                   </p>
@@ -663,9 +711,12 @@ export function DashboardClient({ initialJobs }: { initialJobs: DashboardJob[] }
 
               <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <h2 className="text-xl font-semibold text-gray-900">Material Lists</h2>
+                  <h2 className="text-xl font-semibold text-gray-900">
+                    Material Lists
+                  </h2>
                   <p className="text-muted-foreground mt-1 text-sm">
-                    Create and manage material lists offline. New lists sync when reconnected.
+                    Create and manage material lists offline. New lists sync
+                    when reconnected.
                   </p>
                 </div>
                 <Button
@@ -682,11 +733,16 @@ export function DashboardClient({ initialJobs }: { initialJobs: DashboardJob[] }
                 <Card>
                   <CardContent className="flex flex-col items-center justify-center py-12">
                     <PackageIcon className="mb-4 h-12 w-12 text-gray-400" />
-                    <h3 className="mb-2 text-lg font-semibold">No material lists yet</h3>
+                    <h3 className="mb-2 text-lg font-semibold">
+                      No material lists yet
+                    </h3>
                     <p className="text-muted-foreground mb-4 text-center">
-                      Create one now. It’ll stay on this device and sync when online.
+                      Create one now. It’ll stay on this device and sync when
+                      online.
                     </p>
-                    <Button onClick={() => handleCreateMaterialList(offlineJob.id)}>
+                    <Button
+                      onClick={() => handleCreateMaterialList(offlineJob.id)}
+                    >
                       <PlusIcon className="mr-2 h-4 w-4" />
                       New Material List
                     </Button>
@@ -702,7 +758,7 @@ export function DashboardClient({ initialJobs }: { initialJobs: DashboardJob[] }
                     >
                       <CardHeader>
                         <div className="flex items-start justify-between gap-3">
-                          <CardTitle className="line-clamp-2 min-w-0 break-words leading-tight">
+                          <CardTitle className="line-clamp-2 min-w-0 leading-tight break-words">
                             {list.name}
                           </CardTitle>
                           {canDeleteCoreRecords && (
@@ -735,14 +791,17 @@ export function DashboardClient({ initialJobs }: { initialJobs: DashboardJob[] }
                             <span className="font-semibold">Total:</span>
                             <span>${list.materialTotal.toFixed(2)}</span>
                           </div>
-                          {list.contributors && list.contributors.length > 0 && (
-                            <div className="flex items-start gap-2">
-                              <UserIcon className="mt-0.5 h-4 w-4 shrink-0" />
-                              <span className="min-w-0 leading-snug">
-                                {list.contributors.map(formatContributorName).join(", ")}
-                              </span>
-                            </div>
-                          )}
+                          {list.contributors &&
+                            list.contributors.length > 0 && (
+                              <div className="flex items-start gap-2">
+                                <UserIcon className="mt-0.5 h-4 w-4 shrink-0" />
+                                <span className="min-w-0 leading-snug">
+                                  {list.contributors
+                                    .map(formatContributorName)
+                                    .join(", ")}
+                                </span>
+                              </div>
+                            )}
                           <MaterialListSendStatus
                             sentSupplierCount={list.sentSupplierCount}
                             totalSupplierCount={list.totalSupplierCount}
@@ -750,7 +809,9 @@ export function DashboardClient({ initialJobs }: { initialJobs: DashboardJob[] }
                           />
                           <div className="flex items-center gap-2">
                             <CalendarIcon className="h-4 w-4" />
-                            <span>{format(new Date(list.createdAt), "MMM d, yyyy")}</span>
+                            <span>
+                              {format(new Date(list.createdAt), "MMM d, yyyy")}
+                            </span>
                           </div>
                         </div>
                       </CardContent>
@@ -839,7 +900,7 @@ export function DashboardClient({ initialJobs }: { initialJobs: DashboardJob[] }
   }
 
   return (
-    <div className="px-4 py-6 sm:px-6 sm:py-8">
+    <div className="px-4 py-6 pb-24 sm:px-6 sm:py-8">
       <div className="mx-auto max-w-6xl">
         {!isBrowserOnline && (
           <div className="mb-4 flex flex-wrap items-center gap-2">
@@ -861,7 +922,7 @@ export function DashboardClient({ initialJobs }: { initialJobs: DashboardJob[] }
           <Button
             onClick={() => setShowCreateDialog(true)}
             size="lg"
-            className="h-11 w-full sm:w-auto"
+            className={`h-11 w-full sm:w-auto ${jobs.length > 0 ? "hidden sm:inline-flex" : ""}`}
           >
             <PlusIcon className="mr-2 h-5 w-5" />
             Add Job
@@ -964,6 +1025,19 @@ export function DashboardClient({ initialJobs }: { initialJobs: DashboardJob[] }
           </div>
         )}
 
+        {!isWaitingForJobs && jobs.length > 0 && (
+          <div className="bg-background fixed inset-x-0 bottom-0 z-40 border-t px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:hidden">
+            <Button
+              onClick={() => setShowCreateDialog(true)}
+              size="lg"
+              className="h-12 w-full"
+            >
+              <PlusIcon className="mr-2 h-5 w-5" />
+              Add Job
+            </Button>
+          </div>
+        )}
+
         {/* Create Job Dialog */}
         <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
           <DialogContent>
@@ -999,10 +1073,7 @@ export function DashboardClient({ initialJobs }: { initialJobs: DashboardJob[] }
               >
                 Cancel
               </Button>
-              <Button
-                onClick={handleCreateJob}
-                disabled={!newJobName.trim()}
-              >
+              <Button onClick={handleCreateJob} disabled={!newJobName.trim()}>
                 Create Job
               </Button>
             </DialogFooter>
