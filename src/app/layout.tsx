@@ -33,7 +33,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     title: APP_NAME,
-    statusBarStyle: "default",
+    statusBarStyle: "black-translucent",
   },
   formatDetection: {
     telephone: false,
@@ -72,7 +72,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 5,
-  themeColor: "#f9fafb",
+  themeColor: "#111827",
 };
 
 const geist = Geist({
@@ -88,6 +88,10 @@ const themeBootScript = `
     const useDark = theme === "dark" || (theme === "system" && prefersDark);
     document.documentElement.classList.toggle("dark", useDark);
     document.documentElement.style.colorScheme = useDark ? "dark" : "light";
+    document.querySelector("meta[name='theme-color']")?.setAttribute(
+      "content",
+      useDark ? "#111827" : "#f9fafb"
+    );
   } catch {
   }
 })();
