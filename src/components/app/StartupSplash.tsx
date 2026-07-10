@@ -31,38 +31,37 @@ const READY_TIMEOUT_MS = 8000;
 
 export function AppReadySignal() {
   useEffect(() => {
-    let frameOne = 0;
-    let frameTwo = 0;
+    let animationFrame = 0;
+    let stableFrames = 0;
 
-    const signalReady = () => {
-      frameOne = window.requestAnimationFrame(() => {
-        frameTwo = window.requestAnimationFrame(() => {
-          document.documentElement.dataset.foremenhqAppReady = "true";
-          window.dispatchEvent(new Event(READY_EVENT));
-        });
+    const hasVisibleAppContent = () => {
+      if (document.querySelector("[data-app-startup-loading]")) return false;
+
+      const selector = window.location.pathname.startsWith("/dashboard")
+        ? "main, [role='main']"
+        : "main, header, [role='main']";
+      const visibleRegions = document.querySelectorAll<HTMLElement>(selector);
+      return Array.from(visibleRegions).some((region) => {
+        const rect = region.getBoundingClientRect();
+        return (
+          rect.width > 0 && rect.height >= 48 && region.childElementCount > 0
+        );
       });
     };
 
-    if (document.querySelector("[data-app-startup-loading]")) {
-      const observer = new MutationObserver(() => {
-        if (!document.querySelector("[data-app-startup-loading]")) {
-          observer.disconnect();
-          signalReady();
-        }
-      });
-      observer.observe(document.body, { childList: true, subtree: true });
-      return () => {
-        observer.disconnect();
-        window.cancelAnimationFrame(frameOne);
-        window.cancelAnimationFrame(frameTwo);
-      };
-    }
+    const checkReady = () => {
+      stableFrames = hasVisibleAppContent() ? stableFrames + 1 : 0;
+      if (stableFrames >= 2) {
+        document.documentElement.dataset.foremenhqAppReady = "true";
+        window.dispatchEvent(new Event(READY_EVENT));
+        return;
+      }
 
-    signalReady();
-    return () => {
-      window.cancelAnimationFrame(frameOne);
-      window.cancelAnimationFrame(frameTwo);
+      animationFrame = window.requestAnimationFrame(checkReady);
     };
+
+    animationFrame = window.requestAnimationFrame(checkReady);
+    return () => window.cancelAnimationFrame(animationFrame);
   }, []);
 
   return null;
