@@ -2513,34 +2513,13 @@ export const catalogueRouter = createTRPCRouter({
         return {};
       }
 
-      // Get preferred suppliers for the specified parts
-      const preferredSuppliers = await ctx.db
-        .select({
-          supplierPart: supplierParts,
-          supplier: suppliers,
-          partDefinitionId: supplierParts.partDefinitionId,
-        })
-        .from(supplierParts)
-        .innerJoin(suppliers, eq(supplierParts.supplierId, suppliers.id))
-        .where(
-          and(
-            inArray(supplierParts.partDefinitionId, input.partIds),
-            eq(supplierParts.isPreferred, true),
-            eq(supplierParts.organizationId, ctx.user.organizationId),
-          ),
-        );
-
-      // Create a map of partDefinitionId -> preferred supplier
-      const preferredMap = new Map(
-        preferredSuppliers.map((ps) => [ps.partDefinitionId, ps.supplier]),
-      );
-
-      // Get all suppliers for the specified parts
+      // Fetch all supplier links once, then derive both the preferred and
+      // available supplier views in memory.
       const allSupplierParts = await ctx.db
         .select({
-          supplierPart: supplierParts,
           supplier: suppliers,
           partDefinitionId: supplierParts.partDefinitionId,
+          isPreferred: supplierParts.isPreferred,
         })
         .from(supplierParts)
         .innerJoin(suppliers, eq(supplierParts.supplierId, suppliers.id))
@@ -2551,12 +2530,18 @@ export const catalogueRouter = createTRPCRouter({
           ),
         );
 
-      // Group suppliers by part
+      const preferredMap = new Map<
+        string,
+        typeof suppliers.$inferSelect
+      >();
       const suppliersByPart = new Map<
         string,
         (typeof suppliers.$inferSelect)[]
       >();
       for (const sp of allSupplierParts) {
+        if (sp.isPreferred) {
+          preferredMap.set(sp.partDefinitionId, sp.supplier);
+        }
         const existing = suppliersByPart.get(sp.partDefinitionId) ?? [];
         existing.push(sp.supplier);
         suppliersByPart.set(sp.partDefinitionId, existing);
