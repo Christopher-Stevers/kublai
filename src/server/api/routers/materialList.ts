@@ -406,19 +406,6 @@ export const materialListRouter = createTRPCRouter({
         });
       }
 
-      const createdBy = materialList.createdByUserId
-        ? await ctx.db
-            .select({
-              id: users.id,
-              name: users.name,
-              email: users.email,
-            })
-            .from(users)
-            .where(eq(users.id, materialList.createdByUserId))
-            .limit(1)
-            .then((rows) => rows[0] ?? null)
-        : null;
-
       // Get quote for this material list
       if (!materialList.quoteId) {
         throw new TRPCError({
@@ -427,69 +414,83 @@ export const materialListRouter = createTRPCRouter({
         });
       }
 
-      const [quote] = await ctx.db
-        .select()
-        .from(quotes)
-        .where(eq(quotes.id, materialList.quoteId))
-        .limit(1);
+      const [createdBy, quoteRows, itemsRaw] = await Promise.all([
+        materialList.createdByUserId
+          ? ctx.db
+              .select({
+                id: users.id,
+                name: users.name,
+                email: users.email,
+              })
+              .from(users)
+              .where(eq(users.id, materialList.createdByUserId))
+              .limit(1)
+              .then((rows) => rows[0] ?? null)
+          : Promise.resolve(null),
+        ctx.db
+          .select()
+          .from(quotes)
+          .where(eq(quotes.id, materialList.quoteId))
+          .limit(1),
+        // Get quote items with part definitions and suppliers
+        ctx.db
+          .select({
+            id: quoteItems.id,
+            quantity: quoteItems.quantity,
+            unitCost: quoteItems.unitCost,
+            extendedPrice: quoteItems.extendedPrice,
+            descriptionSnapshot: quoteItems.descriptionSnapshot,
+            createdAt: quoteItems.createdAt,
+            updatedAt: quoteItems.updatedAt,
+            partDefinitionId: partDefinitions.id,
+            partDefinitionDisplayName: partDefinitions.displayName,
+            partDefinitionImageUrl: partDefinitions.imageUrl,
+            partDefinitionMaterialId: partDefinitions.materialId,
+            partDefinitionMaterialName: materials.name,
+            supplierPartId: supplierParts.id,
+            selectedSupplierId: quoteItems.supplierId,
+            supplierPartSupplierId: supplierParts.supplierId,
+            supplierPartSku: supplierParts.supplierSku,
+            supplierPartLastKnownUnitCost: supplierParts.lastKnownUnitCost,
+            supplierId: suppliers.id,
+            supplierName: suppliers.name,
+            uomId: units.id,
+            uomCode: units.code,
+            uomDisplayName: units.displayName,
+            // One-off fields
+            oneOffDisplayName: quoteItems.oneOffDisplayName,
+            oneOffDescription: quoteItems.oneOffDescription,
+            oneOffMaterial: quoteItems.oneOffMaterial,
+            oneOffSizeNominal: quoteItems.oneOffSizeNominal,
+            oneOffSizeUnitId: quoteItems.oneOffSizeUnitId,
+            addedByUserId: quoteItems.addedByUserId,
+            addedByName: users.name,
+            addedByEmail: users.email,
+          })
+          .from(quoteItems)
+          .leftJoin(
+            partDefinitions,
+            eq(quoteItems.partDefinitionId, partDefinitions.id),
+          )
+          .leftJoin(
+            supplierParts,
+            eq(quoteItems.supplierPartId, supplierParts.id),
+          )
+          .leftJoin(suppliers, eq(supplierParts.supplierId, suppliers.id))
+          .leftJoin(units, eq(quoteItems.uomId, units.id))
+          .leftJoin(materials, eq(partDefinitions.materialId, materials.id))
+          .leftJoin(users, eq(quoteItems.addedByUserId, users.id))
+          .where(eq(quoteItems.quoteId, materialList.quoteId))
+          .orderBy(asc(quoteItems.createdAt), asc(quoteItems.id)),
+      ]);
 
+      const [quote] = quoteRows;
       if (!quote) {
         throw new TRPCError({
           code: "NOT_FOUND",
           message: "Quote not found for material list",
         });
       }
-
-      // Get quote items with part definitions and suppliers
-      const itemsRaw = await ctx.db
-        .select({
-          id: quoteItems.id,
-          quantity: quoteItems.quantity,
-          unitCost: quoteItems.unitCost,
-          extendedPrice: quoteItems.extendedPrice,
-          descriptionSnapshot: quoteItems.descriptionSnapshot,
-          createdAt: quoteItems.createdAt,
-          updatedAt: quoteItems.updatedAt,
-          partDefinitionId: partDefinitions.id,
-          partDefinitionDisplayName: partDefinitions.displayName,
-          partDefinitionImageUrl: partDefinitions.imageUrl,
-          partDefinitionMaterialId: partDefinitions.materialId,
-          partDefinitionMaterialName: materials.name,
-          supplierPartId: supplierParts.id,
-          selectedSupplierId: quoteItems.supplierId,
-          supplierPartSupplierId: supplierParts.supplierId,
-          supplierPartSku: supplierParts.supplierSku,
-          supplierPartLastKnownUnitCost: supplierParts.lastKnownUnitCost,
-          supplierId: suppliers.id,
-          supplierName: suppliers.name,
-          uomId: units.id,
-          uomCode: units.code,
-          uomDisplayName: units.displayName,
-          // One-off fields
-          oneOffDisplayName: quoteItems.oneOffDisplayName,
-          oneOffDescription: quoteItems.oneOffDescription,
-          oneOffMaterial: quoteItems.oneOffMaterial,
-          oneOffSizeNominal: quoteItems.oneOffSizeNominal,
-          oneOffSizeUnitId: quoteItems.oneOffSizeUnitId,
-          addedByUserId: quoteItems.addedByUserId,
-          addedByName: users.name,
-          addedByEmail: users.email,
-        })
-        .from(quoteItems)
-        .leftJoin(
-          partDefinitions,
-          eq(quoteItems.partDefinitionId, partDefinitions.id),
-        )
-        .leftJoin(
-          supplierParts,
-          eq(quoteItems.supplierPartId, supplierParts.id),
-        )
-        .leftJoin(suppliers, eq(supplierParts.supplierId, suppliers.id))
-        .leftJoin(units, eq(quoteItems.uomId, units.id))
-        .leftJoin(materials, eq(partDefinitions.materialId, materials.id))
-        .leftJoin(users, eq(quoteItems.addedByUserId, users.id))
-        .where(eq(quoteItems.quoteId, quote.id))
-        .orderBy(asc(quoteItems.createdAt), asc(quoteItems.id));
 
       // Transform to nested structure
       const items = itemsRaw.map((item) => ({
