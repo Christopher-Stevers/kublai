@@ -18,7 +18,10 @@ function JobCardSkeleton({ index }: { index: number }) {
 
 export function AppStartupLoading() {
   return (
-    <div className="min-h-dvh bg-gray-50 text-gray-900">
+    <div
+      data-app-startup-loading
+      className="min-h-dvh bg-gray-50 text-gray-900"
+    >
       <div className="sticky top-0 z-50 border-b border-gray-200 bg-white px-4 py-3 sm:px-6 sm:py-4">
         <div className="flex items-center justify-between">
           <div className="text-lg font-bold sm:text-xl">{APP_NAME}</div>

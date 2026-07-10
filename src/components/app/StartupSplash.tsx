@@ -26,6 +26,47 @@ const TOOLS: Array<{ Icon: LucideIcon; className: string }> = [
 
 const FAST_LOAD_HOLD_MS = 550;
 const EXIT_ANIMATION_MS = 320;
+const READY_EVENT = "foremenhq:app-ready";
+const READY_TIMEOUT_MS = 8000;
+
+export function AppReadySignal() {
+  useEffect(() => {
+    let frameOne = 0;
+    let frameTwo = 0;
+
+    const signalReady = () => {
+      frameOne = window.requestAnimationFrame(() => {
+        frameTwo = window.requestAnimationFrame(() => {
+          document.documentElement.dataset.foremenhqAppReady = "true";
+          window.dispatchEvent(new Event(READY_EVENT));
+        });
+      });
+    };
+
+    if (document.querySelector("[data-app-startup-loading]")) {
+      const observer = new MutationObserver(() => {
+        if (!document.querySelector("[data-app-startup-loading]")) {
+          observer.disconnect();
+          signalReady();
+        }
+      });
+      observer.observe(document.body, { childList: true, subtree: true });
+      return () => {
+        observer.disconnect();
+        window.cancelAnimationFrame(frameOne);
+        window.cancelAnimationFrame(frameTwo);
+      };
+    }
+
+    signalReady();
+    return () => {
+      window.cancelAnimationFrame(frameOne);
+      window.cancelAnimationFrame(frameTwo);
+    };
+  }, []);
+
+  return null;
+}
 
 export function StartupSplash() {
   const [state, setState] = useState<"holding" | "leaving" | "hidden">(
@@ -35,9 +76,15 @@ export function StartupSplash() {
   useEffect(() => {
     let leaveTimer: number | undefined;
     let hideTimer: number | undefined;
+    let fallbackTimer: number | undefined;
+    let hasStartedLeaving = false;
     const startedAt = performance.now();
 
     const leave = () => {
+      if (hasStartedLeaving) return;
+      hasStartedLeaving = true;
+      if (fallbackTimer) window.clearTimeout(fallbackTimer);
+
       const minimumHoldMs = Math.max(
         0,
         FAST_LOAD_HOLD_MS - (performance.now() - startedAt),
@@ -52,16 +99,20 @@ export function StartupSplash() {
       }, minimumHoldMs);
     };
 
-    if (document.readyState === "complete") {
+    const handleReady = () => leave();
+
+    if (document.documentElement.dataset.foremenhqAppReady === "true") {
       leave();
     } else {
-      window.addEventListener("load", leave, { once: true });
+      window.addEventListener(READY_EVENT, handleReady, { once: true });
+      fallbackTimer = window.setTimeout(leave, READY_TIMEOUT_MS);
     }
 
     return () => {
-      window.removeEventListener("load", leave);
+      window.removeEventListener(READY_EVENT, handleReady);
       if (leaveTimer) window.clearTimeout(leaveTimer);
       if (hideTimer) window.clearTimeout(hideTimer);
+      if (fallbackTimer) window.clearTimeout(fallbackTimer);
     };
   }, []);
 

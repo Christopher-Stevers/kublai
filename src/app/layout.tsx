@@ -8,7 +8,7 @@ import { TRPCReactProvider } from "~/trpc/react";
 import { APP_NAME } from "~/constants/app";
 import { ClientConsoleErrorReporter } from "~/components/debug/ClientConsoleErrorReporter";
 import { ServiceWorkerRegistration } from "~/components/offline/ServiceWorkerRegistration";
-import { StartupSplash } from "~/components/app/StartupSplash";
+import { AppReadySignal, StartupSplash } from "~/components/app/StartupSplash";
 import { ThemeProvider } from "~/components/app/ThemeProvider";
 
 export const metadata: Metadata = {
@@ -113,6 +113,7 @@ export default function RootLayout({
               <ClientConsoleErrorReporter />
               <ServiceWorkerRegistration />
               {children}
+              <AppReadySignal />
             </TRPCReactProvider>
           </SessionProviderWrapper>
         </ThemeProvider>
