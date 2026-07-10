@@ -28,13 +28,19 @@ import { format } from "date-fns";
 import { Badge } from "~/components/ui/badge";
 import { useOnlineStatus } from "~/hooks/use-online-status";
 import { useOfflineOrders } from "~/hooks/use-offline-documents";
+import {
+  getSupplierEmailRecipients,
+  normalizeSupplierContacts,
+} from "~/lib/supplier-contacts";
+import { buildEmailComposeUrl, getPreferredEmailClient } from "~/lib/mailto";
 
 export default function OrdersPage() {
   const utils = api.useUtils();
   const isOnline = useOnlineStatus();
-  const { data: serverOrders, isLoading } = api.materialList.listOrders.useQuery(undefined, {
-    enabled: isOnline,
-  });
+  const { data: serverOrders, isLoading } =
+    api.materialList.listOrders.useQuery(undefined, {
+      enabled: isOnline,
+    });
   const {
     data: orders,
     cacheLoaded,
@@ -80,17 +86,27 @@ export default function OrdersPage() {
 
       if (!emailContent) return;
 
+      const toRecipients = email
+        .split(",")
+        .map((item) => item.trim())
+        .filter(Boolean);
+      const ccRecipients = emailContent.cc ?? [];
+
       // Mark as sent
       await markOrderSent.mutateAsync({
         orderId,
-        sentTo: email,
+        sentTo: toRecipients.join(", "),
       });
 
       // Open email client
-      const subject = encodeURIComponent(emailContent.subject);
-      const body = encodeURIComponent(emailContent.body);
-      const mailtoLink = `mailto:${email}?subject=${subject}&body=${body}`;
-      window.open(mailtoLink, "_blank");
+      const emailLink = buildEmailComposeUrl({
+        to: toRecipients,
+        cc: ccRecipients,
+        subject: emailContent.subject,
+        body: emailContent.body,
+        client: getPreferredEmailClient(),
+      });
+      window.open(emailLink, "_blank");
     } catch (error) {
       console.error("Error sending order:", error);
       alert("Failed to send order. Please try again.");
@@ -100,8 +116,8 @@ export default function OrdersPage() {
   const handleDialogSend = () => {
     if (!selectedOrder) return;
     const email = emailInput.trim();
-    if (!email || !email.includes("@")) {
-      alert("Please enter a valid email address");
+    if (!email || email.split(",").some((item) => !item.trim().includes("@"))) {
+      alert("Please enter valid email addresses");
       return;
     }
     void sendOrderWithEmail(selectedOrder.id, email);
@@ -220,7 +236,8 @@ export default function OrdersPage() {
                     <div className="flex items-center gap-2 text-sm">
                       <CalendarIcon className="h-4 w-4 text-gray-400" />
                       <span className="text-gray-600">
-                        Created {format(new Date(order.createdAt), "MMM d, yyyy")}
+                        Created{" "}
+                        {format(new Date(order.createdAt), "MMM d, yyyy")}
                       </span>
                     </div>
 
@@ -235,14 +252,24 @@ export default function OrdersPage() {
 
                     <div className="flex gap-2 pt-2">
                       <Button
-                        variant={order.status === "draft" ? "default" : "outline"}
+                        variant={
+                          order.status === "draft" ? "default" : "outline"
+                        }
                         size="sm"
-                        onClick={() =>
+                        onClick={() => {
+                          const recipients = order.supplier
+                            ? getSupplierEmailRecipients(
+                                normalizeSupplierContacts(
+                                  order.supplier.contacts,
+                                  order.supplier,
+                                ),
+                              )
+                            : { to: [], cc: [] };
                           handleSendOrder(
                             order.id,
-                            order.supplier?.contactEmail ?? null,
-                          )
-                        }
+                            recipients.to.join(", ") || null,
+                          );
+                        }}
                         disabled={!isOnline || markOrderSent.isPending}
                       >
                         {order.status === "draft" ? (
@@ -276,10 +303,10 @@ export default function OrdersPage() {
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
-            <Label htmlFor="email">Email Address</Label>
+            <Label htmlFor="email">To</Label>
             <Input
               id="email"
-              type="email"
+              type="text"
               placeholder="supplier@example.com"
               value={emailInput}
               onChange={(e) => setEmailInput(e.target.value)}
@@ -302,7 +329,10 @@ export default function OrdersPage() {
             >
               Cancel
             </Button>
-            <Button onClick={handleDialogSend} disabled={!isOnline || markOrderSent.isPending}>
+            <Button
+              onClick={handleDialogSend}
+              disabled={!isOnline || markOrderSent.isPending}
+            >
               {markOrderSent.isPending ? "Sending..." : "Send Order"}
             </Button>
           </DialogFooter>

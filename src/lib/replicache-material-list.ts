@@ -1,6 +1,8 @@
 import { Replicache, dropDatabase, type WriteTransaction } from "replicache";
+import type { ReadonlyJSONValue } from "replicache";
 
 import { MATERIAL_LIST_REPLICACHE_SCHEMA_VERSION } from "~/lib/replicache-schema";
+import type { SupplierContact } from "~/lib/supplier-contacts";
 
 // ---------------------------------------------------------------------------
 // Mutator type definitions
@@ -99,6 +101,7 @@ export type MaterialListReplicacheMutators = {
       contactName?: string | null;
       contactEmail?: string | null;
       contactPhone?: string | null;
+      contacts?: SupplierContact[] | null;
       orderingNotes?: string | null;
       locationId?: string | null;
     },
@@ -111,21 +114,27 @@ export type MaterialListReplicacheMutators = {
       contactName?: string | null;
       contactEmail?: string | null;
       contactPhone?: string | null;
+      contacts?: SupplierContact[] | null;
       orderingNotes?: string | null;
       locationId?: string | null;
     },
   ): Promise<void>;
-  deleteSupplier(tx: WriteTransaction, args: { supplierId: string }): Promise<void>;
+  deleteSupplier(
+    tx: WriteTransaction,
+    args: { supplierId: string },
+  ): Promise<void>;
 };
 
 // ---------------------------------------------------------------------------
 // Singleton instance
 // ---------------------------------------------------------------------------
 
-let materialListReplicache: Replicache<MaterialListReplicacheMutators> | null = null;
+let materialListReplicache: Replicache<MaterialListReplicacheMutators> | null =
+  null;
 let materialListReplicacheResetting = false;
 let materialListReplicacheClosing = false;
-let materialListReplicacheSyncTimer: ReturnType<typeof setTimeout> | null = null;
+let materialListReplicacheSyncTimer: ReturnType<typeof setTimeout> | null =
+  null;
 let materialListReplicacheSyncInFlight = false;
 let materialListReplicacheSyncRequested: "none" | "pull" | "push-pull" = "none";
 let materialListReplicacheScheduledMode: "pull" | "push-pull" = "pull";
@@ -200,7 +209,12 @@ export function getMaterialListReplicache() {
       // -----------------------------------------------------------------
       async renameMaterialList(tx, args) {
         const existing = await tx.get(`materialList/${args.materialListId}`);
-        if (!existing || typeof existing !== "object" || Array.isArray(existing)) return;
+        if (
+          !existing ||
+          typeof existing !== "object" ||
+          Array.isArray(existing)
+        )
+          return;
         await tx.put(`materialList/${args.materialListId}`, {
           ...existing,
           name: args.name,
@@ -210,9 +224,15 @@ export function getMaterialListReplicache() {
 
       async updateItemQuantity(tx, args) {
         const existing = await tx.get(`materialListItem/${args.itemId}`);
-        if (!existing || typeof existing !== "object" || Array.isArray(existing)) return;
+        if (
+          !existing ||
+          typeof existing !== "object" ||
+          Array.isArray(existing)
+        )
+          return;
         const unitCost = Number("unitCost" in existing ? existing.unitCost : 0);
-        const extendedPrice = args.quantity * (Number.isFinite(unitCost) ? unitCost : 0);
+        const extendedPrice =
+          args.quantity * (Number.isFinite(unitCost) ? unitCost : 0);
         await tx.put(`materialListItem/${args.itemId}`, {
           ...existing,
           materialListId: args.materialListId,
@@ -234,7 +254,8 @@ export function getMaterialListReplicache() {
 
       async addItem(tx, args) {
         const unitCost = args.unitCost ?? 0;
-        const extendedPrice = args.quantity * (Number.isFinite(unitCost) ? unitCost : 0);
+        const extendedPrice =
+          args.quantity * (Number.isFinite(unitCost) ? unitCost : 0);
         await tx.put(`materialListItem/${args.itemId}`, {
           id: args.itemId,
           materialListId: args.materialListId,
@@ -258,10 +279,17 @@ export function getMaterialListReplicache() {
 
       async updateItemSupplierPart(tx, args) {
         const existing = await tx.get(`materialListItem/${args.itemId}`);
-        if (!existing || typeof existing !== "object" || Array.isArray(existing)) return;
+        if (
+          !existing ||
+          typeof existing !== "object" ||
+          Array.isArray(existing)
+        )
+          return;
         const quantity = Number("quantity" in existing ? existing.quantity : 0);
         const unitCost = args.unitCost ?? 0;
-        const extendedPrice = (Number.isFinite(quantity) ? quantity : 0) * (Number.isFinite(unitCost) ? unitCost : 0);
+        const extendedPrice =
+          (Number.isFinite(quantity) ? quantity : 0) *
+          (Number.isFinite(unitCost) ? unitCost : 0);
         await tx.put(`materialListItem/${args.itemId}`, {
           ...existing,
           supplierPartId: args.supplierPartId,
@@ -291,12 +319,21 @@ export function getMaterialListReplicache() {
 
       async updateJob(tx, args) {
         const existing = await tx.get(`job/${args.jobId}`);
-        if (!existing || typeof existing !== "object" || Array.isArray(existing)) return;
+        if (
+          !existing ||
+          typeof existing !== "object" ||
+          Array.isArray(existing)
+        )
+          return;
         await tx.put(`job/${args.jobId}`, {
           ...existing,
           ...(args.name !== undefined ? { name: args.name } : {}),
-          ...("locationId" in args ? { locationId: args.locationId ?? null } : {}),
-          ...("foremanName" in args ? { foremanName: args.foremanName ?? null } : {}),
+          ...("locationId" in args
+            ? { locationId: args.locationId ?? null }
+            : {}),
+          ...("foremanName" in args
+            ? { foremanName: args.foremanName ?? null }
+            : {}),
           ...("poNumber" in args ? { poNumber: args.poNumber ?? null } : {}),
           pendingSync: true,
         });
@@ -304,8 +341,14 @@ export function getMaterialListReplicache() {
 
       async deleteJob(tx, args) {
         // Delete all material lists and items for this job
-        const allEntries = await tx.scan({ prefix: "materialList/" }).entries().toArray();
-        const itemEntries = await tx.scan({ prefix: "materialListItem/" }).entries().toArray();
+        const allEntries = await tx
+          .scan({ prefix: "materialList/" })
+          .entries()
+          .toArray();
+        const itemEntries = await tx
+          .scan({ prefix: "materialListItem/" })
+          .entries()
+          .toArray();
         for (const [key, value] of allEntries) {
           if (
             value &&
@@ -351,7 +394,10 @@ export function getMaterialListReplicache() {
 
       async deleteMaterialList(tx, args) {
         // Delete all items for this material list
-        const itemEntries = await tx.scan({ prefix: "materialListItem/" }).entries().toArray();
+        const itemEntries = await tx
+          .scan({ prefix: "materialListItem/" })
+          .entries()
+          .toArray();
         for (const [key, value] of itemEntries) {
           if (
             value &&
@@ -376,6 +422,7 @@ export function getMaterialListReplicache() {
           contactName: args.contactName ?? null,
           contactEmail: args.contactEmail ?? null,
           contactPhone: args.contactPhone ?? null,
+          contacts: (args.contacts ?? null) as ReadonlyJSONValue,
           orderingNotes: args.orderingNotes ?? null,
           locationId: args.locationId ?? null,
           createdAt: new Date().toISOString(),
@@ -385,15 +432,33 @@ export function getMaterialListReplicache() {
 
       async updateSupplier(tx, args) {
         const existing = await tx.get(`supplier/${args.supplierId}`);
-        if (!existing || typeof existing !== "object" || Array.isArray(existing)) return;
+        if (
+          !existing ||
+          typeof existing !== "object" ||
+          Array.isArray(existing)
+        )
+          return;
         await tx.put(`supplier/${args.supplierId}`, {
           ...existing,
           ...(args.name !== undefined ? { name: args.name } : {}),
-          ...("contactName" in args ? { contactName: args.contactName ?? null } : {}),
-          ...("contactEmail" in args ? { contactEmail: args.contactEmail ?? null } : {}),
-          ...("contactPhone" in args ? { contactPhone: args.contactPhone ?? null } : {}),
-          ...("orderingNotes" in args ? { orderingNotes: args.orderingNotes ?? null } : {}),
-          ...("locationId" in args ? { locationId: args.locationId ?? null } : {}),
+          ...("contactName" in args
+            ? { contactName: args.contactName ?? null }
+            : {}),
+          ...("contactEmail" in args
+            ? { contactEmail: args.contactEmail ?? null }
+            : {}),
+          ...("contactPhone" in args
+            ? { contactPhone: args.contactPhone ?? null }
+            : {}),
+          ...("contacts" in args
+            ? { contacts: (args.contacts ?? null) as ReadonlyJSONValue }
+            : {}),
+          ...("orderingNotes" in args
+            ? { orderingNotes: args.orderingNotes ?? null }
+            : {}),
+          ...("locationId" in args
+            ? { locationId: args.locationId ?? null }
+            : {}),
           pendingSync: true,
         });
       },

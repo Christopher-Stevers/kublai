@@ -15,6 +15,11 @@ import { Input } from "~/components/ui/input";
 import { Textarea } from "~/components/ui/textarea";
 import { ChevronDownIcon, ChevronRightIcon } from "lucide-react";
 import { useOnlineStatus } from "~/hooks/use-online-status";
+import {
+  getSupplierEmailRecipients,
+  normalizeSupplierContacts,
+} from "~/lib/supplier-contacts";
+import { buildEmailComposeUrl, getPreferredEmailClient } from "~/lib/mailto";
 
 const GENERATE_ORDER_TIMEOUT_MS = 20_000;
 
@@ -47,6 +52,7 @@ type OrderPreview = {
     id: string;
     name: string;
     contactEmail: string | null;
+    contacts?: unknown;
   } | null;
   items: Array<{
     id: string;
@@ -60,6 +66,8 @@ type OrderPreview = {
 type EmailDraft = {
   subject: string;
   body: string;
+  to?: string[];
+  cc?: string[];
 };
 
 export function OrdersPreviewSheet({
@@ -85,6 +93,9 @@ export function OrdersPreviewSheet({
   const [emailRecipients, setEmailRecipients] = useState<Map<string, string>>(
     new Map(),
   );
+  const [emailCcRecipients, setEmailCcRecipients] = useState<
+    Map<string, string>
+  >(new Map());
   const [emailDrafts, setEmailDrafts] = useState<Map<string, EmailDraft>>(
     new Map(),
   );
@@ -119,7 +130,29 @@ export function OrdersPreviewSheet({
         new Map([
           [
             existingOrder.id,
-            existingOrder.supplier?.contactEmail?.trim() ?? "",
+            existingOrder.supplier
+              ? getSupplierEmailRecipients(
+                  normalizeSupplierContacts(
+                    existingOrder.supplier.contacts,
+                    existingOrder.supplier,
+                  ),
+                ).to.join(", ")
+              : "",
+          ],
+        ]),
+      );
+      setEmailCcRecipients(
+        new Map([
+          [
+            existingOrder.id,
+            existingOrder.supplier
+              ? getSupplierEmailRecipients(
+                  normalizeSupplierContacts(
+                    existingOrder.supplier.contacts,
+                    existingOrder.supplier,
+                  ),
+                ).cc.join(", ")
+              : "",
           ],
         ]),
       );
@@ -183,10 +216,32 @@ export function OrdersPreviewSheet({
           setOrderNotes(notesMap);
           setEmailRecipients(
             new Map(
-              validOrders.map((order) => [
-                order.id,
-                order.supplier?.contactEmail?.trim() ?? "",
-              ]),
+              validOrders.map((order) => {
+                const recipients = order.supplier
+                  ? getSupplierEmailRecipients(
+                      normalizeSupplierContacts(
+                        order.supplier.contacts,
+                        order.supplier,
+                      ),
+                    )
+                  : { to: [], cc: [] };
+                return [order.id, recipients.to.join(", ")];
+              }),
+            ),
+          );
+          setEmailCcRecipients(
+            new Map(
+              validOrders.map((order) => {
+                const recipients = order.supplier
+                  ? getSupplierEmailRecipients(
+                      normalizeSupplierContacts(
+                        order.supplier.contacts,
+                        order.supplier,
+                      ),
+                    )
+                  : { to: [], cc: [] };
+                return [order.id, recipients.cc.join(", ")];
+              }),
             ),
           );
           setSyncError(null);
@@ -251,10 +306,7 @@ export function OrdersPreviewSheet({
     });
   };
 
-  const handleEmailOrder = async (
-    orderId: string,
-    order: OrderPreview,
-  ) => {
+  const handleEmailOrder = async (orderId: string, order: OrderPreview) => {
     if (!canGenerateDocuments) {
       setSyncError("Standard accounts cannot generate orders.");
       return;
@@ -267,24 +319,46 @@ export function OrdersPreviewSheet({
     }
 
     const recipient =
-      emailRecipients.get(orderId)?.trim() ||
-      order.supplier?.contactEmail?.trim() ||
-      "";
-    if (!recipient || !recipient.includes("@")) {
-      setSyncError("Enter a supplier email before sending this order.");
+      emailRecipients.get(orderId)?.trim() || draft.to?.join(", ") || "";
+    const toRecipients = recipient
+      .split(",")
+      .map((email) => email.trim())
+      .filter(Boolean);
+    if (
+      toRecipients.length === 0 ||
+      toRecipients.some((email) => !email.includes("@"))
+    ) {
+      setSyncError(
+        "Enter at least one valid To email before sending this order.",
+      );
       return;
     }
+    const ccRecipients = (
+      emailCcRecipients.get(orderId)?.trim() ||
+      draft.cc?.join(", ") ||
+      ""
+    )
+      .split(",")
+      .map((email) => email.trim())
+      .filter(Boolean);
 
     const notes = orderNotes.get(orderId) || "";
     await markOrderSent.mutateAsync({
       orderId,
-      sentTo: recipient,
+      sentTo: toRecipients.join(", "),
       notes: notes.trim() || undefined,
     });
 
-    const subject = encodeURIComponent(draft.subject);
-    const body = encodeURIComponent(draft.body);
-    window.open(`mailto:${recipient}?subject=${subject}&body=${body}`, "_blank");
+    window.open(
+      buildEmailComposeUrl({
+        to: toRecipients,
+        cc: ccRecipients,
+        subject: draft.subject,
+        body: draft.body,
+        client: getPreferredEmailClient(),
+      }),
+      "_blank",
+    );
   };
 
   if (isGenerating) {
@@ -370,6 +444,7 @@ export function OrdersPreviewSheet({
             const draft = emailDrafts.get(order.id);
             const isDraftLoading = loadingDrafts.has(order.id);
             const recipient = emailRecipients.get(order.id) ?? "";
+            const ccRecipient = emailCcRecipients.get(order.id) ?? "";
 
             return (
               <div key={order.id} className="rounded-lg border p-4">
@@ -422,7 +497,7 @@ export function OrdersPreviewSheet({
                           </label>
                           <Input
                             id={`order-recipient-${order.id}`}
-                            type="email"
+                            type="text"
                             value={recipient}
                             onChange={(event) => {
                               const next = new Map(emailRecipients);
@@ -430,6 +505,27 @@ export function OrdersPreviewSheet({
                               setEmailRecipients(next);
                             }}
                             placeholder="supplier@example.com"
+                            disabled={isSent}
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <label
+                            htmlFor={`order-cc-${order.id}`}
+                            className="text-sm font-medium"
+                          >
+                            CC
+                          </label>
+                          <Input
+                            id={`order-cc-${order.id}`}
+                            type="text"
+                            value={ccRecipient}
+                            onChange={(event) => {
+                              const next = new Map(emailCcRecipients);
+                              next.set(order.id, event.target.value);
+                              setEmailCcRecipients(next);
+                            }}
+                            placeholder="cc@example.com"
                             disabled={isSent}
                           />
                         </div>

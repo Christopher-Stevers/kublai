@@ -8,6 +8,10 @@ import type {
 import { z } from "zod";
 
 import { MATERIAL_LIST_REPLICACHE_SCHEMA_VERSION } from "~/lib/replicache-schema";
+import {
+  getPrimarySupplierContact,
+  normalizeSupplierContacts,
+} from "~/lib/supplier-contacts";
 import { db } from "~/server/db";
 import {
   jobs,
@@ -148,6 +152,7 @@ const createSupplierArgs = z.object({
   contactName: z.string().max(255).nullable().optional(),
   contactEmail: z.string().max(255).nullable().optional(),
   contactPhone: z.string().max(50).nullable().optional(),
+  contacts: z.unknown().nullable().optional(),
   orderingNotes: z.string().nullable().optional(),
   locationId: z.string().uuid().nullable().optional(),
 });
@@ -158,6 +163,7 @@ const updateSupplierArgs = z.object({
   contactName: z.string().max(255).nullable().optional(),
   contactEmail: z.string().max(255).nullable().optional(),
   contactPhone: z.string().max(50).nullable().optional(),
+  contacts: z.unknown().nullable().optional(),
   orderingNotes: z.string().nullable().optional(),
   locationId: z.string().uuid().nullable().optional(),
 });
@@ -194,7 +200,9 @@ async function ensureClientGroup(
       existing.organizationId !== input.organizationId ||
       existing.userId !== input.userId
     ) {
-      throw new ReplicacheOwnershipError("Replicache client group ownership mismatch");
+      throw new ReplicacheOwnershipError(
+        "Replicache client group ownership mismatch",
+      );
     }
 
     await tx
@@ -241,7 +249,9 @@ async function ensureClient(
       existing.organizationId !== input.organizationId ||
       existing.userId !== input.userId
     ) {
-      throw new ReplicacheOwnershipError("Replicache client ownership mismatch");
+      throw new ReplicacheOwnershipError(
+        "Replicache client ownership mismatch",
+      );
     }
     return;
   }
@@ -325,7 +335,9 @@ async function recalculateQuoteTotals(tx: ReplicacheTx, quoteId: string) {
     .where(eq(quoteItems.quoteId, quoteId));
 
   const subtotal = allItems.reduce((sum, item) => {
-    const value = item.extendedPrice ? parseFloat(String(item.extendedPrice)) : 0;
+    const value = item.extendedPrice
+      ? parseFloat(String(item.extendedPrice))
+      : 0;
     return sum + (Number.isFinite(value) ? value : 0);
   }, 0);
 
@@ -419,7 +431,9 @@ async function getUnitCostFromSupplierPart(
     .from(supplierParts)
     .where(eq(supplierParts.id, supplierPartId))
     .limit(1);
-  const raw = sp?.lastKnownUnitCost ? parseFloat(String(sp.lastKnownUnitCost)) : 0;
+  const raw = sp?.lastKnownUnitCost
+    ? parseFloat(String(sp.lastKnownUnitCost))
+    : 0;
   return Number.isFinite(raw) ? raw : 0;
 }
 
@@ -449,7 +463,11 @@ async function applyReplicacheMutation(
         .update(materialLists)
         .set({ name: args.name, updatedAt: new Date() })
         .where(eq(materialLists.id, args.materialListId));
-      publishMaterialListEvent(args.materialListId, "updated", input.organizationId);
+      publishMaterialListEvent(
+        args.materialListId,
+        "updated",
+        input.organizationId,
+      );
       return;
     }
     // -----------------------------------------------------------------------
@@ -464,18 +482,28 @@ async function applyReplicacheMutation(
         })
         .from(quoteItems)
         .innerJoin(quotes, eq(quoteItems.quoteId, quotes.id))
-        .where(and(eq(quoteItems.id, args.itemId), eq(quotes.organizationId, input.organizationId)))
+        .where(
+          and(
+            eq(quoteItems.id, args.itemId),
+            eq(quotes.organizationId, input.organizationId),
+          ),
+        )
         .limit(1);
 
       if (!item?.materialListId) {
-        throw new Error(`Cannot update missing material-list item ${args.itemId}`);
+        throw new Error(
+          `Cannot update missing material-list item ${args.itemId}`,
+        );
       }
       if (args.materialListId && item.materialListId !== args.materialListId) {
-        throw new Error(`Material-list item ${args.itemId} does not belong to ${args.materialListId}`);
+        throw new Error(
+          `Material-list item ${args.itemId} does not belong to ${args.materialListId}`,
+        );
       }
 
       const unitCost = item.unitCost ? parseFloat(String(item.unitCost)) : 0;
-      const extendedPrice = args.quantity * (Number.isFinite(unitCost) ? unitCost : 0);
+      const extendedPrice =
+        args.quantity * (Number.isFinite(unitCost) ? unitCost : 0);
       await tx
         .update(quoteItems)
         .set({
@@ -486,7 +514,11 @@ async function applyReplicacheMutation(
         .where(eq(quoteItems.id, args.itemId));
       input.sideEffects.quoteIdsToRecalculate.add(item.quoteId);
       input.sideEffects.materialListIdsToTouch.add(item.materialListId);
-      publishMaterialListEvent(item.materialListId, "updated", input.organizationId);
+      publishMaterialListEvent(
+        item.materialListId,
+        "updated",
+        input.organizationId,
+      );
       return;
     }
     // -----------------------------------------------------------------------
@@ -524,7 +556,11 @@ async function applyReplicacheMutation(
       });
       input.sideEffects.quoteIdsToRecalculate.add(materialList.quoteId);
       input.sideEffects.materialListIdsToTouch.add(args.materialListId);
-      publishMaterialListEvent(args.materialListId, "updated", input.organizationId);
+      publishMaterialListEvent(
+        args.materialListId,
+        "updated",
+        input.organizationId,
+      );
       return;
     }
     // -----------------------------------------------------------------------
@@ -537,14 +573,22 @@ async function applyReplicacheMutation(
           materialListId: args.materialListId,
         });
       } catch (error) {
-        throw new Error(`Cannot add item to missing material list ${args.materialListId}`, {
-          cause: error,
-        });
+        throw new Error(
+          `Cannot add item to missing material list ${args.materialListId}`,
+          {
+            cause: error,
+          },
+        );
       }
 
-      const offlineSupplierPart = parseOfflineSupplierPartId(args.supplierPartId);
-      const serverSupplierPartId = isUuid(args.supplierPartId) ? args.supplierPartId : null;
-      const resolvedSupplierId = args.supplierId ?? offlineSupplierPart?.supplierId ?? null;
+      const offlineSupplierPart = parseOfflineSupplierPartId(
+        args.supplierPartId,
+      );
+      const serverSupplierPartId = isUuid(args.supplierPartId)
+        ? args.supplierPartId
+        : null;
+      const resolvedSupplierId =
+        args.supplierId ?? offlineSupplierPart?.supplierId ?? null;
 
       let unitCost = args.unitCost ?? 0;
       if (serverSupplierPartId) {
@@ -572,7 +616,11 @@ async function applyReplicacheMutation(
 
       input.sideEffects.quoteIdsToRecalculate.add(materialList.quoteId);
       input.sideEffects.materialListIdsToTouch.add(args.materialListId);
-      publishMaterialListEvent(args.materialListId, "updated", input.organizationId);
+      publishMaterialListEvent(
+        args.materialListId,
+        "updated",
+        input.organizationId,
+      );
       return;
     }
     // -----------------------------------------------------------------------
@@ -588,20 +636,32 @@ async function applyReplicacheMutation(
         .from(quoteItems)
         .innerJoin(quotes, eq(quoteItems.quoteId, quotes.id))
         .where(
-          and(eq(quoteItems.id, args.itemId), eq(quotes.organizationId, input.organizationId)),
+          and(
+            eq(quoteItems.id, args.itemId),
+            eq(quotes.organizationId, input.organizationId),
+          ),
         )
         .limit(1);
 
       if (!item?.materialListId) {
-        throw new Error(`Cannot update supplier for missing material-list item ${args.itemId}`);
+        throw new Error(
+          `Cannot update supplier for missing material-list item ${args.itemId}`,
+        );
       }
       if (args.materialListId && item.materialListId !== args.materialListId) {
-        throw new Error(`Material-list item ${args.itemId} does not belong to ${args.materialListId}`);
+        throw new Error(
+          `Material-list item ${args.itemId} does not belong to ${args.materialListId}`,
+        );
       }
 
-      const offlineSupplierPart = parseOfflineSupplierPartId(args.supplierPartId);
-      const serverSupplierPartId = isUuid(args.supplierPartId) ? args.supplierPartId : null;
-      const resolvedSupplierId = args.supplierId ?? offlineSupplierPart?.supplierId ?? null;
+      const offlineSupplierPart = parseOfflineSupplierPartId(
+        args.supplierPartId,
+      );
+      const serverSupplierPartId = isUuid(args.supplierPartId)
+        ? args.supplierPartId
+        : null;
+      const resolvedSupplierId =
+        args.supplierId ?? offlineSupplierPart?.supplierId ?? null;
 
       let unitCost = args.unitCost ?? 0;
       if (serverSupplierPartId) {
@@ -610,7 +670,8 @@ async function applyReplicacheMutation(
       if (!Number.isFinite(unitCost)) unitCost = 0;
 
       const quantity = parseFloat(String(item.quantity));
-      const extendedPrice = (Number.isFinite(quantity) ? quantity : 0) * unitCost;
+      const extendedPrice =
+        (Number.isFinite(quantity) ? quantity : 0) * unitCost;
 
       await tx
         .update(quoteItems)
@@ -625,7 +686,11 @@ async function applyReplicacheMutation(
 
       input.sideEffects.quoteIdsToRecalculate.add(item.quoteId);
       input.sideEffects.materialListIdsToTouch.add(item.materialListId);
-      publishMaterialListEvent(item.materialListId, "updated", input.organizationId);
+      publishMaterialListEvent(
+        item.materialListId,
+        "updated",
+        input.organizationId,
+      );
       return;
     }
     // -----------------------------------------------------------------------
@@ -649,7 +714,8 @@ async function applyReplicacheMutation(
       const setValues: Partial<typeof jobs.$inferInsert> = {};
       if (args.name !== undefined) setValues.name = args.name;
       if ("locationId" in args) setValues.locationId = args.locationId ?? null;
-      if ("foremanName" in args) setValues.foremanName = args.foremanName ?? null;
+      if ("foremanName" in args)
+        setValues.foremanName = args.foremanName ?? null;
       if ("poNumber" in args) setValues.poNumber = args.poNumber ?? null;
 
       if (Object.keys(setValues).length > 0) {
@@ -658,7 +724,10 @@ async function applyReplicacheMutation(
           .update(jobs)
           .set(setValues)
           .where(
-            and(eq(jobs.id, args.jobId), eq(jobs.organizationId, input.organizationId)),
+            and(
+              eq(jobs.id, args.jobId),
+              eq(jobs.organizationId, input.organizationId),
+            ),
           );
       }
       return;
@@ -683,7 +752,9 @@ async function applyReplicacheMutation(
         .filter((id): id is string => id !== null);
 
       if (quoteIds.length > 0) {
-        await tx.delete(quoteItems).where(inArray(quoteItems.quoteId, quoteIds));
+        await tx
+          .delete(quoteItems)
+          .where(inArray(quoteItems.quoteId, quoteIds));
         await tx.delete(quotes).where(inArray(quotes.id, quoteIds));
       }
 
@@ -694,7 +765,12 @@ async function applyReplicacheMutation(
 
       await tx
         .delete(jobs)
-        .where(and(eq(jobs.id, args.jobId), eq(jobs.organizationId, input.organizationId)));
+        .where(
+          and(
+            eq(jobs.id, args.jobId),
+            eq(jobs.organizationId, input.organizationId),
+          ),
+        );
       return;
     }
     // -----------------------------------------------------------------------
@@ -705,11 +781,18 @@ async function applyReplicacheMutation(
       const [job] = await tx
         .select({ id: jobs.id })
         .from(jobs)
-        .where(and(eq(jobs.id, args.jobId), eq(jobs.organizationId, input.organizationId)))
+        .where(
+          and(
+            eq(jobs.id, args.jobId),
+            eq(jobs.organizationId, input.organizationId),
+          ),
+        )
         .limit(1);
 
       if (!job) {
-        throw new Error(`Cannot create material list ${args.materialListId}; parent job ${args.jobId} is missing`);
+        throw new Error(
+          `Cannot create material list ${args.materialListId}; parent job ${args.jobId} is missing`,
+        );
       }
 
       const materialListName = isDefaultMaterialListName(args.name)
@@ -797,7 +880,9 @@ async function applyReplicacheMutation(
           });
         }
 
-        await tx.delete(quoteItems).where(eq(quoteItems.quoteId, materialList.quoteId));
+        await tx
+          .delete(quoteItems)
+          .where(eq(quoteItems.quoteId, materialList.quoteId));
         await tx.delete(quotes).where(eq(quotes.id, materialList.quoteId));
       }
 
@@ -819,15 +904,18 @@ async function applyReplicacheMutation(
     // -----------------------------------------------------------------------
     case "createSupplier": {
       const args = createSupplierArgs.parse(input.args);
+      const contacts = normalizeSupplierContacts(args.contacts, args);
+      const primaryContact = getPrimarySupplierContact(contacts);
       await tx
         .insert(suppliers)
         .values({
           id: args.supplierId,
           organizationId: input.organizationId,
           name: args.name,
-          contactName: args.contactName ?? null,
-          contactEmail: args.contactEmail ?? null,
-          contactPhone: args.contactPhone ?? null,
+          contactName: primaryContact?.name ?? args.contactName ?? null,
+          contactEmail: primaryContact?.email ?? args.contactEmail ?? null,
+          contactPhone: primaryContact?.phone ?? args.contactPhone ?? null,
+          contacts,
           orderingNotes: args.orderingNotes ?? null,
           locationId: args.locationId ?? null,
         })
@@ -839,10 +927,26 @@ async function applyReplicacheMutation(
       const args = updateSupplierArgs.parse(input.args);
       const setValues: Partial<typeof suppliers.$inferInsert> = {};
       if (args.name !== undefined) setValues.name = args.name;
-      if ("contactName" in args) setValues.contactName = args.contactName ?? null;
-      if ("contactEmail" in args) setValues.contactEmail = args.contactEmail ?? null;
-      if ("contactPhone" in args) setValues.contactPhone = args.contactPhone ?? null;
-      if ("orderingNotes" in args) setValues.orderingNotes = args.orderingNotes ?? null;
+      if ("contacts" in args) {
+        const contacts = normalizeSupplierContacts(args.contacts, args);
+        const primaryContact = getPrimarySupplierContact(contacts);
+        setValues.contacts = contacts;
+        setValues.contactName =
+          primaryContact?.name ?? args.contactName ?? null;
+        setValues.contactEmail =
+          primaryContact?.email ?? args.contactEmail ?? null;
+        setValues.contactPhone =
+          primaryContact?.phone ?? args.contactPhone ?? null;
+      } else {
+        if ("contactName" in args)
+          setValues.contactName = args.contactName ?? null;
+        if ("contactEmail" in args)
+          setValues.contactEmail = args.contactEmail ?? null;
+        if ("contactPhone" in args)
+          setValues.contactPhone = args.contactPhone ?? null;
+      }
+      if ("orderingNotes" in args)
+        setValues.orderingNotes = args.orderingNotes ?? null;
       if ("locationId" in args) setValues.locationId = args.locationId ?? null;
 
       if (Object.keys(setValues).length > 0) {
@@ -881,7 +985,10 @@ async function applyReplicacheMutation(
 
 function assertSupportedSchema(schemaVersion: string) {
   if (schemaVersion !== MATERIAL_LIST_REPLICACHE_SCHEMA_VERSION) {
-    return { error: "VersionNotSupported" as const, versionType: "schema" as const };
+    return {
+      error: "VersionNotSupported" as const,
+      versionType: "schema" as const,
+    };
   }
   return null;
 }
@@ -928,7 +1035,10 @@ export async function handleMaterialListReplicachePush(
   const unsupported = assertSupportedSchema(request.schemaVersion);
   if (unsupported) return unsupported;
   if (request.pushVersion !== 1) {
-    return { error: "VersionNotSupported" as const, versionType: "push" as const };
+    return {
+      error: "VersionNotSupported" as const,
+      versionType: "push" as const,
+    };
   }
 
   let appliedMutationCount = 0;
@@ -1028,355 +1138,390 @@ export async function handleMaterialListReplicachePull(
     return { error: "VersionNotSupported", versionType: "pull" };
   }
 
-  const { patch, lastMutationIDChanges, cookie } = await db.transaction(async (tx) => {
-    await ensureClientGroup(tx, {
-      clientGroupId: request.clientGroupID,
-      organizationId,
-      userId: user.id,
-      schemaVersion: request.schemaVersion,
-    });
+  const { patch, lastMutationIDChanges, cookie } = await db.transaction(
+    async (tx) => {
+      await ensureClientGroup(tx, {
+        clientGroupId: request.clientGroupID,
+        organizationId,
+        userId: user.id,
+        schemaVersion: request.schemaVersion,
+      });
 
-    const groupClients = await tx
-      .select({ id: replicacheClients.id, lastMutationId: replicacheClients.lastMutationId })
-      .from(replicacheClients)
-      .where(eq(replicacheClients.clientGroupId, request.clientGroupID));
+      const groupClients = await tx
+        .select({
+          id: replicacheClients.id,
+          lastMutationId: replicacheClients.lastMutationId,
+        })
+        .from(replicacheClients)
+        .where(eq(replicacheClients.clientGroupId, request.clientGroupID));
 
-    const highWatermark = new Date();
+      const highWatermark = new Date();
 
-    // Jobs with location + foreman joins
-    const jobRows = await tx
-      .select({
-        id: jobs.id,
-        name: jobs.name,
-        locationId: jobs.locationId,
-        status: jobs.status,
-        foremanName: jobs.foremanName,
-        poNumber: jobs.poNumber,
-        createdAt: jobs.createdAt,
-        updatedAt: jobs.updatedAt,
-        locationName: locations.name,
-        locationAddress1: locations.address1,
-        locationCity: locations.city,
-        locationRegion: locations.region,
-        locationPostalCode: locations.postalCode,
-        locationCountry: locations.country,
-        foremanUserName: users.name,
-      })
-      .from(jobs)
-      .leftJoin(locations, eq(jobs.locationId, locations.id))
-      .leftJoin(users, eq(jobs.foremanUserId, users.id))
-      .where(eq(jobs.organizationId, organizationId))
-      .orderBy(asc(jobs.updatedAt), asc(jobs.id));
+      // Jobs with location + foreman joins
+      const jobRows = await tx
+        .select({
+          id: jobs.id,
+          name: jobs.name,
+          locationId: jobs.locationId,
+          status: jobs.status,
+          foremanName: jobs.foremanName,
+          poNumber: jobs.poNumber,
+          createdAt: jobs.createdAt,
+          updatedAt: jobs.updatedAt,
+          locationName: locations.name,
+          locationAddress1: locations.address1,
+          locationCity: locations.city,
+          locationRegion: locations.region,
+          locationPostalCode: locations.postalCode,
+          locationCountry: locations.country,
+          foremanUserName: users.name,
+        })
+        .from(jobs)
+        .leftJoin(locations, eq(jobs.locationId, locations.id))
+        .leftJoin(users, eq(jobs.foremanUserId, users.id))
+        .where(eq(jobs.organizationId, organizationId))
+        .orderBy(asc(jobs.updatedAt), asc(jobs.id));
 
-    const materialListRows = await tx
-      .select({
-        id: materialLists.id,
-        name: materialLists.name,
-        jobId: materialLists.jobId,
-        quoteId: materialLists.quoteId,
-        createdByUserId: materialLists.createdByUserId,
-        createdAt: materialLists.createdAt,
-        updatedAt: materialLists.updatedAt,
-      })
-      .from(materialLists)
-      .where(eq(materialLists.organizationId, organizationId))
-      .orderBy(asc(materialLists.updatedAt), asc(materialLists.id));
+      const materialListRows = await tx
+        .select({
+          id: materialLists.id,
+          name: materialLists.name,
+          jobId: materialLists.jobId,
+          quoteId: materialLists.quoteId,
+          createdByUserId: materialLists.createdByUserId,
+          createdAt: materialLists.createdAt,
+          updatedAt: materialLists.updatedAt,
+        })
+        .from(materialLists)
+        .where(eq(materialLists.organizationId, organizationId))
+        .orderBy(asc(materialLists.updatedAt), asc(materialLists.id));
 
-    const itemRows = await tx
-      .select({
-        id: quoteItems.id,
-        quoteId: quoteItems.quoteId,
-        materialListId: quotes.materialListId,
-        quantity: quoteItems.quantity,
-        unitCost: quoteItems.unitCost,
-        extendedPrice: quoteItems.extendedPrice,
-        descriptionSnapshot: quoteItems.descriptionSnapshot,
-        partDefinitionId: quoteItems.partDefinitionId,
-        partDefinitionDisplayName: partDefinitions.displayName,
-        partDefinitionImageUrl: partDefinitions.imageUrl,
-        partDefinitionMaterial: materials.name,
-        supplierPartId: quoteItems.supplierPartId,
-        supplierId: quoteItems.supplierId,
-        supplierPartSku: supplierParts.supplierSku,
-        supplierPartLastKnownUnitCost: supplierParts.lastKnownUnitCost,
-        supplierName: suppliers.name,
-        addedByUserId: quoteItems.addedByUserId,
-        updatedAt: quoteItems.updatedAt,
-        createdAt: quoteItems.createdAt,
-      })
-      .from(quoteItems)
-      .innerJoin(quotes, eq(quoteItems.quoteId, quotes.id))
-      .leftJoin(partDefinitions, eq(quoteItems.partDefinitionId, partDefinitions.id))
-      .leftJoin(materials, eq(partDefinitions.materialId, materials.id))
-      .leftJoin(supplierParts, eq(quoteItems.supplierPartId, supplierParts.id))
-      .leftJoin(suppliers, eq(quoteItems.supplierId, suppliers.id))
-      .where(eq(quotes.organizationId, organizationId))
-      .orderBy(asc(quoteItems.updatedAt), asc(quoteItems.id));
+      const itemRows = await tx
+        .select({
+          id: quoteItems.id,
+          quoteId: quoteItems.quoteId,
+          materialListId: quotes.materialListId,
+          quantity: quoteItems.quantity,
+          unitCost: quoteItems.unitCost,
+          extendedPrice: quoteItems.extendedPrice,
+          descriptionSnapshot: quoteItems.descriptionSnapshot,
+          partDefinitionId: quoteItems.partDefinitionId,
+          partDefinitionDisplayName: partDefinitions.displayName,
+          partDefinitionImageUrl: partDefinitions.imageUrl,
+          partDefinitionMaterial: materials.name,
+          supplierPartId: quoteItems.supplierPartId,
+          supplierId: quoteItems.supplierId,
+          supplierPartSku: supplierParts.supplierSku,
+          supplierPartLastKnownUnitCost: supplierParts.lastKnownUnitCost,
+          supplierName: suppliers.name,
+          addedByUserId: quoteItems.addedByUserId,
+          updatedAt: quoteItems.updatedAt,
+          createdAt: quoteItems.createdAt,
+        })
+        .from(quoteItems)
+        .innerJoin(quotes, eq(quoteItems.quoteId, quotes.id))
+        .leftJoin(
+          partDefinitions,
+          eq(quoteItems.partDefinitionId, partDefinitions.id),
+        )
+        .leftJoin(materials, eq(partDefinitions.materialId, materials.id))
+        .leftJoin(
+          supplierParts,
+          eq(quoteItems.supplierPartId, supplierParts.id),
+        )
+        .leftJoin(suppliers, eq(quoteItems.supplierId, suppliers.id))
+        .where(eq(quotes.organizationId, organizationId))
+        .orderBy(asc(quoteItems.updatedAt), asc(quoteItems.id));
 
-    const supplierRows = await tx
-      .select({
-        id: suppliers.id,
-        name: suppliers.name,
-        contactName: suppliers.contactName,
-        contactEmail: suppliers.contactEmail,
-        contactPhone: suppliers.contactPhone,
-        orderingNotes: suppliers.orderingNotes,
-        locationId: suppliers.locationId,
-        createdAt: suppliers.createdAt,
-        updatedAt: suppliers.updatedAt,
-      })
-      .from(suppliers)
-      .where(eq(suppliers.organizationId, organizationId))
-      .orderBy(asc(suppliers.updatedAt), asc(suppliers.id));
+      const supplierRows = await tx
+        .select({
+          id: suppliers.id,
+          name: suppliers.name,
+          contactName: suppliers.contactName,
+          contactEmail: suppliers.contactEmail,
+          contactPhone: suppliers.contactPhone,
+          contacts: suppliers.contacts,
+          orderingNotes: suppliers.orderingNotes,
+          locationId: suppliers.locationId,
+          createdAt: suppliers.createdAt,
+          updatedAt: suppliers.updatedAt,
+        })
+        .from(suppliers)
+        .where(eq(suppliers.organizationId, organizationId))
+        .orderBy(asc(suppliers.updatedAt), asc(suppliers.id));
 
-    const contributorUserIds = Array.from(
-      new Set(
-        [
-          ...materialListRows.map((materialList) => materialList.createdByUserId),
-          ...itemRows.map((item) => item.addedByUserId),
-        ]
-          .filter((userId): userId is string => !!userId),
-      ),
-    );
-    const contributorUserRows =
-      contributorUserIds.length > 0
+      const contributorUserIds = Array.from(
+        new Set(
+          [
+            ...materialListRows.map(
+              (materialList) => materialList.createdByUserId,
+            ),
+            ...itemRows.map((item) => item.addedByUserId),
+          ].filter((userId): userId is string => !!userId),
+        ),
+      );
+      const contributorUserRows =
+        contributorUserIds.length > 0
+          ? await tx
+              .select({
+                id: users.id,
+                name: users.name,
+                email: users.email,
+              })
+              .from(users)
+              .where(inArray(users.id, contributorUserIds))
+          : [];
+      const contributorUserMap = new Map(
+        contributorUserRows.map((user) => [user.id, user]),
+      );
+
+      const totalSupplierIdsByQuoteId = new Map<string, Set<string>>();
+      for (const item of itemRows) {
+        const supplierId = item.supplierId;
+        if (!item.quoteId || !supplierId) continue;
+
+        const supplierIds =
+          totalSupplierIdsByQuoteId.get(item.quoteId) ?? new Set<string>();
+        supplierIds.add(supplierId);
+        totalSupplierIdsByQuoteId.set(item.quoteId, supplierIds);
+      }
+
+      const materialListIds = materialListRows.map(
+        (materialList) => materialList.id,
+      );
+      const orderRows = materialListIds.length
         ? await tx
             .select({
-              id: users.id,
-              name: users.name,
-              email: users.email,
+              id: orders.id,
+              materialListId: orders.materialListId,
+              supplierId: orders.supplierId,
+              status: orders.status,
+              sentAt: orders.sentAt,
             })
-            .from(users)
-            .where(inArray(users.id, contributorUserIds))
+            .from(orders)
+            .where(inArray(orders.materialListId, materialListIds))
         : [];
-    const contributorUserMap = new Map(
-      contributorUserRows.map((user) => [user.id, user]),
-    );
 
-    const totalSupplierIdsByQuoteId = new Map<string, Set<string>>();
-    for (const item of itemRows) {
-      const supplierId = item.supplierId;
-      if (!item.quoteId || !supplierId) continue;
+      const orderIds = orderRows.map((order) => order.id);
+      const orderItemRows = orderIds.length
+        ? await tx
+            .select({
+              orderId: orderItems.orderId,
+              verificationStatus: orderItems.verificationStatus,
+            })
+            .from(orderItems)
+            .where(inArray(orderItems.orderId, orderIds))
+        : [];
 
-      const supplierIds =
-        totalSupplierIdsByQuoteId.get(item.quoteId) ?? new Set<string>();
-      supplierIds.add(supplierId);
-      totalSupplierIdsByQuoteId.set(item.quoteId, supplierIds);
-    }
+      const verifiedStatuses = new Set(["complete", "partial", "problem"]);
+      const verificationByOrderId = new Map<
+        string,
+        { itemCount: number; verifiedItemCount: number }
+      >();
 
-    const materialListIds = materialListRows.map((materialList) => materialList.id);
-    const orderRows = materialListIds.length
-      ? await tx
-          .select({
-            id: orders.id,
-            materialListId: orders.materialListId,
-            supplierId: orders.supplierId,
-            status: orders.status,
-            sentAt: orders.sentAt,
-          })
-          .from(orders)
-          .where(inArray(orders.materialListId, materialListIds))
-      : [];
-
-    const orderIds = orderRows.map((order) => order.id);
-    const orderItemRows = orderIds.length
-      ? await tx
-          .select({
-            orderId: orderItems.orderId,
-            verificationStatus: orderItems.verificationStatus,
-          })
-          .from(orderItems)
-          .where(inArray(orderItems.orderId, orderIds))
-      : [];
-
-    const verifiedStatuses = new Set(["complete", "partial", "problem"]);
-    const verificationByOrderId = new Map<
-      string,
-      { itemCount: number; verifiedItemCount: number }
-    >();
-
-    for (const item of orderItemRows) {
-      const counts = verificationByOrderId.get(item.orderId) ?? {
-        itemCount: 0,
-        verifiedItemCount: 0,
-      };
-      counts.itemCount += 1;
-      if (verifiedStatuses.has(item.verificationStatus)) {
-        counts.verifiedItemCount += 1;
+      for (const item of orderItemRows) {
+        const counts = verificationByOrderId.get(item.orderId) ?? {
+          itemCount: 0,
+          verifiedItemCount: 0,
+        };
+        counts.itemCount += 1;
+        if (verifiedStatuses.has(item.verificationStatus)) {
+          counts.verifiedItemCount += 1;
+        }
+        verificationByOrderId.set(item.orderId, counts);
       }
-      verificationByOrderId.set(item.orderId, counts);
-    }
 
-    const sentSupplierIdsByListId = new Map<string, Set<string>>();
-    const verifiedSupplierIdsByListId = new Map<string, Set<string>>();
-    for (const order of orderRows) {
-      if (!order.materialListId || !order.supplierId) continue;
+      const sentSupplierIdsByListId = new Map<string, Set<string>>();
+      const verifiedSupplierIdsByListId = new Map<string, Set<string>>();
+      for (const order of orderRows) {
+        if (!order.materialListId || !order.supplierId) continue;
 
-      const hasBeenSent =
-        !!order.sentAt || ["sent", "confirmed", "received"].includes(order.status);
-      if (!hasBeenSent) continue;
+        const hasBeenSent =
+          !!order.sentAt ||
+          ["sent", "confirmed", "received"].includes(order.status);
+        if (!hasBeenSent) continue;
 
-      const sentSupplierIds =
-        sentSupplierIdsByListId.get(order.materialListId) ?? new Set<string>();
-      sentSupplierIds.add(order.supplierId);
-      sentSupplierIdsByListId.set(order.materialListId, sentSupplierIds);
+        const sentSupplierIds =
+          sentSupplierIdsByListId.get(order.materialListId) ??
+          new Set<string>();
+        sentSupplierIds.add(order.supplierId);
+        sentSupplierIdsByListId.set(order.materialListId, sentSupplierIds);
 
-      const verificationCounts = verificationByOrderId.get(order.id);
-      const isVerified =
-        !!verificationCounts &&
-        verificationCounts.itemCount > 0 &&
-        verificationCounts.verifiedItemCount === verificationCounts.itemCount;
-      if (!isVerified) continue;
+        const verificationCounts = verificationByOrderId.get(order.id);
+        const isVerified =
+          !!verificationCounts &&
+          verificationCounts.itemCount > 0 &&
+          verificationCounts.verifiedItemCount === verificationCounts.itemCount;
+        if (!isVerified) continue;
 
-      const verifiedSupplierIds =
-        verifiedSupplierIdsByListId.get(order.materialListId) ?? new Set<string>();
-      verifiedSupplierIds.add(order.supplierId);
-      verifiedSupplierIdsByListId.set(order.materialListId, verifiedSupplierIds);
-    }
+        const verifiedSupplierIds =
+          verifiedSupplierIdsByListId.get(order.materialListId) ??
+          new Set<string>();
+        verifiedSupplierIds.add(order.supplierId);
+        verifiedSupplierIdsByListId.set(
+          order.materialListId,
+          verifiedSupplierIds,
+        );
+      }
 
-    // Timestamp-only incremental pulls can leave a device permanently stale if
-    // it advances its cookie after receiving a partial patch. Until this uses a
-    // real CVR diff, send a full organization snapshot so every pull self-heals
-    // local IndexedDB state.
-    const patch: PatchOperation[] = [{ op: "clear" }];
+      // Timestamp-only incremental pulls can leave a device permanently stale if
+      // it advances its cookie after receiving a partial patch. Until this uses a
+      // real CVR diff, send a full organization snapshot so every pull self-heals
+      // local IndexedDB state.
+      const patch: PatchOperation[] = [{ op: "clear" }];
 
-    for (const job of jobRows) {
-      patch.push({
-        op: "put",
-        key: `job/${job.id}`,
-        value: {
-          id: job.id,
-          name: job.name,
-          locationId: job.locationId ?? null,
-          status: job.status,
-          foremanName: job.foremanName ?? job.foremanUserName ?? null,
-          poNumber: job.poNumber ?? null,
-          createdAt: job.createdAt?.toISOString?.() ?? String(job.createdAt),
-          updatedAt: job.updatedAt?.toISOString?.() ?? String(job.updatedAt),
-          location: job.locationName
-            ? {
-                name: job.locationName,
-                address1: job.locationAddress1 ?? null,
-                city: job.locationCity ?? null,
-                region: job.locationRegion ?? null,
-                postalCode: job.locationPostalCode ?? null,
-                country: job.locationCountry ?? null,
-              }
-            : null,
+      for (const job of jobRows) {
+        patch.push({
+          op: "put",
+          key: `job/${job.id}`,
+          value: {
+            id: job.id,
+            name: job.name,
+            locationId: job.locationId ?? null,
+            status: job.status,
+            foremanName: job.foremanName ?? job.foremanUserName ?? null,
+            poNumber: job.poNumber ?? null,
+            createdAt: job.createdAt?.toISOString?.() ?? String(job.createdAt),
+            updatedAt: job.updatedAt?.toISOString?.() ?? String(job.updatedAt),
+            location: job.locationName
+              ? {
+                  name: job.locationName,
+                  address1: job.locationAddress1 ?? null,
+                  city: job.locationCity ?? null,
+                  region: job.locationRegion ?? null,
+                  postalCode: job.locationPostalCode ?? null,
+                  country: job.locationCountry ?? null,
+                }
+              : null,
+          },
+        });
+      }
+
+      for (const materialList of materialListRows) {
+        patch.push({
+          op: "put",
+          key: `materialList/${materialList.id}`,
+          value: {
+            ...materialList,
+            totalSupplierCount: materialList.quoteId
+              ? (totalSupplierIdsByQuoteId.get(materialList.quoteId)?.size ?? 0)
+              : 0,
+            sentSupplierCount:
+              sentSupplierIdsByListId.get(materialList.id)?.size ?? 0,
+            verifiedSupplierCount:
+              verifiedSupplierIdsByListId.get(materialList.id)?.size ?? 0,
+            createdBy: materialList.createdByUserId
+              ? (() => {
+                  const createdByUser = contributorUserMap.get(
+                    materialList.createdByUserId,
+                  );
+                  return {
+                    id: materialList.createdByUserId,
+                    name:
+                      createdByUser?.name ?? createdByUser?.email ?? "Unknown",
+                    email: createdByUser?.email ?? null,
+                  };
+                })()
+              : null,
+            createdAt:
+              materialList.createdAt?.toISOString?.() ??
+              String(materialList.createdAt),
+            updatedAt:
+              materialList.updatedAt?.toISOString?.() ??
+              String(materialList.updatedAt),
+          },
+        });
+      }
+
+      for (const item of itemRows) {
+        patch.push({
+          op: "put",
+          key: `materialListItem/${item.id}`,
+          value: {
+            id: item.id,
+            quoteId: item.quoteId,
+            materialListId: item.materialListId,
+            quantity: item.quantity,
+            unitCost: item.unitCost,
+            extendedPrice: item.extendedPrice,
+            descriptionSnapshot: item.descriptionSnapshot,
+            partDefinitionId: item.partDefinitionId,
+            supplierPartId: item.supplierPartId,
+            supplierId: item.supplierId,
+            selectedSupplierId: item.supplierId,
+            partDefinition: item.partDefinitionId
+              ? {
+                  id: item.partDefinitionId,
+                  displayName:
+                    item.partDefinitionDisplayName ??
+                    item.descriptionSnapshot ??
+                    "Unknown Part",
+                  imageUrl: item.partDefinitionImageUrl ?? null,
+                  material: item.partDefinitionMaterial ?? null,
+                }
+              : null,
+            supplierPart: item.supplierPartId
+              ? {
+                  id: item.supplierPartId,
+                  supplierId: item.supplierId ?? "",
+                  supplierSku: item.supplierPartSku ?? null,
+                  lastKnownUnitCost: item.supplierPartLastKnownUnitCost ?? null,
+                  supplier: item.supplierId
+                    ? {
+                        id: item.supplierId,
+                        name: item.supplierName ?? "Supplier",
+                      }
+                    : null,
+                }
+              : null,
+            addedBy: item.addedByUserId
+              ? (() => {
+                  const addedByUser = contributorUserMap.get(
+                    item.addedByUserId,
+                  );
+                  return {
+                    id: item.addedByUserId,
+                    name: addedByUser?.name ?? addedByUser?.email ?? "Unknown",
+                    email: addedByUser?.email ?? null,
+                  };
+                })()
+              : null,
+            createdAt:
+              item.createdAt?.toISOString?.() ?? String(item.createdAt),
+            updatedAt:
+              item.updatedAt?.toISOString?.() ?? String(item.updatedAt),
+          },
+        });
+      }
+
+      for (const supplier of supplierRows) {
+        const contacts = normalizeSupplierContacts(supplier.contacts, supplier);
+        patch.push({
+          op: "put",
+          key: `supplier/${supplier.id}`,
+          value: {
+            ...supplier,
+            contacts,
+            createdAt:
+              supplier.createdAt?.toISOString?.() ?? String(supplier.createdAt),
+            updatedAt:
+              supplier.updatedAt?.toISOString?.() ?? String(supplier.updatedAt),
+          },
+        });
+      }
+
+      return {
+        patch,
+        lastMutationIDChanges: Object.fromEntries(
+          groupClients.map((client) => [client.id, client.lastMutationId]),
+        ),
+        cookie: {
+          order: highWatermark.getTime(),
+          cvr: request.clientGroupID,
         },
-      });
-    }
-
-    for (const materialList of materialListRows) {
-      patch.push({
-        op: "put",
-        key: `materialList/${materialList.id}`,
-        value: {
-          ...materialList,
-          totalSupplierCount: materialList.quoteId
-            ? (totalSupplierIdsByQuoteId.get(materialList.quoteId)?.size ?? 0)
-            : 0,
-          sentSupplierCount: sentSupplierIdsByListId.get(materialList.id)?.size ?? 0,
-          verifiedSupplierCount:
-            verifiedSupplierIdsByListId.get(materialList.id)?.size ?? 0,
-          createdBy: materialList.createdByUserId
-            ? (() => {
-                const createdByUser = contributorUserMap.get(
-                  materialList.createdByUserId,
-                );
-                return {
-                  id: materialList.createdByUserId,
-                  name: createdByUser?.name ?? createdByUser?.email ?? "Unknown",
-                  email: createdByUser?.email ?? null,
-                };
-              })()
-            : null,
-          createdAt: materialList.createdAt?.toISOString?.() ?? String(materialList.createdAt),
-          updatedAt: materialList.updatedAt?.toISOString?.() ?? String(materialList.updatedAt),
-        },
-      });
-    }
-
-    for (const item of itemRows) {
-      patch.push({
-        op: "put",
-        key: `materialListItem/${item.id}`,
-        value: {
-          id: item.id,
-          quoteId: item.quoteId,
-          materialListId: item.materialListId,
-          quantity: item.quantity,
-          unitCost: item.unitCost,
-          extendedPrice: item.extendedPrice,
-          descriptionSnapshot: item.descriptionSnapshot,
-          partDefinitionId: item.partDefinitionId,
-          supplierPartId: item.supplierPartId,
-          supplierId: item.supplierId,
-          selectedSupplierId: item.supplierId,
-          partDefinition: item.partDefinitionId
-            ? {
-                id: item.partDefinitionId,
-                displayName:
-                  item.partDefinitionDisplayName ??
-                  item.descriptionSnapshot ??
-                  "Unknown Part",
-                imageUrl: item.partDefinitionImageUrl ?? null,
-                material: item.partDefinitionMaterial ?? null,
-              }
-            : null,
-          supplierPart: item.supplierPartId
-            ? {
-                id: item.supplierPartId,
-                supplierId: item.supplierId ?? "",
-                supplierSku: item.supplierPartSku ?? null,
-                lastKnownUnitCost: item.supplierPartLastKnownUnitCost ?? null,
-                supplier: item.supplierId
-                  ? {
-                      id: item.supplierId,
-                      name: item.supplierName ?? "Supplier",
-                    }
-                  : null,
-              }
-            : null,
-          addedBy: item.addedByUserId
-            ? (() => {
-                const addedByUser = contributorUserMap.get(item.addedByUserId);
-                return {
-                  id: item.addedByUserId,
-                  name: addedByUser?.name ?? addedByUser?.email ?? "Unknown",
-                  email: addedByUser?.email ?? null,
-                };
-              })()
-            : null,
-          createdAt: item.createdAt?.toISOString?.() ?? String(item.createdAt),
-          updatedAt: item.updatedAt?.toISOString?.() ?? String(item.updatedAt),
-        },
-      });
-    }
-
-    for (const supplier of supplierRows) {
-      patch.push({
-        op: "put",
-        key: `supplier/${supplier.id}`,
-        value: {
-          ...supplier,
-          createdAt: supplier.createdAt?.toISOString?.() ?? String(supplier.createdAt),
-          updatedAt: supplier.updatedAt?.toISOString?.() ?? String(supplier.updatedAt),
-        },
-      });
-    }
-
-    return {
-      patch,
-      lastMutationIDChanges: Object.fromEntries(
-        groupClients.map((client) => [client.id, client.lastMutationId]),
-      ),
-      cookie: {
-        order: highWatermark.getTime(),
-        cvr: request.clientGroupID,
-      },
-    };
-  });
+      };
+    },
+  );
 
   return { cookie, lastMutationIDChanges, patch };
 }

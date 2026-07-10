@@ -9,6 +9,7 @@ import { APP_NAME } from "~/constants/app";
 import { ClientConsoleErrorReporter } from "~/components/debug/ClientConsoleErrorReporter";
 import { ServiceWorkerRegistration } from "~/components/offline/ServiceWorkerRegistration";
 import { StartupSplash } from "~/components/app/StartupSplash";
+import { ThemeProvider } from "~/components/app/ThemeProvider";
 
 export const metadata: Metadata = {
   title: `${APP_NAME} - Simplified Parts Ordering for Trades Foremen`,
@@ -79,20 +80,38 @@ const geist = Geist({
   variable: "--font-geist-sans",
 });
 
+const themeBootScript = `
+(() => {
+  try {
+    const theme = localStorage.getItem("foremenhq-theme") || "system";
+    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    const useDark = theme === "dark" || (theme === "system" && prefersDark);
+    document.documentElement.classList.toggle("dark", useDark);
+    document.documentElement.style.colorScheme = useDark ? "dark" : "light";
+  } catch {
+  }
+})();
+`;
+
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${geist.variable}`}>
-      <body style={{ backgroundColor: "#f9fafb" }}>
+    <html lang="en" className={`${geist.variable}`} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeBootScript }} />
+      </head>
+      <body>
         <StartupSplash />
-        <SessionProviderWrapper>
-          <TRPCReactProvider>
-            <ClientConsoleErrorReporter />
-            <ServiceWorkerRegistration />
-            {children}
-          </TRPCReactProvider>
-        </SessionProviderWrapper>
+        <ThemeProvider>
+          <SessionProviderWrapper>
+            <TRPCReactProvider>
+              <ClientConsoleErrorReporter />
+              <ServiceWorkerRegistration />
+              {children}
+            </TRPCReactProvider>
+          </SessionProviderWrapper>
+        </ThemeProvider>
       </body>
     </html>
   );

@@ -11,6 +11,12 @@ import {
   units,
   locations,
 } from "~/server/db/schema";
+import {
+  getPrimarySupplierContact,
+  normalizeSupplierContacts,
+} from "~/lib/supplier-contacts";
+
+const supplierContactsInput = z.unknown().optional().nullable();
 
 export const supplierRouter = createTRPCRouter({
   /**
@@ -32,6 +38,7 @@ export const supplierRouter = createTRPCRouter({
         contactName: suppliers.contactName,
         contactEmail: suppliers.contactEmail,
         contactPhone: suppliers.contactPhone,
+        contacts: suppliers.contacts,
         orderingNotes: suppliers.orderingNotes,
         locationId: suppliers.locationId,
         createdAt: suppliers.createdAt,
@@ -71,6 +78,7 @@ export const supplierRouter = createTRPCRouter({
           contactName: suppliers.contactName,
           contactEmail: suppliers.contactEmail,
           contactPhone: suppliers.contactPhone,
+          contacts: suppliers.contacts,
           orderingNotes: suppliers.orderingNotes,
           locationId: suppliers.locationId,
           createdAt: suppliers.createdAt,
@@ -160,6 +168,7 @@ export const supplierRouter = createTRPCRouter({
           .union([z.string().email("Invalid email address"), z.literal("")])
           .optional(),
         contactPhone: z.string().max(50).optional().or(z.literal("")),
+        contacts: supplierContactsInput,
         orderingNotes: z.string().optional(),
         locationId: z.string().uuid().optional().nullable(),
       }),
@@ -173,14 +182,17 @@ export const supplierRouter = createTRPCRouter({
       }
 
       try {
+        const contacts = normalizeSupplierContacts(input.contacts, input);
+        const primaryContact = getPrimarySupplierContact(contacts);
         const [newSupplier] = await ctx.db
           .insert(suppliers)
           .values({
             organizationId: ctx.user.organizationId,
             name: input.name,
-            contactName: input.contactName ?? null,
-            contactEmail: input.contactEmail ?? null,
-            contactPhone: input.contactPhone ?? null,
+            contactName: primaryContact?.name ?? input.contactName ?? null,
+            contactEmail: primaryContact?.email ?? input.contactEmail ?? null,
+            contactPhone: primaryContact?.phone ?? input.contactPhone ?? null,
+            contacts,
             orderingNotes: input.orderingNotes ?? null,
             locationId: input.locationId ?? null,
             updatedAt: new Date(),
@@ -227,6 +239,7 @@ export const supplierRouter = createTRPCRouter({
           .union([z.string().email("Invalid email address"), z.literal("")])
           .optional(),
         contactPhone: z.string().max(50).optional().or(z.literal("")),
+        contacts: supplierContactsInput,
         orderingNotes: z.string().optional(),
         locationId: z.string().uuid().optional().nullable(),
       }),
@@ -243,7 +256,12 @@ export const supplierRouter = createTRPCRouter({
       const [existing] = await ctx.db
         .select()
         .from(suppliers)
-        .where(and(eq(suppliers.id, input.id)))
+        .where(
+          and(
+            eq(suppliers.id, input.id),
+            eq(suppliers.organizationId, ctx.user.organizationId),
+          ),
+        )
         .limit(1);
 
       if (!existing) {
@@ -254,17 +272,25 @@ export const supplierRouter = createTRPCRouter({
       }
 
       try {
+        const contacts = normalizeSupplierContacts(input.contacts, input);
+        const primaryContact = getPrimarySupplierContact(contacts);
         const [updated] = await ctx.db
           .update(suppliers)
           .set({
             name: input.name,
-            contactName: input.contactName ?? null,
-            contactEmail: input.contactEmail ?? null,
-            contactPhone: input.contactPhone ?? null,
+            contactName: primaryContact?.name ?? input.contactName ?? null,
+            contactEmail: primaryContact?.email ?? input.contactEmail ?? null,
+            contactPhone: primaryContact?.phone ?? input.contactPhone ?? null,
+            contacts,
             orderingNotes: input.orderingNotes ?? null,
             locationId: input.locationId ?? null,
           })
-          .where(eq(suppliers.id, input.id))
+          .where(
+            and(
+              eq(suppliers.id, input.id),
+              eq(suppliers.organizationId, ctx.user.organizationId),
+            ),
+          )
           .returning();
 
         return updated;

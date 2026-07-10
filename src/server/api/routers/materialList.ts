@@ -2,6 +2,11 @@ import { TRPCError } from "@trpc/server";
 import { eq, and, sql, desc, asc, inArray, gt, gte } from "drizzle-orm";
 import { z } from "zod";
 import type { db as appDb } from "~/server/db";
+import {
+  formatSupplierGreetingName,
+  getSupplierEmailRecipients,
+  normalizeSupplierContacts,
+} from "~/lib/supplier-contacts";
 
 function getNextBusinessDay(from = new Date()) {
   const next = new Date(from);
@@ -294,7 +299,7 @@ export const materialListRouter = createTRPCRouter({
       }
 
       const materialListName = isDefaultMaterialListName(input.name)
-          ? await getNextDefaultMaterialListName(ctx.db, {
+        ? await getNextDefaultMaterialListName(ctx.db, {
             organizationId: ctx.user.organizationId,
             jobId,
           })
@@ -706,7 +711,9 @@ export const materialListRouter = createTRPCRouter({
       const userMap = new Map(relevantUsers.map((user) => [user.id, user]));
 
       const listsWithDetails = materialListsData.map((list) => {
-        const items = list.quoteId ? (itemsByQuoteId.get(list.quoteId) ?? []) : [];
+        const items = list.quoteId
+          ? (itemsByQuoteId.get(list.quoteId) ?? [])
+          : [];
         const contributorIds = Array.from(
           new Set(
             [
@@ -2654,6 +2661,7 @@ ${foremanName}`;
                 id: suppliers.id,
                 name: suppliers.name,
                 contactEmail: suppliers.contactEmail,
+                contacts: suppliers.contacts,
               })
               .from(suppliers)
               .where(inArray(suppliers.id, supplierIds))
@@ -2723,6 +2731,7 @@ ${foremanName}`;
             name: suppliers.name,
             contactName: suppliers.contactName,
             contactEmail: suppliers.contactEmail,
+            contacts: suppliers.contacts,
           },
           location: {
             name: locations.name,
@@ -2768,9 +2777,18 @@ ${foremanName}`;
         .where(eq(orderItems.orderId, input.orderId));
 
       const jobName = order.job?.name || "Job";
-      const supplierContactName = firstName(
-        order.supplier?.contactName || order.supplier?.name,
+      const supplierContacts = normalizeSupplierContacts(
+        order.supplier?.contacts,
+        {
+          contactName:
+            order.supplier?.contactName ?? order.supplier?.name ?? null,
+          contactEmail: order.supplier?.contactEmail ?? null,
+        },
       );
+      const recipients = getSupplierEmailRecipients(supplierContacts);
+      const supplierContactName =
+        formatSupplierGreetingName(supplierContacts) ||
+        firstName(order.supplier?.contactName || order.supplier?.name);
       const poNumber =
         order.job?.poNumber?.trim() ||
         order.orderNumber?.trim() ||
@@ -2795,9 +2813,7 @@ ${foremanName}`;
         `Delivery Date: ${formattedDeliveryDate}`,
         "",
         lineItems || "No items",
-        ...(order.notes?.trim()
-          ? ["", "Notes:", order.notes.trim()]
-          : []),
+        ...(order.notes?.trim() ? ["", "Notes:", order.notes.trim()] : []),
         "",
         "Thanks,",
         ctx.user.name || "Foreman",
@@ -2806,7 +2822,7 @@ ${foremanName}`;
       const subject = `Material Order ${poNumber} - ${jobName}`;
       const body = sections.join("\n");
 
-      return { subject, body };
+      return { subject, body, to: recipients.to, cc: recipients.cc };
     }),
 
   /**
@@ -2816,7 +2832,7 @@ ${foremanName}`;
     .input(
       z.object({
         orderId: z.string().uuid(),
-        sentTo: z.string().email(),
+        sentTo: z.string().min(1).max(1000),
         notes: z.string().optional(),
       }),
     )
@@ -3094,6 +3110,7 @@ ${foremanName}`;
           supplierId: orders.supplierId,
           supplierName: suppliers.name,
           supplierContactEmail: suppliers.contactEmail,
+          supplierContacts: suppliers.contacts,
         })
         .from(orders)
         .leftJoin(suppliers, eq(orders.supplierId, suppliers.id))
@@ -3145,6 +3162,7 @@ ${foremanName}`;
               id: order.supplierId,
               name: order.supplierName ?? "",
               contactEmail: order.supplierContactEmail,
+              contacts: order.supplierContacts,
             }
           : null,
         items: items.map((item) => ({
@@ -3291,6 +3309,7 @@ ${foremanName}`;
         supplierId: orders.supplierId,
         supplierName: suppliers.name,
         supplierContactEmail: suppliers.contactEmail,
+        supplierContacts: suppliers.contacts,
       })
       .from(orders)
       .leftJoin(jobs, eq(orders.jobId, jobs.id))
@@ -3315,6 +3334,7 @@ ${foremanName}`;
             id: order.supplierId,
             name: order.supplierName ?? "",
             contactEmail: order.supplierContactEmail,
+            contacts: order.supplierContacts,
           }
         : null,
       materialList: order.materialListId

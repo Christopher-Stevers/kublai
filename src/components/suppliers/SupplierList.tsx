@@ -17,6 +17,7 @@ import {
   TrashIcon,
   EditIcon,
   PackageIcon,
+  UsersIcon,
 } from "lucide-react";
 import { useOnlineStatus } from "~/hooks/use-online-status";
 import { useReplicacheSuppliers } from "~/hooks/use-replicache-suppliers";
@@ -24,6 +25,7 @@ import {
   getMaterialListReplicache,
   mutateMaterialListAndSync,
 } from "~/lib/replicache-material-list";
+import { normalizeSupplierContacts } from "~/lib/supplier-contacts";
 
 export function SupplierList() {
   const [editSupplierId, setEditSupplierId] = useState<string | undefined>();
@@ -48,7 +50,9 @@ export function SupplierList() {
         `Are you sure you want to delete "${name}"? This will also remove all parts associated with this supplier.`,
       )
     ) {
-      void mutateMaterialListAndSync(getMaterialListReplicache().mutate.deleteSupplier({ supplierId: id }));
+      void mutateMaterialListAndSync(
+        getMaterialListReplicache().mutate.deleteSupplier({ supplierId: id }),
+      );
     }
   };
 
@@ -111,81 +115,110 @@ export function SupplierList() {
 
       <div className="rounded-lg border bg-white">
         <div className="divide-y">
-          {suppliers.map((supplier) => (
-            <div
-              key={supplier.id}
-              className="flex items-center justify-between gap-3 p-4 hover:bg-gray-50 sm:gap-4"
-            >
-              <div className="min-w-0 flex-1">
-                <h3 className="text-base font-semibold sm:text-lg">
-                  {supplier.name}
-                </h3>
-                <div className="text-muted-foreground mt-1 flex flex-col gap-1 text-xs sm:flex-row sm:flex-wrap sm:gap-4 sm:text-sm">
-                  {supplier.contactName && (
-                    <span className="truncate">{supplier.contactName}</span>
-                  )}
-                  {supplier.contactEmail && (
-                    <span className="truncate">{supplier.contactEmail}</span>
-                  )}
-                  {supplier.contactPhone && (
-                    <span className="truncate">{supplier.contactPhone}</span>
+          {suppliers.map((supplier) => {
+            const contacts = normalizeSupplierContacts(
+              supplier.contacts,
+              supplier,
+            );
+            return (
+              <div
+                key={supplier.id}
+                className="flex flex-col gap-3 p-4 hover:bg-gray-50 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
+              >
+                <div className="min-w-0 flex-1">
+                  <h3 className="text-base font-semibold sm:text-lg">
+                    {supplier.name}
+                  </h3>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {contacts.length === 0 ? (
+                      <span className="text-muted-foreground rounded-md border border-dashed px-2 py-1 text-xs">
+                        No contacts
+                      </span>
+                    ) : (
+                      contacts.map((contact) => (
+                        <span
+                          key={contact.id}
+                          className="inline-flex min-w-0 max-w-full items-center gap-1.5 rounded-md border bg-gray-50 px-2 py-1 text-xs"
+                        >
+                          <span className="shrink-0 rounded bg-gray-200 px-1.5 py-0.5 font-medium uppercase text-gray-700">
+                            {contact.emailRole === "cc" ? "CC" : "To"}
+                          </span>
+                          <span className="truncate">
+                            {[contact.name, contact.email, contact.phone]
+                              .filter(Boolean)
+                              .join(" - ")}
+                          </span>
+                        </span>
+                      ))
+                    )}
+                  </div>
+                  {supplier.orderingNotes && (
+                    <p className="text-muted-foreground mt-2 text-xs sm:text-sm">
+                      {supplier.orderingNotes}
+                    </p>
                   )}
                 </div>
-                {supplier.orderingNotes && (
-                  <p className="text-muted-foreground mt-2 text-xs sm:text-sm">
-                    {supplier.orderingNotes}
-                  </p>
-                )}
-              </div>
-              <div className="ml-auto flex shrink-0 items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setViewPartsSupplierId(supplier.id)}
-                  className="hidden h-11 sm:inline-flex"
-                >
-                  <PackageIcon className="mr-2 h-4 w-4" />
-                  View Parts
-                </Button>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-11 w-11"
-                      aria-label={`Actions for ${supplier.name}`}
-                    >
-                      <MoreVerticalIcon className="h-5 w-5" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem
-                      onClick={() => setEditSupplierId(supplier.id)}
-                    >
-                      <EditIcon className="mr-2 h-4 w-4" />
-                      Edit
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => setViewPartsSupplierId(supplier.id)}
-                      className="sm:hidden"
-                    >
-                      <PackageIcon className="mr-2 h-4 w-4" />
-                      View Parts
-                    </DropdownMenuItem>
-                    {canDeleteCoreRecords && (
-                      <DropdownMenuItem
-                        variant="destructive"
-                        onClick={() => handleDelete(supplier.id, supplier.name)}
+                <div className="ml-auto flex shrink-0 items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setEditSupplierId(supplier.id)}
+                    className="h-11"
+                  >
+                    <UsersIcon className="mr-2 h-4 w-4" />
+                    Edit Contacts
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setViewPartsSupplierId(supplier.id)}
+                    className="hidden h-11 sm:inline-flex"
+                  >
+                    <PackageIcon className="mr-2 h-4 w-4" />
+                    View Parts
+                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-11 w-11"
+                        aria-label={`Actions for ${supplier.name}`}
                       >
-                        <TrashIcon className="mr-2 h-4 w-4" />
-                        Delete
+                        <MoreVerticalIcon className="h-5 w-5" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        onClick={() => setEditSupplierId(supplier.id)}
+                      >
+                        <EditIcon className="mr-2 h-4 w-4" />
+                        Edit
                       </DropdownMenuItem>
-                    )}
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                      <DropdownMenuItem
+                        onClick={() => setViewPartsSupplierId(supplier.id)}
+                        className="sm:hidden"
+                      >
+                        <PackageIcon className="mr-2 h-4 w-4" />
+                        View Parts
+                      </DropdownMenuItem>
+                      {canDeleteCoreRecords && (
+                        <DropdownMenuItem
+                          variant="destructive"
+                          onClick={() =>
+                            handleDelete(supplier.id, supplier.name)
+                          }
+                        >
+                          <TrashIcon className="mr-2 h-4 w-4" />
+                          Delete
+                        </DropdownMenuItem>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
@@ -206,6 +239,7 @@ export function SupplierList() {
             contactName: editingSupplier.contactName,
             contactEmail: editingSupplier.contactEmail,
             contactPhone: editingSupplier.contactPhone,
+            contacts: editingSupplier.contacts,
             orderingNotes: editingSupplier.orderingNotes,
             locationId: editingSupplier.locationId,
           }}

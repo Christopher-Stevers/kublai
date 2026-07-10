@@ -16,6 +16,13 @@ import {
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { LocationSelector } from "~/components/ui/LocationSelector";
+import {
+  createEmptySupplierContact,
+  getPrimarySupplierContact,
+  normalizeSupplierContacts,
+  type SupplierContact,
+  type SupplierContactEmailRole,
+} from "~/lib/supplier-contacts";
 
 interface SupplierFormDialogProps {
   open: boolean;
@@ -27,6 +34,7 @@ interface SupplierFormDialogProps {
     contactName?: string | null;
     contactEmail?: string | null;
     contactPhone?: string | null;
+    contacts?: SupplierContact[] | null;
     orderingNotes?: string | null;
     locationId?: string | null;
   };
@@ -50,6 +58,9 @@ export function SupplierFormDialog({
   );
   const [contactPhone, setContactPhone] = useState(
     initialData?.contactPhone || "",
+  );
+  const [contacts, setContacts] = useState<SupplierContact[]>(() =>
+    normalizeSupplierContacts(initialData?.contacts, initialData),
   );
   const [orderingNotes, setOrderingNotes] = useState(
     initialData?.orderingNotes || "",
@@ -75,6 +86,13 @@ export function SupplierFormDialog({
       if (initialData?.contactPhone !== undefined) {
         setContactPhone(initialData.contactPhone ?? "");
       }
+      if (initialData) {
+        setContacts(
+          normalizeSupplierContacts(initialData.contacts, initialData),
+        );
+      } else if (!supplierId) {
+        setContacts([]);
+      }
       if (initialData?.orderingNotes !== undefined) {
         setOrderingNotes(initialData.orderingNotes ?? "");
       }
@@ -87,26 +105,37 @@ export function SupplierFormDialog({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
+    const normalizedContacts = normalizeSupplierContacts(contacts, {
+      contactName,
+      contactEmail,
+      contactPhone,
+    });
+    const primaryContact = getPrimarySupplierContact(normalizedContacts);
     const fields = {
       name,
-      contactName: contactName || null,
-      contactEmail: contactEmail || null,
-      contactPhone: contactPhone || null,
+      contactName: primaryContact?.name ?? null,
+      contactEmail: primaryContact?.email ?? null,
+      contactPhone: primaryContact?.phone ?? null,
+      contacts: normalizedContacts,
       orderingNotes: orderingNotes || null,
       locationId: locationId ?? null,
     };
 
     if (supplierId) {
-      void mutateMaterialListAndSync(getMaterialListReplicache().mutate.updateSupplier({
-        supplierId,
-        ...fields,
-      }));
+      void mutateMaterialListAndSync(
+        getMaterialListReplicache().mutate.updateSupplier({
+          supplierId,
+          ...fields,
+        }),
+      );
     } else {
       const newId = crypto.randomUUID();
-      void mutateMaterialListAndSync(getMaterialListReplicache().mutate.createSupplier({
-        supplierId: newId,
-        ...fields,
-      }));
+      void mutateMaterialListAndSync(
+        getMaterialListReplicache().mutate.createSupplier({
+          supplierId: newId,
+          ...fields,
+        }),
+      );
       onSupplierCreated?.(newId);
     }
 
@@ -115,8 +144,41 @@ export function SupplierFormDialog({
     setContactName("");
     setContactEmail("");
     setContactPhone("");
+    setContacts([]);
     setOrderingNotes("");
     setLocationId(null);
+  };
+
+  const updateContact = (
+    contactId: string,
+    updates: Partial<Omit<SupplierContact, "id">>,
+  ) => {
+    setContacts((current) =>
+      current.map((contact) =>
+        contact.id === contactId
+          ? {
+              id: contact.id,
+              name: "name" in updates ? (updates.name ?? null) : contact.name,
+              email:
+                "email" in updates ? (updates.email ?? null) : contact.email,
+              phone:
+                "phone" in updates ? (updates.phone ?? null) : contact.phone,
+              emailRole: (updates.emailRole ??
+                contact.emailRole) as SupplierContactEmailRole,
+            }
+          : contact,
+      ),
+    );
+  };
+
+  const addContact = () => {
+    setContacts((current) => [...current, createEmptySupplierContact()]);
+  };
+
+  const removeContact = (contactId: string) => {
+    setContacts((current) =>
+      current.filter((contact) => contact.id !== contactId),
+    );
   };
 
   const isPending = false;
@@ -125,7 +187,9 @@ export function SupplierFormDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{supplierId ? "Edit Supplier" : "Add Supplier"}</DialogTitle>
+          <DialogTitle>
+            {supplierId ? "Edit Supplier" : "Add Supplier"}
+          </DialogTitle>
           <DialogDescription>
             {supplierId
               ? "Update supplier information."
@@ -139,22 +203,88 @@ export function SupplierFormDialog({
             placeholder="Supplier name"
             required
           />
-          <Input
-            value={contactName}
-            onChange={(e) => setContactName(e.target.value)}
-            placeholder="Contact name"
-          />
-          <Input
-            value={contactEmail}
-            onChange={(e) => setContactEmail(e.target.value)}
-            placeholder="Contact email"
-            type="email"
-          />
-          <Input
-            value={contactPhone}
-            onChange={(e) => setContactPhone(e.target.value)}
-            placeholder="Contact phone"
-          />
+          <div className="space-y-3 rounded-md border p-3">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-medium">Contacts</h3>
+                <p className="text-muted-foreground text-xs">
+                  Choose who goes in To or CC when emailing orders.
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={addContact}
+              >
+                Add Contact
+              </Button>
+            </div>
+
+            {contacts.length === 0 ? (
+              <p className="text-muted-foreground text-sm">
+                No contacts added.
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {contacts.map((contact) => (
+                  <div
+                    key={contact.id}
+                    className="grid gap-2 rounded-md border p-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_5rem_auto]"
+                  >
+                    <Input
+                      value={contact.name ?? ""}
+                      onChange={(e) =>
+                        updateContact(contact.id, {
+                          name: e.target.value || null,
+                        })
+                      }
+                      placeholder="Name"
+                    />
+                    <Input
+                      value={contact.email ?? ""}
+                      onChange={(e) =>
+                        updateContact(contact.id, {
+                          email: e.target.value || null,
+                        })
+                      }
+                      placeholder="Email"
+                      type="email"
+                    />
+                    <Input
+                      value={contact.phone ?? ""}
+                      onChange={(e) =>
+                        updateContact(contact.id, {
+                          phone: e.target.value || null,
+                        })
+                      }
+                      placeholder="Phone"
+                    />
+                    <select
+                      value={contact.emailRole}
+                      onChange={(e) =>
+                        updateContact(contact.id, {
+                          emailRole: e.target.value as SupplierContactEmailRole,
+                        })
+                      }
+                      className="border-input focus-visible:border-ring focus-visible:ring-ring/50 h-9 rounded-md border bg-white px-3 py-1 text-sm shadow-xs outline-none focus-visible:ring-[3px]"
+                    >
+                      <option value="to">To</option>
+                      <option value="cc">CC</option>
+                    </select>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => removeContact(contact.id)}
+                    >
+                      Remove
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
           <Input
             value={orderingNotes}
             onChange={(e) => setOrderingNotes(e.target.value)}

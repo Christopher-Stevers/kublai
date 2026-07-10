@@ -6,8 +6,26 @@ import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Badge } from "~/components/ui/badge";
 import { Input } from "~/components/ui/input";
-import { Loader2, ExternalLink, WifiOffIcon, DownloadIcon, CheckCircle2Icon } from "lucide-react";
+import {
+  Loader2,
+  ExternalLink,
+  WifiOffIcon,
+  DownloadIcon,
+  CheckCircle2Icon,
+  MailIcon,
+  MonitorIcon,
+  MoonIcon,
+  SunIcon,
+} from "lucide-react";
 import { useOnlineStatus } from "~/hooks/use-online-status";
+import {
+  EMAIL_CLIENT_OPTIONS,
+  type EmailClientPreference,
+  getPreferredEmailClient,
+  setPreferredEmailClient,
+} from "~/lib/mailto";
+import { useThemePreference } from "~/components/app/ThemeProvider";
+import { type ThemePreference } from "~/lib/theme";
 
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
@@ -19,13 +37,16 @@ function isStandaloneApp() {
   return (
     window.matchMedia("(display-mode: standalone)").matches ||
     ("standalone" in window.navigator &&
-      (window.navigator as Navigator & { standalone?: boolean }).standalone === true)
+      (window.navigator as Navigator & { standalone?: boolean }).standalone ===
+        true)
   );
 }
 
 function isAppleTouchDevice() {
   if (typeof window === "undefined") return false;
-  const navigatorWithTouch = window.navigator as Navigator & { maxTouchPoints?: number };
+  const navigatorWithTouch = window.navigator as Navigator & {
+    maxTouchPoints?: number;
+  };
   return (
     /iPad|iPhone|iPod/.test(window.navigator.userAgent) ||
     (window.navigator.platform === "MacIntel" &&
@@ -36,11 +57,15 @@ function isAppleTouchDevice() {
 export default function AccountPage() {
   const [isCreatingPortal, setIsCreatingPortal] = useState(false);
   const [name, setName] = useState("");
-  const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [installPrompt, setInstallPrompt] =
+    useState<BeforeInstallPromptEvent | null>(null);
   const [isInstalled, setIsInstalled] = useState(false);
   const [usesAppleInstallFlow, setUsesAppleInstallFlow] = useState(false);
+  const [emailClient, setEmailClient] =
+    useState<EmailClientPreference>("default");
   const isOnline = useOnlineStatus();
   const utils = api.useUtils();
+  const { theme, setTheme } = useThemePreference();
 
   const { data: me } = api.user.getMe.useQuery(undefined, {
     enabled: isOnline,
@@ -53,6 +78,7 @@ export default function AccountPage() {
   useEffect(() => {
     setIsInstalled(isStandaloneApp());
     setUsesAppleInstallFlow(isAppleTouchDevice());
+    setEmailClient(getPreferredEmailClient());
 
     const handleBeforeInstallPrompt = (event: Event) => {
       event.preventDefault();
@@ -68,14 +94,18 @@ export default function AccountPage() {
     window.addEventListener("appinstalled", handleAppInstalled);
 
     return () => {
-      window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+      window.removeEventListener(
+        "beforeinstallprompt",
+        handleBeforeInstallPrompt,
+      );
       window.removeEventListener("appinstalled", handleAppInstalled);
     };
   }, []);
 
-  const { data: status, isLoading } = api.payment.getSubscriptionStatus.useQuery(undefined, {
-    enabled: isOnline,
-  });
+  const { data: status, isLoading } =
+    api.payment.getSubscriptionStatus.useQuery(undefined, {
+      enabled: isOnline,
+    });
   const createPortalSession = api.payment.createPortalSession.useMutation({
     onSuccess: (data) => {
       if (data.url) {
@@ -114,6 +144,21 @@ export default function AccountPage() {
     }
   };
 
+  const handleEmailClientChange = (client: EmailClientPreference) => {
+    setEmailClient(client);
+    setPreferredEmailClient(client);
+  };
+
+  const themeOptions: {
+    value: ThemePreference;
+    label: string;
+    icon: typeof SunIcon;
+  }[] = [
+    { value: "system", label: "System", icon: MonitorIcon },
+    { value: "light", label: "Light", icon: SunIcon },
+    { value: "dark", label: "Dark", icon: MoonIcon },
+  ];
+
   if (isLoading && isOnline) {
     return (
       <div className="px-4 py-6 sm:px-6 sm:py-8">
@@ -145,11 +190,15 @@ export default function AccountPage() {
             <CardContent className="space-y-4">
               {!isOnline && (
                 <div className="inline-flex items-center gap-2 rounded-full bg-orange-100 px-3 py-1 text-xs font-medium text-orange-900">
-                  <WifiOffIcon className="h-3 w-3" /> Profile changes require internet
+                  <WifiOffIcon className="h-3 w-3" /> Profile changes require
+                  internet
                 </div>
               )}
               <div className="space-y-1">
-                <label htmlFor="account-name" className="text-sm font-medium text-gray-900">
+                <label
+                  htmlFor="account-name"
+                  className="text-sm font-medium text-gray-900"
+                >
                   Name
                 </label>
                 <Input
@@ -165,7 +214,12 @@ export default function AccountPage() {
               </div>
               <Button
                 onClick={handleSaveProfile}
-                disabled={!isOnline || !name.trim() || updateProfile.isPending || name.trim() === (me?.name ?? "")}
+                disabled={
+                  !isOnline ||
+                  !name.trim() ||
+                  updateProfile.isPending ||
+                  name.trim() === (me?.name ?? "")
+                }
               >
                 {updateProfile.isPending ? "Saving..." : "Save Name"}
               </Button>
@@ -178,9 +232,12 @@ export default function AccountPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-1">
-                <p className="text-sm font-medium text-gray-900">Install ForemenHQ</p>
+                <p className="text-sm font-medium text-gray-900">
+                  Install ForemenHQ
+                </p>
                 <p className="text-muted-foreground text-sm">
-                  Add the app to your device for a faster, full-screen experience.
+                  Add the app to your device for a faster, full-screen
+                  experience.
                 </p>
               </div>
 
@@ -206,6 +263,67 @@ export default function AccountPage() {
                   </p>
                 </div>
               )}
+
+              <div className="border-t border-gray-200 pt-4">
+                <p className="mb-2 text-sm font-medium text-gray-900">
+                  Appearance
+                </p>
+                <div className="grid grid-cols-3 gap-2 sm:max-w-sm">
+                  {themeOptions.map((option) => {
+                    const Icon = option.icon;
+                    const isSelected = theme === option.value;
+
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => setTheme(option.value)}
+                        className={`flex min-h-16 flex-col items-center justify-center gap-1 rounded-md border px-2 py-2 text-sm font-medium transition-colors ${
+                          isSelected
+                            ? "border-gray-900 bg-gray-900 text-white"
+                            : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+                        }`}
+                        aria-pressed={isSelected}
+                      >
+                        <Icon className="h-4 w-4" />
+                        <span>{option.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="text-muted-foreground mt-2 text-xs">
+                  Saved on this device.
+                </p>
+              </div>
+
+              <div className="border-t border-gray-200 pt-4">
+                <label
+                  htmlFor="email-client"
+                  className="mb-2 flex items-center gap-2 text-sm font-medium text-gray-900"
+                >
+                  <MailIcon className="h-4 w-4 text-gray-500" />
+                  Email client
+                </label>
+                <select
+                  id="email-client"
+                  value={emailClient}
+                  onChange={(event) =>
+                    handleEmailClientChange(
+                      event.target.value as EmailClientPreference,
+                    )
+                  }
+                  className="border-input bg-background ring-offset-background focus-visible:ring-ring h-9 w-full rounded-md border px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-offset-2 sm:max-w-xs"
+                >
+                  {EMAIL_CLIENT_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-muted-foreground mt-2 text-xs">
+                  Orders open with this choice on the current device.
+                </p>
+              </div>
             </CardContent>
           </Card>
 
@@ -216,7 +334,8 @@ export default function AccountPage() {
             <CardContent className="space-y-4">
               {!isOnline && (
                 <div className="inline-flex items-center gap-2 rounded-full bg-orange-100 px-3 py-1 text-xs font-medium text-orange-900">
-                  <WifiOffIcon className="h-3 w-3" /> Account billing requires internet
+                  <WifiOffIcon className="h-3 w-3" /> Account billing requires
+                  internet
                 </div>
               )}
               <div className="flex items-center gap-2">
@@ -240,16 +359,22 @@ export default function AccountPage() {
               {status?.hasActiveSubscription && (
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-900">Subscription Status:</span>
+                    <span className="text-sm font-medium text-gray-900">
+                      Subscription Status:
+                    </span>
                     <Badge variant="outline">
                       {status.subscriptionStatus ?? "Unknown"}
                     </Badge>
                   </div>
                   {status.subscriptionEndsAt && (
                     <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium text-gray-900">Renews:</span>
+                      <span className="text-sm font-medium text-gray-900">
+                        Renews:
+                      </span>
                       <span className="text-sm text-gray-600">
-                        {new Date(status.subscriptionEndsAt).toLocaleDateString()}
+                        {new Date(
+                          status.subscriptionEndsAt,
+                        ).toLocaleDateString()}
                       </span>
                     </div>
                   )}
@@ -277,13 +402,19 @@ export default function AccountPage() {
               {status?.hasOneTimeAccess && status.oneTimePurchaseDate && (
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-900">Purchase Type:</span>
+                    <span className="text-sm font-medium text-gray-900">
+                      Purchase Type:
+                    </span>
                     <Badge variant="outline">One-Time Purchase</Badge>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-900">Purchased:</span>
+                    <span className="text-sm font-medium text-gray-900">
+                      Purchased:
+                    </span>
                     <span className="text-sm text-gray-600">
-                      {new Date(status.oneTimePurchaseDate).toLocaleDateString()}
+                      {new Date(
+                        status.oneTimePurchaseDate,
+                      ).toLocaleDateString()}
                     </span>
                   </div>
                 </div>

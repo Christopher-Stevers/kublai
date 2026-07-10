@@ -1,9 +1,12 @@
+import type { SupplierContact } from "~/lib/supplier-contacts";
+
 export interface OfflineSupplierOption {
   id: string;
   name: string;
   contactName?: string | null;
   contactEmail?: string | null;
   contactPhone?: string | null;
+  contacts?: SupplierContact[] | null;
   orderingNotes?: string | null;
   locationId?: string | null;
   location?: {
@@ -56,7 +59,13 @@ export type OfflineSupplierMutation =
 
 type SupplierEditableFields = Pick<
   OfflineSupplierOption,
-  "name" | "contactName" | "contactEmail" | "contactPhone" | "orderingNotes" | "locationId"
+  | "name"
+  | "contactName"
+  | "contactEmail"
+  | "contactPhone"
+  | "contacts"
+  | "orderingNotes"
+  | "locationId"
 >;
 
 const STORAGE_KEY = "foremanhq.offline.suppliers";
@@ -110,7 +119,9 @@ export function getOfflineSupplierMutationQueue(): OfflineSupplierMutation[] {
   }
 }
 
-export function setOfflineSupplierMutationQueue(queue: OfflineSupplierMutation[]) {
+export function setOfflineSupplierMutationQueue(
+  queue: OfflineSupplierMutation[],
+) {
   if (typeof window === "undefined") return;
   if (queue.length === 0) {
     window.localStorage.removeItem(QUEUE_KEY);
@@ -125,7 +136,9 @@ function enqueueSupplierMutation(mutation: OfflineSupplierMutation) {
 
   if (mutation.type === "updateSupplier") {
     const createIndex = queue.findIndex(
-      (item) => item.type === "createSupplier" && item.localSupplierId === mutation.supplierId,
+      (item) =>
+        item.type === "createSupplier" &&
+        item.localSupplierId === mutation.supplierId,
     );
     if (createIndex >= 0) {
       const createMutation = queue[createIndex];
@@ -140,7 +153,9 @@ function enqueueSupplierMutation(mutation: OfflineSupplierMutation) {
     }
 
     const updateIndex = queue.findIndex(
-      (item) => item.type === "updateSupplier" && item.supplierId === mutation.supplierId,
+      (item) =>
+        item.type === "updateSupplier" &&
+        item.supplierId === mutation.supplierId,
     );
     if (updateIndex >= 0) {
       const existing = queue[updateIndex];
@@ -158,14 +173,19 @@ function enqueueSupplierMutation(mutation: OfflineSupplierMutation) {
 
   if (mutation.type === "deleteSupplier") {
     const createIndex = queue.findIndex(
-      (item) => item.type === "createSupplier" && item.localSupplierId === mutation.supplierId,
+      (item) =>
+        item.type === "createSupplier" &&
+        item.localSupplierId === mutation.supplierId,
     );
     if (createIndex >= 0) {
       setOfflineSupplierMutationQueue(
         queue.filter(
           (item, index) =>
             index !== createIndex &&
-            !(item.type === "updateSupplier" && item.supplierId === mutation.supplierId),
+            !(
+              item.type === "updateSupplier" &&
+              item.supplierId === mutation.supplierId
+            ),
         ),
       );
       return;
@@ -174,8 +194,14 @@ function enqueueSupplierMutation(mutation: OfflineSupplierMutation) {
     setOfflineSupplierMutationQueue([
       ...queue.filter(
         (item) =>
-          !(item.type === "updateSupplier" && item.supplierId === mutation.supplierId) &&
-          !(item.type === "deleteSupplier" && item.supplierId === mutation.supplierId),
+          !(
+            item.type === "updateSupplier" &&
+            item.supplierId === mutation.supplierId
+          ) &&
+          !(
+            item.type === "deleteSupplier" &&
+            item.supplierId === mutation.supplierId
+          ),
       ),
       mutation,
     ]);
@@ -193,6 +219,7 @@ export function createOfflineSupplier(fields: SupplierEditableFields) {
     contactName: fields.contactName ?? null,
     contactEmail: fields.contactEmail ?? null,
     contactPhone: fields.contactPhone ?? null,
+    contacts: fields.contacts ?? null,
     orderingNotes: fields.orderingNotes ?? null,
     locationId: fields.locationId ?? null,
     location: null,
@@ -208,7 +235,10 @@ export function createOfflineSupplier(fields: SupplierEditableFields) {
   return supplier;
 }
 
-export function updateOfflineSupplier(supplierId: string, updates: SupplierEditableFields) {
+export function updateOfflineSupplier(
+  supplierId: string,
+  updates: SupplierEditableFields,
+) {
   setOfflineSuppliers(
     (getOfflineSuppliers() ?? []).map((supplier) =>
       supplier.id === supplierId
@@ -218,6 +248,7 @@ export function updateOfflineSupplier(supplierId: string, updates: SupplierEdita
             contactName: updates.contactName ?? null,
             contactEmail: updates.contactEmail ?? null,
             contactPhone: updates.contactPhone ?? null,
+            contacts: updates.contacts ?? supplier.contacts ?? null,
             orderingNotes: updates.orderingNotes ?? null,
             locationId: updates.locationId ?? null,
           }
@@ -233,7 +264,11 @@ export function updateOfflineSupplier(supplierId: string, updates: SupplierEdita
 }
 
 export function tombstoneOfflineSupplier(supplierId: string) {
-  setOfflineSuppliers((getOfflineSuppliers() ?? []).filter((supplier) => supplier.id !== supplierId));
+  setOfflineSuppliers(
+    (getOfflineSuppliers() ?? []).filter(
+      (supplier) => supplier.id !== supplierId,
+    ),
+  );
   enqueueSupplierMutation({
     type: "deleteSupplier",
     supplierId,
@@ -241,18 +276,29 @@ export function tombstoneOfflineSupplier(supplierId: string) {
   });
 }
 
-export function remapOfflineSupplierId(localSupplierId: string, serverSupplier: OfflineSupplierOption) {
+export function remapOfflineSupplierId(
+  localSupplierId: string,
+  serverSupplier: OfflineSupplierOption,
+) {
   setOfflineSuppliers(
     (getOfflineSuppliers() ?? []).map((supplier) =>
-      supplier.id === localSupplierId ? { ...supplier, ...serverSupplier, id: serverSupplier.id } : supplier,
+      supplier.id === localSupplierId
+        ? { ...supplier, ...serverSupplier, id: serverSupplier.id }
+        : supplier,
     ),
   );
   setOfflineSupplierMutationQueue(
     getOfflineSupplierMutationQueue().map((mutation) => {
-      if (mutation.type === "updateSupplier" && mutation.supplierId === localSupplierId) {
+      if (
+        mutation.type === "updateSupplier" &&
+        mutation.supplierId === localSupplierId
+      ) {
         return { ...mutation, supplierId: serverSupplier.id };
       }
-      if (mutation.type === "deleteSupplier" && mutation.supplierId === localSupplierId) {
+      if (
+        mutation.type === "deleteSupplier" &&
+        mutation.supplierId === localSupplierId
+      ) {
         return { ...mutation, supplierId: serverSupplier.id };
       }
       return mutation;
@@ -261,7 +307,8 @@ export function remapOfflineSupplierId(localSupplierId: string, serverSupplier: 
 }
 
 function getOfflinePartSuppliersMap() {
-  if (typeof window === "undefined") return {} as Record<string, OfflinePartSupplier[]>;
+  if (typeof window === "undefined")
+    return {} as Record<string, OfflinePartSupplier[]>;
   const raw = window.localStorage.getItem(PART_SUPPLIERS_KEY);
   if (!raw) return {} as Record<string, OfflinePartSupplier[]>;
   try {
@@ -271,7 +318,9 @@ function getOfflinePartSuppliersMap() {
   }
 }
 
-function setOfflinePartSuppliersMap(map: Record<string, OfflinePartSupplier[]>) {
+function setOfflinePartSuppliersMap(
+  map: Record<string, OfflinePartSupplier[]>,
+) {
   if (typeof window === "undefined") return;
   window.localStorage.setItem(PART_SUPPLIERS_KEY, JSON.stringify(map));
   notifyOfflineSuppliersChanged();
@@ -307,20 +356,20 @@ export function addOfflinePartSupplier(
     supplier: { id: supplier.id, name: supplier.name },
   };
 
-  setOfflinePartSuppliers(
-    partDefinitionId,
-    [
-      ...existing
-        .filter((part) => part.supplierId !== supplier.id)
-        .map((part) =>
-          nextPart.isPreferred ? { ...part, isPreferred: false } : part,
-        ),
-      nextPart,
-    ],
-  );
+  setOfflinePartSuppliers(partDefinitionId, [
+    ...existing
+      .filter((part) => part.supplierId !== supplier.id)
+      .map((part) =>
+        nextPart.isPreferred ? { ...part, isPreferred: false } : part,
+      ),
+    nextPart,
+  ]);
 }
 
-export function removeOfflinePartSupplier(partDefinitionId: string, supplierPartId: string) {
+export function removeOfflinePartSupplier(
+  partDefinitionId: string,
+  supplierPartId: string,
+) {
   const existing = getOfflinePartSuppliers(partDefinitionId) ?? [];
   const filtered = existing.filter((part) => part.id !== supplierPartId);
   if (filtered.length === 0) return;
@@ -330,7 +379,10 @@ export function removeOfflinePartSupplier(partDefinitionId: string, supplierPart
   setOfflinePartSuppliers(partDefinitionId, filtered);
 }
 
-export function setOfflinePreferredSupplier(partDefinitionId: string, supplierId: string) {
+export function setOfflinePreferredSupplier(
+  partDefinitionId: string,
+  supplierId: string,
+) {
   setOfflinePartSuppliers(
     partDefinitionId,
     (getOfflinePartSuppliers(partDefinitionId) ?? []).map((part) => ({
@@ -340,7 +392,10 @@ export function setOfflinePreferredSupplier(partDefinitionId: string, supplierId
   );
 }
 
-export function makeOfflineSupplierPartId(partDefinitionId: string, supplierId: string) {
+export function makeOfflineSupplierPartId(
+  partDefinitionId: string,
+  supplierId: string,
+) {
   return `offline-supplier-part:${partDefinitionId}:${supplierId}`;
 }
 

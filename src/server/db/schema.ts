@@ -348,6 +348,7 @@ export const suppliers = createTable(
     contactName: d.varchar({ length: 255 }),
     contactEmail: d.varchar({ length: 255 }),
     contactPhone: d.varchar({ length: 50 }),
+    contacts: d.jsonb(),
     orderingNotes: d.text(),
     locationId: d
       .uuid()

@@ -3,6 +3,7 @@
 import { useCallback } from "react";
 import { tryGetMaterialListReplicache } from "~/lib/replicache-material-list";
 import { useReplicacheSubscribe } from "~/hooks/use-replicache-subscribe";
+import type { SupplierContact } from "~/lib/supplier-contacts";
 
 export interface ReplicacheSupplier {
   id: string;
@@ -10,6 +11,7 @@ export interface ReplicacheSupplier {
   contactName: string | null;
   contactEmail: string | null;
   contactPhone: string | null;
+  contacts?: SupplierContact[] | null;
   orderingNotes: string | null;
   locationId: string | null;
   createdAt: string;
@@ -26,13 +28,18 @@ function isSupplierRecord(value: unknown): value is ReplicacheSupplier {
   );
 }
 
-export function useReplicacheSuppliers({ enabled = true }: { enabled?: boolean } = {}) {
+export function useReplicacheSuppliers({
+  enabled = true,
+}: { enabled?: boolean } = {}) {
   const rep = enabled ? tryGetMaterialListReplicache() : null;
 
   const suppliers = useReplicacheSubscribe(
     rep,
     useCallback(async (tx) => {
-      const entries = await tx.scan({ prefix: "supplier/" }).entries().toArray();
+      const entries = await tx
+        .scan({ prefix: "supplier/" })
+        .entries()
+        .toArray();
       const result: ReplicacheSupplier[] = [];
       for (const [, value] of entries) {
         if (isSupplierRecord(value)) {
