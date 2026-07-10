@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import type {
   PatchOperation,
   PullRequestV1,
@@ -1303,33 +1303,21 @@ export async function handleMaterialListReplicachePull(
         : [];
 
       const orderIds = orderRows.map((order) => order.id);
-      const orderItemRows = orderIds.length
+      const orderVerificationRows = orderIds.length
         ? await tx
             .select({
               orderId: orderItems.orderId,
-              verificationStatus: orderItems.verificationStatus,
+              itemCount: sql<number>`count(*)::int`,
+              verifiedItemCount: sql<number>`count(*) filter (where ${orderItems.verificationStatus} in ('complete', 'partial', 'problem'))::int`,
             })
             .from(orderItems)
             .where(inArray(orderItems.orderId, orderIds))
+            .groupBy(orderItems.orderId)
         : [];
 
-      const verifiedStatuses = new Set(["complete", "partial", "problem"]);
-      const verificationByOrderId = new Map<
-        string,
-        { itemCount: number; verifiedItemCount: number }
-      >();
-
-      for (const item of orderItemRows) {
-        const counts = verificationByOrderId.get(item.orderId) ?? {
-          itemCount: 0,
-          verifiedItemCount: 0,
-        };
-        counts.itemCount += 1;
-        if (verifiedStatuses.has(item.verificationStatus)) {
-          counts.verifiedItemCount += 1;
-        }
-        verificationByOrderId.set(item.orderId, counts);
-      }
+      const verificationByOrderId = new Map(
+        orderVerificationRows.map((row) => [row.orderId, row]),
+      );
 
       const sentSupplierIdsByListId = new Map<string, Set<string>>();
       const verifiedSupplierIdsByListId = new Map<string, Set<string>>();

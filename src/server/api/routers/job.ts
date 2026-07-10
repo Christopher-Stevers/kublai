@@ -507,33 +507,21 @@ export const jobRouter = createTRPCRouter({
         : [];
 
       const orderIds = orderRows.map((row) => row.id);
-      const orderItemRows = orderIds.length
+      const orderVerificationRows = orderIds.length
         ? await ctx.db
             .select({
               orderId: orderItems.orderId,
-              verificationStatus: orderItems.verificationStatus,
+              itemCount: sql<number>`count(*)::int`,
+              verifiedItemCount: sql<number>`count(*) filter (where ${orderItems.verificationStatus} in ('complete', 'partial', 'problem'))::int`,
             })
             .from(orderItems)
             .where(inArray(orderItems.orderId, orderIds))
+            .groupBy(orderItems.orderId)
         : [];
 
-      const verifiedStatuses = new Set(["complete", "partial", "problem"]);
-      const verificationByOrderId = new Map<
-        string,
-        { itemCount: number; verifiedItemCount: number }
-      >();
-
-      for (const row of orderItemRows) {
-        const counts = verificationByOrderId.get(row.orderId) ?? {
-          itemCount: 0,
-          verifiedItemCount: 0,
-        };
-        counts.itemCount += 1;
-        if (verifiedStatuses.has(row.verificationStatus)) {
-          counts.verifiedItemCount += 1;
-        }
-        verificationByOrderId.set(row.orderId, counts);
-      }
+      const verificationByOrderId = new Map(
+        orderVerificationRows.map((row) => [row.orderId, row]),
+      );
 
       const sentSupplierIdsByListId = new Map<string, Set<string>>();
       const verifiedSupplierIdsByListId = new Map<string, Set<string>>();
@@ -541,7 +529,8 @@ export const jobRouter = createTRPCRouter({
         if (!row.materialListId || !row.supplierId) continue;
 
         const hasBeenSent =
-          !!row.sentAt || ["sent", "confirmed", "received"].includes(row.status);
+          !!row.sentAt ||
+          ["sent", "confirmed", "received"].includes(row.status);
         if (!hasBeenSent) continue;
 
         const supplierIds =
@@ -553,15 +542,17 @@ export const jobRouter = createTRPCRouter({
         const isVerified =
           !!verificationCounts &&
           verificationCounts.itemCount > 0 &&
-          verificationCounts.verifiedItemCount ===
-            verificationCounts.itemCount;
+          verificationCounts.verifiedItemCount === verificationCounts.itemCount;
         if (!isVerified) continue;
 
         const verifiedSupplierIds =
           verifiedSupplierIdsByListId.get(row.materialListId) ??
           new Set<string>();
         verifiedSupplierIds.add(row.supplierId);
-        verifiedSupplierIdsByListId.set(row.materialListId, verifiedSupplierIds);
+        verifiedSupplierIdsByListId.set(
+          row.materialListId,
+          verifiedSupplierIds,
+        );
       }
 
       return {
