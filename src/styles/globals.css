@@ -132,6 +132,7 @@ a {
 }
 
 .dark {
+  color-scheme: dark;
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.205 0 0);
@@ -176,46 +177,153 @@ a {
 
 @layer utilities {
   .dark .bg-white,
-  .dark .bg-gray-50 {
+  .dark .bg-gray-50,
+  .dark .bg-slate-50,
+  .dark .bg-zinc-50,
+  .dark .bg-neutral-50 {
     background-color: var(--card);
   }
 
-  .dark .bg-gray-100 {
+  .dark .bg-gray-100,
+  .dark .bg-slate-100,
+  .dark .bg-zinc-100,
+  .dark .bg-neutral-100 {
     background-color: var(--muted);
   }
 
   .dark .bg-gray-200,
-  .dark .bg-gray-300 {
+  .dark .bg-gray-300,
+  .dark .bg-slate-200,
+  .dark .bg-slate-300,
+  .dark .bg-zinc-200,
+  .dark .bg-zinc-300,
+  .dark .bg-neutral-200,
+  .dark .bg-neutral-300 {
     background-color: color-mix(in oklch, var(--muted) 72%, white 8%);
   }
 
   .dark .text-gray-400,
   .dark .text-gray-500,
-  .dark .text-gray-600 {
+  .dark .text-gray-600,
+  .dark .text-slate-400,
+  .dark .text-slate-500,
+  .dark .text-slate-600,
+  .dark .text-zinc-400,
+  .dark .text-zinc-500,
+  .dark .text-zinc-600,
+  .dark .text-neutral-400,
+  .dark .text-neutral-500,
+  .dark .text-neutral-600 {
     color: var(--muted-foreground);
   }
 
+  .dark .text-black,
   .dark .text-gray-700,
   .dark .text-gray-800,
   .dark .text-gray-900,
-  .dark .text-gray-950 {
+  .dark .text-gray-950,
+  .dark .text-slate-700,
+  .dark .text-slate-800,
+  .dark .text-slate-900,
+  .dark .text-slate-950,
+  .dark .text-zinc-700,
+  .dark .text-zinc-800,
+  .dark .text-zinc-900,
+  .dark .text-zinc-950,
+  .dark .text-neutral-700,
+  .dark .text-neutral-800,
+  .dark .text-neutral-900,
+  .dark .text-neutral-950 {
     color: var(--foreground);
   }
 
   .dark .border-gray-100,
   .dark .border-gray-200,
   .dark .border-gray-300,
-  .dark .divide-gray-200 > :not(:last-child) {
+  .dark .border-slate-100,
+  .dark .border-slate-200,
+  .dark .border-slate-300,
+  .dark .border-zinc-100,
+  .dark .border-zinc-200,
+  .dark .border-zinc-300,
+  .dark .border-neutral-100,
+  .dark .border-neutral-200,
+  .dark .border-neutral-300,
+  .dark .divide-gray-200 > :not(:last-child),
+  .dark .divide-slate-200 > :not(:last-child) {
     border-color: var(--border);
   }
 
   .dark .hover\:bg-gray-50:hover,
-  .dark .hover\:bg-gray-100:hover {
+  .dark .hover\:bg-gray-100:hover,
+  .dark .hover\:bg-slate-50:hover,
+  .dark .hover\:bg-slate-100:hover {
     background-color: var(--accent);
   }
 
-  .dark .hover\:text-gray-900:hover {
+  .dark .hover\:text-gray-900:hover,
+  .dark .hover\:text-slate-900:hover {
     color: var(--foreground);
+  }
+
+  .dark .bg-blue-50,
+  .dark .bg-blue-100 {
+    background-color: oklch(0.35 0.11 255 / 45%);
+  }
+
+  .dark .bg-emerald-50,
+  .dark .bg-emerald-100,
+  .dark .bg-green-50,
+  .dark .bg-green-100 {
+    background-color: oklch(0.34 0.09 160 / 42%);
+  }
+
+  .dark .bg-amber-50,
+  .dark .bg-amber-100,
+  .dark .bg-yellow-50,
+  .dark .bg-yellow-100 {
+    background-color: oklch(0.36 0.08 75 / 46%);
+  }
+
+  .dark .bg-red-50,
+  .dark .bg-red-100 {
+    background-color: oklch(0.34 0.1 25 / 44%);
+  }
+
+  .dark .text-blue-800,
+  .dark .text-blue-900,
+  .dark .text-blue-950 {
+    color: oklch(0.82 0.09 250);
+  }
+
+  .dark .text-emerald-700,
+  .dark .text-emerald-800,
+  .dark .text-emerald-900,
+  .dark .text-green-700,
+  .dark .text-green-800,
+  .dark .text-green-900 {
+    color: oklch(0.84 0.11 155);
+  }
+
+  .dark .text-amber-700,
+  .dark .text-amber-800,
+  .dark .text-amber-900,
+  .dark .text-yellow-700,
+  .dark .text-yellow-800,
+  .dark .text-yellow-900 {
+    color: oklch(0.87 0.12 85);
+  }
+
+  .dark .border-blue-100,
+  .dark .border-blue-200,
+  .dark .border-emerald-200,
+  .dark .border-green-200,
+  .dark .border-amber-200,
+  .dark .border-amber-300,
+  .dark .border-yellow-200,
+  .dark .border-red-200,
+  .dark .border-red-300 {
+    border-color: color-mix(in oklch, currentColor 38%, transparent);
   }
 
   .dark .shadow-sm,
@@ -223,5 +331,16 @@ a {
   .dark .shadow-lg,
   .dark .shadow-xl {
     --tw-shadow-color: oklch(0 0 0 / 35%);
+  }
+
+  .dark input:not([type="checkbox"]):not([type="radio"]),
+  .dark textarea,
+  .dark select {
+    color: var(--foreground);
+  }
+
+  .dark ::selection {
+    background-color: color-mix(in oklch, var(--ring) 55%, transparent);
+    color: var(--foreground);
   }
 }

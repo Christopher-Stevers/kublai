@@ -34,21 +34,21 @@ export function VerticalPickerOverlay<T>({
 }) {
   return (
     <div
-      className={`${className} inset-0 z-[90] flex touch-none select-none bg-black/20 backdrop-blur-[1px]`}
+      className={`${className} inset-0 z-[90] flex touch-none select-none bg-black/20 backdrop-blur-[1px] dark:bg-black/55`}
       style={{ WebkitUserSelect: "none", userSelect: "none", WebkitTouchCallout: "none" }}
     >
       <div className="flex h-full w-full p-2 sm:p-3">
         <div
-          className="flex h-full w-full flex-col rounded-[2rem] bg-white/18 px-4 py-5 text-slate-950 shadow-2xl ring-1 ring-white/20 backdrop-blur-md sm:px-8 sm:py-8"
+          className="flex h-full w-full flex-col rounded-[2rem] bg-white/18 px-4 py-5 text-slate-950 shadow-2xl ring-1 ring-white/20 backdrop-blur-md dark:bg-slate-950/75 dark:text-slate-50 dark:ring-white/10 sm:px-8 sm:py-8"
           style={{ WebkitUserSelect: "none", userSelect: "none", WebkitTouchCallout: "none" }}
         >
           <div className="mb-6 text-center sm:mb-8">
-            <div className="text-base font-medium uppercase tracking-[0.22em] text-slate-900/80 sm:text-lg">
+            <div className="text-base font-medium uppercase tracking-[0.22em] text-slate-900/80 dark:text-slate-200/80 sm:text-lg">
               {title}
             </div>
             {subtitle && (
               <div
-                className="mt-2 line-clamp-2 text-base font-semibold text-slate-950 sm:text-xl"
+                className="mt-2 line-clamp-2 text-base font-semibold text-slate-950 dark:text-slate-50 sm:text-xl"
                 style={{
                   WebkitTextStroke: "0.35px rgba(255,255,255,0.7)",
                   textShadow: SUBTITLE_TEXT_SHADOW,
@@ -85,12 +85,14 @@ export function VerticalPickerOverlay<T>({
                     className="flex h-16 max-w-full select-none items-center justify-center px-3 text-center font-black leading-none tracking-normal sm:h-20"
                     style={{
                       opacity,
-                      color: isActive ? "#020617" : "#0f172a",
+                      color: isActive
+                        ? "var(--foreground)"
+                        : "var(--muted-foreground)",
                       transform: `scale(${scale})`,
                       fontSize,
                       WebkitTextStroke: isActive
-                        ? "1.35px rgba(255,255,255,0.92)"
-                        : "0.75px rgba(255,255,255,0.62)",
+                        ? "1.35px var(--background)"
+                        : "0.75px var(--background)",
                       textShadow: isActive ? ACTIVE_TEXT_SHADOW : INACTIVE_TEXT_SHADOW,
                     }}
                   >

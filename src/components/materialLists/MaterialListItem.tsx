@@ -156,7 +156,7 @@ function InitialsSyncBadge({
       title={`Added by ${displayName} • ${statusLabel}`}
       aria-label={`Added by ${displayName}. ${statusLabel}.`}
     >
-      <div className="relative flex h-9 w-9 items-center justify-center rounded-full border border-white/80 bg-white/95 text-xs font-semibold text-gray-800 shadow-sm ring-1 ring-black/10 backdrop-blur">
+      <div className="relative flex h-9 w-9 items-center justify-center rounded-full border border-white/80 bg-white/95 text-xs font-semibold text-gray-800 shadow-sm ring-1 ring-black/10 backdrop-blur dark:border-border dark:bg-card/95 dark:text-foreground dark:ring-black/40">
         {initials}
         <span
           className={cn(

@@ -6,6 +6,9 @@ import "./src/env.js";
 
 /** @type {import("next").NextConfig} */
 const config = {
+  // CI and local verification can build beside the live server instead of
+  // replacing the .next directory that `next start` is currently serving.
+  distDir: process.env.NEXT_DIST_DIR ?? ".next",
   // For Next.js 13+ App Router, we need to configure route handlers differently
   experimental: {
     serverActions: {
