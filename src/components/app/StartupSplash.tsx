@@ -24,6 +24,9 @@ const TOOLS: Array<{ Icon: LucideIcon; className: string }> = [
   { Icon: ShoppingCartIcon, className: "tool-8" },
 ];
 
+const FAST_LOAD_HOLD_MS = 550;
+const EXIT_ANIMATION_MS = 320;
+
 export function StartupSplash() {
   const [state, setState] = useState<"holding" | "leaving" | "hidden">(
     "holding",
@@ -35,11 +38,17 @@ export function StartupSplash() {
     const startedAt = performance.now();
 
     const leave = () => {
-      const minimumHoldMs = Math.max(0, 2200 - (performance.now() - startedAt));
+      const minimumHoldMs = Math.max(
+        0,
+        FAST_LOAD_HOLD_MS - (performance.now() - startedAt),
+      );
 
       leaveTimer = window.setTimeout(() => {
         setState("leaving");
-        hideTimer = window.setTimeout(() => setState("hidden"), 760);
+        hideTimer = window.setTimeout(
+          () => setState("hidden"),
+          EXIT_ANIMATION_MS,
+        );
       }, minimumHoldMs);
     };
 
@@ -189,15 +198,15 @@ export function StartupSplash() {
             }
 
             #foremenhq-startup-splash[data-state="leaving"] {
-              animation: foremenhq-splash-reveal 760ms ease-in forwards;
+              animation: foremenhq-splash-reveal ${EXIT_ANIMATION_MS}ms ease-in forwards;
             }
 
             #foremenhq-startup-splash[data-state="leaving"] .foremenhq-tool {
-              animation: foremenhq-tool-burst 760ms cubic-bezier(0.12, 0.84, 0.2, 1) forwards;
+              animation: foremenhq-tool-burst ${EXIT_ANIMATION_MS}ms cubic-bezier(0.12, 0.84, 0.2, 1) forwards;
             }
 
             #foremenhq-startup-splash[data-state="leaving"] .foremenhq-burst-ring {
-              animation: foremenhq-burst-ring 760ms ease-out forwards;
+              animation: foremenhq-burst-ring ${EXIT_ANIMATION_MS}ms ease-out forwards;
             }
 
             @keyframes foremenhq-grid-drift {
