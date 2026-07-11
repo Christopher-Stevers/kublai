@@ -446,9 +446,11 @@ export default function JobDetailPage({
             <h2 className="text-xl font-semibold text-gray-900">
               Material Lists
             </h2>
-            <p className="text-muted-foreground mt-1 text-sm">
-              Create and manage material lists for this job
-            </p>
+            {(!materialLists || materialLists.length === 0) && (
+              <p className="text-muted-foreground mt-1 text-sm">
+                Create and manage material lists for this job
+              </p>
+            )}
           </div>
           {(!materialLists || materialLists.length === 0) && (
             <Button

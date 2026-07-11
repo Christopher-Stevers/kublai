@@ -714,10 +714,12 @@ export function DashboardClient({
                   <h2 className="text-xl font-semibold text-gray-900">
                     Material Lists
                   </h2>
-                  <p className="text-muted-foreground mt-1 text-sm">
-                    Create and manage material lists offline. New lists sync
-                    when reconnected.
-                  </p>
+                  {offlineMaterialLists.length === 0 && (
+                    <p className="text-muted-foreground mt-1 text-sm">
+                      Create and manage material lists offline. New lists sync
+                      when reconnected.
+                    </p>
+                  )}
                 </div>
                 {offlineMaterialLists.length === 0 && (
                   <Button
