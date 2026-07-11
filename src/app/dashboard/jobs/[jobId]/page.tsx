@@ -450,14 +450,26 @@ export default function JobDetailPage({
               Create and manage material lists for this job
             </p>
           </div>
-          <Button
-            onClick={handleCreateNew}
-            size="lg"
-            className={`h-11 w-full sm:w-auto ${materialLists && materialLists.length > 0 ? "hidden sm:inline-flex" : ""}`}
-          >
-            <PlusIcon className="mr-2 h-5 w-5" />
-            New Material List
-          </Button>
+          {(!materialLists || materialLists.length === 0) && (
+            <Button
+              onClick={handleCreateNew}
+              size="lg"
+              className="h-11 w-full sm:w-auto"
+            >
+              <PlusIcon className="mr-2 h-5 w-5" />
+              New Material List
+            </Button>
+          )}
+          {materialLists && materialLists.length > 0 && (
+            <Button
+              onClick={handleCreateNew}
+              size="lg"
+              className="hidden h-11 sm:inline-flex sm:w-auto"
+            >
+              <PlusIcon className="mr-2 h-5 w-5" />
+              New Material List
+            </Button>
+          )}
         </div>
 
         {!materialLists || materialLists.length === 0 ? (
