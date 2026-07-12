@@ -427,7 +427,7 @@ export function DashboardClient({
     };
 
     return (
-      <div className="px-4 py-6 sm:px-6 sm:py-8">
+      <div className="px-4 pt-6 pb-24 sm:px-6 sm:py-8">
         <div className="mx-auto max-w-6xl">
           {!isBrowserOnline && (
             <div className="mb-4 flex flex-wrap items-center gap-2">
@@ -554,7 +554,7 @@ export function DashboardClient({
                   </>
                 )}
 
-                <div className="sticky bottom-0 z-10 -mx-4 mt-4 border-t bg-white px-4 pt-1.5 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:-mx-6 sm:px-6 sm:pt-2">
+                <div className="fixed inset-x-0 bottom-0 z-40 border-t bg-white px-4 pt-1.5 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:sticky sm:inset-x-auto sm:z-10 sm:-mx-6 sm:mt-4 sm:px-6 sm:pt-2">
                   <div className="mx-auto max-w-6xl">
                     <div className="space-y-1.5">
                       <div className="flex items-baseline gap-1.5">
