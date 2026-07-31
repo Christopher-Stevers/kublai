@@ -7,15 +7,24 @@
   "compatibility_flags": ["nodejs_compat"],
   "assets": {
     "directory": ".open-next/assets",
-    "binding": "ASSETS"
+    "binding": "ASSETS",
+  },
+  "r2_buckets": [
+    {
+      "binding": "CATALOGUE_IMAGES",
+      "bucket_name": "foremenhq-catalogue-images",
+    },
+  ],
+  "vars": {
+    "PHOTO_STORAGE_BACKEND": "r2",
   },
   "routes": [
     {
       "pattern": "foremanhq.stellarator.work",
-      "custom_domain": true
-    }
+      "custom_domain": true,
+    },
   ],
   "observability": {
-    "enabled": true
-  }
+    "enabled": true,
+  },
 }

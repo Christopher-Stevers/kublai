@@ -2,6 +2,7 @@ import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 
 import {
+  checksumCatalogueImage,
   convertCatalogueImageUpload,
   getCatalogueImageUrl,
   makeCatalogueImageFilename,
@@ -9,6 +10,8 @@ import {
   writeCatalogueImage,
 } from "~/server/catalogue/image-storage";
 import { getUserPermissions } from "~/server/auth/permissions";
+import { db } from "~/server/db";
+import { photoAssets } from "~/server/db/schema";
 import { ensureUser } from "~/server/utils/ensure-user";
 
 export const dynamic = "force-dynamic";
@@ -50,8 +53,29 @@ export async function POST(request: Request) {
     const filename = makeCatalogueImageFilename();
     const outputBuffer = await convertCatalogueImageUpload(file);
     await writeCatalogueImage(filename, outputBuffer);
+    const url = getCatalogueImageUrl(filename);
+    const [asset] = await db
+      .insert(photoAssets)
+      .values({
+        organizationId: user.organizationId,
+        storageKey: filename,
+        url,
+        originalFilename: file.name || filename,
+        contentType: "image/webp",
+        byteSize: outputBuffer.byteLength,
+        checksum: checksumCatalogueImage(outputBuffer),
+      })
+      .onConflictDoUpdate({
+        target: [photoAssets.organizationId, photoAssets.url],
+        set: {
+          byteSize: outputBuffer.byteLength,
+          checksum: checksumCatalogueImage(outputBuffer),
+          updatedAt: new Date(),
+        },
+      })
+      .returning({ id: photoAssets.id });
 
-    return NextResponse.json({ url: getCatalogueImageUrl(filename) });
+    return NextResponse.json({ url, assetId: asset?.id ?? null });
   } catch {
     return NextResponse.json(
       { error: "Could not process image" },

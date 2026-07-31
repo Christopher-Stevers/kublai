@@ -12,6 +12,7 @@ import {
   gte,
   lte,
   asc,
+  desc,
 } from "drizzle-orm";
 
 import { createTRPCRouter, hasDashboardAccess } from "~/server/api/trpc";
@@ -33,6 +34,7 @@ import {
   sizes,
   quoteItems,
   orderItems,
+  photoAssets,
 } from "~/server/db/schema";
 
 import {
@@ -43,6 +45,8 @@ import {
   parseSizeInput,
 } from "~/lib/size-utils";
 import {
+  checksumCatalogueImage,
+  deleteCatalogueImage,
   downloadRemoteCatalogueImage,
   getCatalogueImageUrl,
   makeCatalogueImageFilename,
@@ -1884,10 +1888,37 @@ export const catalogueRouter = createTRPCRouter({
       const outputBuffer = await downloadRemoteCatalogueImage(selectedImageUrl);
       await writeCatalogueImage(filename, outputBuffer);
       const localImageUrl = getCatalogueImageUrl(filename);
+      const [asset] = await ctx.db
+        .insert(photoAssets)
+        .values({
+          organizationId,
+          storageKey: filename,
+          url: localImageUrl,
+          originalFilename: filename,
+          contentType: "image/webp",
+          byteSize: outputBuffer.byteLength,
+          checksum: checksumCatalogueImage(outputBuffer),
+          sourceUrl: input.sourceUrl ?? selectedImageUrl,
+          notes: input.sourceTitle ?? null,
+        })
+        .onConflictDoUpdate({
+          target: [photoAssets.organizationId, photoAssets.url],
+          set: {
+            byteSize: outputBuffer.byteLength,
+            checksum: checksumCatalogueImage(outputBuffer),
+            sourceUrl: input.sourceUrl ?? selectedImageUrl,
+            notes: input.sourceTitle ?? null,
+            updatedAt: new Date(),
+          },
+        })
+        .returning({ id: photoAssets.id });
 
       await ctx.db
         .update(partDefinitions)
-        .set({ imageUrl: localImageUrl })
+        .set({
+          imageUrl: localImageUrl,
+          imageAssetId: asset?.id ?? null,
+        })
         .where(
           and(
             eq(partDefinitions.id, input.partId),
@@ -2140,7 +2171,30 @@ export const catalogueRouter = createTRPCRouter({
       const filename = makeCatalogueImageFilename();
       const outputBuffer = await downloadRemoteCatalogueImage(selectedImageUrl);
       await writeCatalogueImage(filename, outputBuffer);
-      return { imageUrl: getCatalogueImageUrl(filename) };
+      const imageUrl = getCatalogueImageUrl(filename);
+      const [asset] = await ctx.db
+        .insert(photoAssets)
+        .values({
+          organizationId: ctx.user.organizationId!,
+          storageKey: filename,
+          url: imageUrl,
+          originalFilename: filename,
+          contentType: "image/webp",
+          byteSize: outputBuffer.byteLength,
+          checksum: checksumCatalogueImage(outputBuffer),
+          sourceUrl: selectedImageUrl,
+        })
+        .onConflictDoUpdate({
+          target: [photoAssets.organizationId, photoAssets.url],
+          set: {
+            byteSize: outputBuffer.byteLength,
+            checksum: checksumCatalogueImage(outputBuffer),
+            sourceUrl: selectedImageUrl,
+            updatedAt: new Date(),
+          },
+        })
+        .returning({ id: photoAssets.id });
+      return { imageUrl, assetId: asset?.id ?? null };
     }),
 
   applyPhotoQueueImage: hasDashboardAccess
@@ -2209,7 +2263,16 @@ export const catalogueRouter = createTRPCRouter({
 
       const updated = await ctx.db
         .update(partDefinitions)
-        .set({ imageUrl: input.imageUrl })
+        .set({
+          imageUrl: input.imageUrl,
+          imageAssetId: sql`(
+            select ${photoAssets.id}
+            from ${photoAssets}
+            where ${photoAssets.organizationId} = ${organizationId}
+              and ${photoAssets.url} = ${input.imageUrl}
+            limit 1
+          )`,
+        })
         .where(
           and(
             eq(partDefinitions.organizationId, organizationId),
@@ -2224,6 +2287,207 @@ export const catalogueRouter = createTRPCRouter({
 
       publishCatalogueChange(organizationId);
       return { updatedCount: updated.length };
+    }),
+
+  listPhotoAssets: hasDashboardAccess
+    .input(
+      z.object({
+        query: z.string().max(200).optional(),
+        unusedOnly: z.boolean().optional(),
+        duplicatesOnly: z.boolean().optional(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const organizationId = ctx.user.organizationId;
+      if (!organizationId) return [];
+
+      const [assets, usageRows] = await Promise.all([
+        ctx.db
+          .select()
+          .from(photoAssets)
+          .where(eq(photoAssets.organizationId, organizationId))
+          .orderBy(desc(photoAssets.createdAt))
+          .limit(5000),
+        ctx.db
+          .select({
+            url: partDefinitions.imageUrl,
+            usageCount: sql<number>`count(*)::int`,
+          })
+          .from(partDefinitions)
+          .where(
+            and(
+              eq(partDefinitions.organizationId, organizationId),
+              isNotNull(partDefinitions.imageUrl),
+            ),
+          )
+          .groupBy(partDefinitions.imageUrl),
+      ]);
+
+      const usageByUrl = new Map(
+        usageRows.map((row) => [row.url, row.usageCount]),
+      );
+      const checksumCounts = new Map<string, number>();
+      for (const asset of assets) {
+        if (asset.checksum) {
+          checksumCounts.set(
+            asset.checksum,
+            (checksumCounts.get(asset.checksum) ?? 0) + 1,
+          );
+        }
+      }
+      const query = input.query?.trim().toLowerCase() ?? "";
+
+      return assets
+        .map((asset) => ({
+          ...asset,
+          usageCount: usageByUrl.get(asset.url) ?? 0,
+          duplicateCount: asset.checksum
+            ? (checksumCounts.get(asset.checksum) ?? 1)
+            : 1,
+        }))
+        .filter((asset) => !input.unusedOnly || asset.usageCount === 0)
+        .filter(
+          (asset) => !input.duplicatesOnly || asset.duplicateCount > 1,
+        )
+        .filter((asset) => {
+          if (!query) return true;
+          return [
+            asset.originalFilename,
+            asset.url,
+            asset.sourceUrl,
+            asset.notes,
+          ]
+            .filter(Boolean)
+            .join(" ")
+            .toLowerCase()
+            .includes(query);
+        });
+    }),
+
+  updatePhotoAsset: hasDashboardAccess
+    .input(
+      z.object({
+        assetId: z.string().uuid(),
+        notes: z.string().max(2000).optional().nullable(),
+        sourceUrl: z.string().url().optional().nullable(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      assertCanEditParts(ctx.user);
+      const organizationId = ctx.user.organizationId;
+      if (!organizationId) throw new Error("Organization required");
+
+      const [updated] = await ctx.db
+        .update(photoAssets)
+        .set({
+          notes: input.notes?.trim() || null,
+          sourceUrl: input.sourceUrl?.trim() || null,
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(photoAssets.id, input.assetId),
+            eq(photoAssets.organizationId, organizationId),
+          ),
+        )
+        .returning();
+      if (!updated) throw new Error("Photo asset not found");
+      return updated;
+    }),
+
+  replacePhotoAssetEverywhere: hasDashboardAccess
+    .input(
+      z.object({
+        sourceAssetId: z.string().uuid(),
+        replacementAssetId: z.string().uuid(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      assertCanEditParts(ctx.user);
+      const organizationId = ctx.user.organizationId;
+      if (!organizationId) throw new Error("Organization required");
+      if (input.sourceAssetId === input.replacementAssetId) {
+        throw new Error("Choose a different replacement photo");
+      }
+
+      const assets = await ctx.db
+        .select()
+        .from(photoAssets)
+        .where(
+          and(
+            eq(photoAssets.organizationId, organizationId),
+            inArray(photoAssets.id, [
+              input.sourceAssetId,
+              input.replacementAssetId,
+            ]),
+          ),
+        );
+      const source = assets.find((asset) => asset.id === input.sourceAssetId);
+      const replacement = assets.find(
+        (asset) => asset.id === input.replacementAssetId,
+      );
+      if (!source || !replacement) throw new Error("Photo asset not found");
+
+      const updated = await ctx.db
+        .update(partDefinitions)
+        .set({
+          imageUrl: replacement.url,
+          imageAssetId: replacement.id,
+        })
+        .where(
+          and(
+            eq(partDefinitions.organizationId, organizationId),
+            eq(partDefinitions.imageUrl, source.url),
+          ),
+        )
+        .returning({ id: partDefinitions.id });
+      publishCatalogueChange(organizationId);
+      return { updatedCount: updated.length };
+    }),
+
+  deleteUnusedPhotoAsset: hasDashboardAccess
+    .input(z.object({ assetId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      assertCanEditParts(ctx.user);
+      const organizationId = ctx.user.organizationId;
+      if (!organizationId) throw new Error("Organization required");
+
+      const [asset] = await ctx.db
+        .select()
+        .from(photoAssets)
+        .where(
+          and(
+            eq(photoAssets.id, input.assetId),
+            eq(photoAssets.organizationId, organizationId),
+          ),
+        )
+        .limit(1);
+      if (!asset) throw new Error("Photo asset not found");
+
+      const [usage] = await ctx.db
+        .select({ id: partDefinitions.id })
+        .from(partDefinitions)
+        .where(
+          and(
+            eq(partDefinitions.organizationId, organizationId),
+            eq(partDefinitions.imageUrl, asset.url),
+          ),
+        )
+        .limit(1);
+      if (usage) throw new Error("Photo is still assigned to a part");
+
+      await ctx.db
+        .delete(photoAssets)
+        .where(
+          and(
+            eq(photoAssets.id, asset.id),
+            eq(photoAssets.organizationId, organizationId),
+          ),
+        );
+      if (asset.url.startsWith("/api/catalogue/images/")) {
+        await deleteCatalogueImage(asset.storageKey).catch(() => undefined);
+      }
+      return { deleted: true };
     }),
 
   applyPartImageToFamilyCandidate: hasDashboardAccess
@@ -2249,7 +2513,16 @@ export const catalogueRouter = createTRPCRouter({
 
       const [updated] = await ctx.db
         .update(partDefinitions)
-        .set({ imageUrl: approvedImageUrl })
+        .set({
+          imageUrl: approvedImageUrl,
+          imageAssetId: sql`(
+            select ${photoAssets.id}
+            from ${photoAssets}
+            where ${photoAssets.organizationId} = ${organizationId}
+              and ${photoAssets.url} = ${approvedImageUrl}
+            limit 1
+          )`,
+        })
         .where(
           and(
             eq(partDefinitions.id, input.partId),
@@ -2447,7 +2720,22 @@ export const catalogueRouter = createTRPCRouter({
         updateData.displayName = input.displayName;
       if (input.description !== undefined)
         updateData.description = input.description;
-      if (input.imageUrl !== undefined) updateData.imageUrl = input.imageUrl;
+      if (input.imageUrl !== undefined) {
+        updateData.imageUrl = input.imageUrl;
+        const [asset] = input.imageUrl
+          ? await ctx.db
+              .select({ id: photoAssets.id })
+              .from(photoAssets)
+              .where(
+                and(
+                  eq(photoAssets.organizationId, organizationId),
+                  eq(photoAssets.url, input.imageUrl),
+                ),
+              )
+              .limit(1)
+          : [];
+        updateData.imageAssetId = asset?.id ?? null;
+      }
       if (input.sizeLabel !== undefined)
         updateData.sizeLabel = input.sizeLabel?.trim() || null;
       if (input.catalogId !== undefined) updateData.catalogId = input.catalogId;

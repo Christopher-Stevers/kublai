@@ -571,6 +571,43 @@ export const categoriesRelations = relations(categories, ({ one, many }) => ({
   partDefinitions: many(partDefinitions),
 }));
 
+export const photoAssets = createTable(
+  "photo_asset",
+  (d) => ({
+    id: d
+      .uuid()
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    organizationId: d
+      .uuid()
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    storageKey: d.text().notNull(),
+    url: d.text().notNull(),
+    originalFilename: d.varchar({ length: 255 }),
+    contentType: d.varchar({ length: 100 }).notNull().default("image/webp"),
+    byteSize: d.integer(),
+    checksum: d.varchar({ length: 64 }),
+    sourceUrl: d.text(),
+    notes: d.text(),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .notNull()
+      .$defaultFn(() => new Date()),
+    updatedAt: d
+      .timestamp({ withTimezone: true })
+      .notNull()
+      .$defaultFn(() => new Date())
+      .$onUpdate(() => new Date()),
+  }),
+  (t) => [
+    unique("photo_asset_org_url_uniq").on(t.organizationId, t.url),
+    index("photo_asset_org_created_idx").on(t.organizationId, t.createdAt),
+    index("photo_asset_checksum_idx").on(t.organizationId, t.checksum),
+  ],
+);
+
 // ============================
 // PART DEFINITIONS (generic catalog + facets)
 // org-specific
@@ -600,6 +637,9 @@ export const partDefinitions = createTable(
     displayName: d.varchar({ length: 255 }).notNull(),
     description: d.text(),
     imageUrl: d.text(),
+    imageAssetId: d
+      .uuid()
+      .references(() => photoAssets.id, { onDelete: "set null" }),
     sizeLabel: d.varchar({ length: 100 }),
 
     // Facets (MVP)
@@ -623,6 +663,7 @@ export const partDefinitions = createTable(
     index("part_def_facets_idx").on(t.materialId, t.sizeId),
     index("part_def_material_idx").on(t.materialId),
     index("part_def_size_idx").on(t.sizeId),
+    index("part_def_image_asset_idx").on(t.imageAssetId),
     index("part_def_group_sort_idx").on(
       t.organizationId,
       t.catalogId,
@@ -640,6 +681,10 @@ export const partDefinitionsRelations = relations(
     organization: one(organizations, {
       fields: [partDefinitions.organizationId],
       references: [organizations.id],
+    }),
+    photoAsset: one(photoAssets, {
+      fields: [partDefinitions.imageAssetId],
+      references: [photoAssets.id],
     }),
     catalog: one(catalogs, {
       fields: [partDefinitions.catalogId],

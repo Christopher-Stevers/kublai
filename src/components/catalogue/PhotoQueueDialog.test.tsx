@@ -1,6 +1,12 @@
 import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { PhotoQueueDialog } from "./PhotoQueueDialog";
 
 const applyPhotoQueueImage = vi.fn().mockResolvedValue({ updatedCount: 1 });
@@ -42,6 +48,7 @@ vi.mock("~/trpc/react", () => ({
         getPartWizardSummary: {
           invalidate: vi.fn().mockResolvedValue(undefined),
         },
+        listPhotoAssets: { invalidate: vi.fn().mockResolvedValue(undefined) },
       },
     }),
     catalogue: {
@@ -93,12 +100,42 @@ vi.mock("~/trpc/react", () => ({
           },
         }),
       },
+      listPhotoAssets: {
+        useQuery: () => ({
+          isLoading: false,
+          data: [
+            {
+              id: "33333333-3333-4333-8333-333333333333",
+              organizationId: "44444444-4444-4444-8444-444444444444",
+              storageKey: "part-reviewed.webp",
+              url: "/api/catalogue/images/part-reviewed.webp",
+              originalFilename: "reviewed-elbow.webp",
+              contentType: "image/webp",
+              byteSize: 4096,
+              checksum: "abc123",
+              sourceUrl: null,
+              notes: null,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+              usageCount: 2,
+              duplicateCount: 1,
+            },
+          ],
+        }),
+      },
+      deleteUnusedPhotoAsset: {
+        useMutation: () => ({ mutateAsync: vi.fn(), isPending: false }),
+      },
+      replacePhotoAssetEverywhere: {
+        useMutation: () => ({ mutateAsync: vi.fn(), isPending: false }),
+      },
     },
   },
 }));
 
 describe("PhotoQueueDialog", () => {
   beforeEach(() => {
+    cleanup();
     applyPhotoQueueImage.mockClear();
   });
 
@@ -123,5 +160,17 @@ describe("PhotoQueueDialog", () => {
         partIds: ["11111111-1111-4111-8111-111111111111"],
       });
     });
+  });
+
+  it("opens the managed photo library with usage metadata", () => {
+    render(<PhotoQueueDialog open onOpenChange={() => {}} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Library" }));
+
+    expect(screen.getByText("reviewed-elbow.webp")).toBeInTheDocument();
+    expect(screen.getByText("2 uses")).toBeInTheDocument();
+    expect(
+      screen.getByPlaceholderText("Search filenames, source URLs, or notes"),
+    ).toBeInTheDocument();
   });
 });

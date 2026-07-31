@@ -7,12 +7,17 @@ import {
   Clipboard,
   ExternalLink,
   ImagePlus,
+  Library,
   Package,
+  Replace,
+  Search,
   SkipForward,
+  Trash2,
   Upload,
 } from "lucide-react";
 import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
+import { Input } from "~/components/ui/input";
 import {
   Dialog,
   DialogContent,
@@ -43,6 +48,237 @@ async function uploadPhotoQueueImage(file: File) {
   return result.url;
 }
 
+function PhotoLibrary() {
+  const utils = api.useUtils();
+  const uploadRef = useRef<HTMLInputElement | null>(null);
+  const [query, setQuery] = useState("");
+  const [unusedOnly, setUnusedOnly] = useState(false);
+  const [duplicatesOnly, setDuplicatesOnly] = useState(false);
+  const [replacementSourceId, setReplacementSourceId] = useState<string | null>(
+    null,
+  );
+  const [isUploading, setIsUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const { data: assets = [], isLoading } =
+    api.catalogue.listPhotoAssets.useQuery({
+      query: query.trim() || undefined,
+      unusedOnly,
+      duplicatesOnly,
+    });
+  const deleteAsset = api.catalogue.deleteUnusedPhotoAsset.useMutation();
+  const replaceAsset = api.catalogue.replacePhotoAssetEverywhere.useMutation();
+
+  const refresh = async () => {
+    await Promise.all([
+      utils.catalogue.listPhotoAssets.invalidate(),
+      utils.catalogue.getPhotoQueue.invalidate(),
+      utils.catalogue.searchParts.invalidate(),
+      utils.catalogue.getPartWizardSummary.invalidate(),
+    ]);
+  };
+
+  const handleUpload = async (file: File) => {
+    try {
+      setError(null);
+      setIsUploading(true);
+      await uploadPhotoQueueImage(file);
+      await refresh();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Upload failed");
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleDelete = async (assetId: string) => {
+    if (!window.confirm("Permanently delete this unused photo asset?")) return;
+    try {
+      setError(null);
+      await deleteAsset.mutateAsync({ assetId });
+      await refresh();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Delete failed");
+    }
+  };
+
+  const handleReplacement = async (replacementAssetId: string) => {
+    if (!replacementSourceId) return;
+    try {
+      setError(null);
+      await replaceAsset.mutateAsync({
+        sourceAssetId: replacementSourceId,
+        replacementAssetId,
+      });
+      setReplacementSourceId(null);
+      await refresh();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Replace failed");
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-col gap-2 rounded-xl border bg-white p-3 sm:flex-row">
+        <div className="relative min-w-0 flex-1">
+          <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          <Input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search filenames, source URLs, or notes"
+            className="pl-9"
+          />
+        </div>
+        <Button
+          type="button"
+          variant={unusedOnly ? "default" : "outline"}
+          onClick={() => setUnusedOnly((value) => !value)}
+        >
+          Unused
+        </Button>
+        <Button
+          type="button"
+          variant={duplicatesOnly ? "default" : "outline"}
+          onClick={() => setDuplicatesOnly((value) => !value)}
+        >
+          Duplicates
+        </Button>
+        <Button
+          type="button"
+          onClick={() => uploadRef.current?.click()}
+          disabled={isUploading}
+        >
+          <Upload className="h-4 w-4" />
+          {isUploading ? "Uploading..." : "Upload"}
+        </Button>
+        <input
+          ref={uploadRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            event.target.value = "";
+            if (file) void handleUpload(file);
+          }}
+        />
+      </div>
+
+      {replacementSourceId && (
+        <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+          Choose another photo below to replace this asset everywhere, or{" "}
+          <button
+            type="button"
+            className="font-semibold underline"
+            onClick={() => setReplacementSourceId(null)}
+          >
+            cancel
+          </button>
+          .
+        </div>
+      )}
+      {error && (
+        <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">
+          {error}
+        </div>
+      )}
+
+      {isLoading ? (
+        <div className="rounded-xl border bg-white p-6 text-sm text-gray-600">
+          Loading photo assets...
+        </div>
+      ) : assets.length === 0 ? (
+        <div className="rounded-xl border bg-white p-8 text-center text-sm text-gray-600">
+          No photo assets match these filters.
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+          {assets.map((asset) => (
+            <article
+              key={asset.id}
+              className={`overflow-hidden rounded-xl border bg-white ${
+                replacementSourceId === asset.id ? "ring-2 ring-amber-500" : ""
+              }`}
+            >
+              <div className="relative aspect-square bg-gray-50">
+                <Image
+                  src={asset.url}
+                  alt={asset.originalFilename ?? "Catalogue photo"}
+                  fill
+                  className="object-contain p-2"
+                  unoptimized
+                />
+              </div>
+              <div className="space-y-2 p-3">
+                <div
+                  className="truncate text-xs font-medium text-gray-900"
+                  title={asset.originalFilename ?? asset.url}
+                >
+                  {asset.originalFilename ?? asset.storageKey}
+                </div>
+                <div className="flex flex-wrap gap-1 text-[11px] text-gray-600">
+                  <span className="rounded bg-gray-100 px-1.5 py-0.5">
+                    {asset.usageCount} uses
+                  </span>
+                  {asset.duplicateCount > 1 && (
+                    <span className="rounded bg-amber-100 px-1.5 py-0.5 text-amber-800">
+                      {asset.duplicateCount} duplicates
+                    </span>
+                  )}
+                  {asset.byteSize && (
+                    <span className="rounded bg-gray-100 px-1.5 py-0.5">
+                      {(asset.byteSize / 1024).toFixed(0)} KB
+                    </span>
+                  )}
+                </div>
+                {replacementSourceId && replacementSourceId !== asset.id ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="w-full"
+                    onClick={() => void handleReplacement(asset.id)}
+                    disabled={replaceAsset.isPending}
+                  >
+                    Use as replacement
+                  </Button>
+                ) : (
+                  <div className="grid grid-cols-2 gap-1">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setReplacementSourceId(asset.id)}
+                      disabled={asset.usageCount === 0}
+                      title="Replace this photo everywhere"
+                    >
+                      <Replace className="h-3.5 w-3.5" />
+                      Replace
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => void handleDelete(asset.id)}
+                      disabled={asset.usageCount > 0 || deleteAsset.isPending}
+                      title={
+                        asset.usageCount > 0
+                          ? "Assigned photos cannot be deleted"
+                          : "Delete unused photo"
+                      }
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                      Delete
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </article>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function PhotoQueueDialog({
   open,
   onOpenChange,
@@ -61,6 +297,7 @@ export function PhotoQueueDialog({
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [isProcessingImage, setIsProcessingImage] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"queue" | "library">("queue");
 
   const queueInput = {
     catalogId: catalogId ?? undefined,
@@ -83,6 +320,7 @@ export function PhotoQueueDialog({
       setSelectedPartIds(new Set());
       setImageUrl(null);
       setError(null);
+      setActiveTab("queue");
     }
   }, [open]);
 
@@ -203,17 +441,41 @@ export function PhotoQueueDialog({
         <DialogHeader className="shrink-0 border-b px-4 py-4 pr-12 sm:px-6">
           <DialogTitle className="flex items-center gap-2">
             <ImagePlus className="h-5 w-5" />
-            Photo Queue
+            Catalogue Photos
           </DialogTitle>
           <DialogDescription>
-            {data
-              ? `${data.missingPartCount} missing photos in ${data.groups.length} ${data.groups.length === 1 ? "family" : "families"}`
-              : "Loading missing catalogue photos..."}
+            {activeTab === "library"
+              ? "Search, reuse, replace, and safely clean up stored photo assets."
+              : data
+                ? `${data.missingPartCount} missing photos in ${data.groups.length} ${data.groups.length === 1 ? "family" : "families"}`
+                : "Loading missing catalogue photos..."}
           </DialogDescription>
+          <div className="flex gap-2 pt-2">
+            <Button
+              type="button"
+              size="sm"
+              variant={activeTab === "queue" ? "default" : "outline"}
+              onClick={() => setActiveTab("queue")}
+            >
+              <ImagePlus className="h-4 w-4" />
+              Queue
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant={activeTab === "library" ? "default" : "outline"}
+              onClick={() => setActiveTab("library")}
+            >
+              <Library className="h-4 w-4" />
+              Library
+            </Button>
+          </div>
         </DialogHeader>
 
         <div className="min-h-0 flex-1 overflow-y-auto bg-gray-50 p-3 sm:p-6">
-          {isLoading ? (
+          {activeTab === "library" ? (
+            <PhotoLibrary />
+          ) : isLoading ? (
             <div className="rounded-xl border bg-white p-6 text-sm text-gray-600">
               Grouping missing photos...
             </div>
@@ -377,10 +639,12 @@ export function PhotoQueueDialog({
           )}
         </div>
 
-        <div className="shrink-0 border-t bg-white px-4 py-3 text-xs text-gray-600 sm:px-6">
-          {groups.length} families remaining · {visiblePartCount} parts still
-          visible in this session
-        </div>
+        {activeTab === "queue" && (
+          <div className="shrink-0 border-t bg-white px-4 py-3 text-xs text-gray-600 sm:px-6">
+            {groups.length} families remaining · {visiblePartCount} parts still
+            visible in this session
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );
