@@ -132,6 +132,10 @@ export function usePartWizard(open = true) {
         hasSizeSelection && selectedSize ? selectedSize.nominal : undefined,
       sizeUnit:
         hasSizeSelection && selectedSize ? selectedSize.unit : undefined,
+      sizeLabel:
+        hasSizeSelection && selectedSize?.sizeLabel
+          ? selectedSize.sizeLabel
+          : undefined,
       categoryId:
         hasCategorySelection && selectedCategory
           ? selectedCategory.categoryId
@@ -324,8 +328,13 @@ export function usePartWizard(open = true) {
     return filterSelectionParts(warmedSelectionParts);
   }, [filterSelectionParts, warmedSelectionParts]);
 
+  const filteredServerSelectionParts = useMemo(() => {
+    if (!serverSelectionParts) return undefined;
+    return filterSelectionParts(serverSelectionParts);
+  }, [filterSelectionParts, serverSelectionParts]);
+
   const selectionParts = isOnline
-    ? (serverSelectionParts ??
+    ? (filteredServerSelectionParts ??
       (shouldLoadSelectionParts
         ? (cachedFilteredSelectionParts ?? warmedFilteredSelectionParts)
         : []))

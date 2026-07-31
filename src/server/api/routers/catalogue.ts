@@ -891,6 +891,7 @@ export const catalogueRouter = createTRPCRouter({
         // Size filtering (normalized)
         sizeNominal: z.number().optional(), // Primary normalized value (0.5 for 1/2)
         sizeUnit: z.string().optional(), // "in", "mm", etc.
+        sizeLabel: z.string().optional(), // Exact display dimensions for reducing/sub-sizes
         sizeTolerance: z.number().optional().default(0.01), // For range matching
         // Attribute filters (MVP: volume, flow_rate)
         attributeKey: z.string().optional(), // "volume", "flow_rate"
@@ -925,6 +926,10 @@ export const catalogueRouter = createTRPCRouter({
       // Material filter
       if (input.materialId) {
         conditions.push(eq(partDefinitions.materialId, input.materialId));
+      }
+
+      if (input.sizeLabel) {
+        conditions.push(eq(partDefinitions.sizeLabel, input.sizeLabel));
       }
 
       // Size filter (normalized) - will be applied via join with sizes table
