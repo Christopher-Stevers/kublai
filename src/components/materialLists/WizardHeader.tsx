@@ -10,7 +10,11 @@ interface WizardHeaderProps {
   currentStage: WizardStage;
   selectedCatalog?: string | null;
   selectedMaterial?: string | null;
-  selectedSize?: { nominal: number; unit: string } | null;
+  selectedSize?: {
+    nominal: number;
+    unit: string;
+    sizeLabel?: string | null;
+  } | null;
   selectedCategory: {
     categoryId: string | null;
     name: string;

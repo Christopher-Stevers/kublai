@@ -15,7 +15,11 @@ interface WizardProgressIndicatorProps {
   ) => void;
   selectedCatalog?: string | null;
   selectedMaterial?: string | null;
-  selectedSize?: { nominal: number; unit: string } | null;
+  selectedSize?: {
+    nominal: number;
+    unit: string;
+    sizeLabel?: string | null;
+  } | null;
   selectedCategory: {
     categoryId: string | null;
     name: string;
@@ -70,7 +74,8 @@ export function WizardProgressIndicator({
         return selectedSize
           ? selectedSize.unit === "All Sizes"
             ? "All Sizes"
-            : formatSize(selectedSize.nominal, selectedSize.unit)
+            : (selectedSize.sizeLabel ??
+              formatSize(selectedSize.nominal, selectedSize.unit))
           : stage.label;
       case "category":
         return selectedCategory?.name ?? stage.label;
