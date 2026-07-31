@@ -187,6 +187,18 @@ function buildPartImageFamilyKey(part: {
   return normalizePartImageFamilyText(searchableText, part.materialName);
 }
 
+function getPhotoQueueFamilyKey(part: {
+  displayName: string;
+  description: string | null;
+  categoryName: string | null;
+  materialName: string | null;
+}) {
+  return (
+    buildPartImageFamilyKey(part) ||
+    normalizePartImageFamilyText(part.displayName, part.materialName)
+  );
+}
+
 function getPartImageFamilyText(part: {
   displayName: string;
   description: string | null;
@@ -1969,6 +1981,251 @@ export const catalogueRouter = createTRPCRouter({
       });
     }),
 
+  getPhotoQueue: hasDashboardAccess
+    .input(
+      z.object({
+        catalogId: z.string().uuid().optional(),
+        materialId: z.string().uuid().optional(),
+        categoryId: z.string().uuid().optional(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const organizationId = ctx.user.organizationId;
+      if (!organizationId) {
+        return { groups: [], missingPartCount: 0 };
+      }
+
+      const conditions = [
+        eq(partDefinitions.organizationId, organizationId),
+        eq(partDefinitions.isActive, true),
+      ];
+      if (input.catalogId) {
+        conditions.push(eq(partDefinitions.catalogId, input.catalogId));
+      }
+      if (input.materialId) {
+        conditions.push(eq(partDefinitions.materialId, input.materialId));
+      }
+      if (input.categoryId) {
+        conditions.push(eq(partDefinitions.categoryId, input.categoryId));
+      }
+
+      const parts = await ctx.db
+        .select({
+          id: partDefinitions.id,
+          displayName: partDefinitions.displayName,
+          description: partDefinitions.description,
+          imageUrl: partDefinitions.imageUrl,
+          catalogId: partDefinitions.catalogId,
+          catalogName: catalogs.name,
+          materialId: partDefinitions.materialId,
+          materialName: materials.name,
+          categoryId: partDefinitions.categoryId,
+          categoryName: categories.name,
+          sizeLabel: partDefinitions.sizeLabel,
+          sizeNominal: sizes.nominal,
+          sizeUnitCode: units.code,
+        })
+        .from(partDefinitions)
+        .innerJoin(catalogs, eq(partDefinitions.catalogId, catalogs.id))
+        .leftJoin(materials, eq(partDefinitions.materialId, materials.id))
+        .leftJoin(categories, eq(partDefinitions.categoryId, categories.id))
+        .leftJoin(sizes, eq(partDefinitions.sizeId, sizes.id))
+        .leftJoin(units, eq(sizes.unitId, units.id))
+        .where(and(...conditions))
+        .orderBy(
+          asc(materials.name),
+          asc(categories.name),
+          asc(partDefinitions.description),
+          asc(sizes.nominal),
+          asc(partDefinitions.sizeLabel),
+          asc(partDefinitions.displayName),
+        )
+        .limit(5000);
+
+      const groups = new Map<
+        string,
+        {
+          id: string;
+          familyLabel: string;
+          catalogName: string;
+          materialName: string | null;
+          categoryName: string | null;
+          existingImageUrl: string | null;
+          searchPartId: string;
+          googleSearchUrl: string;
+          parts: Array<{
+            id: string;
+            displayName: string;
+            description: string | null;
+            size: string | null;
+          }>;
+        }
+      >();
+
+      for (const part of parts) {
+        const familyKey = getPhotoQueueFamilyKey(part);
+        if (!familyKey) continue;
+
+        const groupId = [
+          part.catalogId,
+          part.materialId ?? "none",
+          part.categoryId ?? "none",
+          familyKey,
+        ].join(":");
+        const current: NonNullable<ReturnType<typeof groups.get>> = groups.get(
+          groupId,
+        ) ?? {
+          id: groupId,
+          familyLabel: part.description?.trim() || part.displayName,
+          catalogName: part.catalogName,
+          materialName: part.materialName,
+          categoryName: part.categoryName,
+          existingImageUrl: null,
+          searchPartId: part.id,
+          googleSearchUrl: buildGoogleImageSearchUrl(
+            buildPartImageSearchQuery(part),
+          ),
+          parts: [],
+        };
+
+        if (part.imageUrl && !current.existingImageUrl) {
+          current.existingImageUrl = part.imageUrl;
+        } else if (!part.imageUrl) {
+          current.parts.push({
+            id: part.id,
+            displayName: part.displayName,
+            description: part.description,
+            size:
+              part.sizeLabel ??
+              (part.sizeNominal && part.sizeUnitCode
+                ? formatSize(Number(part.sizeNominal), part.sizeUnitCode)
+                : null),
+          });
+          current.searchPartId = part.id;
+          current.googleSearchUrl = buildGoogleImageSearchUrl(
+            buildPartImageSearchQuery(part),
+          );
+        }
+
+        groups.set(groupId, current);
+      }
+
+      const missingGroups = Array.from(groups.values())
+        .filter((group) => group.parts.length > 0)
+        .sort((a, b) => {
+          if (!!a.existingImageUrl !== !!b.existingImageUrl) {
+            return a.existingImageUrl ? -1 : 1;
+          }
+          return (
+            (a.materialName ?? "").localeCompare(b.materialName ?? "") ||
+            (a.categoryName ?? "").localeCompare(b.categoryName ?? "") ||
+            a.familyLabel.localeCompare(b.familyLabel)
+          );
+        });
+
+      return {
+        groups: missingGroups,
+        missingPartCount: missingGroups.reduce(
+          (total, group) => total + group.parts.length,
+          0,
+        ),
+      };
+    }),
+
+  storeRemoteCatalogueImage: hasDashboardAccess
+    .input(z.object({ imageUrl: z.string().url() }))
+    .mutation(async ({ ctx, input }) => {
+      assertCanEditParts(ctx.user);
+      const selectedImageUrl = assertSelectableRemoteImageUrl(input.imageUrl);
+      const filename = makeCatalogueImageFilename();
+      const outputBuffer = await downloadRemoteCatalogueImage(selectedImageUrl);
+      await writeCatalogueImage(filename, outputBuffer);
+      return { imageUrl: getCatalogueImageUrl(filename) };
+    }),
+
+  applyPhotoQueueImage: hasDashboardAccess
+    .input(
+      z.object({
+        partIds: z.array(z.string().uuid()).min(1).max(250),
+        imageUrl: partImageUrlInput.refine((value) => !!value, {
+          message: "Image URL is required",
+        }),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      assertCanEditParts(ctx.user);
+      const organizationId = ctx.user.organizationId;
+      if (!organizationId || !input.imageUrl) {
+        throw new Error("Organization and image are required");
+      }
+
+      const targets = await ctx.db
+        .select({
+          id: partDefinitions.id,
+          displayName: partDefinitions.displayName,
+          description: partDefinitions.description,
+          materialId: partDefinitions.materialId,
+          materialName: materials.name,
+          categoryId: partDefinitions.categoryId,
+          categoryName: categories.name,
+        })
+        .from(partDefinitions)
+        .leftJoin(materials, eq(partDefinitions.materialId, materials.id))
+        .leftJoin(categories, eq(partDefinitions.categoryId, categories.id))
+        .where(
+          and(
+            eq(partDefinitions.organizationId, organizationId),
+            eq(partDefinitions.isActive, true),
+            inArray(partDefinitions.id, input.partIds),
+            or(
+              isNull(partDefinitions.imageUrl),
+              eq(partDefinitions.imageUrl, ""),
+            ),
+          ),
+        );
+
+      if (targets.length !== input.partIds.length) {
+        throw new Error(
+          "Some selected parts no longer need a photo. Refresh the queue and try again.",
+        );
+      }
+
+      const [firstTarget] = targets;
+      if (!firstTarget) {
+        throw new Error("No parts selected");
+      }
+      const expectedFamilyKey = getPhotoQueueFamilyKey(firstTarget);
+      const isOneSafeFamily = targets.every(
+        (target) =>
+          target.materialId === firstTarget.materialId &&
+          target.categoryId === firstTarget.categoryId &&
+          getPhotoQueueFamilyKey(target) === expectedFamilyKey,
+      );
+      if (!isOneSafeFamily) {
+        throw new Error(
+          "Selected parts cross material, category, or image-family boundaries.",
+        );
+      }
+
+      const updated = await ctx.db
+        .update(partDefinitions)
+        .set({ imageUrl: input.imageUrl })
+        .where(
+          and(
+            eq(partDefinitions.organizationId, organizationId),
+            inArray(partDefinitions.id, input.partIds),
+            or(
+              isNull(partDefinitions.imageUrl),
+              eq(partDefinitions.imageUrl, ""),
+            ),
+          ),
+        )
+        .returning({ id: partDefinitions.id });
+
+      publishCatalogueChange(organizationId);
+      return { updatedCount: updated.length };
+    }),
+
   applyPartImageToFamilyCandidate: hasDashboardAccess
     .input(
       z.object({
@@ -2535,10 +2792,7 @@ export const catalogueRouter = createTRPCRouter({
           ),
         );
 
-      const preferredMap = new Map<
-        string,
-        typeof suppliers.$inferSelect
-      >();
+      const preferredMap = new Map<string, typeof suppliers.$inferSelect>();
       const suppliersByPart = new Map<
         string,
         (typeof suppliers.$inferSelect)[]

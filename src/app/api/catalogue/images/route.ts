@@ -8,6 +8,7 @@ import {
   validateCatalogueImageFile,
   writeCatalogueImage,
 } from "~/server/catalogue/image-storage";
+import { getUserPermissions } from "~/server/auth/permissions";
 import { ensureUser } from "~/server/utils/ensure-user";
 
 export const dynamic = "force-dynamic";
@@ -21,7 +22,16 @@ export async function POST(request: Request) {
 
   const user = await ensureUser(userId);
   if (!user?.organizationId) {
-    return NextResponse.json({ error: "Organization required" }, { status: 403 });
+    return NextResponse.json(
+      { error: "Organization required" },
+      { status: 403 },
+    );
+  }
+  if (!getUserPermissions(user).canEditParts) {
+    return NextResponse.json(
+      { error: "You do not have permission to edit parts." },
+      { status: 403 },
+    );
   }
 
   const formData = await request.formData();
@@ -43,6 +53,9 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ url: getCatalogueImageUrl(filename) });
   } catch {
-    return NextResponse.json({ error: "Could not process image" }, { status: 400 });
+    return NextResponse.json(
+      { error: "Could not process image" },
+      { status: 400 },
+    );
   }
 }

@@ -12,6 +12,7 @@ import {
   DialogTitle,
 } from "~/components/ui/dialog";
 import { EditPartDialog } from "~/components/catalogue/EditPartDialog";
+import { PhotoQueueDialog } from "~/components/catalogue/PhotoQueueDialog";
 import { CreateCustomPartDialog } from "~/components/materialLists/CreateCustomPartDialog";
 import { CatalogStage } from "~/components/materialLists/wizard/CatalogStage";
 import { MaterialStage } from "~/components/materialLists/wizard/MaterialStage";
@@ -26,11 +27,12 @@ import {
 } from "~/lib/catalogue-xlsx";
 import { useOnlineStatus } from "~/hooks/use-online-status";
 import { TEMPORARILY_DISCONNECT_BROWSER_FROM_SERVER } from "~/lib/server-connection-mode";
-import { GripVertical } from "lucide-react";
+import { GripVertical, Images } from "lucide-react";
 
 export default function CataloguePage() {
   const [editingPartId, setEditingPartId] = useState<string | null>(null);
   const [isCreatePartDialogOpen, setIsCreatePartDialogOpen] = useState(false);
+  const [isPhotoQueueOpen, setIsPhotoQueueOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [isExportOptionsOpen, setIsExportOptionsOpen] = useState(false);
   const [exportCatalogId, setExportCatalogId] = useState<string | null>(null);
@@ -45,6 +47,8 @@ export default function CataloguePage() {
   const isCatalogueOnline =
     isBrowserOnline && !TEMPORARILY_DISCONNECT_BROWSER_FROM_SERVER;
   const utils = api.useUtils();
+  const { data: roleData } = api.user.getMyRole.useQuery();
+  const canEditParts = roleData?.permissions.canEditParts ?? false;
 
   const importCatalogueRows = api.catalogue.importCatalogueRows.useMutation();
   const reorderPartGroup = api.catalogue.reorderPartGroup.useMutation();
@@ -158,7 +162,9 @@ export default function CataloguePage() {
       partIds,
     });
     const savedPartIds =
-      savedOrder.partIds.length === partIds.length ? savedOrder.partIds : partIds;
+      savedOrder.partIds.length === partIds.length
+        ? savedOrder.partIds
+        : partIds;
 
     utils.catalogue.searchParts.setData({ limit: 5000 }, (currentParts) => {
       if (!currentParts) return currentParts;
@@ -342,11 +348,20 @@ export default function CataloguePage() {
   return (
     <div className="flex h-[calc(100vh-4rem)] flex-col overflow-hidden">
       <div className="border-b bg-white p-4 sm:p-6">
-        <div className="mb-4 flex items-center justify-between">
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">
             Parts Catalogue
           </h1>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+            {canEditParts && (
+              <Button
+                variant="outline"
+                onClick={() => setIsPhotoQueueOpen(true)}
+              >
+                <Images className="h-4 w-4" />
+                Photos
+              </Button>
+            )}
             <Button
               variant={isReorderMode ? "default" : "outline"}
               onClick={isReorderMode ? handleCancelReorder : handleStartReorder}
@@ -597,6 +612,13 @@ export default function CataloguePage() {
           if (!open) setEditingPartId(null);
         }}
         partId={editingPartId}
+      />
+      <PhotoQueueDialog
+        open={isPhotoQueueOpen}
+        onOpenChange={setIsPhotoQueueOpen}
+        catalogId={selectedCatalogId}
+        materialId={selectedMaterialId}
+        categoryId={selectedCategory?.categoryId}
       />
       <CreateCustomPartDialog
         open={isCreatePartDialogOpen}
