@@ -8,12 +8,15 @@ import type {
 import { z } from "zod";
 
 import { MATERIAL_LIST_REPLICACHE_SCHEMA_VERSION } from "~/lib/replicache-schema";
+import { formatSize } from "~/lib/size-utils";
 import {
   getPrimarySupplierContact,
   normalizeSupplierContacts,
 } from "~/lib/supplier-contacts";
 import { db } from "~/server/db";
 import {
+  catalogs,
+  categories,
   jobs,
   locations,
   materials,
@@ -26,8 +29,10 @@ import {
   quotes,
   replicacheClientGroups,
   replicacheClients,
+  sizes,
   supplierParts,
   suppliers,
+  units,
   users,
 } from "~/server/db/schema";
 import {
@@ -1250,6 +1255,78 @@ export async function handleMaterialListReplicachePull(
         .where(eq(suppliers.organizationId, organizationId))
         .orderBy(asc(suppliers.updatedAt), asc(suppliers.id));
 
+      const [catalogRows, materialRows, categoryRows, unitRows, partRows] =
+        await Promise.all([
+          tx
+            .select({
+              id: catalogs.id,
+              name: catalogs.name,
+              sortOrder: catalogs.sortOrder,
+              organizationId: catalogs.organizationId,
+            })
+            .from(catalogs)
+            .where(eq(catalogs.organizationId, organizationId))
+            .orderBy(asc(catalogs.sortOrder), asc(catalogs.name)),
+          tx
+            .select({
+              id: materials.id,
+              name: materials.name,
+            })
+            .from(materials)
+            .where(eq(materials.organizationId, organizationId))
+            .orderBy(asc(materials.name)),
+          tx
+            .select({
+              id: categories.id,
+              name: categories.name,
+              sortOrder: categories.sortOrder,
+              organizationId: categories.organizationId,
+            })
+            .from(categories)
+            .where(eq(categories.organizationId, organizationId))
+            .orderBy(asc(categories.sortOrder), asc(categories.name)),
+          tx
+            .select({
+              id: units.id,
+              code: units.code,
+              displayName: units.displayName,
+              kind: units.kind,
+            })
+            .from(units)
+            .orderBy(asc(units.code)),
+          tx
+            .select({
+              id: partDefinitions.id,
+              displayName: partDefinitions.displayName,
+              description: partDefinitions.description,
+              imageUrl: partDefinitions.imageUrl,
+              sizeLabel: partDefinitions.sizeLabel,
+              materialId: partDefinitions.materialId,
+              materialName: materials.name,
+              sizeNominal: sizes.nominal,
+              sizeUnitCode: units.code,
+              catalogId: partDefinitions.catalogId,
+              categoryId: partDefinitions.categoryId,
+              sortOrder: partDefinitions.sortOrder,
+              organizationId: partDefinitions.organizationId,
+            })
+            .from(partDefinitions)
+            .leftJoin(sizes, eq(partDefinitions.sizeId, sizes.id))
+            .leftJoin(units, eq(sizes.unitId, units.id))
+            .leftJoin(materials, eq(partDefinitions.materialId, materials.id))
+            .where(
+              and(
+                eq(partDefinitions.isActive, true),
+                eq(partDefinitions.organizationId, organizationId),
+              ),
+            )
+            .orderBy(
+              asc(partDefinitions.sortOrder),
+              asc(partDefinitions.displayName),
+              asc(partDefinitions.id),
+            ),
+        ]);
+
       const contributorUserIds = Array.from(
         new Set(
           [
@@ -1494,6 +1571,65 @@ export async function handleMaterialListReplicachePull(
               supplier.createdAt?.toISOString?.() ?? String(supplier.createdAt),
             updatedAt:
               supplier.updatedAt?.toISOString?.() ?? String(supplier.updatedAt),
+          },
+        });
+      }
+
+      for (const catalog of catalogRows) {
+        patch.push({
+          op: "put",
+          key: `catalog/${catalog.id}`,
+          value: catalog,
+        });
+      }
+
+      for (const material of materialRows) {
+        patch.push({
+          op: "put",
+          key: `catalogueMaterial/${material.id}`,
+          value: material,
+        });
+      }
+
+      for (const category of categoryRows) {
+        patch.push({
+          op: "put",
+          key: `category/${category.id}`,
+          value: category,
+        });
+      }
+
+      for (const unit of unitRows) {
+        patch.push({
+          op: "put",
+          key: `unit/${unit.id}`,
+          value: unit,
+        });
+      }
+
+      for (const part of partRows) {
+        patch.push({
+          op: "put",
+          key: `cataloguePart/${part.id}`,
+          value: {
+            id: part.id,
+            displayName: part.displayName,
+            description: part.description,
+            imageUrl: part.imageUrl,
+            material: part.materialName,
+            materialId: part.materialId,
+            size:
+              part.sizeLabel ??
+              (part.sizeNominal && part.sizeUnitCode
+                ? formatSize(Number(part.sizeNominal), part.sizeUnitCode)
+                : null),
+            sizeLabel: part.sizeLabel,
+            sizeNominal: part.sizeNominal,
+            sizeUnit: part.sizeUnitCode,
+            catalogId: part.catalogId,
+            categoryId: part.categoryId,
+            sortOrder: part.sortOrder,
+            isOrgSpecific: part.organizationId === organizationId,
           },
         });
       }

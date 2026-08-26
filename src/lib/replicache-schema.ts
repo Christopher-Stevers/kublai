@@ -1,1 +1,2 @@
-export const MATERIAL_LIST_REPLICACHE_SCHEMA_VERSION = "material-lists-v1";
+export const MATERIAL_LIST_REPLICACHE_SCHEMA_VERSION =
+  "material-lists-catalogue-v1";

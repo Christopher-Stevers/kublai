@@ -50,23 +50,14 @@ export interface OfflineCatalogueSnapshotData {
   parts: OfflineCataloguePart[];
 }
 
-export interface OfflineCatalogueSnapshotEnvelope {
-  version: 2;
-  updatedAt: string;
-  data: OfflineCatalogueSnapshotData;
-}
-
 const STORAGE_KEY = "foremanhq.offline.catalogue-snapshot";
-const SNAPSHOT_VERSION = 2;
-export const OFFLINE_CATALOGUE_CHANGED_EVENT =
-  "foremanhq:offline-catalogue-changed";
-export const CATALOGUE_SERVER_UPDATED_EVENT =
-  "foremenhq:catalogue-server-updated";
 
-function getCacheableCatalogueImageUrls(data: OfflineCatalogueSnapshotData) {
+function getCacheableCatalogueImageUrls(
+  parts: Array<{ imageUrl?: string | null }>,
+) {
   const urls = new Set<string>();
 
-  for (const part of data.parts) {
+  for (const part of parts) {
     const imageUrl = part.imageUrl?.trim();
     if (!imageUrl) continue;
 
@@ -81,13 +72,13 @@ function getCacheableCatalogueImageUrls(data: OfflineCatalogueSnapshotData) {
   return Array.from(urls);
 }
 
-export async function warmOfflineCatalogueImages(
-  data: OfflineCatalogueSnapshotData,
-) {
+export async function warmOfflineCatalogueImages(data: {
+  parts: Array<{ imageUrl?: string | null }>;
+}) {
   if (typeof window === "undefined") return;
   if (!("serviceWorker" in navigator)) return;
 
-  const urls = getCacheableCatalogueImageUrls(data);
+  const urls = getCacheableCatalogueImageUrls(data.parts);
   if (urls.length === 0) return;
 
   try {
@@ -107,71 +98,7 @@ export async function warmOfflineCatalogueImages(
   }
 }
 
-export function getOfflineCatalogueSnapshot(): OfflineCatalogueSnapshotEnvelope | null {
-  if (typeof window === "undefined") return null;
-
-  const raw = window.localStorage.getItem(STORAGE_KEY);
-  if (!raw) return null;
-
-  try {
-    const snapshot = JSON.parse(raw) as OfflineCatalogueSnapshotEnvelope;
-
-    if (snapshot.version !== SNAPSHOT_VERSION) {
-      window.localStorage.removeItem(STORAGE_KEY);
-      return null;
-    }
-
-    return snapshot;
-  } catch {
-    return null;
-  }
-}
-
-function updateOfflineCatalogueSnapshot(
-  updater: (data: OfflineCatalogueSnapshotData) => OfflineCatalogueSnapshotData,
-) {
-  const current = getOfflineCatalogueSnapshot()?.data;
-  if (!current) return;
-  setOfflineCatalogueSnapshot(updater(current));
-}
-
-export function addOfflineCatalogueCatalog(catalog: OfflineCatalogueCatalog) {
-  updateOfflineCatalogueSnapshot((data) => ({
-    ...data,
-    catalogs: [...data.catalogs.filter((item) => item.id !== catalog.id), catalog].sort((a, b) =>
-      a.name.localeCompare(b.name),
-    ),
-  }));
-}
-
-export function addOfflineCatalogueCategory(category: OfflineCatalogueCategory) {
-  updateOfflineCatalogueSnapshot((data) => ({
-    ...data,
-    categories: [...data.categories.filter((item) => item.id !== category.id), category].sort((a, b) =>
-      a.name.localeCompare(b.name),
-    ),
-  }));
-}
-
-export function addOfflineCatalogueMaterial(material: OfflineCatalogueMaterial) {
-  updateOfflineCatalogueSnapshot((data) => ({
-    ...data,
-    materials: [...data.materials.filter((item) => item.id !== material.id), material].sort((a, b) =>
-      a.name.localeCompare(b.name),
-    ),
-  }));
-}
-
-export function setOfflineCatalogueSnapshot(data: OfflineCatalogueSnapshotData) {
+export function clearLegacyOfflineCatalogueSnapshot() {
   if (typeof window === "undefined") return;
-
-  const envelope: OfflineCatalogueSnapshotEnvelope = {
-    version: SNAPSHOT_VERSION,
-    updatedAt: new Date().toISOString(),
-    data,
-  };
-
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(envelope));
-  window.dispatchEvent(new Event(OFFLINE_CATALOGUE_CHANGED_EVENT));
-  void warmOfflineCatalogueImages(data);
+  window.localStorage.removeItem(STORAGE_KEY);
 }

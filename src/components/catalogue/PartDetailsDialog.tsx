@@ -40,11 +40,7 @@ import {
   DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu";
 import { SupplierFormDialog } from "~/components/suppliers/SupplierFormDialog";
-import {
-  addOfflineCatalogueCatalog,
-  addOfflineCatalogueCategory,
-  addOfflineCatalogueMaterial,
-} from "~/lib/offline-catalogue";
+import { requestMaterialListReplicachePull } from "~/lib/replicache-material-list";
 
 function FieldHeader({
   label,
@@ -775,10 +771,10 @@ export function PartDetailsDialog({
   const createCatalog = api.catalogue.createCatalog.useMutation({
     onSuccess: (newCatalog) => {
       if (!newCatalog) return;
-      addOfflineCatalogueCatalog(newCatalog);
       setCatalogId(newCatalog.id);
       setNewCatalogName("");
       setShowNewCatalogInput(false);
+      requestMaterialListReplicachePull(0);
       void utils.catalogue.getCatalogs.invalidate();
     },
   });
@@ -786,21 +782,21 @@ export function PartDetailsDialog({
   const createCategory = api.catalogue.createCategoryType.useMutation({
     onSuccess: (newCategory) => {
       if (!newCategory) return;
-      addOfflineCatalogueCategory(newCategory);
       void utils.catalogue.getCategoryTree.invalidate();
       setCategoryId(newCategory.id);
       setNewCategoryName("");
       setShowNewCategoryInput(false);
+      requestMaterialListReplicachePull(0);
     },
   });
 
   const createMaterial = api.catalogue.createMaterial.useMutation({
     onSuccess: (newMaterial) => {
       if (!newMaterial) return;
-      addOfflineCatalogueMaterial(newMaterial);
       setMaterialId(newMaterial.id);
       setNewMaterialName("");
       setShowNewMaterialInput(false);
+      requestMaterialListReplicachePull(0);
       void utils.catalogue.getMaterials.invalidate();
     },
   });

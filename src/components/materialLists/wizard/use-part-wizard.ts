@@ -8,16 +8,9 @@ import {
   useState,
 } from "react";
 import { api } from "~/trpc/react";
-import {
-  addOfflineCatalogueCatalog,
-  addOfflineCatalogueCategory,
-  addOfflineCatalogueMaterial,
-  CATALOGUE_SERVER_UPDATED_EVENT,
-  getOfflineCatalogueSnapshot,
-  OFFLINE_CATALOGUE_CHANGED_EVENT,
-  setOfflineCatalogueSnapshot,
-} from "~/lib/offline-catalogue";
 import { useOnlineStatus } from "~/hooks/use-online-status";
+import { useReplicacheCatalogue } from "~/hooks/use-replicache-catalogue";
+import { requestMaterialListReplicachePull } from "~/lib/replicache-material-list";
 import type { WizardStage } from "./types";
 
 type PreloadedPart = {
@@ -78,45 +71,22 @@ export function usePartWizard(open = true) {
   const [customCategoryName, setCustomCategoryName] = useState("");
   const [wizardSearchQuery, setWizardSearchQuery] = useState("");
   const deferredWizardSearchQuery = useDeferredValue(wizardSearchQuery);
-  const [cachedCatalogueData, setCachedCatalogueData] = useState(
-    () => getOfflineCatalogueSnapshot()?.data ?? null,
-  );
-  const [
-    needsCatalogueSnapshotRefresh,
-    setNeedsCatalogueSnapshotRefresh,
-  ] = useState(false);
-  const [warmedSelectionParts, setWarmedSelectionParts] = useState<
-    PreloadedPart[] | null
-  >(null);
   const utils = api.useUtils();
   const isOnline = useOnlineStatus();
+  const replicacheCatalogue = useReplicacheCatalogue({ enabled: open });
+  const hasReplicacheCatalogue = replicacheCatalogue.catalogs.length > 0;
   const { data: serverSummary } = api.catalogue.getPartWizardSummary.useQuery(
     undefined,
     {
-      enabled: open && isOnline,
+      enabled: open && isOnline && !hasReplicacheCatalogue,
       staleTime: 1000 * 60 * 5,
     },
   );
-  const shouldRefreshCatalogueSnapshot =
-    open &&
-    isOnline &&
-    !!serverSummary &&
-    (needsCatalogueSnapshotRefresh ||
-      (cachedCatalogueData?.parts.length ?? 0) < (serverSummary.partCount ?? 0));
-  const { data: serverCatalogueSnapshotParts } =
-    api.catalogue.searchParts.useQuery(
-      { limit: 5000 },
-      {
-        enabled: shouldRefreshCatalogueSnapshot,
-        staleTime: 1000 * 60 * 15,
-      },
-    );
   const shouldLoadSelectionParts =
     open &&
     isOnline &&
-    (hasCatalogSelection ||
-      wizardStage === "part" ||
-      deferredWizardSearchQuery.trim().length > 0);
+    replicacheCatalogue.parts.length === 0 &&
+    (wizardStage === "part" || deferredWizardSearchQuery.trim().length > 0);
   const { data: serverSelectionParts } = api.catalogue.searchParts.useQuery(
     {
       query: deferredWizardSearchQuery.trim() || undefined,
@@ -147,104 +117,32 @@ export function usePartWizard(open = true) {
       staleTime: 1000 * 60 * 5,
     },
   );
-  useEffect(() => {
-    setCachedCatalogueData(getOfflineCatalogueSnapshot()?.data ?? null);
-  }, []);
 
-  useEffect(() => {
-    const refreshCachedSnapshot = () => {
-      setCachedCatalogueData(getOfflineCatalogueSnapshot()?.data ?? null);
-    };
-    const handleServerCatalogueUpdated = () => {
-      setNeedsCatalogueSnapshotRefresh(true);
-      refreshCachedSnapshot();
-      void utils.catalogue.getPartWizardSummary.invalidate();
-      void utils.catalogue.searchParts.invalidate();
-    };
-
-    window.addEventListener(
-      OFFLINE_CATALOGUE_CHANGED_EVENT,
-      refreshCachedSnapshot,
-    );
-    window.addEventListener(
-      CATALOGUE_SERVER_UPDATED_EVENT,
-      handleServerCatalogueUpdated,
-    );
-
-    return () => {
-      window.removeEventListener(
-        OFFLINE_CATALOGUE_CHANGED_EVENT,
-        refreshCachedSnapshot,
-      );
-      window.removeEventListener(
-        CATALOGUE_SERVER_UPDATED_EVENT,
-        handleServerCatalogueUpdated,
-      );
-    };
-  }, [utils]);
-
-  useEffect(() => {
-    if (!serverSelectionParts) return;
-    setWarmedSelectionParts(serverSelectionParts);
-  }, [serverSelectionParts]);
-
-  useEffect(() => {
-    if (!open) {
-      setWarmedSelectionParts(null);
-    }
-  }, [open]);
-
-  useEffect(() => {
-    const partCount = serverSummary?.partCount ?? 0;
-    const snapshotParts =
-      serverCatalogueSnapshotParts && serverCatalogueSnapshotParts.length >= partCount
-        ? serverCatalogueSnapshotParts
-        : serverSelectionParts && serverSelectionParts.length >= partCount
-          ? serverSelectionParts
-          : null;
-
-    if (
-      !isOnline ||
-      !serverSummary ||
-      !snapshotParts
-    ) {
-      return;
-    }
-
-    const nextSnapshot = {
-      catalogs: serverSummary.catalogs,
-      materials: serverSummary.materials,
-      categories: serverSummary.categories,
-      allUnits: serverSummary.allUnits,
-      parts: snapshotParts,
-    };
-
-    setOfflineCatalogueSnapshot(nextSnapshot);
-    setCachedCatalogueData(nextSnapshot);
-    setNeedsCatalogueSnapshotRefresh(false);
-  }, [
-    isOnline,
-    needsCatalogueSnapshotRefresh,
-    serverCatalogueSnapshotParts,
-    serverSelectionParts,
-    serverSummary,
-  ]);
-
-  const catalogs = isOnline
-    ? (serverSummary?.catalogs ?? cachedCatalogueData?.catalogs)
-    : cachedCatalogueData?.catalogs;
-  const materials = isOnline
-    ? (serverSummary?.materials ?? cachedCatalogueData?.materials)
-    : cachedCatalogueData?.materials;
-  const allUnits = isOnline
-    ? (serverSummary?.allUnits ?? cachedCatalogueData?.allUnits)
-    : cachedCatalogueData?.allUnits;
-  const categoryTree = isOnline
-    ? (serverSummary?.categories ?? cachedCatalogueData?.categories)
-    : cachedCatalogueData?.categories;
-  const summaryParts: PartFacet[] | undefined = isOnline
-    ? (serverSummary?.parts ?? cachedCatalogueData?.parts)
-    : cachedCatalogueData?.parts;
+  const catalogs = hasReplicacheCatalogue
+    ? replicacheCatalogue.catalogs
+    : isOnline
+      ? serverSummary?.catalogs
+      : undefined;
+  const materials = hasReplicacheCatalogue
+    ? replicacheCatalogue.materials
+    : isOnline
+      ? serverSummary?.materials
+      : undefined;
+  const allUnits = hasReplicacheCatalogue
+    ? replicacheCatalogue.allUnits
+    : isOnline
+      ? serverSummary?.allUnits
+      : undefined;
+  const categoryTree = hasReplicacheCatalogue
+    ? replicacheCatalogue.categories
+    : isOnline
+      ? serverSummary?.categories
+      : undefined;
+  const summaryParts: PartFacet[] | undefined = hasReplicacheCatalogue
+    ? replicacheCatalogue.parts
+    : isOnline
+      ? serverSummary?.parts
+      : undefined;
   const filterSelectionParts = useCallback((parts: PreloadedPart[]) => {
     const query = deferredWizardSearchQuery.trim().toLowerCase();
     return parts.filter((part) => {
@@ -318,27 +216,19 @@ export function usePartWizard(open = true) {
     selectedSize,
   ]);
 
-  const cachedFilteredSelectionParts = useMemo(() => {
-    if (!cachedCatalogueData?.parts) return undefined;
-    return filterSelectionParts(cachedCatalogueData.parts);
-  }, [cachedCatalogueData?.parts, filterSelectionParts]);
-
-  const warmedFilteredSelectionParts = useMemo(() => {
-    if (!warmedSelectionParts) return undefined;
-    return filterSelectionParts(warmedSelectionParts);
-  }, [filterSelectionParts, warmedSelectionParts]);
+  const replicacheFilteredSelectionParts = useMemo(() => {
+    if (replicacheCatalogue.parts.length === 0) return undefined;
+    return filterSelectionParts(replicacheCatalogue.parts);
+  }, [filterSelectionParts, replicacheCatalogue.parts]);
 
   const filteredServerSelectionParts = useMemo(() => {
     if (!serverSelectionParts) return undefined;
     return filterSelectionParts(serverSelectionParts);
   }, [filterSelectionParts, serverSelectionParts]);
 
-  const selectionParts = isOnline
-    ? (filteredServerSelectionParts ??
-      (shouldLoadSelectionParts
-        ? (cachedFilteredSelectionParts ?? warmedFilteredSelectionParts)
-        : []))
-    : cachedFilteredSelectionParts;
+  const selectionParts =
+    replicacheFilteredSelectionParts ??
+    (isOnline ? filteredServerSelectionParts : undefined);
 
   const partsByCatalog = useMemo(
     () =>
@@ -516,13 +406,12 @@ export function usePartWizard(open = true) {
   const createCatalog = api.catalogue.createCatalog.useMutation({
     onSuccess: (newCatalog) => {
       if (!newCatalog) return;
-      addOfflineCatalogueCatalog(newCatalog);
-      setCachedCatalogueData(getOfflineCatalogueSnapshot()?.data ?? null);
       setSelectedCatalogId(newCatalog.id);
       setHasCatalogSelection(true);
       setCustomCatalogName("");
       setShowCustomCatalogInput(false);
       setWizardStage("material");
+      requestMaterialListReplicachePull(0);
       void utils.catalogue.getPartWizardSummary.invalidate();
       void utils.catalogue.getCatalogs.invalidate();
     },
@@ -531,13 +420,12 @@ export function usePartWizard(open = true) {
   const createMaterial = api.catalogue.createMaterial.useMutation({
     onSuccess: (newMaterial) => {
       if (!newMaterial) return;
-      addOfflineCatalogueMaterial(newMaterial);
-      setCachedCatalogueData(getOfflineCatalogueSnapshot()?.data ?? null);
       setSelectedMaterialId(newMaterial.id);
       setHasMaterialSelection(true);
       setCustomMaterialName("");
       setShowCustomMaterialInput(false);
       setWizardStage("size");
+      requestMaterialListReplicachePull(0);
       void utils.catalogue.getPartWizardSummary.invalidate();
       void utils.catalogue.getMaterials.invalidate();
     },
@@ -565,8 +453,6 @@ export function usePartWizard(open = true) {
   const createCategory = api.catalogue.createCategoryType.useMutation({
     onSuccess: (newCategory) => {
       if (!newCategory) return;
-      addOfflineCatalogueCategory(newCategory);
-      setCachedCatalogueData(getOfflineCatalogueSnapshot()?.data ?? null);
       setSelectedCategory({
         categoryId: newCategory.id,
         name: newCategory.name,
@@ -575,6 +461,7 @@ export function usePartWizard(open = true) {
       setCustomCategoryName("");
       setShowCustomCategoryInput(false);
       setWizardStage("part");
+      requestMaterialListReplicachePull(0);
       void utils.catalogue.getPartWizardSummary.invalidate();
       void utils.catalogue.getCategories.invalidate();
     },

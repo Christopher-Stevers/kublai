@@ -8,7 +8,7 @@ import {
   requestMaterialListReplicacheSync,
   tryGetMaterialListReplicache,
 } from "~/lib/replicache-material-list";
-import { CATALOGUE_SERVER_UPDATED_EVENT } from "~/lib/offline-catalogue";
+import { clearLegacyOfflineCatalogueSnapshot } from "~/lib/offline-catalogue";
 
 type ReplicachePokeEvent = {
   sourceClientGroupId?: string | null;
@@ -19,6 +19,7 @@ export function ReplicacheSyncBootstrap() {
     const replicache = tryGetMaterialListReplicache();
     if (!replicache) return;
 
+    clearLegacyOfflineCatalogueSnapshot();
     void replicache.pull({ now: true });
     const events = new EventSource("/api/material-lists/events");
     let clientGroupId: string | null = null;
@@ -46,7 +47,7 @@ export function ReplicacheSyncBootstrap() {
     };
     const syncOnLegacyMaterialListEvent = () => requestMaterialListReplicachePull(0);
     const notifyCatalogueUpdated = () => {
-      window.dispatchEvent(new Event(CATALOGUE_SERVER_UPDATED_EVENT));
+      requestMaterialListReplicachePull(0);
     };
 
     window.addEventListener("online", syncOnOnline);
