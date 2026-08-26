@@ -21,8 +21,13 @@ import {
 } from "~/lib/replicache-material-list";
 import { cn } from "~/lib/utils";
 import type { ReplicacheSupplier } from "~/hooks/use-replicache-suppliers";
+import {
+  resolveReplicacheSyncStatus,
+  useReplicacheSyncing,
+  type ReplicacheSyncStatus,
+} from "~/hooks/use-replicache-material-list";
 
-type MaterialListSyncStatus = "synced" | "pending" | "syncing";
+type MaterialListSyncStatus = ReplicacheSyncStatus;
 type VerifyStatus = "pending" | "partial" | "complete" | "problem";
 
 interface MaterialListItemProps {
@@ -224,7 +229,10 @@ function MaterialListItemComponent({
     item.partDefinition?.displayName ||
     item.descriptionSnapshot ||
     "Unknown Part";
-  const itemSyncStatus = syncStatus ?? (item.pendingSync ? "pending" : "synced");
+  const isReplicacheSyncing = useReplicacheSyncing();
+  const itemSyncStatus =
+    syncStatus ??
+    resolveReplicacheSyncStatus(item.pendingSync, isReplicacheSyncing);
   const orderedQuantity = verifyOrderedQuantity ?? item.quantity;
   const orderedQuantityNumber = Math.max(
     0,

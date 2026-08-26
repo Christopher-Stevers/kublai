@@ -138,6 +138,31 @@ let materialListReplicacheSyncTimer: ReturnType<typeof setTimeout> | null =
 let materialListReplicacheSyncInFlight = false;
 let materialListReplicacheSyncRequested: "none" | "pull" | "push-pull" = "none";
 let materialListReplicacheScheduledMode: "pull" | "push-pull" = "pull";
+let materialListReplicacheIsSyncing = false;
+const materialListReplicacheSyncingListeners = new Set<
+  (syncing: boolean) => void
+>();
+
+function notifyMaterialListReplicacheSyncing(syncing: boolean) {
+  materialListReplicacheIsSyncing = syncing;
+  for (const listener of materialListReplicacheSyncingListeners) {
+    listener(syncing);
+  }
+}
+
+export function subscribeToMaterialListReplicacheSyncing(
+  listener: (syncing: boolean) => void,
+) {
+  materialListReplicacheSyncingListeners.add(listener);
+  listener(materialListReplicacheIsSyncing);
+  return () => {
+    materialListReplicacheSyncingListeners.delete(listener);
+  };
+}
+
+export function isMaterialListReplicacheSyncing() {
+  return materialListReplicacheIsSyncing;
+}
 
 function mergeSyncMode(
   current: "none" | "pull" | "push-pull",
@@ -471,6 +496,9 @@ export function getMaterialListReplicache() {
 
   replicache.onClientStateNotFound = () => {
     void resetMaterialListReplicacheStorage();
+  };
+  replicache.onSync = (syncing) => {
+    notifyMaterialListReplicacheSyncing(syncing);
   };
 
   materialListReplicache = replicache;

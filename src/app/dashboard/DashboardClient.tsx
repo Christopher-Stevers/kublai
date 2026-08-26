@@ -493,7 +493,6 @@ export function DashboardClient({
                             key={item.id}
                             materialListId={selectedMaterialList.id}
                             suppliers={suppliers}
-                            syncStatus={item.pendingSync ? "pending" : "synced"}
                             item={{
                               ...item,
                               selectedSupplierId: item.supplierId,

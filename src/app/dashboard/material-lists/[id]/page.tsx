@@ -24,6 +24,7 @@ import {
   CheckCircle2Icon,
   Clock3Icon,
   FileTextIcon,
+  Loader2Icon,
   PencilIcon,
   PlusIcon,
   ShoppingCartIcon,
@@ -34,7 +35,12 @@ import {
 import { ViewToggle } from "~/components/ui/view-toggle";
 import { QuantityControls } from "~/components/materialLists/QuantityControls";
 import { SupplierSelector } from "~/components/materialLists/SupplierSelector";
-import { useReplicacheMaterialList } from "~/hooks/use-replicache-material-list";
+import {
+  resolveReplicacheSyncStatus,
+  useReplicacheMaterialList,
+  useReplicacheSyncing,
+  type ReplicacheSyncStatus,
+} from "~/hooks/use-replicache-material-list";
 import { useReplicacheJobDetail } from "~/hooks/use-replicache-jobs";
 import { useReplicacheSuppliers } from "~/hooks/use-replicache-suppliers";
 import { useOnlineStatus } from "~/hooks/use-online-status";
@@ -45,8 +51,17 @@ import {
 import Image from "next/image";
 import { markUserAction } from "~/lib/performance-marks";
 
-function MaterialListSyncBadge({ isPending }: { isPending: boolean }) {
-  if (isPending) {
+function MaterialListSyncBadge({ status }: { status: ReplicacheSyncStatus }) {
+  if (status === "syncing") {
+    return (
+      <div className="inline-flex h-6 min-w-[5.75rem] items-center justify-center gap-1.5 rounded-full bg-blue-100 px-2.5 py-0 text-xs font-medium leading-none text-blue-900 whitespace-nowrap">
+        <Loader2Icon className="h-3.5 w-3.5 shrink-0 animate-spin" />
+        <span className="leading-none">Syncing</span>
+      </div>
+    );
+  }
+
+  if (status === "pending") {
     return (
       <div className="inline-flex h-6 min-w-[5.75rem] items-center justify-center gap-1.5 rounded-full bg-orange-100 px-2.5 py-0 text-xs font-medium leading-none text-orange-900 whitespace-nowrap">
         <Clock3Icon className="h-3.5 w-3.5 shrink-0" />
@@ -63,8 +78,20 @@ function MaterialListSyncBadge({ isPending }: { isPending: boolean }) {
   );
 }
 
-function MaterialListSyncIndicator({ isPending }: { isPending: boolean }) {
-  if (isPending) {
+function MaterialListSyncIndicator({ status }: { status: ReplicacheSyncStatus }) {
+  if (status === "syncing") {
+    return (
+      <span
+        className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 text-blue-900 ring-1 ring-blue-200"
+        title="Syncing"
+        aria-label="Syncing"
+      >
+        <Loader2Icon className="h-3.5 w-3.5 animate-spin" />
+      </span>
+    );
+  }
+
+  if (status === "pending") {
     return (
       <span
         className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-orange-100 text-orange-900 ring-1 ring-orange-200"
@@ -146,9 +173,13 @@ export default function MaterialListDetailPage({
     api.materialList.updateOrderItemVerification.useMutation();
   const canGenerateDocuments =
     userData?.permissions.canGenerateDocuments ?? true;
-
+  const isReplicacheSyncing = useReplicacheSyncing();
   const hasPendingSync =
     (mlHeader?.pendingSync ?? false) || items.some((i) => i.pendingSync);
+  const listSyncStatus = resolveReplicacheSyncStatus(
+    hasPendingSync,
+    isReplicacheSyncing,
+  );
   const verifySupplierId = verifyOrder?.supplier?.id ?? null;
   const verifyOrderPartDefinitionIds = new Set(
     verifyOrder?.items
@@ -361,7 +392,7 @@ export default function MaterialListDetailPage({
               </div>
             </div>
             <div className="flex min-w-[5.75rem] shrink-0 flex-col items-end gap-1">
-              <MaterialListSyncBadge isPending={hasPendingSync} />
+              <MaterialListSyncBadge status={listSyncStatus} />
               <ViewToggle
                 view={viewMode}
                 onViewChange={setViewMode}
@@ -480,6 +511,7 @@ export default function MaterialListDetailPage({
                   items={visibleItems}
                   materialListId={id}
                   suppliers={suppliers}
+                  isReplicacheSyncing={isReplicacheSyncing}
                 />
               )}
             </>
@@ -705,10 +737,12 @@ function MaterialListTableView({
   items,
   materialListId,
   suppliers,
+  isReplicacheSyncing,
 }: {
   items: TableItem[];
   materialListId: string;
   suppliers: ReturnType<typeof useReplicacheSuppliers>;
+  isReplicacheSyncing: boolean;
 }) {
   const handleRemove = (itemId: string) => {
     void mutateMaterialListAndSync(getMaterialListReplicache().mutate.removeItem({
@@ -804,7 +838,12 @@ function MaterialListTableView({
                 <span className="shrink-0">${lineTotal.toFixed(2)}</span>
               </div>
               <div className="flex h-8 items-center justify-center self-center">
-                <MaterialListSyncIndicator isPending={Boolean(item.pendingSync)} />
+                <MaterialListSyncIndicator
+                  status={resolveReplicacheSyncStatus(
+                    item.pendingSync,
+                    isReplicacheSyncing,
+                  )}
+                />
               </div>
               <div className="flex h-8 items-center justify-center self-center">
                 <Button

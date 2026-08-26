@@ -1,10 +1,31 @@
 "use client";
 
-import { useCallback } from "react";
-import { tryGetMaterialListReplicache } from "~/lib/replicache-material-list";
+import { useCallback, useEffect, useState } from "react";
+import {
+  subscribeToMaterialListReplicacheSyncing,
+  tryGetMaterialListReplicache,
+} from "~/lib/replicache-material-list";
 import { useReplicacheSubscribe } from "~/hooks/use-replicache-subscribe";
 
 export type ReplicacheSyncStatus = "synced" | "pending" | "syncing";
+
+export function resolveReplicacheSyncStatus(
+  pendingSync: boolean | undefined,
+  isSyncing: boolean,
+): ReplicacheSyncStatus {
+  if (!pendingSync) return "synced";
+  return isSyncing ? "syncing" : "pending";
+}
+
+export function useReplicacheSyncing() {
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  useEffect(() => {
+    return subscribeToMaterialListReplicacheSyncing(setIsSyncing);
+  }, []);
+
+  return isSyncing;
+}
 
 export interface ReplicacheMaterialListItem {
   id: string;
