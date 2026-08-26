@@ -8,6 +8,11 @@ import {
   requestMaterialListReplicacheSync,
   tryGetMaterialListReplicache,
 } from "~/lib/replicache-material-list";
+import {
+  closeCatalogueReplicache,
+  requestCatalogueReplicachePull,
+  tryGetCatalogueReplicache,
+} from "~/lib/replicache-catalogue";
 import { clearLegacyOfflineCatalogueSnapshot } from "~/lib/offline-catalogue";
 
 type ReplicachePokeEvent = {
@@ -17,10 +22,12 @@ type ReplicachePokeEvent = {
 export function ReplicacheSyncBootstrap() {
   useEffect(() => {
     const replicache = tryGetMaterialListReplicache();
+    const catalogueReplicache = tryGetCatalogueReplicache();
     if (!replicache) return;
 
     clearLegacyOfflineCatalogueSnapshot();
     void replicache.pull({ now: true });
+    void catalogueReplicache?.pull({ now: true });
     const events = new EventSource("/api/material-lists/events");
     let clientGroupId: string | null = null;
     void replicache.clientGroupID.then((id) => {
@@ -47,7 +54,7 @@ export function ReplicacheSyncBootstrap() {
     };
     const syncOnLegacyMaterialListEvent = () => requestMaterialListReplicachePull(0);
     const notifyCatalogueUpdated = () => {
-      requestMaterialListReplicachePull(0);
+      requestCatalogueReplicachePull(0);
     };
 
     window.addEventListener("online", syncOnOnline);
@@ -69,6 +76,7 @@ export function ReplicacheSyncBootstrap() {
       events.removeEventListener("catalogue-updated", notifyCatalogueUpdated);
       events.close();
       void closeMaterialListReplicache();
+      void closeCatalogueReplicache();
     };
   }, []);
 

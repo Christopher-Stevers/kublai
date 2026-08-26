@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect } from "react";
 import type { ReadonlyJSONValue } from "replicache";
-import { tryGetMaterialListReplicache } from "~/lib/replicache-material-list";
+import { tryGetCatalogueReplicache } from "~/lib/replicache-catalogue";
 import { useReplicacheSubscribe } from "~/hooks/use-replicache-subscribe";
 import { warmOfflineCatalogueImages } from "~/lib/offline-catalogue";
 
@@ -118,7 +118,7 @@ function readTyped<T>(
 export function useReplicacheCatalogue({
   enabled = true,
 }: { enabled?: boolean } = {}): ReplicacheCatalogueSnapshot {
-  const rep = enabled ? tryGetMaterialListReplicache() : null;
+  const rep = enabled ? tryGetCatalogueReplicache() : null;
 
   const snapshot = useReplicacheSubscribe<ReplicacheCatalogueSnapshot, never>(
     rep as never,

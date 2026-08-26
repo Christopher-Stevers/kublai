@@ -40,7 +40,7 @@ import {
   DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu";
 import { SupplierFormDialog } from "~/components/suppliers/SupplierFormDialog";
-import { requestMaterialListReplicachePull } from "~/lib/replicache-material-list";
+import { requestCatalogueReplicachePull } from "~/lib/replicache-catalogue";
 
 function FieldHeader({
   label,
@@ -774,7 +774,7 @@ export function PartDetailsDialog({
       setCatalogId(newCatalog.id);
       setNewCatalogName("");
       setShowNewCatalogInput(false);
-      requestMaterialListReplicachePull(0);
+      requestCatalogueReplicachePull(0);
       void utils.catalogue.getCatalogs.invalidate();
     },
   });
@@ -786,7 +786,7 @@ export function PartDetailsDialog({
       setCategoryId(newCategory.id);
       setNewCategoryName("");
       setShowNewCategoryInput(false);
-      requestMaterialListReplicachePull(0);
+      requestCatalogueReplicachePull(0);
     },
   });
 
@@ -796,7 +796,7 @@ export function PartDetailsDialog({
       setMaterialId(newMaterial.id);
       setNewMaterialName("");
       setShowNewMaterialInput(false);
-      requestMaterialListReplicachePull(0);
+      requestCatalogueReplicachePull(0);
       void utils.catalogue.getMaterials.invalidate();
     },
   });

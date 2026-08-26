@@ -10,7 +10,7 @@ import {
 import { api } from "~/trpc/react";
 import { useOnlineStatus } from "~/hooks/use-online-status";
 import { useReplicacheCatalogue } from "~/hooks/use-replicache-catalogue";
-import { requestMaterialListReplicachePull } from "~/lib/replicache-material-list";
+import { requestCatalogueReplicachePull } from "~/lib/replicache-catalogue";
 import type { WizardStage } from "./types";
 
 type PreloadedPart = {
@@ -411,7 +411,7 @@ export function usePartWizard(open = true) {
       setCustomCatalogName("");
       setShowCustomCatalogInput(false);
       setWizardStage("material");
-      requestMaterialListReplicachePull(0);
+      requestCatalogueReplicachePull(0);
       void utils.catalogue.getPartWizardSummary.invalidate();
       void utils.catalogue.getCatalogs.invalidate();
     },
@@ -425,7 +425,7 @@ export function usePartWizard(open = true) {
       setCustomMaterialName("");
       setShowCustomMaterialInput(false);
       setWizardStage("size");
-      requestMaterialListReplicachePull(0);
+      requestCatalogueReplicachePull(0);
       void utils.catalogue.getPartWizardSummary.invalidate();
       void utils.catalogue.getMaterials.invalidate();
     },
@@ -461,7 +461,7 @@ export function usePartWizard(open = true) {
       setCustomCategoryName("");
       setShowCustomCategoryInput(false);
       setWizardStage("part");
-      requestMaterialListReplicachePull(0);
+      requestCatalogueReplicachePull(0);
       void utils.catalogue.getPartWizardSummary.invalidate();
       void utils.catalogue.getCategories.invalidate();
     },
