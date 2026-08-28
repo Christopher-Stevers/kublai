@@ -216,13 +216,13 @@ test.describe('offline job → material list → order workflow', () => {
     await expect(page.getByText(/3 in ABS 22\.5 Elbow/)).toBeVisible({ timeout: 20_000 });
     await expect(page.getByText(/3 in ABS 45 Elbow/)).toBeVisible({ timeout: 20_000 });
 
-    await page.getByRole('button', { name: 'Generate Order' }).click();
-    await expect(page.getByRole('dialog')).toContainText('Existing Orders');
-    await page.getByRole('button', { name: 'Generate New Order' }).click();
-    await expect(page.getByRole('dialog')).toContainText(/Orders to Send \(1\)/, { timeout: 30_000 });
-    await expect(page.getByRole('dialog').getByRole('button', { name: 'Email Order' })).toBeVisible();
+    await page.getByRole('button', { name: 'Order' }).click();
+    await expect(page.getByRole('dialog')).toContainText('Orders', { timeout: 30_000 });
+    await expect(page.getByRole('dialog')).not.toContainText('Existing Orders');
+    await expect(page.getByRole('dialog')).toContainText('Possible Orders');
+    await expect(page.getByRole('dialog').getByRole('button', { name: 'Send' })).toBeVisible();
 
-    // Do not click Email Order. This guards against accidental mailto/email side effects.
+    // Do not click Send. This guards against accidental mailto/email side effects.
     expect(popupUrls.filter((url) => url.startsWith('mailto:'))).toEqual([]);
     expect(failedRequestsWhileOnline, 'unexpected failed network requests while online').toEqual([]);
   });

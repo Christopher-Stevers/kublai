@@ -213,12 +213,7 @@ export function DashboardClient({
   const [showOfflineOrdersSheet, setShowOfflineOrdersSheet] = useState(false);
   const [showOfflineExistingQuotesDialog, setShowOfflineExistingQuotesDialog] =
     useState(false);
-  const [showOfflineExistingOrdersDialog, setShowOfflineExistingOrdersDialog] =
-    useState(false);
   const [selectedOfflineQuoteId, setSelectedOfflineQuoteId] = useState<
-    string | undefined
-  >();
-  const [selectedOfflineOrderId, setSelectedOfflineOrderId] = useState<
     string | undefined
   >();
   const [jobToDelete, setJobToDelete] = useState<{
@@ -413,17 +408,12 @@ export function DashboardClient({
 
     const handleOfflineGenerateOrder = () => {
       if (!canGenerateOfflineQuoteOrOrder) return;
-      setShowOfflineExistingOrdersDialog(true);
+      setShowOfflineOrdersSheet(true);
     };
 
     const handleOfflineGenerateNewQuote = () => {
       setSelectedOfflineQuoteId(undefined);
       setShowOfflineQuoteSheet(true);
-    };
-
-    const handleOfflineGenerateNewOrder = () => {
-      setSelectedOfflineOrderId(undefined);
-      setShowOfflineOrdersSheet(true);
     };
 
     return (
@@ -625,12 +615,8 @@ export function DashboardClient({
                 {showOfflineOrdersSheet && (
                   <OrdersPreviewSheet
                     open={showOfflineOrdersSheet}
-                    onOpenChange={(open) => {
-                      setShowOfflineOrdersSheet(open);
-                      if (!open) setSelectedOfflineOrderId(undefined);
-                    }}
+                    onOpenChange={setShowOfflineOrdersSheet}
                     materialListId={selectedMaterialList.id}
-                    orderId={selectedOfflineOrderId}
                   />
                 )}
                 <ExistingQuotesOrdersDialog
@@ -642,17 +628,6 @@ export function DashboardClient({
                   onOpenExisting={(quoteId) => {
                     setSelectedOfflineQuoteId(quoteId);
                     setShowOfflineQuoteSheet(true);
-                  }}
-                />
-                <ExistingQuotesOrdersDialog
-                  open={showOfflineExistingOrdersDialog}
-                  onOpenChange={setShowOfflineExistingOrdersDialog}
-                  materialListId={selectedMaterialList.id}
-                  type="order"
-                  onGenerateNew={handleOfflineGenerateNewOrder}
-                  onOpenExisting={(orderId) => {
-                    setSelectedOfflineOrderId(orderId);
-                    setShowOfflineOrdersSheet(true);
                   }}
                 />
               </>

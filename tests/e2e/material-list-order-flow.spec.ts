@@ -137,12 +137,12 @@ test.describe('material list ordering flow', () => {
     }, 5_000);
 
     await recordStep('generate order', async () => {
-      await page.getByRole('button', { name: 'Generate Order' }).click();
-      await expect(page.getByRole('dialog')).toContainText('Existing Orders');
-      await page.getByRole('button', { name: 'Generate New Order' }).click();
-      await expect(page.getByRole('dialog')).toContainText(/Orders to Send \(1\)/, { timeout: 20_000 });
+      await page.getByRole('button', { name: 'Order' }).click();
+      await expect(page.getByRole('dialog')).toContainText('Orders', { timeout: 20_000 });
+      await expect(page.getByRole('dialog')).not.toContainText('Existing Orders');
+      await expect(page.getByRole('dialog')).toContainText('Possible Orders');
       await expect(page.getByRole('dialog')).toContainText('Noble');
-      await expect(page.getByRole('button', { name: 'Email Order' })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Send' })).toBeVisible();
     }, 5_000);
 
     const notes = [

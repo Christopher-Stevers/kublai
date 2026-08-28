@@ -134,12 +134,9 @@ export default function MaterialListDetailPage({
     useState(false);
   const [showExistingQuotesDialog, setShowExistingQuotesDialog] =
     useState(false);
-  const [showExistingOrdersDialog, setShowExistingOrdersDialog] =
-    useState(false);
   const [showVerifyNotesDialog, setShowVerifyNotesDialog] = useState(false);
   const [verifyOrderNotes, setVerifyOrderNotes] = useState("");
   const [selectedQuoteId, setSelectedQuoteId] = useState<string | undefined>();
-  const [selectedOrderId, setSelectedOrderId] = useState<string | undefined>();
   const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
   const isBrowserOnline = useOnlineStatus();
 
@@ -273,7 +270,7 @@ export default function MaterialListDetailPage({
       setShowJobInfoModal(true);
       return;
     }
-    setShowExistingOrdersDialog(true);
+    setShowOrdersSheet(true);
   };
 
   const handleGenerateNewQuote = () => {
@@ -281,19 +278,9 @@ export default function MaterialListDetailPage({
     setShowQuoteSheet(true);
   };
 
-  const handleGenerateNewOrder = () => {
-    setSelectedOrderId(undefined);
-    setShowOrdersSheet(true);
-  };
-
   const handleOpenExistingQuote = (quoteId: string) => {
     setSelectedQuoteId(quoteId);
     setShowQuoteSheet(true);
-  };
-
-  const handleOpenExistingOrder = (orderId: string) => {
-    setSelectedOrderId(orderId);
-    setShowOrdersSheet(true);
   };
 
   if (isLoading && !mlHeader) {
@@ -655,12 +642,8 @@ export default function MaterialListDetailPage({
       {showOrdersSheet && (
         <OrdersPreviewSheet
           open={showOrdersSheet}
-          onOpenChange={(open) => {
-            setShowOrdersSheet(open);
-            if (!open) setSelectedOrderId(undefined);
-          }}
+          onOpenChange={setShowOrdersSheet}
           materialListId={mlHeader.id}
-          orderId={selectedOrderId}
         />
       )}
 
@@ -692,15 +675,6 @@ export default function MaterialListDetailPage({
         type="quote"
         onGenerateNew={handleGenerateNewQuote}
         onOpenExisting={handleOpenExistingQuote}
-      />
-
-      <ExistingQuotesOrdersDialog
-        open={showExistingOrdersDialog}
-        onOpenChange={setShowExistingOrdersDialog}
-        materialListId={mlHeader.id}
-        type="order"
-        onGenerateNew={handleGenerateNewOrder}
-        onOpenExisting={handleOpenExistingOrder}
       />
     </div>
   );

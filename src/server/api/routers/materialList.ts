@@ -64,6 +64,108 @@ function firstName(name: string | null | undefined) {
   return name?.trim().split(/\s+/)[0] ?? "";
 }
 
+type OrderableQuoteItem = {
+  id: string;
+  supplierPartId: string | null;
+  selectedSupplierId: string | null;
+  partDefinitionId: string | null;
+  partDefinitionDisplayName: string | null;
+  quantity: string;
+  uomId: string | null;
+  unitCost: string | null;
+  descriptionSnapshot: string | null;
+  supplierPartSupplierId: string | null;
+  supplierSku: string | null;
+};
+
+function groupOrderableItemsBySupplier(items: OrderableQuoteItem[]) {
+  const itemsBySupplier = new Map<string, OrderableQuoteItem[]>();
+  for (const item of items) {
+    const supplierId =
+      item.selectedSupplierId ?? item.supplierPartSupplierId;
+    if (!supplierId || !item.partDefinitionId) continue;
+    const bucket = itemsBySupplier.get(supplierId) ?? [];
+    bucket.push(item);
+    itemsBySupplier.set(supplierId, bucket);
+  }
+  return itemsBySupplier;
+}
+
+function buildOrderEmailContent({
+  jobName,
+  poNumber,
+  deliveryAddress,
+  supplierContactName,
+  items,
+  notes,
+  foremanName,
+}: {
+  jobName: string;
+  poNumber: string;
+  deliveryAddress: string;
+  supplierContactName: string;
+  items: Array<{
+    quantity: string | null;
+    descriptionSnapshot: string | null;
+    partDefinitionDisplayName?: string | null;
+  }>;
+  notes?: string | null;
+  foremanName: string;
+}) {
+  const lineItems = items.map(formatEmailItemLine).join("\n");
+  const sections = [
+    `Hello${supplierContactName ? ` ${supplierContactName}` : ""},`,
+    "",
+    `Job: ${jobName}`,
+    `PO#: ${poNumber}`,
+    `Address: ${deliveryAddress || ""}`,
+    `Delivery Date: ${getNextBusinessDay().toLocaleDateString("en-CA", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    })}`,
+    "",
+    lineItems || "No items",
+    ...(notes?.trim() ? ["", "Notes:", notes.trim()] : []),
+    "",
+    "Thanks,",
+    foremanName,
+  ];
+
+  return {
+    subject: `Material Order ${poNumber} - ${jobName}`,
+    body: sections.join("\n"),
+  };
+}
+
+async function loadOrderableQuoteItems(
+  database: typeof appDb | any,
+  quoteId: string,
+) {
+  return database
+    .select({
+      id: quoteItems.id,
+      supplierPartId: quoteItems.supplierPartId,
+      selectedSupplierId: quoteItems.supplierId,
+      partDefinitionId: quoteItems.partDefinitionId,
+      partDefinitionDisplayName: partDefinitions.displayName,
+      quantity: quoteItems.quantity,
+      uomId: quoteItems.uomId,
+      unitCost: quoteItems.unitCost,
+      descriptionSnapshot: quoteItems.descriptionSnapshot,
+      supplierPartSupplierId: supplierParts.supplierId,
+      supplierSku: supplierParts.supplierSku,
+    })
+    .from(quoteItems)
+    .leftJoin(supplierParts, eq(quoteItems.supplierPartId, supplierParts.id))
+    .leftJoin(
+      partDefinitions,
+      eq(quoteItems.partDefinitionId, partDefinitions.id),
+    )
+    .where(eq(quoteItems.quoteId, quoteId)) as Promise<OrderableQuoteItem[]>;
+}
+
 function isUuid(value: string | null | undefined) {
   return (
     !!value &&
@@ -2474,10 +2576,289 @@ ${foremanName}`;
     }),
 
   /**
-   * Generate orders from material list (grouped by supplier)
+   * Preview possible supplier orders plus already-sent orders.
+   * Does not persist draft orders.
    */
-  generateOrders: hasDashboardAccess
+  previewOrders: hasDashboardAccess
     .input(z.object({ materialListId: z.string().uuid() }))
+    .query(async ({ ctx, input }) => {
+      assertCanGenerateDocuments(ctx.user);
+
+      if (!ctx.user.organizationId) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "User must belong to an organization",
+        });
+      }
+
+      const [materialList] = await ctx.db
+        .select({
+          id: materialLists.id,
+          quoteId: materialLists.quoteId,
+          jobId: materialLists.jobId,
+          jobName: jobs.name,
+          jobPoNumber: jobs.poNumber,
+          locationName: locations.name,
+          locationAddress1: locations.address1,
+          locationAddress2: locations.address2,
+          locationCity: locations.city,
+          locationRegion: locations.region,
+          locationPostalCode: locations.postalCode,
+          locationCountry: locations.country,
+        })
+        .from(materialLists)
+        .leftJoin(jobs, eq(materialLists.jobId, jobs.id))
+        .leftJoin(locations, eq(jobs.locationId, locations.id))
+        .where(
+          and(
+            eq(materialLists.id, input.materialListId),
+            eq(materialLists.organizationId, ctx.user.organizationId),
+          ),
+        )
+        .limit(1);
+
+      if (!materialList) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Material list not found",
+        });
+      }
+
+      if (!materialList.quoteId) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Quote not found for material list",
+        });
+      }
+
+      const [quote] = await ctx.db
+        .select({ id: quotes.id })
+        .from(quotes)
+        .where(eq(quotes.id, materialList.quoteId))
+        .limit(1);
+
+      if (!quote) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Quote not found for material list",
+        });
+      }
+
+      const quoteItemsList = await loadOrderableQuoteItems(
+        ctx.db,
+        quote.id,
+      );
+      const orderableItemsBySupplier =
+        groupOrderableItemsBySupplier(quoteItemsList);
+
+      const sentOrders = await ctx.db
+        .select({
+          id: orders.id,
+          orderNumber: orders.orderNumber,
+          notes: orders.notes,
+          sentAt: orders.sentAt,
+          supplierId: orders.supplierId,
+          supplierName: suppliers.name,
+          supplierContactName: suppliers.contactName,
+          supplierContactEmail: suppliers.contactEmail,
+          supplierContacts: suppliers.contacts,
+        })
+        .from(orders)
+        .leftJoin(suppliers, eq(orders.supplierId, suppliers.id))
+        .where(
+          and(
+            eq(orders.materialListId, input.materialListId),
+            eq(orders.organizationId, ctx.user.organizationId),
+            eq(orders.status, "sent"),
+          ),
+        )
+        .orderBy(desc(orders.sentAt), desc(orders.createdAt));
+
+      const sentOrderIds = sentOrders.map((order) => order.id);
+      const sentItemRows = sentOrderIds.length
+        ? await ctx.db
+            .select({
+              id: orderItems.id,
+              orderId: orderItems.orderId,
+              quantity: orderItems.quantity,
+              descriptionSnapshot: orderItems.descriptionSnapshot,
+              supplierSkuSnapshot: orderItems.supplierSkuSnapshot,
+              partDefinitionDisplayName: partDefinitions.displayName,
+            })
+            .from(orderItems)
+            .leftJoin(
+              partDefinitions,
+              eq(orderItems.partDefinitionId, partDefinitions.id),
+            )
+            .where(inArray(orderItems.orderId, sentOrderIds))
+        : [];
+      const sentItemsByOrderId = new Map<string, typeof sentItemRows>();
+      for (const item of sentItemRows) {
+        const bucket = sentItemsByOrderId.get(item.orderId) ?? [];
+        bucket.push(item);
+        sentItemsByOrderId.set(item.orderId, bucket);
+      }
+
+      const possibleSupplierIds = Array.from(orderableItemsBySupplier.keys());
+      const possibleSupplierRows = possibleSupplierIds.length
+        ? await ctx.db
+            .select({
+              id: suppliers.id,
+              name: suppliers.name,
+              contactName: suppliers.contactName,
+              contactEmail: suppliers.contactEmail,
+              contacts: suppliers.contacts,
+            })
+            .from(suppliers)
+            .where(inArray(suppliers.id, possibleSupplierIds))
+        : [];
+      const possibleSuppliersById = new Map(
+        possibleSupplierRows.map((supplier) => [supplier.id, supplier]),
+      );
+
+      const jobName = materialList.jobName || "Job";
+      const deliveryAddress = formatOneLineAddress({
+        name: materialList.locationName,
+        address1: materialList.locationAddress1,
+        address2: materialList.locationAddress2,
+        city: materialList.locationCity,
+        region: materialList.locationRegion,
+        postalCode: materialList.locationPostalCode,
+        country: materialList.locationCountry,
+      });
+      const foremanName = ctx.user.name || "Foreman";
+
+      const possible = possibleSupplierIds.map((supplierId) => {
+        const supplier = possibleSuppliersById.get(supplierId) ?? null;
+        const items = orderableItemsBySupplier.get(supplierId) ?? [];
+        const supplierContacts = normalizeSupplierContacts(
+          supplier?.contacts,
+          {
+            contactName: supplier?.contactName ?? supplier?.name ?? null,
+            contactEmail: supplier?.contactEmail ?? null,
+          },
+        );
+        const recipients = getSupplierEmailRecipients(supplierContacts);
+        const supplierContactName =
+          formatSupplierGreetingName(supplierContacts) ||
+          firstName(supplier?.contactName || supplier?.name);
+        const poNumber =
+          materialList.jobPoNumber?.trim() ||
+          `ORDER-${(supplier?.name || "Supplier").replace(/\s+/g, "").slice(0, 12)}`;
+        const email = buildOrderEmailContent({
+          jobName,
+          poNumber,
+          deliveryAddress,
+          supplierContactName,
+          items,
+          foremanName,
+        });
+
+        return {
+          id: `preview:${supplierId}`,
+          supplierId,
+          orderNumber: null,
+          notes: null,
+          sentAt: null,
+          supplier: supplier
+            ? {
+                id: supplier.id,
+                name: supplier.name,
+                contactEmail: supplier.contactEmail,
+                contacts: supplier.contacts,
+              }
+            : null,
+          items: items.map((item) => ({
+            id: item.id,
+            quantity: item.quantity,
+            descriptionSnapshot:
+              item.descriptionSnapshot?.trim() ||
+              item.partDefinitionDisplayName?.trim() ||
+              null,
+            supplierSkuSnapshot: item.supplierSku ?? null,
+          })),
+          email: {
+            ...email,
+            to: recipients.to,
+            cc: recipients.cc,
+          },
+        };
+      });
+
+      const sent = sentOrders.map((order) => {
+        const items = (sentItemsByOrderId.get(order.id) ?? []).map(
+          ({ orderId: _orderId, partDefinitionDisplayName, ...item }) => ({
+            ...item,
+            descriptionSnapshot:
+              item.descriptionSnapshot?.trim() ||
+              partDefinitionDisplayName?.trim() ||
+              null,
+          }),
+        );
+        const supplierContacts = normalizeSupplierContacts(
+          order.supplierContacts,
+          {
+            contactName:
+              order.supplierContactName ?? order.supplierName ?? null,
+            contactEmail: order.supplierContactEmail ?? null,
+          },
+        );
+        const recipients = getSupplierEmailRecipients(supplierContacts);
+        const supplierContactName =
+          formatSupplierGreetingName(supplierContacts) ||
+          firstName(order.supplierContactName || order.supplierName);
+        const poNumber =
+          materialList.jobPoNumber?.trim() ||
+          order.orderNumber?.trim() ||
+          `ORDER-${order.id.slice(0, 8)}`;
+        const email = buildOrderEmailContent({
+          jobName,
+          poNumber,
+          deliveryAddress,
+          supplierContactName,
+          items,
+          notes: order.notes,
+          foremanName,
+        });
+
+        return {
+          id: order.id,
+          supplierId: order.supplierId,
+          orderNumber: order.orderNumber,
+          notes: order.notes,
+          sentAt: order.sentAt,
+          supplier: order.supplierId
+            ? {
+                id: order.supplierId,
+                name: order.supplierName ?? "",
+                contactEmail: order.supplierContactEmail,
+                contacts: order.supplierContacts,
+              }
+            : null,
+          items,
+          email: {
+            ...email,
+            to: recipients.to,
+            cc: recipients.cc,
+          },
+        };
+      });
+
+      return { possible, sent };
+    }),
+
+  /**
+   * Persist a possible order as sent. No draft records are created.
+   */
+  sendGeneratedOrder: hasDashboardAccess
+    .input(
+      z.object({
+        materialListId: z.string().uuid(),
+        supplierId: z.string().uuid(),
+        sentTo: z.string().min(1).max(1000),
+        notes: z.string().optional(),
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
       assertCanGenerateDocuments(ctx.user);
 
@@ -2488,7 +2869,6 @@ ${foremanName}`;
         });
       }
 
-      // Get material list
       const [materialList] = await ctx.db
         .select({
           id: materialLists.id,
@@ -2518,73 +2898,22 @@ ${foremanName}`;
         });
       }
 
-      // Get quote
-      const [quote] = await ctx.db
-        .select({ id: quotes.id })
-        .from(quotes)
-        .where(eq(quotes.id, materialList.quoteId))
-        .limit(1);
+      const quoteItemsList = await loadOrderableQuoteItems(
+        ctx.db,
+        materialList.quoteId,
+      );
+      const items =
+        groupOrderableItemsBySupplier(quoteItemsList).get(input.supplierId) ??
+        [];
 
-      if (!quote) {
+      if (items.length === 0) {
         throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Quote not found for material list",
+          code: "BAD_REQUEST",
+          message: "No orderable items found for this supplier",
         });
       }
 
-      const quoteItemsList = await ctx.db
-        .select({
-          id: quoteItems.id,
-          supplierPartId: quoteItems.supplierPartId,
-          selectedSupplierId: quoteItems.supplierId,
-          partDefinitionId: quoteItems.partDefinitionId,
-          partDefinitionDisplayName: partDefinitions.displayName,
-          quantity: quoteItems.quantity,
-          uomId: quoteItems.uomId,
-          unitCost: quoteItems.unitCost,
-          descriptionSnapshot: quoteItems.descriptionSnapshot,
-          supplierPartSupplierId: supplierParts.supplierId,
-          supplierSku: supplierParts.supplierSku,
-        })
-        .from(quoteItems)
-        .leftJoin(
-          supplierParts,
-          eq(quoteItems.supplierPartId, supplierParts.id),
-        )
-        .leftJoin(
-          partDefinitions,
-          eq(quoteItems.partDefinitionId, partDefinitions.id),
-        )
-        .where(eq(quoteItems.quoteId, quote.id));
-
-      // Group by supplier
-      const itemsBySupplier = new Map<string, typeof quoteItemsList>();
-      for (const item of quoteItemsList) {
-        const supplierId =
-          item.selectedSupplierId ?? item.supplierPartSupplierId;
-        if (!supplierId) {
-          // Skip items without supplier
-          continue;
-        }
-        if (!itemsBySupplier.has(supplierId)) {
-          itemsBySupplier.set(supplierId, []);
-        }
-        itemsBySupplier.get(supplierId)!.push(item);
-      }
-
-      const orderableItemsBySupplier = new Map<string, typeof quoteItemsList>();
-      for (const [supplierId, items] of itemsBySupplier.entries()) {
-        const orderableItems = items.filter((item) => item.partDefinitionId);
-        if (orderableItems.length > 0) {
-          orderableItemsBySupplier.set(supplierId, orderableItems);
-        }
-      }
-
-      if (orderableItemsBySupplier.size === 0) {
-        return [];
-      }
-
-      const createdOrders = await ctx.db.transaction(async (tx) => {
+      return ctx.db.transaction(async (tx) => {
         await tx.execute(
           sql`select pg_advisory_xact_lock(hashtext(${`${ctx.user.organizationId}:${materialList.jobId}:orders`}))`,
         );
@@ -2601,106 +2930,51 @@ ${foremanName}`;
             ),
           );
 
-        let createdOrderSequence = Number(existingOrderCountResult?.count ?? 0);
-        const orderInputs = Array.from(orderableItemsBySupplier.keys()).map(
-          (supplierId) => {
-            createdOrderSequence += 1;
-            return {
-              organizationId: ctx.user.organizationId!,
-              jobId: materialList.jobId,
-              materialListId: input.materialListId,
-              orderNumber: `PO-${String(createdOrderSequence).padStart(3, "0")}`,
-              supplierId,
-              createdByUserId: ctx.userId,
-              status: "draft",
-            };
-          },
-        );
+        const createdOrderSequence =
+          Number(existingOrderCountResult?.count ?? 0) + 1;
 
-        const insertedOrders = await tx
+        const [createdOrder] = await tx
           .insert(orders)
-          .values(orderInputs)
+          .values({
+            organizationId: ctx.user.organizationId!,
+            jobId: materialList.jobId,
+            materialListId: input.materialListId,
+            orderNumber: `ORDER-${String(createdOrderSequence).padStart(3, "0")}`,
+            supplierId: input.supplierId,
+            createdByUserId: ctx.userId,
+            status: "sent",
+            sentVia: "email",
+            sentTo: input.sentTo,
+            sentAt: new Date(),
+            notes: input.notes?.trim() || null,
+          })
           .returning();
 
-        if (insertedOrders.length !== orderInputs.length) {
+        if (!createdOrder) {
           throw new TRPCError({
             code: "INTERNAL_SERVER_ERROR",
-            message: "Failed to create all orders",
+            message: "Failed to create order",
           });
         }
 
-        const orderItemInputs = insertedOrders.flatMap((order) =>
-          (orderableItemsBySupplier.get(order.supplierId ?? "") ?? []).map(
-            (item) => ({
-              orderId: order.id,
-              supplierPartId: item.supplierPartId ?? undefined,
-              partDefinitionId: item.partDefinitionId!,
-              quantity: item.quantity ?? "1",
-              uomId: item.uomId ?? undefined,
-              unitCostAtOrderTime: item.unitCost ?? undefined,
-              descriptionSnapshot:
-                item.descriptionSnapshot?.trim() ||
-                item.partDefinitionDisplayName?.trim() ||
-                undefined,
-              supplierSkuSnapshot: item.supplierSku ?? undefined,
-            }),
-          ),
+        await tx.insert(orderItems).values(
+          items.map((item) => ({
+            orderId: createdOrder.id,
+            supplierPartId: item.supplierPartId ?? undefined,
+            partDefinitionId: item.partDefinitionId!,
+            quantity: item.quantity ?? "1",
+            uomId: item.uomId ?? undefined,
+            unitCostAtOrderTime: item.unitCost ?? undefined,
+            descriptionSnapshot:
+              item.descriptionSnapshot?.trim() ||
+              item.partDefinitionDisplayName?.trim() ||
+              undefined,
+            supplierSkuSnapshot: item.supplierSku ?? undefined,
+          })),
         );
 
-        if (orderItemInputs.length > 0) {
-          await tx.insert(orderItems).values(orderItemInputs);
-        }
-
-        const orderIds = insertedOrders.map((order) => order.id);
-        const supplierIds = insertedOrders
-          .map((order) => order.supplierId)
-          .filter((supplierId): supplierId is string => !!supplierId);
-
-        const supplierRows = supplierIds.length
-          ? await tx
-              .select({
-                id: suppliers.id,
-                name: suppliers.name,
-                contactEmail: suppliers.contactEmail,
-                contacts: suppliers.contacts,
-              })
-              .from(suppliers)
-              .where(inArray(suppliers.id, supplierIds))
-          : [];
-        const suppliersById = new Map(
-          supplierRows.map((supplier) => [supplier.id, supplier]),
-        );
-
-        const orderItemRows = await tx
-          .select({
-            id: orderItems.id,
-            orderId: orderItems.orderId,
-            quantity: orderItems.quantity,
-            descriptionSnapshot: orderItems.descriptionSnapshot,
-            supplierSkuSnapshot: orderItems.supplierSkuSnapshot,
-          })
-          .from(orderItems)
-          .where(inArray(orderItems.orderId, orderIds));
-
-        const itemsByOrderId = new Map<string, typeof orderItemRows>();
-        for (const item of orderItemRows) {
-          const bucket = itemsByOrderId.get(item.orderId) ?? [];
-          bucket.push(item);
-          itemsByOrderId.set(item.orderId, bucket);
-        }
-
-        return insertedOrders.map((order) => ({
-          ...order,
-          supplier: order.supplierId
-            ? (suppliersById.get(order.supplierId) ?? null)
-            : null,
-          items: (itemsByOrderId.get(order.id) ?? []).map(
-            ({ orderId, ...item }) => item,
-          ),
-        }));
+        return createdOrder;
       });
-
-      return createdOrders;
     }),
 
   /**
@@ -2793,7 +3067,7 @@ ${foremanName}`;
       const poNumber =
         order.job?.poNumber?.trim() ||
         order.orderNumber?.trim() ||
-        `PO-${order.id.slice(0, 8)}`;
+        `ORDER-${order.id.slice(0, 8)}`;
       const deliveryDate = getNextBusinessDay();
       const formattedDeliveryDate = deliveryDate.toLocaleDateString("en-CA", {
         weekday: "long",
@@ -2992,6 +3266,7 @@ ${foremanName}`;
           and(
             eq(orders.materialListId, input.materialListId),
             eq(orders.organizationId, ctx.user.organizationId),
+            eq(orders.status, "sent"),
           ),
         )
         .orderBy(desc(orders.createdAt));
@@ -3300,6 +3575,7 @@ ${foremanName}`;
         id: orders.id,
         orderNumber: orders.orderNumber,
         status: orders.status,
+        notes: orders.notes,
         createdAt: orders.createdAt,
         sentAt: orders.sentAt,
         sentTo: orders.sentTo,
@@ -3316,13 +3592,43 @@ ${foremanName}`;
       .leftJoin(jobs, eq(orders.jobId, jobs.id))
       .leftJoin(materialLists, eq(orders.materialListId, materialLists.id))
       .leftJoin(suppliers, eq(orders.supplierId, suppliers.id))
-      .where(eq(orders.organizationId, ctx.user.organizationId))
+      .where(
+        and(
+          eq(orders.organizationId, ctx.user.organizationId),
+          eq(orders.status, "sent"),
+        ),
+      )
       .orderBy(desc(orders.createdAt));
+
+    const orderIds = ordersList.map((order) => order.id);
+    const itemRows = orderIds.length
+      ? await ctx.db
+          .select({
+            orderId: orderItems.orderId,
+            quantity: orderItems.quantity,
+            descriptionSnapshot: orderItems.descriptionSnapshot,
+            supplierSkuSnapshot: orderItems.supplierSkuSnapshot,
+            partDefinitionDisplayName: partDefinitions.displayName,
+          })
+          .from(orderItems)
+          .leftJoin(
+            partDefinitions,
+            eq(orderItems.partDefinitionId, partDefinitions.id),
+          )
+          .where(inArray(orderItems.orderId, orderIds))
+      : [];
+    const itemsByOrderId = new Map<string, typeof itemRows>();
+    for (const item of itemRows) {
+      const bucket = itemsByOrderId.get(item.orderId) ?? [];
+      bucket.push(item);
+      itemsByOrderId.set(item.orderId, bucket);
+    }
 
     return ordersList.map((order) => ({
       id: order.id,
       orderNumber: order.orderNumber,
       status: order.status,
+      notes: order.notes,
       createdAt: order.createdAt,
       sentAt: order.sentAt,
       sentTo: order.sentTo,
@@ -3344,6 +3650,14 @@ ${foremanName}`;
             name: order.materialListName ?? "",
           }
         : null,
+      items: (itemsByOrderId.get(order.id) ?? []).map((item) => ({
+        quantity: item.quantity,
+        description:
+          item.descriptionSnapshot?.trim() ||
+          item.partDefinitionDisplayName?.trim() ||
+          null,
+        supplierSku: item.supplierSkuSnapshot,
+      })),
     }));
   }),
 });
