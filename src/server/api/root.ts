@@ -2,6 +2,7 @@ import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
 import { adminRouter } from "~/server/api/routers/admin";
 import { catalogueRouter } from "~/server/api/routers/catalogue";
 import { jobRouter } from "~/server/api/routers/job";
+import { roomsRouter } from "~/server/api/routers/rooms";
 import { locationRouter } from "~/server/api/routers/location";
 import { materialListRouter } from "~/server/api/routers/materialList";
 import { organizationRouter } from "~/server/api/routers/organization";
@@ -22,6 +23,7 @@ export const appRouter = createTRPCRouter({
   catalogue: catalogueRouter,
   supplier: supplierRouter,
   job: jobRouter,
+  rooms: roomsRouter,
   materialList: materialListRouter,
   location: locationRouter,
 });

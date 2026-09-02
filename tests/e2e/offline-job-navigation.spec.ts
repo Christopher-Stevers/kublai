@@ -119,8 +119,11 @@ test.describe('offline job navigation', () => {
     });
 
     await page.getByText(job.name, { exact: true }).first().click();
-    await page.waitForURL(new RegExp(`/dashboard/jobs/${job.id}`));
     await expect(page.getByRole('heading', { name: job.name })).toBeVisible({ timeout: 20_000 });
+    await page.getByText('Material Lists', { exact: true }).first().click();
+    await expect(page.getByRole('heading', { name: 'Material Lists' })).toBeVisible({
+      timeout: 20_000,
+    });
     await page.getByText(materialList.name, { exact: true }).first().click();
     await page.waitForURL(new RegExp(`/dashboard/material-lists/${materialList.id}`));
     await expect(page.getByRole('heading', { name: materialList.name })).toBeVisible({ timeout: 20_000 });

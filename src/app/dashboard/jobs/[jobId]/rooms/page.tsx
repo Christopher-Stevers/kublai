@@ -1,6 +1,6 @@
 "use client";
 
-import { use } from "react";
+import { use, useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
@@ -11,9 +11,8 @@ import {
   UserIcon,
   WifiOffIcon,
 } from "lucide-react";
-import { useState } from "react";
 import { JobEditDialog } from "~/components/jobs/JobEditDialog";
-import { JobWorkspaceOptions } from "~/components/jobs/JobWorkspaceOptions";
+import { JobRoomsView } from "~/components/jobs/JobRoomsView";
 import { setLastJobWorkspaceLocation } from "~/lib/job-workspace-last-option";
 import { useReplicacheJobDetail } from "~/hooks/use-replicache-jobs";
 import { useOnlineStatus } from "~/hooks/use-online-status";
@@ -46,7 +45,7 @@ function formatLocationAddress(
   );
 }
 
-export default function JobOptionsPage({
+export default function JobRoomsPage({
   params,
 }: {
   params: Promise<{ jobId: string }>;
@@ -70,9 +69,15 @@ export default function JobOptionsPage({
       },
     );
   const job = jobDetail?.job ?? serverJob ?? null;
-  const materialListCount =
-    jobDetail?.materialLists.length ?? serverJob?.materialLists.length ?? 0;
   const jobLocationAddress = formatLocationAddress(job?.location);
+
+  useEffect(() => {
+    setLastJobWorkspaceLocation({
+      jobId,
+      view: "rooms",
+      materialListId: null,
+    });
+  }, [jobId]);
 
   if (!job && !hasFetchedServerJob) {
     return (
@@ -166,22 +171,7 @@ export default function JobOptionsPage({
           </div>
         </div>
 
-        <JobWorkspaceOptions
-          materialListCount={materialListCount}
-          onSelect={(optionId) => {
-            setLastJobWorkspaceLocation({
-              jobId: job.id,
-              view: optionId,
-              materialListId: null,
-            });
-            if (optionId === "material-lists") {
-              router.push(`/dashboard/jobs/${job.id}/material-lists`);
-            }
-            if (optionId === "rooms") {
-              router.push(`/dashboard/jobs/${job.id}/rooms`);
-            }
-          }}
-        />
+        <JobRoomsView jobId={job.id} />
 
         <JobEditDialog
           open={showEditDialog}

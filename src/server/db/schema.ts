@@ -938,6 +938,175 @@ export const jobsRelations = relations(jobs, ({ one, many }) => ({
   materialLists: many(materialLists),
   quotes: many(quotes),
   orders: many(orders),
+  floorPlans: many(jobFloorPlans),
+  floors: many(jobFloors),
+  rooms: many(jobRooms),
+}));
+
+export const jobFloorPlans = createTable(
+  "job_floor_plan",
+  (d) => ({
+    id: d
+      .uuid()
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    organizationId: d
+      .uuid()
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    jobId: d
+      .uuid()
+      .notNull()
+      .references(() => jobs.id, { onDelete: "cascade" }),
+    originalFilename: d.varchar({ length: 255 }).notNull(),
+    storageKey: d.varchar({ length: 512 }).notNull(),
+    status: d.varchar({ length: 50 }).notNull().default("processing"),
+    pageCount: d.integer().notNull().default(0),
+    error: d.text(),
+    uploadedByUserId: d.varchar({ length: 255 }),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .notNull()
+      .$defaultFn(() => new Date()),
+    updatedAt: d
+      .timestamp({ withTimezone: true })
+      .notNull()
+      .$defaultFn(() => new Date())
+      .$onUpdate(() => new Date()),
+  }),
+  (t) => [
+    unique("job_floor_plan_job_uniq").on(t.jobId),
+    index("job_floor_plan_org_idx").on(t.organizationId),
+  ],
+);
+
+export const jobFloors = createTable(
+  "job_floor",
+  (d) => ({
+    id: d
+      .uuid()
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    organizationId: d
+      .uuid()
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    jobId: d
+      .uuid()
+      .notNull()
+      .references(() => jobs.id, { onDelete: "cascade" }),
+    floorPlanId: d
+      .uuid()
+      .notNull()
+      .references(() => jobFloorPlans.id, { onDelete: "cascade" }),
+    pageNumber: d.integer().notNull(),
+    name: d.varchar({ length: 255 }).notNull(),
+    imageUrl: d.text().notNull(),
+    width: d.integer().notNull(),
+    height: d.integer().notNull(),
+    status: d.varchar({ length: 50 }).notNull().default("detected"),
+    confirmedAt: d.timestamp({ withTimezone: true }),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .notNull()
+      .$defaultFn(() => new Date()),
+    updatedAt: d
+      .timestamp({ withTimezone: true })
+      .notNull()
+      .$defaultFn(() => new Date())
+      .$onUpdate(() => new Date()),
+  }),
+  (t) => [
+    index("job_floor_job_idx").on(t.jobId),
+    index("job_floor_plan_idx").on(t.floorPlanId),
+    unique("job_floor_plan_page_uniq").on(t.floorPlanId, t.pageNumber),
+  ],
+);
+
+export const jobRooms = createTable(
+  "job_room",
+  (d) => ({
+    id: d
+      .uuid()
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    organizationId: d
+      .uuid()
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    jobId: d
+      .uuid()
+      .notNull()
+      .references(() => jobs.id, { onDelete: "cascade" }),
+    floorId: d
+      .uuid()
+      .notNull()
+      .references(() => jobFloors.id, { onDelete: "cascade" }),
+    name: d.varchar({ length: 255 }).notNull(),
+    source: d.varchar({ length: 50 }).notNull().default("auto"),
+    confirmed: d.boolean().notNull().default(false),
+    shape: jsonb().notNull(),
+    sortOrder: d.integer().notNull().default(0),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .notNull()
+      .$defaultFn(() => new Date()),
+    updatedAt: d
+      .timestamp({ withTimezone: true })
+      .notNull()
+      .$defaultFn(() => new Date())
+      .$onUpdate(() => new Date()),
+  }),
+  (t) => [
+    index("job_room_floor_idx").on(t.floorId),
+    index("job_room_job_idx").on(t.jobId),
+  ],
+);
+
+export const jobFloorPlansRelations = relations(jobFloorPlans, ({ one, many }) => ({
+  organization: one(organizations, {
+    fields: [jobFloorPlans.organizationId],
+    references: [organizations.id],
+  }),
+  job: one(jobs, {
+    fields: [jobFloorPlans.jobId],
+    references: [jobs.id],
+  }),
+  floors: many(jobFloors),
+}));
+
+export const jobFloorsRelations = relations(jobFloors, ({ one, many }) => ({
+  organization: one(organizations, {
+    fields: [jobFloors.organizationId],
+    references: [organizations.id],
+  }),
+  job: one(jobs, {
+    fields: [jobFloors.jobId],
+    references: [jobs.id],
+  }),
+  floorPlan: one(jobFloorPlans, {
+    fields: [jobFloors.floorPlanId],
+    references: [jobFloorPlans.id],
+  }),
+  rooms: many(jobRooms),
+}));
+
+export const jobRoomsRelations = relations(jobRooms, ({ one }) => ({
+  organization: one(organizations, {
+    fields: [jobRooms.organizationId],
+    references: [organizations.id],
+  }),
+  job: one(jobs, {
+    fields: [jobRooms.jobId],
+    references: [jobs.id],
+  }),
+  floor: one(jobFloors, {
+    fields: [jobRooms.floorId],
+    references: [jobFloors.id],
+  }),
 }));
 
 // ============================

@@ -21,6 +21,7 @@ const config = {
   typescript: {
     ignoreBuildErrors: false, // Keep TypeScript checking during build
   },
+  serverExternalPackages: ["pdfjs-dist", "@napi-rs/canvas", "node:sqlite"],
   async headers() {
     return [
       {

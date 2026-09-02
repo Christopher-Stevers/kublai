@@ -43,6 +43,14 @@ import { QuotePreviewSheet } from "~/components/materialLists/QuotePreviewSheet"
 import { OrdersPreviewSheet } from "~/components/materialLists/OrdersPreviewSheet";
 import { ExistingQuotesOrdersDialog } from "~/components/materialLists/ExistingQuotesOrdersDialog";
 import { JobEditDialog } from "~/components/jobs/JobEditDialog";
+import { JobRoomsView } from "~/components/jobs/JobRoomsView";
+import { JobWorkspaceOptions } from "~/components/jobs/JobWorkspaceOptions";
+import {
+  clearLastJobWorkspaceLocation,
+  getLastJobWorkspaceLocation,
+  setLastJobWorkspaceLocation,
+  type JobWorkspaceView,
+} from "~/lib/job-workspace-last-option";
 import { MaterialListNameModal } from "~/components/materialLists/MaterialListNameModal";
 import { ViewToggle } from "~/components/ui/view-toggle";
 import {
@@ -230,6 +238,9 @@ export function DashboardClient({
   const [offlineMaterialListId, setOfflineMaterialListId] = useState<
     string | null
   >(null);
+  const [offlineJobView, setOfflineJobView] =
+    useState<JobWorkspaceView>("options");
+  const [hasRestoredJobLocation, setHasRestoredJobLocation] = useState(false);
   const [forceOfflineView, setForceOfflineView] = useState(false);
   const [showOfflineAddPartDialog, setShowOfflineAddPartDialog] =
     useState(false);
@@ -280,10 +291,40 @@ export function DashboardClient({
     }
   }, [isBrowserOnline, jobs, router]);
 
+  useEffect(() => {
+    const last = getLastJobWorkspaceLocation();
+    if (last) {
+      setForceOfflineView(true);
+      setOfflineJobId(last.jobId);
+      setOfflineJobView(last.view);
+      setOfflineMaterialListId(last.materialListId);
+    }
+    setHasRestoredJobLocation(true);
+  }, []);
+
+  useEffect(() => {
+    if (!hasRestoredJobLocation) return;
+    if (!offlineJobId) {
+      clearLastJobWorkspaceLocation();
+      return;
+    }
+    setLastJobWorkspaceLocation({
+      jobId: offlineJobId,
+      view: offlineJobView,
+      materialListId: offlineMaterialListId,
+    });
+  }, [
+    hasRestoredJobLocation,
+    offlineJobId,
+    offlineJobView,
+    offlineMaterialListId,
+  ]);
+
   const openJob = (jobId: string) => {
     setForceOfflineView(true);
     setOfflineJobId(jobId);
     setOfflineMaterialListId(null);
+    setOfflineJobView("options");
   };
 
   const handleCreateJob = () => {
@@ -300,6 +341,7 @@ export function DashboardClient({
       setForceOfflineView(true);
       setOfflineJobId(jobId);
       setOfflineMaterialListId(null);
+      setOfflineJobView("options");
     }
   };
 
@@ -345,12 +387,18 @@ export function DashboardClient({
   const handleLocalWorkspaceBack = useCallback(() => {
     if (offlineMaterialListId) {
       setOfflineMaterialListId(null);
+      setOfflineJobView("material-lists");
+      return;
+    }
+
+    if (offlineJobView === "material-lists" || offlineJobView === "rooms") {
+      setOfflineJobView("options");
       return;
     }
 
     setOfflineJobId(null);
     setForceOfflineView(!getBrowserOnlineStatus());
-  }, [offlineMaterialListId]);
+  }, [offlineJobView, offlineMaterialListId]);
 
   useEffect(() => {
     const showBackButton = Boolean(offlineJobId && shouldUseLocalWorkspaceView);
@@ -683,6 +731,17 @@ export function DashboardClient({
                 </div>
               </div>
 
+              {offlineJobView === "options" ? (
+                <JobWorkspaceOptions
+                  materialListCount={offlineMaterialLists.length}
+                  onSelect={(optionId) => {
+                    setOfflineJobView(optionId);
+                  }}
+                />
+              ) : offlineJobView === "rooms" ? (
+                <JobRoomsView jobId={offlineJob.id} />
+              ) : (
+                <>
               <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <h2 className="text-xl font-semibold text-gray-900">
@@ -814,6 +873,8 @@ export function DashboardClient({
                   </Button>
                 </div>
               )}
+                </>
+              )}
             </>
           ) : (
             <Card>
@@ -911,7 +972,7 @@ export function DashboardClient({
               Dashboard
             </h1>
             <p className="text-muted-foreground mt-2 text-sm sm:text-base">
-              Select a job to view and manage its material lists
+              Select a job to open it
             </p>
           </div>
           <Button

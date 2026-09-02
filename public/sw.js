@@ -3,7 +3,7 @@
 // Keep API/sync traffic network-only. Cache navigations and static assets so the
 // installed app can open while offline and Replicache can read its IndexedDB cache.
 
-const VERSION = "foremenhq-offline-shell-v6";
+const VERSION = "foremenhq-offline-shell-v9";
 const PAGE_CACHE = `${VERSION}:pages`;
 const STATIC_CACHE = `${VERSION}:static`;
 const IMAGE_CACHE = `${VERSION}:images`;
