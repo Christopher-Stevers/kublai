@@ -25,6 +25,7 @@ import {
 import { Input } from "~/components/ui/input";
 import { FloorPlanCanvas, type FloorRoomShape } from "./FloorPlanCanvas";
 import { getRoomColor } from "~/lib/room-colors";
+import { shapeBBox, toPolygon } from "~/lib/room-shape";
 import { api } from "~/trpc/react";
 
 export function JobRoomsView({ jobId }: { jobId: string }) {
@@ -36,6 +37,15 @@ export function JobRoomsView({ jobId }: { jobId: string }) {
   const [createMode, setCreateMode] = useState(false);
   const [detectMode, setDetectMode] = useState(false);
   const [detectingRoomId, setDetectingRoomId] = useState<string | null>(null);
+  const [traceMode, setTraceMode] = useState<"include" | "exclude">("include");
+  const [traceInclude, setTraceInclude] = useState<{ x: number; y: number }[]>(
+    [],
+  );
+  const [traceExclude, setTraceExclude] = useState<{ x: number; y: number }[]>(
+    [],
+  );
+  const [tracePreview, setTracePreview] = useState<FloorRoomShape | null>(null);
+  const [traceRoomId, setTraceRoomId] = useState<string | null>(null);
   const [vertexMode, setVertexMode] = useState<"add" | "delete" | null>(null);
   const handledDetectJob = useRef("");
   const floorRenameTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -43,6 +53,10 @@ export function JobRoomsView({ jobId }: { jobId: string }) {
   const [isRoomListOpen, setIsRoomListOpen] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [pendingSheets, setPendingSheets] = useState<
+    { id: string; name: string; imageUrl: string }[]
+  >([]);
+  const [keepSheetIds, setKeepSheetIds] = useState<Record<string, boolean>>({});
   const [detectError, setDetectError] = useState<string | null>(null);
   const [floorNameDraft, setFloorNameDraft] = useState("");
   const [roomNameDraft, setRoomNameDraft] = useState("");
@@ -75,6 +89,13 @@ export function JobRoomsView({ jobId }: { jobId: string }) {
     },
   });
   const updateRoom = api.rooms.updateRoom.useMutation();
+  const growRoom = api.rooms.growRoom.useMutation({
+    onSuccess: (result) => {
+      setTracePreview(result.shape);
+      setDetectError(null);
+    },
+    onError: (error) => setDetectError(error.message),
+  });
   const deleteRoom = api.rooms.deleteRoom.useMutation({
     onSuccess: () => {
       setSelectedRoomId(null);
@@ -101,6 +122,7 @@ export function JobRoomsView({ jobId }: { jobId: string }) {
       void utils.rooms.getJobRooms.invalidate({ jobId });
     },
   });
+  const confirmDrawingUpload = api.rooms.confirmDrawingUpload.useMutation();
   const detectRoomsAi = api.rooms.detectRoomsAi.useMutation({
     onSuccess: () => {
       setDetectError(null);
@@ -151,7 +173,11 @@ export function JobRoomsView({ jobId }: { jobId: string }) {
   const canEditFloor = canManage && editMode;
   floorNameDraftRef.current = floorNameDraft;
 
-  const persistFloorName = (floorId: string, currentName: string, draft: string) => {
+  const persistFloorName = (
+    floorId: string,
+    currentName: string,
+    draft: string,
+  ) => {
     const trimmed = draft.trim();
     if (!trimmed) {
       setFloorNameDraft(currentName);
@@ -161,7 +187,11 @@ export function JobRoomsView({ jobId }: { jobId: string }) {
     renameFloor.mutate({ floorId, name: trimmed });
   };
 
-  const queueFloorRename = (floorId: string, currentName: string, draft: string) => {
+  const queueFloorRename = (
+    floorId: string,
+    currentName: string,
+    draft: string,
+  ) => {
     if (floorRenameTimer.current) clearTimeout(floorRenameTimer.current);
     floorRenameTimer.current = setTimeout(() => {
       persistFloorName(floorId, currentName, draft);
@@ -189,6 +219,10 @@ export function JobRoomsView({ jobId }: { jobId: string }) {
     setCreateMode(false);
     setDetectMode(false);
     setDetectingRoomId(null);
+    setTraceInclude([]);
+    setTraceExclude([]);
+    setTracePreview(null);
+    setTraceRoomId(null);
     setVertexMode(null);
     setEditMode(false);
   };
@@ -199,6 +233,11 @@ export function JobRoomsView({ jobId }: { jobId: string }) {
     setEditingRoomId(null);
     setCreateMode(false);
     setVertexMode(null);
+    setDetectMode(false);
+    setTraceInclude([]);
+    setTraceExclude([]);
+    setTracePreview(null);
+    setTraceRoomId(null);
   };
 
   const startDetect = () => {
@@ -209,6 +248,95 @@ export function JobRoomsView({ jobId }: { jobId: string }) {
     detectRoomsAi.mutate({
       floorId: selectedFloor.id,
     });
+  };
+
+  const resetTrace = () => {
+    setDetectMode(false);
+    setTraceMode("include");
+    setTraceInclude([]);
+    setTraceExclude([]);
+    setTracePreview(null);
+    setTraceRoomId(null);
+  };
+
+  const requestTrace = (
+    include: { x: number; y: number }[],
+    exclude: { x: number; y: number }[],
+    roomId = traceRoomId,
+  ) => {
+    if (!selectedFloor || include.length === 0) return;
+    growRoom.mutate({
+      floorId: selectedFloor.id,
+      roomId: roomId ?? undefined,
+      include,
+      exclude,
+    });
+  };
+
+  const startTrace = (roomId?: string) => {
+    if (!selectedFloor) return;
+    const room = roomId
+      ? selectedFloor.rooms.find((candidate) => candidate.id === roomId)
+      : null;
+    const shape = room?.shape as FloorRoomShape | undefined;
+    const polygon = shape ? toPolygon(shape) : null;
+    const box = polygon ? shapeBBox(polygon) : null;
+    const include = box ? [{ x: box.x + box.w / 2, y: box.y + box.h / 2 }] : [];
+    setEditingRoomId(null);
+    setSelectedRoomId(null);
+    setCreateMode(false);
+    setDetectMode(true);
+    setTraceMode("include");
+    setTraceRoomId(roomId ?? null);
+    setTraceInclude(include);
+    setTraceExclude([]);
+    setTracePreview(shape ?? null);
+    if (include.length) requestTrace(include, [], roomId ?? null);
+  };
+
+  const addTracePoint = (point: { x: number; y: number }) => {
+    if (traceMode === "exclude") {
+      const exclude = [...traceExclude, point];
+      setTraceExclude(exclude);
+      requestTrace(traceInclude, exclude);
+      return;
+    }
+    const include = [...traceInclude, point];
+    setTraceInclude(include);
+    requestTrace(include, traceExclude);
+  };
+
+  const undoTracePoint = () => {
+    if (traceMode === "exclude" && traceExclude.length) {
+      const exclude = traceExclude.slice(0, -1);
+      setTraceExclude(exclude);
+      requestTrace(traceInclude, exclude);
+      return;
+    }
+    if (traceInclude.length <= 1) return;
+    const include = traceInclude.slice(0, -1);
+    setTraceInclude(include);
+    requestTrace(include, traceExclude);
+  };
+
+  const saveTrace = () => {
+    if (!selectedFloor || !tracePreview) return;
+    if (traceRoomId) {
+      updateRoom.mutate(
+        { roomId: traceRoomId, shape: tracePreview },
+        {
+          onSuccess: async () => {
+            await utils.rooms.getJobRooms.invalidate({ jobId });
+            resetTrace();
+          },
+        },
+      );
+      return;
+    }
+    addRoom.mutate(
+      { floorId: selectedFloor.id, name: "New room", shape: tracePreview },
+      { onSuccess: resetTrace },
+    );
   };
 
   const handleUpload = async (file: File) => {
@@ -222,10 +350,18 @@ export function JobRoomsView({ jobId }: { jobId: string }) {
         method: "POST",
         body,
       });
-      const result = (await response.json()) as { error?: string };
+      const result = (await response.json()) as {
+        error?: string;
+        floors?: { id: string; name: string; imageUrl: string }[];
+      };
       if (!response.ok) {
         throw new Error(result.error ?? "Upload failed");
       }
+      const sheets = result.floors ?? [];
+      setPendingSheets(sheets);
+      setKeepSheetIds(
+        Object.fromEntries(sheets.map((sheet) => [sheet.id, true])),
+      );
       setSelectedFloorId(null);
       setSelectedRoomId(null);
       await utils.rooms.getJobRooms.invalidate({ jobId });
@@ -233,6 +369,34 @@ export function JobRoomsView({ jobId }: { jobId: string }) {
       setUploadError(error instanceof Error ? error.message : "Upload failed");
     } finally {
       setUploading(false);
+    }
+  };
+
+  const confirmPendingSheets = async () => {
+    const keepFloorIds = pendingSheets
+      .filter((sheet) => keepSheetIds[sheet.id] !== false)
+      .map((sheet) => sheet.id);
+    setUploadError(null);
+    try {
+      const result = await confirmDrawingUpload.mutateAsync({
+        jobId,
+        keepFloorIds,
+      });
+      setPendingSheets([]);
+      setKeepSheetIds({});
+      await utils.rooms.getJobRooms.invalidate({ jobId });
+      for (const floorId of result.keptFloorIds) {
+        detectRoomsAi.mutate({ floorId });
+      }
+      if (result.keptFloorIds[0]) {
+        setSelectedFloorId(result.keptFloorIds[0]);
+        setDetectingRoomId(result.keptFloorIds[0]);
+        setEditMode(true);
+      }
+    } catch (error) {
+      setUploadError(
+        error instanceof Error ? error.message : "Could not save drawings",
+      );
     }
   };
 
@@ -265,10 +429,7 @@ export function JobRoomsView({ jobId }: { jobId: string }) {
               {selectedFloor.name}
             </p>
           </div>
-          <Button
-            variant="outline"
-            onClick={() => setSelectedRoomId(null)}
-          >
+          <Button variant="outline" onClick={() => setSelectedRoomId(null)}>
             Back to floor
           </Button>
         </div>
@@ -292,7 +453,7 @@ export function JobRoomsView({ jobId }: { jobId: string }) {
           <h2 className="text-xl font-semibold text-gray-900">Rooms</h2>
           <p className="text-muted-foreground mt-1 text-sm">
             {canManage
-              ? "Upload a multi-page floor plan PDF. Each page becomes a floor."
+              ? "Upload drawings. Review each sheet, then rooms are detected on the ones you keep."
               : "Pick a floor, then tap a room."}
           </p>
         </div>
@@ -318,9 +479,9 @@ export function JobRoomsView({ jobId }: { jobId: string }) {
               <UploadIcon className="mr-2 h-5 w-5" />
               {uploading
                 ? "Processing PDF..."
-                : data?.plan
-                  ? "Replace PDF"
-                  : "Upload PDF"}
+                : data?.plan || floors.length > 0
+                  ? "Upload additional drawings"
+                  : "Upload drawings"}
             </Button>
           </>
         ) : null}
@@ -329,6 +490,74 @@ export function JobRoomsView({ jobId }: { jobId: string }) {
       {uploadError ? (
         <p className="mb-4 text-sm text-red-600">{uploadError}</p>
       ) : null}
+
+      <Dialog open={pendingSheets.length > 0}>
+        <DialogContent className="max-h-[90dvh] max-w-3xl overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Review uploaded drawings</DialogTitle>
+            <DialogDescription>
+              Keep or discard each sheet. Rooms are detected only after you
+              confirm.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {pendingSheets.map((sheet) => {
+              const keep = keepSheetIds[sheet.id] !== false;
+              return (
+                <div
+                  key={sheet.id}
+                  className={`overflow-hidden rounded-lg border ${
+                    keep ? "border-blue-500" : "border-gray-200 opacity-60"
+                  }`}
+                >
+                  <img
+                    src={sheet.imageUrl}
+                    alt={sheet.name}
+                    className="h-40 w-full bg-gray-100 object-contain"
+                  />
+                  <div className="flex items-center justify-between gap-2 p-3">
+                    <span className="text-sm font-medium">{sheet.name}</span>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant={keep ? "default" : "outline"}
+                        onClick={() =>
+                          setKeepSheetIds((current) => ({
+                            ...current,
+                            [sheet.id]: true,
+                          }))
+                        }
+                      >
+                        Keep
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant={!keep ? "default" : "outline"}
+                        onClick={() =>
+                          setKeepSheetIds((current) => ({
+                            ...current,
+                            [sheet.id]: false,
+                          }))
+                        }
+                      >
+                        Discard
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <DialogFooter>
+            <Button
+              onClick={() => void confirmPendingSheets()}
+              disabled={confirmDrawingUpload.isPending}
+            >
+              {confirmDrawingUpload.isPending ? "Saving..." : "Confirm sheets"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       {data?.plan?.status === "failed" ? (
         <p className="mb-4 text-sm text-red-600">{data.plan.error}</p>
       ) : null}
@@ -396,7 +625,9 @@ export function JobRoomsView({ jobId }: { jobId: string }) {
                     </span>
                   </div>
                   <div>
-                    {floor.status === "confirmed" ? "Confirmed" : "Needs review"}
+                    {floor.status === "confirmed"
+                      ? "Confirmed"
+                      : "Needs review"}
                   </div>
                 </div>
               </CardContent>
@@ -413,7 +644,7 @@ export function JobRoomsView({ jobId }: { jobId: string }) {
       >
         <DialogContent
           showCloseButton={false}
-          className="flex h-[96dvh] w-[96vw] max-h-[96dvh] max-w-none flex-col gap-3 overflow-hidden p-3 sm:max-w-none"
+          className="flex h-[96dvh] max-h-[96dvh] w-[96vw] max-w-none flex-col gap-3 overflow-hidden p-3 sm:max-w-none"
         >
           {selectedFloor ? (
             <>
@@ -423,155 +654,219 @@ export function JobRoomsView({ jobId }: { jobId: string }) {
                 </DialogTitle>
                 <div className="flex items-start gap-2">
                   <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="min-w-0">
-                    {canEditFloor ? (
-                      <Input
-                        value={floorNameDraft}
-                        onChange={(event) => {
-                          const name = event.target.value;
-                          setFloorNameDraft(name);
-                          queueFloorRename(
-                            selectedFloor.id,
-                            selectedFloor.name,
-                            name,
-                          );
-                        }}
-                        onBlur={flushFloorRename}
-                        className="max-w-xs text-lg font-semibold"
-                        aria-label="Floor name"
-                      />
-                    ) : (
-                      <div className="text-lg font-semibold text-gray-900">
-                        {selectedFloor.name}
-                      </div>
-                    )}
-                    <p className="text-muted-foreground mt-1 text-sm">
-                      {createMode
-                        ? "Drag on the plan to draw a new room."
-                        : vertexMode === "add"
-                          ? "Tap the plan to add a vertex there."
-                          : vertexMode === "delete"
-                            ? "Tap a vertex to delete it."
-                            : editingRoomId
-                              ? "Drag corners to reshape. Use Add/Delete vertex for extra control."
-                              : isDetecting
-                                ? "Detecting rooms on this floor. Leave this screen open."
-                              : editMode
-                                ? "Tap a room to reshape it, or use the tools to add, detect, or delete rooms."
-                              : canManage
-                                ? "Pinch to zoom. Two fingers to scroll. Tap Edit to change rooms."
-                                : "Pinch to zoom. Two fingers to scroll. Tap a room to open it."}
-                    </p>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {canManage && !editMode ? (
-                      <Button onClick={() => setEditMode(true)}>
-                        <PencilIcon className="mr-1 h-4 w-4" />
-                        Edit
-                      </Button>
-                    ) : null}
-                    {canEditFloor && editingRoomId ? (
-                      <>
+                    <div className="min-w-0">
+                      {canEditFloor ? (
+                        <Input
+                          value={floorNameDraft}
+                          onChange={(event) => {
+                            const name = event.target.value;
+                            setFloorNameDraft(name);
+                            queueFloorRename(
+                              selectedFloor.id,
+                              selectedFloor.name,
+                              name,
+                            );
+                          }}
+                          onBlur={flushFloorRename}
+                          className="max-w-xs text-lg font-semibold"
+                          aria-label="Floor name"
+                        />
+                      ) : (
+                        <div className="text-lg font-semibold text-gray-900">
+                          {selectedFloor.name}
+                        </div>
+                      )}
+                      <p className="text-muted-foreground mt-1 text-sm">
+                        {createMode
+                          ? "Drag on the plan to draw a new room."
+                          : detectMode
+                            ? traceMode === "include"
+                              ? "Tap inside every part that belongs to the room. Switch to Exclude to carve away mistakes."
+                              : "Tap regions that do not belong to the room, then save the preview."
+                            : vertexMode === "add"
+                              ? "Tap the plan to add a vertex there."
+                              : vertexMode === "delete"
+                                ? "Tap a vertex to delete it."
+                                : editingRoomId
+                                  ? "Drag corners to reshape. Use Add/Delete vertex for extra control."
+                                  : isDetecting
+                                    ? "Detecting rooms on this floor. Leave this screen open."
+                                    : editMode
+                                      ? "Tap a room to reshape it, or use the tools to add, detect, or delete rooms."
+                                      : canManage
+                                        ? "Pinch to zoom. Two fingers to scroll. Tap Edit to change rooms."
+                                        : "Pinch to zoom. Two fingers to scroll. Tap a room to open it."}
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {canManage && !editMode ? (
+                        <Button onClick={() => setEditMode(true)}>
+                          <PencilIcon className="mr-1 h-4 w-4" />
+                          Edit
+                        </Button>
+                      ) : null}
+                      {canEditFloor && detectMode ? (
+                        <>
+                          <Button
+                            variant={
+                              traceMode === "include" ? "default" : "outline"
+                            }
+                            onClick={() => setTraceMode("include")}
+                          >
+                            + Include
+                          </Button>
+                          <Button
+                            variant={
+                              traceMode === "exclude" ? "default" : "outline"
+                            }
+                            onClick={() => setTraceMode("exclude")}
+                            disabled={traceInclude.length === 0}
+                          >
+                            − Exclude
+                          </Button>
+                          <Button
+                            variant="outline"
+                            onClick={undoTracePoint}
+                            disabled={
+                              traceMode === "exclude"
+                                ? traceExclude.length === 0
+                                : traceInclude.length <= 1
+                            }
+                          >
+                            Undo point
+                          </Button>
+                          <Button
+                            onClick={saveTrace}
+                            disabled={!tracePreview || growRoom.isPending}
+                          >
+                            Save trace
+                          </Button>
+                          <Button variant="outline" onClick={resetTrace}>
+                            Cancel
+                          </Button>
+                        </>
+                      ) : null}
+                      {canEditFloor && editingRoomId && !detectMode ? (
+                        <>
+                          <Button
+                            variant="outline"
+                            onClick={() => startTrace(editingRoomId)}
+                          >
+                            Auto trace
+                          </Button>
+                          <Button
+                            variant={
+                              vertexMode === "add" ? "default" : "outline"
+                            }
+                            onClick={() =>
+                              setVertexMode((value) =>
+                                value === "add" ? null : "add",
+                              )
+                            }
+                          >
+                            Add vertex
+                          </Button>
+                          <Button
+                            variant={
+                              vertexMode === "delete" ? "default" : "outline"
+                            }
+                            onClick={() =>
+                              setVertexMode((value) =>
+                                value === "delete" ? null : "delete",
+                              )
+                            }
+                          >
+                            Delete vertex
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            onClick={() => {
+                              if (!editingRoomId) return;
+                              deleteRoom.mutate({ roomId: editingRoomId });
+                            }}
+                            disabled={deleteRoom.isPending}
+                          >
+                            Delete room
+                          </Button>
+                          <Button
+                            variant="outline"
+                            onClick={() => {
+                              setEditingRoomId(null);
+                              setVertexMode(null);
+                              void utils.rooms.getJobRooms.invalidate({
+                                jobId,
+                              });
+                            }}
+                          >
+                            Done
+                          </Button>
+                        </>
+                      ) : null}
+                      {canEditFloor && !editingRoomId && !detectMode ? (
+                        <>
+                          <Button
+                            variant="outline"
+                            onClick={() => {
+                              setCreateMode(false);
+                              startDetect();
+                            }}
+                            disabled={isDetecting || createMode}
+                          >
+                            <SparklesIcon className="mr-1 h-4 w-4" />
+                            {isDetecting ? "Detecting…" : "AI detect rooms"}
+                          </Button>
+                          <Button
+                            variant={createMode ? "outline" : "default"}
+                            onClick={() => {
+                              setDetectMode(false);
+                              setCreateMode((value) => !value);
+                            }}
+                            disabled={isDetecting}
+                          >
+                            {createMode ? "Cancel" : "New room"}
+                          </Button>
+                          <Button
+                            variant="outline"
+                            onClick={() => startTrace()}
+                            disabled={isDetecting}
+                          >
+                            Trace room
+                          </Button>
+                        </>
+                      ) : null}
+                      {canEditFloor && !detectMode ? (
+                        <>
+                          <Button
+                            variant="destructive"
+                            onClick={() =>
+                              setRoomsToDelete({
+                                floorId: selectedFloor.id,
+                                floorName: selectedFloor.name,
+                                roomCount: selectedFloor.rooms.length,
+                              })
+                            }
+                            disabled={
+                              selectedFloor.rooms.length === 0 ||
+                              deleteAllRooms.isPending
+                            }
+                          >
+                            Delete all rooms
+                          </Button>
+                          <Button variant="outline" onClick={exitEditMode}>
+                            Done editing
+                          </Button>
+                        </>
+                      ) : null}
+                      {canManage && selectedFloor.status !== "confirmed" ? (
                         <Button
-                          variant={vertexMode === "add" ? "default" : "outline"}
                           onClick={() =>
-                            setVertexMode((value) =>
-                              value === "add" ? null : "add",
-                            )
+                            confirmFloor.mutate({ floorId: selectedFloor.id })
                           }
                         >
-                          Add vertex
+                          Confirm floor
                         </Button>
-                        <Button
-                          variant={vertexMode === "delete" ? "default" : "outline"}
-                          onClick={() =>
-                            setVertexMode((value) =>
-                              value === "delete" ? null : "delete",
-                            )
-                          }
-                        >
-                          Delete vertex
-                        </Button>
-                        <Button
-                          variant="destructive"
-                          onClick={() => {
-                            if (!editingRoomId) return;
-                            deleteRoom.mutate({ roomId: editingRoomId });
-                          }}
-                          disabled={deleteRoom.isPending}
-                        >
-                          Delete room
-                        </Button>
-                        <Button
-                          variant="outline"
-                          onClick={() => {
-                            setEditingRoomId(null);
-                            setVertexMode(null);
-                            void utils.rooms.getJobRooms.invalidate({ jobId });
-                          }}
-                        >
-                          Done
-                        </Button>
-                      </>
-                    ) : null}
-                    {canEditFloor && !editingRoomId ? (
-                      <>
-                        <Button
-                          variant="outline"
-                          onClick={() => {
-                            setCreateMode(false);
-                            startDetect();
-                          }}
-                          disabled={isDetecting || createMode}
-                        >
-                          <SparklesIcon className="mr-1 h-4 w-4" />
-                          {isDetecting ? "Detecting…" : "AI detect rooms"}
-                        </Button>
-                        <Button
-                          variant={createMode ? "outline" : "default"}
-                          onClick={() => {
-                            setDetectMode(false);
-                            setCreateMode((value) => !value);
-                          }}
-                          disabled={isDetecting}
-                        >
-                          {createMode ? "Cancel" : "New room"}
-                        </Button>
-                      </>
-                    ) : null}
-                    {canEditFloor ? (
-                      <>
-                        <Button
-                          variant="destructive"
-                          onClick={() =>
-                            setRoomsToDelete({
-                              floorId: selectedFloor.id,
-                              floorName: selectedFloor.name,
-                              roomCount: selectedFloor.rooms.length,
-                            })
-                          }
-                          disabled={
-                            selectedFloor.rooms.length === 0 ||
-                            deleteAllRooms.isPending
-                          }
-                        >
-                          Delete all rooms
-                        </Button>
-                        <Button variant="outline" onClick={exitEditMode}>
-                          Done editing
-                        </Button>
-                      </>
-                    ) : null}
-                    {canManage && selectedFloor.status !== "confirmed" ? (
-                      <Button
-                        onClick={() =>
-                          confirmFloor.mutate({ floorId: selectedFloor.id })
-                        }
-                      >
-                        Confirm floor
-                      </Button>
-                    ) : null}
-                  </div>
+                      ) : null}
+                    </div>
                   </div>
                   <Button
                     type="button"
@@ -586,7 +881,18 @@ export function JobRoomsView({ jobId }: { jobId: string }) {
                 </div>
               </DialogHeader>
               {detectError ? (
-                <p className="shrink-0 px-1 text-sm text-red-600">{detectError}</p>
+                <p className="shrink-0 px-1 text-sm text-red-600">
+                  {detectError}
+                </p>
+              ) : null}
+              {detectStatus.data?.log?.length ? (
+                <div className="max-h-28 shrink-0 overflow-y-auto rounded-md border bg-slate-950 px-3 py-2 font-mono text-xs text-slate-100">
+                  {detectStatus.data.log.slice(-8).map((entry) => (
+                    <div key={`${entry.at}-${entry.message}`}>
+                      {entry.message}
+                    </div>
+                  ))}
+                </div>
               ) : null}
 
               <div className="min-h-0 flex-1">
@@ -598,11 +904,22 @@ export function JobRoomsView({ jobId }: { jobId: string }) {
                     confirmed: room.confirmed,
                     shape: room.shape as FloorRoomShape,
                   }))}
+                  previewShape={tracePreview}
+                  tracePoints={[
+                    ...traceInclude.map((point) => ({
+                      ...point,
+                      kind: "include" as const,
+                    })),
+                    ...traceExclude.map((point) => ({
+                      ...point,
+                      kind: "exclude" as const,
+                    })),
+                  ]}
                   selectedRoomId={selectedRoomId}
                   editingRoomId={editingRoomId}
                   detectingRoomId={null}
                   createMode={createMode}
-                  detectMode={false}
+                  detectMode={detectMode}
                   vertexMode={vertexMode}
                   canEdit={canEditFloor}
                   onSelectRoom={(roomId) => {
@@ -642,10 +959,12 @@ export function JobRoomsView({ jobId }: { jobId: string }) {
                         }
                       : undefined
                   }
+                  onDetectAtPoint={
+                    canEditFloor && detectMode ? addTracePoint : undefined
+                  }
                   onUpdateShape={
                     canEditFloor
-                      ? (roomId, shape) =>
-                          updateRoom.mutate({ roomId, shape })
+                      ? (roomId, shape) => updateRoom.mutate({ roomId, shape })
                       : undefined
                   }
                 />
@@ -803,8 +1122,8 @@ export function JobRoomsView({ jobId }: { jobId: string }) {
                     roomsToDelete.roomCount === 1 ? "room" : "rooms"
                   }`
                 : "all rooms"}
-              {roomsToDelete ? ` on "${roomsToDelete.floorName}"` : ""}
-              . The floor itself will stay. This action cannot be undone.
+              {roomsToDelete ? ` on "${roomsToDelete.floorName}"` : ""}. The
+              floor itself will stay. This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

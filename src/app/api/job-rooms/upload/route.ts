@@ -1,19 +1,16 @@
+import { randomUUID } from "node:crypto";
+
 import { auth } from "@clerk/nextjs/server";
-import { eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
 import { getUserPermissions } from "~/server/auth/permissions";
 import { db } from "~/server/db";
-import {
-  jobFloorPlans,
-  jobFloors,
-  jobRooms,
-  jobs,
-} from "~/server/db/schema";
+import { jobFloorPlans, jobFloors, jobs } from "~/server/db/schema";
 import { processJobFloorPlanPdf } from "~/server/rooms/process-pdf";
 import {
   getJobFloorPlanPdfKey,
-  replaceJobFloorPlanFiles,
+  getJobUploadPdfKey,
   validateJobFloorPlanPdf,
   writeJobRoomFile,
 } from "~/server/rooms/storage";
@@ -68,34 +65,45 @@ export async function POST(request: Request) {
   }
 
   const pdfBuffer = Buffer.from(await file.arrayBuffer());
-  const storageKey = getJobFloorPlanPdfKey(jobId);
+  const uploadId = randomUUID();
+  const uploadPdfKey = getJobUploadPdfKey(jobId, uploadId);
+  await writeJobRoomFile(uploadPdfKey, pdfBuffer);
 
-  await replaceJobFloorPlanFiles(jobId);
-  await writeJobRoomFile(storageKey, pdfBuffer);
-
-  const existing = await db
-    .select({ id: jobFloorPlans.id })
+  let [plan] = await db
+    .select()
     .from(jobFloorPlans)
-    .where(eq(jobFloorPlans.jobId, jobId));
-  if (existing.length > 0) {
-    await db.delete(jobFloorPlans).where(eq(jobFloorPlans.jobId, jobId));
+    .where(eq(jobFloorPlans.jobId, jobId))
+    .limit(1);
+
+  if (!plan) {
+    await writeJobRoomFile(getJobFloorPlanPdfKey(jobId), pdfBuffer);
+    [plan] = await db
+      .insert(jobFloorPlans)
+      .values({
+        organizationId: user.organizationId,
+        jobId,
+        originalFilename: file.name || "floor-plan.pdf",
+        storageKey: getJobFloorPlanPdfKey(jobId),
+        status: "processing",
+        pageCount: 0,
+        uploadedByUserId: user.id,
+      })
+      .returning();
   }
 
-  const [plan] = await db
-    .insert(jobFloorPlans)
-    .values({
-      organizationId: user.organizationId,
-      jobId,
-      originalFilename: file.name || "floor-plan.pdf",
-      storageKey,
-      status: "processing",
-      pageCount: 0,
-      uploadedByUserId: user.id,
-    })
-    .returning();
+  const [lastFloor] = await db
+    .select({ pageNumber: jobFloors.pageNumber })
+    .from(jobFloors)
+    .where(eq(jobFloors.jobId, jobId))
+    .orderBy(desc(jobFloors.pageNumber))
+    .limit(1);
 
   try {
-    const floors = await processJobFloorPlanPdf(jobId, pdfBuffer);
+    const floors = await processJobFloorPlanPdf(jobId, pdfBuffer, {
+      uploadId,
+      pageNumberOffset: lastFloor?.pageNumber ?? 0,
+    });
+    const created = [];
     for (const floor of floors) {
       const [createdFloor] = await db
         .insert(jobFloors)
@@ -108,30 +116,29 @@ export async function POST(request: Request) {
           imageUrl: floor.imageUrl,
           width: floor.width,
           height: floor.height,
-          status: "detected",
+          status: "pending_review",
         })
         .returning();
-      if (floor.rooms.length > 0) {
-        await db.insert(jobRooms).values(
-          floor.rooms.map((room, index) => ({
-            organizationId: user.organizationId!,
-            jobId,
-            floorId: createdFloor!.id,
-            name: room.name,
-            source: "auto",
-            confirmed: false,
-            shape: room.shape,
-            sortOrder: index,
-          })),
-        );
-      }
+      created.push({
+        id: createdFloor!.id,
+        name: createdFloor!.name,
+        imageUrl: createdFloor!.imageUrl,
+        pageNumber: createdFloor!.pageNumber,
+      });
     }
+
+    const [allFloors] = await db
+      .select({ pageCount: jobFloors.pageNumber })
+      .from(jobFloors)
+      .where(eq(jobFloors.jobId, jobId))
+      .orderBy(desc(jobFloors.pageNumber))
+      .limit(1);
 
     await db
       .update(jobFloorPlans)
       .set({
         status: "ready",
-        pageCount: floors.length,
+        pageCount: allFloors?.pageCount ?? floors.length,
         error: null,
         updatedAt: new Date(),
       })
@@ -139,8 +146,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       ok: true,
-      floorCount: floors.length,
-      roomCount: floors.reduce((sum, floor) => sum + floor.rooms.length, 0),
+      floors: created,
     });
   } catch (error) {
     const message =

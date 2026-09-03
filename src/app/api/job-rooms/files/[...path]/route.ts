@@ -27,7 +27,11 @@ export async function GET(
 
   const { path } = await context.params;
   const storageKey = path.join("/");
-  if (!/^[0-9a-f-]{36}\/(plan\.pdf|floor-\d+\.webp)$/i.test(storageKey)) {
+  if (
+    !/^[0-9a-f-]{36}\/(?:[0-9a-f-]{36}\/)?(?:plan\.pdf|floor-\d+\.webp)$/i.test(
+      storageKey,
+    )
+  ) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 

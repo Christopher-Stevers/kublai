@@ -24,6 +24,7 @@ export type RoomFaceTarget = {
   id: string;
   name: string;
   point: RoomPoint;
+  areaSqFt?: number;
 };
 
 const OPENCLAW_AUTH_DB =
@@ -497,13 +498,15 @@ function targetCrop(targets: RoomFaceTarget[]) {
   const ys = targets.map((target) => target.point.y);
   const centerX = (Math.min(...xs) + Math.max(...xs)) / 2;
   const centerY = (Math.min(...ys) + Math.max(...ys)) / 2;
+  const hasLargeSuite = targets.some((target) => (target.areaSqFt ?? 0) > 500);
+  const minHalf = hasLargeSuite ? 0.13 : 0.095;
   const halfW = Math.max(
-    0.085,
-    (Math.max(...xs) - Math.min(...xs)) / 2 + 0.055,
+    minHalf,
+    (Math.max(...xs) - Math.min(...xs)) / 2 + 0.07,
   );
   const halfH = Math.max(
-    0.085,
-    (Math.max(...ys) - Math.min(...ys)) / 2 + 0.055,
+    minHalf,
+    (Math.max(...ys) - Math.min(...ys)) / 2 + 0.07,
   );
   const x = clamp01(centerX - halfW);
   const y = clamp01(centerY - halfH);
@@ -615,6 +618,7 @@ export async function selectRoomPolygonsFromFaces(
   const prompt = `The numbered translucent shapes are exact planar faces extracted from this architectural PDF. Red markers T1, T2, etc. show exact text-label positions.
 For every target, select ALL and ONLY face IDs belonging to that enclosed room or dwelling suite.
 - A dwelling suite such as N901 includes its bedrooms, bathrooms, kitchen, closets, and living area inside the suite's exterior/demising walls.
+- Door openings and door-swing arcs never terminate a dwelling suite. Continue through internal doorways and include every face inside its exterior/demising walls.
 - A normal room label such as CORRIDOR, STAIR, or ELEC CLOSET includes only that labelled enclosed space.
 - Internal walls, dimensions, grids, hatching, and furniture may split one target into multiple numbered faces; include all of those faces.
 - Never include a neighboring suite, corridor, exterior area, title block, or wall cavity.

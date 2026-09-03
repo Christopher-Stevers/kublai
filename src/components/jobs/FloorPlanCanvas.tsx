@@ -60,6 +60,8 @@ export function FloorPlanCanvas({
   onUpdateShape,
   onDetectRoom,
   onDetectAtPoint,
+  previewShape,
+  tracePoints = [],
 }: {
   imageUrl: string;
   rooms: FloorRoom[];
@@ -76,6 +78,8 @@ export function FloorPlanCanvas({
   onUpdateShape?: (roomId: string, shape: RoomPolygonShape) => void;
   onDetectRoom?: (roomId: string) => void;
   onDetectAtPoint?: (point: Point) => void;
+  previewShape?: FloorRoomShape | null;
+  tracePoints?: Array<Point & { kind: "include" | "exclude" }>;
 }) {
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const planRef = useRef<HTMLDivElement | null>(null);
@@ -97,9 +101,7 @@ export function FloorPlanCanvas({
   const didPan = useRef(false);
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressHandled = useRef(false);
-  const draggingVertex = useRef<{ roomId: string; index: number } | null>(
-    null,
-  );
+  const draggingVertex = useRef<{ roomId: string; index: number } | null>(null);
   const pendingDetectRoomId = useRef<string | null>(null);
   const pendingDetectPoint = useRef<Point | null>(null);
   const detectFired = useRef(false);
@@ -262,13 +264,7 @@ export function FloorPlanCanvas({
         const roomId = target.dataset.roomId;
         pendingDetectRoomId.current = roomId ?? null;
         pendingDetectPoint.current = toPlanNorm(event.clientX, event.clientY);
-        if (
-          roomId &&
-          canEdit &&
-          onStartEdit &&
-          !editingRoomId &&
-          !detectMode
-        ) {
+        if (roomId && canEdit && onStartEdit && !editingRoomId && !detectMode) {
           longPressTimer.current = setTimeout(() => {
             longPressHandled.current = true;
             onStartEdit(roomId);
@@ -466,9 +462,7 @@ export function FloorPlanCanvas({
                   points={polygonPointsAttr(polygon)}
                   fill={color.fill}
                   stroke={color.border}
-                  strokeWidth={
-                    (selected ? 0.006 : 0.003) / transform.scale
-                  }
+                  strokeWidth={(selected ? 0.006 : 0.003) / transform.scale}
                   onClick={(event) => {
                     event.stopPropagation();
                     if (
@@ -484,6 +478,37 @@ export function FloorPlanCanvas({
                 />
               );
             })}
+            {previewShape ? (
+              <polygon
+                points={polygonPointsAttr(toPolygon(previewShape))}
+                fill="rgba(14, 165, 233, 0.24)"
+                stroke="#0284c7"
+                strokeWidth={0.005 / transform.scale}
+              />
+            ) : null}
+            {tracePoints.map((point, index) => (
+              <g key={`${point.kind}-${index}`} pointerEvents="none">
+                <circle
+                  cx={point.x}
+                  cy={point.y}
+                  r={0.012 / transform.scale}
+                  fill={point.kind === "include" ? "#16a34a" : "#dc2626"}
+                  stroke="white"
+                  strokeWidth={0.003 / transform.scale}
+                />
+                <text
+                  x={point.x}
+                  y={point.y}
+                  textAnchor="middle"
+                  dominantBaseline="middle"
+                  fill="white"
+                  fontWeight="800"
+                  fontSize={0.016 / transform.scale}
+                >
+                  {point.kind === "include" ? "+" : "−"}
+                </text>
+              </g>
+            ))}
             {draft ? (
               <polygon
                 points={polygonPointsAttr(draft)}

@@ -1,19 +1,15 @@
 import { TRPCError } from "@trpc/server";
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, inArray } from "drizzle-orm";
 import { after } from "next/server";
 import { z } from "zod";
 
 import { createTRPCRouter, hasDashboardAccess } from "~/server/api/trpc";
 import { getUserPermissions } from "~/server/auth/permissions";
-import {
-  jobFloorPlans,
-  jobFloors,
-  jobRooms,
-  jobs,
-} from "~/server/db/schema";
+import { jobFloorPlans, jobFloors, jobRooms, jobs } from "~/server/db/schema";
 import {
   beginDetectJob,
   getDetectJob,
+  growRoomOnFloor,
   runAiDetectAllRooms,
 } from "~/server/rooms/detect-job";
 import { JOB_ROOM_FILE_PUBLIC_PREFIX } from "~/server/rooms/storage";
@@ -64,7 +60,12 @@ export const roomsRouter = createTRPCRouter({
       const [job] = await ctx.db
         .select({ id: jobs.id, organizationId: jobs.organizationId })
         .from(jobs)
-        .where(and(eq(jobs.id, input.jobId), eq(jobs.organizationId, organizationId)))
+        .where(
+          and(
+            eq(jobs.id, input.jobId),
+            eq(jobs.organizationId, organizationId),
+          ),
+        )
         .limit(1);
       assertJobOrg(job, organizationId);
 
@@ -93,7 +94,7 @@ export const roomsRouter = createTRPCRouter({
         : [];
 
       const visibleFloors = canManage
-        ? floors
+        ? floors.filter((floor) => floor.status !== "pending_review")
         : floors.filter((floor) => floor.status === "confirmed");
 
       const rooms = visibleFloors.length
@@ -371,6 +372,64 @@ export const roomsRouter = createTRPCRouter({
       return { ok: true };
     }),
 
+  growRoom: hasDashboardAccess
+    .input(
+      z.object({
+        floorId: z.string().uuid(),
+        roomId: z.string().uuid().optional(),
+        include: z.array(roomPointSchema).min(1).max(32),
+        exclude: z.array(roomPointSchema).max(32),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (!getUserPermissions(ctx.user).isManagingAccount) {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+      const organizationId = ctx.user.organizationId!;
+      const floor = requireRow(
+        (
+          await ctx.db
+            .select()
+            .from(jobFloors)
+            .where(
+              and(
+                eq(jobFloors.id, input.floorId),
+                eq(jobFloors.organizationId, organizationId),
+              ),
+            )
+            .limit(1)
+        )[0],
+        organizationId,
+      );
+      const rooms = await ctx.db
+        .select({ id: jobRooms.id, shape: jobRooms.shape })
+        .from(jobRooms)
+        .where(
+          and(
+            eq(jobRooms.floorId, floor.id),
+            eq(jobRooms.organizationId, organizationId),
+          ),
+        );
+      const result = await growRoomOnFloor({
+        source: {
+          floorId: floor.id,
+          jobId: floor.jobId,
+          imageUrl: floor.imageUrl,
+          pageNumber: floor.pageNumber,
+        },
+        include: input.include,
+        exclude: input.exclude,
+        otherRooms: rooms.filter((room) => room.id !== input.roomId),
+      });
+      if (!result) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "No wall-bounded room was found at those points",
+        });
+      }
+      return result;
+    }),
+
   detectRoomsAi: hasDashboardAccess
     .input(z.object({ floorId: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
@@ -432,6 +491,53 @@ export const roomsRouter = createTRPCRouter({
       return { started: true as const };
     }),
 
+  confirmDrawingUpload: hasDashboardAccess
+    .input(
+      z.object({
+        jobId: z.string().uuid(),
+        keepFloorIds: z.array(z.string().uuid()),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (!getUserPermissions(ctx.user).isManagingAccount) {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+      const organizationId = ctx.user.organizationId!;
+      const pending = await ctx.db
+        .select()
+        .from(jobFloors)
+        .where(
+          and(
+            eq(jobFloors.jobId, input.jobId),
+            eq(jobFloors.organizationId, organizationId),
+            eq(jobFloors.status, "pending_review"),
+          ),
+        );
+      const keep = new Set(input.keepFloorIds);
+      const kept = pending.filter((floor) => keep.has(floor.id));
+      const discarded = pending.filter((floor) => !keep.has(floor.id));
+      if (discarded.length > 0) {
+        await ctx.db.delete(jobFloors).where(
+          inArray(
+            jobFloors.id,
+            discarded.map((floor) => floor.id),
+          ),
+        );
+      }
+      if (kept.length > 0) {
+        await ctx.db
+          .update(jobFloors)
+          .set({ status: "detected", updatedAt: new Date() })
+          .where(
+            inArray(
+              jobFloors.id,
+              kept.map((floor) => floor.id),
+            ),
+          );
+      }
+      return { keptFloorIds: kept.map((floor) => floor.id) };
+    }),
+
   detectRoomsAiStatus: hasDashboardAccess
     .input(z.object({ floorId: z.string().uuid() }))
     .query(async ({ ctx, input }) => {
@@ -458,6 +564,7 @@ export const roomsRouter = createTRPCRouter({
           floorId: input.floorId,
           status: "idle" as const,
           startedAt: 0,
+          log: [],
         }
       );
     }),

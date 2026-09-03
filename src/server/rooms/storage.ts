@@ -22,8 +22,32 @@ export function getJobFloorPlanPdfKey(jobId: string) {
   return `${safeJobId(jobId)}/plan.pdf`;
 }
 
-export function getJobFloorImageKey(jobId: string, pageNumber: number) {
+export function getJobUploadPdfKey(jobId: string, uploadId: string) {
+  return `${safeJobId(jobId)}/${uploadId}/plan.pdf`;
+}
+
+export function getJobFloorImageKey(
+  jobId: string,
+  pageNumber: number,
+  uploadId?: string,
+) {
+  if (uploadId) {
+    return `${safeJobId(jobId)}/${uploadId}/floor-${pageNumber}.webp`;
+  }
   return `${safeJobId(jobId)}/floor-${pageNumber}.webp`;
+}
+
+export function getPdfKeyForFloorImage(imageStorageKey: string, jobId: string) {
+  const parts = imageStorageKey.split("/");
+  if (parts.length >= 3) {
+    return `${parts[0]}/${parts[1]}/plan.pdf`;
+  }
+  return getJobFloorPlanPdfKey(jobId);
+}
+
+export function getSourcePageFromFloorImage(imageStorageKey: string) {
+  const match = imageStorageKey.match(/floor-(\d+)\.webp$/i);
+  return match ? Number(match[1]) : null;
 }
 
 export function getJobRoomFileUrl(storageKey: string) {
