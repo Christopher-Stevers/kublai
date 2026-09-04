@@ -7,7 +7,13 @@ import {
   type RoomPoint,
   type RoomPolygonShape,
 } from "~/lib/room-shape";
+import {
+  annotateImagineRoomRegions,
+  extractImagineRoomRegions,
+  parseImagineRoomAssignments,
+} from "~/server/rooms/imagine-room-mask";
 import { unionRoomFaces } from "~/server/rooms/polygonize-walls";
+import { renderPdfRoomCrop } from "~/server/rooms/pdf-room-crop";
 
 export type AiDetectedRoom = {
   name: string;
@@ -29,7 +35,7 @@ export type RoomFaceTarget = {
 
 const OPENCLAW_AUTH_DB =
   process.env.OPENCLAW_AUTH_DB ??
-  "/home/halvor/.openclaw/agents/main/agent/openclaw-agent.sqlite";
+  "/home/halvor/.openclaw/state/openclaw.sqlite";
 
 const SKIP_NAME =
   /\b(title|legend|north arrow|grid bubble|drawing title|sheet)\b/i;
@@ -109,10 +115,16 @@ export function expandDetectHint(hint: DetectRoomHint): {
 
 function oneRoomPrompt(name?: string) {
   const target = name?.trim();
-  return `Trace ONE enclosed room on this crop as a tight wall polygon.
-${target ? `Room name: ${target}. Label is near the center.` : "Trace the room that contains the image center."}
+  return `Act like a human reading an architectural floor plan. Trace ONE labelled enclosed space as a tight wall polygon.
+${target ? `Target label: ${target}. A red ring marks its exact location.` : "Trace the room that contains the image center."}
 Return ONLY JSON: {"name":"${target || "ROOM"}","points":[{"x":0.12,"y":0.18},{"x":0.86,"y":0.18},{"x":0.86,"y":0.84},{"x":0.12,"y":0.84}]}
-x,y are 0-1 from the TOP-LEFT of THIS image. 4-16 clockwise wall corners. Vertices MUST sit on wall corners. Follow the interior face of the walls. No neighboring rooms.`;
+x,y are 0-1 from the TOP-LEFT of THIS image. Use 4-24 clockwise wall corners.
+- Find the continuous wall enclosure around the marked label. Follow the interior face of its walls and include every jog or notch.
+- A door symbol or door-width opening in a boundary does not erase the boundary: continue the wall line across the doorway threshold.
+- Do not cross a doorway into a corridor, lobby, stair, neighboring room, or other common space.
+- Ignore grids, dimensions, leaders, hatching, furniture, fixtures, ceiling patterns, and door-swing arcs.
+- If the target is a dwelling/unit code, trace the unit's exterior/demising boundary and include its internal spaces. If it is a normal room name, trace only that room.
+- Do not draw a loose box around the label. Vertices must follow visible wall corners.`;
 }
 
 const ALL_ROOMS_PROMPT = `Trace EVERY enclosed room on this architectural floor plan, not just apartment suites.
@@ -126,6 +138,32 @@ Rules:
 - Vertices MUST sit on wall corners / wall intersections. Follow the interior face of the walls. Include jogs and notches. Do not draw a loose box around a label.
 - 4-24 clockwise vertices per room. Tight to the walls.
 - Do not invent rooms that are not drawn.`;
+
+const IMAGINE_ROOM_COLOR_PROMPT = `Edit this complete architectural floor-plan page in place. Preserve the entire page composition and every original line, wall, label, room number, symbol, dimension, note, grid, hatch, and title-block element exactly where it is.
+
+Identify every actual enclosed architectural space across the whole page, including dwelling rooms, common rooms, corridors, stairs, closets, storage, mechanical, electrical, and service rooms. Fill the usable interior floor area of every space with one flat, vivid, opaque color. Use clearly different colors for adjacent spaces. Continue each fill across its own door opening to the doorway threshold, but never flow through that doorway into the neighboring room or corridor.
+
+Use only flat fills with no gradients, textures, shadows, highlights, or patterns. Keep walls and wall cavities uncolored. Keep all original black linework and room labels visible above the fills. Do not color the exterior background, drawing border, title block, legends, notes, dimensions, grid bubbles, shafts that are not rooms, furniture, fixtures, hatching, or ceiling patterns. Do not crop, rotate, straighten, redraw, simplify, move, erase, invent, or relabel anything. Return the complete page at the same aspect ratio.`;
+
+const NAMING_RENDER_WIDTH = 4096;
+
+function imagineRoomMappingPrompt(regionIds: number[]) {
+  return `Both images show the same architectural page with identical framing, and each extracted region carries the same numbered white badge in both. The first image is the original drawing with legible printed room labels; the badges there are nudged up and to the right so the label underneath stays readable. The second image is the page after rooms were colored, which shows each region's true extent but has unreadable text.
+
+Read the room names from the FIRST image and read the region extents from the SECOND image. Return ONLY JSON:
+{"regions":[{"id":1,"name":"S319","include":true,"confidence":0.98}]}
+
+Rules:
+- Return exactly one entry for every region id: ${regionIds.join(", ")}.
+- Transcribe the printed room tag exactly as drawn, character for character, including suite numbers such as N901 or S319 and unit types such as MICRO or 1 BD. Do not translate, expand, tidy, or renumber a printed tag.
+- Never substitute a generic description when a tag is printed inside or against the region. Generic names such as "Residential unit" are only allowed when the region genuinely carries no printed tag.
+- If a region covers several tagged spaces, name it after the largest tagged space it covers.
+- For an unlabeled real room, use a concise stable description such as "Unlabeled Closet 12".
+- include=true for dwelling rooms, common rooms, corridors, stairs, closets, storage, mechanical, electrical, and service rooms.
+- include=false for title blocks, legends, exterior background, wall cavities, shafts that are not usable rooms, notes, dimensions, furniture, fixtures, or coloring mistakes.
+- Judge the colored region as a whole. Do not trace polygons and do not change region ids.
+- confidence is 0-1.`;
+}
 
 function pickXaiAccess(storeJson: string): string | null {
   const store = JSON.parse(storeJson) as {
@@ -154,18 +192,30 @@ function readXaiTokenFromNodeSqlite(): string | null {
         options?: { readOnly?: boolean },
       ) => {
         prepare: (sql: string) => {
-          get: (key: string) => { store_json?: string } | undefined;
+          get: (
+            key: string,
+          ) => { store_json?: string; value_json?: string } | undefined;
         };
         close: () => void;
       };
     };
     const db = new DatabaseSync(OPENCLAW_AUTH_DB, { readOnly: true });
-    const row = db
-      .prepare("select store_json from auth_profile_store where store_key = ?")
-      .get("primary");
+    let storeJson: string | undefined;
+    try {
+      storeJson = db
+        .prepare(
+          "select value_json from config_machine_state where state_key = ?",
+        )
+        .get("authProfiles.store")?.value_json;
+    } catch {
+      storeJson = db
+        .prepare(
+          "select store_json from auth_profile_store where store_key = ?",
+        )
+        .get("primary")?.store_json;
+    }
     db.close();
-    if (!row?.store_json) return null;
-    return pickXaiAccess(row.store_json);
+    return storeJson ? pickXaiAccess(storeJson) : null;
   } catch (error) {
     console.warn(
       "[detect-ai] node sqlite token read failed",
@@ -181,7 +231,11 @@ function readXaiTokenFromPython(): string | null {
 import json, os, sqlite3, sys, time
 path = os.environ.get("OPENCLAW_AUTH_DB", "")
 con = sqlite3.connect(f"file:{path}?mode=ro", uri=True)
-row = con.execute("select store_json from auth_profile_store where store_key='primary'").fetchone()
+tables = {row[0] for row in con.execute("select name from sqlite_master where type='table'")}
+if "config_machine_state" in tables:
+    row = con.execute("select value_json from config_machine_state where state_key='authProfiles.store'").fetchone()
+else:
+    row = con.execute("select store_json from auth_profile_store where store_key='primary'").fetchone()
 if not row:
     raise SystemExit(1)
 store = json.loads(row[0])
@@ -216,11 +270,23 @@ raise SystemExit(1)
 
 function readXaiAccessToken(): string | null {
   if (process.env.XAI_API_KEY) return process.env.XAI_API_KEY;
-  const token = readXaiTokenFromPython() ?? readXaiTokenFromNodeSqlite();
+  const token = readXaiTokenFromNodeSqlite() ?? readXaiTokenFromPython();
   if (token) {
     console.log("[detect-ai] using OpenClaw xAI token, length", token.length);
   }
   return token;
+}
+
+function readVisionCredential() {
+  return (
+    process.env.XAI_API_KEY ??
+    process.env.OPENAI_API_KEY ??
+    readXaiAccessToken()
+  );
+}
+
+export function isVisionRoomDetectionConfigured() {
+  return Boolean(readVisionCredential());
 }
 
 function extractJsonObject(text: string): unknown {
@@ -370,11 +436,48 @@ function parseAllRooms(
   return detected;
 }
 
-async function callVisionModel(imageJpeg: Buffer, prompt: string) {
-  const apiKey =
-    process.env.XAI_API_KEY ??
-    process.env.OPENAI_API_KEY ??
-    readXaiAccessToken();
+function imageMimeType(image: Buffer) {
+  if (
+    image.length >= 8 &&
+    image[0] === 0x89 &&
+    image[1] === 0x50 &&
+    image[2] === 0x4e &&
+    image[3] === 0x47
+  ) {
+    return "image/png";
+  }
+  if (
+    image.length >= 12 &&
+    image.toString("ascii", 0, 4) === "RIFF" &&
+    image.toString("ascii", 8, 12) === "WEBP"
+  ) {
+    return "image/webp";
+  }
+  return "image/jpeg";
+}
+
+export function closestImagineAspectRatio(width: number, height: number) {
+  const supported = [
+    ["1:1", 1],
+    ["16:9", 16 / 9],
+    ["9:16", 9 / 16],
+    ["4:3", 4 / 3],
+    ["3:4", 3 / 4],
+    ["3:2", 3 / 2],
+    ["2:3", 2 / 3],
+    ["2:1", 2],
+    ["1:2", 1 / 2],
+  ] as const;
+  const target = width / Math.max(1, height);
+  return supported.reduce((best, candidate) =>
+    Math.abs(candidate[1] - target) < Math.abs(best[1] - target)
+      ? candidate
+      : best,
+  )[0];
+}
+
+async function callVisionModel(images: Buffer | Buffer[], prompt: string) {
+  const apiKey = readVisionCredential();
   if (!apiKey) {
     throw new Error(
       "AI room detection is not configured. Add an XAI or OpenAI API key.",
@@ -389,7 +492,15 @@ async function callVisionModel(imageJpeg: Buffer, prompt: string) {
     ? (process.env.XAI_VISION_MODEL ?? "grok-4.6")
     : (process.env.OPENAI_VISION_MODEL ?? "gpt-4o");
 
-  console.log("[detect-ai] calling", model, "jpegBytes", imageJpeg.length);
+  const imageList = Array.isArray(images) ? images : [images];
+  console.log(
+    "[detect-ai] calling",
+    model,
+    "images",
+    imageList.length,
+    "bytes",
+    imageList.reduce((total, image) => total + image.length, 0),
+  );
   const response = await fetch(url, {
     method: "POST",
     headers: {
@@ -405,13 +516,13 @@ async function callVisionModel(imageJpeg: Buffer, prompt: string) {
         {
           role: "user",
           content: [
-            {
+            ...imageList.map((image) => ({
               type: "image_url",
               image_url: {
-                url: `data:image/jpeg;base64,${imageJpeg.toString("base64")}`,
+                url: `data:${imageMimeType(image)};base64,${image.toString("base64")}`,
                 detail: "high",
               },
-            },
+            })),
             { type: "text", text: prompt },
           ],
         },
@@ -440,6 +551,131 @@ async function callVisionModel(imageJpeg: Buffer, prompt: string) {
     throw new Error("Vision API returned no room shapes");
   }
   return content;
+}
+
+async function callImagineRoomColoring(pageImage: Buffer) {
+  const apiKey = process.env.XAI_API_KEY ?? readXaiAccessToken();
+  if (!apiKey) {
+    throw new Error("Grok Imagine room coloring is not configured");
+  }
+  const metadata = await sharp(pageImage).metadata();
+  const model = process.env.XAI_IMAGINE_MODEL ?? "grok-imagine-image";
+  const response = await fetch("https://api.x.ai/v1/images/edits", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model,
+      prompt: IMAGINE_ROOM_COLOR_PROMPT,
+      n: 1,
+      response_format: "b64_json",
+      resolution: "2k",
+      aspect_ratio: closestImagineAspectRatio(
+        metadata.width ?? 4,
+        metadata.height ?? 3,
+      ),
+      image: {
+        type: "image_url",
+        url: `data:${imageMimeType(pageImage)};base64,${pageImage.toString("base64")}`,
+      },
+    }),
+    signal: AbortSignal.timeout(600_000),
+  });
+  const responseText = await response.text();
+  let body: {
+    error?: { message?: string };
+    data?: Array<{ b64_json?: string }>;
+  } = {};
+  try {
+    body = JSON.parse(responseText) as typeof body;
+  } catch {
+    if (!response.ok) {
+      throw new Error(
+        responseText.trim() || `Grok Imagine failed (${response.status})`,
+      );
+    }
+    throw new Error("Grok Imagine returned an invalid response");
+  }
+  if (!response.ok) {
+    throw new Error(
+      body.error?.message ?? `Grok Imagine failed (${response.status})`,
+    );
+  }
+  const encoded = body.data?.[0]?.b64_json;
+  if (!encoded) throw new Error("Grok Imagine returned no colored page");
+  console.log("[detect-ai] Imagine colored full page", model);
+  return Buffer.from(encoded, "base64");
+}
+
+export async function detectRoomsFromPdfWithImagine(
+  pdf: Buffer,
+  pageNumber: number,
+  onProgress: (message: string) => void = () => undefined,
+): Promise<AiDetectedRoom[]> {
+  onProgress("Rendering the complete PDF page for Grok Imagine");
+  const source = await renderPdfRoomCrop(
+    pdf,
+    pageNumber,
+    { x: 0, y: 0, w: 1, h: 1 },
+    2048,
+  );
+  onProgress("Grok Imagine is coloring every room on the complete page");
+  const colored = await callImagineRoomColoring(source.jpeg);
+  onProgress("Extracting clickable regions from Imagine's colored page");
+  const regions = await extractImagineRoomRegions(source.jpeg, colored);
+  if (regions.length === 0) {
+    throw new Error("Grok Imagine did not produce extractable room fills");
+  }
+  onProgress(`Imagine produced ${regions.length} colored regions`);
+
+  // Imagine is fed a 2048px page, but printed suite tags are only a few pixels
+  // tall at that width, so the naming pass reads a higher-resolution render of
+  // the same framing instead.
+  const naming = await renderPdfRoomCrop(
+    pdf,
+    pageNumber,
+    { x: 0, y: 0, w: 1, h: 1 },
+    NAMING_RENDER_WIDTH,
+  );
+  const [annotatedSource, annotated] = await Promise.all([
+    annotateImagineRoomRegions(naming.jpeg, regions, { offsetRadii: 1.6 }),
+    annotateImagineRoomRegions(colored, regions),
+  ]);
+  onProgress("Grok 4.6 is naming and auditing the colored regions");
+  const audit = await callVisionModel(
+    [annotatedSource, annotated],
+    imagineRoomMappingPrompt(regions.map((region) => region.id)),
+  );
+  const assignments = parseImagineRoomAssignments(
+    extractJsonObject(audit),
+    new Set(regions.map((region) => region.id)),
+  );
+  const byId = new Map(assignments.map((assignment) => [assignment.id, assignment]));
+  const rejected = assignments.filter((assignment) => !assignment.include).length;
+  const unidentified = regions.filter((region) => !byId.has(region.id)).length;
+  if (rejected > 0) onProgress(`Grok 4.6 rejected ${rejected} non-room regions`);
+  if (unidentified > 0) {
+    onProgress(
+      `${unidentified} colored regions were unnamed and will remain editable generic rooms`,
+    );
+  }
+
+  const nameCounts = new Map<string, number>();
+  return regions.flatMap((region) => {
+    const assignment = byId.get(region.id);
+    if (assignment && !assignment.include) return [];
+    const baseName = assignment?.name ?? `Room ${region.id}`;
+    const count = (nameCounts.get(baseName.toLowerCase()) ?? 0) + 1;
+    nameCounts.set(baseName.toLowerCase(), count);
+    return [
+      {
+        name: count === 1 ? baseName : `${baseName} ${count}`,
+        shape: region.shape,
+      },
+    ];
+  });
 }
 
 async function prepareRoomCrop(image: Buffer, hint: DetectRoomHint) {
@@ -701,6 +937,101 @@ export async function detectOneRoomFromFloorImage(
   );
 }
 
+function cropTouchesRoom(
+  shape: RoomPolygonShape,
+  crop: ReturnType<typeof expandDetectHint>,
+) {
+  const marginX = crop.w * 0.025;
+  const marginY = crop.h * 0.025;
+  return shape.points.some(
+    (point) =>
+      point.x <= crop.x + marginX ||
+      point.x >= crop.x + crop.w - marginX ||
+      point.y <= crop.y + marginY ||
+      point.y >= crop.y + crop.h - marginY,
+  );
+}
+
+function enlargeCrop(crop: ReturnType<typeof expandDetectHint>) {
+  const cx = crop.x + crop.w / 2;
+  const cy = crop.y + crop.h / 2;
+  const halfW = Math.min(0.28, crop.w * 0.8);
+  const halfH = Math.min(0.28, crop.h * 0.8);
+  const x = clamp01(cx - halfW);
+  const y = clamp01(cy - halfH);
+  const x2 = clamp01(cx + halfW);
+  const y2 = clamp01(cy + halfH);
+  return { x, y, w: x2 - x, h: y2 - y };
+}
+
+async function markRoomTarget(
+  jpeg: Buffer,
+  crop: ReturnType<typeof expandDetectHint>,
+  point?: RoomPoint,
+) {
+  if (!point) return jpeg;
+  const metadata = await sharp(jpeg).metadata();
+  const width = metadata.width ?? 2048;
+  const height = metadata.height ?? 2048;
+  const x = ((point.x - crop.x) / crop.w) * width;
+  const y = ((point.y - crop.y) / crop.h) * height;
+  const radius = Math.max(14, Math.min(width, height) * 0.012);
+  const svg = Buffer.from(
+    `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg"><circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${radius.toFixed(1)}" fill="none" stroke="#ef4444" stroke-width="6"/><path d="M ${(x - radius * 1.5).toFixed(1)} ${y.toFixed(1)} H ${(x + radius * 1.5).toFixed(1)} M ${x.toFixed(1)} ${(y - radius * 1.5).toFixed(1)} V ${(y + radius * 1.5).toFixed(1)}" stroke="#ef4444" stroke-width="4"/></svg>`,
+  );
+  return sharp(jpeg)
+    .composite([{ input: svg }])
+    .jpeg({ quality: 88 })
+    .toBuffer();
+}
+
+async function detectOneRoomFromPdfCrop(
+  pdf: Buffer,
+  pageNumber: number,
+  hint: DetectRoomHint,
+  crop: ReturnType<typeof expandDetectHint>,
+) {
+  const prepared = await renderPdfRoomCrop(pdf, pageNumber, crop, 2048);
+  const marked = await markRoomTarget(prepared.jpeg, crop, hint.point);
+  const content = await callVisionModel(marked, oneRoomPrompt(hint.name));
+  return parseOneRoom(
+    extractJsonObject(content),
+    prepared.mapPoint,
+    prepared.sentWidth,
+    prepared.sentHeight,
+    hint.name,
+  );
+}
+
+/** Trace a labelled enclosure from a high-resolution crop of the source PDF. */
+export async function detectOneRoomFromPdfPage(
+  pdf: Buffer,
+  pageNumber: number,
+  hint: DetectRoomHint,
+): Promise<AiDetectedRoom> {
+  const initialCrop = expandDetectHint(hint);
+  let room = await detectOneRoomFromPdfCrop(pdf, pageNumber, hint, initialCrop);
+  const target = hint.point;
+  const missedTarget = target && !pointInPolygon(target, room.shape);
+  if (missedTarget || cropTouchesRoom(room.shape, initialCrop)) {
+    const largerCrop = enlargeCrop(initialCrop);
+    const retraced = await detectOneRoomFromPdfCrop(
+      pdf,
+      pageNumber,
+      hint,
+      largerCrop,
+    );
+    if (!target || pointInPolygon(target, retraced.shape)) {
+      room = retraced;
+    } else if (missedTarget) {
+      throw new Error(
+        `The traced boundary does not contain ${hint.name ?? "the target label"}`,
+      );
+    }
+  }
+  return room;
+}
+
 async function prepareFloorImage(image: Buffer) {
   const rotatedBuffer = await sharp(image).rotate().toBuffer();
   const jpeg = await sharp(rotatedBuffer)
@@ -760,6 +1091,37 @@ async function mapPool<T, R>(
   );
   await Promise.all(workers);
   return out;
+}
+
+export async function detectLabelledRoomsFromPdf<
+  T extends { name: string; x: number; y: number },
+>(
+  pdf: Buffer,
+  pageNumber: number,
+  targets: T[],
+  onProgress: (message: string) => void = () => undefined,
+): Promise<{ rooms: AiDetectedRoom[]; failed: T[] }> {
+  const results = await mapPool(targets, 2, async (target, index) => {
+    onProgress(`Tracing ${index + 1}/${targets.length}: ${target.name}`);
+    try {
+      const room = await detectOneRoomFromPdfPage(pdf, pageNumber, {
+        name: target.name,
+        point: { x: target.x, y: target.y },
+      });
+      return { target, room };
+    } catch (error) {
+      console.warn(
+        "[detect-ai] labelled room trace failed",
+        target.name,
+        error instanceof Error ? error.message : error,
+      );
+      return { target, room: null };
+    }
+  });
+  return {
+    rooms: results.flatMap((result) => (result.room ? [result.room] : [])),
+    failed: results.flatMap((result) => (result.room ? [] : [result.target])),
+  };
 }
 
 function bboxFromRoom(room: AiDetectedRoom) {
