@@ -1,6 +1,5 @@
 import { TRPCError } from "@trpc/server";
 import { and, asc, eq, inArray } from "drizzle-orm";
-import { after } from "next/server";
 import { z } from "zod";
 
 import { createTRPCRouter, hasDashboardAccess } from "~/server/api/trpc";
@@ -8,10 +7,11 @@ import { getUserPermissions } from "~/server/auth/permissions";
 import { jobFloorPlans, jobFloors, jobRooms, jobs } from "~/server/db/schema";
 import {
   beginDetectJob,
+  failDetectJob,
   getDetectJob,
   growRoomOnFloor,
-  runAiDetectAllRooms,
 } from "~/server/rooms/detect-job";
+import { startDetectWorker } from "~/server/rooms/detect-worker-process";
 import { JOB_ROOM_FILE_PUBLIC_PREFIX } from "~/server/rooms/storage";
 
 const roomPointSchema = z.object({
@@ -29,7 +29,7 @@ const roomShapeSchema = z.union([
   }),
   z.object({
     type: z.literal("polygon"),
-    points: z.array(roomPointSchema).min(3).max(40),
+    points: z.array(roomPointSchema).min(3).max(400),
   }),
 ]);
 
@@ -430,7 +430,7 @@ export const roomsRouter = createTRPCRouter({
       return result;
     }),
 
-  detectRoomsAi: hasDashboardAccess
+  detectRooms: hasDashboardAccess
     .input(z.object({ floorId: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
       if (!getUserPermissions(ctx.user).isManagingAccount) {
@@ -460,32 +460,23 @@ export const roomsRouter = createTRPCRouter({
         });
       }
 
-      if (!beginDetectJob(floor.id)) {
+      if (!(await beginDetectJob(floor.id, organizationId))) {
         throw new TRPCError({
           code: "CONFLICT",
-          message: "AI is already detecting rooms on this floor",
+          message: "Room detection is already running on this floor",
         });
       }
 
-      console.log("[rooms.detectRoomsAi] started", floor.id);
-      const run = () =>
-        runAiDetectAllRooms({
-          floorId: floor.id,
-          organizationId,
-          jobId: floor.jobId,
-          imageUrl: floor.imageUrl,
-          floorStatus: floor.status,
-          pageNumber: floor.pageNumber,
-        }).catch((error) => {
-          console.error(
-            "[rooms.detectRoomsAi] background failed",
-            error instanceof Error ? error.message : error,
-          );
-        });
+      console.log("[rooms.detectRooms] started", floor.id);
       try {
-        after(run);
-      } catch {
-        setTimeout(run, 0);
+        await startDetectWorker(floor.id);
+      } catch (error) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : "Room detection worker failed to start";
+        await failDetectJob(floor.id, message);
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message });
       }
 
       return { started: true as const };
@@ -538,7 +529,7 @@ export const roomsRouter = createTRPCRouter({
       return { keptFloorIds: kept.map((floor) => floor.id) };
     }),
 
-  detectRoomsAiStatus: hasDashboardAccess
+  detectRoomsStatus: hasDashboardAccess
     .input(z.object({ floorId: z.string().uuid() }))
     .query(async ({ ctx, input }) => {
       if (!getUserPermissions(ctx.user).isManagingAccount) {
@@ -560,7 +551,7 @@ export const roomsRouter = createTRPCRouter({
         ctx.user.organizationId!,
       );
       return (
-        getDetectJob(input.floorId) ?? {
+        (await getDetectJob(input.floorId)) ?? {
           floorId: input.floorId,
           status: "idle" as const,
           startedAt: 0,

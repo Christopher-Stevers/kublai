@@ -28,6 +28,10 @@ export type FloorLinework = {
   /** Layer names seen on kept segments, most used first. */
   layers: string[];
   source: "pdf-vector" | "dxf" | "raster";
+  /** Source page dimensions. Normalized x/y coordinates need this ratio to
+   * recover an isotropic metric frame for rotated drawing regions. */
+  pageWidth?: number;
+  pageHeight?: number;
 };
 
 export type PdfLabel = {
@@ -37,6 +41,8 @@ export type PdfLabel = {
   y: number;
   /** Fallback anchors (text start, text end) when the middle sits on a wall. */
   anchors?: { x: number; y: number }[];
+  /** Text baseline rotation in radians, normalized to 0..π. */
+  angle?: number;
 };
 
 export type PdfRoomSeed = PdfLabel & {
@@ -186,7 +192,8 @@ function recoverArcChords(raw: WallSegment[]): WallSegment[] {
     turn = 0;
     sign = 0;
   };
-  const heading = (seg: WallSegment) => Math.atan2(seg.y2 - seg.y1, seg.x2 - seg.x1);
+  const heading = (seg: WallSegment) =>
+    Math.atan2(seg.y2 - seg.y1, seg.x2 - seg.x1);
   for (const seg of raw) {
     if (seg.dashed || segmentLength(seg) > ARC_PIECE_MAX) {
       flush();
@@ -249,7 +256,9 @@ function markDashPatterns(raw: WallSegment[]) {
         const b = (seg.x2 - first.x1) * ux + (seg.y2 - first.y1) * uy;
         return { start: Math.min(a, b), end: Math.max(a, b) };
       };
-      const gaps = run.slice(1).map((seg, i) => along(seg).start - along(run[i]!).end);
+      const gaps = run
+        .slice(1)
+        .map((seg, i) => along(seg).start - along(run[i]!).end);
       const gapMin = Math.min(...gaps);
       const gapMax = Math.max(...gaps);
       const evenGaps = gapMin > 0 && gapMax <= gapMin * 1.6;
@@ -259,22 +268,45 @@ function markDashPatterns(raw: WallSegment[]) {
         values.every((value) => similar(value, values[0]!, DASH_LENGTH_TOL));
       const periodic = uniform(lengths) || (uniform(even) && uniform(odd));
       if (evenGaps && periodic) {
-        if (process.env.ROOMS_DEBUG_DASH) console.log("[dash]", run.length, "w", first.strokeWidth.toFixed(2), run.map((s) => `${(s.x1*2200).toFixed(0)},${(s.y1*1650).toFixed(0)}-${(s.x2*2200).toFixed(0)},${(s.y2*1650).toFixed(0)}`).join(" "));
+        if (process.env.ROOMS_DEBUG_DASH)
+          console.log(
+            "[dash]",
+            run.length,
+            "w",
+            first.strokeWidth.toFixed(2),
+            run
+              .map(
+                (s) =>
+                  `${(s.x1 * 2200).toFixed(0)},${(s.y1 * 1650).toFixed(0)}-${(s.x2 * 2200).toFixed(0)},${(s.y2 * 1650).toFixed(0)}`,
+              )
+              .join(" "),
+          );
         for (const seg of run) seg.dashed = true;
       }
     }
     run = [];
   };
   // Measured along the run's first piece so pieces drawn in either direction chain.
-  const collinear = (first: WallSegment, prev: WallSegment, next: WallSegment) => {
+  const collinear = (
+    first: WallSegment,
+    prev: WallSegment,
+    next: WallSegment,
+  ) => {
     const len = segmentLength(first);
     const ux = (first.x2 - first.x1) / len;
     const uy = (first.y2 - first.y1) / len;
-    const offset = (x: number, y: number) => Math.abs((x - first.x1) * -uy + (y - first.y1) * ux);
-    if (offset(next.x1, next.y1) > DASH_OFFSET_TOL || offset(next.x2, next.y2) > DASH_OFFSET_TOL) return false;
-    const along = (x: number, y: number) => (x - first.x1) * ux + (y - first.y1) * uy;
+    const offset = (x: number, y: number) =>
+      Math.abs((x - first.x1) * -uy + (y - first.y1) * ux);
+    if (
+      offset(next.x1, next.y1) > DASH_OFFSET_TOL ||
+      offset(next.x2, next.y2) > DASH_OFFSET_TOL
+    )
+      return false;
+    const along = (x: number, y: number) =>
+      (x - first.x1) * ux + (y - first.y1) * uy;
     const prevEnd = Math.max(along(prev.x1, prev.y1), along(prev.x2, prev.y2));
-    const gap = Math.min(along(next.x1, next.y1), along(next.x2, next.y2)) - prevEnd;
+    const gap =
+      Math.min(along(next.x1, next.y1), along(next.x2, next.y2)) - prevEnd;
     return gap > 0 && gap <= DASH_GAP_MAX;
   };
   for (const seg of raw) {
@@ -562,7 +594,8 @@ export async function extractPdfLinework(
   const candidates = raw.filter((seg) => {
     if (seg.dashed || seg.curve) return false;
     const len = segmentLength(seg);
-    const heavy = seg.filled || (heavyWidth > 0 && seg.strokeWidth >= heavyWidth);
+    const heavy =
+      seg.filled || (heavyWidth > 0 && seg.strokeWidth >= heavyWidth);
     if (len < (heavy ? minLen / 3 : minLen) || len > 0.55) return false;
     return onPage(seg);
   });
@@ -611,7 +644,14 @@ export async function extractPdfLinework(
     "layers",
     layers.length,
   );
-  return { segments: walls, arcs, layers, source: "pdf-vector" };
+  return {
+    segments: walls,
+    arcs,
+    layers,
+    source: "pdf-vector",
+    pageWidth: canvasW,
+    pageHeight: canvasH,
+  };
 }
 
 export async function extractPdfLabels(
@@ -640,7 +680,7 @@ export async function extractPdfLabels(
     const run = Math.hypot(a ?? 0, b ?? 0) || 1;
     const rise = Math.hypot(c ?? 0, d ?? 0) || 1;
     const width = (item.width ?? 0) / run;
-    const halfHeight = ((item.height ?? 0) / 2) / rise;
+    const halfHeight = (item.height ?? 0) / 2 / rise;
     const at = (along: number) => {
       const [vx, vy] = viewport.convertToViewportPoint(
         (e ?? 0) + (a ?? 0) * along + (c ?? 0) * halfHeight,
@@ -652,6 +692,7 @@ export async function extractPdfLabels(
       name,
       ...at(width / 2),
       anchors: [at(width * 0.1), at(width * 0.9)],
+      angle: ((Math.atan2(b ?? 0, a ?? 0) % Math.PI) + Math.PI) % Math.PI,
     });
   }
   console.log("[pdf-walls] labels", labels.length, "page", pageNumber);
@@ -706,5 +747,5 @@ export function extractPdfRoomSeeds(labels: PdfLabel[]): PdfRoomSeed[] {
       ...(Number.isFinite(areaSqFt) ? { areaSqFt } : {}),
     });
   }
-  return seeds.slice(0, 40);
+  return seeds;
 }

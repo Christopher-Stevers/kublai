@@ -11,8 +11,14 @@ import { type AppRouter } from "~/server/api/root";
 import { TEMPORARILY_DISCONNECT_BROWSER_FROM_SERVER } from "~/lib/server-connection-mode";
 import { createQueryClient } from "./query-client";
 
-function blockedServerFetch(input: RequestInfo | URL, init?: RequestInit) {
-  if (TEMPORARILY_DISCONNECT_BROWSER_FROM_SERVER && typeof window !== "undefined") {
+async function blockedServerFetch(
+  input: RequestInfo | URL,
+  init?: RequestInit,
+) {
+  if (
+    TEMPORARILY_DISCONNECT_BROWSER_FROM_SERVER &&
+    typeof window !== "undefined"
+  ) {
     const rawUrl =
       typeof input === "string"
         ? input
@@ -21,14 +27,25 @@ function blockedServerFetch(input: RequestInfo | URL, init?: RequestInit) {
           : input.url;
     const url = new URL(rawUrl, window.location.origin);
 
-    if (url.origin === window.location.origin && url.pathname.startsWith("/api/")) {
-      return Promise.reject(
-        new Error(`Temporary local-first test mode blocked server API call: ${url.pathname}`),
+    if (
+      url.origin === window.location.origin &&
+      url.pathname.startsWith("/api/")
+    ) {
+      throw new Error(
+        `Temporary local-first test mode blocked server API call: ${url.pathname}`,
       );
     }
   }
 
-  return globalThis.fetch(input, init);
+  const response = await globalThis.fetch(input, init);
+  const contentType = response.headers.get("content-type")?.toLowerCase() ?? "";
+  if (!contentType.includes("json")) {
+    const status = `${response.status}${response.statusText ? ` ${response.statusText}` : ""}`;
+    throw new Error(
+      `ForemenHQ API returned HTTP ${status} with ${contentType || "no content type"}`,
+    );
+  }
+  return response;
 }
 
 let clientQueryClientSingleton: QueryClient | undefined = undefined;
@@ -75,9 +92,14 @@ export function TRPCReactProvider(props: { children: React.ReactNode }) {
             : input.url;
       const url = new URL(rawUrl, window.location.origin);
 
-      if (url.origin === window.location.origin && url.pathname.startsWith("/api/")) {
+      if (
+        url.origin === window.location.origin &&
+        url.pathname.startsWith("/api/")
+      ) {
         return Promise.reject(
-          new Error(`Temporary local-first test mode blocked server API call: ${url.pathname}`),
+          new Error(
+            `Temporary local-first test mode blocked server API call: ${url.pathname}`,
+          ),
         );
       }
 

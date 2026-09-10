@@ -6,6 +6,7 @@ import PrecisionModel from "jsts/org/locationtech/jts/geom/PrecisionModel.js";
 import GeometryNoder from "jsts/org/locationtech/jts/noding/snapround/GeometryNoder.js";
 import BufferOp from "jsts/org/locationtech/jts/operation/buffer/BufferOp.js";
 import BufferParameters from "jsts/org/locationtech/jts/operation/buffer/BufferParameters.js";
+import OverlayOp from "jsts/org/locationtech/jts/operation/overlay/OverlayOp.js";
 import Polygonizer from "jsts/org/locationtech/jts/operation/polygonize/Polygonizer.js";
 import UnaryUnionOp from "jsts/org/locationtech/jts/operation/union/UnaryUnionOp.js";
 import ArrayList from "jsts/java/util/ArrayList.js";
@@ -21,7 +22,6 @@ export const MIN_FACE_WIDTH = 0.002;
 const MAX_FACE_VERTICES = 120;
 /** Hard cap on ring size even when oversized regions are kept. */
 const MAX_RING_VERTICES = 4000;
-const WALL_CLOSE_DISTANCE = 0.0025;
 /** Second noding pass uses a hot pixel this many times smaller than GRID. */
 const RENODE_SCALE = 8;
 const MAX_REPAIRED_COVERAGE = 0.5;
@@ -36,6 +36,8 @@ export type PolygonFace = RoomPolygonShape & { holes: RoomPoint[][] };
 type ReadOptions = {
   /** Keep oversized/complex regions (site, sheet margin) instead of dropping them. */
   keepLarge?: boolean;
+  /** Preserve smaller atomic cells for bounded source-wall arrangements. */
+  minArea?: number;
 };
 
 type GeoJsonPolygon = {
@@ -105,7 +107,7 @@ function normalizeRing(
   const maxVertices = options.keepLarge ? MAX_RING_VERTICES : MAX_FACE_VERTICES;
   if (simplified.length < 3 || simplified.length > maxVertices) return null;
   const area = Math.abs(polygonArea(simplified));
-  if (area < MIN_FACE_AREA) return null;
+  if (area < (options.minArea ?? MIN_FACE_AREA)) return null;
   if (!options.keepLarge && area > MAX_FACE_AREA) return null;
   const box = bbox(simplified);
   if (Math.min(box.w, box.h) < MIN_FACE_WIDTH) return null;
@@ -304,9 +306,44 @@ function polygonToGeoJson(polygon: RoomPolygonShape): GeoJsonPolygon {
   return { type: "Polygon", coordinates: [ring] };
 }
 
+/**
+ * Remove already-confirmed source-wall cells from a later candidate. The
+ * retained component must contain the room seed; disconnected scraps are not
+ * promoted to rooms. Boolean subtraction preserves the shared source-wall
+ * boundary exactly and is used only after both candidate perimeters passed
+ * the wall evidence checks.
+ */
+export function subtractRoomShapes(
+  shape: RoomPolygonShape,
+  blockers: RoomPolygonShape[],
+  seed: RoomPoint,
+): RoomPolygonShape | null {
+  if (blockers.length === 0) return shape;
+  try {
+    const reader = new GeoJSONReader(new GeometryFactory());
+    const writer = new GeoJSONWriter();
+    let geometry = reader.read(polygonToGeoJson(shape));
+    for (const blocker of blockers) {
+      geometry = OverlayOp.difference(
+        geometry,
+        reader.read(polygonToGeoJson(blocker)),
+      );
+      if (geometry.isEmpty()) return null;
+    }
+    return (
+      readPolygons(writer.write(geometry))
+        .map(({ points }): RoomPolygonShape => ({ type: "polygon", points }))
+        .find((candidate) => pointInPolygon(seed, candidate)) ?? null
+    );
+  } catch {
+    return null;
+  }
+}
+
 export function unionRoomFaces(
   faces: RoomPolygonShape[],
   seed?: RoomPoint,
+  closeDistance = 0,
 ): RoomPolygonShape | null {
   if (faces.length === 0) return null;
   try {
@@ -317,18 +354,29 @@ export function unionRoomFaces(
       geometries: faces.map(polygonToGeoJson),
     });
     const unioned = UnaryUnionOp.union(geometry);
-    const parameters = new BufferParameters(
-      1,
-      BufferParameters.CAP_SQUARE,
-      BufferParameters.JOIN_MITRE,
-      4,
-    );
-    const closed = BufferOp.bufferOp(
-      BufferOp.bufferOp(unioned, WALL_CLOSE_DISTANCE, parameters),
-      -WALL_CLOSE_DISTANCE,
-      parameters,
-    );
-    const polygons = readPolygons(writer.write(closed)).map(
+    // A room outline must be an actual connected union of owned faces.
+    // Morphological closing here used to bridge nearby but disconnected
+    // components. On rotated wings that manufactured large mitred wedges
+    // across diagonal walls and made unrelated corridor/stair fragments look
+    // like part of the suite. Face recovery belongs in the graph; output
+    // geometry must stay on the recovered face boundaries.
+    const output =
+      closeDistance > 0
+        ? (() => {
+            const closeParameters = new BufferParameters(
+              1,
+              BufferParameters.CAP_FLAT,
+              BufferParameters.JOIN_MITRE,
+              4,
+            );
+            return BufferOp.bufferOp(
+              BufferOp.bufferOp(unioned, closeDistance, closeParameters),
+              -closeDistance,
+              closeParameters,
+            );
+          })()
+        : unioned;
+    const polygons = readPolygons(writer.write(output)).map(
       ({ points }): RoomPolygonShape => ({ type: "polygon", points }),
     );
     if (seed) {

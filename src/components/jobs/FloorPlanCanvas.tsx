@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { getRoomColor } from "~/lib/room-colors";
 import {
+  findRoomAtPoint,
   insertPointAtClick,
   movePolygonPoint,
   polygonPointsAttr,
@@ -261,9 +262,14 @@ export function FloorPlanCanvas({
           return;
         }
 
-        const roomId = target.dataset.roomId;
+        const planPoint = toPlanNorm(event.clientX, event.clientY);
+        const roomId =
+          target.dataset.roomId ??
+          (planPoint
+            ? findRoomAtPoint(roomsRef.current, planPoint)?.id
+            : undefined);
         pendingDetectRoomId.current = roomId ?? null;
-        pendingDetectPoint.current = toPlanNorm(event.clientX, event.clientY);
+        pendingDetectPoint.current = planPoint;
         if (roomId && canEdit && onStartEdit && !editingRoomId && !detectMode) {
           longPressTimer.current = setTimeout(() => {
             longPressHandled.current = true;
@@ -444,6 +450,21 @@ export function FloorPlanCanvas({
             className="absolute inset-0 h-full w-full"
             viewBox="0 0 1 1"
             preserveAspectRatio="none"
+            onClick={(event) => {
+              if (
+                detectMode ||
+                didPan.current ||
+                longPressHandled.current ||
+                editingRoomId
+              ) {
+                return;
+              }
+              const point = toPlanNorm(event.clientX, event.clientY);
+              const room = point
+                ? findRoomAtPoint(roomsRef.current, point)
+                : null;
+              if (room) onSelectRoom(room.id);
+            }}
           >
             {rooms.map((room, index) => {
               const selected =
@@ -463,18 +484,7 @@ export function FloorPlanCanvas({
                   fill={color.fill}
                   stroke={color.border}
                   strokeWidth={(selected ? 0.006 : 0.003) / transform.scale}
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    if (
-                      detectMode ||
-                      didPan.current ||
-                      longPressHandled.current ||
-                      editingRoomId
-                    ) {
-                      return;
-                    }
-                    onSelectRoom(room.id);
-                  }}
+                  pointerEvents="none"
                 />
               );
             })}
@@ -552,41 +562,14 @@ export function FloorPlanCanvas({
                 event.stopPropagation();
                 if (detectFired.current) return;
                 const point = toPlanNorm(event.clientX, event.clientY);
-                if (!point || !onDetectAtPoint) return;
+                if (!point) return;
                 detectFired.current = true;
-                onDetectAtPoint(point);
+                const room = findRoomAtPoint(roomsRef.current, point);
+                if (room && onDetectRoom) onDetectRoom(room.id);
+                else if (onDetectAtPoint) onDetectAtPoint(point);
               }}
             />
           ) : null}
-          {detectMode
-            ? rooms.map((room) => {
-                const box = shapeBBox(
-                  room.id === editingRoomId && visibleEditShape
-                    ? visibleEditShape
-                    : room.shape,
-                );
-                return (
-                  <button
-                    key={`detect-${room.id}`}
-                    type="button"
-                    className="absolute z-20 border-0 bg-transparent p-0"
-                    style={{
-                      left: `${box.x * 100}%`,
-                      top: `${box.y * 100}%`,
-                      width: `${box.w * 100}%`,
-                      height: `${box.h * 100}%`,
-                    }}
-                    aria-label={`Trace ${room.name}`}
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      if (!onDetectRoom) return;
-                      detectFired.current = true;
-                      onDetectRoom(room.id);
-                    }}
-                  />
-                );
-              })
-            : null}
           {editingRoomId && visibleEditShape
             ? visibleEditShape.points.map((point, index) => (
                 <button

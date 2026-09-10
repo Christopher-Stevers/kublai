@@ -9,7 +9,6 @@ import {
   SparklesIcon,
   TrashIcon,
   UploadIcon,
-  XIcon,
 } from "lucide-react";
 
 import { Button } from "~/components/ui/button";
@@ -123,21 +122,29 @@ export function JobRoomsView({ jobId }: { jobId: string }) {
     },
   });
   const confirmDrawingUpload = api.rooms.confirmDrawingUpload.useMutation();
-  const detectRoomsAi = api.rooms.detectRoomsAi.useMutation({
+  const detectRooms = api.rooms.detectRooms.useMutation({
     onSuccess: () => {
       setDetectError(null);
-      void utils.rooms.detectRoomsAiStatus.invalidate();
+      void utils.rooms.detectRoomsStatus.invalidate();
     },
     onError: (error) => {
       const message = error.message || "";
-      if (/network error|failed to fetch|aborted|timeout/i.test(message)) {
+      if (
+        /network error|failed to fetch|aborted|timeout|returned http|content type/i.test(
+          message,
+        )
+      ) {
+        setDetectError(
+          `${message || "Lost contact with ForemenHQ"}. Checking detection status…`,
+        );
+        void utils.rooms.detectRoomsStatus.invalidate();
         return;
       }
-      setDetectError(message || "AI room detection failed");
+      setDetectError(message || "Room detection failed");
       setDetectingRoomId(null);
     },
   });
-  const detectStatus = api.rooms.detectRoomsAiStatus.useQuery(
+  const detectStatus = api.rooms.detectRoomsStatus.useQuery(
     { floorId: selectedFloorId ?? "00000000-0000-0000-0000-000000000000" },
     {
       enabled: Boolean(selectedFloorId && (detectMode || detectingRoomId)),
@@ -158,7 +165,7 @@ export function JobRoomsView({ jobId }: { jobId: string }) {
       void utils.rooms.getJobRooms.invalidate({ jobId });
       return;
     }
-    setDetectError(job.error || "AI room detection failed");
+    setDetectError(job.error || "Room detection failed");
   }, [detectStatus.data, jobId, utils.rooms.getJobRooms]);
 
   const data = roomsQuery.data;
@@ -169,7 +176,7 @@ export function JobRoomsView({ jobId }: { jobId: string }) {
   const selectedRoom =
     selectedFloor?.rooms.find((room) => room.id === selectedRoomId) ?? null;
   const isDetecting =
-    detectRoomsAi.isPending || detectStatus.data?.status === "running";
+    detectRooms.isPending || detectStatus.data?.status === "running";
   const canEditFloor = canManage && editMode;
   floorNameDraftRef.current = floorNameDraft;
 
@@ -245,7 +252,7 @@ export function JobRoomsView({ jobId }: { jobId: string }) {
     setDetectError(null);
     setDetectMode(false);
     setDetectingRoomId(selectedFloor.id);
-    detectRoomsAi.mutate({
+    detectRooms.mutate({
       floorId: selectedFloor.id,
     });
   };
@@ -386,7 +393,7 @@ export function JobRoomsView({ jobId }: { jobId: string }) {
       setKeepSheetIds({});
       await utils.rooms.getJobRooms.invalidate({ jobId });
       for (const floorId of result.keptFloorIds) {
-        detectRoomsAi.mutate({ floorId });
+        detectRooms.mutate({ floorId });
       }
       if (result.keptFloorIds[0]) {
         setSelectedFloorId(result.keptFloorIds[0]);
@@ -448,6 +455,8 @@ export function JobRoomsView({ jobId }: { jobId: string }) {
 
   return (
     <>
+      {!selectedFloor ? (
+      <>
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-xl font-semibold text-gray-900">Rooms</h2>
@@ -635,23 +644,12 @@ export function JobRoomsView({ jobId }: { jobId: string }) {
           ))}
         </div>
       )}
+      </>
+      ) : null}
 
-      <Dialog
-        open={!!selectedFloor && !selectedRoom}
-        onOpenChange={(open) => {
-          if (!open) closeFloorViewer();
-        }}
-      >
-        <DialogContent
-          showCloseButton={false}
-          className="flex h-[96dvh] max-h-[96dvh] w-[96vw] max-w-none flex-col gap-3 overflow-hidden p-3 sm:max-w-none"
-        >
-          {selectedFloor ? (
-            <>
-              <DialogHeader className="shrink-0 space-y-2 text-left">
-                <DialogTitle className="sr-only">
-                  {selectedFloor.name}
-                </DialogTitle>
+      {selectedFloor ? (
+            <div className="flex min-h-[70dvh] flex-col gap-3">
+              <div className="shrink-0 space-y-2">
                 <div className="flex items-start gap-2">
                   <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <div className="min-w-0">
@@ -813,7 +811,7 @@ export function JobRoomsView({ jobId }: { jobId: string }) {
                             disabled={isDetecting || createMode}
                           >
                             <SparklesIcon className="mr-1 h-4 w-4" />
-                            {isDetecting ? "Detecting…" : "AI detect rooms"}
+                            {isDetecting ? "Detecting…" : "Detect rooms"}
                           </Button>
                           <Button
                             variant={createMode ? "outline" : "default"}
@@ -871,15 +869,12 @@ export function JobRoomsView({ jobId }: { jobId: string }) {
                   <Button
                     type="button"
                     variant="outline"
-                    size="icon"
-                    className="h-11 w-11 shrink-0 rounded-full border-gray-300 bg-white shadow-sm"
-                    aria-label="Close floor"
                     onClick={closeFloorViewer}
                   >
-                    <XIcon className="h-5 w-5" />
+                    Back to rooms
                   </Button>
                 </div>
-              </DialogHeader>
+              </div>
               {detectError ? (
                 <p className="shrink-0 px-1 text-sm text-red-600">
                   {detectError}
@@ -1058,10 +1053,8 @@ export function JobRoomsView({ jobId }: { jobId: string }) {
                   </Button>
                 </div>
               ) : null}
-            </>
-          ) : null}
-        </DialogContent>
-      </Dialog>
+            </div>
+      ) : null}
 
       <Dialog
         open={!!floorToDelete}

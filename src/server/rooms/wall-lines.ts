@@ -275,8 +275,12 @@ export function groupLines(walls: WallSegment[]) {
     };
     const interval = { start: directional.start, end: directional.end };
     group.intervals.push(interval);
-    const heavy =
-      Boolean(wall.filled) || (reference > 0 && wall.strokeWidth >= heavyWidth);
+    // Filled paths are common when a rotated/xref drawing has been flattened:
+    // text boxes, furniture and every ordinary thin stroke become tiny solid
+    // outlines. Treating `filled` alone as wall evidence seals labels inside
+    // annotation boxes. Real filled wall bands still become strong below when
+    // their parallel faces pair at the estimated wall thickness.
+    const heavy = reference > 0 && wall.strokeWidth >= heavyWidth;
     const layered = Boolean(wall.layer && WALL_LAYER.test(wall.layer));
     if (heavy) heavyLength += interval.end - interval.start;
     if (layered) layerLength += interval.end - interval.start;

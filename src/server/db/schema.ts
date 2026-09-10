@@ -1066,17 +1066,44 @@ export const jobRooms = createTable(
   ],
 );
 
-export const jobFloorPlansRelations = relations(jobFloorPlans, ({ one, many }) => ({
-  organization: one(organizations, {
-    fields: [jobFloorPlans.organizationId],
-    references: [organizations.id],
+export const roomDetectionJobs = createTable(
+  "room_detection_job",
+  (d) => ({
+    floorId: d
+      .uuid()
+      .notNull()
+      .primaryKey()
+      .references(() => jobFloors.id, { onDelete: "cascade" }),
+    organizationId: d
+      .uuid()
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    status: d.varchar({ length: 20 }).notNull(),
+    startedAt: d.timestamp({ withTimezone: true }).notNull(),
+    heartbeatAt: d.timestamp({ withTimezone: true }).notNull(),
+    finishedAt: d.timestamp({ withTimezone: true }),
+    workerPid: d.integer(),
+    error: d.text(),
+    result: jsonb(),
+    log: jsonb().notNull().default([]),
   }),
-  job: one(jobs, {
-    fields: [jobFloorPlans.jobId],
-    references: [jobs.id],
+  (t) => [index("room_detection_job_org_idx").on(t.organizationId)],
+);
+
+export const jobFloorPlansRelations = relations(
+  jobFloorPlans,
+  ({ one, many }) => ({
+    organization: one(organizations, {
+      fields: [jobFloorPlans.organizationId],
+      references: [organizations.id],
+    }),
+    job: one(jobs, {
+      fields: [jobFloorPlans.jobId],
+      references: [jobs.id],
+    }),
+    floors: many(jobFloors),
   }),
-  floors: many(jobFloors),
-}));
+);
 
 export const jobFloorsRelations = relations(jobFloors, ({ one, many }) => ({
   organization: one(organizations, {
@@ -1108,6 +1135,20 @@ export const jobRoomsRelations = relations(jobRooms, ({ one }) => ({
     references: [jobFloors.id],
   }),
 }));
+
+export const roomDetectionJobsRelations = relations(
+  roomDetectionJobs,
+  ({ one }) => ({
+    organization: one(organizations, {
+      fields: [roomDetectionJobs.organizationId],
+      references: [organizations.id],
+    }),
+    floor: one(jobFloors, {
+      fields: [roomDetectionJobs.floorId],
+      references: [jobFloors.id],
+    }),
+  }),
+);
 
 // ============================
 // MATERIAL LISTS

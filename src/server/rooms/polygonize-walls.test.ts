@@ -8,6 +8,7 @@ import {
 } from "~/server/rooms/pdf-walls";
 import {
   polygonizeWalls,
+  subtractRoomShapes,
   unionRoomFaces,
 } from "~/server/rooms/polygonize-walls";
 
@@ -68,7 +69,7 @@ describe("polygonizeWalls", () => {
       ],
     };
 
-    const merged = unionRoomFaces([left, right], { x: 0.15, y: 0.2 });
+    const merged = unionRoomFaces([left, right], { x: 0.15, y: 0.2 }, 0.0025);
     expect(merged).not.toBeNull();
     expect(pointInPolygon({ x: 0.25, y: 0.2 }, merged!)).toBe(true);
   });
@@ -138,6 +139,36 @@ describe("polygonizeWalls", () => {
       true,
     );
   });
+
+  it("subtracts an earlier wall cell as a complementary side notch", () => {
+    const candidate: RoomPolygonShape = {
+      type: "polygon",
+      points: [
+        { x: 0.1, y: 0.1 },
+        { x: 0.5, y: 0.1 },
+        { x: 0.5, y: 0.5 },
+        { x: 0.1, y: 0.5 },
+      ],
+    };
+    const protrudingNeighbor: RoomPolygonShape = {
+      type: "polygon",
+      points: [
+        { x: 0.05, y: 0.2 },
+        { x: 0.2, y: 0.2 },
+        { x: 0.2, y: 0.4 },
+        { x: 0.05, y: 0.4 },
+      ],
+    };
+
+    const result = subtractRoomShapes(candidate, [protrudingNeighbor], {
+      x: 0.4,
+      y: 0.3,
+    });
+
+    expect(result?.points).toHaveLength(8);
+    expect(pointInPolygon({ x: 0.4, y: 0.3 }, result!)).toBe(true);
+    expect(pointInPolygon({ x: 0.15, y: 0.3 }, result!)).toBe(false);
+  });
 });
 
 describe("extractPdfRoomSeeds", () => {
@@ -156,5 +187,22 @@ describe("extractPdfRoomSeeds", () => {
       expect.objectContaining({ name: "CORRIDOR", kind: "room" }),
       expect.objectContaining({ name: "MECH PH", kind: "room" }),
     ]);
+  });
+
+  it("does not truncate valid labels based on PDF text-stream order", () => {
+    const labels: PdfLabel[] = Array.from({ length: 60 }, (_, index) => [
+      {
+        name: `N${String(index + 100).padStart(3, "0")}`,
+        x: 0.1 + (index % 10) * 0.06,
+        y: 0.1 + Math.floor(index / 10) * 0.08,
+      },
+      {
+        name: "350 SF",
+        x: 0.101 + (index % 10) * 0.06,
+        y: 0.11 + Math.floor(index / 10) * 0.08,
+      },
+    ]).flat();
+
+    expect(extractPdfRoomSeeds(labels)).toHaveLength(60);
   });
 });

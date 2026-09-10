@@ -1,16 +1,11 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, lt, ne, or, sql } from "drizzle-orm";
 
 import { pointInPolygon, toPolygon, type RoomPoint } from "~/lib/room-shape";
 import { db } from "~/server/db";
-import { jobRooms } from "~/server/db/schema";
+import { jobFloors, jobRooms, roomDetectionJobs } from "~/server/db/schema";
 import {
-  detectAllRoomsFromFloorImage,
-  refineDetectedRooms,
-  type AiDetectedRoom,
-} from "~/server/rooms/detect-ai";
-import {
-  assignRooms,
   buildFloorGraph,
+  detectFloorRooms,
   growRoom,
   type FloorGraph,
 } from "~/server/rooms/floor-graph";
@@ -20,7 +15,7 @@ import {
   extractPdfRoomSeeds,
   type PdfRoomSeed,
 } from "~/server/rooms/pdf-walls";
-import { snapPolygonToWalls } from "~/server/rooms/snap-walls";
+import { planDetectedRoomReconciliation } from "~/server/rooms/reconcile-detected-rooms";
 import {
   JOB_ROOM_FILE_PUBLIC_PREFIX,
   getPdfKeyForFloorImage,
@@ -38,6 +33,11 @@ export type DetectJobResult = {
 
 export type DetectLogEntry = { at: number; message: string };
 
+type DetectedRoom = {
+  name: string;
+  shape: ReturnType<typeof toPolygon>;
+};
+
 export type DetectJobState = {
   floorId: string;
   status: "running" | "done" | "error";
@@ -50,61 +50,159 @@ export type DetectJobState = {
 };
 
 const MAX_LOG_ENTRIES = 400;
-const jobs = new Map<string, DetectJobState>();
+const JOB_STALE_MS = 20 * 60_000;
 
-export function getDetectJob(floorId: string): DetectJobState | null {
-  return jobs.get(floorId) ?? null;
+function toDetectJobState(
+  row: typeof roomDetectionJobs.$inferSelect,
+): DetectJobState {
+  const result = row.result as DetectJobResult | null;
+  return {
+    floorId: row.floorId,
+    status: row.status as DetectJobState["status"],
+    ...(row.error ? { error: row.error } : {}),
+    ...(result ? { result } : {}),
+    startedAt: row.startedAt.getTime(),
+    log: (row.log as DetectLogEntry[]) ?? [],
+  };
 }
 
-export function beginDetectJob(floorId: string, roomId?: string): boolean {
-  const existing = jobs.get(floorId);
-  if (existing?.status === "running") {
-    if (Date.now() - existing.startedAt < 300_000) return false;
-  }
-  jobs.set(floorId, {
-    floorId,
-    status: "running",
-    startedAt: Date.now(),
-    roomId,
-    log: [],
-  });
-  return true;
-}
-
-function logDetect(floorId: string, message: string) {
-  const current = jobs.get(floorId);
-  if (current) {
-    current.log.push({ at: Date.now(), message });
-    if (current.log.length > MAX_LOG_ENTRIES) {
-      current.log.splice(0, current.log.length - MAX_LOG_ENTRIES);
+export async function getDetectJob(
+  floorId: string,
+): Promise<DetectJobState | null> {
+  const [row] = await db
+    .select()
+    .from(roomDetectionJobs)
+    .where(eq(roomDetectionJobs.floorId, floorId))
+    .limit(1);
+  if (!row) return null;
+  let workerAlive = true;
+  if (row.status === "running" && row.workerPid) {
+    try {
+      process.kill(row.workerPid, 0);
+    } catch {
+      workerAlive = false;
     }
   }
-  console.log("[detect-job]", floorId, message);
+  if (
+    row.status === "running" &&
+    (!workerAlive || Date.now() - row.heartbeatAt.getTime() >= JOB_STALE_MS)
+  ) {
+    await failDetectJob(
+      floorId,
+      "Room detection worker stopped before completing",
+    );
+    return getDetectJob(floorId);
+  }
+  return toDetectJobState(row);
 }
 
-function finishDetectJob(floorId: string, result: DetectJobResult) {
-  const current = jobs.get(floorId);
-  jobs.set(floorId, {
-    floorId,
-    status: "done",
-    result,
-    startedAt: current?.startedAt ?? Date.now(),
-    roomId: result.roomId ?? current?.roomId,
-    log: current?.log ?? [],
-  });
+export async function beginDetectJob(
+  floorId: string,
+  organizationId: string,
+): Promise<boolean> {
+  const now = new Date();
+  const staleBefore = new Date(now.getTime() - JOB_STALE_MS);
+  const [row] = await db
+    .insert(roomDetectionJobs)
+    .values({
+      floorId,
+      organizationId,
+      status: "running",
+      startedAt: now,
+      heartbeatAt: now,
+      finishedAt: null,
+      workerPid: null,
+      error: null,
+      result: null,
+      log: [],
+    })
+    .onConflictDoUpdate({
+      target: roomDetectionJobs.floorId,
+      set: {
+        organizationId,
+        status: "running",
+        startedAt: now,
+        heartbeatAt: now,
+        finishedAt: null,
+        workerPid: null,
+        error: null,
+        result: null,
+        log: [],
+      },
+      setWhere: or(
+        ne(roomDetectionJobs.status, "running"),
+        lt(roomDetectionJobs.heartbeatAt, staleBefore),
+      ),
+    })
+    .returning({ floorId: roomDetectionJobs.floorId });
+  return Boolean(row);
+}
+
+async function appendDetectLog(floorId: string, message: string) {
+  const entry: DetectLogEntry = { at: Date.now(), message };
+  await db
+    .update(roomDetectionJobs)
+    .set({
+      heartbeatAt: new Date(),
+      log: sql`(
+        SELECT COALESCE(jsonb_agg(item ORDER BY position), '[]'::jsonb)
+        FROM (
+          SELECT item, position
+          FROM jsonb_array_elements(
+            COALESCE(${roomDetectionJobs.log}, '[]'::jsonb) ||
+            ${JSON.stringify([entry])}::jsonb
+          ) WITH ORDINALITY AS entries(item, position)
+          ORDER BY position DESC
+          LIMIT ${MAX_LOG_ENTRIES}
+        ) recent
+      )`,
+    })
+    .where(eq(roomDetectionJobs.floorId, floorId));
+}
+
+export async function setDetectWorkerPid(floorId: string, workerPid: number) {
+  await db
+    .update(roomDetectionJobs)
+    .set({ workerPid, heartbeatAt: new Date() })
+    .where(
+      and(
+        eq(roomDetectionJobs.floorId, floorId),
+        eq(roomDetectionJobs.status, "running"),
+      ),
+    );
+}
+
+async function finishDetectJob(floorId: string, result: DetectJobResult) {
+  await db
+    .update(roomDetectionJobs)
+    .set({
+      status: "done",
+      result,
+      error: null,
+      workerPid: null,
+      heartbeatAt: new Date(),
+      finishedAt: new Date(),
+    })
+    .where(eq(roomDetectionJobs.floorId, floorId));
   console.log("[detect-job] done", floorId, result);
 }
 
-function failDetectJob(floorId: string, error: string) {
-  const current = jobs.get(floorId);
-  jobs.set(floorId, {
-    floorId,
-    status: "error",
-    error,
-    startedAt: current?.startedAt ?? Date.now(),
-    roomId: current?.roomId,
-    log: current?.log ?? [],
-  });
+export async function failDetectJob(floorId: string, error: string) {
+  await db
+    .update(roomDetectionJobs)
+    .set({
+      status: "error",
+      error,
+      workerPid: null,
+      heartbeatAt: new Date(),
+      finishedAt: new Date(),
+    })
+    .where(
+      and(
+        eq(roomDetectionJobs.floorId, floorId),
+        eq(roomDetectionJobs.status, "running"),
+      ),
+    );
   console.error("[detect-job] error", floorId, error);
 }
 
@@ -118,6 +216,7 @@ export type FloorSource = {
 type FloorGraphEntry = {
   graph: FloorGraph;
   seeds: PdfRoomSeed[];
+  linework: Awaited<ReturnType<typeof extractPdfLinework>>;
   imageUrl: string;
   builtAt: number;
 };
@@ -163,7 +262,13 @@ async function buildFloorGraphEntry(
         : ""),
   );
   const graph = buildFloorGraph(linework, { log });
-  return { graph, seeds, imageUrl: source.imageUrl, builtAt: Date.now() };
+  return {
+    graph,
+    seeds,
+    linework,
+    imageUrl: source.imageUrl,
+    builtAt: Date.now(),
+  };
 }
 
 /**
@@ -229,7 +334,7 @@ export async function growRoomOnFloor(input: {
   });
 }
 
-export async function runAiDetectAllRooms(input: {
+export async function runDeterministicDetectAllRooms(input: {
   floorId: string;
   organizationId: string;
   jobId: string;
@@ -237,123 +342,131 @@ export async function runAiDetectAllRooms(input: {
   floorStatus: string;
   pageNumber: number;
 }) {
-  const log = (message: string) => logDetect(input.floorId, message);
+  let pendingLogWrite = Promise.resolve();
+  const log = (message: string) => {
+    console.log("[detect-job]", input.floorId, message);
+    pendingLogWrite = pendingLogWrite
+      .catch(() => undefined)
+      .then(() => appendDetectLog(input.floorId, message));
+  };
   try {
-    const storageKey = storageKeyFor(input.imageUrl);
     const source: FloorSource = {
       floorId: input.floorId,
       jobId: input.jobId,
       imageUrl: input.imageUrl,
       pageNumber: input.pageNumber,
     };
-    let detected: AiDetectedRoom[] = [];
-    let wallCount = 0;
-
-    const { graph, seeds } = await getFloorGraph(source, log);
-    wallCount = graph.stats.strong;
-
-    if (graph.faces.length > 0 && seeds.length > 0) {
-      log(`Assigning ${seeds.length} labels to wall-bounded spaces`);
-      const rooms = assignRooms(graph, seeds, log);
-      detected = rooms.map((room) => ({ name: room.name, shape: room.shape }));
-      log(`Deterministic pass traced ${detected.length} rooms`);
+    const { graph, seeds, linework } = await getFloorGraph(source, log);
+    let detected: DetectedRoom[] = [];
+    if (graph.faces.length === 0) {
+      log("No bounded regions were found in the PDF wall geometry");
     } else if (seeds.length === 0) {
-      log("No unit/room labels in the PDF text layer");
+      log("No room or unit labels were found in the PDF text layer");
     } else {
-      log("No bounded regions from the vector linework");
-    }
-
-    if (detected.length === 0) {
-      log("Falling back to image-based detection (no vector rooms found)");
-      const image = await readJobRoomFile(storageKey);
-      const coarse = await detectAllRoomsFromFloorImage(image);
-      log(`Image pass proposed ${coarse.length} rooms, refining`);
-      const refined = await refineDetectedRooms(image, coarse);
-      const walls = (
-        await extractPdfLinework(
-          await readJobRoomFile(getPdfKeyForFloorImage(storageKey, input.jobId)),
-          getSourcePageFromFloorImage(storageKey) ?? input.pageNumber,
-        )
-      ).segments;
-      detected = refined.flatMap((room) => {
-        if (walls.length < 12) return [room];
-        const snapped = snapPolygonToWalls(room.shape.points, walls);
-        return snapped ? [{ ...room, shape: snapped }] : [];
-      });
-      log(`Image pass kept ${detected.length} rooms after wall snapping`);
+      log(`Assigning ${seeds.length} labels to wall-bounded spaces`);
+      detected = detectFloorRooms(linework, seeds, log, graph).rooms.map(
+        (room) => ({
+          name: room.name,
+          shape: room.shape,
+        }),
+      );
+      log(`Deterministic wall pass traced ${detected.length} rooms`);
     }
     console.log(
-      "[detect-job] faces",
+      "[detect-job] deterministic",
+      "faces",
       graph.faces.length,
       "seeds",
       seeds.length,
       "detected",
       detected.length,
       "walls",
-      wallCount,
+      graph.stats.strong,
     );
     if (detected.length === 0) {
       throw new Error("Could not trace any rooms from this floor plan");
     }
     log(`Saving ${detected.length} rooms`);
-    const existing = await db
-      .select()
-      .from(jobRooms)
-      .where(
-        and(
-          eq(jobRooms.floorId, input.floorId),
-          eq(jobRooms.organizationId, input.organizationId),
-        ),
-      );
-    const normalizeName = (value: string) => value.trim().toLowerCase();
-    const usedIds = new Set<string>();
-    let added = 0;
-    let updated = 0;
-    const now = new Date();
+    await pendingLogWrite;
+    const result = await db.transaction(async (tx) => {
+      const existing = await tx
+        .select()
+        .from(jobRooms)
+        .where(
+          and(
+            eq(jobRooms.floorId, input.floorId),
+            eq(jobRooms.organizationId, input.organizationId),
+          ),
+        );
+      const plan = planDetectedRoomReconciliation(existing, detected);
+      const now = new Date();
 
-    for (const [index, room] of detected.entries()) {
-      const match = existing.find(
-        (item) =>
-          !usedIds.has(item.id) &&
-          normalizeName(item.name) === normalizeName(room.name),
-      );
-      if (match) {
-        usedIds.add(match.id);
-        await db
+      for (const update of plan.updates) {
+        await tx
           .update(jobRooms)
-          .set({
-            shape: room.shape,
-            updatedAt: now,
-          })
-          .where(eq(jobRooms.id, match.id));
-        updated += 1;
-        continue;
+          .set({ shape: update.room.shape, updatedAt: now })
+          .where(eq(jobRooms.id, update.id));
       }
-      await db.insert(jobRooms).values({
-        organizationId: input.organizationId,
-        jobId: input.jobId,
-        floorId: input.floorId,
-        name: room.name,
-        source: "auto",
-        confirmed: input.floorStatus === "confirmed",
-        shape: room.shape,
-        sortOrder: existing.length + index,
-      });
-      added += 1;
-    }
+      for (const [index, room] of plan.inserts.entries()) {
+        await tx.insert(jobRooms).values({
+          organizationId: input.organizationId,
+          jobId: input.jobId,
+          floorId: input.floorId,
+          name: room.name,
+          source: "auto",
+          confirmed: input.floorStatus === "confirmed",
+          shape: room.shape,
+          sortOrder: existing.length + index,
+        });
+      }
+      for (const roomId of plan.obsoleteAutoIds) {
+        await tx.delete(jobRooms).where(eq(jobRooms.id, roomId));
+      }
 
-    log(`Done: ${added} added, ${updated} updated`);
-    finishDetectJob(input.floorId, {
-      added,
-      updated,
-      removed: 0,
-      total: detected.length,
+      return {
+        added: plan.inserts.length,
+        updated: plan.updates.length,
+        removed: plan.obsoleteAutoIds.length,
+        total: detected.length,
+      };
     });
+
+    log(
+      `Done: ${result.added} added, ${result.updated} updated, ${result.removed} old traces removed`,
+    );
+    await pendingLogWrite;
+    await finishDetectJob(input.floorId, result);
   } catch (error) {
-    failDetectJob(
+    await pendingLogWrite.catch(() => undefined);
+    await failDetectJob(
       input.floorId,
-      error instanceof Error ? error.message : "AI room detection failed",
+      error instanceof Error
+        ? error.message
+        : "Deterministic room detection failed",
     );
     throw error;
   }
+}
+
+export async function runQueuedDetectJob(floorId: string) {
+  const job = await getDetectJob(floorId);
+  if (job?.status !== "running") return;
+  const [floor] = await db
+    .select()
+    .from(jobFloors)
+    .where(eq(jobFloors.id, floorId))
+    .limit(1);
+  if (!floor) {
+    await failDetectJob(floorId, "Floor no longer exists");
+    return;
+  }
+  await setDetectWorkerPid(floorId, process.pid);
+  await runDeterministicDetectAllRooms({
+    floorId: floor.id,
+    organizationId: floor.organizationId,
+    jobId: floor.jobId,
+    imageUrl: floor.imageUrl,
+    floorStatus: floor.status,
+    pageNumber: floor.pageNumber,
+  });
 }

@@ -19,8 +19,15 @@ function clamp01(value: number) {
   return Math.min(1, Math.max(0, value));
 }
 
-export function toPolygon(shape: RoomShape | null | undefined): RoomPolygonShape {
-  if (shape && shape.type === "polygon" && Array.isArray(shape.points) && shape.points.length >= 3) {
+export function toPolygon(
+  shape: RoomShape | null | undefined,
+): RoomPolygonShape {
+  if (
+    shape &&
+    shape.type === "polygon" &&
+    Array.isArray(shape.points) &&
+    shape.points.length >= 3
+  ) {
     return {
       type: "polygon",
       points: shape.points.map((point) => ({
@@ -69,10 +76,42 @@ export function pointInPolygon(point: RoomPoint, polygon: RoomPolygonShape) {
     const b = pts[j]!;
     const intersects =
       a.y > point.y !== b.y > point.y &&
-      point.x < ((b.x - a.x) * (point.y - a.y)) / (b.y - a.y + Number.EPSILON) + a.x;
+      point.x <
+        ((b.x - a.x) * (point.y - a.y)) / (b.y - a.y + Number.EPSILON) + a.x;
     if (intersects) inside = !inside;
   }
   return inside;
+}
+
+function polygonArea(shape: RoomPolygonShape) {
+  let area = 0;
+  for (let index = 0; index < shape.points.length; index += 1) {
+    const current = shape.points[index]!;
+    const next = shape.points[(index + 1) % shape.points.length]!;
+    area += current.x * next.y - next.x * current.y;
+  }
+  return Math.abs(area) / 2;
+}
+
+/**
+ * Resolve overlay hits from normalized plan coordinates instead of relying on
+ * browser SVG hit-testing. When traces overlap, the tightest containing room
+ * wins, which keeps a large suite polygon from swallowing its smaller rooms.
+ */
+export function findRoomAtPoint<T extends { shape: RoomShape }>(
+  rooms: T[],
+  point: RoomPoint,
+): T | null {
+  return (
+    rooms
+      .flatMap((room) => {
+        const polygon = toPolygon(room.shape);
+        return pointInPolygon(point, polygon)
+          ? [{ room, area: polygonArea(polygon) }]
+          : [];
+      })
+      .sort((left, right) => left.area - right.area)[0]?.room ?? null
+  );
 }
 
 export function insertPointOnNearestEdge(
@@ -164,20 +203,26 @@ export function movePolygonPoint(
   return {
     type: "polygon",
     points: polygon.points.map((existing, i) =>
-      i === index
-        ? { x: clamp01(point.x), y: clamp01(point.y) }
-        : existing,
+      i === index ? { x: clamp01(point.x), y: clamp01(point.y) } : existing,
     ),
   };
 }
 
-export function bboxToPolygonShape(x: number, y: number, w: number, h: number): RoomPolygonShape {
+export function bboxToPolygonShape(
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+): RoomPolygonShape {
   return toPolygon({ type: "bbox", x, y, w, h });
 }
 
-export function shapeBBox(
-  shape: RoomShape | null | undefined,
-): { x: number; y: number; w: number; h: number } {
+export function shapeBBox(shape: RoomShape | null | undefined): {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+} {
   const polygon = toPolygon(shape);
   const xs = polygon.points.map((point) => point.x);
   const ys = polygon.points.map((point) => point.y);
