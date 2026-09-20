@@ -184,6 +184,7 @@ function mergeIntervals(intervals: Interval[], maxGap: number) {
 /** Length-weighted median stroke width: the sheet's "ordinary" line. */
 export function referenceStrokeWidth(walls: WallSegment[]) {
   const rows = walls
+    .filter((wall) => !wall.dashed && !wall.curve)
     .map((wall) => ({
       width: wall.strokeWidth,
       length: Math.hypot(wall.x2 - wall.x1, wall.y2 - wall.y1),

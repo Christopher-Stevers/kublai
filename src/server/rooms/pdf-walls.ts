@@ -23,6 +23,9 @@ export type WallSegment = {
 
 export type FloorLinework = {
   segments: WallSegment[];
+  /** Unbudgeted filtered source strokes, consumed only by bounded supplemental crops.
+   * Never feed these into the baseline page graph. */
+  supplementarySegments?: WallSegment[];
   /** Curve chords (door swings) kept out of the wall candidates. */
   arcs: WallSegment[];
   /** Layer names seen on kept segments, most used first. */
@@ -66,6 +69,9 @@ const OPS = {
   beginMarkedContentProps: 70,
   endMarkedContent: 71,
   setDash: 6,
+  setGState: 9,
+  paintFormXObjectBegin: 74,
+  paintFormXObjectEnd: 75,
   save: 10,
   restore: 11,
   transform: 12,
@@ -381,7 +387,7 @@ export async function extractPdfLinework(
   let start: { x: number; y: number } | null = null;
   let opIndex = 0;
   const raw: WallSegment[] = [];
-  let pending: WallSegment[] | null = null;
+  let pending: WallSegment[] = [];
   const layerStack: Array<string | undefined> = [];
 
   const addSeg = (
@@ -396,7 +402,7 @@ export async function extractPdfLinework(
     for (let i = layerStack.length - 1; i >= 0 && !layer; i -= 1) {
       layer = layerStack[i];
     }
-    (pending ?? raw).push({
+    pending.push({
       x1: p1.x,
       y1: p1.y,
       x2: p2.x,
@@ -421,7 +427,10 @@ export async function extractPdfLinework(
     path.push(p);
   };
   const closePath = () => {
-    if (start && path.length) addSeg(path[path.length - 1]!, start);
+    if (start && path.length) {
+      addSeg(path[path.length - 1]!, start);
+      path = [start];
+    }
   };
   const rectangle = (x: number, y: number, w: number, h: number) => {
     const a = apply(ctm, x, y);
@@ -433,21 +442,59 @@ export async function extractPdfLinework(
     addSeg(c, d);
     addSeg(d, a);
   };
+  // Application policy: non-solid strokes are never wall evidence. A dash
+  // pattern affects stroking only, not the independent solid fill of B/B*/b/b*.
+  const paintPath = (term: number) => {
+    const isStroke = [
+      OPS.stroke,
+      OPS.closeStroke,
+      OPS.fillStroke,
+      OPS.eoFillStroke,
+      OPS.closeFillStroke,
+      OPS.closeEOFillStroke,
+    ].some((op) => op === term);
+    const isFill = [
+      OPS.fill,
+      OPS.eoFill,
+      OPS.fillStroke,
+      OPS.eoFillStroke,
+      OPS.closeFillStroke,
+      OPS.closeEOFillStroke,
+    ].some((op) => op === term);
+    const dashed = dashPattern.some((value) => value > 0);
+    const solid = pending.map((seg) => ({
+      ...seg,
+      strokeWidth: lineWidth,
+      dashed,
+    }));
+    pending = [];
+    if (isStroke && !dashed) raw.push(...solid);
+    // Solid mixed paths already contribute their stroke outlines. Do not
+    // duplicate/regrade those established walls; recover fill when stroke is excluded.
+    if (
+      isFill &&
+      (!isStroke || dashed) &&
+      solid.length >= 3 &&
+      solid.length <= 12
+    ) {
+      const xs = solid.flatMap((seg) => [seg.x1, seg.x2]);
+      const ys = solid.flatMap((seg) => [seg.y1, seg.y2]);
+      const width = Math.max(...xs) - Math.min(...xs);
+      const height = Math.max(...ys) - Math.min(...ys);
+      if (
+        Math.max(width, height) <= FILL_MAX_SIDE &&
+        Math.min(width, height) >= FILL_MIN_THICK
+      ) {
+        for (const seg of solid)
+          raw.push({ ...seg, dashed: false, filled: true });
+      }
+    }
+    path = [];
+    start = null;
+  };
   const handleConstructPath = (args: unknown[]) => {
     const term = Number(args[0]);
-    const isStroke =
-      term === OPS.stroke ||
-      term === OPS.closeStroke ||
-      term === OPS.fillStroke ||
-      term === OPS.eoFillStroke ||
-      term === OPS.closeFillStroke ||
-      term === OPS.closeEOFillStroke;
-    const isFill = term === OPS.fill || term === OPS.eoFill;
-    if (!isStroke && !isFill) return;
-    // Solid fills are how poché walls, columns and door jambs get drawn; keep
-    // the outline of small solids as heavy linework. Big fills are backgrounds.
-    pending = isFill ? [] : null;
-
+    pending = [];
     const buffers = Array.isArray(args[1]) ? args[1] : [args[1]];
     for (const buf of buffers) {
       const pts = toNumbers(buf);
@@ -474,22 +521,22 @@ export async function extractPdfLinework(
         }
       }
     }
-    if (pending) {
-      const solid = pending;
-      pending = null;
-      if (solid.length >= 3 && solid.length <= 12) {
-        const xs = solid.flatMap((seg) => [seg.x1, seg.x2]);
-        const ys = solid.flatMap((seg) => [seg.y1, seg.y2]);
-        const width = Math.max(...xs) - Math.min(...xs);
-        const height = Math.max(...ys) - Math.min(...ys);
-        if (
-          Math.max(width, height) <= FILL_MAX_SIDE &&
-          Math.min(width, height) >= FILL_MIN_THICK
-        ) {
-          for (const seg of solid) raw.push({ ...seg, filled: true });
-        }
-      }
-    }
+    paintPath(term);
+  };
+
+  const saveState = () =>
+    stateStack.push({ ctm, lineWidth, dashPattern: [...dashPattern] });
+  const restoreState = () => {
+    const restored = stateStack.pop();
+    if (!restored) return;
+    ctm = restored.ctm;
+    lineWidth = restored.lineWidth;
+    dashPattern = restored.dashPattern;
+  };
+  const setDash = (value: unknown) => {
+    dashPattern = toNumbers(value).filter(
+      (value) => Number.isFinite(value) && value >= 0,
+    );
   };
 
   for (let i = 0; i < opList.fnArray.length; i += 1) {
@@ -498,23 +545,31 @@ export async function extractPdfLinework(
     opIndex = i;
     switch (fn) {
       case OPS.save:
-        stateStack.push({ ctm, lineWidth, dashPattern: [...dashPattern] });
+        saveState();
         break;
       case OPS.restore:
-        {
-          const restored = stateStack.pop();
-          ctm = restored?.ctm ?? IDENTITY;
-          lineWidth = restored?.lineWidth ?? 1;
-          dashPattern = restored?.dashPattern ?? [];
-        }
+        restoreState();
+        break;
+      case OPS.paintFormXObjectBegin:
+        saveState();
+        if (args[0]) ctm = multiply(ctm, toNumbers(args[0]) as Matrix);
+        break;
+      case OPS.paintFormXObjectEnd:
+        restoreState();
         break;
       case OPS.setLineWidth:
         lineWidth = Math.max(0, Number(args[0]) || 0);
         break;
       case OPS.setDash:
-        dashPattern = toNumbers(args[0]).filter(
-          (value) => Number.isFinite(value) && value >= 0,
-        );
+        setDash(args[0]);
+        break;
+      case OPS.setGState:
+        for (const [key, value] of (args[0] ?? []) as Array<
+          [string, unknown]
+        >) {
+          if (key === "D") setDash((value as unknown[])[0]);
+          if (key === "LW") lineWidth = Math.max(0, Number(value) || 0);
+        }
         break;
       case OPS.transform:
         if (args.length >= 6) {
@@ -573,8 +628,7 @@ export async function extractPdfLinework(
       case OPS.fill:
       case OPS.eoFill:
       case OPS.endPath:
-        path = [];
-        start = null;
+        paintPath(fn);
         break;
       default:
         break;
@@ -646,12 +700,33 @@ export async function extractPdfLinework(
   );
   return {
     segments: walls,
+    supplementarySegments: supplementaryWallSegments(raw),
     arcs,
     layers,
     source: "pdf-vector",
     pageWidth: canvasW,
     pageHeight: canvasH,
   };
+}
+
+/** Separate budget-free source pool; only bounded local passes consume it. */
+export function supplementaryWallSegments(raw: WallSegment[]) {
+  return removeHatchSegments(
+    raw.filter((seg) => {
+      const x = (seg.x1 + seg.x2) / 2,
+        y = (seg.y1 + seg.y2) / 2;
+      return (
+        !seg.dashed &&
+        !seg.curve &&
+        x >= 0.02 &&
+        x <= 0.98 &&
+        y >= 0.02 &&
+        y <= 0.98 &&
+        segmentLength(seg) >= 0.001 &&
+        segmentLength(seg) <= 0.55
+      );
+    }),
+  );
 }
 
 export async function extractPdfLabels(

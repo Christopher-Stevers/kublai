@@ -159,7 +159,9 @@ for (const pageNumber of requestedPages) {
   ]);
   const seeds = extractPdfRoomSeeds(labels);
   const graph = buildFloorGraph(linework, {
-    log: (message) => messages.push(message),
+    log: (message) => {
+      messages.push(message);
+    },
   });
   const legacySeeds = seeds
     .slice(0, 40)
@@ -168,17 +170,18 @@ for (const pageNumber of requestedPages) {
         (point) => facesAtPoint(graph, point).length > 0,
       ),
     );
-  const legacyRooms = detectFloorRooms(
-    linework,
-    legacySeeds,
-    undefined,
-    graph,
+  const legacyRooms = (
+    await detectFloorRooms(linework, legacySeeds, undefined, graph)
   ).rooms;
-  const rooms = detectFloorRooms(
-    linework,
-    seeds,
-    (message) => messages.push(message),
-    graph,
+  const rooms = (
+    await detectFloorRooms(
+      linework,
+      seeds,
+      (message) => {
+        messages.push(message);
+      },
+      graph,
+    )
   ).rooms;
   const legacyFaceIds = new Set(legacyRooms.flatMap((room) => room.faceIds));
   const roomFaceIds = new Set(rooms.flatMap((room) => room.faceIds));

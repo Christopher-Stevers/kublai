@@ -3,7 +3,7 @@ import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 export const JOB_ROOM_FILE_PUBLIC_PREFIX = "/api/job-rooms/files";
-export const MAX_JOB_FLOOR_PLAN_UPLOAD_BYTES = 40 * 1024 * 1024;
+export const MAX_JOB_FLOOR_PLAN_UPLOAD_BYTES = 100 * 1024 * 1024;
 
 const UPLOAD_ROOT = path.join(process.cwd(), "uploads", "job-floor-plans");
 
@@ -63,7 +63,7 @@ export function validateJobFloorPlanPdf(file: File) {
     return "Uploaded file must be a PDF";
   }
   if (file.size > MAX_JOB_FLOOR_PLAN_UPLOAD_BYTES) {
-    return "PDF must be smaller than 40MB";
+    return "PDF must be at most 100 MB";
   }
   return null;
 }

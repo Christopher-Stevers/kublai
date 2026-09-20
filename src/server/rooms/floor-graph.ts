@@ -92,7 +92,11 @@ export type AssignedRoom = {
   seed: RoomPoint;
   faceIds: number[];
   shape: RoomPolygonShape;
-  basis?: "global-graph" | "local-raster" | "local-wall-cell";
+  basis?:
+    | "global-graph"
+    | "local-raster"
+    | "local-wall-cell"
+    | "local-source-union";
 };
 
 export type DetectedFloorRooms = {
@@ -100,7 +104,11 @@ export type DetectedFloorRooms = {
   rooms: AssignedRoom[];
 };
 
-export type Logger = (message: string) => void;
+export type Logger = (message: string) => void | Promise<void>;
+
+async function say(log: Logger, message: string) {
+  await log(message);
+}
 
 /** A boundary counts as door/open when at least this much of it is. */
 const MIN_PASS_LENGTH = GRID * 4;
@@ -1352,12 +1360,12 @@ function finishRooms(
  * Unit labels then grow through their doors until they meet a wall, a
  * hallway, or territory another label reached first.
  */
-export function assignRooms(
+export async function assignRooms(
   graph: FloorGraph,
   seeds: PdfRoomSeed[],
   log: Logger = () => undefined,
   options: { closeDistance?: number } = {},
-): AssignedRoom[] {
+): Promise<AssignedRoom[]> {
   const claimed = new Map<number, number>();
   const origins = new Map<number, { space: number; point: RoomPoint }>();
   const interiorRecoveryRounds = new Map<number, number>();
@@ -1373,32 +1381,41 @@ export function assignRooms(
   const reservedSpaces = new Set(
     initialSpaces.flatMap((space) => (space ? [space.id] : [])),
   );
-  seeds.forEach((seed, index) => {
+  for (const [index, seed] of seeds.entries()) {
+    await say(
+      log,
+      `${index + 1}/${seeds.length} ${seed.name}: finding enclosed space`,
+    );
     let space = initialSpaces[index];
     if (!space) {
-      log(`${seed.name}: label is not inside any bounded region`);
-      return;
+      await say(log, `${seed.name}: label is not inside any bounded region`);
+      continue;
     }
     if (seed.kind === "unit") {
       const initial = space;
       space = escapeUnitLabelEnclosure(graph, space, reservedSpaces, log);
       if (space.id !== initial.id) {
+        await say(
+          log,
+          `${seed.name}: escaped label enclosure into a larger room`,
+        );
         interiorRecoveryRounds.set(index, MAX_INFERRED_PARTITION_ROUNDS);
       }
     }
     const holder = claimed.get(space.id);
     if (holder !== undefined) {
-      log(
+      await say(
+        log,
         `${seed.name}: shares a space with ${seeds[holder]!.name} (no wall between them)`,
       );
-      return;
+      continue;
     }
     claimed.set(space.id, index);
     seedSpaces.add(space.id);
     if (seed.kind === "unit") {
       origins.set(index, { space: space.id, point: { x: seed.x, y: seed.y } });
     }
-  });
+  }
 
   const circulation = new Set<number>();
   for (const space of graph.spaces) {
@@ -1410,11 +1427,13 @@ export function assignRooms(
     if (labelled >= CIRCULATION_DOOR_COUNT) circulation.add(space.id);
   }
   if (circulation.size) {
-    log(
+    await say(
+      log,
       `${circulation.size} unlabelled space${circulation.size === 1 ? "" : "s"} with doors to ${CIRCULATION_DOOR_COUNT}+ rooms treated as hallways`,
     );
   }
 
+  await say(log, "Growing rooms through doorways and openings…");
   const { contested, rounds } = growSpaces(
     graph,
     origins,
@@ -1422,7 +1441,8 @@ export function assignRooms(
     circulation,
   );
   if (contested) {
-    log(
+    await say(
+      log,
       `${contested} space${contested === 1 ? "" : "s"} reached by several units at once left as shared/circulation`,
     );
   }
@@ -1457,6 +1477,7 @@ export function assignRooms(
       }
     }
   }
+  await say(log, "Recovering interiors behind flattened partitions…");
   const inferred = recoverUnitInteriors(
     graph,
     seeds,
@@ -1467,18 +1488,22 @@ export function assignRooms(
     targetAreas,
   );
   if (inferred.recovered) {
-    log(
+    await say(
+      log,
       `${inferred.recovered} bounded interior space${inferred.recovered === 1 ? "" : "s"} recovered across likely flattened partitions`,
     );
   }
   if (inferred.contested) {
-    log(
+    await say(
+      log,
       `${inferred.contested} inferred interior space${inferred.contested === 1 ? "" : "s"} contested by multiple units and left unassigned`,
     );
   }
+  await say(log, "Handing hallway-facing spaces back to circulation…");
   const peeled = peelCirculation(graph, claimed, rounds, circulation);
   if (peeled) {
-    log(
+    await say(
+      log,
       `${peeled} space${peeled === 1 ? "" : "s"} opening wide onto a hallway handed back to circulation`,
     );
   }
@@ -1493,8 +1518,10 @@ export function assignRooms(
   const blocked = new Set(
     [...circulation].flatMap((id) => graph.spaces[id]!.faceIds),
   );
+  await say(log, "Absorbing leftover closets and fixture pockets…");
   absorbOrphans(graph, owner, blocked, roomAreas);
 
+  await say(log, `Building outlines for ${seeds.length} labelled rooms…`);
   const rooms = finishRooms(
     graph,
     seeds,
@@ -1502,10 +1529,11 @@ export function assignRooms(
     log,
     options.closeDistance ?? GLOBAL_FACE_CLOSE_DISTANCE,
   );
-  for (const room of rooms) {
+  for (const [index, room] of rooms.entries()) {
     const spaces = new Set(room.faceIds.map((id) => graph.faces[id]!.space));
-    log(
-      `${room.name}: ${spaces.size} space${spaces.size === 1 ? "" : "s"}, ${room.shape.points.length} corners`,
+    await say(
+      log,
+      `${index + 1}/${rooms.length} ${room.name}: ${spaces.size} space${spaces.size === 1 ? "" : "s"}, ${room.shape.points.length} corners`,
     );
   }
   return rooms;
@@ -2075,7 +2103,7 @@ function wallSupportedUnitCell(
   const strictRunnerUp = strictRanked[1];
   if (process.env.ROOM_WALL_CANDIDATE_DEBUG === "1") {
     ranked
-      .slice(0, 40)
+      .slice(0, 8)
       .forEach((candidate, index) =>
         log(
           `wall-cell rank=${index + 1} edges=${candidate.points.length} score=${candidate.score.toFixed(3)} strict=${candidate.strictScore.toFixed(3)} area-error=${candidate.areaError.toFixed(3)} support-error=${candidate.supportError.toFixed(3)} owner-error=${candidate.ownershipError.toFixed(3)} points=${JSON.stringify(candidate.points)}`,
@@ -2121,6 +2149,115 @@ function wallSupportedUnitCell(
       wallEvidenceOverride)
     ? ({ type: "polygon", points: best.points } as RoomPolygonShape)
     : null;
+}
+
+function sourceWallSegmentSupport(
+  start: RoomPoint,
+  end: RoomPoint,
+  walls: LineSegment[],
+  _wallThickness: number,
+) {
+  // Keep the trust gate tied to the normalized source-wall audit scale. A
+  // wider estimated wall band can otherwise bless a chord running beside a
+  // wall (S202) even though the segment itself is not on source linework.
+  const tolerance = GRID * 5;
+  const length = Math.hypot(end.x - start.x, end.y - start.y);
+  const samples = Math.max(1, Math.ceil(length / GRID));
+  let supported = 0;
+  for (let sample = 0; sample < samples; sample += 1) {
+    const along = (sample + 0.5) / samples;
+    const point = {
+      x: start.x + (end.x - start.x) * along,
+      y: start.y + (end.y - start.y) * along,
+    };
+    if (
+      walls.some(
+        ([[x1, y1], [x2, y2]]) =>
+          pointToSegmentDistance(point, { x: x1, y: y1 }, { x: x2, y: y2 }) <=
+          tolerance,
+      )
+    )
+      supported += 1;
+  }
+  return { length, share: supported / samples };
+}
+
+function sourceWallSupport(
+  shape: RoomPolygonShape,
+  walls: LineSegment[],
+  wallThickness: number,
+) {
+  const edges = shape.points.map((start, index) =>
+    sourceWallSegmentSupport(
+      start,
+      shape.points[(index + 1) % shape.points.length]!,
+      walls,
+      wallThickness,
+    ),
+  );
+  const perimeter = edges.reduce((sum, edge) => sum + edge.length, 0);
+  const supported = edges.reduce(
+    (sum, edge) => sum + edge.length * edge.share,
+    0,
+  );
+  return {
+    total: perimeter > 0 ? supported / perimeter : 0,
+    longEdgesSupported: edges.every(
+      (edge) =>
+        edge.length <= Math.max(GRID * 12, wallThickness * 6) ||
+        edge.share >= 0.35,
+    ),
+  };
+}
+
+function simplifySourceWallUnion(
+  shape: RoomPolygonShape,
+  walls: LineSegment[],
+  wallThickness: number,
+) {
+  const tolerance = Math.max(GRID * 4, wallThickness * 2);
+  const simplifyOpen = (points: RoomPoint[]): RoomPoint[] => {
+    if (points.length <= 2) return points;
+    const start = points[0]!;
+    const end = points[points.length - 1]!;
+    let farthest = -1;
+    let distance = tolerance;
+    for (let index = 1; index < points.length - 1; index += 1) {
+      const candidate = pointToSegmentDistance(points[index]!, start, end);
+      if (candidate > distance) {
+        distance = candidate;
+        farthest = index;
+      }
+    }
+    if (
+      farthest < 0 &&
+      sourceWallSegmentSupport(start, end, walls, wallThickness).share >= 0.75
+    )
+      return [start, end];
+    if (farthest < 0) farthest = Math.floor(points.length / 2);
+    return [
+      ...simplifyOpen(points.slice(0, farthest + 1)).slice(0, -1),
+      ...simplifyOpen(points.slice(farthest)),
+    ];
+  };
+  let split = 1;
+  let farthest = 0;
+  for (let index = 1; index < shape.points.length; index += 1) {
+    const distance = Math.hypot(
+      shape.points[index]!.x - shape.points[0]!.x,
+      shape.points[index]!.y - shape.points[0]!.y,
+    );
+    if (distance > farthest) {
+      farthest = distance;
+      split = index;
+    }
+  }
+  const first = simplifyOpen(shape.points.slice(0, split + 1));
+  const second = simplifyOpen([...shape.points.slice(split), shape.points[0]!]);
+  const points = [...first.slice(0, -1), ...second.slice(0, -1)];
+  return points.length >= 3
+    ? ({ type: "polygon", points } as RoomPolygonShape)
+    : shape;
 }
 
 function localGridOutline(
@@ -2381,7 +2518,7 @@ function localGridOutline(
  * unchanged. Final polygons are inverse-transformed exactly to normalized
  * page coordinates.
  */
-function locallyAlignedUnitRooms(
+async function locallyAlignedUnitRooms(
   linework: FloorLinework,
   seeds: PdfRoomSeed[],
   graph: FloorGraph,
@@ -2390,6 +2527,10 @@ function locallyAlignedUnitRooms(
 ) {
   if (!linework.pageWidth || !linework.pageHeight)
     return new Map<number, AssignedRoom>();
+  // Grade source walls once in page space. Re-grading a rotated, cropped
+  // subset can promote nearby fixture strokes and must not be used as the
+  // final perimeter trust signal.
+  const pageSourceWalls = buildWallLinework(linework.segments).strong;
   const longest = Math.max(linework.pageWidth, linework.pageHeight);
   const xScale = linework.pageWidth / longest;
   const yScale = linework.pageHeight / longest;
@@ -2445,7 +2586,11 @@ function locallyAlignedUnitRooms(
   }
 
   const replacements = new Map<number, AssignedRoom>();
-  for (const cluster of clusters) {
+  for (const [clusterIndex, cluster] of clusters.entries()) {
+    await say(
+      log,
+      `Aligning rotated cluster ${clusterIndex + 1}/${clusters.length} (${cluster.length} units)…`,
+    );
     const angle = median(cluster.map((item) => item.angle));
     const origin = {
       x: median(cluster.map((item) => item.seed.x * xScale)),
@@ -2474,6 +2619,18 @@ function locallyAlignedUnitRooms(
       .filter(overlapsCrop);
     const arcs = linework.arcs.map(transformSegment).filter(overlapsCrop);
     const localStrongWalls = buildWallLinework(segments).strong;
+    const localSourceWalls = pageSourceWalls
+      .map(([[x1, y1], [x2, y2]]) => {
+        const start = framePoint(frame, { x: x1, y: y1 });
+        const end = framePoint(frame, { x: x2, y: y2 });
+        return [
+          [start.x, start.y],
+          [end.x, end.y],
+        ] as LineSegment;
+      })
+      .filter(([[x1, y1], [x2, y2]]) =>
+        overlapsCrop({ x1, y1, x2, y2 } as WallSegment),
+      );
     const localGraph = buildFloorGraph(
       { ...linework, segments, arcs },
       { log },
@@ -2533,7 +2690,7 @@ function locallyAlignedUnitRooms(
       }
       return { seed, distances, pathLengths };
     });
-    const directLocalRooms = assignRooms(localGraph, localSeeds, log);
+    const directLocalRooms = await assignRooms(localGraph, localSeeds, log);
     const localBlockedFaces = new Set(
       directLocalRooms
         .filter((room) => room.kind !== "unit")
@@ -2615,9 +2772,13 @@ function locallyAlignedUnitRooms(
       room: AssignedRoom;
       localFaces: FloorFace[];
     }> = [];
-    for (const item of cluster) {
+    for (const [itemIndex, item] of cluster.entries()) {
       const room = clusterRooms.get(item.index);
       if (!room) continue;
+      await say(
+        log,
+        `${item.seed.name}: tracing local walls (${itemIndex + 1}/${cluster.length})`,
+      );
       const localSeed = framePoint(frame, item.seed);
       const ownWallDistances = localSeedWallDistances.find(
         ({ seed }) =>
@@ -2873,13 +3034,54 @@ function locallyAlignedUnitRooms(
               (message) => log(`${item.seed.name}: ${message}`),
             )
           : null;
-      const wallCell = rawWallCell
+      const boundedWallCell = rawWallCell
         ? subtractRoomShapes(
             rawWallCell,
             confirmedWallCells.map((cell) => cell.shape),
             localSeed,
           )
         : null;
+      const candidateSupport = boundedWallCell
+        ? sourceWallSupport(
+            boundedWallCell,
+            localSourceWalls,
+            localGraph.wallThickness,
+          )
+        : null;
+      const vectorUnion =
+        completeButComplex && connectedSelected
+          ? subtractRoomShapes(
+              simplifySourceWallUnion(
+                connectedSelected,
+                localSourceWalls,
+                localGraph.wallThickness,
+              ),
+              confirmedWallCells.map((cell) => cell.shape),
+              localSeed,
+            )
+          : null;
+      const vectorSupport = vectorUnion
+        ? sourceWallSupport(
+            vectorUnion,
+            localSourceWalls,
+            localGraph.wallThickness,
+          )
+        : null;
+      const trustedCandidate =
+        boundedWallCell &&
+        candidateSupport &&
+        candidateSupport.total >= 0.9 &&
+        candidateSupport.longEdgesSupported
+          ? boundedWallCell
+          : null;
+      const trustedVectorUnion =
+        vectorUnion &&
+        vectorSupport &&
+        vectorSupport.total >= 0.9 &&
+        vectorSupport.longEdgesSupported
+          ? vectorUnion
+          : null;
+      const wallCell = trustedCandidate ?? trustedVectorUnion;
       if (!wallCell) {
         pendingRasterRooms.push({ item, room, localFaces });
         continue;
@@ -2900,7 +3102,10 @@ function locallyAlignedUnitRooms(
       });
       replacements.set(item.index, {
         ...room,
-        basis: "local-wall-cell",
+        basis:
+          wallCell === trustedVectorUnion
+            ? "local-source-union"
+            : "local-wall-cell",
         seed: { x: item.seed.x, y: item.seed.y },
         shape: {
           type: "polygon",
@@ -2934,22 +3139,25 @@ function locallyAlignedUnitRooms(
         },
       });
     }
-    log(
+    await say(
+      log,
       `Local orientation frame traced ${cluster.length} unit labels at ${((angle * 180) / Math.PI).toFixed(1)}° from ${localGraph.faces.length} cropped wall faces`,
     );
   }
   return replacements;
 }
 
-export function detectFloorRooms(
+export async function detectFloorRooms(
   linework: FloorLinework,
   seeds: PdfRoomSeed[],
   log: Logger = () => undefined,
   existingGraph?: FloorGraph,
-): DetectedFloorRooms {
+): Promise<DetectedFloorRooms> {
   const graph = existingGraph ?? buildFloorGraph(linework, { log });
-  const globalRooms = assignRooms(graph, seeds, log);
-  const local = locallyAlignedUnitRooms(
+  await say(log, `Assigning ${seeds.length} labels to wall-bounded spaces`);
+  const globalRooms = await assignRooms(graph, seeds, log);
+  await say(log, "Tracing rotated unit clusters in local wall frames…");
+  const local = await locallyAlignedUnitRooms(
     linework,
     seeds,
     graph,

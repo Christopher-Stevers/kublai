@@ -174,9 +174,9 @@ function boundedRoomGraph(): FloorGraph {
 }
 
 describe("floor graph room growth", () => {
-  it("assigns the full room across an intersected column grid", () => {
+  it("assigns the full room across an intersected column grid", async () => {
     const graph = buildFloorGraph(gridThroughRoom());
-    const [room] = assignRooms(graph, [
+    const [room] = await assignRooms(graph, [
       { name: "UNIT A", kind: "unit", x: 0.18, y: 0.2 },
     ]);
 
@@ -195,10 +195,10 @@ describe("floor graph room growth", () => {
     expect(pointInPolygon({ x: 0.34, y: 0.2 }, result!.shape)).toBe(true);
   });
 
-  it("grows a rotated multi-space suite past a filled unit-tag outline", () => {
+  it("grows a rotated multi-space suite past a filled unit-tag outline", async () => {
     const fixture = rotatedMultiSpaceSuite();
     const graph = buildFloorGraph(fixture.linework);
-    const [room] = assignRooms(graph, [
+    const [room] = await assignRooms(graph, [
       { name: "UNIT A", kind: "unit", ...fixture.label },
     ]);
 
@@ -206,7 +206,7 @@ describe("floor graph room growth", () => {
     expect(pointInPolygon(fixture.oppositeRoom, room!.shape)).toBe(true);
   });
 
-  it("escapes a compact strong unit-label enclosure before suite growth", () => {
+  it("escapes a compact strong unit-label enclosure before suite growth", async () => {
     const fixture = rotatedMultiSpaceSuite();
     const graph = buildFloorGraph(
       fixture.linework.map((segment, index) =>
@@ -215,7 +215,7 @@ describe("floor graph room growth", () => {
           : segment,
       ),
     );
-    const [room] = assignRooms(graph, [
+    const [room] = await assignRooms(graph, [
       { name: "UNIT A", kind: "unit", ...fixture.label },
     ]);
 
@@ -223,7 +223,7 @@ describe("floor graph room growth", () => {
     expect(pointInPolygon(fixture.oppositeRoom, room!.shape)).toBe(true);
   });
 
-  it("recovers a rotated suite room when a flattened partition hides its doorway", () => {
+  it("recovers a rotated suite room when a flattened partition hides its doorway", async () => {
     const fixture = rotatedMultiSpaceSuite();
     const withoutDoorway = fixture.linework
       .filter((_, index) => index !== 6 && index !== 7)
@@ -233,7 +233,7 @@ describe("floor graph room growth", () => {
           : segment,
       );
     const graph = buildFloorGraph([...withoutDoorway, fixture.closedPartition]);
-    const [room] = assignRooms(graph, [
+    const [room] = await assignRooms(graph, [
       {
         name: "UNIT A",
         kind: "unit",
@@ -246,11 +246,11 @@ describe("floor graph room growth", () => {
     expect(pointInPolygon(fixture.oppositeRoom, room!.shape)).toBe(true);
   });
 
-  it("assigns the same geometry before and after rotation", () => {
-    const assign = (angle: number) => {
+  it("assigns the same geometry before and after rotation", async () => {
+    const assign = async (angle: number) => {
       const fixture = rotatedMultiSpaceSuite(angle);
       const graph = buildFloorGraph(fixture.linework);
-      const [room] = assignRooms(graph, [
+      const [room] = await assignRooms(graph, [
         { name: "UNIT A", kind: "unit", ...fixture.label, angle },
       ]);
       expect(room).toBeDefined();
@@ -258,9 +258,9 @@ describe("floor graph room growth", () => {
       return room!;
     };
 
-    const axisAligned = assign(0);
+    const axisAligned = await assign(0);
     const angle = Math.PI / 7;
-    const rotated = assign(angle);
+    const rotated = await assign(angle);
     const unrotatedPoints = rotated.shape.points.map((point) => {
       const x = point.x - 0.5;
       const y = point.y - 0.5;
@@ -281,9 +281,9 @@ describe("floor graph room growth", () => {
     ).toBeLessThan(0.0015);
   });
 
-  it("recovers a PDF label that lands just outside a wall boundary", () => {
+  it("recovers a PDF label that lands just outside a wall boundary", async () => {
     const graph = boundedRoomGraph();
-    const [room] = assignRooms(graph, [
+    const [room] = await assignRooms(graph, [
       { name: "UNIT A", kind: "unit", x: 0.0999, y: 0.2 },
     ]);
 
@@ -291,9 +291,9 @@ describe("floor graph room growth", () => {
     expect(pointInPolygon({ x: 0.2, y: 0.2 }, room!.shape)).toBe(true);
   });
 
-  it("does not guess a room for a label beyond wall-sized tolerance", () => {
+  it("does not guess a room for a label beyond wall-sized tolerance", async () => {
     const graph = boundedRoomGraph();
-    const rooms = assignRooms(graph, [
+    const rooms = await assignRooms(graph, [
       { name: "UNIT A", kind: "unit", x: 0.09, y: 0.2 },
     ]);
 

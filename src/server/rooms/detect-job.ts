@@ -14,7 +14,9 @@ import {
   extractPdfLinework,
   extractPdfRoomSeeds,
   type PdfRoomSeed,
+  type PdfLabel,
 } from "~/server/rooms/pdf-walls";
+import { detectSupplementaryRooms } from "~/server/rooms/supplementary-rooms";
 import { planDetectedRoomReconciliation } from "~/server/rooms/reconcile-detected-rooms";
 import {
   JOB_ROOM_FILE_PUBLIC_PREFIX,
@@ -216,6 +218,7 @@ export type FloorSource = {
 type FloorGraphEntry = {
   graph: FloorGraph;
   seeds: PdfRoomSeed[];
+  labels: PdfLabel[];
   linework: Awaited<ReturnType<typeof extractPdfLinework>>;
   imageUrl: string;
   builtAt: number;
@@ -235,24 +238,26 @@ function storageKeyFor(imageUrl: string) {
 
 async function buildFloorGraphEntry(
   source: FloorSource,
-  log: (message: string) => void,
+  log: (message: string) => void | Promise<void>,
 ): Promise<FloorGraphEntry> {
   const storageKey = storageKeyFor(source.imageUrl);
+  await log("Opening floor PDF…");
   const pdf = await readJobRoomFile(
     getPdfKeyForFloorImage(storageKey, source.jobId),
   );
   const pdfPage = getSourcePageFromFloorImage(storageKey) ?? source.pageNumber;
-  log(`Reading vector linework from PDF page ${pdfPage}`);
+  await log(`Reading vector linework from PDF page ${pdfPage}…`);
   const linework = await extractPdfLinework(pdf, pdfPage);
-  log(
+  await log(
     `Linework: ${linework.segments.length} segments, ${linework.arcs.length} arcs` +
       (linework.layers.length
         ? `, layers: ${linework.layers.slice(0, 6).join(", ")}`
         : ", no layer data"),
   );
+  await log(`Reading text labels on page ${pdfPage}…`);
   const labels = await extractPdfLabels(pdf, pdfPage);
   const seeds = extractPdfRoomSeeds(labels);
-  log(
+  await log(
     `Labels: ${labels.length} text runs → ${seeds.length} room/unit labels` +
       (seeds.length
         ? ` (${seeds
@@ -261,10 +266,14 @@ async function buildFloorGraphEntry(
             .join(", ")}${seeds.length > 8 ? ", …" : ""})`
         : ""),
   );
+  await log(
+    `Grading walls and polygonizing bounded regions from ${linework.segments.length} segments…`,
+  );
   const graph = buildFloorGraph(linework, { log });
   return {
     graph,
     seeds,
+    labels,
     linework,
     imageUrl: source.imageUrl,
     builtAt: Date.now(),
@@ -277,7 +286,7 @@ async function buildFloorGraphEntry(
  */
 export async function getFloorGraph(
   source: FloorSource,
-  log: (message: string) => void = () => undefined,
+  log: (message: string) => void | Promise<void> = () => undefined,
 ): Promise<FloorGraphEntry> {
   const cached = graphs.get(source.floorId);
   if (
@@ -285,7 +294,7 @@ export async function getFloorGraph(
     cached.imageUrl === source.imageUrl &&
     Date.now() - cached.builtAt < GRAPH_TTL_MS
   ) {
-    log("Using cached wall graph for this floor");
+    await log("Using cached wall graph for this floor");
     return cached;
   }
   const pending = pendingGraphs.get(source.floorId);
@@ -342,35 +351,60 @@ export async function runDeterministicDetectAllRooms(input: {
   floorStatus: string;
   pageNumber: number;
 }) {
-  let pendingLogWrite = Promise.resolve();
-  const log = (message: string) => {
+  const log = async (message: string) => {
     console.log("[detect-job]", input.floorId, message);
-    pendingLogWrite = pendingLogWrite
-      .catch(() => undefined)
-      .then(() => appendDetectLog(input.floorId, message));
+    await appendDetectLog(input.floorId, message);
   };
   try {
+    await log("Starting room detection…");
     const source: FloorSource = {
       floorId: input.floorId,
       jobId: input.jobId,
       imageUrl: input.imageUrl,
       pageNumber: input.pageNumber,
     };
-    const { graph, seeds, linework } = await getFloorGraph(source, log);
+    const { graph, seeds, labels, linework } = await getFloorGraph(source, log);
     let detected: DetectedRoom[] = [];
     if (graph.faces.length === 0) {
-      log("No bounded regions were found in the PDF wall geometry");
+      await log("No bounded regions were found in the PDF wall geometry");
     } else if (seeds.length === 0) {
-      log("No room or unit labels were found in the PDF text layer");
+      await log("No room or unit labels were found in the PDF text layer");
     } else {
-      log(`Assigning ${seeds.length} labels to wall-bounded spaces`);
-      detected = detectFloorRooms(linework, seeds, log, graph).rooms.map(
-        (room) => ({
+      const saved = await db
+        .select()
+        .from(jobRooms)
+        .where(
+          and(
+            eq(jobRooms.floorId, input.floorId),
+            eq(jobRooms.organizationId, input.organizationId),
+          ),
+        );
+      // A repeat is supplementary, not a regeneration of approved outlines.
+      // In particular, never feed expanded labels into suite ownership.
+      if (saved.some((room) => room.source === "auto")) {
+        detected = saved.map((room) => ({
+          name: room.name,
+          shape: toPolygon(room.shape as Parameters<typeof toPolygon>[0]),
+        }));
+        await log(
+          `Preserving ${saved.length} saved rooms as the immutable baseline`,
+        );
+      } else {
+        const traced = await detectFloorRooms(linework, seeds, log, graph);
+        detected = traced.rooms.map((room) => ({
           name: room.name,
           shape: room.shape,
-        }),
+        }));
+      }
+      await log(`Deterministic wall pass traced ${detected.length} rooms`);
+      const supplemental = await detectSupplementaryRooms(
+        linework,
+        labels,
+        detected,
+        graph,
+        log,
       );
-      log(`Deterministic wall pass traced ${detected.length} rooms`);
+      detected = [...detected, ...supplemental.rooms];
     }
     console.log(
       "[detect-job] deterministic",
@@ -386,8 +420,7 @@ export async function runDeterministicDetectAllRooms(input: {
     if (detected.length === 0) {
       throw new Error("Could not trace any rooms from this floor plan");
     }
-    log(`Saving ${detected.length} rooms`);
-    await pendingLogWrite;
+    await log(`Saving ${detected.length} rooms…`);
     const result = await db.transaction(async (tx) => {
       const existing = await tx
         .select()
@@ -398,7 +431,9 @@ export async function runDeterministicDetectAllRooms(input: {
             eq(jobRooms.organizationId, input.organizationId),
           ),
         );
-      const plan = planDetectedRoomReconciliation(existing, detected);
+      const plan = planDetectedRoomReconciliation(existing, detected, {
+        preserveExisting: true,
+      });
       const now = new Date();
 
       for (const update of plan.updates) {
@@ -427,17 +462,15 @@ export async function runDeterministicDetectAllRooms(input: {
         added: plan.inserts.length,
         updated: plan.updates.length,
         removed: plan.obsoleteAutoIds.length,
-        total: detected.length,
+        total: existing.length + plan.inserts.length,
       };
     });
 
-    log(
+    await log(
       `Done: ${result.added} added, ${result.updated} updated, ${result.removed} old traces removed`,
     );
-    await pendingLogWrite;
     await finishDetectJob(input.floorId, result);
   } catch (error) {
-    await pendingLogWrite.catch(() => undefined);
     await failDetectJob(
       input.floorId,
       error instanceof Error

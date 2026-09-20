@@ -5,6 +5,7 @@ import {
   ChevronDown,
   ChevronUp,
   DoorOpenIcon,
+  Loader2Icon,
   PencilIcon,
   SparklesIcon,
   TrashIcon,
@@ -24,6 +25,7 @@ import {
 import { Input } from "~/components/ui/input";
 import { FloorPlanCanvas, type FloorRoomShape } from "./FloorPlanCanvas";
 import { getRoomColor } from "~/lib/room-colors";
+import { uploadDrawings } from "~/lib/upload-drawings";
 import { shapeBBox, toPolygon } from "~/lib/room-shape";
 import { api } from "~/trpc/react";
 
@@ -149,7 +151,7 @@ export function JobRoomsView({ jobId }: { jobId: string }) {
     {
       enabled: Boolean(selectedFloorId && (detectMode || detectingRoomId)),
       refetchInterval: (query) =>
-        query.state.data?.status === "running" ? 1500 : false,
+        query.state.data?.status === "running" ? 400 : false,
     },
   );
 
@@ -177,6 +179,11 @@ export function JobRoomsView({ jobId }: { jobId: string }) {
     selectedFloor?.rooms.find((room) => room.id === selectedRoomId) ?? null;
   const isDetecting =
     detectRooms.isPending || detectStatus.data?.status === "running";
+  const detectLog = detectStatus.data?.log ?? [];
+  const currentDetectMessage =
+    detectLog.at(-1)?.message ??
+    (isDetecting ? "Starting room detection…" : null);
+  const detectHistory = detectLog.slice(-8, -1);
   const canEditFloor = canManage && editMode;
   floorNameDraftRef.current = floorNameDraft;
 
@@ -350,21 +357,7 @@ export function JobRoomsView({ jobId }: { jobId: string }) {
     setUploadError(null);
     setUploading(true);
     try {
-      const body = new FormData();
-      body.set("jobId", jobId);
-      body.set("file", file);
-      const response = await fetch("/api/job-rooms/upload", {
-        method: "POST",
-        body,
-      });
-      const result = (await response.json()) as {
-        error?: string;
-        floors?: { id: string; name: string; imageUrl: string }[];
-      };
-      if (!response.ok) {
-        throw new Error(result.error ?? "Upload failed");
-      }
-      const sheets = result.floors ?? [];
+      const sheets = await uploadDrawings(jobId, file);
       setPendingSheets(sheets);
       setKeepSheetIds(
         Object.fromEntries(sheets.map((sheet) => [sheet.id, true])),
@@ -462,7 +455,7 @@ export function JobRoomsView({ jobId }: { jobId: string }) {
           <h2 className="text-xl font-semibold text-gray-900">Rooms</h2>
           <p className="text-muted-foreground mt-1 text-sm">
             {canManage
-              ? "Upload drawings. Review each sheet, then rooms are detected on the ones you keep."
+              ? "Upload drawings (up to 100 pages, 100 MB per PDF). Review each sheet, then rooms are detected on the ones you keep."
               : "Pick a floor, then tap a room."}
           </p>
         </div>
@@ -880,13 +873,23 @@ export function JobRoomsView({ jobId }: { jobId: string }) {
                   {detectError}
                 </p>
               ) : null}
-              {detectStatus.data?.log?.length ? (
-                <div className="max-h-28 shrink-0 overflow-y-auto rounded-md border bg-slate-950 px-3 py-2 font-mono text-xs text-slate-100">
-                  {detectStatus.data.log.slice(-8).map((entry) => (
-                    <div key={`${entry.at}-${entry.message}`}>
-                      {entry.message}
+              {currentDetectMessage ? (
+                <div className="max-h-36 shrink-0 overflow-y-auto rounded-md border bg-slate-950 font-mono text-xs text-slate-100">
+                  <div className="sticky top-0 z-10 flex items-start gap-2 border-b border-slate-700 bg-slate-950 px-3 py-2 text-sm font-semibold text-emerald-300">
+                    {isDetecting ? (
+                      <Loader2Icon className="mt-0.5 h-4 w-4 shrink-0 animate-spin" />
+                    ) : null}
+                    <span>{currentDetectMessage}</span>
+                  </div>
+                  {detectHistory.length > 0 ? (
+                    <div className="px-3 py-2 text-slate-300">
+                      {detectHistory.map((entry) => (
+                        <div key={`${entry.at}-${entry.message}`}>
+                          {entry.message}
+                        </div>
+                      ))}
                     </div>
-                  ))}
+                  ) : null}
                 </div>
               ) : null}
 
