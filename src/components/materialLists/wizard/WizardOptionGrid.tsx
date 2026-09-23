@@ -33,7 +33,7 @@ export function PartCount({ count }: { count?: number }) {
   if (count === undefined || count <= 0) return null;
 
   return (
-    <p className="mt-1 text-xs text-gray-500">
+    <p className="mt-1 text-xs text-muted-foreground">
       {count} part{count !== 1 ? "s" : ""}
     </p>
   );

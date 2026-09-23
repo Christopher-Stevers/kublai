@@ -231,14 +231,14 @@ export function PartSuppliersDropdown({
                             handleToggleSupplier(supplier.id);
                           }}
                           disabled={hasPart && (!canDeleteCoreRecords || localSupplierParts.length <= 1)}
-                          className={`flex h-4 w-4 items-center justify-center rounded border border-gray-300 transition-colors ${
+                          className={`flex h-4 w-4 items-center justify-center rounded border border-input transition-colors ${
                             hasPart && (!canDeleteCoreRecords || localSupplierParts.length <= 1)
                               ? "cursor-not-allowed opacity-50"
                               : "hover:border-gray-400"
                           }`}
                           aria-label={hasPart ? "Remove supplier" : "Add supplier"}
                         >
-                          {hasPart && <CheckIcon className="h-3 w-3 text-gray-900" />}
+                          {hasPart && <CheckIcon className="h-3 w-3 text-foreground" />}
                         </button>
 
                         <span className="flex-1 text-sm">{supplier.name}</span>
@@ -256,7 +256,7 @@ export function PartSuppliersDropdown({
                         >
                           <StarIcon
                             className={`h-4 w-4 ${
-                              isPreferred ? "fill-yellow-400 text-yellow-400" : "text-gray-400"
+                              isPreferred ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground/70"
                             }`}
                           />
                         </button>

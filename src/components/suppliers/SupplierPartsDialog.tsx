@@ -31,6 +31,7 @@ import {
   useClientPagination,
 } from "~/components/ui/list-pagination";
 import { useOnlineStatus } from "~/hooks/use-online-status";
+import { confirmAction } from "~/components/ui/app-dialogs";
 
 interface SupplierPartsDialogProps {
   open: boolean;
@@ -110,11 +111,15 @@ export function SupplierPartsDialog({
     });
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (!canDeleteCoreRecords) return;
 
     if (
-      confirm("Are you sure you want to remove this part from the supplier?")
+      await confirmAction({
+        title: "Remove this part from the supplier?",
+        confirmLabel: "Remove part",
+        destructive: true,
+      })
     ) {
       removeSupplierPart.mutate({ id });
     }
@@ -220,7 +225,7 @@ export function SupplierPartsDialog({
                             {canDeleteCoreRecords && (
                               <DropdownMenuItem
                                 variant="destructive"
-                                onClick={() => handleDelete(sp.id)}
+                                onClick={() => void handleDelete(sp.id)}
                               >
                                 <TrashIcon className="mr-2 h-4 w-4" />
                                 Remove
@@ -292,7 +297,7 @@ export function SupplierPartsDialog({
                         key={part.id}
                         type="button"
                         onClick={() => setSelectedPartId(part.id)}
-                        className={`w-full p-3 text-left hover:bg-gray-50 ${
+                        className={`w-full p-3 text-left hover:bg-accent ${
                           selectedPartId === part.id ? "bg-blue-50" : ""
                         }`}
                       >

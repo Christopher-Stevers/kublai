@@ -19,6 +19,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
 import { Textarea } from "~/components/ui/textarea";
 import { useOnlineStatus } from "~/hooks/use-online-status";
+import { FormSkeleton } from "~/components/ui/skeleton";
 
 const PUBLIC_APP_URL = (
   process.env.NEXT_PUBLIC_APP_URL?.trim() ||
@@ -177,8 +178,8 @@ function OrganizationInviteCard({
   };
 
   return (
-    <div className="grid gap-4 rounded-md border border-gray-200 p-4 sm:grid-cols-[12rem_minmax(0,1fr)]">
-      <div className="flex min-h-48 items-center justify-center rounded-md bg-white">
+    <div className="grid gap-4 rounded-md border border-border p-4 sm:grid-cols-[12rem_minmax(0,1fr)]">
+      <div className="flex min-h-48 items-center justify-center rounded-md bg-card">
         {qrDataUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -193,20 +194,20 @@ function OrganizationInviteCard({
 
       <div className="flex min-w-0 flex-col justify-between gap-4">
         <div className="space-y-2">
-          <p className="text-sm font-semibold text-gray-900">
+          <p className="text-sm font-semibold text-foreground">
             {invite.name ?? "Organization Invite"}
           </p>
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs text-gray-500">
+            <span className="text-xs text-muted-foreground">
               Expires {formatDate(invite.expiresAt)}
             </span>
           </div>
-          <p className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm break-all text-gray-700">
+          <p className="rounded-md border border-border bg-muted/50 px-3 py-2 text-sm break-all text-foreground/80">
             {inviteLink}
           </p>
-          <div className="grid gap-2 text-xs text-gray-600 sm:grid-cols-2">
+          <div className="grid gap-2 text-xs text-muted-foreground sm:grid-cols-2">
             <div>
-              <p className="font-medium text-gray-900">Tabs</p>
+              <p className="font-medium text-foreground">Tabs</p>
               <p>
                 {tabOptions
                   .filter((option) => permissions.tabs[option.id])
@@ -215,7 +216,7 @@ function OrganizationInviteCard({
               </p>
             </div>
             <div>
-              <p className="font-medium text-gray-900">Actions</p>
+              <p className="font-medium text-foreground">Actions</p>
               <p>
                 {actionOptions
                   .filter((option) => permissions.actions[option.id])
@@ -274,21 +275,21 @@ function MemberPermissionEditor({
   isSaving: boolean;
 }) {
   return (
-    <div className="space-y-4 rounded-md border border-gray-200 p-4">
+    <div className="space-y-4 rounded-md border border-border p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="truncate text-sm font-semibold text-gray-900">
+          <p className="truncate text-sm font-semibold text-foreground">
             {member.name || member.email}
           </p>
-          <p className="truncate text-xs text-gray-500">{member.email}</p>
-          <p className="mt-1 text-xs text-gray-500">
+          <p className="truncate text-xs text-muted-foreground">{member.email}</p>
+          <p className="mt-1 text-xs text-muted-foreground">
             {member.permissions.accountTypeLabel}
           </p>
         </div>
         <div className="space-y-1">
           <label
             htmlFor={`member-status-${member.id}`}
-            className="text-xs font-medium text-gray-700"
+            className="text-xs font-medium text-foreground/80"
           >
             Access
           </label>
@@ -299,7 +300,7 @@ function MemberPermissionEditor({
               onStatusChange(event.target.value as AccessStatus)
             }
             disabled={isSaving}
-            className="border-input focus-visible:border-ring focus-visible:ring-ring/50 h-9 rounded-md border bg-white px-3 py-1 text-sm shadow-xs transition-[color,box-shadow] outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50"
+            className="border-input focus-visible:border-ring focus-visible:ring-ring/50 h-9 rounded-md border bg-card px-3 py-1 text-sm shadow-xs transition-[color,box-shadow] outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50"
           >
             <option value="pending">Pending</option>
             <option value="approved">Approved</option>
@@ -310,12 +311,12 @@ function MemberPermissionEditor({
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
-          <p className="text-sm font-medium text-gray-900">Tabs</p>
+          <p className="text-sm font-medium text-foreground">Tabs</p>
           <div className="grid gap-2 sm:grid-cols-2">
             {tabOptions.map((option) => (
               <label
                 key={option.id}
-                className="flex items-center gap-2 text-sm text-gray-700"
+                className="flex items-center gap-2 text-sm text-foreground/80"
               >
                 <input
                   type="checkbox"
@@ -324,7 +325,7 @@ function MemberPermissionEditor({
                     onTabChange(option.id, event.target.checked)
                   }
                   disabled={isSaving}
-                  className="h-4 w-4 rounded border-gray-300"
+                  className="h-4 w-4 rounded border-input"
                 />
                 {option.label}
               </label>
@@ -333,12 +334,12 @@ function MemberPermissionEditor({
         </div>
 
         <div className="space-y-2">
-          <p className="text-sm font-medium text-gray-900">Actions</p>
+          <p className="text-sm font-medium text-foreground">Actions</p>
           <div className="grid gap-2">
             {actionOptions.map((option) => (
               <label
                 key={option.id}
-                className="flex items-center gap-2 text-sm text-gray-700"
+                className="flex items-center gap-2 text-sm text-foreground/80"
               >
                 <input
                   type="checkbox"
@@ -347,7 +348,7 @@ function MemberPermissionEditor({
                     onActionChange(option.id, event.target.checked)
                   }
                   disabled={isSaving}
-                  className="h-4 w-4 rounded border-gray-300"
+                  className="h-4 w-4 rounded border-input"
                 />
                 {option.label}
               </label>
@@ -580,12 +581,12 @@ export default function OrganizationPage() {
     return (
       <div className="px-4 py-6 sm:px-6 sm:py-8">
         <div className="mx-auto max-w-5xl">
-          <h1 className="mb-6 text-2xl font-bold text-gray-900 sm:mb-8 sm:text-3xl">
+          <h1 className="mb-6 text-2xl font-bold text-foreground sm:mb-8 sm:text-3xl">
             Organization
           </h1>
           <Card>
             <CardContent className="p-6 sm:p-8">
-              <p className="text-center text-gray-600">Loading...</p>
+              <FormSkeleton label="Loading organization" />
             </CardContent>
           </Card>
         </div>
@@ -597,12 +598,12 @@ export default function OrganizationPage() {
     return (
       <div className="px-4 py-6 sm:px-6 sm:py-8">
         <div className="mx-auto max-w-5xl">
-          <h1 className="mb-6 text-2xl font-bold text-gray-900 sm:mb-8 sm:text-3xl">
+          <h1 className="mb-6 text-2xl font-bold text-foreground sm:mb-8 sm:text-3xl">
             Organization
           </h1>
           <Card>
             <CardContent className="p-6 sm:p-8">
-              <p className="text-center text-gray-700">
+              <p className="text-center text-foreground/80">
                 {settings.error.message}
               </p>
             </CardContent>
@@ -617,7 +618,7 @@ export default function OrganizationPage() {
   return (
     <div className="px-4 py-6 sm:px-6 sm:py-8">
       <div className="mx-auto max-w-5xl">
-        <h1 className="mb-6 text-2xl font-bold text-gray-900 sm:mb-8 sm:text-3xl">
+        <h1 className="mb-6 text-2xl font-bold text-foreground sm:mb-8 sm:text-3xl">
           Organization
         </h1>
 
@@ -640,7 +641,7 @@ export default function OrganizationPage() {
                 <div className="space-y-1">
                   <label
                     htmlFor="organization-name"
-                    className="text-sm font-medium text-gray-900"
+                    className="text-sm font-medium text-foreground"
                   >
                     Name
                   </label>
@@ -671,16 +672,16 @@ export default function OrganizationPage() {
               </div>
 
               {organization && (
-                <div className="grid gap-3 rounded-md border border-gray-200 bg-gray-50 p-4 text-sm sm:grid-cols-2">
+                <div className="grid gap-3 rounded-md border border-border bg-muted/50 p-4 text-sm sm:grid-cols-2">
                   <div>
-                    <p className="font-medium text-gray-900">Organization ID</p>
-                    <p className="mt-1 break-all text-gray-600">
+                    <p className="font-medium text-foreground">Organization ID</p>
+                    <p className="mt-1 break-all text-muted-foreground">
                       {organization.id}
                     </p>
                   </div>
                   <div>
-                    <p className="font-medium text-gray-900">Created</p>
-                    <p className="mt-1 text-gray-600">
+                    <p className="font-medium text-foreground">Created</p>
+                    <p className="mt-1 text-muted-foreground">
                       {formatDate(organization.createdAt)}
                     </p>
                   </div>
@@ -733,7 +734,7 @@ export default function OrganizationPage() {
                   );
                 })
               ) : (
-                <p className="text-sm text-gray-600">No accounts yet.</p>
+                <p className="text-sm text-muted-foreground">No accounts yet.</p>
               )}
             </CardContent>
           </Card>
@@ -746,11 +747,11 @@ export default function OrganizationPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-4 rounded-md border border-gray-200 p-4">
+              <div className="space-y-4 rounded-md border border-border p-4">
                 <div className="space-y-1">
                   <label
                     htmlFor="organization-invite-name"
-                    className="text-sm font-medium text-gray-900"
+                    className="text-sm font-medium text-foreground"
                   >
                     Name
                   </label>
@@ -765,12 +766,12 @@ export default function OrganizationPage() {
 
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
-                    <p className="text-sm font-medium text-gray-900">Tabs</p>
+                    <p className="text-sm font-medium text-foreground">Tabs</p>
                     <div className="grid gap-2 sm:grid-cols-2">
                       {tabOptions.map((option) => (
                         <label
                           key={option.id}
-                          className="flex items-center gap-2 text-sm text-gray-700"
+                          className="flex items-center gap-2 text-sm text-foreground/80"
                         >
                           <input
                             type="checkbox"
@@ -782,7 +783,7 @@ export default function OrganizationPage() {
                               )
                             }
                             disabled={!isOnline || createInvite.isPending}
-                            className="h-4 w-4 rounded border-gray-300"
+                            className="h-4 w-4 rounded border-input"
                           />
                           {option.label}
                         </label>
@@ -791,12 +792,12 @@ export default function OrganizationPage() {
                   </div>
 
                   <div className="space-y-2">
-                    <p className="text-sm font-medium text-gray-900">Actions</p>
+                    <p className="text-sm font-medium text-foreground">Actions</p>
                     <div className="grid gap-2">
                       {actionOptions.map((option) => (
                         <label
                           key={option.id}
-                          className="flex items-center gap-2 text-sm text-gray-700"
+                          className="flex items-center gap-2 text-sm text-foreground/80"
                         >
                           <input
                             type="checkbox"
@@ -808,7 +809,7 @@ export default function OrganizationPage() {
                               )
                             }
                             disabled={!isOnline || createInvite.isPending}
-                            className="h-4 w-4 rounded border-gray-300"
+                            className="h-4 w-4 rounded border-input"
                           />
                           {option.label}
                         </label>
@@ -854,7 +855,7 @@ export default function OrganizationPage() {
                   ))}
                 </div>
               ) : (
-                <p className="text-sm text-gray-600">No active invites.</p>
+                <p className="text-sm text-muted-foreground">No active invites.</p>
               )}
             </CardContent>
           </Card>
@@ -879,12 +880,12 @@ export default function OrganizationPage() {
                   return (
                     <div
                       key={profile.id}
-                      className="grid gap-3 rounded-md border border-gray-200 p-4 sm:grid-cols-[minmax(0,1fr)_9rem_auto] sm:items-end"
+                      className="grid gap-3 rounded-md border border-border p-4 sm:grid-cols-[minmax(0,1fr)_9rem_auto] sm:items-end"
                     >
                       <div className="space-y-1">
                         <label
                           htmlFor={`pricing-name-${profile.id}`}
-                          className="text-sm font-medium text-gray-900"
+                          className="text-sm font-medium text-foreground"
                         >
                           Name
                         </label>
@@ -904,7 +905,7 @@ export default function OrganizationPage() {
                       <div className="space-y-1">
                         <label
                           htmlFor={`pricing-markup-${profile.id}`}
-                          className="text-sm font-medium text-gray-900"
+                          className="text-sm font-medium text-foreground"
                         >
                           Markup %
                         </label>
@@ -949,7 +950,7 @@ export default function OrganizationPage() {
                   );
                 })
               ) : (
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-muted-foreground">
                   No pricing profiles yet.
                 </p>
               )}
@@ -977,13 +978,13 @@ export default function OrganizationPage() {
                   return (
                     <div
                       key={location.id}
-                      className="space-y-4 rounded-md border border-gray-200 p-4"
+                      className="space-y-4 rounded-md border border-border p-4"
                     >
                       <div className="grid gap-3 sm:grid-cols-2">
                         <div className="space-y-1">
                           <label
                             htmlFor={`location-name-${location.id}`}
-                            className="text-sm font-medium text-gray-900"
+                            className="text-sm font-medium text-foreground"
                           >
                             Name
                           </label>
@@ -1003,7 +1004,7 @@ export default function OrganizationPage() {
                         <div className="space-y-1">
                           <label
                             htmlFor={`location-address1-${location.id}`}
-                            className="text-sm font-medium text-gray-900"
+                            className="text-sm font-medium text-foreground"
                           >
                             Address 1
                           </label>
@@ -1023,7 +1024,7 @@ export default function OrganizationPage() {
                         <div className="space-y-1">
                           <label
                             htmlFor={`location-address2-${location.id}`}
-                            className="text-sm font-medium text-gray-900"
+                            className="text-sm font-medium text-foreground"
                           >
                             Address 2
                           </label>
@@ -1044,7 +1045,7 @@ export default function OrganizationPage() {
                           <div className="space-y-1">
                             <label
                               htmlFor={`location-city-${location.id}`}
-                              className="text-sm font-medium text-gray-900"
+                              className="text-sm font-medium text-foreground"
                             >
                               City
                             </label>
@@ -1064,7 +1065,7 @@ export default function OrganizationPage() {
                           <div className="space-y-1">
                             <label
                               htmlFor={`location-region-${location.id}`}
-                              className="text-sm font-medium text-gray-900"
+                              className="text-sm font-medium text-foreground"
                             >
                               Region
                             </label>
@@ -1086,7 +1087,7 @@ export default function OrganizationPage() {
                           <div className="space-y-1">
                             <label
                               htmlFor={`location-postal-${location.id}`}
-                              className="text-sm font-medium text-gray-900"
+                              className="text-sm font-medium text-foreground"
                             >
                               Postal Code
                             </label>
@@ -1106,7 +1107,7 @@ export default function OrganizationPage() {
                           <div className="space-y-1">
                             <label
                               htmlFor={`location-country-${location.id}`}
-                              className="text-sm font-medium text-gray-900"
+                              className="text-sm font-medium text-foreground"
                             >
                               Country
                             </label>
@@ -1127,7 +1128,7 @@ export default function OrganizationPage() {
                         <div className="space-y-1 sm:col-span-2">
                           <label
                             htmlFor={`location-notes-${location.id}`}
-                            className="text-sm font-medium text-gray-900"
+                            className="text-sm font-medium text-foreground"
                           >
                             Notes
                           </label>
@@ -1170,7 +1171,7 @@ export default function OrganizationPage() {
                   );
                 })
               ) : (
-                <p className="text-sm text-gray-600">No locations yet.</p>
+                <p className="text-sm text-muted-foreground">No locations yet.</p>
               )}
             </CardContent>
           </Card>

@@ -29,15 +29,15 @@ export default function PricingPage() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-white">
+    <div className="flex min-h-screen flex-col bg-card">
       <MarketingHeader />
       <main className="flex-1 px-6 py-24">
         <div className="mx-auto max-w-6xl">
           <div className="mb-16 text-center">
-            <h1 className="mb-4 text-5xl font-bold text-gray-900">
+            <h1 className="mb-4 text-5xl font-bold text-foreground">
               Choose Your Account
             </h1>
-            <p className="text-xl text-gray-600">
+            <p className="text-xl text-muted-foreground">
               Standard Accounts are free. Managing Accounts require a paid subscription.
             </p>
           </div>
@@ -47,13 +47,13 @@ export default function PricingPage() {
               <CardHeader>
                 <CardTitle className="text-2xl">Standard Account</CardTitle>
                 <div className="mt-4">
-                  <span className="text-4xl font-bold text-gray-900">
+                  <span className="text-4xl font-bold text-foreground">
                     Free
                   </span>
                 </div>
               </CardHeader>
               <CardContent>
-                <ul className="mb-6 space-y-3 text-sm text-gray-600">
+                <ul className="mb-6 space-y-3 text-sm text-muted-foreground">
                   <li className="flex items-center">
                     <svg
                       className="mr-2 h-5 w-5 text-green-500"
@@ -118,14 +118,14 @@ export default function PricingPage() {
               <CardHeader>
                 <CardTitle className="text-2xl">Managing Account</CardTitle>
                 <div className="mt-4">
-                  <span className="text-4xl font-bold text-gray-900">
+                  <span className="text-4xl font-bold text-foreground">
                     $2
                   </span>
-                  <span className="text-gray-600"> /month</span>
+                  <span className="text-muted-foreground"> /month</span>
                 </div>
               </CardHeader>
               <CardContent>
-                <ul className="mb-6 space-y-3 text-sm text-gray-600">
+                <ul className="mb-6 space-y-3 text-sm text-muted-foreground">
                   <li className="flex items-center">
                     <svg
                       className="mr-2 h-5 w-5 text-green-500"
@@ -210,7 +210,7 @@ export default function PricingPage() {
           </div>
 
           <div className="mt-12 text-center">
-            <p className="text-gray-600">
+            <p className="text-muted-foreground">
               Already have access?{" "}
               <Link href="/dashboard" className="text-primary hover:underline">
                 Go to Dashboard

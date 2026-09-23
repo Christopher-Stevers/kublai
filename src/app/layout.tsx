@@ -9,6 +9,7 @@ import { APP_NAME } from "~/constants/app";
 import { ClientConsoleErrorReporter } from "~/components/debug/ClientConsoleErrorReporter";
 import { ServiceWorkerRegistration } from "~/components/offline/ServiceWorkerRegistration";
 import { ThemeProvider } from "~/components/app/ThemeProvider";
+import { AppDialogHost } from "~/components/ui/app-dialogs";
 
 export const metadata: Metadata = {
   title: `${APP_NAME} - Simplified Parts Ordering for Trades Foremen`,
@@ -111,6 +112,7 @@ export default function RootLayout({
               <ClientConsoleErrorReporter />
               <ServiceWorkerRegistration />
               {children}
+              <AppDialogHost />
             </TRPCReactProvider>
           </SessionProviderWrapper>
         </ThemeProvider>

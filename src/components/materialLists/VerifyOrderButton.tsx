@@ -77,7 +77,7 @@ export function MaterialListOrderPickerDialog({
                 className="flex w-full items-center rounded-lg border p-3 text-left transition-colors hover:border-blue-200 hover:bg-blue-50 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none"
               >
                 <div className="min-w-0">
-                  <div className="font-medium text-gray-900">
+                  <div className="font-medium text-foreground">
                     {order.orderNumber || `Order #${order.id.slice(0, 8)}`}
                     {order.supplier?.name && (
                       <span className="text-muted-foreground ml-2">

@@ -19,7 +19,7 @@ export function AssistanceLink({
   return (
     <Link
       href={`/dashboard/assist?${query}`}
-      className="inline-flex min-h-10 items-center gap-2 rounded-md border bg-white px-3 py-2 text-sm font-medium text-gray-900 hover:bg-gray-100"
+      className="inline-flex min-h-10 items-center gap-2 rounded-md border bg-card px-3 py-2 text-sm font-medium text-foreground hover:bg-accent"
     >
       <Sparkles className="h-4 w-4" />
       {children}

@@ -267,7 +267,7 @@ export function SupplierFormDialog({
                           emailRole: e.target.value as SupplierContactEmailRole,
                         })
                       }
-                      className="border-input focus-visible:border-ring focus-visible:ring-ring/50 h-9 rounded-md border bg-white px-3 py-1 text-sm shadow-xs outline-none focus-visible:ring-[3px]"
+                      className="border-input focus-visible:border-ring focus-visible:ring-ring/50 h-9 rounded-md border bg-card px-3 py-1 text-sm shadow-xs outline-none focus-visible:ring-[3px]"
                     >
                       <option value="to">To</option>
                       <option value="cc">CC</option>

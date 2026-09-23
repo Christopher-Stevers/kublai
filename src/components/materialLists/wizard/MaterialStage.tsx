@@ -74,13 +74,13 @@ export function MaterialStage({
           </button>
           {path.map((name, index) => (
             <span key={index} className="inline-flex items-center gap-1">
-              <ChevronRight className="h-4 w-4 text-gray-400" />
+              <ChevronRight className="h-4 w-4 text-muted-foreground/70" />
               <button
                 type="button"
                 aria-current={
                   index === path.length - 1 ? "location" : undefined
                 }
-                className="min-h-10 rounded px-2 hover:bg-gray-100"
+                className="min-h-10 rounded px-2 hover:bg-accent"
                 onClick={() => browse(path.slice(0, index + 1))}
               >
                 {name}
@@ -100,7 +100,7 @@ export function MaterialStage({
           <button
             type="button"
             key={entry.key}
-            className={`w-full max-w-[4in] cursor-pointer rounded-xl border bg-white p-2 text-center shadow-sm transition hover:shadow-md focus-visible:outline-2 focus-visible:outline-blue-600 sm:p-4 ${entry.kind === "material" && selectedMaterialId === entry.material.id ? "border-primary border-2" : ""}`}
+            className={`w-full max-w-[4in] cursor-pointer rounded-xl border bg-card p-2 text-center shadow-sm transition hover:shadow-md focus-visible:outline-2 focus-visible:outline-blue-600 sm:p-4 ${entry.kind === "material" && selectedMaterialId === entry.material.id ? "border-primary border-2" : ""}`}
             onClick={() =>
               entry.kind === "group"
                 ? browse(entry.path)
@@ -116,7 +116,7 @@ export function MaterialStage({
             <p className="text-sm font-medium sm:text-base">{entry.name}</p>
             {entry.kind === "group" ? (
               <>
-                <p className="mt-1 text-xs text-gray-500">
+                <p className="mt-1 text-xs text-muted-foreground">
                   {entry.materialCount} material types
                 </p>
                 <PartCount count={entry.count} />

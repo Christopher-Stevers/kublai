@@ -30,19 +30,19 @@ export default async function OnboardingLayout({
   // This prevents redirect loops with the sign-in page and gives the webhook more time
   if (!user) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-gray-50 p-6 text-center">
+      <div className="flex min-h-screen flex-col items-center justify-center bg-muted/50 p-6 text-center">
         <div className="max-w-md space-y-4">
-          <h1 className="text-2xl font-bold text-gray-900">
+          <h1 className="text-2xl font-bold text-foreground">
             Setting up your account...
           </h1>
-          <p className="text-gray-600">
+          <p className="text-muted-foreground">
             We're putting the finishing touches on your account setup. This
             usually takes just a few seconds.
           </p>
           <div className="flex justify-center py-4">
             <div className="h-10 w-10 animate-spin rounded-full border-4 border-blue-600 border-t-transparent"></div>
           </div>
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-muted-foreground">
             The page will refresh automatically. If it doesn't, please{" "}
             <a href="/onboarding" className="text-blue-600 hover:underline">
               click here to retry

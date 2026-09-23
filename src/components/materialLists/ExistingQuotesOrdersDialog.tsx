@@ -79,7 +79,7 @@ export function ExistingQuotesOrdersDialog({
                   key={item.id}
                   className={`flex items-center justify-between rounded-lg border p-3 ${
                     onOpenExisting
-                      ? "cursor-pointer transition-colors hover:bg-gray-50"
+                      ? "cursor-pointer transition-colors hover:bg-accent"
                       : ""
                   }`}
                   onClick={() => {
@@ -124,7 +124,7 @@ export function ExistingQuotesOrdersDialog({
                               className={`ml-2 text-xs ${
                                 (item as { status: string }).status === "sent"
                                   ? "text-green-600"
-                                  : "text-gray-600"
+                                  : "text-muted-foreground"
                               }`}
                             >
                               ({(item as { status: string }).status})

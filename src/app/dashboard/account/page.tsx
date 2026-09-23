@@ -26,6 +26,7 @@ import {
 } from "~/lib/mailto";
 import { useThemePreference } from "~/components/app/ThemeProvider";
 import { type ThemePreference } from "~/lib/theme";
+import { FormSkeleton } from "~/components/ui/skeleton";
 
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
@@ -163,12 +164,12 @@ export default function AccountPage() {
     return (
       <div className="px-4 py-6 sm:px-6 sm:py-8">
         <div className="mx-auto max-w-4xl">
-          <h1 className="mb-6 text-2xl font-bold text-gray-900 sm:mb-8 sm:text-3xl">
+          <h1 className="mb-6 text-2xl font-bold text-foreground sm:mb-8 sm:text-3xl">
             Account
           </h1>
           <Card>
             <CardContent className="p-6 sm:p-8">
-              <p className="text-center text-gray-600">Loading...</p>
+              <FormSkeleton label="Loading account" />
             </CardContent>
           </Card>
         </div>
@@ -179,7 +180,7 @@ export default function AccountPage() {
   return (
     <div className="px-4 py-6 sm:px-6 sm:py-8">
       <div className="mx-auto max-w-4xl">
-        <h1 className="mb-6 text-2xl font-bold text-gray-900 sm:mb-8 sm:text-3xl">
+        <h1 className="mb-6 text-2xl font-bold text-foreground sm:mb-8 sm:text-3xl">
           Account
         </h1>
         <div className="space-y-6 sm:space-y-8">
@@ -197,7 +198,7 @@ export default function AccountPage() {
               <div className="space-y-1">
                 <label
                   htmlFor="account-name"
-                  className="text-sm font-medium text-gray-900"
+                  className="text-sm font-medium text-foreground"
                 >
                   Name
                 </label>
@@ -232,7 +233,7 @@ export default function AccountPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-1">
-                <p className="text-sm font-medium text-gray-900">
+                <p className="text-sm font-medium text-foreground">
                   Install ForemenHQ
                 </p>
                 <p className="text-muted-foreground text-sm">
@@ -250,13 +251,13 @@ export default function AccountPage() {
                   <DownloadIcon className="mr-2 h-4 w-4" /> Install App
                 </Button>
               ) : (
-                <div className="rounded-md border border-gray-200 bg-gray-50 p-4 text-sm text-gray-700">
-                  <p className="font-medium text-gray-900">
+                <div className="rounded-md border border-border bg-muted/50 p-4 text-sm text-foreground/80">
+                  <p className="font-medium text-foreground">
                     {usesAppleInstallFlow
                       ? "Use Add to Home Screen"
                       : "Install from the browser menu"}
                   </p>
-                  <p className="mt-1 text-sm text-gray-600">
+                  <p className="mt-1 text-sm text-muted-foreground">
                     {usesAppleInstallFlow
                       ? "On iPad, open the browser share menu and choose Add to Home Screen."
                       : "Open your browser menu and choose Install app or Add to Home Screen."}
@@ -264,8 +265,8 @@ export default function AccountPage() {
                 </div>
               )}
 
-              <div className="border-t border-gray-200 pt-4">
-                <p className="mb-2 text-sm font-medium text-gray-900">
+              <div className="border-t border-border pt-4">
+                <p className="mb-2 text-sm font-medium text-foreground">
                   Appearance
                 </p>
                 <div className="grid grid-cols-3 gap-2 sm:max-w-sm">
@@ -280,8 +281,8 @@ export default function AccountPage() {
                         onClick={() => setTheme(option.value)}
                         className={`flex min-h-16 flex-col items-center justify-center gap-1 rounded-md border px-2 py-2 text-sm font-medium transition-colors ${
                           isSelected
-                            ? "border-gray-900 bg-gray-900 text-white"
-                            : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-border bg-card text-foreground/80 hover:bg-accent"
                         }`}
                         aria-pressed={isSelected}
                       >
@@ -296,12 +297,12 @@ export default function AccountPage() {
                 </p>
               </div>
 
-              <div className="border-t border-gray-200 pt-4">
+              <div className="border-t border-border pt-4">
                 <label
                   htmlFor="email-client"
-                  className="mb-2 flex items-center gap-2 text-sm font-medium text-gray-900"
+                  className="mb-2 flex items-center gap-2 text-sm font-medium text-foreground"
                 >
-                  <MailIcon className="h-4 w-4 text-gray-500" />
+                  <MailIcon className="h-4 w-4 text-muted-foreground" />
                   Email client
                 </label>
                 <select
@@ -344,12 +345,12 @@ export default function AccountPage() {
                   className={
                     status?.hasManagingAccount
                       ? "border-green-200 bg-green-50 text-green-700"
-                      : "border-gray-200 bg-gray-50 text-gray-700"
+                      : "border-border bg-muted/50 text-foreground/80"
                   }
                 >
                   {status?.accountTypeLabel ?? "Standard Account"}
                 </Badge>
-                <span className="text-sm text-gray-600">
+                <span className="text-sm text-muted-foreground">
                   {status?.hasManagingAccount
                     ? "You can manage lists, generate quotes, and generate orders."
                     : "You can use the dashboard with standard account permissions."}
@@ -359,7 +360,7 @@ export default function AccountPage() {
               {status?.hasActiveSubscription && (
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-900">
+                    <span className="text-sm font-medium text-foreground">
                       Subscription Status:
                     </span>
                     <Badge variant="outline">
@@ -368,10 +369,10 @@ export default function AccountPage() {
                   </div>
                   {status.subscriptionEndsAt && (
                     <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium text-gray-900">
+                      <span className="text-sm font-medium text-foreground">
                         Renews:
                       </span>
-                      <span className="text-sm text-gray-600">
+                      <span className="text-sm text-muted-foreground">
                         {new Date(
                           status.subscriptionEndsAt,
                         ).toLocaleDateString()}
@@ -402,16 +403,16 @@ export default function AccountPage() {
               {status?.hasOneTimeAccess && status.oneTimePurchaseDate && (
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-900">
+                    <span className="text-sm font-medium text-foreground">
                       Purchase Type:
                     </span>
                     <Badge variant="outline">One-Time Purchase</Badge>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-900">
+                    <span className="text-sm font-medium text-foreground">
                       Purchased:
                     </span>
-                    <span className="text-sm text-gray-600">
+                    <span className="text-sm text-muted-foreground">
                       {new Date(
                         status.oneTimePurchaseDate,
                       ).toLocaleDateString()}

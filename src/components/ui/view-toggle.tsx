@@ -18,7 +18,7 @@ export function ViewToggle({
   return (
     <div
       className={cn(
-        "flex h-10 w-[5.75rem] shrink-0 items-center justify-between gap-1 rounded-lg border border-gray-200 bg-white p-1",
+        "flex h-10 w-[5.75rem] shrink-0 items-center justify-between gap-1 rounded-lg border border-border bg-card p-1",
         showOnMobile ? "flex" : "hidden md:flex",
       )}
     >
@@ -28,7 +28,7 @@ export function ViewToggle({
         onClick={() => onViewChange("grid")}
         className={cn(
           "h-8 w-10 shrink-0 px-0",
-          view === "grid" ? "bg-gray-900 text-white" : "text-gray-600",
+          view === "grid" ? "bg-primary text-primary-foreground" : "text-muted-foreground",
         )}
         aria-label="Grid view"
       >
@@ -40,7 +40,7 @@ export function ViewToggle({
         onClick={() => onViewChange("table")}
         className={cn(
           "h-8 w-10 shrink-0 px-0",
-          view === "table" ? "bg-gray-900 text-white" : "text-gray-600",
+          view === "table" ? "bg-primary text-primary-foreground" : "text-muted-foreground",
         )}
         aria-label="Table view"
       >

@@ -113,7 +113,7 @@ export function WizardProgressIndicator({
                   ? "bg-primary text-primary-foreground"
                   : isCompleted
                     ? "bg-primary/10 text-primary hover:bg-primary/20"
-                    : "bg-gray-100 text-gray-500"
+                    : "bg-muted text-muted-foreground"
               } ${isClickable ? "cursor-pointer" : "cursor-default"}`}
             >
               <div
@@ -122,7 +122,7 @@ export function WizardProgressIndicator({
                     ? "bg-primary-foreground text-primary"
                     : isCompleted
                       ? "bg-primary text-primary-foreground"
-                      : "bg-gray-300 text-gray-600"
+                      : "bg-gray-300 text-muted-foreground"
                 }`}
               >
                 {isCompleted ? "✓" : stage.step}

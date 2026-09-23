@@ -304,7 +304,7 @@ function PartCard({
     >
       <CardContent className="p-0">
         <div className="flex w-full flex-col p-3">
-          <div className="relative mb-3 aspect-square w-full overflow-hidden rounded-xl bg-gray-100">
+          <div className="relative mb-3 aspect-square w-full overflow-hidden rounded-xl bg-muted">
             {part.imageUrl ? (
               <Image
                 src={part.imageUrl}
@@ -314,14 +314,14 @@ function PartCard({
                 draggable={false}
               />
             ) : (
-              <div className="flex h-full items-center justify-center text-gray-400">
+              <div className="flex h-full items-center justify-center text-muted-foreground/70">
                 <AlertCircle className="h-8 w-8" />
               </div>
             )}
 
             <div className="absolute top-2 right-2 flex justify-end">
               {pendingQuantity > 0 && (
-                <div className="flex h-6 min-w-6 items-center justify-center rounded-full bg-black px-1.5 text-xs font-semibold text-white shadow-sm sm:h-7 sm:min-w-7 sm:text-sm">
+                <div className="flex h-6 min-w-6 items-center justify-center rounded-full bg-primary px-1.5 text-xs font-semibold text-primary-foreground shadow-sm sm:h-7 sm:min-w-7 sm:text-sm">
                   {pendingQuantity}
                 </div>
               )}
@@ -333,7 +333,7 @@ function PartCard({
             )}
           </div>
 
-          <div className="flex items-start justify-center text-center text-black">
+          <div className="flex items-start justify-center text-center text-foreground">
             <h4 className="line-clamp-4 text-sm leading-snug font-medium">
               {part.displayName}
             </h4>
@@ -383,7 +383,7 @@ function PartListRow({
               className="object-contain p-1"
             />
           ) : (
-            <div className="flex h-full items-center justify-center text-gray-400">
+            <div className="flex h-full items-center justify-center text-muted-foreground/70">
               <AlertCircle className="h-4 w-4" />
             </div>
           )}
@@ -552,7 +552,7 @@ export function PartStage({
     return (
       <div className="space-y-3 sm:space-y-4">
         <h3 className="text-base font-semibold sm:text-lg">No Parts Found</h3>
-        <p className="text-xs text-gray-500 sm:text-sm">
+        <p className="text-xs text-muted-foreground sm:text-sm">
           {emptyMessage ??
             "No parts found for the selected material, size, and category."}
         </p>

@@ -139,7 +139,7 @@ export default function JobRoomsPage({
         <div className="mb-4 flex flex-wrap gap-2"><AssistanceLink mode="sheets">Classify drawings</AssistanceLink><AssistanceLink mode="rooms">Review outlines</AssistanceLink></div>
         <div className="mb-6">
           <div className="mb-2 flex items-center gap-3">
-            <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">
+            <h1 className="text-2xl font-bold text-foreground sm:text-3xl">
               {job.name}
             </h1>
             <Button
@@ -152,7 +152,7 @@ export default function JobRoomsPage({
               <PencilIcon className="h-4 w-4" />
             </Button>
           </div>
-          <div className="flex flex-wrap gap-4 text-sm text-gray-600">
+          <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
             {jobLocationAddress && (
               <div className="flex items-center gap-2">
                 <MapPinIcon className="h-4 w-4" />

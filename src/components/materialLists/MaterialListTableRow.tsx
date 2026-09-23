@@ -86,7 +86,7 @@ export function MaterialListTableRow({
         {item.partDefinition?.imageUrl ? (
           <Image src={item.partDefinition.imageUrl} alt={item.partDefinition.displayName} fill sizes="32px" className="object-contain p-1" />
         ) : (
-          <div className="flex h-full items-center justify-center text-gray-400"><AlertCircle className="h-4 w-4" /></div>
+          <div className="flex h-full items-center justify-center text-muted-foreground/70"><AlertCircle className="h-4 w-4" /></div>
         )}
       </td>
       <td className="content-center">
@@ -96,11 +96,11 @@ export function MaterialListTableRow({
             item.descriptionSnapshot ||
             "Unknown Part"}
           {item.oneOff && (
-            <span className="ml-2 text-xs text-gray-500">(One-off)</span>
+            <span className="ml-2 text-xs text-muted-foreground">(One-off)</span>
           )}
         </div>
         {item.oneOff?.sizeNominal && (
-          <div className="text-xs text-gray-500">
+          <div className="text-xs text-muted-foreground">
             Size: {item.oneOff.sizeNominal}
           </div>
         )}
@@ -127,19 +127,19 @@ export function MaterialListTableRow({
               compact
             />
           ) : (
-            <div className="text-sm text-gray-500">
+            <div className="text-sm text-muted-foreground">
               {item.supplierPart?.supplier?.name || "—"}
             </div>
           )}
         </div>
       </td>
       <td className="content-center">
-        <div className="text-sm text-gray-600">
+        <div className="text-sm text-muted-foreground">
           {unitCost > 0 ? `$${unitCost.toFixed(2)}` : "—"}
         </div>
       </td>
       <td className="content-center">
-        <div className="text-sm font-semibold text-gray-900">
+        <div className="text-sm font-semibold text-foreground">
           ${lineTotal.toFixed(2)}
         </div>
       </td>

@@ -53,7 +53,7 @@ function getSendStatusTone(
 ) {
   if (totalSupplierCount === 0) {
     return {
-      chip: "border-gray-200 bg-gray-50 text-gray-600",
+      chip: "border-border bg-muted/50 text-muted-foreground",
       bar: "bg-gray-300",
     };
   }
@@ -73,7 +73,7 @@ function getSendStatusTone(
   }
 
   return {
-    chip: "border-gray-200 bg-gray-50 text-gray-700",
+    chip: "border-border bg-muted/50 text-foreground/80",
     bar: "bg-gray-400",
   };
 }
@@ -113,15 +113,15 @@ function MaterialListSendStatus({
           </span>
         </div>
         {normalizedSentCount > 0 && (
-          <div className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-2 py-1 text-xs font-medium text-gray-700">
-            <CheckCircle2Icon className="h-3.5 w-3.5 text-gray-500" />
+          <div className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2 py-1 text-xs font-medium text-foreground/80">
+            <CheckCircle2Icon className="h-3.5 w-3.5 text-muted-foreground" />
             <span>
               {normalizedVerifiedCount}/{normalizedSentCount} verified
             </span>
           </div>
         )}
       </div>
-      <div className="h-1.5 overflow-hidden rounded-full bg-gray-100">
+      <div className="h-1.5 overflow-hidden rounded-full bg-muted">
         <div
           className={"h-full rounded-full transition-all " + tone.bar}
           style={{ width: progress + "%" }}
@@ -337,7 +337,7 @@ export default function JobDetailPage({
         {/* Job Header */}
         <div className="mb-6">
           <div className="mb-2 flex items-center gap-3">
-            <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">
+            <h1 className="text-2xl font-bold text-foreground sm:text-3xl">
               {job.name}
             </h1>
             <Button
@@ -350,7 +350,7 @@ export default function JobDetailPage({
               <PencilIcon className="h-4 w-4" />
             </Button>
           </div>
-          <div className="flex flex-wrap gap-4 text-sm text-gray-600">
+          <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
             {jobLocationAddress && (
               <div className="flex items-center gap-2">
                 <MapPinIcon className="h-4 w-4" />
@@ -375,7 +375,7 @@ export default function JobDetailPage({
         {/* Material Lists Section */}
         <div className="mb-6 flex flex-col gap-4 sm:mb-8 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="text-xl font-semibold text-gray-900">
+            <h2 className="text-xl font-semibold text-foreground">
               Material Lists
             </h2>
             {(!materialLists || materialLists.length === 0) && (
@@ -409,7 +409,7 @@ export default function JobDetailPage({
         {!materialLists || materialLists.length === 0 ? (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12">
-              <PackageIcon className="mb-4 h-12 w-12 text-gray-400" />
+              <PackageIcon className="mb-4 h-12 w-12 text-muted-foreground/70" />
               <h3 className="mb-2 text-lg font-semibold">
                 No material lists yet
               </h3>
@@ -471,7 +471,7 @@ export default function JobDetailPage({
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-2 text-sm text-gray-600">
+                  <div className="space-y-2 text-sm text-muted-foreground">
                     <div className="flex items-center gap-2">
                       <PackageIcon className="h-4 w-4" />
                       <span>{list.itemCount} items</span>

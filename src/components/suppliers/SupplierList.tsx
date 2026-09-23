@@ -26,6 +26,7 @@ import {
   mutateMaterialListAndSync,
 } from "~/lib/replicache-material-list";
 import { normalizeSupplierContacts } from "~/lib/supplier-contacts";
+import { confirmAction } from "~/components/ui/app-dialogs";
 
 export function SupplierList() {
   const [editSupplierId, setEditSupplierId] = useState<string | undefined>();
@@ -42,13 +43,17 @@ export function SupplierList() {
     userData?.permissions.canDeleteCoreRecords ?? true;
   const suppliers = useReplicacheSuppliers();
 
-  const handleDelete = (id: string, name: string) => {
+  const handleDelete = async (id: string, name: string) => {
     if (!canDeleteCoreRecords) return;
 
     if (
-      confirm(
-        `Are you sure you want to delete "${name}"? This will also remove all parts associated with this supplier.`,
-      )
+      await confirmAction({
+        title: `Delete "${name}"?`,
+        description:
+          "This also removes all parts associated with this supplier.",
+        confirmLabel: "Delete supplier",
+        destructive: true,
+      })
     ) {
       void mutateMaterialListAndSync(
         getMaterialListReplicache().mutate.deleteSupplier({ supplierId: id }),
@@ -113,7 +118,7 @@ export function SupplierList() {
         </Button>
       </div>
 
-      <div className="rounded-lg border bg-white">
+      <div className="rounded-lg border bg-card">
         <div className="divide-y">
           {suppliers.map((supplier) => {
             const contacts = normalizeSupplierContacts(
@@ -123,7 +128,7 @@ export function SupplierList() {
             return (
               <div
                 key={supplier.id}
-                className="flex flex-col gap-3 p-4 hover:bg-gray-50 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
+                className="flex flex-col gap-3 p-4 hover:bg-accent sm:flex-row sm:items-center sm:justify-between sm:gap-4"
               >
                 <div className="min-w-0 flex-1">
                   <h3 className="text-base font-semibold sm:text-lg">
@@ -138,9 +143,9 @@ export function SupplierList() {
                       contacts.map((contact) => (
                         <span
                           key={contact.id}
-                          className="inline-flex min-w-0 max-w-full items-center gap-1.5 rounded-md border bg-gray-50 px-2 py-1 text-xs"
+                          className="inline-flex min-w-0 max-w-full items-center gap-1.5 rounded-md border bg-muted/50 px-2 py-1 text-xs"
                         >
-                          <span className="shrink-0 rounded bg-gray-200 px-1.5 py-0.5 font-medium uppercase text-gray-700">
+                          <span className="shrink-0 rounded bg-gray-200 px-1.5 py-0.5 font-medium uppercase text-foreground/80">
                             {contact.emailRole === "cc" ? "CC" : "To"}
                           </span>
                           <span className="truncate">
@@ -206,7 +211,7 @@ export function SupplierList() {
                         <DropdownMenuItem
                           variant="destructive"
                           onClick={() =>
-                            handleDelete(supplier.id, supplier.name)
+                            void handleDelete(supplier.id, supplier.name)
                           }
                         >
                           <TrashIcon className="mr-2 h-4 w-4" />

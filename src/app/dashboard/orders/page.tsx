@@ -30,6 +30,7 @@ import {
 } from "~/lib/supplier-contacts";
 import { buildEmailComposeUrl, getPreferredEmailClient } from "~/lib/mailto";
 import type { RouterOutputs } from "~/trpc/react";
+import { ListPageSkeleton } from "~/components/ui/skeleton";
 
 type EmailDraft = {
   subject: string;
@@ -312,9 +313,7 @@ export default function OrdersPage() {
     return (
       <div className="px-4 py-6 sm:px-6 sm:py-8">
         <div className="mx-auto max-w-6xl">
-          <div className="flex items-center justify-center py-12">
-            <p className="text-muted-foreground">Loading orders...</p>
-          </div>
+          <ListPageSkeleton label="Loading orders" />
         </div>
       </div>
     );
@@ -324,7 +323,7 @@ export default function OrdersPage() {
     <div className="px-4 py-6 sm:px-6 sm:py-8">
       <div className="mx-auto max-w-2xl">
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">
+          <h1 className="text-2xl font-bold text-foreground sm:text-3xl">
             Orders
           </h1>
           <p className="text-muted-foreground mt-2 text-sm sm:text-base">
@@ -347,7 +346,7 @@ export default function OrdersPage() {
           <div className="mb-4 space-y-3">
             <div className="flex gap-2">
               <div className="relative flex-1">
-                <SearchIcon className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                <SearchIcon className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground/70" />
                 <Input
                   type="search"
                   value={searchQuery}
@@ -477,7 +476,7 @@ export default function OrdersPage() {
         {!orders || orders.length === 0 ? (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12">
-              <PackageIcon className="mb-4 h-12 w-12 text-gray-400" />
+              <PackageIcon className="mb-4 h-12 w-12 text-muted-foreground/70" />
               <h3 className="mb-2 text-lg font-semibold">No orders yet</h3>
               <p className="text-muted-foreground mb-4 text-center">
                 Orders will appear here after you send them from a material
@@ -489,7 +488,7 @@ export default function OrdersPage() {
           filteredOrders.length === 0 ? (
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-12">
-                <PackageIcon className="mb-4 h-12 w-12 text-gray-400" />
+                <PackageIcon className="mb-4 h-12 w-12 text-muted-foreground/70" />
                 <h3 className="mb-2 text-lg font-semibold">No matching orders</h3>
                 <p className="text-muted-foreground mb-4 text-center">
                   Nothing matches these filters.
@@ -517,7 +516,7 @@ export default function OrdersPage() {
                 .join(" · ");
 
               return (
-                <div key={order.id} className="rounded-lg border bg-white p-4">
+                <div key={order.id} className="rounded-lg border bg-card p-4">
                   <div className="flex items-center justify-between gap-3">
                     <button
                       onClick={() => toggleOrder(order.id)}
@@ -533,7 +532,7 @@ export default function OrdersPage() {
                           {order.supplier?.name || "Supplier Order"}
                         </span>
                         {contextLine && (
-                          <span className="block truncate text-xs font-normal text-gray-500">
+                          <span className="block truncate text-xs font-normal text-muted-foreground">
                             {contextLine}
                           </span>
                         )}

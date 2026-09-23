@@ -210,7 +210,7 @@ export function FloorPlanCanvas({
   return (
     <div
       ref={viewportRef}
-      className={`relative h-full min-h-0 w-full touch-none overflow-hidden rounded-lg bg-gray-100 ${detectMode ? "cursor-crosshair" : ""}`}
+      className={`relative h-full min-h-0 w-full touch-none overflow-hidden rounded-lg bg-muted ${detectMode ? "cursor-crosshair" : ""}`}
       onPointerDown={(event) => {
         if (!detectMode) {
           event.currentTarget.setPointerCapture(event.pointerId);
@@ -438,7 +438,7 @@ export function FloorPlanCanvas({
           transform: `translate(${transform.tx}px, ${transform.ty}px) scale(${transform.scale})`,
         }}
       >
-        <div ref={planRef} className="relative inline-block bg-white">
+        <div ref={planRef} className="relative inline-block bg-card">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={imageUrl}

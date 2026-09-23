@@ -12,11 +12,11 @@ export default function SignInPage() {
       {hasUsableClerkKey ? (
         <SignIn />
       ) : (
-        <div className="max-w-md space-y-3 rounded-lg border bg-white p-6 shadow-sm">
+        <div className="max-w-md space-y-3 rounded-lg border bg-card p-6 shadow-sm">
           <h1 className="text-2xl font-semibold">Sign-in is not configured yet</h1>
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-muted-foreground">
             Clerk is not configured. Add Clerk keys to
-            <code className="mx-1 rounded bg-gray-100 px-1 py-0.5">.env</code>
+            <code className="mx-1 rounded bg-muted px-1 py-0.5">.env</code>
             to enable authentication.
           </p>
         </div>

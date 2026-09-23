@@ -24,6 +24,7 @@ import {
   CheckCircle2Icon,
   UserIcon,
   MapPinIcon,
+  MoreVerticalIcon,
   PackageIcon,
   PencilIcon,
   PlusIcon,
@@ -31,7 +32,14 @@ import {
   TrashIcon,
   WifiOffIcon,
 } from "lucide-react";
-import { format } from "date-fns";
+import { format, formatDistanceToNow } from "date-fns";
+import { Badge } from "~/components/ui/badge";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "~/components/ui/dropdown-menu";
 import {
   useReplicacheJobDetail,
   useReplicacheJobsList,
@@ -56,6 +64,7 @@ import {
   HEADER_BACK_REQUEST_EVENT,
   setHeaderBackVisible,
 } from "~/lib/header-back-events";
+import { Skeleton } from "~/components/ui/skeleton";
 
 type JobLocationDisplay = {
   name?: string | null;
@@ -92,7 +101,7 @@ function getSendStatusTone(
 ) {
   if (totalSupplierCount === 0) {
     return {
-      chip: "border-gray-200 bg-gray-50 text-gray-600",
+      chip: "border-border bg-muted/50 text-muted-foreground",
       bar: "bg-gray-300",
     };
   }
@@ -112,7 +121,7 @@ function getSendStatusTone(
   }
 
   return {
-    chip: "border-gray-200 bg-gray-50 text-gray-700",
+    chip: "border-border bg-muted/50 text-foreground/80",
     bar: "bg-gray-400",
   };
 }
@@ -152,15 +161,15 @@ function MaterialListSendStatus({
           </span>
         </div>
         {normalizedSentCount > 0 && (
-          <div className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-2 py-1 text-xs font-medium text-gray-700">
-            <CheckCircle2Icon className="h-3.5 w-3.5 text-gray-500" />
+          <div className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2 py-1 text-xs font-medium text-foreground/80">
+            <CheckCircle2Icon className="h-3.5 w-3.5 text-muted-foreground" />
             <span>
               {normalizedVerifiedCount}/{normalizedSentCount} verified
             </span>
           </div>
         )}
       </div>
-      <div className="h-1.5 overflow-hidden rounded-full bg-gray-100">
+      <div className="h-1.5 overflow-hidden rounded-full bg-muted">
         <div
           className={"h-full rounded-full transition-all " + tone.bar}
           style={{ width: progress + "%" }}
@@ -188,6 +197,14 @@ export type DashboardJob = {
   location: (JobLocationDisplay & { id?: string | null }) | null;
   foreman: { id: string | null; name: string | null } | null;
   materialListCount: number;
+  lastActivityAt?: string | null;
+};
+
+// Draft is the default state, so only later stages get a badge.
+const jobStatusLabels: Record<string, string> = {
+  quoted: "Quoted",
+  ordered: "Ordered",
+  completed: "Completed",
 };
 
 export function DashboardClient({
@@ -429,7 +446,7 @@ export function DashboardClient({
                 <div className="mb-6 flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <div className="flex min-w-0 items-center gap-2">
-                      <h1 className="min-w-0 text-2xl font-bold break-words text-gray-900 sm:text-3xl">
+                      <h1 className="min-w-0 text-2xl font-bold break-words text-foreground sm:text-3xl">
                         {selectedMaterialList.name}
                       </h1>
                       <Button
@@ -455,7 +472,7 @@ export function DashboardClient({
                 {selectedItems.length === 0 ? (
                   <Card>
                     <CardContent className="flex flex-col items-center justify-center py-12">
-                      <PackageIcon className="mb-4 h-12 w-12 text-gray-400" />
+                      <PackageIcon className="mb-4 h-12 w-12 text-muted-foreground/70" />
                       <h3 className="mb-2 text-lg font-semibold">
                         No items yet
                       </h3>
@@ -493,7 +510,7 @@ export function DashboardClient({
                   </>
                 )}
 
-                <div className="fixed inset-x-0 bottom-0 z-40 border-t bg-white px-4 pt-1.5 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:sticky sm:inset-x-auto sm:z-10 sm:-mx-6 sm:mt-4 sm:px-6 sm:pt-2">
+                <div className="fixed inset-x-0 bottom-0 z-40 border-t bg-card px-4 pt-1.5 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:sticky sm:inset-x-auto sm:z-10 sm:-mx-6 sm:mt-4 sm:px-6 sm:pt-2">
                   <MaterialListActions total={selectedMaterialTotal} canGenerate={canGenerateOfflineQuoteOrOrder} blockedReason={offlineGenerationBlockReason}
                     onQuote={handleOfflineGenerateQuote} onOrder={handleOfflineGenerateOrder} onAdd={() => setShowOfflineAddPartDialog(true)} />
                 </div>
@@ -537,7 +554,7 @@ export function DashboardClient({
             ) : (
               <Card>
                 <CardContent className="flex flex-col items-center justify-center py-12">
-                  <PackageIcon className="mb-4 h-12 w-12 text-gray-400" />
+                  <PackageIcon className="mb-4 h-12 w-12 text-muted-foreground/70" />
                   <h3 className="mb-2 text-lg font-semibold">
                     Material list not cached
                   </h3>
@@ -551,7 +568,7 @@ export function DashboardClient({
             <>
               <div className="mb-6">
                 <div className="mb-2 flex items-center gap-3">
-                  <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">
+                  <h1 className="text-2xl font-bold text-foreground sm:text-3xl">
                     {offlineJob.name}
                   </h1>
                   <Button
@@ -564,7 +581,7 @@ export function DashboardClient({
                     <PencilIcon className="h-4 w-4" />
                   </Button>
                 </div>
-                <div className="mt-2 flex flex-wrap gap-4 text-sm text-gray-600">
+                <div className="mt-2 flex flex-wrap gap-4 text-sm text-muted-foreground">
                   {jobLocationAddress && (
                     <div className="flex items-center gap-2">
                       <MapPinIcon className="h-4 w-4" />
@@ -603,7 +620,7 @@ export function DashboardClient({
                 <>
               <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <h2 className="text-xl font-semibold text-gray-900">
+                  <h2 className="text-xl font-semibold text-foreground">
                     Material Lists
                   </h2>
                   {offlineMaterialLists.length === 0 && (
@@ -638,7 +655,7 @@ export function DashboardClient({
               {offlineMaterialLists.length === 0 ? (
                 <Card>
                   <CardContent className="flex flex-col items-center justify-center py-12">
-                    <PackageIcon className="mb-4 h-12 w-12 text-gray-400" />
+                    <PackageIcon className="mb-4 h-12 w-12 text-muted-foreground/70" />
                     <h3 className="mb-2 text-lg font-semibold">
                       No material lists yet
                     </h3>
@@ -720,7 +737,7 @@ export function DashboardClient({
                         </div>
                       </CardHeader>
                       <CardContent>
-                        <div className="space-y-2 text-sm text-gray-600">
+                        <div className="space-y-2 text-sm text-muted-foreground">
                           <div className="flex items-center gap-2">
                             <PackageIcon className="h-4 w-4" />
                             <span>{list.itemCount} items</span>
@@ -776,7 +793,7 @@ export function DashboardClient({
           ) : (
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-12">
-                <BriefcaseIcon className="mb-4 h-12 w-12 text-gray-400" />
+                <BriefcaseIcon className="mb-4 h-12 w-12 text-muted-foreground/70" />
                 <h3 className="mb-2 text-lg font-semibold">Job not cached</h3>
                 <p className="text-muted-foreground text-center">
                   Reconnect once to cache this job on this device.
@@ -873,7 +890,7 @@ export function DashboardClient({
         )}
         <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">
+            <h1 className="text-2xl font-bold text-foreground sm:text-3xl">
               Dashboard
             </h1>
             <p className="text-muted-foreground mt-2 text-sm sm:text-base">
@@ -891,18 +908,20 @@ export function DashboardClient({
         </div>
 
         {isWaitingForJobs ? (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div
+            role="status"
+            aria-label="Loading jobs"
+            className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
+          >
             {[0, 1, 2].map((index) => (
-              <Card key={index} className="animate-pulse">
-                <CardHeader>
-                  <div className="h-6 w-2/3 rounded bg-gray-200" />
+              <Card key={index} className="gap-3 py-4">
+                <CardHeader className="px-4">
+                  <Skeleton className="h-6 w-2/3" />
                 </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    <div className="h-4 w-4/5 rounded bg-gray-200" />
-                    <div className="h-4 w-1/2 rounded bg-gray-200" />
-                    <div className="h-4 w-1/3 rounded bg-gray-200" />
-                  </div>
+                <CardContent className="space-y-2 px-4">
+                  <Skeleton className="h-4 w-4/5" />
+                  <Skeleton className="h-4 w-1/2" />
+                  <Skeleton className="mt-3 h-4 w-full" />
                 </CardContent>
               </Card>
             ))}
@@ -910,7 +929,7 @@ export function DashboardClient({
         ) : jobs.length === 0 ? (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12">
-              <BriefcaseIcon className="mb-4 h-12 w-12 text-gray-400" />
+              <BriefcaseIcon className="mb-4 h-12 w-12 text-muted-foreground/70" />
               <h3 className="mb-2 text-lg font-semibold">No jobs yet</h3>
               <p className="text-muted-foreground mb-4 text-center">
                 Create your first job to get started
@@ -919,75 +938,105 @@ export function DashboardClient({
           </Card>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {jobs.map((job) => (
-              <Card
-                key={job.id}
-                className="group cursor-pointer transition-shadow hover:shadow-md"
-                onClick={() => openJob(job.id)}
-              >
-                <CardHeader>
-                  <div className="flex items-start justify-between gap-3">
-                    <CardTitle className="line-clamp-1 min-w-0">
-                      {job.name}
-                    </CardTitle>
-                    {canDeleteCoreRecords && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-10 w-10 shrink-0 text-red-600 hover:bg-red-50 hover:text-red-700"
-                        aria-label={`Delete job ${job.name}`}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setJobToDelete({
-                            id: job.id,
-                            name: job.name,
-                            materialListCount: job.materialListCount,
-                          });
-                        }}
-                      >
-                        <TrashIcon className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2 text-sm text-gray-600">
-                    {job.location && (
-                      <div className="flex items-center gap-2">
-                        <MapPinIcon className="h-4 w-4" />
-                        <span className="line-clamp-1">
-                          {formatLocationAddress(job.location)}
-                        </span>
+            {jobs.map((job) => {
+              const lastActivity =
+                "lastActivityAt" in job && job.lastActivityAt
+                  ? job.lastActivityAt
+                  : job.createdAt;
+              const statusLabel = jobStatusLabels[job.status];
+              return (
+                <Card
+                  key={job.id}
+                  className="group hover:border-primary/40 cursor-pointer gap-3 py-4 transition-[box-shadow,border-color] hover:shadow-md"
+                  onClick={() => openJob(job.id)}
+                >
+                  <CardHeader className="px-4">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <CardTitle className="line-clamp-2 text-base leading-snug sm:text-lg">
+                          {job.name}
+                        </CardTitle>
+                        {statusLabel && (
+                          <Badge variant="secondary" className="mt-1.5">
+                            {statusLabel}
+                          </Badge>
+                        )}
                       </div>
-                    )}
-                    {job.foremanName && (
-                      <div className="flex items-center gap-2">
-                        <UserIcon className="h-4 w-4" />
-                        <span>{job.foremanName}</span>
-                      </div>
-                    )}
-                    <div className="flex items-center gap-2">
-                      <PackageIcon className="h-4 w-4" />
-                      <span>
+                      {canDeleteCoreRecords && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-muted-foreground -mt-1 -mr-2 h-9 w-9 shrink-0"
+                              aria-label={`More actions for ${job.name}`}
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <MoreVerticalIcon className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent
+                            align="end"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <DropdownMenuItem
+                              variant="destructive"
+                              onSelect={() =>
+                                setJobToDelete({
+                                  id: job.id,
+                                  name: job.name,
+                                  materialListCount: job.materialListCount,
+                                })
+                              }
+                            >
+                              <TrashIcon className="h-4 w-4" />
+                              Delete job
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
+                    </div>
+                  </CardHeader>
+                  <CardContent className="px-4">
+                    <div className="text-muted-foreground space-y-1.5 text-sm">
+                      {job.location && (
+                        <div className="flex items-center gap-2">
+                          <MapPinIcon className="h-4 w-4 shrink-0" />
+                          <span className="line-clamp-1">
+                            {formatLocationAddress(job.location)}
+                          </span>
+                        </div>
+                      )}
+                      {job.foremanName && (
+                        <div className="flex items-center gap-2">
+                          <UserIcon className="h-4 w-4 shrink-0" />
+                          <span className="line-clamp-1">{job.foremanName}</span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="text-muted-foreground mt-3 flex items-center justify-between gap-3 border-t pt-3 text-xs">
+                      <span className="text-foreground inline-flex items-center gap-1.5 font-medium">
+                        <PackageIcon className="text-primary h-4 w-4" />
                         {job.materialListCount ?? 0}{" "}
                         {job.materialListCount === 1 ? "list" : "lists"}
                       </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <CalendarIcon className="h-4 w-4" />
-                      <span>
-                        {format(new Date(job.createdAt), "MMM d, yyyy")}
+                      <span title={format(new Date(lastActivity), "PPp")}>
+                        Updated{" "}
+                        {formatDistanceToNow(new Date(lastActivity), {
+                          addSuffix: true,
+                        })}
                       </span>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         )}
 
         {!isWaitingForJobs && jobs.length > 0 && (
-          <div className="bg-background fixed inset-x-0 bottom-0 z-40 border-t px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:hidden">
+          // Sits directly above the phone bottom tab bar (4rem + safe area).
+          <div className="bg-background fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-40 border-t px-4 py-2 sm:hidden">
             <Button
               onClick={() => setShowCreateDialog(true)}
               size="lg"

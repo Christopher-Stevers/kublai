@@ -243,34 +243,34 @@ export default function MaterialListDetailPage({
   if (isLoading && !mlHeader) {
     return (
       <div className="flex h-[calc(100dvh-4rem)] flex-col">
-        <div className="border-b bg-white px-4 py-2 sm:px-6 sm:py-3">
+        <div className="border-b bg-card px-4 py-2 sm:px-6 sm:py-3">
           <div className="mx-auto max-w-6xl animate-pulse">
             <div className="flex items-start justify-between gap-3">
               <div className="space-y-2">
                 <div className="h-5 w-44 rounded bg-gray-200" />
-                <div className="h-4 w-28 rounded bg-gray-100" />
+                <div className="h-4 w-28 rounded bg-muted" />
               </div>
               <div className="flex flex-col items-end gap-1">
-                <div className="h-6 w-24 rounded-full bg-gray-100" />
-                <div className="h-8 w-20 rounded-lg bg-gray-100" />
+                <div className="h-6 w-24 rounded-full bg-muted" />
+                <div className="h-8 w-20 rounded-lg bg-muted" />
               </div>
             </div>
           </div>
         </div>
         <div className="flex-1 px-4 py-4 sm:px-6">
           <div className="mx-auto max-w-6xl animate-pulse space-y-2">
-            <div className="h-32 rounded-2xl bg-gray-100" />
-            <div className="h-32 rounded-2xl bg-gray-100" />
-            <div className="h-32 rounded-2xl bg-gray-100" />
+            <div className="h-32 rounded-2xl bg-muted" />
+            <div className="h-32 rounded-2xl bg-muted" />
+            <div className="h-32 rounded-2xl bg-muted" />
           </div>
         </div>
-        <div className="shrink-0 border-t bg-white px-4 py-3 sm:px-6">
+        <div className="shrink-0 border-t bg-card px-4 py-3 sm:px-6">
           <div className="mx-auto max-w-6xl animate-pulse space-y-2">
-            <div className="h-5 w-36 rounded bg-gray-100" />
+            <div className="h-5 w-36 rounded bg-muted" />
             <div className="grid grid-cols-3 gap-1.5">
-              <div className="h-9 rounded bg-gray-100" />
-              <div className="h-9 rounded bg-gray-100" />
-              <div className="h-9 rounded bg-gray-100" />
+              <div className="h-9 rounded bg-muted" />
+              <div className="h-9 rounded bg-muted" />
+              <div className="h-9 rounded bg-muted" />
             </div>
           </div>
         </div>
@@ -293,9 +293,9 @@ export default function MaterialListDetailPage({
 
   return (
     <div className="flex h-[calc(100dvh-4rem)] flex-col">
-      <div className="bg-white px-4 pt-2"><AssistanceLink mode="materials" id={id}>Check this list</AssistanceLink></div>
+      <div className="bg-card px-4 pt-2"><AssistanceLink mode="materials" id={id}>Check this list</AssistanceLink></div>
       {/* Top Bar */}
-      <div className="border-b bg-white px-4 py-2 sm:px-6 sm:py-3">
+      <div className="border-b bg-card px-4 py-2 sm:px-6 sm:py-3">
         <div className="mx-auto max-w-6xl">
           {!isBrowserOnline && (
             <div className="mb-1 flex flex-wrap items-center gap-1.5">
@@ -309,7 +309,7 @@ export default function MaterialListDetailPage({
             <div>
               <div className="flex flex-col content-start items-start gap-0.5">
                 <div className="flex items-center gap-2">
-                  <h1 className="text-lg leading-tight font-bold text-gray-900 sm:text-xl">
+                  <h1 className="text-lg leading-tight font-bold text-foreground sm:text-xl">
                     {mlHeader.name || "Material List"}
                   </h1>
                   <Button
@@ -330,7 +330,7 @@ export default function MaterialListDetailPage({
                       handleJobInfoClick();
                     }
                   }}
-                  className="text-muted-foreground h-auto text-sm leading-tight hover:text-gray-900"
+                  className="text-muted-foreground h-auto text-sm leading-tight hover:text-foreground"
                 >
                   Job: {jobName || "Not set"}
                 </button>
@@ -465,7 +465,7 @@ export default function MaterialListDetailPage({
       </div>
 
       {/* Footer - Always Visible */}
-      <div className="shrink-0 border-t bg-white px-4 pt-1.5 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:px-6 sm:pt-2">
+      <div className="shrink-0 border-t bg-card px-4 pt-1.5 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:px-6 sm:pt-2">
         <MaterialListActions total={footerMaterialTotal} canGenerate={canGenerateQuoteOrOrder} blockedReason={generationBlockReason}
           onQuote={handleGenerateQuote} onOrder={handleGenerateOrder} onAdd={openAddPartDialog}
           onNotes={verifyOrderId ? () => setShowVerifyNotesDialog(true) : undefined} />

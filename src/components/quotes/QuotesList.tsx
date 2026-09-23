@@ -7,6 +7,8 @@ import { FileTextIcon, ExternalLinkIcon, MailIcon, WifiOffIcon } from "lucide-re
 import { Button } from "~/components/ui/button";
 import { useOnlineStatus } from "~/hooks/use-online-status";
 import { useOfflineQuotes } from "~/hooks/use-offline-documents";
+import { ListPageSkeleton } from "~/components/ui/skeleton";
+import { notify } from "~/components/ui/app-dialogs";
 
 export function QuotesList() {
   const isOnline = useOnlineStatus();
@@ -23,9 +25,7 @@ export function QuotesList() {
 
   if ((isLoading || !cacheLoaded) && !quotes) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <p className="text-muted-foreground">Loading quotes...</p>
-      </div>
+      <ListPageSkeleton label="Loading quotes" />
     );
   }
 
@@ -80,7 +80,7 @@ export function QuotesList() {
       });
 
       if (!emailContent) {
-        alert("Unable to generate email content for this quote.");
+        notify("Unable to generate email content for this quote.", "error");
         return;
       }
 
@@ -90,7 +90,7 @@ export function QuotesList() {
       window.open(mailtoLink, "_blank");
     } catch (error) {
       console.error("Failed to get email content:", error);
-      alert("Failed to generate email. Please try again.");
+      notify("Failed to generate email. Please try again.", "error");
     } finally {
       setSendingEmailFor(null);
     }
@@ -105,12 +105,12 @@ export function QuotesList() {
         </p>
       </div>
 
-      <div className="rounded-lg border bg-white">
+      <div className="rounded-lg border bg-card">
         <div className="divide-y">
           {quotes.map((quote) => (
             <div
               key={quote.id}
-              className="flex flex-col gap-3 p-4 hover:bg-gray-50 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
+              className="flex flex-col gap-3 p-4 hover:bg-accent sm:flex-row sm:items-center sm:justify-between sm:gap-4"
             >
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">

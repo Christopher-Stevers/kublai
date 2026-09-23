@@ -9,6 +9,7 @@ import { formatCents } from "~/lib/draws";
 import { api } from "~/trpc/react";
 
 import { DrawStatusBadge } from "./DrawStatusBadge";
+import { ListPageSkeleton } from "~/components/ui/skeleton";
 
 export function DrawsJobsList() {
   const isOnline = useOnlineStatus();
@@ -39,9 +40,7 @@ export function DrawsJobsList() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <p className="text-muted-foreground">Loading draws...</p>
-      </div>
+      <ListPageSkeleton label="Loading draws" />
     );
   }
 
@@ -72,13 +71,13 @@ export function DrawsJobsList() {
   return (
     <div className="space-y-4">
       {header}
-      <div className="rounded-lg border bg-white">
+      <div className="rounded-lg border bg-card">
         <div className="divide-y">
           {jobs.map((job) => (
             <Link
               key={job.id}
               href={`/dashboard/draws/${job.id}`}
-              className="flex items-center gap-3 p-4 hover:bg-gray-50"
+              className="flex items-center gap-3 p-4 hover:bg-accent"
             >
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">

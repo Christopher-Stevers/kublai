@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useUser, useClerk } from "@clerk/nextjs";
 import { api } from "~/trpc/react";
@@ -15,13 +16,23 @@ import {
 import { Button } from "~/components/ui/button";
 import {
   ArrowLeftIcon,
+  BookOpenIcon,
+  BriefcaseIcon,
+  Building2Icon,
   ChevronDownIcon,
   DownloadIcon,
+  FileTextIcon,
   MenuIcon,
+  ReceiptIcon,
+  ShieldIcon,
+  ShoppingCartIcon,
+  TruckIcon,
   UserIcon,
   SettingsIcon,
   XIcon,
+  type LucideIcon,
 } from "lucide-react";
+import { cn } from "~/lib/utils";
 import { APP_NAME } from "~/constants/app";
 import { useOnlineStatus } from "~/hooks/use-online-status";
 import {
@@ -83,28 +94,49 @@ function HeaderFrame({
     useState<BeforeInstallPromptEvent | null>(null);
   const [isInstalled, setIsInstalled] = useState(false);
   const [showRequestedBackButton, setShowRequestedBackButton] = useState(false);
-  const navLinks = [
+  const navLinks: { href: string; label: string; icon: LucideIcon }[] = [
     ...(tabAccess.dashboard
-      ? [{ href: "/dashboard", label: "Dashboard" }]
+      ? [{ href: "/dashboard", label: "Jobs", icon: BriefcaseIcon }]
       : []),
     ...(tabAccess.catalogue
-      ? [{ href: "/dashboard/catalogue", label: "Catalogue" }]
+      ? [{ href: "/dashboard/catalogue", label: "Catalogue", icon: BookOpenIcon }]
       : []),
     ...(tabAccess.suppliers
-      ? [{ href: "/dashboard/suppliers", label: "Suppliers" }]
+      ? [{ href: "/dashboard/suppliers", label: "Suppliers", icon: TruckIcon }]
       : []),
     ...(tabAccess.quotes
-      ? [{ href: "/dashboard/quotes", label: "Quotes" }]
+      ? [{ href: "/dashboard/quotes", label: "Quotes", icon: FileTextIcon }]
       : []),
     ...(tabAccess.orders
-      ? [{ href: "/dashboard/orders", label: "Orders" }]
+      ? [{ href: "/dashboard/orders", label: "Orders", icon: ShoppingCartIcon }]
       : []),
-    ...(tabAccess.draws ? [{ href: "/dashboard/draws", label: "Draws" }] : []),
+    ...(tabAccess.draws
+      ? [{ href: "/dashboard/draws", label: "Draws", icon: ReceiptIcon }]
+      : []),
     ...(tabAccess.organization
-      ? [{ href: "/dashboard/organization", label: "Organization" }]
+      ? [
+          {
+            href: "/dashboard/organization",
+            label: "Organization",
+            icon: Building2Icon,
+          },
+        ]
       : []),
-    ...(showAdmin ? [{ href: "/admin", label: "Admin" }] : []),
+    ...(showAdmin ? [{ href: "/admin", label: "Admin", icon: ShieldIcon }] : []),
   ];
+  // Phones get the most-used tabs in a bottom bar; the rest stay in the menu.
+  const bottomTabOrder = [
+    "/dashboard",
+    "/dashboard/catalogue",
+    "/dashboard/orders",
+    "/dashboard/draws",
+    "/dashboard/quotes",
+    "/dashboard/suppliers",
+  ];
+  const bottomTabs = bottomTabOrder
+    .map((href) => navLinks.find((link) => link.href === href))
+    .filter((link) => link !== undefined)
+    .slice(0, 4);
 
   const isActive = (href: string) => {
     if (href === "/dashboard") {
@@ -200,8 +232,8 @@ function HeaderFrame({
   };
 
   return (
-    <header className="sticky top-0 z-50 flex items-center justify-between border-b border-gray-200 bg-white px-4 py-3 sm:px-6 sm:py-4">
-      <div className="flex items-center gap-4 sm:gap-8">
+    <header className="sticky top-0 z-50 flex h-14 items-center justify-between border-b border-border bg-card px-3 sm:h-16 sm:px-6">
+      <div className="flex min-w-0 items-center gap-2 sm:gap-8">
         {showBackButton && (
           <Button
             variant="ghost"
@@ -216,21 +248,31 @@ function HeaderFrame({
         <button
           type="button"
           onClick={() => navigate("/dashboard")}
-          className="text-lg font-bold text-gray-900 sm:text-xl"
+          className="flex shrink-0 items-center gap-2 text-lg font-bold tracking-tight text-foreground"
         >
+          <Image
+            src="/foremanhq/favicon-32x32.png"
+            alt=""
+            width={28}
+            height={28}
+            className="rounded-md"
+            priority
+          />
           {APP_NAME}
         </button>
-        <nav className="hidden gap-6 lg:flex">
+        <nav className="hidden items-center gap-1 lg:flex">
           {navLinks.map((link) => (
             <button
               key={link.href}
               type="button"
               onClick={() => navigate(link.href)}
-              className={`text-sm font-medium transition-colors ${
+              aria-current={isActive(link.href) ? "page" : undefined}
+              className={cn(
+                "rounded-md px-3 py-2 text-sm font-medium transition-colors",
                 isActive(link.href)
-                  ? "text-gray-900 underline"
-                  : "text-gray-600 hover:text-gray-900"
-              }`}
+                  ? "bg-primary/10 text-primary"
+                  : "text-muted-foreground hover:bg-accent hover:text-foreground",
+              )}
             >
               {link.label}
             </button>
@@ -250,7 +292,7 @@ function HeaderFrame({
             <DropdownMenuLabel>
               <div className="flex items-center gap-3">
                 <UserIcon className="text-muted-foreground h-5 w-5" />
-                <span className="truncate text-sm text-gray-700">
+                <span className="truncate text-sm text-foreground/80">
                   {userEmail}
                 </span>
               </div>
@@ -304,10 +346,10 @@ function HeaderFrame({
             className="fixed inset-0 z-40 bg-black/50 lg:hidden"
             onClick={() => setMobileMenuOpen(false)}
           />
-          <div className="fixed inset-y-0 right-0 z-50 w-64 bg-white shadow-lg lg:hidden">
+          <div className="fixed inset-y-0 right-0 z-50 w-64 bg-card shadow-lg lg:hidden">
             <div className="flex h-full flex-col">
               <div className="flex items-center justify-between border-b px-4 py-4">
-                <span className="font-semibold text-gray-900">Menu</span>
+                <span className="font-semibold text-foreground">Menu</span>
                 <Button
                   variant="ghost"
                   size="icon"
@@ -327,12 +369,14 @@ function HeaderFrame({
                         setMobileMenuOpen(false);
                         navigate(link.href);
                       }}
-                      className={`block w-full rounded-md px-3 py-3 text-left text-base font-medium transition-colors ${
+                      className={cn(
+                        "flex w-full items-center gap-3 rounded-md px-3 py-3 text-left text-base font-medium transition-colors",
                         isActive(link.href)
-                          ? "bg-gray-100 text-gray-900"
-                          : "text-gray-700 hover:bg-gray-50 hover:text-gray-900"
-                      }`}
+                          ? "bg-primary/10 text-primary"
+                          : "text-foreground/80 hover:bg-accent hover:text-foreground",
+                      )}
                     >
+                      <link.icon className="h-5 w-5 shrink-0" />
                       {link.label}
                     </button>
                   ))}
@@ -341,7 +385,7 @@ function HeaderFrame({
               <div className="border-t px-4 py-4">
                 <div className="mb-3 flex items-center gap-3 rounded-md px-3 py-2">
                   <UserIcon className="text-muted-foreground h-5 w-5" />
-                  <span className="truncate text-sm text-gray-700">
+                  <span className="truncate text-sm text-foreground/80">
                     {userEmail}
                   </span>
                 </div>
@@ -353,7 +397,7 @@ function HeaderFrame({
                         setMobileMenuOpen(false);
                         navigate("/dashboard/account");
                       }}
-                      className="block w-full rounded-md px-3 py-2 text-left text-base font-medium text-gray-700 transition-colors hover:bg-gray-50 hover:text-gray-900"
+                      className="block w-full rounded-md px-3 py-2 text-left text-base font-medium text-foreground/80 transition-colors hover:bg-accent hover:text-foreground"
                     >
                       Manage Account
                     </button>
@@ -364,7 +408,7 @@ function HeaderFrame({
                       setMobileMenuOpen(false);
                       navigate("/dashboard/account/settings");
                     }}
-                    className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium text-gray-700 hover:bg-gray-50"
+                    className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium text-foreground/80 hover:bg-accent"
                   >
                     <SettingsIcon className="h-4 w-4" /> Settings
                   </button>
@@ -375,7 +419,7 @@ function HeaderFrame({
                       void handleInstallApp();
                     }}
                     disabled={isInstalled}
-                    className="block w-full rounded-md px-3 py-2 text-left text-base font-medium text-gray-700 transition-colors hover:bg-gray-50 hover:text-gray-900 disabled:text-gray-400"
+                    className="block w-full rounded-md px-3 py-2 text-left text-base font-medium text-foreground/80 transition-colors hover:bg-accent hover:text-foreground disabled:text-muted-foreground/70"
                   >
                     {isInstalled ? "App Installed" : "Install App"}
                   </button>
@@ -385,7 +429,7 @@ function HeaderFrame({
                         setMobileMenuOpen(false);
                         void handleSignOut();
                       }}
-                      className="block w-full rounded-md px-3 py-2 text-left text-base font-medium text-gray-700 transition-colors hover:bg-gray-50 hover:text-gray-900"
+                      className="block w-full rounded-md px-3 py-2 text-left text-base font-medium text-foreground/80 transition-colors hover:bg-accent hover:text-foreground"
                     >
                       Sign out
                     </button>
@@ -395,6 +439,54 @@ function HeaderFrame({
             </div>
           </div>
         </>
+      )}
+
+      {!showBackButton && bottomTabs.length > 1 && (
+        <nav
+          data-bottom-nav
+          aria-label="Main"
+          className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card/95 pb-[env(safe-area-inset-bottom)] backdrop-blur supports-[backdrop-filter]:bg-card/85 lg:hidden"
+        >
+          <div className="mx-auto flex max-w-lg">
+            {bottomTabs.map((link) => {
+              const active = isActive(link.href);
+              return (
+                <button
+                  key={link.href}
+                  type="button"
+                  onClick={() => navigate(link.href)}
+                  aria-current={active ? "page" : undefined}
+                  className={cn(
+                    "flex h-16 flex-1 flex-col items-center justify-center gap-1 text-[11px] font-medium transition-colors",
+                    active
+                      ? "text-primary"
+                      : "text-muted-foreground active:text-foreground",
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "flex h-7 w-12 items-center justify-center rounded-full transition-colors",
+                      active && "bg-primary/10",
+                    )}
+                  >
+                    <link.icon className="h-5 w-5" />
+                  </span>
+                  {link.label}
+                </button>
+              );
+            })}
+            <button
+              type="button"
+              onClick={() => setMobileMenuOpen(true)}
+              className="text-muted-foreground active:text-foreground flex h-16 flex-1 flex-col items-center justify-center gap-1 text-[11px] font-medium"
+            >
+              <span className="flex h-7 w-12 items-center justify-center rounded-full">
+                <MenuIcon className="h-5 w-5" />
+              </span>
+              More
+            </button>
+          </div>
+        </nav>
       )}
     </header>
   );

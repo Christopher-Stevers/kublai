@@ -1083,7 +1083,7 @@ export function AddPartDialog({
 
           {/* Pending Parts Tray */}
           {pendingParts.length > 0 && wizardStage !== "review" && (
-            <div className="shrink-0 border-t bg-gray-50">
+            <div className="shrink-0 border-t bg-muted/50">
               <div className="flex w-full items-center justify-between gap-2 px-2 py-3 text-left sm:px-4 sm:py-4 md:px-6">
                 <button
                   type="button"
@@ -1094,9 +1094,9 @@ export function AddPartDialog({
                     Pending Parts ({pendingParts.length})
                   </div>
                   {isPendingTrayOpen ? (
-                    <ChevronDown className="h-4 w-4 shrink-0 text-gray-500" />
+                    <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
                   ) : (
-                    <ChevronUp className="h-4 w-4 shrink-0 text-gray-500" />
+                    <ChevronUp className="h-4 w-4 shrink-0 text-muted-foreground" />
                   )}
                 </button>
                 <Button
@@ -1121,7 +1121,7 @@ export function AddPartDialog({
                       {pendingParts.map((pendingPart) => (
                         <div
                           key={pendingPart.partId}
-                          className="flex items-center gap-2 rounded border bg-white p-1.5 text-xs sm:p-2 sm:text-sm"
+                          className="flex items-center gap-2 rounded border bg-card p-1.5 text-xs sm:p-2 sm:text-sm"
                         >
                           <div className="min-w-0 flex-1 truncate">
                             {pendingPart.partDefinition.displayName}
@@ -1173,7 +1173,7 @@ export function AddPartDialog({
             <DialogFooter className="shrink-0 border-t px-2 py-3 sm:px-4 sm:py-4 md:px-6">
               <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="text-left sm:text-right">
-                  <p className="text-xs text-gray-600 sm:text-sm">
+                  <p className="text-xs text-muted-foreground sm:text-sm">
                     Review Total
                   </p>
                   <p className="text-lg font-semibold sm:text-xl">

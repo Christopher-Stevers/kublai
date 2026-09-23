@@ -66,7 +66,7 @@ export function WizardHeader({
         <div className="flex w-full flex-wrap gap-1.5 sm:gap-2 xl:w-auto xl:max-w-[26rem] xl:min-w-[22rem] xl:justify-end">
           {!hideSearch && onSearchChange && (
             <div className="relative min-w-[min(100%,14rem)] flex-1 xl:min-w-0 xl:flex-[1_1_14rem]">
-              <Search className="absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <Search className="absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2 text-muted-foreground/70" />
               <Input
                 value={searchQuery}
                 onChange={(e) => onSearchChange(e.target.value)}

@@ -25,6 +25,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "~/components/ui/dialog";
+import { confirmAction } from "~/components/ui/app-dialogs";
 
 type PhotoQueueDialogProps = {
   open: boolean;
@@ -91,7 +92,13 @@ function PhotoLibrary() {
   };
 
   const handleDelete = async (assetId: string) => {
-    if (!window.confirm("Permanently delete this unused photo asset?")) return;
+    const confirmed = await confirmAction({
+      title: "Delete this photo?",
+      description: "This unused photo asset will be permanently deleted.",
+      confirmLabel: "Delete photo",
+      destructive: true,
+    });
+    if (!confirmed) return;
     try {
       setError(null);
       await deleteAsset.mutateAsync({ assetId });
@@ -118,9 +125,9 @@ function PhotoLibrary() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-2 rounded-xl border bg-white p-3 sm:flex-row">
+      <div className="flex flex-col gap-2 rounded-xl border bg-card p-3 sm:flex-row">
         <div className="relative min-w-0 flex-1">
-          <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground/70" />
           <Input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
@@ -183,11 +190,11 @@ function PhotoLibrary() {
       )}
 
       {isLoading ? (
-        <div className="rounded-xl border bg-white p-6 text-sm text-gray-600">
+        <div className="rounded-xl border bg-card p-6 text-sm text-muted-foreground">
           Loading photo assets...
         </div>
       ) : assets.length === 0 ? (
-        <div className="rounded-xl border bg-white p-8 text-center text-sm text-gray-600">
+        <div className="rounded-xl border bg-card p-8 text-center text-sm text-muted-foreground">
           No photo assets match these filters.
         </div>
       ) : (
@@ -195,11 +202,11 @@ function PhotoLibrary() {
           {assets.map((asset) => (
             <article
               key={asset.id}
-              className={`overflow-hidden rounded-xl border bg-white ${
+              className={`overflow-hidden rounded-xl border bg-card ${
                 replacementSourceId === asset.id ? "ring-2 ring-amber-500" : ""
               }`}
             >
-              <div className="relative aspect-square bg-gray-50">
+              <div className="relative aspect-square bg-muted/50">
                 <Image
                   src={asset.url}
                   alt={asset.originalFilename ?? "Catalogue photo"}
@@ -210,13 +217,13 @@ function PhotoLibrary() {
               </div>
               <div className="space-y-2 p-3">
                 <div
-                  className="truncate text-xs font-medium text-gray-900"
+                  className="truncate text-xs font-medium text-foreground"
                   title={asset.originalFilename ?? asset.url}
                 >
                   {asset.originalFilename ?? asset.storageKey}
                 </div>
-                <div className="flex flex-wrap gap-1 text-[11px] text-gray-600">
-                  <span className="rounded bg-gray-100 px-1.5 py-0.5">
+                <div className="flex flex-wrap gap-1 text-[11px] text-muted-foreground">
+                  <span className="rounded bg-muted px-1.5 py-0.5">
                     {asset.usageCount} uses
                   </span>
                   {asset.duplicateCount > 1 && (
@@ -225,7 +232,7 @@ function PhotoLibrary() {
                     </span>
                   )}
                   {asset.byteSize && (
-                    <span className="rounded bg-gray-100 px-1.5 py-0.5">
+                    <span className="rounded bg-muted px-1.5 py-0.5">
                       {(asset.byteSize / 1024).toFixed(0)} KB
                     </span>
                   )}
@@ -472,37 +479,37 @@ export function PhotoQueueDialog({
           </div>
         </DialogHeader>
 
-        <div className="min-h-0 flex-1 overflow-y-auto bg-gray-50 p-3 sm:p-6">
+        <div className="min-h-0 flex-1 overflow-y-auto bg-muted/50 p-3 sm:p-6">
           {activeTab === "library" ? (
             <PhotoLibrary />
           ) : isLoading ? (
-            <div className="rounded-xl border bg-white p-6 text-sm text-gray-600">
+            <div className="rounded-xl border bg-card p-6 text-sm text-muted-foreground">
               Grouping missing photos...
             </div>
           ) : !currentGroup ? (
-            <div className="flex min-h-72 flex-col items-center justify-center rounded-xl border bg-white p-8 text-center">
+            <div className="flex min-h-72 flex-col items-center justify-center rounded-xl border bg-card p-8 text-center">
               <Check className="mb-3 h-10 w-10 text-green-600" />
-              <h2 className="text-lg font-semibold text-gray-900">
+              <h2 className="text-lg font-semibold text-foreground">
                 Queue complete
               </h2>
-              <p className="mt-1 max-w-md text-sm text-gray-600">
+              <p className="mt-1 max-w-md text-sm text-muted-foreground">
                 Every visible family has a photo or was skipped for this
                 session.
               </p>
             </div>
           ) : (
             <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
-              <section className="space-y-4 rounded-xl border bg-white p-4">
+              <section className="space-y-4 rounded-xl border bg-card p-4">
                 <div>
-                  <div className="text-xs font-semibold tracking-wide text-gray-500 uppercase">
+                  <div className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
                     {currentGroup.catalogName} ·{" "}
                     {currentGroup.materialName ?? "No material"} ·{" "}
                     {currentGroup.categoryName ?? "No category"}
                   </div>
-                  <h2 className="mt-1 text-xl font-bold text-gray-950">
+                  <h2 className="mt-1 text-xl font-bold text-foreground">
                     {currentGroup.familyLabel}
                   </h2>
-                  <p className="mt-1 text-sm text-gray-600">
+                  <p className="mt-1 text-sm text-muted-foreground">
                     Review the {currentGroup.parts.length} matching parts before
                     sharing one photo.
                   </p>
@@ -512,7 +519,7 @@ export function PhotoQueueDialog({
                   {currentGroup.parts.map((part) => (
                     <label
                       key={part.id}
-                      className="flex cursor-pointer items-start gap-3 rounded-lg border p-3 hover:bg-gray-50"
+                      className="flex cursor-pointer items-start gap-3 rounded-lg border p-3 hover:bg-accent"
                     >
                       <input
                         type="checkbox"
@@ -522,10 +529,10 @@ export function PhotoQueueDialog({
                         onChange={() => togglePart(part.id)}
                       />
                       <span className="min-w-0">
-                        <span className="block text-sm font-medium text-gray-900">
+                        <span className="block text-sm font-medium text-foreground">
                           {part.displayName}
                         </span>
-                        <span className="block text-xs text-gray-500">
+                        <span className="block text-xs text-muted-foreground">
                           {[part.size, part.description]
                             .filter(Boolean)
                             .join(" · ")}
@@ -536,8 +543,8 @@ export function PhotoQueueDialog({
                 </div>
               </section>
 
-              <aside className="space-y-3 rounded-xl border bg-white p-4">
-                <div className="relative flex aspect-square items-center justify-center overflow-hidden rounded-xl border bg-gray-50">
+              <aside className="space-y-3 rounded-xl border bg-card p-4">
+                <div className="relative flex aspect-square items-center justify-center overflow-hidden rounded-xl border bg-muted/50">
                   {imageUrl ? (
                     <Image
                       src={imageUrl}
@@ -640,7 +647,7 @@ export function PhotoQueueDialog({
         </div>
 
         {activeTab === "queue" && (
-          <div className="shrink-0 border-t bg-white px-4 py-3 text-xs text-gray-600 sm:px-6">
+          <div className="shrink-0 border-t bg-card px-4 py-3 text-xs text-muted-foreground sm:px-6">
             {groups.length} families remaining · {visiblePartCount} parts still
             visible in this session
           </div>

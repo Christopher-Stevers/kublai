@@ -25,7 +25,7 @@ export function MaterialListActions({
     <div className="mx-auto max-w-6xl space-y-1.5">
       {!onNotes && (
         <div className="flex items-baseline gap-1.5">
-          <span className="text-base text-gray-600 sm:text-lg">
+          <span className="text-base text-muted-foreground sm:text-lg">
             Material Total
           </span>
           <span className="text-base font-bold sm:text-lg">

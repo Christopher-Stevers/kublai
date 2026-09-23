@@ -101,11 +101,11 @@ function VerifyQuantityColumn({
   value: string | number | null | undefined;
 }) {
   return (
-    <div className="flex min-w-0 flex-col items-center justify-center rounded-lg bg-gray-50 px-1.5 py-1.5 text-center">
-      <span className="min-w-0 text-[8px] leading-tight font-medium tracking-tighter text-gray-500 uppercase">
+    <div className="flex min-w-0 flex-col items-center justify-center rounded-lg bg-muted/50 px-1.5 py-1.5 text-center">
+      <span className="min-w-0 text-[8px] leading-tight font-medium tracking-tighter text-muted-foreground uppercase">
         {label}
       </span>
-      <span className="mt-0.5 text-sm leading-none font-semibold text-gray-900 tabular-nums">
+      <span className="mt-0.5 text-sm leading-none font-semibold text-foreground tabular-nums">
         {formatQuantityDisplay(value)}
       </span>
     </div>
@@ -161,7 +161,7 @@ function InitialsSyncBadge({
       title={`Added by ${displayName} • ${statusLabel}`}
       aria-label={`Added by ${displayName}. ${statusLabel}.`}
     >
-      <div className="relative flex h-9 w-9 items-center justify-center rounded-full border border-white/80 bg-white/95 text-xs font-semibold text-gray-800 shadow-sm ring-1 ring-black/10 backdrop-blur dark:border-border dark:bg-card/95 dark:text-foreground dark:ring-black/40">
+      <div className="relative flex h-9 w-9 items-center justify-center rounded-full border border-white/80 bg-white/95 text-xs font-semibold text-foreground shadow-sm ring-1 ring-black/10 backdrop-blur dark:border-border dark:bg-card/95 dark:text-foreground dark:ring-black/40">
         {initials}
         <span
           className={cn(
@@ -654,7 +654,7 @@ function MaterialListItemComponent({
         <div className="flex h-full w-full flex-col px-3 pt-3 pb-2">
           <InitialsSyncBadge user={item.addedBy} status={itemSyncStatus} />
           <div
-            className="relative mb-3 aspect-square w-full overflow-hidden rounded-xl bg-gray-100"
+            className="relative mb-3 aspect-square w-full overflow-hidden rounded-xl bg-muted"
             style={
               verifyMode
                 ? {
@@ -743,7 +743,7 @@ function MaterialListItemComponent({
             </div>
           )}
 
-          <div className="flex items-start justify-center text-center text-black">
+          <div className="flex items-start justify-center text-center text-foreground">
             <h3 className="line-clamp-4 text-sm font-medium leading-snug">
               {partName}
             </h3>
@@ -752,7 +752,7 @@ function MaterialListItemComponent({
           {!verifyMode && (
             <div className="mt-auto flex flex-col gap-1 pt-2">
               <div className="flex min-h-10 items-center gap-1 px-0 py-1">
-                <span className="shrink-0 text-[9px] font-medium tracking-tighter text-gray-400 uppercase">
+                <span className="shrink-0 text-[9px] font-medium tracking-tighter text-muted-foreground/70 uppercase">
                   Quantity
                 </span>
                 <QuantityControls
@@ -765,7 +765,7 @@ function MaterialListItemComponent({
               </div>
 
               <div className="flex min-h-10 items-center gap-1 px-0 py-1">
-                <span className="shrink-0 text-[9px] font-medium tracking-tighter text-gray-400 uppercase">
+                <span className="shrink-0 text-[9px] font-medium tracking-tighter text-muted-foreground/70 uppercase">
                   Supplier
                 </span>
                 <SupplierSelector
@@ -780,16 +780,16 @@ function MaterialListItemComponent({
               </div>
 
               <div className="grid min-h-10 min-w-0 grid-cols-[3rem_minmax(0,1fr)_2rem] items-center gap-0.5 px-1">
-                <span className="text-[10px] font-medium tracking-wide text-gray-400 uppercase">
+                <span className="text-[10px] font-medium tracking-wide text-muted-foreground/70 uppercase">
                   Total
                 </span>
-                <span className="min-w-0 truncate text-right text-sm font-semibold text-gray-900 tabular-nums sm:text-base">
+                <span className="min-w-0 truncate text-right text-sm font-semibold text-foreground tabular-nums sm:text-base">
                   ${lineTotal.toFixed(2)}
                 </span>
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-8 w-8 p-0 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600"
+                  className="h-8 w-8 p-0 text-muted-foreground/70 transition-colors hover:bg-red-50 hover:text-red-600"
                   onClick={handleRemove}
                   aria-label="Remove item"
                 >

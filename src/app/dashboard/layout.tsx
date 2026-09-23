@@ -64,7 +64,8 @@ export default async function DashboardLayout({
 
   return (
     <HydrateClient>
-      <div className="flex min-h-screen flex-col bg-gray-50">
+      {/* Reserve room for the phone bottom tab bar whenever it is shown. */}
+      <div className="flex min-h-screen flex-col bg-muted/50 has-[[data-bottom-nav]]:pb-[calc(4rem+env(safe-area-inset-bottom))] lg:has-[[data-bottom-nav]]:pb-0">
         <ReplicacheSyncBootstrap />
         <Header />
         <TabAccessGate />

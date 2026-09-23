@@ -422,7 +422,7 @@ export function JobRoomsView({ jobId }: { jobId: string }) {
       <div className="space-y-4">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <h2 className="text-xl font-semibold text-gray-900">
+            <h2 className="text-xl font-semibold text-foreground">
               {selectedRoom.name}
             </h2>
             <p className="text-muted-foreground text-sm">
@@ -435,7 +435,7 @@ export function JobRoomsView({ jobId }: { jobId: string }) {
         </div>
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
-            <DoorOpenIcon className="mb-4 h-12 w-12 text-gray-400" />
+            <DoorOpenIcon className="mb-4 h-12 w-12 text-muted-foreground/70" />
             <h3 className="mb-2 text-lg font-semibold">Room options</h3>
             <p className="text-muted-foreground text-center">
               Options for this room will go here next.
@@ -452,7 +452,7 @@ export function JobRoomsView({ jobId }: { jobId: string }) {
       <>
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-xl font-semibold text-gray-900">Rooms</h2>
+          <h2 className="text-xl font-semibold text-foreground">Rooms</h2>
           <p className="text-muted-foreground mt-1 text-sm">
             {canManage
               ? "Upload drawings (up to 100 pages, 100 MB per PDF). Review each sheet, then rooms are detected on the ones you keep."
@@ -509,13 +509,13 @@ export function JobRoomsView({ jobId }: { jobId: string }) {
                 <div
                   key={sheet.id}
                   className={`overflow-hidden rounded-lg border ${
-                    keep ? "border-blue-500" : "border-gray-200 opacity-60"
+                    keep ? "border-blue-500" : "border-border opacity-60"
                   }`}
                 >
                   <img
                     src={sheet.imageUrl}
                     alt={sheet.name}
-                    className="h-40 w-full bg-gray-100 object-contain"
+                    className="h-40 w-full bg-muted object-contain"
                   />
                   <div className="flex items-center justify-between gap-2 p-3">
                     <span className="text-sm font-medium">{sheet.name}</span>
@@ -567,7 +567,7 @@ export function JobRoomsView({ jobId }: { jobId: string }) {
       {floors.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
-            <DoorOpenIcon className="mb-4 h-12 w-12 text-gray-400" />
+            <DoorOpenIcon className="mb-4 h-12 w-12 text-muted-foreground/70" />
             <h3 className="mb-2 text-lg font-semibold">No rooms yet</h3>
             <p className="text-muted-foreground text-center">
               {canManage
@@ -618,7 +618,7 @@ export function JobRoomsView({ jobId }: { jobId: string }) {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="space-y-2 text-sm text-gray-600">
+                <div className="space-y-2 text-sm text-muted-foreground">
                   <div className="flex items-center gap-2">
                     <DoorOpenIcon className="h-4 w-4" />
                     <span>
@@ -663,7 +663,7 @@ export function JobRoomsView({ jobId }: { jobId: string }) {
                           aria-label="Floor name"
                         />
                       ) : (
-                        <div className="text-lg font-semibold text-gray-900">
+                        <div className="text-lg font-semibold text-foreground">
                           {selectedFloor.name}
                         </div>
                       )}
@@ -969,7 +969,7 @@ export function JobRoomsView({ jobId }: { jobId: string }) {
               </div>
 
               {selectedFloor.rooms.length > 0 ? (
-                <div className="shrink-0 border-t bg-gray-50">
+                <div className="shrink-0 border-t bg-muted/50">
                   <button
                     type="button"
                     onClick={() => setIsRoomListOpen((open) => !open)}
@@ -979,9 +979,9 @@ export function JobRoomsView({ jobId }: { jobId: string }) {
                       Units highlighted ({selectedFloor.rooms.length})
                     </div>
                     {isRoomListOpen ? (
-                      <ChevronDown className="h-4 w-4 shrink-0 text-gray-500" />
+                      <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
                     ) : (
-                      <ChevronUp className="h-4 w-4 shrink-0 text-gray-500" />
+                      <ChevronUp className="h-4 w-4 shrink-0 text-muted-foreground" />
                     )}
                   </button>
                   <div
@@ -998,7 +998,7 @@ export function JobRoomsView({ jobId }: { jobId: string }) {
                               <button
                                 key={room.id}
                                 type="button"
-                                className="flex items-center gap-2 rounded px-1 py-0.5 text-left text-sm hover:bg-white"
+                                className="flex items-center gap-2 rounded px-1 py-0.5 text-left text-sm hover:bg-card"
                                 onClick={() => {
                                   if (editMode) {
                                     setSelectedRoomId(null);

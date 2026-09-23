@@ -521,7 +521,7 @@ export function OrdersPreviewSheet({
 
           {possibleOrders.length > 0 && (
             <div className="space-y-3">
-              <h3 className="text-sm font-semibold text-gray-700">
+              <h3 className="text-sm font-semibold text-foreground/80">
                 Possible Orders ({possibleOrders.length})
               </h3>
               {possibleOrders.map((order) =>
@@ -532,7 +532,7 @@ export function OrdersPreviewSheet({
 
           {sentOrders.length > 0 && (
             <div className="space-y-3">
-              <h3 className="text-sm font-semibold text-gray-700">
+              <h3 className="text-sm font-semibold text-foreground/80">
                 Already Sent ({sentOrders.length})
               </h3>
               {sentOrders.map((order) =>

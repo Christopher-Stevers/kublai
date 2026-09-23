@@ -47,11 +47,11 @@ export default function OnboardingPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-6 py-12">
+    <div className="flex min-h-screen items-center justify-center bg-muted/50 px-6 py-12">
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle className="text-2xl">Welcome! Let's get started</CardTitle>
-          <p className="mt-2 text-sm text-gray-600">
+          <p className="mt-2 text-sm text-muted-foreground">
             Create your organization to begin using Kublai. This will set up
             your workspace with a default pricing profile.
           </p>
@@ -61,7 +61,7 @@ export default function OnboardingPage() {
             <div>
               <label
                 htmlFor="orgName"
-                className="mb-2 block text-sm font-medium text-gray-700"
+                className="mb-2 block text-sm font-medium text-foreground/80"
               >
                 Organization Name
               </label>

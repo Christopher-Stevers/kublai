@@ -142,7 +142,7 @@ export function AssistancePanel() {
     <div className="mx-auto max-w-6xl space-y-6 px-4 py-6 sm:px-6">
       <div>
         <h1 className="text-2xl font-bold">AI assistance</h1>
-        <p className="mt-2 text-gray-600">
+        <p className="mt-2 text-muted-foreground">
           Find matches and review uncertain records. You stay in control of
           every change.
         </p>
@@ -181,10 +181,10 @@ export function AssistancePanel() {
             aria-pressed={mode === item.id}
             disabled={run.isPending}
             onClick={() => changeMode(item.id)}
-            className={`rounded-lg border p-4 text-left disabled:opacity-50 ${mode === item.id ? "border-blue-600 bg-blue-50 ring-1 ring-blue-600" : "bg-white hover:bg-gray-50"}`}
+            className={`rounded-lg border p-4 text-left disabled:opacity-50 ${mode === item.id ? "border-blue-600 bg-blue-50 ring-1 ring-blue-600" : "bg-card hover:bg-accent"}`}
           >
             <span className="block font-semibold">{item.title}</span>
-            <span className="mt-1 block text-sm text-gray-600">
+            <span className="mt-1 block text-sm text-muted-foreground">
               {item.detail}
             </span>
           </button>
@@ -200,7 +200,7 @@ export function AssistancePanel() {
         <p>Select one of the tools above to continue.</p>
       )}
       {allowed && (
-        <section className="space-y-4 rounded-lg border bg-white p-4 sm:p-6">
+        <section className="space-y-4 rounded-lg border bg-card p-4 sm:p-6">
           <h2 className="text-lg font-semibold">
             {modes.find((item) => item.id === mode)?.title}
           </h2>
@@ -233,7 +233,7 @@ export function AssistancePanel() {
                     : "Product"}
               </span>
               <select
-                className="min-h-11 w-full rounded-md border bg-white p-2"
+                className="min-h-11 w-full rounded-md border bg-card p-2"
                 value={id}
                 disabled={run.isPending || sources.isLoading}
                 onChange={(event) => {
@@ -251,7 +251,7 @@ export function AssistancePanel() {
                   </option>
                 ))}
               </select>
-              <span className="block text-xs text-gray-500">
+              <span className="block text-xs text-muted-foreground">
                 Showing up to 50 records. Search to narrow the list.
               </span>
             </label>
@@ -267,7 +267,7 @@ export function AssistancePanel() {
               </button>
             </p>
           )}
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-muted-foreground">
             Running a check sends the selected product or drawing information to
             TypeSafe. Suggestions do not change your records.
           </p>
@@ -300,7 +300,7 @@ export function AssistancePanel() {
               <h2 className="text-lg font-semibold">
                 {pendingReview} need closer review
               </h2>
-              <p className="text-sm text-gray-600">{note}</p>
+              <p className="text-sm text-muted-foreground">{note}</p>
             </div>
             <label className="flex items-center gap-2 text-sm">
               <input
@@ -312,7 +312,7 @@ export function AssistancePanel() {
             </label>
           </div>
           {!display.length && (
-            <p className="rounded-lg border bg-white p-4">
+            <p className="rounded-lg border bg-card p-4">
               {results.length
                 ? "No results match this filter."
                 : "No suggestions for this selection."}
@@ -321,7 +321,7 @@ export function AssistancePanel() {
           {display.map((result) => (
             <article
               key={result.id}
-              className={`space-y-3 rounded-lg border bg-white p-4 ${reviewed.has(result.id) ? "opacity-60" : ""}`}
+              className={`space-y-3 rounded-lg border bg-card p-4 ${reviewed.has(result.id) ? "opacity-60" : ""}`}
             >
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <h3 className="font-semibold">{result.title}</h3>
@@ -336,8 +336,8 @@ export function AssistancePanel() {
                 </span>
               </div>
               <p>{result.outcome}</p>
-              <p className="text-sm text-gray-600">{result.reason}</p>
-              <p className="text-xs text-gray-500">
+              <p className="text-sm text-muted-foreground">{result.reason}</p>
+              <p className="text-xs text-muted-foreground">
                 Model confidence: {Math.round(result.confidence * 100)}% ·
                 Selected option probability:{" "}
                 {Math.round(result.probability * 100)}%. These are model
@@ -386,7 +386,7 @@ export function AssistancePanel() {
               Check next 20 records
             </Button>
           )}
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-muted-foreground">
             Review marks last for this visit. Changes are made through the
             source record’s normal editing controls.
           </p>

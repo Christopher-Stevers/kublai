@@ -10,11 +10,11 @@ export default function Home() {
   const [heroImageError, setHeroImageError] = useState(false);
 
   return (
-    <div className="flex min-h-screen flex-col bg-white">
+    <div className="flex min-h-screen flex-col bg-card">
       <MarketingHeader />
 
       {/* Hero Section */}
-      <section className="relative mt-20 flex min-h-[85vh] items-center justify-center overflow-hidden bg-white px-6 py-16 sm:py-24">
+      <section className="relative mt-20 flex min-h-[85vh] items-center justify-center overflow-hidden bg-card px-6 py-16 sm:py-24">
         {/* Texture Background */}
         <div
           className="absolute inset-0 opacity-[0.03]"
@@ -28,10 +28,10 @@ export default function Home() {
           <div className="grid gap-12 lg:grid-cols-2 lg:items-center lg:gap-16">
             {/* Left: Text Content */}
             <div className="text-center lg:text-left">
-              <h1 className="mb-6 text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl md:text-6xl">
+              <h1 className="mb-6 text-4xl font-bold tracking-tight text-foreground sm:text-5xl md:text-6xl">
                 Order plumbing materials in seconds.
               </h1>
-              <p className="mb-8 text-lg text-gray-600 sm:text-xl">
+              <p className="mb-8 text-lg text-muted-foreground sm:text-xl">
                 Search parts. Build orders. Send to your supplier.
                 <br />
                 <span className="font-medium">
@@ -63,7 +63,7 @@ export default function Home() {
               <div className="absolute inset-0 z-10 bg-blue-600/12" />
 
               {/* Image container with filters */}
-              <div className="relative h-full w-full bg-gray-100">
+              <div className="relative h-full w-full bg-muted">
                 {!heroImageError ? (
                   <Image
                     src="/images/hero-plumber-jobsite.png"
@@ -78,7 +78,7 @@ export default function Home() {
                     sizes="(max-width: 768px) 100vw, 50vw"
                   />
                 ) : (
-                  <div className="flex h-full items-center justify-center text-gray-400">
+                  <div className="flex h-full items-center justify-center text-muted-foreground/70">
                     <svg
                       className="h-24 w-24"
                       fill="none"
@@ -101,7 +101,7 @@ export default function Home() {
       </section>
 
       {/* Value Props Section */}
-      <section className="border-t border-gray-200 bg-white px-6 py-16 sm:py-24">
+      <section className="border-t border-border bg-card px-6 py-16 sm:py-24">
         <div className="mx-auto w-full max-w-[1100px]">
           <div className="grid gap-8 sm:grid-cols-3">
             {/* Fast Ordering */}
@@ -123,10 +123,10 @@ export default function Home() {
                   </svg>
                 </div>
               </div>
-              <h3 className="mb-2 text-xl font-semibold text-gray-900">
+              <h3 className="mb-2 text-xl font-semibold text-foreground">
                 Fast Ordering
               </h3>
-              <p className="text-gray-600">
+              <p className="text-muted-foreground">
                 Find parts by type, size, and material.
               </p>
             </div>
@@ -150,10 +150,10 @@ export default function Home() {
                   </svg>
                 </div>
               </div>
-              <h3 className="mb-2 text-xl font-semibold text-gray-900">
+              <h3 className="mb-2 text-xl font-semibold text-foreground">
                 Supplier-Aware
               </h3>
-              <p className="text-gray-600">
+              <p className="text-muted-foreground">
                 Each job can use a different supplier.
               </p>
             </div>
@@ -177,10 +177,10 @@ export default function Home() {
                   </svg>
                 </div>
               </div>
-              <h3 className="mb-2 text-xl font-semibold text-gray-900">
+              <h3 className="mb-2 text-xl font-semibold text-foreground">
                 Built for the Field
               </h3>
-              <p className="text-gray-600">Works on your phone, one-handed.</p>
+              <p className="text-muted-foreground">Works on your phone, one-handed.</p>
             </div>
           </div>
         </div>
@@ -189,10 +189,10 @@ export default function Home() {
       {/* How It Works Section */}
       <section
         id="how-it-works"
-        className="border-t border-gray-200 bg-gray-50 px-6 py-16 sm:py-24"
+        className="border-t border-border bg-muted/50 px-6 py-16 sm:py-24"
       >
         <div className="mx-auto w-full max-w-[1100px]">
-          <h2 className="mb-12 text-center text-3xl font-bold text-gray-900 sm:text-4xl">
+          <h2 className="mb-12 text-center text-3xl font-bold text-foreground sm:text-4xl">
             How It Works
           </h2>
           <div className="grid gap-6 sm:grid-cols-3">
@@ -200,28 +200,28 @@ export default function Home() {
               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-600 text-base font-bold text-white">
                 1
               </div>
-              <p className="text-lg text-gray-900">Search parts</p>
+              <p className="text-lg text-foreground">Search parts</p>
             </div>
             <div className="flex gap-4">
               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-600 text-base font-bold text-white">
                 2
               </div>
-              <p className="text-lg text-gray-900">Add quantities</p>
+              <p className="text-lg text-foreground">Add quantities</p>
             </div>
             <div className="flex gap-4">
               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-600 text-base font-bold text-white">
                 3
               </div>
-              <p className="text-lg text-gray-900">Send order</p>
+              <p className="text-lg text-foreground">Send order</p>
             </div>
           </div>
         </div>
       </section>
 
       {/* Bottom CTA Section */}
-      <section className="border-t border-gray-200 bg-white px-6 py-16 sm:py-24">
+      <section className="border-t border-border bg-card px-6 py-16 sm:py-24">
         <div className="mx-auto w-full max-w-[1100px] text-center">
-          <h2 className="mb-4 text-3xl font-bold text-gray-900 sm:text-4xl">
+          <h2 className="mb-4 text-3xl font-bold text-foreground sm:text-4xl">
             Stop texting part lists.
             <br />
             Start ordering quickly.
@@ -239,8 +239,8 @@ export default function Home() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-gray-200 bg-white px-6 py-12">
-        <div className="mx-auto w-full max-w-[1100px] text-center text-sm text-gray-600">
+      <footer className="border-t border-border bg-card px-6 py-12">
+        <div className="mx-auto w-full max-w-[1100px] text-center text-sm text-muted-foreground">
           © {new Date().getFullYear()} ForemanHQ. All rights reserved.
         </div>
       </footer>

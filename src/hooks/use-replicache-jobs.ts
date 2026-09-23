@@ -88,7 +88,9 @@ type ListDetail = {
   isLoading: boolean;
 };
 type WorkspaceIndex = {
-  jobs: Array<ReplicacheJob & { materialListCount: number }>;
+  jobs: Array<
+    ReplicacheJob & { materialListCount: number; lastActivityAt: string }
+  >;
   details: Record<
     string,
     { job: ReplicacheJob; materialLists: ReplicacheMaterialListSummary[] }
@@ -160,7 +162,17 @@ export function indexWorkspaceRecords(
     materialLists.sort(
       (a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt),
     );
-    result.jobs.push({ ...job, materialListCount: materialLists.length });
+    // Most recent change to the job or any of its material lists.
+    const lastActivityAt = materialLists.reduce(
+      (latest, list) =>
+        Date.parse(list.updatedAt) > Date.parse(latest) ? list.updatedAt : latest,
+      job.createdAt,
+    );
+    result.jobs.push({
+      ...job,
+      materialListCount: materialLists.length,
+      lastActivityAt,
+    });
     result.details[job.id] = { job, materialLists };
   }
   result.jobs.sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));

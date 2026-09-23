@@ -1039,8 +1039,8 @@ export function PartDetailsDialog({
           </DialogHeader>
 
           <div className="min-w-0 space-y-4 py-4">
-            <div className="rounded-lg border bg-gray-50/50 p-3">
-              <Label className="text-sm font-semibold text-gray-900">
+            <div className="rounded-lg border bg-muted/30 p-3">
+              <Label className="text-sm font-semibold text-foreground">
                 Part Information
               </Label>
               <div className="mt-3 space-y-4">
@@ -1307,7 +1307,7 @@ export function PartDetailsDialog({
                     disabled={isLoading}
                   />
                   {!isEditMode && (
-                    <p className="mt-1 text-xs text-gray-500">
+                    <p className="mt-1 text-xs text-muted-foreground">
                       Auto-generated from size, material, and description. You
                       can still override it.
                     </p>
@@ -1347,16 +1347,16 @@ export function PartDetailsDialog({
                     <button
                       type="button"
                       onClick={handlePartUuidCopy}
-                      className="mt-1 w-full rounded-md border bg-gray-50 px-3 py-2 text-left font-mono text-xs break-all text-gray-700 transition-colors hover:bg-gray-100"
+                      className="mt-1 w-full rounded-md border bg-muted/50 px-3 py-2 text-left font-mono text-xs break-all text-foreground/80 transition-colors hover:bg-accent"
                       title="Click to copy UUID"
                     >
                       {partId ?? part?.id}
-                      <span className="ml-2 font-sans text-xs text-gray-500">
+                      <span className="ml-2 font-sans text-xs text-muted-foreground">
                         {copiedPartUuid ? "Copied" : "Click to copy"}
                       </span>
                     </button>
                   ) : (
-                    <div className="mt-1 rounded-md border bg-gray-50 px-3 py-2 text-xs text-gray-500">
+                    <div className="mt-1 rounded-md border bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
                       Generated when the part is saved
                     </div>
                   )}
@@ -1364,9 +1364,9 @@ export function PartDetailsDialog({
               </div>
             </div>
 
-            <div className="rounded-lg border bg-gray-50/50 p-3">
+            <div className="rounded-lg border bg-muted/30 p-3">
               <div className="flex items-center justify-between gap-2">
-                <Label className="text-sm font-semibold text-gray-900">
+                <Label className="text-sm font-semibold text-foreground">
                   Supplier Information
                 </Label>
                 <button
@@ -1383,7 +1383,7 @@ export function PartDetailsDialog({
                   <DropdownMenuTrigger asChild>
                     <Button
                       variant="outline"
-                      className="mt-1 w-full justify-between bg-white"
+                      className="mt-1 w-full justify-between bg-card"
                       disabled={isLoading}
                     >
                       {supplierId
@@ -1415,7 +1415,7 @@ export function PartDetailsDialog({
                       value={supplierSku}
                       onChange={(e) => handleSupplierSkuChange(e.target.value)}
                       placeholder="Supplier SKU"
-                      className="mt-1 bg-white"
+                      className="mt-1 bg-card"
                       disabled={isLoading}
                     />
                   </div>
@@ -1435,7 +1435,7 @@ export function PartDetailsDialog({
                         )
                       }
                       placeholder="$0.00"
-                      className="mt-1 bg-white"
+                      className="mt-1 bg-card"
                       disabled={isLoading}
                     />
                   </div>
@@ -1447,7 +1447,7 @@ export function PartDetailsDialog({
                       onClick={() => {
                         if (supplierId) setPreferredSupplierId(supplierId);
                       }}
-                      className="mt-1 flex h-9 w-9 items-center justify-center rounded-md border bg-white transition-colors hover:bg-gray-50"
+                      className="mt-1 flex h-9 w-9 items-center justify-center rounded-md border bg-card transition-colors hover:bg-accent"
                       disabled={isLoading}
                       aria-pressed={preferredSupplierId === supplierId}
                       aria-label="Preferred supplier"
@@ -1456,26 +1456,26 @@ export function PartDetailsDialog({
                         className={`h-4 w-4 ${
                           preferredSupplierId === supplierId
                             ? "fill-yellow-400 text-yellow-400"
-                            : "text-gray-400"
+                            : "text-muted-foreground/70"
                         }`}
                       />
                     </button>
                   </div>
                 </div>
               ) : (
-                <p className="mt-2 text-xs text-gray-500">
+                <p className="mt-2 text-xs text-muted-foreground">
                   Choose a supplier to enter its SKU and cost for this part.
                 </p>
               )}
             </div>
 
-            <div className="rounded-lg border bg-gray-50/50 p-3">
-              <Label className="text-sm font-semibold text-gray-900">
+            <div className="rounded-lg border bg-muted/30 p-3">
+              <Label className="text-sm font-semibold text-foreground">
                 Image
               </Label>
               <div className="mt-3 space-y-4">
                 <div className="grid grid-cols-[5rem_minmax(0,1fr)] gap-3 sm:grid-cols-[6rem_minmax(0,1fr)]">
-                  <div className="relative flex h-20 w-20 items-center justify-center overflow-hidden rounded-md border bg-white sm:h-24 sm:w-24">
+                  <div className="relative flex h-20 w-20 items-center justify-center overflow-hidden rounded-md border bg-card sm:h-24 sm:w-24">
                     {previewImageUrl ? (
                       <Image
                         src={previewImageUrl}
@@ -1485,7 +1485,7 @@ export function PartDetailsDialog({
                         unoptimized
                       />
                     ) : (
-                      <Package className="h-8 w-8 text-gray-400" />
+                      <Package className="h-8 w-8 text-muted-foreground/70" />
                     )}
                   </div>
                   <div className="grid content-start gap-2">
@@ -1493,7 +1493,7 @@ export function PartDetailsDialog({
                       type="button"
                       variant="outline"
                       size="sm"
-                      className="h-auto min-h-8 justify-start bg-white text-left whitespace-normal"
+                      className="h-auto min-h-8 justify-start bg-card text-left whitespace-normal"
                       onClick={openGoogleImageSearch}
                       disabled={isLoading || isReviewingPhoto}
                     >
@@ -1504,7 +1504,7 @@ export function PartDetailsDialog({
                       type="button"
                       variant="outline"
                       size="sm"
-                      className="h-auto min-h-8 justify-start bg-white text-left whitespace-normal"
+                      className="h-auto min-h-8 justify-start bg-card text-left whitespace-normal"
                       onClick={openFamilyImageSuggestions}
                       disabled={
                         isLoading ||
@@ -1521,7 +1521,7 @@ export function PartDetailsDialog({
                       type="button"
                       variant="outline"
                       size="sm"
-                      className="h-auto min-h-8 justify-start bg-white text-left whitespace-normal"
+                      className="h-auto min-h-8 justify-start bg-card text-left whitespace-normal"
                       onClick={() => imageInputRef.current?.click()}
                       disabled={isLoading || isProcessingImage}
                     >
@@ -1547,7 +1547,7 @@ export function PartDetailsDialog({
                     }}
                     placeholder="https://..."
                     type="url"
-                    className="mt-1 bg-white"
+                    className="mt-1 bg-card"
                     disabled={isLoading}
                   />
                 </div>
@@ -1607,11 +1607,11 @@ export function PartDetailsDialog({
           </DialogHeader>
 
           <div
-            className="space-y-3 rounded-lg border bg-gray-50 p-3 text-sm"
+            className="space-y-3 rounded-lg border bg-muted/50 p-3 text-sm"
             onPaste={handleGoogleImagePaste}
           >
             <div className="flex items-center justify-between gap-3">
-              <span className="min-w-0 truncate text-gray-600">
+              <span className="min-w-0 truncate text-muted-foreground">
                 Search: {googleImageSearchQuery || displayName}
               </span>
               <Button
@@ -1626,7 +1626,7 @@ export function PartDetailsDialog({
               </Button>
             </div>
             <div
-              className="focus:border-primary space-y-3 rounded-md border border-dashed bg-white p-4 text-center text-sm text-gray-600 outline-none"
+              className="focus:border-primary space-y-3 rounded-md border border-dashed bg-card p-4 text-center text-sm text-muted-foreground outline-none"
               tabIndex={0}
             >
               <div>
@@ -1663,16 +1663,16 @@ export function PartDetailsDialog({
 
           <div className="min-h-0 flex-1 space-y-3 overflow-y-auto">
             {isLoadingFamilySuggestions ? (
-              <div className="rounded-md border bg-gray-50 p-4 text-sm text-gray-600">
+              <div className="rounded-md border bg-muted/50 p-4 text-sm text-muted-foreground">
                 Finding matching parts...
               </div>
             ) : visibleFamilyImageSuggestions.length > 0 ? (
               visibleFamilyImageSuggestions.map((suggestion) => (
                 <div
                   key={suggestion.id}
-                  className="flex items-start gap-3 rounded-lg border bg-white p-3"
+                  className="flex items-start gap-3 rounded-lg border bg-card p-3"
                 >
-                  <div className="relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-md bg-gray-50">
+                  <div className="relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted/50">
                     <Image
                       src={previewImageUrl}
                       alt=""
@@ -1682,16 +1682,16 @@ export function PartDetailsDialog({
                     />
                   </div>
                   <div className="min-w-0 flex-1 space-y-1">
-                    <div className="text-sm font-medium break-words text-gray-900">
+                    <div className="text-sm font-medium break-words text-foreground">
                       {suggestion.displayName}
                     </div>
-                    <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-500">
+                    <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
                       {suggestion.size && <span>{suggestion.size}</span>}
                       {suggestion.material && (
                         <span>{suggestion.material}</span>
                       )}
                       {suggestion.description && (
-                        <span className="basis-full break-words text-gray-600">
+                        <span className="basis-full break-words text-muted-foreground">
                           {suggestion.description}
                         </span>
                       )}
@@ -1725,7 +1725,7 @@ export function PartDetailsDialog({
                 </div>
               ))
             ) : (
-              <div className="rounded-md border bg-gray-50 p-4 text-sm text-gray-600">
+              <div className="rounded-md border bg-muted/50 p-4 text-sm text-muted-foreground">
                 No matching parts need this image.
               </div>
             )}

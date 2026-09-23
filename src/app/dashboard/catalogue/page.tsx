@@ -28,6 +28,7 @@ import {
 import { useOnlineStatus } from "~/hooks/use-online-status";
 import { TEMPORARILY_DISCONNECT_BROWSER_FROM_SERVER } from "~/lib/server-connection-mode";
 import { Images } from "lucide-react";
+import { confirmAction, notify } from "~/components/ui/app-dialogs";
 
 export default function CataloguePage() {
   const [editingPartId, setEditingPartId] = useState<string | null>(null);
@@ -151,7 +152,7 @@ export default function CataloguePage() {
       const rows = await readCatalogueImportWorkbook(file);
 
       if (rows.length === 0) {
-        alert("No usable catalogue rows were found in that workbook.");
+        notify("No usable catalogue rows were found in that workbook.", "error");
         return;
       }
 
@@ -174,9 +175,12 @@ export default function CataloguePage() {
           .map((row) => `• ${row.displayName}`)
           .join("\n");
         const moreCount = overwriteRows.length - 8;
-        const shouldContinue = window.confirm(
-          `This import will overwrite ${overwriteRows.length} existing part${overwriteRows.length === 1 ? "" : "s"} because their partId already exists.\n\n${sampleNames}${moreCount > 0 ? `\n• ...and ${moreCount} more` : ""}\n\nA catalogue backup will download before import. Continue?`,
-        );
+        const shouldContinue = await confirmAction({
+          title: `Overwrite ${overwriteRows.length} existing part${overwriteRows.length === 1 ? "" : "s"}?`,
+          description: `These parts already exist (matched by partId) and will be replaced:\n\n${sampleNames}${moreCount > 0 ? `\n• ...and ${moreCount} more` : ""}\n\nA catalogue backup will download before the import starts.`,
+          confirmLabel: "Back up and import",
+          destructive: true,
+        });
 
         if (!shouldContinue) {
           setImportProgress(null);
@@ -217,13 +221,15 @@ export default function CataloguePage() {
         utils.catalogue.getMaterials.invalidate(),
       ]);
 
-      alert(
+      notify(
         `Catalogue import done. Created ${created}, updated ${updated}, skipped ${skipped}.`,
+        "success",
       );
     } catch (error) {
       console.error("Catalogue import failed", error);
-      alert(
+      notify(
         "Catalogue import failed. Check the workbook format and try again.",
+        "error",
       );
     } finally {
       setIsImporting(false);
@@ -233,12 +239,12 @@ export default function CataloguePage() {
 
   if (!isCatalogueOnline) {
     return (
-      <div className="flex h-[calc(100vh-4rem)] items-center justify-center bg-gray-50 p-6">
-        <div className="max-w-md rounded-2xl border bg-white p-6 text-center shadow-sm">
-          <h1 className="text-xl font-bold text-gray-900">
+      <div className="flex h-[calc(100vh-4rem)] items-center justify-center bg-muted/50 p-6">
+        <div className="max-w-md rounded-2xl border bg-card p-6 text-center shadow-sm">
+          <h1 className="text-xl font-bold text-foreground">
             Parts Catalogue is online-only
           </h1>
-          <p className="mt-2 text-sm text-gray-600">
+          <p className="mt-2 text-sm text-muted-foreground">
             Catalogue browsing, imports, exports, and edits require a server
             connection. Material-list field work can continue from local data.
           </p>
@@ -249,9 +255,9 @@ export default function CataloguePage() {
 
   return (
     <div className="flex h-[calc(100vh-4rem)] flex-col overflow-hidden">
-      <div className="border-b bg-white p-4 sm:p-6">
+      <div className="border-b bg-card p-4 sm:p-6">
         <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">
+          <h1 className="text-xl font-bold text-foreground sm:text-2xl">
             Parts Catalogue
           </h1>
           <div className="flex flex-wrap items-center gap-2 sm:justify-end">
@@ -311,7 +317,7 @@ export default function CataloguePage() {
         />
       </div>
 
-      <div className="flex-1 overflow-y-auto bg-gray-50 p-4 sm:p-6">
+      <div className="flex-1 overflow-y-auto bg-muted/50 p-4 sm:p-6">
         {isWizardSearchActive ? (
           <PartStage
             partsForSelection={filteredPartsForSelection}
@@ -442,8 +448,8 @@ export default function CataloguePage() {
               onClick={() => setExportCatalogId(null)}
               className={`flex w-full items-center justify-between rounded-xl border px-4 py-3 text-left text-sm transition ${
                 exportCatalogId === null
-                  ? "border-gray-900 bg-gray-50 text-gray-950"
-                  : "border-gray-200 bg-white text-gray-700 hover:border-gray-300"
+                  ? "border-gray-900 bg-muted/50 text-foreground"
+                  : "border-border bg-card text-foreground/80 hover:border-input"
               }`}
             >
               <span className="font-medium">Full Catalog</span>
@@ -460,8 +466,8 @@ export default function CataloguePage() {
                   onClick={() => setExportCatalogId(catalog.id)}
                   className={`flex w-full items-center justify-between rounded-xl border px-4 py-3 text-left text-sm transition ${
                     exportCatalogId === catalog.id
-                      ? "border-gray-900 bg-gray-50 text-gray-950"
-                      : "border-gray-200 bg-white text-gray-700 hover:border-gray-300"
+                      ? "border-gray-900 bg-muted/50 text-foreground"
+                      : "border-border bg-card text-foreground/80 hover:border-input"
                   }`}
                 >
                   <span className="font-medium">{catalog.name}</span>

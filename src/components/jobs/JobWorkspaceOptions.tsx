@@ -27,7 +27,7 @@ export function JobWorkspaceOptions({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-2 text-sm text-gray-600">
+          <div className="space-y-2 text-sm text-muted-foreground">
             <div className="flex items-center gap-2">
               <PackageIcon className="h-4 w-4" />
               <span>
@@ -47,7 +47,7 @@ export function JobWorkspaceOptions({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-2 text-sm text-gray-600">
+          <div className="space-y-2 text-sm text-muted-foreground">
             <div className="flex items-center gap-2">
               <DoorOpenIcon className="h-4 w-4" />
               <span>

@@ -73,7 +73,7 @@ export interface ReviewStageProps {
 
 function PartImage({ part }: { part: PendingPart["partDefinition"] }) {
   return (
-    <div className="relative h-full w-full overflow-hidden rounded-md bg-gray-100">
+    <div className="relative h-full w-full overflow-hidden rounded-md bg-muted">
       {part.imageUrl ? (
         <Image
           src={part.imageUrl}
@@ -82,7 +82,7 @@ function PartImage({ part }: { part: PendingPart["partDefinition"] }) {
           className="object-cover"
         />
       ) : (
-        <div className="flex h-full items-center justify-center text-gray-400">
+        <div className="flex h-full items-center justify-center text-muted-foreground/70">
           <svg
             className="h-4 w-4 sm:h-8 sm:w-8"
             fill="none"
@@ -416,19 +416,19 @@ export function ReviewStage({
                         </div>
 
                         <div className="min-w-0 flex-1 sm:block">
-                          <h3 className="line-clamp-2 text-sm font-semibold text-gray-900 sm:truncate sm:text-base">
+                          <h3 className="line-clamp-2 text-sm font-semibold text-foreground sm:truncate sm:text-base">
                             {pendingPart.partDefinition.displayName}
                           </h3>
-                          <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-gray-600">
+                          <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
                             <span>
                               Total:{" "}
-                              <span className="font-semibold text-gray-900">
+                              <span className="font-semibold text-foreground">
                                 ${lineTotal.toFixed(2)}
                               </span>
                             </span>
                           </div>
                           {pendingPart.partDefinition.material && (
-                            <p className="mt-0.5 hidden truncate text-xs text-gray-500 sm:block">
+                            <p className="mt-0.5 hidden truncate text-xs text-muted-foreground sm:block">
                               {pendingPart.partDefinition.material}
                             </p>
                           )}
@@ -510,7 +510,7 @@ export function ReviewStage({
                     {renderSupplierPicker(pendingPart, isMissingSupplier)}
                   </div>
 
-                  <div className="flex h-8 min-w-0 items-center justify-end self-center overflow-hidden whitespace-nowrap text-sm font-semibold text-gray-900">
+                  <div className="flex h-8 min-w-0 items-center justify-end self-center overflow-hidden whitespace-nowrap text-sm font-semibold text-foreground">
                     <span className="shrink-0">${lineTotal.toFixed(2)}</span>
                   </div>
 
@@ -559,7 +559,7 @@ export function ReviewStage({
                     }
                   />
                 </div>
-                <p className="mt-1 text-xs text-gray-500">
+                <p className="mt-1 text-xs text-muted-foreground">
                   Select suppliers that provide this part and set a preferred supplier.
                 </p>
               </div>

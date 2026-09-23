@@ -238,11 +238,11 @@ function SizeCard({
     >
       <CardContent className="min-w-0 p-3 text-center sm:p-4">
         <p className="truncate text-sm font-medium sm:text-base">{formatSize(size.nominal, size.unit)}</p>
-        <p className="mt-1 text-xs text-gray-500">
+        <p className="mt-1 text-xs text-muted-foreground">
           {size.count} part{size.count !== 1 ? "s" : ""}
         </p>
         {canPickSubSize && (
-          <p className="mt-1 text-[11px] text-gray-400">Long-press for sub-sizes</p>
+          <p className="mt-1 text-[11px] text-muted-foreground/70">Long-press for sub-sizes</p>
         )}
       </CardContent>
     </Card>

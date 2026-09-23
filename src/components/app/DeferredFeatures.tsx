@@ -49,7 +49,7 @@ function feature<P extends object>(
       <Suspense
         fallback={
           open ? (
-            <p role="status" className="p-3 text-sm text-gray-500">
+            <p role="status" className="p-3 text-sm text-muted-foreground">
               Loading…
             </p>
           ) : null

@@ -24,6 +24,8 @@ import { cn } from "~/lib/utils";
 import { api, type RouterOutputs } from "~/trpc/react";
 
 import { DrawStatusBadge } from "./DrawStatusBadge";
+import { ListPageSkeleton } from "~/components/ui/skeleton";
+import { confirmAction } from "~/components/ui/app-dialogs";
 
 type JobDraws = RouterOutputs["draws"]["getJob"];
 type Draw = JobDraws["draws"][number];
@@ -177,8 +179,9 @@ export function JobDrawsView({ jobId }: { jobId: string }) {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <p className="text-muted-foreground">Loading draws...</p>
+      <div className="space-y-5">
+        {backLink}
+        <ListPageSkeleton rows={6} label="Loading draws" />
       </div>
     );
   }
@@ -287,7 +290,7 @@ export function JobDrawsView({ jobId }: { jobId: string }) {
                 "rounded-md border px-3 py-1.5 text-sm",
                 draw.id === selectedDraw?.id
                   ? "border-primary bg-primary/5 font-semibold"
-                  : "hover:bg-gray-50",
+                  : "hover:bg-accent",
               )}
             >
               <DrawStatusBadge
@@ -301,7 +304,7 @@ export function JobDrawsView({ jobId }: { jobId: string }) {
 
       {selectedDraw && summary && (
         <div className="grid gap-4 lg:grid-cols-[1fr_22rem]">
-          <div className="space-y-3 rounded-lg border bg-white p-4">
+          <div className="space-y-3 rounded-lg border bg-card p-4">
             <div className="flex flex-wrap items-center gap-2">
               <h3 className="text-lg font-semibold">
                 Draw #{selectedDraw.drawNumber}
@@ -409,11 +412,14 @@ export function JobDrawsView({ jobId }: { jobId: string }) {
                   variant="outline"
                   className="text-destructive"
                   disabled={busy}
-                  onClick={() => {
+                  onClick={async () => {
                     if (
-                      confirm(
-                        `Delete draw #${selectedDraw.drawNumber}? Its amounts will be lost.`,
-                      )
+                      await confirmAction({
+                        title: `Delete draw #${selectedDraw.drawNumber}?`,
+                        description: "The amounts entered on this draw will be lost.",
+                        confirmLabel: "Delete draw",
+                        destructive: true,
+                      })
                     ) {
                       deleteDraw.mutate({ drawId: selectedDraw.id });
                     }
@@ -425,7 +431,7 @@ export function JobDrawsView({ jobId }: { jobId: string }) {
             </div>
           </div>
 
-          <div className="rounded-lg border bg-white p-4">
+          <div className="rounded-lg border bg-card p-4">
             <h3 className="mb-2 font-semibold">Application for payment</h3>
             <SummaryRow
               label="Contract sum"
@@ -460,7 +466,7 @@ export function JobDrawsView({ jobId }: { jobId: string }) {
         </div>
       )}
 
-      <div className="rounded-lg border bg-white">
+      <div className="rounded-lg border bg-card">
         <div className="border-b px-4 py-3">
           <h3 className="font-semibold">Schedule of values</h3>
           <p className="text-muted-foreground text-xs">
@@ -473,7 +479,7 @@ export function JobDrawsView({ jobId }: { jobId: string }) {
         </div>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[56rem] text-sm">
-            <thead className="text-muted-foreground bg-gray-50 text-left text-xs uppercase">
+            <thead className="text-muted-foreground bg-muted/50 text-left text-xs uppercase">
               <tr>
                 <th className="w-20 px-2 py-2">Item</th>
                 <th className="px-2 py-2">Description</th>
@@ -639,8 +645,14 @@ export function JobDrawsView({ jobId }: { jobId: string }) {
                           aria-label="Delete line"
                           className="text-destructive"
                           disabled={busy}
-                          onClick={() => {
-                            if (confirm(`Delete "${line.description}"?`)) {
+                          onClick={async () => {
+                            if (
+                              await confirmAction({
+                                title: `Delete "${line.description}"?`,
+                                confirmLabel: "Delete line",
+                                destructive: true,
+                              })
+                            ) {
                               deleteLine.mutate({ lineId: line.id });
                             }
                           }}
@@ -653,7 +665,7 @@ export function JobDrawsView({ jobId }: { jobId: string }) {
                 );
               })}
 
-              <tr className="bg-gray-50/60">
+              <tr className="bg-muted/30">
                 <td className="px-2 py-1.5">
                   <Input
                     aria-label="New item number"
