@@ -57,7 +57,7 @@ export function QuotesList() {
   const formatCurrency = (value: string | null) => {
     if (!value) return "$0.00";
     const num = parseFloat(value);
-    return new Intl.NumberFormat("en-US", {
+    return new Intl.NumberFormat("en-CA", {
       style: "currency",
       currency: "CAD",
     }).format(num);

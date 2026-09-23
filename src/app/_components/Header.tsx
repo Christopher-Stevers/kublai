@@ -324,7 +324,14 @@ function HeaderFrame({
         </DropdownMenu>
       </div>
 
-      <div className="ml-auto flex items-center gap-2 lg:hidden">
+      {/* The phone tab bar has its own "More" button, so the header menu
+          button is only needed on screens where that bar is hidden. */}
+      <div
+        className={cn(
+          "ml-auto flex items-center gap-2 lg:hidden",
+          !showBackButton && bottomTabs.length > 1 && "hidden",
+        )}
+      >
         <Button
           variant="ghost"
           size="icon"

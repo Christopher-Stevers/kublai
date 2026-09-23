@@ -541,6 +541,7 @@ export default function OrdersPage() {
                     <div className="flex h-8 w-24 shrink-0 items-center justify-center">
                       <Button
                         size="sm"
+                        variant="outline"
                         className="h-8 w-full"
                         onClick={() => handleResendOrder(order.id)}
                         disabled={!isOnline || isSending}

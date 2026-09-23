@@ -153,7 +153,7 @@ export function summarizeDraws(
 }
 
 export function formatCents(cents: number) {
-  return new Intl.NumberFormat("en-US", {
+  return new Intl.NumberFormat("en-CA", {
     style: "currency",
     currency: "CAD",
   }).format(cents / 100);
