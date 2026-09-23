@@ -466,48 +466,7 @@ async function findOrCreateSize(
   return newSize?.id ?? null;
 }
 
-function nullablePartGroupCondition<TColumn>(
-  column: TColumn,
-  value: string | null,
-) {
-  return value === null ? isNull(column as never) : eq(column as never, value);
-}
 
-async function getNextPartGroupSortOrder(
-  db: Parameters<
-    Parameters<typeof hasDashboardAccess.query>[0]
-  >[0]["ctx"]["db"],
-  group: {
-    organizationId: string;
-    catalogId: string;
-    materialId: string | null;
-    sizeId: string | null;
-    categoryId: string | null;
-  },
-) {
-  const [row] = await db
-    .select({
-      maxSortOrder: sql<number>`coalesce(max(${partDefinitions.sortOrder}), -1)`,
-    })
-    .from(partDefinitions)
-    .where(
-      and(
-        eq(partDefinitions.organizationId, group.organizationId),
-        eq(partDefinitions.catalogId, group.catalogId),
-        nullablePartGroupCondition(
-          partDefinitions.materialId,
-          group.materialId,
-        ),
-        nullablePartGroupCondition(partDefinitions.sizeId, group.sizeId),
-        nullablePartGroupCondition(
-          partDefinitions.categoryId,
-          group.categoryId,
-        ),
-      ),
-    );
-
-  return (row?.maxSortOrder ?? -1) + 1;
-}
 
 // Type for category (flat structure, no hierarchy)
 type CategoryNode = {
@@ -1064,99 +1023,6 @@ export const catalogueRouter = createTRPCRouter({
         sortOrder: part.sortOrder,
         isOrgSpecific: part.organizationId === organizationId,
       }));
-    }),
-
-  reorderPartGroup: hasDashboardAccess
-    .input(
-      z.object({
-        catalogId: z.string().uuid(),
-        materialId: z.string().uuid(),
-        sizeNominal: z.number(),
-        sizeUnit: z.string().min(1).max(20),
-        categoryId: z.string().uuid().nullable(),
-        partIds: z.array(z.string().uuid()).min(1).max(1000),
-      }),
-    )
-    .mutation(async ({ ctx, input }) => {
-      assertCanEditParts(ctx.user);
-
-      const organizationId = ctx.user.organizationId;
-      if (!organizationId) {
-        throw new Error("User must belong to an organization");
-      }
-
-      const orderedPartIds = Array.from(new Set(input.partIds));
-      if (orderedPartIds.length !== input.partIds.length) {
-        throw new Error("Part order contains duplicate parts");
-      }
-
-      const matchingParts = await ctx.db
-        .select({
-          id: partDefinitions.id,
-        })
-        .from(partDefinitions)
-        .innerJoin(sizes, eq(partDefinitions.sizeId, sizes.id))
-        .innerJoin(units, eq(sizes.unitId, units.id))
-        .where(
-          and(
-            eq(partDefinitions.isActive, true),
-            eq(partDefinitions.organizationId, organizationId),
-            eq(partDefinitions.catalogId, input.catalogId),
-            eq(partDefinitions.materialId, input.materialId),
-            input.categoryId === null
-              ? isNull(partDefinitions.categoryId)
-              : eq(partDefinitions.categoryId, input.categoryId),
-            gte(sizes.nominal, (input.sizeNominal - 0.01).toString()),
-            lte(sizes.nominal, (input.sizeNominal + 0.01).toString()),
-            eq(units.code, input.sizeUnit),
-          ),
-        );
-
-      const matchingPartIds = new Set(matchingParts.map((part) => part.id));
-      if (matchingPartIds.size !== orderedPartIds.length) {
-        throw new Error(
-          "Part order must include every part in the selected group",
-        );
-      }
-
-      for (const partId of orderedPartIds) {
-        if (!matchingPartIds.has(partId)) {
-          throw new Error(
-            "Part order includes a part outside the selected group",
-          );
-        }
-      }
-
-      await ctx.db.transaction(async (tx) => {
-        for (const [sortOrder, partId] of orderedPartIds.entries()) {
-          await tx
-            .update(partDefinitions)
-            .set({ sortOrder })
-            .where(
-              and(
-                eq(partDefinitions.id, partId),
-                eq(partDefinitions.organizationId, organizationId),
-              ),
-            );
-        }
-      });
-
-      publishCatalogueChange(organizationId);
-
-      const savedParts = await ctx.db
-        .select({
-          id: partDefinitions.id,
-          sortOrder: partDefinitions.sortOrder,
-        })
-        .from(partDefinitions)
-        .where(inArray(partDefinitions.id, orderedPartIds))
-        .orderBy(asc(partDefinitions.sortOrder), asc(partDefinitions.id));
-
-      return {
-        updated: orderedPartIds.length,
-        partIds: savedParts.map((part) => part.id),
-        sortOrders: savedParts,
-      };
     }),
 
   /**
@@ -2408,21 +2274,10 @@ export const catalogueRouter = createTRPCRouter({
         // when size fields were not part of the edit payload.
         const finalSizeId = sizeTouched ? sizeId : originalPart.sizeId;
         const finalCatalogId = input.catalogId ?? originalPart.catalogId;
-        const finalMaterialId =
-          input.materialId !== undefined
-            ? input.materialId
-            : originalPart.materialId;
         const finalCategoryId =
           input.categoryId !== undefined
             ? input.categoryId
             : originalPart.categoryId;
-        const sortOrder = await getNextPartGroupSortOrder(ctx.db, {
-          organizationId,
-          catalogId: finalCatalogId,
-          materialId: finalMaterialId,
-          sizeId: finalSizeId,
-          categoryId: finalCategoryId,
-        });
 
         // Create org-specific copy
         const [newPart] = await ctx.db
@@ -2449,7 +2304,6 @@ export const catalogueRouter = createTRPCRouter({
                 ? input.materialId
                 : originalPart.materialId,
             sizeId: finalSizeId,
-            sortOrder,
             isActive: input.isActive ?? originalPart.isActive,
           })
           .returning();
@@ -2489,28 +2343,6 @@ export const catalogueRouter = createTRPCRouter({
         updateData.materialId = input.materialId;
       if (sizeTouched) updateData.sizeId = sizeId;
       if (input.isActive !== undefined) updateData.isActive = input.isActive;
-
-      const finalCatalogId = input.catalogId ?? existing.catalogId;
-      const finalMaterialId =
-        input.materialId !== undefined ? input.materialId : existing.materialId;
-      const finalSizeId = sizeTouched ? sizeId : existing.sizeId;
-      const finalCategoryId =
-        input.categoryId !== undefined ? input.categoryId : existing.categoryId;
-      const groupChanged =
-        finalCatalogId !== existing.catalogId ||
-        finalMaterialId !== existing.materialId ||
-        finalSizeId !== existing.sizeId ||
-        finalCategoryId !== existing.categoryId;
-
-      if (organizationId && groupChanged) {
-        updateData.sortOrder = await getNextPartGroupSortOrder(ctx.db, {
-          organizationId,
-          catalogId: finalCatalogId,
-          materialId: finalMaterialId,
-          sizeId: finalSizeId,
-          categoryId: finalCategoryId,
-        });
-      }
 
       const [updated] = await ctx.db
         .update(partDefinitions)
@@ -2935,13 +2767,6 @@ export const catalogueRouter = createTRPCRouter({
           rawRow.sizeNominal ?? null,
           sizeUnitId,
         );
-        const sortOrder = await getNextPartGroupSortOrder(ctx.db, {
-          organizationId,
-          catalogId: catalog.id,
-          materialId,
-          sizeId,
-          categoryId,
-        });
 
         const values: typeof partDefinitions.$inferInsert = {
           organizationId,
@@ -2968,7 +2793,7 @@ export const catalogueRouter = createTRPCRouter({
 
         const [newPart] = await ctx.db
           .insert(partDefinitions)
-          .values({ ...values, sortOrder })
+          .values(values)
           .returning({ id: partDefinitions.id });
         if (newPart?.id) {
           await syncPartAliases(ctx.db, newPart.id, rawRow.aliases ?? "");
@@ -3072,13 +2897,6 @@ export const catalogueRouter = createTRPCRouter({
         input.sizeNominal ?? null,
         input.sizeUnitId ?? null,
       );
-      const sortOrder = await getNextPartGroupSortOrder(ctx.db, {
-        organizationId,
-        catalogId: catalog.id,
-        materialId: input.materialId ?? null,
-        sizeId,
-        categoryId,
-      });
 
       const [newPart] = await ctx.db
         .insert(partDefinitions)
@@ -3095,7 +2913,6 @@ export const catalogueRouter = createTRPCRouter({
           sizeLabel: input.sizeLabel?.trim() || null,
           materialId: input.materialId ?? null,
           sizeId: sizeId,
-          sortOrder,
           isActive: input.isActive ?? true,
         })
         .returning();
