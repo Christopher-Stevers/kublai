@@ -1,7 +1,12 @@
 "use client";
 
+import { useSyncExternalStore } from "react";
 import type { ReadonlyJSONValue } from "replicache";
-import { tryGetCatalogueReplicache } from "~/lib/replicache-catalogue";
+import {
+  getCatalogueSyncing,
+  subscribeCatalogueSyncing,
+  tryGetCatalogueReplicache,
+} from "~/lib/replicache-catalogue";
 import { createSharedReplicacheReader } from "~/hooks/use-shared-replicache";
 import { warmOfflineCatalogueImages } from "~/lib/offline-catalogue";
 
@@ -151,4 +156,15 @@ const useCatalogueSnapshot = createSharedReplicacheReader<ReplicacheCatalogueSna
 
 export function useReplicacheCatalogue({ enabled = true }: { enabled?: boolean } = {}) {
   return useCatalogueSnapshot(enabled ? tryGetCatalogueReplicache() : null);
+}
+
+/** True while this device downloads the catalogue for the first time. */
+export function useCatalogueFirstDownload(enabled = true) {
+  const { parts } = useReplicacheCatalogue({ enabled });
+  const syncing = useSyncExternalStore(
+    subscribeCatalogueSyncing,
+    getCatalogueSyncing,
+    () => false,
+  );
+  return enabled && syncing && parts.length === 0;
 }

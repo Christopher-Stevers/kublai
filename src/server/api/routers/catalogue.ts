@@ -493,29 +493,30 @@ export const catalogueRouter = createTRPCRouter({
       return [];
     }
 
-    const allCatalogs = await ctx.db
-      .select({
-        id: catalogs.id,
-        name: catalogs.name,
-        sortOrder: catalogs.sortOrder,
-        organizationId: catalogs.organizationId,
-      })
-      .from(catalogs)
-      .where(eq(catalogs.organizationId, organizationId));
-
-    const partCounts = await ctx.db
-      .select({
-        catalogId: partDefinitions.catalogId,
-        count: sql<number>`count(*)::int`,
-      })
-      .from(partDefinitions)
-      .where(
-        and(
-          eq(partDefinitions.isActive, true),
-          eq(partDefinitions.organizationId, organizationId),
-        ),
-      )
-      .groupBy(partDefinitions.catalogId);
+    const [allCatalogs, partCounts] = await Promise.all([
+      ctx.db
+        .select({
+          id: catalogs.id,
+          name: catalogs.name,
+          sortOrder: catalogs.sortOrder,
+          organizationId: catalogs.organizationId,
+        })
+        .from(catalogs)
+        .where(eq(catalogs.organizationId, organizationId)),
+      ctx.db
+        .select({
+          catalogId: partDefinitions.catalogId,
+          count: sql<number>`count(*)::int`,
+        })
+        .from(partDefinitions)
+        .where(
+          and(
+            eq(partDefinitions.isActive, true),
+            eq(partDefinitions.organizationId, organizationId),
+          ),
+        )
+        .groupBy(partDefinitions.catalogId),
+    ]);
 
     const countMap = new Map<string, number>();
     for (const pc of partCounts) {
@@ -594,30 +595,31 @@ export const catalogueRouter = createTRPCRouter({
     }
 
     // Get all categories for the organization (all are root categories now)
-    const allCategories = await ctx.db
-      .select({
-        id: categories.id,
-        name: categories.name,
-        sortOrder: categories.sortOrder,
-        organizationId: categories.organizationId,
-      })
-      .from(categories)
-      .where(eq(categories.organizationId, organizationId));
-
-    // Get part counts for each category
-    const partCounts = await ctx.db
-      .select({
-        categoryId: partDefinitions.categoryId,
-        count: sql<number>`count(*)::int`,
-      })
-      .from(partDefinitions)
-      .where(
-        and(
-          eq(partDefinitions.isActive, true),
-          eq(partDefinitions.organizationId, organizationId),
-        ),
-      )
-      .groupBy(partDefinitions.categoryId);
+    // Categories and their part counts load together
+    const [allCategories, partCounts] = await Promise.all([
+      ctx.db
+        .select({
+          id: categories.id,
+          name: categories.name,
+          sortOrder: categories.sortOrder,
+          organizationId: categories.organizationId,
+        })
+        .from(categories)
+        .where(eq(categories.organizationId, organizationId)),
+      ctx.db
+        .select({
+          categoryId: partDefinitions.categoryId,
+          count: sql<number>`count(*)::int`,
+        })
+        .from(partDefinitions)
+        .where(
+          and(
+            eq(partDefinitions.isActive, true),
+            eq(partDefinitions.organizationId, organizationId),
+          ),
+        )
+        .groupBy(partDefinitions.categoryId),
+    ]);
 
     const countMap = new Map<string, number>();
     for (const pc of partCounts) {
@@ -852,33 +854,20 @@ export const catalogueRouter = createTRPCRouter({
       // Text search in displayName, description, or synonyms
       if (input.query && input.query.trim().length > 0) {
         const searchTerm = `%${input.query.trim()}%`;
-        // Get part IDs that match synonyms
-        const synonymMatches = await ctx.db
-          .selectDistinct({ partDefinitionId: partSynonyms.partDefinitionId })
-          .from(partSynonyms)
-          .where(ilike(partSynonyms.synonym, searchTerm));
-
-        const synonymPartIds = synonymMatches
-          .map((m) => m.partDefinitionId)
-          .filter((id): id is string => id !== null);
-
-        if (synonymPartIds.length > 0) {
-          const searchCondition = or(
-            ilike(partDefinitions.displayName, searchTerm),
-            ilike(partDefinitions.description, searchTerm),
-            inArray(partDefinitions.id, synonymPartIds),
-          );
-          if (searchCondition) {
-            conditions.push(searchCondition);
-          }
-        } else {
-          const searchCondition = or(
-            ilike(partDefinitions.displayName, searchTerm),
-            ilike(partDefinitions.description, searchTerm),
-          );
-          if (searchCondition) {
-            conditions.push(searchCondition);
-          }
+        // Synonym matches are a subquery so the search stays one round trip.
+        const searchCondition = or(
+          ilike(partDefinitions.displayName, searchTerm),
+          ilike(partDefinitions.description, searchTerm),
+          inArray(
+            partDefinitions.id,
+            ctx.db
+              .select({ partDefinitionId: partSynonyms.partDefinitionId })
+              .from(partSynonyms)
+              .where(ilike(partSynonyms.synonym, searchTerm)),
+          ),
+        );
+        if (searchCondition) {
+          conditions.push(searchCondition);
         }
       }
 
@@ -1420,47 +1409,50 @@ export const catalogueRouter = createTRPCRouter({
     .query(async ({ ctx, input }) => {
       const organizationId = ctx.user.organizationId;
 
-      const [part] = await ctx.db
-        .select({
-          id: partDefinitions.id,
-          displayName: partDefinitions.displayName,
-          description: partDefinitions.description,
-          imageUrl: partDefinitions.imageUrl,
-          sizeLabel: partDefinitions.sizeLabel,
-          catalogId: partDefinitions.catalogId,
-          categoryId: partDefinitions.categoryId,
-          materialId: partDefinitions.materialId,
-          materialName: materials.name,
-          sizeNominal: sizes.nominal,
-          sizeUnitId: sizes.unitId,
-          isActive: partDefinitions.isActive,
-          organizationId: partDefinitions.organizationId,
-          sizeUnitCode: units.code,
-          sizeUnitDisplayName: units.displayName,
-        })
-        .from(partDefinitions)
-        .leftJoin(sizes, eq(partDefinitions.sizeId, sizes.id))
-        .leftJoin(units, eq(sizes.unitId, units.id))
-        .leftJoin(materials, eq(partDefinitions.materialId, materials.id))
-        .where(
-          and(
-            eq(partDefinitions.id, input.partId),
-            organizationId
-              ? eq(partDefinitions.organizationId, organizationId)
-              : sql`1=0`, // Return no results if no organizationId
-          ),
-        )
-        .limit(1);
+      // Aliases load alongside the part and are discarded if the part is not
+      // in the caller's organization.
+      const [[part], aliases] = await Promise.all([
+        ctx.db
+          .select({
+            id: partDefinitions.id,
+            displayName: partDefinitions.displayName,
+            description: partDefinitions.description,
+            imageUrl: partDefinitions.imageUrl,
+            sizeLabel: partDefinitions.sizeLabel,
+            catalogId: partDefinitions.catalogId,
+            categoryId: partDefinitions.categoryId,
+            materialId: partDefinitions.materialId,
+            materialName: materials.name,
+            sizeNominal: sizes.nominal,
+            sizeUnitId: sizes.unitId,
+            isActive: partDefinitions.isActive,
+            organizationId: partDefinitions.organizationId,
+            sizeUnitCode: units.code,
+            sizeUnitDisplayName: units.displayName,
+          })
+          .from(partDefinitions)
+          .leftJoin(sizes, eq(partDefinitions.sizeId, sizes.id))
+          .leftJoin(units, eq(sizes.unitId, units.id))
+          .leftJoin(materials, eq(partDefinitions.materialId, materials.id))
+          .where(
+            and(
+              eq(partDefinitions.id, input.partId),
+              organizationId
+                ? eq(partDefinitions.organizationId, organizationId)
+                : sql`1=0`, // Return no results if no organizationId
+            ),
+          )
+          .limit(1),
+        ctx.db
+          .select({ id: partSynonyms.id, synonym: partSynonyms.synonym })
+          .from(partSynonyms)
+          .where(eq(partSynonyms.partDefinitionId, input.partId))
+          .orderBy(partSynonyms.synonym),
+      ]);
 
       if (!part) {
         throw new Error("Part not found");
       }
-
-      const aliases = await ctx.db
-        .select({ id: partSynonyms.id, synonym: partSynonyms.synonym })
-        .from(partSynonyms)
-        .where(eq(partSynonyms.partDefinitionId, input.partId))
-        .orderBy(partSynonyms.synonym);
 
       return {
         id: part.id,
@@ -2220,41 +2212,33 @@ export const catalogueRouter = createTRPCRouter({
       const sizeTouched =
         input.sizeNominal !== undefined || input.sizeUnitId !== undefined;
       if (sizeTouched) {
-        // Get current part to use existing size if new values not provided
-        const [currentPart] = await ctx.db
-          .select()
-          .from(partDefinitions)
-          .where(eq(partDefinitions.id, input.partId))
-          .limit(1);
+        // Current size supplies nominal/unitId when only one was provided;
+        // `existing` already holds the part's sizeId.
+        const [currentSize] = existing.sizeId
+          ? await ctx.db
+              .select()
+              .from(sizes)
+              .where(eq(sizes.id, existing.sizeId))
+              .limit(1)
+          : [null];
 
-        if (currentPart) {
-          // Get current size to extract nominal/unitId if not provided
-          const [currentSize] = currentPart.sizeId
-            ? await ctx.db
-                .select()
-                .from(sizes)
-                .where(eq(sizes.id, currentPart.sizeId))
-                .limit(1)
-            : [null];
+        const finalSizeNominal =
+          input.sizeNominal !== undefined
+            ? input.sizeNominal
+            : currentSize
+              ? parseFloat(currentSize.nominal)
+              : null;
+        const finalSizeUnitId =
+          input.sizeUnitId !== undefined
+            ? input.sizeUnitId
+            : (currentSize?.unitId ?? null);
 
-          const finalSizeNominal =
-            input.sizeNominal !== undefined
-              ? input.sizeNominal
-              : currentSize
-                ? parseFloat(currentSize.nominal)
-                : null;
-          const finalSizeUnitId =
-            input.sizeUnitId !== undefined
-              ? input.sizeUnitId
-              : (currentSize?.unitId ?? null);
-
-          sizeId = await findOrCreateSize(
-            ctx.db,
-            organizationId ?? existing.organizationId,
-            finalSizeNominal,
-            finalSizeUnitId,
-          );
-        }
+        sizeId = await findOrCreateSize(
+          ctx.db,
+          organizationId ?? existing.organizationId,
+          finalSizeNominal,
+          finalSizeUnitId,
+        );
       }
 
       // If trying to edit a global part, create an org-specific copy
@@ -2354,34 +2338,42 @@ export const catalogueRouter = createTRPCRouter({
         throw new Error("Failed to update part");
       }
 
-      if (input.aliases !== undefined) {
-        await syncPartAliases(ctx.db, updated.id, input.aliases);
-      }
+      const syncAliases = async () => {
+        if (input.aliases !== undefined) {
+          await syncPartAliases(ctx.db, updated.id, input.aliases);
+        }
+      };
 
-      if (input.supplierId && organizationId) {
-        const [supplier] = await ctx.db
-          .select()
-          .from(suppliers)
-          .where(
-            and(
-              eq(suppliers.id, input.supplierId),
-              eq(suppliers.organizationId, organizationId),
-            ),
-          )
-          .limit(1);
+      const syncSupplierPart = async () => {
+        const supplierId = input.supplierId;
+        if (!supplierId || !organizationId) return;
 
-        if (supplier) {
-          const [existingSupplierPart] = await ctx.db
+        // Both lookups are organization-scoped, so they run together.
+        const [[supplier], [existingSupplierPart]] = await Promise.all([
+          ctx.db
+            .select()
+            .from(suppliers)
+            .where(
+              and(
+                eq(suppliers.id, supplierId),
+                eq(suppliers.organizationId, organizationId),
+              ),
+            )
+            .limit(1),
+          ctx.db
             .select()
             .from(supplierParts)
             .where(
               and(
                 eq(supplierParts.organizationId, organizationId),
-                eq(supplierParts.supplierId, input.supplierId),
+                eq(supplierParts.supplierId, supplierId),
                 eq(supplierParts.partDefinitionId, updated.id),
               ),
             )
-            .limit(1);
+            .limit(1),
+        ]);
+
+        if (supplier) {
 
           if (input.supplierIsPreferred) {
             await ctx.db
@@ -2411,13 +2403,16 @@ export const catalogueRouter = createTRPCRouter({
           } else {
             await ctx.db.insert(supplierParts).values({
               organizationId,
-              supplierId: input.supplierId,
+              supplierId,
               partDefinitionId: updated.id,
               ...supplierPartValues,
             });
           }
         }
-      }
+      };
+
+      // Aliases and supplier details touch different tables.
+      await Promise.all([syncAliases(), syncSupplierPart()]);
 
       publishCatalogueChange(organizationId);
       return updated;

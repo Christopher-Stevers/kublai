@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import { and, asc, desc, eq, inArray, max, sql } from "drizzle-orm";
+import { and, asc, desc, eq, max, sql } from "drizzle-orm";
 import { z } from "zod";
 
 import {
@@ -104,43 +104,41 @@ function assertDraft(draw: { status: string }) {
 export const drawsRouter = createTRPCRouter({
   /** Every job in the organization with its contract and billing totals. */
   listJobs: drawsProcedure.query(async ({ ctx }) => {
-    const jobRows = await ctx.db
-      .select({ id: jobs.id, name: jobs.name, status: jobs.status })
-      .from(jobs)
-      .where(eq(jobs.organizationId, ctx.organizationId))
-      .orderBy(desc(jobs.updatedAt));
-
-    const lines = await ctx.db
-      .select({
-        id: jobDrawLines.id,
-        jobId: jobDrawLines.jobId,
-        scheduledValue: jobDrawLines.scheduledValue,
-      })
-      .from(jobDrawLines)
-      .where(eq(jobDrawLines.organizationId, ctx.organizationId));
-
-    const draws = await ctx.db
-      .select({
-        id: jobDraws.id,
-        jobId: jobDraws.jobId,
-        drawNumber: jobDraws.drawNumber,
-        status: jobDraws.status,
-        retainagePercent: jobDraws.retainagePercent,
-      })
-      .from(jobDraws)
-      .where(eq(jobDraws.organizationId, ctx.organizationId));
-
-    const items = draws.length
-      ? await ctx.db
-          .select()
-          .from(jobDrawItems)
-          .where(
-            inArray(
-              jobDrawItems.drawId,
-              draws.map((draw) => draw.id),
-            ),
-          )
-      : [];
+    // Everything is organization-scoped, so all four reads run together.
+    const [jobRows, lines, draws, items] = await Promise.all([
+      ctx.db
+        .select({ id: jobs.id, name: jobs.name, status: jobs.status })
+        .from(jobs)
+        .where(eq(jobs.organizationId, ctx.organizationId))
+        .orderBy(desc(jobs.updatedAt)),
+      ctx.db
+        .select({
+          id: jobDrawLines.id,
+          jobId: jobDrawLines.jobId,
+          scheduledValue: jobDrawLines.scheduledValue,
+        })
+        .from(jobDrawLines)
+        .where(eq(jobDrawLines.organizationId, ctx.organizationId)),
+      ctx.db
+        .select({
+          id: jobDraws.id,
+          jobId: jobDraws.jobId,
+          drawNumber: jobDraws.drawNumber,
+          status: jobDraws.status,
+          retainagePercent: jobDraws.retainagePercent,
+        })
+        .from(jobDraws)
+        .where(eq(jobDraws.organizationId, ctx.organizationId)),
+      ctx.db
+        .select({
+          drawId: jobDrawItems.drawId,
+          lineId: jobDrawItems.lineId,
+          completedToDate: jobDrawItems.completedToDate,
+        })
+        .from(jobDrawItems)
+        .innerJoin(jobDraws, eq(jobDrawItems.drawId, jobDraws.id))
+        .where(eq(jobDraws.organizationId, ctx.organizationId)),
+    ]);
 
     return jobRows.map((job) => {
       const jobLines = lines.filter((line) => line.jobId === job.id);
@@ -183,31 +181,45 @@ export const drawsRouter = createTRPCRouter({
   getJob: drawsProcedure
     .input(z.object({ jobId: z.string().uuid() }))
     .query(async ({ ctx, input }) => {
-      const job = await requireJob(ctx.db, ctx.organizationId, input.jobId);
-
-      const lines = await ctx.db
-        .select()
-        .from(jobDrawLines)
-        .where(eq(jobDrawLines.jobId, job.id))
-        .orderBy(asc(jobDrawLines.sortOrder), asc(jobDrawLines.createdAt));
-
-      const draws = await ctx.db
-        .select()
-        .from(jobDraws)
-        .where(eq(jobDraws.jobId, job.id))
-        .orderBy(asc(jobDraws.drawNumber));
-
-      const items = draws.length
-        ? await ctx.db
-            .select()
-            .from(jobDrawItems)
-            .where(
-              inArray(
-                jobDrawItems.drawId,
-                draws.map((draw) => draw.id),
-              ),
-            )
-        : [];
+      // The job check runs alongside the reads; if the job is not in the
+      // caller's organization, requireJob throws and the rows are discarded.
+      const [job, lines, draws, items] = await Promise.all([
+        requireJob(ctx.db, ctx.organizationId, input.jobId),
+        ctx.db
+          .select()
+          .from(jobDrawLines)
+          .where(
+            and(
+              eq(jobDrawLines.jobId, input.jobId),
+              eq(jobDrawLines.organizationId, ctx.organizationId),
+            ),
+          )
+          .orderBy(asc(jobDrawLines.sortOrder), asc(jobDrawLines.createdAt)),
+        ctx.db
+          .select()
+          .from(jobDraws)
+          .where(
+            and(
+              eq(jobDraws.jobId, input.jobId),
+              eq(jobDraws.organizationId, ctx.organizationId),
+            ),
+          )
+          .orderBy(asc(jobDraws.drawNumber)),
+        ctx.db
+          .select({
+            drawId: jobDrawItems.drawId,
+            lineId: jobDrawItems.lineId,
+            completedToDate: jobDrawItems.completedToDate,
+          })
+          .from(jobDrawItems)
+          .innerJoin(jobDraws, eq(jobDrawItems.drawId, jobDraws.id))
+          .where(
+            and(
+              eq(jobDraws.jobId, input.jobId),
+              eq(jobDraws.organizationId, ctx.organizationId),
+            ),
+          ),
+      ]);
 
       const summaries = summarizeDraws(
         lines,

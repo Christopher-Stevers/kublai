@@ -134,6 +134,9 @@ export async function pullSnapshot(
     receivedOrder < Number.MAX_SAFE_INTEGER - 1
       ? receivedOrder
       : 0;
+  const started = Date.now();
+  let revisionMs = 0;
+  let buildMs: number | null = null;
   for (let attempt = 0; ; attempt++) {
     try {
       const result = await db.transaction(
@@ -158,10 +161,15 @@ export async function pullSnapshot(
             })
             .from(replicacheClients)
             .where(eq(replicacheClients.clientGroupId, request.clientGroupID));
+          const revisionStart = Date.now();
           const fingerprint = await revision(tx, kind, org);
-          const view =
-            views.find(scope, fingerprint) ??
-            views.create(scope, fingerprint, await build(tx));
+          revisionMs = Date.now() - revisionStart;
+          let view = views.find(scope, fingerprint);
+          if (!view) {
+            const buildStart = Date.now();
+            view = views.create(scope, fingerprint, await build(tx));
+            buildMs = Date.now() - buildStart;
+          }
           return {
             view,
             response: {
@@ -177,6 +185,9 @@ export async function pullSnapshot(
       );
       // Publish only committed views. Eviction/restart simply falls back to clear.
       views.remember(result.view);
+      console.log(
+        `[replicache] ${kind} pull took ${Date.now() - started}ms (revision ${revisionMs}ms, ${buildMs === null ? "cached view" : `build ${buildMs}ms`}, ${result.response.patch.length} patch ops, attempt ${attempt + 1})`,
+      );
       return result.response;
     } catch (error) {
       if (attempt >= 3 || !serializationFailure(error)) throw error;

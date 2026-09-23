@@ -2569,54 +2569,54 @@ ${foremanName}`;
       });
     }
 
-    // Get all orders with supplier, job, and material list info
-    const ordersList = await ctx.db
-      .select({
-        id: orders.id,
-        orderNumber: orders.orderNumber,
-        status: orders.status,
-        notes: orders.notes,
-        createdAt: orders.createdAt,
-        sentAt: orders.sentAt,
-        sentTo: orders.sentTo,
-        jobId: orders.jobId,
-        jobName: jobs.name,
-        materialListId: materialLists.id,
-        materialListName: materialLists.name,
-        supplierId: orders.supplierId,
-        supplierName: suppliers.name,
-        supplierContactEmail: suppliers.contactEmail,
-        supplierContacts: suppliers.contacts,
-      })
-      .from(orders)
-      .leftJoin(jobs, eq(orders.jobId, jobs.id))
-      .leftJoin(materialLists, eq(orders.materialListId, materialLists.id))
-      .leftJoin(suppliers, eq(orders.supplierId, suppliers.id))
-      .where(
-        and(
-          eq(orders.organizationId, ctx.user.organizationId),
-          eq(orders.status, "sent"),
-        ),
-      )
-      .orderBy(desc(orders.createdAt));
+    // Orders and their items load together; the item query joins on the same
+    // organization/status filter instead of sending every order id back.
+    const sentOrderFilter = and(
+      eq(orders.organizationId, ctx.user.organizationId),
+      eq(orders.status, "sent"),
+    );
+    const [ordersList, itemRows] = await Promise.all([
+      ctx.db
+        .select({
+          id: orders.id,
+          orderNumber: orders.orderNumber,
+          status: orders.status,
+          notes: orders.notes,
+          createdAt: orders.createdAt,
+          sentAt: orders.sentAt,
+          sentTo: orders.sentTo,
+          jobId: orders.jobId,
+          jobName: jobs.name,
+          materialListId: materialLists.id,
+          materialListName: materialLists.name,
+          supplierId: orders.supplierId,
+          supplierName: suppliers.name,
+          supplierContactEmail: suppliers.contactEmail,
+          supplierContacts: suppliers.contacts,
+        })
+        .from(orders)
+        .leftJoin(jobs, eq(orders.jobId, jobs.id))
+        .leftJoin(materialLists, eq(orders.materialListId, materialLists.id))
+        .leftJoin(suppliers, eq(orders.supplierId, suppliers.id))
+        .where(sentOrderFilter)
+        .orderBy(desc(orders.createdAt)),
+      ctx.db
+        .select({
+          orderId: orderItems.orderId,
+          quantity: orderItems.quantity,
+          descriptionSnapshot: orderItems.descriptionSnapshot,
+          supplierSkuSnapshot: orderItems.supplierSkuSnapshot,
+          partDefinitionDisplayName: partDefinitions.displayName,
+        })
+        .from(orderItems)
+        .innerJoin(orders, eq(orderItems.orderId, orders.id))
+        .leftJoin(
+          partDefinitions,
+          eq(orderItems.partDefinitionId, partDefinitions.id),
+        )
+        .where(sentOrderFilter),
+    ]);
 
-    const orderIds = ordersList.map((order) => order.id);
-    const itemRows = orderIds.length
-      ? await ctx.db
-          .select({
-            orderId: orderItems.orderId,
-            quantity: orderItems.quantity,
-            descriptionSnapshot: orderItems.descriptionSnapshot,
-            supplierSkuSnapshot: orderItems.supplierSkuSnapshot,
-            partDefinitionDisplayName: partDefinitions.displayName,
-          })
-          .from(orderItems)
-          .leftJoin(
-            partDefinitions,
-            eq(orderItems.partDefinitionId, partDefinitions.id),
-          )
-          .where(inArray(orderItems.orderId, orderIds))
-      : [];
     const itemsByOrderId = new Map<string, typeof itemRows>();
     for (const item of itemRows) {
       const bucket = itemsByOrderId.get(item.orderId) ?? [];

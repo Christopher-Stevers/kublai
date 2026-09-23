@@ -65,34 +65,75 @@ export const supplierRouter = createTRPCRouter({
         });
       }
 
-      const [supplier] = await ctx.db
-        .select({
-          id: suppliers.id,
-          organizationId: suppliers.organizationId,
-          name: suppliers.name,
-          contactName: suppliers.contactName,
-          contactEmail: suppliers.contactEmail,
-          contactPhone: suppliers.contactPhone,
-          contacts: suppliers.contacts,
-          orderingNotes: suppliers.orderingNotes,
-          locationId: suppliers.locationId,
-          createdAt: suppliers.createdAt,
-          location: {
-            id: locations.id,
-            name: locations.name,
-            city: locations.city,
-            region: locations.region,
-          },
-        })
-        .from(suppliers)
-        .leftJoin(locations, eq(suppliers.locationId, locations.id))
-        .where(
-          and(
-            eq(suppliers.id, input.id),
-            eq(suppliers.organizationId, ctx.user.organizationId),
-          ),
-        )
-        .limit(1);
+      // Both queries are organization-scoped, so they can run together.
+      const [[supplier], supplierPartsList] = await Promise.all([
+        ctx.db
+          .select({
+            id: suppliers.id,
+            organizationId: suppliers.organizationId,
+            name: suppliers.name,
+            contactName: suppliers.contactName,
+            contactEmail: suppliers.contactEmail,
+            contactPhone: suppliers.contactPhone,
+            contacts: suppliers.contacts,
+            orderingNotes: suppliers.orderingNotes,
+            locationId: suppliers.locationId,
+            createdAt: suppliers.createdAt,
+            location: {
+              id: locations.id,
+              name: locations.name,
+              city: locations.city,
+              region: locations.region,
+            },
+          })
+          .from(suppliers)
+          .leftJoin(locations, eq(suppliers.locationId, locations.id))
+          .where(
+            and(
+              eq(suppliers.id, input.id),
+              eq(suppliers.organizationId, ctx.user.organizationId),
+            ),
+          )
+          .limit(1),
+        ctx.db
+          .select({
+            id: supplierParts.id,
+            supplierId: supplierParts.supplierId,
+            partDefinitionId: supplierParts.partDefinitionId,
+            supplierSku: supplierParts.supplierSku,
+            supplierName: supplierParts.supplierName,
+            packSize: supplierParts.packSize,
+            packUomId: supplierParts.packUomId,
+            lastKnownUnitCost: supplierParts.lastKnownUnitCost,
+            currency: supplierParts.currency,
+            isPreferred: supplierParts.isPreferred,
+            notes: supplierParts.notes,
+            createdAt: supplierParts.createdAt,
+            partDefinition: {
+              id: partDefinitions.id,
+              displayName: partDefinitions.displayName,
+              description: partDefinitions.description,
+            },
+            packUom: {
+              id: units.id,
+              code: units.code,
+              displayName: units.displayName,
+            },
+          })
+          .from(supplierParts)
+          .leftJoin(
+            partDefinitions,
+            eq(supplierParts.partDefinitionId, partDefinitions.id),
+          )
+          .leftJoin(units, eq(supplierParts.packUomId, units.id))
+          .where(
+            and(
+              eq(supplierParts.supplierId, input.id),
+              eq(supplierParts.organizationId, ctx.user.organizationId),
+            ),
+          )
+          .orderBy(supplierParts.supplierSku),
+      ]);
 
       if (!supplier) {
         throw new TRPCError({
@@ -100,46 +141,6 @@ export const supplierRouter = createTRPCRouter({
           message: "Supplier not found",
         });
       }
-
-      // Get supplier parts with part definition details
-      const supplierPartsList = await ctx.db
-        .select({
-          id: supplierParts.id,
-          supplierId: supplierParts.supplierId,
-          partDefinitionId: supplierParts.partDefinitionId,
-          supplierSku: supplierParts.supplierSku,
-          supplierName: supplierParts.supplierName,
-          packSize: supplierParts.packSize,
-          packUomId: supplierParts.packUomId,
-          lastKnownUnitCost: supplierParts.lastKnownUnitCost,
-          currency: supplierParts.currency,
-          isPreferred: supplierParts.isPreferred,
-          notes: supplierParts.notes,
-          createdAt: supplierParts.createdAt,
-          partDefinition: {
-            id: partDefinitions.id,
-            displayName: partDefinitions.displayName,
-            description: partDefinitions.description,
-          },
-          packUom: {
-            id: units.id,
-            code: units.code,
-            displayName: units.displayName,
-          },
-        })
-        .from(supplierParts)
-        .leftJoin(
-          partDefinitions,
-          eq(supplierParts.partDefinitionId, partDefinitions.id),
-        )
-        .leftJoin(units, eq(supplierParts.packUomId, units.id))
-        .where(
-          and(
-            eq(supplierParts.supplierId, input.id),
-            eq(supplierParts.organizationId, ctx.user.organizationId),
-          ),
-        )
-        .orderBy(supplierParts.supplierSku);
 
       return {
         ...supplier,

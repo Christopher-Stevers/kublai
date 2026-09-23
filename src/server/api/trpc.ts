@@ -13,6 +13,7 @@ import { ZodError } from "zod";
 
 import { auth } from "@clerk/nextjs/server";
 import { db } from "~/server/db";
+import { withQueryStats } from "~/server/db/query-stats";
 import { ensureUser } from "~/server/utils/ensure-user";
 import { getDevBypassUser } from "~/server/utils/get-dev-bypass-user";
 import { getAgentBypassUser } from "~/server/utils/get-agent-bypass-user";
@@ -93,13 +94,19 @@ export const createCallerFactory = t.createCallerFactory;
  */
 export const createTRPCRouter = t.router;
 
+const SLOW_REQUEST_MS = 1500;
+
+// Logs duration and database round trips; `scripts/trpc-timing-report.mjs`
+// summarizes these lines from the service journal.
 const timingMiddleware = t.middleware(async ({ next, path }) => {
   const start = Date.now();
 
-  const result = await next();
+  const { result, stats } = await withQueryStats(() => next());
 
-  const end = Date.now();
-  console.log(`[TRPC] ${path} took ${end - start}ms to execute`);
+  const duration = Date.now() - start;
+  const message = `[TRPC] ${path} took ${duration}ms to execute (${stats.count} queries)`;
+  if (duration >= SLOW_REQUEST_MS) console.warn(`${message} [slow]`);
+  else console.log(message);
 
   return result;
 });

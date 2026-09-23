@@ -9,6 +9,27 @@ let catalogueReplicachePullTimer: ReturnType<typeof setTimeout> | null = null;
 let catalogueReplicachePullInFlight = false;
 let catalogueReplicachePullRequested = false;
 
+// Whether a catalogue pull is running, for first-download progress notices.
+let catalogueSyncing = false;
+const catalogueSyncListeners = new Set<() => void>();
+
+export function subscribeCatalogueSyncing(listener: () => void) {
+  catalogueSyncListeners.add(listener);
+  return () => {
+    catalogueSyncListeners.delete(listener);
+  };
+}
+
+export function getCatalogueSyncing() {
+  return catalogueSyncing;
+}
+
+function setCatalogueSyncing(syncing: boolean) {
+  if (catalogueSyncing === syncing) return;
+  catalogueSyncing = syncing;
+  catalogueSyncListeners.forEach((listener) => listener());
+}
+
 function assertBrowser() {
   if (typeof window === "undefined") {
     throw new Error("Replicache catalogue sync is browser-only");
@@ -61,6 +82,7 @@ export function getCatalogueReplicache() {
   replicache.onClientStateNotFound = () => {
     void resetCatalogueReplicacheStorage();
   };
+  replicache.onSync = setCatalogueSyncing;
 
   catalogueReplicache = replicache;
   return catalogueReplicache;

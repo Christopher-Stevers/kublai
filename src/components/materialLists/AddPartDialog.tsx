@@ -31,6 +31,7 @@ import {
   requestMaterialListReplicacheSync,
 } from "~/lib/replicache-material-list";
 import { useOnlineStatus } from "~/hooks/use-online-status";
+import { useCatalogueFirstDownload } from "~/hooks/use-replicache-catalogue";
 import {
   getOfflineSupplierPartsByPart,
   setOfflineSupplierPartsByPart,
@@ -128,6 +129,7 @@ export function AddPartDialog({
 
   const utils = api.useUtils();
   const isOnline = useOnlineStatus();
+  const catalogueDownloading = useCatalogueFirstDownload(open);
   const { data: currentUser } = api.user.getMe.useQuery(undefined, {
     enabled: open && isOnline,
   });
@@ -898,6 +900,16 @@ export function AddPartDialog({
                 ? "Select catalog, material, size, and category to add parts to your list"
                 : "Offline: add cached parts and cached suppliers. Creation/editing is online-only."}
             </DialogDescription>
+            {catalogueDownloading && (
+              <p
+                role="status"
+                className="text-muted-foreground flex items-center gap-2 text-xs"
+              >
+                <span className="border-primary/30 border-t-primary inline-block size-3 animate-spin rounded-full border-2" />
+                Saving the catalogue to this device for offline use. You can
+                keep working meanwhile.
+              </p>
+            )}
           </DialogHeader>
 
           {wizardStage !== "review" && (
