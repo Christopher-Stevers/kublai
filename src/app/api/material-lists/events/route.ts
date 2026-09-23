@@ -1,12 +1,10 @@
-import { auth } from "@clerk/nextjs/server";
+import { createTRPCContext } from "~/server/api/trpc";
 
 import {
   subscribeToOrganizationCatalogueEvents,
   subscribeToOrganizationMaterialListEvents,
   subscribeToOrganizationReplicachePokes,
 } from "~/server/material-list-events";
-import { ensureUser } from "~/server/utils/ensure-user";
-import { getDevBypassUser } from "~/server/utils/get-dev-bypass-user";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -16,11 +14,10 @@ function encodeSse(event: string, data: unknown) {
 }
 
 export async function GET(request: Request) {
-  const { userId } = await auth();
-  const user = userId ? await ensureUser(userId) : await getDevBypassUser();
+  const { user } = await createTRPCContext({ headers: request.headers });
   const organizationId = user?.organizationId;
 
-  if (!organizationId) {
+  if (!organizationId || (user?.organizationAccessStatus && user.organizationAccessStatus !== "approved")) {
     return new Response("User must belong to an organization", { status: 401 });
   }
 

@@ -1,3 +1,5 @@
+import { pullSnapshot, ensureClientGroup, ReplicacheOwnershipError } from "./pull";
+export { ReplicacheOwnershipError } from "./pull";
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import type {
   PatchOperation,
@@ -50,13 +52,6 @@ type ReplicacheMutationSideEffects = {
   quoteIdsToRecalculate: Set<string>;
   materialListIdsToTouch: Set<string>;
 };
-
-export class ReplicacheOwnershipError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "ReplicacheOwnershipError";
-  }
-}
 
 // ---------------------------------------------------------------------------
 // Zod schemas for all mutator args
@@ -175,53 +170,6 @@ const deleteSupplierArgs = z.object({
 // ---------------------------------------------------------------------------
 // Replicache bookkeeping helpers
 // ---------------------------------------------------------------------------
-
-async function ensureClientGroup(
-  tx: ReplicacheTx,
-  input: {
-    clientGroupId: string;
-    organizationId: string;
-    userId: string;
-    schemaVersion: string;
-  },
-) {
-  const [existing] = await tx
-    .select({
-      id: replicacheClientGroups.id,
-      organizationId: replicacheClientGroups.organizationId,
-      userId: replicacheClientGroups.userId,
-    })
-    .from(replicacheClientGroups)
-    .where(eq(replicacheClientGroups.id, input.clientGroupId))
-    .limit(1);
-
-  if (existing) {
-    if (
-      existing.organizationId !== input.organizationId ||
-      existing.userId !== input.userId
-    ) {
-      throw new ReplicacheOwnershipError(
-        "Replicache client group ownership mismatch",
-      );
-    }
-
-    await tx
-      .update(replicacheClientGroups)
-      .set({ schemaVersion: input.schemaVersion, updatedAt: new Date() })
-      .where(eq(replicacheClientGroups.id, input.clientGroupId));
-    return;
-  }
-
-  await tx
-    .insert(replicacheClientGroups)
-    .values({
-      id: input.clientGroupId,
-      organizationId: input.organizationId,
-      userId: input.userId,
-      schemaVersion: input.schemaVersion,
-    })
-    .onConflictDoNothing();
-}
 
 async function ensureClient(
   tx: ReplicacheTx,
@@ -1138,25 +1086,7 @@ export async function handleMaterialListReplicachePull(
     return { error: "VersionNotSupported", versionType: "pull" };
   }
 
-  const { patch, lastMutationIDChanges, cookie } = await db.transaction(
-    async (tx) => {
-      await ensureClientGroup(tx, {
-        clientGroupId: request.clientGroupID,
-        organizationId,
-        userId: user.id,
-        schemaVersion: request.schemaVersion,
-      });
-
-      const groupClients = await tx
-        .select({
-          id: replicacheClients.id,
-          lastMutationId: replicacheClients.lastMutationId,
-        })
-        .from(replicacheClients)
-        .where(eq(replicacheClients.clientGroupId, request.clientGroupID));
-
-      const highWatermark = new Date();
-
+  return pullSnapshot("material-lists", request, user, async (tx) => {
       // Jobs with location + foreman joins
       const jobRows = await tx
         .select({
@@ -1352,10 +1282,7 @@ export async function handleMaterialListReplicachePull(
         );
       }
 
-      // Timestamp-only incremental pulls can leave a device permanently stale if
-      // it advances its cookie after receiving a partial patch. Until this uses a
-      // real CVR diff, send a full organization snapshot so every pull self-heals
-      // local IndexedDB state.
+      // Build a consistent full view; pullSnapshot diffs the client's exact base.
       const patch: PatchOperation[] = [{ op: "clear" }];
 
       for (const job of jobRows) {
@@ -1498,18 +1425,6 @@ export async function handleMaterialListReplicachePull(
         });
       }
 
-      return {
-        patch,
-        lastMutationIDChanges: Object.fromEntries(
-          groupClients.map((client) => [client.id, client.lastMutationId]),
-        ),
-        cookie: {
-          order: highWatermark.getTime(),
-          cvr: request.clientGroupID,
-        },
-      };
-    },
-  );
-
-  return { cookie, lastMutationIDChanges, patch };
+      return patch;
+  });
 }

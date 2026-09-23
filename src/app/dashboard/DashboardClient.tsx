@@ -1,7 +1,11 @@
 "use client";
+import { AddPartDialog, QuotePreviewSheet, OrdersPreviewSheet, ExistingQuotesOrdersDialog, JobRoomsView } from "~/components/app/DeferredFeatures";
+
+import { MaterialListOrderPickerDialog } from "~/components/materialLists/VerifyOrderButton";
+import { useMaterialListSort } from "~/hooks/use-material-list-sort";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api } from "~/trpc/react";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Button } from "~/components/ui/button";
@@ -18,14 +22,12 @@ import {
   BriefcaseIcon,
   CalendarIcon,
   CheckCircle2Icon,
-  FileTextIcon,
   UserIcon,
   MapPinIcon,
   PackageIcon,
   PencilIcon,
   PlusIcon,
   SendIcon,
-  ShoppingCartIcon,
   TrashIcon,
   WifiOffIcon,
 } from "lucide-react";
@@ -37,26 +39,14 @@ import {
 import { useReplicacheMaterialList } from "~/hooks/use-replicache-material-list";
 import { useReplicacheSuppliers } from "~/hooks/use-replicache-suppliers";
 import { MaterialListItem } from "~/components/materialLists/MaterialListItem";
-import { MaterialListTableRow } from "~/components/materialLists/MaterialListTableRow";
-import { AddPartDialog } from "~/components/materialLists/AddPartDialog";
-import { QuotePreviewSheet } from "~/components/materialLists/QuotePreviewSheet";
-import { OrdersPreviewSheet } from "~/components/materialLists/OrdersPreviewSheet";
-import { ExistingQuotesOrdersDialog } from "~/components/materialLists/ExistingQuotesOrdersDialog";
+import { MaterialListSheet } from "~/components/materialLists/MaterialListSheet";
+import { MaterialListActions } from "~/components/materialLists/MaterialListActions";
 import { JobEditDialog } from "~/components/jobs/JobEditDialog";
-import { JobRoomsView } from "~/components/jobs/JobRoomsView";
 import { JobWorkspaceOptions } from "~/components/jobs/JobWorkspaceOptions";
-import {
-  clearLastJobWorkspaceLocation,
-  getLastJobWorkspaceLocation,
-  setLastJobWorkspaceLocation,
-  type JobWorkspaceView,
-} from "~/lib/job-workspace-last-option";
+import { useJobWorkspaceNavigation } from "~/hooks/use-job-workspace-navigation";
 import { MaterialListNameModal } from "~/components/materialLists/MaterialListNameModal";
 import { ViewToggle } from "~/components/ui/view-toggle";
-import {
-  getBrowserOnlineStatus,
-  useOnlineStatus,
-} from "~/hooks/use-online-status";
+import { useOnlineStatus } from "~/hooks/use-online-status";
 import {
   getMaterialListReplicache,
   mutateMaterialListAndSync,
@@ -234,19 +224,28 @@ export function DashboardClient({
     name: string;
     itemCount?: number | null;
   } | null>(null);
-  const [offlineJobId, setOfflineJobId] = useState<string | null>(null);
-  const [offlineMaterialListId, setOfflineMaterialListId] = useState<
-    string | null
-  >(null);
-  const [offlineJobView, setOfflineJobView] =
-    useState<JobWorkspaceView>("options");
-  const [hasRestoredJobLocation, setHasRestoredJobLocation] = useState(false);
-  const [forceOfflineView, setForceOfflineView] = useState(false);
+  const [materialListForOrders, setMaterialListForOrders] = useState<{ id: string; name: string } | null>(null);
+  const materialListPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const materialListPressHandled = useRef(false);
+  const materialListPressOrigin = useRef<{ x: number; y: number } | null>(null);
+  const clearMaterialListPress = () => {
+    if (materialListPressTimer.current) clearTimeout(materialListPressTimer.current);
+    materialListPressTimer.current = null;
+  };
+  useEffect(() => () => {
+    if (materialListPressTimer.current) clearTimeout(materialListPressTimer.current);
+  }, []);
+  const {
+    location: workspaceLocation,
+    navigate: navigateWorkspace,
+    back: handleLocalWorkspaceBack,
+  } = useJobWorkspaceNavigation();
+  const offlineJobId = workspaceLocation?.jobId ?? null;
+  const offlineMaterialListId = workspaceLocation?.materialListId ?? null;
+  const offlineJobView = workspaceLocation?.view ?? "options";
   const [showOfflineAddPartDialog, setShowOfflineAddPartDialog] =
     useState(false);
   const isBrowserOnline = useOnlineStatus();
-  const shouldUseLocalWorkspaceView =
-    forceOfflineView || offlineJobId !== null || !isBrowserOnline;
 
   // Check user's organizationId status
   const { data: userData, isFetched: hasFetchedUser } =
@@ -278,6 +277,7 @@ export function DashboardClient({
     offlineMaterialListId ?? "",
   );
   const suppliers = useReplicacheSuppliers();
+  const { sortedItems } = useMaterialListSort(offlineMaterialListDetail.items, suppliers);
   const jobs = replicacheJobs.length > 0 ? replicacheJobs : initialJobs;
   const isWaitingForJobs = false;
 
@@ -291,40 +291,8 @@ export function DashboardClient({
     }
   }, [isBrowserOnline, jobs, router]);
 
-  useEffect(() => {
-    const last = getLastJobWorkspaceLocation();
-    if (last) {
-      setForceOfflineView(true);
-      setOfflineJobId(last.jobId);
-      setOfflineJobView(last.view);
-      setOfflineMaterialListId(last.materialListId);
-    }
-    setHasRestoredJobLocation(true);
-  }, []);
-
-  useEffect(() => {
-    if (!hasRestoredJobLocation) return;
-    if (!offlineJobId) {
-      clearLastJobWorkspaceLocation();
-      return;
-    }
-    setLastJobWorkspaceLocation({
-      jobId: offlineJobId,
-      view: offlineJobView,
-      materialListId: offlineMaterialListId,
-    });
-  }, [
-    hasRestoredJobLocation,
-    offlineJobId,
-    offlineJobView,
-    offlineMaterialListId,
-  ]);
-
   const openJob = (jobId: string) => {
-    setForceOfflineView(true);
-    setOfflineJobId(jobId);
-    setOfflineMaterialListId(null);
-    setOfflineJobView("options");
+    navigateWorkspace({ jobId, view: "options", materialListId: null });
   };
 
   const handleCreateJob = () => {
@@ -338,10 +306,7 @@ export function DashboardClient({
       );
       setShowCreateDialog(false);
       setNewJobName("");
-      setForceOfflineView(true);
-      setOfflineJobId(jobId);
-      setOfflineMaterialListId(null);
-      setOfflineJobView("options");
+      openJob(jobId);
     }
   };
 
@@ -359,9 +324,7 @@ export function DashboardClient({
       }),
     );
 
-    setForceOfflineView(true);
-    setOfflineJobId(jobId);
-    setOfflineMaterialListId(materialListId);
+    navigateWorkspace({ jobId, view: "material-lists", materialListId });
   };
 
   const handleConfirmDeleteJob = () => {
@@ -384,24 +347,8 @@ export function DashboardClient({
     );
   };
 
-  const handleLocalWorkspaceBack = useCallback(() => {
-    if (offlineMaterialListId) {
-      setOfflineMaterialListId(null);
-      setOfflineJobView("material-lists");
-      return;
-    }
-
-    if (offlineJobView === "material-lists" || offlineJobView === "rooms") {
-      setOfflineJobView("options");
-      return;
-    }
-
-    setOfflineJobId(null);
-    setForceOfflineView(!getBrowserOnlineStatus());
-  }, [offlineJobView, offlineMaterialListId]);
-
   useEffect(() => {
-    const showBackButton = Boolean(offlineJobId && shouldUseLocalWorkspaceView);
+    const showBackButton = Boolean(offlineJobId);
     setHeaderBackVisible(showBackButton);
 
     if (!showBackButton) {
@@ -421,16 +368,16 @@ export function DashboardClient({
       );
       setHeaderBackVisible(false);
     };
-  }, [handleLocalWorkspaceBack, offlineJobId, shouldUseLocalWorkspaceView]);
+  }, [handleLocalWorkspaceBack, offlineJobId]);
 
   if (hasFetchedUser && userData && !userData.organizationId) return null;
 
-  if (offlineJobId && shouldUseLocalWorkspaceView) {
+  if (offlineJobId) {
     const fallbackJob = jobs.find((job) => job.id === offlineJobId) ?? null;
     const offlineJob = offlineJobDetail?.job ?? fallbackJob;
     const offlineMaterialLists = offlineJobDetail?.materialLists ?? [];
     const selectedMaterialList = offlineMaterialListDetail.materialList;
-    const selectedItems = offlineMaterialListDetail.items;
+    const selectedItems = sortedItems;
     const selectedMaterialTotal = offlineMaterialListDetail.materialTotal;
     const selectedMaterialListHasPendingSync =
       Boolean(selectedMaterialList?.pendingSync) ||
@@ -541,106 +488,14 @@ export function DashboardClient({
                         ))}
                       </div>
                     ) : (
-                      <div className="overflow-x-auto pb-24">
-                        <table className="min-w-[52rem] divide-y divide-gray-200">
-                          <thead className="bg-gray-50">
-                            <tr>
-                              <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
-                                Part
-                              </th>
-                              <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
-                                Qty
-                              </th>
-                              <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
-                                Unit
-                              </th>
-                              <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
-                                Supplier
-                              </th>
-                              <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
-                                Cost
-                              </th>
-                              <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
-                                Total
-                              </th>
-                              <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
-                                Actions
-                              </th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-gray-200 bg-white">
-                            {selectedItems.map((item) => (
-                              <MaterialListTableRow
-                                key={item.id}
-                                materialListId={selectedMaterialList.id}
-                                suppliers={suppliers}
-                                item={{
-                                  ...item,
-                                  oneOff: null,
-                                  uom: null,
-                                  selectedSupplierId: item.supplierId,
-                                  partDefinition: item.partDefinition ?? null,
-                                  supplierPart: item.supplierPart ?? null,
-                                }}
-                              />
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
+                      <MaterialListSheet className="mb-24" items={selectedItems} materialListId={selectedMaterialList.id} suppliers={suppliers} />
                     )}
                   </>
                 )}
 
                 <div className="fixed inset-x-0 bottom-0 z-40 border-t bg-white px-4 pt-1.5 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:sticky sm:inset-x-auto sm:z-10 sm:-mx-6 sm:mt-4 sm:px-6 sm:pt-2">
-                  <div className="mx-auto max-w-6xl">
-                    <div className="space-y-1.5">
-                      <div className="flex items-baseline gap-1.5">
-                        <span className="text-base text-gray-600 sm:text-lg">
-                          Material Total
-                        </span>
-                        <span className="text-base font-bold sm:text-lg">
-                          ${selectedMaterialTotal.toFixed(2)}
-                        </span>
-                      </div>
-                      <div className="grid grid-cols-3 gap-1.5">
-                        <Button
-                          variant="outline"
-                          onClick={handleOfflineGenerateQuote}
-                          disabled={!canGenerateOfflineQuoteOrOrder}
-                          title={
-                            offlineGenerationBlockReason ?? "Generate quote"
-                          }
-                          className="h-9 min-h-9 w-full px-1.5 py-1 text-[11px] leading-tight whitespace-normal sm:h-9 sm:text-xs"
-                        >
-                          <FileTextIcon className="mr-1 h-3.5 w-3.5 shrink-0" />
-                          <span className="text-center leading-tight">
-                            Quote
-                          </span>
-                        </Button>
-                        <Button
-                          onClick={handleOfflineGenerateOrder}
-                          disabled={!canGenerateOfflineQuoteOrOrder}
-                          title={offlineGenerationBlockReason ?? "Order"}
-                          className="h-9 min-h-9 w-full px-1.5 py-1 text-[11px] leading-tight whitespace-normal sm:h-9 sm:text-xs"
-                        >
-                          <ShoppingCartIcon className="mr-1 h-3.5 w-3.5 shrink-0" />
-                          <span className="text-center leading-tight">
-                            Order
-                          </span>
-                        </Button>
-                        <Button
-                          variant="outline"
-                          onClick={() => setShowOfflineAddPartDialog(true)}
-                          className="h-9 min-h-9 w-full px-1.5 py-1 text-[11px] leading-tight whitespace-normal sm:h-9 sm:text-xs"
-                        >
-                          <PlusIcon className="mr-1 h-3.5 w-3.5 shrink-0" />
-                          <span className="text-center leading-tight">
-                            Add Part
-                          </span>
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
+                  <MaterialListActions total={selectedMaterialTotal} canGenerate={canGenerateOfflineQuoteOrOrder} blockedReason={offlineGenerationBlockReason}
+                    onQuote={handleOfflineGenerateQuote} onOrder={handleOfflineGenerateOrder} onAdd={() => setShowOfflineAddPartDialog(true)} />
                 </div>
 
                 <AddPartDialog
@@ -735,7 +590,11 @@ export function DashboardClient({
                 <JobWorkspaceOptions
                   materialListCount={offlineMaterialLists.length}
                   onSelect={(optionId) => {
-                    setOfflineJobView(optionId);
+                    navigateWorkspace({
+                      jobId: offlineJobId,
+                      view: optionId,
+                      materialListId: null,
+                    });
                   }}
                 />
               ) : offlineJobView === "rooms" ? (
@@ -794,8 +653,44 @@ export function DashboardClient({
                   {offlineMaterialLists.map((list) => (
                     <Card
                       key={list.id}
-                      className="cursor-pointer transition-shadow hover:shadow-md"
-                      onClick={() => setOfflineMaterialListId(list.id)}
+                      className="cursor-pointer select-none transition-shadow hover:shadow-md"
+                      onPointerDown={(event) => {
+                        if (event.button !== 0) return;
+                        clearMaterialListPress();
+                        materialListPressHandled.current = false;
+                        materialListPressOrigin.current = { x: event.clientX, y: event.clientY };
+                        materialListPressTimer.current = setTimeout(() => {
+                          materialListPressHandled.current = true;
+                          materialListPressTimer.current = null;
+                          setMaterialListForOrders({ id: list.id, name: list.name });
+                        }, 550);
+                      }}
+                      onPointerMove={(event) => {
+                        const origin = materialListPressOrigin.current;
+                        if (origin && Math.hypot(event.clientX - origin.x, event.clientY - origin.y) > 10) clearMaterialListPress();
+                      }}
+                      onPointerUp={clearMaterialListPress}
+                      onPointerLeave={clearMaterialListPress}
+                      onPointerCancel={clearMaterialListPress}
+                      onContextMenu={(event) => {
+                        event.preventDefault();
+                        clearMaterialListPress();
+                        materialListPressHandled.current = true;
+                        setMaterialListForOrders({ id: list.id, name: list.name });
+                      }}
+                      onClick={(event) => {
+                        clearMaterialListPress();
+                        if (materialListPressHandled.current) {
+                          event.preventDefault();
+                          materialListPressHandled.current = false;
+                          return;
+                        }
+                        navigateWorkspace({
+                          jobId: offlineJobId,
+                          view: "material-lists",
+                          materialListId: list.id,
+                        });
+                      }}
                     >
                       <CardHeader>
                         <div className="flex items-start justify-between gap-3">
@@ -808,6 +703,8 @@ export function DashboardClient({
                               size="icon"
                               className="-mt-3 -mr-3 h-10 w-10 shrink-0 text-red-600 hover:bg-red-50 hover:text-red-700"
                               aria-label={`Delete material list ${list.name}`}
+                              onPointerDown={(event) => event.stopPropagation()}
+                              onContextMenu={(event) => event.stopPropagation()}
                               onClick={(event) => {
                                 event.stopPropagation();
                                 setMaterialListToDelete({
@@ -900,6 +797,14 @@ export function DashboardClient({
             />
           )}
 
+          <MaterialListOrderPickerDialog
+            materialList={materialListForOrders}
+            open={!!materialListForOrders}
+            onOpenChange={(open) => { if (!open) setMaterialListForOrders(null); }}
+            onVerifyOrder={(orderId) => {
+              if (materialListForOrders) router.push(`/dashboard/material-lists/${materialListForOrders.id}?orderId=${orderId}`);
+            }}
+          />
           {selectedMaterialList && (
             <MaterialListNameModal
               open={showOfflineMaterialListNameModal}

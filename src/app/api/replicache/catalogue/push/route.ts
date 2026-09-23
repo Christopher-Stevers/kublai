@@ -8,6 +8,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  if (ctx.user.organizationAccessStatus && ctx.user.organizationAccessStatus !== "approved") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   void request;
   return NextResponse.json({});
 }

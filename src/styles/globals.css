@@ -344,3 +344,56 @@ a {
     color: var(--foreground);
   }
 }
+
+/* Continuous spreadsheet rows shared by material lists and part pickers. */
+.parts-sheet-scroll {
+  max-height: 70vh;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--background);
+}
+.parts-sheet { font-variant-numeric: tabular-nums; }
+.parts-sheet-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--muted);
+  color: var(--muted-foreground);
+  border-bottom: 2px solid var(--border);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .025em;
+}
+.parts-sheet-row, .parts-picker-row {
+  background: var(--background);
+  border-bottom: 1px solid var(--border);
+  align-items: stretch;
+}
+.parts-sheet-row:nth-child(odd), .parts-picker-row:nth-child(odd) { background: color-mix(in srgb, var(--muted) 28%, var(--background)); }
+.parts-sheet-row:hover, .parts-sheet-row:focus-within, .parts-picker-row:hover, .parts-picker-row:focus-within { background: color-mix(in srgb, var(--primary) 6%, var(--background)); }
+.parts-sheet-row:last-child, .parts-picker-row:last-child { border-bottom: 0; }
+.parts-sheet-header > *, .parts-sheet-row > * {
+  padding: 6px 8px;
+  border-right: 1px solid var(--border);
+  min-height: 44px;
+  height: auto;
+  align-self: stretch;
+  align-content: center;
+}
+.parts-sheet-header > * { min-height: 32px; }
+.parts-sheet-header > :last-child, .parts-sheet-row > :last-child { border-right: 0; }
+.parts-sheet-row > .parts-sheet-photo { width: 48px; }
+.parts-sheet-photo img { object-fit: contain; padding: 5px; }
+.parts-sheet-row [data-slot="button"], .parts-sheet-row input { border-radius: 2px; }
+
+.parts-sheet-photo > div { height: 32px; width: 32px; }
+.parts-sheet > div:has(> .parts-picker-row) { border-bottom: 1px solid var(--border); }
+
+/* Catalogue and saved material lists use identical cell spacing and borders. */
+.parts-sheet-cells { align-items: stretch; }
+.parts-sheet-cells > * {
+  border-right: 1px solid var(--border);
+  padding: 6px 8px;
+}
+.parts-sheet-cells > :last-child { border-right: 0; }

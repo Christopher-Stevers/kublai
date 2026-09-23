@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect, useRef, useLayoutEffect } from "react";
+import { useMaterialListSortPreference } from "~/hooks/use-material-list-sort";
 import { api } from "~/trpc/react";
 import {
   Dialog,
@@ -70,6 +71,7 @@ export function AddPartDialog({
     categoryName?: string | null;
   } | null>(null);
 
+  const { sortMode, keywordGroups } = useMaterialListSortPreference();
   const {
     wizardStage,
     setWizardStage,
@@ -81,7 +83,6 @@ export function AddPartDialog({
     hasSizeSelection,
     selectedCategory,
     hasCategorySelection,
-    setSelectedCategory,
     showCustomCatalogInput,
     setShowCustomCatalogInput,
     customCatalogName,
@@ -123,7 +124,7 @@ export function AddPartDialog({
     selectedSizeName,
     selectedCategoryName,
     wizardSearchPlaceholder,
-  } = usePartWizard(open);
+  } = usePartWizard(open, sortMode, keywordGroups);
 
   const utils = api.useUtils();
   const isOnline = useOnlineStatus();
@@ -954,10 +955,10 @@ export function AddPartDialog({
                 onPartQuantitySet={handlePartQuantitySet}
                 onQuantityPickerPreviewChange={setQuantityPickerPreview}
                 onEditPart={handleEditPart}
-                selectedMaterialId={selectedMaterialId}
-                selectedSize={selectedSize}
-                selectedCategory={selectedCategory}
-                onContinueToReview={() => setWizardStage("review")}
+
+
+
+
                 title="Matching Parts"
                 emptyMessage={
                   isOnline
@@ -1040,10 +1041,10 @@ export function AddPartDialog({
                 onPartQuantitySet={handlePartQuantitySet}
                 onQuantityPickerPreviewChange={setQuantityPickerPreview}
                 onEditPart={handleEditPart}
-                selectedMaterialId={selectedMaterialId}
-                selectedSize={selectedSize}
-                selectedCategory={selectedCategory}
-                onContinueToReview={() => setWizardStage("review")}
+
+
+
+
                 emptyMessage={
                   isOnline
                     ? undefined

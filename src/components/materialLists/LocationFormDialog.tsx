@@ -35,7 +35,7 @@ export function LocationFormDialog({
 
   const utils = api.useUtils();
   const createLocation = api.location.createLocation.useMutation({
-    onMutate: async (variables) => {
+    onMutate: async () => {
       // Cancel outgoing refetches
       await utils.location.searchLocations.cancel();
 
@@ -49,7 +49,7 @@ export function LocationFormDialog({
 
       return { previousLocations };
     },
-    onError: (err, variables, context) => {
+    onError: (_err, _variables, context) => {
       // Rollback on error
       if (context?.previousLocations !== undefined) {
         utils.location.searchLocations.setData(

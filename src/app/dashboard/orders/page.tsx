@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { scoreOrderSearch } from "~/lib/order-search";
 import { api } from "~/trpc/react";
 import { Card, CardContent } from "~/components/ui/card";
 import { Button } from "~/components/ui/button";
@@ -48,10 +49,6 @@ const DATE_FILTER_LABELS: Record<DateFilter, string> = {
   thisMonth: "This month",
 };
 
-function normalizeSearchText(value: string) {
-  return value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
-}
-
 function orderDate(order: ListedOrder) {
   return new Date(order.sentAt ?? order.createdAt);
 }
@@ -79,61 +76,11 @@ function matchesDateFilter(order: ListedOrder, dateFilter: DateFilter) {
   );
 }
 
-function orderSearchHaystack(order: ListedOrder, email?: EmailDraft) {
-  return normalizeSearchText(
-    [
-      order.orderNumber,
-      order.job?.name,
-      order.materialList?.name,
-      order.supplier?.name,
-      order.notes,
-      order.sentTo,
-      email?.subject,
-      email?.body,
-      email?.to?.join(" "),
-      email?.cc?.join(" "),
-      ...(order.items ?? []).flatMap((item) => [
-        item.quantity,
-        item.description,
-        item.supplierSku,
-      ]),
-    ]
-      .filter(Boolean)
-      .join(" "),
-  );
-}
-
-function scoreOrderSearch(
-  order: ListedOrder,
-  query: string,
-  email?: EmailDraft,
-) {
-  const tokens = normalizeSearchText(query).split(/\s+/).filter(Boolean);
-  if (tokens.length === 0) return 1;
-  const haystack = orderSearchHaystack(order, email);
-  const words = haystack.split(/\s+/).filter(Boolean);
-  let score = 0;
-  for (const token of tokens) {
-    if (haystack.includes(token)) {
-      score += haystack.split(token).length > 2 ? 3 : 2;
-      continue;
-    }
-    const prefixMatch = words.some(
-      (word) =>
-        word.startsWith(token) ||
-        (token.length > 2 && token.startsWith(word)),
-    );
-    if (!prefixMatch) return 0;
-    score += 1;
-  }
-  return score;
-}
-
 export default function OrdersPage() {
   const utils = api.useUtils();
   const isOnline = useOnlineStatus();
   const { data: serverOrders, isLoading } =
-    api.materialList.listOrders.useQuery(undefined, {
+    api.materialList.listOrders.useQuery({ summary: true }, {
       enabled: isOnline,
     });
   const {
@@ -154,6 +101,7 @@ export default function OrdersPage() {
   const [loadingEmails, setLoadingEmails] = useState<Set<string>>(new Set());
   const [sendingOrderId, setSendingOrderId] = useState<string | null>(null);
   const [syncError, setSyncError] = useState<string | null>(null);
+  const [visibleCount, setVisibleCount] = useState(50);
   const [searchQuery, setSearchQuery] = useState("");
   const [jobFilter, setJobFilter] = useState<string | null>(null);
   const [supplierFilter, setSupplierFilter] = useState<string | null>(null);
@@ -334,15 +282,12 @@ export default function OrdersPage() {
         if (jobFilter && order.job?.id !== jobFilter) return false;
         if (supplierFilter && order.supplier?.id !== supplierFilter) return false;
         if (!matchesDateFilter(order, dateFilter)) return false;
-        return scoreOrderSearch(order, query, emailDrafts.get(order.id)) > 0;
+        return true;
       })
-      .sort((a, b) => {
-        if (!query) return 0;
-        return (
-          scoreOrderSearch(b, query, emailDrafts.get(b.id)) -
-          scoreOrderSearch(a, query, emailDrafts.get(a.id))
-        );
-      });
+      .map(order => ({ order, score: scoreOrderSearch(order, query, emailDrafts.get(order.id)) }))
+      .filter(result => result.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .map(result => result.order);
   }, [orders, jobFilter, supplierFilter, dateFilter, searchQuery, emailDrafts]);
 
   const selectedJobName =
@@ -556,7 +501,7 @@ export default function OrdersPage() {
             </Card>
           ) : (
           <div className="space-y-3">
-            {filteredOrders.map((order) => {
+            {filteredOrders.slice(0, visibleCount).map((order) => {
               const isExpanded = expandedOrders.has(order.id);
               const draft = emailDrafts.get(order.id);
               const isDraftLoading = loadingEmails.has(order.id);
@@ -723,6 +668,11 @@ export default function OrdersPage() {
                 </div>
               );
             })}
+            {filteredOrders.length > visibleCount && (
+              <Button variant="outline" onClick={() => setVisibleCount(count => count + 50)}>
+                Show more orders ({filteredOrders.length - visibleCount} remaining)
+              </Button>
+            )}
           </div>
           )
         )}

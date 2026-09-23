@@ -7,10 +7,12 @@ import {
   useMemo,
   useState,
 } from "react";
+import { facetCount } from "~/lib/catalogue-facets";
 import { api } from "~/trpc/react";
 import { useOnlineStatus } from "~/hooks/use-online-status";
 import { useReplicacheCatalogue } from "~/hooks/use-replicache-catalogue";
 import { requestCatalogueReplicachePull } from "~/lib/replicache-catalogue";
+import { EMPTY_NAME_KEYWORD_GROUPS, sortMaterialListPartChoices, type NameKeywordGroup, type MaterialListSort } from "~/lib/material-list-sort";
 import type { WizardStage } from "./types";
 
 type PreloadedPart = {
@@ -31,6 +33,7 @@ type PreloadedPart = {
 };
 
 type PartFacet = {
+  count?: number;
   materialId: string | null;
   sizeLabel?: string | null;
   sizeNominal: string | number | null;
@@ -39,7 +42,7 @@ type PartFacet = {
   categoryId: string | null;
 };
 
-export function usePartWizard(open = true) {
+export function usePartWizard(open = true, sortMode?: MaterialListSort, keywordGroups: readonly NameKeywordGroup[] = EMPTY_NAME_KEYWORD_GROUPS) {
   const [wizardStage, setWizardStage] = useState<WizardStage>("catalog");
   const [selectedCatalogId, setSelectedCatalogId] = useState<string | null>(
     null,
@@ -75,10 +78,18 @@ export function usePartWizard(open = true) {
   const isOnline = useOnlineStatus();
   const replicacheCatalogue = useReplicacheCatalogue({ enabled: open });
   const hasReplicacheCatalogue = replicacheCatalogue.catalogs.length > 0;
+  const [summaryReady, setSummaryReady] = useState(false);
+  useEffect(() => {
+    if (!open) { setSummaryReady(false); return; }
+    // Give the persisted catalog a chance to load before issuing a redundant
+    // summary query on every warm app launch.
+    const timer = setTimeout(() => setSummaryReady(true), 150);
+    return () => clearTimeout(timer);
+  }, [open]);
   const { data: serverSummary } = api.catalogue.getPartWizardSummary.useQuery(
-    undefined,
+    { grouped: true },
     {
-      enabled: open && isOnline && !hasReplicacheCatalogue,
+      enabled: open && summaryReady && isOnline && !hasReplicacheCatalogue,
       staleTime: 1000 * 60 * 5,
     },
   );
@@ -269,27 +280,11 @@ export function usePartWizard(open = true) {
     [hasSizeSelection, partsByMaterial, selectedSize],
   );
 
-  const partsByCategory = useMemo(
-    () =>
-      partsBySize.filter((part) => {
-        if (
-          !hasCategorySelection ||
-          !selectedCategory ||
-          selectedCategory.categoryId === null
-        ) {
-          return true;
-        }
-
-        return part.categoryId === selectedCategory.categoryId;
-      }),
-    [hasCategorySelection, partsBySize, selectedCategory],
-  );
-
   const catalogsWithCounts = useMemo(() => {
     const countMap = new Map<string, number>();
 
     for (const part of summaryParts ?? []) {
-      countMap.set(part.catalogId, (countMap.get(part.catalogId) ?? 0) + 1);
+      countMap.set(part.catalogId, (countMap.get(part.catalogId) ?? 0) + facetCount(part));
     }
 
     return (catalogs ?? [])
@@ -306,7 +301,7 @@ export function usePartWizard(open = true) {
     const counts = new Map<string, number>();
     for (const part of partsByCatalog) {
       if (part.materialId) {
-        counts.set(part.materialId, (counts.get(part.materialId) ?? 0) + 1);
+        counts.set(part.materialId, (counts.get(part.materialId) ?? 0) + facetCount(part));
       }
     }
     return counts;
@@ -327,7 +322,7 @@ export function usePartWizard(open = true) {
     const countMap = new Map<string | null, number>();
 
     for (const part of partsBySize) {
-      countMap.set(part.categoryId, (countMap.get(part.categoryId) ?? 0) + 1);
+      countMap.set(part.categoryId, (countMap.get(part.categoryId) ?? 0) + facetCount(part));
     }
 
     return (categoryTree ?? [])
@@ -370,11 +365,11 @@ export function usePartWizard(open = true) {
         subSizes: [],
         subSizeMap: new Map<string, number>(),
       };
-      current.count += 1;
+      current.count += facetCount(part);
 
       const label = part.sizeLabel;
       if (label) {
-        current.subSizeMap.set(label, (current.subSizeMap.get(label) ?? 0) + 1);
+        current.subSizeMap.set(label, (current.subSizeMap.get(label) ?? 0) + facetCount(part));
       }
 
       sizeMap.set(key, current);
@@ -400,8 +395,9 @@ export function usePartWizard(open = true) {
   }, [partsByMaterial]);
 
   const filteredPartsForSelection = useMemo(() => {
-    return selectionParts ?? [];
-  }, [selectionParts]);
+    const parts = selectionParts ?? [];
+    return sortMode ? sortMaterialListPartChoices(parts, sortMode, categoryTree ?? [], keywordGroups, catalogs ?? []) : parts;
+  }, [selectionParts, sortMode, categoryTree, keywordGroups, catalogs]);
 
   const createCatalog = api.catalogue.createCatalog.useMutation({
     onSuccess: (newCatalog) => {

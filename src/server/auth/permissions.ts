@@ -15,6 +15,7 @@ export const appTabIds = [
   "suppliers",
   "quotes",
   "orders",
+  "draws",
   "organization",
 ] as const;
 
@@ -36,6 +37,7 @@ const standardTabs: Record<AppTabId, boolean> = {
   suppliers: true,
   quotes: true,
   orders: true,
+  draws: false,
   organization: false,
 };
 
@@ -52,6 +54,7 @@ const managingTabs: Record<AppTabId, boolean> = {
   suppliers: true,
   quotes: true,
   orders: true,
+  draws: true,
   organization: true,
 };
 
@@ -101,6 +104,8 @@ export function getUserPermissions(user: PermissionUser) {
   const tabAccess = {
     ...(isManagingAccount ? managingTabs : standardTabs),
     ...customPermissions.tabs,
+    // Billing figures are limited to managing accounts (foremen/admins).
+    draws: isManagingAccount,
     organization: isManagingAccount,
   };
   const actionAccess = {

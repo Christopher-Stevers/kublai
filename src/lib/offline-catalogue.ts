@@ -9,6 +9,7 @@ export interface OfflineCatalogueCatalog {
 export interface OfflineCatalogueMaterial {
   id: string;
   name: string;
+  groupPath?: string[];
 }
 
 export interface OfflineCatalogueCategory {

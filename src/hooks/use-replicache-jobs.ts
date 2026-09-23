@@ -1,8 +1,11 @@
 "use client";
 
-import { useCallback } from "react";
 import { tryGetMaterialListReplicache } from "~/lib/replicache-material-list";
-import { useReplicacheSubscribe } from "~/hooks/use-replicache-subscribe";
+import { createSharedReplicacheReader } from "~/hooks/use-shared-replicache";
+import type {
+  ReplicacheMaterialListItem,
+  ReplicacheMaterialList,
+} from "./use-replicache-material-list";
 
 export interface ReplicacheJob {
   id: string;
@@ -68,19 +71,6 @@ function isMaterialListRecord(
   );
 }
 
-function isMaterialListItemRecord(value: unknown): value is {
-  materialListId: string;
-  extendedPrice: string | null;
-  addedBy?: ReplicacheContributor | null;
-} {
-  return (
-    !!value &&
-    typeof value === "object" &&
-    !Array.isArray(value) &&
-    "materialListId" in value
-  );
-}
-
 function addContributor(
   contributors: ReplicacheContributor[],
   seenIds: Set<string>,
@@ -91,137 +81,107 @@ function addContributor(
   seenIds.add(contributor.id);
 }
 
-export function useReplicacheJobsList() {
-  const rep = tryGetMaterialListReplicache();
+type ListDetail = {
+  materialList: ReplicacheMaterialList;
+  items: ReplicacheMaterialListItem[];
+  materialTotal: number;
+  isLoading: boolean;
+};
+type WorkspaceIndex = {
+  jobs: Array<ReplicacheJob & { materialListCount: number }>;
+  details: Record<
+    string,
+    { job: ReplicacheJob; materialLists: ReplicacheMaterialListSummary[] }
+  >;
+  lists: Record<string, ListDetail>;
+};
+const EMPTY_INDEX: WorkspaceIndex = { jobs: [], details: {}, lists: {} };
 
-  const jobs = useReplicacheSubscribe(
-    rep,
-    useCallback(async (tx) => {
-      const jobEntries = await tx.scan({ prefix: "job/" }).entries().toArray();
-      const mlEntries = await tx
-        .scan({ prefix: "materialList/" })
-        .entries()
-        .toArray();
-
-      // Build materialListCount per job
-      const countByJob = new Map<string, number>();
-      for (const [, value] of mlEntries) {
-        if (isMaterialListRecord(value)) {
-          countByJob.set(value.jobId, (countByJob.get(value.jobId) ?? 0) + 1);
-        }
-      }
-
-      const result: Array<ReplicacheJob & { materialListCount: number }> = [];
-      for (const [, value] of jobEntries) {
-        if (isJobRecord(value)) {
-          const job = value as ReplicacheJob;
-          result.push({
-            ...job,
-            materialListCount: countByJob.get(job.id) ?? 0,
-          });
-        }
-      }
-
-      return result.sort(
-        (a, b) =>
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-      );
-    }, []),
-    { default: [] as Array<ReplicacheJob & { materialListCount: number }> },
+export function indexWorkspaceRecords(
+  jobValues: readonly unknown[],
+  listValues: readonly unknown[],
+  itemValues: readonly unknown[],
+): WorkspaceIndex {
+  const lists = listValues.filter(isMaterialListRecord);
+  const listByQuote = new Map(
+    lists.filter((l) => l.quoteId).map((l) => [l.quoteId, l.id]),
   );
-
-  return jobs;
+  const itemsByList = new Map<string, ReplicacheMaterialListItem[]>();
+  for (const value of itemValues) {
+    if (
+      !value ||
+      typeof value !== "object" ||
+      !("id" in value) ||
+      !("quantity" in value)
+    )
+      continue;
+    const item = value as ReplicacheMaterialListItem;
+    const listId = item.materialListId || listByQuote.get(item.quoteId);
+    if (!listId) continue;
+    const bucket = itemsByList.get(listId) ?? [];
+    bucket.push(item);
+    itemsByList.set(listId, bucket);
+  }
+  const result: WorkspaceIndex = { jobs: [], details: {}, lists: {} };
+  const listsByJob = new Map<string, ReplicacheMaterialListSummary[]>();
+  for (const list of lists) {
+    const items = itemsByList.get(list.id) ?? [];
+    items.sort((a, b) =>
+      a.createdAt && b.createdAt
+        ? Date.parse(a.createdAt) - Date.parse(b.createdAt)
+        : 0,
+    );
+    let total = 0;
+    const contributors: ReplicacheContributor[] = [],
+      seen = new Set<string>();
+    addContributor(contributors, seen, list.createdBy);
+    for (const item of items) {
+      const price = Number(item.extendedPrice);
+      if (Number.isFinite(price)) total += price;
+      addContributor(contributors, seen, item.addedBy);
+    }
+    result.lists[list.id] = {
+      materialList: list,
+      items,
+      materialTotal: total,
+      isLoading: false,
+    };
+    const bucket = listsByJob.get(list.jobId) ?? [];
+    bucket.push({
+      ...list,
+      itemCount: items.length,
+      materialTotal: total,
+      contributors,
+    });
+    listsByJob.set(list.jobId, bucket);
+  }
+  for (const job of jobValues.filter(isJobRecord)) {
+    const materialLists = listsByJob.get(job.id) ?? [];
+    materialLists.sort(
+      (a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt),
+    );
+    result.jobs.push({ ...job, materialListCount: materialLists.length });
+    result.details[job.id] = { job, materialLists };
+  }
+  result.jobs.sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+  return result;
 }
 
+const useWorkspace = createSharedReplicacheReader(async (tx) => {
+  const [jobs, lists, items] = await Promise.all([
+    tx.scan({ prefix: "job/" }).values().toArray(),
+    tx.scan({ prefix: "materialList/" }).values().toArray(),
+    tx.scan({ prefix: "materialListItem/" }).values().toArray(),
+  ]);
+  return indexWorkspaceRecords(jobs, lists, items);
+}, EMPTY_INDEX);
+
+export function useReplicacheWorkspace() {
+  return useWorkspace(tryGetMaterialListReplicache());
+}
+export function useReplicacheJobsList() {
+  return useReplicacheWorkspace().jobs;
+}
 export function useReplicacheJobDetail(jobId: string) {
-  const rep = tryGetMaterialListReplicache();
-
-  const result = useReplicacheSubscribe(
-    rep,
-    useCallback(
-      async (tx) => {
-        const jobValue = await tx.get(`job/${jobId}`);
-        const job = isJobRecord(jobValue) ? jobValue : null;
-
-        if (!job) return null;
-
-        const mlEntries = await tx
-          .scan({ prefix: "materialList/" })
-          .entries()
-          .toArray();
-        const itemEntries = await tx
-          .scan({ prefix: "materialListItem/" })
-          .entries()
-          .toArray();
-
-        // Build per-materialList item counts and totals
-        const itemCountByList = new Map<string, number>();
-        const totalByList = new Map<string, number>();
-        const itemContributorsByList = new Map<
-          string,
-          ReplicacheContributor[]
-        >();
-        const itemContributorIdsByList = new Map<string, Set<string>>();
-        for (const [, value] of itemEntries) {
-          if (isMaterialListItemRecord(value)) {
-            const mlId = value.materialListId;
-            itemCountByList.set(mlId, (itemCountByList.get(mlId) ?? 0) + 1);
-            const price = value.extendedPrice
-              ? parseFloat(String(value.extendedPrice))
-              : 0;
-            totalByList.set(
-              mlId,
-              (totalByList.get(mlId) ?? 0) +
-                (Number.isFinite(price) ? price : 0),
-            );
-
-            if (value.addedBy?.id) {
-              const contributors = itemContributorsByList.get(mlId) ?? [];
-              const seenIds =
-                itemContributorIdsByList.get(mlId) ?? new Set<string>();
-              addContributor(contributors, seenIds, value.addedBy);
-              itemContributorsByList.set(mlId, contributors);
-              itemContributorIdsByList.set(mlId, seenIds);
-            }
-          }
-        }
-
-        const materialLists: ReplicacheMaterialListSummary[] = [];
-        for (const [, value] of mlEntries) {
-          if (isMaterialListRecord(value) && value.jobId === jobId) {
-            const contributors: ReplicacheContributor[] = [];
-            const seenContributorIds = new Set<string>();
-            addContributor(contributors, seenContributorIds, value.createdBy);
-            for (const contributor of itemContributorsByList.get(value.id) ??
-              []) {
-              addContributor(contributors, seenContributorIds, contributor);
-            }
-
-            materialLists.push({
-              ...(value as ReplicacheMaterialListSummary),
-              itemCount: itemCountByList.get(value.id) ?? 0,
-              materialTotal: totalByList.get(value.id) ?? 0,
-              contributors,
-            });
-          }
-        }
-
-        materialLists.sort(
-          (a, b) =>
-            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-        );
-
-        return { job, materialLists };
-      },
-      [jobId],
-    ),
-    {
-      default: null as {
-        job: ReplicacheJob;
-        materialLists: ReplicacheMaterialListSummary[];
-      } | null,
-    },
-  );
-
-  return result;
+  return useReplicacheWorkspace().details[jobId] ?? null;
 }

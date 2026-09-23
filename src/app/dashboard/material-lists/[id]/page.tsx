@@ -1,4 +1,11 @@
 "use client";
+import { MaterialListSheet as MaterialListTableView } from "~/components/materialLists/MaterialListSheet";
+import { MaterialListActions } from "~/components/materialLists/MaterialListActions";
+import { AddPartDialog, QuotePreviewSheet, OrdersPreviewSheet, ExistingQuotesOrdersDialog } from "~/components/app/DeferredFeatures";
+
+import { useMaterialListSort } from "~/hooks/use-material-list-sort";
+
+import { AssistanceLink } from "~/components/assist/AssistanceLink";
 
 import { use, useEffect, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -6,11 +13,7 @@ import { api } from "~/trpc/react";
 import { Button, LargeButton } from "~/components/ui/button";
 import { MaterialListItem } from "~/components/materialLists/MaterialListItem";
 import { JobInfoModal } from "~/components/materialLists/JobInfoModal";
-import { QuotePreviewSheet } from "~/components/materialLists/QuotePreviewSheet";
-import { OrdersPreviewSheet } from "~/components/materialLists/OrdersPreviewSheet";
-import { AddPartDialog } from "~/components/materialLists/AddPartDialog";
 import { MaterialListNameModal } from "~/components/materialLists/MaterialListNameModal";
-import { ExistingQuotesOrdersDialog } from "~/components/materialLists/ExistingQuotesOrdersDialog";
 import {
   Dialog,
   DialogContent,
@@ -23,18 +26,12 @@ import { Textarea } from "~/components/ui/textarea";
 import {
   CheckCircle2Icon,
   Clock3Icon,
-  FileTextIcon,
   Loader2Icon,
   PencilIcon,
   PlusIcon,
-  ShoppingCartIcon,
-  TrashIcon,
-  UsersIcon,
   WifiOffIcon,
 } from "lucide-react";
 import { ViewToggle } from "~/components/ui/view-toggle";
-import { QuantityControls } from "~/components/materialLists/QuantityControls";
-import { SupplierSelector } from "~/components/materialLists/SupplierSelector";
 import {
   resolveReplicacheSyncStatus,
   useReplicacheMaterialList,
@@ -44,11 +41,6 @@ import {
 import { useReplicacheJobDetail } from "~/hooks/use-replicache-jobs";
 import { useReplicacheSuppliers } from "~/hooks/use-replicache-suppliers";
 import { useOnlineStatus } from "~/hooks/use-online-status";
-import {
-  getMaterialListReplicache,
-  mutateMaterialListAndSync,
-} from "~/lib/replicache-material-list";
-import Image from "next/image";
 import { markUserAction } from "~/lib/performance-marks";
 
 function MaterialListSyncBadge({ status }: { status: ReplicacheSyncStatus }) {
@@ -78,42 +70,6 @@ function MaterialListSyncBadge({ status }: { status: ReplicacheSyncStatus }) {
   );
 }
 
-function MaterialListSyncIndicator({ status }: { status: ReplicacheSyncStatus }) {
-  if (status === "syncing") {
-    return (
-      <span
-        className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 text-blue-900 ring-1 ring-blue-200"
-        title="Syncing"
-        aria-label="Syncing"
-      >
-        <Loader2Icon className="h-3.5 w-3.5 animate-spin" />
-      </span>
-    );
-  }
-
-  if (status === "pending") {
-    return (
-      <span
-        className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-orange-100 text-orange-900 ring-1 ring-orange-200"
-        title="Pending sync"
-        aria-label="Pending sync"
-      >
-        <Clock3Icon className="h-3.5 w-3.5" />
-      </span>
-    );
-  }
-
-  return (
-    <span
-      className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-emerald-100 text-emerald-900 ring-1 ring-emerald-200"
-      title="Synced"
-      aria-label="Synced"
-    >
-      <CheckCircle2Icon className="h-3.5 w-3.5" />
-    </span>
-  );
-}
-
 export default function MaterialListDetailPage({
   params,
 }: {
@@ -140,7 +96,7 @@ export default function MaterialListDetailPage({
   const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
   const isBrowserOnline = useOnlineStatus();
 
-  const { materialList: mlHeader, items, materialTotal, isLoading } =
+  const { materialList: mlHeader, items: unsortedItems, materialTotal, isLoading } =
     useReplicacheMaterialList(id);
   const { data: verifyOrder, isLoading: isLoadingVerifyOrder } =
     api.materialList.getOrderById.useQuery(
@@ -148,6 +104,7 @@ export default function MaterialListDetailPage({
       { enabled: isBrowserOnline && !!verifyOrderId },
     );
   const suppliers = useReplicacheSuppliers();
+  const { sortedItems: items } = useMaterialListSort(unsortedItems, suppliers);
   const jobDetail = useReplicacheJobDetail(mlHeader?.jobId ?? "");
   const jobName = jobDetail?.job.name;
 
@@ -336,6 +293,7 @@ export default function MaterialListDetailPage({
 
   return (
     <div className="flex h-[calc(100dvh-4rem)] flex-col">
+      <div className="bg-white px-4 pt-2"><AssistanceLink mode="materials" id={id}>Check this list</AssistanceLink></div>
       {/* Top Bar */}
       <div className="border-b bg-white px-4 py-2 sm:px-6 sm:py-3">
         <div className="mx-auto max-w-6xl">
@@ -380,11 +338,11 @@ export default function MaterialListDetailPage({
             </div>
             <div className="flex min-w-[5.75rem] shrink-0 flex-col items-end gap-1">
               <MaterialListSyncBadge status={listSyncStatus} />
-              <ViewToggle
+              {!verifyOrderId && <ViewToggle
                 view={viewMode}
                 onViewChange={setViewMode}
                 showOnMobile
-              />
+                  />}
             </div>
           </div>
         </div>
@@ -430,7 +388,7 @@ export default function MaterialListDetailPage({
           ) : (
             <>
               {/* Grid View */}
-              {viewMode === "grid" && (
+              {(verifyOrderId || viewMode === "grid") && (
                 <div className="grid items-stretch grid-cols-[repeat(auto-fit,minmax(12rem,1fr))] gap-3">
                   {visibleItems.map((item) => {
                     const verifyOrderItem = verifyOrder?.items.find(
@@ -493,7 +451,7 @@ export default function MaterialListDetailPage({
                 </div>
               )}
               {/* Table View */}
-              {viewMode === "table" && (
+              {!verifyOrderId && viewMode === "table" && (
                 <MaterialListTableView
                   items={visibleItems}
                   materialListId={id}
@@ -508,62 +466,9 @@ export default function MaterialListDetailPage({
 
       {/* Footer - Always Visible */}
       <div className="shrink-0 border-t bg-white px-4 pt-1.5 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:px-6 sm:pt-2">
-        <div className="mx-auto max-w-6xl">
-          <div className="space-y-1.5">
-            {!verifyOrderId && (
-              <div className="flex items-baseline gap-1.5">
-                <span className="text-base text-gray-600 sm:text-lg">
-                  Material Total
-                </span>
-                <span className="text-base font-bold sm:text-lg">
-                  ${footerMaterialTotal.toFixed(2)}
-                </span>
-              </div>
-            )}
-            <div className="grid grid-cols-3 gap-1.5">
-              {verifyOrderId ? (
-                <Button
-                  variant="outline"
-                  onClick={() => setShowVerifyNotesDialog(true)}
-                  className="col-span-3 h-9 min-h-9 w-full px-1.5 py-1 text-[11px] leading-tight whitespace-normal sm:h-9 sm:text-xs"
-                >
-                  <FileTextIcon className="mr-1 h-3.5 w-3.5 shrink-0" />
-                  <span className="text-center leading-tight">Notes</span>
-                </Button>
-              ) : (
-                <>
-                  <Button
-                    variant="outline"
-                    onClick={handleGenerateQuote}
-                    disabled={!canGenerateQuoteOrOrder}
-                    title={generationBlockReason ?? "Generate quote"}
-                    className="h-9 min-h-9 w-full px-1.5 py-1 text-[11px] leading-tight whitespace-normal sm:h-9 sm:text-xs"
-                  >
-                    <FileTextIcon className="mr-1 h-3.5 w-3.5 shrink-0" />
-                    <span className="text-center leading-tight">Quote</span>
-                  </Button>
-                  <Button
-                    onClick={handleGenerateOrder}
-                    disabled={!canGenerateQuoteOrOrder}
-                    title={generationBlockReason ?? "Order"}
-                    className="h-9 min-h-9 w-full px-1.5 py-1 text-[11px] leading-tight whitespace-normal sm:h-9 sm:text-xs"
-                  >
-                    <ShoppingCartIcon className="mr-1 h-3.5 w-3.5 shrink-0" />
-                    <span className="text-center leading-tight">Order</span>
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={openAddPartDialog}
-                    className="h-9 min-h-9 w-full px-1.5 py-1 text-[11px] leading-tight whitespace-normal sm:h-9 sm:text-xs"
-                  >
-                    <PlusIcon className="mr-1 h-3.5 w-3.5 shrink-0" />
-                    <span className="text-center leading-tight">Add Part</span>
-                  </Button>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
+        <MaterialListActions total={footerMaterialTotal} canGenerate={canGenerateQuoteOrOrder} blockedReason={generationBlockReason}
+          onQuote={handleGenerateQuote} onOrder={handleGenerateOrder} onAdd={openAddPartDialog}
+          onNotes={verifyOrderId ? () => setShowVerifyNotesDialog(true) : undefined} />
       </div>
 
       {/* Modals and Sheets */}
@@ -681,159 +586,3 @@ export default function MaterialListDetailPage({
 }
 
 // Material List Table View Component
-const MATERIAL_LIST_TABLE_COLUMNS =
-  "grid-cols-[2rem_7rem_minmax(14rem,1.6fr)_minmax(9rem,1fr)_5rem_6rem_1.75rem_2rem]";
-
-type TableItem = {
-  id: string;
-  quantity: string;
-  unitCost: string | null;
-  extendedPrice: string | null;
-  descriptionSnapshot: string | null;
-  pendingSync?: boolean;
-  supplierId?: string | null;
-  partDefinition?: {
-    id: string;
-    displayName: string;
-    imageUrl: string | null;
-    material: string | null;
-  } | null;
-  supplierPart?: {
-    id: string;
-    supplierId: string;
-    supplierSku: string | null;
-    lastKnownUnitCost: string | null;
-    supplier: { id: string; name: string } | null;
-  } | null;
-};
-
-function MaterialListTableView({
-  items,
-  materialListId,
-  suppliers,
-  isReplicacheSyncing,
-}: {
-  items: TableItem[];
-  materialListId: string;
-  suppliers: ReturnType<typeof useReplicacheSuppliers>;
-  isReplicacheSyncing: boolean;
-}) {
-  const handleRemove = (itemId: string) => {
-    void mutateMaterialListAndSync(getMaterialListReplicache().mutate.removeItem({
-      materialListId,
-      itemId,
-    }));
-  };
-
-  return (
-    <div className="overflow-x-auto pb-2">
-      <div className="w-full min-w-[52rem] space-y-2">
-        <div
-          className={`grid ${MATERIAL_LIST_TABLE_COLUMNS} items-center gap-2 px-1.5 text-xs font-medium tracking-wide text-gray-500 uppercase`}
-        >
-          <span aria-hidden="true" />
-          <span className="text-center">Qty</span>
-          <span>Part</span>
-          <span>Supplier</span>
-          <span className="text-right">Each</span>
-          <span className="text-right">Total</span>
-          <span className="text-center">Sync</span>
-          <span aria-label="Actions" />
-        </div>
-        {items.map((item) => {
-          const quantity = parseFloat(item.quantity);
-          const unitCost = item.unitCost ? parseFloat(item.unitCost) : 0;
-          const lineTotal = item.extendedPrice
-            ? parseFloat(item.extendedPrice)
-            : quantity * unitCost;
-
-          return (
-            <div
-              key={item.id}
-              className={`grid ${MATERIAL_LIST_TABLE_COLUMNS} items-center gap-2 rounded-lg border p-1.5`}
-            >
-              <div className="relative h-8 w-8 overflow-hidden rounded-md bg-gray-100">
-                {item.partDefinition?.imageUrl ? (
-                  <Image
-                    src={item.partDefinition.imageUrl}
-                    alt={item.partDefinition.displayName}
-                    fill
-                    className="object-cover"
-                  />
-                ) : (
-                  <div className="flex h-full items-center justify-center text-gray-400">
-                    <svg
-                      className="h-4 w-4"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
-                      />
-                    </svg>
-                  </div>
-                )}
-              </div>
-              <div className="flex h-8 min-w-0 items-center justify-center self-center">
-                <QuantityControls
-                  itemId={item.id}
-                  quantity={parseFloat(item.quantity)}
-                  materialListId={materialListId}
-                  pendingSync={item.pendingSync}
-                  compact
-                />
-              </div>
-              <div className="min-w-0 py-0.5">
-                <div className="line-clamp-2 text-sm leading-tight font-medium break-words whitespace-normal sm:text-base">
-                  {item.partDefinition?.displayName ||
-                    item.descriptionSnapshot ||
-                    "Unknown Part"}
-                </div>
-              </div>
-              <div className="flex h-8 min-w-0 items-center self-center">
-                <SupplierSelector
-                  itemId={item.id}
-                  partDefinitionId={item.partDefinition?.id ?? ""}
-                  currentSupplierPartId={item.supplierPart?.id}
-                  currentSupplierId={item.supplierId ?? item.supplierPart?.supplierId ?? null}
-                  materialListId={materialListId}
-                  suppliers={suppliers}
-                  compact
-                />
-              </div>
-              <div className="flex h-8 min-w-0 items-center justify-end self-center overflow-hidden text-sm whitespace-nowrap text-gray-700">
-                <span className="shrink-0">{unitCost > 0 ? `$${unitCost.toFixed(2)}` : "—"}</span>
-              </div>
-              <div className="flex h-8 min-w-0 items-center justify-end self-center overflow-hidden text-sm font-semibold whitespace-nowrap text-gray-900">
-                <span className="shrink-0">${lineTotal.toFixed(2)}</span>
-              </div>
-              <div className="flex h-8 items-center justify-center self-center">
-                <MaterialListSyncIndicator
-                  status={resolveReplicacheSyncStatus(
-                    item.pendingSync,
-                    isReplicacheSyncing,
-                  )}
-                />
-              </div>
-              <div className="flex h-8 items-center justify-center self-center">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleRemove(item.id)}
-                  className="h-8 w-8 p-0"
-                  aria-label="Remove item"
-                >
-                  <TrashIcon className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}

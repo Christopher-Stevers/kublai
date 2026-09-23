@@ -32,7 +32,7 @@ import { makeOfflineSupplierPartId } from "~/lib/offline-suppliers";
 import { useReplicacheSuppliers } from "~/hooks/use-replicache-suppliers";
 
 const MATERIAL_LIST_TABLE_COLUMNS =
-  "grid-cols-[2rem_8rem_24rem_12rem_8.5rem_2.25rem] sm:grid-cols-[2rem_8.5rem_30rem_14rem_9rem_2.25rem]";
+  "grid-cols-[3rem_9rem_minmax(16rem,1fr)_14rem_8rem_3rem]";
 
 type SupplierPartOption = {
   id: string;
@@ -459,12 +459,12 @@ export function ReviewStage({
           })}
         </div>
       ) : (
-        <div className="overflow-x-auto pb-2">
-          <div className="w-max space-y-2">
+        <div className="parts-sheet-scroll">
+          <div className="parts-sheet min-w-[53rem]">
             <div
-              className={`grid ${MATERIAL_LIST_TABLE_COLUMNS} items-center gap-2 px-2 text-xs font-medium uppercase tracking-wide text-gray-500 sm:gap-3`}
+              className={`grid ${MATERIAL_LIST_TABLE_COLUMNS} parts-sheet-header`}
             >
-              <span aria-hidden="true" />
+              <span className="text-center">Photo</span>
               <span className="text-center">Qty</span>
               <span>Part</span>
               <span>Supplier</span>
@@ -483,11 +483,11 @@ export function ReviewStage({
               return (
                 <div
                   key={pendingPart.partId}
-                  className={`grid ${MATERIAL_LIST_TABLE_COLUMNS} items-center gap-2 rounded-lg border p-1.5 sm:gap-3 ${
+                  className={`grid ${MATERIAL_LIST_TABLE_COLUMNS} parts-sheet-row ${
                     isMissingSupplier ? "border-amber-300 bg-amber-50/50" : ""
                   }`}
                 >
-                  <div className="h-8 w-8">
+                  <div className="parts-sheet-photo">
                     <PartImage part={pendingPart.partDefinition} />
                   </div>
 

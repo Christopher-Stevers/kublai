@@ -13,6 +13,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  if (ctx.user.organizationAccessStatus && ctx.user.organizationAccessStatus !== "approved") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   const body = (await request.json()) as PushRequest;
   if (body.pushVersion !== 1) {
     return NextResponse.json({ error: "VersionNotSupported", versionType: "push" });

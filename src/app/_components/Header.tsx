@@ -19,6 +19,7 @@ import {
   DownloadIcon,
   MenuIcon,
   UserIcon,
+  SettingsIcon,
   XIcon,
 } from "lucide-react";
 import { APP_NAME } from "~/constants/app";
@@ -71,6 +72,7 @@ function HeaderFrame({
     suppliers: boolean;
     quotes: boolean;
     orders: boolean;
+    draws: boolean;
     organization: boolean;
   };
   showAdmin: boolean;
@@ -97,6 +99,7 @@ function HeaderFrame({
     ...(tabAccess.orders
       ? [{ href: "/dashboard/orders", label: "Orders" }]
       : []),
+    ...(tabAccess.draws ? [{ href: "/dashboard/draws", label: "Draws" }] : []),
     ...(tabAccess.organization
       ? [{ href: "/dashboard/organization", label: "Organization" }]
       : []),
@@ -116,7 +119,8 @@ function HeaderFrame({
 
   const showRouteBackButton =
     pathname?.startsWith("/dashboard/jobs/") ||
-    pathname?.startsWith("/dashboard/material-lists/");
+    pathname?.startsWith("/dashboard/material-lists/") ||
+    pathname === "/dashboard/account/settings";
   const showBackButton = showRouteBackButton || showRequestedBackButton;
 
   useEffect(() => {
@@ -237,7 +241,7 @@ function HeaderFrame({
       <div className="hidden items-center gap-4 lg:flex">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-11 gap-2 px-3">
+            <Button variant="ghost" className="h-11 gap-2 px-3" aria-label="User menu">
               <UserIcon className="h-5 w-5" />
               <ChevronDownIcon className="h-4 w-4" />
             </Button>
@@ -257,6 +261,10 @@ function HeaderFrame({
                 Manage Account
               </DropdownMenuItem>
             ) : null}
+            <DropdownMenuItem onClick={() => navigate("/dashboard/account/settings")}>
+              <SettingsIcon className="mr-2 h-4 w-4" />
+              Settings
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={handleInstallApp} disabled={isInstalled}>
               <DownloadIcon className="mr-2 h-4 w-4" />
               {isInstalled ? "App Installed" : "Install App"}
@@ -354,6 +362,16 @@ function HeaderFrame({
                     type="button"
                     onClick={() => {
                       setMobileMenuOpen(false);
+                      navigate("/dashboard/account/settings");
+                    }}
+                    className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium text-gray-700 hover:bg-gray-50"
+                  >
+                    <SettingsIcon className="h-4 w-4" /> Settings
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMobileMenuOpen(false);
                       void handleInstallApp();
                     }}
                     disabled={isInstalled}
@@ -413,6 +431,7 @@ function HeaderWithClerk() {
           suppliers: true,
           quotes: true,
           orders: true,
+          draws: false,
           organization: false,
         }
       }
@@ -438,6 +457,7 @@ function HeaderWithoutClerk() {
         suppliers: true,
         quotes: true,
         orders: true,
+        draws: false,
         organization: false,
       }}
       showAdmin={false}

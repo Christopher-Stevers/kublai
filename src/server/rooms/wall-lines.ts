@@ -199,10 +199,6 @@ export function referenceStrokeWidth(walls: WallSegment[]) {
   return rows[rows.length - 1]?.width ?? 0;
 }
 
-function lineLength(line: DirectionalLine) {
-  return line.intervals.reduce((sum, item) => sum + (item.end - item.start), 0);
-}
-
 function lineExtent(line: DirectionalLine) {
   return (
     Math.max(...line.intervals.map((item) => item.end)) -

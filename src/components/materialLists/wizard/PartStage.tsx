@@ -378,6 +378,10 @@ function PartCard({
   );
 }
 
+function PartSheetHeader() {
+  return <div className="parts-sheet-header grid grid-cols-[3rem_minmax(16rem,1fr)_10rem]"><span>Photo</span><span>Part description</span><span className="text-center">Quantity / action</span></div>;
+}
+
 function PartListRow({
   part,
   isPending,
@@ -400,20 +404,21 @@ function PartListRow({
 
   return (
     <div
-      className={`rounded-lg border bg-white px-2.5 py-2 transition-all sm:px-3 ${
-        isPending ? "border-primary border-2 shadow-sm" : "hover:shadow-sm"
+      className={`parts-picker-row ${
+        isPending ? "ring-1 ring-inset ring-primary" : ""
       } ${actionMode === "reorder" ? "cursor-grab" : ""} ${
         isDragging ? "border-gray-900 opacity-80 shadow-lg" : ""
       }`}
     >
-      <div className="flex items-center gap-2 sm:gap-3">
-        <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-md bg-gray-100 sm:h-12 sm:w-12">
+      <div className="grid grid-cols-[3rem_minmax(16rem,1fr)_10rem] parts-sheet-cells">
+        <div className="relative min-h-11 w-12 overflow-hidden">
           {part.imageUrl ? (
             <Image
               src={part.imageUrl}
               alt={part.displayName}
               fill
-              className="object-cover"
+              sizes="32px"
+              className="object-contain p-1"
             />
           ) : (
             <div className="flex h-full items-center justify-center text-gray-400">
@@ -427,15 +432,15 @@ function PartListRow({
           )}
         </div>
 
-        <div className="min-w-0 flex-1 overflow-hidden">
+        <div className="min-w-0 content-center">
           <div className="flex min-w-0 items-center gap-2">
-            <h4 className="truncate text-sm font-medium sm:text-[15px]">
+            <h4 className="text-sm leading-snug font-medium">
               {part.displayName}
             </h4>
           </div>
         </div>
 
-        <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+        <div className="flex items-center justify-center gap-1.5">
           {actionMode === "reorder" ? (
             reorderHandle
           ) : isPending && actionMode === "select" ? (
@@ -665,17 +670,10 @@ export interface PartStageProps {
     } | null,
   ) => void;
   onEditPart: (partId: string) => void;
-  selectedMaterialId: string | null;
-  selectedSize: {
-    nominal: number;
-    unit: string;
-    sizeLabel?: string | null;
-  } | null;
-  selectedCategory: {
-    categoryId: string | null;
-    name: string;
-  } | null;
-  onContinueToReview: () => void;
+
+
+
+
   actionMode?: PartStageActionMode;
   title?: string;
   actionLabel?: string;
@@ -696,10 +694,6 @@ export function PartStage({
   onPartQuantitySet,
   onQuantityPickerPreviewChange,
   onEditPart,
-  selectedMaterialId,
-  selectedSize,
-  selectedCategory,
-  onContinueToReview,
   actionMode = "select",
   title = "Select Parts",
   actionLabel,
@@ -930,7 +924,8 @@ export function PartStage({
                 })}
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className="parts-sheet-scroll"><div className="parts-sheet min-w-[29rem]">
+                <PartSheetHeader />
                 {visibleParts.map((part) => {
                   const { isPending, pendingQuantity } = getPendingPartState(
                     part.id,
@@ -947,7 +942,7 @@ export function PartStage({
                     />
                   );
                 })}
-              </div>
+              </div></div>
             )}
           </SortableContext>
         </DndContext>
@@ -972,7 +967,8 @@ export function PartStage({
           })}
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="parts-sheet-scroll"><div className="parts-sheet min-w-[29rem]">
+          <PartSheetHeader />
           {visibleParts.map((part) => {
             const { isPending, pendingQuantity } = getPendingPartState(part.id);
             return (
@@ -989,7 +985,7 @@ export function PartStage({
               />
             );
           })}
-        </div>
+        </div></div>
       )}
       {!reorderMode && (
         <WizardOptionPagination pagination={pagination} itemLabel="parts" />

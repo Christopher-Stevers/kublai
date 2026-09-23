@@ -3188,7 +3188,7 @@ export function growRoom(
   graph: FloorGraph,
   input: { include: RoomPoint[]; exclude: RoomPoint[]; taken?: number[] },
 ): { shape: RoomPolygonShape; faceIds: number[] } | null {
-  const [origin, ...extras] = input.include;
+  const [origin] = input.include;
   if (!origin) return null;
   const start = spaceAtPoint(graph, origin);
   if (!start) return null;

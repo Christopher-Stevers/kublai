@@ -433,6 +433,7 @@ export const materials = createTable(
       .notNull()
       .references(() => organizations.id, { onDelete: "cascade" }),
     name: d.varchar({ length: 100 }).notNull(),
+    groupPath: jsonb("groupPath").$type<string[]>().notNull().default([]),
     createdAt: d
       .timestamp({ withTimezone: true })
       .notNull()
@@ -941,6 +942,8 @@ export const jobsRelations = relations(jobs, ({ one, many }) => ({
   floorPlans: many(jobFloorPlans),
   floors: many(jobFloors),
   rooms: many(jobRooms),
+  drawLines: many(jobDrawLines),
+  draws: many(jobDraws),
 }));
 
 export const jobFloorPlans = createTable(
@@ -1149,6 +1152,146 @@ export const roomDetectionJobsRelations = relations(
     }),
   }),
 );
+
+// ============================
+// JOB DRAWS (progress billing)
+// ============================
+
+// Schedule of values: the contract broken into billable line items.
+export const jobDrawLines = createTable(
+  "job_draw_line",
+  (d) => ({
+    id: d
+      .uuid()
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    organizationId: d
+      .uuid()
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    jobId: d
+      .uuid()
+      .notNull()
+      .references(() => jobs.id, { onDelete: "cascade" }),
+    itemNumber: d.varchar({ length: 50 }),
+    description: d.varchar({ length: 500 }).notNull(),
+    scheduledValue: d
+      .numeric({ precision: 14, scale: 2 })
+      .notNull()
+      .default("0"),
+    sortOrder: d.integer().notNull().default(0),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .notNull()
+      .$defaultFn(() => new Date()),
+    updatedAt: d
+      .timestamp({ withTimezone: true })
+      .notNull()
+      .$defaultFn(() => new Date())
+      .$onUpdate(() => new Date()),
+  }),
+  (t) => [index("job_draw_line_job_idx").on(t.jobId, t.sortOrder)],
+);
+
+export const jobDraws = createTable(
+  "job_draw",
+  (d) => ({
+    id: d
+      .uuid()
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    organizationId: d
+      .uuid()
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    jobId: d
+      .uuid()
+      .notNull()
+      .references(() => jobs.id, { onDelete: "cascade" }),
+    drawNumber: d.integer().notNull(),
+    periodEnd: d.date(),
+    status: d.varchar({ length: 20 }).notNull().default("draft"), // draft|submitted|paid
+    retainagePercent: d
+      .numeric({ precision: 6, scale: 3 })
+      .notNull()
+      .default("10"),
+    notes: d.text(),
+    submittedAt: d.timestamp({ withTimezone: true }),
+    paidAt: d.timestamp({ withTimezone: true }),
+    createdByUserId: d.varchar({ length: 255 }).references(() => users.id, {
+      onDelete: "set null",
+    }),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .notNull()
+      .$defaultFn(() => new Date()),
+    updatedAt: d
+      .timestamp({ withTimezone: true })
+      .notNull()
+      .$defaultFn(() => new Date())
+      .$onUpdate(() => new Date()),
+  }),
+  (t) => [
+    index("job_draw_org_idx").on(t.organizationId),
+    unique("job_draw_job_number_uniq").on(t.jobId, t.drawNumber),
+  ],
+);
+
+// Cumulative amount completed to date for one line on one draw.
+export const jobDrawItems = createTable(
+  "job_draw_item",
+  (d) => ({
+    drawId: d
+      .uuid()
+      .notNull()
+      .references(() => jobDraws.id, { onDelete: "cascade" }),
+    lineId: d
+      .uuid()
+      .notNull()
+      .references(() => jobDrawLines.id, { onDelete: "cascade" }),
+    completedToDate: d
+      .numeric({ precision: 14, scale: 2 })
+      .notNull()
+      .default("0"),
+    updatedAt: d
+      .timestamp({ withTimezone: true })
+      .notNull()
+      .$defaultFn(() => new Date())
+      .$onUpdate(() => new Date()),
+  }),
+  (t) => [
+    primaryKey({ columns: [t.drawId, t.lineId] }),
+    index("job_draw_item_line_idx").on(t.lineId),
+  ],
+);
+
+export const jobDrawLinesRelations = relations(jobDrawLines, ({ one }) => ({
+  job: one(jobs, {
+    fields: [jobDrawLines.jobId],
+    references: [jobs.id],
+  }),
+}));
+
+export const jobDrawsRelations = relations(jobDraws, ({ one, many }) => ({
+  job: one(jobs, {
+    fields: [jobDraws.jobId],
+    references: [jobs.id],
+  }),
+  items: many(jobDrawItems),
+}));
+
+export const jobDrawItemsRelations = relations(jobDrawItems, ({ one }) => ({
+  draw: one(jobDraws, {
+    fields: [jobDrawItems.drawId],
+    references: [jobDraws.id],
+  }),
+  line: one(jobDrawLines, {
+    fields: [jobDrawItems.lineId],
+    references: [jobDrawLines.id],
+  }),
+}));
 
 // ============================
 // MATERIAL LISTS
@@ -1519,6 +1662,7 @@ export const replicacheClientGroups = createTable(
     }),
     schemaVersion: d.varchar({ length: 80 }).notNull(),
     cvrVersion: d.integer().notNull().default(0),
+    lastPullOrder: d.bigint({ mode: "number" }).notNull().default(0),
     updatedAt: d
       .timestamp({ withTimezone: true })
       .notNull()

@@ -7,72 +7,20 @@ import type {
 
 import { CATALOGUE_REPLICACHE_SCHEMA_VERSION } from "~/lib/replicache-schema";
 import { formatSize } from "~/lib/size-utils";
-import { db } from "~/server/db";
+import { pullSnapshot } from "./pull";
 import {
   catalogs,
   categories,
   materials,
   partDefinitions,
-  replicacheClientGroups,
-  replicacheClients,
   sizes,
   units,
 } from "~/server/db/schema";
-import { ReplicacheOwnershipError } from "~/server/replicache/material-list-sync";
 
 type ReplicacheUser = {
   id: string;
   organizationId: string | null;
 };
-
-type ReplicacheTx = Parameters<Parameters<typeof db.transaction>[0]>[0];
-
-async function ensureClientGroup(
-  tx: ReplicacheTx,
-  input: {
-    clientGroupId: string;
-    organizationId: string;
-    userId: string;
-    schemaVersion: string;
-  },
-) {
-  const [existing] = await tx
-    .select({
-      id: replicacheClientGroups.id,
-      organizationId: replicacheClientGroups.organizationId,
-      userId: replicacheClientGroups.userId,
-    })
-    .from(replicacheClientGroups)
-    .where(eq(replicacheClientGroups.id, input.clientGroupId))
-    .limit(1);
-
-  if (existing) {
-    if (
-      existing.organizationId !== input.organizationId ||
-      existing.userId !== input.userId
-    ) {
-      throw new ReplicacheOwnershipError(
-        "Replicache client group ownership mismatch",
-      );
-    }
-
-    await tx
-      .update(replicacheClientGroups)
-      .set({ schemaVersion: input.schemaVersion, updatedAt: new Date() })
-      .where(eq(replicacheClientGroups.id, input.clientGroupId));
-    return;
-  }
-
-  await tx
-    .insert(replicacheClientGroups)
-    .values({
-      id: input.clientGroupId,
-      organizationId: input.organizationId,
-      userId: input.userId,
-      schemaVersion: input.schemaVersion,
-    })
-    .onConflictDoNothing();
-}
 
 export async function handleCatalogueReplicachePull(
   request: PullRequestV1,
@@ -91,23 +39,7 @@ export async function handleCatalogueReplicachePull(
     return { error: "VersionNotSupported", versionType: "pull" };
   }
 
-  const { patch, lastMutationIDChanges, cookie } = await db.transaction(
-    async (tx) => {
-      await ensureClientGroup(tx, {
-        clientGroupId: request.clientGroupID,
-        organizationId,
-        userId: user.id,
-        schemaVersion: request.schemaVersion,
-      });
-
-      const groupClients = await tx
-        .select({
-          id: replicacheClients.id,
-          lastMutationId: replicacheClients.lastMutationId,
-        })
-        .from(replicacheClients)
-        .where(eq(replicacheClients.clientGroupId, request.clientGroupID));
-
+  return pullSnapshot("catalogue", request, user, async (tx) => {
       const [catalogRows, materialRows, categoryRows, unitRows, partRows] =
         await Promise.all([
           tx
@@ -124,6 +56,7 @@ export async function handleCatalogueReplicachePull(
             .select({
               id: materials.id,
               name: materials.name,
+              groupPath: materials.groupPath,
             })
             .from(materials)
             .where(eq(materials.organizationId, organizationId))
@@ -241,18 +174,6 @@ export async function handleCatalogueReplicachePull(
         });
       }
 
-      return {
-        patch,
-        lastMutationIDChanges: Object.fromEntries(
-          groupClients.map((client) => [client.id, client.lastMutationId]),
-        ),
-        cookie: {
-          order: Date.now(),
-          cvr: request.clientGroupID,
-        },
-      };
-    },
-  );
-
-  return { cookie, lastMutationIDChanges, patch };
+      return patch;
+  });
 }

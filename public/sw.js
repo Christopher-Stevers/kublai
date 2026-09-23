@@ -3,7 +3,7 @@
 // Keep API/sync traffic network-only. Cache navigations and static assets so the
 // installed app can open while offline and Replicache can read its IndexedDB cache.
 
-const VERSION = "foremenhq-offline-shell-v9";
+const VERSION = "foremenhq-offline-shell-v10";
 const PAGE_CACHE = `${VERSION}:pages`;
 const STATIC_CACHE = `${VERSION}:static`;
 const IMAGE_CACHE = `${VERSION}:images`;
@@ -129,16 +129,68 @@ async function cacheFirstStatic(request) {
   return response;
 }
 
+const imageWork = new Map();
+const imageQueue = [];
+let activeImageDownloads = 0;
+const IMAGE_CONCURRENCY = 4;
+
+function drainImages() {
+  while (activeImageDownloads < IMAGE_CONCURRENCY && imageQueue.length) {
+    const job = imageQueue.shift();
+    activeImageDownloads++;
+    (async () => {
+      const cache = await caches.open(IMAGE_CACHE);
+      const cached = await cache.match(job.request);
+      if (cached) return cached;
+      const response = await fetch(job.request);
+      if (response.ok) await cache.put(job.request, response.clone());
+      return response;
+    })().then(job.resolve, job.reject).finally(() => {
+      activeImageDownloads--;
+      imageWork.delete(job.request.url);
+      drainImages();
+    });
+  }
+}
+
+function queueImage(request, visible = false) {
+  let job = imageWork.get(request.url);
+  if (!job) {
+    job = { request };
+    job.promise = new Promise((resolve, reject) => {
+      job.resolve = resolve;
+      job.reject = reject;
+    });
+    imageWork.set(request.url, job);
+    if (visible) imageQueue.unshift(job);
+    else imageQueue.push(job);
+  } else if (visible) {
+    const index = imageQueue.indexOf(job);
+    if (index >= 0) { imageQueue.splice(index, 1); imageQueue.unshift(job); }
+  }
+  drainImages();
+  return job.promise.then(response => response.clone());
+}
+
 async function cacheFirstImage(request) {
   const cached = await caches.match(request);
   if (cached) return cached;
-
-  const response = await fetch(request);
-  if (response.ok) {
-    const cache = await caches.open(IMAGE_CACHE);
-    await cache.put(request, response.clone());
+  try {
+    return await queueImage(request, true);
+  } catch (error) {
+    // The warmer stores originals. An unseen thumbnail can use its already
+    // cached original offline, avoiding duplicate warming of every pixel size.
+    const url = new URL(request.url);
+    const source = url.pathname === "/_next/image" ? url.searchParams.get("url") : null;
+    if (source) {
+      const original = new URL(source, self.location.origin);
+      if (isSameOrigin(original)) {
+        const fallback = await caches.match(original.href);
+        if (fallback) return fallback;
+      }
+    }
+    throw error;
   }
-  return response;
 }
 
 self.addEventListener("message", (event) => {
@@ -179,7 +231,6 @@ self.addEventListener("message", (event) => {
 
   event.waitUntil(
     (async () => {
-      const cache = await caches.open(IMAGE_CACHE);
       const urls = Array.from(new Set(data.urls))
         .slice(0, 1000)
         .map((value) => {
@@ -192,18 +243,9 @@ self.addEventListener("message", (event) => {
         .filter((url) => url && isSameOrigin(url))
         .filter((url) => isCacheableImageRequest(url, { destination: "image" }));
 
-      await Promise.allSettled(
-        urls.map(async (url) => {
-          const request = new Request(url.href, { credentials: "same-origin" });
-          const cached = await cache.match(request);
-          if (cached) return;
-
-          const response = await fetch(request);
-          if (response.ok) {
-            await cache.put(request, response);
-          }
-        }),
-      );
+      await Promise.allSettled(urls.map(url =>
+        queueImage(new Request(url.href, { credentials: "same-origin" })),
+      ));
     })(),
   );
 });

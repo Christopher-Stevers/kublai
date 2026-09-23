@@ -1,6 +1,8 @@
 import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
+import { assistRouter } from "~/server/api/routers/assist";
 import { adminRouter } from "~/server/api/routers/admin";
 import { catalogueRouter } from "~/server/api/routers/catalogue";
+import { drawsRouter } from "~/server/api/routers/draws";
 import { jobRouter } from "~/server/api/routers/job";
 import { roomsRouter } from "~/server/api/routers/rooms";
 import { locationRouter } from "~/server/api/routers/location";
@@ -16,6 +18,7 @@ import { userRouter } from "~/server/api/routers/user";
  * All routers added in /api/routers should be manually added here.
  */
 export const appRouter = createTRPCRouter({
+  assist: assistRouter,
   payment: paymentRouter,
   admin: adminRouter,
   user: userRouter,
@@ -26,6 +29,7 @@ export const appRouter = createTRPCRouter({
   rooms: roomsRouter,
   materialList: materialListRouter,
   location: locationRouter,
+  draws: drawsRouter,
 });
 
 // export type definition of API

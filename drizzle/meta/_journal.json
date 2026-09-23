@@ -97,6 +97,13 @@
       "when": 1778726628557,
       "tag": "0024_sync_updated_at_indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1790127450452,
+      "tag": "0036_replicache_pull_order",
+      "breakpoints": true
     }
   ]
 }

@@ -1,4 +1,7 @@
 "use client";
+import { EditPartDialog, CreateCustomPartDialog, MaterialGroupsDialog, PhotoQueueDialog } from "~/components/app/DeferredFeatures";
+
+import { AssistanceLink } from "~/components/assist/AssistanceLink";
 
 import { useEffect, useRef, useState } from "react";
 import { api } from "~/trpc/react";
@@ -11,14 +14,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "~/components/ui/dialog";
-import { EditPartDialog } from "~/components/catalogue/EditPartDialog";
-import { PhotoQueueDialog } from "~/components/catalogue/PhotoQueueDialog";
-import { CreateCustomPartDialog } from "~/components/materialLists/CreateCustomPartDialog";
 import { CatalogStage } from "~/components/materialLists/wizard/CatalogStage";
 import { MaterialStage } from "~/components/materialLists/wizard/MaterialStage";
 import { SizeStage } from "~/components/materialLists/wizard/SizeStage";
 import { CategoryStage } from "~/components/materialLists/wizard/CategoryStage";
-import { PartStage } from "~/components/materialLists/wizard/PartStage";
+import { PartStage } from "~/components/app/DeferredFeatures";
 import { WizardHeader } from "~/components/materialLists/WizardHeader";
 import { usePartWizard } from "~/components/materialLists/wizard/use-part-wizard";
 import {
@@ -33,6 +33,7 @@ export default function CataloguePage() {
   const [editingPartId, setEditingPartId] = useState<string | null>(null);
   const [isCreatePartDialogOpen, setIsCreatePartDialogOpen] = useState(false);
   const [isPhotoQueueOpen, setIsPhotoQueueOpen] = useState(false);
+  const [isMaterialGroupsOpen, setIsMaterialGroupsOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [isExportOptionsOpen, setIsExportOptionsOpen] = useState(false);
   const [exportCatalogId, setExportCatalogId] = useState<string | null>(null);
@@ -353,6 +354,8 @@ export default function CataloguePage() {
             Parts Catalogue
           </h1>
           <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+            <AssistanceLink />
+            {canEditParts && <Button variant="outline" disabled={!isCatalogueOnline} onClick={() => setIsMaterialGroupsOpen(true)}>Material groups</Button>}
             {canEditParts && (
               <Button
                 variant="outline"
@@ -430,10 +433,10 @@ export default function CataloguePage() {
             onPartQuantitySet={() => undefined}
             onQuantityPickerPreviewChange={() => undefined}
             onEditPart={setEditingPartId}
-            selectedMaterialId={selectedMaterialId}
-            selectedSize={selectedSize}
-            selectedCategory={selectedCategory}
-            onContinueToReview={() => undefined}
+
+
+
+
             actionMode="edit"
             title="Matching Parts"
             actionLabel="Edit"
@@ -526,10 +529,10 @@ export default function CataloguePage() {
               onPartQuantitySet={() => undefined}
               onQuantityPickerPreviewChange={() => undefined}
               onEditPart={setEditingPartId}
-              selectedMaterialId={selectedMaterialId}
-              selectedSize={selectedSize}
-              selectedCategory={selectedCategory}
-              onContinueToReview={() => undefined}
+
+
+
+
               actionMode="edit"
               title={isReorderMode ? "Reorder Parts" : "Parts"}
               actionLabel="Edit"
@@ -613,6 +616,7 @@ export default function CataloguePage() {
         }}
         partId={editingPartId}
       />
+      <MaterialGroupsDialog open={isMaterialGroupsOpen} onOpenChange={setIsMaterialGroupsOpen} />
       <PhotoQueueDialog
         open={isPhotoQueueOpen}
         onOpenChange={setIsPhotoQueueOpen}

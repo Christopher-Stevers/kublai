@@ -1,7 +1,15 @@
 import React from "react";
-import { describe, it, expect, beforeEach, vi } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { PartDetailsDialog } from "./PartDetailsDialog";
+
+const editState = vi.hoisted(() => ({ part: undefined as Record<string, unknown> | undefined, save: vi.fn() }));
+afterEach(() => cleanup());
+
+// These UI tests do not exercise IndexedDB synchronization.
+vi.mock("~/lib/replicache-catalogue", () => ({
+  requestCatalogueReplicachePull: vi.fn(),
+}));
 
 type Catalog = {
   id: string;
@@ -144,7 +152,7 @@ vi.mock("~/trpc/react", () => {
         },
       }),
       catalogue: {
-        getPart: { useQuery: () => ({ data: undefined, isLoading: false }) },
+        getPart: { useQuery: () => ({ data: editState.part, isLoading: false }) },
         getCatalogs: {
           useQuery: () => makeResult(globalThis.__partDialogMockData.catalogs),
         },
@@ -218,7 +226,7 @@ vi.mock("~/trpc/react", () => {
           useMutation: () => ({ isPending: false, mutate: vi.fn() }),
         },
         updatePart: {
-          useMutation: () => ({ isPending: false, mutate: vi.fn() }),
+          useMutation: (opts: { onError?: (error: Error) => void }) => ({ isPending: false, mutate: vi.fn(), mutateAsync: async (input: unknown) => { try { return await editState.save(input); } catch (error) { opts.onError?.(error as Error); throw error; } } }),
         },
       },
       supplier: {
@@ -232,6 +240,8 @@ vi.mock("~/trpc/react", () => {
 
 describe("PartDetailsDialog inline add", () => {
   beforeEach(() => {
+    editState.part = undefined;
+    editState.save.mockReset();
     globalThis.__partDialogMockData = {
       catalogs: [{ id: "catalog-existing", name: "Existing Catalog" }],
       materials: [],
@@ -350,5 +360,33 @@ describe("PartDetailsDialog inline add", () => {
     expect(
       screen.getAllByRole("button", { name: /Plumbing/i }).length,
     ).toBeGreaterThan(0);
+  });
+});
+
+describe("editing a part name", () => {
+  beforeEach(() => {
+    editState.save.mockReset();
+    globalThis.__partDialogMockData = { catalogs:[{id:"catalog-existing",name:"Plumbing"}], materials:[], categories:[], units:[{id:"u-in",code:"in",displayName:"Inches",kind:"length"}] };
+    editState.part = { id:"part-existing", displayName:'8" Old name', materialId:"material-xfr", material:"XFR", catalogId:"catalog-existing", categoryId:"category-fitting", sizeNominal:8, sizeLabel:"8", sizeUnitId:"u-in", isActive:true, aliases:[] };
+  });
+  it("retains material even before materials load and closes only after save", async () => {
+    let finish!: () => void;
+    editState.save.mockImplementation(() => new Promise<void>(resolve => { finish = resolve; }));
+    const close = vi.fn();
+    render(<PartDetailsDialog mode="edit" open partId="part-existing" onOpenChange={close} />);
+    fireEvent.change(screen.getByDisplayValue('8" Old name'),{target:{value:'8" fitting 45'}});
+    fireEvent.click(screen.getByRole('button',{name:'Save'}));
+    await waitFor(()=>expect(editState.save).toHaveBeenCalledWith(expect.objectContaining({displayName:'8" fitting 45',materialId:'material-xfr',categoryId:'category-fitting',sizeNominal:8,isActive:true})));
+    expect(close).not.toHaveBeenCalled();
+    finish();
+    await waitFor(()=>expect(close).toHaveBeenCalledWith(false));
+  });
+  it("keeps the editor open and displays a save failure", async () => {
+    editState.save.mockRejectedValue(new Error('Save failed'));
+    const close = vi.fn();
+    render(<PartDetailsDialog mode="edit" open partId="part-existing" onOpenChange={close} />);
+    fireEvent.click(screen.getByRole('button',{name:'Save'}));
+    await waitFor(()=>expect(screen.getByText('Save failed')).toBeTruthy());
+    expect(close).not.toHaveBeenCalled();
   });
 });

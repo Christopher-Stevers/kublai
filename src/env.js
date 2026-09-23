@@ -9,10 +9,14 @@ export const env = createEnv({
   client: {
     NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: z.string(),
     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: z.string(),
-    NEXT_PUBLIC_ENABLE_OFFLINE_TEST_TOGGLE: z.enum(["true", "false"]).optional(),
+    NEXT_PUBLIC_ENABLE_OFFLINE_TEST_TOGGLE: z
+      .enum(["true", "false"])
+      .optional(),
     NEXT_PUBLIC_DEXIE_CLOUD_DATABASE_URL: z.string().url().optional(),
   },
   server: {
+    TYPESAFE_API_KEY: z.string().optional(),
+    TYPESAFE_MODEL: z.string().optional(),
     DATABASE_URL: z.string().url(),
     STRIPE_SECRET_KEY: z.string(),
     STRIPE_WEBHOOK_SECRET: z.string().optional(),
@@ -50,6 +54,8 @@ export const env = createEnv({
    * middlewares) or client-side so we need to destruct manually.
    */
   runtimeEnv: {
+    TYPESAFE_API_KEY: process.env.TYPESAFE_API_KEY,
+    TYPESAFE_MODEL: process.env.TYPESAFE_MODEL,
     NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:
       process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,
     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:

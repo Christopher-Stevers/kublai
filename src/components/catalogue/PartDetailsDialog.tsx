@@ -356,10 +356,7 @@ export function PartDetailsDialog({
       );
       setCatalogId(part.catalogId ?? null);
       setCategoryId(part.categoryId ?? null);
-      const matchedMaterial = materials?.find(
-        (material) => material.name === part.material,
-      );
-      setMaterialId(matchedMaterial?.id ?? null);
+      setMaterialId(part.materialId ?? null);
       setSizeValue(part.sizeLabel ?? formatSizeDecimal(part.sizeNominal));
       setSizeUnitId(part.sizeUnitId ?? null);
       setIsActive(part.isActive ?? true);
@@ -953,7 +950,7 @@ export function PartDetailsDialog({
     window.setTimeout(() => setCopiedPartUuid(false), 1500);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     setSubmitError(null);
 
     if (!displayName.trim() || !catalogId) {
@@ -995,8 +992,14 @@ export function PartDetailsDialog({
 
     if (isEditMode) {
       if (!partId) return;
-      updatePart.mutate({ partId, ...payload, ...supplierPayload });
-      window.setTimeout(() => onOpenChange(false), 0);
+      try {
+        await updatePart.mutateAsync({ partId, ...payload, ...supplierPayload });
+        requestCatalogueReplicachePull(0);
+        setIsSubmittingInBackground(false);
+        onOpenChange(false);
+      } catch {
+        // The mutation error handler leaves the editor open with the error.
+      }
       return;
     }
 

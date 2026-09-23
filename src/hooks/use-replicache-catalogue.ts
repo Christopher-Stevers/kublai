@@ -1,9 +1,8 @@
 "use client";
 
-import { useCallback, useEffect } from "react";
 import type { ReadonlyJSONValue } from "replicache";
 import { tryGetCatalogueReplicache } from "~/lib/replicache-catalogue";
-import { useReplicacheSubscribe } from "~/hooks/use-replicache-subscribe";
+import { createSharedReplicacheReader } from "~/hooks/use-shared-replicache";
 import { warmOfflineCatalogueImages } from "~/lib/offline-catalogue";
 
 export interface ReplicacheCatalogueCatalog {
@@ -16,6 +15,7 @@ export interface ReplicacheCatalogueCatalog {
 export interface ReplicacheCatalogueMaterial {
   id: string;
   name: string;
+  groupPath?: string[];
 }
 
 export interface ReplicacheCatalogueCategory {
@@ -115,14 +115,8 @@ function readTyped<T>(
   return result;
 }
 
-export function useReplicacheCatalogue({
-  enabled = true,
-}: { enabled?: boolean } = {}): ReplicacheCatalogueSnapshot {
-  const rep = enabled ? tryGetCatalogueReplicache() : null;
-
-  const snapshot = useReplicacheSubscribe<ReplicacheCatalogueSnapshot, never>(
-    rep as never,
-    useCallback(async (tx) => {
+const useCatalogueSnapshot = createSharedReplicacheReader<ReplicacheCatalogueSnapshot>(
+  async tx => {
       const [catalogEntries, materialEntries, categoryEntries, unitEntries, partEntries] =
         await Promise.all([
           tx.scan({ prefix: "catalog/" }).values().toArray(),
@@ -150,16 +144,11 @@ export function useReplicacheCatalogue({
         parts: readTyped(partEntries, isPart),
       };
       return nextSnapshot;
-    }, []),
-    { default: EMPTY_SNAPSHOT },
-  );
+  }, EMPTY_SNAPSHOT, snapshot => {
+    if (snapshot.parts.length) void warmOfflineCatalogueImages(snapshot);
+  },
+);
 
-  useEffect(() => {
-    if (snapshot.parts.length === 0) return;
-    void warmOfflineCatalogueImages({
-      parts: snapshot.parts,
-    });
-  }, [snapshot]);
-
-  return snapshot;
+export function useReplicacheCatalogue({ enabled = true }: { enabled?: boolean } = {}) {
+  return useCatalogueSnapshot(enabled ? tryGetCatalogueReplicache() : null);
 }

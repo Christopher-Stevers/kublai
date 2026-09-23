@@ -1,4 +1,7 @@
 "use client";
+import { JobRoomsView } from "~/components/app/DeferredFeatures";
+
+import { AssistanceLink } from "~/components/assist/AssistanceLink";
 
 import { use, useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
@@ -12,7 +15,6 @@ import {
   WifiOffIcon,
 } from "lucide-react";
 import { JobEditDialog } from "~/components/jobs/JobEditDialog";
-import { JobRoomsView } from "~/components/jobs/JobRoomsView";
 import { setLastJobWorkspaceLocation } from "~/lib/job-workspace-last-option";
 import { useReplicacheJobDetail } from "~/hooks/use-replicache-jobs";
 import { useOnlineStatus } from "~/hooks/use-online-status";
@@ -134,6 +136,7 @@ export default function JobRoomsPage({
           </div>
         )}
 
+        <div className="mb-4 flex flex-wrap gap-2"><AssistanceLink mode="sheets">Classify drawings</AssistanceLink><AssistanceLink mode="rooms">Review outlines</AssistanceLink></div>
         <div className="mb-6">
           <div className="mb-2 flex items-center gap-3">
             <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">
