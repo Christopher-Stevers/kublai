@@ -109,7 +109,7 @@ a {
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
   /* Brand: change --brand here and in .dark below to re-colour the app. */
-  --brand: oklch(0.5 0.17 256);
+  --brand: oklch(0.5 0.075 250);
   --brand-foreground: oklch(0.99 0 0);
   --primary: var(--brand);
   --primary-foreground: var(--brand-foreground);
@@ -148,8 +148,8 @@ a {
   --card-foreground: oklch(0.985 0 0);
   --popover: oklch(0.205 0 0);
   --popover-foreground: oklch(0.985 0 0);
-  --brand: oklch(0.6 0.16 256);
-  --brand-foreground: oklch(0.99 0 0);
+  --brand: oklch(0.7 0.07 250);
+  --brand-foreground: oklch(0.18 0.02 250);
   --primary: var(--brand);
   --primary-foreground: var(--brand-foreground);
   --success: oklch(0.68 0.14 155);

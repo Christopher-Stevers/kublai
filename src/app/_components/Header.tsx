@@ -124,20 +124,6 @@ function HeaderFrame({
       : []),
     ...(showAdmin ? [{ href: "/admin", label: "Admin", icon: ShieldIcon }] : []),
   ];
-  // Phones get the most-used tabs in a bottom bar; the rest stay in the menu.
-  const bottomTabOrder = [
-    "/dashboard",
-    "/dashboard/catalogue",
-    "/dashboard/orders",
-    "/dashboard/draws",
-    "/dashboard/quotes",
-    "/dashboard/suppliers",
-  ];
-  const bottomTabs = bottomTabOrder
-    .map((href) => navLinks.find((link) => link.href === href))
-    .filter((link) => link !== undefined)
-    .slice(0, 4);
-
   const isActive = (href: string) => {
     if (href === "/dashboard") {
       return (
@@ -324,14 +310,7 @@ function HeaderFrame({
         </DropdownMenu>
       </div>
 
-      {/* The phone tab bar has its own "More" button, so the header menu
-          button is only needed on screens where that bar is hidden. */}
-      <div
-        className={cn(
-          "ml-auto flex items-center gap-2 lg:hidden",
-          !showBackButton && bottomTabs.length > 1 && "hidden",
-        )}
-      >
+      <div className="ml-auto flex items-center gap-2 lg:hidden">
         <Button
           variant="ghost"
           size="icon"
@@ -448,53 +427,6 @@ function HeaderFrame({
         </>
       )}
 
-      {!showBackButton && bottomTabs.length > 1 && (
-        <nav
-          data-bottom-nav
-          aria-label="Main"
-          className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card/95 pb-[env(safe-area-inset-bottom)] backdrop-blur supports-[backdrop-filter]:bg-card/85 lg:hidden"
-        >
-          <div className="mx-auto flex max-w-lg">
-            {bottomTabs.map((link) => {
-              const active = isActive(link.href);
-              return (
-                <button
-                  key={link.href}
-                  type="button"
-                  onClick={() => navigate(link.href)}
-                  aria-current={active ? "page" : undefined}
-                  className={cn(
-                    "flex h-16 flex-1 flex-col items-center justify-center gap-1 text-[11px] font-medium transition-colors",
-                    active
-                      ? "text-primary"
-                      : "text-muted-foreground active:text-foreground",
-                  )}
-                >
-                  <span
-                    className={cn(
-                      "flex h-7 w-12 items-center justify-center rounded-full transition-colors",
-                      active && "bg-primary/10",
-                    )}
-                  >
-                    <link.icon className="h-5 w-5" />
-                  </span>
-                  {link.label}
-                </button>
-              );
-            })}
-            <button
-              type="button"
-              onClick={() => setMobileMenuOpen(true)}
-              className="text-muted-foreground active:text-foreground flex h-16 flex-1 flex-col items-center justify-center gap-1 text-[11px] font-medium"
-            >
-              <span className="flex h-7 w-12 items-center justify-center rounded-full">
-                <MenuIcon className="h-5 w-5" />
-              </span>
-              More
-            </button>
-          </div>
-        </nav>
-      )}
     </header>
   );
 }

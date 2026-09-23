@@ -1035,8 +1035,7 @@ export function DashboardClient({
         )}
 
         {!isWaitingForJobs && jobs.length > 0 && (
-          // Sits directly above the phone bottom tab bar (4rem + safe area).
-          <div className="bg-background fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-40 border-t px-4 py-2 sm:hidden">
+          <div className="bg-background fixed inset-x-0 bottom-0 z-40 border-t px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:hidden">
             <Button
               onClick={() => setShowCreateDialog(true)}
               size="lg"
