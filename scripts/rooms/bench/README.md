@@ -12,7 +12,7 @@ From this worktree:
 scripts/rooms/bench/run sweep
 ```
 
-This compares the three checked-in configurations on a fixed 12-case smoke suite.
+This compares the Opus baseline, combined candidate, and no-density ablation on a fixed 12-case smoke suite.
 Open `/home/tim/datasets/foremanhq-room-detection/experiments/index.html` for the leaderboard.
 Each run has input/reference/prediction overlays and JSON diagnostics; comparisons list
 improved/regressed cases. Results and cache live outside Git.
@@ -43,7 +43,7 @@ scripts/rooms/bench/run run --suite development --config scripts/rooms/bench/con
 scripts/rooms/bench/run compare /path/to/baseline-run /path/to/candidate-run
 
 # Compare explicit configs; the first is the paired-comparison baseline.
-scripts/rooms/bench/run sweep --configs scripts/rooms/bench/configs/baseline.json scripts/rooms/bench/configs/wider-seals.json
+scripts/rooms/bench/run sweep --configs scripts/rooms/bench/configs/baseline.json scripts/rooms/bench/configs/ablations/wider-seals.json
 
 # Fresh execution for real latency measurements (bypass the prediction cache).
 scripts/rooms/bench/run run --fresh --config scripts/rooms/bench/configs/opus-growth.json
@@ -80,7 +80,7 @@ Leaderboard order: no execution failures, then higher F1@0.5, then higher IoU/al
 rooms, then lower median process time. This is an explicit default, not a product acceptance
 rule; false merges can matter more than small F1 gains. Matching is not class/name-aware.
 
-Three starter configs are examples, not optimized production defaults. `opus-growth` adapts
+The configurations are research candidates, not production defaults. `opus-growth` adapts
 Opus's prototype orchestration at this resolution; it is not a claim to reproduce the live
 vector/PDF detector. The wall/door primitives themselves are imported directly.
 
@@ -97,7 +97,7 @@ image/seed detector. Cache-hit timing values are historical execution values, NO
 speed measurements. Use several `--fresh` repetitions on an otherwise idle machine before
 claiming a speedup. No network or paid model calls are needed.
 
-The 100 holdout cases have not been run during harness development. Near-duplicate protection
+The 100 holdout cases were reserved during development; final evaluation is recorded in `HYBRID_RESULTS.md`. Near-duplicate protection
 is limited by the upstream corpus; a reserved split is not proof of statistical independence.
 
 ## Add real drawings or suite targets
@@ -140,3 +140,58 @@ pnpm exec tsc --noEmit
 
 The Python tests check exact/missing/extra/merged/split rooms, matching, polygon holes,
 invalid inputs, stable/disjoint suites, comparison rejection, and cache invalidation.
+
+## Combined candidate
+
+`configs/hybrid.json` preserves enclosed regions and uses longer wall evidence to avoid
+turning room-label lettering into solid walls. When several labels share a component,
+it partitions that component with a weighted geodesic distance. Multiscale ink density
+adds a soft crossing cost: long wall bands have full weight and raw darkness has 25%
+weight. Blur radii are 0.0125 and 0.025 of the longer image dimension, combined 35%/65%.
+The selected cost penalty is 20. Geometry boundaries remain hard constraints.
+
+The baseline remains available unchanged in `configs/opus-growth.json`. The no-density
+ablation keeps the same longer-wall and seed-partition changes but sets the cost penalty
+to zero. Additional research configurations, including rejected watershed and wall-continuation approaches,
+are under `configs/ablations/` and require explicit selection.
+
+Output IDs are original seed indices plus one. Diagnostics now expose rejected/nudged
+seeds, collisions, final areas and every inferred label-pair boundary. All inferred
+boundaries require review; mean ink evidence and the fraction below 0.03 are heuristics,
+not confidence probabilities. Unlabelled annexes previously grown from a contested core
+are left unassigned instead of silently given to its first label. This conservative
+choice is counted in `unassignedAnnexComponents`.
+
+Many publisher references divide open-plan kitchen/living areas along lines that are
+not drawn as walls. Recovering both functional labels does not prove the exact dividing
+line. Known-seed F1 is not a safe acceptance gate for automatic production room saves.
+
+The pixel partition uses O(N) working memory and O(M log M) time, where N is image pixels
+and M is contested pixels. Use the runner's bounded resolution (1024 by default; maximum
+2048 wide and 4096 tall). Do not drop this implementation directly onto 6000px PDF renders.
+The app still needs text-layer exclusion, seed identity mapping, polygon extraction,
+room/suite target handling, and reviewed real-sheet validation.
+
+## Synthetic robustness checks
+
+```sh
+/home/tim/datasets/foremanhq-room-detection/.venv/bin/python scripts/rooms/bench/stress.py --count 12
+scripts/rooms/bench/run sweep --suite development \
+  --manifest /home/tim/datasets/foremanhq-room-detection/stress/manifest.json \
+  --configs scripts/rooms/bench/configs/opus-growth.json scripts/rooms/bench/configs/hybrid.json
+node --import tsx --test scripts/rooms/bench/*.test.ts
+```
+
+The generator creates padded 7-degree rotations with transformed references/seeds, mild
+scan blur/noise, and six small wall gaps per selected drawing. It only opens development
+source files and records transforms, random seeds, dependencies and checksums. These are
+synthetic corruptions, not additional independent architectural drawings.
+
+Every run checks detector source hashes before each case and after execution. If source
+changes while a run is active, affected cases fail and their predictions are not cached;
+the run becomes unranked. Finish a run before editing detector files.
+
+The optional `rectilinearCut` ablation proposes straight cuts only at abrupt narrowings,
+requires exactly two labels, a single continuous opening, nontrivial areas, and full
+connectivity on both sides. It is disabled in the recommended config because stricter
+outline and stress measurements regressed. Every proposed cut is explicitly inferred.

@@ -55,6 +55,19 @@ class HarnessTests(unittest.TestCase):
    with self.assertRaisesRegex(ValueError,'checksum'):load_case(p,{'id':'a','path':'input.png','annotation_path':'a.json','sha256':'wrong'},1024)
 
 class CacheTests(unittest.TestCase):
+ def test_source_change_rejected_before_cache_write(self):
+  with tempfile.TemporaryDirectory() as t:
+   root=Path(t);cache=root/'cache';cache.mkdir();folder=root/'case';folder.mkdir()
+   case={'image':root/'input.png','image_sha':'image','seeds':[], 'width':2,'height':2}
+   def fake_run(command,**kwargs):
+    request=json.loads(Path(command[-1]).read_text());Path(request['output']).write_bytes(bytes(16))
+    return SimpleNamespace(returncode=0,stdout=json.dumps({'width':2,'height':2,'detect_ms':1,'peak_rss_kb':1}),stderr='')
+   with patch('bench.source_fingerprint',side_effect=[{'core':'v1'},{'core':'v2'}]),patch('bench.subprocess.check_output',return_value='v26'),patch('bench.subprocess.run',side_effect=fake_run):
+    with self.assertRaisesRegex(RuntimeError,'not cached'):execute(case,{'name':'test'},folder,cache,{'core':'v1'},30,False)
+   self.assertEqual(list(cache.iterdir()),[])
+   with patch('bench.source_fingerprint',return_value={'core':'v2'}),patch('bench.subprocess.run') as run:
+    with self.assertRaisesRegex(RuntimeError,'source changed'):execute(case,{'name':'test'},folder,cache,{'core':'v1'},30,False)
+    run.assert_not_called()
  def test_cache_changes_with_code_config_inputs_seeds_timeout_and_corruption(self):
   with tempfile.TemporaryDirectory() as t:
    root=Path(t);cache=root/'cache';cache.mkdir();case={'image':root/'input.png','image_sha':'image-one','seeds':[{'x':.5,'y':.5}], 'width':2,'height':2};config={'name':'test','threshold':245}
@@ -62,7 +75,8 @@ class CacheTests(unittest.TestCase):
    def fake_run(command,**kwargs):
     counter[0]+=1;r=json.loads(Path(command[-1]).read_text());Path(r['output']).write_bytes(np.ones((2,2),dtype='<u4').tobytes());return SimpleNamespace(returncode=0,stdout=json.dumps({'width':2,'height':2,'detect_ms':1,'peak_rss_kb':100}),stderr='')
    def go(source={'core':'v1'},timeout=30,fresh=False):
-    folder=root/('case-'+str(len(list(root.glob('case-*')))));folder.mkdir();return execute(case,config,folder,cache,source,timeout,fresh)
+    folder=root/('case-'+str(len(list(root.glob('case-*')))));folder.mkdir()
+    with patch('bench.source_fingerprint',return_value=source):return execute(case,config,folder,cache,source,timeout,fresh)
    with patch('bench.subprocess.check_output',return_value='v26'),patch('bench.subprocess.run',side_effect=fake_run):
     self.assertFalse(go()[3]);self.assertTrue(go()[3]);self.assertEqual(counter[0],1)
     config['threshold']=220;self.assertFalse(go()[3])

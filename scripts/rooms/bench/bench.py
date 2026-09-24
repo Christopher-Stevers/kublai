@@ -17,7 +17,13 @@ def read_json(path):return json.loads(path.read_text())
 
 def check_config(c):
     required={'name','threshold','openRadius','join','bandLengthFraction','doorFraction','gapFactor','windowFactor','envelope','grow','maxRoomFactor','maxUnlabelledFraction','nudgeFraction'}
-    if set(c)!=required:raise ValueError('Config must contain exactly: '+', '.join(sorted(required)))
+    optional={'partition','densitySource','densityRadiusFraction','densityPenalty','rectilinearCut'}
+    if not required<=set(c) or set(c)-required-optional:raise ValueError('Missing or unknown configuration fields')
+    if 'rectilinearCut' in c and not isinstance(c['rectilinearCut'],bool):raise ValueError('rectilinearCut must be boolean')
+    if c.get('partition','none') not in ['none','geodesic','watershed']:raise ValueError('Invalid partition mode')
+    if c.get('densitySource','combined') not in ['walls','ink','combined']:raise ValueError('Invalid density source')
+    for k,limit in [('densityRadiusFraction',.1),('densityPenalty',10000)]:
+        if k in c and (isinstance(c[k],bool) or not isinstance(c[k],(float,int)) or not np.isfinite(c[k]) or not 0<=c[k]<=limit):raise ValueError('Invalid '+k)
     if not isinstance(c['name'],str) or not c['name']:raise ValueError('Missing config name')
     for k in ['envelope','grow']:
         if not isinstance(c[k],bool):raise ValueError(k+' must be boolean')
@@ -88,7 +94,7 @@ def visuals(case,truth,pred,folder):
         im.save(folder/f'{name}.png')
 
 def source_fingerprint():
-    paths=[HERE/'detect.ts',REPO/'src/server/rooms/raster-rooms.ts',REPO/'pnpm-lock.yaml']
+    paths=[HERE/name for name in ['detect.ts','density.ts','seeded-partition.ts','partition-diagnostics.ts','rectilinear-cut.ts']]+[REPO/'src/server/rooms/raster-rooms.ts',REPO/'pnpm-lock.yaml']
     return {str(p.relative_to(REPO)):sha(p) for p in paths}
 
 def scoring_fingerprint():
@@ -99,6 +105,7 @@ def clean_env():
     return {k:v for k,v in os.environ.items() if k in ['PATH','HOME','LANG','LC_ALL','TMPDIR']}
 
 def execute(case,config,folder,cache,source,timeout,fresh):
+    if source_fingerprint()!=source:raise RuntimeError('Detector source changed during this run; rerun with stable source')
     settings={k:v for k,v in config.items() if k!='name'}
     key=digest(canonical({'source':source,'config':settings,'image':case['image_sha'],'seeds':case['seeds'],'width':case['width'],'height':case['height'],'timeout':timeout,'node':subprocess.check_output(['node','--version'],text=True).strip(),'platform':platform.machine()}))
     cached=cache/key;cache_hit=False
@@ -113,6 +120,7 @@ def execute(case,config,folder,cache,source,timeout,fresh):
         result=subprocess.run(['node','--import','tsx',str(HERE/'detect.ts'),str(folder/'request.json')],cwd=REPO,env=clean_env(),text=True,capture_output=True,timeout=timeout)
         (folder/'detector.log').write_text(result.stdout+'\n'+result.stderr)
         if result.returncode:raise RuntimeError(f'Detector exited {result.returncode}; see detector.log')
+        if source_fingerprint()!=source:raise RuntimeError('Detector source changed during execution; prediction not cached')
         diag=json.loads(result.stdout.strip());timing={'wall_ms':(time.perf_counter()-t)*1000,'detect_ms':diag['detect_ms'],'peak_rss_kb':diag['peak_rss_kb']}
         if diag['width']!=case['width'] or diag['height']!=case['height'] or (folder/'mask.u32').stat().st_size!=expected_size:raise ValueError('Wrong prediction size')
         cached.mkdir(parents=True,exist_ok=True);shutil.copyfile(folder/'mask.u32',cached/'mask.u32');write_json(cached/'result.json',{'sha256':sha(cached/'mask.u32'),'timing':timing,'diagnostics':diag})
@@ -159,7 +167,7 @@ def main():
     for command in ['run','sweep']:
         c=sub.add_parser(command);c.add_argument('--corpus',type=Path,default=DEFAULT_CORPUS);c.add_argument('--output',type=Path,default=DEFAULT_CORPUS/'experiments');c.add_argument('--suite',choices=['smoke','development','holdout'],default='smoke');c.add_argument('--width',type=int,default=1024);c.add_argument('--timeout',type=float,default=30);c.add_argument('--fresh',action='store_true');c.add_argument('--manifest',type=Path);c.add_argument('--target',choices=['functional-room','suite'],default='functional-room');c.add_argument('--allow-holdout',action='store_true')
         if command=='run':c.add_argument('--config',type=Path,default=HERE/'configs/baseline.json')
-        else:c.add_argument('--configs',type=Path,nargs='+',default=sorted((HERE/'configs').glob('*.json')))
+        else:c.add_argument('--configs',type=Path,nargs='+',default=[HERE/'configs'/name for name in ['opus-growth.json','hybrid.json','hybrid-no-density.json']])
     c=sub.add_parser('compare');c.add_argument('baseline',type=Path);c.add_argument('candidate',type=Path)
     args=p.parse_args()
     if args.command=='compare':

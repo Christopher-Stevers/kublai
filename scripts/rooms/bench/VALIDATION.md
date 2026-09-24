@@ -1,5 +1,7 @@
 # Initial validation - 2026-09-24 UTC
 
+Later detector development and reserved-test results are in [HYBRID_RESULTS.md](HYBRID_RESULTS.md).
+
 These are **known-seed functional-room** measurements on generated ResPlan drawings at
 1024-pixel width. They are not end-to-end construction-PDF or whole-suite accuracy claims.
 No holdout examples were run. The live app and production data were not changed.
