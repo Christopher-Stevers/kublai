@@ -104,6 +104,14 @@ function geometry(shape: RoomPolygonShape) {
     coordinates: [[...points, points[0]]],
   });
 }
+export function roomArea(shape: RoomPolygonShape) {
+  try {
+    return geometry(shape).getArea() as number;
+  } catch {
+    return 0;
+  }
+}
+
 export function roomOverlap(a: RoomPolygonShape, b: RoomPolygonShape) {
   try {
     return OverlayOp.intersection(geometry(a), geometry(b)).getArea() as number;
