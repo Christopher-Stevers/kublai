@@ -4,6 +4,22 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { PartDetailsDialog } from "./PartDetailsDialog";
 
 const editState = vi.hoisted(() => ({ part: undefined as Record<string, unknown> | undefined, save: vi.fn() }));
+const familyState = vi.hoisted(() => ({
+  lastInput: undefined as { mode?: string } | undefined,
+  data: undefined as
+    | {
+        familyLabel: string;
+        suggestions: Array<{
+          id: string;
+          displayName: string;
+          description: string | null;
+          imageUrl: string | null;
+          material: string | null;
+          size: string | null;
+        }>;
+      }
+    | undefined,
+}));
 afterEach(() => cleanup());
 
 // These UI tests do not exercise IndexedDB synchronization.
@@ -170,11 +186,14 @@ vi.mock("~/trpc/react", () => {
           useQuery: () => ({ data: {}, isLoading: false }),
         },
         getPartImageFamilySuggestions: {
-          useQuery: () => ({
-            data: undefined,
-            isLoading: false,
-            isFetching: false,
-          }),
+          useQuery: (input: { mode?: string }, opts?: { enabled?: boolean }) => {
+            familyState.lastInput = input;
+            return {
+              data: opts?.enabled ? familyState.data : undefined,
+              isLoading: false,
+              isFetching: false,
+            };
+          },
         },
         applyGooglePartImage: {
           useMutation: () => ({ isPending: false, mutate: vi.fn() }),
@@ -240,6 +259,8 @@ vi.mock("~/trpc/react", () => {
 
 describe("PartDetailsDialog inline add", () => {
   beforeEach(() => {
+    familyState.data = undefined;
+    familyState.lastInput = undefined;
     editState.part = undefined;
     editState.save.mockReset();
     globalThis.__partDialogMockData = {
@@ -266,8 +287,45 @@ describe("PartDetailsDialog inline add", () => {
       screen.getByRole("button", { name: /Search For Image/i }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /Share Image With Similar Parts/i }),
+      screen.getByRole("button", { name: /Get Image \/ Share Image/i }),
     ).toBeInTheDocument();
+  });
+
+  it("gets an image from similar parts when the part has none", async () => {
+    familyState.data = {
+      familyLabel: "Elbow",
+      suggestions: [
+        { id: "a", displayName: '1/2" Copper Elbow', description: null, imageUrl: "/images/catalog/uploads/elbow.webp", material: "Copper", size: '1/2"' },
+        { id: "b", displayName: '3/4" Copper Elbow', description: null, imageUrl: "/images/catalog/uploads/elbow.webp", material: "Copper", size: '3/4"' },
+        { id: "c", displayName: '1" Copper Elbow', description: null, imageUrl: "/images/catalog/uploads/elbow-2.webp", material: "Copper", size: '1"' },
+      ],
+    };
+    render(
+      <PartDetailsDialog
+        mode="create"
+        open
+        onOpenChange={() => {}}
+        initialContext={{}}
+      />,
+    );
+    fireEvent.change(screen.getByPlaceholderText("e.g., 90° Copper Elbow"), {
+      target: { value: '1-1/4" Copper Elbow' },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /Get Image \/ Share Image/i }));
+
+    expect(familyState.lastInput?.mode).toBe("get");
+    expect(await screen.findByText("Get Image From Similar Parts")).toBeInTheDocument();
+    // Two distinct images; the one used by two parts is listed first.
+    expect(screen.getByText("Used by 2 similar parts")).toBeInTheDocument();
+    expect(screen.getByText("Used by 1 similar part")).toBeInTheDocument();
+
+    fireEvent.click(screen.getAllByRole("button", { name: /Use Image/i })[0]!);
+    await waitFor(() =>
+      expect(screen.queryByText("Get Image From Similar Parts")).not.toBeInTheDocument(),
+    );
+    expect(
+      document.querySelector('img[src="/images/catalog/uploads/elbow.webp"]'),
+    ).not.toBeNull();
   });
 
   it("rejects invalid size input and flashes an invalid marker", async () => {

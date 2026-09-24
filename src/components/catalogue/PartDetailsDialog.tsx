@@ -612,9 +612,12 @@ export function PartDetailsDialog({
     (material) => material.id === materialId,
   );
   const previewImageUrl = normalizePartImageUrlInput(imageUrl);
+  // With an image, offer it to similar parts; without one, borrow theirs.
+  const familyImageMode: "share" | "get" = previewImageUrl ? "share" : "get";
   const familyImageSuggestionInput = isEditMode
-    ? { partId: partId! }
+    ? { partId: partId!, mode: familyImageMode }
     : {
+        mode: familyImageMode,
         draft: {
           displayName: displayName.trim(),
           description: description.trim() || null,
@@ -633,7 +636,6 @@ export function PartDetailsDialog({
       enabled:
         isOnline &&
         isFamilyImageSuggestionsOpen &&
-        !!previewImageUrl &&
         (isEditMode ? !!partId : !!displayName.trim()),
     },
   );
@@ -822,6 +824,27 @@ export function PartDetailsDialog({
   const googleImageSearchUrl =
     "https://www.google.com/search?tbm=isch&q=" +
     encodeURIComponent(googleImageSearchQuery || displayName);
+  // "Get" mode: one row per distinct image, listing the parts that use it.
+  const familyImageChoices = useMemo(() => {
+    const byImage = new Map<string, string[]>();
+    for (const suggestion of familyImageSuggestions?.suggestions ?? []) {
+      if (!suggestion.imageUrl) continue;
+      byImage.set(suggestion.imageUrl, [
+        ...(byImage.get(suggestion.imageUrl) ?? []),
+        suggestion.displayName,
+      ]);
+    }
+    return [...byImage.entries()]
+      .map(([imageUrl, partNames]) => ({ imageUrl, partNames }))
+      .sort((a, b) => b.partNames.length - a.partNames.length);
+  }, [familyImageSuggestions]);
+
+  const useFamilyImage = async (imageUrl: string) => {
+    setSubmitError(null);
+    await applyRemoteGoogleImageUrl(imageUrl);
+    setIsFamilyImageSuggestionsOpen(false);
+  };
+
   const visibleFamilyImageSuggestions = useMemo(
     () =>
       familyImageSuggestions?.suggestions.filter(
@@ -1510,12 +1533,11 @@ export function PartDetailsDialog({
                         isLoading ||
                         isReviewingPhoto ||
                         applyFamilyPartImage.isPending ||
-                        !previewImageUrl ||
                         !hasFamilyImageSuggestionSource
                       }
                     >
                       <Share2 className="h-4 w-4 shrink-0" />
-                      Share Image With Similar Parts
+                      Get Image / Share Image
                     </Button>
                     <Button
                       type="button"
@@ -1653,11 +1675,15 @@ export function PartDetailsDialog({
       >
         <DialogContent className="relative flex max-h-[90vh] max-w-3xl flex-col">
           <DialogHeader className="pr-10">
-            <DialogTitle>Apply Image to Matching Parts</DialogTitle>
+            <DialogTitle>
+              {familyImageMode === "get"
+                ? "Get Image From Similar Parts"
+                : "Apply Image to Matching Parts"}
+            </DialogTitle>
             <DialogDescription>
-              Review matching {familyImageSuggestions?.familyLabel ?? "family"}{" "}
-              parts with the same material. Approved parts will use this exact
-              image URL.
+              {familyImageMode === "get"
+                ? `Images used by matching ${familyImageSuggestions?.familyLabel ?? "family"} parts with the same material. Choose one to use for this part.`
+                : `Review matching ${familyImageSuggestions?.familyLabel ?? "family"} parts with the same material. Approved parts will use this exact image URL.`}
             </DialogDescription>
           </DialogHeader>
 
@@ -1666,6 +1692,51 @@ export function PartDetailsDialog({
               <div className="rounded-md border bg-muted/50 p-4 text-sm text-muted-foreground">
                 Finding matching parts...
               </div>
+            ) : familyImageMode === "get" ? (
+              familyImageChoices.length > 0 ? (
+                familyImageChoices.map((choice) => (
+                  <div
+                    key={choice.imageUrl}
+                    className="flex items-center gap-3 rounded-lg border bg-card p-3"
+                  >
+                    <div className="relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted/50">
+                      <Image
+                        src={choice.imageUrl}
+                        alt=""
+                        fill
+                        className="object-cover"
+                        unoptimized
+                      />
+                    </div>
+                    <div className="min-w-0 flex-1 text-sm">
+                      <div className="font-medium text-foreground">
+                        Used by {choice.partNames.length} similar{" "}
+                        {choice.partNames.length === 1 ? "part" : "parts"}
+                      </div>
+                      <div className="mt-1 text-xs break-words text-muted-foreground">
+                        {choice.partNames.slice(0, 3).join(", ")}
+                        {choice.partNames.length > 3
+                          ? ` and ${choice.partNames.length - 3} more`
+                          : ""}
+                      </div>
+                    </div>
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="shrink-0"
+                      onClick={() => void useFamilyImage(choice.imageUrl)}
+                      disabled={isLoading || isReviewingPhoto}
+                    >
+                      <Check className="h-4 w-4" />
+                      Use Image
+                    </Button>
+                  </div>
+                ))
+              ) : (
+                <div className="rounded-md border bg-muted/50 p-4 text-sm text-muted-foreground">
+                  No similar parts have an image yet.
+                </div>
+              )
             ) : visibleFamilyImageSuggestions.length > 0 ? (
               visibleFamilyImageSuggestions.map((suggestion) => (
                 <div

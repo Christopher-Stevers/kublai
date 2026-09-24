@@ -12,6 +12,7 @@ import {
   isNull,
   or,
   isNotNull,
+  ne,
   gte,
   lte,
   asc,
@@ -282,9 +283,12 @@ async function getPartImageFamilySuggestionsForSource({
   db,
   organizationId,
   sourcePart,
+  mode = "share",
 }: {
   db: typeof appDb;
   organizationId: string;
+  /** share: similar parts missing an image; get: similar parts that have one. */
+  mode?: "share" | "get";
   sourcePart: {
     id?: string | null;
     displayName: string;
@@ -308,7 +312,9 @@ async function getPartImageFamilySuggestionsForSource({
     sourcePart.materialId
       ? eq(partDefinitions.materialId, sourcePart.materialId)
       : isNull(partDefinitions.materialId),
-    or(isNull(partDefinitions.imageUrl), eq(partDefinitions.imageUrl, "")),
+    mode === "get"
+      ? and(isNotNull(partDefinitions.imageUrl), ne(partDefinitions.imageUrl, ""))
+      : or(isNull(partDefinitions.imageUrl), eq(partDefinitions.imageUrl, "")),
   ].filter(
     (condition): condition is NonNullable<typeof condition> =>
       condition !== undefined,
@@ -333,7 +339,9 @@ async function getPartImageFamilySuggestionsForSource({
     .leftJoin(units, eq(sizes.unitId, units.id))
     .where(and(...candidateConditions))
     .orderBy(asc(partDefinitions.displayName), asc(partDefinitions.id))
-    .limit(250);
+    // Name matching happens below, so the candidate pool must cover a whole
+    // material (e.g. ~590 copper parts without images, ~290 XFR parts with).
+    .limit(2000);
 
   const suggestions = candidates
     .filter((candidate) => candidate.id !== sourcePart.id)
@@ -342,6 +350,7 @@ async function getPartImageFamilySuggestionsForSource({
       id: candidate.id,
       displayName: candidate.displayName,
       description: candidate.description,
+      imageUrl: candidate.imageUrl,
       material: candidate.materialName,
       size:
         candidate.sizeLabel ??
@@ -1568,6 +1577,7 @@ export const catalogueRouter = createTRPCRouter({
       z
         .object({
           partId: z.string().uuid().optional(),
+          mode: z.enum(["share", "get"]).default("share"),
           draft: z
             .object({
               displayName: z.string().min(1).max(255),
@@ -1592,6 +1602,7 @@ export const catalogueRouter = createTRPCRouter({
         return getPartImageFamilySuggestionsForSource({
           db: ctx.db,
           organizationId,
+          mode: input.mode,
           sourcePart: {
             displayName: input.draft.displayName,
             description: input.draft.description ?? null,
@@ -1641,6 +1652,7 @@ export const catalogueRouter = createTRPCRouter({
       return getPartImageFamilySuggestionsForSource({
         db: ctx.db,
         organizationId,
+        mode: input.mode,
         sourcePart,
       });
     }),
