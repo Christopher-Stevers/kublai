@@ -431,7 +431,13 @@ export const roomsRouter = createTRPCRouter({
     }),
 
   detectRooms: hasDashboardAccess
-    .input(z.object({ floorId: z.string().uuid() }))
+    .input(
+      z.object({
+        floorId: z.string().uuid(),
+        /** "hybrid" = the experimental density-guided detector (beta). */
+        method: z.enum(["standard", "hybrid"]).default("standard"),
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
       if (!getUserPermissions(ctx.user).isManagingAccount) {
         throw new TRPCError({ code: "FORBIDDEN" });
@@ -467,9 +473,9 @@ export const roomsRouter = createTRPCRouter({
         });
       }
 
-      console.log("[rooms.detectRooms] started", floor.id);
+      console.log("[rooms.detectRooms] started", floor.id, input.method);
       try {
-        await startDetectWorker(floor.id);
+        await startDetectWorker(floor.id, input.method);
       } catch (error) {
         const message =
           error instanceof Error

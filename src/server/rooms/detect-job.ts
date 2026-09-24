@@ -18,6 +18,9 @@ import {
 } from "~/server/rooms/pdf-walls";
 import { detectSupplementaryRooms } from "~/server/rooms/supplementary-rooms";
 import { planDetectedRoomReconciliation } from "~/server/rooms/reconcile-detected-rooms";
+import { detectHybridRooms } from "~/server/rooms/hybrid/detect-hybrid";
+import { labelOutlines } from "~/server/rooms/hybrid/mask-outline";
+import { renderPdfPageWithoutText } from "~/server/rooms/hybrid/render-page";
 import {
   JOB_ROOM_FILE_PUBLIC_PREFIX,
   getPdfKeyForFloorImage,
@@ -481,7 +484,121 @@ export async function runDeterministicDetectAllRooms(input: {
   }
 }
 
-export async function runQueuedDetectJob(floorId: string) {
+export type DetectMethod = "standard" | "hybrid";
+
+/** Render size for the hybrid detector: door ≈ 0.95% of this ≈ 48 px. */
+const HYBRID_LONG_SIDE = 5000;
+
+/**
+ * Experimental: Astra's density-guided hybrid detector. Updates this
+ * floor's unconfirmed auto-detected rooms where it finds them again and adds
+ * new rooms; it never deletes, and confirmed or hand-drawn rooms are never
+ * changed.
+ */
+export async function runHybridDetectAllRooms(input: {
+  floorId: string;
+  organizationId: string;
+  jobId: string;
+  imageUrl: string;
+  floorStatus: string;
+  pageNumber: number;
+}) {
+  const log = async (message: string) => {
+    console.log("[detect-job:hybrid]", input.floorId, message);
+    await appendDetectLog(input.floorId, message);
+  };
+  try {
+    await log("Starting new (beta) room detection…");
+    const storageKey = storageKeyFor(input.imageUrl);
+    const pdf = await readJobRoomFile(getPdfKeyForFloorImage(storageKey, input.jobId));
+    const pdfPage = getSourcePageFromFloorImage(storageKey) ?? input.pageNumber;
+    const seeds = extractPdfRoomSeeds(await extractPdfLabels(pdf, pdfPage));
+    await log(`Found ${seeds.length} room/unit labels on page ${pdfPage}`);
+    if (!seeds.length) throw new Error("No room or unit labels were found in the PDF text layer");
+
+    await log("Rendering the sheet without text…");
+    const page = await renderPdfPageWithoutText(pdf, pdfPage, HYBRID_LONG_SIDE);
+    await log(`Tracing walls and rooms at ${page.width}×${page.height} px…`);
+    const result = detectHybridRooms(page.rgba, page.width, page.height, seeds);
+    const door = 0.0095 * Math.max(page.width, page.height);
+    const outlines = labelOutlines(result.labels, page.width, {
+      epsilon: Math.max(2, door / 10),
+      minAreaPx: Math.round((door * 0.8) ** 2),
+    });
+    await log(
+      `Traced ${outlines.length} rooms from ${seeds.length} labels` +
+        (result.rejectedSeeds.length
+          ? `; ${result.rejectedSeeds.length} labels skipped (${result.rejectedSeeds
+              .slice(0, 6)
+              .map((r) => `${seeds[r.seedIndex]!.name}: ${r.reason === "on-wall" ? "no open floor nearby" : "outside the building"}`)
+              .join(", ")})`
+          : "") +
+        (result.partitionedComponents
+          ? `; ${result.partitionedComponents} shared spaces split between labels (review these)`
+          : ""),
+    );
+    const detected: DetectedRoom[] = outlines.map((outline) => ({
+      name: seeds[outline.label - 1]!.name,
+      shape: toPolygon({
+        type: "polygon",
+        points: outline.points.map((p) => ({ x: p.x / page.width, y: p.y / page.height })),
+      }),
+    }));
+    if (!detected.length) throw new Error("Could not trace any rooms from this floor plan");
+
+    await log(`Saving ${detected.length} rooms (nothing is deleted; confirmed and hand-drawn rooms are kept)…`);
+    const saved = await db.transaction(async (tx) => {
+      const existing = await tx
+        .select()
+        .from(jobRooms)
+        .where(and(eq(jobRooms.floorId, input.floorId), eq(jobRooms.organizationId, input.organizationId)));
+      // Only unconfirmed auto rooms may be replaced; everything else is treated
+      // as hand-made so it is neither updated nor removed.
+      const plan = planDetectedRoomReconciliation(
+        existing.map((room) => ({
+          id: room.id,
+          name: room.name,
+          source: room.source === "auto" && !room.confirmed ? "auto" : "manual",
+          shape: room.shape,
+        })),
+        detected,
+      );
+      const now = new Date();
+      for (const update of plan.updates) {
+        await tx.update(jobRooms).set({ name: update.room.name, shape: update.room.shape, updatedAt: now }).where(eq(jobRooms.id, update.id));
+      }
+      for (const [index, room] of plan.inserts.entries()) {
+        await tx.insert(jobRooms).values({
+          organizationId: input.organizationId,
+          jobId: input.jobId,
+          floorId: input.floorId,
+          name: room.name,
+          source: "auto",
+          confirmed: false,
+          shape: room.shape,
+          sortOrder: existing.length + index,
+        });
+      }
+      // Beta never deletes: rooms it did not reproduce stay as they were.
+      return {
+        added: plan.inserts.length,
+        updated: plan.updates.length,
+        removed: 0,
+        total: existing.length + plan.inserts.length,
+      };
+    });
+    invalidateFloorGraph(input.floorId);
+    await log(`Done: ${saved.added} added, ${saved.updated} updated; existing rooms it did not find were left unchanged`);
+    await finishDetectJob(input.floorId, saved);
+  } catch (error) {
+    await failDetectJob(
+      input.floorId,
+      error instanceof Error ? error.message : "New room detection failed",
+    );
+  }
+}
+
+export async function runQueuedDetectJob(floorId: string, method: DetectMethod = "standard") {
   const job = await getDetectJob(floorId);
   if (job?.status !== "running") return;
   const [floor] = await db
@@ -494,7 +611,8 @@ export async function runQueuedDetectJob(floorId: string) {
     return;
   }
   await setDetectWorkerPid(floorId, process.pid);
-  await runDeterministicDetectAllRooms({
+  const run = method === "hybrid" ? runHybridDetectAllRooms : runDeterministicDetectAllRooms;
+  await run({
     floorId: floor.id,
     organizationId: floor.organizationId,
     jobId: floor.jobId,

@@ -28,6 +28,7 @@ import { getRoomColor } from "~/lib/room-colors";
 import { uploadDrawings } from "~/lib/upload-drawings";
 import { shapeBBox, toPolygon } from "~/lib/room-shape";
 import { api } from "~/trpc/react";
+import { confirmAction } from "~/components/ui/app-dialogs";
 
 export function JobRoomsView({ jobId }: { jobId: string }) {
   const fileRef = useRef<HTMLInputElement | null>(null);
@@ -254,14 +255,25 @@ export function JobRoomsView({ jobId }: { jobId: string }) {
     setTraceRoomId(null);
   };
 
-  const startDetect = () => {
+  const startDetect = (method: "standard" | "hybrid" = "standard") => {
     if (!selectedFloor || isDetecting) return;
     setDetectError(null);
     setDetectMode(false);
     setDetectingRoomId(selectedFloor.id);
     detectRooms.mutate({
       floorId: selectedFloor.id,
+      method,
     });
+  };
+
+  const startBetaDetect = async () => {
+    const confirmed = await confirmAction({
+      title: "Try the new room detector?",
+      description:
+        "The beta detector updates unconfirmed, automatically detected rooms it finds again and adds new ones. It never deletes rooms, and confirmed or hand-drawn rooms are not changed.",
+      confirmLabel: "Run beta detector",
+    });
+    if (confirmed) startDetect("hybrid");
   };
 
   const resetTrace = () => {
@@ -799,12 +811,22 @@ export function JobRoomsView({ jobId }: { jobId: string }) {
                             variant="outline"
                             onClick={() => {
                               setCreateMode(false);
-                              startDetect();
+                              startDetect("standard");
                             }}
                             disabled={isDetecting || createMode}
                           >
                             <SparklesIcon className="mr-1 h-4 w-4" />
                             {isDetecting ? "Detecting…" : "Detect rooms"}
+                          </Button>
+                          <Button
+                            variant="outline"
+                            onClick={() => {
+                              setCreateMode(false);
+                              void startBetaDetect();
+                            }}
+                            disabled={isDetecting || createMode}
+                          >
+                            Try new detector (beta)
                           </Button>
                           <Button
                             variant={createMode ? "outline" : "default"}

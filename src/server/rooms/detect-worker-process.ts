@@ -1,9 +1,16 @@
 import { spawn } from "node:child_process";
 import path from "node:path";
 
-import { failDetectJob, setDetectWorkerPid } from "~/server/rooms/detect-job";
+import {
+  failDetectJob,
+  setDetectWorkerPid,
+  type DetectMethod,
+} from "~/server/rooms/detect-job";
 
-export async function startDetectWorker(floorId: string) {
+export async function startDetectWorker(
+  floorId: string,
+  method: DetectMethod = "standard",
+) {
   const workerScript = path.join(
     process.cwd(),
     "src/server/rooms/detect-worker.ts",
@@ -11,8 +18,8 @@ export async function startDetectWorker(floorId: string) {
   const packageManager = process.env.npm_execpath;
   const command = packageManager ? process.execPath : "pnpm";
   const args = packageManager
-    ? [packageManager, "exec", "tsx", workerScript, floorId]
-    : ["exec", "tsx", workerScript, floorId];
+    ? [packageManager, "exec", "tsx", workerScript, floorId, method]
+    : ["exec", "tsx", workerScript, floorId, method];
   const child = spawn(command, args, {
     cwd: process.cwd(),
     env: process.env,
