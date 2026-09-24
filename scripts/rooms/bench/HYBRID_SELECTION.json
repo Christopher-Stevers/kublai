@@ -1,0 +1,46 @@
+{
+  "recorded_at_utc": "2026-09-24T04:16:01.926836+00:00",
+  "decision_announced_before_holdout_execution": true,
+  "record_delay_note": "Initial record utility used system Python without NumPy and failed. This record was saved shortly after evaluation launch using the correct venv. No holdout results were inspected before selection or before writing this record.",
+  "selected_config": "scripts/rooms/bench/configs/hybrid.json",
+  "config": {
+    "name": "hybrid-density-geodesic",
+    "threshold": 245,
+    "openRadius": 1,
+    "join": 3,
+    "bandLengthFraction": 0.008,
+    "doorFraction": 0.0095,
+    "gapFactor": 1.15,
+    "windowFactor": 3.5,
+    "envelope": true,
+    "grow": true,
+    "maxRoomFactor": 4,
+    "maxUnlabelledFraction": 0.01,
+    "nudgeFraction": 0.004,
+    "partition": "geodesic",
+    "densitySource": "combined",
+    "densityRadiusFraction": 0.025,
+    "densityPenalty": 20
+  },
+  "config_sha256": "493b1c1fbad2219600f5e0d5a8cde5bd5dde3dafc5c8c2b1b7f54f13fe9a2593",
+  "source_hashes": {
+    "scripts/rooms/bench/detect.ts": "3117d1e45954ba1f0f4119aad8c29d750ee66b7128455e04a4afa5e4975e3fbf",
+    "scripts/rooms/bench/density.ts": "b72ac2b122b24aa8bd01cfd05bb38a1a6547a2719b7f57450be8ca94ba97106c",
+    "scripts/rooms/bench/seeded-partition.ts": "709a31925c6cd08a734ff48141775e51a87b807630cf6b555b9ddb75987d3cf5",
+    "scripts/rooms/bench/partition-diagnostics.ts": "86746212d15208cc0635c196431e5b91b40c347c95088de18c0ae19d584bb4c4",
+    "scripts/rooms/bench/rectilinear-cut.ts": "3243fb2d113f545b058440cd9676e062b42322622d2c0b2727e0ba90f358b4c9",
+    "src/server/rooms/raster-rooms.ts": "b72751249ef76b0b6e852e1a70da63b4bb7e13a3b70886b9ad29794bee8b2cdb",
+    "pnpm-lock.yaml": "75919aaefddd4c7f6bbc2b44de89f51cfbf5fe6ba78d57289347ef4e8f124d88"
+  },
+  "development_evidence": [
+    "20260924T040307-622cd7",
+    "20260924T040308-c4b937",
+    "20260924T040320-e43392"
+  ],
+  "rejected_wall_continuation_evidence": [
+    "20260924T041313-d9c1eb",
+    "20260924T041355-addc98",
+    "20260924T041335-f778e6"
+  ],
+  "reason": "Density improves development F1 and outline accuracy. Wall continuation gains coarse matches but harms strict outline F1 and stress results, so rectilinearCut remains disabled. Current candidate outputs are byte-identical to the full-development candidate on all 44 refinement cases. No further tuning against holdout."
+}
