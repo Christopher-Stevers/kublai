@@ -58,6 +58,10 @@ export default function JobOptionsPage({
   const router = useRouter();
   const [showEditDialog, setShowEditDialog] = useState(false);
   const isBrowserOnline = useOnlineStatus();
+  const { data: roleData } = api.user.getMyRole.useQuery(undefined, {
+    enabled: isBrowserOnline,
+  });
+  const canOpenAssets = roleData?.permissions.tabAccess.assets === true;
   const jobDetail = useReplicacheJobDetail(jobId);
   const { data: serverJob, isFetched: hasFetchedServerJob } =
     api.job.getJob.useQuery(
@@ -181,6 +185,11 @@ export default function JobOptionsPage({
               router.push(`/dashboard/jobs/${job.id}/rooms`);
             }
           }}
+          onTools={
+            canOpenAssets
+              ? () => router.push(`/dashboard/assets/where/job/${job.id}`)
+              : undefined
+          }
         />
 
         <JobEditDialog

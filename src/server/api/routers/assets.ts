@@ -39,6 +39,9 @@ import {
   users,
 } from "~/server/db/schema";
 
+/** Matches nothing; keeps `inArray` valid for an empty id list. */
+const NO_MATCH_ID = "00000000-0000-0000-0000-000000000000";
+
 const holderInput = z.object({
   type: z.enum(HOLDER_TYPES),
   id: z.string().min(1).max(255),
@@ -240,6 +243,7 @@ export const assetsRouter = createTRPCRouter({
         status: z.enum(ASSET_STATUSES).optional(),
         holder: holderInput.optional(),
         partId: z.string().uuid().optional(),
+        ids: z.array(z.string().uuid()).max(1000).optional(),
         limit: z.number().int().min(1).max(1000).default(300),
       }),
     )
@@ -248,6 +252,7 @@ export const assetsRouter = createTRPCRouter({
       const conditions = [eq(assets.organizationId, org)];
       if (input.status) conditions.push(eq(assets.status, input.status));
       if (input.partId) conditions.push(eq(assets.partDefinitionId, input.partId));
+      if (input.ids) conditions.push(inArray(assets.id, input.ids.length ? input.ids : [NO_MATCH_ID]));
       if (input.holder) {
         conditions.push(eq(assets.holderType, input.holder.type), eq(assets.holderId, input.holder.id));
       }

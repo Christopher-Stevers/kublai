@@ -446,8 +446,11 @@ export const jobRouter = createTRPCRouter({
       ]);
 
       const totalSupplierIdsByQuoteId = new Map<string, Set<string>>();
+      // Tool request lines have no supplier; they all go to the tool room.
+      const quoteIdsWithItems = new Set<string>();
       for (const row of supplierRows) {
         if (!row.partDefinitionId) continue;
+        quoteIdsWithItems.add(row.quoteId);
 
         const supplierId = row.selectedSupplierId ?? row.supplierPartSupplierId;
         if (!supplierId) continue;
@@ -511,9 +514,11 @@ export const jobRouter = createTRPCRouter({
         ...job,
         materialLists: lists.map((list) => ({
           ...list,
-          totalSupplierCount: list.quoteId
-            ? (totalSupplierIdsByQuoteId.get(list.quoteId)?.size ?? 0)
-            : 0,
+          totalSupplierCount: !list.quoteId
+            ? 0
+            : list.kind === "tools"
+              ? Number(quoteIdsWithItems.has(list.quoteId))
+              : (totalSupplierIdsByQuoteId.get(list.quoteId)?.size ?? 0),
           sentSupplierCount: sentSupplierIdsByListId.get(list.id)?.size ?? 0,
           verifiedSupplierCount:
             verifiedSupplierIdsByListId.get(list.id)?.size ?? 0,

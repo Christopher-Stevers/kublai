@@ -127,6 +127,14 @@ try {
   assert.equal(materialsOrders.length, 0, "tool requests stay out of the Orders tab");
   step("foreman (standard account) generated and sent TOOLS-001 to the tool room");
 
+  // Re-opening the send sheet offers nothing new; tools added later go as a new request.
+  assert.equal((await foreman.materialList.previewOrders({ materialListId: listId })).possible.length, 0);
+  await push(4, "addItem", { materialListId: listId, itemId: randomUUID(), partDefinitionId: drill!.id, quantity: 1 });
+  const again = await foreman.materialList.previewOrders({ materialListId: listId });
+  assert.equal(again.possible.length, 1);
+  assert.deepEqual(again.possible[0]!.items.map((i) => Number(i.quantity)), [1]);
+  step("after sending, only tools added later are offered (1 more drill)");
+
   const queue = await toolRoom.assets.listRequests({ status: "open" });
   assert.equal(queue.length, 1);
   const request = await toolRoom.assets.getRequest({ orderId: order!.id });

@@ -1,6 +1,7 @@
 "use client";
 
 import { use, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { MaterialListOrderPickerDialog } from "~/components/materialLists/VerifyOrderButton";
 import { api } from "~/trpc/react";
@@ -388,6 +389,15 @@ export default function JobDetailPage({
                 <span className="font-medium">PO#:</span>
                 <span>{job.poNumber}</span>
               </div>
+            )}
+            {userData?.permissions.tabAccess.assets && (
+            <Link
+              href={`/dashboard/assets/where/job/${job.id}`}
+              className="flex items-center gap-2 hover:text-foreground hover:underline"
+            >
+              <WrenchIcon className="h-4 w-4" />
+              <span>Tools on this job</span>
+            </Link>
             )}
           </div>
         </div>

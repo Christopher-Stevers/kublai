@@ -139,6 +139,44 @@ function buildOrderEmailContent({
   };
 }
 
+/**
+ * A tool request list can be sent more than once (e.g. tools added later).
+ * Only what hasn't already been requested from this list goes in the next
+ * request; closed (cancelled) requests don't count.
+ */
+async function withoutAlreadyRequestedTools<
+  T extends { partDefinitionId: string | null; quantity: string | null },
+>(db: Pick<typeof appDb, "select">, materialListId: string, items: T[]) {
+  const requested = await db
+    .select({
+      partDefinitionId: orderItems.partDefinitionId,
+      quantity: sql<number>`coalesce(sum(${orderItems.quantity}), 0)::float`,
+    })
+    .from(orderItems)
+    .innerJoin(orders, eq(orderItems.orderId, orders.id))
+    .where(
+      and(
+        eq(orders.materialListId, materialListId),
+        eq(orders.kind, "tool_request"),
+        sql`coalesce(${orders.fulfillmentStatus}, 'open') <> 'cancelled'`,
+      ),
+    )
+    .groupBy(orderItems.partDefinitionId);
+  const alreadyRequested = new Map(
+    requested.map((row) => [row.partDefinitionId, Number(row.quantity)]),
+  );
+  const remaining: T[] = [];
+  for (const item of items) {
+    if (!item.partDefinitionId) continue;
+    const covered = alreadyRequested.get(item.partDefinitionId) ?? 0;
+    const quantity = Number(item.quantity ?? 1);
+    const left = quantity - covered;
+    alreadyRequested.set(item.partDefinitionId, Math.max(0, covered - quantity));
+    if (left > 1e-9) remaining.push({ ...item, quantity: String(left) });
+  }
+  return remaining;
+}
+
 async function loadOrderableQuoteItems(
   database: typeof appDb | any,
   quoteId: string,
@@ -1651,11 +1689,15 @@ ${foremanName}`;
         ctx.db,
         quote.id,
       );
-      // Every tool on a tool request goes to the organization's tool room.
+      // Every tool on a tool request goes to the organization's tool room,
+      // minus anything this list has already requested.
+      const toolItems = isToolRequest
+        ? await withoutAlreadyRequestedTools(ctx.db, materialList.id, quoteItemsList)
+        : [];
       const orderableItemsBySupplier = isToolRequest
         ? new Map(
-            quoteItemsList.length
-              ? [[await ensureToolRoomSupplier(ctx.db, ctx.user.organizationId), quoteItemsList]]
+            toolItems.length
+              ? [[await ensureToolRoomSupplier(ctx.db, ctx.user.organizationId), toolItems]]
               : [],
           )
         : groupOrderableItemsBySupplier(quoteItemsList);
@@ -1926,7 +1968,11 @@ ${foremanName}`;
         materialList.quoteId,
       );
       const items = isToolRequest
-        ? quoteItemsList.filter((item) => item.partDefinitionId)
+        ? await withoutAlreadyRequestedTools(
+            ctx.db,
+            input.materialListId,
+            quoteItemsList,
+          )
         : (groupOrderableItemsBySupplier(quoteItemsList).get(input.supplierId) ??
           []);
 

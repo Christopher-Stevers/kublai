@@ -1210,7 +1210,10 @@ export async function handleMaterialListReplicachePull(
       );
 
       const totalSupplierIdsByQuoteId = new Map<string, Set<string>>();
+      // Tool request lines have no supplier; they all go to the tool room.
+      const quoteIdsWithItems = new Set<string>();
       for (const item of itemRows) {
+        if (item.quoteId) quoteIdsWithItems.add(item.quoteId);
         const supplierId = item.supplierId;
         if (!item.quoteId || !supplierId) continue;
 
@@ -1322,9 +1325,11 @@ export async function handleMaterialListReplicachePull(
           key: `materialList/${materialList.id}`,
           value: {
             ...materialList,
-            totalSupplierCount: materialList.quoteId
-              ? (totalSupplierIdsByQuoteId.get(materialList.quoteId)?.size ?? 0)
-              : 0,
+            totalSupplierCount: !materialList.quoteId
+              ? 0
+              : materialList.kind === "tools"
+                ? Number(quoteIdsWithItems.has(materialList.quoteId))
+                : (totalSupplierIdsByQuoteId.get(materialList.quoteId)?.size ?? 0),
             sentSupplierCount:
               sentSupplierIdsByListId.get(materialList.id)?.size ?? 0,
             verifiedSupplierCount:
