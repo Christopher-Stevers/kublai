@@ -1,5 +1,5 @@
 "use client";
-import { FileTextIcon, PlusIcon, ShoppingCartIcon } from "lucide-react";
+import { FileTextIcon, PlusIcon, SendIcon, ShoppingCartIcon } from "lucide-react";
 import { Button } from "~/components/ui/button";
 
 export function MaterialListActions({
@@ -10,6 +10,7 @@ export function MaterialListActions({
   onOrder,
   onAdd,
   onNotes,
+  isToolRequest = false,
 }: {
   total: number;
   canGenerate: boolean;
@@ -18,12 +19,14 @@ export function MaterialListActions({
   onOrder: () => void;
   onAdd: () => void;
   onNotes?: () => void;
+  /** Tool requests: no totals or quotes; "Request" sends to the tool room. */
+  isToolRequest?: boolean;
 }) {
   const style =
     "h-9 min-h-9 w-full px-1.5 py-1 text-[11px] leading-tight whitespace-normal sm:h-9 sm:text-xs";
   return (
     <div className="mx-auto max-w-6xl space-y-1.5">
-      {!onNotes && (
+      {!onNotes && !isToolRequest && (
         <div className="flex items-baseline gap-1.5">
           <span className="text-base text-muted-foreground sm:text-lg">
             Material Total
@@ -43,6 +46,22 @@ export function MaterialListActions({
             <FileTextIcon className="mr-1 h-3.5 w-3.5 shrink-0" />
             Notes
           </Button>
+        ) : isToolRequest ? (
+          <>
+            <Button
+              className={`col-span-2 ${style}`}
+              onClick={onOrder}
+              disabled={!canGenerate}
+              title={blockedReason ?? "Send to the tool room"}
+            >
+              <SendIcon className="mr-1 h-3.5 w-3.5 shrink-0" />
+              Send to Tool Room
+            </Button>
+            <Button variant="outline" className={style} onClick={onAdd}>
+              <PlusIcon className="mr-1 h-3.5 w-3.5 shrink-0" />
+              Add Tool
+            </Button>
+          </>
         ) : (
           <>
             <Button

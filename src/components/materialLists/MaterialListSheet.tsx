@@ -12,12 +12,14 @@ export function MaterialListSheet({
   suppliers,
   isReplicacheSyncing,
   className = "",
+  isToolRequest = false,
 }: {
   items: MaterialListTableRowProps["item"][];
   materialListId: string;
   suppliers: MaterialListTableRowProps["suppliers"];
   isReplicacheSyncing?: boolean;
   className?: string;
+  isToolRequest?: boolean;
 }) {
   const syncing = useReplicacheSyncing();
   return (
@@ -34,9 +36,9 @@ export function MaterialListSheet({
               "Photo",
               "Part description",
               "Qty",
-              "Supplier",
-              "Each",
-              "Total",
+              isToolRequest ? "From" : "Supplier",
+              isToolRequest ? " " : "Each",
+              isToolRequest ? "  " : "Total",
               "Sync",
               "Actions",
             ].map((label) => (
@@ -54,6 +56,7 @@ export function MaterialListSheet({
               materialListId={materialListId}
               suppliers={suppliers}
               isReplicacheSyncing={isReplicacheSyncing ?? syncing}
+              isToolRequest={isToolRequest}
             />
           ))}
         </tbody>

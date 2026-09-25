@@ -69,6 +69,8 @@ export interface ReviewStageProps {
   ) => void;
   onRemovePendingPart: (partId: string) => void;
   allPartsHaveSuppliers: boolean;
+  /** Tool requests go to the tool room: no supplier choice, no prices. */
+  isToolRequest?: boolean;
 }
 
 function PartImage({ part }: { part: PendingPart["partDefinition"] }) {
@@ -154,6 +156,7 @@ export function ReviewStage({
   onCacheSupplierPart,
   onRemovePendingPart,
   allPartsHaveSuppliers,
+  isToolRequest = false,
 }: ReviewStageProps) {
   const [supplierDialogPartId, setSupplierDialogPartId] = useState<string | null>(null);
   const [supplierCountBeforeDialog, setSupplierCountBeforeDialog] = useState<number>(0);
@@ -377,10 +380,12 @@ export function ReviewStage({
     <div className="mx-auto w-full max-w-6xl space-y-3 sm:space-y-4">
       <div className="space-y-2">
         <div className="flex items-center justify-between gap-3">
-          <h3 className="text-base font-semibold sm:text-lg">Review Parts</h3>
+          <h3 className="text-base font-semibold sm:text-lg">
+            {isToolRequest ? "Review Tools" : "Review Parts"}
+          </h3>
           <ViewToggle view={reviewView} onViewChange={setReviewView} showOnMobile />
         </div>
-        {!allPartsHaveSuppliers && (
+        {!allPartsHaveSuppliers && !isToolRequest && (
           <div className="flex items-center gap-2 rounded-md bg-amber-50 px-2 py-1.5 text-xs text-amber-800 sm:px-3 sm:text-sm">
             <AlertCircle className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" />
             <span>
@@ -400,7 +405,7 @@ export function ReviewStage({
               ? parseFloat(supplierSelection.lastKnownUnitCost)
               : 0;
             const lineTotal = pendingPart.quantity * unitCost;
-            const isMissingSupplier = !supplierSelection.hasSupplier;
+            const isMissingSupplier = !isToolRequest && !supplierSelection.hasSupplier;
 
             return (
               <Card
@@ -419,7 +424,7 @@ export function ReviewStage({
                           <h3 className="line-clamp-2 text-sm font-semibold text-foreground sm:truncate sm:text-base">
                             {pendingPart.partDefinition.displayName}
                           </h3>
-                          <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+                          <div className={`mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground ${isToolRequest ? "hidden" : ""}`}>
                             <span>
                               Total:{" "}
                               <span className="font-semibold text-foreground">
@@ -446,7 +451,11 @@ export function ReviewStage({
                     </div>
 
                     <div className="flex h-10 min-w-0 items-center sm:h-11">
-                      {renderSupplierPicker(pendingPart, isMissingSupplier)}
+                      {isToolRequest ? (
+                        <span className="text-muted-foreground text-sm">Tool room</span>
+                      ) : (
+                        renderSupplierPicker(pendingPart, isMissingSupplier)
+                      )}
                     </div>
 
                     <div className="flex h-10 items-center justify-center sm:h-11">
@@ -467,8 +476,8 @@ export function ReviewStage({
               <span className="text-center">Photo</span>
               <span className="text-center">Qty</span>
               <span>Part</span>
-              <span>Supplier</span>
-              <span className="text-right">Total</span>
+              <span>{isToolRequest ? "From" : "Supplier"}</span>
+              <span className="text-right">{isToolRequest ? "" : "Total"}</span>
               <span aria-label="Actions" />
             </div>
 
@@ -478,7 +487,7 @@ export function ReviewStage({
                 ? parseFloat(supplierSelection.lastKnownUnitCost)
                 : 0;
               const lineTotal = pendingPart.quantity * unitCost;
-              const isMissingSupplier = !supplierSelection.hasSupplier;
+              const isMissingSupplier = !isToolRequest && !supplierSelection.hasSupplier;
 
               return (
                 <div
@@ -507,11 +516,17 @@ export function ReviewStage({
                   </div>
 
                   <div className="flex h-8 min-w-0 items-center self-center">
-                    {renderSupplierPicker(pendingPart, isMissingSupplier)}
+                    {isToolRequest ? (
+                      <span className="text-muted-foreground text-sm">Tool room</span>
+                    ) : (
+                      renderSupplierPicker(pendingPart, isMissingSupplier)
+                    )}
                   </div>
 
                   <div className="flex h-8 min-w-0 items-center justify-end self-center overflow-hidden whitespace-nowrap text-sm font-semibold text-foreground">
-                    <span className="shrink-0">${lineTotal.toFixed(2)}</span>
+                    {!isToolRequest && (
+                      <span className="shrink-0">${lineTotal.toFixed(2)}</span>
+                    )}
                   </div>
 
                   <div className="flex h-8 items-center justify-center self-center">

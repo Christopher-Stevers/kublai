@@ -1666,6 +1666,7 @@ ${foremanName}`;
           orderNumber: orders.orderNumber,
           notes: orders.notes,
           sentAt: orders.sentAt,
+          fulfillmentStatus: orders.fulfillmentStatus,
           supplierId: orders.supplierId,
           supplierName: suppliers.name,
           supplierContactName: suppliers.contactName,
@@ -1836,6 +1837,7 @@ ${foremanName}`;
           orderNumber: order.orderNumber,
           notes: order.notes,
           sentAt: order.sentAt,
+          fulfillmentStatus: order.fulfillmentStatus,
           supplier: order.supplierId
             ? {
                 id: order.supplierId,
@@ -1853,7 +1855,7 @@ ${foremanName}`;
         };
       });
 
-      return { possible, sent };
+      return { possible, sent, listKind: materialList.kind };
     }),
 
   /**

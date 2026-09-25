@@ -72,6 +72,8 @@ interface MaterialListItemProps {
   suppliers?: ReplicacheSupplier[];
   syncStatus?: MaterialListSyncStatus;
   verifyMode?: boolean;
+  /** Tool request lines go to the tool room: no supplier, no prices. */
+  isToolRequest?: boolean;
   verifyOrderedQuantity?: string | null;
   verifyInitialReceivedQuantity?: string | number | null;
   verifyInitialStatus?: VerifyStatus | string | null;
@@ -185,6 +187,7 @@ function MaterialListItemComponent({
   suppliers,
   syncStatus,
   verifyMode = false,
+  isToolRequest = false,
   verifyOrderedQuantity,
   verifyInitialReceivedQuantity,
   verifyInitialStatus,
@@ -768,23 +771,29 @@ function MaterialListItemComponent({
                 <span className="shrink-0 text-[9px] font-medium tracking-tighter text-muted-foreground/70 uppercase">
                   Supplier
                 </span>
-                <SupplierSelector
-                  itemId={item.id}
-                  partDefinitionId={item.partDefinition?.id ?? ""}
-                  currentSupplierPartId={item.supplierPart?.id}
-                  currentSupplierId={item.selectedSupplierId}
-                  materialListId={materialListId}
-                  suppliers={suppliers}
-                  compact
-                />
+                {isToolRequest ? (
+                  <span className="px-1 text-sm text-muted-foreground">
+                    Tool room
+                  </span>
+                ) : (
+                  <SupplierSelector
+                    itemId={item.id}
+                    partDefinitionId={item.partDefinition?.id ?? ""}
+                    currentSupplierPartId={item.supplierPart?.id}
+                    currentSupplierId={item.selectedSupplierId}
+                    materialListId={materialListId}
+                    suppliers={suppliers}
+                    compact
+                  />
+                )}
               </div>
 
               <div className="grid min-h-10 min-w-0 grid-cols-[3rem_minmax(0,1fr)_2rem] items-center gap-0.5 px-1">
                 <span className="text-[10px] font-medium tracking-wide text-muted-foreground/70 uppercase">
-                  Total
+                  {isToolRequest ? "" : "Total"}
                 </span>
                 <span className="min-w-0 truncate text-right text-sm font-semibold text-foreground tabular-nums sm:text-base">
-                  ${lineTotal.toFixed(2)}
+                  {isToolRequest ? "" : `$${lineTotal.toFixed(2)}`}
                 </span>
                 <Button
                   variant="ghost"

@@ -89,8 +89,8 @@ try {
   const catalogs = await toolRoom.catalogue.getCatalogs();
   const toolCatalog = catalogs.find((c) => c.kind === "assets")!;
   assert.ok(toolCatalog, "tools catalog exists");
-  const drill = await toolRoom.catalogue.createPart({ displayName: "Test Hammer Drill", catalogId: toolCatalog.id, assetTracking: "serialized" });
-  const blade = await toolRoom.catalogue.createPart({ displayName: "Test Saw Blade", catalogId: toolCatalog.id, assetTracking: "quantity" });
+  const drill = await toolRoom.catalogue.createPart({ displayName: "Test Hammer Drill", imageUrl: null, catalogId: toolCatalog.id, assetTracking: "serialized" });
+  const blade = await toolRoom.catalogue.createPart({ displayName: "Test Saw Blade", imageUrl: null, catalogId: toolCatalog.id, assetTracking: "quantity" });
   const types = await toolRoom.assets.listTypes();
   assert.equal(types.find((t) => t.partId === drill!.id)?.tracking, "serialized");
   assert.equal(types.find((t) => t.partId === blade!.id)?.tracking, "quantity");
@@ -109,7 +109,7 @@ try {
   const push = (id: number, name: string, args: unknown) =>
     handleMaterialListReplicachePush(
       { pushVersion: 1, clientGroupID, profileID: "test", schemaVersion: MATERIAL_LIST_REPLICACHE_SCHEMA_VERSION, mutations: [{ clientID, id, name, args, timestamp: Date.now() }] } as never,
-      foremanUser!,
+      foremanUser as never,
     );
   await push(1, "createMaterialList", { materialListId: listId, jobId, name: "Tools for level 3", kind: "tools" });
   await push(2, "addItem", { materialListId: listId, itemId: randomUUID(), partDefinitionId: drill!.id, quantity: 2 });

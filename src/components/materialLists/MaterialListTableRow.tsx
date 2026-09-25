@@ -56,6 +56,8 @@ export interface MaterialListTableRowProps {
   materialListId: string;
   suppliers?: ReplicacheSupplier[];
   isReplicacheSyncing?: boolean;
+  /** Tool request lines go to the tool room: no supplier, no prices. */
+  isToolRequest?: boolean;
 }
 
 export const MATERIAL_LIST_SHEET_COLUMNS = "grid-cols-[3rem_minmax(16rem,1fr)_10rem_12rem_6rem_7rem_3rem_3rem]";
@@ -65,6 +67,7 @@ export function MaterialListTableRow({
   materialListId,
   suppliers,
   isReplicacheSyncing = false,
+  isToolRequest = false,
 }: MaterialListTableRowProps) {
   const removeInFlightRef = useRef(false);
 
@@ -116,7 +119,9 @@ export function MaterialListTableRow({
       </td>
       <td className="content-center">
         <div className="w-full max-w-[200px]">
-          {item.partDefinition?.id ? (
+          {isToolRequest ? (
+            <div className="text-sm text-muted-foreground">Tool room</div>
+          ) : item.partDefinition?.id ? (
             <SupplierSelector
               itemId={item.id}
               partDefinitionId={item.partDefinition.id}
@@ -135,12 +140,12 @@ export function MaterialListTableRow({
       </td>
       <td className="content-center">
         <div className="text-sm text-muted-foreground">
-          {unitCost > 0 ? `$${unitCost.toFixed(2)}` : "—"}
+          {isToolRequest ? "" : unitCost > 0 ? `$${unitCost.toFixed(2)}` : "—"}
         </div>
       </td>
       <td className="content-center">
         <div className="text-sm font-semibold text-foreground">
-          ${lineTotal.toFixed(2)}
+          {isToolRequest ? "" : `$${lineTotal.toFixed(2)}`}
         </div>
       </td>
       <td className="content-center text-center"><MaterialListSyncIndicator status={resolveReplicacheSyncStatus(item.pendingSync, isReplicacheSyncing)} /></td>

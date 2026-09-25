@@ -21,6 +21,8 @@ interface OrdersPreviewSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   materialListId: string;
+  /** Tool request list: one order to the tool room, sent in-app (no email). */
+  isToolRequest?: boolean;
 }
 
 type EmailDraft = {
@@ -36,6 +38,7 @@ type PreviewOrder = {
   orderNumber?: string | null;
   notes?: string | null;
   sentAt?: Date | string | null;
+  fulfillmentStatus?: string | null;
   supplier: {
     id: string;
     name: string;
@@ -51,10 +54,18 @@ type PreviewOrder = {
   email?: EmailDraft;
 };
 
+const TOOL_REQUEST_STATUS: Record<string, string> = {
+  open: "Waiting on tool room",
+  partial: "Partly filled",
+  fulfilled: "Filled",
+  cancelled: "Closed",
+};
+
 export function OrdersPreviewSheet({
   open,
   onOpenChange,
   materialListId,
+  isToolRequest = false,
 }: OrdersPreviewSheetProps) {
   const [expandedOrders, setExpandedOrders] = useState<Set<string>>(new Set());
   const [orderNotes, setOrderNotes] = useState<Map<string, string>>(new Map());
@@ -81,8 +92,9 @@ export function OrdersPreviewSheet({
   const { data: userData } = api.user.getMyRole.useQuery(undefined, {
     enabled: isOnline && open,
   });
+  // Anyone can send a tool request; supplier orders need document rights.
   const canGenerateDocuments =
-    userData?.permissions.canGenerateDocuments ?? true;
+    isToolRequest || (userData?.permissions.canGenerateDocuments ?? true);
 
   const sendGeneratedOrder = api.materialList.sendGeneratedOrder.useMutation();
 
@@ -188,6 +200,42 @@ export function OrdersPreviewSheet({
     });
   };
 
+  const refreshAfterSend = async () => {
+    setSyncError(null);
+    await Promise.all([
+      utils.materialList.previewOrders.invalidate({ materialListId }),
+      utils.materialList.getOrdersForMaterialList.invalidate({
+        materialListId,
+      }),
+      utils.materialList.listOrders.invalidate(),
+      utils.assets.listRequests.invalidate(),
+    ]);
+    await loadPreview();
+  };
+
+  const handleSendToToolRoom = async (order: PreviewOrder) => {
+    if (!order.supplierId) return;
+    const notes = orderNotes.get(order.id) || "";
+    setSendingOrderId(order.id);
+    try {
+      await sendGeneratedOrder.mutateAsync({
+        materialListId,
+        supplierId: order.supplierId,
+        sentTo: "Tool room",
+        notes: notes.trim() || undefined,
+      });
+      await refreshAfterSend();
+    } catch (error) {
+      setSyncError(
+        error instanceof Error
+          ? error.message
+          : "Could not send this request. Try again in a moment.",
+      );
+    } finally {
+      setSendingOrderId(null);
+    }
+  };
+
   const handleEmailOrder = async (order: PreviewOrder) => {
     if (!canGenerateDocuments) {
       setSyncError("Standard accounts cannot generate orders.");
@@ -274,9 +322,11 @@ export function OrdersPreviewSheet({
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Preparing Orders</DialogTitle>
+            <DialogTitle>{isToolRequest ? "Preparing Request" : "Preparing Orders"}</DialogTitle>
             <DialogDescription>
-              Building possible orders from the current material list.
+              {isToolRequest
+                ? "Building the tool room request from this list."
+                : "Building possible orders from the current material list."}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -323,10 +373,11 @@ export function OrdersPreviewSheet({
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>No Orders to Send</DialogTitle>
+            <DialogTitle>{isToolRequest ? "Nothing to Request" : "No Orders to Send"}</DialogTitle>
             <DialogDescription>
-              No items have suppliers assigned. Assign suppliers to items
-              before generating orders.
+              {isToolRequest
+                ? "Add tools to this list, then send it to the tool room."
+                : "No items have suppliers assigned. Assign suppliers to items before generating orders."}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -346,6 +397,73 @@ export function OrdersPreviewSheet({
     const recipient = emailRecipients.get(order.id) ?? "";
     const ccRecipient = emailCcRecipients.get(order.id) ?? "";
     const isSending = sendingOrderId === order.id;
+
+    if (isToolRequest) {
+      return (
+        <div key={order.id} className="rounded-lg border p-4">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <div className="truncate font-semibold">
+                {isSent ? (order.orderNumber ?? "Tool request") : "Tool Room"}
+              </div>
+              <div className="text-muted-foreground text-xs">
+                {order.items.length} tool line
+                {order.items.length === 1 ? "" : "s"}
+                {isSent && order.sentAt
+                  ? ` · sent ${new Date(order.sentAt).toLocaleDateString()}`
+                  : ""}
+              </div>
+            </div>
+            {isSent ? (
+              <a
+                href={`/dashboard/assets/requests/${order.id}`}
+                className="text-sm font-medium text-primary hover:underline"
+              >
+                {TOOL_REQUEST_STATUS[order.fulfillmentStatus ?? "open"] ?? "Sent"}
+              </a>
+            ) : (
+              <Button
+                size="sm"
+                className="h-8 shrink-0"
+                onClick={() => handleSendToToolRoom(order)}
+                disabled={isSending}
+              >
+                {isSending ? "Sending..." : "Send"}
+              </Button>
+            )}
+          </div>
+          <ul className="mt-3 space-y-1 text-sm">
+            {order.items.map((item) => (
+              <li key={item.id} className="flex justify-between gap-3">
+                <span className="min-w-0 truncate">
+                  {item.descriptionSnapshot ?? "Tool"}
+                </span>
+                <span className="shrink-0 tabular-nums">
+                  × {Number(item.quantity)}
+                </span>
+              </li>
+            ))}
+          </ul>
+          {!isSent && (
+            <Textarea
+              value={orderNotes.get(order.id) || ""}
+              onChange={(event) => {
+                const next = new Map(orderNotes);
+                next.set(order.id, event.target.value);
+                setOrderNotes(next);
+              }}
+              placeholder="Note for the tool room (needed by, drop-off, etc.)"
+              className="mt-3 min-h-[70px]"
+            />
+          )}
+          {isSent && order.notes && (
+            <p className="text-muted-foreground mt-2 text-xs whitespace-pre-wrap">
+              {order.notes}
+            </p>
+          )}
+        </div>
+      );
+    }
 
     return (
       <div key={order.id} className="rounded-lg border p-4">
@@ -506,9 +624,11 @@ export function OrdersPreviewSheet({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Orders</DialogTitle>
+          <DialogTitle>{isToolRequest ? "Send to Tool Room" : "Orders"}</DialogTitle>
           <DialogDescription>
-            Possible orders from this list, plus any already sent.
+            {isToolRequest
+              ? "The tool room fills this from the yard and checks the tools out to the job."
+              : "Possible orders from this list, plus any already sent."}
           </DialogDescription>
         </DialogHeader>
 
@@ -522,7 +642,7 @@ export function OrdersPreviewSheet({
           {possibleOrders.length > 0 && (
             <div className="space-y-3">
               <h3 className="text-sm font-semibold text-foreground/80">
-                Possible Orders ({possibleOrders.length})
+                {isToolRequest ? "Ready to Send" : `Possible Orders (${possibleOrders.length})`}
               </h3>
               {possibleOrders.map((order) =>
                 renderOrderCard({ ...order, kind: "possible" }),
@@ -533,7 +653,7 @@ export function OrdersPreviewSheet({
           {sentOrders.length > 0 && (
             <div className="space-y-3">
               <h3 className="text-sm font-semibold text-foreground/80">
-                Already Sent ({sentOrders.length})
+                {isToolRequest ? "Requests Sent" : "Already Sent"} ({sentOrders.length})
               </h3>
               {sentOrders.map((order) =>
                 renderOrderCard({ ...order, kind: "sent" }),

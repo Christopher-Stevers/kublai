@@ -107,6 +107,8 @@ export default function MaterialListDetailPage({
   const { sortedItems: items } = useMaterialListSort(unsortedItems, suppliers);
   const jobDetail = useReplicacheJobDetail(mlHeader?.jobId ?? "");
   const jobName = jobDetail?.job.name;
+  // Tool request lists reuse this screen; they send to the tool room.
+  const isToolRequest = mlHeader?.kind === "tools";
 
   const { data: userData } = api.user.getMyRole.useQuery(undefined, {
     enabled: isBrowserOnline,
@@ -199,7 +201,7 @@ export default function MaterialListDetailPage({
 
   const generationBlockReason = !isBrowserOnline
     ? "Reconnect before generating quotes or orders."
-    : !canGenerateDocuments
+    : !canGenerateDocuments && !isToolRequest
       ? "Standard accounts cannot generate quotes or orders."
       : isLoading
         ? "Loading material list data..."
@@ -310,7 +312,7 @@ export default function MaterialListDetailPage({
               <div className="flex flex-col content-start items-start gap-0.5">
                 <div className="flex items-center gap-2">
                   <h1 className="text-lg leading-tight font-bold text-foreground sm:text-xl">
-                    {mlHeader.name || "Material List"}
+                    {mlHeader.name || (isToolRequest ? "Tool Request" : "Material List")}
                   </h1>
                   <Button
                     variant="ghost"
@@ -376,12 +378,14 @@ export default function MaterialListDetailPage({
                   ? "Loading order items..."
                   : verifyOrderId
                   ? "No parts from this order are in the material list."
+                  : isToolRequest
+                  ? "No tools requested yet"
                   : "No parts added"}
               </p>
               {!verifyOrderId && (
                 <LargeButton onClick={openAddPartDialog}>
                   <PlusIcon className="mr-2 h-4 w-4" />
-                  Add Part Now
+                  {isToolRequest ? "Add Tools" : "Add Part Now"}
                 </LargeButton>
               )}
             </div>
@@ -429,6 +433,7 @@ export default function MaterialListDetailPage({
                         materialListId={id}
                         suppliers={suppliers}
                         verifyMode={!!verifyOrderId}
+                        isToolRequest={isToolRequest}
                         verifyOrderedQuantity={verifyOrderItem?.quantity}
                         verifyInitialReceivedQuantity={
                           verifyOrderItem?.receivedQuantity
@@ -457,6 +462,7 @@ export default function MaterialListDetailPage({
                   materialListId={id}
                   suppliers={suppliers}
                   isReplicacheSyncing={isReplicacheSyncing}
+                  isToolRequest={isToolRequest}
                 />
               )}
             </>
@@ -468,7 +474,8 @@ export default function MaterialListDetailPage({
       <div className="shrink-0 border-t bg-card px-4 pt-1.5 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:px-6 sm:pt-2">
         <MaterialListActions total={footerMaterialTotal} canGenerate={canGenerateQuoteOrOrder} blockedReason={generationBlockReason}
           onQuote={handleGenerateQuote} onOrder={handleGenerateOrder} onAdd={openAddPartDialog}
-          onNotes={verifyOrderId ? () => setShowVerifyNotesDialog(true) : undefined} />
+          onNotes={verifyOrderId ? () => setShowVerifyNotesDialog(true) : undefined}
+          isToolRequest={isToolRequest} />
       </div>
 
       {/* Modals and Sheets */}
@@ -549,6 +556,7 @@ export default function MaterialListDetailPage({
           open={showOrdersSheet}
           onOpenChange={setShowOrdersSheet}
           materialListId={mlHeader.id}
+          isToolRequest={isToolRequest}
         />
       )}
 

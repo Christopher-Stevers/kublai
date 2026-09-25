@@ -642,7 +642,8 @@ export function AddPartDialog({
         ({ resolution }) => !resolution,
       );
 
-      if (missingSupplierSelections.length > 0) {
+      // Tool requests go to the tool room, so tools need no supplier.
+      if (missingSupplierSelections.length > 0 && !isToolRequest) {
         console.error(
           "Cannot add parts without suppliers:",
           missingSupplierSelections.map(({ partId }) => partId),
@@ -668,7 +669,7 @@ export function AddPartDialog({
       const partsWithoutSupplier = partsReadyToAdd.filter(
         (p) => !p.supplierPartId,
       );
-      if (partsWithoutSupplier.length > 0) {
+      if (partsWithoutSupplier.length > 0 && !isToolRequest) {
         console.error(
           "Cannot add parts without suppliers:",
           partsWithoutSupplier.map((p) => p.partDefinition.displayName),
@@ -760,8 +761,9 @@ export function AddPartDialog({
   // final supplierPartId.
   const allPartsHaveSuppliers = useMemo(() => {
     if (pendingParts.length === 0) return false;
+    if (isToolRequest) return true;
     return pendingParts.every((p) => !!p.supplierPartId);
-  }, [pendingParts]);
+  }, [pendingParts, isToolRequest]);
 
   const reviewedPartsTotal = useMemo(() => {
     return pendingParts.reduce((sum, pendingPart) => {
@@ -1086,6 +1088,7 @@ export function AddPartDialog({
                 }
                 onRemovePendingPart={handleRemovePendingPart}
                 allPartsHaveSuppliers={allPartsHaveSuppliers}
+                isToolRequest={isToolRequest}
               />
             )}
           </div>
@@ -1100,7 +1103,7 @@ export function AddPartDialog({
                   className="flex min-w-0 flex-1 items-center justify-between gap-2 text-left"
                 >
                   <div className="text-sm font-semibold sm:text-base">
-                    Pending Parts ({pendingParts.length})
+                    {isToolRequest ? "Pending Tools" : "Pending Parts"} ({pendingParts.length})
                   </div>
                   {isPendingTrayOpen ? (
                     <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
@@ -1115,7 +1118,7 @@ export function AddPartDialog({
                   onClick={handleReviewAndAdd}
                   className="h-8 shrink-0 px-2.5 text-xs sm:h-9 sm:text-sm"
                 >
-                  Review Parts
+                  {isToolRequest ? "Review Tools" : "Review Parts"}
                 </Button>
               </div>
 
@@ -1181,7 +1184,7 @@ export function AddPartDialog({
           {wizardStage === "review" && (
             <DialogFooter className="shrink-0 border-t px-2 py-3 sm:px-4 sm:py-4 md:px-6">
               <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="text-left sm:text-right">
+                <div className={`text-left sm:text-right ${isToolRequest ? "invisible" : ""}`}>
                   <p className="text-xs text-muted-foreground sm:text-sm">
                     Review Total
                   </p>
@@ -1207,7 +1210,7 @@ export function AddPartDialog({
                 >
                   {isAddingParts
                     ? "Adding..."
-                    : `Add ${pendingParts.length} Part${pendingParts.length !== 1 ? "s" : ""}`}
+                    : `Add ${pendingParts.length} ${isToolRequest ? "Tool" : "Part"}${pendingParts.length !== 1 ? "s" : ""}`}
                 </Button>
               </div>
             </DialogFooter>

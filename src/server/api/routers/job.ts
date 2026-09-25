@@ -397,6 +397,7 @@ export const jobRouter = createTRPCRouter({
         .select({
           id: materialLists.id,
           name: materialLists.name,
+          kind: materialLists.kind,
           quoteId: materialLists.quoteId,
           createdAt: materialLists.createdAt,
         })

@@ -17,6 +17,7 @@ import {
   SendIcon,
   TrashIcon,
   WifiOffIcon,
+  WrenchIcon,
 } from "lucide-react";
 import {
   Dialog,
@@ -249,6 +250,25 @@ export default function JobDetailPage({
     router.push(`/dashboard/material-lists/${materialListId}`);
   };
 
+  // A tool request is a material list of kind "tools": same list, same
+  // offline sync, same order generator — it just goes to the tool room.
+  const handleCreateToolRequest = () => {
+    if (!job?.id) return;
+
+    const toolRequestCount =
+      materialLists?.filter((list) => list.kind === "tools").length ?? 0;
+    const materialListId = crypto.randomUUID();
+    void mutateMaterialListAndSync(
+      getMaterialListReplicache().mutate.createMaterialList({
+        materialListId,
+        jobId: job.id,
+        name: `Tool Request ${toolRequestCount + 1}`,
+        kind: "tools",
+      }),
+    );
+    router.push(`/dashboard/material-lists/${materialListId}`);
+  };
+
   const handleConfirmDeleteMaterialList = () => {
     if (!materialListToDelete || !canDeleteCoreRecords) return;
 
@@ -384,7 +404,22 @@ export default function JobDetailPage({
               </p>
             )}
           </div>
-          {(!materialLists || materialLists.length === 0) && (
+          <div
+            className={
+              materialLists && materialLists.length > 0
+                ? "hidden gap-2 sm:flex"
+                : "flex flex-col gap-2 sm:flex-row"
+            }
+          >
+            <Button
+              onClick={handleCreateToolRequest}
+              size="lg"
+              variant="outline"
+              className="h-11 w-full sm:w-auto"
+            >
+              <WrenchIcon className="mr-2 h-5 w-5" />
+              Tool Request
+            </Button>
             <Button
               onClick={handleCreateNew}
               size="lg"
@@ -393,17 +428,7 @@ export default function JobDetailPage({
               <PlusIcon className="mr-2 h-5 w-5" />
               New Material List
             </Button>
-          )}
-          {materialLists && materialLists.length > 0 && (
-            <Button
-              onClick={handleCreateNew}
-              size="lg"
-              className="hidden h-11 sm:inline-flex sm:w-auto"
-            >
-              <PlusIcon className="mr-2 h-5 w-5" />
-              New Material List
-            </Button>
-          )}
+          </div>
         </div>
 
         {!materialLists || materialLists.length === 0 ? (
@@ -447,6 +472,12 @@ export default function JobDetailPage({
                 <CardHeader>
                   <div className="flex items-start justify-between gap-3">
                     <CardTitle className="line-clamp-2 min-w-0 leading-tight break-words">
+                      {list.kind === "tools" && (
+                        <WrenchIcon
+                          className="text-muted-foreground mr-1.5 inline h-4 w-4 align-[-2px]"
+                          aria-label="Tool request"
+                        />
+                      )}
                       {list.name}
                     </CardTitle>
                     {canDeleteCoreRecords && (
@@ -474,12 +505,17 @@ export default function JobDetailPage({
                   <div className="space-y-2 text-sm text-muted-foreground">
                     <div className="flex items-center gap-2">
                       <PackageIcon className="h-4 w-4" />
-                      <span>{list.itemCount} items</span>
+                      <span>
+                        {list.itemCount}{" "}
+                        {list.kind === "tools" ? "tool lines" : "items"}
+                      </span>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold">Total:</span>
-                      <span>${list.materialTotal.toFixed(2)}</span>
-                    </div>
+                    {list.kind !== "tools" && (
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold">Total:</span>
+                        <span>${list.materialTotal.toFixed(2)}</span>
+                      </div>
+                    )}
                     {list.contributors && list.contributors.length > 0 && (
                       <div className="flex items-start gap-2">
                         <UserIcon className="mt-0.5 h-4 w-4 shrink-0" />
@@ -510,10 +546,21 @@ export default function JobDetailPage({
 
         {materialLists && materialLists.length > 0 && (
           <div className="bg-background fixed inset-x-0 bottom-0 z-40 border-t px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:hidden">
-            <Button onClick={handleCreateNew} size="lg" className="h-12 w-full">
-              <PlusIcon className="mr-2 h-5 w-5" />
-              New Material List
-            </Button>
+            <div className="grid grid-cols-[auto_1fr] gap-2">
+              <Button
+                onClick={handleCreateToolRequest}
+                size="lg"
+                variant="outline"
+                className="h-12"
+                aria-label="New tool request"
+              >
+                <WrenchIcon className="h-5 w-5" />
+              </Button>
+              <Button onClick={handleCreateNew} size="lg" className="h-12 w-full">
+                <PlusIcon className="mr-2 h-5 w-5" />
+                New Material List
+              </Button>
+            </div>
           </div>
         )}
 
