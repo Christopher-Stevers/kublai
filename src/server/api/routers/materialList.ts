@@ -196,6 +196,7 @@ import {
   assertCanGenerateDocuments,
 } from "~/server/auth/permissions";
 import { publishMaterialListEvent } from "~/server/material-list-events";
+import { ensureToolRoomSupplier } from "~/server/assets/service";
 import {
   jobs,
   materialLists,
@@ -1580,7 +1581,6 @@ ${foremanName}`;
   previewOrders: hasDashboardAccess
     .input(z.object({ materialListId: z.string().uuid() }))
     .query(async ({ ctx, input }) => {
-      assertCanGenerateDocuments(ctx.user);
 
       if (!ctx.user.organizationId) {
         throw new TRPCError({
@@ -1592,6 +1592,7 @@ ${foremanName}`;
       const [materialList] = await ctx.db
         .select({
           id: materialLists.id,
+          kind: materialLists.kind,
           quoteId: materialLists.quoteId,
           jobId: materialLists.jobId,
           jobName: jobs.name,
@@ -1621,6 +1622,10 @@ ${foremanName}`;
           message: "Material list not found",
         });
       }
+      // Anyone can send a tool request to the tool room; supplier orders
+      // stay limited to accounts that may generate documents.
+      const isToolRequest = materialList.kind === "tools";
+      if (!isToolRequest) assertCanGenerateDocuments(ctx.user);
 
       if (!materialList.quoteId) {
         throw new TRPCError({
@@ -1646,8 +1651,14 @@ ${foremanName}`;
         ctx.db,
         quote.id,
       );
-      const orderableItemsBySupplier =
-        groupOrderableItemsBySupplier(quoteItemsList);
+      // Every tool on a tool request goes to the organization's tool room.
+      const orderableItemsBySupplier = isToolRequest
+        ? new Map(
+            quoteItemsList.length
+              ? [[await ensureToolRoomSupplier(ctx.db, ctx.user.organizationId), quoteItemsList]]
+              : [],
+          )
+        : groupOrderableItemsBySupplier(quoteItemsList);
 
       const sentOrders = await ctx.db
         .select({
@@ -1858,7 +1869,6 @@ ${foremanName}`;
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      assertCanGenerateDocuments(ctx.user);
 
       if (!ctx.user.organizationId) {
         throw new TRPCError({
@@ -1870,6 +1880,7 @@ ${foremanName}`;
       const [materialList] = await ctx.db
         .select({
           id: materialLists.id,
+          kind: materialLists.kind,
           quoteId: materialLists.quoteId,
           jobId: materialLists.jobId,
         })
@@ -1889,6 +1900,18 @@ ${foremanName}`;
         });
       }
 
+      const isToolRequest = materialList.kind === "tools";
+      if (!isToolRequest) assertCanGenerateDocuments(ctx.user);
+      const toolRoomSupplierId = isToolRequest
+        ? await ensureToolRoomSupplier(ctx.db, ctx.user.organizationId)
+        : null;
+      if (isToolRequest && input.supplierId !== toolRoomSupplierId) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Tool requests go to the tool room.",
+        });
+      }
+
       if (!materialList.quoteId) {
         throw new TRPCError({
           code: "NOT_FOUND",
@@ -1900,9 +1923,10 @@ ${foremanName}`;
         ctx.db,
         materialList.quoteId,
       );
-      const items =
-        groupOrderableItemsBySupplier(quoteItemsList).get(input.supplierId) ??
-        [];
+      const items = isToolRequest
+        ? quoteItemsList.filter((item) => item.partDefinitionId)
+        : (groupOrderableItemsBySupplier(quoteItemsList).get(input.supplierId) ??
+          []);
 
       if (items.length === 0) {
         throw new TRPCError({
@@ -1925,6 +1949,10 @@ ${foremanName}`;
             and(
               eq(orders.jobId, materialList.jobId),
               eq(orders.organizationId, ctx.user.organizationId),
+              // Tool requests are numbered separately (TOOLS-001, …).
+              isToolRequest
+                ? eq(orders.kind, "tool_request")
+                : eq(orders.kind, "materials"),
             ),
           );
 
@@ -1937,11 +1965,13 @@ ${foremanName}`;
             organizationId: ctx.user.organizationId!,
             jobId: materialList.jobId,
             materialListId: input.materialListId,
-            orderNumber: `ORDER-${String(createdOrderSequence).padStart(3, "0")}`,
+            orderNumber: `${isToolRequest ? "TOOLS" : "ORDER"}-${String(createdOrderSequence).padStart(3, "0")}`,
             supplierId: input.supplierId,
             createdByUserId: ctx.userId,
             status: "sent",
-            sentVia: "email",
+            kind: isToolRequest ? "tool_request" : "materials",
+            fulfillmentStatus: isToolRequest ? "open" : null,
+            sentVia: isToolRequest ? "tool_room" : "email",
             sentTo: input.sentTo,
             sentAt: new Date(),
             notes: input.notes?.trim() || null,
@@ -2574,6 +2604,8 @@ ${foremanName}`;
     const sentOrderFilter = and(
       eq(orders.organizationId, ctx.user.organizationId),
       eq(orders.status, "sent"),
+      // Tool requests and returns live in Asset Management.
+      eq(orders.kind, "materials"),
     );
     const [ordersList, itemRows] = await Promise.all([
       ctx.db

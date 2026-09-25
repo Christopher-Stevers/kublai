@@ -1,6 +1,7 @@
 import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
 import { assistRouter } from "~/server/api/routers/assist";
 import { adminRouter } from "~/server/api/routers/admin";
+import { assetsRouter } from "~/server/api/routers/assets";
 import { catalogueRouter } from "~/server/api/routers/catalogue";
 import { drawsRouter } from "~/server/api/routers/draws";
 import { jobRouter } from "~/server/api/routers/job";
@@ -30,6 +31,7 @@ export const appRouter = createTRPCRouter({
   materialList: materialListRouter,
   location: locationRouter,
   draws: drawsRouter,
+  assets: assetsRouter,
 });
 
 // export type definition of API
