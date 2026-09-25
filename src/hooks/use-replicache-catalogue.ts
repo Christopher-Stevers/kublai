@@ -13,6 +13,8 @@ import { warmOfflineCatalogueImages } from "~/lib/offline-catalogue";
 export interface ReplicacheCatalogueCatalog {
   id: string;
   name: string;
+  /** materials (default) | assets */
+  kind?: string;
   sortOrder: number;
   organizationId: string;
 }

@@ -33,6 +33,7 @@ import {
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
+import { cn } from "~/lib/utils";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -190,6 +191,8 @@ function isStoredCatalogueImageUrl(value: string) {
 
 interface PartDetailsDialogProps {
   mode: "create" | "edit";
+  /** materials (default) or assets: which catalogs the picker offers. */
+  catalogKind?: "materials" | "assets";
   open: boolean;
   onOpenChange: (open: boolean) => void;
   partId?: string | null;
@@ -217,6 +220,7 @@ export function PartDetailsDialog({
   partId,
   initialContext,
   onPartCreated,
+  catalogKind = "materials",
 }: PartDetailsDialogProps) {
   const utils = api.useUtils();
   const isOnline = useOnlineStatus();
@@ -258,6 +262,10 @@ export function PartDetailsDialog({
   const [imageUrl, setImageUrl] = useState("");
   const [aliasesText, setAliasesText] = useState("");
   const [catalogId, setCatalogId] = useState<string | null>(null);
+  /** Tool types: each unit tagged (serialized) or counted (quantity). */
+  const [assetTracking, setAssetTracking] = useState<"serialized" | "quantity">(
+    "serialized",
+  );
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [materialId, setMaterialId] = useState<string | null>(null);
   const [sizeValue, setSizeValue] = useState("");
@@ -355,6 +363,7 @@ export function PartDetailsDialog({
         part.aliases?.map((alias) => alias.synonym).join("\n") ?? "",
       );
       setCatalogId(part.catalogId ?? null);
+      setAssetTracking(part.assetTracking === "quantity" ? "quantity" : "serialized");
       setCategoryId(part.categoryId ?? null);
       setMaterialId(part.materialId ?? null);
       setSizeValue(part.sizeLabel ?? formatSizeDecimal(part.sizeNominal));
@@ -380,6 +389,7 @@ export function PartDetailsDialog({
       setImageUrl("");
       setAliasesText("");
       setCatalogId(initialContext?.catalogId ?? null);
+      setAssetTracking("serialized");
       setCategoryId(initialContext?.categoryId ?? null);
       setMaterialId(initialContext?.materialId ?? null);
       setSizeValue(
@@ -819,6 +829,13 @@ export function PartDetailsDialog({
     ? !!partId
     : !!displayName.trim();
   const selectedCatalog = catalogs?.find((catalog) => catalog.id === catalogId);
+  const isToolType = selectedCatalog?.kind === "assets";
+  // Only offer catalogs of this screen's kind (plus the part's own catalog).
+  const pickerCatalogs = (catalogs ?? []).filter(
+    (catalog) =>
+      (catalog.kind === "assets" ? "assets" : "materials") === catalogKind ||
+      catalog.id === catalogId,
+  );
   const selectedSizeUnit = sizeUnits.find((unit) => unit.id === sizeUnitId);
   const googleImageSearchQuery = displayName.trim();
   const googleImageSearchUrl =
@@ -914,7 +931,7 @@ export function PartDetailsDialog({
         setNewCatalogName("");
         setShowNewCatalogInput(false);
       },
-      create: (name) => createCatalog.mutate({ name }),
+      create: (name) => createCatalog.mutate({ name, kind: catalogKind }),
     });
 
   const handleMaterialAdd = () =>
@@ -988,6 +1005,7 @@ export function PartDetailsDialog({
       description: description.trim() || null,
       imageUrl: imageUrlToSave,
       catalogId,
+      assetTracking: isToolType ? assetTracking : null,
       categoryId,
       materialId,
       sizeNominal: parsedSizeNominal,
@@ -1111,7 +1129,7 @@ export function PartDetailsDialog({
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent className="max-h-60 overflow-y-auto">
-                        {catalogs?.map((catalog) => (
+                        {pickerCatalogs.map((catalog) => (
                           <DropdownMenuItem
                             key={catalog.id}
                             onClick={() => setCatalogId(catalog.id)}
@@ -1123,6 +1141,39 @@ export function PartDetailsDialog({
                     </DropdownMenu>
                   )}
                 </div>
+
+                {isToolType && (
+                  <div>
+                    <Label>Tracking</Label>
+                    <div className="mt-1 grid grid-cols-2 gap-2">
+                      {(
+                        [
+                          ["serialized", "Each tool", "Own tag & serial number"],
+                          ["quantity", "By quantity", "Counted, not tagged"],
+                        ] as const
+                      ).map(([value, title, hint]) => (
+                        <button
+                          key={value}
+                          type="button"
+                          onClick={() => setAssetTracking(value)}
+                          disabled={isLoading}
+                          aria-pressed={assetTracking === value}
+                          className={cn(
+                            "rounded-md border px-3 py-2 text-left text-sm",
+                            assetTracking === value
+                              ? "border-primary bg-primary/10"
+                              : "hover:bg-accent",
+                          )}
+                        >
+                          <span className="block font-medium">{title}</span>
+                          <span className="text-muted-foreground block text-xs">
+                            {hint}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 <div>
                   <FieldHeader

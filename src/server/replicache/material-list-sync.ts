@@ -135,6 +135,8 @@ const createMaterialListArgs = z.object({
   materialListId: z.string().uuid(),
   jobId: z.string().uuid(),
   name: z.string().min(1).max(255),
+  /** tools = a tool request list filled by the tool room. */
+  kind: z.enum(["materials", "tools"]).default("materials"),
 });
 
 const deleteMaterialListArgs = z.object({
@@ -743,7 +745,7 @@ async function applyReplicacheMutation(
         );
       }
 
-      const materialListName = isDefaultMaterialListName(args.name)
+      const materialListName = args.kind === "materials" && isDefaultMaterialListName(args.name)
         ? await getNextDefaultMaterialListName(tx, {
             organizationId: input.organizationId,
             jobId: args.jobId,
@@ -758,6 +760,7 @@ async function applyReplicacheMutation(
           organizationId: input.organizationId,
           jobId: args.jobId,
           name: materialListName,
+          kind: args.kind,
           quoteId: null,
           createdByUserId: input.userId,
         })
@@ -1116,6 +1119,7 @@ export async function handleMaterialListReplicachePull(
         .select({
           id: materialLists.id,
           name: materialLists.name,
+          kind: materialLists.kind,
           jobId: materialLists.jobId,
           quoteId: materialLists.quoteId,
           createdByUserId: materialLists.createdByUserId,

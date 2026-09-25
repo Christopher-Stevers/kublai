@@ -3,6 +3,7 @@
 import { PartDetailsDialog } from "~/components/catalogue/PartDetailsDialog";
 
 interface CreateCustomPartDialogProps {
+  catalogKind?: "materials" | "assets";
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onPartCreated: (part: {

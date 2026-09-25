@@ -34,6 +34,7 @@ const invitePermissionConfigSchema = z.object({
     canEditParts: z.boolean(),
     canDeleteParts: z.boolean(),
     canDelete: z.boolean(),
+    canManageAssets: z.boolean().default(false),
   }),
 });
 const memberAccessStatusSchema = z.enum(["approved", "pending", "denied"]);

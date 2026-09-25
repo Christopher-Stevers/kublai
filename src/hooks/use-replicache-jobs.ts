@@ -35,6 +35,7 @@ export interface ReplicacheContributor {
 export interface ReplicacheMaterialListSummary {
   id: string;
   name: string;
+  kind?: "materials" | "tools";
   jobId: string;
   quoteId: string | null;
   createdAt: string;

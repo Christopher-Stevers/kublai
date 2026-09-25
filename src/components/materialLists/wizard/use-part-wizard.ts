@@ -42,7 +42,13 @@ type PartFacet = {
   categoryId: string | null;
 };
 
-export function usePartWizard(open = true, sortMode?: MaterialListSort, keywordGroups: readonly NameKeywordGroup[] = EMPTY_NAME_KEYWORD_GROUPS) {
+/** Which catalogs the wizard offers: materials (default) or tools & equipment. */
+export type WizardCatalogKind = "materials" | "assets";
+
+const catalogKindOf = (catalog: { kind?: string | null }) =>
+  catalog.kind === "assets" ? "assets" : "materials";
+
+export function usePartWizard(open = true, sortMode?: MaterialListSort, keywordGroups: readonly NameKeywordGroup[] = EMPTY_NAME_KEYWORD_GROUPS, catalogKind: WizardCatalogKind = "materials") {
   const [wizardStage, setWizardStage] = useState<WizardStage>("catalog");
   const [selectedCatalogId, setSelectedCatalogId] = useState<string | null>(
     null,
@@ -76,8 +82,22 @@ export function usePartWizard(open = true, sortMode?: MaterialListSort, keywordG
   const deferredWizardSearchQuery = useDeferredValue(wizardSearchQuery);
   const utils = api.useUtils();
   const isOnline = useOnlineStatus();
-  const replicacheCatalogue = useReplicacheCatalogue({ enabled: open });
-  const hasReplicacheCatalogue = replicacheCatalogue.catalogs.length > 0;
+  const rawReplicacheCatalogue = useReplicacheCatalogue({ enabled: open });
+  // Material lists never offer tool catalogs, and tool requests only offer them.
+  const replicacheCatalogue = useMemo(() => {
+    const catalogs = rawReplicacheCatalogue.catalogs.filter(
+      (catalog) => catalogKindOf(catalog) === catalogKind,
+    );
+    const allowed = new Set(catalogs.map((catalog) => catalog.id));
+    return {
+      ...rawReplicacheCatalogue,
+      catalogs,
+      parts: rawReplicacheCatalogue.parts.filter((part) =>
+        allowed.has(part.catalogId),
+      ),
+    };
+  }, [rawReplicacheCatalogue, catalogKind]);
+  const hasReplicacheCatalogue = rawReplicacheCatalogue.catalogs.length > 0;
   const [summaryReady, setSummaryReady] = useState(false);
   useEffect(() => {
     if (!open) { setSummaryReady(false); return; }
@@ -86,12 +106,34 @@ export function usePartWizard(open = true, sortMode?: MaterialListSort, keywordG
     const timer = setTimeout(() => setSummaryReady(true), 150);
     return () => clearTimeout(timer);
   }, [open]);
-  const { data: serverSummary } = api.catalogue.getPartWizardSummary.useQuery(
+  const { data: rawServerSummary } = api.catalogue.getPartWizardSummary.useQuery(
     { grouped: true },
     {
       enabled: open && summaryReady && isOnline && !hasReplicacheCatalogue,
       staleTime: 1000 * 60 * 5,
     },
+  );
+  const serverAllowedCatalogIds = useMemo(
+    () =>
+      new Set(
+        (rawServerSummary?.catalogs ?? [])
+          .filter((catalog) => catalogKindOf(catalog) === catalogKind)
+          .map((catalog) => catalog.id),
+      ),
+    [rawServerSummary, catalogKind],
+  );
+  const serverSummary = useMemo(
+    () =>
+      rawServerSummary && {
+        ...rawServerSummary,
+        catalogs: rawServerSummary.catalogs.filter((catalog) =>
+          serverAllowedCatalogIds.has(catalog.id),
+        ),
+        parts: rawServerSummary.parts.filter((part) =>
+          serverAllowedCatalogIds.has(part.catalogId),
+        ),
+      },
+    [rawServerSummary, serverAllowedCatalogIds],
   );
   const shouldLoadSelectionParts =
     open &&
@@ -234,8 +276,15 @@ export function usePartWizard(open = true, sortMode?: MaterialListSort, keywordG
 
   const filteredServerSelectionParts = useMemo(() => {
     if (!serverSelectionParts) return undefined;
-    return filterSelectionParts(serverSelectionParts);
-  }, [filterSelectionParts, serverSelectionParts]);
+    return filterSelectionParts(
+      serverSelectionParts.filter((part) =>
+        // Offline-summary fallback: keep only this wizard's kind of catalog.
+        serverAllowedCatalogIds.size
+          ? serverAllowedCatalogIds.has(part.catalogId)
+          : catalogKind === "materials",
+      ),
+    );
+  }, [filterSelectionParts, serverSelectionParts, serverAllowedCatalogIds, catalogKind]);
 
   const selectionParts =
     replicacheFilteredSelectionParts ??

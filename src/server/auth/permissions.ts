@@ -16,6 +16,7 @@ export const appTabIds = [
   "quotes",
   "orders",
   "draws",
+  "assets",
   "organization",
 ] as const;
 
@@ -28,6 +29,8 @@ export type UserPermissionConfig = {
     canEditParts?: boolean;
     canDeleteParts?: boolean;
     canDelete?: boolean;
+    /** Tool room: manage assets, fill tool requests, check in/out, counts. */
+    canManageAssets?: boolean;
   };
 };
 
@@ -38,6 +41,7 @@ const standardTabs: Record<AppTabId, boolean> = {
   quotes: true,
   orders: true,
   draws: false,
+  assets: true,
   organization: false,
 };
 
@@ -55,6 +59,7 @@ const managingTabs: Record<AppTabId, boolean> = {
   quotes: true,
   orders: true,
   draws: true,
+  assets: true,
   organization: true,
 };
 
@@ -116,6 +121,11 @@ export function getUserPermissions(user: PermissionUser) {
   if (actionAccess.canDelete) {
     actionAccess.canDeleteParts = true;
   }
+  // Tool room is granted per member (for any account type); admins always.
+  const canManageAssets =
+    role === "admin" ||
+    normalizePermissionConfig(user.permissionConfig).actions?.canManageAssets ===
+      true;
 
   return {
     role,
@@ -131,6 +141,7 @@ export function getUserPermissions(user: PermissionUser) {
     canCreateParts: actionAccess.canCreateParts,
     canEditParts: actionAccess.canEditParts,
     canDeleteParts: actionAccess.canDeleteParts,
+    canManageAssets,
     canGenerateDocuments: isManagingAccount,
     canDeleteCoreRecords: isManagingAccount,
   };
@@ -196,6 +207,15 @@ export function assertCanManageOrganization(user: PermissionUser) {
     throw new TRPCError({
       code: "FORBIDDEN",
       message: "Managing Account required to change organization data.",
+    });
+  }
+}
+
+export function assertCanManageAssets(user: PermissionUser) {
+  if (!getUserPermissions(user).canManageAssets) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Only tool room members can do this.",
     });
   }
 }

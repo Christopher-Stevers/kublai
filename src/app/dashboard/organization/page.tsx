@@ -62,6 +62,7 @@ type InvitePermissions = {
     canEditParts: boolean;
     canDeleteParts: boolean;
     canDelete: boolean;
+    canManageAssets: boolean;
   };
 };
 
@@ -80,6 +81,7 @@ const defaultInvitePermissions: InvitePermissions = {
     canEditParts: true,
     canDeleteParts: false,
     canDelete: false,
+    canManageAssets: false,
   },
 };
 
@@ -95,6 +97,7 @@ const actionOptions = [
   { id: "canCreateParts", label: "Can Create Parts" },
   { id: "canEditParts", label: "Can Edit Parts" },
   { id: "canDeleteParts", label: "Can Delete Parts" },
+  { id: "canManageAssets", label: "Tool Room (manage tools, fill requests)" },
 ] as const;
 
 function formatDate(date: Date | string) {

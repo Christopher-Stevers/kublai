@@ -363,6 +363,8 @@ export const suppliers = createTable(
       .notNull()
       .$defaultFn(() => new Date())
       .$onUpdate(() => new Date()),
+    /** external | tool_room (the company's own tool room, one per organization) */
+    kind: d.varchar({ length: 20 }).notNull().default("external"),
   }),
   (t) => [
     unique("supplier_org_name_uniq").on(t.organizationId, t.name),
@@ -525,6 +527,8 @@ export const catalogs = createTable(
       .timestamp({ withTimezone: true })
       .notNull()
       .$defaultFn(() => new Date()),
+    /** materials | assets (tools & equipment managed in Asset Management) */
+    kind: d.varchar({ length: 20 }).notNull().default("materials"),
   }),
   (t) => [
     unique("catalog_org_name_uniq").on(t.organizationId, t.name),
@@ -656,6 +660,8 @@ export const partDefinitions = createTable(
       .timestamp({ withTimezone: true })
       .notNull()
       .$defaultFn(() => new Date()),
+    /** Tool types only: serialized (each unit tagged) | quantity */
+    assetTracking: d.varchar({ length: 20 }),
   }),
   (t) => [
     index("part_def_org_idx").on(t.organizationId),
@@ -1332,6 +1338,8 @@ export const materialLists = createTable(
       .notNull()
       .$defaultFn(() => new Date())
       .$onUpdate(() => new Date()),
+    /** materials | tools (a tool request list for the tool room) */
+    kind: d.varchar({ length: 20 }).notNull().default("materials"),
   }),
   (t) => [
     index("material_list_job_idx").on(t.jobId),
@@ -1778,6 +1786,11 @@ export const orders = createTable(
       .timestamp({ withTimezone: true })
       .notNull()
       .$defaultFn(() => new Date()),
+    /** materials | tool_request | tool_return */
+    kind: d.varchar({ length: 20 }).notNull().default("materials"),
+    /** Tool orders: open | partial | fulfilled | cancelled */
+    fulfillmentStatus: d.varchar({ length: 20 }),
+    fulfilledAt: d.timestamp({ withTimezone: true }),
   }),
   (t) => [
     index("order_job_idx").on(t.jobId),
@@ -1848,6 +1861,10 @@ export const orderItems = createTable(
     descriptionSnapshot: d.text(),
     supplierSkuSnapshot: d.varchar({ length: 255 }),
     notes: d.text(),
+    /** Tool returns: the specific tool being sent back. */
+    assetId: d.uuid(),
+    /** Tool requests: how many the tool room has checked out so far. */
+    fulfilledQuantity: d.numeric({ precision: 12, scale: 6 }),
   }),
   (t) => [
     index("order_item_order_idx").on(t.orderId),
@@ -1871,3 +1888,224 @@ export const orderItemsRelations = relations(orderItems, ({ one }) => ({
     relationName: "oi_uom",
   }),
 }));
+
+// ============================
+// ASSET MANAGEMENT (tools & equipment)
+// ============================
+// Tool types are part definitions in catalogs of kind "assets". Where a tool
+// or quantity of tools sits is a "holder": an asset location (warehouse,
+// vehicle), a job, or a person. holderId is a location/job uuid or user id.
+
+export const assetLocations = createTable(
+  "asset_location",
+  (d) => ({
+    id: d
+      .uuid()
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    organizationId: d
+      .uuid()
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    /** warehouse | vehicle */
+    kind: d.varchar({ length: 20 }).notNull(),
+    name: d.varchar({ length: 255 }).notNull(),
+    notes: d.text(),
+    isActive: d.boolean().notNull().default(true),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .notNull()
+      .$defaultFn(() => new Date()),
+    updatedAt: d
+      .timestamp({ withTimezone: true })
+      .notNull()
+      .$defaultFn(() => new Date())
+      .$onUpdate(() => new Date()),
+  }),
+  (t) => [index("asset_location_org_idx").on(t.organizationId)],
+);
+
+/** One individually tracked tool (serialized tool types). */
+export const assets = createTable(
+  "asset",
+  (d) => ({
+    id: d
+      .uuid()
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    organizationId: d
+      .uuid()
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    partDefinitionId: d
+      .uuid()
+      .notNull()
+      .references(() => partDefinitions.id, { onDelete: "restrict" }),
+    /** Printed on the QR label; unique within the organization. */
+    assetTag: d.varchar({ length: 40 }).notNull(),
+    serialNumber: d.varchar({ length: 120 }),
+    /** available | in_use | damaged | missing | retired */
+    status: d.varchar({ length: 20 }).notNull().default("available"),
+    /** location | job | user */
+    holderType: d.varchar({ length: 20 }).notNull(),
+    holderId: d.varchar({ length: 255 }).notNull(),
+    notes: d.text(),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .notNull()
+      .$defaultFn(() => new Date()),
+    updatedAt: d
+      .timestamp({ withTimezone: true })
+      .notNull()
+      .$defaultFn(() => new Date())
+      .$onUpdate(() => new Date()),
+  }),
+  (t) => [
+    unique("asset_org_tag_uniq").on(t.organizationId, t.assetTag),
+    index("asset_org_holder_idx").on(t.organizationId, t.holderType, t.holderId),
+    index("asset_part_idx").on(t.partDefinitionId),
+  ],
+);
+
+/** Quantity-tracked tools held by one holder. */
+export const assetStock = createTable(
+  "asset_stock",
+  (d) => ({
+    id: d
+      .uuid()
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    organizationId: d
+      .uuid()
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    partDefinitionId: d
+      .uuid()
+      .notNull()
+      .references(() => partDefinitions.id, { onDelete: "restrict" }),
+    holderType: d.varchar({ length: 20 }).notNull(),
+    holderId: d.varchar({ length: 255 }).notNull(),
+    quantity: d.numeric({ precision: 12, scale: 3 }).notNull().default("0"),
+    updatedAt: d
+      .timestamp({ withTimezone: true })
+      .notNull()
+      .$defaultFn(() => new Date())
+      .$onUpdate(() => new Date()),
+  }),
+  (t) => [
+    unique("asset_stock_holding_uniq").on(
+      t.organizationId,
+      t.partDefinitionId,
+      t.holderType,
+      t.holderId,
+    ),
+    index("asset_stock_holder_idx").on(t.organizationId, t.holderType, t.holderId),
+  ],
+);
+
+/** Every change of holder, quantity or status: the audit trail. */
+export const assetMovements = createTable(
+  "asset_movement",
+  (d) => ({
+    id: d
+      .uuid()
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    organizationId: d
+      .uuid()
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    /** receive | checkout | return | transfer | adjust | status | count */
+    kind: d.varchar({ length: 20 }).notNull(),
+    assetId: d.uuid().references(() => assets.id, { onDelete: "cascade" }),
+    partDefinitionId: d
+      .uuid()
+      .notNull()
+      .references(() => partDefinitions.id, { onDelete: "restrict" }),
+    quantity: d.numeric({ precision: 12, scale: 3 }).notNull().default("1"),
+    fromType: d.varchar({ length: 20 }),
+    fromId: d.varchar({ length: 255 }),
+    toType: d.varchar({ length: 20 }),
+    toId: d.varchar({ length: 255 }),
+    statusFrom: d.varchar({ length: 20 }),
+    statusTo: d.varchar({ length: 20 }),
+    orderId: d.uuid().references(() => orders.id, { onDelete: "set null" }),
+    countId: d.uuid(),
+    note: d.text(),
+    userId: d.varchar({ length: 255 }).references(() => users.id, {
+      onDelete: "set null",
+    }),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  }),
+  (t) => [
+    index("asset_movement_org_created_idx").on(t.organizationId, t.createdAt),
+    index("asset_movement_asset_idx").on(t.assetId),
+  ],
+);
+
+/** A count/audit of everything one holder should have. */
+export const assetCounts = createTable(
+  "asset_count",
+  (d) => ({
+    id: d
+      .uuid()
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    organizationId: d
+      .uuid()
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    holderType: d.varchar({ length: 20 }).notNull(),
+    holderId: d.varchar({ length: 255 }).notNull(),
+    /** open | completed | cancelled */
+    status: d.varchar({ length: 20 }).notNull().default("open"),
+    notes: d.text(),
+    startedByUserId: d.varchar({ length: 255 }).references(() => users.id, {
+      onDelete: "set null",
+    }),
+    completedByUserId: d.varchar({ length: 255 }).references(() => users.id, {
+      onDelete: "set null",
+    }),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .notNull()
+      .$defaultFn(() => new Date()),
+    completedAt: d.timestamp({ withTimezone: true }),
+  }),
+  (t) => [index("asset_count_org_idx").on(t.organizationId, t.status)],
+);
+
+export const assetCountLines = createTable(
+  "asset_count_line",
+  (d) => ({
+    id: d
+      .uuid()
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    countId: d
+      .uuid()
+      .notNull()
+      .references(() => assetCounts.id, { onDelete: "cascade" }),
+    /** Set for serialized tools; null for quantity lines. */
+    assetId: d.uuid().references(() => assets.id, { onDelete: "cascade" }),
+    partDefinitionId: d
+      .uuid()
+      .notNull()
+      .references(() => partDefinitions.id, { onDelete: "restrict" }),
+    expectedQuantity: d.numeric({ precision: 12, scale: 3 }).notNull().default("0"),
+    countedQuantity: d.numeric({ precision: 12, scale: 3 }),
+  }),
+  (t) => [
+    index("asset_count_line_count_idx").on(t.countId),
+    unique("asset_count_line_asset_uniq").on(t.countId, t.assetId),
+  ],
+);

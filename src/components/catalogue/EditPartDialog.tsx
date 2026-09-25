@@ -3,6 +3,7 @@
 import { PartDetailsDialog } from "~/components/catalogue/PartDetailsDialog";
 
 interface EditPartDialogProps {
+  catalogKind?: "materials" | "assets";
   open: boolean;
   onOpenChange: (open: boolean) => void;
   partId: string | null;

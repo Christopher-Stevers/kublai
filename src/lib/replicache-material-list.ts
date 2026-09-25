@@ -85,7 +85,12 @@ export type MaterialListReplicacheMutators = {
   // Material list CRUD
   createMaterialList(
     tx: WriteTransaction,
-    args: { materialListId: string; jobId: string; name: string },
+    args: {
+      materialListId: string;
+      jobId: string;
+      name: string;
+      kind?: "materials" | "tools";
+    },
   ): Promise<void>;
   deleteMaterialList(
     tx: WriteTransaction,
@@ -409,6 +414,7 @@ export function getMaterialListReplicache() {
         await tx.put(`materialList/${args.materialListId}`, {
           id: args.materialListId,
           name: args.name,
+          kind: args.kind ?? "materials",
           jobId: args.jobId,
           quoteId: null,
           createdAt: new Date().toISOString(),

@@ -14,6 +14,7 @@ function tabForPath(pathname: string | null) {
   if (pathname.startsWith("/dashboard/quotes")) return "quotes";
   if (pathname.startsWith("/dashboard/orders")) return "orders";
   if (pathname.startsWith("/dashboard/draws")) return "draws";
+  if (pathname.startsWith("/dashboard/assets")) return "assets";
   if (pathname.startsWith("/dashboard/organization")) return "organization";
   if (pathname.startsWith("/dashboard/account")) return null;
   return "dashboard";

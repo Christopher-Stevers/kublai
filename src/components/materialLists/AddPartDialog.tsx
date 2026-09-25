@@ -31,6 +31,7 @@ import {
   requestMaterialListReplicacheSync,
 } from "~/lib/replicache-material-list";
 import { useOnlineStatus } from "~/hooks/use-online-status";
+import { useReplicacheMaterialList } from "~/hooks/use-replicache-material-list";
 import { useCatalogueFirstDownload } from "~/hooks/use-replicache-catalogue";
 import {
   getOfflineSupplierPartsByPart,
@@ -49,6 +50,9 @@ export function AddPartDialog({
   onOpenChange,
   materialListId,
 }: AddPartDialogProps) {
+  // Tool request lists pick from tool catalogs; material lists never do.
+  const listKind = useReplicacheMaterialList(materialListId).materialList?.kind;
+  const isToolRequest = listKind === "tools";
   // Wizard state
   const [pendingParts, setPendingParts] = useState<PendingPart[]>([]);
   const [isCreateCustomPartDialogOpen, setIsCreateCustomPartDialogOpen] =
@@ -125,7 +129,12 @@ export function AddPartDialog({
     selectedSizeName,
     selectedCategoryName,
     wizardSearchPlaceholder,
-  } = usePartWizard(open, sortMode, keywordGroups);
+  } = usePartWizard(
+    open,
+    sortMode,
+    keywordGroups,
+    isToolRequest ? "assets" : "materials",
+  );
 
   const utils = api.useUtils();
   const isOnline = useOnlineStatus();
@@ -893,7 +902,7 @@ export function AddPartDialog({
         >
           <DialogHeader className="shrink-0 px-2 pt-2 pb-1.5 sm:px-4 sm:pt-4 sm:pb-3 md:px-6 md:pt-6 md:pb-4">
             <DialogTitle className="text-base sm:text-lg md:text-xl">
-              Add Parts
+              {isToolRequest ? "Add Tools" : "Add Parts"}
             </DialogTitle>
             <DialogDescription className="hidden text-xs sm:block sm:text-sm">
               {isOnline
@@ -1219,6 +1228,7 @@ export function AddPartDialog({
 
       {isCreateCustomPartDialogOpen && (
         <CreateCustomPartDialog
+          catalogKind={isToolRequest ? "assets" : "materials"}
           open={isCreateCustomPartDialogOpen}
           onOpenChange={setIsCreateCustomPartDialogOpen}
           onPartCreated={handleCustomPartCreated}
@@ -1228,6 +1238,7 @@ export function AddPartDialog({
 
       {editingPartId !== null && (
         <EditPartDialog
+          catalogKind={isToolRequest ? "assets" : "materials"}
           open={editingPartId !== null}
           onOpenChange={(open) => {
             if (!open) setEditingPartId(null);

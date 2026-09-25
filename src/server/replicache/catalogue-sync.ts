@@ -46,6 +46,7 @@ export async function handleCatalogueReplicachePull(
             .select({
               id: catalogs.id,
               name: catalogs.name,
+              kind: catalogs.kind,
               sortOrder: catalogs.sortOrder,
               organizationId: catalogs.organizationId,
             })

@@ -64,6 +64,8 @@ export interface ReplicacheMaterialListItem {
 export interface ReplicacheMaterialList {
   id: string;
   name: string;
+  /** materials (default) | tools: a tool request for the tool room. */
+  kind?: "materials" | "tools";
   jobId: string;
   quoteId: string | null;
   createdAt: string;

@@ -27,6 +27,7 @@ import {
   ShieldIcon,
   ShoppingCartIcon,
   TruckIcon,
+  WrenchIcon,
   UserIcon,
   SettingsIcon,
   XIcon,
@@ -84,6 +85,7 @@ function HeaderFrame({
     quotes: boolean;
     orders: boolean;
     draws: boolean;
+    assets: boolean;
     organization: boolean;
   };
   showAdmin: boolean;
@@ -112,6 +114,9 @@ function HeaderFrame({
       : []),
     ...(tabAccess.draws
       ? [{ href: "/dashboard/draws", label: "Draws", icon: ReceiptIcon }]
+      : []),
+    ...(tabAccess.assets
+      ? [{ href: "/dashboard/assets", label: "Asset Management", icon: WrenchIcon }]
       : []),
     ...(tabAccess.organization
       ? [
@@ -463,6 +468,7 @@ function HeaderWithClerk() {
           quotes: true,
           orders: true,
           draws: false,
+          assets: true,
           organization: false,
         }
       }
@@ -489,6 +495,7 @@ function HeaderWithoutClerk() {
         quotes: true,
         orders: true,
         draws: false,
+        assets: true,
         organization: false,
       }}
       showAdmin={false}

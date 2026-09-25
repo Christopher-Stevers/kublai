@@ -492,6 +492,7 @@ type CatalogNode = {
   sortOrder: number;
   organizationId: string;
   partCount?: number;
+  kind: string;
 };
 
 export const catalogueRouter = createTRPCRouter({
@@ -507,6 +508,7 @@ export const catalogueRouter = createTRPCRouter({
         .select({
           id: catalogs.id,
           name: catalogs.name,
+          kind: catalogs.kind,
           sortOrder: catalogs.sortOrder,
           organizationId: catalogs.organizationId,
         })
@@ -550,7 +552,12 @@ export const catalogueRouter = createTRPCRouter({
   }),
 
   createCatalog: hasDashboardAccess
-    .input(z.object({ name: z.string().min(1).max(255) }))
+    .input(
+      z.object({
+        name: z.string().min(1).max(255),
+        kind: z.enum(["materials", "assets"]).default("materials"),
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
       const organizationId = ctx.user.organizationId;
       const trimmedName = input.name.trim();
@@ -586,6 +593,7 @@ export const catalogueRouter = createTRPCRouter({
         .values({
           organizationId,
           name: trimmedName,
+          kind: input.kind,
           sortOrder: (maxSortOrder?.maxSortOrder ?? -1) + 1,
         })
         .returning();
@@ -682,6 +690,7 @@ export const catalogueRouter = createTRPCRouter({
           .select({
             id: catalogs.id,
             name: catalogs.name,
+            kind: catalogs.kind,
             sortOrder: catalogs.sortOrder,
             organizationId: catalogs.organizationId,
           })
@@ -1438,6 +1447,7 @@ export const catalogueRouter = createTRPCRouter({
             organizationId: partDefinitions.organizationId,
             sizeUnitCode: units.code,
             sizeUnitDisplayName: units.displayName,
+            assetTracking: partDefinitions.assetTracking,
           })
           .from(partDefinitions)
           .leftJoin(sizes, eq(partDefinitions.sizeId, sizes.id))
@@ -1464,6 +1474,7 @@ export const catalogueRouter = createTRPCRouter({
       }
 
       return {
+        assetTracking: part.assetTracking,
         id: part.id,
         displayName: part.displayName,
         description: part.description,
@@ -2167,6 +2178,7 @@ export const catalogueRouter = createTRPCRouter({
         description: z.string().optional().nullable(),
         imageUrl: partImageUrlInput,
         catalogId: z.string().uuid().optional(),
+        assetTracking: z.enum(["serialized", "quantity"]).nullable().optional(),
         categoryId: z.string().uuid().optional().nullable(),
         materialId: z.string().uuid().optional().nullable(),
         sizeNominal: z.number().optional().nullable(),
@@ -2333,6 +2345,8 @@ export const catalogueRouter = createTRPCRouter({
       if (input.sizeLabel !== undefined)
         updateData.sizeLabel = input.sizeLabel?.trim() || null;
       if (input.catalogId !== undefined) updateData.catalogId = input.catalogId;
+      if (input.assetTracking !== undefined)
+        updateData.assetTracking = input.assetTracking;
       if (input.categoryId !== undefined)
         updateData.categoryId = input.categoryId;
       if (input.materialId !== undefined)
@@ -2828,6 +2842,7 @@ export const catalogueRouter = createTRPCRouter({
         description: z.string().optional().nullable(),
         imageUrl: partImageUrlInput,
         catalogId: z.string().uuid(),
+        assetTracking: z.enum(["serialized", "quantity"]).nullable().optional(),
         categoryId: z.string().uuid().optional().nullable(),
         categoryName: z.string().optional().nullable(),
         materialId: z.string().uuid().optional().nullable(),
@@ -2910,6 +2925,11 @@ export const catalogueRouter = createTRPCRouter({
         .values({
           organizationId: organizationId,
           catalogId: catalog.id,
+          // Tool types are always tracked one way or the other.
+          assetTracking:
+            catalog.kind === "assets"
+              ? (input.assetTracking ?? "serialized")
+              : null,
           displayName: input.displayName,
           description: input.description ?? null,
           imageUrl:
