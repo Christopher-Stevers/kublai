@@ -187,7 +187,7 @@ The production build, TypeScript checks, 258 tests across 50 files and lint with
 zero new errors pass. A disposable restored database verifies stale review/edit
 checks, exact edit-response versions, organization/role isolation, correction
 history, approval preservation, rejection memory, drawing identity/content
-fencing and explicit floor completeness. The fourteen-check phone browser exercise verifies
+fencing and explicit floor completeness. The fifteen-check phone browser exercise verifies
 real touch selection, approval/disapproval, undo, reload persistence, corner
 editing, two consecutive saves, concurrent-edit recovery, adding missed spaces and full-floor confirmation. Approval controls and
 the drawing are visible together at 390×844 pixels. Anonymous dashboard access
@@ -216,7 +216,14 @@ without losing previously correct rooms or raising the review burden.
 ## Release
 
 Application commit `7ffeb4a` is deployed on `tim-development` using
-`.next-room-review-20260930`. Both additive migrations were applied; the prior
+`.next-room-review-20260930b`, with the follow-up `f88c87a` allowing old confirmed
+floors to explicitly attest completeness. That follow-up passed the production
+build, TypeScript, lint with zero new errors and all fifteen phone browser checks
+against a restored disposable database. The added browser check verifies that
+re-attesting a legacy confirmed floor preserves every approved outline. Public
+health, anonymous sign-in gating and the live A511 mobile review controls pass
+after this release, with zero browser exceptions.
+Both additive migrations were applied; the prior
 release and static assets are retained. A fresh backup completed successfully.
 Live public health and anonymous sign-in gating pass; the existing A511 sheet
 opens with the new review controls on a phone-sized browser without exceptions.
