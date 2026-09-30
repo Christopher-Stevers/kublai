@@ -223,6 +223,46 @@ east hall without a giant merged building, but retains exterior false rooms,
 fixture holes and fragmented circulation. It remains offline. The previously
 exposed twenty new sites were not reopened or used to tune this experiment.
 
+## Genuine-wall and opening data
+
+The [original Swiss geometry import](ROOM_TRUE_OPENING_DATA_2026-09-30.md)
+adds a separate 80-training/20-development corpus from 100 previously unused
+site components, excluding all 173 sites used by earlier experiments. Targets
+use original wall, column, window and door footprints. Adjacent open functional
+areas do not acquire an invented wall. Small spaces, stairs, elevators and
+common areas remain included; undefined source areas remain unsupervised.
+
+V4 adds nine deterministic wall styles, including weak gray fills and paired
+one/two-pixel outlines, plus explicitly simulated furniture and stair treads.
+The complete 100-case comparison verifies unchanged site/split/source identities
+and byte-identical targets, masks, overviews and references relative to v3;
+only images change. All 400 private assets validate, seventeen fabricated tests
+pass and independent style/provenance audits pass. Two current unprotected
+renders passed visual QA. This establishes data integrity, not room accuracy.
+
+Original geometry supplies better structural supervision than randomly cutting
+doors into closed room-area outlines, but it does not supply original drawing
+images or independently annotated physical-room instances. This corpus remains
+ineligible for every-room F1/recall or whole-floor success claims. Any paired
+model test can report masked structural-pixel diagnostics only; A511 still
+requires complete real-room annotation before an accuracy claim.
+
+The fixed 48-epoch random-initialized trial completed in 592.45 seconds and
+selected epoch 47 by development loss. On the same twenty known-pixel
+development cases, interior/boundary/opening IoU changed from
+44.15%/40.02%/1.88% for the earlier model to 92.40%/86.38%/61.71%.
+The earlier model learned centerlines and artificial gaps, while this test uses
+actual physical footprints; these results measure target adaptation, not room
+accuracy. Sources, assets, runtimes, checkpoints and emitted caches are fenced.
+
+Both fixed A511 probes remain rejected: plain extraction produces 543 proposals;
+the existing hierarchical partition produces 395 proposals and 2,079 holes.
+Visual inspection finds substantial wing/north room structure but also false
+parking/exterior/title-block partitions and revision-cloud/fixture holes.
+The higher structural-pixel scores do not justify enabling this model.
+Full experiment evidence is in
+[the true-opening model report](ROOM_TRUE_OPENING_MODEL_2026-09-30.md).
+
 ## Application verification
 
 The production build, TypeScript checks, 258 tests across 50 files and lint with
