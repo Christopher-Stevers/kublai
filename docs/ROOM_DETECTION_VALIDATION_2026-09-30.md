@@ -205,6 +205,14 @@ drafts, but the actual hallway remains fragmented and loses branches. It stays
 offline. Per-room review, explicit tracing and verified correction exports are
 the production path while more complete real-sheet references are built.
 
+The separate [local vision census](ROOM_VISION_CENSUS_RESEARCH_2026-09-30.md)
+also fails: Qwen3-VL-2B produces no accepted response on any of eleven viewports
+in either the greedy trial or its single declared sampling control. Repeated
+coordinate grids, token-limit loops and invalid objects are preserved as
+failures. Those points are not room boundaries, and no census model is enabled.
+The hardened reusable harness requires complete model/source/input provenance
+and finalized inference evidence before decoding scoring targets.
+
 ## Application verification
 
 The production build, TypeScript checks, 258 tests across 50 files and lint with
