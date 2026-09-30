@@ -14,17 +14,8 @@ const mocks = vi.hoisted(() => ({
   spawn: vi.fn(),
   select: vi.fn(),
 }));
-vi.mock("@clerk/nextjs/server", () => ({
-  auth: async () => ({ userId: "clerk-owner" }),
-}));
-vi.mock("~/server/utils/ensure-user", () => ({
-  ensureUser: async () => mocks.user,
-}));
-vi.mock("~/server/utils/get-agent-bypass-user", () => ({
-  getAgentBypassUser: async () => null,
-}));
-vi.mock("~/server/utils/get-dev-bypass-user", () => ({
-  getDevBypassUser: async () => null,
+vi.mock("~/server/utils/get-request-identity", () => ({
+  getRequestIdentity: async () => ({ userId: mocks.user?.id ?? null, user: mocks.user }),
 }));
 vi.mock("~/server/auth/permissions", () => ({
   getUserPermissions: () => ({ isManagingAccount: mocks.managing }),

@@ -1,9 +1,10 @@
 /**
  * Turns a per-pixel room label map into room outlines: for each label, the
  * largest 4-connected area's outer boundary is traced along pixel edges and
- * simplified (Douglas–Peucker). Holes are ignored; outlines are closed rings
+ * simplified (Douglas–Peucker). Interior holes can be retained; outlines are closed rings
  * in pixel coordinates.
  */
+import { freeComponents } from "../raster-rooms";
 export type PixelPoint = { x: number; y: number };
 
 type Box = { x0: number; y0: number; x1: number; y1: number };
@@ -164,13 +165,13 @@ function simplifyRing(ring: PixelPoint[], epsilon: number) {
   return [...first.slice(0, -1), ...second.slice(0, -1)];
 }
 
-export type LabelOutline = { label: number; points: PixelPoint[]; areaPx: number };
+export type LabelOutline = { label: number; points: PixelPoint[]; holes?: PixelPoint[][]; areaPx: number };
 
 /** One simplified outline per label (largest connected area only). */
 export function labelOutlines(
   labels: Int32Array,
   width: number,
-  options: { epsilon: number; minAreaPx: number },
+  options: { epsilon: number; minAreaPx: number; includeHoles?: boolean },
 ): LabelOutline[] {
   const outlines: LabelOutline[] = [];
   for (const [label, box] of boxes(labels, width)) {
@@ -181,7 +182,21 @@ export function labelOutlines(
       y: p.y + box.y0,
     }));
     const points = simplifyRing(ring, options.epsilon);
-    if (points.length >= 3) outlines.push({ label, points, areaPx: area.size });
+    const holes: PixelPoint[][] = [];
+    if (options.includeHoles) {
+      const voids = freeComponents({ width: area.w, height: area.h, data: area.inside });
+      for (const [id, holeBox] of boxes(voids.labels, area.w)) {
+        if (voids.touchesBorder[id] || voids.sizes[id]! < options.minAreaPx) continue;
+        const w = holeBox.x1 - holeBox.x0 + 1, h = holeBox.y1 - holeBox.y0 + 1;
+        const mask = new Uint8Array(w * h);
+        for (let y = 0; y < h; y++) for (let x = 0; x < w; x++)
+          mask[y * w + x] = voids.labels[(y + holeBox.y0) * area.w + x + holeBox.x0] === id ? 1 : 0;
+        const ring = simplifyRing(traceOuterBoundary(mask, w, h), options.epsilon)
+          .map(p => ({ x: p.x + box.x0 + holeBox.x0, y: p.y + box.y0 + holeBox.y0 }));
+        if (ring.length >= 3) holes.push(ring);
+      }
+    }
+    if (points.length >= 3) outlines.push({ label, points, ...(holes.length ? { holes } : {}), areaPx: area.size });
   }
   return outlines.sort((a, b) => a.label - b.label);
 }

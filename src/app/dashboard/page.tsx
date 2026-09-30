@@ -1,23 +1,15 @@
 import { desc, eq, sql } from "drizzle-orm";
-import { auth } from "@clerk/nextjs/server";
 
 import { DashboardClient, type DashboardJob } from "./DashboardClient";
 import { db } from "~/server/db";
 import { jobs, locations, materialLists, users } from "~/server/db/schema";
-import { ensureUser } from "~/server/utils/ensure-user";
-import { getAgentBypassUser } from "~/server/utils/get-agent-bypass-user";
-import { getDevBypassUser } from "~/server/utils/get-dev-bypass-user";
+import { getRequestIdentity } from "~/server/utils/get-request-identity";
 import { headers } from "next/headers";
 
 async function getInitialJobs(): Promise<DashboardJob[]> {
-  const { userId: clerkUserId } = await auth();
-  const requestHeaders = await headers();
-  const bypassUser =
-    clerkUserId ? null : ((await getAgentBypassUser(requestHeaders)) ?? (await getDevBypassUser()));
-  const userId = clerkUserId ?? bypassUser?.id;
-  if (!userId) return [];
-
-  const user = await ensureUser(userId);
+  const { user } = await getRequestIdentity(await headers(), {
+    allowDev: true,
+  });
   if (!user?.organizationId) return [];
 
   return db

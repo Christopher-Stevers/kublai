@@ -1,28 +1,19 @@
 import { redirect } from "next/navigation";
-import { auth } from "@clerk/nextjs/server";
+import { getRequestIdentity } from "~/server/utils/get-request-identity";
+import { headers } from "next/headers";
 import { Header } from "~/app/_components/Header";
-import { db } from "~/server/db";
-import { users } from "~/server/db/schema";
-import { eq } from "drizzle-orm";
 
 export default async function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const { userId } = await auth();
+  const { userId, user } = await getRequestIdentity(await headers());
 
   // Redirect if not authenticated
   if (!userId) {
     redirect("/sign-in");
   }
-
-  // Get user from database to check role
-  const [user] = await db
-    .select()
-    .from(users)
-    .where(eq(users.id, userId))
-    .limit(1);
 
   // Redirect if not admin
   if (user?.role !== "admin" && !user?.organizationId) {
@@ -33,7 +24,7 @@ export default async function AdminLayout({
   }
 
   return (
-    <div className="min-h-screen bg-muted/50">
+    <div className="bg-muted/50 min-h-screen">
       <Header />
       <main>{children}</main>
     </div>

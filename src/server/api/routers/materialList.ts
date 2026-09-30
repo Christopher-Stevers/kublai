@@ -740,7 +740,7 @@ export const materialListRouter = createTRPCRouter({
           await Promise.all(
             verifiedIds.map((itemId) =>
               recordMaterialListItemTombstone(ctx.db, {
-                organizationId: ctx.user.organizationId!,
+                organizationId: ctx.user.organizationId,
                 materialListId: input.materialListId,
                 itemId,
               }),
@@ -2010,7 +2010,7 @@ ${foremanName}`;
         const [createdOrder] = await tx
           .insert(orders)
           .values({
-            organizationId: ctx.user.organizationId!,
+            organizationId: ctx.user.organizationId,
             jobId: materialList.jobId,
             materialListId: input.materialListId,
             orderNumber: `${isToolRequest ? "TOOLS" : "ORDER"}-${String(createdOrderSequence).padStart(3, "0")}`,

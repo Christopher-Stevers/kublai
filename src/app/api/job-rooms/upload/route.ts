@@ -1,14 +1,10 @@
 import { spawn } from "node:child_process";
 import path from "node:path";
-import { auth } from "@clerk/nextjs/server";
 import { and, eq, like } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { getUserPermissions } from "~/server/auth/permissions";
 import { db } from "~/server/db";
 import { jobFloors, jobs } from "~/server/db/schema";
-import { ensureUser } from "~/server/utils/ensure-user";
-import { getAgentBypassUser } from "~/server/utils/get-agent-bypass-user";
-import { getDevBypassUser } from "~/server/utils/get-dev-bypass-user";
 import {
   appendChunk,
   handoffWorker,
@@ -28,17 +24,15 @@ import {
   WORKER_SECONDS,
 } from "~/server/rooms/upload-session";
 
+import { getRequestIdentity } from "~/server/utils/get-request-identity";
+
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 export const runtime = "nodejs";
 export const maxDuration = 30;
 
 async function requestUser(request: Request) {
-  const { userId } = await auth();
-  const user = userId
-    ? await ensureUser(userId)
-    : ((await getAgentBypassUser(request.headers)) ??
-      (await getDevBypassUser()));
+  const { user } = await getRequestIdentity(request.headers, { allowDev: true });
   if (!user?.organizationId) throw new UploadError("Unauthorized", 401);
   if (!getUserPermissions(user).isManagingAccount)
     throw new UploadError("Managing accounts upload floor plans", 403);

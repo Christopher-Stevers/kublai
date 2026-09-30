@@ -11,12 +11,10 @@ import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import { ZodError } from "zod";
 
-import { auth } from "@clerk/nextjs/server";
 import { db } from "~/server/db";
 import { withQueryStats } from "~/server/db/query-stats";
-import { ensureUser } from "~/server/utils/ensure-user";
-import { getDevBypassUser } from "~/server/utils/get-dev-bypass-user";
-import { getAgentBypassUser } from "~/server/utils/get-agent-bypass-user";
+
+import { getRequestIdentity } from "~/server/utils/get-request-identity";
 
 /**
  * 1. CONTEXT
@@ -31,18 +29,9 @@ import { getAgentBypassUser } from "~/server/utils/get-agent-bypass-user";
  * @see https://trpc.io/docs/server/context
  */
 export const createTRPCContext = async (opts: { headers: Headers }) => {
-  const { userId: clerkUserId } = await auth();
-  let userId = clerkUserId;
-
-  // Get user from database if authenticated
-  let dbUser = null;
-  if (userId) {
-    dbUser = await ensureUser(userId);
-  } else {
-    dbUser = await getAgentBypassUser(opts.headers);
-    dbUser ??= await getDevBypassUser();
-    userId = dbUser?.id ?? null;
-  }
+  const { userId, user: dbUser } = await getRequestIdentity(opts.headers, {
+    allowDev: true,
+  });
 
   return {
     db,
@@ -221,7 +210,7 @@ export const hasDashboardAccess = t.procedure
     return next({
       ctx: {
         userId: ctx.userId,
-        user: ctx.user,
+        user: { ...ctx.user, organizationId: ctx.user.organizationId },
       },
     });
   });

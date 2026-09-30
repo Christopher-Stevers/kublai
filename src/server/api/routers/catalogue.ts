@@ -1075,7 +1075,7 @@ export const catalogueRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       assertCanEditParts(ctx.user);
       assertCanAccessTab(ctx.user, "catalogue");
-      const org = ctx.user.organizationId!;
+      const org = ctx.user.organizationId;
       const ids = input.assignments.map((item) => item.materialId);
       if (new Set(ids).size !== ids.length)
         throw new TRPCError({
@@ -1831,7 +1831,7 @@ export const catalogueRouter = createTRPCRouter({
       const [asset] = await ctx.db
         .insert(photoAssets)
         .values({
-          organizationId: ctx.user.organizationId!,
+          organizationId: ctx.user.organizationId,
           storageKey: filename,
           url: imageUrl,
           originalFilename: filename,

@@ -1,12 +1,9 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { HydrateClient } from "~/trpc/server";
-import { auth } from "@clerk/nextjs/server";
 import { Header } from "../_components/Header";
-import { ensureUser } from "~/server/utils/ensure-user";
+import { getRequestIdentity } from "~/server/utils/get-request-identity";
 import { waitForUser } from "~/server/utils/wait-for-user";
-import { getDevBypassUser } from "~/server/utils/get-dev-bypass-user";
-import { getAgentBypassUser } from "~/server/utils/get-agent-bypass-user";
 import { ReplicacheSyncBootstrap } from "~/components/offline/ReplicacheSyncBootstrap";
 import { TabAccessGate } from "./_components/TabAccessGate";
 
@@ -15,32 +12,18 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { userId: clerkUserId } = await auth();
-  let userId = clerkUserId;
+  const identity = await getRequestIdentity(await headers(), {
+    allowDev: true,
+  });
+  const effectiveUserId = identity.userId;
+  if (!effectiveUserId) redirect("/sign-in");
 
-  // Redirect if not authenticated
-  if (!userId) {
-    const requestHeaders = await headers();
-    const bypassUser =
-      (await getAgentBypassUser(requestHeaders)) ?? (await getDevBypassUser());
-    if (!bypassUser) {
-      redirect("/sign-in");
-    }
-    userId = bypassUser.id;
-  }
-
-  const effectiveUserId = userId;
-  if (!effectiveUserId) {
-    redirect("/sign-in");
-  }
-
-  // Get user from database (webhook should have created it)
-  let user = await ensureUser(effectiveUserId);
+  let user = identity.user;
 
   // If user doesn't exist, wait for webhook to create it (with timeout)
   // This ensures webhook is the single source of truth for user creation
   if (!user) {
-    user = await waitForUser(effectiveUserId, 3000, 250);
+    user = (await waitForUser(effectiveUserId, 3000, 250)) as typeof user;
   }
 
   // If user still doesn't exist after waiting, redirect to onboarding
@@ -65,8 +48,11 @@ export default async function DashboardLayout({
 
   return (
     <HydrateClient>
-      <div className="flex min-h-screen flex-col bg-muted/50">
-        <ReplicacheSyncBootstrap userId={effectiveUserId} organizationId={organizationId} />
+      <div className="bg-muted/50 flex min-h-screen flex-col">
+        <ReplicacheSyncBootstrap
+          userId={effectiveUserId}
+          organizationId={organizationId}
+        />
         <Header />
         <TabAccessGate />
         <main className="flex-1">{children}</main>

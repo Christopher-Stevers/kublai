@@ -34,7 +34,11 @@ function extractCookie(headers: Headers, name: string) {
   const match = cookies.find((part) => part.startsWith(prefix));
   if (!match) return null;
 
-  return decodeURIComponent(match.slice(prefix.length));
+  try {
+    return decodeURIComponent(match.slice(prefix.length));
+  } catch {
+    return null;
+  }
 }
 
 export function hasValidAgentAuthBypass(headers: Headers) {

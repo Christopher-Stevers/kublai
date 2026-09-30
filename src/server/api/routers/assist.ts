@@ -174,7 +174,7 @@ export const assistRouter = createTRPCRouter({
     )
     .query(async ({ ctx, input }) => {
       assertCanAccessTab(ctx.user, tab(input.mode));
-      const org = ctx.user.organizationId!;
+      const org = ctx.user.organizationId;
       if (input.mode === "search") return [];
       if (input.mode === "catalogue")
         return (await parts(ctx.db, org, input.search, undefined, 50)).map(
@@ -261,7 +261,7 @@ export const assistRouter = createTRPCRouter({
         });
       admit(ctx.userId);
       active++;
-      const org = ctx.user.organizationId!;
+      const org = ctx.user.organizationId;
       const tasks: ReviewTask[] = [];
       let nextOffset: number | null = null;
       let note = "Suggestions only. No records have been changed.";

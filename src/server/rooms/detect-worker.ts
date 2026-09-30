@@ -2,7 +2,7 @@ import { failDetectJob, runQueuedDetectJob } from "~/server/rooms/detect-job";
 
 const floorId = process.argv[2];
 const runId = process.argv[4];
-const method = process.argv[3] === "hybrid" ? "hybrid" : "standard";
+const method = process.argv[3] === "complete" ? "complete" : process.argv[3] === "hybrid" ? "hybrid" : "standard";
 
 if (!floorId || !runId) {
   console.error("Room detection worker requires a floor id");

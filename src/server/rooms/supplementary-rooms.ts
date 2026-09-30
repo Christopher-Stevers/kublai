@@ -101,7 +101,7 @@ function geometry(shape: RoomPolygonShape) {
   const points = shape.points.map((p) => [p.x, p.y]);
   return reader.read({
     type: "Polygon",
-    coordinates: [[...points, points[0]]],
+    coordinates: [[...points, points[0]], ...(shape.holes ?? []).map(ring => { const p = ring.map(v => [v.x, v.y]); return [...p, p[0]]; })],
   });
 }
 export function roomArea(shape: RoomPolygonShape) {

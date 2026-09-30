@@ -1,6 +1,6 @@
+import { getRequestIdentity } from "~/server/utils/get-request-identity";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { auth } from "@clerk/nextjs/server";
-import { ensureUser } from "~/server/utils/ensure-user";
 
 const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
 const hasUsableClerkKey =
@@ -17,12 +17,14 @@ export default async function SignInLayout({
     return <>{children}</>;
   }
 
-  const { userId } = await auth();
+  const { userId, user: requestUser } = await getRequestIdentity(
+    await headers(),
+  );
 
   // If user is authenticated, redirect them away from sign-in page
   if (userId) {
     // Get user from database (webhook should have created it)
-    const user = await ensureUser(userId);
+    const user = requestUser;
 
     // If user exists and has organizationId, redirect to dashboard
     if (user?.organizationId) {

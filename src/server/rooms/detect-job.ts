@@ -1,14 +1,18 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { BoundedCache } from "./bounded-cache";
 import { processIdentity, sameProcess } from "./process-identity";
-import { and, eq, ne, sql } from "drizzle-orm";
+import { and, desc, eq, ne, sql } from "drizzle-orm";
 
 import { pointInPolygon, toPolygon, type RoomPoint } from "~/lib/room-shape";
 import { db } from "~/server/db";
-import { jobFloors, jobRooms, roomDetectionJobs } from "~/server/db/schema";
+import {
+  jobFloors,
+  jobRooms,
+  roomDetectionJobs,
+  roomDetectionFeedback,
+} from "~/server/db/schema";
 import {
   buildFloorGraph,
-  detectFloorRooms,
   growRoom,
   type FloorGraph,
 } from "~/server/rooms/floor-graph";
@@ -16,13 +20,19 @@ import {
   extractPdfLabels,
   extractPdfLinework,
   extractPdfRoomSeeds,
-  type PdfRoomSeed,
-  type PdfLabel,
 } from "~/server/rooms/pdf-walls";
-import { detectSupplementaryRooms } from "~/server/rooms/supplementary-rooms";
-import { planDetectedRoomReconciliation } from "~/server/rooms/reconcile-detected-rooms";
-import { detectHybridRooms } from "~/server/rooms/hybrid/detect-hybrid";
-import { labelOutlines } from "~/server/rooms/hybrid/mask-outline";
+import {
+  detectAllSpaces,
+  ALL_SPACES_VERSION,
+} from "~/server/rooms/hybrid/all-spaces";
+import {
+  latestReviewDecisions,
+  rejectedByReview,
+  roomIoU,
+  validReviewShape,
+} from "~/server/rooms/review-memory";
+import { physicalRoomSeeds } from "~/server/rooms/physical-labels";
+import { sourceDrawingHash } from "~/server/rooms/drawing-hash";
 import { renderPdfPageWithoutText } from "~/server/rooms/hybrid/render-page";
 import {
   JOB_ROOM_FILE_PUBLIC_PREFIX,
@@ -40,11 +50,6 @@ export type DetectJobResult = {
 };
 
 export type DetectLogEntry = { at: number; message: string };
-
-type DetectedRoom = {
-  name: string;
-  shape: ReturnType<typeof toPolygon>;
-};
 
 export type DetectJobState = {
   floorId: string;
@@ -87,7 +92,8 @@ export async function getDetectJob(
   if (!row) return null;
   const workerAlive =
     (!row.workerPid && Date.now() - row.startedAt.getTime() < 15_000) ||
-    (!!row.workerPid && (!row.workerStartTicks || !row.workerBootId) &&
+    (!!row.workerPid &&
+      (!row.workerStartTicks || !row.workerBootId) &&
       !!(await processIdentity(row.workerPid))) ||
     (await sameProcess({
       pid: row.workerPid ?? -1,
@@ -258,9 +264,6 @@ export type FloorSource = {
 
 type FloorGraphEntry = {
   graph: FloorGraph;
-  seeds: PdfRoomSeed[];
-  labels: PdfLabel[];
-  linework: Awaited<ReturnType<typeof extractPdfLinework>>;
   imageUrl: string;
   builtAt: number;
 };
@@ -301,35 +304,20 @@ async function buildFloorGraphEntry(
         ? `, layers: ${linework.layers.slice(0, 6).join(", ")}`
         : ", no layer data"),
   );
-  await log(`Reading text labels on page ${pdfPage}…`);
-  const labels = await extractPdfLabels(pdf, pdfPage);
-  const seeds = extractPdfRoomSeeds(labels);
-  await log(
-    `Labels: ${labels.length} text runs → ${seeds.length} room/unit labels` +
-      (seeds.length
-        ? ` (${seeds
-            .slice(0, 8)
-            .map((seed) => seed.name)
-            .join(", ")}${seeds.length > 8 ? ", …" : ""})`
-        : ""),
-  );
   await log(
     `Grading walls and polygonizing bounded regions from ${linework.segments.length} segments…`,
   );
   const graph = buildFloorGraph(linework, { log });
   return {
     graph,
-    seeds,
-    labels,
-    linework,
     imageUrl: source.imageUrl,
     builtAt: Date.now(),
   };
 }
 
 /**
- * Floor graphs are expensive (PDF parse + polygonize) and reused by both the
- * full detection run and click-to-grow, so keep them per floor for a while.
+ * Floor graphs are expensive (PDF parse + polygonize). Cache geometry for
+ * repeated manual tracing; text anchors are unnecessary for this path.
  */
 export async function getFloorGraph(
   source: FloorSource,
@@ -382,177 +370,185 @@ export async function growRoomOnFloor(input: {
   });
 }
 
-export async function runDeterministicDetectAllRooms(input: {
-  floorId: string;
-  organizationId: string;
-  jobId: string;
-  imageUrl: string;
-  floorStatus: string;
-  pageNumber: number;
-  runId: string;
-}) {
-  const log = async (message: string) => {
-    console.log("[detect-job]", input.floorId, message);
-    await appendDetectLog(input.floorId, message, input.runId);
-  };
-  try {
-    await log("Starting room detection…");
-    const source: FloorSource = {
-      floorId: input.floorId,
-      jobId: input.jobId,
-      imageUrl: input.imageUrl,
-      pageNumber: input.pageNumber,
-    };
-    const { graph, seeds, labels, linework } = await getFloorGraph(source, log);
-    let detected: DetectedRoom[] = [];
-    if (graph.faces.length === 0) {
-      await log("No bounded regions were found in the PDF wall geometry");
-    } else if (seeds.length === 0) {
-      await log("No room or unit labels were found in the PDF text layer");
-    } else {
-      const saved = await db
-        .select()
-        .from(jobRooms)
-        .where(
-          and(
-            eq(jobRooms.floorId, input.floorId),
-            eq(jobRooms.organizationId, input.organizationId),
-          ),
-        );
-      // A repeat is supplementary, not a regeneration of approved outlines.
-      // In particular, never feed expanded labels into suite ownership.
-      if (saved.some((room) => room.source === "auto")) {
-        detected = saved.map((room) => ({
-          name: room.name,
-          shape: toPolygon(room.shape as Parameters<typeof toPolygon>[0]),
-        }));
-        await log(
-          `Preserving ${saved.length} saved rooms as the immutable baseline`,
-        );
-      } else {
-        const traced = await detectFloorRooms(linework, seeds, log, graph);
-        detected = traced.rooms.map((room) => ({
-          name: room.name,
-          shape: room.shape,
-        }));
-      }
-      await log(`Deterministic wall pass traced ${detected.length} rooms`);
-      const supplemental = await detectSupplementaryRooms(
-        linework,
-        labels,
-        detected,
-        graph,
-        log,
-      );
-      detected = [...detected, ...supplemental.rooms];
-    }
-    console.log(
-      "[detect-job] deterministic",
-      "faces",
-      graph.faces.length,
-      "seeds",
-      seeds.length,
-      "detected",
-      detected.length,
-      "walls",
-      graph.stats.strong,
-    );
-    if (detected.length === 0) {
-      throw new Error("Could not trace any rooms from this floor plan");
-    }
-    await log(`Saving ${detected.length} rooms…`);
-    const result = await db.transaction(async (tx) => {
-      const [lease] = await tx
-        .select()
-        .from(roomDetectionJobs)
-        .where(runPredicate(input.floorId, input.runId))
-        .for("update");
-      if (!lease) throw new Error("Room detection was superseded");
-      const [source] = await tx
-        .select()
-        .from(jobFloors)
-        .where(eq(jobFloors.id, input.floorId))
-        .for("update");
-      if (
-        source?.imageUrl !== input.imageUrl ||
-        source.pageNumber !== input.pageNumber
-      )
-        throw new Error(
-          "Floor drawing changed during detection; run detection again",
-        );
-      const existing = await tx
-        .select()
-        .from(jobRooms)
-        .where(
-          and(
-            eq(jobRooms.floorId, input.floorId),
-            eq(jobRooms.organizationId, input.organizationId),
-          ),
-        );
-      const plan = planDetectedRoomReconciliation(existing, detected, {
-        preserveExisting: true,
-      });
-      const now = new Date();
+// Retain old method names for queued/cached clients; all live jobs use reviewed persistence.
+export type DetectMethod = "standard" | "hybrid" | "complete";
+const HYBRID_LONG_SIDE = 5000;
 
-      for (const update of plan.updates) {
+export async function saveCompleteCandidates(
+  input: {
+    floorId: string;
+    organizationId: string;
+    jobId: string;
+    imageUrl: string;
+    pageNumber: number;
+    runId: string;
+  },
+  candidates: ReturnType<typeof detectAllSpaces>["rooms"],
+  drawingHash: string,
+) {
+  return db.transaction(async (tx) => {
+    const [lease] = await tx
+      .select()
+      .from(roomDetectionJobs)
+      .where(runPredicate(input.floorId, input.runId))
+      .for("update");
+    if (!lease || lease.organizationId !== input.organizationId)
+      throw new Error("Room detection was superseded");
+    const [source] = await tx
+      .select()
+      .from(jobFloors)
+      .where(eq(jobFloors.id, input.floorId))
+      .for("update");
+    if (
+      source?.organizationId !== input.organizationId ||
+      source.jobId !== input.jobId ||
+      source.imageUrl !== input.imageUrl ||
+      source.pageNumber !== input.pageNumber
+    )
+      throw new Error("Drawing changed during detection");
+    if (
+      (await sourceDrawingHash({
+        imageUrl: input.imageUrl,
+        jobId: input.jobId,
+      })) !== drawingHash
+    )
+      throw new Error("Drawing contents changed during detection");
+    const existing = await tx
+      .select()
+      .from(jobRooms)
+      .where(
+        and(
+          eq(jobRooms.floorId, input.floorId),
+          eq(jobRooms.organizationId, input.organizationId),
+        ),
+      )
+      .for("update");
+    const events = await tx
+      .select()
+      .from(roomDetectionFeedback)
+      .where(
+        and(
+          eq(roomDetectionFeedback.floorId, input.floorId),
+          eq(roomDetectionFeedback.organizationId, input.organizationId),
+        ),
+      )
+      .orderBy(desc(roomDetectionFeedback.createdAt));
+    const decisions = latestReviewDecisions(
+      events,
+      `${input.imageUrl}:${input.pageNumber}`,
+    );
+    const protectedRooms = existing.filter(
+      (room) =>
+        room.reviewStatus !== "rejected" &&
+        room.reviewStatus !== "superseded" &&
+        (room.confirmed ||
+          room.source !== "auto" ||
+          room.reviewStatus === "approved"),
+    );
+    const pending = existing.filter(
+      (room) =>
+        room.source === "auto" &&
+        !room.confirmed &&
+        room.reviewStatus === "pending",
+    );
+    const matched = new Set<string>();
+    let added = 0,
+      updated = 0,
+      suppressed = 0;
+    for (const room of candidates) {
+      if (rejectedByReview(room.shape, decisions, drawingHash)) {
+        suppressed++;
+        continue;
+      }
+      if (
+        protectedRooms.some(
+          (r) =>
+            roomIoU(
+              room.shape,
+              toPolygon(r.shape as Parameters<typeof toPolygon>[0]),
+            ) >= 0.5,
+        )
+      )
+        continue;
+      const match = pending
+        .filter((r) => !matched.has(r.id))
+        .map((r) => ({
+          r,
+          iou: roomIoU(
+            room.shape,
+            toPolygon(r.shape as Parameters<typeof toPolygon>[0]),
+          ),
+        }))
+        .sort((a, b) => b.iou - a.iou)[0];
+      const detection = {
+        ...room.detection,
+        invalidGeometry: !validReviewShape(room.shape),
+        runId: input.runId,
+        drawingHash,
+        version: ALL_SPACES_VERSION,
+      };
+      if (match && match.iou >= 0.5) {
+        matched.add(match.r.id);
+        updated++;
         await tx
           .update(jobRooms)
-          .set({ shape: update.room.shape, updatedAt: now })
-          .where(eq(jobRooms.id, update.id));
-      }
-      for (const [index, room] of plan.inserts.entries()) {
+          .set({
+            name: room.name,
+            shape: room.shape,
+            detection,
+            reviewStatus: "pending",
+            updatedAt: new Date(),
+          })
+          .where(eq(jobRooms.id, match.r.id));
+      } else {
+        added++;
         await tx.insert(jobRooms).values({
           organizationId: input.organizationId,
           jobId: input.jobId,
           floorId: input.floorId,
           name: room.name,
-          source: "auto",
-          confirmed: input.floorStatus === "confirmed",
           shape: room.shape,
-          sortOrder: existing.length + index,
+          detection,
+          source: "auto",
+          reviewStatus: "pending",
+          confirmed: false,
+          sortOrder: existing.length + added,
         });
       }
-      for (const roomId of plan.obsoleteAutoIds) {
-        await tx.delete(jobRooms).where(eq(jobRooms.id, roomId));
-      }
-
-      const result = {
-        added: plan.inserts.length,
-        updated: plan.updates.length,
-        removed: plan.obsoleteAutoIds.length,
-        total: existing.length + plan.inserts.length,
-      };
-      await finishDetectJob(tx, input.floorId, result, input.runId);
-      return result;
-    });
-
-    await log(
-      `Done: ${result.added} added, ${result.updated} updated, ${result.removed} old traces removed`,
-    );
-  } catch (error) {
-    await failDetectJob(
-      input.floorId,
-      error instanceof Error
-        ? error.message
-        : "Deterministic room detection failed",
-      input.runId,
-    );
-    throw error;
-  }
+    }
+    const superseded = pending.filter((r) => !matched.has(r.id));
+    for (const old of superseded)
+      await tx
+        .update(jobRooms)
+        .set({
+          reviewStatus: "superseded",
+          confirmed: false,
+          updatedAt: new Date(),
+        })
+        .where(eq(jobRooms.id, old.id));
+    if (added || updated)
+      await tx
+        .update(jobFloors)
+        .set({
+          status: "detected",
+          confirmedAt: null,
+          completenessReviewedAt: null,
+          updatedAt: new Date(),
+        })
+        .where(eq(jobFloors.id, input.floorId));
+    const final = {
+      added,
+      updated,
+      removed: 0,
+      total: protectedRooms.length + added + updated,
+    };
+    await finishDetectJob(tx, input.floorId, final, input.runId);
+    return { ...final, suppressed, superseded: superseded.length };
+  });
 }
 
-export type DetectMethod = "standard" | "hybrid";
-
-/** Render size for the hybrid detector: door ≈ 0.95% of this ≈ 48 px. */
-const HYBRID_LONG_SIDE = 5000;
-
-/**
- * Experimental: Astra's density-guided hybrid detector. Updates this
- * floor's unconfirmed auto-detected rooms where it finds them again and adds
- * new rooms; it never deletes, and confirmed or hand-drawn rooms are never
- * changed.
- */
-export async function runHybridDetectAllRooms(input: {
+/** Text-independent discovery: every enclosed candidate is explicitly unapproved. */
+export async function runCompleteDetectAllRooms(input: {
   floorId: string;
   organizationId: string;
   jobId: string;
@@ -562,143 +558,49 @@ export async function runHybridDetectAllRooms(input: {
   runId: string;
 }) {
   const log = async (message: string) => {
-    console.log("[detect-job:hybrid]", input.floorId, message);
+    console.log("[detect-job:complete]", input.floorId, message);
     await appendDetectLog(input.floorId, message, input.runId);
   };
   try {
-    await log("Starting new (beta) room detection…");
+    await log(
+      "Finding all enclosed spaces, including unlabeled rooms and corridors…",
+    );
     const storageKey = storageKeyFor(input.imageUrl);
     const pdf = await readJobRoomFile(
       getPdfKeyForFloorImage(storageKey, input.jobId),
     );
+    const drawingHash = createHash("sha256").update(pdf).digest("hex");
     const pdfPage = getSourcePageFromFloorImage(storageKey) ?? input.pageNumber;
-    const seeds = extractPdfRoomSeeds(await extractPdfLabels(pdf, pdfPage));
-    await log(`Found ${seeds.length} room/unit labels on page ${pdfPage}`);
-    if (!seeds.length)
-      throw new Error(
-        "No room or unit labels were found in the PDF text layer",
-      );
-
-    await log("Rendering the sheet without text…");
+    const seeds = physicalRoomSeeds(
+      extractPdfRoomSeeds(await extractPdfLabels(pdf, pdfPage)),
+    );
+    await log(
+      `Reading wall geometry independently of ${seeds.length} recognized labels…`,
+    );
     const page = await renderPdfPageWithoutText(pdf, pdfPage, HYBRID_LONG_SIDE);
-    await log(`Tracing walls and rooms at ${page.width}×${page.height} px…`);
-    const result = detectHybridRooms(page.rgba, page.width, page.height, seeds);
-    const door = 0.0095 * Math.max(page.width, page.height);
-    const outlines = labelOutlines(result.labels, page.width, {
-      epsilon: Math.max(2, door / 10),
-      minAreaPx: Math.round((door * 0.8) ** 2),
-    });
+    const result = detectAllSpaces(page.rgba, page.width, page.height, seeds);
     await log(
-      `Traced ${outlines.length} rooms from ${seeds.length} labels` +
-        (result.rejectedSeeds.length
-          ? `; ${result.rejectedSeeds.length} labels skipped (${result.rejectedSeeds
-              .slice(0, 6)
-              .map(
-                (r) =>
-                  `${seeds[r.seedIndex]!.name}: ${r.reason === "on-wall" ? "no open floor nearby" : "outside the building"}`,
-              )
-              .join(", ")})`
-          : "") +
-        (result.partitionedComponents
-          ? `; ${result.partitionedComponents} shared spaces split between labels (review these)`
-          : ""),
+      `Found ${result.rooms.length} space candidates, including ${result.unlabeledCount} without a label. All need review.`,
     );
-    const detected: DetectedRoom[] = outlines.map((outline) => ({
-      name: seeds[outline.label - 1]!.name,
-      shape: toPolygon({
-        type: "polygon",
-        points: outline.points.map((p) => ({
-          x: p.x / page.width,
-          y: p.y / page.height,
-        })),
-      }),
-    }));
-    if (!detected.length)
-      throw new Error("Could not trace any rooms from this floor plan");
-
-    await log(
-      `Saving ${detected.length} rooms (nothing is deleted; confirmed and hand-drawn rooms are kept)…`,
-    );
-    const saved = await db.transaction(async (tx) => {
-      const [lease] = await tx
-        .select()
-        .from(roomDetectionJobs)
-        .where(runPredicate(input.floorId, input.runId))
-        .for("update");
-      if (!lease) throw new Error("Room detection was superseded");
-      const [source] = await tx
-        .select()
-        .from(jobFloors)
-        .where(eq(jobFloors.id, input.floorId))
-        .for("update");
-      if (
-        source?.imageUrl !== input.imageUrl ||
-        source.pageNumber !== input.pageNumber
-      )
-        throw new Error(
-          "Floor drawing changed during detection; run detection again",
-        );
-      const existing = await tx
-        .select()
-        .from(jobRooms)
-        .where(
-          and(
-            eq(jobRooms.floorId, input.floorId),
-            eq(jobRooms.organizationId, input.organizationId),
-          ),
-        );
-      // Only unconfirmed auto rooms may be replaced; everything else is treated
-      // as hand-made so it is neither updated nor removed.
-      const plan = planDetectedRoomReconciliation(
-        existing.map((room) => ({
-          id: room.id,
-          name: room.name,
-          source: room.source === "auto" && !room.confirmed ? "auto" : "manual",
-          shape: room.shape,
-        })),
-        detected,
+    if (result.rejectedSeeds.length)
+      await log(
+        `${result.rejectedSeeds.length} label positions could not be enclosed. Check the drawing for missing spaces before confirming.`,
       );
-      const now = new Date();
-      for (const update of plan.updates) {
-        await tx
-          .update(jobRooms)
-          .set({
-            name: update.room.name,
-            shape: update.room.shape,
-            updatedAt: now,
-          })
-          .where(eq(jobRooms.id, update.id));
-      }
-      for (const [index, room] of plan.inserts.entries()) {
-        await tx.insert(jobRooms).values({
-          organizationId: input.organizationId,
-          jobId: input.jobId,
-          floorId: input.floorId,
-          name: room.name,
-          source: "auto",
-          confirmed: false,
-          shape: room.shape,
-          sortOrder: existing.length + index,
-        });
-      }
-      // Beta never deletes: rooms it did not reproduce stay as they were.
-      const result = {
-        added: plan.inserts.length,
-        updated: plan.updates.length,
-        removed: 0,
-        total: existing.length + plan.inserts.length,
-      };
-      await finishDetectJob(tx, input.floorId, result, input.runId);
-      return result;
-    });
-    invalidateFloorGraph(input.floorId);
-    await log(
-      `Done: ${saved.added} added, ${saved.updated} updated; existing rooms it did not find were left unchanged`,
+    if (!result.rooms.length)
+      throw new Error(
+        "No enclosed space could be traced. This drawing needs manual tracing or a different wall model.",
+      );
+    const saved = await saveCompleteCandidates(
+      input,
+      result.rooms,
+      drawingHash,
     );
+    console.log("[detect-job:complete] saved", JSON.stringify(saved));
+    invalidateFloorGraph(input.floorId);
   } catch (error) {
     await failDetectJob(
       input.floorId,
-      error instanceof Error ? error.message : "New room detection failed",
+      error instanceof Error ? error.message : "Space detection failed",
       input.runId,
     );
   }
@@ -706,7 +608,7 @@ export async function runHybridDetectAllRooms(input: {
 
 export async function runQueuedDetectJob(
   floorId: string,
-  method: DetectMethod,
+  _method: DetectMethod,
   runId: string,
 ) {
   const job = await getDetectJob(floorId);
@@ -721,10 +623,9 @@ export async function runQueuedDetectJob(
     return;
   }
   await setDetectWorkerPid(floorId, process.pid, runId);
-  const run =
-    method === "hybrid"
-      ? runHybridDetectAllRooms
-      : runDeterministicDetectAllRooms;
+  // Old queued/cached clients also use reviewed persistence. Legacy algorithm
+  // modules remain available to offline benchmarks and tracing only.
+  const run = runCompleteDetectAllRooms;
   const heartbeat = setInterval(() => {
     void db
       .update(roomDetectionJobs)

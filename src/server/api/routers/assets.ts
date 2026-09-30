@@ -51,7 +51,7 @@ const assetsProcedure = hasDashboardAccess.use(({ ctx, next }) => {
   assertCanAccessTab(ctx.user, "assets");
   return next({
     ctx: {
-      organizationId: ctx.user.organizationId as string,
+      organizationId: ctx.user.organizationId,
       canManageAssets: getUserPermissions(ctx.user).canManageAssets,
     },
   });

@@ -5,6 +5,7 @@
 
 import { relations } from "drizzle-orm";
 import {
+  type AnyPgColumn,
   index,
   jsonb,
   pgTableCreator,
@@ -1017,6 +1018,7 @@ export const jobFloors = createTable(
     height: d.integer().notNull(),
     status: d.varchar({ length: 50 }).notNull().default("detected"),
     confirmedAt: d.timestamp({ withTimezone: true }),
+    completenessReviewedAt: d.timestamp({ withTimezone: true }),
     createdAt: d
       .timestamp({ withTimezone: true })
       .notNull()
@@ -1057,6 +1059,8 @@ export const jobRooms = createTable(
     name: d.varchar({ length: 255 }).notNull(),
     source: d.varchar({ length: 50 }).notNull().default("auto"),
     confirmed: d.boolean().notNull().default(false),
+    reviewStatus: d.varchar({ length: 20 }).notNull().default("pending"),
+    detection: jsonb(),
     shape: jsonb().notNull(),
     sortOrder: d.integer().notNull().default(0),
     createdAt: d
@@ -1074,6 +1078,23 @@ export const jobRooms = createTable(
     index("job_room_job_idx").on(t.jobId),
   ],
 );
+
+export const roomDetectionFeedback = createTable("room_detection_feedback", (d) => ({
+  id: d.uuid().primaryKey().defaultRandom(),
+  organizationId: d.uuid().notNull().references(() => (organizations as {id:AnyPgColumn}).id, { onDelete: "cascade" }),
+  jobId: d.uuid().notNull().references(() => (jobs as {id:AnyPgColumn}).id, { onDelete: "cascade" }),
+  floorId: d.uuid().notNull().references(() => (jobFloors as {id:AnyPgColumn}).id, { onDelete: "cascade" }),
+  roomId: d.uuid().notNull(),
+  userId: d.varchar({ length: 255 }).references((): AnyPgColumn => (users as {id:AnyPgColumn}).id, { onDelete: "set null" }),
+  decision: d.varchar({ length: 20 }).notNull(),
+  drawingKey: d.text().notNull(),
+  name: d.varchar({ length: 255 }).notNull(),
+  proposalShape: jsonb().notNull(),
+  correctedShape: jsonb(),
+  detection: jsonb(),
+  createdAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
+}), (t) => [index("room_feedback_floor_idx").on(t.organizationId, t.floorId, t.createdAt),
+  index("room_feedback_room_idx").on(t.roomId, t.createdAt)]);
 
 export const roomDetectionJobs = createTable(
   "room_detection_job",

@@ -1,37 +1,44 @@
-import { auth } from "@clerk/nextjs/server";
+import { sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
+import { db } from "~/server/db";
 import { readJobRoomFile } from "~/server/rooms/storage";
-import { ensureUser } from "~/server/utils/ensure-user";
-import { getAgentBypassUser } from "~/server/utils/get-agent-bypass-user";
-import { getDevBypassUser } from "~/server/utils/get-dev-bypass-user";
+import { getRequestIdentity } from "~/server/utils/get-request-identity";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
-
-async function getRequestUser(request: Request) {
-  const { userId } = await auth();
-  if (userId) return ensureUser(userId);
-  const headers = request.headers;
-  return (await getAgentBypassUser(headers)) ?? (await getDevBypassUser());
-}
 
 export async function GET(
   request: Request,
   context: { params: Promise<{ path: string[] }> },
 ) {
-  const user = await getRequestUser(request);
+  const { user } = await getRequestIdentity(request.headers, {
+    allowDev: true,
+  });
   if (!user?.organizationId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const { path } = await context.params;
   const storageKey = path.join("/");
+  const jobId = path[0];
+  const uuid = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
   if (
-    !/^[0-9a-f-]{36}\/(?:[0-9a-f-]{36}\/)?(?:plan\.pdf|floor-\d+\.webp)$/i.test(
-      storageKey,
-    )
+    !jobId ||
+    !new RegExp(
+      `^${uuid}/(?:${uuid}/)?(?:plan\\.pdf|floor-\\d+\\.webp)$`,
+      "i",
+    ).test(storageKey)
   ) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  const [job] = await db.execute<{ id: string }>(sql`
+    select id from kublai_job
+    where id=${jobId} and "organizationId"=${user.organizationId}
+    limit 1
+  `);
+  if (!job) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 

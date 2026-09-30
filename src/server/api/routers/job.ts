@@ -170,7 +170,7 @@ export const jobRouter = createTRPCRouter({
               const [job] = await tx
                 .insert(jobs)
                 .values({
-                  organizationId: ctx.user.organizationId!,
+                  organizationId: ctx.user.organizationId,
                   name: mutation.name,
                   locationId: isUuid(mutation.locationId)
                     ? mutation.locationId
@@ -193,7 +193,7 @@ export const jobRouter = createTRPCRouter({
                 .where(
                   and(
                     eq(jobs.id, mutation.jobId),
-                    eq(jobs.organizationId, ctx.user.organizationId!),
+                    eq(jobs.organizationId, ctx.user.organizationId),
                   ),
                 )
                 .limit(1);
@@ -218,21 +218,21 @@ export const jobRouter = createTRPCRouter({
                 .where(
                   and(
                     eq(jobs.id, mutation.localJobId),
-                    eq(jobs.organizationId, ctx.user.organizationId!),
+                    eq(jobs.organizationId, ctx.user.organizationId),
                   ),
                 )
                 .limit(1);
               if (!job) throw new Error("Job not found");
               const materialListName = isDefaultMaterialListName(mutation.name)
                 ? await getNextDefaultMaterialListName(tx, {
-                    organizationId: ctx.user.organizationId!,
+                    organizationId: ctx.user.organizationId,
                     jobId: mutation.localJobId,
                   })
                 : mutation.name!.trim();
               const [materialList] = await tx
                 .insert(materialLists)
                 .values({
-                  organizationId: ctx.user.organizationId!,
+                  organizationId: ctx.user.organizationId,
                   jobId: mutation.localJobId,
                   name: materialListName,
                   createdByUserId: ctx.userId,
@@ -243,7 +243,7 @@ export const jobRouter = createTRPCRouter({
               const [quote] = await tx
                 .insert(quotes)
                 .values({
-                  organizationId: ctx.user.organizationId!,
+                  organizationId: ctx.user.organizationId,
                   materialListId: materialList.id,
                   jobId: mutation.localJobId,
                   createdByUserId: ctx.userId,
@@ -268,7 +268,7 @@ export const jobRouter = createTRPCRouter({
                       eq(materialLists.id, mutation.materialListId),
                       eq(
                         materialLists.organizationId,
-                        ctx.user.organizationId!,
+                        ctx.user.organizationId,
                       ),
                     ),
                   );
@@ -287,7 +287,7 @@ export const jobRouter = createTRPCRouter({
                   .where(
                     and(
                       eq(jobs.id, mutation.jobId),
-                      eq(jobs.organizationId, ctx.user.organizationId!),
+                      eq(jobs.organizationId, ctx.user.organizationId),
                     ),
                   );
                 serverEntityId = mutation.jobId;
@@ -295,7 +295,7 @@ export const jobRouter = createTRPCRouter({
             }
 
             await tx.insert(entitySyncMutations).values({
-              organizationId: ctx.user.organizationId!,
+              organizationId: ctx.user.organizationId,
               userId: ctx.userId,
               clientMutationId: mutation.clientMutationId,
               mutationType: mutation.type,

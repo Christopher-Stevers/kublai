@@ -1,10 +1,17 @@
 import { TRPCError } from "@trpc/server";
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { createTRPCRouter, hasDashboardAccess } from "~/server/api/trpc";
 import { getUserPermissions } from "~/server/auth/permissions";
-import { jobFloorPlans, jobFloors, jobRooms, jobs } from "~/server/db/schema";
+import {
+  jobFloorPlans,
+  jobFloors,
+  jobRooms,
+  jobs,
+  roomDetectionFeedback,
+  roomDetectionJobs,
+} from "~/server/db/schema";
 import {
   beginDetectJob,
   failDetectJob,
@@ -13,6 +20,11 @@ import {
 } from "~/server/rooms/detect-job";
 import { startDetectWorker } from "~/server/rooms/detect-worker-process";
 import { JOB_ROOM_FILE_PUBLIC_PREFIX } from "~/server/rooms/storage";
+
+import { sourceDrawingHash } from "~/server/rooms/drawing-hash";
+import { validReviewShape } from "~/server/rooms/review-memory";
+import { trainReviewRanker } from "~/server/rooms/review-model";
+import type { RoomShape } from "~/lib/room-shape";
 
 const roomPointSchema = z.object({
   x: z.number().min(0).max(1),
@@ -30,6 +42,10 @@ const roomShapeSchema = z.union([
   z.object({
     type: z.literal("polygon"),
     points: z.array(roomPointSchema).min(3).max(400),
+    holes: z
+      .array(z.array(roomPointSchema).min(3).max(400))
+      .max(100)
+      .optional(),
   }),
 ]);
 
@@ -54,8 +70,11 @@ export const roomsRouter = createTRPCRouter({
   getJobRooms: hasDashboardAccess
     .input(z.object({ jobId: z.string().uuid() }))
     .query(async ({ ctx, input }) => {
-      const organizationId = ctx.user.organizationId!;
-      const canManage = getUserPermissions(ctx.user).isManagingAccount;
+      const organizationId = (ctx.user as { organizationId: string })
+        .organizationId;
+      const canManage = getUserPermissions(
+        ctx.user as Parameters<typeof getUserPermissions>[0],
+      ).isManagingAccount;
 
       const [job] = await ctx.db
         .select({ id: jobs.id, organizationId: jobs.organizationId })
@@ -110,9 +129,26 @@ export const roomsRouter = createTRPCRouter({
             .orderBy(asc(jobRooms.sortOrder), asc(jobRooms.createdAt))
         : [];
 
+      const feedback =
+        canManage && rooms.length
+          ? await ctx.db
+              .select({
+                roomId: roomDetectionFeedback.roomId,
+                floorId: roomDetectionFeedback.floorId,
+                decision: roomDetectionFeedback.decision,
+                proposalShape: roomDetectionFeedback.proposalShape,
+                detection: roomDetectionFeedback.detection,
+              })
+              .from(roomDetectionFeedback)
+              .where(eq(roomDetectionFeedback.organizationId, organizationId))
+              .orderBy(desc(roomDetectionFeedback.createdAt))
+              .limit(2000)
+          : [];
+      const rankReview = trainReviewRanker(feedback);
       const roomsByFloor = new Map<string, typeof rooms>();
       for (const room of rooms) {
-        if (!canManage && !room.confirmed) continue;
+        if (!canManage && (!room.confirmed || room.reviewStatus !== "approved"))
+          continue;
         const list = roomsByFloor.get(room.floorId) ?? [];
         list.push(room);
         roomsByFloor.set(room.floorId, list);
@@ -131,9 +167,136 @@ export const roomsRouter = createTRPCRouter({
           : null,
         floors: visibleFloors.map((floor) => ({
           ...floor,
-          rooms: roomsByFloor.get(floor.id) ?? [],
+          rooms: (roomsByFloor.get(floor.id) ?? []).map((room) => ({
+            ...room,
+            reviewPriority: rankReview(room.shape as RoomShape, room.detection),
+          })),
         })),
       };
+    }),
+
+  reviewRoom: hasDashboardAccess
+    .input(
+      z.object({
+        roomId: z.string().uuid(),
+        decision: z.enum(["approved", "rejected", "pending"]),
+        expectedUpdatedAt: z.number().int(),
+        reason: z
+          .enum([
+            "not-space",
+            "boundary",
+            "merged",
+            "split",
+            "duplicate",
+            "unspecified",
+          ])
+          .default("unspecified"),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (
+        !getUserPermissions(
+          ctx.user as Parameters<typeof getUserPermissions>[0],
+        ).isManagingAccount
+      )
+        throw new TRPCError({ code: "FORBIDDEN" });
+      const organizationId = (ctx.user as { organizationId: string })
+        .organizationId;
+      return ctx.db.transaction(async (tx) => {
+        const [target] = await tx
+          .select({ floorId: jobRooms.floorId })
+          .from(jobRooms)
+          .where(
+            and(
+              eq(jobRooms.id, input.roomId),
+              eq(jobRooms.organizationId, organizationId),
+            ),
+          );
+        if (!target) throw new TRPCError({ code: "NOT_FOUND" });
+        const [floor] = await tx
+          .select()
+          .from(jobFloors)
+          .where(
+            and(
+              eq(jobFloors.id, target.floorId),
+              eq(jobFloors.organizationId, organizationId),
+            ),
+          )
+          .for("update");
+        if (!floor) throw new TRPCError({ code: "NOT_FOUND" });
+        const [room] = await tx
+          .select()
+          .from(jobRooms)
+          .where(
+            and(
+              eq(jobRooms.id, input.roomId),
+              eq(jobRooms.organizationId, organizationId),
+            ),
+          )
+          .for("update");
+        if (!room) throw new TRPCError({ code: "NOT_FOUND" });
+        if (room.reviewStatus === "superseded")
+          throw new TRPCError({
+            code: "CONFLICT",
+            message:
+              "This proposal was superseded. Reload the floor before reviewing.",
+          });
+        if (room.updatedAt.getTime() !== input.expectedUpdatedAt)
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: "This outline changed. Reload it before reviewing.",
+          });
+        if (input.decision === "approved" && !validReviewShape(room.shape))
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message:
+              "Fix this outline before approving it. Its boundaries are invalid.",
+          });
+        const drawingHash = await sourceDrawingHash(floor);
+        const detection = {
+          ...(room.detection as Record<string, unknown> | null),
+          drawingHash,
+        };
+        await tx.insert(roomDetectionFeedback).values({
+          organizationId,
+          jobId: room.jobId,
+          floorId: room.floorId,
+          roomId: room.id,
+          userId: (ctx.user as { id: string }).id,
+          decision: input.decision,
+          drawingKey: `${floor.imageUrl}:${floor.pageNumber}`,
+          name: room.name,
+          proposalShape: room.shape,
+          detection:
+            input.decision === "rejected"
+              ? {
+                  ...detection,
+                  reviewReason: input.reason,
+                }
+              : detection,
+        });
+        await tx
+          .update(jobRooms)
+          .set({
+            detection,
+            reviewStatus: input.decision,
+            confirmed: input.decision === "approved",
+            updatedAt: new Date(
+              Math.max(Date.now(), room.updatedAt.getTime() + 1),
+            ),
+          })
+          .where(eq(jobRooms.id, room.id));
+        await tx
+          .update(jobFloors)
+          .set({
+            status: "detected",
+            confirmedAt: null,
+            completenessReviewedAt: null,
+            updatedAt: new Date(),
+          })
+          .where(eq(jobFloors.id, floor.id));
+        return { ok: true };
+      });
     }),
 
   renameFloor: hasDashboardAccess
@@ -144,10 +307,15 @@ export const roomsRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      if (!getUserPermissions(ctx.user).isManagingAccount) {
+      if (
+        !getUserPermissions(
+          ctx.user as Parameters<typeof getUserPermissions>[0],
+        ).isManagingAccount
+      ) {
         throw new TRPCError({ code: "FORBIDDEN" });
       }
-      const organizationId = ctx.user.organizationId!;
+      const organizationId = (ctx.user as { organizationId: string })
+        .organizationId;
       const floor = requireRow(
         (
           await ctx.db
@@ -171,62 +339,184 @@ export const roomsRouter = createTRPCRouter({
     }),
 
   confirmFloor: hasDashboardAccess
-    .input(z.object({ floorId: z.string().uuid() }))
+    .input(
+      z.object({
+        floorId: z.string().uuid(),
+        completenessChecked: z.boolean().default(false),
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
-      if (!getUserPermissions(ctx.user).isManagingAccount) {
+      if (
+        !getUserPermissions(
+          ctx.user as Parameters<typeof getUserPermissions>[0],
+        ).isManagingAccount
+      ) {
         throw new TRPCError({ code: "FORBIDDEN" });
       }
-      const organizationId = ctx.user.organizationId!;
-      const floor = requireRow(
-        (
-          await ctx.db
-            .select()
-            .from(jobFloors)
-            .where(
-              and(
-                eq(jobFloors.id, input.floorId),
-                eq(jobFloors.organizationId, organizationId),
-              ),
-            )
-            .limit(1)
-        )[0],
-        organizationId,
-      );
-      const now = new Date();
-      await ctx.db
-        .update(jobFloors)
-        .set({ status: "confirmed", confirmedAt: now, updatedAt: now })
-        .where(eq(jobFloors.id, floor.id));
-      await ctx.db
-        .update(jobRooms)
-        .set({ confirmed: true, updatedAt: now })
-        .where(eq(jobRooms.floorId, floor.id));
+      const organizationId = (ctx.user as { organizationId: string })
+        .organizationId;
+      if (!input.completenessChecked)
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message:
+            "Check the entire floor for missing rooms before confirming it.",
+        });
+      await ctx.db.transaction(async (tx) => {
+        // Use the admission lock and the worker's job→floor→room lock order.
+        await tx.execute(sql`select pg_advisory_xact_lock(72491833)`);
+        const [active] = await tx
+          .select()
+          .from(roomDetectionJobs)
+          .where(
+            and(
+              eq(roomDetectionJobs.floorId, input.floorId),
+              eq(roomDetectionJobs.organizationId, organizationId),
+            ),
+          )
+          .for("update");
+        if (active?.status === "running")
+          throw new TRPCError({
+            code: "CONFLICT",
+            message:
+              "Wait for room detection to finish before confirming this floor.",
+          });
+        const [floor] = await tx
+          .select()
+          .from(jobFloors)
+          .where(
+            and(
+              eq(jobFloors.id, input.floorId),
+              eq(jobFloors.organizationId, organizationId),
+            ),
+          )
+          .for("update");
+        if (!floor) throw new TRPCError({ code: "NOT_FOUND" });
+        const rooms = await tx
+          .select()
+          .from(jobRooms)
+          .where(
+            and(
+              eq(jobRooms.floorId, floor.id),
+              eq(jobRooms.organizationId, organizationId),
+            ),
+          )
+          .for("update");
+        if (rooms.some((room) => room.reviewStatus === "pending"))
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message:
+              "Approve or disapprove each proposed room before confirming this floor.",
+          });
+        if (!rooms.some((room) => room.reviewStatus === "approved"))
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message:
+              "Add and approve at least one room before confirming this floor.",
+          });
+        const approved = rooms.filter(
+          (room) => room.reviewStatus === "approved",
+        );
+        if (approved.some((room) => !validReviewShape(room.shape)))
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message:
+              "Fix invalid room boundaries before confirming this floor.",
+          });
+        const drawingHash = await sourceDrawingHash(floor);
+        await tx.insert(roomDetectionFeedback).values(
+          approved.map((room) => ({
+            organizationId,
+            jobId: room.jobId,
+            floorId: floor.id,
+            roomId: room.id,
+            userId: (ctx.user as { id: string }).id,
+            decision: "approved",
+            drawingKey: `${floor.imageUrl}:${floor.pageNumber}`,
+            name: room.name,
+            proposalShape: room.shape,
+            detection: {
+              ...(room.detection as Record<string, unknown> | null),
+              drawingHash,
+              completenessAttested: true,
+            },
+          })),
+        );
+        const now = new Date(
+          Math.max(
+            Date.now(),
+            ...rooms.map((room) => room.updatedAt.getTime() + 1),
+          ),
+        );
+        await tx
+          .update(jobFloors)
+          .set({
+            status: "confirmed",
+            confirmedAt: now,
+            completenessReviewedAt: now,
+            updatedAt: now,
+          })
+          .where(eq(jobFloors.id, floor.id));
+        await tx
+          .update(jobRooms)
+          .set({
+            confirmed: true,
+            updatedAt: now,
+            detection: sql`COALESCE(${jobRooms.detection},'{}'::jsonb) || ${JSON.stringify({ drawingHash, completenessAttested: true })}::jsonb`,
+          })
+          .where(
+            and(
+              eq(jobRooms.floorId, floor.id),
+              eq(jobRooms.organizationId, organizationId),
+              eq(jobRooms.reviewStatus, "approved"),
+            ),
+          );
+      });
       return { ok: true };
     }),
 
   deleteFloor: hasDashboardAccess
     .input(z.object({ floorId: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
-      if (!getUserPermissions(ctx.user).isManagingAccount) {
+      if (
+        !getUserPermissions(
+          ctx.user as Parameters<typeof getUserPermissions>[0],
+        ).isManagingAccount
+      ) {
         throw new TRPCError({ code: "FORBIDDEN" });
       }
-      const organizationId = ctx.user.organizationId!;
-      const floor = requireRow(
-        (
-          await ctx.db
-            .select()
-            .from(jobFloors)
-            .where(
-              and(
-                eq(jobFloors.id, input.floorId),
-                eq(jobFloors.organizationId, organizationId),
-              ),
-            )
-            .limit(1)
-        )[0],
-        organizationId,
-      );
-      await ctx.db.delete(jobFloors).where(eq(jobFloors.id, floor.id));
+      const organizationId = (ctx.user as { organizationId: string })
+        .organizationId;
+      await ctx.db.transaction(async (tx) => {
+        await tx.execute(sql`select pg_advisory_xact_lock(72491833)`);
+        const [active] = await tx
+          .select()
+          .from(roomDetectionJobs)
+          .where(
+            and(
+              eq(roomDetectionJobs.floorId, input.floorId),
+              eq(roomDetectionJobs.organizationId, organizationId),
+            ),
+          )
+          .for("update");
+        if (active?.status === "running")
+          throw new TRPCError({
+            code: "CONFLICT",
+            message:
+              "Wait for room detection to finish before deleting this floor.",
+          });
+        const [floor] = await tx
+          .select()
+          .from(jobFloors)
+          .where(
+            and(
+              eq(jobFloors.id, input.floorId),
+              eq(jobFloors.organizationId, organizationId),
+            ),
+          )
+          .for("update");
+        if (!floor) throw new TRPCError({ code: "NOT_FOUND" });
+        await tx.delete(jobFloors).where(eq(jobFloors.id, floor.id));
+      });
       return { ok: true };
     }),
 
@@ -239,10 +529,15 @@ export const roomsRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      if (!getUserPermissions(ctx.user).isManagingAccount) {
+      if (
+        !getUserPermissions(
+          ctx.user as Parameters<typeof getUserPermissions>[0],
+        ).isManagingAccount
+      ) {
         throw new TRPCError({ code: "FORBIDDEN" });
       }
-      const organizationId = ctx.user.organizationId!;
+      const organizationId = (ctx.user as { organizationId: string })
+        .organizationId;
       const floor = requireRow(
         (
           await ctx.db
@@ -258,20 +553,55 @@ export const roomsRouter = createTRPCRouter({
         )[0],
         organizationId,
       );
-      const [room] = await ctx.db
-        .insert(jobRooms)
-        .values({
-          organizationId,
-          jobId: floor.jobId,
-          floorId: floor.id,
-          name: input.name,
-          source: "manual",
-          confirmed: floor.status === "confirmed",
-          shape: input.shape,
-          sortOrder: 999,
-        })
-        .returning();
-      return room;
+      return ctx.db.transaction(async (tx) => {
+        const [lockedFloor] = await tx
+          .select()
+          .from(jobFloors)
+          .where(
+            and(
+              eq(jobFloors.id, floor.id),
+              eq(jobFloors.organizationId, organizationId),
+            ),
+          )
+          .for("update");
+        if (!lockedFloor) throw new TRPCError({ code: "NOT_FOUND" });
+        if (!validReviewShape(input.shape))
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message:
+              "The outline crosses itself or has invalid boundaries. Adjust it before saving.",
+          });
+        const drawingHash = await sourceDrawingHash(lockedFloor);
+        const [room] = await tx
+          .insert(jobRooms)
+          .values({
+            organizationId,
+            jobId: floor.jobId,
+            floorId: floor.id,
+            name: input.name,
+            source: "manual",
+            detection: {
+              basis: "human-added-space",
+              requiresReview: true,
+              drawingHash,
+            },
+            confirmed: false,
+            reviewStatus: "pending",
+            shape: input.shape,
+            sortOrder: 999,
+          })
+          .returning();
+        await tx
+          .update(jobFloors)
+          .set({
+            status: "detected",
+            confirmedAt: null,
+            completenessReviewedAt: null,
+            updatedAt: new Date(),
+          })
+          .where(eq(jobFloors.id, floor.id));
+        return room;
+      });
     }),
 
   updateRoom: hasDashboardAccess
@@ -280,13 +610,19 @@ export const roomsRouter = createTRPCRouter({
         roomId: z.string().uuid(),
         name: z.string().trim().min(1).max(255).optional(),
         shape: roomShapeSchema.optional(),
+        expectedUpdatedAt: z.number().int().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      if (!getUserPermissions(ctx.user).isManagingAccount) {
+      if (
+        !getUserPermissions(
+          ctx.user as Parameters<typeof getUserPermissions>[0],
+        ).isManagingAccount
+      ) {
         throw new TRPCError({ code: "FORBIDDEN" });
       }
-      const organizationId = ctx.user.organizationId!;
+      const organizationId = (ctx.user as { organizationId: string })
+        .organizationId;
       const room = requireRow(
         (
           await ctx.db
@@ -302,24 +638,109 @@ export const roomsRouter = createTRPCRouter({
         )[0],
         organizationId,
       );
-      await ctx.db
-        .update(jobRooms)
-        .set({
-          ...(input.name ? { name: input.name } : {}),
-          ...(input.shape ? { shape: input.shape } : {}),
-          updatedAt: new Date(),
-        })
-        .where(eq(jobRooms.id, room.id));
-      return { ok: true };
+      const updatedAt = await ctx.db.transaction(async (tx) => {
+        const [floor] = await tx
+          .select()
+          .from(jobFloors)
+          .where(
+            and(
+              eq(jobFloors.id, room.floorId),
+              eq(jobFloors.organizationId, organizationId),
+            ),
+          )
+          .for("update");
+        if (!floor) throw new TRPCError({ code: "NOT_FOUND" });
+        const [locked] = await tx
+          .select()
+          .from(jobRooms)
+          .where(
+            and(
+              eq(jobRooms.id, room.id),
+              eq(jobRooms.organizationId, organizationId),
+            ),
+          )
+          .for("update");
+        if (!locked) throw new TRPCError({ code: "NOT_FOUND" });
+        if (locked.reviewStatus === "superseded")
+          throw new TRPCError({
+            code: "CONFLICT",
+            message:
+              "This proposal was superseded. Reload the floor before editing.",
+          });
+        if (
+          input.expectedUpdatedAt !== undefined &&
+          locked.updatedAt.getTime() !== input.expectedUpdatedAt
+        )
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: "This outline changed. Reload it before editing.",
+          });
+        if (input.shape && !validReviewShape(input.shape))
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message:
+              "The outline crosses itself or has invalid boundaries. Adjust it before saving.",
+          });
+
+        const drawingHash = await sourceDrawingHash(floor);
+        const detection = {
+          ...(locked.detection as Record<string, unknown> | null),
+          drawingHash,
+          ...(input.shape ? { invalidGeometry: false } : {}),
+        };
+        await tx.insert(roomDetectionFeedback).values({
+          organizationId,
+          jobId: room.jobId,
+          floorId: room.floorId,
+          roomId: room.id,
+          userId: (ctx.user as { id: string }).id,
+          decision: "corrected",
+          drawingKey: `${floor.imageUrl}:${floor.pageNumber}`,
+          name: locked.name,
+          proposalShape: locked.shape,
+          correctedShape: input.shape ?? locked.shape,
+          detection,
+        });
+        const updatedAt = new Date(
+          Math.max(Date.now(), locked.updatedAt.getTime() + 1),
+        );
+        await tx
+          .update(jobRooms)
+          .set({
+            ...(input.name ? { name: input.name } : {}),
+            ...(input.shape ? { shape: input.shape, source: "manual" } : {}),
+            detection,
+            reviewStatus: "pending",
+            confirmed: false,
+            updatedAt,
+          })
+          .where(eq(jobRooms.id, room.id));
+        await tx
+          .update(jobFloors)
+          .set({
+            status: "detected",
+            confirmedAt: null,
+            completenessReviewedAt: null,
+            updatedAt: new Date(),
+          })
+          .where(eq(jobFloors.id, floor.id));
+        return updatedAt.getTime();
+      });
+      return { ok: true, updatedAt };
     }),
 
   deleteRoom: hasDashboardAccess
     .input(z.object({ roomId: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
-      if (!getUserPermissions(ctx.user).isManagingAccount) {
+      if (
+        !getUserPermissions(
+          ctx.user as Parameters<typeof getUserPermissions>[0],
+        ).isManagingAccount
+      ) {
         throw new TRPCError({ code: "FORBIDDEN" });
       }
-      const organizationId = ctx.user.organizationId!;
+      const organizationId = (ctx.user as { organizationId: string })
+        .organizationId;
       const room = requireRow(
         (
           await ctx.db
@@ -335,17 +756,64 @@ export const roomsRouter = createTRPCRouter({
         )[0],
         organizationId,
       );
-      await ctx.db.delete(jobRooms).where(eq(jobRooms.id, room.id));
+      await ctx.db.transaction(async (tx) => {
+        const [floor] = await tx
+          .select()
+          .from(jobFloors)
+          .where(
+            and(
+              eq(jobFloors.id, room.floorId),
+              eq(jobFloors.organizationId, organizationId),
+            ),
+          )
+          .for("update");
+        if (!floor) throw new TRPCError({ code: "NOT_FOUND" });
+        const [locked] = await tx
+          .select()
+          .from(jobRooms)
+          .where(eq(jobRooms.id, room.id))
+          .for("update");
+        if (!locked) return;
+
+        if (locked.source === "auto")
+          await tx.insert(roomDetectionFeedback).values({
+            organizationId,
+            jobId: room.jobId,
+            floorId: room.floorId,
+            roomId: room.id,
+            userId: (ctx.user as { id: string }).id,
+            decision: "rejected",
+            drawingKey: `${floor.imageUrl}:${floor.pageNumber}`,
+            name: locked.name,
+            proposalShape: locked.shape,
+            detection: locked.detection,
+          });
+        await tx.delete(jobRooms).where(eq(jobRooms.id, room.id));
+        await tx
+          .update(jobFloors)
+          .set({
+            status: "detected",
+            confirmedAt: null,
+            completenessReviewedAt: null,
+            updatedAt: new Date(),
+          })
+          .where(eq(jobFloors.id, floor.id));
+      });
       return { ok: true };
     }),
 
   deleteAllRooms: hasDashboardAccess
     .input(z.object({ floorId: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
-      if (!getUserPermissions(ctx.user).isManagingAccount) {
+      if (
+        !getUserPermissions(
+          ctx.user as Parameters<typeof getUserPermissions>[0],
+        ).isManagingAccount
+      ) {
         throw new TRPCError({ code: "FORBIDDEN" });
       }
-      const organizationId = ctx.user.organizationId!;
+      const organizationId = (ctx.user as { organizationId: string })
+        .organizationId;
       const floor = requireRow(
         (
           await ctx.db
@@ -361,14 +829,53 @@ export const roomsRouter = createTRPCRouter({
         )[0],
         organizationId,
       );
-      await ctx.db
-        .delete(jobRooms)
-        .where(
-          and(
-            eq(jobRooms.floorId, floor.id),
-            eq(jobRooms.organizationId, organizationId),
-          ),
-        );
+      await ctx.db.transaction(async (tx) => {
+        await tx.execute(sql`select pg_advisory_xact_lock(72491833)`);
+        const [active] = await tx
+          .select()
+          .from(roomDetectionJobs)
+          .where(
+            and(
+              eq(roomDetectionJobs.floorId, input.floorId),
+              eq(roomDetectionJobs.organizationId, organizationId),
+            ),
+          )
+          .for("update");
+        if (active?.status === "running")
+          throw new TRPCError({
+            code: "CONFLICT",
+            message:
+              "Wait for room detection to finish before deleting all rooms.",
+          });
+        const [locked] = await tx
+          .select()
+          .from(jobFloors)
+          .where(
+            and(
+              eq(jobFloors.id, floor.id),
+              eq(jobFloors.organizationId, organizationId),
+            ),
+          )
+          .for("update");
+        if (!locked) throw new TRPCError({ code: "NOT_FOUND" });
+        await tx
+          .delete(jobRooms)
+          .where(
+            and(
+              eq(jobRooms.floorId, floor.id),
+              eq(jobRooms.organizationId, organizationId),
+            ),
+          );
+        await tx
+          .update(jobFloors)
+          .set({
+            status: "detected",
+            confirmedAt: null,
+            completenessReviewedAt: null,
+            updatedAt: new Date(),
+          })
+          .where(eq(jobFloors.id, floor.id));
+      });
       return { ok: true };
     }),
 
@@ -382,10 +889,15 @@ export const roomsRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      if (!getUserPermissions(ctx.user).isManagingAccount) {
+      if (
+        !getUserPermissions(
+          ctx.user as Parameters<typeof getUserPermissions>[0],
+        ).isManagingAccount
+      ) {
         throw new TRPCError({ code: "FORBIDDEN" });
       }
-      const organizationId = ctx.user.organizationId!;
+      const organizationId = (ctx.user as { organizationId: string })
+        .organizationId;
       const floor = requireRow(
         (
           await ctx.db
@@ -434,15 +946,20 @@ export const roomsRouter = createTRPCRouter({
     .input(
       z.object({
         floorId: z.string().uuid(),
-        /** "hybrid" = the experimental density-guided detector (beta). */
-        method: z.enum(["standard", "hybrid"]).default("standard"),
+        /** Old clients may send legacy names; all interactive runs use reviewed space discovery. */
+        method: z.enum(["standard", "hybrid", "complete"]).default("complete"),
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      if (!getUserPermissions(ctx.user).isManagingAccount) {
+      if (
+        !getUserPermissions(
+          ctx.user as Parameters<typeof getUserPermissions>[0],
+        ).isManagingAccount
+      ) {
         throw new TRPCError({ code: "FORBIDDEN" });
       }
-      const organizationId = ctx.user.organizationId!;
+      const organizationId = (ctx.user as { organizationId: string })
+        .organizationId;
       const floor = requireRow(
         (
           await ctx.db
@@ -475,9 +992,9 @@ export const roomsRouter = createTRPCRouter({
         });
       }
 
-      console.log("[rooms.detectRooms] started", floor.id, input.method);
+      console.log("[rooms.detectRooms] started", floor.id, "complete");
       try {
-        await startDetectWorker(floor.id, input.method, runId);
+        await startDetectWorker(floor.id, "complete", runId);
       } catch (error) {
         const message =
           error instanceof Error
@@ -498,10 +1015,15 @@ export const roomsRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      if (!getUserPermissions(ctx.user).isManagingAccount) {
+      if (
+        !getUserPermissions(
+          ctx.user as Parameters<typeof getUserPermissions>[0],
+        ).isManagingAccount
+      ) {
         throw new TRPCError({ code: "FORBIDDEN" });
       }
-      const organizationId = ctx.user.organizationId!;
+      const organizationId = (ctx.user as { organizationId: string })
+        .organizationId;
       const pending = await ctx.db
         .select()
         .from(jobFloors)
@@ -540,7 +1062,11 @@ export const roomsRouter = createTRPCRouter({
   detectRoomsStatus: hasDashboardAccess
     .input(z.object({ floorId: z.string().uuid() }))
     .query(async ({ ctx, input }) => {
-      if (!getUserPermissions(ctx.user).isManagingAccount) {
+      if (
+        !getUserPermissions(
+          ctx.user as Parameters<typeof getUserPermissions>[0],
+        ).isManagingAccount
+      ) {
         throw new TRPCError({ code: "FORBIDDEN" });
       }
       requireRow(
@@ -551,12 +1077,15 @@ export const roomsRouter = createTRPCRouter({
             .where(
               and(
                 eq(jobFloors.id, input.floorId),
-                eq(jobFloors.organizationId, ctx.user.organizationId!),
+                eq(
+                  jobFloors.organizationId,
+                  (ctx.user as { organizationId: string }).organizationId,
+                ),
               ),
             )
             .limit(1)
         )[0],
-        ctx.user.organizationId!,
+        (ctx.user as { organizationId: string }).organizationId,
       );
       return (
         (await getDetectJob(input.floorId)) ?? {

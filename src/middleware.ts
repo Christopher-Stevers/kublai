@@ -36,10 +36,6 @@ const clerkProtectedMiddleware = clerkMiddleware(async (auth, req) => {
     return NextResponse.next();
   }
 
-  if (hasAgentAuthBypass(req)) {
-    return NextResponse.next();
-  }
-
   if (!isPublicRoute(req)) {
     const { userId } = await auth();
 
@@ -56,6 +52,10 @@ export default function middleware(
   req: NextRequest,
   evt: Parameters<typeof clerkProtectedMiddleware>[1],
 ) {
+  // Database health and explicitly authorized local QA must not depend on
+  // Clerk initialization/proxy availability. Other requests retain Clerk auth.
+  if (req.nextUrl.pathname === "/api/health" || hasAgentAuthBypass(req))
+    return NextResponse.next();
   return clerkProtectedMiddleware(req, evt);
 }
 

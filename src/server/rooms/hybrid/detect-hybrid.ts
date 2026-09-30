@@ -11,11 +11,14 @@ import {
   circulationComponents,
   componentCentroids,
   doorwayContacts,
+  erode,
   freeComponents,
   growByDistance,
   inkMask,
+  open,
   sealAxisGaps,
   union,
+  typicalBandThickness,
 } from "../raster-rooms";
 import { densityBarrier, type DensitySource } from "./density";
 import { summarizePartitions } from "./partition-diagnostics";
@@ -48,6 +51,8 @@ export type HybridConfig = {
   maxSeedComponentFactor: number;
   /** App guard: envelope spaces larger than this share of the page are outdoors. */
   outdoorFraction: number;
+  /** Discover enclosed regions independently of text; do not annex them to labels. */
+  discoverSpaces?: boolean;
 };
 
 /** scripts/rooms/bench/configs/hybrid.json as selected before the holdout. */
@@ -85,6 +90,7 @@ export type HybridResult = {
   partitionedComponents: number;
   unassignedAnnexComponents: number;
   review: ReturnType<typeof summarizePartitions>;
+  discoveredSpaces: Array<{ label: number; areaPx: number }>;
 };
 
 export function detectHybridRooms(
@@ -98,10 +104,13 @@ export function detectHybridRooms(
   const H = height;
   const ink = inkMask(rgba, W, H, c.threshold);
   const length = Math.max(1, Math.round(W * c.bandLengthFraction));
-  const walls = union(
+  let walls = union(
     axisWallBands(ink, true, c.join, c.openRadius, length),
     axisWallBands(ink, false, c.join, c.openRadius, length),
   );
+  // Text-free discovery retains thick ink in every direction. Axis-only bands
+  // miss oblique walls and can widen narrow rooms by joining parallel faces.
+  if (c.discoverSpaces) walls = union(walls, open(ink, 1));
   const door = c.doorFraction * Math.max(W, H);
   const thickness = Math.max(3, Math.round(door / 5));
   const minRun = thickness * 2;
@@ -119,7 +128,11 @@ export function detectHybridRooms(
     const outdoorPx = W * H * c.outdoorFraction;
     for (let i = 0; i < W * H; i++) {
       const component = outside.labels[i]!;
-      if (component && (outside.touchesBorder[component] || outside.sizes[component]! > outdoorPx)) {
+      if (
+        component &&
+        (outside.touchesBorder[component] ||
+          outside.sizes[component]! > outdoorPx)
+      ) {
         working.data[i] = 1;
       }
     }
@@ -160,19 +173,43 @@ export function detectHybridRooms(
     const index = nudge(s);
     return { index, id: index < 0 ? 0 : comps.labels[index]! };
   });
-  const seededSizes = [...new Set(seedComponents.map((s) => s.id).filter((id) => id && !comps.touchesBorder[id]))]
+  const seededSizes = [
+    ...new Set(
+      seedComponents
+        .map((s) => s.id)
+        .filter((id) => id && !comps.touchesBorder[id]),
+    ),
+  ]
     .map((id) => comps.sizes[id]!)
     .sort((a, b) => a - b);
   const medianSeeded = seededSizes[Math.floor(seededSizes.length / 2)] ?? 0;
   const tooLarge = (id: number) =>
-    medianSeeded > 0 && comps.sizes[id]! > medianSeeded * c.maxSeedComponentFactor;
+    medianSeeded > 0 &&
+    comps.sizes[id]! > medianSeeded * c.maxSeedComponentFactor;
+  // A sheet frame can enclose page background. Look for the same oversized
+  // component at several page corners, rather than excluding every large hall.
+  const cornerHits = new Map<number, number>();
+  for (const x of [0.05, 0.95])
+    for (const y of [0.05, 0.95]) {
+      const id = comps.labels[Math.floor(y * H) * W + Math.floor(x * W)]!;
+      if (id) cornerHits.set(id, (cornerHits.get(id) ?? 0) + 1);
+    }
+  const isPageBackground = (id: number) =>
+    c.discoverSpaces &&
+    (cornerHits.get(id) ?? 0) >= 3 &&
+    comps.sizes[id]! > W * H * 0.2 &&
+    tooLarge(id);
   for (const [seedIndex, s] of seeds.entries()) {
     const { index, id } = seedComponents[seedIndex]!;
     if (!id) {
       rejectedSeeds.push({ seedIndex, reason: "on-wall" });
       continue;
     }
-    if (comps.touchesBorder[id] || tooLarge(id)) {
+    if (
+      comps.touchesBorder[id] ||
+      isPageBackground(id) ||
+      (!c.discoverSpaces && tooLarge(id))
+    ) {
       rejectedSeeds.push({ seedIndex, reason: "outside" });
       continue;
     }
@@ -188,18 +225,57 @@ export function detectHybridRooms(
     owner.set(id, label);
   }
 
+  const discoveredSpaces: HybridResult["discoveredSpaces"] = [];
+  if (c.discoverSpaces) {
+    // Thin enclosed voids between the two drawn faces of a wall are not rooms.
+    // Require a small patch of usable interior, relative to drawn wall thickness,
+    // rather than an area cutoff that would discard long narrow corridors.
+    const wallThickness = typicalBandThickness(walls);
+    const free = {
+      width: W,
+      height: H,
+      data: Uint8Array.from(working.data, (v) => 1 - v),
+    };
+    const core = erode(free, Math.max(1, Math.round(wallThickness)));
+    const hasInterior = new Uint8Array(comps.sizes.length);
+    for (let i = 0; i < core.data.length; i++)
+      if (core.data[i]) hasInterior[comps.labels[i]!] = 1;
+    const minSpacePx = Math.max(25, Math.round(door * door * 0.4));
+    for (let id = 1; id < comps.sizes.length; id++) {
+      if (
+        owner.has(id) ||
+        comps.touchesBorder[id] ||
+        isPageBackground(id) ||
+        !hasInterior[id] ||
+        comps.sizes[id]! < minSpacePx
+      )
+        continue;
+      const label = seeds.length + discoveredSpaces.length + 1;
+      owner.set(id, label);
+      discoveredSpaces.push({ label, areaPx: comps.sizes[id]! });
+    }
+  }
+
   let grown = new Int32Array(comps.sizes.length);
-  if (c.grow) {
+  if (c.grow && !c.discoverSpaces) {
     const contacts = new Map<string, number>();
     for (const [mask, horizontal] of [
       [sealedH, true],
       [sealedV, false],
     ] as const) {
-      for (const [key, n] of doorwayContacts(comps.labels, working, mask, horizontal, thickness * 3)) {
+      for (const [key, n] of doorwayContacts(
+        comps.labels,
+        working,
+        mask,
+        horizontal,
+        thickness * 3,
+      )) {
         contacts.set(key, (contacts.get(key) ?? 0) + n);
       }
     }
-    const coreSizes = [...owner.keys()].map((k) => comps.sizes[k]!).sort((a, b) => a - b);
+    const coreSizes = [...owner.keys()]
+      .map((k) => comps.sizes[k]!)
+      .sort((a, b) => a - b);
     const median = coreSizes[Math.floor(coreSizes.length / 2)] ?? 0;
     const circulation = circulationComponents(
       comps.labels,
@@ -227,14 +303,18 @@ export function detectHybridRooms(
   }
 
   const labels = new Int32Array(W * H);
-  for (let i = 0; i < labels.length; i++) labels[i] = Math.max(0, grown[comps.labels[i]!] ?? 0);
+  for (let i = 0; i < labels.length; i++)
+    labels[i] = Math.max(0, grown[comps.labels[i]!] ?? 0);
   let partitionedComponents = 0;
   let unassignedAnnexComponents = 0;
   let cost: Float32Array = new Float32Array(W * H);
   if (c.partition !== "none" && shared) {
     const counts = new Map<number, number>();
-    for (const seed of located) counts.set(seed.component, (counts.get(seed.component) ?? 0) + 1);
-    const sharedIds = new Set([...counts].filter(([, n]) => n > 1).map(([id]) => id));
+    for (const seed of located)
+      counts.set(seed.component, (counts.get(seed.component) ?? 0) + 1);
+    const sharedIds = new Set(
+      [...counts].filter(([, n]) => n > 1).map(([id]) => id),
+    );
     partitionedComponents = sharedIds.size;
     // Annexes grown from a contested core stay unassigned for review rather
     // than going silently to whichever label claimed the core first.
@@ -244,7 +324,8 @@ export function detectHybridRooms(
       if (contestedOwners.has(grown[id]!) && !owner.has(id)) annexes.add(id);
     }
     unassignedAnnexComponents = annexes.size;
-    for (let i = 0; i < labels.length; i++) if (annexes.has(comps.labels[i]!)) labels[i] = 0;
+    for (let i = 0; i < labels.length; i++)
+      if (annexes.has(comps.labels[i]!)) labels[i] = 0;
     const regions = new Int32Array(W * H);
     for (let i = 0; i < regions.length; i++) {
       if (sharedIds.has(comps.labels[i]!)) regions[i] = comps.labels[i]!;
@@ -264,7 +345,8 @@ export function detectHybridRooms(
       mode: c.partition,
       penalty: c.densityPenalty,
     });
-    for (let i = 0; i < labels.length; i++) if (partition[i]) labels[i] = partition[i]!;
+    for (let i = 0; i < labels.length; i++)
+      if (partition[i]) labels[i] = partition[i]!;
   }
   const review = summarizePartitions({
     width: W,
@@ -274,6 +356,28 @@ export function detectHybridRooms(
     cost,
     seeds: located,
   });
+  if (c.discoverSpaces) {
+    // Room boundaries lie near the middle of a drawn wall stroke. Interior-only
+    // components otherwise shrink small rooms substantially. Grow a bounded
+    // number of pixels, retaining distinct ownership when fronts meet.
+    const radius = Math.max(1, Math.floor(typicalBandThickness(walls) / 2));
+    const next = new Int32Array(labels.length);
+    for (let step = 0; step < radius; step++) {
+      next.set(labels);
+      for (let y = 1; y < H - 1; y++)
+        for (let x = 1; x < W - 1; x++) {
+          const i = y * W + x;
+          if (labels[i]) continue;
+          let owner = 0;
+          for (const index of [i - 1, i + 1, i - W, i + W]) {
+            const label = labels[index]!;
+            if (label && (!owner || label < owner)) owner = label;
+          }
+          if (owner) next[i] = owner;
+        }
+      labels.set(next);
+    }
+  }
   return {
     labels,
     width: W,
@@ -283,5 +387,6 @@ export function detectHybridRooms(
     partitionedComponents,
     unassignedAnnexComponents,
     review,
+    discoveredSpaces,
   };
 }

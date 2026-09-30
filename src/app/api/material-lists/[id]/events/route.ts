@@ -1,11 +1,9 @@
-import { auth } from "@clerk/nextjs/server";
+import { getRequestIdentity } from "~/server/utils/get-request-identity";
 import { and, eq } from "drizzle-orm";
 
 import { db } from "~/server/db";
 import { materialLists } from "~/server/db/schema";
 import { subscribeToMaterialListEvents } from "~/server/material-list-events";
-import { ensureUser } from "~/server/utils/ensure-user";
-import { getDevBypassUser } from "~/server/utils/get-dev-bypass-user";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -24,8 +22,7 @@ export async function GET(
     return new Response("Invalid material list id", { status: 400 });
   }
 
-  const { userId } = await auth();
-  const user = userId ? await ensureUser(userId) : await getDevBypassUser();
+  const { user } = await getRequestIdentity(request.headers, { allowDev: true });
   const organizationId = user?.organizationId;
 
   if (!organizationId) {

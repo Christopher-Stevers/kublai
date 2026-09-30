@@ -1,11 +1,10 @@
 import { NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { getRequestIdentity } from "~/server/utils/get-request-identity";
 import { and, eq, gt, isNull } from "drizzle-orm";
 
 import { db } from "~/server/db";
 import { ORGANIZATION_INVITE_COOKIE } from "~/lib/organization-invite";
 import { organizationInvites, users } from "~/server/db/schema";
-import { ensureUser } from "~/server/utils/ensure-user";
 
 const PUBLIC_APP_URL = (
   process.env.NEXT_PUBLIC_APP_URL?.trim() ||
@@ -21,7 +20,7 @@ export async function GET(
   { params }: { params: Promise<{ token: string }> },
 ) {
   const { token } = await params;
-  const { userId } = await auth();
+  const { userId, user } = await getRequestIdentity(request.headers);
 
   if (!userId) {
     const response = redirectTo(request, "/sign-in");
@@ -35,7 +34,6 @@ export async function GET(
     return response;
   }
 
-  const user = await ensureUser(userId);
   if (!user) {
     return redirectTo(request, "/onboarding");
   }

@@ -1,4 +1,4 @@
-import { auth } from "@clerk/nextjs/server";
+import { getRequestIdentity } from "~/server/utils/get-request-identity";
 import { NextResponse } from "next/server";
 
 import {
@@ -12,18 +12,16 @@ import {
 import { getUserPermissions } from "~/server/auth/permissions";
 import { db } from "~/server/db";
 import { photoAssets } from "~/server/db/schema";
-import { ensureUser } from "~/server/utils/ensure-user";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export async function POST(request: Request) {
-  const { userId } = await auth();
+  const { userId, user } = await getRequestIdentity(request.headers);
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const user = await ensureUser(userId);
   if (!user?.organizationId) {
     return NextResponse.json(
       { error: "Organization required" },

@@ -35,7 +35,7 @@ const percentInput = z.number().min(0).max(100);
 const drawsProcedure = hasDashboardAccess.use(({ ctx, next }) => {
   assertCanAccessTab(ctx.user, "draws");
   return next({
-    ctx: { organizationId: ctx.user.organizationId as string },
+    ctx: { organizationId: ctx.user.organizationId },
   });
 });
 

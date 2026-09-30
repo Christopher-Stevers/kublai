@@ -7,8 +7,10 @@ import {
   insertPointAtClick,
   movePolygonPoint,
   polygonPointsAttr,
+  polygonPathAttr,
   removePolygonPoint,
   shapeBBox,
+  roomLabelPoint,
   toPolygon,
   type RoomPolygonShape,
   type RoomShape,
@@ -20,6 +22,7 @@ export type FloorRoom = {
   id: string;
   name: string;
   confirmed: boolean;
+  reviewStatus?: string;
   shape: FloorRoomShape;
 };
 
@@ -180,7 +183,7 @@ export function FloorPlanCanvas({
   };
 
   const commitEdit = (shape: RoomPolygonShape) => {
-    if (!editingRoomId || !onUpdateShape) return;
+    if (!canEdit || !editingRoomId || !onUpdateShape) return;
     onUpdateShape(editingRoomId, shape);
   };
 
@@ -248,6 +251,7 @@ export function FloorPlanCanvas({
         const target = event.target as HTMLElement;
         const vertexIndex = target.dataset.vertexIndex;
         if (editingRoomId && vertexIndex != null && visibleEditShape) {
+          if (!canEdit) return;
           const index = Number(vertexIndex);
           if (vertexMode === "delete") {
             const next = removePolygonPoint(visibleEditShape, index);
@@ -277,7 +281,7 @@ export function FloorPlanCanvas({
           }, LONG_PRESS_MS);
         }
 
-        if (editingRoomId && visibleEditShape && vertexMode === "add") {
+        if (canEdit && editingRoomId && visibleEditShape && vertexMode === "add") {
           const point = toPlanNorm(event.clientX, event.clientY);
           if (point) {
             const next = insertPointAtClick(visibleEditShape, point);
@@ -318,7 +322,7 @@ export function FloorPlanCanvas({
           return;
         }
         const point = toPlanNorm(event.clientX, event.clientY);
-        if (draggingVertex.current && point && visibleEditShape) {
+        if (canEdit && draggingVertex.current && point && visibleEditShape) {
           const next = movePolygonPoint(
             visibleEditShape,
             draggingVertex.current.index,
@@ -477,12 +481,14 @@ export function FloorPlanCanvas({
                   ? visibleEditShape
                   : toPolygon(room.shape);
               return (
-                <polygon
+                <path
                   key={room.id}
                   data-room-id={room.id}
-                  points={polygonPointsAttr(polygon)}
+                  data-review-status={room.reviewStatus ?? "pending"}
+                  d={polygonPathAttr(polygon)}
+                  fillRule="evenodd"
                   fill={color.fill}
-                  stroke={color.border}
+                  stroke={room.reviewStatus === "approved" ? "#16a34a" : room.reviewStatus === "rejected" ? "#dc2626" : color.border}
                   strokeWidth={(selected ? 0.006 : 0.003) / transform.scale}
                   pointerEvents="none"
                 />
@@ -536,11 +542,12 @@ export function FloorPlanCanvas({
               const color = getRoomColor(index);
               const box = shapeBBox(polygon);
               const fontSize = roomLabelFontSize(room.name, box);
+              const labelPoint=roomLabelPoint(polygon);
               return (
                 <text
                   key={`${room.id}-label`}
-                  x={box.x + box.w / 2}
-                  y={box.y + box.h / 2}
+                  x={labelPoint.x}
+                  y={labelPoint.y}
                   textAnchor="middle"
                   dominantBaseline="middle"
                   fill={color.text}
@@ -575,6 +582,7 @@ export function FloorPlanCanvas({
                 <button
                   key={`${editingRoomId}-v-${index}`}
                   type="button"
+                  disabled={!canEdit}
                   data-vertex-index={index}
                   className="absolute h-7 w-7 rounded-full border-2 border-white bg-blue-600 shadow"
                   style={{

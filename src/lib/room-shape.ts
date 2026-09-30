@@ -11,6 +11,7 @@ export type RoomBBoxShape = {
 export type RoomPolygonShape = {
   type: "polygon";
   points: RoomPoint[];
+  holes?: RoomPoint[][];
 };
 
 export type RoomShape = RoomBBoxShape | RoomPolygonShape;
@@ -34,6 +35,16 @@ export function toPolygon(
         x: clamp01(point.x),
         y: clamp01(point.y),
       })),
+      ...(shape.holes?.length
+        ? {
+            holes: shape.holes.map((ring) =>
+              ring.map((point) => ({
+                x: clamp01(point.x),
+                y: clamp01(point.y),
+              })),
+            ),
+          }
+        : {}),
     };
   }
 
@@ -68,9 +79,8 @@ export function polygonPointsAttr(shape: RoomPolygonShape) {
   return shape.points.map((point) => `${point.x},${point.y}`).join(" ");
 }
 
-export function pointInPolygon(point: RoomPoint, polygon: RoomPolygonShape) {
+function pointInRing(point: RoomPoint, pts: RoomPoint[]) {
   let inside = false;
-  const pts = polygon.points;
   for (let i = 0, j = pts.length - 1; i < pts.length; j = i, i += 1) {
     const a = pts[i]!;
     const b = pts[j]!;
@@ -83,21 +93,57 @@ export function pointInPolygon(point: RoomPoint, polygon: RoomPolygonShape) {
   return inside;
 }
 
-function polygonArea(shape: RoomPolygonShape) {
-  let area = 0;
-  for (let index = 0; index < shape.points.length; index += 1) {
-    const current = shape.points[index]!;
-    const next = shape.points[(index + 1) % shape.points.length]!;
-    area += current.x * next.y - next.x * current.y;
-  }
-  return Math.abs(area) / 2;
+export function pointInPolygon(point: RoomPoint, polygon: RoomPolygonShape) {
+  return (
+    pointInRing(point, polygon.points) &&
+    !(polygon.holes ?? []).some((ring) => pointInRing(point, ring))
+  );
 }
 
-/**
- * Resolve overlay hits from normalized plan coordinates instead of relying on
- * browser SVG hit-testing. When traces overlap, the tightest containing room
- * wins, which keeps a large suite polygon from swallowing its smaller rooms.
- */
+export function polygonPathAttr(shape: RoomPolygonShape) {
+  return [shape.points, ...(shape.holes ?? [])]
+    .map((ring) => `M${ring.map((p) => `${p.x},${p.y}`).join("L")}Z`)
+    .join(" ");
+}
+
+function polygonArea(shape: RoomPolygonShape) {
+  const ringArea = (points: RoomPoint[]) => {
+    let area = 0;
+    for (let i = 0; i < points.length; i++) {
+      const a = points[i]!,
+        b = points[(i + 1) % points.length]!;
+      area += a.x * b.y - b.x * a.y;
+    }
+    return Math.abs(area) / 2;
+  };
+  return Math.max(
+    0,
+    ringArea(shape.points) -
+      (shape.holes ?? []).reduce((area, hole) => area + ringArea(hole), 0),
+  );
+}
+
+/** Keep room labels inside usable space, including concave halls with holes. */
+export function roomLabelPoint(shape: RoomPolygonShape): RoomPoint {
+  const box = shapeBBox(shape),
+    center = { x: box.x + box.w / 2, y: box.y + box.h / 2 };
+  if (pointInPolygon(center, shape)) return center;
+  // Only the fallback searches; regular rooms use their center directly.
+  let best: RoomPoint | undefined,
+    bestDistance = Infinity;
+  for (let y = 1; y < 20; y++)
+    for (let x = 1; x < 20; x++) {
+      const p = { x: box.x + (box.w * x) / 20, y: box.y + (box.h * y) / 20 };
+      if (!pointInPolygon(p, shape)) continue;
+      const distance = (p.x - center.x) ** 2 + (p.y - center.y) ** 2;
+      if (distance < bestDistance) {
+        best = p;
+        bestDistance = distance;
+      }
+    }
+  return best ?? shape.points[0] ?? center;
+}
+
 export function findRoomAtPoint<T extends { shape: RoomShape }>(
   rooms: T[],
   point: RoomPoint,
@@ -148,7 +194,7 @@ export function insertPointOnNearestEdge(
     x: clamp01(bestPoint.x),
     y: clamp01(bestPoint.y),
   });
-  return { type: "polygon", points };
+  return { ...polygon, type: "polygon", points };
 }
 
 export function insertPointAtClick(
@@ -181,7 +227,7 @@ export function insertPointAtClick(
     x: clamp01(point.x),
     y: clamp01(point.y),
   });
-  return { type: "polygon", points };
+  return { ...polygon, type: "polygon", points };
 }
 
 export function removePolygonPoint(
@@ -190,6 +236,7 @@ export function removePolygonPoint(
 ): RoomPolygonShape {
   if (polygon.points.length <= 3) return polygon;
   return {
+    ...polygon,
     type: "polygon",
     points: polygon.points.filter((_, i) => i !== index),
   };
@@ -201,6 +248,7 @@ export function movePolygonPoint(
   point: RoomPoint,
 ): RoomPolygonShape {
   return {
+    ...polygon,
     type: "polygon",
     points: polygon.points.map((existing, i) =>
       i === index ? { x: clamp01(point.x), y: clamp01(point.y) } : existing,
