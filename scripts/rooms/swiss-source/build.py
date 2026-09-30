@@ -27,8 +27,22 @@ from shapely.geometry import Polygon, MultiPolygon
 HEADS = ("interior", "boundary", "opening_closure")
 VERSION = "structural-room-challenger-v1"
 EXPERIMENT = "whole-sheet-context-v2"
-CONTRACT = "swiss-true-openings-development-v1"
+CONTRACT = "swiss-true-openings-ink-v4"
 OVERVIEW = 512
+V3_MANIFEST_SHA256 = "cc5695d917f4602be043262a48df5de18eed68dfb3876cd5b3815f17465a36f4"
+WALL_STYLES = {
+    "solid-0": {"fill": 0, "outline": None, "line_pixels": 0},
+    "solid-35": {"fill": 35, "outline": None, "line_pixels": 0},
+    "solid-75": {"fill": 75, "outline": None, "line_pixels": 0},
+    "solid-180": {"fill": 180, "outline": None, "line_pixels": 0},
+    "solid-220": {"fill": 220, "outline": None, "line_pixels": 0},
+    "paired-white-1": {"fill": 255, "outline": 35, "line_pixels": 1},
+    "paired-white-2": {"fill": 255, "outline": 75, "line_pixels": 2},
+    "paired-gray-1": {"fill": 240, "outline": 180, "line_pixels": 1},
+    "paired-gray-2": {"fill": 245, "outline": 220, "line_pixels": 2},
+}
+MAX_SIMULATED_FURNITURE = 36
+MAX_SIMULATED_STAIR_FEATURES = 6
 INDOOR = {"ROOM", "BEDROOM", "LIVING_ROOM", "LIVING_DINING", "DINING", "KITCHEN",
           "BATHROOM", "CORRIDOR", "STAIRCASE", "ELEVATOR", "STOREROOM", "BASEMENT_COMPARTMENT",
           "OFFICE", "WASH_AND_DRY_ROOM", "LAUNDRY", "WC", "HALL", "LOBBY", "COMMON_ROOM",
@@ -53,7 +67,7 @@ PINNED_PRIOR_SHA256 = (
     "79c22af5e8b2faeac31c6b8b290d292dccc5d9c34db542474edaa79b951a4cac",  # context 100
     "f8cb98efb4c35bfc87d27f4c616f82a7b69cc03fa646d960f043f7d490f0d593",  # once-only 20
 )
-LIMITATIONS = ("Original physical wall/opening/fixture coordinates with simulated drawing style, door swings and annotations; "
+LIMITATIONS = ("Original physical wall/opening/fixture coordinates with simulated wall ink, door swings, annotations, furniture and stair treads; "
                "source drawing images unavailable. Source areas are functional references. Components cut by physical barriers are "
                "provisional room instances, not certified physical-room completeness; open living/dining/kitchen areas can merge. "
                "Unknown/undefined indoor semantics are unsupervised. No production approval or real-sheet accuracy claim.")
@@ -303,7 +317,79 @@ def door_swing(draw, geom, coordinate, color, rng):
     draw.line(arc, fill=color, width=1)
 
 
-def render(rows, seed, width=2048, height=1536):
+def select_wall_style(seed):
+    names = tuple(WALL_STYLES)
+    return names[int(hashlib.sha256(f"wall-ink-v4:{seed}".encode()).hexdigest()[:8], 16) % len(names)]
+
+
+def wall_ink_layer(rows, solid, doors, windows, coordinate, width, height, style_name):
+    """Ink only. Exact physical footprints and genuine opening locations stay fixed."""
+    if style_name not in WALL_STYLES:
+        raise ValueError("Wall ink must use one predeclared style")
+    style = WALL_STYLES[style_name]
+    layer = Image.new("RGB", (width, height), "white")
+    layer.paste((style["fill"],) * 3, mask=Image.fromarray(solid.astype(np.uint8) * 255))
+    if style["outline"] is not None:
+        draw = ImageDraw.Draw(layer)
+        for row in rows:
+            if row["entity_type"] == "separator" and row["entity_subtype"] in PHYSICAL_SEPARATORS:
+                draw_polygon_outline(draw, row["geometry"], coordinate, (style["outline"],) * 3, style["line_pixels"])
+    # Erase after every wall outline/fill has been drawn, including shared edges.
+    layer.paste("white", mask=Image.fromarray((doors | windows).astype(np.uint8) * 255))
+    return layer
+
+
+def simulated_nuisance_ink(image, rows, masks, interior, coordinate, seed):
+    """Bounded, explicitly simulated nuisance ink; never edits target/reference data."""
+    width, height = image.size
+    rng = random.Random(int(hashlib.sha256(f"nuisance-ink-v4:{seed}".encode()).hexdigest()[:8], 16))
+    anchor_mask = ndimage.binary_erosion(interior, iterations=5)
+    anchors = np.flatnonzero(anchor_mask)
+    furniture = []
+    attempts = 0
+    requested = min(MAX_SIMULATED_FURNITURE, max(4, sum(r["entity_type"] == "area" and r["entity_subtype"] in INDOOR for r in rows) * 2))
+    while len(furniture) < requested and len(anchors) and attempts < requested * 12:
+        attempts += 1
+        y, x = divmod(int(anchors[rng.randrange(len(anchors))]), width)
+        kind, shade, line = rng.choice(["rectangle", "circle"]), rng.choice([0, 35, 75, 110, 180]), rng.choice([1, 2])
+        ww, hh = rng.randrange(9, 31), rng.randrange(7, 23)
+        if kind == "circle":
+            ww = hh = min(ww, hh)
+        x0, y0, x1, y1 = x - ww // 2, y - hh // 2, x + ww // 2, y + hh // 2
+        if min(x0, y0) < 0 or x1 >= width or y1 >= height or not interior[y0:y1 + 1, x0:x1 + 1].all():
+            continue
+        # L stores opacity, while grayscale below records each shape's ink shade.
+        shape = Image.new("L", image.size, 0); sd = ImageDraw.Draw(shape)
+        getattr(sd, "ellipse" if kind == "circle" else kind)((x0, y0, x1, y1), outline=255, width=line)
+        image.paste((shade,) * 3, mask=shape)
+        furniture.append({"shape": kind, "box_pixels": [x0, y0, x1, y1], "gray": shade, "line_pixels": line})
+    stairs, tread_count = [], 0
+    for feature_index, (row, mask) in enumerate(zip(rows, masks)):
+        if row["entity_type"] != "feature" or row["entity_subtype"] != "STAIRS" or len(stairs) >= MAX_SIMULATED_STAIR_FEATURES:
+            continue
+        allowed = mask & interior
+        if not allowed.any():
+            continue
+        rectangle = list(row["geometry"].minimum_rotated_rectangle.exterior.coords)[:4]
+        index = min(range(4), key=lambda i: math.dist(rectangle[i], rectangle[(i + 1) % 4]))
+        a, b, c = (rectangle[(index + step) % 4] for step in range(3))
+        dx, dy = c[0] - b[0], c[1] - b[1]
+        count, shade, line = rng.randrange(6, 13), rng.choice([0, 35, 75, 110, 180]), rng.choice([1, 2])
+        treads = Image.new("L", image.size, 0); td = ImageDraw.Draw(treads)
+        for fraction in np.linspace(.1, .9, count):
+            td.line([coordinate(a[0] + dx * fraction, a[1] + dy * fraction),
+                     coordinate(b[0] + dx * fraction, b[1] + dy * fraction)], fill=255, width=line)
+        clipped = (np.asarray(treads) > 0) & allowed
+        image.paste((shade,) * 3, mask=Image.fromarray(clipped.astype(np.uint8) * 255))
+        stairs.append({"source_feature_index": feature_index, "treads": count, "gray": shade, "line_pixels": line,
+                       "clipped_to_known_source_stairs_interior": True})
+        tread_count += count
+    return {"simulated_furniture": furniture, "simulated_stair_features": stairs,
+            "simulated_furniture_count": len(furniture), "simulated_stair_tread_count": tread_count,
+            "nuisance_ink_is_source_geometry": False, "nuisance_ink_changes_targets": False}
+
+
+def render(rows, seed, width=2048, height=1536, *, wall_style=None, add_simulated_nuisance=True):
     rng = random.Random(seed)
     bounds = np.asarray([r["geometry"].bounds for r in rows]); minx, miny = bounds[:, :2].min(axis=0); maxx, maxy = bounds[:, 2:].max(axis=0)
     if maxx <= minx or maxy <= miny:
@@ -350,10 +436,12 @@ def render(rows, seed, width=2048, height=1536):
         ref["derived_interior_pixels"] = occupied
         # A mixed open living/kitchen component keeps every contributing source
         # area membership, instead of acquiring an invented single room class.
-    image = Image.new("RGB", (width, height), "white")
-    # Genuine wall thickness/footprints remain geometric; only ink shade varies.
-    shade = rng.choice([0, 35, 75]); ink = (shade,) * 3
-    image.paste(ink, mask=Image.fromarray((solid & ~doors & ~windows).astype(np.uint8) * 255))
+    wall_style = select_wall_style(seed) if wall_style is None else wall_style
+    image = wall_ink_layer(rows, solid, doors, windows, coordinate, width, height, wall_style)
+    style = WALL_STYLES[wall_style]
+    ink = (style["outline"] if style["outline"] is not None else style["fill"],) * 3
+    # Preserve v3 annotation/swing RNG consumption independently of wall styling.
+    rng.choice([0, 35, 75])
     draw = ImageDraw.Draw(image)
     for r, mask in zip(rows, masks):
         t, st = r["entity_type"], r["entity_subtype"]
@@ -366,6 +454,9 @@ def render(rows, seed, width=2048, height=1536):
         elif t == "area" and st in INDOOR and rng.random() < .5:
             p = r["geometry"].representative_point(); x, y = coordinate(p.x, p.y)
             draw.text((x, y), st.replace("_", " "), fill=(65, 65, 65))
+    nuisance = (simulated_nuisance_ink(image, rows, masks, interior, coordinate, seed) if add_simulated_nuisance else
+                {"simulated_furniture": [], "simulated_stair_features": [], "simulated_furniture_count": 0,
+                 "simulated_stair_tread_count": 0, "nuisance_ink_is_source_geometry": False, "nuisance_ink_changes_targets": False})
     # Simulated sheet text/grid/title-block enclosures are explicit negatives.
     margin = round(width * .02); tx = round(width * .875)
     draw.rectangle((margin, margin, width - margin, height - margin), outline=(90, 90, 90), width=1)
@@ -377,6 +468,7 @@ def render(rows, seed, width=2048, height=1536):
         draw.ellipse((x - 7, margin + 15, x + 7, margin + 29), outline=(110, 110, 110), width=1)
     counts = Counter(r["entity_type"] + ":" + r["entity_subtype"] for r in rows)
     stats = {"entity_counts": dict(sorted(counts.items())), "source_area_references": refs,
+             "wall_ink_style": wall_style, "wall_ink_parameters": style, **nuisance,
              "provisional_components": int(num), "physical_room_ground_truth_certified": False,
              "truth_reference_kind": "algorithm-derived-components-of-source-interiors-cut-by-physical-barriers",
              "all_space_scoring_eligible": False, "human_completeness_evidence": False,
@@ -403,8 +495,12 @@ def source_preflight(csv_path, provenance):
 
 
 def build(args):
-    inputs = [args.csv, args.provenance, *args.prior_manifest]
+    inputs = [args.csv, args.provenance, *args.prior_manifest, args.ink_baseline_manifest]
     frozen, render_sources = {p: digest(p) for p in inputs}, sources()
+    if frozen[args.ink_baseline_manifest] != V3_MANIFEST_SHA256:
+        raise ValueError("Ink v4 requires the independently pinned unchanged v3 manifest")
+    baseline = json.loads(args.ink_baseline_manifest.read_text())
+    baseline_records = {r["id"]: r for r in baseline["records"]}
     provenance = source_preflight(args.csv, args.provenance)
     excluded, prior = prior_exclusions(args.prior_manifest)
     floors, metadata = metadata_preflight(args.csv, excluded)
@@ -414,6 +510,11 @@ def build(args):
     args.output.mkdir(mode=0o700, parents=True, exist_ok=False)
     selection = [{"site": m["key"][0], "building": m["key"][1], "floor": m["key"][2], "plan": m["key"][3],
                   "group": m["group"], "split": m["split"], "component_aliases": m["component_aliases"], "rows": m["rows"]} for m in selected]
+    baseline_selection = [{"site": r["site"], "building": r["building"], "floor": r["floor"], "plan": r["plan"],
+                           "group": r["group"], "split": r["split"], "component_aliases": r["component_aliases"], "rows": r["source_rows"]}
+                          for r in baseline["records"]]
+    if selection != baseline_selection or sorted(excluded) != baseline["excluded_msd_sites"]:
+        raise ValueError("Ink v4 selection/exclusions differ from immutable v3 before WKT decode")
     write_json(args.output / "metadata-preflight.json", {"contract": CONTRACT, "source_sha256": frozen[args.csv],
                "prior_manifests": prior, "excluded_msd_sites": sorted(excluded), "metadata": metadata, "selection": selection,
                "geometry_decoded": False, "selected_protected_alias_count": 0, "requested_counts": requested})
@@ -426,6 +527,8 @@ def build(args):
         site, building, floor, plan = m["key"]
         ident = "swiss-floor-" + hashlib.sha256(":".join(m["key"]).encode()).hexdigest()[:20]
         seed = int(hashlib.sha256(f"{args.seed}:{ident}".encode()).hexdigest()[:8], 16)
+        if row_hashes[m["key"]] != baseline_records[ident]["source_row_snapshot_sha256"]:
+            raise ValueError("Ink v4 source row digest differs from immutable v3")
         image, target, known, truth, stats = render(decoded[m["key"]], seed, args.width, args.height)
         image_path, target_path, coarse_path = (args.output / (ident + suffix) for suffix in (".png", ".npz", "-overview.npz"))
         reference_path = args.output / (ident + ".references.json")
@@ -438,6 +541,13 @@ def build(args):
         np.savez_compressed(target_path, target=target, known=known, truth=truth); target_path.chmod(0o600)
         coarse, coarse_known = coarse_targets(target, known)
         np.savez_compressed(coarse_path, target=coarse, known=coarse_known); coarse_path.chmod(0o600)
+        previous = baseline_records[ident]
+        for name, path in (("targets", target_path), ("overview", coarse_path), ("references", reference_path)):
+            old_path = (args.ink_baseline_manifest.parent / previous[name]).resolve(strict=True)
+            if not old_path.is_relative_to(args.ink_baseline_manifest.parent.resolve()) or digest(old_path) != previous[name + "_sha256"]:
+                raise ValueError("Immutable v3 target/reference asset changed")
+            if digest(path) != previous[name + "_sha256"]:
+                raise ValueError("Ink v4 changed a v3 physical target/mask/reference asset")
         records.append({"id": ident, "image": image_path.name, "targets": target_path.name, "overview": coarse_path.name,
                         "image_sha256": digest(image_path), "targets_sha256": digest(target_path), "overview_sha256": digest(coarse_path),
                         "site": site, "building": building, "floor": floor, "plan": plan, "group": m["group"], "split": m["split"],
@@ -457,6 +567,16 @@ def build(args):
                 "prior_manifests": prior, "source_provenance": provenance,
                 "source_input_hashes": {str(p.resolve()): h for p, h in frozen.items()}, "render_source_hashes": render_sources,
                 "metadata_preflight_sha256": digest(args.output / "metadata-preflight.json"),
+                "ink_baseline_manifest_sha256": V3_MANIFEST_SHA256,
+                "ink_baseline_git_commit": "0a5cc98", "ink_only_change_verified": True,
+                "target_overview_reference_assets_identical_to_v3": True,
+                "wall_ink_styles_predeclared": WALL_STYLES,
+                "wall_ink_style_counts": dict(Counter(r["render_stats"]["wall_ink_style"] for r in records)),
+                "simulated_nuisance_policy": {"maximum_furniture_objects_per_page": MAX_SIMULATED_FURNITURE,
+                                              "furniture": "rectangles/circles wholly within known source indoor interiors",
+                                              "maximum_source_stair_features_per_page": MAX_SIMULATED_STAIR_FEATURES,
+                                              "stair_treads": "6-12 simulated repeated lines clipped to known source STAIRS feature interiors",
+                                              "changes_source_targets_or_references": False},
                 "predecode_protected_alias_count": 0, "postdecode_protected_alias_count": 0,
                 "physical_room_ground_truth_certified": False, "approved_for_production": False,
                 "all_space_scoring_eligible": False, "human_completeness_evidence": False,
@@ -529,6 +649,7 @@ if __name__ == "__main__":
     p.add_argument("--csv", type=Path, required=True); p.add_argument("--provenance", type=Path, required=True)
     p.add_argument("--prior-manifest", type=Path, action="append", required=True)
     p.add_argument("--output", type=Path, required=True); p.add_argument("--train", type=int, default=80)
+    p.add_argument("--ink-baseline-manifest", type=Path, required=True)
     p.add_argument("--development", type=int, default=20); p.add_argument("--seed", type=int, default=20260930)
     p.add_argument("--width", type=int, default=2048); p.add_argument("--height", type=int, default=1536)
     a = p.parse_args()

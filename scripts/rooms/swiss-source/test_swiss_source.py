@@ -155,5 +155,74 @@ class RenderTests(unittest.TestCase):
         self.assertTrue(coarse[1].any()); self.assertFalse(supervision[:, 10, 10].any())
 
 
+class InkStyleTests(unittest.TestCase):
+    def fixture(self):
+        # Includes a genuine wall hole, opening, unknown area and source stairs.
+        wall = Polygon([(4, 0), (6, 0), (6, 10), (4, 10)], holes=[[(4.5, 7), (5.5, 7), (5.5, 8), (4.5, 8)]])
+        return [entity(box(0, 0, 10, 10), st="STAIRCASE", usage="PUBLIC"),
+                entity(wall, "separator", "WALL"), entity(box(3.8, 4, 6.2, 5), "opening", "DOOR"),
+                entity(box(0, 8, 2, 10), st="NOT_DEFINED"), entity(box(.5, .5, 3.5, 3.5), "feature", "STAIRS")]
+
+    def test_every_wall_style_and_nuisance_changes_only_ink_not_targets_or_references(self):
+        rows = self.fixture(); source_wkt = [r["geometry"].wkt for r in rows]
+        baseline = build.render(rows, 42, 640, 512, wall_style="solid-0", add_simulated_nuisance=False)
+        baseline_coarse = build.coarse_targets(baseline[1], baseline[2])
+        images = set()
+        for style in build.WALL_STYLES:
+            for nuisance in (False, True):
+                image, target, known, truth, stats = build.render(rows, 42, 640, 512, wall_style=style, add_simulated_nuisance=nuisance)
+                if nuisance:
+                    images.add(np.asarray(image).tobytes())
+                self.assertEqual(target.tobytes(), baseline[1].tobytes())
+                self.assertEqual(known.tobytes(), baseline[2].tobytes())
+                self.assertEqual(truth.tobytes(), baseline[3].tobytes())
+                self.assertEqual(json.dumps(stats["source_area_references"], sort_keys=True),
+                                 json.dumps(baseline[4]["source_area_references"], sort_keys=True))
+                self.assertEqual([r["geometry"].wkt for r in rows], source_wkt)
+                coarse = build.coarse_targets(target, known)
+                self.assertEqual(coarse[0].tobytes(), baseline_coarse[0].tobytes())
+                self.assertEqual(coarse[1].tobytes(), baseline_coarse[1].tobytes())
+        self.assertEqual(len(images), len(build.WALL_STYLES))
+
+    def test_gray_wall_ink_and_paired_white_interiors_are_physical_positives(self):
+        rows = self.fixture()
+        for style in ["solid-180", "solid-220", "paired-white-1", "paired-white-2", "paired-gray-1", "paired-gray-2"]:
+            image, target, _, _, stats = build.render(rows, 42, 640, 512, wall_style=style, add_simulated_nuisance=False)
+            y, x = sample(stats, 640, 512, 5, 2)
+            self.assertEqual(target[1, y, x], 1)
+            self.assertEqual(np.asarray(image)[y, x, 0], build.WALL_STYLES[style]["fill"])
+
+    def test_true_openings_erased_after_all_paired_or_solid_wall_ink(self):
+        rows = self.fixture(); width, height = 640, 512
+        coordinate = lambda x, y: (40 + x * 30, 400 - y * 30)
+        solid = build.polygon_mask(rows[1]["geometry"], width, height, coordinate)
+        doors = build.polygon_mask(rows[2]["geometry"], width, height, coordinate)
+        for style in build.WALL_STYLES:
+            layer = build.wall_ink_layer(rows, solid, doors, np.zeros_like(doors), coordinate, width, height, style)
+            self.assertTrue((np.asarray(layer)[doors] == 255).all())
+
+    def test_simulated_furniture_and_treads_are_bounded_nonstructural_known_interior_ink(self):
+        rows = [entity(box(0, 0, 10, 10), st="STAIRCASE", usage="PUBLIC"),
+                entity(box(2, 2, 8, 8), "feature", "STAIRS")]
+        plain = build.render(rows, 5, 640, 512, wall_style="solid-0", add_simulated_nuisance=False)
+        full = build.render(rows, 5, 640, 512, wall_style="solid-0")
+        self.assertGreater(full[4]["simulated_furniture_count"], 0)
+        self.assertLessEqual(full[4]["simulated_furniture_count"], build.MAX_SIMULATED_FURNITURE)
+        self.assertGreater(full[4]["simulated_stair_tread_count"], 0)
+        self.assertLessEqual(len(full[4]["simulated_stair_features"]), build.MAX_SIMULATED_STAIR_FEATURES)
+        changed = np.any(np.asarray(plain[0]) != np.asarray(full[0]), axis=2)
+        self.assertTrue(changed.any()); self.assertTrue(full[1][0][changed].all())
+        self.assertFalse(full[1][1:].any())
+        for i in (1, 2, 3):
+            self.assertEqual(plain[i].tobytes(), full[i].tobytes())
+        self.assertFalse(full[4]["nuisance_ink_is_source_geometry"])
+
+    def test_style_and_nuisance_are_deterministic_without_scoring_or_search(self):
+        a = build.render(self.fixture(), 91, 640, 512); b = build.render(self.fixture(), 91, 640, 512)
+        self.assertEqual(np.asarray(a[0]).tobytes(), np.asarray(b[0]).tobytes())
+        self.assertEqual(a[4]["wall_ink_style"], b[4]["wall_ink_style"])
+        self.assertEqual(a[4]["simulated_furniture"], b[4]["simulated_furniture"])
+
+
 if __name__ == "__main__":
     unittest.main()

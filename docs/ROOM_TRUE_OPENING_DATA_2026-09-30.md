@@ -6,13 +6,67 @@ fixtures, and area vectors come from pinned Swiss Dwellings v3.0.0 source data.
 The drawings themselves are newly generated. No model was trained or scored by
 this import, and this corpus is not evidence of every-room accuracy on real sheets.
 
-The compatible final manifest is outside Git:
+The compatible current v4 manifest is outside Git:
+
+`/home/tim/datasets/foremanhq-room-detection/models/data-swiss-true-openings-v4-20260930/manifest.json`
+
+Current v4 SHA256:
+`619fc06189bd9b6ba1b723ca88c403f89a2ed31c86f628a91408482d9e3fc86b`.
+
+The historical v3 manifest is preserved unchanged:
 
 `/home/tim/datasets/foremanhq-room-detection/models/data-swiss-true-openings-v3-20260930/manifest.json`
 
-Its SHA256 is
+The historical v3 SHA256 is
 `cc5695d917f4602be043262a48df5de18eed68dfb3876cd5b3815f17465a36f4`.
-The first two local corpus versions are superseded development artifacts; use v3.
+The first two local corpus versions are superseded development artifacts. V3 is
+the immutable target/reference baseline for v4. Its complete committed source is
+preserved in Git `0a5cc98` and privately in
+`swiss-source-v3-20260930/frozen-v3-sources-0a5cc98/`, with source hashes verified
+against the v3 manifest before edits.
+
+## V4 ink augmentation preserves the physical targets
+
+V4 addresses the earlier renderer's restricted dark solid walls. A deterministic
+seed selects one of nine styles declared before any model trial: solid gray fills
+at 0, 35, 75, 180, or 220, paired white interiors with gray 35/75 outlines at native
+one/two-pixel width, or paired light-gray 240/245 interiors with gray 180/220
+outlines at native one/two-pixel width. The complete style table and actual counts
+are frozen in the v4 manifest. Neither scores nor threshold search choose styles.
+
+All physical wall footprints remain positive in targets, including nearly white
+walls and the white interiors between paired lines. True door/window footprints
+are erased after every wall fill/outline is drawn. The exact original door
+coordinates and source holes remain unchanged.
+
+V4 adds at most 36 simulated furniture rectangles/circles per page, each wholly
+inside known indoor source interiors, and 6–12 repeated treads for at most six
+source STAIRS features per page, clipped to their known interior footprints.
+An independent deterministic RNG places these nuisance marks. They are simulated
+ink rather than additional source fixtures, semantic references, or ground truth;
+they never become wall/opening targets.
+
+Before WKT replay, v4 requires the exact v3 manifest checksum and the identical
+100-case site/building/floor/plan/group/split selection and exclusion list. Each
+decoded source-row digest and each target, overview, and reference asset must
+equal its v3 hash byte for byte. Styling cannot change the physical semantics,
+supervision masks, provisional component labels, or reference geometry. The
+stored images are deliberately different. The synthetic pixel-development and
+every-room ground-truth restrictions described below apply to both versions.
+
+The completed 100-case metadata comparison confirms unchanged IDs,
+site/building/floor/plan/group/splits, transitive aliases, source-row digests, seeds,
+exclusions, area-semantic policy and target/overview/reference asset hashes.
+All 100 image hashes changed. The private proof is
+`data-swiss-true-openings-v4-20260930/ink-v3-v4-identity-proof.json`, SHA256
+`d259d4ef2960f8dc0df6a7ad92918da6bb07b95cce8dfa39122521c7739162c1`.
+V4 preflight SHA256 is
+`ff0f4caa002786a3d92bcf0a18df8d965a9e4724db5174973af64dfae1619a25`.
+
+The frozen actual style counts are 8 solid-0, 12 solid-35, 10 solid-75,
+15 solid-180, 14 solid-220, 17 paired-white-1, 10 paired-white-2,
+10 paired-gray-1 and 4 paired-gray-2. V4 contains 3,064 simulated furniture marks
+and 2,356 repeated stair treads. These counts describe rendered nuisance ink.
 
 ## Pinned source and license
 
@@ -99,8 +153,9 @@ The manifest uses the existing `structural-room-challenger-v1` version,
    randomly placed gap or simulated swing arc becomes a positive opening target.
 
 Fixtures and railings are drawn from original coordinates and do not become wall
-targets. Sheet frames, title-block boxes, text, ink shades, and door swing/leaf
-orientations are simulated. Original wall thickness and local floor geometry are
+targets. Sheet frames, title-block boxes, text, wall ink, door swing/leaf
+orientations, furniture rectangles/circles and repeated stair treads are simulated.
+Original wall thickness and local floor geometry are
 preserved under isotropic page scaling; the raster records pixels per source meter.
 Targets are 2048 × 1536 pixels. Overview supervision preserves thin barriers and
 marks a coarse cell unknown if any contributing source pixel is unknown.
@@ -140,31 +195,54 @@ New code is confined to `scripts/rooms/swiss-source/`. All raw CSV/ZIP/WKT, rend
 images, targets, references, and later model checkpoints remain outside Git in
 private directories/files with mode 0700/0600.
 
-Twelve fabricated tests pass, without reading any protected source geometry:
+Seventeen total fabricated tests pass: the twelve preserved source/semantics
+tests and the five new v4 style tests. No protected source geometry is read.
+The twelve preserved tests cover:
 four-manifest metadata union; exact role/hash substitution rejection; protected
 site/alias exclusion before WKT; repeated plan/site/floor split isolation; missing
 group IDs; genuine door targets; no wall between adjacent open functional areas;
 explicit common/hall/elevator/stair/storage/technical references; unknown/outdoor
 supervision; holes; and coarse unknown-mask preservation.
+The five v4 style tests additionally check all nine styles with nuisance ink
+enabled/disabled, exact target/known/truth/reference and coarse-mask bytes,
+unchanged source WKT, deterministic repeated images, gray/white wall positives,
+post-outline true-opening erasure, and bounded nonstructural fixture/tread ink.
 
 ```bash
 /home/tim/datasets/foremanhq-room-detection/models/.venv/bin/python \
   scripts/rooms/swiss-source/test_swiss_source.py -v
 ```
 
-The complete 100-case manifest validation passes and checks all asset hashes,
+The historical v3 and completed v4 100-case manifest validations pass and check
+all asset hashes,
 head/overview/image dimensions, binary targets/masks, nonnegative component labels,
-all protected/site/plan/floor aliases, and expected split counts. Two newly selected
-unprotected generated pages were inspected visually for geometry, opening/fixture
-placement, and page framing. This is rendering QA, not model scoring or independent
-room-count annotation.
+all protected/site/plan/floor aliases, and expected split counts. Two selected
+unprotected v3 generated pages were inspected visually for geometry,
+opening/fixture placement, and page framing. After the v4 source/data freeze, root
+also inspected the current unprotected v4 pages `swiss-floor-c6aaa6787aa40f3bd216`
+(paired-gray-2) and `swiss-floor-cca1fe164d488e253638` (paired-white-1). Gray paired
+walls, genuine portal erasure with simulated arcs, fixture/tread clutter, diagonal
+floor geometry and page framing were visible; no rendering blocker was found.
+This visual check is rendering QA, not model scoring or independent room-count
+annotation.
 
-The source importer/renderer SHA256 values frozen in the final manifest are:
+The historical v3 importer/renderer SHA256 values remain preserved:
 
 | File | SHA256 |
 | --- | --- |
 | `build.py` | `f4b0ed206ad2ead2969156eccde22ad03d4e21945d70886b33e6f34ae4f0c8a9` |
 | `fetch_member.py` | `6447cf40c245fe7284b5081151e80f387377429ffb24bdb1e6217e298478a128` |
+
+The frozen v4 `build.py` SHA256 is
+`235eb3408d95929fd63efa689b1f937ce8761c7b7bd521f4959a54b99b9e0935`;
+`fetch_member.py` remains unchanged. All 17 total fabricated tests pass, including
+the five new style tests, which an independent read-only reviewer reran
+successfully. That reviewer also independently confirmed the frozen v3/v4
+manifest and comparison-proof checksums and all 100 unchanged identity/target/
+reference fields using metadata only.
+The 100-case v4 build passes the original hash/head/alias checks and the exact
+v3 identity/target/reference comparisons. Source snapshots and their checksums
+are retained privately with the final v4 artifacts.
 
 The imported source is feasible for the next guarded custom-model development
 trial. It does not certify transfer to the actual A511 drawing, replace human

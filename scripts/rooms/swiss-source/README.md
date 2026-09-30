@@ -26,13 +26,32 @@ Generate a new private dataset with all four prior manifests, in this order:
   --prior-manifest /absolute/data-pilot-v2-20260930/manifest.json \
   --prior-manifest /absolute/data-context-20260930/manifest.json \
   --prior-manifest /absolute/data-context-generalization-20260930/manifest.json \
-  --output /absolute/private-swiss-data --train 80 --development 20
+  --ink-baseline-manifest /absolute/data-swiss-true-openings-v3-20260930/manifest.json \
+  --output /absolute/private-swiss-v4-data --train 80 --development 20
 ```
 
 These four roles are pinned by metadata hash. Exclusions and transitive
 site/building/floor/plan aliases are checked before WKT decoding. Unknown area
 semantics remain unsupervised. Physical separators and genuine opening
 footprints supply the boundary head; named open-plan zones do not create walls.
+
+The current renderer is ink v4. The pinned v3 baseline must keep SHA256
+`cc5695d917f4602be043262a48df5de18eed68dfb3876cd5b3815f17465a36f4`.
+It preserves every selected site/split, source-row digest and target/overview/
+reference asset hash. Nine predeclared styles vary solid wall shades (including
+180/220 gray) and paired polygon outlines with white/light-gray interiors at
+native one/two-pixel lines. True openings are erased after all wall ink is drawn.
+Deterministic simulated furniture rectangles/circles stay wholly in known indoor
+interiors; repeated stair treads are clipped to source STAIRS feature interiors.
+These marks add no source fixtures, reference labels, boundaries or ground truth.
+Neither styling nor nuisance placement uses model results or threshold searches.
+
+Current verified private manifest:
+`/home/tim/datasets/foremanhq-room-detection/models/data-swiss-true-openings-v4-20260930/manifest.json`,
+SHA256 `619fc06189bd9b6ba1b723ca88c403f89a2ed31c86f628a91408482d9e3fc86b`.
+The separate metadata comparison confirms identical v3 targets, masks,
+overviews, semantic references, aliases and splits, with all 100 image hashes
+changed. V3 source/data are preserved; the authorized trial uses v4.
 
 Use the three masked pixel heads for development comparisons. The stored
 component labels are provisional and cannot establish every-room recall or
