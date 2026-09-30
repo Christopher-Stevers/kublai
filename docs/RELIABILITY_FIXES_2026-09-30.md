@@ -41,4 +41,6 @@ The first command restores and verifies offsite database/files into an empty dir
 
 ## Release verification
 
-Production release and a fresh post-migration backup are verified after switching the isolated build. The previous build and static assets are retained for rollback and already-open clients.
+Released `.next-reliability-release-20260930` after an isolated production build. Local and public health checks pass. Live mobile-emulated checks pass, including offline immediate navigation/reload and reconnect persistence. A previous-build client retained all seven tested static assets and opened Add Part after the server changed, with zero browser exceptions. The previous build and static assets remain available for rollback.
+
+The updated nightly service completed a fresh post-migration snapshot and transactional Ubicloud standby refresh successfully. The existing nightly timer remains in use.
