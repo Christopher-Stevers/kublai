@@ -41,10 +41,10 @@ fi
 cgroup_parent=$(dirname "/sys/fs/cgroup$current_cgroup")
 cgroup_dir="$cgroup_parent/foremenhq-detect-$upload_id"
 mkdir -p "$cgroup_dir"
-# Complex architectural pages can transiently require about 1.5 GiB in
-# PDF.js/canvas. Per-page child isolation makes 2 GiB a hard per-page ceiling
-# while preventing allocations from accumulating across the drawing set.
-printf '%s\n' 2147483648 > "$cgroup_dir/memory.max"
+# Full-resolution hybrid tracing holds several native/typed pixel buffers in
+# addition to the JavaScript heap. Keep a 4 GiB process ceiling; the global
+# two-worker limit bounds detection to 8 GiB on this 128 GiB host.
+printf '%s\n' 4294967296 > "$cgroup_dir/memory.max"
 printf '%s\n' 0 > "$cgroup_dir/memory.swap.max"
 printf '%s\n' 64 > "$cgroup_dir/pids.max"
 printf '%s\n' 1 > "$cgroup_dir/memory.oom.group"

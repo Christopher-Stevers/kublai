@@ -162,15 +162,19 @@ export function JobRoomsView({ jobId }: { jobId: string }) {
   const detectStatus = api.rooms.detectRoomsStatus.useQuery(
     { floorId: selectedFloorId ?? "00000000-0000-0000-0000-000000000000" },
     {
-      enabled: Boolean(selectedFloorId && (detectMode || detectingRoomId)),
+      // A completed cached run can clear local launch state before the new
+      // worker responds. Status belongs to the selected floor, not that state.
+      enabled: Boolean(selectedFloorId && roomsQuery.data?.canManage),
       refetchInterval: (query) =>
-        query.state.data?.status === "running" ? 400 : false,
+        query.state.data?.status === "running" || detectRooms.isPending || detectingRoomId === selectedFloorId
+          ? 1000
+          : 5000,
     },
   );
 
   useEffect(() => {
     const job = detectStatus.data;
-    if (!job || (job.status !== "done" && job.status !== "error")) return;
+    if (detectRooms.isPending || !job || (job.status !== "done" && job.status !== "error")) return;
     const key = `${job.status}:${job.startedAt}`;
     if (handledDetectJob.current === key) return;
     handledDetectJob.current = key;
@@ -181,7 +185,7 @@ export function JobRoomsView({ jobId }: { jobId: string }) {
       return;
     }
     setDetectError(job.error || "Room detection failed");
-  }, [detectStatus.data, jobId, utils.rooms.getJobRooms]);
+  }, [detectStatus.data, detectRooms.isPending, jobId, utils.rooms.getJobRooms]);
 
   const data = roomsQuery.data;
   const canManage = data?.canManage ?? false;

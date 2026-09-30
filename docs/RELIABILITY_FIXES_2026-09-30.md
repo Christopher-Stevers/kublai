@@ -46,3 +46,9 @@ Released `.next-reliability-release-20260930` after an isolated production build
 The updated nightly service completed a fresh post-migration snapshot and transactional Ubicloud standby refresh successfully. The existing nightly timer remains in use.
 
 Post-release snapshot `20260930-091623` passed a complete restore of all 956 files and all 716 database asset references. It contained one temporary browser-test job captured before cleanup. Final clean snapshot `20260930-092418` has an independently verified and restored offsite database with 6,704 parts, 89 jobs, zero test jobs and the revision table. Its 955 asset files have identical hashes and chunk lists to the fully restored snapshot. The refreshed warm standby also has 89 jobs and zero test jobs.
+
+## A511 follow-up: detection startup appearing stuck
+
+A production hybrid run exceeded the new 2 GiB cgroup memory ceiling and exited with code 137; cgroup events confirmed an OOM kill. A read-only reproduction on the same page completed at 5000×3750 pixels with 53 labels, 36 outlines and approximately 2,123 MiB peak RSS. The detector now has a 4 GiB ceiling; two-worker admission, the JavaScript heap cap and ten-minute deadline remain in place.
+
+The selected floor's status query no longer depends on local launch/edit state. It polls once per second during launch/running work and every five seconds otherwise, and ignores cached terminal results while the launch mutation is pending. A mobile-emulated browser test with controlled worker responses verified cached failure → new progress, at least three continued polls, terminal failure visibility and an enabled retry button, with zero browser exceptions. Type checking and the no-new-errors lint gate pass.
