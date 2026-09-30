@@ -165,6 +165,15 @@ Pixel accuracy therefore does not establish correct room partitioning. The
 authoritative report is `models/eval-context-20260930/report.json` under the
 private dataset directory.
 
+The frozen per-floor report also exposes the business requirement more directly:
+the context model misses at least one space on all twenty development floors.
+At IoU 0.50, the first pilot and geometry each have only one floor with zero
+misses; none of the three candidates has a floor with both zero misses and zero
+extras. These are derived aggregates of the same development report, not another
+holdout inspection. The source report SHA-256 is
+`a0766fb1cdcb4dc88946d60920694f85532d734a65da975243bd6b6f6bc624b1`.
+`report_completeness.py` computes these measures without rerunning detection.
+
 On A511 it produced 191 proposals in 7.35 seconds. Context removed the giant
 page-background and major parking false positives, but unit/washroom merges,
 missing spaces and fixture fragments remain. It is also rejected for deployment.

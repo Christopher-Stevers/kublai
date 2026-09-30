@@ -105,10 +105,33 @@ The complete-floor assertion is supplied by a person; it is not independent
 proof that every space was labeled correctly. Audit difficult floors and use
 independent reviewers before treating their scores as a business accuracy claim.
 
+## Measure entire-floor success
+
+Average room F1 can conceal a missed hallway on every drawing. Derive a separate
+whole-floor summary from a frozen evaluation report without rerunning a detector
+or reopening reference images:
+
+```bash
+python scripts/rooms/complete/report_completeness.py \
+  --report /absolute/private/replay-candidate/report.json \
+  --output /absolute/private/replay-candidate/completeness.json
+```
+
+The output records the original report SHA-256 and, at IoU 0.50 and 0.75, the
+fraction of nonempty complete-reference floors with zero missed spaces and the
+fraction with neither misses nor extra proposals. Failed complete-floor runs
+remain in the denominator and cannot count as successes. Partial reviews and
+empty reference floors cannot establish every-room success. Counts must be
+internally consistent. This helper relies on the source report's existing
+ground-truth/provenance checks; it cannot turn a synthetic corpus or incomplete
+annotation into construction-sheet accuracy. It also supports paired model
+reports with a `results` map of candidates.
+
 ## Verification
 
 ```bash
 python -m unittest discover -s scripts/rooms/complete -p test_evaluate_feedback.py -v
+python -m unittest discover -s scripts/rooms/complete -p test_report_completeness.py -v
 ```
 
 Tests cover holes, missing rooms, partial-review safety, merged-proposal rejects,
