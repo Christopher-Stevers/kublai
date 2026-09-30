@@ -279,6 +279,35 @@ Fourteen fabricated integrity tests and an independent completed-evidence audit
 pass; full findings are in
 [the fixed structural ensemble report](ROOM_STRUCTURAL_ENSEMBLE_2026-09-30.md).
 
+## Scale, domain and topology diagnostics
+
+A separate CPU-only measurement inspected the original twenty exposed procedural
+development sheets and the original Swiss eighty-training/twenty-development
+renders. It performed no inference or training, and opened no protected or newly
+reserved development drawings. Native target-barrier diameter proxies have
+medians of four pixels on procedural sheets and ten on Swiss training renders;
+opening-span proxies are 15.30 versus 37.12 pixels. Target definitions also differ,
+so these are raster-support diagnostics rather than physical wall measurements.
+Nonstructural-ink proxies are denser on procedural sheets, and all twenty are
+chromatic versus none of the hundred Swiss renders. This supports a separate
+scale/clutter data experiment; it does not prove which difference causes failures.
+
+Four fabricated checks and an independent metadata/byte-chain audit pass. See
+[the scale/domain diagnostic](ROOM_SCALE_DOMAIN_DIAGNOSTIC_2026-09-30.md) for
+coverage, formulas and limitations. Its private report SHA256 is
+`dacca3a4d6fc154bf04d5af34a43892344035e2ff51ee0aad76a3a93be85058e`.
+
+A read-only A511 vector-graph probe also demonstrates why exporting every legacy
+graph face is inadequate. It retains 19,886 strokes, produces 1,812 faces and
+1,596 candidate spaces, including 756 not marked outside. These are graph
+partitions, not physical-room counts; fixture and annotation enclosures remain.
+Ten of thirteen corridor-like faces are marked outside by current heuristics.
+The probe finished in 3.87 seconds at about 1,394 MiB RSS and made no application
+or review changes. The private count report SHA256 is
+`5902f0c4f994ec41ccbf0cbcd0979048ba9933c4e1973e20f2845506d443b43b`.
+Geometry-aware wall/jamb/door topology remains a possible complementary research
+direction, with no claim that this graph is ready for production.
+
 ## Application verification
 
 The production build, TypeScript checks, 258 tests across 50 files and lint with
@@ -310,6 +339,27 @@ Future promotion must measure corridor/small-space recall, false proposals per
 sheet, the fraction of floors with zero missed spaces, boundary IoU, review time,
 latency and failures. Acceptance should require improvement on real sheets
 without losing previously correct rooms or raising the review burden.
+
+The [verified review adaptation tool](../scripts/rooms/adaptation/README.md)
+now warm-starts the fixed completed long48 checkpoint rather than random weights.
+It regenerates approved geometry supervision from copied immutable review
+evidence, requires separate reviewed training/validation jobs and retains the
+original synthetic replay. Rejected and unchecked areas are unknown; reviewed
+opening supervision is also unknown. Twelve fixed epochs use equal expected
+sampling mass for reviews and replay, selecting by reviewed masked loss only.
+Exact PDFs/images are split-isolated, but exports lack physical-building aliases.
+Source-PDF/preview association relies on recorded provenance rather than a
+cryptographic renderer receipt. Neither partial loss nor its split policy proves
+independent every-room accuracy.
+
+An independent source/completion audit and twenty-two fabricated tests pass,
+including rehashed-label/protected-PDF/alternate-preview rejection, complete
+run-lineage checks, late byte mutation and checkpoint overwrite protection.
+There has been **no actual customer-review adaptation** and no child checkpoint.
+The latest live aggregate check found zero saved review events and zero explicitly
+complete floors. Taps already preserve approvals and guide review priority;
+wall-model adaptation remains an explicit offline operation requiring suitable
+reviewed data and subsequent complete-room evaluation.
 
 ## Release
 
