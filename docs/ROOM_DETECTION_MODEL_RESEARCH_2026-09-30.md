@@ -18,6 +18,20 @@ The immediate blocker to a defensible “every room” claim is complete referen
 
 The existing vector extractor already retains stroke width, dash, fill, layer and door-arc evidence. Rendering without glyphs still retains vectorized text, furniture, hatch boundaries and sheet frames. More aggressive global gap closing trades missed enclosures for invented divisions; using those vector features as model inputs and repair constraints is more promising than another unrestricted closing pass.
 
+## Better opening supervision
+
+The already downloaded [ResPlan release](https://github.com/m-agour/ResPlan)
+contains wall, door and window geometry as well as rooms. Its derived geometry
+is CC BY 4.0 under the authors' stated [license scope](https://github.com/m-agour/ResPlan/blob/main/LICENSE).
+This is a useful next training-data candidate for actual doorway locations,
+instead of relying exclusively on random gaps in MSD room boundaries. It does
+not contain original drawing images or furniture, and its wall thickness is
+normalized. It therefore cannot resolve the construction-sheet domain gap by
+itself. Exclude all existing ResPlan benchmark IDs, their augmentation originals
+and near-duplicate geometry clusters before any training/rendering; canonical
+train/test IDs alone do not prevent duplicate leakage. This extension is a
+research recommendation, not an executed training result or production change.
+
 ## Candidate inspection
 
 | Candidate | Feasibility and evidence | Use here |
