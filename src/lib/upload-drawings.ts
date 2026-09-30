@@ -6,6 +6,7 @@ type UploadReply = {
   status?: string;
   floors?: UploadedSheet[];
   error?: string;
+  restartRequired?: boolean;
 };
 const CHUNK_BYTES = 5 * 1024 * 1024;
 const MAX_BYTES = 100 * 1024 * 1024;
@@ -97,6 +98,13 @@ export async function uploadDrawings(
       if (!(e instanceof UploadResponseError) || e.status !== 404) throw e;
       uploadId = null;
     }
+  }
+  if (
+    state?.restartRequired ||
+    (state?.status === "error" && (state.received ?? 0) < file.size)
+  ) {
+    uploadId = null;
+    state = undefined;
   }
   if (!uploadId) {
     const started = await request(endpoint, {

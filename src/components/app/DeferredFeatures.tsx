@@ -3,10 +3,13 @@ import {
   lazy,
   Suspense,
   useEffect,
+  useMemo,
   useState,
   type ComponentProps,
   type ComponentType,
 } from "react";
+
+import { FeatureErrorBoundary } from "./FeatureErrorBoundary";
 
 const queued = new Set<() => Promise<unknown>>();
 const features = new Set<() => Promise<unknown>>();
@@ -31,8 +34,9 @@ function feature<P extends object>(
   dialog = false,
 ) {
   features.add(load);
-  const Component = lazy(load);
   return function DeferredFeature(props: P) {
+    const [attempt, setAttempt] = useState(0);
+    const Component = useMemo(() => lazy(load), [attempt]);
     const open = !dialog || !("open" in props) || props.open === true;
     const [opened, setOpened] = useState(open);
     useEffect(() => {
@@ -46,17 +50,19 @@ function feature<P extends object>(
     }, []);
     if (!open && !opened) return null;
     return (
-      <Suspense
-        fallback={
-          open ? (
-            <p role="status" className="p-3 text-sm text-muted-foreground">
-              Loading…
-            </p>
-          ) : null
-        }
-      >
-        <Component {...props} />
-      </Suspense>
+      <FeatureErrorBoundary onRetry={() => setAttempt((value) => value + 1)}>
+        <Suspense
+          fallback={
+            open ? (
+              <p role="status" className="text-muted-foreground p-3 text-sm">
+                Loading…
+              </p>
+            ) : null
+          }
+        >
+          <Component {...props} />
+        </Suspense>
+      </FeatureErrorBoundary>
     );
   };
 }

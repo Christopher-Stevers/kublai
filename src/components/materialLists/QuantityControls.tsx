@@ -4,10 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { MinusIcon, PlusIcon } from "lucide-react";
-import {
-  getMaterialListReplicache,
-  mutateMaterialListAndSync,
-} from "~/lib/replicache-material-list";
+import { saveQuantityDurably } from "~/lib/replicache-material-list";
 import { markUserAction } from "~/lib/performance-marks";
 
 interface QuantityControlsProps {
@@ -30,9 +27,10 @@ export function QuantityControls({
   const [displayedQuantity, setDisplayedQuantity] = useState(quantity);
   const [inputValue, setInputValue] = useState(quantity.toString());
   const displayedQuantityRef = useRef(quantity);
-  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const pendingInputQuantityRef = useRef<number | null>(null);
-  const lastQueuedQuantityRef = useRef<{ quantity: number; at: number } | null>(null);
+  const [saveError, setSaveError] = useState(false);
+  const lastQueuedQuantityRef = useRef<{ quantity: number; at: number } | null>(
+    null,
+  );
 
   useEffect(() => {
     const locallyQueuedQuantity = lastQueuedQuantityRef.current;
@@ -46,7 +44,8 @@ export function QuantityControls({
     }
 
     const localQuantityStillSettling =
-      locallyQueuedQuantity !== null && Date.now() - locallyQueuedQuantity.at < 15_000;
+      locallyQueuedQuantity !== null &&
+      Date.now() - locallyQueuedQuantity.at < 15_000;
 
     if (
       localQuantityStillSettling &&
@@ -69,47 +68,33 @@ export function QuantityControls({
     setInputValue(quantity.toString());
   }, [pendingSync, quantity]);
 
-  useEffect(() => {
-    return () => {
-      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-      pendingInputQuantityRef.current = null;
-    };
-  }, []);
-
   const commitQuantity = (nextQuantity: number) => {
     if (lastQueuedQuantityRef.current?.quantity === nextQuantity) return;
     lastQueuedQuantityRef.current = { quantity: nextQuantity, at: Date.now() };
-    void mutateMaterialListAndSync(getMaterialListReplicache().mutate.updateItemQuantity({
+    // Persist locally before any debounce or navigation; only network work waits.
+    void saveQuantityDurably({
       materialListId,
       itemId,
       quantity: nextQuantity,
-    }));
-  };
-
-  const scheduleInputQuantityChange = (nextQuantity: number) => {
-    pendingInputQuantityRef.current = nextQuantity;
-    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    saveTimerRef.current = setTimeout(() => {
-      const q = pendingInputQuantityRef.current;
-      pendingInputQuantityRef.current = null;
-      saveTimerRef.current = null;
-      if (q !== null) commitQuantity(q);
-    }, 650);
-  };
-
-  const flushInputQuantityChange = () => {
-    if (saveTimerRef.current) {
-      clearTimeout(saveTimerRef.current);
-      saveTimerRef.current = null;
-    }
-    const q = pendingInputQuantityRef.current;
-    pendingInputQuantityRef.current = null;
-    if (q !== null) commitQuantity(q);
+    })
+      .then(() => {
+        if (lastQueuedQuantityRef.current?.quantity === nextQuantity) setSaveError(false);
+      })
+      .catch(() => {
+        if (lastQueuedQuantityRef.current?.quantity === nextQuantity) {
+          lastQueuedQuantityRef.current = null;
+          setSaveError(true);
+        }
+      });
   };
 
   const setQuantityImmediately = (nextQuantity: number) => {
     if (nextQuantity < 1) return;
-    markUserAction("quantity-change", { itemId, materialListId, quantity: nextQuantity });
+    markUserAction("quantity-change", {
+      itemId,
+      materialListId,
+      quantity: nextQuantity,
+    });
     displayedQuantityRef.current = nextQuantity;
     setDisplayedQuantity(nextQuantity);
     setInputValue(nextQuantity.toString());
@@ -125,7 +110,7 @@ export function QuantityControls({
     displayedQuantityRef.current = parsedQuantity;
     setDisplayedQuantity(parsedQuantity);
     setInputValue(parsedQuantity.toString());
-    flushInputQuantityChange();
+    commitQuantity(parsedQuantity);
   };
 
   const handleInputChange = (value: string) => {
@@ -135,18 +120,26 @@ export function QuantityControls({
     if (Number.isFinite(parsedQuantity) && parsedQuantity >= 1) {
       displayedQuantityRef.current = parsedQuantity;
       setDisplayedQuantity(parsedQuantity);
-      scheduleInputQuantityChange(parsedQuantity);
+      commitQuantity(parsedQuantity);
     }
   };
 
-  const buttonClassName = compact ? "h-8 w-8 shrink-0 p-0" : "h-10 w-10 p-0 sm:h-11 sm:w-11";
+  const buttonClassName = compact
+    ? "h-8 w-8 shrink-0 p-0"
+    : "h-10 w-10 p-0 sm:h-11 sm:w-11";
   const inputClassName = compact
     ? "h-8 min-w-0 flex-1 [appearance:textfield] px-1 text-center text-sm font-medium [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
     : "h-10 w-12 [appearance:textfield] px-1 text-center font-medium sm:h-11 sm:w-14 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none";
 
   if (orientation === "vertical") {
     return (
-      <div className={compact ? "flex w-full flex-col items-center justify-center gap-1" : "flex flex-col items-center justify-center gap-1"}>
+      <div
+        className={
+          compact
+            ? "flex w-full flex-col items-center justify-center gap-1"
+            : "flex flex-col items-center justify-center gap-1"
+        }
+      >
         <Button
           variant="outline"
           size="sm"
@@ -168,6 +161,12 @@ export function QuantityControls({
           }}
           className={inputClassName}
           aria-label="Quantity"
+          aria-invalid={saveError}
+          title={
+            saveError
+              ? "Quantity could not be saved. Press Enter to retry."
+              : undefined
+          }
         />
         <Button
           variant="outline"
@@ -179,12 +178,19 @@ export function QuantityControls({
         >
           <MinusIcon className="h-4 w-4" />
         </Button>
+        {saveError ? <Button variant="outline" size="sm" aria-label="Retry quantity save" onClick={() => commitQuantity(displayedQuantityRef.current)}>Retry</Button> : null}
       </div>
     );
   }
 
   return (
-    <div className={compact ? "flex w-full items-center justify-center gap-1" : "flex items-center justify-center gap-1"}>
+    <div
+      className={
+        compact
+          ? "flex w-full items-center justify-center gap-1"
+          : "flex items-center justify-center gap-1"
+      }
+    >
       <Button
         variant="outline"
         size="sm"
@@ -207,6 +213,12 @@ export function QuantityControls({
         }}
         className={inputClassName}
         aria-label="Quantity"
+        aria-invalid={saveError}
+        title={
+          saveError
+            ? "Quantity could not be saved. Press Enter to retry."
+            : undefined
+        }
       />
       <Button
         variant="outline"
@@ -217,6 +229,7 @@ export function QuantityControls({
       >
         <PlusIcon className="h-4 w-4" />
       </Button>
+      {saveError ? <Button variant="outline" size="sm" aria-label="Retry quantity save" onClick={() => commitQuantity(displayedQuantityRef.current)}>Retry</Button> : null}
     </div>
   );
 }

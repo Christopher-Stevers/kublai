@@ -2,7 +2,7 @@
  * Creates a temporary organization, exercises real sync transactions, then removes it.
  */
 import assert from "node:assert/strict";
-import { writeFile } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
 import { eq } from "drizzle-orm";
 import type { PullRequestV1, PullResponseV1, PushRequestV1 } from "replicache";
 import { db } from "../src/server/db";
@@ -288,6 +288,7 @@ try {
       (op) => op.op === "del" && op.key === `cataloguePart/${part}`,
     ),
   );
+  await mkdir(".tmp/performance-implementation", { recursive: true });
   await writeFile(
     ".tmp/performance-implementation/sync-integration.json",
     JSON.stringify({ passed: true, report }, null, 2),

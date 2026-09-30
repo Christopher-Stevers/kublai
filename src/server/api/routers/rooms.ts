@@ -466,22 +466,24 @@ export const roomsRouter = createTRPCRouter({
         });
       }
 
-      if (!(await beginDetectJob(floor.id, organizationId))) {
+      const runId = await beginDetectJob(floor.id, organizationId);
+      if (!runId) {
         throw new TRPCError({
           code: "CONFLICT",
-          message: "Room detection is already running on this floor",
+          message:
+            "Room detection is already running, or both processing slots are busy. Retry shortly",
         });
       }
 
       console.log("[rooms.detectRooms] started", floor.id, input.method);
       try {
-        await startDetectWorker(floor.id, input.method);
+        await startDetectWorker(floor.id, input.method, runId);
       } catch (error) {
         const message =
           error instanceof Error
             ? error.message
             : "Room detection worker failed to start";
-        await failDetectJob(floor.id, message);
+        await failDetectJob(floor.id, message, runId);
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message });
       }
 

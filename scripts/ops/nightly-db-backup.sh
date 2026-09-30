@@ -6,6 +6,7 @@
 #      stays a warm standby (at most one day old). Skipped if the new dump
 #      looks wrong (far fewer parts/jobs than Ubicloud already holds).
 set -euo pipefail
+REPO_ROOT="$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)"
 
 PG_BIN="$HOME/.local/pgsql-18/bin"
 BACKUP_DIR="$HOME/.local/share/foremenhq-db-backups"
@@ -21,7 +22,9 @@ mkdir -p "$BACKUP_DIR"
 "$PG_BIN/pg_dump" "$LOCAL_URL" -Fc --no-owner --no-privileges -f "$DUMP"
 echo "local dump: $DUMP ($(stat -c %s "$DUMP") bytes)"
 
-# Keep the newest 14 nightly dumps; cutover/rehearsal dumps are left alone.
+# Save database, drawings and photos as a recoverable, versioned off-site snapshot.
+node "$REPO_ROOT/scripts/ops/backup-snapshot.mjs" snapshot "$DUMP"
+# Only prune successful historical dumps after snapshot publication.
 ls -1t "$BACKUP_DIR"/nightly-*.dump 2>/dev/null | tail -n +15 | xargs -r rm --
 
 # Sanity check before overwriting the off-site copy.
@@ -33,5 +36,5 @@ if (( local_rows * 2 < remote_rows )); then
   exit 1
 fi
 
-"$PG_BIN/pg_restore" -d "$REMOTE_URL" --clean --if-exists --no-owner --no-privileges "$DUMP"
+"$PG_BIN/pg_restore" -d "$REMOTE_URL" --clean --if-exists --single-transaction --exit-on-error --no-owner --no-privileges "$DUMP"
 echo "off-site copy refreshed on Ubicloud"

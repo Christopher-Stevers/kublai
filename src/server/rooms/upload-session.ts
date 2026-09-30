@@ -1,14 +1,22 @@
 import { randomUUID } from "node:crypto";
 import {
   mkdir,
+  link,
   open,
   readFile,
   rename,
   unlink,
   writeFile,
   readdir,
+  stat,
+  rm,
 } from "node:fs/promises";
 import path from "node:path";
+import {
+  processIdentity,
+  sameProcess,
+  type ProcessIdentity,
+} from "./process-identity";
 
 export const UPLOAD_BYTES = 100 * 1024 * 1024;
 export const CHUNK_BYTES = 5 * 1024 * 1024;
@@ -35,6 +43,7 @@ export type UploadSession = {
   createdAt: number;
   status: "receiving" | "processing" | "ready" | "error";
   startedAt?: number;
+  restartRequired?: boolean;
   error?: string;
   floors?: UploadSheet[];
 };
@@ -64,26 +73,133 @@ export async function readSession(id: string): Promise<UploadSession> {
 export async function saveSession(s: UploadSession) {
   const dest = path.join(sessionDir(s.id), "state.json");
   const tmp = `${dest}.${randomUUID()}.tmp`;
-  await writeFile(tmp, JSON.stringify(s));
+  const handle = await open(tmp, "wx", 0o600);
+  try { await handle.writeFile(JSON.stringify(s)); await handle.sync(); }
+  finally { await handle.close(); }
   await rename(tmp, dest);
+  const dir = await open(sessionDir(s.id), "r");
+  try { await dir.sync(); } finally { await dir.close(); }
+}
+type Lease = { token: string; owner: ProcessIdentity; sessionId?: string };
+async function readLease(filename: string): Promise<Lease | null> {
+  try {
+    return JSON.parse(await readFile(filename, "utf8")) as Lease;
+  } catch {
+    return null;
+  }
+}
+async function publishLease(filename: string, lease: Lease) {
+  const tmp = `${filename}.${randomUUID()}.tmp`;
+  const handle = await open(tmp, "wx", 0o600);
+  try {
+    await handle.writeFile(JSON.stringify(lease));
+    await handle.sync();
+    await link(tmp, filename); // Atomic exclusive publication; no empty-lock window.
+  } finally {
+    await handle.close();
+    await unlink(tmp).catch(() => undefined);
+  }
+}
+async function acquireLease(filename: string, sessionId?: string) {
+  const owner = await processIdentity();
+  if (!owner) throw new Error("Cannot identify upload lock owner");
+  const lease: Lease = {
+    token: randomUUID(),
+    owner,
+    ...(sessionId ? { sessionId } : {}),
+  };
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      await publishLease(filename, lease);
+      return lease;
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+    }
+    const prior = await readLease(filename);
+    const info = await stat(filename).catch(() => null);
+    const bootTime =
+      Number(
+        /^btime (\d+)$/m.exec(await readFile("/proc/stat", "utf8"))?.[1] ??
+          0,
+      ) * 1000;
+    const dead = prior?.owner
+      ? !(await sameProcess(prior.owner))
+      : !!info &&
+        (info.mtimeMs < bootTime || Date.now() - info.mtimeMs > UPLOAD_TTL);
+    if (
+      !dead ||
+      (filename.endsWith("worker.lock") &&
+        (await rendererExists(prior?.sessionId)))
+    )
+      throw new UploadError("Upload busy; retry shortly", 409);
+    const guardName = `${filename}.recovery`;
+    try {
+      await publishLease(guardName, lease);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+      const guard = await readLease(guardName);
+      if (!guard?.owner || (await sameProcess(guard.owner)))
+        throw new UploadError("Upload recovery busy; retry shortly", 409);
+      await releaseLease(guardName, guard.token);
+      try {
+        await publishLease(guardName, lease);
+      } catch {
+        throw new UploadError("Upload recovery busy; retry shortly", 409);
+      }
+    }
+    try {
+      const current = await stat(filename).catch(() => null);
+      if (
+        current &&
+        current.ino === info?.ino &&
+        current.mtimeMs === info.mtimeMs
+      )
+        await unlink(filename);
+    } finally {
+      await releaseLease(guardName, lease.token);
+    }
+  }
+  throw new UploadError("Upload busy; retry shortly", 409);
+}
+// A detached launcher may outlive its HTTP parent. Inspect cgroup membership as
+// well as process identity before reclaiming a worker reservation.
+async function rendererExists(sessionId?: string) {
+  const ids = sessionId
+    ? [sessionId]
+    : (await readdir(uploadRoot())).filter((id) => UUID.test(id));
+  for (const id of ids) {
+    for (const pid of await readdir("/proc")) {
+      if (!/^\d+$/.test(pid)) continue;
+      const group = await readFile(`/proc/${pid}/cgroup`, "utf8").catch(
+        () => "",
+      );
+      if (group.includes(`foremenhq-upload-${id}`)) return true;
+      const command = await readFile(`/proc/${pid}/cmdline`, "utf8").catch(
+        () => "",
+      );
+      if (
+        (command.includes("run-upload-worker.sh") ||
+          command.includes("upload-worker.ts")) &&
+        command.split("\0").includes(id)
+      )
+        return true;
+    }
+  }
+  return false;
+}
+async function releaseLease(filename: string, token: string) {
+  if ((await readLease(filename))?.token === token)
+    await unlink(filename).catch(() => undefined);
 }
 export async function withLock<T>(
   filename: string,
   fn: () => Promise<T>,
 ): Promise<T> {
-  let handle;
-  try {
-    handle = await open(filename, "wx");
-  } catch (e) {
-    if ((e as NodeJS.ErrnoException).code === "EEXIST")
-      throw new UploadError("Upload busy; retry shortly", 409);
-    throw e;
-  }
+  const lease = await acquireLease(filename);
   try {
     return await fn();
   } finally {
-    await handle.close();
-    await unlink(filename);
+    await releaseLease(filename, lease.token);
   }
 }
 export async function boundedBody(
@@ -148,9 +264,31 @@ export async function createUpload(
     for (const id of await readdir(uploadRoot())) {
       if (!UUID.test(id)) continue;
       const s = await readSession(id).catch(() => null);
-      if (s && s.status === "receiving") active.push(s);
+      if (s && s.status === "receiving") {
+        if (Date.now() - s.createdAt >= UPLOAD_TTL) {
+          await withLock(path.join(sessionDir(id), "chunk.lock"), async () => {
+            const latest = await readSession(id);
+            if (
+              latest.status === "receiving" &&
+              Date.now() - latest.createdAt >= UPLOAD_TTL
+            ) {
+              await saveSession({
+                ...latest,
+                status: "error",
+                error: "Upload expired; select the file again",
+              });
+              await rm(path.join(sessionDir(id), "upload.pdf"), {
+                force: true,
+              });
+            }
+          }).catch((error) => {
+            if (!(error instanceof UploadError)) throw error;
+            active.push(s);
+          });
+        } else active.push(s);
+      }
     }
-    // Expired reservations stay counted until operator cleanup, rather than permitting unbounded disk use.
+
     const prior = active.find((s) => s.userId === owner.userId);
     if (
       prior &&
@@ -242,24 +380,62 @@ export async function appendChunk(
 }
 export async function releaseWorker(id: string) {
   const lock = path.join(uploadRoot(), "worker.lock");
-  if ((await readFile(lock, "utf8").catch(() => "")) === id)
+  const lease = await readLease(lock);
+  if (lease?.sessionId === id) await releaseLease(lock, lease.token);
+  else if ((await readFile(lock, "utf8").catch(() => "")) === id)
     await unlink(lock).catch(() => undefined);
 }
-export async function reserveWorker(id: string = randomUUID()) {
+export async function handoffWorker(id: string, pid: number) {
   const lock = path.join(uploadRoot(), "worker.lock");
-  try {
-    const handle = await open(lock, "wx");
-    try {
-      await handle.writeFile(id);
-    } finally {
-      await handle.close();
-    }
-  } catch (e) {
-    if ((e as NodeJS.ErrnoException).code === "EEXIST")
-      throw new UploadError("Another PDF is processing; retry shortly", 429);
-    throw e;
+  const lease = await readLease(lock);
+  const owner = await processIdentity(pid);
+  if (lease?.sessionId === id && owner) {
+    const tmp = `${lock}.${lease.token}.tmp`;
+    await writeFile(tmp, JSON.stringify({ ...lease, owner }));
+    await rename(tmp, lock);
   }
-  // No age-only lock stealing: a restarted HTTP process must not launch a
-  // second native renderer while the first transient service remains alive.
+}
+export async function workerIsAlive(id: string) {
+  const lease = await readLease(path.join(uploadRoot(), "worker.lock"));
+  return (
+    (lease?.sessionId === id && (await sameProcess(lease.owner))) ||
+    (await rendererExists(id))
+  );
+}
+export async function recoverProcessingSession(id: string) {
+  return withLock(path.join(sessionDir(id), "chunk.lock"), async () => {
+    const session = await readSession(id);
+    if (
+      session.status === "receiving" &&
+      Date.now() - session.createdAt >= UPLOAD_TTL
+    ) {
+      session.status = "error";
+      session.restartRequired = true;
+      session.error = "Upload expired; select the file again";
+      await saveSession(session);
+      await rm(path.join(sessionDir(id), "upload.pdf"), { force: true });
+    }
+    if (
+      session.status === "processing" &&
+      !(await workerIsAlive(id)) &&
+      Date.now() - (session.startedAt ?? session.createdAt) > 15_000
+    ) {
+      session.status = "error";
+      session.error =
+        "PDF processing stopped. Retry processing to use the saved upload";
+      await saveSession(session);
+      await releaseWorker(id);
+    }
+    return session;
+  });
+}
+export async function reserveWorker(id: string = randomUUID()) {
+  try {
+    await acquireLease(path.join(uploadRoot(), "worker.lock"), id);
+  } catch (error) {
+    if (error instanceof UploadError)
+      throw new UploadError("Another PDF is processing; retry shortly", 429);
+    throw error;
+  }
   return async () => releaseWorker(id);
 }

@@ -38,7 +38,7 @@ import {
   useReplicacheSyncing,
   type ReplicacheSyncStatus,
 } from "~/hooks/use-replicache-material-list";
-import { useReplicacheJobDetail } from "~/hooks/use-replicache-jobs";
+import { useReplicacheJob } from "~/hooks/use-replicache-jobs";
 import { useReplicacheSuppliers } from "~/hooks/use-replicache-suppliers";
 import { useOnlineStatus } from "~/hooks/use-online-status";
 import { markUserAction } from "~/lib/performance-marks";
@@ -105,8 +105,8 @@ export default function MaterialListDetailPage({
     );
   const suppliers = useReplicacheSuppliers();
   const { sortedItems: items } = useMaterialListSort(unsortedItems, suppliers);
-  const jobDetail = useReplicacheJobDetail(mlHeader?.jobId ?? "");
-  const jobName = jobDetail?.job.name;
+  const jobDetail = useReplicacheJob(mlHeader?.jobId ?? "");
+  const jobName = jobDetail?.name;
   // Tool request lists reuse this screen; they send to the tool room.
   const isToolRequest = mlHeader?.kind === "tools";
 
@@ -535,7 +535,7 @@ export default function MaterialListDetailPage({
         onOpenChange={setShowJobInfoModal}
         materialListId={id}
         initialName={jobName ?? null}
-        initialLocationId={jobDetail?.job.locationId ?? undefined}
+        initialLocationId={jobDetail?.locationId ?? undefined}
       />
 
       {showQuoteSheet && (

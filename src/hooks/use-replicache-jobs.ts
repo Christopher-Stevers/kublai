@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { tryGetMaterialListReplicache } from "~/lib/replicache-material-list";
 import { createSharedReplicacheReader } from "~/hooks/use-shared-replicache";
 import type {
@@ -166,7 +167,9 @@ export function indexWorkspaceRecords(
     // Most recent change to the job or any of its material lists.
     const lastActivityAt = materialLists.reduce(
       (latest, list) =>
-        Date.parse(list.updatedAt) > Date.parse(latest) ? list.updatedAt : latest,
+        Date.parse(list.updatedAt) > Date.parse(latest)
+          ? list.updatedAt
+          : latest,
       job.createdAt,
     );
     result.jobs.push({
@@ -180,21 +183,68 @@ export function indexWorkspaceRecords(
   return result;
 }
 
-const useWorkspace = createSharedReplicacheReader(async (tx) => {
-  const [jobs, lists, items] = await Promise.all([
+// Dashboard job summaries need no item scan. A quantity edit therefore does not
+// rebuild every list just because the dashboard remains mounted underneath it.
+const useJobs = createSharedReplicacheReader(async (tx) => {
+  const [jobs, lists] = await Promise.all([
     tx.scan({ prefix: "job/" }).values().toArray(),
     tx.scan({ prefix: "materialList/" }).values().toArray(),
-    tx.scan({ prefix: "materialListItem/" }).values().toArray(),
   ]);
-  return indexWorkspaceRecords(jobs, lists, items);
-}, EMPTY_INDEX);
+  return indexWorkspaceRecords(jobs, lists, []).jobs;
+}, EMPTY_INDEX.jobs);
 
-export function useReplicacheWorkspace() {
-  return useWorkspace(tryGetMaterialListReplicache());
-}
 export function useReplicacheJobsList() {
-  return useReplicacheWorkspace().jobs;
+  return useJobs(tryGetMaterialListReplicache());
 }
 export function useReplicacheJobDetail(jobId: string) {
-  return useReplicacheWorkspace().details[jobId] ?? null;
+  const useReader = useMemo(
+    () =>
+      createSharedReplicacheReader(
+        async (tx) => {
+          const [job, lists] = await Promise.all([
+            tx.get(`job/${jobId}`) as unknown as Promise<
+              ReplicacheJob | undefined
+            >,
+            tx
+              .scan({ indexName: "listsByJob", prefix: jobId })
+              .values()
+              .toArray() as unknown as Promise<ReplicacheMaterialListSummary[]>,
+          ]);
+          if (!job) return null;
+          const groups = await Promise.all(
+            lists.map(async (list) => {
+              const byList = (await tx
+                .scan({ indexName: "itemsByList", prefix: list.id })
+                .values()
+                .toArray()) as unknown as ReplicacheMaterialListItem[];
+              const byQuote = list.quoteId
+                ? ((await tx
+                    .scan({ indexName: "itemsByQuote", prefix: list.quoteId })
+                    .values()
+                    .toArray()) as unknown as ReplicacheMaterialListItem[])
+                : [];
+              return [
+                ...byList,
+                ...byQuote.filter((item) => !item.materialListId),
+              ];
+            }),
+          );
+          return (
+            indexWorkspaceRecords([job], lists, groups.flat()).details[jobId] ??
+            null
+          );
+        },
+        null as WorkspaceIndex["details"][string] | null,
+      ),
+    [jobId],
+  );
+  return useReader(tryGetMaterialListReplicache());
+}
+
+/** Header fields do not depend on every material line in the job. */
+export function useReplicacheJob(jobId: string) {
+  const useReader = useMemo(() => createSharedReplicacheReader(async tx =>
+    (await tx.get(`job/${jobId}`) ?? null) as unknown as ReplicacheJob | null,
+    null as ReplicacheJob | null), [jobId]);
+  return useReader(tryGetMaterialListReplicache());
 }

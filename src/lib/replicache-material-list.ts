@@ -1,3 +1,4 @@
+import { QuantityJournal, type QuantityIntent } from "./quantity-journal";
 import { Replicache, dropDatabase, type WriteTransaction } from "replicache";
 import type { ReadonlyJSONValue } from "replicache";
 
@@ -222,6 +223,23 @@ export function getMaterialListReplicache() {
   const replicache = new Replicache<MaterialListReplicacheMutators>({
     name: "foremenhq-material-lists",
     schemaVersion: MATERIAL_LIST_REPLICACHE_SCHEMA_VERSION,
+    indexes: {
+      itemsByList: {
+        prefix: "materialListItem/",
+        jsonPointer: "/materialListId",
+        allowEmpty: true,
+      },
+      itemsByQuote: {
+        prefix: "materialListItem/",
+        jsonPointer: "/quoteId",
+        allowEmpty: true,
+      },
+      listsByJob: {
+        prefix: "materialList/",
+        jsonPointer: "/jobId",
+        allowEmpty: true,
+      },
+    },
     pullURL: "/api/replicache/material-lists/pull",
     pushURL: "/api/replicache/material-lists/push",
     // SSE pokes, online/visibility handlers, and user mutations request immediate
@@ -590,6 +608,8 @@ export async function mutateMaterialListAndSync<T>(mutation: Promise<T>) {
 }
 
 export async function closeMaterialListReplicache() {
+  quantityJournal?.close();
+  quantityJournal = null;
   if (materialListReplicacheSyncTimer) {
     clearTimeout(materialListReplicacheSyncTimer);
     materialListReplicacheSyncTimer = null;
@@ -609,4 +629,41 @@ export async function closeMaterialListReplicache() {
   } finally {
     materialListReplicacheClosing = false;
   }
+}
+
+let quantityJournal: QuantityJournal | null = null;
+export function initializeQuantityJournal(
+  userId: string,
+  organizationId: string,
+) {
+  quantityJournal?.close();
+  quantityJournal = null;
+  const rep = getMaterialListReplicache();
+  quantityJournal = new QuantityJournal(
+    `${organizationId}:${userId}`,
+    window.localStorage,
+    {
+      apply: (intent) => rep.mutate.updateItemQuantity(intent),
+      observe: (itemId, onData) =>
+        rep.subscribe((tx) => tx.get(`materialListItem/${itemId}`), {
+          onData: (value) =>
+            onData(
+              value as unknown as
+                | { quantity?: string; pendingSync?: boolean }
+                | undefined,
+            ),
+          onError: (error) =>
+            console.error("Quantity recovery subscription failed", error),
+        }),
+      sync: () => requestMaterialListReplicacheSync(250, "push-pull"),
+    },
+  );
+  quantityJournal.recover();
+}
+export async function saveQuantityDurably(
+  input: Omit<QuantityIntent, "token">,
+) {
+  if (!quantityJournal)
+    throw new Error("Offline quantity storage is not ready");
+  await quantityJournal.save(input);
 }

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile, utimes } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import {
@@ -13,6 +13,11 @@ import {
   reserveWorker,
   sessionDir,
   UPLOAD_BYTES,
+  UPLOAD_TTL,
+  saveSession,
+  recoverProcessingSession,
+  withLock,
+  uploadRoot,
 } from "./upload-session";
 import { readUploadResponse } from "../../lib/upload-drawings";
 
@@ -130,6 +135,63 @@ test("bounded resumable upload protocol (isolated temporary disk, no database)",
       const second = await reserveWorker();
       await second();
     });
+    await t.test(
+      "expired uploads free reservations and discard abandoned bytes",
+      async () => {
+        const expired = await createUpload(
+          { jobId, filename: "expired.pdf", size: 10 },
+          { ...owner, userId: "expired-user" },
+        );
+        await saveSession({
+          ...expired,
+          createdAt: Date.now() - UPLOAD_TTL - 1,
+        });
+        const replacement = await createUpload(
+          { jobId, filename: "new.pdf", size: 10 },
+          { ...owner, userId: "expired-user" },
+        );
+        assert.notEqual(replacement.id, expired.id);
+        assert.equal((await readSession(expired.id)).status, "error");
+        await assert.rejects(
+          readFile(path.join(sessionDir(expired.id), "upload.pdf")),
+          { code: "ENOENT" },
+        );
+      },
+    );
+    await t.test(
+      "orphan legacy locks recover, live owner locks remain exclusive",
+      async () => {
+        const lock = path.join(uploadRoot(), "orphan.lock");
+        await writeFile(lock, "");
+        const old = new Date(Date.now() - UPLOAD_TTL - 1000);
+        await utimes(lock, old, old);
+        await withLock(lock, async () => {
+          await assert.rejects(
+            withLock(lock, async () => {
+              await Promise.resolve();
+            }),
+            /busy/,
+          );
+        });
+        await withLock(lock, async () => {
+          await Promise.resolve();
+        });
+      },
+    );
+    await t.test(
+      "stopped worker state is persisted and can reserve a retry",
+      async () => {
+        await saveSession({
+          ...s,
+          status: "processing",
+          startedAt: Date.now() - 20000,
+        });
+        assert.equal((await recoverProcessingSession(s.id)).status, "error");
+        assert.equal((await readSession(s.id)).status, "error");
+        const release = await reserveWorker(s.id);
+        await release();
+      },
+    );
     await t.test(
       "empty 500, HTML 524 and malformed success never leak JSON parser errors",
       async () => {

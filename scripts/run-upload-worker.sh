@@ -15,6 +15,11 @@ case "$worker_seconds" in
 esac
 
 repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+node_binary=${FOREMANHQ_NODE_BINARY:-$(command -v node || true)}
+if [ -z "$node_binary" ] || [ ! -x "$node_binary" ]; then
+  echo "Node runtime unavailable" >&2
+  exit 70
+fi
 export NODE_ENV=production
 export UV_THREADPOOL_SIZE=2
 export DOTENV_CONFIG_PATH="$repo_root/.env"
@@ -54,7 +59,7 @@ trap cleanup EXIT HUP INT TERM
   cd "$repo_root"
   exec /usr/bin/timeout --signal=KILL "$worker_seconds" \
     /usr/bin/nice -n 10 \
-    /usr/bin/node --max-old-space-size=512 --expose-gc \
+    "$node_binary" --max-old-space-size=512 --expose-gc \
     --import dotenv/config \
     --import tsx \
     "$repo_root/src/server/rooms/upload-worker.ts" \

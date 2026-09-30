@@ -18,44 +18,52 @@ interface OfflineSupplierPartsEnvelope {
 
 const STORAGE_KEY = "foremanhq.offline.supplier-parts-by-part";
 
-export function getOfflineSupplierPartsByPart(partDefinitionId: string) {
-  if (typeof window === "undefined") return null;
-
-  const raw = window.localStorage.getItem(STORAGE_KEY);
-  if (!raw) return null;
-
-  try {
-    const envelope = JSON.parse(raw) as OfflineSupplierPartsEnvelope;
-    return envelope.data[partDefinitionId] ?? null;
-  } catch {
-    return null;
+let cachedData: OfflineSupplierPartsEnvelope["data"] | undefined;
+let listening = false;
+function readData() {
+  if (typeof window === "undefined") return {};
+  if (!listening) {
+    window.addEventListener("storage", (event) => {
+      if (event.key === STORAGE_KEY || event.key === null)
+        cachedData = undefined;
+    });
+    listening = true;
   }
+  if (cachedData) return cachedData;
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    const envelope = raw
+      ? (JSON.parse(raw) as OfflineSupplierPartsEnvelope)
+      : null;
+    cachedData =
+      envelope?.version === 1 &&
+      envelope.data &&
+      typeof envelope.data === "object"
+        ? envelope.data
+        : {};
+  } catch {
+    cachedData = {};
+  }
+  return cachedData;
 }
 
+export function getOfflineSupplierPartsByPart(partDefinitionId: string) {
+  return readData()[partDefinitionId] ?? null;
+}
 export function setOfflineSupplierPartsByPart(
   partDefinitionId: string,
   supplierParts: OfflineSupplierPartOption[],
 ) {
   if (typeof window === "undefined") return;
-
-  let data: Record<string, OfflineSupplierPartOption[]> = {};
-  const raw = window.localStorage.getItem(STORAGE_KEY);
-
-  if (raw) {
-    try {
-      data = (JSON.parse(raw) as OfflineSupplierPartsEnvelope).data ?? {};
-    } catch {
-      data = {};
-    }
-  }
-
+  const data = readData();
   data[partDefinitionId] = supplierParts;
-
-  const envelope: OfflineSupplierPartsEnvelope = {
-    version: 1,
-    updatedAt: new Date().toISOString(),
-    data,
-  };
-
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(envelope));
+  cachedData = data;
+  try {
+    window.localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ version: 1, updatedAt: new Date().toISOString(), data }),
+    );
+  } catch {
+    /* Keep the session cache usable when persistent storage is unavailable. */
+  }
 }

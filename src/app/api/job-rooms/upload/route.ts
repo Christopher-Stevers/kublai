@@ -11,6 +11,8 @@ import { getAgentBypassUser } from "~/server/utils/get-agent-bypass-user";
 import { getDevBypassUser } from "~/server/utils/get-dev-bypass-user";
 import {
   appendChunk,
+  handoffWorker,
+  recoverProcessingSession,
   assertOwner,
   boundedBody,
   CHUNK_BYTES,
@@ -74,7 +76,7 @@ async function startUploadWorker(id: string) {
     [id, String(WORKER_SECONDS)],
     {
       cwd: process.cwd(),
-      env: process.env,
+      env: { ...process.env, FOREMANHQ_NODE_BINARY: process.execPath },
       detached: true,
       stdio: "ignore",
     },
@@ -98,6 +100,7 @@ async function startUploadWorker(id: string) {
     child.once("error", reject);
     child.once("spawn", resolve);
   });
+  if (child.pid) await handoffWorker(id, child.pid);
   child.unref();
 }
 
@@ -144,6 +147,7 @@ export async function POST(request: Request) {
       );
       return NextResponse.json({ uploadId: id, received: next.received });
     }
+    if (action === "retry") await recoverProcessingSession(id);
     return await withLock(path.join(sessionDir(id), "chunk.lock"), async () => {
       const current = await readSession(id);
       const canStart =
@@ -208,18 +212,26 @@ export async function GET(request: Request) {
           ),
         ),
       );
-    const timedOut =
-      s.status === "processing" &&
-      Date.now() - (s.startedAt ?? 0) > (WORKER_SECONDS + 15) * 1000;
+    const current = floors.length
+      ? { ...s, status: "ready" as const, floors }
+      : await recoverProcessingSession(id);
+    if (floors.length && s.status !== "ready") {
+      await withLock(path.join(sessionDir(id), "chunk.lock"), async () => {
+        await saveSession({
+          ...(await readSession(id)),
+          status: "ready",
+          floors,
+        });
+      });
+    }
     return NextResponse.json(
       {
         uploadId: id,
         received: s.received,
-        status: floors.length ? "ready" : timedOut ? "error" : s.status,
+        status: current.status,
         ...(floors.length ? { floors } : {}),
-        error: timedOut
-          ? "PDF processing stopped or timed out. Existing drawings are unchanged; the uploaded source is retained for recovery"
-          : s.error,
+        error: current.error,
+        restartRequired: current.restartRequired,
       },
       { headers: { "Cache-Control": "no-store" } },
     );

@@ -1,0 +1,3098 @@
+[
+  {
+    "file": "src/app/_components/Header.tsx",
+    "rule": "@typescript-eslint/prefer-nullish-coalescing",
+    "message": "Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.",
+    "count": 2
+  },
+  {
+    "file": "src/app/_components/Header.tsx",
+    "rule": "react-hooks/set-state-in-effect",
+    "message": "Error: Calling setState synchronously within an effect can trigger cascading renders",
+    "count": 1
+  },
+  {
+    "file": "src/app/admin/layout.tsx",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .id on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/app/api/catalogue/images/route.ts",
+    "rule": "@typescript-eslint/no-unsafe-argument",
+    "message": "Unsafe argument of type `any` assigned to a parameter of type `PermissionUser`.",
+    "count": 1
+  },
+  {
+    "file": "src/app/api/catalogue/images/route.ts",
+    "rule": "@typescript-eslint/no-unsafe-assignment",
+    "message": "Unsafe assignment of an `any` value.",
+    "count": 2
+  },
+  {
+    "file": "src/app/api/catalogue/images/route.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .organizationId on an `any` value.",
+    "count": 2
+  },
+  {
+    "file": "src/app/api/job-rooms/files/[...path]/route.ts",
+    "rule": "@typescript-eslint/no-unsafe-assignment",
+    "message": "Unsafe assignment of an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/app/api/job-rooms/files/[...path]/route.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .organizationId on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/app/api/job-rooms/files/[...path]/route.ts",
+    "rule": "@typescript-eslint/no-unsafe-return",
+    "message": "Unsafe return of a value of type `Promise<any>`.",
+    "count": 1
+  },
+  {
+    "file": "src/app/api/job-rooms/upload/route.test.ts",
+    "rule": "@typescript-eslint/no-unsafe-argument",
+    "message": "Unsafe argument of type `any` assigned to a parameter of type `string`.",
+    "count": 4
+  },
+  {
+    "file": "src/app/api/job-rooms/upload/route.test.ts",
+    "rule": "@typescript-eslint/no-unsafe-assignment",
+    "message": "Unsafe assignment of an `any` value.",
+    "count": 3
+  },
+  {
+    "file": "src/app/api/job-rooms/upload/route.test.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .error on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/app/api/job-rooms/upload/route.test.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .floors on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/app/api/job-rooms/upload/route.test.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .status on an `any` value.",
+    "count": 3
+  },
+  {
+    "file": "src/app/api/job-rooms/upload/route.ts",
+    "rule": "@typescript-eslint/no-unsafe-argument",
+    "message": "Unsafe argument of type `any` assigned to a parameter of type `PermissionUser`.",
+    "count": 1
+  },
+  {
+    "file": "src/app/api/job-rooms/upload/route.ts",
+    "rule": "@typescript-eslint/no-unsafe-argument",
+    "message": "Unsafe argument of type `any` assigned to a parameter of type `string | SQLWrapper`.",
+    "count": 1
+  },
+  {
+    "file": "src/app/api/job-rooms/upload/route.ts",
+    "rule": "@typescript-eslint/no-unsafe-argument",
+    "message": "Unsafe argument of type `any` assigned to a parameter of type `string`.",
+    "count": 7
+  },
+  {
+    "file": "src/app/api/job-rooms/upload/route.ts",
+    "rule": "@typescript-eslint/no-unsafe-assignment",
+    "message": "Unsafe assignment of an `any` value.",
+    "count": 4
+  },
+  {
+    "file": "src/app/api/job-rooms/upload/route.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .id on an `any` value.",
+    "count": 3
+  },
+  {
+    "file": "src/app/api/job-rooms/upload/route.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .organizationId on an `any` value.",
+    "count": 3
+  },
+  {
+    "file": "src/app/api/material-lists/[id]/events/route.ts",
+    "rule": "@typescript-eslint/no-unsafe-assignment",
+    "message": "Unsafe assignment of an `any` value.",
+    "count": 3
+  },
+  {
+    "file": "src/app/api/material-lists/[id]/events/route.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .id on an `any` value.",
+    "count": 2
+  },
+  {
+    "file": "src/app/api/material-lists/[id]/events/route.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .organizationId on an `any` value.",
+    "count": 2
+  },
+  {
+    "file": "src/app/api/material-lists/events/route.ts",
+    "rule": "@typescript-eslint/no-unsafe-argument",
+    "message": "Unsafe argument of type `any` assigned to a parameter of type `string`.",
+    "count": 3
+  },
+  {
+    "file": "src/app/api/material-lists/events/route.ts",
+    "rule": "@typescript-eslint/no-unsafe-assignment",
+    "message": "Unsafe assignment of an `any` value.",
+    "count": 2
+  },
+  {
+    "file": "src/app/api/material-lists/events/route.ts",
+    "rule": "@typescript-eslint/no-unsafe-assignment",
+    "message": "Unsafe object destructuring of a property with an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/app/api/material-lists/events/route.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .organizationAccessStatus on an `any` value.",
+    "count": 2
+  },
+  {
+    "file": "src/app/api/material-lists/events/route.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .organizationId on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/app/api/replicache/catalogue/pull/route.ts",
+    "rule": "@typescript-eslint/no-unsafe-argument",
+    "message": "Unsafe argument of type `any` assigned to a parameter of type `ReplicacheUser`.",
+    "count": 1
+  },
+  {
+    "file": "src/app/api/replicache/catalogue/pull/route.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .organizationAccessStatus on an `any` value.",
+    "count": 2
+  },
+  {
+    "file": "src/app/api/replicache/catalogue/push/route.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .organizationAccessStatus on an `any` value.",
+    "count": 2
+  },
+  {
+    "file": "src/app/api/replicache/material-lists/pull/route.ts",
+    "rule": "@typescript-eslint/no-unsafe-argument",
+    "message": "Unsafe argument of type `any` assigned to a parameter of type `ReplicacheUser`.",
+    "count": 1
+  },
+  {
+    "file": "src/app/api/replicache/material-lists/pull/route.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .organizationAccessStatus on an `any` value.",
+    "count": 2
+  },
+  {
+    "file": "src/app/api/replicache/material-lists/push/route.ts",
+    "rule": "@typescript-eslint/no-unsafe-argument",
+    "message": "Unsafe argument of type `any` assigned to a parameter of type `ReplicacheUser`.",
+    "count": 1
+  },
+  {
+    "file": "src/app/api/replicache/material-lists/push/route.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .organizationAccessStatus on an `any` value.",
+    "count": 2
+  },
+  {
+    "file": "src/app/api/webhooks/clerk/route.ts",
+    "rule": "@typescript-eslint/no-unsafe-assignment",
+    "message": "Unsafe assignment of an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/app/api/webhooks/clerk/route.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .id on an `any` value.",
+    "count": 2
+  },
+  {
+    "file": "src/app/api/webhooks/stripe/route.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .id on an `any` value.",
+    "count": 4
+  },
+  {
+    "file": "src/app/api/webhooks/stripe/route.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .stripeCustomerId on an `any` value.",
+    "count": 3
+  },
+  {
+    "file": "src/app/beta/route.ts",
+    "rule": "@typescript-eslint/prefer-nullish-coalescing",
+    "message": "Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.",
+    "count": 3
+  },
+  {
+    "file": "src/app/dashboard/DashboardClient.tsx",
+    "rule": "@typescript-eslint/prefer-nullish-coalescing",
+    "message": "Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.",
+    "count": 3
+  },
+  {
+    "file": "src/app/dashboard/account/page.tsx",
+    "rule": "@typescript-eslint/no-unsafe-argument",
+    "message": "Unsafe argument of type `any` assigned to a parameter of type `SetStateAction<string>`.",
+    "count": 1
+  },
+  {
+    "file": "src/app/dashboard/account/page.tsx",
+    "rule": "@typescript-eslint/no-unsafe-argument",
+    "message": "Unsafe argument of type `any` assigned to a parameter of type `string | number | Date`.",
+    "count": 2
+  },
+  {
+    "file": "src/app/dashboard/account/page.tsx",
+    "rule": "react-hooks/set-state-in-effect",
+    "message": "Error: Calling setState synchronously within an effect can trigger cascading renders",
+    "count": 2
+  },
+  {
+    "file": "src/app/dashboard/account/settings/page.tsx",
+    "rule": "react-hooks/set-state-in-effect",
+    "message": "Error: Calling setState synchronously within an effect can trigger cascading renders",
+    "count": 1
+  },
+  {
+    "file": "src/app/dashboard/jobs/[jobId]/material-lists/page.tsx",
+    "rule": "@typescript-eslint/no-unsafe-argument",
+    "message": "Unsafe argument of type `any` assigned to a parameter of type `string | number | Date`.",
+    "count": 1
+  },
+  {
+    "file": "src/app/dashboard/jobs/[jobId]/material-lists/page.tsx",
+    "rule": "@typescript-eslint/no-unsafe-assignment",
+    "message": "Unsafe assignment of an `any` value.",
+    "count": 13
+  },
+  {
+    "file": "src/app/dashboard/jobs/[jobId]/material-lists/page.tsx",
+    "rule": "@typescript-eslint/no-unsafe-return",
+    "message": "Unsafe return of a value of type `any`.",
+    "count": 1
+  },
+  {
+    "file": "src/app/dashboard/jobs/[jobId]/material-lists/page.tsx",
+    "rule": "@typescript-eslint/prefer-nullish-coalescing",
+    "message": "Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.",
+    "count": 2
+  },
+  {
+    "file": "src/app/dashboard/jobs/[jobId]/material-lists/page.tsx",
+    "rule": "@typescript-eslint/prefer-regexp-exec",
+    "message": "Use the `RegExp#exec()` method instead.",
+    "count": 1
+  },
+  {
+    "file": "src/app/dashboard/jobs/[jobId]/page.tsx",
+    "rule": "@typescript-eslint/no-unsafe-assignment",
+    "message": "Unsafe assignment of an `any` value.",
+    "count": 5
+  },
+  {
+    "file": "src/app/dashboard/jobs/[jobId]/page.tsx",
+    "rule": "@typescript-eslint/prefer-regexp-exec",
+    "message": "Use the `RegExp#exec()` method instead.",
+    "count": 1
+  },
+  {
+    "file": "src/app/dashboard/jobs/[jobId]/rooms/page.tsx",
+    "rule": "@typescript-eslint/no-unsafe-assignment",
+    "message": "Unsafe assignment of an `any` value.",
+    "count": 5
+  },
+  {
+    "file": "src/app/dashboard/jobs/[jobId]/rooms/page.tsx",
+    "rule": "@typescript-eslint/prefer-regexp-exec",
+    "message": "Use the `RegExp#exec()` method instead.",
+    "count": 1
+  },
+  {
+    "file": "src/app/dashboard/layout.tsx",
+    "rule": "@typescript-eslint/no-unsafe-assignment",
+    "message": "Unsafe assignment of an `any` value.",
+    "count": 3
+  },
+  {
+    "file": "src/app/dashboard/layout.tsx",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .organizationAccessStatus on an `any` value.",
+    "count": 2
+  },
+  {
+    "file": "src/app/dashboard/layout.tsx",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .organizationId on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/app/dashboard/layout.tsx",
+    "rule": "@typescript-eslint/prefer-nullish-coalescing",
+    "message": "Prefer using nullish coalescing operator (`??=`) instead of an assignment expression, as it is simpler to read.",
+    "count": 1
+  },
+  {
+    "file": "src/app/dashboard/material-lists/[id]/page.tsx",
+    "rule": "@typescript-eslint/prefer-nullish-coalescing",
+    "message": "Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.",
+    "count": 3
+  },
+  {
+    "file": "src/app/dashboard/material-lists/[id]/page.tsx",
+    "rule": "@typescript-eslint/prefer-regexp-exec",
+    "message": "Use the `RegExp#exec()` method instead.",
+    "count": 1
+  },
+  {
+    "file": "src/app/dashboard/material-lists/[id]/page.tsx",
+    "rule": "react-hooks/set-state-in-effect",
+    "message": "Error: Calling setState synchronously within an effect can trigger cascading renders",
+    "count": 1
+  },
+  {
+    "file": "src/app/dashboard/orders/page.tsx",
+    "rule": "@typescript-eslint/no-unsafe-argument",
+    "message": "Unsafe argument of type `any` assigned to a parameter of type `string`.",
+    "count": 1
+  },
+  {
+    "file": "src/app/dashboard/orders/page.tsx",
+    "rule": "@typescript-eslint/prefer-nullish-coalescing",
+    "message": "Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.",
+    "count": 7
+  },
+  {
+    "file": "src/app/dashboard/organization/page.tsx",
+    "rule": "@typescript-eslint/no-unsafe-argument",
+    "message": "Unsafe argument of type `any` assigned to a parameter of type `SetStateAction<Record<string, AccessStatus>>`.",
+    "count": 1
+  },
+  {
+    "file": "src/app/dashboard/organization/page.tsx",
+    "rule": "@typescript-eslint/no-unsafe-argument",
+    "message": "Unsafe argument of type `any` assigned to a parameter of type `SetStateAction<Record<string, InvitePermissions>>`.",
+    "count": 1
+  },
+  {
+    "file": "src/app/dashboard/organization/page.tsx",
+    "rule": "@typescript-eslint/no-unsafe-argument",
+    "message": "Unsafe argument of type `any` assigned to a parameter of type `string`.",
+    "count": 3
+  },
+  {
+    "file": "src/app/dashboard/organization/page.tsx",
+    "rule": "@typescript-eslint/no-unsafe-assignment",
+    "message": "Unsafe assignment of an `any` value.",
+    "count": 2
+  },
+  {
+    "file": "src/app/dashboard/organization/page.tsx",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Computed name [member.id] resolves to an `any` value.",
+    "count": 2
+  },
+  {
+    "file": "src/app/dashboard/organization/page.tsx",
+    "rule": "@typescript-eslint/prefer-nullish-coalescing",
+    "message": "Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.",
+    "count": 2
+  },
+  {
+    "file": "src/app/dashboard/organization/page.tsx",
+    "rule": "react-hooks/set-state-in-effect",
+    "message": "Error: Calling setState synchronously within an effect can trigger cascading renders",
+    "count": 2
+  },
+  {
+    "file": "src/app/dashboard/page.tsx",
+    "rule": "@typescript-eslint/no-unsafe-argument",
+    "message": "Unsafe argument of type `any` assigned to a parameter of type `SQLWrapper | AnyColumn`.",
+    "count": 1
+  },
+  {
+    "file": "src/app/dashboard/page.tsx",
+    "rule": "@typescript-eslint/no-unsafe-argument",
+    "message": "Unsafe argument of type `any` assigned to a parameter of type `string`.",
+    "count": 1
+  },
+  {
+    "file": "src/app/dashboard/page.tsx",
+    "rule": "@typescript-eslint/no-unsafe-assignment",
+    "message": "Unsafe assignment of an `any` value.",
+    "count": 10
+  },
+  {
+    "file": "src/app/dashboard/page.tsx",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .createdAt on an `any` value.",
+    "count": 2
+  },
+  {
+    "file": "src/app/dashboard/page.tsx",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .foremanName on an `any` value.",
+    "count": 2
+  },
+  {
+    "file": "src/app/dashboard/page.tsx",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .foremanUserId on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/app/dashboard/page.tsx",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .id on an `any` value.",
+    "count": 4
+  },
+  {
+    "file": "src/app/dashboard/page.tsx",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .jobId on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/app/dashboard/page.tsx",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .locationId on an `any` value.",
+    "count": 2
+  },
+  {
+    "file": "src/app/dashboard/page.tsx",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .name on an `any` value.",
+    "count": 2
+  },
+  {
+    "file": "src/app/dashboard/page.tsx",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .organizationId on an `any` value.",
+    "count": 5
+  },
+  {
+    "file": "src/app/dashboard/page.tsx",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .poNumber on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/app/dashboard/page.tsx",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .status on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/app/join/[token]/route.ts",
+    "rule": "@typescript-eslint/no-unsafe-assignment",
+    "message": "Unsafe assignment of an `any` value.",
+    "count": 3
+  },
+  {
+    "file": "src/app/join/[token]/route.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .id on an `any` value.",
+    "count": 2
+  },
+  {
+    "file": "src/app/join/[token]/route.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .organizationAccessStatus on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/app/join/[token]/route.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .organizationId on an `any` value.",
+    "count": 3
+  },
+  {
+    "file": "src/app/join/[token]/route.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .role on an `any` value.",
+    "count": 2
+  },
+  {
+    "file": "src/app/join/[token]/route.ts",
+    "rule": "@typescript-eslint/prefer-nullish-coalescing",
+    "message": "Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.",
+    "count": 1
+  },
+  {
+    "file": "src/app/onboarding/layout.tsx",
+    "rule": "@typescript-eslint/no-unsafe-assignment",
+    "message": "Unsafe assignment of an `any` value.",
+    "count": 2
+  },
+  {
+    "file": "src/app/onboarding/layout.tsx",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .organizationId on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/app/onboarding/layout.tsx",
+    "rule": "@typescript-eslint/prefer-nullish-coalescing",
+    "message": "Prefer using nullish coalescing operator (`??=`) instead of an assignment expression, as it is simpler to read.",
+    "count": 1
+  },
+  {
+    "file": "src/app/onboarding/layout.tsx",
+    "rule": "react/no-unescaped-entities",
+    "message": "`'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`.",
+    "count": 2
+  },
+  {
+    "file": "src/app/onboarding/page.tsx",
+    "rule": "react/no-unescaped-entities",
+    "message": "`'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`.",
+    "count": 1
+  },
+  {
+    "file": "src/app/pending-approval/page.tsx",
+    "rule": "@typescript-eslint/no-unsafe-assignment",
+    "message": "Unsafe assignment of an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/app/pending-approval/page.tsx",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .organizationAccessStatus on an `any` value.",
+    "count": 2
+  },
+  {
+    "file": "src/app/pending-approval/page.tsx",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .organizationId on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/app/sign-in/[[...sign-in]]/layout.tsx",
+    "rule": "@typescript-eslint/no-unsafe-assignment",
+    "message": "Unsafe assignment of an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/app/sign-in/[[...sign-in]]/layout.tsx",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .organizationId on an `any` value.",
+    "count": 2
+  },
+  {
+    "file": "src/components/app/DeferredFeatures.tsx",
+    "rule": "@typescript-eslint/no-empty-function",
+    "message": "Unexpected empty arrow function.",
+    "count": 1
+  },
+  {
+    "file": "src/components/app/DeferredFeatures.tsx",
+    "rule": "@typescript-eslint/no-misused-promises",
+    "message": "Promise returned in function argument where a void return was expected.",
+    "count": 1
+  },
+  {
+    "file": "src/components/app/ThemeProvider.tsx",
+    "rule": "react-hooks/set-state-in-effect",
+    "message": "Error: Calling setState synchronously within an effect can trigger cascading renders",
+    "count": 1
+  },
+  {
+    "file": "src/components/assets/AssetDialogs.tsx",
+    "rule": "@typescript-eslint/prefer-optional-chain",
+    "message": "Prefer using an optional chain expression instead, as it's more concise and easier to read.",
+    "count": 1
+  },
+  {
+    "file": "src/components/assets/AssetsOverview.tsx",
+    "rule": "@typescript-eslint/prefer-optional-chain",
+    "message": "Prefer using an optional chain expression instead, as it's more concise and easier to read.",
+    "count": 1
+  },
+  {
+    "file": "src/components/assets/CountsView.tsx",
+    "rule": "react-hooks/set-state-in-effect",
+    "message": "Error: Calling setState synchronously within an effect can trigger cascading renders",
+    "count": 1
+  },
+  {
+    "file": "src/components/assets/HolderView.tsx",
+    "rule": "react-hooks/set-state-in-effect",
+    "message": "Error: Calling setState synchronously within an effect can trigger cascading renders",
+    "count": 1
+  },
+  {
+    "file": "src/components/assets/RequestDetail.tsx",
+    "rule": "react-hooks/set-state-in-effect",
+    "message": "Error: Calling setState synchronously within an effect can trigger cascading renders",
+    "count": 2
+  },
+  {
+    "file": "src/components/assets/TagScanner.tsx",
+    "rule": "@typescript-eslint/prefer-nullish-coalescing",
+    "message": "Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.",
+    "count": 1
+  },
+  {
+    "file": "src/components/assets/TagScanner.tsx",
+    "rule": "react-hooks/refs",
+    "message": "Error: Cannot access refs during render",
+    "count": 1
+  },
+  {
+    "file": "src/components/assets/WhereView.tsx",
+    "rule": "@typescript-eslint/no-unsafe-assignment",
+    "message": "Unsafe assignment of an `any` value.",
+    "count": 7
+  },
+  {
+    "file": "src/components/assets/shared.tsx",
+    "rule": "@typescript-eslint/no-unsafe-assignment",
+    "message": "Unsafe assignment of an `any` value.",
+    "count": 2
+  },
+  {
+    "file": "src/components/assist/AssistancePanel.tsx",
+    "rule": "@typescript-eslint/no-unsafe-assignment",
+    "message": "Unsafe assignment of an `any` value.",
+    "count": 2
+  },
+  {
+    "file": "src/components/catalogue/PartDetailsDialog.test.tsx",
+    "rule": "@typescript-eslint/no-empty-function",
+    "message": "Unexpected empty arrow function.",
+    "count": 5
+  },
+  {
+    "file": "src/components/catalogue/PartDetailsDialog.test.tsx",
+    "rule": "@typescript-eslint/no-unsafe-return",
+    "message": "Unsafe return of a value of type `any`.",
+    "count": 1
+  },
+  {
+    "file": "src/components/catalogue/PartDetailsDialog.tsx",
+    "rule": "@typescript-eslint/no-unsafe-argument",
+    "message": "Unsafe argument of type `any` assigned to a parameter of type `SetStateAction<string | null>`.",
+    "count": 1
+  },
+  {
+    "file": "src/components/catalogue/PartDetailsDialog.tsx",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .id on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/components/catalogue/PartDetailsDialog.tsx",
+    "rule": "@typescript-eslint/prefer-nullish-coalescing",
+    "message": "Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.",
+    "count": 1
+  },
+  {
+    "file": "src/components/catalogue/PartDetailsDialog.tsx",
+    "rule": "react-hooks/rules-of-hooks",
+    "message": "React Hook \"useFamilyImage\" cannot be called inside a callback. React Hooks must be called in a React function component or a custom React Hook function.",
+    "count": 1
+  },
+  {
+    "file": "src/components/catalogue/PartSuppliersDropdown.tsx",
+    "rule": "react-hooks/set-state-in-effect",
+    "message": "Error: Calling setState synchronously within an effect can trigger cascading renders",
+    "count": 3
+  },
+  {
+    "file": "src/components/catalogue/PhotoQueueDialog.test.tsx",
+    "rule": "@typescript-eslint/await-thenable",
+    "message": "Unexpected `await` of a non-Promise (non-\"Thenable\") value.",
+    "count": 1
+  },
+  {
+    "file": "src/components/catalogue/PhotoQueueDialog.test.tsx",
+    "rule": "@typescript-eslint/no-empty-function",
+    "message": "Unexpected empty arrow function.",
+    "count": 2
+  },
+  {
+    "file": "src/components/catalogue/PhotoQueueDialog.test.tsx",
+    "rule": "@typescript-eslint/no-unsafe-assignment",
+    "message": "Unsafe assignment of an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/components/catalogue/PhotoQueueDialog.test.tsx",
+    "rule": "@typescript-eslint/no-unsafe-return",
+    "message": "Unsafe return of a value of type `any`.",
+    "count": 1
+  },
+  {
+    "file": "src/components/draws/DrawsJobsList.tsx",
+    "rule": "@typescript-eslint/no-unsafe-assignment",
+    "message": "Unsafe assignment of an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/components/draws/JobDrawsView.tsx",
+    "rule": "react-hooks/set-state-in-effect",
+    "message": "Error: Calling setState synchronously within an effect can trigger cascading renders",
+    "count": 1
+  },
+  {
+    "file": "src/components/jobs/FloorPlanCanvas.tsx",
+    "rule": "react-hooks/refs",
+    "message": "Error: Cannot access refs during render",
+    "count": 3
+  },
+  {
+    "file": "src/components/jobs/JobEditDialog.tsx",
+    "rule": "@typescript-eslint/prefer-nullish-coalescing",
+    "message": "Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.",
+    "count": 6
+  },
+  {
+    "file": "src/components/jobs/JobEditDialog.tsx",
+    "rule": "react-hooks/set-state-in-effect",
+    "message": "Error: Calling setState synchronously within an effect can trigger cascading renders",
+    "count": 1
+  },
+  {
+    "file": "src/components/jobs/JobRoomsView.tsx",
+    "rule": "@typescript-eslint/no-misused-promises",
+    "message": "Promise-returning function provided to property where a void return was expected.",
+    "count": 1
+  },
+  {
+    "file": "src/components/jobs/JobRoomsView.tsx",
+    "rule": "@typescript-eslint/prefer-nullish-coalescing",
+    "message": "Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.",
+    "count": 1
+  },
+  {
+    "file": "src/components/materialLists/AddPartDialog.tsx",
+    "rule": "@typescript-eslint/no-unsafe-assignment",
+    "message": "Unsafe assignment of an `any` value.",
+    "count": 4
+  },
+  {
+    "file": "src/components/materialLists/AddPartDialog.tsx",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .foremenAddPartsDialog on an `any` value.",
+    "count": 2
+  },
+  {
+    "file": "src/components/materialLists/AddPartDialog.tsx",
+    "rule": "@typescript-eslint/unbound-method",
+    "message": "A method that is not declared with `this: void` may cause unintentional scoping of `this` when separated from its object.",
+    "count": 3
+  },
+  {
+    "file": "src/components/materialLists/AddPartDialog.tsx",
+    "rule": "react-hooks/set-state-in-effect",
+    "message": "Error: Calling setState synchronously within an effect can trigger cascading renders",
+    "count": 3
+  },
+  {
+    "file": "src/components/materialLists/ExistingQuotesOrdersDialog.tsx",
+    "rule": "@typescript-eslint/no-unsafe-argument",
+    "message": "Unsafe argument of type `any` assigned to a parameter of type `string | number | Date`.",
+    "count": 1
+  },
+  {
+    "file": "src/components/materialLists/ExistingQuotesOrdersDialog.tsx",
+    "rule": "@typescript-eslint/no-unsafe-argument",
+    "message": "Unsafe argument of type `any` assigned to a parameter of type `string`.",
+    "count": 1
+  },
+  {
+    "file": "src/components/materialLists/ExistingQuotesOrdersDialog.tsx",
+    "rule": "@typescript-eslint/no-unsafe-assignment",
+    "message": "Unsafe assignment of an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/components/materialLists/ExistingQuotesOrdersDialog.tsx",
+    "rule": "@typescript-eslint/no-unsafe-call",
+    "message": "Unsafe call of a(n) `any` typed value.",
+    "count": 2
+  },
+  {
+    "file": "src/components/materialLists/ExistingQuotesOrdersDialog.tsx",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .slice on an `any` value.",
+    "count": 2
+  },
+  {
+    "file": "src/components/materialLists/ExistingQuotesOrdersDialog.tsx",
+    "rule": "@typescript-eslint/prefer-nullish-coalescing",
+    "message": "Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.",
+    "count": 2
+  },
+  {
+    "file": "src/components/materialLists/JobInfoModal.tsx",
+    "rule": "@typescript-eslint/no-unsafe-assignment",
+    "message": "Unsafe assignment of an `any` value.",
+    "count": 2
+  },
+  {
+    "file": "src/components/materialLists/JobInfoModal.tsx",
+    "rule": "@typescript-eslint/prefer-nullish-coalescing",
+    "message": "Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.",
+    "count": 1
+  },
+  {
+    "file": "src/components/materialLists/JobInfoModal.tsx",
+    "rule": "react-hooks/set-state-in-effect",
+    "message": "Error: Calling setState synchronously within an effect can trigger cascading renders",
+    "count": 1
+  },
+  {
+    "file": "src/components/materialLists/MaterialListItem.tsx",
+    "rule": "@typescript-eslint/no-redundant-type-constituents",
+    "message": "\"pending\" | \"partial\" | \"complete\" | \"problem\" is overridden by string in this union type.",
+    "count": 1
+  },
+  {
+    "file": "src/components/materialLists/MaterialListItem.tsx",
+    "rule": "@typescript-eslint/prefer-nullish-coalescing",
+    "message": "Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.",
+    "count": 6
+  },
+  {
+    "file": "src/components/materialLists/MaterialListItem.tsx",
+    "rule": "react-hooks/immutability",
+    "message": "Error: Cannot access variable before it is declared",
+    "count": 3
+  },
+  {
+    "file": "src/components/materialLists/MaterialListNameModal.tsx",
+    "rule": "@typescript-eslint/prefer-nullish-coalescing",
+    "message": "Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.",
+    "count": 2
+  },
+  {
+    "file": "src/components/materialLists/MaterialListNameModal.tsx",
+    "rule": "react-hooks/set-state-in-effect",
+    "message": "Error: Calling setState synchronously within an effect can trigger cascading renders",
+    "count": 1
+  },
+  {
+    "file": "src/components/materialLists/MaterialListTableRow.tsx",
+    "rule": "@typescript-eslint/prefer-nullish-coalescing",
+    "message": "Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.",
+    "count": 4
+  },
+  {
+    "file": "src/components/materialLists/OrdersPreviewSheet.tsx",
+    "rule": "@typescript-eslint/prefer-nullish-coalescing",
+    "message": "Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.",
+    "count": 9
+  },
+  {
+    "file": "src/components/materialLists/QuantityControls.tsx",
+    "rule": "react-hooks/set-state-in-effect",
+    "message": "Error: Calling setState synchronously within an effect can trigger cascading renders",
+    "count": 1
+  },
+  {
+    "file": "src/components/materialLists/QuotePreviewSheet.tsx",
+    "rule": "@typescript-eslint/no-unsafe-argument",
+    "message": "Unsafe argument of type `any` assigned to a parameter of type `SetStateAction<string>`.",
+    "count": 2
+  },
+  {
+    "file": "src/components/materialLists/QuotePreviewSheet.tsx",
+    "rule": "@typescript-eslint/no-unsafe-argument",
+    "message": "Unsafe argument of type `any` assigned to a parameter of type `string`.",
+    "count": 3
+  },
+  {
+    "file": "src/components/materialLists/QuotePreviewSheet.tsx",
+    "rule": "@typescript-eslint/no-unsafe-assignment",
+    "message": "Unsafe assignment of an `any` value.",
+    "count": 4
+  },
+  {
+    "file": "src/components/materialLists/QuotePreviewSheet.tsx",
+    "rule": "@typescript-eslint/no-unsafe-call",
+    "message": "Unsafe call of a(n) `any` typed value.",
+    "count": 3
+  },
+  {
+    "file": "src/components/materialLists/QuotePreviewSheet.tsx",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .toString on an `any` value.",
+    "count": 3
+  },
+  {
+    "file": "src/components/materialLists/QuotePreviewSheet.tsx",
+    "rule": "@typescript-eslint/prefer-nullish-coalescing",
+    "message": "Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.",
+    "count": 2
+  },
+  {
+    "file": "src/components/materialLists/SupplierSelector.tsx",
+    "rule": "react-hooks/set-state-in-effect",
+    "message": "Error: Calling setState synchronously within an effect can trigger cascading renders",
+    "count": 2
+  },
+  {
+    "file": "src/components/materialLists/VerifyOrderButton.tsx",
+    "rule": "@typescript-eslint/prefer-nullish-coalescing",
+    "message": "Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.",
+    "count": 1
+  },
+  {
+    "file": "src/components/materialLists/WizardHeader.tsx",
+    "rule": "@typescript-eslint/prefer-nullish-coalescing",
+    "message": "Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.",
+    "count": 1
+  },
+  {
+    "file": "src/components/materialLists/wizard/PartStage.tsx",
+    "rule": "react-hooks/set-state-in-effect",
+    "message": "Error: Calling setState synchronously within an effect can trigger cascading renders",
+    "count": 1
+  },
+  {
+    "file": "src/components/materialLists/wizard/ReviewStage.tsx",
+    "rule": "@typescript-eslint/prefer-nullish-coalescing",
+    "message": "Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.",
+    "count": 2
+  },
+  {
+    "file": "src/components/materialLists/wizard/ReviewStage.tsx",
+    "rule": "@typescript-eslint/prefer-optional-chain",
+    "message": "Prefer using an optional chain expression instead, as it's more concise and easier to read.",
+    "count": 1
+  },
+  {
+    "file": "src/components/materialLists/wizard/ReviewStage.tsx",
+    "rule": "react-hooks/set-state-in-effect",
+    "message": "Error: Calling setState synchronously within an effect can trigger cascading renders",
+    "count": 2
+  },
+  {
+    "file": "src/components/materialLists/wizard/use-part-wizard.ts",
+    "rule": "@typescript-eslint/no-unsafe-argument",
+    "message": "Unsafe argument of type `any` assigned to a parameter of type `string | null`.",
+    "count": 1
+  },
+  {
+    "file": "src/components/materialLists/wizard/use-part-wizard.ts",
+    "rule": "@typescript-eslint/no-unsafe-assignment",
+    "message": "Unsafe assignment of an `any` value.",
+    "count": 4
+  },
+  {
+    "file": "src/components/materialLists/wizard/use-part-wizard.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .id on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/components/materialLists/wizard/use-part-wizard.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .name on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/components/materialLists/wizard/use-part-wizard.ts",
+    "rule": "react-hooks/set-state-in-effect",
+    "message": "Error: Calling setState synchronously within an effect can trigger cascading renders",
+    "count": 3
+  },
+  {
+    "file": "src/components/quotes/QuotesList.tsx",
+    "rule": "@typescript-eslint/no-unsafe-argument",
+    "message": "Unsafe argument of type `any` assigned to a parameter of type `Date | null`.",
+    "count": 1
+  },
+  {
+    "file": "src/components/quotes/QuotesList.tsx",
+    "rule": "@typescript-eslint/no-unsafe-argument",
+    "message": "Unsafe argument of type `any` assigned to a parameter of type `string | null`.",
+    "count": 1
+  },
+  {
+    "file": "src/components/quotes/QuotesList.tsx",
+    "rule": "@typescript-eslint/no-unsafe-argument",
+    "message": "Unsafe argument of type `any` assigned to a parameter of type `string`.",
+    "count": 1
+  },
+  {
+    "file": "src/components/quotes/QuotesList.tsx",
+    "rule": "@typescript-eslint/no-unsafe-assignment",
+    "message": "Unsafe assignment of an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/components/quotes/QuotesList.tsx",
+    "rule": "@typescript-eslint/no-unsafe-call",
+    "message": "Unsafe call of a(n) `any` typed value.",
+    "count": 1
+  },
+  {
+    "file": "src/components/quotes/QuotesList.tsx",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .slice on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/components/quotes/QuotesList.tsx",
+    "rule": "@typescript-eslint/prefer-nullish-coalescing",
+    "message": "Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.",
+    "count": 1
+  },
+  {
+    "file": "src/components/suppliers/SupplierFormDialog.tsx",
+    "rule": "@typescript-eslint/prefer-nullish-coalescing",
+    "message": "Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.",
+    "count": 7
+  },
+  {
+    "file": "src/components/suppliers/SupplierFormDialog.tsx",
+    "rule": "react-hooks/set-state-in-effect",
+    "message": "Error: Calling setState synchronously within an effect can trigger cascading renders",
+    "count": 1
+  },
+  {
+    "file": "src/components/suppliers/SupplierPartsDialog.tsx",
+    "rule": "@typescript-eslint/prefer-nullish-coalescing",
+    "message": "Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.",
+    "count": 3
+  },
+  {
+    "file": "src/components/suppliers/SupplierPartsDialog.tsx",
+    "rule": "react/no-unescaped-entities",
+    "message": "`\"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`.",
+    "count": 2
+  },
+  {
+    "file": "src/components/ui/dropdown-menu.tsx",
+    "rule": "@typescript-eslint/prefer-optional-chain",
+    "message": "Prefer using an optional chain expression instead, as it's more concise and easier to read.",
+    "count": 2
+  },
+  {
+    "file": "src/components/ui/dropdown-menu.tsx",
+    "rule": "@typescript-eslint/unbound-method",
+    "message": "A method that is not declared with `this: void` may cause unintentional scoping of `this` when separated from its object.",
+    "count": 1
+  },
+  {
+    "file": "src/components/ui/label.tsx",
+    "rule": "@typescript-eslint/no-empty-object-type",
+    "message": "An interface declaring no members is equivalent to its supertype.",
+    "count": 1
+  },
+  {
+    "file": "src/components/ui/list-pagination.tsx",
+    "rule": "react-hooks/set-state-in-effect",
+    "message": "Error: Calling setState synchronously within an effect can trigger cascading renders",
+    "count": 2
+  },
+  {
+    "file": "src/components/ui/textarea.tsx",
+    "rule": "@typescript-eslint/no-empty-object-type",
+    "message": "An interface declaring no members is equivalent to its supertype.",
+    "count": 1
+  },
+  {
+    "file": "src/hooks/use-job-workspace-navigation.ts",
+    "rule": "react-hooks/set-state-in-effect",
+    "message": "Error: Calling setState synchronously within an effect can trigger cascading renders",
+    "count": 1
+  },
+  {
+    "file": "src/hooks/use-offline-documents.ts",
+    "rule": "react-hooks/set-state-in-effect",
+    "message": "Error: Calling setState synchronously within an effect can trigger cascading renders",
+    "count": 2
+  },
+  {
+    "file": "src/hooks/use-online-status.ts",
+    "rule": "@typescript-eslint/no-unsafe-assignment",
+    "message": "Unsafe assignment of an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/hooks/use-online-status.ts",
+    "rule": "@typescript-eslint/unbound-method",
+    "message": "A method that is not declared with `this: void` may cause unintentional scoping of `this` when separated from its object.",
+    "count": 1
+  },
+  {
+    "file": "src/hooks/use-replicache-jobs.ts",
+    "rule": "@typescript-eslint/prefer-nullish-coalescing",
+    "message": "Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.",
+    "count": 1
+  },
+  {
+    "file": "src/hooks/use-shared-replicache.test.tsx",
+    "rule": "@typescript-eslint/no-empty-function",
+    "message": "Unexpected empty arrow function.",
+    "count": 1
+  },
+  {
+    "file": "src/hooks/use-shared-replicache.ts",
+    "rule": "@typescript-eslint/no-empty-function",
+    "message": "Unexpected empty arrow function.",
+    "count": 1
+  },
+  {
+    "file": "src/lib/catalogue-xlsx.ts",
+    "rule": "@typescript-eslint/no-base-to-string",
+    "message": "'rawIsActive || \"true\"' will use Object's default stringification format ('[object Object]') when stringified.",
+    "count": 1
+  },
+  {
+    "file": "src/lib/catalogue-xlsx.ts",
+    "rule": "@typescript-eslint/no-base-to-string",
+    "message": "'rawSizeNominal' will use Object's default stringification format ('[object Object]') when stringified.",
+    "count": 1
+  },
+  {
+    "file": "src/lib/catalogue-xlsx.ts",
+    "rule": "@typescript-eslint/no-base-to-string",
+    "message": "'readCell(row, ...keys)' will use Object's default stringification format ('[object Object]') when stringified.",
+    "count": 1
+  },
+  {
+    "file": "src/lib/material-list-sort.ts",
+    "rule": "@typescript-eslint/no-unsafe-assignment",
+    "message": "Unsafe assignment of an `any` value.",
+    "count": 2
+  },
+  {
+    "file": "src/lib/material-list-sort.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .excludes on an `any` value.",
+    "count": 2
+  },
+  {
+    "file": "src/lib/material-list-sort.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .includes on an `any` value.",
+    "count": 2
+  },
+  {
+    "file": "src/lib/material-list-sort.ts",
+    "rule": "@typescript-eslint/prefer-nullish-coalescing",
+    "message": "Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.",
+    "count": 8
+  },
+  {
+    "file": "src/lib/material-list-sort.ts",
+    "rule": "@typescript-eslint/prefer-regexp-exec",
+    "message": "Use the `RegExp#exec()` method instead.",
+    "count": 2
+  },
+  {
+    "file": "src/lib/material-list-sort.ts",
+    "rule": "@typescript-eslint/unbound-method",
+    "message": "A method that is not declared with `this: void` may cause unintentional scoping of `this` when separated from its object.",
+    "count": 1
+  },
+  {
+    "file": "src/lib/photo-cache-queue.test.ts",
+    "rule": "@typescript-eslint/no-empty-function",
+    "message": "Unexpected empty method 'addEventListener'.",
+    "count": 2
+  },
+  {
+    "file": "src/lib/room-shape.ts",
+    "rule": "@typescript-eslint/prefer-optional-chain",
+    "message": "Prefer using an optional chain expression instead, as it's more concise and easier to read.",
+    "count": 2
+  },
+  {
+    "file": "src/lib/size-utils.ts",
+    "rule": "@typescript-eslint/prefer-regexp-exec",
+    "message": "Use the `RegExp#exec()` method instead.",
+    "count": 1
+  },
+  {
+    "file": "src/server/api/routers/assets.ts",
+    "rule": "@typescript-eslint/no-unsafe-argument",
+    "message": "Unsafe argument of type `any` assigned to a parameter of type `PermissionUser`.",
+    "count": 3
+  },
+  {
+    "file": "src/server/api/routers/assets.ts",
+    "rule": "@typescript-eslint/no-unsafe-argument",
+    "message": "Unsafe argument of type `any` assigned to a parameter of type `SQLWrapper | AnyColumn`.",
+    "count": 3
+  },
+  {
+    "file": "src/server/api/routers/assets.ts",
+    "rule": "@typescript-eslint/no-unsafe-argument",
+    "message": "Unsafe argument of type `any` assigned to a parameter of type `string | SQLWrapper`.",
+    "count": 5
+  },
+  {
+    "file": "src/server/api/routers/assets.ts",
+    "rule": "@typescript-eslint/no-unsafe-assignment",
+    "message": "Unsafe assignment of an `any` value.",
+    "count": 24
+  },
+  {
+    "file": "src/server/api/routers/assets.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .email on an `any` value.",
+    "count": 6
+  },
+  {
+    "file": "src/server/api/routers/assets.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .id on an `any` value.",
+    "count": 9
+  },
+  {
+    "file": "src/server/api/routers/assets.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .name on an `any` value.",
+    "count": 10
+  },
+  {
+    "file": "src/server/api/routers/assets.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .organizationAccessStatus on an `any` value.",
+    "count": 2
+  },
+  {
+    "file": "src/server/api/routers/assets.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .organizationId on an `any` value.",
+    "count": 3
+  },
+  {
+    "file": "src/server/api/routers/assets.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .status on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/server/api/routers/assets.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .updatedAt on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/server/api/routers/assets.ts",
+    "rule": "@typescript-eslint/prefer-nullish-coalescing",
+    "message": "Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.",
+    "count": 10
+  },
+  {
+    "file": "src/server/api/routers/assets.ts",
+    "rule": "@typescript-eslint/prefer-optional-chain",
+    "message": "Prefer using an optional chain expression instead, as it's more concise and easier to read.",
+    "count": 2
+  },
+  {
+    "file": "src/server/api/routers/assist.ts",
+    "rule": "@typescript-eslint/no-unsafe-argument",
+    "message": "Unsafe argument of type `any` assigned to a parameter of type `PermissionUser`.",
+    "count": 3
+  },
+  {
+    "file": "src/server/api/routers/assist.ts",
+    "rule": "@typescript-eslint/no-unsafe-argument",
+    "message": "Unsafe argument of type `any` assigned to a parameter of type `SQLWrapper | AnyColumn`.",
+    "count": 3
+  },
+  {
+    "file": "src/server/api/routers/assist.ts",
+    "rule": "@typescript-eslint/no-unsafe-argument",
+    "message": "Unsafe argument of type `any` assigned to a parameter of type `string | SQLWrapper`.",
+    "count": 9
+  },
+  {
+    "file": "src/server/api/routers/assist.ts",
+    "rule": "@typescript-eslint/no-unsafe-argument",
+    "message": "Unsafe argument of type `any` assigned to a parameter of type `string`.",
+    "count": 7
+  },
+  {
+    "file": "src/server/api/routers/assist.ts",
+    "rule": "@typescript-eslint/no-unsafe-assignment",
+    "message": "Unsafe assignment of an `any` value.",
+    "count": 9
+  },
+  {
+    "file": "src/server/api/routers/assist.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .id on an `any` value.",
+    "count": 9
+  },
+  {
+    "file": "src/server/api/routers/assist.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .jobId on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/server/api/routers/assist.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .name on an `any` value.",
+    "count": 10
+  },
+  {
+    "file": "src/server/api/routers/assist.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .organizationId on an `any` value.",
+    "count": 9
+  },
+  {
+    "file": "src/server/api/routers/assist.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .quoteId on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/server/api/routers/assist.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .updatedAt on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/server/api/routers/assist.ts",
+    "rule": "@typescript-eslint/prefer-nullish-coalescing",
+    "message": "Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.",
+    "count": 8
+  },
+  {
+    "file": "src/server/api/routers/catalogue.ts",
+    "rule": "@typescript-eslint/no-duplicate-type-constituents",
+    "message": "Union type constituent is duplicated with ReturnType<typeof gte>.",
+    "count": 2
+  },
+  {
+    "file": "src/server/api/routers/catalogue.ts",
+    "rule": "@typescript-eslint/no-unsafe-argument",
+    "message": "Unsafe argument of type `any` assigned to a parameter of type `PermissionUser`.",
+    "count": 13
+  },
+  {
+    "file": "src/server/api/routers/catalogue.ts",
+    "rule": "@typescript-eslint/no-unsafe-argument",
+    "message": "Unsafe argument of type `any` assigned to a parameter of type `SQL<unknown> | PgColumn<ColumnBaseConfig<ColumnDataType, string>, {}, {}> | Aliased<unknown>`.",
+    "count": 1
+  },
+  {
+    "file": "src/server/api/routers/catalogue.ts",
+    "rule": "@typescript-eslint/no-unsafe-argument",
+    "message": "Unsafe argument of type `any` assigned to a parameter of type `SQLWrapper | AnyColumn`.",
+    "count": 5
+  },
+  {
+    "file": "src/server/api/routers/catalogue.ts",
+    "rule": "@typescript-eslint/no-unsafe-argument",
+    "message": "Unsafe argument of type `any` assigned to a parameter of type `string | SQLWrapper`.",
+    "count": 49
+  },
+  {
+    "file": "src/server/api/routers/catalogue.ts",
+    "rule": "@typescript-eslint/no-unsafe-argument",
+    "message": "Unsafe argument of type `any` assigned to a parameter of type `string | null | undefined`.",
+    "count": 13
+  },
+  {
+    "file": "src/server/api/routers/catalogue.ts",
+    "rule": "@typescript-eslint/no-unsafe-argument",
+    "message": "Unsafe argument of type `any` assigned to a parameter of type `string | null`.",
+    "count": 1
+  },
+  {
+    "file": "src/server/api/routers/catalogue.ts",
+    "rule": "@typescript-eslint/no-unsafe-argument",
+    "message": "Unsafe argument of type `any` assigned to a parameter of type `string`.",
+    "count": 5
+  },
+  {
+    "file": "src/server/api/routers/catalogue.ts",
+    "rule": "@typescript-eslint/no-unsafe-argument",
+    "message": "Unsafe argument of type `any` assigned to a parameter of type `{ [x: string]: any; }`.",
+    "count": 1
+  },
+  {
+    "file": "src/server/api/routers/catalogue.ts",
+    "rule": "@typescript-eslint/no-unsafe-assignment",
+    "message": "Unsafe assignment of an `any` value.",
+    "count": 67
+  },
+  {
+    "file": "src/server/api/routers/catalogue.ts",
+    "rule": "@typescript-eslint/no-unsafe-call",
+    "message": "Unsafe call of a(n) `any` typed value.",
+    "count": 4
+  },
+  {
+    "file": "src/server/api/routers/catalogue.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .id on an `any` value.",
+    "count": 10
+  },
+  {
+    "file": "src/server/api/routers/catalogue.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .localeCompare on an `any` value.",
+    "count": 2
+  },
+  {
+    "file": "src/server/api/routers/catalogue.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .name on an `any` value.",
+    "count": 14
+  },
+  {
+    "file": "src/server/api/routers/catalogue.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .organizationId on an `any` value.",
+    "count": 37
+  },
+  {
+    "file": "src/server/api/routers/catalogue.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .sortOrder on an `any` value.",
+    "count": 6
+  },
+  {
+    "file": "src/server/api/routers/catalogue.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .toLowerCase on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/server/api/routers/catalogue.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .trim on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/server/api/routers/catalogue.ts",
+    "rule": "@typescript-eslint/no-unsafe-return",
+    "message": "Unsafe return of a value of type `any`.",
+    "count": 3
+  },
+  {
+    "file": "src/server/api/routers/catalogue.ts",
+    "rule": "@typescript-eslint/prefer-nullish-coalescing",
+    "message": "Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.",
+    "count": 12
+  },
+  {
+    "file": "src/server/api/routers/catalogue.ts",
+    "rule": "@typescript-eslint/prefer-regexp-exec",
+    "message": "Use the `RegExp#exec()` method instead.",
+    "count": 1
+  },
+  {
+    "file": "src/server/api/routers/draws.ts",
+    "rule": "@typescript-eslint/no-unsafe-argument",
+    "message": "Unsafe argument of type `any` assigned to a parameter of type `PermissionUser`.",
+    "count": 1
+  },
+  {
+    "file": "src/server/api/routers/draws.ts",
+    "rule": "@typescript-eslint/no-unsafe-argument",
+    "message": "Unsafe argument of type `any` assigned to a parameter of type `SQLWrapper | AnyColumn`.",
+    "count": 1
+  },
+  {
+    "file": "src/server/api/routers/draws.ts",
+    "rule": "@typescript-eslint/no-unsafe-assignment",
+    "message": "Unsafe assignment of an `any` value.",
+    "count": 8
+  },
+  {
+    "file": "src/server/api/routers/draws.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .id on an `any` value.",
+    "count": 3
+  },
+  {
+    "file": "src/server/api/routers/draws.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .name on an `any` value.",
+    "count": 2
+  },
+  {
+    "file": "src/server/api/routers/draws.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .organizationId on an `any` value.",
+    "count": 3
+  },
+  {
+    "file": "src/server/api/routers/draws.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .status on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/server/api/routers/draws.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .updatedAt on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/server/api/routers/draws.ts",
+    "rule": "@typescript-eslint/prefer-nullish-coalescing",
+    "message": "Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.",
+    "count": 1
+  },
+  {
+    "file": "src/server/api/routers/job.ts",
+    "rule": "@typescript-eslint/no-unnecessary-type-assertion",
+    "message": "This assertion is unnecessary since the receiver accepts the original type of the expression.",
+    "count": 4
+  },
+  {
+    "file": "src/server/api/routers/job.ts",
+    "rule": "@typescript-eslint/no-unsafe-argument",
+    "message": "Unsafe argument of type `any` assigned to a parameter of type `SQLWrapper | AnyColumn`.",
+    "count": 1
+  },
+  {
+    "file": "src/server/api/routers/job.ts",
+    "rule": "@typescript-eslint/no-unsafe-argument",
+    "message": "Unsafe argument of type `any` assigned to a parameter of type `string | SQLWrapper`.",
+    "count": 1
+  },
+  {
+    "file": "src/server/api/routers/job.ts",
+    "rule": "@typescript-eslint/no-unsafe-argument",
+    "message": "Unsafe argument of type `any` assigned to a parameter of type `string | null | undefined`.",
+    "count": 1
+  },
+  {
+    "file": "src/server/api/routers/job.ts",
+    "rule": "@typescript-eslint/no-unsafe-argument",
+    "message": "Unsafe argument of type `any` assigned to a parameter of type `string`.",
+    "count": 4
+  },
+  {
+    "file": "src/server/api/routers/job.ts",
+    "rule": "@typescript-eslint/no-unsafe-assignment",
+    "message": "Unsafe assignment of an `any` value.",
+    "count": 27
+  },
+  {
+    "file": "src/server/api/routers/job.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .createdAt on an `any` value.",
+    "count": 3
+  },
+  {
+    "file": "src/server/api/routers/job.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .currentJobId on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/server/api/routers/job.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .foremanName on an `any` value.",
+    "count": 2
+  },
+  {
+    "file": "src/server/api/routers/job.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .foremanUserId on an `any` value.",
+    "count": 2
+  },
+  {
+    "file": "src/server/api/routers/job.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .id on an `any` value.",
+    "count": 20
+  },
+  {
+    "file": "src/server/api/routers/job.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .jobId on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/server/api/routers/job.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .kind on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/server/api/routers/job.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .locationId on an `any` value.",
+    "count": 2
+  },
+  {
+    "file": "src/server/api/routers/job.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .name on an `any` value.",
+    "count": 3
+  },
+  {
+    "file": "src/server/api/routers/job.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .organizationId on an `any` value.",
+    "count": 23
+  },
+  {
+    "file": "src/server/api/routers/job.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .poNumber on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/server/api/routers/job.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .quoteId on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/server/api/routers/job.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .status on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/server/api/routers/job.ts",
+    "rule": "@typescript-eslint/no-unsafe-return",
+    "message": "Unsafe return of a value of type `any`.",
+    "count": 2
+  },
+  {
+    "file": "src/server/api/routers/job.ts",
+    "rule": "@typescript-eslint/prefer-nullish-coalescing",
+    "message": "Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.",
+    "count": 2
+  },
+  {
+    "file": "src/server/api/routers/location.ts",
+    "rule": "@typescript-eslint/no-unsafe-assignment",
+    "message": "Unsafe assignment of an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/server/api/routers/location.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .organizationId on an `any` value.",
+    "count": 3
+  },
+  {
+    "file": "src/server/api/routers/location.ts",
+    "rule": "@typescript-eslint/prefer-nullish-coalescing",
+    "message": "Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.",
+    "count": 7
+  },
+  {
+    "file": "src/server/api/routers/materialList.ts",
+    "rule": "@typescript-eslint/no-base-to-string",
+    "message": "'item.extendedPrice' will use Object's default stringification format ('[object Object]') when stringified.",
+    "count": 1
+  },
+  {
+    "file": "src/server/api/routers/materialList.ts",
+    "rule": "@typescript-eslint/no-explicit-any",
+    "message": "Unexpected any. Specify a different type.",
+    "count": 4
+  },
+  {
+    "file": "src/server/api/routers/materialList.ts",
+    "rule": "@typescript-eslint/no-redundant-type-constituents",
+    "message": "'any' overrides all other types in this union type.",
+    "count": 4
+  },
+  {
+    "file": "src/server/api/routers/materialList.ts",
+    "rule": "@typescript-eslint/no-unsafe-argument",
+    "message": "Unsafe argument of type `any` assigned to a parameter of type `PermissionUser`.",
+    "count": 3
+  },
+  {
+    "file": "src/server/api/routers/materialList.ts",
+    "rule": "@typescript-eslint/no-unsafe-argument",
+    "message": "Unsafe argument of type `any` assigned to a parameter of type `SQLWrapper | AnyColumn`.",
+    "count": 5
+  },
+  {
+    "file": "src/server/api/routers/materialList.ts",
+    "rule": "@typescript-eslint/no-unsafe-argument",
+    "message": "Unsafe argument of type `any` assigned to a parameter of type `string | SQLWrapper`.",
+    "count": 21
+  },
+  {
+    "file": "src/server/api/routers/materialList.ts",
+    "rule": "@typescript-eslint/no-unsafe-argument",
+    "message": "Unsafe argument of type `any` assigned to a parameter of type `string | null | undefined`.",
+    "count": 2
+  },
+  {
+    "file": "src/server/api/routers/materialList.ts",
+    "rule": "@typescript-eslint/no-unsafe-argument",
+    "message": "Unsafe argument of type `any` assigned to a parameter of type `string`.",
+    "count": 9
+  },
+  {
+    "file": "src/server/api/routers/materialList.ts",
+    "rule": "@typescript-eslint/no-unsafe-assignment",
+    "message": "Unsafe assignment of an `any` value.",
+    "count": 133
+  },
+  {
+    "file": "src/server/api/routers/materialList.ts",
+    "rule": "@typescript-eslint/no-unsafe-assignment",
+    "message": "Unsafe spread of an `any` value in an array.",
+    "count": 3
+  },
+  {
+    "file": "src/server/api/routers/materialList.ts",
+    "rule": "@typescript-eslint/no-unsafe-call",
+    "message": "Unsafe call of a(n) `any` typed value.",
+    "count": 28
+  },
+  {
+    "file": "src/server/api/routers/materialList.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .createdAt on an `any` value.",
+    "count": 6
+  },
+  {
+    "file": "src/server/api/routers/materialList.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .createdByUserId on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/server/api/routers/materialList.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .email on an `any` value.",
+    "count": 3
+  },
+  {
+    "file": "src/server/api/routers/materialList.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .foremanUserId on an `any` value.",
+    "count": 3
+  },
+  {
+    "file": "src/server/api/routers/materialList.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .from on an `any` value.",
+    "count": 2
+  },
+  {
+    "file": "src/server/api/routers/materialList.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .id on an `any` value.",
+    "count": 60
+  },
+  {
+    "file": "src/server/api/routers/materialList.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .insert on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/server/api/routers/materialList.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .jobId on an `any` value.",
+    "count": 12
+  },
+  {
+    "file": "src/server/api/routers/materialList.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .kind on an `any` value.",
+    "count": 2
+  },
+  {
+    "file": "src/server/api/routers/materialList.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .leftJoin on an `any` value.",
+    "count": 2
+  },
+  {
+    "file": "src/server/api/routers/materialList.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .locationId on an `any` value.",
+    "count": 4
+  },
+  {
+    "file": "src/server/api/routers/materialList.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .markupPercent on an `any` value.",
+    "count": 2
+  },
+  {
+    "file": "src/server/api/routers/materialList.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .materialListId on an `any` value.",
+    "count": 5
+  },
+  {
+    "file": "src/server/api/routers/materialList.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .name on an `any` value.",
+    "count": 16
+  },
+  {
+    "file": "src/server/api/routers/materialList.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .notes on an `any` value.",
+    "count": 2
+  },
+  {
+    "file": "src/server/api/routers/materialList.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .onConflictDoNothing on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/server/api/routers/materialList.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .organizationId on an `any` value.",
+    "count": 73
+  },
+  {
+    "file": "src/server/api/routers/materialList.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .poNumber on an `any` value.",
+    "count": 3
+  },
+  {
+    "file": "src/server/api/routers/materialList.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .quoteId on an `any` value.",
+    "count": 6
+  },
+  {
+    "file": "src/server/api/routers/materialList.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .quoteNumber on an `any` value.",
+    "count": 3
+  },
+  {
+    "file": "src/server/api/routers/materialList.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .reduce on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/server/api/routers/materialList.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .select on an `any` value.",
+    "count": 2
+  },
+  {
+    "file": "src/server/api/routers/materialList.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .set on an `any` value.",
+    "count": 2
+  },
+  {
+    "file": "src/server/api/routers/materialList.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .status on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/server/api/routers/materialList.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .subtotalMaterials on an `any` value.",
+    "count": 2
+  },
+  {
+    "file": "src/server/api/routers/materialList.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .toISOString on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/server/api/routers/materialList.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .toString on an `any` value.",
+    "count": 4
+  },
+  {
+    "file": "src/server/api/routers/materialList.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .total on an `any` value.",
+    "count": 4
+  },
+  {
+    "file": "src/server/api/routers/materialList.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .trim on an `any` value.",
+    "count": 5
+  },
+  {
+    "file": "src/server/api/routers/materialList.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .update on an `any` value.",
+    "count": 2
+  },
+  {
+    "file": "src/server/api/routers/materialList.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .updatedAt on an `any` value.",
+    "count": 5
+  },
+  {
+    "file": "src/server/api/routers/materialList.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .values on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/server/api/routers/materialList.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .where on an `any` value.",
+    "count": 4
+  },
+  {
+    "file": "src/server/api/routers/materialList.ts",
+    "rule": "@typescript-eslint/no-unsafe-return",
+    "message": "Unsafe return of a value of type `any`.",
+    "count": 4
+  },
+  {
+    "file": "src/server/api/routers/materialList.ts",
+    "rule": "@typescript-eslint/prefer-nullish-coalescing",
+    "message": "Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.",
+    "count": 32
+  },
+  {
+    "file": "src/server/api/routers/materialList.ts",
+    "rule": "@typescript-eslint/prefer-optional-chain",
+    "message": "Prefer using an optional chain expression instead, as it's more concise and easier to read.",
+    "count": 2
+  },
+  {
+    "file": "src/server/api/routers/organization.ts",
+    "rule": "@typescript-eslint/no-unsafe-argument",
+    "message": "Unsafe argument of type `any` assigned to a parameter of type `PermissionUser`.",
+    "count": 7
+  },
+  {
+    "file": "src/server/api/routers/organization.ts",
+    "rule": "@typescript-eslint/no-unsafe-argument",
+    "message": "Unsafe argument of type `any` assigned to a parameter of type `SQLWrapper | AnyColumn`.",
+    "count": 2
+  },
+  {
+    "file": "src/server/api/routers/organization.ts",
+    "rule": "@typescript-eslint/no-unsafe-argument",
+    "message": "Unsafe argument of type `any` assigned to a parameter of type `string | SQLWrapper`.",
+    "count": 8
+  },
+  {
+    "file": "src/server/api/routers/organization.ts",
+    "rule": "@typescript-eslint/no-unsafe-assignment",
+    "message": "Unsafe assignment of an `any` value.",
+    "count": 13
+  },
+  {
+    "file": "src/server/api/routers/organization.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .createdAt on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/server/api/routers/organization.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .email on an `any` value.",
+    "count": 2
+  },
+  {
+    "file": "src/server/api/routers/organization.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .id on an `any` value.",
+    "count": 4
+  },
+  {
+    "file": "src/server/api/routers/organization.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .name on an `any` value.",
+    "count": 2
+  },
+  {
+    "file": "src/server/api/routers/organization.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .organizationAccessStatus on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/server/api/routers/organization.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .organizationId on an `any` value.",
+    "count": 21
+  },
+  {
+    "file": "src/server/api/routers/organization.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .permissionConfig on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/server/api/routers/organization.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .role on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/server/api/routers/organization.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .stripeSubscriptionId on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/server/api/routers/organization.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .subscriptionEndsAt on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/server/api/routers/organization.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .subscriptionStatus on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/server/api/routers/organization.ts",
+    "rule": "@typescript-eslint/prefer-nullish-coalescing",
+    "message": "Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.",
+    "count": 7
+  },
+  {
+    "file": "src/server/api/routers/payment.ts",
+    "rule": "@typescript-eslint/no-unsafe-argument",
+    "message": "Unsafe argument of type `any` assigned to a parameter of type `string | number | Date`.",
+    "count": 1
+  },
+  {
+    "file": "src/server/api/routers/payment.ts",
+    "rule": "@typescript-eslint/no-unsafe-assignment",
+    "message": "Unsafe assignment of an `any` value.",
+    "count": 23
+  },
+  {
+    "file": "src/server/api/routers/payment.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .email on an `any` value.",
+    "count": 2
+  },
+  {
+    "file": "src/server/api/routers/payment.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .hasOneTimeAccess on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/server/api/routers/payment.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .id on an `any` value.",
+    "count": 7
+  },
+  {
+    "file": "src/server/api/routers/payment.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .name on an `any` value.",
+    "count": 2
+  },
+  {
+    "file": "src/server/api/routers/payment.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .oneTimePurchaseDate on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/server/api/routers/payment.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .stripeCustomerId on an `any` value.",
+    "count": 4
+  },
+  {
+    "file": "src/server/api/routers/payment.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .stripeSubscriptionId on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/server/api/routers/payment.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .subscriptionEndsAt on an `any` value.",
+    "count": 3
+  },
+  {
+    "file": "src/server/api/routers/payment.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .subscriptionStatus on an `any` value.",
+    "count": 2
+  },
+  {
+    "file": "src/server/api/routers/rooms.ts",
+    "rule": "@typescript-eslint/no-unnecessary-type-assertion",
+    "message": "This assertion is unnecessary since the receiver accepts the original type of the expression.",
+    "count": 2
+  },
+  {
+    "file": "src/server/api/routers/rooms.ts",
+    "rule": "@typescript-eslint/no-unsafe-argument",
+    "message": "Unsafe argument of type `any` assigned to a parameter of type `PermissionUser`.",
+    "count": 12
+  },
+  {
+    "file": "src/server/api/routers/rooms.ts",
+    "rule": "@typescript-eslint/no-unsafe-argument",
+    "message": "Unsafe argument of type `any` assigned to a parameter of type `string | SQLWrapper`.",
+    "count": 16
+  },
+  {
+    "file": "src/server/api/routers/rooms.ts",
+    "rule": "@typescript-eslint/no-unsafe-argument",
+    "message": "Unsafe argument of type `any` assigned to a parameter of type `string`.",
+    "count": 12
+  },
+  {
+    "file": "src/server/api/routers/rooms.ts",
+    "rule": "@typescript-eslint/no-unsafe-assignment",
+    "message": "Unsafe assignment of an `any` value.",
+    "count": 14
+  },
+  {
+    "file": "src/server/api/routers/rooms.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .id on an `any` value.",
+    "count": 2
+  },
+  {
+    "file": "src/server/api/routers/rooms.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .organizationId on an `any` value.",
+    "count": 15
+  },
+  {
+    "file": "src/server/api/routers/supplier.ts",
+    "rule": "@typescript-eslint/no-unsafe-argument",
+    "message": "Unsafe argument of type `any` assigned to a parameter of type `PermissionUser`.",
+    "count": 1
+  },
+  {
+    "file": "src/server/api/routers/supplier.ts",
+    "rule": "@typescript-eslint/no-unsafe-argument",
+    "message": "Unsafe argument of type `any` assigned to a parameter of type `string | SQLWrapper`.",
+    "count": 6
+  },
+  {
+    "file": "src/server/api/routers/supplier.ts",
+    "rule": "@typescript-eslint/no-unsafe-assignment",
+    "message": "Unsafe assignment of an `any` value.",
+    "count": 2
+  },
+  {
+    "file": "src/server/api/routers/supplier.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .organizationId on an `any` value.",
+    "count": 15
+  },
+  {
+    "file": "src/server/api/routers/user.ts",
+    "rule": "@typescript-eslint/no-unsafe-argument",
+    "message": "Unsafe argument of type `any` assigned to a parameter of type `PermissionUser`.",
+    "count": 1
+  },
+  {
+    "file": "src/server/api/routers/user.ts",
+    "rule": "@typescript-eslint/no-unsafe-assignment",
+    "message": "Unsafe assignment of an `any` value.",
+    "count": 9
+  },
+  {
+    "file": "src/server/api/routers/user.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .email on an `any` value.",
+    "count": 2
+  },
+  {
+    "file": "src/server/api/routers/user.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .hasOneTimeAccess on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/server/api/routers/user.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .id on an `any` value.",
+    "count": 3
+  },
+  {
+    "file": "src/server/api/routers/user.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .name on an `any` value.",
+    "count": 2
+  },
+  {
+    "file": "src/server/api/routers/user.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .organizationId on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/server/api/routers/user.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .role on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/server/api/trpc.ts",
+    "rule": "@typescript-eslint/no-unsafe-assignment",
+    "message": "Unsafe assignment of an `any` value.",
+    "count": 6
+  },
+  {
+    "file": "src/server/api/trpc.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .organizationAccessStatus on an `any` value.",
+    "count": 2
+  },
+  {
+    "file": "src/server/api/trpc.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .organizationId on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/server/api/trpc.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .role on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/server/assets/service.ts",
+    "rule": "@typescript-eslint/no-unsafe-assignment",
+    "message": "Unsafe assignment of an `any` value.",
+    "count": 11
+  },
+  {
+    "file": "src/server/assets/service.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .email on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/server/assets/service.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .id on an `any` value.",
+    "count": 8
+  },
+  {
+    "file": "src/server/assets/service.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .name on an `any` value.",
+    "count": 2
+  },
+  {
+    "file": "src/server/assets/service.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .organizationId on an `any` value.",
+    "count": 4
+  },
+  {
+    "file": "src/server/assets/service.ts",
+    "rule": "@typescript-eslint/prefer-nullish-coalescing",
+    "message": "Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.",
+    "count": 1
+  },
+  {
+    "file": "src/server/assist/cached-jev.ts",
+    "rule": "@typescript-eslint/prefer-nullish-coalescing",
+    "message": "Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.",
+    "count": 1
+  },
+  {
+    "file": "src/server/assist/decisions.ts",
+    "rule": "@typescript-eslint/prefer-nullish-coalescing",
+    "message": "Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.",
+    "count": 1
+  },
+  {
+    "file": "src/server/assist/jev.test.ts",
+    "rule": "@typescript-eslint/no-unsafe-argument",
+    "message": "Unsafe argument of type `any` assigned to a parameter of type `string`.",
+    "count": 1
+  },
+  {
+    "file": "src/server/assist/jev.test.ts",
+    "rule": "@typescript-eslint/no-unsafe-assignment",
+    "message": "Unsafe assignment of an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/server/assist/jev.test.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .body on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/server/assist/jev.ts",
+    "rule": "@typescript-eslint/prefer-nullish-coalescing",
+    "message": "Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.",
+    "count": 1
+  },
+  {
+    "file": "src/server/assist/router.test.ts",
+    "rule": "@typescript-eslint/no-unsafe-argument",
+    "message": "Unsafe argument of type `any` assigned to a parameter of type `SQL<unknown>`.",
+    "count": 1
+  },
+  {
+    "file": "src/server/assist/sheet-text.ts",
+    "rule": "@typescript-eslint/no-unsafe-argument",
+    "message": "Unsafe argument of type `any` assigned to a parameter of type `BinaryLike`.",
+    "count": 1
+  },
+  {
+    "file": "src/server/assist/sheet-text.ts",
+    "rule": "@typescript-eslint/prefer-nullish-coalescing",
+    "message": "Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.",
+    "count": 1
+  },
+  {
+    "file": "src/server/db/schema.ts",
+    "rule": "@typescript-eslint/ban-ts-comment",
+    "message": "Do not use \"@ts-nocheck\" because it alters compilation errors.",
+    "count": 1
+  },
+  {
+    "file": "src/server/db/schema.ts",
+    "rule": "@typescript-eslint/no-explicit-any",
+    "message": "Unexpected any. Specify a different type.",
+    "count": 6
+  },
+  {
+    "file": "src/server/db/schema.ts",
+    "rule": "@typescript-eslint/no-unsafe-argument",
+    "message": "Unsafe argument of type `any` assigned to a parameter of type `AnyTable<{ name: string; }>`.",
+    "count": 5
+  },
+  {
+    "file": "src/server/db/schema.ts",
+    "rule": "@typescript-eslint/no-unsafe-argument",
+    "message": "Unsafe argument of type `any` assigned to a parameter of type `PgTableWithColumns<{ name: \"material_list\"; schema: undefined; columns: { [x: string]: PgColumn<{ name: any; tableName: \"material_list\"; dataType: any; columnType: any; data: any; driverParam: any; notNull: false; hasDefault: false; ... 6 more ...; generated: undefined; }, {}, { ...; }>; }; dialect: \"pg\"; }>`.",
+    "count": 1
+  },
+  {
+    "file": "src/server/db/schema.ts",
+    "rule": "@typescript-eslint/no-unsafe-argument",
+    "message": "Unsafe argument of type `any` assigned to a parameter of type `SQL<unknown> | Partial<ExtraConfigColumn<ColumnBaseConfig<ColumnDataType, string>>>`.",
+    "count": 6
+  },
+  {
+    "file": "src/server/db/schema.ts",
+    "rule": "@typescript-eslint/no-unsafe-assignment",
+    "message": "Unsafe assignment of type `[any]` to a variable of type `[AnyColumn<{ tableName: any; }>]`.",
+    "count": 24
+  },
+  {
+    "file": "src/server/db/schema.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .createdByUserId on an `any` value.",
+    "count": 3
+  },
+  {
+    "file": "src/server/db/schema.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .currentJobId on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/server/db/schema.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .foremanUserId on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/server/db/schema.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .id on an `any` value.",
+    "count": 57
+  },
+  {
+    "file": "src/server/db/schema.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .jobId on an `any` value.",
+    "count": 2
+  },
+  {
+    "file": "src/server/db/schema.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .locationId on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/server/db/schema.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .materialListId on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/server/db/schema.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .organizationId on an `any` value.",
+    "count": 5
+  },
+  {
+    "file": "src/server/db/schema.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .pricingProfileId on an `any` value.",
+    "count": 2
+  },
+  {
+    "file": "src/server/db/schema.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .quoteId on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/server/db/schema.ts",
+    "rule": "@typescript-eslint/no-unsafe-return",
+    "message": "Unsafe return of a value of type `any`.",
+    "count": 33
+  },
+  {
+    "file": "src/server/material-list-names.ts",
+    "rule": "@typescript-eslint/no-unsafe-assignment",
+    "message": "Unsafe assignment of an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/server/material-list-names.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .jobId on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/server/material-list-names.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .name on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/server/material-list-names.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .organizationId on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/server/material-list-names.ts",
+    "rule": "@typescript-eslint/no-unsafe-return",
+    "message": "Unsafe return of a value of type `any`.",
+    "count": 1
+  },
+  {
+    "file": "src/server/replicache/catalogue-sync.ts",
+    "rule": "@typescript-eslint/no-unsafe-argument",
+    "message": "Unsafe argument of type `any` assigned to a parameter of type `SQLWrapper | AnyColumn`.",
+    "count": 2
+  },
+  {
+    "file": "src/server/replicache/catalogue-sync.ts",
+    "rule": "@typescript-eslint/no-unsafe-assignment",
+    "message": "Unsafe assignment of an `any` value.",
+    "count": 4
+  },
+  {
+    "file": "src/server/replicache/catalogue-sync.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .id on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/server/replicache/catalogue-sync.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .name on an `any` value.",
+    "count": 2
+  },
+  {
+    "file": "src/server/replicache/catalogue-sync.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .organizationId on an `any` value.",
+    "count": 2
+  },
+  {
+    "file": "src/server/replicache/catalogue-sync.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .sortOrder on an `any` value.",
+    "count": 2
+  },
+  {
+    "file": "src/server/replicache/material-list-sync.ts",
+    "rule": "@typescript-eslint/no-unsafe-argument",
+    "message": "Unsafe argument of type `any` assigned to a parameter of type `SQLWrapper | AnyColumn`.",
+    "count": 4
+  },
+  {
+    "file": "src/server/replicache/material-list-sync.ts",
+    "rule": "@typescript-eslint/no-unsafe-argument",
+    "message": "Unsafe argument of type `any` assigned to a parameter of type `string | SQLWrapper`.",
+    "count": 5
+  },
+  {
+    "file": "src/server/replicache/material-list-sync.ts",
+    "rule": "@typescript-eslint/no-unsafe-argument",
+    "message": "Unsafe argument of type `any` assigned to a parameter of type `string`.",
+    "count": 10
+  },
+  {
+    "file": "src/server/replicache/material-list-sync.ts",
+    "rule": "@typescript-eslint/no-unsafe-assignment",
+    "message": "Unsafe assignment of an `any` value.",
+    "count": 49
+  },
+  {
+    "file": "src/server/replicache/material-list-sync.ts",
+    "rule": "@typescript-eslint/no-unsafe-assignment",
+    "message": "Unsafe spread of an `any` value in an array.",
+    "count": 1
+  },
+  {
+    "file": "src/server/replicache/material-list-sync.ts",
+    "rule": "@typescript-eslint/no-unsafe-call",
+    "message": "Unsafe call of a(n) `any` typed value.",
+    "count": 4
+  },
+  {
+    "file": "src/server/replicache/material-list-sync.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .createdAt on an `any` value.",
+    "count": 2
+  },
+  {
+    "file": "src/server/replicache/material-list-sync.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .createdByUserId on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/server/replicache/material-list-sync.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .email on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/server/replicache/material-list-sync.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .foremanName on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/server/replicache/material-list-sync.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .foremanUserId on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/server/replicache/material-list-sync.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .id on an `any` value.",
+    "count": 27
+  },
+  {
+    "file": "src/server/replicache/material-list-sync.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .jobId on an `any` value.",
+    "count": 2
+  },
+  {
+    "file": "src/server/replicache/material-list-sync.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .kind on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/server/replicache/material-list-sync.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .locationId on an `any` value.",
+    "count": 2
+  },
+  {
+    "file": "src/server/replicache/material-list-sync.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .materialListId on an `any` value.",
+    "count": 3
+  },
+  {
+    "file": "src/server/replicache/material-list-sync.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .name on an `any` value.",
+    "count": 4
+  },
+  {
+    "file": "src/server/replicache/material-list-sync.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .organizationId on an `any` value.",
+    "count": 13
+  },
+  {
+    "file": "src/server/replicache/material-list-sync.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .poNumber on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/server/replicache/material-list-sync.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .quoteId on an `any` value.",
+    "count": 4
+  },
+  {
+    "file": "src/server/replicache/material-list-sync.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .status on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/server/replicache/material-list-sync.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .toISOString on an `any` value.",
+    "count": 4
+  },
+  {
+    "file": "src/server/replicache/material-list-sync.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .updatedAt on an `any` value.",
+    "count": 4
+  },
+  {
+    "file": "src/server/replicache/material-list-sync.ts",
+    "rule": "@typescript-eslint/no-unsafe-return",
+    "message": "Unsafe return of a value of type `any`.",
+    "count": 4
+  },
+  {
+    "file": "src/server/replicache/pull.ts",
+    "rule": "@typescript-eslint/restrict-template-expressions",
+    "message": "Invalid type \"never\" of template literal expression.",
+    "count": 1
+  },
+  {
+    "file": "src/server/replicache/views.ts",
+    "rule": "@typescript-eslint/prefer-optional-chain",
+    "message": "Prefer using an optional chain expression instead, as it's more concise and easier to read.",
+    "count": 1
+  },
+  {
+    "file": "src/server/rooms/detect-job.ts",
+    "rule": "@typescript-eslint/prefer-optional-chain",
+    "message": "Prefer using an optional chain expression instead, as it's more concise and easier to read.",
+    "count": 1
+  },
+  {
+    "file": "src/server/rooms/floor-graph.ts",
+    "rule": "@typescript-eslint/no-confusing-non-null-assertion",
+    "message": "Confusing combination of non-null assertion and equality test like `a! == b`, which looks very similar to `a !== b`.",
+    "count": 1
+  },
+  {
+    "file": "src/server/rooms/floor-graph.ts",
+    "rule": "@typescript-eslint/no-floating-promises",
+    "message": "Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator.",
+    "count": 8
+  },
+  {
+    "file": "src/server/rooms/floor-graph.ts",
+    "rule": "@typescript-eslint/no-misused-promises",
+    "message": "Promise returned in function argument where a void return was expected.",
+    "count": 1
+  },
+  {
+    "file": "src/server/rooms/floor-graph.ts",
+    "rule": "@typescript-eslint/non-nullable-type-assertion-style",
+    "message": "Use a ! assertion to more succinctly remove null and undefined from the type.",
+    "count": 2
+  },
+  {
+    "file": "src/server/rooms/floor-graph.ts",
+    "rule": "@typescript-eslint/prefer-for-of",
+    "message": "Expected a `for-of` loop instead of a `for` loop with this simple iteration.",
+    "count": 1
+  },
+  {
+    "file": "src/server/rooms/hybrid/density.node-test.ts",
+    "rule": "@typescript-eslint/no-floating-promises",
+    "message": "Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator.",
+    "count": 3
+  },
+  {
+    "file": "src/server/rooms/hybrid/partition-diagnostics.node-test.ts",
+    "rule": "@typescript-eslint/no-floating-promises",
+    "message": "Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator.",
+    "count": 8
+  },
+  {
+    "file": "src/server/rooms/hybrid/seeded-partition.node-test.ts",
+    "rule": "@typescript-eslint/no-floating-promises",
+    "message": "Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator.",
+    "count": 9
+  },
+  {
+    "file": "src/server/rooms/pdf-walls.ts",
+    "rule": "@typescript-eslint/no-unnecessary-type-assertion",
+    "message": "This assertion is unnecessary since it does not change the type of the expression.",
+    "count": 1
+  },
+  {
+    "file": "src/server/rooms/pdf-walls.ts",
+    "rule": "@typescript-eslint/no-unsafe-argument",
+    "message": "Unsafe argument of type `any` assigned to a parameter of type `string | undefined`.",
+    "count": 1
+  },
+  {
+    "file": "src/server/rooms/pdf-walls.ts",
+    "rule": "@typescript-eslint/no-unsafe-assignment",
+    "message": "Unsafe array destructuring of an `any` array value.",
+    "count": 2
+  },
+  {
+    "file": "src/server/rooms/pdf-walls.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .name on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/server/rooms/pdf-walls.ts",
+    "rule": "@typescript-eslint/no-unsafe-return",
+    "message": "Unsafe return of a value of type `any`.",
+    "count": 1
+  },
+  {
+    "file": "src/server/rooms/pdf-walls.ts",
+    "rule": "@typescript-eslint/prefer-for-of",
+    "message": "Expected a `for-of` loop instead of a `for` loop with this simple iteration.",
+    "count": 1
+  },
+  {
+    "file": "src/server/rooms/pdf-walls.ts",
+    "rule": "@typescript-eslint/prefer-nullish-coalescing",
+    "message": "Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.",
+    "count": 1
+  },
+  {
+    "file": "src/server/rooms/polygonize-walls.ts",
+    "rule": "@typescript-eslint/no-unsafe-argument",
+    "message": "Unsafe argument of type `any` assigned to a parameter of type `number`.",
+    "count": 4
+  },
+  {
+    "file": "src/server/rooms/polygonize-walls.ts",
+    "rule": "@typescript-eslint/no-unsafe-assignment",
+    "message": "Unsafe assignment of an `any` value.",
+    "count": 6
+  },
+  {
+    "file": "src/server/rooms/polygonize-walls.ts",
+    "rule": "@typescript-eslint/no-unsafe-assignment",
+    "message": "Unsafe assignment of an error typed value.",
+    "count": 3
+  },
+  {
+    "file": "src/server/rooms/polygonize-walls.ts",
+    "rule": "@typescript-eslint/no-unsafe-call",
+    "message": "Unsafe call of a(n) `any` typed value.",
+    "count": 3
+  },
+  {
+    "file": "src/server/rooms/polygonize-walls.ts",
+    "rule": "@typescript-eslint/no-unsafe-call",
+    "message": "Unsafe call of a(n) `error` type typed value.",
+    "count": 1
+  },
+  {
+    "file": "src/server/rooms/polygonize-walls.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .getCoordinates on an `any` value.",
+    "count": 2
+  },
+  {
+    "file": "src/server/rooms/polygonize-walls.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .getNumPoints on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/server/rooms/polygonize-walls.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .isEmpty on an `error` typed value.",
+    "count": 1
+  },
+  {
+    "file": "src/server/rooms/polygonize-walls.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .length on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/server/rooms/polygonize-walls.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access [j - 1] on an `any` value.",
+    "count": 2
+  },
+  {
+    "file": "src/server/rooms/polygonize-walls.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access [j] on an `any` value.",
+    "count": 2
+  },
+  {
+    "file": "src/server/rooms/polygonize-walls.ts",
+    "rule": "@typescript-eslint/no-unsafe-return",
+    "message": "Unsafe return of a value of type `any`.",
+    "count": 1
+  },
+  {
+    "file": "src/server/rooms/raster-rooms.ts",
+    "rule": "@typescript-eslint/no-unnecessary-type-assertion",
+    "message": "This assertion is unnecessary since it does not change the type of the expression.",
+    "count": 2
+  },
+  {
+    "file": "src/server/rooms/sheet-name.ts",
+    "rule": "@typescript-eslint/prefer-regexp-exec",
+    "message": "Use the `RegExp#exec()` method instead.",
+    "count": 2
+  },
+  {
+    "file": "src/server/rooms/storage.ts",
+    "rule": "@typescript-eslint/prefer-regexp-exec",
+    "message": "Use the `RegExp#exec()` method instead.",
+    "count": 1
+  },
+  {
+    "file": "src/server/rooms/supplementary-rooms.ts",
+    "rule": "@typescript-eslint/no-unsafe-call",
+    "message": "Unsafe call of a(n) `any` typed value.",
+    "count": 1
+  },
+  {
+    "file": "src/server/rooms/supplementary-rooms.ts",
+    "rule": "@typescript-eslint/no-unsafe-call",
+    "message": "Unsafe call of a(n) `error` type typed value.",
+    "count": 3
+  },
+  {
+    "file": "src/server/rooms/supplementary-rooms.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .getArea on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/server/rooms/supplementary-rooms.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .getArea on an `error` typed value.",
+    "count": 3
+  },
+  {
+    "file": "src/server/rooms/supplementary-rooms.ts",
+    "rule": "@typescript-eslint/no-unsafe-return",
+    "message": "Unsafe return of a value of type error.",
+    "count": 1
+  },
+  {
+    "file": "src/server/rooms/upload-render-page.ts",
+    "rule": "@typescript-eslint/no-unsafe-argument",
+    "message": "Unsafe argument of type `any` assigned to a parameter of type `number`.",
+    "count": 2
+  },
+  {
+    "file": "src/server/rooms/upload-render-page.ts",
+    "rule": "@typescript-eslint/no-unsafe-assignment",
+    "message": "Unsafe array destructuring of an `any` array value.",
+    "count": 1
+  },
+  {
+    "file": "src/server/rooms/upload-render.node-test.ts",
+    "rule": "@typescript-eslint/no-floating-promises",
+    "message": "Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator.",
+    "count": 2
+  },
+  {
+    "file": "src/server/rooms/upload-session.node-test.ts",
+    "rule": "@typescript-eslint/no-floating-promises",
+    "message": "Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator.",
+    "count": 1
+  },
+  {
+    "file": "src/server/rooms/upload-session.ts",
+    "rule": "@typescript-eslint/prefer-optional-chain",
+    "message": "Prefer using an optional chain expression instead, as it's more concise and easier to read.",
+    "count": 2
+  },
+  {
+    "file": "src/server/rooms/upload-worker.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .id on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/server/rooms/upload-worker.ts",
+    "rule": "@typescript-eslint/prefer-optional-chain",
+    "message": "Prefer using an optional chain expression instead, as it's more concise and easier to read.",
+    "count": 1
+  },
+  {
+    "file": "src/server/utils/ensure-user.ts",
+    "rule": "@typescript-eslint/no-unsafe-assignment",
+    "message": "Unsafe assignment of an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/server/utils/ensure-user.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .id on an `any` value.",
+    "count": 2
+  },
+  {
+    "file": "src/server/utils/ensure-user.ts",
+    "rule": "@typescript-eslint/no-unsafe-return",
+    "message": "Unsafe return of a value of type `any`.",
+    "count": 1
+  },
+  {
+    "file": "src/server/utils/ensure-user.ts",
+    "rule": "@typescript-eslint/prefer-nullish-coalescing",
+    "message": "Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.",
+    "count": 2
+  },
+  {
+    "file": "src/server/utils/ensure-user.ts",
+    "rule": "@typescript-eslint/prefer-optional-chain",
+    "message": "Prefer using an optional chain expression instead, as it's more concise and easier to read.",
+    "count": 1
+  },
+  {
+    "file": "src/server/utils/ensure-user.ts",
+    "rule": "prefer-const",
+    "message": "'user' is never reassigned. Use 'const' instead.",
+    "count": 1
+  },
+  {
+    "file": "src/server/utils/get-agent-bypass-user.ts",
+    "rule": "@typescript-eslint/no-unsafe-argument",
+    "message": "Unsafe argument of type `any` assigned to a parameter of type `SQLWrapper | AnyColumn`.",
+    "count": 1
+  },
+  {
+    "file": "src/server/utils/get-agent-bypass-user.ts",
+    "rule": "@typescript-eslint/no-unsafe-argument",
+    "message": "Unsafe argument of type `any` assigned to a parameter of type `SQLWrapper`.",
+    "count": 1
+  },
+  {
+    "file": "src/server/utils/get-agent-bypass-user.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .createdAt on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/server/utils/get-agent-bypass-user.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .email on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/server/utils/get-agent-bypass-user.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .organizationId on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/server/utils/get-dev-bypass-user.ts",
+    "rule": "@typescript-eslint/no-unsafe-argument",
+    "message": "Unsafe argument of type `any` assigned to a parameter of type `SQLWrapper | AnyColumn`.",
+    "count": 1
+  },
+  {
+    "file": "src/server/utils/get-dev-bypass-user.ts",
+    "rule": "@typescript-eslint/no-unsafe-argument",
+    "message": "Unsafe argument of type `any` assigned to a parameter of type `SQLWrapper`.",
+    "count": 1
+  },
+  {
+    "file": "src/server/utils/get-dev-bypass-user.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .createdAt on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/server/utils/get-dev-bypass-user.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .email on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/server/utils/get-dev-bypass-user.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .organizationId on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/server/utils/seed-organization.ts",
+    "rule": "@typescript-eslint/no-unsafe-argument",
+    "message": "Unsafe argument of type `any` assigned to a parameter of type `string`.",
+    "count": 2
+  },
+  {
+    "file": "src/server/utils/seed-organization.ts",
+    "rule": "@typescript-eslint/no-unsafe-assignment",
+    "message": "Unsafe assignment of an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/server/utils/seed-organization.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .id on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/server/utils/seed-organization.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .name on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/server/utils/seed-organization.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .organizationId on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/server/utils/wait-for-user.ts",
+    "rule": "@typescript-eslint/no-inferrable-types",
+    "message": "Type number trivially inferred from a number literal, remove type annotation.",
+    "count": 2
+  },
+  {
+    "file": "src/server/utils/wait-for-user.ts",
+    "rule": "@typescript-eslint/no-redundant-type-constituents",
+    "message": "'any' overrides all other types in this union type.",
+    "count": 1
+  },
+  {
+    "file": "src/server/utils/wait-for-user.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .id on an `any` value.",
+    "count": 1
+  }
+]

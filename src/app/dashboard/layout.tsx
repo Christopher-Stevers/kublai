@@ -51,7 +51,8 @@ export default async function DashboardLayout({
 
   // CRITICAL: Check organizationId BEFORE any rendering
   // If no organizationId, redirect immediately
-  if (!user.organizationId) {
+  const organizationId = (user as { organizationId?: unknown }).organizationId;
+  if (typeof organizationId !== "string" || !organizationId) {
     redirect("/onboarding");
   }
 
@@ -65,7 +66,7 @@ export default async function DashboardLayout({
   return (
     <HydrateClient>
       <div className="flex min-h-screen flex-col bg-muted/50">
-        <ReplicacheSyncBootstrap />
+        <ReplicacheSyncBootstrap userId={effectiveUserId} organizationId={organizationId} />
         <Header />
         <TabAccessGate />
         <main className="flex-1">{children}</main>

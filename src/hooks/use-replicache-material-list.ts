@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   subscribeToMaterialListReplicacheSyncing,
+  tryGetMaterialListReplicache,
 } from "~/lib/replicache-material-list";
-import { useReplicacheWorkspace } from "./use-replicache-jobs";
+import { createSharedReplicacheReader } from "./use-shared-replicache";
 
 export type ReplicacheSyncStatus = "synced" | "pending" | "syncing";
 
@@ -75,8 +76,55 @@ export interface ReplicacheMaterialList {
 
 const EMPTY_DETAIL = {
   materialList: null as ReplicacheMaterialList | null,
-  items: [] as ReplicacheMaterialListItem[], materialTotal: 0, isLoading: true,
+  items: [] as ReplicacheMaterialListItem[],
+  materialTotal: 0,
+  isLoading: true,
 };
 export function useReplicacheMaterialList(materialListId: string) {
-  return useReplicacheWorkspace().lists[materialListId] ?? EMPTY_DETAIL;
+  const useReader = useMemo(
+    () =>
+      createSharedReplicacheReader(async (tx) => {
+        const materialList = ((await tx.get(
+          `materialList/${materialListId}`,
+        )) ?? null) as unknown as ReplicacheMaterialList | null;
+        if (!materialList) return { ...EMPTY_DETAIL, isLoading: false };
+        const byList = (await tx
+          .scan({ indexName: "itemsByList", prefix: materialListId })
+          .values()
+          .toArray()) as unknown as ReplicacheMaterialListItem[];
+        const byQuote = materialList.quoteId
+          ? ((await tx
+              .scan({ indexName: "itemsByQuote", prefix: materialList.quoteId })
+              .values()
+              .toArray()) as unknown as ReplicacheMaterialListItem[])
+          : [];
+        const items = [
+          ...new Map(
+            [...byList, ...byQuote]
+              .filter(
+                (item) =>
+                  item.materialListId === materialListId ||
+                  (!item.materialListId &&
+                    item.quoteId === materialList.quoteId),
+              )
+              .map((item) => [item.id, item]),
+          ).values(),
+        ];
+        items.sort(
+          (a, b) =>
+            Date.parse(a.createdAt ?? "") - Date.parse(b.createdAt ?? ""),
+        );
+        return {
+          materialList,
+          items,
+          materialTotal: items.reduce(
+            (sum, item) => sum + Number(item.extendedPrice ?? 0),
+            0,
+          ),
+          isLoading: false,
+        };
+      }, EMPTY_DETAIL),
+    [materialListId],
+  );
+  return useReader(tryGetMaterialListReplicache());
 }

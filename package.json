@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "next build --webpack",
-    "check": "tsc --noEmit",
+    "check": "pnpm typecheck && pnpm lint",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
@@ -16,14 +16,17 @@
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,mdx}\" --cache",
     "format:write": "prettier --write \"**/*.{ts,tsx,js,jsx,mdx}\" --cache",
     "healthcheck": "node scripts/check-health.mjs",
-    "lint": "next lint",
-    "lint:fix": "next lint --fix",
+    "lint": "node scripts/check-lint.mjs",
+    "lint:fix": "eslint src --fix",
     "preview": "./scripts/open-next-with-env.sh opennextjs-cloudflare build && ./scripts/open-next-with-env.sh opennextjs-cloudflare preview",
     "start": "next start",
     "test:e2e": "playwright test",
     "deploy": "./scripts/open-next-with-env.sh opennextjs-cloudflare build && ./scripts/open-next-with-env.sh opennextjs-cloudflare deploy",
     "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "lint:strict": "eslint src",
+    "test": "vitest run",
+    "test:reliability": "tsx --test src/server/rooms/upload-session.node-test.ts src/server/rooms/bounded-cache.node-test.ts scripts/service-worker.node-test.mjs"
   },
   "dependencies": {
     "@clerk/nextjs": "^6.36.7",

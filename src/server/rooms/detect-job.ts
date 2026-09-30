@@ -1,4 +1,7 @@
-import { and, eq, lt, ne, or, sql } from "drizzle-orm";
+import { randomUUID } from "node:crypto";
+import { BoundedCache } from "./bounded-cache";
+import { processIdentity, sameProcess } from "./process-identity";
+import { and, eq, ne, sql } from "drizzle-orm";
 
 import { pointInPolygon, toPolygon, type RoomPoint } from "~/lib/room-shape";
 import { db } from "~/server/db";
@@ -45,6 +48,7 @@ type DetectedRoom = {
 
 export type DetectJobState = {
   floorId: string;
+  runId: string;
   status: "running" | "done" | "error";
   error?: string;
   result?: DetectJobResult;
@@ -63,6 +67,7 @@ function toDetectJobState(
   const result = row.result as DetectJobResult | null;
   return {
     floorId: row.floorId,
+    runId: row.runId,
     status: row.status as DetectJobState["status"],
     ...(row.error ? { error: row.error } : {}),
     ...(result ? { result } : {}),
@@ -80,14 +85,15 @@ export async function getDetectJob(
     .where(eq(roomDetectionJobs.floorId, floorId))
     .limit(1);
   if (!row) return null;
-  let workerAlive = true;
-  if (row.status === "running" && row.workerPid) {
-    try {
-      process.kill(row.workerPid, 0);
-    } catch {
-      workerAlive = false;
-    }
-  }
+  const workerAlive =
+    (!row.workerPid && Date.now() - row.startedAt.getTime() < 15_000) ||
+    (!!row.workerPid && (!row.workerStartTicks || !row.workerBootId) &&
+      !!(await processIdentity(row.workerPid))) ||
+    (await sameProcess({
+      pid: row.workerPid ?? -1,
+      startTicks: row.workerStartTicks ?? "",
+      bootId: row.workerBootId ?? "",
+    }));
   if (
     row.status === "running" &&
     (!workerAlive || Date.now() - row.heartbeatAt.getTime() >= JOB_STALE_MS)
@@ -95,6 +101,7 @@ export async function getDetectJob(
     await failDetectJob(
       floorId,
       "Room detection worker stopped before completing",
+      row.runId,
     );
     return getDetectJob(floorId);
   }
@@ -104,46 +111,63 @@ export async function getDetectJob(
 export async function beginDetectJob(
   floorId: string,
   organizationId: string,
-): Promise<boolean> {
+): Promise<string | null> {
+  const running = await db
+    .select({ floorId: roomDetectionJobs.floorId })
+    .from(roomDetectionJobs)
+    .where(eq(roomDetectionJobs.status, "running"));
+  for (const job of running) await getDetectJob(job.floorId);
   const now = new Date();
-  const staleBefore = new Date(now.getTime() - JOB_STALE_MS);
-  const [row] = await db
-    .insert(roomDetectionJobs)
-    .values({
+  const runId = randomUUID();
+  return db.transaction(async (tx) => {
+    // Admission is serialized across HTTP processes and organizations.
+    await tx.execute(sql`select pg_advisory_xact_lock(72491833)`);
+    const active = await tx
+      .select({ floorId: roomDetectionJobs.floorId })
+      .from(roomDetectionJobs)
+      .where(eq(roomDetectionJobs.status, "running"));
+    if (active.length >= 2) return null;
+    const values = {
       floorId,
       organizationId,
+      runId,
       status: "running",
       startedAt: now,
       heartbeatAt: now,
       finishedAt: null,
       workerPid: null,
+      workerBootId: null,
+      workerStartTicks: null,
       error: null,
       result: null,
       log: [],
-    })
-    .onConflictDoUpdate({
-      target: roomDetectionJobs.floorId,
-      set: {
-        organizationId,
-        status: "running",
-        startedAt: now,
-        heartbeatAt: now,
-        finishedAt: null,
-        workerPid: null,
-        error: null,
-        result: null,
-        log: [],
-      },
-      setWhere: or(
-        ne(roomDetectionJobs.status, "running"),
-        lt(roomDetectionJobs.heartbeatAt, staleBefore),
-      ),
-    })
-    .returning({ floorId: roomDetectionJobs.floorId });
-  return Boolean(row);
+    };
+    const [row] = await tx
+      .insert(roomDetectionJobs)
+      .values(values)
+      .onConflictDoUpdate({
+        target: roomDetectionJobs.floorId,
+        set: values,
+        setWhere: ne(roomDetectionJobs.status, "running"),
+      })
+      .returning({ runId: roomDetectionJobs.runId });
+    return row?.runId ?? null;
+  });
 }
 
-async function appendDetectLog(floorId: string, message: string) {
+function runPredicate(floorId: string, runId: string) {
+  return and(
+    eq(roomDetectionJobs.floorId, floorId),
+    eq(roomDetectionJobs.runId, runId),
+    eq(roomDetectionJobs.status, "running"),
+  );
+}
+
+async function appendDetectLog(
+  floorId: string,
+  message: string,
+  runId: string,
+) {
   const entry: DetectLogEntry = { at: Date.now(), message };
   await db
     .update(roomDetectionJobs)
@@ -162,23 +186,38 @@ async function appendDetectLog(floorId: string, message: string) {
         ) recent
       )`,
     })
-    .where(eq(roomDetectionJobs.floorId, floorId));
+    .where(runPredicate(floorId, runId));
 }
 
-export async function setDetectWorkerPid(floorId: string, workerPid: number) {
+export async function setDetectWorkerPid(
+  floorId: string,
+  workerPid: number,
+  runId: string,
+) {
+  const identity = await processIdentity(workerPid);
   await db
     .update(roomDetectionJobs)
-    .set({ workerPid, heartbeatAt: new Date() })
-    .where(
-      and(
-        eq(roomDetectionJobs.floorId, floorId),
-        eq(roomDetectionJobs.status, "running"),
-      ),
-    );
+    .set({
+      workerPid,
+      workerBootId: identity?.bootId,
+      workerStartTicks: identity?.startTicks,
+      heartbeatAt: new Date(),
+    })
+    .where(runPredicate(floorId, runId));
 }
 
-async function finishDetectJob(floorId: string, result: DetectJobResult) {
-  await db
+type DetectionTx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+async function finishDetectJob(
+  tx: DetectionTx,
+  floorId: string,
+  result: DetectJobResult,
+  runId: string,
+) {
+  const entry = {
+    at: Date.now(),
+    message: `Done: ${result.added} added, ${result.updated} updated, ${result.removed} removed`,
+  };
+  await tx
     .update(roomDetectionJobs)
     .set({
       status: "done",
@@ -187,12 +226,16 @@ async function finishDetectJob(floorId: string, result: DetectJobResult) {
       workerPid: null,
       heartbeatAt: new Date(),
       finishedAt: new Date(),
+      log: sql`${roomDetectionJobs.log} || ${JSON.stringify([entry])}::jsonb`,
     })
-    .where(eq(roomDetectionJobs.floorId, floorId));
-  console.log("[detect-job] done", floorId, result);
+    .where(runPredicate(floorId, runId));
 }
 
-export async function failDetectJob(floorId: string, error: string) {
+export async function failDetectJob(
+  floorId: string,
+  error: string,
+  runId: string,
+) {
   await db
     .update(roomDetectionJobs)
     .set({
@@ -202,12 +245,7 @@ export async function failDetectJob(floorId: string, error: string) {
       heartbeatAt: new Date(),
       finishedAt: new Date(),
     })
-    .where(
-      and(
-        eq(roomDetectionJobs.floorId, floorId),
-        eq(roomDetectionJobs.status, "running"),
-      ),
-    );
+    .where(runPredicate(floorId, runId));
   console.error("[detect-job] error", floorId, error);
 }
 
@@ -228,8 +266,14 @@ type FloorGraphEntry = {
 };
 
 const GRAPH_TTL_MS = 30 * 60_000;
-const graphs = new Map<string, FloorGraphEntry>();
-const pendingGraphs = new Map<string, Promise<FloorGraphEntry>>();
+const graphs = new BoundedCache<FloorGraphEntry>(
+  4,
+  48 * 1024 * 1024,
+  GRAPH_TTL_MS,
+  1,
+);
+const graphSweep = setInterval(() => graphs.sweep(), 60_000);
+graphSweep.unref();
 
 function storageKeyFor(imageUrl: string) {
   const prefix = `${JOB_ROOM_FILE_PUBLIC_PREFIX}/`;
@@ -291,29 +335,21 @@ export async function getFloorGraph(
   source: FloorSource,
   log: (message: string) => void | Promise<void> = () => undefined,
 ): Promise<FloorGraphEntry> {
-  const cached = graphs.get(source.floorId);
-  if (
-    cached &&
-    cached.imageUrl === source.imageUrl &&
-    Date.now() - cached.builtAt < GRAPH_TTL_MS
-  ) {
-    await log("Using cached wall graph for this floor");
-    return cached;
-  }
-  const pending = pendingGraphs.get(source.floorId);
-  if (pending) return pending;
-  const promise = buildFloorGraphEntry(source, log)
-    .then((entry) => {
-      graphs.set(source.floorId, entry);
-      return entry;
-    })
-    .finally(() => pendingGraphs.delete(source.floorId));
-  pendingGraphs.set(source.floorId, promise);
-  return promise;
+  const key = `${source.floorId}:${source.imageUrl}:${source.pageNumber}`;
+  return graphs.get(
+    key,
+    () => buildFloorGraphEntry(source, log),
+    (entry) =>
+      Buffer.byteLength(
+        JSON.stringify(entry, (_key, value: unknown) =>
+          value instanceof Map ? [...value.entries()] : value,
+        ),
+      ) * 3,
+  );
 }
 
 export function invalidateFloorGraph(floorId: string) {
-  graphs.delete(floorId);
+  graphs.invalidatePrefix(`${floorId}:`);
 }
 
 /** Face ids whose centroid sits inside any of the given saved room shapes. */
@@ -353,10 +389,11 @@ export async function runDeterministicDetectAllRooms(input: {
   imageUrl: string;
   floorStatus: string;
   pageNumber: number;
+  runId: string;
 }) {
   const log = async (message: string) => {
     console.log("[detect-job]", input.floorId, message);
-    await appendDetectLog(input.floorId, message);
+    await appendDetectLog(input.floorId, message, input.runId);
   };
   try {
     await log("Starting room detection…");
@@ -425,6 +462,24 @@ export async function runDeterministicDetectAllRooms(input: {
     }
     await log(`Saving ${detected.length} rooms…`);
     const result = await db.transaction(async (tx) => {
+      const [lease] = await tx
+        .select()
+        .from(roomDetectionJobs)
+        .where(runPredicate(input.floorId, input.runId))
+        .for("update");
+      if (!lease) throw new Error("Room detection was superseded");
+      const [source] = await tx
+        .select()
+        .from(jobFloors)
+        .where(eq(jobFloors.id, input.floorId))
+        .for("update");
+      if (
+        source?.imageUrl !== input.imageUrl ||
+        source.pageNumber !== input.pageNumber
+      )
+        throw new Error(
+          "Floor drawing changed during detection; run detection again",
+        );
       const existing = await tx
         .select()
         .from(jobRooms)
@@ -461,24 +516,26 @@ export async function runDeterministicDetectAllRooms(input: {
         await tx.delete(jobRooms).where(eq(jobRooms.id, roomId));
       }
 
-      return {
+      const result = {
         added: plan.inserts.length,
         updated: plan.updates.length,
         removed: plan.obsoleteAutoIds.length,
         total: existing.length + plan.inserts.length,
       };
+      await finishDetectJob(tx, input.floorId, result, input.runId);
+      return result;
     });
 
     await log(
       `Done: ${result.added} added, ${result.updated} updated, ${result.removed} old traces removed`,
     );
-    await finishDetectJob(input.floorId, result);
   } catch (error) {
     await failDetectJob(
       input.floorId,
       error instanceof Error
         ? error.message
         : "Deterministic room detection failed",
+      input.runId,
     );
     throw error;
   }
@@ -502,19 +559,25 @@ export async function runHybridDetectAllRooms(input: {
   imageUrl: string;
   floorStatus: string;
   pageNumber: number;
+  runId: string;
 }) {
   const log = async (message: string) => {
     console.log("[detect-job:hybrid]", input.floorId, message);
-    await appendDetectLog(input.floorId, message);
+    await appendDetectLog(input.floorId, message, input.runId);
   };
   try {
     await log("Starting new (beta) room detection…");
     const storageKey = storageKeyFor(input.imageUrl);
-    const pdf = await readJobRoomFile(getPdfKeyForFloorImage(storageKey, input.jobId));
+    const pdf = await readJobRoomFile(
+      getPdfKeyForFloorImage(storageKey, input.jobId),
+    );
     const pdfPage = getSourcePageFromFloorImage(storageKey) ?? input.pageNumber;
     const seeds = extractPdfRoomSeeds(await extractPdfLabels(pdf, pdfPage));
     await log(`Found ${seeds.length} room/unit labels on page ${pdfPage}`);
-    if (!seeds.length) throw new Error("No room or unit labels were found in the PDF text layer");
+    if (!seeds.length)
+      throw new Error(
+        "No room or unit labels were found in the PDF text layer",
+      );
 
     await log("Rendering the sheet without text…");
     const page = await renderPdfPageWithoutText(pdf, pdfPage, HYBRID_LONG_SIDE);
@@ -530,7 +593,10 @@ export async function runHybridDetectAllRooms(input: {
         (result.rejectedSeeds.length
           ? `; ${result.rejectedSeeds.length} labels skipped (${result.rejectedSeeds
               .slice(0, 6)
-              .map((r) => `${seeds[r.seedIndex]!.name}: ${r.reason === "on-wall" ? "no open floor nearby" : "outside the building"}`)
+              .map(
+                (r) =>
+                  `${seeds[r.seedIndex]!.name}: ${r.reason === "on-wall" ? "no open floor nearby" : "outside the building"}`,
+              )
               .join(", ")})`
           : "") +
         (result.partitionedComponents
@@ -541,17 +607,46 @@ export async function runHybridDetectAllRooms(input: {
       name: seeds[outline.label - 1]!.name,
       shape: toPolygon({
         type: "polygon",
-        points: outline.points.map((p) => ({ x: p.x / page.width, y: p.y / page.height })),
+        points: outline.points.map((p) => ({
+          x: p.x / page.width,
+          y: p.y / page.height,
+        })),
       }),
     }));
-    if (!detected.length) throw new Error("Could not trace any rooms from this floor plan");
+    if (!detected.length)
+      throw new Error("Could not trace any rooms from this floor plan");
 
-    await log(`Saving ${detected.length} rooms (nothing is deleted; confirmed and hand-drawn rooms are kept)…`);
+    await log(
+      `Saving ${detected.length} rooms (nothing is deleted; confirmed and hand-drawn rooms are kept)…`,
+    );
     const saved = await db.transaction(async (tx) => {
+      const [lease] = await tx
+        .select()
+        .from(roomDetectionJobs)
+        .where(runPredicate(input.floorId, input.runId))
+        .for("update");
+      if (!lease) throw new Error("Room detection was superseded");
+      const [source] = await tx
+        .select()
+        .from(jobFloors)
+        .where(eq(jobFloors.id, input.floorId))
+        .for("update");
+      if (
+        source?.imageUrl !== input.imageUrl ||
+        source.pageNumber !== input.pageNumber
+      )
+        throw new Error(
+          "Floor drawing changed during detection; run detection again",
+        );
       const existing = await tx
         .select()
         .from(jobRooms)
-        .where(and(eq(jobRooms.floorId, input.floorId), eq(jobRooms.organizationId, input.organizationId)));
+        .where(
+          and(
+            eq(jobRooms.floorId, input.floorId),
+            eq(jobRooms.organizationId, input.organizationId),
+          ),
+        );
       // Only unconfirmed auto rooms may be replaced; everything else is treated
       // as hand-made so it is neither updated nor removed.
       const plan = planDetectedRoomReconciliation(
@@ -565,7 +660,14 @@ export async function runHybridDetectAllRooms(input: {
       );
       const now = new Date();
       for (const update of plan.updates) {
-        await tx.update(jobRooms).set({ name: update.room.name, shape: update.room.shape, updatedAt: now }).where(eq(jobRooms.id, update.id));
+        await tx
+          .update(jobRooms)
+          .set({
+            name: update.room.name,
+            shape: update.room.shape,
+            updatedAt: now,
+          })
+          .where(eq(jobRooms.id, update.id));
       }
       for (const [index, room] of plan.inserts.entries()) {
         await tx.insert(jobRooms).values({
@@ -580,44 +682,68 @@ export async function runHybridDetectAllRooms(input: {
         });
       }
       // Beta never deletes: rooms it did not reproduce stay as they were.
-      return {
+      const result = {
         added: plan.inserts.length,
         updated: plan.updates.length,
         removed: 0,
         total: existing.length + plan.inserts.length,
       };
+      await finishDetectJob(tx, input.floorId, result, input.runId);
+      return result;
     });
     invalidateFloorGraph(input.floorId);
-    await log(`Done: ${saved.added} added, ${saved.updated} updated; existing rooms it did not find were left unchanged`);
-    await finishDetectJob(input.floorId, saved);
+    await log(
+      `Done: ${saved.added} added, ${saved.updated} updated; existing rooms it did not find were left unchanged`,
+    );
   } catch (error) {
     await failDetectJob(
       input.floorId,
       error instanceof Error ? error.message : "New room detection failed",
+      input.runId,
     );
   }
 }
 
-export async function runQueuedDetectJob(floorId: string, method: DetectMethod = "standard") {
+export async function runQueuedDetectJob(
+  floorId: string,
+  method: DetectMethod,
+  runId: string,
+) {
   const job = await getDetectJob(floorId);
-  if (job?.status !== "running") return;
+  if (job?.status !== "running" || job.runId !== runId) return;
   const [floor] = await db
     .select()
     .from(jobFloors)
     .where(eq(jobFloors.id, floorId))
     .limit(1);
   if (!floor) {
-    await failDetectJob(floorId, "Floor no longer exists");
+    await failDetectJob(floorId, "Floor no longer exists", runId);
     return;
   }
-  await setDetectWorkerPid(floorId, process.pid);
-  const run = method === "hybrid" ? runHybridDetectAllRooms : runDeterministicDetectAllRooms;
-  await run({
-    floorId: floor.id,
-    organizationId: floor.organizationId,
-    jobId: floor.jobId,
-    imageUrl: floor.imageUrl,
-    floorStatus: floor.status,
-    pageNumber: floor.pageNumber,
-  });
+  await setDetectWorkerPid(floorId, process.pid, runId);
+  const run =
+    method === "hybrid"
+      ? runHybridDetectAllRooms
+      : runDeterministicDetectAllRooms;
+  const heartbeat = setInterval(() => {
+    void db
+      .update(roomDetectionJobs)
+      .set({ heartbeatAt: new Date() })
+      .where(runPredicate(floorId, runId))
+      .catch((error) => console.error("[detect-heartbeat]", error));
+  }, 5000);
+  heartbeat.unref();
+  try {
+    await run({
+      floorId: floor.id,
+      runId,
+      organizationId: floor.organizationId,
+      jobId: floor.jobId,
+      imageUrl: floor.imageUrl,
+      floorStatus: floor.status,
+      pageNumber: floor.pageNumber,
+    });
+  } finally {
+    clearInterval(heartbeat);
+  }
 }

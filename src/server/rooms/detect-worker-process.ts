@@ -9,23 +9,19 @@ import {
 
 export async function startDetectWorker(
   floorId: string,
-  method: DetectMethod = "standard",
+  method: DetectMethod,
+  runId: string,
 ) {
-  const workerScript = path.join(
-    process.cwd(),
-    "src/server/rooms/detect-worker.ts",
+  const child = spawn(
+    path.join(process.cwd(), "scripts/run-detect-worker.sh"),
+    [floorId, method, runId],
+    {
+      cwd: process.cwd(),
+      env: { ...process.env, FOREMANHQ_NODE_BINARY: process.execPath },
+      detached: true,
+      stdio: ["ignore", "inherit", "inherit"],
+    },
   );
-  const packageManager = process.env.npm_execpath;
-  const command = packageManager ? process.execPath : "pnpm";
-  const args = packageManager
-    ? [packageManager, "exec", "tsx", workerScript, floorId, method]
-    : ["exec", "tsx", workerScript, floorId, method];
-  const child = spawn(command, args, {
-    cwd: process.cwd(),
-    env: process.env,
-    stdio: ["ignore", "inherit", "inherit"],
-  });
-
   await new Promise<void>((resolve, reject) => {
     child.once("spawn", resolve);
     child.once("error", reject);
@@ -33,13 +29,17 @@ export async function startDetectWorker(
   if (!child.pid) {
     throw new Error("Room detection worker did not start");
   }
-  await setDetectWorkerPid(floorId, child.pid);
+  await setDetectWorkerPid(floorId, child.pid, runId);
   child.once("exit", (code, signal) => {
     if (code === 0) return;
     const detail = signal
       ? `signal ${signal}`
       : `exit code ${code ?? "unknown"}`;
-    void failDetectJob(floorId, `Room detection worker stopped (${detail})`);
+    void failDetectJob(
+      floorId,
+      `Room detection worker stopped (${detail})`,
+      runId,
+    ).catch((error) => console.error("[detect-worker-exit]", error));
   });
   child.unref();
 }

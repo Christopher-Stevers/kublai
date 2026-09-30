@@ -1087,6 +1087,9 @@ export const roomDetectionJobs = createTable(
       .uuid()
       .notNull()
       .references(() => organizations.id, { onDelete: "cascade" }),
+    runId: d.uuid().notNull().defaultRandom(),
+    workerBootId: d.text(),
+    workerStartTicks: d.text(),
     status: d.varchar({ length: 20 }).notNull(),
     startedAt: d.timestamp({ withTimezone: true }).notNull(),
     heartbeatAt: d.timestamp({ withTimezone: true }).notNull(),
@@ -2109,3 +2112,10 @@ export const assetCountLines = createTable(
     unique("asset_count_line_asset_uniq").on(t.countId, t.assetId),
   ],
 );
+
+// Transactional sync invalidation counters maintained by PostgreSQL triggers.
+export const syncRevisions = createTable("sync_revision", (d) => ({
+  kind: d.text().notNull(),
+  scope: d.text().notNull(),
+  revision: d.bigint({ mode: "bigint" }).notNull().default(0n),
+}), (t) => [primaryKey({ columns: [t.kind, t.scope] })]);

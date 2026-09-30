@@ -46,60 +46,17 @@ export async function ensureClientGroup(
     );
 }
 
-const catalogTables = [
-  "catalog",
-  "material",
-  "category",
-  "unit",
-  "size",
-  "part_definition",
-];
-const materialTables = [
-  "job",
-  "location",
-  "material_list",
-  "quote",
-  "quote_item",
-  "supplier",
-  "supplier_part",
-  "part_definition",
-  "material",
-  "user",
-  "order",
-  "order_item",
-];
-const scopedTables = new Set([
-  "catalog",
-  "category",
-  "part_definition",
-  "job",
-  "material_list",
-  "quote",
-  "supplier",
-  "supplier_part",
-  "order",
-]);
-
 async function revision(
   tx: Tx,
   kind: "catalogue" | "material-lists",
   org: string,
 ) {
-  const tables = kind === "catalogue" ? catalogTables : materialTables;
-  // Hash complete source rows *inside PostgreSQL*. This detects deletes, direct
-  // SQL edits and joined metadata changes without transferring the source data.
-  // Shared dependencies are conservatively hashed in full (never returned).
-  const hashes = tables.map((name) => {
-    const scoped =
-      kind === "catalogue"
-        ? scopedTables.has(name)
-        : ["job", "material_list", "quote"].includes(name);
-    const scope = scoped ? sql`where t."organizationId" = ${org}` : sql``;
-    return sql`(select md5(coalesce(string_agg(md5(to_jsonb(t)::text), '' order by t.id), '')) from ${sql.identifier(`kublai_${name}`)} t ${scope})`;
-  });
-  const rows = await tx.execute<{ revision: string }>(
-    sql`select concat_ws(':', ${sql.join(hashes, sql`, `)}) as revision`,
-  );
+  const rows = await tx.execute<{ revision: string }>(sql`
+    select concat(
+      coalesce((select revision from kublai_sync_revision where kind = ${kind} and scope = '*'), 0), ':',
+      coalesce((select revision from kublai_sync_revision where kind = ${kind} and scope = ${org}), 0)
+    ) as revision
+  `);
   return rows[0]!.revision;
 }
 
@@ -120,7 +77,7 @@ export async function pullSnapshot(
   if (!user.organizationId)
     throw new Error("User must belong to an organization");
   const org = user.organizationId;
-  const scope = `${kind}:${org}:${request.schemaVersion}:view-v1`;
+  const scope = `${kind}:${org}:${request.schemaVersion}:view-v2`;
   const receivedOrder =
     request.cookie &&
     typeof request.cookie === "object" &&

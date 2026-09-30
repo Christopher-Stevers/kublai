@@ -5,6 +5,7 @@ import { warmDeferredFeatures } from "~/components/app/DeferredFeatures";
 
 import {
   closeMaterialListReplicache,
+  initializeQuantityJournal,
   requestMaterialListReplicachePull,
   requestMaterialListReplicacheSync,
   tryGetMaterialListReplicache,
@@ -20,10 +21,21 @@ type ReplicachePokeEvent = {
   sourceClientGroupId?: string | null;
 };
 
-export function ReplicacheSyncBootstrap() {
+export function ReplicacheSyncBootstrap({
+  userId,
+  organizationId,
+}: {
+  userId: string;
+  organizationId: string;
+}) {
   useEffect(() => {
     const replicache = tryGetMaterialListReplicache();
     if (!replicache) return;
+    try {
+      initializeQuantityJournal(userId, organizationId);
+    } catch (error) {
+      console.error("Offline quantity storage could not initialize", error);
+    }
 
     clearLegacyOfflineCatalogueSnapshot();
     warmDeferredFeatures();
@@ -95,7 +107,7 @@ export function ReplicacheSyncBootstrap() {
       void closeMaterialListReplicache();
       void closeCatalogueReplicache();
     };
-  }, []);
+  }, [userId, organizationId]);
 
   return null;
 }

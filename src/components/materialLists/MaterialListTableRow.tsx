@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { MaterialListSyncIndicator } from "./MaterialListSyncIndicator";
 import { resolveReplicacheSyncStatus } from "~/hooks/use-replicache-material-list";
-import { useRef } from "react";
+import { memo, useRef } from "react";
 import { QuantityControls } from "~/components/materialLists/QuantityControls";
 import { SupplierSelector } from "~/components/materialLists/SupplierSelector";
 import { Button } from "~/components/ui/button";
@@ -60,9 +60,10 @@ export interface MaterialListTableRowProps {
   isToolRequest?: boolean;
 }
 
-export const MATERIAL_LIST_SHEET_COLUMNS = "grid-cols-[3rem_minmax(16rem,1fr)_10rem_12rem_6rem_7rem_3rem_3rem]";
+export const MATERIAL_LIST_SHEET_COLUMNS =
+  "grid-cols-[3rem_minmax(16rem,1fr)_10rem_12rem_6rem_7rem_3rem_3rem]";
 
-export function MaterialListTableRow({
+function MaterialListTableRowComponent({
   item,
   materialListId,
   suppliers,
@@ -74,7 +75,12 @@ export function MaterialListTableRow({
   const removeItem = () => {
     if (removeInFlightRef.current) return;
     removeInFlightRef.current = true;
-    void mutateMaterialListAndSync(getMaterialListReplicache().mutate.removeItem({ materialListId, itemId: item.id }));
+    void mutateMaterialListAndSync(
+      getMaterialListReplicache().mutate.removeItem({
+        materialListId,
+        itemId: item.id,
+      }),
+    );
   };
 
   const quantity = parseFloat(item.quantity);
@@ -84,12 +90,22 @@ export function MaterialListTableRow({
     : quantity * unitCost;
 
   return (
-    <tr className={`grid ${MATERIAL_LIST_SHEET_COLUMNS} parts-picker-row parts-sheet-cells`}>
+    <tr
+      className={`grid ${MATERIAL_LIST_SHEET_COLUMNS} parts-picker-row parts-sheet-cells`}
+    >
       <td className="relative min-h-11 w-12 overflow-hidden">
         {item.partDefinition?.imageUrl ? (
-          <Image src={item.partDefinition.imageUrl} alt={item.partDefinition.displayName} fill sizes="32px" className="object-contain p-1" />
+          <Image
+            src={item.partDefinition.imageUrl}
+            alt={item.partDefinition.displayName}
+            fill
+            sizes="32px"
+            className="object-contain p-1"
+          />
         ) : (
-          <div className="flex h-full items-center justify-center text-muted-foreground/70"><AlertCircle className="h-4 w-4" /></div>
+          <div className="text-muted-foreground/70 flex h-full items-center justify-center">
+            <AlertCircle className="h-4 w-4" />
+          </div>
         )}
       </td>
       <td className="content-center">
@@ -99,11 +115,13 @@ export function MaterialListTableRow({
             item.descriptionSnapshot ||
             "Unknown Part"}
           {item.oneOff && (
-            <span className="ml-2 text-xs text-muted-foreground">(One-off)</span>
+            <span className="text-muted-foreground ml-2 text-xs">
+              (One-off)
+            </span>
           )}
         </div>
         {item.oneOff?.sizeNominal && (
-          <div className="text-xs text-muted-foreground">
+          <div className="text-muted-foreground text-xs">
             Size: {item.oneOff.sizeNominal}
           </div>
         )}
@@ -120,35 +138,46 @@ export function MaterialListTableRow({
       <td className="content-center">
         <div className="w-full max-w-[200px]">
           {isToolRequest ? (
-            <div className="text-sm text-muted-foreground">Tool room</div>
+            <div className="text-muted-foreground text-sm">Tool room</div>
           ) : item.partDefinition?.id ? (
             <SupplierSelector
               itemId={item.id}
               partDefinitionId={item.partDefinition.id}
               currentSupplierPartId={item.supplierPart?.id}
-              currentSupplierId={item.selectedSupplierId ?? item.supplierId ?? item.supplierPart?.supplierId}
+              currentSupplierId={
+                item.selectedSupplierId ??
+                item.supplierId ??
+                item.supplierPart?.supplierId
+              }
               materialListId={materialListId}
               suppliers={suppliers}
               compact
             />
           ) : (
-            <div className="text-sm text-muted-foreground">
+            <div className="text-muted-foreground text-sm">
               {item.supplierPart?.supplier?.name || "—"}
             </div>
           )}
         </div>
       </td>
       <td className="content-center">
-        <div className="text-sm text-muted-foreground">
+        <div className="text-muted-foreground text-sm">
           {isToolRequest ? "" : unitCost > 0 ? `$${unitCost.toFixed(2)}` : "—"}
         </div>
       </td>
       <td className="content-center">
-        <div className="text-sm font-semibold text-foreground">
+        <div className="text-foreground text-sm font-semibold">
           {isToolRequest ? "" : `$${lineTotal.toFixed(2)}`}
         </div>
       </td>
-      <td className="content-center text-center"><MaterialListSyncIndicator status={resolveReplicacheSyncStatus(item.pendingSync, isReplicacheSyncing)} /></td>
+      <td className="content-center text-center">
+        <MaterialListSyncIndicator
+          status={resolveReplicacheSyncStatus(
+            item.pendingSync,
+            isReplicacheSyncing,
+          )}
+        />
+      </td>
       <td className="content-center">
         <Button
           variant="ghost"
@@ -163,3 +192,13 @@ export function MaterialListTableRow({
     </tr>
   );
 }
+
+export const MaterialListTableRow = memo(
+  MaterialListTableRowComponent,
+  (previous, next) =>
+    previous.materialListId === next.materialListId &&
+    previous.suppliers === next.suppliers &&
+    previous.isReplicacheSyncing === next.isReplicacheSyncing &&
+    previous.isToolRequest === next.isToolRequest &&
+    JSON.stringify(previous.item) === JSON.stringify(next.item),
+);

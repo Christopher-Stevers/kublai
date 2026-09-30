@@ -90,7 +90,19 @@ export function JobRoomsView({ jobId }: { jobId: string }) {
       }
     },
   });
-  const updateRoom = api.rooms.updateRoom.useMutation();
+  const [failedRoomUpdate, setFailedRoomUpdate] = useState<Parameters<typeof utils.client.rooms.updateRoom.mutate>[0] | null>(null);
+  const updateRoom = api.rooms.updateRoom.useMutation({
+    scope: { id: `room-edits-${jobId}` },
+    onSuccess: async () => {
+      setFailedRoomUpdate(null);
+      setDetectError(null);
+      await utils.rooms.getJobRooms.invalidate({ jobId });
+    },
+    onError: (error, variables) => {
+      setFailedRoomUpdate(variables);
+      setDetectError(`Room changes could not be saved: ${error.message}`);
+    },
+  });
   const growRoom = api.rooms.growRoom.useMutation({
     onSuccess: (result) => {
       setTracePreview(result.shape);
@@ -351,10 +363,7 @@ export function JobRoomsView({ jobId }: { jobId: string }) {
       updateRoom.mutate(
         { roomId: traceRoomId, shape: tracePreview },
         {
-          onSuccess: async () => {
-            await utils.rooms.getJobRooms.invalidate({ jobId });
-            resetTrace();
-          },
+          onSuccess: resetTrace,
         },
       );
       return;
@@ -893,6 +902,7 @@ export function JobRoomsView({ jobId }: { jobId: string }) {
               {detectError ? (
                 <p className="shrink-0 px-1 text-sm text-red-600">
                   {detectError}
+                  {failedRoomUpdate ? <Button variant="outline" size="sm" className="ml-2" disabled={updateRoom.isPending} onClick={() => updateRoom.mutate(failedRoomUpdate)}>Retry save</Button> : null}
                 </p>
               ) : null}
               {currentDetectMessage ? (
