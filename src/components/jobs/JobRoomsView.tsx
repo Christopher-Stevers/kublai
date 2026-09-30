@@ -982,7 +982,9 @@ export function JobRoomsView({ jobId }: { jobId: string }) {
                           </Button>
                     </>
                   ) : null}
-                  {canManage && selectedFloor.status !== "confirmed" ? (
+                  {canManage &&
+                  (selectedFloor.status !== "confirmed" ||
+                    !selectedFloor.completenessReviewedAt) ? (
                     <Button
                       disabled={
                         !completenessChecked ||
