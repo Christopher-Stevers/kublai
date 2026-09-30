@@ -203,3 +203,20 @@ Future promotion must measure corridor/small-space recall, false proposals per
 sheet, the fraction of floors with zero missed spaces, boundary IoU, review time,
 latency and failures. Acceptance should require improvement on real sheets
 without losing previously correct rooms or raising the review burden.
+
+## Release
+
+Application commit `7ffeb4a` is deployed on `tim-development` using
+`.next-room-review-20260930`. Both additive migrations were applied; the prior
+release and static assets are retained. A fresh backup completed successfully.
+Live public health and anonymous sign-in gating pass; the existing A511 sheet
+opens with the new review controls on a phone-sized browser without exceptions.
+The local source, database and browser checks passed before deployment. Model
+checkpoints and experiments remain isolated and unapproved.
+
+A511 was rerun through the live reviewed pipeline after release: 128 pending
+proposals (107 inserted, 21 existing pending proposals updated; unmatched old
+proposals were retained as superseded). The lease completed, the source-byte
+fence passed and application/database health remained available. No previously
+approved/manual outlines existed on that floor at launch. This is an end-to-end
+execution check and a proposal count, not a real-sheet recall measurement.
