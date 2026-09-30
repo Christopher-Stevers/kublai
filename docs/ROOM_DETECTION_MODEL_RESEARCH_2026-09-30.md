@@ -20,6 +20,17 @@ The existing vector extractor already retains stroke width, dash, fill, layer an
 
 ## Better opening supervision
 
+The original [Swiss Dwellings v3.0.0 release](https://zenodo.org/records/7788422)
+contains explicit wall, door, window and fixed-installation geometry, including
+public/common areas. It is CC BY 4.0. Its site/building/floor/plan identifiers let
+the importer exclude all previously reserved MSD sites before decoding geometry.
+This provides genuine opening locations omitted from the reduced area-only JSON.
+It still supplies digitized geometry rather than original construction images;
+rendered swings, line styles and annotations remain simulations. Physical wall
+targets must come from separators/openings, rather than treating every functional
+living/dining/kitchen area boundary as a real partition. The dataset license is
+separate from the publisher's AGPL pipeline; use an independent importer.
+
 The already downloaded [ResPlan release](https://github.com/m-agour/ResPlan)
 contains wall, door and window geometry as well as rooms. Its derived geometry
 is CC BY 4.0 under the authors' stated [license scope](https://github.com/m-agour/ResPlan/blob/main/LICENSE).
@@ -31,6 +42,18 @@ itself. Exclude all existing ResPlan benchmark IDs, their augmentation originals
 and near-duplicate geometry clusters before any training/rendering; canonical
 train/test IDs alone do not prevent duplicate leakage. This extension is a
 research recommendation, not an executed training result or production change.
+
+[PERDAW](https://github.com/alexandru-filip/perdaw-dataset) is another documented
+source of door/window plan-view symbols. Its author explicitly licenses the
+dataset and repository under MIT. It is generated from twenty Revit objects and
+their augmentations, rather than a diverse set of original construction sheets.
+It could diversify rendered opening symbols; it has not been downloaded or
+trained here. Do not treat its many augmented images as independent buildings.
+
+The original [FloorPlanCAD terms](https://github.com/floorplancad/floorplancad.github.io/blob/master/index.md)
+license the annotations under CC BY-NC 4.0. A differently labeled third-party
+mirror does not establish permission to train the commercial app. It was not
+used for this experiment.
 
 ## Candidate inspection
 

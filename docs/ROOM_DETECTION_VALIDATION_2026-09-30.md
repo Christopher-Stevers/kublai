@@ -213,6 +213,16 @@ failures. Those points are not room boundaries, and no census model is enabled.
 The hardened reusable harness requires complete model/source/input provenance
 and finalized inference evidence before decoding scoring targets.
 
+A [marker-based partition challenger](ROOM_PARTITION_CHALLENGER_2026-09-30.md)
+reuses the frozen learned maps on the original development pages. Its declared
+hierarchical setting improves recall from 78.65% to 86.75%, reducing misses from
+282 to 175, but raises extras from 85 to 134 and splits from two to 48. Only three
+of twenty floors have no misses at IoU 0.50, and none has both zero misses and zero
+extras. A511's qualitative probe recovers substantial wing structure and the
+east hall without a giant merged building, but retains exterior false rooms,
+fixture holes and fragmented circulation. It remains offline. The previously
+exposed twenty new sites were not reopened or used to tune this experiment.
+
 ## Application verification
 
 The production build, TypeScript checks, 258 tests across 50 files and lint with
