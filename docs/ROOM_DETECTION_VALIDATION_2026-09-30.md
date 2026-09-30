@@ -177,9 +177,33 @@ holdout inspection. The source report SHA-256 is
 On A511 it produced 191 proposals in 7.35 seconds. Context removed the giant
 page-background and major parking false positives, but unit/washroom merges,
 missing spaces and fixture fragments remain. It is also rejected for deployment.
-The next offline experiment combines the learned sheet/interior prior with
-native wall evidence and bounded portal repair. No neural model is enabled in
-the application.
+Further native wall, portal and occupancy experiments are tracked in the
+measured model report below. No neural model is enabled in the application.
+
+## Further model trials and unseen-site result
+
+Longer training improves synthetic precision and boundaries but does not solve
+actual-sheet coverage. Six predeclared barrier/occupancy/area/core settings were
+compared on the same development pages. Bounded occupancy clipping creates a
+large merged building outline on A511 and is rejected. The development-selected
+plain 0.4 barrier setting produces 59 A511 proposals, still missing west/north
+rooms and merging apartment spaces; it is also unapproved.
+
+After that selection was frozen, one new generated corpus excluded all 153 sites
+used by prior training, validation or protected evaluation. Twenty distinct new
+sites contain 1,165 spaces. The selected model has 81.29% recall, 88.75% precision,
+84.86% F1 at IoU 0.50 and 74.19% F1 at IoU 0.75: 218 missed spaces, 120 extra
+proposals, 37 merge candidates, six split candidates and zero execution failures.
+It recovers **zero entire floors without misses**, at both IoU thresholds. This
+one-time result is synthetic evidence; it must not be used for further tuning.
+The exact selection, sources, manifests and private report checksums are in
+[the measured model report](ROOM_DETECTION_MODEL_PILOT_2026-09-30.md).
+
+The separate [promptable-model trial](ROOM_PROMPTABLE_MODEL_RESEARCH_2026-09-30.md)
+uses simulated human taps/boxes on development drawings. Those can improve small
+drafts, but the actual hallway remains fragmented and loses branches. It stays
+offline. Per-room review, explicit tracing and verified correction exports are
+the production path while more complete real-sheet references are built.
 
 ## Application verification
 
