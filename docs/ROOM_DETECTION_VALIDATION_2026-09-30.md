@@ -263,6 +263,22 @@ The higher structural-pixel scores do not justify enabling this model.
 Full experiment evidence is in
 [the true-opening model report](ROOM_TRUE_OPENING_MODEL_2026-09-30.md).
 
+One fixed head-composition experiment then retained the earlier model's interior
+and substituted only the true-opening model's boundary/opening heads, with the
+existing hierarchical partition unchanged. On the same twenty exposed procedural
+development pages, IoU0.5 recall regressed from 86.75% to 53.97%: misses rose from
+175 to 608, extras from 134 to 1130 and split candidates from 48 to 348. All twenty
+pages completed and all 1321 references remained in the denominator. No floor had
+zero misses. This combination is rejected, without retuning or promotion.
+
+The cached-map-only A511 probe produced 337 unapproved proposals, 258 retaining
+holes. Visual inspection still finds object-shaped holes, fragmented circulation
+and false outlines in projecting/diagonal edge areas. No complete real-sheet
+reference exists, so these counts establish neither accuracy nor completeness.
+Fourteen fabricated integrity tests and an independent completed-evidence audit
+pass; full findings are in
+[the fixed structural ensemble report](ROOM_STRUCTURAL_ENSEMBLE_2026-09-30.md).
+
 ## Application verification
 
 The production build, TypeScript checks, 258 tests across 50 files and lint with
