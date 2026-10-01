@@ -1,4 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
+import { detectTaggedRooms } from "./tagged/detect-tagged";
 import { BoundedCache } from "./bounded-cache";
 import { processIdentity, sameProcess } from "./process-identity";
 import { and, desc, eq, ne, sql } from "drizzle-orm";
@@ -571,6 +572,25 @@ export async function runCompleteDetectAllRooms(input: {
     );
     const drawingHash = createHash("sha256").update(pdf).digest("hex");
     const pdfPage = getSourcePageFromFloorImage(storageKey) ?? input.pageNumber;
+    // Preferred: unit-level rooms from the drawing's room tags and heavy walls.
+    // Sheets without room tags fall back to the label-free space finder below.
+    const tagged = await detectTaggedRooms(pdf, pdfPage).catch((error) => {
+      console.error("[detect-job:tagged]", error);
+      return null;
+    });
+    if (tagged && tagged.stats.roomTags >= 3 && tagged.rooms.length) {
+      await log(
+        `Read ${tagged.stats.roomTags} room tags and found ${tagged.rooms.length} rooms (${tagged.unlabeledCount} without a tag). All need review.`,
+      );
+      if (tagged.rejectedSeeds.length)
+        await log(
+          `${tagged.rejectedSeeds.length} tagged rooms could not be enclosed: ${tagged.rejectedSeeds.map((r) => r.name).filter(Boolean).slice(0, 12).join(", ")}. Check these before confirming.`,
+        );
+      const saved = await saveCompleteCandidates(input, tagged.rooms, drawingHash);
+      console.log("[detect-job:tagged] saved", JSON.stringify(saved));
+      invalidateFloorGraph(input.floorId);
+      return;
+    }
     const seeds = physicalRoomSeeds(
       extractPdfRoomSeeds(await extractPdfLabels(pdf, pdfPage)),
     );
