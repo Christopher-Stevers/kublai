@@ -391,6 +391,27 @@ complete floors. Taps already preserve approvals and guide review priority;
 wall-model adaptation remains an explicit offline operation requiring suitable
 reviewed data and subsequent complete-room evaluation.
 
+## Executed vector-portal research follow-up, 2026-10-01
+
+The new preserved painted-path parser and joint door/wall-band kernel passed
+69 fabricated checks. A separate optional text-glyph adapter passed 14 more
+checks without changing the original producer or its portal/visibility gates.
+The no-font full-CLI door fixture produces the expected hinge-to-latch closure;
+the font fixture preserves the unresolved text-overpaint state.
+
+The two separately declared fixed A511 studies both failed before geometry
+emission: the original strict copier rejects an operator argument, and the
+compatibility pass subsequently reaches the unchanged painted-path cardinality
+limit. Neither result is a room score, zero-door observation or production
+candidate. The successful smoke receipts, original failed-attempt markers/logs
+and all source/input/runtime/archive pins remain independently audited and private.
+
+See [the executed prototype report](ROOM_VECTOR_PORTAL_PROTOTYPE_2026-10-01.md)
+for source contracts, fabricated evidence and explicit remaining work. A compact
+or streaming geometry representation, bounded text visibility, wall/envelope
+topology and independently complete real-sheet room references remain necessary.
+The live reviewed detector and human controls are unchanged by these experiments.
+
 ## Release
 
 Application commit `7ffeb4a` is deployed on `tim-development` using

@@ -72,3 +72,15 @@ hybrid_native.py     123e74fbfababf8fe8d55a87d5fa816fddb8ad7c83110e3a09b0d2347e4
 ```
 
 Installed source/API inspected: `pdfjs-dist` 6.2.108 and `jsts` 2.12.1 from the repository lockfile. No existing parser, graph, model, partition, dataset or frozen research source was edited.
+
+## Subsequent executed prototype, 2026-10-01
+
+The implementation status above records the research inspection. A new,
+separately frozen painted-path parser, joint portal kernel and optional glyph
+compatibility profile now exist, with 83 fabricated checks and two full-CLI
+smoke fixtures. Both fixed A511 attempts failed before emitting geometry;
+building-envelope/free-space partitioning remains unimplemented in this
+prototype. [The execution report](ROOM_VECTOR_PORTAL_PROTOTYPE_2026-10-01.md)
+records both original spent failures, unchanged limits/source bytes and the
+independent raw-byte audits. This is not an actual-room accuracy result or a
+production release.
