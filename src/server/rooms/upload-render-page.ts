@@ -5,12 +5,13 @@ import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
 import sharp from "sharp";
 import { validateDrawingPageCount } from "~/lib/drawing-upload-limits";
 import { extractSheetName } from "~/server/rooms/sheet-name";
+import { SERVER_PDF_RENDER_OPTIONS } from "./pdf-render-options";
 
 async function load(dest: string) {
   const bytes = await readFile(path.join(dest, "plan.pdf"));
   const loadingTask = getDocument({
+    ...SERVER_PDF_RENDER_OPTIONS,
     data: new Uint8Array(bytes),
-    useSystemFonts: true,
     maxImageSize: 16_000_000,
     canvasMaxAreaInBytes: 20_000_000,
   });
@@ -66,11 +67,12 @@ async function main() {
       const text = await page.getTextContent();
       const labels = text.items.flatMap((item) => {
         if (!("str" in item) || !item.str) return [];
+        const transform = item.transform as number[];
         const [x, y] = viewport.convertToViewportPoint(
-          item.transform[4] ?? 0,
-          item.transform[5] ?? 0,
-        );
-        return [{ str: item.str, x: x! / width, y: y! / height }];
+          transform[4] ?? 0,
+          transform[5] ?? 0,
+        ) as [number, number];
+        return [{ str: item.str, x: x / width, y: y / height }];
       });
       process.stdout.write(
         JSON.stringify({

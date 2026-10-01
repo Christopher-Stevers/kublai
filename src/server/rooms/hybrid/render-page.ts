@@ -1,5 +1,6 @@
 import { createCanvas } from "@napi-rs/canvas";
 import { getDocument, OPS } from "pdfjs-dist/legacy/build/pdf.mjs";
+import { SERVER_PDF_RENDER_OPTIONS } from "../pdf-render-options";
 
 const TEXT_PAINT_OPERATIONS = new Set([
   OPS.showText,
@@ -18,8 +19,8 @@ export async function renderPdfPageWithoutText(
   longSide: number,
 ) {
   const loadingTask = getDocument({
+    ...SERVER_PDF_RENDER_OPTIONS,
     data: new Uint8Array(pdf),
-    useSystemFonts: true,
   });
   const document = await loadingTask.promise;
   try {
