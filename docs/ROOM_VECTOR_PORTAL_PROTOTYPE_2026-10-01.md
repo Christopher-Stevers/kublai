@@ -155,6 +155,30 @@ missing labels must never establish that an area is exterior. Filled/gray walls,
 curved/mixed symbols, doorless openings and courtyard/shaft semantics remain
 unresolved research cases.
 
+Primary-source follow-up found a concrete streaming backend to investigate:
+PDFBox 3.0.7's `PDFStreamEngine` reads/processes operators incrementally, and
+`PDFGraphicsStreamEngine` exposes path, paint, clipping, image and inherited
+glyph/state/form callbacks. [Pinned stream engine](https://raw.githubusercontent.com/apache/pdfbox/3.0.7/pdfbox/src/main/java/org/apache/pdfbox/contentstream/PDFStreamEngine.java),
+[graphics callbacks](https://raw.githubusercontent.com/apache/pdfbox/3.0.7/pdfbox/src/main/java/org/apache/pdfbox/contentstream/PDFGraphicsStreamEngine.java),
+[Apache license/component notices](https://raw.githubusercontent.com/apache/pdfbox/3.0.7/LICENSE.txt).
+This supports a proposed adapter, not a verified ForemanHQ implementation:
+intern state/clip/form records, spool chunk-hashed packed commands/controls,
+retain compact bounding/style/provenance indices, and resolve later occlusion
+in a second indexed pass. Unknown visibility still remains unresolved.
+File-backed caching does not guarantee bounded total PDF memory.
+[Official migration/IO guidance](https://pdfbox.apache.org/3.0/migration.html).
+
+The pinned PDF.js public `getOperatorList()` waits for the last page chunk while
+its page handler accumulates operator/argument arrays. Chunking the returned list
+therefore does not remove its initial accumulation. A true worker-stream tap
+would require a maintained internal API fork.
+[Pinned public implementation](https://raw.githubusercontent.com/mozilla/pdf.js/v6.2.108/src/display/api.js).
+Neither alternate backend is installed or tested here. Java/JAR/source pinning,
+small-fixture geometry/visibility equivalence, a fabricated inventory exceeding
+200,000 paths, exact count/chunk reconciliation and the same RSS/time budgets
+must pass before any separate actual trial. This addresses runtime/representation;
+it cannot establish room completeness or justify missing source evidence.
+
 The live tap-review workflow records approvals, rejections, corrections and
 missed rooms with exact drawing provenance. Explicitly complete floors, split
 across independent jobs, are necessary to evaluate every-room recall and provide
