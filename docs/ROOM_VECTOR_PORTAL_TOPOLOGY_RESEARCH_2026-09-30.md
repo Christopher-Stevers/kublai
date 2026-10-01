@@ -84,3 +84,12 @@ prototype. [The execution report](ROOM_VECTOR_PORTAL_PROTOTYPE_2026-10-01.md)
 records both original spent failures, unchanged limits/source bytes and the
 independent raw-byte audits. This is not an actual-room accuracy result or a
 production release.
+
+The [subsequent spatial/multiview report](ROOM_SPATIAL_EXPERIMENTS_2026-10-01.md)
+adds an important source-page correction: the failed vector attempts processed
+the adjacent source page, while the live app's A511 image is original PDF page
+18 / zero-based index 17. The failures remain retained; no geometry was emitted.
+The new report also records completed streaming extraction, repeated/mirrored
+room tests, navigation partitioning, cross-sheet registration and an actual
+bounded `roomgraph` comparison. Those outcomes supersede the research-only
+installation/execution status above, without claiming room completeness.

@@ -1,5 +1,15 @@
 # Painted-path portal prototype: executed evidence
 
+**Source-page correction (subsequent inspection):** the two original failures
+below processed zero-based PDF page 18 (one-based 19, sheet A205), not the page
+shown by the app's A511 image. That image comes from one-based page 18 / index 17
+(sheet A204). The database import slot caused the offline attribution mistake;
+production already selects the correct source page. Original failure records
+and code remain unchanged. The separate streaming, correctly paired spatial
+and external-reference studies are now executed and documented in
+[the subsequent report](ROOM_SPATIAL_EXPERIMENTS_2026-10-01.md). Statements below
+that describe them as proposed/not installed reflect this report's earlier state.
+
 **This prototype is not enabled in ForemanHQ and does not establish every-room
 accuracy.** It preserves the original vector commands and tests joint door/wall
 evidence without room labels. Its fabricated integration fixture succeeds, but
