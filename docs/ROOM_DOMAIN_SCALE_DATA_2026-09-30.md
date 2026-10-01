@@ -1,12 +1,12 @@
 # Fixed scale-and-sheet data correction — 2026-09-30
 
-The one authorized CPU corpus build completed, and all100 generated native/coarse head assets passed after-build byte and mask QA. Two fixed unprotected render samples also passed visual checks for source clipping and annotation placement. **This is data-quality evidence, not a successful room detector.** No training, new model inference, actual-sheet scoring or production promotion occurred in this data task.
+The one authorized CPU corpus build completed, and all 100 generated native/coarse head assets passed after-build byte and mask QA. Two fixed unprotected render samples also passed visual checks for source clipping and annotation placement. **This is data-quality evidence, not a successful room detector.** No training, new model inference, actual-sheet scoring or production promotion occurred in this data task.
 
 The [read-only scale diagnostic](ROOM_SCALE_DOMAIN_DIAGNOSTIC_2026-09-30.md) measured a visual-distribution gap: Swiss target walls/openings were larger and sheets cleaner and achromatic relative to the procedural development sheets. Inspection of dense A511 also showed clutter-related failures, without quantitative real-sheet ground truth. The separately frozen [builder plan](../scripts/rooms/domain-data/README.md) changes those input exposures without changing original source identities or inventing door geometry.
 
 ## Exact corpus and execution
 
-Only the same independently pinned Swiss v4 100 source records were used. They retain original site/alias component, group, source-row and train80/development20 identities. No protected or completed once-only generalization pixels and no original context-development pixels were used as augmentation material. Each output contains one uniformly scaled source floor on a2048×1536 page; there are no extra duplicated-floor independent samples.
+Only the same independently pinned Swiss v4 100 source records were used. They retain original site/alias component, group, source-row and train 80 / development 20 identities. No protected or completed once-only generalization pixels and no original context-development pixels were used as augmentation material. Each output contains one uniformly scaled source floor on a 2048×1536 page; there are no extra duplicated-floor independent samples.
 
 The fixed density schedule is:
 
@@ -15,11 +15,11 @@ The fixed density schedule is:
 | Training | 27 | 27 | 26 | 80 |
 | Development | 7 | 7 | 6 | 20 |
 
-The source structure crop preserves every original positive physical/interior pixel and every unknown source pixel, with an8px bounded halo, while removing the old sheet title/frame. Transform coefficients are isotropic; placement never silently fits or clips a structure. Source gray/paired ink styles remain, and independently added grid/title/parking/fixture/revision ink leaves physical masks unchanged.
+The source structure crop preserves every original positive physical/interior pixel and every unknown source pixel, with an 8px bounded halo, while removing the old sheet title/frame. Transform coefficients are isotropic; placement never silently fits or clips a structure. Source gray/paired ink styles remain, and independently added grid/title/parking/fixture/revision ink leaves physical masks unchanged.
 
-The target contract differs from baseline v4 at raster edges. Exact rational pixel-cell overlap preserves any transformed wall/window/door and genuine opening support; opening remains a boundary subset. It can expand the edge by at most one destination pixel cell and can connect nearby source entities. Majority interior excludes physical footprints, and mixed interior pixels are unsupervised. Any source unknown contributor propagates to that output head. Conservative regenerated512×512 coarse masks similarly preserve thin opening support and unknown pixels. Original door-swing ink extending beyond the crop halo can be clipped; the genuine door footprint is retained. No claim of preserved door-entity counts or physical-room topology is made.
+The target contract differs from baseline v4 at raster edges. Exact rational pixel-cell overlap preserves any transformed wall/window/door and genuine opening support; opening remains a boundary subset. It can expand the edge by at most one destination pixel cell and can connect nearby source entities. Majority interior excludes physical footprints, and mixed interior pixels are unsupervised. Any source unknown contributor propagates to that output head. Conservative regenerated 512×512 coarse masks similarly preserve thin opening support and unknown pixels. Original door-swing ink extending beyond the crop halo can be clipped; the genuine door footprint is retained. No claim of preserved door-entity counts or physical-room topology is made.
 
-Root executed the one CPU build after independent original binding clearance. It finished in50.92seconds and returned exit0. The predecode freeze preserved401 original file byte pins plus401 private copies, and five source/archive identities. Independent audit verified the exact100 IDs,80/20 associations and density schedule before writing the original-path `AUDIT_CLEAR.json`. The experiment claim is consumed once; a changed output path cannot cause another build.
+Root executed the one CPU build after independent original binding clearance. It finished in 50.92 seconds and returned exit0. The predecode freeze preserved 401 original file byte pins plus 401 private copies, and five source/archive identities. Independent audit verified the exact 100 IDs, 80/20 associations and density schedule before writing the original-path `AUDIT_CLEAR.json`. The experiment claim is consumed once; a changed output path cannot cause another build.
 
 Private corpus directory: `/home/tim/datasets/foremanhq-room-detection/domain-data/swiss-domain-scale-v1-20260930`.
 
@@ -37,9 +37,9 @@ The global completion receipt is the sibling `swiss-domain-scale-v1-20260930.com
 
 ## After-build QA
 
-The new [QA adapter](../scripts/rooms/domain-qa/README.md) checked all100 authorized RGB images, native three-head target/known arrays and coarse arrays. NPZ members are exactly `target` and `known`; baseline provisional `truth` is neither read nor emitted. Native dimensions are2048×1536 and coarse dimensions512×512. All masks are binaryuint8; no opening lies outside boundary support, and no supervised interior overlaps a physical barrier. Native byte hashes were verified before/after decoding, and the original completion chain was checked again after the full pass.
+The new [QA adapter](../scripts/rooms/domain-qa/README.md) checked all 100 authorized RGB images, native three-head target/known arrays and coarse arrays. NPZ members are exactly `target` and `known`; baseline provisional `truth` is neither read nor emitted. Native dimensions are 2048×1536 and coarse dimensions 512×512. All masks are binary `uint8`; no opening lies outside boundary support, and no supervised interior overlaps a physical barrier. Native byte hashes were verified before/after decoding, and the original completion chain was checked again after the full pass.
 
-The pass took29.24seconds, peak host RSS1,202.25MiB, in the existing CPU Python3.12.14 / NumPy2.5.3 / Pillow12.3.0 / SciPy1.18.1 environment. It used no GPU, source WKT or reference matching. Three fabricated QA tests passed in addition to21 builder tests. Independent source audit also checked189 thin-point wall/door/unknown placements against integer interval intersections, separately from the builder's sparse transform helper.
+The pass took 29.24 seconds, peak host RSS 1,202.25 MiB, in the existing CPU Python 3.12.14 / NumPy 2.5.3 / Pillow 12.3.0 / SciPy 1.18.1 environment. It used no GPU, source WKT or reference matching. Three fabricated QA tests passed in addition to 21 builder tests. Independent source audit also checked 189 thin-point wall/door/unknown placements against integer interval intersections, separately from the builder's sparse transform helper.
 
 | Head | Native positives | Native known | Native unknown | Coarse positives | Coarse known | Coarse unknown |
 |---|---:|---:|---:|---:|---:|---:|
@@ -47,9 +47,9 @@ The pass took29.24seconds, peak host RSS1,202.25MiB, in the existing CPU Python3
 | Boundary | 7,957,275 | 313,638,410 | 934,390 | 834,316 | 26,133,375 | 81,025 |
 | Opening | 692,814 | 313,638,410 | 934,390 | 84,170 | 26,133,375 | 81,025 |
 
-There are six original source-semantic partial cases. Additional mixed raster edges create unknown interior pixels in otherwise defined cases. **3,967 native and1,362 coarse positive opening pixels are unknown** and must be excluded by loss/scoring masks; retaining their positive target value does not make them supervised. These totals count pixels, not doors, detected rooms or true positives.
+There are six original source-semantic partial cases. Additional mixed raster edges create unknown interior pixels in otherwise defined cases. **3,967 native and 1,362 coarse positive opening pixels are unknown** and must be excluded by loss/scoring masks; retaining their positive target value does not make them supervised. These totals count pixels, not doors, detected rooms or true positives.
 
-Measured nuisance statistics across100 pages:
+Measured nuisance statistics across 100 pages:
 
 | Quantity per page | Minimum | Median | Maximum |
 |---|---:|---:|---:|
@@ -59,13 +59,13 @@ Measured nuisance statistics across100 pages:
 | Chromatic pixels | 4,626 | 5,754.5 | 7,148 |
 | Known-all-head-negative ink pixels per Mp | 12,410.8 | 16,215.2 | 18,306.4 |
 
-All pages contain RGB revision/landscape ink, versus zero chromatic pixels in all100 baseline v4 renders. Native known-negative ink density median is3.09× the5243.6/Mp measured baseline all100 value, using the same luminance245 definition. This confirms the intended greater negative-ink exposure, not improved model accuracy. Inside-box motifs remain within supplied all-head-known-negative support with more than12px clearance from positive or unknown pixels; no courtyard/parking semantic label was inferred. Every added fixture box stays wholly within known interior support, and all caps and recorded pixel totals match the emitted arrays. Eight revision clouds occur per page. The median target interior fraction is.0762, with p10/p90 .0262/.2040; this describes generated support and density only.
+All pages contain RGB revision/landscape ink, versus zero chromatic pixels in all 100 baseline v4 renders. Native known-negative ink density median is 3.09× the 5243.6/Mp measured baseline all 100 value, using the same luminance 245 definition. This confirms the intended greater negative-ink exposure, not improved model accuracy. Inside-box motifs remain within supplied all-head-known-negative support with more than 12px clearance from positive or unknown pixels; no courtyard/parking semantic label was inferred. Every added fixture box stays wholly within known interior support, and all caps and recorded pixel totals match the emitted arrays. Eight revision clouds occur per page. The median target interior fraction is .0762, with p10/p90 .0262/.2040; this describes generated support and density only.
 
 Private QA report: `/home/tim/datasets/foremanhq-room-detection/domain-data-qa/data-swiss-domain-v1-20260930/report.json`, SHA-256 `c6944e872c78ea21cbd337a781bb6fd8eee03b13a15035f603a48d3b60525875`. The executed QA source is preserved alongside it, SHA-256 `61e93f3ff1339b7f07fad7cca429127b83fb20505f00c2f3dcc9d19342bbcadd`.
 
 ## Two fixed visual samples and limits
 
-The QA adapter chose the first sorted .4-density paired-style page and first sorted1.0-density paired-gray-2 page from metadata before opening any pixels. Both PNGs were inspected at their native resolution:
+The QA adapter chose the first sorted .4-density paired-style page and first sorted 1.0-density paired-gray-2 page from metadata before opening any pixels. Both PNGs were inspected at their native resolution:
 
 | Unprotected source ID | Condition | Image SHA-256 |
 |---|---|---|
