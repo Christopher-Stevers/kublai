@@ -321,6 +321,23 @@ Twenty-one fabricated builder checks, three QA checks and independent source and
 completed-byte audits pass. This establishes a verified experimental corpus,
 without room-accuracy or completeness claims. Model testing remains separate.
 
+The [one fixed domain-model trial](ROOM_DOMAIN_MODEL_2026-09-30.md) then completed
+48 epochs and all three declared evaluations. On the same twenty generated
+development sheets, native masked pixel IoU reached 94.28% for interior, 85.91%
+for physical boundary and 49.67% for opening closure. Its comparator is the
+genuine Swiss v4 true-opening model, despite the evaluator's inherited
+`frozen_long48` name; it is not the earlier artificial-gap model. These are
+development pixel scores, not independent real-room recall. The fixed A511
+plain and hierarchical exports still show false exterior regions, fixture
+splits and missing or merged spaces. The candidate was rejected as the
+production default. Independent raw-byte/metadata verification cleared all
+four phases; no complete actual-floor reference exists for an accuracy score.
+
+The separate [vector portal topology research](ROOM_VECTOR_PORTAL_TOPOLOGY_RESEARCH_2026-09-30.md)
+identifies retained PDF curves, isotropic page coordinates and jointly witnessed
+door/leaf/jamb/wall evidence as a complementary direction. It does not turn the
+legacy graph's faces into certified physical rooms.
+
 ## Application verification
 
 The production build, TypeScript checks, 258 tests across 50 files and lint with
