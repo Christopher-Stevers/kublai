@@ -308,6 +308,19 @@ or review changes. The private count report SHA256 is
 Geometry-aware wall/jamb/door topology remains a possible complementary research
 direction, with no claim that this graph is ready for production.
 
+The [fixed scale-and-sheet corpus](ROOM_DOMAIN_SCALE_DATA_2026-09-30.md)
+subsequently completed its one declared CPU build in 50.92 seconds. It retains
+the same hundred Swiss source floors and 80/20 split, with balanced isotropic
+densities .4/.7/1.0, dense fixture loops, known-negative parking motifs and colored
+revision clouds. Rational pixel-cell transforms preserve physical/opening support;
+mixed interiors and any source-unknown contributions remain unsupervised.
+No provisional room-truth arrays are read or emitted. All hundred native/coarse
+arrays pass byte, dimension, binary-mask, opening-subset and nuisance checks;
+two fixed unprotected visual samples pass clipping/placement inspection.
+Twenty-one fabricated builder checks, three QA checks and independent source and
+completed-byte audits pass. This establishes a verified experimental corpus,
+without room-accuracy or completeness claims. Model testing remains separate.
+
 ## Application verification
 
 The production build, TypeScript checks, 258 tests across 50 files and lint with
