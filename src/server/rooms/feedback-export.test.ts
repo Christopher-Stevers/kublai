@@ -210,3 +210,117 @@ it("quarantines missing or mismatched event hashes instead of training on them",
     ),
   ).toBe(true);
 });
+
+const originalPageFloor = {
+  ...floor,
+  imageUrl: "/api/job-rooms/files/job/upload/floor-18.webp",
+  pageNumber: 19,
+};
+const originalPageEvent = {
+  ...event,
+  drawingKey: `${originalPageFloor.imageUrl}:19`,
+  detection: { drawingHash, sourcePageNumber: 18, sourcePageIndex: 17 },
+};
+const originalPageRoom = {
+  id: "room",
+  floorId: "floor",
+  reviewStatus: "approved",
+  shape,
+  detection: originalPageEvent.detection,
+};
+
+it.each([
+  { sourcePageNumber: 19 },
+  { sourcePageIndex: 18 },
+  { sourcePageNumber: 18, sourcePageIndex: 18 },
+  { sourcePageNumber: "18" },
+])("same-PDF reviews cannot verify a different original page: %j", (page) => {
+  const wrongPage = { drawingHash, ...page };
+  expect(
+    buildFeedbackExamples(
+      [{ ...originalPageEvent, detection: wrongPage }],
+      [originalPageFloor],
+      [originalPageRoom],
+    ),
+  ).toEqual([]);
+  expect(
+    buildFeedbackFloor(originalPageFloor, [
+      { ...originalPageRoom, detection: wrongPage },
+    ]).completenessReviewed,
+  ).toBe(false);
+  expect(reviewSourceMatches(wrongPage, drawingHash, 18)).toBe(false);
+});
+
+it("exports original page 18 rather than import slot 19, including legacy page-less reviews", () => {
+  const exported = buildFeedbackExamples(
+    [originalPageEvent],
+    [originalPageFloor],
+    [originalPageRoom],
+  );
+  expect(exported[0]!.sourcePageNumber).toBe(18);
+  expect(
+    buildFeedbackFloor(originalPageFloor, [originalPageRoom]),
+  ).toMatchObject({
+    sourcePageNumber: 18,
+    completenessReviewed: true,
+  });
+  const legacy = buildFeedbackExamples(
+    [{ ...originalPageEvent, detection: { drawingHash } }],
+    [originalPageFloor],
+    [originalPageRoom],
+  );
+  expect(legacy).toHaveLength(1);
+  expect(legacy[0]!.sourcePageNumber).toBe(18);
+});
+
+it("quarantines explicit wrong-page snapshots even when source bytes match", () => {
+  const exported = partitionVerifiedExamples(
+    [
+      {
+        floorId: "floor",
+        sourcePageNumber: 18,
+        detection: originalPageEvent.detection,
+      },
+      {
+        floorId: "floor",
+        sourcePageNumber: 18,
+        detection: { drawingHash, sourcePageNumber: 19 },
+      },
+    ],
+    new Map([["floor", drawingHash]]),
+  );
+  expect(exported.examples).toHaveLength(1);
+  expect(exported.unverifiedExamples).toHaveLength(1);
+});
+
+it("keeps correction history only from the approved PDF bytes and original page", () => {
+  const correction = {
+    ...originalPageEvent,
+    decision: "corrected",
+    correctedShape: { ...shape, w: 0.3 },
+    createdAt: new Date("2026-09-30T11:59:00Z"),
+  };
+  const wrongSource = {
+    ...correction,
+    detection: { drawingHash: "b".repeat(64) },
+  };
+  const unknownSource = { ...correction, detection: null };
+  const wrongPage = {
+    ...correction,
+    detection: { drawingHash, sourcePageNumber: 19 },
+  };
+  const result = buildFeedbackExamples(
+    [originalPageEvent, correction, wrongSource, unknownSource, wrongPage],
+    [originalPageFloor],
+    [originalPageRoom],
+  );
+  expect(result[0]!.correctionHistory).toEqual([
+    {
+      proposal: correction.proposalShape,
+      corrected: correction.correctedShape,
+      sourceReviewHash: drawingHash,
+      sourcePageNumber: 18,
+      correctedAt: correction.createdAt.toISOString(),
+    },
+  ]);
+});

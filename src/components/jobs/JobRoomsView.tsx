@@ -26,7 +26,8 @@ import { Input } from "~/components/ui/input";
 import { FloorPlanCanvas, type FloorRoomShape } from "./FloorPlanCanvas";
 import { getRoomColor } from "~/lib/room-colors";
 import { uploadDrawings } from "~/lib/upload-drawings";
-import { shapeBBox, toPolygon } from "~/lib/room-shape";
+import { roomLabelPoint, toPolygon } from "~/lib/room-shape";
+import { useRoomTracePreview } from "./useRoomTracePreview";
 import { api } from "~/trpc/react";
 import { confirmAction } from "~/components/ui/app-dialogs";
 
@@ -54,7 +55,6 @@ export function JobRoomsView({ jobId }: { jobId: string }) {
   const [traceExclude, setTraceExclude] = useState<{ x: number; y: number }[]>(
     [],
   );
-  const [tracePreview, setTracePreview] = useState<FloorRoomShape | null>(null);
   const [traceRoomId, setTraceRoomId] = useState<string | null>(null);
   const [vertexMode, setVertexMode] = useState<"add" | "delete" | null>(null);
   const handledDetectJob = useRef("");
@@ -111,17 +111,7 @@ export function JobRoomsView({ jobId }: { jobId: string }) {
       setDetectError(`Review could not be saved: ${error.message}`),
   });
   const addRoom = api.rooms.addRoom.useMutation({
-    onSuccess: async (room) => {
-      await utils.rooms.getJobRooms.invalidate({ jobId });
-      if (room?.id) {
-        setSelectedRoomId(null);
-        setEditingRoomId(room.id);
-        setRoomNameDraft(room.name);
-        roomEditVersions.current.set(room.id, room.updatedAt.getTime());
-      }
-    },
-    onError: (error) =>
-      setDetectError(`Room could not be added: ${error.message}`),
+    onSuccess: () => utils.rooms.getJobRooms.invalidate({ jobId }),
   });
   const [failedRoomUpdate, setFailedRoomUpdate] = useState<Parameters<typeof utils.client.rooms.updateRoom.mutate>[0] | null>(null);
   const [roomUpdateConflict, setRoomUpdateConflict] = useState(false);
@@ -149,13 +139,15 @@ export function JobRoomsView({ jobId }: { jobId: string }) {
       setDetectError(`Room changes could not be saved: ${error.message}`);
     },
   });
-  const growRoom = api.rooms.growRoom.useMutation({
-    onSuccess: (result) => {
-      setTracePreview(result.shape);
-      setDetectError(null);
-    },
-    onError: (error) => setDetectError(error.message),
-  });
+  const growRoom = api.rooms.growRoom.useMutation();
+  const {
+    shape: tracePreview,
+    pending: tracePending,
+    error: traceError,
+    request: requestTracePreview,
+    cancel: cancelTracePreview,
+    captureCurrent: captureTraceSession,
+  } = useRoomTracePreview(selectedFloorId, growRoom.mutateAsync);
   const deleteRoom = api.rooms.deleteRoom.useMutation({
     onSuccess: () => {
       setSelectedRoomId(null);
@@ -328,7 +320,7 @@ export function JobRoomsView({ jobId }: { jobId: string }) {
     setDetectingRoomId(null);
     setTraceInclude([]);
     setTraceExclude([]);
-    setTracePreview(null);
+    cancelTracePreview();
     setTraceRoomId(null);
     setVertexMode(null);
     setEditMode(false);
@@ -343,7 +335,7 @@ export function JobRoomsView({ jobId }: { jobId: string }) {
     setDetectMode(false);
     setTraceInclude([]);
     setTraceExclude([]);
-    setTracePreview(null);
+    cancelTracePreview();
     setTraceRoomId(null);
   };
 
@@ -352,6 +344,7 @@ export function JobRoomsView({ jobId }: { jobId: string }) {
   ) => {
     if (!selectedFloor || isDetecting) return;
     setDetectError(null);
+    cancelTracePreview();
     setDetectMode(false);
     setDetectingRoomId(selectedFloor.id);
     if (method === "complete") {
@@ -369,7 +362,7 @@ export function JobRoomsView({ jobId }: { jobId: string }) {
     setTraceMode("include");
     setTraceInclude([]);
     setTraceExclude([]);
-    setTracePreview(null);
+    cancelTracePreview();
     setTraceRoomId(null);
   };
 
@@ -379,7 +372,8 @@ export function JobRoomsView({ jobId }: { jobId: string }) {
     roomId = traceRoomId,
   ) => {
     if (!selectedFloor || include.length === 0) return;
-    growRoom.mutate({
+    setDetectError(null);
+    void requestTracePreview({
       floorId: selectedFloor.id,
       roomId: roomId ?? undefined,
       include,
@@ -395,8 +389,8 @@ export function JobRoomsView({ jobId }: { jobId: string }) {
     if (room) roomEditVersions.current.set(room.id, room.updatedAt.getTime());
     const shape = room?.shape as FloorRoomShape | undefined;
     const polygon = shape ? toPolygon(shape) : null;
-    const box = polygon ? shapeBBox(polygon) : null;
-    const include = box ? [{ x: box.x + box.w / 2, y: box.y + box.h / 2 }] : [];
+    const include = polygon ? [roomLabelPoint(polygon)] : [];
+    cancelTracePreview();
     setEditingRoomId(null);
     setSelectedRoomId(null);
     setCreateMode(false);
@@ -405,7 +399,6 @@ export function JobRoomsView({ jobId }: { jobId: string }) {
     setTraceRoomId(roomId ?? null);
     setTraceInclude(include);
     setTraceExclude([]);
-    setTracePreview(shape ?? null);
     if (include.length) requestTrace(include, [], roomId ?? null);
   };
 
@@ -435,7 +428,8 @@ export function JobRoomsView({ jobId }: { jobId: string }) {
   };
 
   const saveTrace = () => {
-    if (!selectedFloor || !tracePreview) return;
+    if (!selectedFloor || !tracePreview || tracePending || addRoom.isPending || updateRoom.isPending) return;
+    const stillCurrent = captureTraceSession();
     if (traceRoomId) {
       updateRoom.mutate(
         {
@@ -444,15 +438,34 @@ export function JobRoomsView({ jobId }: { jobId: string }) {
           expectedUpdatedAt: roomEditVersions.current.get(traceRoomId),
         },
         {
-          onSuccess: resetTrace,
+          onSuccess: () => {
+            if (stillCurrent()) resetTrace();
+          },
         },
       );
       return;
     }
     addRoom.mutate(
       { floorId: selectedFloor.id, name: "New room", shape: tracePreview },
-      { onSuccess: resetTrace },
+      {
+        onSuccess: (room) => {
+          if (!stillCurrent()) return;
+          focusAddedRoom(room);
+          resetTrace();
+        },
+        onError: (error) => {
+          if (stillCurrent()) setDetectError(`Room could not be added: ${error.message}`);
+        },
+      },
     );
+  };
+
+  const focusAddedRoom = (room: { id: string; name: string; updatedAt: Date } | undefined) => {
+    if (!room) return;
+    setSelectedRoomId(null);
+    setEditingRoomId(room.id);
+    setRoomNameDraft(room.name);
+    roomEditVersions.current.set(room.id, room.updatedAt.getTime());
   };
 
   const handleUpload = async (file: File) => {
@@ -858,7 +871,7 @@ export function JobRoomsView({ jobId }: { jobId: string }) {
                           </Button>
                           <Button
                             onClick={saveTrace}
-                            disabled={!tracePreview || growRoom.isPending || updateRoom.isPending}
+                            disabled={!tracePreview || tracePending || addRoom.isPending || updateRoom.isPending}
                           >
                             Save trace
                           </Button>
@@ -942,6 +955,7 @@ export function JobRoomsView({ jobId }: { jobId: string }) {
                       <Button
                             variant={createMode ? "outline" : "default"}
                             onClick={() => {
+                              cancelTracePreview();
                               setDetectMode(false);
                               setCreateMode((value) => !value);
                             }}
@@ -1013,9 +1027,9 @@ export function JobRoomsView({ jobId }: { jobId: string }) {
                   </Button>
             </div>
           </div>
-          {detectError ? (
+          {detectError || traceError ? (
             <p className="shrink-0 px-1 text-sm text-red-600">
-              {detectError}
+              {detectError || traceError}
               {failedRoomUpdate ? (
                 <Button
                   variant="outline"
@@ -1030,7 +1044,7 @@ export function JobRoomsView({ jobId }: { jobId: string }) {
                     await utils.rooms.getJobRooms.invalidate({ jobId });
                     roomEditVersions.current.delete(failedRoomUpdate.roomId);
                     setEditingRoomId(null);
-                    setTracePreview(null);
+                    cancelTracePreview();
                     setTraceRoomId(null);
                     setFailedRoomUpdate(null);
                     setRoomUpdateConflict(false);
@@ -1044,6 +1058,9 @@ export function JobRoomsView({ jobId }: { jobId: string }) {
           ) : null}
           {updateRoom.isPending ? (
             <p role="status" className="text-muted-foreground shrink-0 px-1 text-sm">Saving outline…</p>
+          ) : null}
+          {detectMode && tracePending ? (
+            <p role="status" className="text-muted-foreground shrink-0 px-1 text-sm">Tracing room…</p>
           ) : null}
           {currentDetectMessage ? (
             <div className="max-h-36 shrink-0 overflow-y-auto rounded-md border bg-slate-950 font-mono text-xs text-slate-100">
@@ -1233,6 +1250,7 @@ export function JobRoomsView({ jobId }: { jobId: string }) {
                     })),
                   ]}
               selectedRoomId={reviewMode ? reviewRoomId : selectedRoomId}
+              focusRoomId={reviewMode ? reviewRoomId : null}
               editingRoomId={editingRoomId}
               detectingRoomId={null}
               createMode={createMode}
@@ -1290,10 +1308,18 @@ export function JobRoomsView({ jobId }: { jobId: string }) {
                     canEditFloor && createMode
                       ? (shape) => {
                           setCreateMode(false);
+                          const stillCurrent = captureTraceSession();
                           addRoom.mutate({
                             floorId: selectedFloor.id,
                             name: "New room",
                             shape,
+                          }, {
+                            onSuccess: (room) => {
+                              if (stillCurrent()) focusAddedRoom(room);
+                            },
+                            onError: (error) => {
+                              if (stillCurrent()) setDetectError(`Room could not be added: ${error.message}`);
+                            },
                           });
                         }
                       : undefined

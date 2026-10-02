@@ -30,7 +30,9 @@ export function validReviewShape(value: unknown): value is RoomShape {
     shape.type === "bbox" &&
     [shape.x, shape.y, shape.w, shape.h].every(coordinate) &&
     (shape.w as number) > 0 &&
-    (shape.h as number) > 0;
+    (shape.h as number) > 0 &&
+    (shape.x as number) + (shape.w as number) <= 1 &&
+    (shape.y as number) + (shape.h as number) <= 1;
   const ring = (value: unknown) =>
     Array.isArray(value) &&
     value.length >= 3 &&

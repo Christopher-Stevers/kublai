@@ -169,6 +169,21 @@ it("requires positive-area simple rings and valid interior holes", () => {
     false,
   );
 });
+it("rejects overflowing boxes before display clamping can hide invalid bounds", () => {
+  for (const box of [
+    { type: "bbox", x: 0.9, y: 0.1, w: 0.5, h: 0.5 },
+    { type: "bbox", x: 0.1, y: 0.9, w: 0.5, h: 0.5 },
+  ]) {
+    expect(validReviewShape(box)).toBe(false);
+    expect(
+      rejectedByReview(shape, [{ decision: "rejected", proposalShape: box }]),
+    ).toBe(false);
+  }
+  expect(validReviewShape({ type: "bbox", x: 0, y: 0, w: 1, h: 1 })).toBe(true);
+  expect(
+    validReviewShape({ type: "bbox", x: 0.9, y: 0.9, w: 0.1, h: 0.1 }),
+  ).toBe(true);
+});
 it("retains valid concave and reversed rooms and invalidates mutated cached shapes", () => {
   const concave = {
     type: "polygon",

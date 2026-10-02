@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, or, sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { createTRPCRouter, hasDashboardAccess } from "~/server/api/trpc";
@@ -19,10 +19,11 @@ import {
   growRoomOnFloor,
 } from "~/server/rooms/detect-job";
 import { startDetectWorker } from "~/server/rooms/detect-worker-process";
-import { JOB_ROOM_FILE_PUBLIC_PREFIX } from "~/server/rooms/storage";
+import { getSourcePageFromFloorImage, JOB_ROOM_FILE_PUBLIC_PREFIX } from "~/server/rooms/storage";
 
 import { sourceDrawingHash } from "~/server/rooms/drawing-hash";
 import { validReviewShape } from "~/server/rooms/review-memory";
+import { bindReviewSource, RoomReviewSourceError, type ReviewSource } from "~/server/rooms/review-source";
 import { trainReviewRanker } from "~/server/rooms/review-model";
 import type { RoomShape } from "~/lib/room-shape";
 
@@ -64,6 +65,16 @@ function requireRow<T extends { organizationId: string }>(
   organizationId: string,
 ): T {
   return assertJobOrg(row, organizationId);
+}
+
+function reviewDetectionForSource(detection: unknown, source: ReviewSource) {
+  try {
+    return bindReviewSource(detection, source);
+  } catch (error) {
+    if (error instanceof RoomReviewSourceError)
+      throw new TRPCError({ code: "CONFLICT", message: error.message });
+    throw error;
+  }
 }
 
 export const roomsRouter = createTRPCRouter({
@@ -249,10 +260,10 @@ export const roomsRouter = createTRPCRouter({
               "Fix this outline before approving it. Its boundaries are invalid.",
           });
         const drawingHash = await sourceDrawingHash(floor);
-        const detection = {
-          ...(room.detection as Record<string, unknown> | null),
+        const detection = reviewDetectionForSource(room.detection, {
           drawingHash,
-        };
+          sourcePageNumber: getSourcePageFromFloorImage(floor.imageUrl),
+        });
         await tx.insert(roomDetectionFeedback).values({
           organizationId,
           jobId: room.jobId,
@@ -415,8 +426,18 @@ export const roomsRouter = createTRPCRouter({
               "Fix invalid room boundaries before confirming this floor.",
           });
         const drawingHash = await sourceDrawingHash(floor);
+        const source = {
+          drawingHash,
+          sourcePageNumber: getSourcePageFromFloorImage(floor.imageUrl),
+        };
+        // Validate every outline before recording any feedback or confirming
+        // the floor. A matching PDF hash alone cannot identify its page.
+        const reviewedDetections = approved.map((room) =>
+          reviewDetectionForSource(room.detection, source),
+        );
+        const sourceMetadata = reviewDetectionForSource(null, source);
         await tx.insert(roomDetectionFeedback).values(
-          approved.map((room) => ({
+          approved.map((room, index) => ({
             organizationId,
             jobId: room.jobId,
             floorId: floor.id,
@@ -427,8 +448,7 @@ export const roomsRouter = createTRPCRouter({
             name: room.name,
             proposalShape: room.shape,
             detection: {
-              ...(room.detection as Record<string, unknown> | null),
-              drawingHash,
+              ...reviewedDetections[index],
               completenessAttested: true,
             },
           })),
@@ -453,7 +473,7 @@ export const roomsRouter = createTRPCRouter({
           .set({
             confirmed: true,
             updatedAt: now,
-            detection: sql`COALESCE(${jobRooms.detection},'{}'::jsonb) || ${JSON.stringify({ drawingHash, completenessAttested: true })}::jsonb`,
+            detection: sql`COALESCE(${jobRooms.detection},'{}'::jsonb) || ${JSON.stringify({ ...sourceMetadata, completenessAttested: true })}::jsonb`,
           })
           .where(
             and(
@@ -571,7 +591,10 @@ export const roomsRouter = createTRPCRouter({
             detection: {
               basis: "human-added-space",
               requiresReview: true,
-              drawingHash,
+              ...reviewDetectionForSource(null, {
+                drawingHash,
+                sourcePageNumber: getSourcePageFromFloorImage(lockedFloor.imageUrl),
+              }),
             },
             confirmed: false,
             reviewStatus: "pending",
@@ -670,8 +693,10 @@ export const roomsRouter = createTRPCRouter({
 
         const drawingHash = await sourceDrawingHash(floor);
         const detection = {
-          ...(locked.detection as Record<string, unknown> | null),
-          drawingHash,
+          ...reviewDetectionForSource(locked.detection, {
+            drawingHash,
+            sourcePageNumber: getSourcePageFromFloorImage(floor.imageUrl),
+          }),
           ...(input.shape ? { invalidGeometry: false } : {}),
         };
         await tx.insert(roomDetectionFeedback).values({
@@ -900,6 +925,8 @@ export const roomsRouter = createTRPCRouter({
           and(
             eq(jobRooms.floorId, floor.id),
             eq(jobRooms.organizationId, organizationId),
+            inArray(jobRooms.reviewStatus, ["pending", "approved"]),
+            or(eq(jobRooms.source, "manual"), eq(jobRooms.reviewStatus, "approved")),
           ),
         );
       const result = await growRoomOnFloor({

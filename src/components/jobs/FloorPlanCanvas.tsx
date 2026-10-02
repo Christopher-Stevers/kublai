@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { getRoomColor } from "~/lib/room-colors";
+import { roomReviewTransform } from "~/lib/floor-plan-viewport";
 import {
   findRoomAtPoint,
   insertPointAtClick,
@@ -52,6 +53,7 @@ export function FloorPlanCanvas({
   imageUrl,
   rooms,
   selectedRoomId,
+  focusRoomId,
   editingRoomId,
   detectingRoomId,
   createMode = false,
@@ -70,6 +72,8 @@ export function FloorPlanCanvas({
   imageUrl: string;
   rooms: FloorRoom[];
   selectedRoomId?: string | null;
+  /** Review only: bring the next selected outline into view, including on mobile. */
+  focusRoomId?: string | null;
   editingRoomId?: string | null;
   detectingRoomId?: string | null;
   createMode?: boolean;
@@ -87,6 +91,7 @@ export function FloorPlanCanvas({
 }) {
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const planRef = useRef<HTMLDivElement | null>(null);
+  const imageRef = useRef<HTMLImageElement | null>(null);
   const pointers = useRef(new Map<number, Point>());
   const pinch = useRef<{
     dist: number;
@@ -110,14 +115,16 @@ export function FloorPlanCanvas({
   const pendingDetectPoint = useRef<Point | null>(null);
   const detectFired = useRef(false);
   const detectModeRef = useRef(detectMode);
-  detectModeRef.current = detectMode;
   const [draft, setDraft] = useState<RoomPolygonShape | null>(null);
   const [editShape, setEditShape] = useState<RoomPolygonShape | null>(null);
   const [transform, setTransform] = useState({ scale: 1, tx: 0, ty: 0 });
   const transformRef = useRef(transform);
-  transformRef.current = transform;
   const roomsRef = useRef(rooms);
-  roomsRef.current = rooms;
+  useLayoutEffect(() => {
+    detectModeRef.current = detectMode;
+    transformRef.current = transform;
+    roomsRef.current = rooms;
+  }, [detectMode, transform, rooms]);
 
   const editingRoom = rooms.find((room) => room.id === editingRoomId) ?? null;
   const visibleEditShape =
@@ -150,13 +157,37 @@ export function FloorPlanCanvas({
   }, []);
 
   useEffect(() => {
+    // Capture the saved outline once on selection; server refreshes must not
+    // replace an in-progress vertex drag.
+    /* eslint-disable react-hooks/set-state-in-effect */
     if (!editingRoomId) {
       setEditShape(null);
       return;
     }
     const room = roomsRef.current.find((item) => item.id === editingRoomId);
     setEditShape(room ? toPolygon(room.shape) : null);
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, [editingRoomId]);
+
+  useEffect(() => {
+    if (!focusRoomId) return;
+    const viewport = viewportRef.current, plan = planRef.current, image = imageRef.current;
+    if (!viewport || !plan || !image) return;
+    const focus = () => {
+      const room = roomsRef.current.find((item) => item.id === focusRoomId);
+      if (!room) return;
+      const next = roomReviewTransform(shapeBBox(toPolygon(room.shape)),
+        { width: plan.offsetWidth, height: plan.offsetHeight },
+        { width: viewport.clientWidth, height: viewport.clientHeight });
+      if (next) setTransform(next);
+    };
+    // Native dimensions are not available until a newly selected sheet loads.
+    image.addEventListener("load", focus);
+    const resize = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(focus);
+    resize?.observe(viewport);
+    if (image.complete) focus();
+    return () => { image.removeEventListener("load", focus); resize?.disconnect(); };
+  }, [focusRoomId, imageUrl]);
 
   const applyPinch = (event: React.PointerEvent<HTMLDivElement>) => {
     pointers.current.set(event.pointerId, {
@@ -445,6 +476,7 @@ export function FloorPlanCanvas({
         <div ref={planRef} className="relative inline-block bg-card">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
+            ref={imageRef}
             src={imageUrl}
             alt="Floor plan"
             className="block max-h-[78dvh] w-auto max-w-[92vw] select-none"
@@ -495,8 +527,10 @@ export function FloorPlanCanvas({
               );
             })}
             {previewShape ? (
-              <polygon
-                points={polygonPointsAttr(toPolygon(previewShape))}
+              <path
+                data-trace-preview
+                d={polygonPathAttr(toPolygon(previewShape))}
+                fillRule="evenodd"
                 fill="rgba(14, 165, 233, 0.24)"
                 stroke="#0284c7"
                 strokeWidth={0.005 / transform.scale}
@@ -564,7 +598,7 @@ export function FloorPlanCanvas({
             <button
               type="button"
               className="absolute inset-0 z-10 border-0 bg-transparent p-0"
-              aria-label="Trace unit at this point"
+              aria-label="Trace room at this point"
               onClick={(event) => {
                 event.stopPropagation();
                 if (detectFired.current) return;

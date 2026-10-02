@@ -24,8 +24,7 @@ export function toPolygon(
   shape: RoomShape | null | undefined,
 ): RoomPolygonShape {
   if (
-    shape &&
-    shape.type === "polygon" &&
+    shape?.type === "polygon" &&
     Array.isArray(shape.points) &&
     shape.points.length >= 3
   ) {
@@ -48,7 +47,7 @@ export function toPolygon(
     };
   }
 
-  if (shape && shape.type === "bbox") {
+  if (shape?.type === "bbox") {
     const x = clamp01(shape.x);
     const y = clamp01(shape.y);
     const w = Math.max(0.005, shape.w);
@@ -141,6 +140,39 @@ export function roomLabelPoint(shape: RoomPolygonShape): RoomPoint {
         bestDistance = distance;
       }
     }
+  if (best) return best;
+  // Very narrow concave halls can fall between every grid sample. A scanline
+  // between vertex heights gives interior intervals without returning a wall
+  // vertex (which is an invalid starting point for room tracing).
+  const rings = [shape.points, ...(shape.holes ?? [])];
+  const heights = [
+    ...new Set(rings.flatMap((ring) => ring.map((p) => p.y))),
+  ].sort((a, b) => a - b);
+  const level = heights.findIndex((y) => y >= center.y);
+  const low = heights[Math.max(0, level - 1)];
+  const high = heights[Math.max(1, level)];
+  if (low !== undefined && high !== undefined && high > low) {
+    const y = (low + high) / 2;
+    const crossings: number[] = [];
+    for (const ring of rings)
+      for (let i = 0; i < ring.length; i++) {
+        const a = ring[i]!,
+          b = ring[(i + 1) % ring.length]!;
+        if (a.y > y !== b.y > y)
+          crossings.push(a.x + ((y - a.y) * (b.x - a.x)) / (b.y - a.y));
+      }
+    crossings.sort((a, b) => a - b);
+    let widest = 0;
+    for (let i = 0; i + 1 < crossings.length; i += 2) {
+      const left = crossings[i]!,
+        right = crossings[i + 1]!;
+      const point = { x: (left + right) / 2, y };
+      if (right - left > widest && pointInPolygon(point, shape)) {
+        widest = right - left;
+        best = point;
+      }
+    }
+  }
   return best ?? shape.points[0] ?? center;
 }
 
