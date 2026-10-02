@@ -1,0 +1,48 @@
+{
+  "audited_at": "2026-10-02",
+  "auditor": "Codex /root/room_system_audit",
+  "status": "rejected-before-inference",
+  "reason": "Training and supported inference render semantically pre-pruned annotation SVGs instead of original drawing rasters.",
+  "github_repository": "https://github.com/Yytsi/floorplan-to-3d",
+  "github_commit": "ccc19723d98b097b521b8289287c5143e535df0d",
+  "huggingface_repository": "https://huggingface.co/Yytsi/floorplan-to-3d-walls",
+  "huggingface_revision": "68843a3ab7b12aa03b23c36f955a0d8099b4e2ee",
+  "revision_resolution": "Root read-only primary GitHub and Hugging Face API requests on 2026-10-02",
+  "checkpoint": {
+    "file": "best.safetensors",
+    "published_sha256": "d7f6a0fd06e2931aecfc8c4849192c5e153701578026efc78d9a6246731a8d6c",
+    "published_approximate_megabytes": 97.9,
+    "downloaded": false,
+    "bytes_verified": false,
+    "strict_load_executed": false
+  },
+  "training_input": {
+    "original_raster_loaded": false,
+    "annotation_svg_rendered": true,
+    "annotation_class_aware_pruning": true,
+    "class_specific_color_shortcut_established": false,
+    "size": [512, 512],
+    "letterbox": true,
+    "normalize": "ImageNet mean/std",
+    "classes": ["floor", "wall", "door", "window"]
+  },
+  "model_card_metric": {
+    "name": "validation mIoU",
+    "value": 0.983,
+    "epoch": 26,
+    "self_reported": true,
+    "independently_reproduced": false,
+    "original_raster_accuracy": false,
+    "room_recall": false
+  },
+  "source_code_license": "MIT",
+  "model_card_license": "MIT",
+  "dataset_license": "CC BY-NC 4.0",
+  "weights_downloaded": false,
+  "dataset_downloaded": false,
+  "private_source_views_opened": 0,
+  "protected_corpus_accessed": false,
+  "gpu_trial_executed": false,
+  "approved_for_production": false,
+  "app_or_database_changed": false
+}
