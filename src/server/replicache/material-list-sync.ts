@@ -1,5 +1,6 @@
 import { pullSnapshot, ensureClientGroup, ReplicacheOwnershipError } from "./pull";
 export { ReplicacheOwnershipError } from "./pull";
+import { resolvePermissions, type PermissionKey } from "~/server/auth/permissions";
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import type {
   PatchOperation,
@@ -44,6 +45,28 @@ import {
 type ReplicacheUser = {
   id: string;
   organizationId: string | null;
+  role?: string | null;
+  permissionConfig?: unknown;
+  stripeSubscriptionId?: string | null;
+  subscriptionStatus?: string | null;
+  subscriptionEndsAt?: Date | string | null;
+};
+
+/** Permission needed for each offline mutation. */
+const MUTATION_PERMISSION: Record<string, PermissionKey> = {
+  createJob: "jobs.create",
+  updateJob: "jobs.edit",
+  deleteJob: "jobs.delete",
+  createMaterialList: "lists.edit",
+  renameMaterialList: "lists.edit",
+  addItem: "lists.edit",
+  removeItem: "lists.edit",
+  updateItemQuantity: "lists.edit",
+  updateItemSupplierPart: "lists.edit",
+  deleteMaterialList: "lists.delete",
+  createSupplier: "suppliers.edit",
+  updateSupplier: "suppliers.edit",
+  deleteSupplier: "suppliers.delete",
 };
 
 type ReplicacheTx = Parameters<Parameters<typeof db.transaction>[0]>[0];
@@ -982,6 +1005,7 @@ export async function handleMaterialListReplicachePush(
 ) {
   const organizationId = user.organizationId;
   if (!organizationId) throw new Error("User must belong to an organization");
+  const permissions = resolvePermissions(user);
 
   const unsupported = assertSupportedSchema(request.schemaVersion);
   if (unsupported) return unsupported;
@@ -1030,14 +1054,23 @@ export async function handleMaterialListReplicachePush(
         );
       }
 
-      await applyReplicacheMutation(tx, {
-        name: mutation.name,
-        args: mutation.args,
-        organizationId,
-        userId: user.id,
-        sideEffects,
-      });
-      appliedMutationCount += 1;
+      // A change the member isn't allowed to make is acknowledged without being
+      // applied, so the device drops it on its next pull instead of retrying forever.
+      const needed = MUTATION_PERMISSION[mutation.name];
+      if (needed && !permissions[needed]) {
+        console.warn(
+          `[replicache] denied ${mutation.name} for ${user.id} (needs ${needed})`,
+        );
+      } else {
+        await applyReplicacheMutation(tx, {
+          name: mutation.name,
+          args: mutation.args,
+          organizationId,
+          userId: user.id,
+          sideEffects,
+        });
+        appliedMutationCount += 1;
+      }
       await setClientLastMutationId(tx, {
         ...clientIdentity,
         lastMutationId: mutation.id,

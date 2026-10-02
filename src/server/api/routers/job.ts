@@ -1,4 +1,5 @@
 import { TRPCError } from "@trpc/server";
+import { assertCan } from "~/server/auth/permissions";
 import { eq, and, desc, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 
@@ -77,6 +78,9 @@ export const jobRouter = createTRPCRouter({
   syncEntityMutations: hasDashboardAccess
     .input(z.object({ mutations: z.array(entitySyncMutationInput).max(100) }))
     .mutation(async ({ ctx, input }) => {
+      // Legacy sync path (older cached clients): needs general edit rights.
+      assertCan(ctx.user, "jobs.edit");
+      assertCan(ctx.user, "lists.edit");
       if (!ctx.user.organizationId) {
         throw new TRPCError({
           code: "BAD_REQUEST",

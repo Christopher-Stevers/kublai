@@ -40,8 +40,7 @@ export function QuotePreviewSheet({
   const { data: userData } = api.user.getMyRole.useQuery(undefined, {
     enabled: isOnline && open,
   });
-  const canGenerateDocuments =
-    userData?.permissions.canGenerateDocuments ?? true;
+  const canGenerateDocuments = userData?.permissions.can["quotes.create"] ?? true;
   const { data: materialList } = api.materialList.getMaterialList.useQuery(
     { materialListId },
     { enabled: isOnline && open && !!materialListId && !providedQuoteId },
@@ -114,7 +113,7 @@ export function QuotePreviewSheet({
   const handleEmailQuote = async () => {
     if (!quoteId) return;
     if (!canGenerateDocuments) {
-      setSyncError("Standard accounts cannot generate quotes.");
+      setSyncError("You don't have permission to request quotes.");
       return;
     }
 
@@ -194,7 +193,7 @@ export function QuotePreviewSheet({
           )}
           {!canGenerateDocuments && (
             <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-              Standard accounts cannot generate quotes.
+              You don't have permission to request quotes.
             </div>
           )}
           {/* Line Items */}

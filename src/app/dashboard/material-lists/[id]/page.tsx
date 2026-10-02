@@ -127,8 +127,9 @@ export default function MaterialListDetailPage({
   });
   const updateOrderItemVerification =
     api.materialList.updateOrderItemVerification.useMutation();
-  const canGenerateDocuments =
-    userData?.permissions.canGenerateDocuments ?? true;
+  const canQuote = userData?.permissions.can["quotes.create"] ?? true;
+  const canOrder =
+    isToolRequest || (userData?.permissions.can["orders.send"] ?? true);
   const isReplicacheSyncing = useReplicacheSyncing();
   const hasPendingSync =
     (mlHeader?.pendingSync ?? false) || items.some((i) => i.pendingSync);
@@ -201,8 +202,8 @@ export default function MaterialListDetailPage({
 
   const generationBlockReason = !isBrowserOnline
     ? "Reconnect before generating quotes or orders."
-    : !canGenerateDocuments && !isToolRequest
-      ? "Standard accounts cannot generate quotes or orders."
+    : !canQuote && !canOrder
+      ? "You don't have permission to request quotes or send orders."
       : isLoading
         ? "Loading material list data..."
         : hasPendingSync
@@ -215,7 +216,7 @@ export default function MaterialListDetailPage({
   };
 
   const handleGenerateQuote = () => {
-    if (!canGenerateQuoteOrOrder) return;
+    if (!canGenerateQuoteOrOrder || !canQuote) return;
     if (!jobName) {
       setShowJobInfoModal(true);
       return;
@@ -224,7 +225,7 @@ export default function MaterialListDetailPage({
   };
 
   const handleGenerateOrder = () => {
-    if (!canGenerateQuoteOrOrder) return;
+    if (!canGenerateQuoteOrOrder || !canOrder) return;
     if (!jobName) {
       setShowJobInfoModal(true);
       return;
@@ -472,7 +473,7 @@ export default function MaterialListDetailPage({
 
       {/* Footer - Always Visible */}
       <div className="shrink-0 border-t bg-card px-4 pt-1.5 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:px-6 sm:pt-2">
-        <MaterialListActions total={footerMaterialTotal} canGenerate={canGenerateQuoteOrOrder} blockedReason={generationBlockReason}
+        <MaterialListActions total={footerMaterialTotal} canGenerate={canGenerateQuoteOrOrder} blockedReason={generationBlockReason} canQuote={canQuote} canOrder={canOrder}
           onQuote={handleGenerateQuote} onOrder={handleGenerateOrder} onAdd={openAddPartDialog}
           onNotes={verifyOrderId ? () => setShowVerifyNotesDialog(true) : undefined}
           isToolRequest={isToolRequest} />

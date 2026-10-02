@@ -3,7 +3,7 @@ import { eq, and, desc, asc, isNull } from "drizzle-orm";
 import { z } from "zod";
 
 import { createTRPCRouter, hasDashboardAccess } from "~/server/api/trpc";
-import { assertCanDeleteCoreRecords } from "~/server/auth/permissions";
+import { assertCan, userCan } from "~/server/auth/permissions";
 import {
   suppliers,
   supplierParts,
@@ -167,6 +167,9 @@ export const supplierRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      // Linking parts to suppliers is part of editing either one.
+      if (!userCan(ctx.user, "suppliers.edit") && !userCan(ctx.user, "parts.edit"))
+        assertCan(ctx.user, "suppliers.edit");
       if (!ctx.user.organizationId) {
         throw new TRPCError({
           code: "BAD_REQUEST",
@@ -394,6 +397,9 @@ export const supplierRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      // Linking parts to suppliers is part of editing either one.
+      if (!userCan(ctx.user, "suppliers.edit") && !userCan(ctx.user, "parts.edit"))
+        assertCan(ctx.user, "suppliers.edit");
       if (!ctx.user.organizationId) {
         throw new TRPCError({
           code: "BAD_REQUEST",
@@ -469,7 +475,7 @@ export const supplierRouter = createTRPCRouter({
   removeSupplierPart: hasDashboardAccess
     .input(z.object({ id: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
-      assertCanDeleteCoreRecords(ctx.user);
+      assertCan(ctx.user, "suppliers.delete");
 
       if (!ctx.user.organizationId) {
         throw new TRPCError({
@@ -508,6 +514,9 @@ export const supplierRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      // Linking parts to suppliers is part of editing either one.
+      if (!userCan(ctx.user, "suppliers.edit") && !userCan(ctx.user, "parts.edit"))
+        assertCan(ctx.user, "suppliers.edit");
       if (!ctx.user.organizationId) {
         throw new TRPCError({
           code: "BAD_REQUEST",

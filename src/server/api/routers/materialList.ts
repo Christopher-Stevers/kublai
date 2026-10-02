@@ -230,9 +230,7 @@ function isPermanentMaterialListSyncFailure(message: string) {
 }
 
 import { createTRPCRouter, hasDashboardAccess } from "~/server/api/trpc";
-import {
-  assertCanGenerateDocuments,
-} from "~/server/auth/permissions";
+import { assertCan } from "~/server/auth/permissions";
 import { publishMaterialListEvent } from "~/server/material-list-events";
 import { ensureToolRoomSupplier } from "~/server/assets/service";
 import {
@@ -646,6 +644,7 @@ export const materialListRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      assertCan(ctx.user, "lists.edit");
       if (!ctx.user.organizationId) {
         throw new TRPCError({
           code: "BAD_REQUEST",
@@ -774,6 +773,7 @@ export const materialListRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      assertCan(ctx.user, "lists.edit");
       if (!ctx.user.organizationId) {
         throw new TRPCError({
           code: "BAD_REQUEST",
@@ -1337,7 +1337,7 @@ export const materialListRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      assertCanGenerateDocuments(ctx.user);
+      assertCan(ctx.user, "quotes.create");
 
       if (!ctx.user.organizationId) {
         throw new TRPCError({
@@ -1663,7 +1663,7 @@ ${foremanName}`;
       // Anyone can send a tool request to the tool room; supplier orders
       // stay limited to accounts that may generate documents.
       const isToolRequest = materialList.kind === "tools";
-      if (!isToolRequest) assertCanGenerateDocuments(ctx.user);
+      if (!isToolRequest) assertCan(ctx.user, "orders.send");
 
       if (!materialList.quoteId) {
         throw new TRPCError({
@@ -1945,7 +1945,7 @@ ${foremanName}`;
       }
 
       const isToolRequest = materialList.kind === "tools";
-      if (!isToolRequest) assertCanGenerateDocuments(ctx.user);
+      if (!isToolRequest) assertCan(ctx.user, "orders.send");
       const toolRoomSupplierId = isToolRequest
         ? await ensureToolRoomSupplier(ctx.db, ctx.user.organizationId)
         : null;
@@ -2188,6 +2188,7 @@ ${foremanName}`;
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      assertCan(ctx.user, "orders.send");
       if (!ctx.user.organizationId) {
         throw new TRPCError({
           code: "BAD_REQUEST",
@@ -2550,6 +2551,7 @@ ${foremanName}`;
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      assertCan(ctx.user, "orders.receive");
       if (!ctx.user.organizationId) {
         throw new TRPCError({
           code: "BAD_REQUEST",
@@ -2603,6 +2605,7 @@ ${foremanName}`;
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      assertCan(ctx.user, "orders.receive");
       if (!ctx.user.organizationId) {
         throw new TRPCError({
           code: "BAD_REQUEST",

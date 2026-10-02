@@ -9,9 +9,12 @@ import {
   protectedProcedure,
 } from "~/server/api/trpc";
 import {
-  assertCanManageOrganization,
+  assertCan,
   getUserPermissions,
+  resolvePermissions,
+  toStoredConfig,
 } from "~/server/auth/permissions";
+import { isPermissionKey, type PermissionMap } from "~/lib/permission-catalog";
 import {
   locations,
   organizationInvites,
@@ -21,22 +24,15 @@ import {
 } from "~/server/db/schema";
 import { seedOrganization } from "~/server/utils/seed-organization";
 
-const invitePermissionConfigSchema = z.object({
-  tabs: z.object({
-    dashboard: z.boolean(),
-    catalogue: z.boolean(),
-    suppliers: z.boolean(),
-    quotes: z.boolean(),
-    orders: z.boolean(),
-  }),
-  actions: z.object({
-    canCreateParts: z.boolean(),
-    canEditParts: z.boolean(),
-    canDeleteParts: z.boolean(),
-    canDelete: z.boolean(),
-    canManageAssets: z.boolean().default(false),
-  }),
-});
+/** A permission map from the client: only known keys with boolean values are kept. */
+const permissionMapSchema = z
+  .record(z.string(), z.boolean())
+  .transform((raw) => {
+    const out: Partial<PermissionMap> = {};
+    for (const [key, value] of Object.entries(raw))
+      if (isPermissionKey(key)) out[key] = value;
+    return out;
+  });
 const memberAccessStatusSchema = z.enum(["approved", "pending", "denied"]);
 
 function createInviteToken() {
@@ -45,7 +41,7 @@ function createInviteToken() {
 
 export const organizationRouter = createTRPCRouter({
   getOrganizationSettings: hasDashboardAccess.query(async ({ ctx }) => {
-    assertCanManageOrganization(ctx.user);
+    assertCan(ctx.user, "tab.organization");
 
     if (!ctx.user.organizationId) {
       throw new TRPCError({
@@ -67,13 +63,8 @@ export const organizationRouter = createTRPCRouter({
       });
     }
 
-    const [profileList, locationList, inviteList, memberList] =
+    const [locationList, inviteList, memberList] =
       await Promise.all([
-        ctx.db
-          .select()
-          .from(pricingProfiles)
-          .where(eq(pricingProfiles.organizationId, ctx.user.organizationId))
-          .orderBy(asc(pricingProfiles.name)),
         ctx.db
           .select()
           .from(locations)
@@ -108,9 +99,15 @@ export const organizationRouter = createTRPCRouter({
           .orderBy(asc(users.name), asc(users.email)),
       ]);
 
+    const viewer = resolvePermissions(ctx.user);
     return {
       organization,
-      pricingProfiles: profileList,
+      viewer: {
+        userId: ctx.userId,
+        canManageMembers: viewer["org.members"],
+        canInvite: viewer["org.invite"],
+        canEditSettings: viewer["org.settings"],
+      },
       locations: locationList,
       invites: inviteList,
       members: memberList.map((member) => ({
@@ -126,11 +123,22 @@ export const organizationRouter = createTRPCRouter({
       z.object({
         userId: z.string().min(1),
         accessStatus: memberAccessStatusSchema,
-        permissions: invitePermissionConfigSchema,
+        permissions: permissionMapSchema,
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      assertCanManageOrganization(ctx.user);
+      assertCan(ctx.user, "org.members");
+      if (
+        input.userId === ctx.userId &&
+        (input.permissions["org.members"] === false ||
+          input.permissions["tab.organization"] === false)
+      ) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message:
+            "You can't remove your own access to manage members. Ask another manager.",
+        });
+      }
 
       if (!ctx.user.organizationId) {
         throw new TRPCError({
@@ -150,7 +158,7 @@ export const organizationRouter = createTRPCRouter({
         .update(users)
         .set({
           organizationAccessStatus: input.accessStatus,
-          permissionConfig: input.permissions,
+          permissionConfig: toStoredConfig(input.permissions),
           updatedAt: new Date(),
         })
         .where(
@@ -175,11 +183,11 @@ export const organizationRouter = createTRPCRouter({
     .input(
       z.object({
         name: z.string().min(1).max(255).trim(),
-        permissions: invitePermissionConfigSchema,
+        permissions: permissionMapSchema,
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      assertCanManageOrganization(ctx.user);
+      assertCan(ctx.user, "org.invite");
 
       if (!ctx.user.organizationId) {
         throw new TRPCError({
@@ -195,7 +203,7 @@ export const organizationRouter = createTRPCRouter({
           token: createInviteToken(),
           name: input.name,
           role: "user",
-          permissionConfig: input.permissions,
+          permissionConfig: toStoredConfig(input.permissions),
           createdByUserId: ctx.userId,
           expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
         })
@@ -218,7 +226,7 @@ export const organizationRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      assertCanManageOrganization(ctx.user);
+      assertCan(ctx.user, "org.invite");
 
       if (!ctx.user.organizationId) {
         throw new TRPCError({
@@ -259,7 +267,7 @@ export const organizationRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      assertCanManageOrganization(ctx.user);
+      assertCan(ctx.user, "org.settings");
 
       if (!ctx.user.organizationId) {
         throw new TRPCError({
@@ -298,56 +306,6 @@ export const organizationRouter = createTRPCRouter({
       }
     }),
 
-  updatePricingProfile: hasDashboardAccess
-    .input(
-      z.object({
-        id: z.string().uuid(),
-        name: z
-          .string()
-          .min(1, "Pricing profile name is required")
-          .max(255, "Pricing profile name must be less than 255 characters")
-          .trim(),
-        defaultMarkupPercent: z.coerce
-          .number()
-          .min(0, "Markup must be 0 or more")
-          .max(999.999, "Markup must be less than 1000")
-          .transform((value) => value.toFixed(3)),
-      }),
-    )
-    .mutation(async ({ ctx, input }) => {
-      assertCanManageOrganization(ctx.user);
-
-      if (!ctx.user.organizationId) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "User must belong to an organization",
-        });
-      }
-
-      const [pricingProfile] = await ctx.db
-        .update(pricingProfiles)
-        .set({
-          name: input.name,
-          defaultMarkupPercent: input.defaultMarkupPercent,
-        })
-        .where(
-          and(
-            eq(pricingProfiles.id, input.id),
-            eq(pricingProfiles.organizationId, ctx.user.organizationId),
-          ),
-        )
-        .returning();
-
-      if (!pricingProfile) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Pricing profile not found",
-        });
-      }
-
-      return pricingProfile;
-    }),
-
   updateLocation: hasDashboardAccess
     .input(
       z.object({
@@ -367,7 +325,7 @@ export const organizationRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      assertCanManageOrganization(ctx.user);
+      assertCan(ctx.user, "org.settings");
 
       if (!ctx.user.organizationId) {
         throw new TRPCError({

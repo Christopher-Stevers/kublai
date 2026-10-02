@@ -52,7 +52,7 @@ export function SupplierPartsDialog({
     enabled: isOnline && open,
   });
   const canDeleteCoreRecords =
-    userData?.permissions.canDeleteCoreRecords ?? true;
+    userData?.permissions.can["suppliers.delete"] ?? true;
 
   const { data: supplierData, isLoading } = api.supplier.getById.useQuery(
     { id: supplierId },

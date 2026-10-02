@@ -1,5 +1,17 @@
 import { TRPCError } from "@trpc/server";
 
+import {
+  MANAGING_DEFAULTS,
+  PERMISSION_GROUPS,
+  PERMISSION_KEYS,
+  STANDARD_DEFAULTS,
+  isPermissionKey,
+  type PermissionKey,
+  type PermissionMap,
+} from "~/lib/permission-catalog";
+
+export type { PermissionKey, PermissionMap } from "~/lib/permission-catalog";
+
 type PermissionUser = {
   role?: string | null;
   permissionConfig?: unknown;
@@ -22,200 +34,180 @@ export const appTabIds = [
 
 export type AppTabId = (typeof appTabIds)[number];
 
-export type UserPermissionConfig = {
+/** Pre-2026-10 stored shape; still read for members nobody has edited since. */
+type LegacyPermissionConfig = {
   tabs?: Partial<Record<AppTabId, boolean>>;
   actions?: {
     canCreateParts?: boolean;
     canEditParts?: boolean;
     canDeleteParts?: boolean;
     canDelete?: boolean;
-    /** Tool room: manage assets, fill tool requests, check in/out, counts. */
     canManageAssets?: boolean;
   };
 };
 
-const standardTabs: Record<AppTabId, boolean> = {
-  dashboard: true,
-  catalogue: true,
-  suppliers: true,
-  quotes: true,
-  orders: true,
-  draws: false,
-  assets: true,
-  organization: false,
-};
-
-const standardActions = {
-  canCreateParts: true,
-  canEditParts: true,
-  canDeleteParts: false,
-  canDelete: false,
-};
-
-const managingTabs: Record<AppTabId, boolean> = {
-  dashboard: true,
-  catalogue: true,
-  suppliers: true,
-  quotes: true,
-  orders: true,
-  draws: true,
-  assets: true,
-  organization: true,
-};
-
-const managingActions = {
-  canCreateParts: true,
-  canEditParts: true,
-  canDeleteParts: true,
-  canDelete: true,
+export type StoredPermissionConfig = {
+  version: 2;
+  permissions: Partial<PermissionMap>;
 };
 
 function normalizedRole(user: PermissionUser) {
   return (user.role ?? "user").trim().toLowerCase();
 }
 
-function normalizePermissionConfig(input: unknown): UserPermissionConfig {
-  if (!input || typeof input !== "object" || Array.isArray(input)) return {};
-
-  const raw = input as UserPermissionConfig;
-  return {
-    tabs:
-      raw.tabs && typeof raw.tabs === "object" && !Array.isArray(raw.tabs)
-        ? raw.tabs
-        : undefined,
-    actions:
-      raw.actions &&
-      typeof raw.actions === "object" &&
-      !Array.isArray(raw.actions)
-        ? raw.actions
-        : undefined,
-  };
+function asObject(input: unknown): Record<string, unknown> | null {
+  return input && typeof input === "object" && !Array.isArray(input)
+    ? (input as Record<string, unknown>)
+    : null;
 }
 
-export function getUserPermissions(user: PermissionUser) {
+/** True when the member has a paid seat (or is an admin): the "managing" account defaults. */
+export function hasManagingSeat(user: PermissionUser) {
   const role = normalizedRole(user);
   const hasActiveSubscription =
     !!user.stripeSubscriptionId &&
     user.subscriptionStatus === "active" &&
     (!user.subscriptionEndsAt ||
       new Date(user.subscriptionEndsAt) > new Date());
-  const isWorker = role === "worker";
-  const isManagingAccount =
-    role === "admin" || (hasActiveSubscription && !isWorker);
-  const isStandardAccount = !isManagingAccount;
-  const customPermissions = isManagingAccount
-    ? {}
-    : normalizePermissionConfig(user.permissionConfig);
-  const tabAccess = {
-    ...(isManagingAccount ? managingTabs : standardTabs),
-    ...customPermissions.tabs,
-    // Billing figures are limited to managing accounts (foremen/admins).
-    draws: isManagingAccount,
-    organization: isManagingAccount,
-  };
-  const actionAccess = {
-    ...(isManagingAccount ? managingActions : standardActions),
-    ...customPermissions.actions,
-  };
+  return role === "admin" || (hasActiveSubscription && role !== "worker");
+}
 
-  if (actionAccess.canDelete) {
-    actionAccess.canDeleteParts = true;
+/** The full permission map for a member. */
+export function resolvePermissions(user: PermissionUser): PermissionMap {
+  const role = normalizedRole(user);
+  if (role === "admin") {
+    return Object.fromEntries(
+      PERMISSION_KEYS.map((k) => [k, true]),
+    ) as PermissionMap;
   }
-  // Tool room is granted per member (for any account type); admins always.
-  const canManageAssets =
-    role === "admin" ||
-    normalizePermissionConfig(user.permissionConfig).actions?.canManageAssets ===
-      true;
+  const managing = hasManagingSeat(user);
+  const base = { ...(managing ? MANAGING_DEFAULTS : STANDARD_DEFAULTS) };
+  const config = asObject(user.permissionConfig);
+  if (!config) return base;
+
+  if (config.version === 2) {
+    const stored = asObject(config.permissions) ?? {};
+    for (const [key, value] of Object.entries(stored))
+      if (isPermissionKey(key) && typeof value === "boolean") base[key] = value;
+    return base;
+  }
+
+  // Legacy config: managing seats ignored it (except the tool-room flag).
+  const legacy = config as LegacyPermissionConfig;
+  if (legacy.actions?.canManageAssets === true) base["assets.manage"] = true;
+  if (managing) return base;
+  for (const tab of appTabIds) {
+    const value = legacy.tabs?.[tab];
+    if (typeof value === "boolean") base[`tab.${tab}` as PermissionKey] = value;
+  }
+  const a = legacy.actions ?? {};
+  if (typeof a.canCreateParts === "boolean") base["parts.create"] = a.canCreateParts;
+  if (typeof a.canEditParts === "boolean") base["parts.edit"] = a.canEditParts;
+  if (a.canDeleteParts || a.canDelete) base["parts.delete"] = true;
+  // Billing and organization were never grantable to standard accounts before.
+  base["tab.draws"] = false;
+  base["draws.edit"] = false;
+  base["tab.organization"] = false;
+  return base;
+}
+
+/** Stored (version 2) config for a permission map. */
+export function toStoredConfig(
+  map: Partial<PermissionMap>,
+): StoredPermissionConfig {
+  const permissions: Partial<PermissionMap> = {};
+  for (const key of PERMISSION_KEYS)
+    if (typeof map[key] === "boolean") permissions[key] = map[key];
+  return { version: 2, permissions };
+}
+
+export function getUserPermissions(user: PermissionUser) {
+  const role = normalizedRole(user);
+  const isManagingAccount = hasManagingSeat(user);
+  const can = resolvePermissions(user);
+  const tabAccess = Object.fromEntries(
+    appTabIds.map((tab) => [tab, can[`tab.${tab}` as PermissionKey]]),
+  ) as Record<AppTabId, boolean>;
 
   return {
     role,
+    isAdmin: role === "admin",
     accountType: isManagingAccount ? "managing" : "standard",
-    accountTypeLabel: isManagingAccount
-      ? "Managing Account"
-      : "Standard Account",
+    accountTypeLabel:
+      role === "admin"
+        ? "Admin"
+        : isManagingAccount
+          ? "Managing Account"
+          : "Standard Account",
     isManagingAccount,
-    isStandardAccount,
-    isWorker,
+    isStandardAccount: !isManagingAccount,
+    isWorker: role === "worker",
+    /** Every permission, by key. Prefer this in new code. */
+    can,
     tabAccess,
-    actionAccess,
-    canCreateParts: actionAccess.canCreateParts,
-    canEditParts: actionAccess.canEditParts,
-    canDeleteParts: actionAccess.canDeleteParts,
-    canManageAssets,
-    canGenerateDocuments: isManagingAccount,
-    canDeleteCoreRecords: isManagingAccount,
+    // Older fields, kept for existing clients.
+    actionAccess: {
+      canCreateParts: can["parts.create"],
+      canEditParts: can["parts.edit"],
+      canDeleteParts: can["parts.delete"],
+      canDelete: can["parts.delete"],
+    },
+    canCreateParts: can["parts.create"],
+    canEditParts: can["parts.edit"],
+    canDeleteParts: can["parts.delete"],
+    canManageAssets: can["assets.manage"],
+    canGenerateDocuments: can["quotes.create"] || can["orders.send"],
+    canDeleteCoreRecords:
+      can["jobs.delete"] && can["lists.delete"] && can["suppliers.delete"],
   };
 }
 
-export function assertCanAccessTab(user: PermissionUser, tab: AppTabId) {
-  if (!getUserPermissions(user).tabAccess[tab]) {
-    throw new TRPCError({
-      code: "FORBIDDEN",
-      message: "You do not have access to this tab.",
-    });
-  }
+function labelFor(key: PermissionKey) {
+  for (const group of PERMISSION_GROUPS)
+    for (const p of group.permissions) if (p.key === key) return p.label;
+  return key;
 }
 
-export function assertCanCreateParts(user: PermissionUser) {
-  if (!getUserPermissions(user).canCreateParts) {
-    throw new TRPCError({
-      code: "FORBIDDEN",
-      message: "You do not have permission to create parts.",
-    });
-  }
-}
-
-export function assertCanEditParts(user: PermissionUser) {
-  if (!getUserPermissions(user).canEditParts) {
-    throw new TRPCError({
-      code: "FORBIDDEN",
-      message: "You do not have permission to edit parts.",
-    });
-  }
-}
-
-export function assertCanDeleteParts(user: PermissionUser) {
-  if (!getUserPermissions(user).canDeleteParts) {
-    throw new TRPCError({
-      code: "FORBIDDEN",
-      message: "You do not have permission to delete parts.",
-    });
-  }
-}
-
-export function assertCanGenerateDocuments(user: PermissionUser) {
-  if (!getUserPermissions(user).canGenerateDocuments) {
-    throw new TRPCError({
-      code: "FORBIDDEN",
-      message: "Standard accounts cannot generate quotes or orders.",
-    });
-  }
-}
-
-export function assertCanDeleteCoreRecords(user: PermissionUser) {
-  if (!getUserPermissions(user).canDeleteCoreRecords) {
+/** Throws FORBIDDEN unless the member has `key`. */
+export function assertCan(
+  user: PermissionUser,
+  key: PermissionKey,
+  message?: string,
+) {
+  if (!resolvePermissions(user)[key]) {
     throw new TRPCError({
       code: "FORBIDDEN",
       message:
-        "Standard accounts cannot delete jobs, material lists, suppliers, or parts.",
+        message ??
+        `You don't have permission to do this (${labelFor(key)}). Ask an organization manager.`,
     });
   }
 }
 
-export function assertCanManageOrganization(user: PermissionUser) {
-  if (!getUserPermissions(user).isManagingAccount) {
-    throw new TRPCError({
-      code: "FORBIDDEN",
-      message: "Managing Account required to change organization data.",
-    });
-  }
+export function userCan(user: PermissionUser, key: PermissionKey) {
+  return resolvePermissions(user)[key];
+}
+
+export function assertCanAccessTab(user: PermissionUser, tab: AppTabId) {
+  assertCan(
+    user,
+    `tab.${tab}` as PermissionKey,
+    "You do not have access to this tab.",
+  );
+}
+
+export function assertCanCreateParts(user: PermissionUser) {
+  assertCan(user, "parts.create", "You do not have permission to create parts.");
+}
+
+export function assertCanEditParts(user: PermissionUser) {
+  assertCan(user, "parts.edit", "You do not have permission to edit parts.");
+}
+
+export function assertCanDeleteParts(user: PermissionUser) {
+  assertCan(user, "parts.delete", "You do not have permission to delete parts.");
 }
 
 export function assertCanManageAssets(user: PermissionUser) {
-  if (!getUserPermissions(user).canManageAssets) {
-    throw new TRPCError({
-      code: "FORBIDDEN",
-      message: "Only tool room members can do this.",
-    });
-  }
+  assertCan(user, "assets.manage", "Only tool room members can do this.");
 }

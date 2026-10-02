@@ -2,7 +2,7 @@ import { spawn } from "node:child_process";
 import path from "node:path";
 import { and, eq, like } from "drizzle-orm";
 import { NextResponse } from "next/server";
-import { getUserPermissions } from "~/server/auth/permissions";
+import { userCan } from "~/server/auth/permissions";
 import { db } from "~/server/db";
 import { jobFloors, jobs } from "~/server/db/schema";
 import {
@@ -34,8 +34,8 @@ export const maxDuration = 30;
 async function requestUser(request: Request) {
   const { user } = await getRequestIdentity(request.headers, { allowDev: true });
   if (!user?.organizationId) throw new UploadError("Unauthorized", 401);
-  if (!getUserPermissions(user).isManagingAccount)
-    throw new UploadError("Managing accounts upload floor plans", 403);
+  if (!userCan(user, "drawings.manage"))
+    throw new UploadError("You don't have permission to upload drawings", 403);
   return { userId: user.id, organizationId: user.organizationId };
 }
 async function checkJob(jobId: string, organizationId: string) {

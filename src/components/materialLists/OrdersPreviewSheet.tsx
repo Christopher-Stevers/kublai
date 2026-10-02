@@ -94,7 +94,7 @@ export function OrdersPreviewSheet({
   });
   // Anyone can send a tool request; supplier orders need document rights.
   const canGenerateDocuments =
-    isToolRequest || (userData?.permissions.canGenerateDocuments ?? true);
+    isToolRequest || (userData?.permissions.can["orders.send"] ?? true);
 
   const sendGeneratedOrder = api.materialList.sendGeneratedOrder.useMutation();
 
@@ -238,7 +238,7 @@ export function OrdersPreviewSheet({
 
   const handleEmailOrder = async (order: PreviewOrder) => {
     if (!canGenerateDocuments) {
-      setSyncError("Standard accounts cannot generate orders.");
+      setSyncError("You don't have permission to send orders.");
       return;
     }
     if (!order.supplierId) {
@@ -353,7 +353,7 @@ export function OrdersPreviewSheet({
             </DialogTitle>
             <DialogDescription>
               {!canGenerateDocuments
-                ? "Standard accounts cannot generate orders."
+                ? "You don't have permission to send orders."
                 : !isOnline
                   ? "Reconnect before generating orders. Orders are generated from the online database."
                   : (loadError ??

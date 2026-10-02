@@ -18,7 +18,7 @@ vi.mock("~/server/utils/get-request-identity", () => ({
   getRequestIdentity: async () => ({ userId: mocks.user?.id ?? null, user: mocks.user }),
 }));
 vi.mock("~/server/auth/permissions", () => ({
-  getUserPermissions: () => ({ isManagingAccount: mocks.managing }),
+  userCan: () => mocks.managing,
 }));
 vi.mock("~/server/db", () => ({ db: { select: mocks.select } }));
 vi.mock("node:child_process", () => ({ spawn: mocks.spawn }));

@@ -55,7 +55,7 @@ export function PartSuppliersDropdown({
   const { data: userData } = api.user.getMyRole.useQuery(undefined, {
     enabled: isOnline && isDropdownOpen,
   });
-  const canDeleteCoreRecords = userData?.permissions.canDeleteCoreRecords ?? true;
+  const canDeleteCoreRecords = userData?.permissions.can["suppliers.delete"] ?? true;
 
   const { data: serverSupplierParts } = api.supplier.getSupplierPartsByPart.useQuery(
     { partDefinitionId },

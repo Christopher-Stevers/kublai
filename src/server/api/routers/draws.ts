@@ -9,7 +9,7 @@ import {
   type DrawStatus,
 } from "~/lib/draws";
 import { createTRPCRouter, hasDashboardAccess } from "~/server/api/trpc";
-import { assertCanAccessTab } from "~/server/auth/permissions";
+import { assertCan, assertCanAccessTab } from "~/server/auth/permissions";
 import { db } from "~/server/db";
 import {
   jobDrawItems,
@@ -37,6 +37,12 @@ const drawsProcedure = hasDashboardAccess.use(({ ctx, next }) => {
   return next({
     ctx: { organizationId: ctx.user.organizationId },
   });
+});
+
+/** Changing schedules of values and draws needs "Edit draws". */
+const drawsEditProcedure = drawsProcedure.use(({ ctx, next }) => {
+  assertCan(ctx.user, "draws.edit");
+  return next();
 });
 
 type Db = typeof db;
@@ -246,7 +252,7 @@ export const drawsRouter = createTRPCRouter({
       };
     }),
 
-  addLine: drawsProcedure
+  addLine: drawsEditProcedure
     .input(
       z.object({
         jobId: z.string().uuid(),
@@ -275,7 +281,7 @@ export const drawsRouter = createTRPCRouter({
       return line;
     }),
 
-  updateLine: drawsProcedure
+  updateLine: drawsEditProcedure
     .input(
       z.object({
         lineId: z.string().uuid(),
@@ -304,7 +310,7 @@ export const drawsRouter = createTRPCRouter({
       return line;
     }),
 
-  moveLine: drawsProcedure
+  moveLine: drawsEditProcedure
     .input(
       z.object({
         lineId: z.string().uuid(),
@@ -334,7 +340,7 @@ export const drawsRouter = createTRPCRouter({
       return { ok: true };
     }),
 
-  deleteLine: drawsProcedure
+  deleteLine: drawsEditProcedure
     .input(z.object({ lineId: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
       await requireLine(ctx.db, ctx.organizationId, input.lineId);
@@ -359,7 +365,7 @@ export const drawsRouter = createTRPCRouter({
     }),
 
   /** Starts the next draw, carrying forward each line's completed amount. */
-  createDraw: drawsProcedure
+  createDraw: drawsEditProcedure
     .input(
       z.object({
         jobId: z.string().uuid(),
@@ -414,7 +420,7 @@ export const drawsRouter = createTRPCRouter({
       });
     }),
 
-  updateDraw: drawsProcedure
+  updateDraw: drawsEditProcedure
     .input(
       z.object({
         drawId: z.string().uuid(),
@@ -443,7 +449,7 @@ export const drawsRouter = createTRPCRouter({
     }),
 
   /** Sets a line's cumulative completed amount on a draft draw. */
-  setCompleted: drawsProcedure
+  setCompleted: drawsEditProcedure
     .input(
       z.object({
         drawId: z.string().uuid(),
@@ -481,7 +487,7 @@ export const drawsRouter = createTRPCRouter({
       return { ok: true };
     }),
 
-  setStatus: drawsProcedure
+  setStatus: drawsEditProcedure
     .input(
       z.object({
         drawId: z.string().uuid(),
@@ -513,7 +519,7 @@ export const drawsRouter = createTRPCRouter({
       return updated;
     }),
 
-  deleteDraw: drawsProcedure
+  deleteDraw: drawsEditProcedure
     .input(z.object({ drawId: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
       const draw = await requireDraw(ctx.db, ctx.organizationId, input.drawId);

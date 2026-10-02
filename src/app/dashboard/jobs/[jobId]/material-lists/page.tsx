@@ -193,8 +193,7 @@ export default function JobDetailPage({
   const { data: userData } = api.user.getMyRole.useQuery(undefined, {
     enabled: isBrowserOnline,
   });
-  const canDeleteCoreRecords =
-    userData?.permissions.canDeleteCoreRecords ?? true;
+  const canDeleteCoreRecords = userData?.permissions.can["lists.delete"] ?? true;
 
   const jobDetail = useReplicacheJobDetail(jobId);
   const { data: serverJob, isFetched: hasFetchedServerJob } =

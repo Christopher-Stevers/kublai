@@ -6,6 +6,8 @@ export function MaterialListActions({
   total,
   canGenerate,
   blockedReason,
+  canQuote = true,
+  canOrder = true,
   onQuote,
   onOrder,
   onAdd,
@@ -15,6 +17,9 @@ export function MaterialListActions({
   total: number;
   canGenerate: boolean;
   blockedReason?: string | null;
+  /** Member may request quotes / send orders (permissions). */
+  canQuote?: boolean;
+  canOrder?: boolean;
   onQuote: () => void;
   onOrder: () => void;
   onAdd: () => void;
@@ -68,8 +73,8 @@ export function MaterialListActions({
               variant="outline"
               className={style}
               onClick={onQuote}
-              disabled={!canGenerate}
-              title={blockedReason ?? "Generate quote"}
+              disabled={!canGenerate || !canQuote}
+              title={!canQuote ? "You don't have permission to request quotes" : (blockedReason ?? "Generate quote")}
             >
               <FileTextIcon className="mr-1 h-3.5 w-3.5 shrink-0" />
               Quote
@@ -77,8 +82,8 @@ export function MaterialListActions({
             <Button
               className={style}
               onClick={onOrder}
-              disabled={!canGenerate}
-              title={blockedReason ?? "Order"}
+              disabled={!canGenerate || !canOrder}
+              title={!canOrder ? "You don't have permission to send orders" : (blockedReason ?? "Order")}
             >
               <ShoppingCartIcon className="mr-1 h-3.5 w-3.5 shrink-0" />
               Order

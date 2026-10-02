@@ -271,8 +271,9 @@ export function DashboardClient({
       refetchOnMount: true,
       refetchOnWindowFocus: false,
     });
-  const canDeleteCoreRecords =
-    userData?.permissions.canDeleteCoreRecords ?? true;
+  const can = userData?.permissions.can;
+  const canDeleteJobs = can?.["jobs.delete"] ?? true;
+  const canDeleteLists = can?.["lists.delete"] ?? true;
 
   // Redirect to onboarding if user has no organizationId
   useEffect(() => {
@@ -345,7 +346,7 @@ export function DashboardClient({
   };
 
   const handleConfirmDeleteJob = () => {
-    if (!jobToDelete || !canDeleteCoreRecords) return;
+    if (!jobToDelete || !canDeleteJobs) return;
     const { id } = jobToDelete;
     setJobToDelete(null);
     void mutateMaterialListAndSync(
@@ -354,7 +355,7 @@ export function DashboardClient({
   };
 
   const handleConfirmDeleteMaterialList = () => {
-    if (!materialListToDelete || !canDeleteCoreRecords) return;
+    if (!materialListToDelete || !canDeleteLists) return;
     const { id } = materialListToDelete;
     setMaterialListToDelete(null);
     void mutateMaterialListAndSync(
@@ -400,12 +401,12 @@ export function DashboardClient({
       Boolean(selectedMaterialList?.pendingSync) ||
       selectedItems.some((item) => Boolean(item.pendingSync));
     const jobLocationAddress = formatLocationAddress(offlineJob?.location);
-    const canGenerateDocuments =
-      userData?.permissions.canGenerateDocuments ?? true;
+    const canQuote = can?.["quotes.create"] ?? true;
+    const canOrder = can?.["orders.send"] ?? true;
     const offlineGenerationBlockReason = !isBrowserOnline
       ? "Reconnect before generating quotes or orders."
-      : !canGenerateDocuments
-        ? "Standard accounts cannot generate quotes or orders."
+      : !canQuote && !canOrder
+        ? "You don't have permission to request quotes or send orders."
         : selectedMaterialListHasPendingSync
           ? "Finish syncing this material list before generating a quote or order."
           : selectedItems.length === 0
@@ -511,7 +512,7 @@ export function DashboardClient({
                 )}
 
                 <div className="fixed inset-x-0 bottom-0 z-40 border-t bg-card px-4 pt-1.5 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:sticky sm:inset-x-auto sm:z-10 sm:-mx-6 sm:mt-4 sm:px-6 sm:pt-2">
-                  <MaterialListActions total={selectedMaterialTotal} canGenerate={canGenerateOfflineQuoteOrOrder} blockedReason={offlineGenerationBlockReason}
+                  <MaterialListActions total={selectedMaterialTotal} canGenerate={canGenerateOfflineQuoteOrOrder} blockedReason={offlineGenerationBlockReason} canQuote={canQuote} canOrder={canOrder}
                     onQuote={handleOfflineGenerateQuote} onOrder={handleOfflineGenerateOrder} onAdd={() => setShowOfflineAddPartDialog(true)} />
                 </div>
 
@@ -714,7 +715,7 @@ export function DashboardClient({
                           <CardTitle className="line-clamp-2 min-w-0 leading-tight break-words">
                             {list.name}
                           </CardTitle>
-                          {canDeleteCoreRecords && (
+                          {canDeleteLists && (
                             <Button
                               variant="ghost"
                               size="icon"
@@ -962,7 +963,7 @@ export function DashboardClient({
                           </Badge>
                         )}
                       </div>
-                      {canDeleteCoreRecords && (
+                      {canDeleteJobs && (
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button

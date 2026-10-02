@@ -40,7 +40,7 @@ export function SupplierList() {
     enabled: isBrowserOnline,
   });
   const canDeleteCoreRecords =
-    userData?.permissions.canDeleteCoreRecords ?? true;
+    userData?.permissions.can["suppliers.delete"] ?? true;
   const suppliers = useReplicacheSuppliers();
 
   const handleDelete = async (id: string, name: string) => {
