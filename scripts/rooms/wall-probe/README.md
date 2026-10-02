@@ -1,5 +1,8 @@
 # Wall-model input audit
 
+The follow-on [saved-mask topology probe](PARTITION_RESULTS_2026-10-02.md) shows
+why plausible wall predictions alone still do not produce complete room outlines.
+
 ## Yytsi/floorplan-to-3d — rejected before inference, 2026-10-02
 
 **This checkpoint is not a defensible complementary raw-raster wall detector
