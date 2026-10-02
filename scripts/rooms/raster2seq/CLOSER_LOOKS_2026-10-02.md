@@ -39,8 +39,10 @@ Invalid rings and out-of-crop polygons are quarantined, never repaired or clippe
 Deduplication applies only to valid, in-crop, non-edge-flagged polygons from
 different windows, at IoU≥0.85. It keeps an exact original representative ring
 and compares each duplicate only against that representative. There is no
-transitive clustering, geometric union, room/suite merging or largest-component
-repair. Class conflicts and every suppressed duplicate remain in provenance.
+transitive clustering, geometric union or largest-component repair. Near-nested
+room/suite hypotheses can pass the same IoU gate and be represented by one ring;
+the alternative untouched ring and class conflict remain in raw provenance.
+This suppression does not adjudicate which hypothesis is the physical room.
 
 One model pixel (2.5 native pixels) of boundary margin is the predeclared possible
 crop-truncation warning. **`strict_contained_polygons` is a ring-coordinate
@@ -152,3 +154,19 @@ The remaining priority is actual drawing annotations and domain-specific
 adaptation, with an agreed physical-room policy and independently attested
 full-floor evaluation. Repeatedly subdividing this one exposed page or choosing
 more favorable overlap thresholds cannot establish completeness.
+
+## Post-run helper safety repair
+
+An independent source audit found fabricated edge cases in the reusable helpers:
+duplicate IDs could overwrite provenance maps, and nonfinite geometry could pass
+a trusted validity flag or throw in GEOS. No such defect was demonstrated in the
+historical strict-JSON trial. The current helper now rejects duplicate/malformed
+identity metadata and recomputes finite, valid, positive-area rings before its
+spatial index. `classify` cleanly quarantines nonfinite/malformed/degenerate rings
+and parent association skips invalid geometry. No thresholds or learned outputs
+were retuned. Five focused regression tests cover those defects and near-nested
+hypothesis suppression; 28 owned fabricated tests pass.
+
+The historical source archive under the private run directory remains unchanged
+and authoritative for the recorded trial hashes. Current support source differs
+because of these guards. There was no model rerun or historical report rewrite.

@@ -3,12 +3,14 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import platform
 import resource
 import signal
 import subprocess
 import time
 from pathlib import Path
+from numbers import Real
 
 from adapter import CHECKPOINT_SHA, SOURCE_SHA, UPSTREAM_COMMIT, digest, load_model, preprocess, unpad_point
 from trial import CASES, CONFIG_SHA, LABELS, source_pins, write_json
@@ -19,6 +21,38 @@ BASELINE_SHA = "0be1853222df3b17428996e4f00c1cbe9cfaf62acde590b507041ea3babd7f12
 DEDUP_IOU = .85
 PARENT_CONTAINMENT = .9
 CONFLICT_MIN_AREA_OVERLAP = .25
+
+
+def finite_number(value):
+    if not isinstance(value, Real) or isinstance(value, bool):
+        return False
+    try:
+        return math.isfinite(value)
+    except (TypeError, ValueError, OverflowError):
+        return False
+
+
+def coordinate_ring(points):
+    """Check shape/finiteness before GEOS; malformed rings are not repairable."""
+    return isinstance(points, (list, tuple)) and 3 <= len(points) <= 512 and all(
+        isinstance(point, (list, tuple)) and len(point) == 2 and all(finite_number(v) for v in point)
+        for point in points
+    )
+
+
+def checked_polygon(points):
+    from shapely.errors import GEOSException
+    from shapely.geometry import Polygon
+    from shapely.validation import explain_validity
+    if not coordinate_ring(points):
+        return None, "malformed or nonfinite coordinate ring"
+    try:
+        geom = Polygon(points)
+        if not geom.is_valid or geom.is_empty or not math.isfinite(geom.area) or geom.area <= 0:
+            return None, explain_validity(geom) if not geom.is_valid else "empty, degenerate or nonfinite polygon area"
+        return geom, None
+    except (GEOSException, TypeError, ValueError, OverflowError):
+        return None, "geometry construction failed"
 
 
 def starts(length, window=WINDOW, stride=STRIDE):
@@ -44,24 +78,56 @@ def tiles(page_size=(5000, 3750)):
 
 def classify(points, box, page_size=(5000, 3750)):
     """Never repair rings; crop-edge flags express possible truncation only."""
-    from shapely.geometry import Polygon
-    from shapely.validation import explain_validity
-    geom = Polygon(points)
-    valid = geom.is_valid and not geom.is_empty and geom.area > 0
+    if not isinstance(box, (list, tuple)) or len(box) != 4 or not all(finite_number(v) for v in box) or box[2] - box[0] != WINDOW or box[3] - box[1] != WINDOW:
+        raise ValueError("invalid fixed crop metadata")
+    if not isinstance(page_size, (list, tuple)) or len(page_size) != 2 or not all(finite_number(v) and v > 0 for v in page_size):
+        raise ValueError("invalid page dimensions")
+    geom, reason = checked_polygon(points)
+    if geom is None:
+        return {"valid_polygon": False, "invalid_reason": reason, "outside_crop": False, "possible_crop_truncation": True, "boundary_margin_native_px": None, "export_status": "quarantined-invalid"}
     local = [(x * page_size[0] - box[0], y * page_size[1] - box[1]) for x, y in points]
+    if not all(finite_number(v) for point in local for v in point):
+        return {"valid_polygon": False, "invalid_reason": "nonfinite source-coordinate transform", "outside_crop": False, "possible_crop_truncation": True, "boundary_margin_native_px": None, "export_status": "quarantined-invalid"}
     margin = min(min(x, y, WINDOW - 1 - x, WINDOW - 1 - y) for x, y in local)
     outside = margin < -.5
     contact = margin <= WINDOW / 256  # one model pixel, explicitly a warning
-    return {"valid_polygon": bool(valid), "invalid_reason": explain_validity(geom) if not valid else None, "outside_crop": outside, "possible_crop_truncation": contact, "boundary_margin_native_px": margin, "export_status": "quarantined-invalid" if not valid else ("quarantined-outside-crop" if outside else "unreviewed")}
+    return {"valid_polygon": True, "invalid_reason": None, "outside_crop": outside, "possible_crop_truncation": contact, "boundary_margin_native_px": margin, "export_status": "quarantined-outside-crop" if outside else "unreviewed"}
 
 
 def deduplicate(records):
     """Stable representative comparisons only; no transitive union/geometry edit."""
-    from shapely.geometry import Polygon
     from shapely.strtree import STRtree
-    usable = [r for r in records if r["kind"] == "polygon" and r["valid_polygon"] and not r["outside_crop"]]
+    if not isinstance(records, (list, tuple)):
+        raise ValueError("invalid proposal collection")
+    ids, usable, verified = set(), [], {}
+    for row in records:
+        if not isinstance(row, dict) or not isinstance(row.get("id"), str) or not row["id"] or row["id"] in ids:
+            raise ValueError("missing or duplicate proposal ID")
+        ids.add(row["id"])
+        if not isinstance(row.get("tile_id"), str) or not row["tile_id"] or type(row.get("label_id")) is not int or not isinstance(row.get("kind"), str) or row["kind"] not in {"line", "polygon"}:
+            raise ValueError("invalid proposal identity metadata")
+        if row["kind"] == "line":
+            pts = row.get("full_page_normalized_points")
+            if not isinstance(pts, (list, tuple)) or len(pts) != 2 or not all(isinstance(p, (list, tuple)) and len(p) == 2 and all(finite_number(v) for v in p) for p in pts):
+                raise ValueError("malformed or nonfinite line")
+            continue
+        if any(type(row.get(flag)) is not bool for flag in ("valid_polygon", "outside_crop", "possible_crop_truncation")):
+            raise ValueError("invalid polygon metadata flags")
+        geom, reason = checked_polygon(row.get("full_page_normalized_points"))
+        if not row["valid_polygon"]:
+            continue  # conservatively quarantined input never reaches the index
+        if geom is None:
+            raise ValueError("declared valid polygon failed geometry validation: " + reason)
+        margin = row.get("boundary_margin_native_px")
+        if not finite_number(margin):
+            raise ValueError("nonfinite polygon boundary margin")
+        if row["outside_crop"] != (margin < -.5) or row["possible_crop_truncation"] != (margin <= WINDOW / 256):
+            raise ValueError("inconsistent polygon crop metadata")
+        if not row["outside_crop"]:
+            usable.append(row)
+            verified[row["id"]] = geom
     usable.sort(key=lambda r: (-r["boundary_margin_native_px"], r["id"]))
-    geoms = [Polygon(r["full_page_normalized_points"]) for r in usable]
+    geoms = [verified[r["id"]] for r in usable]
     tree = STRtree(geoms)
     selected, mapping, duplicate_groups = set(), {}, {}
     for i, row in enumerate(usable):
@@ -100,15 +166,16 @@ def deduplicate(records):
 
 
 def parent_relations(row, parent_records):
-    from shapely.geometry import Polygon
-    child = Polygon(row["full_page_normalized_points"])
-    if not child.is_valid or child.is_empty or child.area <= 0:
+    child, _ = checked_polygon(row.get("full_page_normalized_points"))
+    if child is None:
         return []
     relations = []
     for parent in parent_records:
         if parent["kind"] != "polygon" or not parent["valid_polygon"]:
             continue
-        geom = Polygon(parent["full_page_normalized_points"])
+        geom, _ = checked_polygon(parent.get("full_page_normalized_points"))
+        if geom is None:
+            continue
         ratio = child.intersection(geom).area / child.area
         if ratio >= PARENT_CONTAINMENT:
             relations.append({"parent_proposal_id": parent["id"], "child_overlap_fraction": ratio, "parent_label_id": parent["label_id"], "class_disagreement": parent["label_id"] != row["label_id"], "hypothesis_only": True})
