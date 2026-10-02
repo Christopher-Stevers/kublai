@@ -78,6 +78,9 @@ export async function getAgentBypassUser(headers: Headers) {
     if (preferredUser?.organizationId) {
       return preferredUser;
     }
+    // A named shortcut account that no longer exists (or has no company) must
+    // not silently sign in as somebody else.
+    return null;
   }
 
   const [fallbackUser] = await db
