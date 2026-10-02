@@ -112,3 +112,21 @@ export function keepWallsThickerThan(rgba: Uint8ClampedArray, width: number, hei
   }
   return r;
 }
+
+/**
+ * Walls as drawn on construction plans: double lines (with or without poché)
+ * or solid bands. Single thin strokes (door swings, fixtures, furniture,
+ * leaders, hatching) are dropped. Repaints the page with walls only.
+ */
+export function keepDoubleLineWalls(rgba: Uint8ClampedArray, width: number, height: number) {
+  const long = Math.max(width, height);
+  const ink = inkMask(rgba, width, height, 128);
+  const pairGap = Math.max(2, Math.round(long / 1700));
+  const thin = Math.max(1, Math.round(long / 2500));
+  const walls = open(close(ink, pairGap), thin);
+  for (let i = 0; i < walls.data.length; i++) {
+    const p = i * 4;
+    const v = walls.data[i] ? 0 : 255;
+    rgba[p] = rgba[p + 1] = rgba[p + 2] = v;
+  }
+}
