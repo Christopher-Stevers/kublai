@@ -1078,9 +1078,9 @@ function ChatLobby({ jobId, userId }: { jobId: string; userId: string }) {
             ref={composer}
             aria-label="Message"
             placeholder="Message everyone on this job…"
-            className="bg-background focus-visible:ring-ring max-h-36 min-h-11 min-w-0 flex-1 resize-y rounded-lg border px-3 py-2 text-base focus-visible:ring-2"
+            className="bg-background focus-visible:ring-ring max-h-36 min-h-12 min-w-0 flex-1 resize-y rounded-lg border px-3 py-[11px] text-base leading-6 shadow-[0_3px_8px_rgba(0,0,0,0.5)] focus-visible:ring-2"
             maxLength={8000}
-            rows={2}
+            rows={1}
             value={draft.body}
             disabled={Boolean(lockedComposer)}
             onChange={(event) =>
@@ -1096,6 +1096,7 @@ function ChatLobby({ jobId, userId }: { jobId: string; userId: string }) {
           <Button
             type="submit"
             size="icon"
+            className="size-12 shadow-[0_3px_8px_rgba(0,0,0,0.5)]"
             aria-label={draft.attempted ? "Retry message" : "Send message"}
             disabled={
               !online ||
