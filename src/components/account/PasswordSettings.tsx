@@ -60,7 +60,6 @@ function PasswordForm({
   isOnline: boolean;
 }) {
   const [editing, setEditing] = useState(false);
-  const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmation, setConfirmation] = useState("");
   const [showPasswords, setShowPasswords] = useState(false);
@@ -75,7 +74,6 @@ function PasswordForm({
   );
 
   function clearFields() {
-    setCurrentPassword("");
     setNewPassword("");
     setConfirmation("");
     setShowPasswords(false);
@@ -86,7 +84,7 @@ function PasswordForm({
     event.preventDefault();
     if (!isOnline || submitting.current) return;
     setError(null);
-    if (!newPassword || (user.passwordEnabled && !currentPassword)) {
+    if (!newPassword) {
       setError("Fill in the password fields.");
       return;
     }
@@ -98,7 +96,6 @@ function PasswordForm({
     setSaving(true);
     try {
       const updatedUser = await updatePassword({
-        ...(user.passwordEnabled ? { currentPassword } : {}),
         newPassword,
         signOutOfOtherSessions: signOutOthers,
       });
@@ -168,31 +165,10 @@ function PasswordForm({
             hidden
           />
           <fieldset disabled={saving || !isOnline} className="space-y-4">
-            {!user.passwordEnabled && (
-              <p className="text-muted-foreground text-sm">
-                You don’t have a password yet. You may be asked to verify your
-                identity.
-              </p>
-            )}
-            {user.passwordEnabled && (
-              <div className="space-y-1">
-                <label
-                  htmlFor="current-password"
-                  className="text-sm font-medium"
-                >
-                  Current password
-                </label>
-                <Input
-                  id="current-password"
-                  name="currentPassword"
-                  type={showPasswords ? "text" : "password"}
-                  autoComplete="current-password"
-                  value={currentPassword}
-                  onChange={(event) => setCurrentPassword(event.target.value)}
-                  required
-                />
-              </div>
-            )}
+            <p className="text-muted-foreground text-sm">
+              Enter your new password twice. If asked to verify your identity,
+              choose an email code to continue without your old password.
+            </p>
             <div className="space-y-1">
               <label htmlFor="new-password" className="text-sm font-medium">
                 New password

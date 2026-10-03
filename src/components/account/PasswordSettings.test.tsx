@@ -9,7 +9,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PasswordSettings } from "./PasswordSettings";
 
 type PasswordParams = {
-  currentPassword?: string;
   newPassword: string;
   signOutOfOtherSessions?: boolean;
 };
@@ -30,7 +29,7 @@ const mock = vi.hoisted(() => {
     verifiedUpdate: vi.fn<(params: PasswordParams) => void>(),
     verificationError: null as Error | null,
     apiError: {
-      errors: [{ longMessage: "The current password is incorrect." }],
+      errors: [{ longMessage: "This password is too weak." }],
     },
     cancellation: new Error("Reverification cancelled"),
     useUser: vi.fn(),
@@ -70,18 +69,12 @@ function openForm() {
 }
 
 function fillPasswords({
-  current = "current example password",
   next = "  new example password  ",
   confirmation = next,
 }: {
-  current?: string;
   next?: string;
   confirmation?: string;
 } = {}) {
-  const currentField = screen.queryByLabelText("Current password");
-  if (currentField) {
-    fireEvent.change(currentField, { target: { value: current } });
-  }
   fireEvent.change(screen.getByLabelText("New password"), {
     target: { value: next },
   });
@@ -132,6 +125,12 @@ describe("PasswordSettings", () => {
     async (signOutOthers) => {
       render(<PasswordSettings isOnline />);
       openForm();
+      expect(
+        screen.queryByLabelText("Current password"),
+      ).not.toBeInTheDocument();
+      expect(
+        document.querySelector('[autocomplete="current-password"]'),
+      ).toBeNull();
       fillPasswords();
       const signOut = screen.getByRole("checkbox", {
         name: "Sign out of other devices",
@@ -142,7 +141,6 @@ describe("PasswordSettings", () => {
 
       await screen.findByText("Password saved successfully.");
       const expected = {
-        currentPassword: "current example password",
         newPassword: "  new example password  ",
         signOutOfOtherSessions: signOutOthers,
       };
@@ -165,11 +163,7 @@ describe("PasswordSettings", () => {
     expect(screen.queryByLabelText("New password")).not.toBeInTheDocument();
     openForm();
 
-    for (const label of [
-      "Current password",
-      "New password",
-      "Confirm new password",
-    ]) {
+    for (const label of ["New password", "Confirm new password"]) {
       expect(screen.getByLabelText(label)).toHaveValue("");
       expect(screen.getByLabelText(label)).toHaveAttribute("type", "password");
     }
@@ -192,7 +186,7 @@ describe("PasswordSettings", () => {
     submitForm();
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
-      "The current password is incorrect.",
+      "This password is too weak.",
     );
     expect(
       screen.queryByText("Password saved successfully."),
@@ -309,7 +303,6 @@ describe("PasswordSettings", () => {
     expect(screen.queryByLabelText("New password")).not.toBeInTheDocument();
     openForm();
 
-    expect(screen.getByLabelText("Current password")).toHaveValue("");
     expect(screen.getByLabelText("New password")).toHaveValue("");
     expect(screen.getByLabelText("Confirm new password")).toHaveValue("");
     expect(
