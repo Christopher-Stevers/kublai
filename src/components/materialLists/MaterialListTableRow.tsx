@@ -21,6 +21,8 @@ export interface MaterialListTableRowProps {
     unitCost: string | null;
     extendedPrice: string | null;
     descriptionSnapshot: string | null;
+    roomId?: string | null;
+    roomName?: string | null;
     partDefinition?: {
       id: string;
       displayName: string;
@@ -61,7 +63,7 @@ export interface MaterialListTableRowProps {
 }
 
 export const MATERIAL_LIST_SHEET_COLUMNS =
-  "grid-cols-[3rem_minmax(16rem,1fr)_10rem_12rem_6rem_7rem_3rem_3rem]";
+  "grid-cols-[3rem_minmax(16rem,1fr)_10rem_10rem_12rem_6rem_7rem_3rem_3rem]";
 
 function MaterialListTableRowComponent({
   item,
@@ -125,6 +127,9 @@ function MaterialListTableRowComponent({
             Size: {item.oneOff.sizeNominal}
           </div>
         )}
+      </td>
+      <td className="content-center text-sm text-muted-foreground">
+        {item.roomName ?? "—"}
       </td>
       <td className="content-center">
         <QuantityControls

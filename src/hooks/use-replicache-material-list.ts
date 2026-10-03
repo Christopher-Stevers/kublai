@@ -30,6 +30,8 @@ export function useReplicacheSyncing() {
 export interface ReplicacheMaterialListItem {
   id: string;
   materialListId: string | null;
+  roomId?: string | null;
+  roomName?: string | null;
   quoteId: string | null;
   quantity: string;
   unitCost: string | null;
@@ -64,6 +66,8 @@ export interface ReplicacheMaterialListItem {
 
 export interface ReplicacheMaterialList {
   id: string;
+  roomId?: string | null;
+  roomName?: string | null;
   name: string;
   /** materials (default) | tools: a tool request for the tool room. */
   kind?: "materials" | "tools";

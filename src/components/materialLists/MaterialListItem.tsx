@@ -37,6 +37,8 @@ interface MaterialListItemProps {
     unitCost: string | null;
     extendedPrice: string | null;
     descriptionSnapshot: string | null;
+    roomId?: string | null;
+    roomName?: string | null;
     createdAt?: string | Date | null;
     updatedAt?: string | Date | null;
     pendingSync?: boolean;
@@ -751,6 +753,11 @@ function MaterialListItemComponent({
               {partName}
             </h3>
           </div>
+          {item.roomName && (
+            <p className="mt-1 text-center text-xs text-muted-foreground">
+              Room: {item.roomName}
+            </p>
+          )}
 
           {!verifyMode && (
             <div className="mt-auto flex flex-col gap-1 pt-2">

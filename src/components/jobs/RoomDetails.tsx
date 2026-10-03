@@ -107,6 +107,8 @@ export function RoomDetails({
       await mutateMaterialListAndSync(
         getMaterialListReplicache().mutate.createMaterialList({
           materialListId: requestId.current,
+          roomId: room.id,
+          roomName: room.name,
           jobId,
           name,
         }),

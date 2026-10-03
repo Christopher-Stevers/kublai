@@ -8,6 +8,8 @@ import {
   normalizeSupplierContacts,
 } from "~/lib/supplier-contacts";
 
+import { resolveMaterialRoom } from "~/server/material-room";
+
 function getNextBusinessDay(from = new Date()) {
   const next = new Date(from);
   next.setHours(0, 0, 0, 0);
@@ -76,6 +78,8 @@ type OrderableQuoteItem = {
   descriptionSnapshot: string | null;
   supplierPartSupplierId: string | null;
   supplierSku: string | null;
+  roomId: string | null;
+  roomName: string | null;
 };
 
 function groupOrderableItemsBySupplier(items: OrderableQuoteItem[]) {
@@ -145,11 +149,12 @@ function buildOrderEmailContent({
  * request; closed (cancelled) requests don't count.
  */
 async function withoutAlreadyRequestedTools<
-  T extends { partDefinitionId: string | null; quantity: string | null },
+  T extends { partDefinitionId: string | null; roomId: string | null; quantity: string | null },
 >(db: Pick<typeof appDb, "select">, materialListId: string, items: T[]) {
   const requested = await db
     .select({
       partDefinitionId: orderItems.partDefinitionId,
+      roomId: orderItems.roomId,
       quantity: sql<number>`coalesce(sum(${orderItems.quantity}), 0)::float`,
     })
     .from(orderItems)
@@ -161,17 +166,18 @@ async function withoutAlreadyRequestedTools<
         sql`coalesce(${orders.fulfillmentStatus}, 'open') <> 'cancelled'`,
       ),
     )
-    .groupBy(orderItems.partDefinitionId);
+    .groupBy(orderItems.partDefinitionId, orderItems.roomId);
   const alreadyRequested = new Map(
-    requested.map((row) => [row.partDefinitionId, Number(row.quantity)]),
+    requested.map((row) => [JSON.stringify([row.partDefinitionId, row.roomId]), Number(row.quantity)]),
   );
   const remaining: T[] = [];
   for (const item of items) {
     if (!item.partDefinitionId) continue;
-    const covered = alreadyRequested.get(item.partDefinitionId) ?? 0;
+    const key = JSON.stringify([item.partDefinitionId, item.roomId]);
+    const covered = alreadyRequested.get(key) ?? 0;
     const quantity = Number(item.quantity ?? 1);
     const left = quantity - covered;
-    alreadyRequested.set(item.partDefinitionId, Math.max(0, covered - quantity));
+    alreadyRequested.set(key, Math.max(0, covered - quantity));
     if (left > 1e-9) remaining.push({ ...item, quantity: String(left) });
   }
   return remaining;
@@ -184,6 +190,8 @@ async function loadOrderableQuoteItems(
   return database
     .select({
       id: quoteItems.id,
+      roomId: quoteItems.roomId,
+      roomName: jobRooms.name,
       supplierPartId: quoteItems.supplierPartId,
       selectedSupplierId: quoteItems.supplierId,
       partDefinitionId: quoteItems.partDefinitionId,
@@ -196,6 +204,7 @@ async function loadOrderableQuoteItems(
       supplierSku: supplierParts.supplierSku,
     })
     .from(quoteItems)
+    .leftJoin(jobRooms, eq(quoteItems.roomId, jobRooms.id))
     .leftJoin(supplierParts, eq(quoteItems.supplierPartId, supplierParts.id))
     .leftJoin(
       partDefinitions,
@@ -225,6 +234,7 @@ function isPermanentMaterialListSyncFailure(message: string) {
     message.includes("No server item mapping for local item id") ||
     message.includes("Quote item not found") ||
     message.includes("Part definition not found") ||
+    message.includes("Room does not belong to this job") ||
     message.includes("Add item requires")
   );
 }
@@ -235,6 +245,7 @@ import { publishMaterialListEvent } from "~/server/material-list-events";
 import { ensureToolRoomSupplier } from "~/server/assets/service";
 import {
   jobs,
+  jobRooms,
   materialLists,
   quotes,
   quoteItems,
@@ -309,6 +320,7 @@ async function recordMaterialListItemTombstone(
 const materialListSyncMutationInput = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("addItem"),
+    roomId: z.string().uuid().nullable().optional(),
     clientMutationId: z.string().min(1).max(255),
     queuedAt: z.string(),
     localItemId: z.string().min(1).max(255),
@@ -381,6 +393,8 @@ export const materialListRouter = createTRPCRouter({
         .select({
           id: materialLists.id,
           name: materialLists.name,
+          roomId: materialLists.roomId,
+          roomName: jobRooms.name,
           jobId: materialLists.jobId,
           quoteId: materialLists.quoteId,
           createdAt: materialLists.createdAt,
@@ -399,6 +413,7 @@ export const materialListRouter = createTRPCRouter({
           },
         })
         .from(materialLists)
+        .leftJoin(jobRooms, eq(materialLists.roomId, jobRooms.id))
         .leftJoin(jobs, eq(materialLists.jobId, jobs.id))
         .leftJoin(locations, eq(jobs.locationId, locations.id))
         .leftJoin(users, eq(jobs.foremanUserId, users.id))
@@ -447,6 +462,8 @@ export const materialListRouter = createTRPCRouter({
         ctx.db
           .select({
             id: quoteItems.id,
+            roomId: quoteItems.roomId,
+            roomName: jobRooms.name,
             quantity: quoteItems.quantity,
             unitCost: quoteItems.unitCost,
             extendedPrice: quoteItems.extendedPrice,
@@ -479,6 +496,7 @@ export const materialListRouter = createTRPCRouter({
             addedByEmail: users.email,
           })
           .from(quoteItems)
+          .leftJoin(jobRooms, eq(quoteItems.roomId, jobRooms.id))
           .leftJoin(
             partDefinitions,
             eq(quoteItems.partDefinitionId, partDefinitions.id),
@@ -506,6 +524,8 @@ export const materialListRouter = createTRPCRouter({
       // Transform to nested structure
       const items = itemsRaw.map((item) => ({
         id: item.id,
+        roomId: item.roomId,
+        roomName: item.roomName,
         quantity: item.quantity,
         unitCost: item.unitCost,
         extendedPrice: item.extendedPrice,
@@ -575,6 +595,8 @@ export const materialListRouter = createTRPCRouter({
         materialList: {
           id: materialList.id,
           name: materialList.name,
+          roomId: materialList.roomId,
+          roomName: materialList.roomName,
           createdAt: materialList.createdAt,
           updatedAt: materialList.updatedAt,
           syncVersion:
@@ -793,7 +815,7 @@ export const materialListRouter = createTRPCRouter({
       });
 
       const [materialList] = await ctx.db
-        .select({ id: materialLists.id, quoteId: materialLists.quoteId })
+        .select({ id: materialLists.id, quoteId: materialLists.quoteId, jobId: materialLists.jobId, roomId: materialLists.roomId })
         .from(materialLists)
         .where(
           and(
@@ -915,6 +937,10 @@ export const materialListRouter = createTRPCRouter({
 
             switch (mutation.type) {
               case "addItem": {
+                const roomId = await resolveMaterialRoom(tx, {
+                  organizationId: ctx.user.organizationId, jobId: materialList.jobId,
+                  roomId: mutation.roomId, defaultRoomId: materialList.roomId,
+                });
                 if (
                   !mutation.partDefinitionId &&
                   !mutation.oneOffDisplayName &&
@@ -978,6 +1004,7 @@ export const materialListRouter = createTRPCRouter({
                   .insert(quoteItems)
                   .values({
                     quoteId: materialList.quoteId,
+                    roomId,
                     supplierPartId: serverSupplierPartId,
                     supplierId: resolvedSupplierId,
                     partDefinitionId: serverPartDefinitionId,
@@ -1731,6 +1758,8 @@ ${foremanName}`;
         ? await ctx.db
             .select({
               id: orderItems.id,
+              roomId: orderItems.roomId,
+              roomName: jobRooms.name,
               orderId: orderItems.orderId,
               quantity: orderItems.quantity,
               descriptionSnapshot: orderItems.descriptionSnapshot,
@@ -1738,6 +1767,7 @@ ${foremanName}`;
               partDefinitionDisplayName: partDefinitions.displayName,
             })
             .from(orderItems)
+            .leftJoin(jobRooms, eq(orderItems.roomId, jobRooms.id))
             .leftJoin(
               partDefinitions,
               eq(orderItems.partDefinitionId, partDefinitions.id),
@@ -1822,6 +1852,8 @@ ${foremanName}`;
             : null,
           items: items.map((item) => ({
             id: item.id,
+            roomId: item.roomId,
+            roomName: item.roomName,
             quantity: item.quantity,
             descriptionSnapshot:
               item.descriptionSnapshot?.trim() ||
@@ -2036,6 +2068,7 @@ ${foremanName}`;
         await tx.insert(orderItems).values(
           items.map((item) => ({
             orderId: createdOrder.id,
+            roomId: item.roomId,
             supplierPartId: item.supplierPartId ?? undefined,
             partDefinitionId: item.partDefinitionId!,
             quantity: item.quantity ?? "1",
@@ -2486,6 +2519,8 @@ ${foremanName}`;
       const items = await ctx.db
         .select({
           id: orderItems.id,
+          roomId: orderItems.roomId,
+          roomName: jobRooms.name,
           supplierPartId: orderItems.supplierPartId,
           partDefinitionId: orderItems.partDefinitionId,
           quantity: orderItems.quantity,
@@ -2496,6 +2531,7 @@ ${foremanName}`;
           supplierSkuSnapshot: orderItems.supplierSkuSnapshot,
         })
         .from(orderItems)
+        .leftJoin(jobRooms, eq(orderItems.roomId, jobRooms.id))
         .leftJoin(
           partDefinitions,
           eq(orderItems.partDefinitionId, partDefinitions.id),
@@ -2520,6 +2556,8 @@ ${foremanName}`;
           : null,
         items: items.map((item) => ({
           id: item.id,
+          roomId: item.roomId,
+          roomName: item.roomName,
           supplierPartId: item.supplierPartId,
           partDefinitionId: item.partDefinitionId,
           quantity: item.quantity,
@@ -2686,12 +2724,15 @@ ${foremanName}`;
       ctx.db
         .select({
           orderId: orderItems.orderId,
+          roomId: orderItems.roomId,
+          roomName: jobRooms.name,
           quantity: orderItems.quantity,
           descriptionSnapshot: orderItems.descriptionSnapshot,
           supplierSkuSnapshot: orderItems.supplierSkuSnapshot,
           partDefinitionDisplayName: partDefinitions.displayName,
         })
         .from(orderItems)
+        .leftJoin(jobRooms, eq(orderItems.roomId, jobRooms.id))
         .innerJoin(orders, eq(orderItems.orderId, orders.id))
         .leftJoin(
           partDefinitions,
@@ -2736,11 +2777,14 @@ ${foremanName}`;
       // Current clients search this compact text and load email details on demand.
       // Preserve item arrays for cached/older clients that omit the summary flag.
       searchableItems: input?.summary ? (itemsByOrderId.get(order.id) ?? []).flatMap(item => [
+        item.roomName,
         item.quantity,
         item.descriptionSnapshot?.trim() || item.partDefinitionDisplayName?.trim(),
         item.supplierSkuSnapshot,
       ]).filter(Boolean).join(" ") : undefined,
       items: input?.summary ? [] : (itemsByOrderId.get(order.id) ?? []).map((item) => ({
+        roomId: item.roomId,
+        roomName: item.roomName,
         quantity: item.quantity,
         description: item.descriptionSnapshot?.trim() || item.partDefinitionDisplayName?.trim() || null,
         supplierSku: item.supplierSkuSnapshot,

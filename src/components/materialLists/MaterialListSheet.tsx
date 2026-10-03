@@ -26,7 +26,7 @@ export function MaterialListSheet({
     <div className={`parts-sheet-scroll ${className}`}>
       <table
         aria-label="Material list"
-        className="parts-sheet block w-full min-w-[60rem]"
+        className="parts-sheet block w-full min-w-[70rem]"
       >
         <thead className="sticky top-0 z-10 block">
           <tr
@@ -35,6 +35,7 @@ export function MaterialListSheet({
             {[
               "Photo",
               "Part description",
+              "Room",
               "Qty",
               isToolRequest ? "From" : "Supplier",
               isToolRequest ? " " : "Each",

@@ -34,6 +34,9 @@ export type MaterialListReplicacheMutators = {
       quantity: number;
       unitCost?: number | null;
       descriptionSnapshot?: string | null;
+      /** Omitted inherits the list room; null explicitly leaves this part unassigned. */
+      roomId?: string | null;
+      roomName?: string | null;
       // Snapshot data for optimistic display
       partDefinitionSnapshot?: {
         id: string;
@@ -91,6 +94,8 @@ export type MaterialListReplicacheMutators = {
       jobId: string;
       name: string;
       kind?: "materials" | "tools";
+      roomId?: string | null;
+      roomName?: string | null;
     },
   ): Promise<void>;
   deleteMaterialList(
@@ -301,6 +306,17 @@ export function getMaterialListReplicache() {
       },
 
       async addItem(tx, args) {
+        const list = await tx.get(`materialList/${args.materialListId}`);
+        const listRoomId =
+          list && typeof list === "object" && "roomId" in list &&
+          typeof list.roomId === "string" ? list.roomId : null;
+        const listRoomName =
+          list && typeof list === "object" && "roomName" in list &&
+          typeof list.roomName === "string" ? list.roomName : null;
+        const roomId = args.roomId === undefined ? listRoomId : args.roomId;
+        const roomName = roomId
+          ? (args.roomName ?? (roomId === listRoomId ? listRoomName : null))
+          : null;
         const unitCost = args.unitCost ?? 0;
         const extendedPrice =
           args.quantity * (Number.isFinite(unitCost) ? unitCost : 0);
@@ -315,6 +331,8 @@ export function getMaterialListReplicache() {
           unitCost: String(unitCost),
           extendedPrice: String(extendedPrice),
           descriptionSnapshot: args.descriptionSnapshot ?? null,
+          roomId,
+          roomName,
           // Snapshot fields for optimistic display in UI
           partDefinition: args.partDefinitionSnapshot ?? null,
           supplierPart: args.supplierPartSnapshot ?? null,
@@ -433,6 +451,8 @@ export function getMaterialListReplicache() {
           id: args.materialListId,
           name: args.name,
           kind: args.kind ?? "materials",
+          roomId: args.roomId ?? null,
+          roomName: args.roomId ? args.roomName ?? null : null,
           jobId: args.jobId,
           quoteId: null,
           createdAt: new Date().toISOString(),

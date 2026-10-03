@@ -1,4 +1,5 @@
 "use client";
+import { matchesMaterialOrderLine } from "~/lib/material-order-line";
 import { MaterialListSheet as MaterialListTableView } from "~/components/materialLists/MaterialListSheet";
 import { MaterialListActions } from "~/components/materialLists/MaterialListActions";
 import { AddPartDialog, QuotePreviewSheet, OrdersPreviewSheet, ExistingQuotesOrdersDialog } from "~/components/app/DeferredFeatures";
@@ -138,40 +139,10 @@ export default function MaterialListDetailPage({
     isReplicacheSyncing,
   );
   const verifySupplierId = verifyOrder?.supplier?.id ?? null;
-  const verifyOrderPartDefinitionIds = new Set(
-    verifyOrder?.items
-      .map((item) => item.partDefinitionId)
-      .filter(
-        (partDefinitionId): partDefinitionId is string => !!partDefinitionId,
-      ) ?? [],
-  );
-  const verifyOrderSupplierPartIds = new Set(
-    verifyOrder?.items
-      .map((item) => item.supplierPartId)
-      .filter((supplierPartId): supplierPartId is string => !!supplierPartId) ??
-      [],
-  );
-  const visibleItems =
-    verifyOrderId
-      ? verifyOrder
-        ? items.filter((item) => {
-          if (
-            item.supplierPart?.id &&
-            verifyOrderSupplierPartIds.has(item.supplierPart.id)
-          ) {
-            return true;
-          }
-
-          const itemSupplierId =
-            item.supplierId ?? item.supplierPart?.supplierId ?? null;
-          return (
-            !!item.partDefinition?.id &&
-            verifyOrderPartDefinitionIds.has(item.partDefinition.id) &&
-            (!verifySupplierId || itemSupplierId === verifySupplierId)
-          );
-        })
-        : []
-      : items;
+  const visibleItems = verifyOrderId
+    ? items.filter((item) => verifyOrder?.items.some((orderItem) =>
+        matchesMaterialOrderLine(item, orderItem, verifySupplierId)))
+    : items;
   const visibleMaterialTotal = visibleItems.reduce((sum, item) => {
     const extendedPrice = item.extendedPrice
       ? Number.parseFloat(item.extendedPrice)
@@ -396,23 +367,8 @@ export default function MaterialListDetailPage({
               {(verifyOrderId || viewMode === "grid") && (
                 <div className="grid items-stretch grid-cols-[repeat(auto-fit,minmax(12rem,1fr))] gap-3">
                   {visibleItems.map((item) => {
-                    const verifyOrderItem = verifyOrder?.items.find(
-                      (orderItem) => {
-                        if (
-                          item.supplierPart?.id &&
-                          orderItem.supplierPartId === item.supplierPart.id
-                        ) {
-                          return true;
-                        }
-
-                        const itemSupplierId =
-                          item.supplierId ?? item.supplierPart?.supplierId ?? null;
-                        return (
-                          orderItem.partDefinitionId === item.partDefinition?.id &&
-                          (!verifySupplierId || itemSupplierId === verifySupplierId)
-                        );
-                      },
-                    );
+                    const verifyOrderItem = verifyOrder?.items.find((orderItem) =>
+                      matchesMaterialOrderLine(item, orderItem, verifySupplierId));
 
                     return (
                       <MaterialListItem
@@ -423,6 +379,8 @@ export default function MaterialListDetailPage({
                           unitCost: item.unitCost,
                           extendedPrice: item.extendedPrice,
                           descriptionSnapshot: item.descriptionSnapshot,
+                          roomId: item.roomId,
+                          roomName: item.roomName,
                           createdAt: item.createdAt,
                           updatedAt: item.updatedAt,
                           pendingSync: item.pendingSync,

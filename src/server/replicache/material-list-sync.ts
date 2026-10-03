@@ -18,6 +18,7 @@ import {
 import { db } from "~/server/db";
 import {
   jobs,
+  jobRooms,
   locations,
   materials,
   materialLists,
@@ -41,6 +42,8 @@ import {
   getNextDefaultMaterialListName,
   isDefaultMaterialListName,
 } from "~/server/material-list-names";
+
+import { MaterialRoomAssignmentError, resolveMaterialRoom } from "~/server/material-room";
 
 type ReplicacheUser = {
   id: string;
@@ -118,6 +121,7 @@ function isUuid(value: string | null | undefined) {
 }
 
 const addItemArgs = z.object({
+  roomId: z.string().uuid().nullable().optional(),
   materialListId: z.string().uuid(),
   itemId: z.string().uuid(),
   partDefinitionId: z.string().uuid().nullable().optional(),
@@ -155,6 +159,7 @@ const deleteJobArgs = z.object({
 });
 
 const createMaterialListArgs = z.object({
+  roomId: z.string().uuid().nullable().optional(),
   materialListId: z.string().uuid(),
   jobId: z.string().uuid(),
   name: z.string().min(1).max(255),
@@ -373,12 +378,14 @@ async function recordMaterialListTombstone(
     });
 }
 
+class MissingMaterialListError extends Error {}
+
 async function getMaterialListForMutation(
   tx: ReplicacheTx,
   input: { organizationId: string; materialListId: string },
 ) {
   const [materialList] = await tx
-    .select({ id: materialLists.id, quoteId: materialLists.quoteId })
+    .select({ id: materialLists.id, quoteId: materialLists.quoteId, jobId: materialLists.jobId, roomId: materialLists.roomId })
     .from(materialLists)
     .where(
       and(
@@ -389,7 +396,7 @@ async function getMaterialListForMutation(
     .limit(1);
 
   if (!materialList?.quoteId) {
-    throw new Error("Material list not found");
+    throw new MissingMaterialListError("Material list not found");
   }
 
   return materialList;
@@ -539,20 +546,15 @@ async function applyReplicacheMutation(
     // -----------------------------------------------------------------------
     case "addItem": {
       const args = addItemArgs.parse(input.args);
-      let materialList: Awaited<ReturnType<typeof getMaterialListForMutation>>;
-      try {
-        materialList = await getMaterialListForMutation(tx, {
-          organizationId: input.organizationId,
-          materialListId: args.materialListId,
-        });
-      } catch (error) {
-        throw new Error(
-          `Cannot add item to missing material list ${args.materialListId}`,
-          {
-            cause: error,
-          },
-        );
-      }
+      const materialList = await getMaterialListForMutation(tx, {
+        organizationId: input.organizationId,
+        materialListId: args.materialListId,
+      });
+
+      const roomId = await resolveMaterialRoom(tx, {
+        organizationId: input.organizationId, jobId: materialList.jobId,
+        roomId: args.roomId, defaultRoomId: materialList.roomId,
+      });
 
       const offlineSupplierPart = parseOfflineSupplierPartId(
         args.supplierPartId,
@@ -576,6 +578,7 @@ async function applyReplicacheMutation(
         .values({
           id: args.itemId,
           quoteId: materialList.quoteId,
+          roomId,
           partDefinitionId: args.partDefinitionId ?? null,
           supplierPartId: serverSupplierPartId,
           supplierId: resolvedSupplierId,
@@ -768,6 +771,10 @@ async function applyReplicacheMutation(
         );
       }
 
+      const roomId = await resolveMaterialRoom(tx, {
+        organizationId: input.organizationId, jobId: args.jobId, roomId: args.roomId,
+      });
+
       const materialListName = args.kind === "materials" && isDefaultMaterialListName(args.name)
         ? await getNextDefaultMaterialListName(tx, {
             organizationId: input.organizationId,
@@ -783,6 +790,7 @@ async function applyReplicacheMutation(
           organizationId: input.organizationId,
           jobId: args.jobId,
           name: materialListName,
+          roomId,
           kind: args.kind,
           quoteId: null,
           createdByUserId: input.userId,
@@ -1062,14 +1070,23 @@ export async function handleMaterialListReplicachePush(
           `[replicache] denied ${mutation.name} for ${user.id} (needs ${needed})`,
         );
       } else {
-        await applyReplicacheMutation(tx, {
-          name: mutation.name,
-          args: mutation.args,
-          organizationId,
-          userId: user.id,
-          sideEffects,
-        });
-        appliedMutationCount += 1;
+        try {
+          await applyReplicacheMutation(tx, {
+            name: mutation.name,
+            args: mutation.args,
+            organizationId,
+            userId: user.id,
+            sideEffects,
+          });
+          appliedMutationCount += 1;
+        } catch (error) {
+          // The parent room/list may disappear while a device is offline. These
+          // validation failures happen before writes, so acknowledge them and
+          // let the next authoritative pull remove the rejected optimistic row.
+          // A foreign room is rejected the same way; never silently reassign it.
+          if (!(error instanceof MaterialRoomAssignmentError) && !(error instanceof MissingMaterialListError)) throw error;
+          console.warn(`[replicache] rejected ${mutation.name}: ${error.message}`);
+        }
       }
       await setClientLastMutationId(tx, {
         ...clientIdentity,
@@ -1152,6 +1169,8 @@ export async function handleMaterialListReplicachePull(
         .select({
           id: materialLists.id,
           name: materialLists.name,
+          roomId: materialLists.roomId,
+          roomName: jobRooms.name,
           kind: materialLists.kind,
           jobId: materialLists.jobId,
           quoteId: materialLists.quoteId,
@@ -1160,12 +1179,15 @@ export async function handleMaterialListReplicachePull(
           updatedAt: materialLists.updatedAt,
         })
         .from(materialLists)
+        .leftJoin(jobRooms, eq(materialLists.roomId, jobRooms.id))
         .where(eq(materialLists.organizationId, organizationId))
         .orderBy(asc(materialLists.updatedAt), asc(materialLists.id));
 
       const itemRows = await tx
         .select({
           id: quoteItems.id,
+          roomId: quoteItems.roomId,
+          roomName: jobRooms.name,
           quoteId: quoteItems.quoteId,
           materialListId: quotes.materialListId,
           quantity: quoteItems.quantity,
@@ -1186,6 +1208,7 @@ export async function handleMaterialListReplicachePull(
           createdAt: quoteItems.createdAt,
         })
         .from(quoteItems)
+        .leftJoin(jobRooms, eq(quoteItems.roomId, jobRooms.id))
         .innerJoin(quotes, eq(quoteItems.quoteId, quotes.id))
         .leftJoin(
           partDefinitions,
@@ -1396,6 +1419,8 @@ export async function handleMaterialListReplicachePull(
           key: `materialListItem/${item.id}`,
           value: {
             id: item.id,
+            roomId: item.roomId,
+            roomName: item.roomName,
             quoteId: item.quoteId,
             materialListId: item.materialListId,
             quantity: item.quantity,

@@ -7,6 +7,7 @@ import { createTRPCRouter, hasDashboardAccess } from "~/server/api/trpc";
 import {
   entitySyncMutations,
   jobs,
+  jobRooms,
   materialLists,
   orderItems,
   orders,
@@ -21,6 +22,8 @@ import {
   getNextDefaultMaterialListName,
   isDefaultMaterialListName,
 } from "~/server/material-list-names";
+
+import { resolveMaterialRoom } from "~/server/material-room";
 
 const entitySyncMutationInput = z.discriminatedUnion("type", [
   z.object({
@@ -43,6 +46,7 @@ const entitySyncMutationInput = z.discriminatedUnion("type", [
   }),
   z.object({
     type: z.literal("createMaterialList"),
+    roomId: z.string().uuid().nullable().optional(),
     clientMutationId: z.string().min(1).max(255),
     localMaterialListId: z.string().min(1).max(255),
     localJobId: z.string().uuid(),
@@ -227,6 +231,9 @@ export const jobRouter = createTRPCRouter({
                 )
                 .limit(1);
               if (!job) throw new Error("Job not found");
+              const roomId = await resolveMaterialRoom(tx, {
+                organizationId: ctx.user.organizationId, jobId: mutation.localJobId, roomId: mutation.roomId,
+              });
               const materialListName = isDefaultMaterialListName(mutation.name)
                 ? await getNextDefaultMaterialListName(tx, {
                     organizationId: ctx.user.organizationId,
@@ -239,6 +246,7 @@ export const jobRouter = createTRPCRouter({
                   organizationId: ctx.user.organizationId,
                   jobId: mutation.localJobId,
                   name: materialListName,
+                  roomId,
                   createdByUserId: ctx.userId,
                 })
                 .returning();
@@ -401,11 +409,14 @@ export const jobRouter = createTRPCRouter({
         .select({
           id: materialLists.id,
           name: materialLists.name,
+          roomId: materialLists.roomId,
+          roomName: jobRooms.name,
           kind: materialLists.kind,
           quoteId: materialLists.quoteId,
           createdAt: materialLists.createdAt,
         })
         .from(materialLists)
+        .leftJoin(jobRooms, eq(materialLists.roomId, jobRooms.id))
         .where(
           and(
             eq(materialLists.jobId, input.jobId),

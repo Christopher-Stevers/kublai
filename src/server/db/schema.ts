@@ -1348,6 +1348,8 @@ export const materialLists = createTable(
       .notNull()
       .references(() => jobs.id, { onDelete: "cascade" }),
 
+    roomId: d.uuid().references(() => jobRooms.id, { onDelete: "set null" }),
+
     name: d.varchar({ length: 255 }).notNull(),
     quoteId: d.uuid().references(() => quotes.id, { onDelete: "set null" }),
 
@@ -1368,6 +1370,7 @@ export const materialLists = createTable(
     kind: d.varchar({ length: 20 }).notNull().default("materials"),
   }),
   (t) => [
+    index("material_list_room_idx").on(t.roomId),
     index("material_list_job_idx").on(t.jobId),
     index("material_list_org_idx").on(t.organizationId),
     index("material_list_org_updated_idx").on(
@@ -1381,6 +1384,7 @@ export const materialLists = createTable(
 );
 
 export const materialListsRelations = relations(materialLists, ({ one }) => ({
+  room: one(jobRooms, { fields: [materialLists.roomId], references: [jobRooms.id] }),
   organization: one(organizations, {
     fields: [materialLists.organizationId],
     references: [organizations.id],
@@ -1516,6 +1520,8 @@ export const quoteItems = createTable(
       .notNull()
       .references(() => quotes.id, { onDelete: "cascade" }),
 
+    roomId: d.uuid().references(() => jobRooms.id, { onDelete: "set null" }),
+
     supplierPartId: d
       .uuid()
       .references(() => supplierParts.id, { onDelete: "set null" }),
@@ -1558,6 +1564,7 @@ export const quoteItems = createTable(
       .$onUpdate(() => new Date()),
   }),
   (t) => [
+    index("quote_item_room_idx").on(t.roomId),
     index("quote_item_quote_idx").on(t.quoteId),
     index("quote_item_updated_idx").on(t.updatedAt, t.id),
     index("quote_item_part_idx").on(t.partDefinitionId),
@@ -1735,6 +1742,7 @@ export const replicacheClients = createTable(
 );
 
 export const quoteItemsRelations = relations(quoteItems, ({ one }) => ({
+  room: one(jobRooms, { fields: [quoteItems.roomId], references: [jobRooms.id] }),
   quote: one(quotes, { fields: [quoteItems.quoteId], references: [quotes.id] }),
   supplierPart: one(supplierParts, {
     fields: [quoteItems.supplierPartId],
@@ -1867,6 +1875,8 @@ export const orderItems = createTable(
       .notNull()
       .references(() => orders.id, { onDelete: "cascade" }),
 
+    roomId: d.uuid().references(() => jobRooms.id, { onDelete: "set null" }),
+
     supplierPartId: d
       .uuid()
       .references(() => supplierParts.id, { onDelete: "set null" }),
@@ -1893,12 +1903,14 @@ export const orderItems = createTable(
     fulfilledQuantity: d.numeric({ precision: 12, scale: 6 }),
   }),
   (t) => [
+    index("order_item_room_idx").on(t.roomId),
     index("order_item_order_idx").on(t.orderId),
     index("order_item_part_idx").on(t.partDefinitionId),
   ],
 );
 
 export const orderItemsRelations = relations(orderItems, ({ one }) => ({
+  room: one(jobRooms, { fields: [orderItems.roomId], references: [jobRooms.id] }),
   order: one(orders, { fields: [orderItems.orderId], references: [orders.id] }),
   supplierPart: one(supplierParts, {
     fields: [orderItems.supplierPartId],

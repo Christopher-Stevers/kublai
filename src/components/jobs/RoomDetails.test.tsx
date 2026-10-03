@@ -125,6 +125,8 @@ describe("room notes and materials", () => {
       materialListId: expect.any(String) as string,
       jobId: "job-a",
       name: `Kitchen — ${formatMaterialListDate()}`,
+      roomId: "room-a",
+      roomName: "Kitchen",
     });
     expect(mocks.open).not.toHaveBeenCalled();
     await act(async () => finish());
