@@ -17,6 +17,7 @@ import { JobWorkspaceOptions } from "~/components/jobs/JobWorkspaceOptions";
 import { setLastJobWorkspaceLocation } from "~/lib/job-workspace-last-option";
 import { useReplicacheJobDetail } from "~/hooks/use-replicache-jobs";
 import { useOnlineStatus } from "~/hooks/use-online-status";
+import { useJobRoomCount } from "~/hooks/use-job-room-count";
 
 type JobLocationDisplay = {
   name?: string | null;
@@ -65,6 +66,7 @@ export default function JobOptionsPage({
     enabled: isBrowserOnline, refetchInterval: 30_000, refetchIntervalInBackground: false,
   });
   const canOpenAssets = roleData?.permissions.tabAccess.assets === true;
+  const roomCount = useJobRoomCount(jobId);
   const jobDetail = useReplicacheJobDetail(jobId);
   const { data: serverJob, isFetched: hasFetchedServerJob } =
     api.job.getJob.useQuery(
@@ -175,6 +177,8 @@ export default function JobOptionsPage({
 
         <JobWorkspaceOptions
           materialListCount={materialListCount}
+          roomCount={roomCount.count}
+          roomCountLoading={roomCount.loading}
           chatUnreadCount={chatOverview?.unreadCount}
           onSelect={(optionId) => {
             setLastJobWorkspaceLocation({

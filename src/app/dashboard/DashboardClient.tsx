@@ -51,6 +51,7 @@ import { MaterialListSheet } from "~/components/materialLists/MaterialListSheet"
 import { MaterialListActions } from "~/components/materialLists/MaterialListActions";
 import { JobEditDialog } from "~/components/jobs/JobEditDialog";
 import { JobWorkspaceOptions } from "~/components/jobs/JobWorkspaceOptions";
+import { useJobRoomCount } from "~/hooks/use-job-room-count";
 import { useJobWorkspaceNavigation } from "~/hooks/use-job-workspace-navigation";
 import { MaterialListNameModal } from "~/components/materialLists/MaterialListNameModal";
 import { ViewToggle } from "~/components/ui/view-toggle";
@@ -263,6 +264,7 @@ export function DashboardClient({
   const [showOfflineAddPartDialog, setShowOfflineAddPartDialog] =
     useState(false);
   const isBrowserOnline = useOnlineStatus();
+  const roomCount = useJobRoomCount(offlineJobId, offlineJobView === "options");
 
   const { data: chatOverview } = api.chat.getOverview.useQuery({ jobId: offlineJobId ?? "" }, {
     enabled: isBrowserOnline && Boolean(offlineJobId) && offlineJobView === "options",
@@ -616,6 +618,8 @@ export function DashboardClient({
               {offlineJobView === "options" ? (
                 <JobWorkspaceOptions
                   materialListCount={offlineMaterialLists.length}
+                  roomCount={roomCount.count}
+                  roomCountLoading={roomCount.loading}
                   chatUnreadCount={chatOverview?.unreadCount}
                   onSelect={(optionId) => {
                     navigateWorkspace({

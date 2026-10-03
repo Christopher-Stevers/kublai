@@ -16,3 +16,22 @@ it("puts Chat after Rooms and opens it with keyboard or touch", () => {
   expect(select).toHaveBeenNthCalledWith(2, "chat");
   expect(screen.getByText("Experimental")).toBeInTheDocument();
 });
+
+it.each([
+  [0, "0 rooms"],
+  [1, "1 room"],
+  [12, "12 rooms"],
+] as const)("shows the supplied saved-room count %s", (roomCount, text) => {
+  render(<JobWorkspaceOptions onSelect={vi.fn()} roomCount={roomCount} />);
+  expect(screen.getByText(text)).toBeInTheDocument();
+});
+it("shows loading instead of a false zero", () => {
+  render(<JobWorkspaceOptions onSelect={vi.fn()} roomCountLoading />);
+  expect(screen.getByText("Loading rooms…")).toBeInTheDocument();
+  expect(screen.queryByText("0 rooms")).not.toBeInTheDocument();
+});
+it("shows unavailable instead of a false zero without cached rooms", () => {
+  render(<JobWorkspaceOptions onSelect={vi.fn()} />);
+  expect(screen.getByText("Room count unavailable")).toBeInTheDocument();
+  expect(screen.queryByText("0 rooms")).not.toBeInTheDocument();
+});

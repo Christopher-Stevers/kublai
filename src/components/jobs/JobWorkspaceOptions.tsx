@@ -8,13 +8,15 @@ export type { JobWorkspaceOptionId };
 
 export function JobWorkspaceOptions({
   materialListCount = 0,
-  roomCount = 0,
+  roomCount,
+  roomCountLoading = false,
   chatUnreadCount = 0,
   onSelect,
   onTools,
 }: {
   materialListCount?: number;
   roomCount?: number;
+  roomCountLoading?: boolean;
   chatUnreadCount?: number;
   onSelect: (id: JobWorkspaceOptionId) => void;
   /** Opens the job's tools in Asset Management (when that tab is available). */
@@ -59,7 +61,9 @@ export function JobWorkspaceOptions({
             <div className="flex items-center gap-2">
               <DoorOpenIcon className="h-4 w-4" />
               <span>
-                {roomCount} {roomCount === 1 ? "room" : "rooms"}
+                {roomCount === undefined
+                  ? roomCountLoading ? "Loading rooms…" : "Room count unavailable"
+                  : `${roomCount} ${roomCount === 1 ? "room" : "rooms"}`}
               </span>
             </div>
           </div>
