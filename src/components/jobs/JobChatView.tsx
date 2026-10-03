@@ -56,7 +56,7 @@ function nearBottom(element: HTMLElement) {
 }
 const LONG_PRESS_MS = 450;
 const CHECKER_PLATE = {
-  backgroundImage: "url(/images/chat-checker-plate.webp)",
+  backgroundImage: "url(/images/chat-checker-plate.webp?v=2)",
   backgroundSize: "96px 96px",
   backgroundColor: "#879cb9",
 };
