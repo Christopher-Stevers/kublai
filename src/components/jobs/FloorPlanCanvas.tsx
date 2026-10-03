@@ -32,6 +32,8 @@ type Point = { x: number; y: number };
 const MIN_SCALE = 1;
 const MAX_SCALE = 24;
 const LONG_PRESS_MS = 550;
+const DOUBLE_TAP_MS = 300;
+const DOUBLE_TAP_SLOP_PX = 28;
 const PAN_SLOP_PX = 12;
 const DETECT_TAP_SLOP_PX = 32;
 
@@ -108,6 +110,8 @@ export function FloorPlanCanvas({
     ty: number;
   } | null>(null);
   const didPan = useRef(false);
+  const lastTap = useRef<(Point & { time: number }) | null>(null);
+  const selectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressHandled = useRef(false);
   const draggingVertex = useRef<{ roomId: string; index: number } | null>(null);
@@ -138,6 +142,12 @@ export function FloorPlanCanvas({
       longPressTimer.current = null;
     }
   };
+
+  useEffect(() => () => {
+    if (selectTimer.current) clearTimeout(selectTimer.current);
+    if (longPressTimer.current) clearTimeout(longPressTimer.current);
+    lastTap.current = null;
+  }, [imageUrl, createMode, detectMode, editingRoomId]);
 
   const toPlanNorm = (clientX: number, clientY: number): Point | null => {
     const plan = planRef.current?.getBoundingClientRect();
@@ -288,6 +298,9 @@ export function FloorPlanCanvas({
         detectFired.current = false;
         panStart.current = null;
         if (pointers.current.size === 2) {
+          didPan.current = true;
+          lastTap.current = null;
+          if (selectTimer.current) clearTimeout(selectTimer.current);
           clearLongPress();
           dragOrigin.current = null;
           draggingVertex.current = null;
@@ -415,6 +428,8 @@ export function FloorPlanCanvas({
               event.currentTarget.setPointerCapture(event.pointerId);
             }
             didPan.current = true;
+            lastTap.current = null;
+            if (selectTimer.current) clearTimeout(selectTimer.current);
             userMoved.current = true;
             clearLongPress();
             setTransform({
@@ -450,6 +465,8 @@ export function FloorPlanCanvas({
         setDraft(null);
       }}
       onPointerCancel={() => {
+        lastTap.current = null;
+        if (selectTimer.current) clearTimeout(selectTimer.current);
         if (detectMode && !didPan.current) {
           firePendingDetect();
         }
@@ -464,7 +481,38 @@ export function FloorPlanCanvas({
         setDraft(null);
       }}
       onClick={(event) => {
-        if (!detectMode || didPan.current || detectFired.current) return;
+        if (!detectMode) {
+          if (didPan.current || longPressHandled.current || editingRoomId || createMode) return;
+          const point = { x: event.clientX, y: event.clientY };
+          const previous = lastTap.current;
+          const now = Date.now();
+          if (previous && now - previous.time <= DOUBLE_TAP_MS &&
+              distance(previous, point) <= DOUBLE_TAP_SLOP_PX) {
+            if (selectTimer.current) clearTimeout(selectTimer.current);
+            lastTap.current = null;
+            const rect = event.currentTarget.getBoundingClientRect();
+            const current = transformRef.current;
+            const scale = Math.min(MAX_SCALE, current.scale * 2);
+            const x = point.x - rect.left, y = point.y - rect.top;
+            userMoved.current = true;
+            setTransform({ scale,
+              tx: x - (x - current.tx) * scale / current.scale,
+              ty: y - (y - current.ty) * scale / current.scale,
+            });
+            return;
+          }
+          lastTap.current = { ...point, time: now };
+          const normalized = toPlanNorm(point.x, point.y);
+          const onDrawing = (event.target as Element).closest("svg");
+          const room = normalized && onDrawing ? findRoomAtPoint(roomsRef.current, normalized) : null;
+          if (selectTimer.current) clearTimeout(selectTimer.current);
+          if (room) selectTimer.current = setTimeout(() => {
+            lastTap.current = null;
+            onSelectRoom(room.id);
+          }, DOUBLE_TAP_MS);
+          return;
+        }
+        if (didPan.current || detectFired.current) return;
         const target = event.target as HTMLElement;
         pendingDetectRoomId.current =
           target.dataset.roomId ?? pendingDetectRoomId.current;
@@ -518,21 +566,7 @@ export function FloorPlanCanvas({
             className="absolute inset-0 h-full w-full"
             viewBox="0 0 1 1"
             preserveAspectRatio="none"
-            onClick={(event) => {
-              if (
-                detectMode ||
-                didPan.current ||
-                longPressHandled.current ||
-                editingRoomId
-              ) {
-                return;
-              }
-              const point = toPlanNorm(event.clientX, event.clientY);
-              const room = point
-                ? findRoomAtPoint(roomsRef.current, point)
-                : null;
-              if (room) onSelectRoom(room.id);
-            }}
+
           >
             {rooms.map((room, index) => {
               const selected =

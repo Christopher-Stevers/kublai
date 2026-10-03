@@ -7,6 +7,7 @@ import { roomReviewTransform } from "~/lib/floor-plan-viewport";
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
+  vi.useRealTimers();
 });
 describe("room tracing overlay", () => {
   it("shows excluded courtyards and columns as holes in the saved trace preview", () => {
@@ -86,5 +87,54 @@ describe("room tracing overlay", () => {
     expect(actual[1]).toBeCloseTo(expected.ty);
     expect(actual[2]).toBeCloseTo(expected.scale);
     expect(layer.style.transform).not.toBe(first);
+  });
+});
+
+
+describe("drawing double tap", () => {
+  function setup(extra = {}) {
+    vi.useFakeTimers();
+    const onSelectRoom = vi.fn();
+    const result = render(<FloorPlanCanvas imageUrl="/plan.png" canEdit={false}
+      rooms={[{ id: "room", name: "Room", confirmed: false,
+        shape: { type: "bbox", x: 0, y: 0, w: 1, h: 1 } }]}
+      onSelectRoom={onSelectRoom} {...extra} />);
+    const image = result.getByAltText("Floor plan");
+    const plan = image.parentElement!;
+    const layer = plan.parentElement!;
+    const viewport = layer.parentElement!;
+    const rect = { left: 20, top: 80, width: 300, height: 400, right: 320, bottom: 480, x: 20, y: 80, toJSON() { return {}; } };
+    vi.spyOn(viewport, "getBoundingClientRect").mockReturnValue(rect);
+    vi.spyOn(plan, "getBoundingClientRect").mockReturnValue(rect);
+    return { ...result, layer, onSelectRoom, svg: result.container.querySelector("svg")! };
+  }
+
+  it("zooms around the tapped point without opening the room, including with a header offset", () => {
+    const { svg, layer, onSelectRoom } = setup();
+    fireEvent.click(svg, { clientX: 120, clientY: 180 });
+    vi.advanceTimersByTime(100);
+    fireEvent.click(svg, { clientX: 120, clientY: 180 });
+    expect(layer.style.transform).toBe("translate(-100px, -100px) scale(2)");
+    vi.advanceTimersByTime(500);
+    expect(onSelectRoom).not.toHaveBeenCalled();
+  });
+
+  it("still opens a room on a single tap", () => {
+    const { svg, onSelectRoom } = setup();
+    fireEvent.click(svg, { clientX: 120, clientY: 180 });
+    vi.advanceTimersByTime(301);
+    expect(onSelectRoom).toHaveBeenCalledExactlyOnceWith("room");
+  });
+
+  it("does not zoom when taps are far apart or while tracing", () => {
+    const { svg, layer, unmount } = setup();
+    fireEvent.click(svg, { clientX: 60, clientY: 120 });
+    fireEvent.click(svg, { clientX: 240, clientY: 300 });
+    expect(layer.style.transform).toContain("scale(1)");
+    unmount();
+    const tracing = setup({ detectMode: true });
+    fireEvent.click(tracing.svg, { clientX: 120, clientY: 180 });
+    fireEvent.click(tracing.svg, { clientX: 120, clientY: 180 });
+    expect(tracing.layer.style.transform).toContain("scale(1)");
   });
 });
