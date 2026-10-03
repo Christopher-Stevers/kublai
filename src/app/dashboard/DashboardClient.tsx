@@ -633,7 +633,9 @@ export function DashboardClient({
                   }}
                 />
               ) : offlineJobView === "rooms" ? (
-                <JobRoomsView jobId={offlineJob.id} />
+                <JobRoomsView jobId={offlineJob.id} onOpenMaterialList={(materialListId) =>
+                  navigateWorkspace({ jobId: offlineJob.id, view: "material-lists", materialListId })
+                } />
               ) : (
                 <>
               <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

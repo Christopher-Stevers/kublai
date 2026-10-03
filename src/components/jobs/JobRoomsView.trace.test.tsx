@@ -18,6 +18,7 @@ const harness = vi.hoisted(() => ({
   }>,
 }));
 
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
 vi.mock("~/trpc/react", async () => {
   const { useState } = await import("react");
   const query = {
@@ -244,7 +245,7 @@ describe("floor plan bottom bar", () => {
     expect(screen.getByLabelText("Room list")).toHaveTextContent("Room A");
     // Picking a room opens it; the back arrow returns to the plan with the popup closed.
     fireEvent.click(screen.getByRole("button", { name: "Room A" }));
-    expect(screen.getByText("Room options")).toBeInTheDocument();
+    expect(screen.getByText("Room notes")).toBeInTheDocument();
     leaveFloor();
     expect(screen.getByRole("button", { name: "Rooms (1)" })).toBeInTheDocument();
     expect(screen.queryByLabelText("Room list")).toBeNull();

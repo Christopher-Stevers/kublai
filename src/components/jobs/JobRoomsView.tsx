@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { RoomDetails, type RoomNotesDraft } from "./RoomDetails";
 import {
   ListIcon,
   DoorOpenIcon,
@@ -31,7 +33,9 @@ import { api } from "~/trpc/react";
 import { confirmAction } from "~/components/ui/app-dialogs";
 import { useHeaderBackOverride } from "~/lib/header-back-events";
 
-export function JobRoomsView({ jobId }: { jobId: string }) {
+export function JobRoomsView({ jobId, onOpenMaterialList }: { jobId: string; onOpenMaterialList?: (id: string) => void }) {
+  const router = useRouter();
+  const [notesDrafts, setNotesDrafts] = useState<Record<string, RoomNotesDraft | undefined>>({});
   const roomEditVersions = useRef(new Map<string, number>());
   const fileRef = useRef<HTMLInputElement | null>(null);
   const [selectedFloorId, setSelectedFloorId] = useState<string | null>(null);
@@ -580,15 +584,13 @@ export function JobRoomsView({ jobId }: { jobId: string }) {
             Back to floor
           </Button>
         </div>
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <DoorOpenIcon className="text-muted-foreground/70 mb-4 h-12 w-12" />
-            <h3 className="mb-2 text-lg font-semibold">Room options</h3>
-            <p className="text-muted-foreground text-center">
-              Options for this room will go here next.
-            </p>
-          </CardContent>
-        </Card>
+        <RoomDetails key={selectedRoom.id} room={selectedRoom} jobId={jobId}
+          canEditNotes={roomsQuery.data?.canEditNotes ?? false}
+          canRequestMaterial={roomsQuery.data?.canRequestMaterial ?? false}
+          draft={notesDrafts[selectedRoom.id]}
+          onDraftChange={(draft) => setNotesDrafts((current) => ({ ...current, [selectedRoom.id]: draft }))}
+          onOpenMaterialList={onOpenMaterialList ?? ((id) => router.push(`/dashboard/material-lists/${id}`))}
+        />
       </div>
     );
   }

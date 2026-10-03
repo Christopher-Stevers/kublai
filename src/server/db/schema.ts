@@ -1057,6 +1057,8 @@ export const jobRooms = createTable(
       .notNull()
       .references(() => jobFloors.id, { onDelete: "cascade" }),
     name: d.varchar({ length: 255 }).notNull(),
+    notes: d.text().notNull().default(""),
+    notesRevision: d.integer().notNull().default(0),
     source: d.varchar({ length: 50 }).notNull().default("auto"),
     confirmed: d.boolean().notNull().default(false),
     reviewStatus: d.varchar({ length: 20 }).notNull().default("pending"),

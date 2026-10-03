@@ -165,6 +165,8 @@ export const roomsRouter = createTRPCRouter({
 
       return {
         canManage,
+        canEditNotes: userCan(ctx.user as never, "jobs.edit"),
+        canRequestMaterial: userCan(ctx.user as never, "lists.edit"),
         plan: plan
           ? {
               id: plan.id,
@@ -182,6 +184,102 @@ export const roomsRouter = createTRPCRouter({
           })),
         })),
       };
+    }),
+
+  updateNotes: hasDashboardAccess
+    .input(
+      z.object({
+        roomId: z.string().uuid(),
+        notes: z.string().max(10_000),
+        expectedNotesRevision: z.number().int().min(0),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (!userCan(ctx.user as never, "jobs.edit"))
+        throw new TRPCError({ code: "FORBIDDEN" });
+      const organizationId = (ctx.user as { organizationId: string })
+        .organizationId;
+      const canManage =
+        userCan(ctx.user as never, "rooms.review") ||
+        userCan(ctx.user as never, "drawings.manage");
+      return ctx.db.transaction(async (tx) => {
+        const [target] = await tx
+          .select({ floorId: jobRooms.floorId })
+          .from(jobRooms)
+          .where(
+            and(
+              eq(jobRooms.id, input.roomId),
+              eq(jobRooms.organizationId, organizationId),
+            ),
+          )
+          .limit(1);
+        if (!target) throw new TRPCError({ code: "NOT_FOUND" });
+        // All room editors lock the floor before its rooms. Keep that order,
+        // and prevent confirmation/visibility changes during this write.
+        const [floor] = await tx
+          .select()
+          .from(jobFloors)
+          .where(
+            and(
+              eq(jobFloors.id, target.floorId),
+              eq(jobFloors.organizationId, organizationId),
+            ),
+          )
+          .for("share");
+        assertJobOrg(floor, organizationId);
+        const [room] = await tx
+          .select()
+          .from(jobRooms)
+          .where(
+            and(
+              eq(jobRooms.id, input.roomId),
+              eq(jobRooms.organizationId, organizationId),
+              eq(jobRooms.floorId, target.floorId),
+            ),
+          )
+          .for("update");
+        assertJobOrg(room, organizationId);
+        if (
+          !floor ||
+          !room ||
+          floor.status === "pending_review" ||
+          (!canManage &&
+            (floor.status !== "confirmed" ||
+              !room.confirmed ||
+              room.reviewStatus !== "approved"))
+        )
+          throw new TRPCError({ code: "NOT_FOUND" });
+        if (room.reviewStatus === "superseded")
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: "This room was replaced. Reload the floor before editing.",
+          });
+        if (room.notesRevision !== input.expectedNotesRevision)
+          throw new TRPCError({
+            code: "CONFLICT",
+            message:
+              "Someone changed these room notes. Review the latest notes before saving again.",
+          });
+        if (room.notes === input.notes)
+          return { notes: room.notes, notesRevision: room.notesRevision };
+        const notesRevision = room.notesRevision + 1;
+        await tx
+          .update(jobRooms)
+          .set({
+            notes: input.notes,
+            notesRevision,
+            updatedAt: new Date(
+              Math.max(Date.now(), room.updatedAt.getTime() + 1),
+            ),
+          })
+          .where(
+            and(
+              eq(jobRooms.id, room.id),
+              eq(jobRooms.organizationId, organizationId),
+            ),
+          );
+        return { notes: input.notes, notesRevision };
+      });
     }),
 
   reviewRoom: hasDashboardAccess
