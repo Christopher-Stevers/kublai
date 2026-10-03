@@ -1,7 +1,14 @@
 "use client";
 
 import { useAuth } from "@clerk/nextjs";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   BellOffIcon,
   BellRingIcon,
@@ -62,13 +69,7 @@ export function JobChatView({ jobId }: { jobId: string }) {
   );
 }
 
-function ChatLobby({
-  jobId,
-  userId,
-}: {
-  jobId: string;
-  userId: string;
-}) {
+function ChatLobby({ jobId, userId }: { jobId: string; userId: string }) {
   const online = useOnlineStatus();
   const utils = api.useUtils();
   const [visible, setVisible] = useState(
@@ -153,8 +154,7 @@ function ChatLobby({
       if (!panel.current) return;
       const viewport = window.visualViewport;
       const bottom =
-        (viewport?.offsetTop ?? 0) +
-        (viewport?.height ?? window.innerHeight);
+        (viewport?.offsetTop ?? 0) + (viewport?.height ?? window.innerHeight);
       setPanelHeight(
         Math.max(0, bottom - panel.current.getBoundingClientRect().top),
       );
@@ -663,15 +663,13 @@ function ChatLobby({
     <section
       ref={panel}
       aria-label="Job chat"
-      className="bg-card flex h-full w-full min-h-0 flex-col overflow-hidden"
+      className="bg-card flex h-full min-h-0 w-full flex-col overflow-hidden"
       style={{ height: panelHeight }}
     >
       <header className="min-h-0 shrink space-y-2 overflow-y-auto border-b px-3 py-3 sm:px-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="min-w-0">
-            <h1 className="truncate text-lg font-semibold">
-              Chat
-            </h1>
+            <h1 className="truncate text-lg font-semibold">Chat</h1>
             <p className="text-muted-foreground text-xs">
               {!online
                 ? "Offline · messages are not being sent"
@@ -799,185 +797,203 @@ function ChatLobby({
             </p>
           </div>
         )}
-        {messages.map((message) => {
+        {messages.map((message, index) => {
+          const createdAt = new Date(message.createdAt);
+          const previous = messages[index - 1];
+          const showTimestamp =
+            !previous ||
+            createdAt.getTime() - new Date(previous.createdAt).getTime() >=
+              10 * 60 * 1000;
           const mine = message.author.id === userId;
           const mayChange = mine || overview.data?.canModerate === true;
           const replied = message.replyToId
             ? messages.find((item) => item.id === message.replyToId)
             : null;
           return (
-            <article
-              key={message.id}
-              id={`chat-message-${message.id}`}
-              className={`flex gap-2 ${mine ? "flex-row-reverse" : ""}`}
-            >
-              <div
-                className="bg-muted flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full text-xs font-semibold"
-                aria-hidden="true"
-              >
-                {message.author.image ? (
-                  <img
-                    src={message.author.image}
-                    alt=""
-                    className="h-full w-full object-cover"
-                    loading="lazy"
-                  />
-                ) : (
-                  message.author.name.slice(0, 2).toUpperCase()
-                )}
-              </div>
-              <div
-                className={`max-w-[88%] min-w-0 rounded-xl px-3 py-2 sm:max-w-[80%] ${mine ? "bg-primary/10" : "bg-muted/60"}`}
-              >
-                <div className="mb-1 flex flex-wrap items-baseline gap-x-2 text-xs">
-                  <span className="font-semibold">
-                    {mine ? "You" : message.author.name}
-                  </span>
+            <Fragment key={message.id}>
+              {showTimestamp && (
+                <div className="text-muted-foreground text-center text-xs">
                   <time
-                    className="text-muted-foreground"
-                    dateTime={new Date(message.createdAt).toISOString()}
-                    title={new Date(message.createdAt).toLocaleString()}
+                    dateTime={createdAt.toISOString()}
+                    title={createdAt.toLocaleString()}
                   >
-                    {new Date(message.createdAt).toLocaleString(undefined, {
+                    {createdAt.toLocaleString(undefined, {
                       month: "short",
                       day: "numeric",
                       hour: "numeric",
                       minute: "2-digit",
                     })}
                   </time>
-                  {message.editedAt && (
-                    <span className="text-muted-foreground">edited</span>
+                </div>
+              )}
+              <article
+                id={`chat-message-${message.id}`}
+                className={`flex gap-2 ${mine ? "flex-row-reverse" : ""}`}
+              >
+                <div
+                  className="bg-muted flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full text-xs font-semibold"
+                  aria-hidden="true"
+                >
+                  {message.author.image ? (
+                    <img
+                      src={message.author.image}
+                      alt=""
+                      className="h-full w-full object-cover"
+                      loading="lazy"
+                    />
+                  ) : (
+                    message.author.name.slice(0, 2).toUpperCase()
                   )}
                 </div>
-                {message.deletedAt ? (
-                  <p className="text-muted-foreground text-sm italic">
-                    Message deleted
-                  </p>
-                ) : (
-                  <>
-                    {message.replyToId && (
-                      <div className="border-primary/40 text-muted-foreground mb-2 border-l-2 pl-2 text-xs">
-                        {replied ? (
+                <div
+                  className={`max-w-[88%] min-w-0 rounded-xl px-3 py-2 sm:max-w-[80%] ${mine ? "bg-primary/10" : "bg-muted/60"}`}
+                >
+                  <div className="mb-1 flex flex-wrap items-baseline gap-x-2 text-xs">
+                    <span className="font-semibold">
+                      {mine ? "You" : message.author.name}
+                    </span>
+                    {message.editedAt && (
+                      <span className="text-muted-foreground">edited</span>
+                    )}
+                  </div>
+                  {message.deletedAt ? (
+                    <p className="text-muted-foreground text-sm italic">
+                      Message deleted
+                    </p>
+                  ) : (
+                    <>
+                      {message.replyToId && (
+                        <div className="border-primary/40 text-muted-foreground mb-2 border-l-2 pl-2 text-xs">
+                          {replied ? (
+                            <>
+                              <strong>{replied.author.name}</strong>
+                              <p className="line-clamp-2">
+                                {replied.deletedAt
+                                  ? "Message deleted"
+                                  : replied.body || "Attachment"}
+                              </p>
+                            </>
+                          ) : (
+                            "Reply to an earlier message"
+                          )}
+                        </div>
+                      )}
+                      {editing?.id === message.id ? (
+                        <div className="space-y-2">
+                          <textarea
+                            className="bg-background min-h-20 w-full rounded border p-2 text-base"
+                            aria-label="Edit message"
+                            maxLength={8000}
+                            value={editing.body}
+                            onChange={(event) =>
+                              setEditing({
+                                ...editing,
+                                body: event.target.value,
+                              })
+                            }
+                          />
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              onClick={() => void editMessage()}
+                              disabled={
+                                edit.isPending ||
+                                !online ||
+                                !editing.body.trim()
+                              }
+                            >
+                              Save
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setEditing(null)}
+                            >
+                              Cancel
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="text-sm [overflow-wrap:anywhere] break-words whitespace-pre-wrap">
+                          {message.body}
+                        </p>
+                      )}
+                      {message.attachments.length > 0 && (
+                        <div className="mt-2 grid gap-2">
+                          {message.attachments.map((attachment) => (
+                            <a
+                              key={attachment.id}
+                              href={attachment.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="bg-background block overflow-hidden rounded-lg border text-sm"
+                              aria-label={`Open ${attachment.name}`}
+                            >
+                              {attachment.mimeType.startsWith("image/") ? (
+                                <img
+                                  src={attachment.url}
+                                  alt={attachment.name}
+                                  className="max-h-72 max-w-full object-contain"
+                                  loading="lazy"
+                                />
+                              ) : (
+                                <span className="flex items-center gap-2 p-3">
+                                  <FileIcon className="h-5 w-5 shrink-0" />
+                                  {attachment.name}
+                                </span>
+                              )}
+                            </a>
+                          ))}
+                        </div>
+                      )}
+                      <div className="text-muted-foreground mt-1 flex flex-wrap gap-3 text-xs">
+                        <button
+                          type="button"
+                          className="hover:text-foreground min-h-8"
+                          disabled={Boolean(lockedComposer)}
+                          onClick={() => {
+                            changeDraft({
+                              ...draft,
+                              replyToId: message.id,
+                              replyName: message.author.name,
+                              replyBody: message.body || "Attachment",
+                            });
+                            composer.current?.focus();
+                          }}
+                        >
+                          Reply
+                        </button>
+                        {mayChange && (
                           <>
-                            <strong>{replied.author.name}</strong>
-                            <p className="line-clamp-2">
-                              {replied.deletedAt
-                                ? "Message deleted"
-                                : replied.body || "Attachment"}
-                            </p>
+                            <button
+                              type="button"
+                              className="hover:text-foreground min-h-8"
+                              disabled={!online || edit.isPending}
+                              onClick={() =>
+                                setEditing({
+                                  id: message.id,
+                                  body: message.body,
+                                })
+                              }
+                            >
+                              Edit
+                            </button>
+                            <button
+                              type="button"
+                              className="hover:text-destructive min-h-8"
+                              disabled={!online || remove.isPending}
+                              onClick={() => void deleteMessage(message)}
+                            >
+                              Delete
+                            </button>
                           </>
-                        ) : (
-                          "Reply to an earlier message"
                         )}
                       </div>
-                    )}
-                    {editing?.id === message.id ? (
-                      <div className="space-y-2">
-                        <textarea
-                          className="bg-background min-h-20 w-full rounded border p-2 text-base"
-                          aria-label="Edit message"
-                          maxLength={8000}
-                          value={editing.body}
-                          onChange={(event) =>
-                            setEditing({ ...editing, body: event.target.value })
-                          }
-                        />
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            onClick={() => void editMessage()}
-                            disabled={
-                              edit.isPending || !online || !editing.body.trim()
-                            }
-                          >
-                            Save
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setEditing(null)}
-                          >
-                            Cancel
-                          </Button>
-                        </div>
-                      </div>
-                    ) : (
-                      <p className="text-sm [overflow-wrap:anywhere] break-words whitespace-pre-wrap">
-                        {message.body}
-                      </p>
-                    )}
-                    {message.attachments.length > 0 && (
-                      <div className="mt-2 grid gap-2">
-                        {message.attachments.map((attachment) => (
-                          <a
-                            key={attachment.id}
-                            href={attachment.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="bg-background block overflow-hidden rounded-lg border text-sm"
-                            aria-label={`Open ${attachment.name}`}
-                          >
-                            {attachment.mimeType.startsWith("image/") ? (
-                              <img
-                                src={attachment.url}
-                                alt={attachment.name}
-                                className="max-h-72 max-w-full object-contain"
-                                loading="lazy"
-                              />
-                            ) : (
-                              <span className="flex items-center gap-2 p-3">
-                                <FileIcon className="h-5 w-5 shrink-0" />
-                                {attachment.name}
-                              </span>
-                            )}
-                          </a>
-                        ))}
-                      </div>
-                    )}
-                    <div className="text-muted-foreground mt-1 flex flex-wrap gap-3 text-xs">
-                      <button
-                        type="button"
-                        className="hover:text-foreground min-h-8"
-                        disabled={Boolean(lockedComposer)}
-                        onClick={() => {
-                          changeDraft({
-                            ...draft,
-                            replyToId: message.id,
-                            replyName: message.author.name,
-                            replyBody: message.body || "Attachment",
-                          });
-                          composer.current?.focus();
-                        }}
-                      >
-                        Reply
-                      </button>
-                      {mayChange && (
-                        <>
-                          <button
-                            type="button"
-                            className="hover:text-foreground min-h-8"
-                            disabled={!online || edit.isPending}
-                            onClick={() =>
-                              setEditing({ id: message.id, body: message.body })
-                            }
-                          >
-                            Edit
-                          </button>
-                          <button
-                            type="button"
-                            className="hover:text-destructive min-h-8"
-                            disabled={!online || remove.isPending}
-                            onClick={() => void deleteMessage(message)}
-                          >
-                            Delete
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  </>
-                )}
-              </div>
-            </article>
+                    </>
+                  )}
+                </div>
+              </article>
+            </Fragment>
           );
         })}
       </div>
