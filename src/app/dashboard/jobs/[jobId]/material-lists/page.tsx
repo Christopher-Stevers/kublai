@@ -13,8 +13,6 @@ import {
   CalendarIcon,
   CheckCircle2Icon,
   UserIcon,
-  MapPinIcon,
-  PencilIcon,
   SendIcon,
   TrashIcon,
   WifiOffIcon,
@@ -29,7 +27,6 @@ import {
   DialogTitle,
 } from "~/components/ui/dialog";
 import { format } from "date-fns";
-import { JobEditDialog } from "~/components/jobs/JobEditDialog";
 import { useReplicacheJobDetail } from "~/hooks/use-replicache-jobs";
 import { useOnlineStatus } from "~/hooks/use-online-status";
 import {
@@ -38,16 +35,6 @@ import {
 } from "~/lib/replicache-material-list";
 import { getNextMaterialListNameFromNames } from "~/lib/material-list-names";
 import { setLastJobWorkspaceLocation } from "~/lib/job-workspace-last-option";
-
-type JobLocationDisplay = {
-  name?: string | null;
-  address1?: string | null;
-  address2?: string | null;
-  city?: string | null;
-  region?: string | null;
-  postalCode?: string | null;
-  country?: string | null;
-};
 
 function getSendStatusTone(
   sentSupplierCount: number,
@@ -134,24 +121,6 @@ function MaterialListSendStatus({
 }
 
 
-function formatLocationAddress(
-  location: JobLocationDisplay | null | undefined,
-) {
-  if (!location) return null;
-
-  const addressLine = [location.address1, location.address2]
-    .filter(Boolean)
-    .join(" ");
-  const cityLine = [location.city, location.region, location.postalCode]
-    .filter(Boolean)
-    .join(", ");
-
-  return (
-    [addressLine, cityLine, location.country].filter(Boolean).join(" • ") ||
-    null
-  );
-}
-
 function formatContributorName(contributor: {
   name: string | null;
   email: string | null;
@@ -169,7 +138,6 @@ export default function JobDetailPage({
   const jobId =
     pathname.match(/^\/dashboard\/jobs\/([^/?#]+)/)?.[1] ?? paramJobId;
   const router = useRouter();
-  const [showEditDialog, setShowEditDialog] = useState(false);
   const [materialListToDelete, setMaterialListToDelete] = useState<{
     id: string;
     name: string;
@@ -297,8 +265,6 @@ export default function JobDetailPage({
     }, 550);
   };
 
-  const jobLocationAddress = formatLocationAddress(job?.location);
-
   if (!job && !hasFetchedServerJob) {
     return (
       <div className="px-4 py-6 sm:px-6 sm:py-8">
@@ -354,52 +320,15 @@ export default function JobDetailPage({
           </div>
         )}
 
-        {/* Job Header */}
-        <div className="mb-6">
-          <div className="mb-2 flex items-center gap-3">
-            <h1 className="text-2xl font-bold text-foreground sm:text-3xl">
-              {job.name}
-            </h1>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowEditDialog(true)}
-              className="h-8 w-8 p-0"
-              aria-label="Edit job"
-            >
-              <PencilIcon className="h-4 w-4" />
-            </Button>
-          </div>
-          <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-            {jobLocationAddress && (
-              <div className="flex items-center gap-2">
-                <MapPinIcon className="h-4 w-4" />
-                <span>{jobLocationAddress}</span>
-              </div>
-            )}
-            {job.foremanName && (
-              <div className="flex items-center gap-2">
-                <UserIcon className="h-4 w-4" />
-                <span>{job.foremanName}</span>
-              </div>
-            )}
-            {job.poNumber && (
-              <div className="flex items-center gap-2">
-                <span className="font-medium">PO#:</span>
-                <span>{job.poNumber}</span>
-              </div>
-            )}
-            {userData?.permissions.tabAccess.assets && (
-            <Link
-              href={`/dashboard/assets/where/job/${job.id}`}
-              className="flex items-center gap-2 hover:text-foreground hover:underline"
-            >
-              <WrenchIcon className="h-4 w-4" />
-              <span>Tools on this job</span>
-            </Link>
-            )}
-          </div>
-        </div>
+        {userData?.permissions.tabAccess.assets && (
+          <Link
+            href={`/dashboard/assets/where/job/${job.id}`}
+            className="text-muted-foreground mb-4 inline-flex items-center gap-2 text-sm hover:text-foreground hover:underline"
+          >
+            <WrenchIcon className="h-4 w-4" />
+            <span>Tools on this job</span>
+          </Link>
+        )}
 
         {/* Material Lists Section */}
         <div className="mb-6 flex flex-col gap-4 sm:mb-8 sm:flex-row sm:items-center sm:justify-between">
@@ -572,17 +501,6 @@ export default function JobDetailPage({
             </div>
           </div>
         )}
-
-        {/* Edit Dialog */}
-        <JobEditDialog
-          open={showEditDialog}
-          onOpenChange={setShowEditDialog}
-          jobId={jobId}
-          initialName={job.name}
-          initialLocationId={job.locationId}
-          initialForemanName={job.foremanName ?? null}
-          initialPoNumber={job.poNumber ?? null}
-        />
 
         <Dialog
           open={!!materialListToDelete}
