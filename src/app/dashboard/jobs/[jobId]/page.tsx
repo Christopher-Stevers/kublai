@@ -61,6 +61,9 @@ export default function JobOptionsPage({
   const { data: roleData } = api.user.getMyRole.useQuery(undefined, {
     enabled: isBrowserOnline,
   });
+  const { data: chatOverview } = api.chat.getOverview.useQuery({ jobId }, {
+    enabled: isBrowserOnline, refetchInterval: 30_000, refetchIntervalInBackground: false,
+  });
   const canOpenAssets = roleData?.permissions.tabAccess.assets === true;
   const jobDetail = useReplicacheJobDetail(jobId);
   const { data: serverJob, isFetched: hasFetchedServerJob } =
@@ -172,6 +175,7 @@ export default function JobOptionsPage({
 
         <JobWorkspaceOptions
           materialListCount={materialListCount}
+          chatUnreadCount={chatOverview?.unreadCount}
           onSelect={(optionId) => {
             setLastJobWorkspaceLocation({
               jobId: job.id,
@@ -180,6 +184,9 @@ export default function JobOptionsPage({
             });
             if (optionId === "material-lists") {
               router.push(`/dashboard/jobs/${job.id}/material-lists`);
+            }
+            if (optionId === "chat") {
+              router.push(`/dashboard/jobs/${job.id}/chat`);
             }
             if (optionId === "rooms") {
               router.push(`/dashboard/jobs/${job.id}/rooms`);

@@ -1,7 +1,7 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
-import { DoorOpenIcon, PackageIcon, WrenchIcon } from "lucide-react";
+import { DoorOpenIcon, MessageCircleIcon, PackageIcon, WrenchIcon } from "lucide-react";
 import { type JobWorkspaceOptionId } from "~/lib/job-workspace-last-option";
 
 export type { JobWorkspaceOptionId };
@@ -9,11 +9,13 @@ export type { JobWorkspaceOptionId };
 export function JobWorkspaceOptions({
   materialListCount = 0,
   roomCount = 0,
+  chatUnreadCount = 0,
   onSelect,
   onTools,
 }: {
   materialListCount?: number;
   roomCount?: number;
+  chatUnreadCount?: number;
   onSelect: (id: JobWorkspaceOptionId) => void;
   /** Opens the job's tools in Asset Management (when that tab is available). */
   onTools?: () => void;
@@ -60,6 +62,29 @@ export function JobWorkspaceOptions({
                 {roomCount} {roomCount === 1 ? "room" : "rooms"}
               </span>
             </div>
+          </div>
+        </CardContent>
+      </Card>
+      <Card
+        role="button"
+        tabIndex={0}
+        aria-label={chatUnreadCount > 0 ? `Chat, ${chatUnreadCount} unread messages` : "Chat"}
+        className="cursor-pointer transition-shadow hover:shadow-md focus-visible:ring-2 focus-visible:ring-ring"
+        onClick={() => onSelect("chat")}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onSelect("chat"); }
+        }}
+      >
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between gap-2">
+            Chat
+            {chatUnreadCount > 0 && <span className="rounded-full bg-primary px-2 py-0.5 text-xs text-primary-foreground">{chatUnreadCount > 99 ? "99+" : chatUnreadCount}</span>}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <MessageCircleIcon className="h-4 w-4" />
+            <span>Messages, photos &amp; files for this job</span>
           </div>
         </CardContent>
       </Card>

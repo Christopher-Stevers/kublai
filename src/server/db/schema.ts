@@ -2140,3 +2140,50 @@ export const syncRevisions = createTable("sync_revision", (d) => ({
   scope: d.text().notNull(),
   revision: d.bigint({ mode: "bigint" }).notNull().default(0n),
 }), (t) => [primaryKey({ columns: [t.kind, t.scope] })]);
+
+// Job chat: job-scoped lobby, durable ordered events and private attachments.
+// Constrain the existing circular user/job schema at this boundary.
+const chatJobId: AnyPgColumn = (jobs as { id: AnyPgColumn }).id;
+const chatUserId: AnyPgColumn = (users as { id: AnyPgColumn }).id;
+export const jobChatMembers = createTable("job_chat_member", (d) => ({
+  jobId: d.uuid().notNull().references(() => chatJobId, { onDelete: "cascade" }),
+  userId: d.varchar({ length: 255 }).notNull().references(() => chatUserId, { onDelete: "cascade" }),
+  muted: d.boolean().notNull().default(false),
+  lastReadSequence: d.bigint({ mode: "number" }).notNull().default(0),
+  joinedAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
+}), (t) => [primaryKey({ columns: [t.jobId, t.userId] }), index("job_chat_member_user_idx").on(t.userId)]);
+
+export const jobChatMessages = createTable("job_chat_message", (d) => ({
+  id: d.uuid().notNull().primaryKey().$defaultFn(() => crypto.randomUUID()),
+  sequence: d.bigserial({ mode: "number" }).notNull().unique(),
+  jobId: d.uuid().notNull().references(() => chatJobId, { onDelete: "cascade" }),
+  authorId: d.varchar({ length: 255 }).references(() => chatUserId, { onDelete: "set null" }),
+  clientId: d.uuid().notNull(),
+  requestHash: d.varchar({ length: 64 }).notNull(),
+  body: d.text().notNull(),
+  replyToId: d.uuid().references((): AnyPgColumn => jobChatMessages.id, { onDelete: "set null" }),
+  createdAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
+  editedAt: d.timestamp({ withTimezone: true }),
+  deletedAt: d.timestamp({ withTimezone: true }),
+}), (t) => [unique("job_chat_message_retry_uniq").on(t.jobId, t.authorId, t.clientId), index("job_chat_message_page_idx").on(t.jobId, t.sequence), index("job_chat_message_author_time_idx").on(t.authorId, t.createdAt)]);
+
+export const jobChatEvents = createTable("job_chat_event", (d) => ({
+  sequence: d.bigserial({ mode: "number" }).notNull().primaryKey(),
+  jobId: d.uuid().notNull().references(() => chatJobId, { onDelete: "cascade" }),
+  messageId: d.uuid().notNull().references(() => jobChatMessages.id, { onDelete: "cascade" }),
+  type: d.varchar({ length: 16 }).notNull(),
+  createdAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
+}), (t) => [index("job_chat_event_page_idx").on(t.jobId, t.sequence)]);
+
+export const jobChatAttachments = createTable("job_chat_attachment", (d) => ({
+  id: d.uuid().notNull().primaryKey().$defaultFn(() => crypto.randomUUID()),
+  jobId: d.uuid().notNull().references(() => chatJobId, { onDelete: "cascade" }),
+  uploadedById: d.varchar({ length: 255 }).references(() => chatUserId, { onDelete: "set null" }),
+  messageId: d.uuid().references(() => jobChatMessages.id, { onDelete: "cascade" }),
+  name: d.varchar({ length: 255 }).notNull(),
+  mimeType: d.varchar({ length: 80 }).notNull(),
+  size: d.integer().notNull(),
+  createdAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
+}), (t) => [index("job_chat_attachment_message_idx").on(t.messageId), index("job_chat_attachment_pending_idx").on(t.uploadedById, t.createdAt)]);
+
+export * from "./chat-push-schema";

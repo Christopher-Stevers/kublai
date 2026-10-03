@@ -3,7 +3,7 @@
 // Keep API/sync traffic network-only. Cache navigations and static assets so the
 // installed app can open while offline and Replicache can read its IndexedDB cache.
 
-const VERSION = "foremenhq-offline-shell-v11";
+const VERSION = "foremenhq-offline-shell-v12";
 const PAGE_CACHE = `${VERSION}:pages`;
 const STATIC_CACHE = `${VERSION}:static`;
 const IMAGE_CACHE = `${VERSION}:images`;
@@ -87,7 +87,26 @@ function isApiOrSyncRequest(url) {
   );
 }
 
+function isPrivateChatRequest(url) {
+  if (url.pathname.startsWith("/api/job-chat/")) return true;
+  if (url.pathname === "/_next/image") {
+    try {
+      const original = new URL(
+        url.searchParams.get("url") ?? "",
+        self.location.origin,
+      );
+      return (
+        isSameOrigin(original) && original.pathname.startsWith("/api/job-chat/")
+      );
+    } catch {
+      return true;
+    }
+  }
+  return false;
+}
 function isCacheableImageRequest(url, request) {
+  // Chat attachments are private, permission-checked and must never enter a shared cache.
+  if (isPrivateChatRequest(url)) return false;
   return (
     request.destination === "image" ||
     url.pathname.startsWith("/api/catalogue/images/") ||
@@ -253,7 +272,13 @@ self.addEventListener("message", (event) => {
               return null;
             }
           })
-          .filter((url) => url && isSameOrigin(url));
+          .filter(
+            (url) =>
+              url &&
+              isSameOrigin(url) &&
+              !isApiOrSyncRequest(url) &&
+              !isPrivateChatRequest(url),
+          );
 
         await Promise.allSettled(
           urls.map(async (url) => {
@@ -303,7 +328,7 @@ self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
 
   const url = new URL(event.request.url);
-  if (!isSameOrigin(url)) return;
+  if (!isSameOrigin(url) || isPrivateChatRequest(url)) return;
 
   if (isCacheableImageRequest(url, event.request)) {
     event.respondWith(cacheFirstImage(event.request));
@@ -330,4 +355,137 @@ self.addEventListener("fetch", (event) => {
   if (isStaticAsset(url, event.request)) {
     event.respondWith(cacheFirstStatic(event.request));
   }
+});
+
+// A device opt-in belongs to one signed-in account. Persist only its one-way account
+// fingerprint, not user names or message contents. Missing/failed storage fails closed.
+const PUSH_BINDING_CACHE = "foremenhq-push-binding-v1";
+const PUSH_BINDING_URL = new URL(
+  "/__push-account-binding",
+  self.location.origin,
+).href;
+function safeChatUrl(value) {
+  if (typeof value !== "string") return null;
+  try {
+    const url = new URL(value, self.location.origin);
+    return url.origin === self.location.origin &&
+      !url.search &&
+      !url.hash &&
+      /^\/dashboard\/jobs\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/chat$/.test(
+        url.pathname,
+      )
+      ? url.href
+      : null;
+  } catch {
+    return null;
+  }
+}
+async function pushAccount() {
+  try {
+    const response = await (
+      await caches.open(PUSH_BINDING_CACHE)
+    ).match(PUSH_BINDING_URL);
+    return response ? await response.text() : null;
+  } catch {
+    return null;
+  }
+}
+let pushBindingWrite = Promise.resolve();
+self.addEventListener("message", (event) => {
+  if (event.data?.type !== "FOREMANHQ_PUSH_ACCOUNT") return;
+  const account = event.data.account;
+  if (
+    account !== null &&
+    (typeof account !== "string" || !/^[a-f0-9]{64}$/.test(account))
+  )
+    return;
+  pushBindingWrite = pushBindingWrite
+    .catch(() => undefined)
+    .then(async () => {
+      let ok = false;
+      try {
+        const cache = await caches.open(PUSH_BINDING_CACHE);
+        await cache.put(PUSH_BINDING_URL, new Response(account ?? ""));
+        if (!account) {
+          const notifications = await self.registration.getNotifications();
+          for (const notification of notifications)
+            if (notification.data?.type === "job-chat") notification.close();
+        }
+        ok = true;
+      } catch {
+        /* The page reports unavailable notification storage. */
+      }
+      event.ports?.[0]?.postMessage({ ok });
+    });
+  event.waitUntil(pushBindingWrite);
+});
+self.addEventListener("push", (event) => {
+  event.waitUntil(
+    (async () => {
+      let data;
+      try {
+        data = event.data?.json();
+      } catch {
+        return;
+      }
+      const url = safeChatUrl(data?.url);
+      if (
+        data?.type !== "job-chat" ||
+        !url ||
+        typeof data.account !== "string" ||
+        !/^[a-f0-9]{64}$/.test(data.account) ||
+        data.account !== (await pushAccount())
+      )
+        return;
+      await self.registration.showNotification("ForemanHQ Chat", {
+        body: "There is new activity in a job chat. Open ForemanHQ to read it.",
+        icon: "/foremanhq/android-chrome-192x192.png",
+        tag: `job-chat-${new URL(url).pathname.split("/")[3]}`,
+        data: { type: "job-chat", url, account: data.account },
+      });
+    })(),
+  );
+});
+self.addEventListener("notificationclick", (event) => {
+  if (event.notification.data?.type !== "job-chat") return;
+  event.notification.close();
+  event.waitUntil(
+    (async () => {
+      const data = event.notification.data;
+      const url = safeChatUrl(data?.url);
+      if (
+        !url ||
+        typeof data.account !== "string" ||
+        !/^[a-f0-9]{64}$/.test(data.account) ||
+        data.account !== (await pushAccount())
+      )
+        return;
+      const windows = await self.clients.matchAll({
+        type: "window",
+        includeUncontrolled: true,
+      });
+      const existing =
+        windows.find((client) => client.url === url) ??
+        windows.find((client) => {
+          try {
+            return new URL(client.url).origin === self.location.origin;
+          } catch {
+            return false;
+          }
+        });
+      if (existing) {
+        try {
+          const target =
+            existing.url === url ? existing : await existing.navigate(url);
+          if (target) {
+            await target.focus();
+            return;
+          }
+        } catch {
+          /* An exiting tab may no longer be navigable. Open a new app window. */
+        }
+      }
+      await self.clients.openWindow(url);
+    })(),
+  );
 });

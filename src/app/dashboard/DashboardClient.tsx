@@ -1,5 +1,5 @@
 "use client";
-import { AddPartDialog, QuotePreviewSheet, OrdersPreviewSheet, ExistingQuotesOrdersDialog, JobRoomsView } from "~/components/app/DeferredFeatures";
+import { AddPartDialog, QuotePreviewSheet, OrdersPreviewSheet, ExistingQuotesOrdersDialog, JobRoomsView, JobChatView } from "~/components/app/DeferredFeatures";
 
 import { MaterialListOrderPickerDialog } from "~/components/materialLists/VerifyOrderButton";
 import { useMaterialListSort } from "~/hooks/use-material-list-sort";
@@ -263,6 +263,11 @@ export function DashboardClient({
   const [showOfflineAddPartDialog, setShowOfflineAddPartDialog] =
     useState(false);
   const isBrowserOnline = useOnlineStatus();
+
+  const { data: chatOverview } = api.chat.getOverview.useQuery({ jobId: offlineJobId ?? "" }, {
+    enabled: isBrowserOnline && Boolean(offlineJobId) && offlineJobView === "options",
+    refetchInterval: 30_000, refetchIntervalInBackground: false,
+  });
 
   // Check user's organizationId status
   const { data: userData, isFetched: hasFetchedUser } =
@@ -607,6 +612,7 @@ export function DashboardClient({
               {offlineJobView === "options" ? (
                 <JobWorkspaceOptions
                   materialListCount={offlineMaterialLists.length}
+                  chatUnreadCount={chatOverview?.unreadCount}
                   onSelect={(optionId) => {
                     navigateWorkspace({
                       jobId: offlineJobId,
@@ -615,6 +621,8 @@ export function DashboardClient({
                     });
                   }}
                 />
+              ) : offlineJobView === "chat" ? (
+                <JobChatView key={offlineJob.id} jobId={offlineJob.id} jobName={offlineJob.name} />
               ) : offlineJobView === "rooms" ? (
                 <JobRoomsView jobId={offlineJob.id} />
               ) : (

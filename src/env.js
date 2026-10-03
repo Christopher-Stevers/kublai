@@ -15,6 +15,9 @@ export const env = createEnv({
     NEXT_PUBLIC_DEXIE_CLOUD_DATABASE_URL: z.string().url().optional(),
   },
   server: {
+    WEB_PUSH_PUBLIC_KEY: z.string().optional(),
+    WEB_PUSH_PRIVATE_KEY: z.string().optional(),
+    WEB_PUSH_SUBJECT: z.string().optional(),
     TYPESAFE_API_KEY: z.string().optional(),
     TYPESAFE_MODEL: z.string().optional(),
     DATABASE_URL: z.string().url(),
@@ -54,6 +57,9 @@ export const env = createEnv({
    * middlewares) or client-side so we need to destruct manually.
    */
   runtimeEnv: {
+    WEB_PUSH_PUBLIC_KEY: process.env.WEB_PUSH_PUBLIC_KEY,
+    WEB_PUSH_PRIVATE_KEY: process.env.WEB_PUSH_PRIVATE_KEY,
+    WEB_PUSH_SUBJECT: process.env.WEB_PUSH_SUBJECT,
     TYPESAFE_API_KEY: process.env.TYPESAFE_API_KEY,
     TYPESAFE_MODEL: process.env.TYPESAFE_MODEL,
     NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:

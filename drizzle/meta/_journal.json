@@ -125,6 +125,20 @@
       "when": 1790790377274,
       "tag": "0041_room_completeness_review",
       "breakpoints": false
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1790992700000,
+      "tag": "0042_job_chat",
+      "breakpoints": false
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1790992800000,
+      "tag": "0043_job_chat_push",
+      "breakpoints": false
     }
   ]
 }

@@ -194,7 +194,14 @@ function HeaderFrame({
   };
 
   const handleSignOut = async () => {
-    await signOut?.();
+    try {
+      const { disconnectChatPushDevice } = await import("~/components/jobs/ChatNotifications");
+      await disconnectChatPushDevice();
+    } catch {
+      // Local revocation is retained for retry; signing out must still work offline.
+    } finally {
+      await signOut?.();
+    }
   };
 
   const handleInstallApp = async () => {
