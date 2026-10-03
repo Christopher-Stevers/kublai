@@ -45,8 +45,11 @@ export function JobWorkspaceOptions({
         onClick={() => onSelect("rooms")}
       >
         <CardHeader>
-          <CardTitle className="line-clamp-2 min-w-0 leading-tight break-words">
-            Rooms
+          <CardTitle className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1 leading-tight break-words">
+            <span>Rooms</span>
+            <span className="text-sm font-semibold text-red-600 dark:text-red-400">
+              Experimental
+            </span>
           </CardTitle>
         </CardHeader>
         <CardContent>

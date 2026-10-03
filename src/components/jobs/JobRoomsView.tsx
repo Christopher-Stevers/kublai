@@ -535,6 +535,9 @@ export function JobRoomsView({ jobId }: { jobId: string }) {
   if (selectedRoom && selectedFloor) {
     return (
       <div className="space-y-4">
+        <p className="text-sm font-semibold text-red-600 dark:text-red-400">
+          Experimental
+        </p>
         <div className="flex items-center justify-between gap-3">
           <div>
             <h2 className="text-foreground text-xl font-semibold">
@@ -563,6 +566,9 @@ export function JobRoomsView({ jobId }: { jobId: string }) {
 
   return (
     <>
+      <p className="mb-2 text-sm font-semibold text-red-600 dark:text-red-400">
+        Experimental
+      </p>
       {!selectedFloor ? (
         <>
           <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
