@@ -173,7 +173,7 @@ export const adminProcedure = t.procedure
 
 /**
  * Procedure that requires dashboard access.
- * Standard accounts can use the dashboard; paid Managing Account permissions
+ * Standard accounts can use the dashboard; paid Executive Account permissions
  * are enforced by feature-level permission checks.
  */
 export const hasDashboardAccess = t.procedure

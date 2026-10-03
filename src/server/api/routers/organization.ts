@@ -11,6 +11,7 @@ import {
 import {
   assertCan,
   getUserPermissions,
+  hasManagingSeat,
   resolvePermissions,
   toStoredConfig,
 } from "~/server/auth/permissions";
@@ -63,41 +64,40 @@ export const organizationRouter = createTRPCRouter({
       });
     }
 
-    const [locationList, inviteList, memberList] =
-      await Promise.all([
-        ctx.db
-          .select()
-          .from(locations)
-          .where(eq(locations.organizationId, ctx.user.organizationId))
-          .orderBy(asc(locations.name)),
-        ctx.db
-          .select()
-          .from(organizationInvites)
-          .where(
-            and(
-              eq(organizationInvites.organizationId, ctx.user.organizationId),
-              isNull(organizationInvites.revokedAt),
-              gt(organizationInvites.expiresAt, new Date()),
-            ),
-          )
-          .orderBy(desc(organizationInvites.createdAt)),
-        ctx.db
-          .select({
-            id: users.id,
-            name: users.name,
-            email: users.email,
-            role: users.role,
-            permissionConfig: users.permissionConfig,
-            organizationAccessStatus: users.organizationAccessStatus,
-            stripeSubscriptionId: users.stripeSubscriptionId,
-            subscriptionStatus: users.subscriptionStatus,
-            subscriptionEndsAt: users.subscriptionEndsAt,
-            createdAt: users.createdAt,
-          })
-          .from(users)
-          .where(eq(users.organizationId, ctx.user.organizationId))
-          .orderBy(asc(users.name), asc(users.email)),
-      ]);
+    const [locationList, inviteList, memberList] = await Promise.all([
+      ctx.db
+        .select()
+        .from(locations)
+        .where(eq(locations.organizationId, ctx.user.organizationId))
+        .orderBy(asc(locations.name)),
+      ctx.db
+        .select()
+        .from(organizationInvites)
+        .where(
+          and(
+            eq(organizationInvites.organizationId, ctx.user.organizationId),
+            isNull(organizationInvites.revokedAt),
+            gt(organizationInvites.expiresAt, new Date()),
+          ),
+        )
+        .orderBy(desc(organizationInvites.createdAt)),
+      ctx.db
+        .select({
+          id: users.id,
+          name: users.name,
+          email: users.email,
+          role: users.role,
+          permissionConfig: users.permissionConfig,
+          organizationAccessStatus: users.organizationAccessStatus,
+          stripeSubscriptionId: users.stripeSubscriptionId,
+          subscriptionStatus: users.subscriptionStatus,
+          subscriptionEndsAt: users.subscriptionEndsAt,
+          createdAt: users.createdAt,
+        })
+        .from(users)
+        .where(eq(users.organizationId, ctx.user.organizationId))
+        .orderBy(asc(users.name), asc(users.email)),
+    ]);
 
     const viewer = resolvePermissions(ctx.user);
     return {
@@ -128,18 +128,6 @@ export const organizationRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       assertCan(ctx.user, "org.members");
-      if (
-        input.userId === ctx.userId &&
-        (input.permissions["org.members"] === false ||
-          input.permissions["tab.organization"] === false)
-      ) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message:
-            "You can't remove your own access to manage members. Ask another manager.",
-        });
-      }
-
       if (!ctx.user.organizationId) {
         throw new TRPCError({
           code: "BAD_REQUEST",
@@ -154,29 +142,79 @@ export const organizationRouter = createTRPCRouter({
         });
       }
 
-      const [member] = await ctx.db
-        .update(users)
-        .set({
-          organizationAccessStatus: input.accessStatus,
-          permissionConfig: toStoredConfig(input.permissions),
-          updatedAt: new Date(),
-        })
-        .where(
-          and(
-            eq(users.id, input.userId),
-            eq(users.organizationId, ctx.user.organizationId),
-          ),
-        )
-        .returning();
+      const organizationId = ctx.user.organizationId;
+      return ctx.db.transaction(async (tx) => {
+        const targetWhere = and(
+          eq(users.id, input.userId),
+          eq(users.organizationId, organizationId),
+        );
+        const [target] = await tx
+          .select()
+          .from(users)
+          .where(targetWhere)
+          .limit(1)
+          .for("update");
+        if (!target) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Organization member not found",
+          });
+        }
 
-      if (!member) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Organization member not found",
+        const executive = hasManagingSeat(target);
+        if (
+          executive &&
+          Object.values(input.permissions).some((value) => !value)
+        ) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message:
+              "Executive Accounts and admins always retain every permission.",
+          });
+        }
+        if (
+          executive &&
+          (target.organizationAccessStatus ?? "approved") === "approved" &&
+          input.accessStatus !== "approved"
+        ) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message:
+              "An active Executive Account or admin cannot have organization access disabled.",
+          });
+        }
+
+        // Approval is still required for paid invitees. Keep entitlement-derived
+        // grants out of storage so they do not survive subscription expiry.
+        const permissionConfig: unknown = executive
+          ? target.permissionConfig
+          : toStoredConfig(input.permissions);
+        const nextPermissions = resolvePermissions({
+          ...target,
+          permissionConfig,
         });
-      }
-
-      return member;
+        if (
+          input.userId === ctx.userId &&
+          (!nextPermissions["org.members"] ||
+            !nextPermissions["tab.organization"])
+        ) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message:
+              "You cannot remove your own access to manage organization members.",
+          });
+        }
+        const [member] = await tx
+          .update(users)
+          .set({
+            organizationAccessStatus: input.accessStatus,
+            permissionConfig,
+            updatedAt: new Date(),
+          })
+          .where(targetWhere)
+          .returning();
+        return member;
+      });
     }),
 
   createOrganizationInvite: hasDashboardAccess

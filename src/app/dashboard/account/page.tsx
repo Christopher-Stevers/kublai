@@ -423,7 +423,7 @@ export default function AccountPage() {
 
               {isOnline && !status?.hasManagingAccount && (
                 <Button asChild className="w-full">
-                  <a href="/pricing">Upgrade to Managing Account</a>
+                  <a href="/pricing">Upgrade to Executive Account</a>
                 </Button>
               )}
             </CardContent>

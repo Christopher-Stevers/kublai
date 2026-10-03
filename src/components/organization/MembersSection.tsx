@@ -45,6 +45,12 @@ function displayName(m: Member) {
   return m.name?.trim() || m.email;
 }
 
+function memberRoleLabel(member: Member) {
+  if (member.permissions.isAdmin) return "Admin";
+  if (member.permissions.isManagingAccount) return "Executive Account";
+  return roleLabel(member.permissions.can);
+}
+
 export function MembersSection({ settings, onSaved }: { settings: Settings; onSaved: () => Promise<void> }) {
   const members = settings.members;
   const [query, setQuery] = useState("");
@@ -56,7 +62,7 @@ export function MembersSection({ settings, onSaved }: { settings: Settings; onSa
     const q = query.trim().toLowerCase();
     return members
       .filter((m) => filter === "all" || m.organizationAccessStatus === filter)
-      .filter((m) => !q || displayName(m).toLowerCase().includes(q) || m.email.toLowerCase().includes(q) || roleLabel(m.permissions.can).toLowerCase().includes(q))
+      .filter((m) => !q || displayName(m).toLowerCase().includes(q) || m.email.toLowerCase().includes(q) || memberRoleLabel(m).toLowerCase().includes(q))
       .sort((a, b) => {
         // People waiting for approval first, then alphabetical.
         const w = (m: Member) => (m.organizationAccessStatus === "pending" ? 0 : 1);
@@ -127,7 +133,7 @@ export function MembersSection({ settings, onSaved }: { settings: Settings; onSa
                     <p className="truncate text-xs text-muted-foreground">{m.email}</p>
                     <div className="mt-1 flex flex-wrap items-center gap-1.5">
                       <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium">
-                        {m.permissions.isAdmin ? "Admin" : roleLabel(m.permissions.can)}
+                        {memberRoleLabel(m)}
                       </span>
                       {status !== "approved" && (
                         <span className={cn("rounded-full px-2 py-0.5 text-[11px] font-medium", STATUS_STYLE[status])}>{STATUS_LABEL[status]}</span>
@@ -193,7 +199,10 @@ function MemberDetail({
     },
   });
   const isAdmin = member.permissions.isAdmin;
-  const readOnly = !canManage || isAdmin;
+  const isExecutive = member.permissions.isManagingAccount;
+  const hasProtectedAccess = isAdmin || isExecutive;
+  const readOnly = !canManage || hasProtectedAccess;
+  const accessReadOnly = !canManage || (hasProtectedAccess && originalStatus === "approved");
   const lockedKeys: PermissionKey[] = isSelf ? ["org.members", "tab.organization"] : [];
   const changed = status !== originalStatus || (Object.keys(perms) as PermissionKey[]).some((k) => perms[k] !== original[k]);
   const { allowed, total } = countAllowed(perms);
@@ -223,7 +232,7 @@ function MemberDetail({
                 type="button"
                 role="radio"
                 aria-checked={status === s}
-                disabled={readOnly || (isSelf && s !== "approved")}
+                disabled={accessReadOnly || update.isPending || (isSelf && s !== "approved")}
                 onClick={() => setStatus(s)}
                 className={cn(
                   "flex-1 rounded-md px-3 py-1.5 text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none",
@@ -238,22 +247,28 @@ function MemberDetail({
       </header>
 
       <div className="flex-1 space-y-4 p-5">
-        {isAdmin && (
+        {hasProtectedAccess && (
           <div className="flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-sm">
-            <ShieldCheckIcon className="h-4 w-4 text-primary" /> Admins always have every permission.
+            <ShieldCheckIcon className="h-4 w-4 shrink-0 text-primary" />
+            <span>
+              {isAdmin ? "Admins" : "Executive Accounts"} always have every permission.
+              {originalStatus === "approved"
+                ? " Their access cannot be disabled."
+                : " Organization membership must still be approved."}
+            </span>
           </div>
         )}
-        {!canManage && !isAdmin && (
+        {!canManage && !hasProtectedAccess && (
           <div className="rounded-lg border bg-muted/50 px-3 py-2 text-sm text-muted-foreground">You can view permissions but not change them.</div>
         )}
-        {status === "denied" && !isAdmin && (
+        {status === "denied" && !hasProtectedAccess && (
           <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-900">Blocked members can't open ForemanHQ for this company, whatever their permissions say.</div>
         )}
         <PermissionEditor value={perms} onChange={setPerms} disabled={readOnly || update.isPending} lockedKeys={lockedKeys} />
         {update.error && <p className="text-sm text-destructive">{update.error.message}</p>}
       </div>
 
-      {canManage && !isAdmin && (
+      {!accessReadOnly && (
         <footer
           className={cn(
             "sticky bottom-0 z-10 flex items-center justify-between gap-3 rounded-b-2xl border-t bg-card/95 px-5 py-3 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] backdrop-blur transition-opacity",

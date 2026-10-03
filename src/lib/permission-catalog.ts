@@ -5,7 +5,7 @@
  * Stored per member in `users.permissionConfig` as
  *   { version: 2, permissions: { "jobs.create": true, ... } }
  * Keys missing from a stored map fall back to the account type's default.
- * Admins always have every permission.
+ * Admins and Executive Accounts always have every permission.
  */
 
 export const PERMISSION_GROUPS = [
@@ -148,10 +148,9 @@ export const STANDARD_DEFAULTS: PermissionMap = {
   "suppliers.edit": true,
 };
 
-/** Paid seats (foremen/office). Everything except the tool room, which is granted per person. */
+/** Executive Accounts retain every capability; member overrides cannot revoke them. */
 export const MANAGING_DEFAULTS: PermissionMap = {
   ...all(true),
-  "assets.manage": false,
 };
 
 export const PERMISSION_PRESETS: Array<{

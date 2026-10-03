@@ -61,7 +61,7 @@ function asObject(input: unknown): Record<string, unknown> | null {
     : null;
 }
 
-/** True when the member has a paid seat (or is an admin): the "managing" account defaults. */
+/** Executive entitlement. Keep the legacy function/API names for cached clients. */
 export function hasManagingSeat(user: PermissionUser) {
   const role = normalizedRole(user);
   const hasActiveSubscription =
@@ -82,6 +82,9 @@ export function resolvePermissions(user: PermissionUser): PermissionMap {
   }
   const managing = hasManagingSeat(user);
   const base = { ...(managing ? MANAGING_DEFAULTS : STANDARD_DEFAULTS) };
+  // Executive capabilities come from the active entitlement, never from
+  // editable member flags. Do not persist these defaults as permanent grants.
+  if (managing) return base;
   const config = asObject(user.permissionConfig);
   if (!config) return base;
 
@@ -92,16 +95,16 @@ export function resolvePermissions(user: PermissionUser): PermissionMap {
     return base;
   }
 
-  // Legacy config: managing seats ignored it (except the tool-room flag).
+  // Legacy configuration for standard members.
   const legacy = config as LegacyPermissionConfig;
   if (legacy.actions?.canManageAssets === true) base["assets.manage"] = true;
-  if (managing) return base;
   for (const tab of appTabIds) {
     const value = legacy.tabs?.[tab];
     if (typeof value === "boolean") base[`tab.${tab}` as PermissionKey] = value;
   }
   const a = legacy.actions ?? {};
-  if (typeof a.canCreateParts === "boolean") base["parts.create"] = a.canCreateParts;
+  if (typeof a.canCreateParts === "boolean")
+    base["parts.create"] = a.canCreateParts;
   if (typeof a.canEditParts === "boolean") base["parts.edit"] = a.canEditParts;
   if (a.canDeleteParts || a.canDelete) base["parts.delete"] = true;
   // Billing and organization were never grantable to standard accounts before.
@@ -137,7 +140,7 @@ export function getUserPermissions(user: PermissionUser) {
       role === "admin"
         ? "Admin"
         : isManagingAccount
-          ? "Managing Account"
+          ? "Executive Account"
           : "Standard Account",
     isManagingAccount,
     isStandardAccount: !isManagingAccount,
@@ -197,7 +200,11 @@ export function assertCanAccessTab(user: PermissionUser, tab: AppTabId) {
 }
 
 export function assertCanCreateParts(user: PermissionUser) {
-  assertCan(user, "parts.create", "You do not have permission to create parts.");
+  assertCan(
+    user,
+    "parts.create",
+    "You do not have permission to create parts.",
+  );
 }
 
 export function assertCanEditParts(user: PermissionUser) {
@@ -205,7 +212,11 @@ export function assertCanEditParts(user: PermissionUser) {
 }
 
 export function assertCanDeleteParts(user: PermissionUser) {
-  assertCan(user, "parts.delete", "You do not have permission to delete parts.");
+  assertCan(
+    user,
+    "parts.delete",
+    "You do not have permission to delete parts.",
+  );
 }
 
 export function assertCanManageAssets(user: PermissionUser) {

@@ -38,7 +38,7 @@ export default function PricingPage() {
               Choose Your Account
             </h1>
             <p className="text-xl text-muted-foreground">
-              Standard Accounts are free. Managing Accounts require a paid subscription.
+              Standard Accounts are free. Executive Accounts require a paid subscription.
             </p>
           </div>
 
@@ -116,7 +116,7 @@ export default function PricingPage() {
                 </span>
               </div>
               <CardHeader>
-                <CardTitle className="text-2xl">Managing Account</CardTitle>
+                <CardTitle className="text-2xl">Executive Account</CardTitle>
                 <div className="mt-4">
                   <span className="text-4xl font-bold text-foreground">
                     $2
@@ -202,7 +202,7 @@ export default function PricingPage() {
                       Processing...
                     </>
                   ) : (
-                    "Upgrade to Managing Account"
+                    "Upgrade to Executive Account"
                   )}
                 </Button>
               </CardContent>

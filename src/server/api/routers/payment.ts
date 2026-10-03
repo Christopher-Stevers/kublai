@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { env } from "~/env";
 import { users } from "~/server/db/schema";
+import { hasManagingSeat } from "~/server/auth/permissions";
 
 function getStripeClient() {
   if (!env.STRIPE_SECRET_KEY) {
@@ -201,13 +202,13 @@ export const paymentRouter = createTRPCRouter({
     // Check if user has one-time access
     const hasOneTimeAccess = user.hasOneTimeAccess === true;
 
-    const hasManagingAccount = Boolean(hasActiveSubscription);
+    const hasManagingAccount = hasManagingSeat(user);
 
     return {
       hasAccess: true,
       hasManagingAccount,
       accountType: hasManagingAccount ? "managing" : "standard",
-      accountTypeLabel: hasManagingAccount ? "Managing Account" : "Standard Account",
+      accountTypeLabel: hasManagingAccount ? "Executive Account" : "Standard Account",
       hasActiveSubscription: hasActiveSubscription ?? false,
       hasOneTimeAccess: hasOneTimeAccess,
       subscriptionStatus: user.subscriptionStatus,

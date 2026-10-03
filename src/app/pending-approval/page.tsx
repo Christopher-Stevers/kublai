@@ -27,7 +27,7 @@ export default async function PendingApprovalPage() {
       <section className="border-border bg-card w-full max-w-md rounded-lg border p-6 text-center shadow-sm">
         <h1 className="text-foreground text-2xl font-bold">Access Pending</h1>
         <p className="text-muted-foreground mt-3 text-sm">
-          Your account has joined the organization and is waiting for a Managing
+          Your account has joined the organization and is waiting for an Executive
           Account to approve access.
         </p>
       </section>
