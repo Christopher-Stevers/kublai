@@ -6,6 +6,7 @@ import {
   screen,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { runHeaderBackOverride } from "~/lib/header-back-events";
 
 const harness = vi.hoisted(() => ({
   data: {} as Record<string, unknown>,
@@ -133,6 +134,8 @@ afterEach(cleanup);
 
 const click = (name: string) =>
   fireEvent.click(screen.getByRole("button", { name }));
+// The app bar back arrow leaves the floor plan (there is no separate button).
+const leaveFloor = () => act(() => void runHeaderBackOverride());
 function openFloor(name = "Floor A") {
   fireEvent.click(screen.getByText(name, { exact: true }));
   click("Edit");
@@ -174,9 +177,9 @@ describe("trace saves belong to their original editing session", () => {
     await startNewTrace();
     click("Save trace");
     const saving = harness.calls.find((call) => call.name === "addRoom")!;
-    click("Back to rooms");
+    leaveFloor();
     openFloor("Floor B");
-    click("Back to rooms");
+    leaveFloor();
     openFloor();
     await startNewTrace();
     await act(async () => {

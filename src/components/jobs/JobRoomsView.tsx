@@ -30,6 +30,7 @@ import { roomLabelPoint, toPolygon } from "~/lib/room-shape";
 import { useRoomTracePreview } from "./useRoomTracePreview";
 import { api } from "~/trpc/react";
 import { confirmAction } from "~/components/ui/app-dialogs";
+import { useHeaderBackOverride } from "~/lib/header-back-events";
 
 export function JobRoomsView({ jobId }: { jobId: string }) {
   const roomEditVersions = useRef(new Map<string, number>());
@@ -244,6 +245,20 @@ export function JobRoomsView({ jobId }: { jobId: string }) {
   }));
   const selectedFloor =
     floors.find((floor) => floor.id === selectedFloorId) ?? null;
+  // Short instructions only while an edit tool needs them.
+  const toolHint = createMode
+    ? "Drag on the plan to draw a new room."
+    : detectMode
+      ? traceMode === "include"
+        ? "Tap inside every part that belongs to the room. Switch to Exclude to carve away mistakes."
+        : "Tap regions that do not belong to the room, then save the preview."
+      : vertexMode === "add"
+        ? "Tap the plan to add a vertex there."
+        : vertexMode === "delete"
+          ? "Tap a vertex to delete it."
+          : editingRoomId
+            ? "Drag corners to reshape. Use Add/Delete vertex for extra control."
+            : null;
   const uploadLabel = uploading
     ? "Processing PDF..."
     : data?.plan || floors.length > 0
@@ -317,6 +332,7 @@ export function JobRoomsView({ jobId }: { jobId: string }) {
 
   const closeFloorViewer = () => {
     flushFloorRename();
+    setIsRoomListOpen(false);
     setSelectedFloorId(null);
     setSelectedRoomId(null);
     setEditingRoomId(null);
@@ -330,6 +346,14 @@ export function JobRoomsView({ jobId }: { jobId: string }) {
     setVertexMode(null);
     setEditMode(false);
   };
+  // The app bar back arrow steps out of a room, then out of the floor plan.
+  useHeaderBackOverride(
+    selectedRoom
+      ? () => setSelectedRoomId(null)
+      : selectedFloor
+        ? closeFloorViewer
+        : null,
+  );
 
   const exitEditMode = () => {
     flushFloorRename();
@@ -796,27 +820,11 @@ export function JobRoomsView({ jobId }: { jobId: string }) {
                       {selectedFloor.name}
                     </div>
                   )}
-                  <p className="text-muted-foreground mt-1 text-sm">
-                        {createMode
-                          ? "Drag on the plan to draw a new room."
-                          : detectMode
-                            ? traceMode === "include"
-                              ? "Tap inside every part that belongs to the room. Switch to Exclude to carve away mistakes."
-                              : "Tap regions that do not belong to the room, then save the preview."
-                            : vertexMode === "add"
-                              ? "Tap the plan to add a vertex there."
-                              : vertexMode === "delete"
-                                ? "Tap a vertex to delete it."
-                                : editingRoomId
-                                  ? "Drag corners to reshape. Use Add/Delete vertex for extra control."
-                                  : isDetecting
-                                    ? "Detecting rooms on this floor. Leave this screen open."
-                                    : editMode
-                                      ? "Tap a room to reshape it, or use the tools to add, detect, or delete rooms."
-                                      : canManage
-                                        ? "Pinch to zoom. Two fingers to scroll. Tap Edit to change rooms."
-                                        : "Pinch to zoom. Two fingers to scroll. Tap a room to open it."}
-                      </p>
+                  {toolHint ? (
+                    <p className="text-muted-foreground mt-1 text-sm">
+                      {toolHint}
+                    </p>
+                  ) : null}
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {canManage ? (
@@ -1030,13 +1038,6 @@ export function JobRoomsView({ jobId }: { jobId: string }) {
                   ) : null}
                 </div>
               </div>
-              <Button
-                    type="button"
-                    variant="outline"
-                    onClick={closeFloorViewer}
-                  >
-                    Back to rooms
-                  </Button>
             </div>
           </div>
           {detectError || traceError ? (
@@ -1074,7 +1075,7 @@ export function JobRoomsView({ jobId }: { jobId: string }) {
           {detectMode && tracePending ? (
             <p role="status" className="text-muted-foreground shrink-0 px-1 text-sm">Tracing room…</p>
           ) : null}
-          {currentDetectMessage ? (
+          {currentDetectMessage && editMode ? (
             <div className="max-h-36 shrink-0 overflow-y-auto rounded-md border bg-slate-950 font-mono text-xs text-slate-100">
               <div className="sticky top-0 z-10 flex items-start gap-2 border-b border-slate-700 bg-slate-950 px-3 py-2 text-sm font-semibold text-emerald-300">
                     {isDetecting ? (
@@ -1360,7 +1361,7 @@ export function JobRoomsView({ jobId }: { jobId: string }) {
                     className="flex w-full items-center justify-between gap-2 px-2 py-3 text-left sm:px-3"
                   >
                 <div className="text-sm font-semibold">
-                  Spaces highlighted ({selectedFloor.rooms.length})
+                  Room list ({selectedFloor.rooms.length})
                 </div>
                 {isRoomListOpen ? (
                   <ChevronDown className="text-muted-foreground h-4 w-4 shrink-0" />

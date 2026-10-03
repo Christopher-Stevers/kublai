@@ -39,6 +39,7 @@ import { useOnlineStatus } from "~/hooks/use-online-status";
 import {
   HEADER_BACK_STATE_EVENT,
   requestHeaderBack,
+  runHeaderBackOverride,
   type HeaderBackStateDetail,
 } from "~/lib/header-back-events";
 import { useInstallPrompt } from "~/lib/install-prompt";
@@ -171,6 +172,7 @@ function HeaderFrame({
   };
 
   const handleBack = () => {
+    if (runHeaderBackOverride()) return;
     if (showRequestedBackButton) {
       requestHeaderBack();
       return;
