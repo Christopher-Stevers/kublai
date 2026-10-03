@@ -27,6 +27,7 @@ import {
 import { useThemePreference } from "~/components/app/ThemeProvider";
 import { type ThemePreference } from "~/lib/theme";
 import { FormSkeleton } from "~/components/ui/skeleton";
+import { PasswordSettings } from "~/components/account/PasswordSettings";
 
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
@@ -226,6 +227,8 @@ export default function AccountPage() {
               </Button>
             </CardContent>
           </Card>
+
+          <PasswordSettings isOnline={isOnline} />
 
           <Card>
             <CardHeader>
