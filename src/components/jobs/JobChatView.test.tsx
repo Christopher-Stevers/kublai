@@ -120,7 +120,7 @@ function message(sequence: number, body = `Message ${sequence}`): ChatMessage {
   };
 }
 async function openChat() {
-  const view = render(<JobChatView jobId="job-one" jobName="Alma" />);
+  const view = render(<JobChatView jobId="job-one" />);
   await waitFor(() =>
     expect(screen.getByRole("textbox", { name: "Message" })).not.toBeDisabled(),
   );
@@ -225,7 +225,7 @@ describe("job chat delivery and scrolling", () => {
     expect(screen.getByRole("button", { name: "Send message" })).toBeDisabled();
     expect(mock.markRead).not.toHaveBeenCalled();
     mock.online = true;
-    view.rerender(<JobChatView jobId="job-one" jobName="Alma" />);
+    view.rerender(<JobChatView jobId="job-one" />);
     expect(screen.getByRole("textbox", { name: "Message" })).toHaveValue(
       "Offline draft",
     );
@@ -267,7 +267,7 @@ describe("job chat delivery and scrolling", () => {
       messages: [...mock.history.messages, message(3)],
       latestSequence: 3,
     };
-    view.rerender(<JobChatView jobId="job-one" jobName="Alma" />);
+    view.rerender(<JobChatView jobId="job-one" />);
     expect(timeline.scrollTop).toBe(100);
     expect(mock.markRead).not.toHaveBeenCalled();
     fireEvent.click(
@@ -308,7 +308,7 @@ describe("job chat delivery and scrolling", () => {
       target: { value: "Private draft" },
     });
     mock.userId = "user-two";
-    view.rerender(<JobChatView jobId="job-one" jobName="Alma" />);
+    view.rerender(<JobChatView jobId="job-one" />);
     await waitFor(() =>
       expect(
         screen.getByRole("textbox", { name: "Message" }),
@@ -432,7 +432,7 @@ describe("job chat delivery and scrolling", () => {
       nextBeforeSequence: 2,
       latestSequence: 3,
     };
-    view.rerender(<JobChatView jobId="job-one" jobName="Alma" />);
+    view.rerender(<JobChatView jobId="job-one" />);
     await waitFor(() =>
       expect(screen.getByText("Message 3")).toBeInTheDocument(),
     );

@@ -45,38 +45,28 @@ function nearBottom(element: HTMLElement) {
   return element.scrollHeight - element.scrollTop - element.clientHeight < 90;
 }
 
-export function JobChatView({
-  jobId,
-  jobName,
-}: {
-  jobId: string;
-  jobName?: string;
-}) {
+export function JobChatView({ jobId }: { jobId: string }) {
   const { userId, isLoaded } = useAuth();
-  if (!isLoaded)
-    return (
-      <p role="status" className="p-4">
-        Loading chat…
-      </p>
-    );
-  if (!userId) return <p className="p-4">Sign in to open job chat.</p>;
   return (
-    <ChatLobby
-      key={`${userId}:${jobId}`}
-      jobId={jobId}
-      jobName={jobName}
-      userId={userId}
-    />
+    <div className="bg-card fixed inset-x-0 top-14 bottom-0 z-30 overflow-hidden sm:top-16">
+      {!isLoaded ? (
+        <p role="status" className="p-4">
+          Loading chat…
+        </p>
+      ) : userId ? (
+        <ChatLobby key={`${userId}:${jobId}`} jobId={jobId} userId={userId} />
+      ) : (
+        <p className="p-4">Sign in to open job chat.</p>
+      )}
+    </div>
   );
 }
 
 function ChatLobby({
   jobId,
-  jobName,
   userId,
 }: {
   jobId: string;
-  jobName?: string;
   userId: string;
 }) {
   const online = useOnlineStatus();
@@ -162,11 +152,11 @@ function ChatLobby({
     const resize = () => {
       if (!panel.current) return;
       const viewport = window.visualViewport;
-      const height = viewport?.height ?? window.innerHeight;
-      const top =
-        panel.current.getBoundingClientRect().top - (viewport?.offsetTop ?? 0);
+      const bottom =
+        (viewport?.offsetTop ?? 0) +
+        (viewport?.height ?? window.innerHeight);
       setPanelHeight(
-        Math.max(180, Math.min(864, height - Math.max(0, top) - 8)),
+        Math.max(0, bottom - panel.current.getBoundingClientRect().top),
       );
     };
     const frame = requestAnimationFrame(resize);
@@ -669,23 +659,18 @@ function ChatLobby({
         {accessError.message}
       </p>
     );
-  const displayJobName = jobName ?? overview.data?.jobName;
-
   return (
     <section
       ref={panel}
       aria-label="Job chat"
-      className="bg-card flex min-h-0 flex-col overflow-hidden rounded-xl border"
-      style={{
-        height: panelHeight ?? "calc(100dvh - 10rem)",
-        maxHeight: "54rem",
-      }}
+      className="bg-card flex h-full w-full min-h-0 flex-col overflow-hidden"
+      style={{ height: panelHeight }}
     >
-      <header className="shrink-0 space-y-2 border-b px-3 py-3 sm:px-4">
+      <header className="min-h-0 shrink space-y-2 overflow-y-auto border-b px-3 py-3 sm:px-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="min-w-0">
             <h1 className="truncate text-lg font-semibold">
-              {displayJobName ? `${displayJobName} · Chat` : "Job chat"}
+              Chat
             </h1>
             <p className="text-muted-foreground text-xs">
               {!online
@@ -1009,7 +994,7 @@ function ChatLobby({
           Jump to latest messages ↓
         </button>
       )}
-      <footer className="bg-card shrink-0 border-t px-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+      <footer className="bg-card max-h-full shrink-0 overflow-y-auto border-t px-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
         {currentError && (
           <p role="alert" className="text-destructive mb-2 text-sm">
             {currentError}

@@ -19,9 +19,5 @@ export default function JobChatPage({
   useEffect(() => {
     setLastJobWorkspaceLocation({ jobId, view: "chat", materialListId: null });
   }, [jobId]);
-  return (
-    <div className="mx-auto max-w-5xl px-2 py-3 sm:px-6">
-      <JobChatView key={jobId} jobId={jobId} />
-    </div>
-  );
+  return <JobChatView key={jobId} jobId={jobId} />;
 }

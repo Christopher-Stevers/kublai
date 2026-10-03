@@ -395,6 +395,10 @@ export function DashboardClient({
 
   if (hasFetchedUser && userData && !userData.organizationId) return null;
 
+  if (offlineJobId && !offlineMaterialListId && offlineJobView === "chat") {
+    return <JobChatView key={offlineJobId} jobId={offlineJobId} />;
+  }
+
   if (offlineJobId) {
     const fallbackJob = jobs.find((job) => job.id === offlineJobId) ?? null;
     const offlineJob = offlineJobDetail?.job ?? fallbackJob;
@@ -621,8 +625,6 @@ export function DashboardClient({
                     });
                   }}
                 />
-              ) : offlineJobView === "chat" ? (
-                <JobChatView key={offlineJob.id} jobId={offlineJob.id} jobName={offlineJob.name} />
               ) : offlineJobView === "rooms" ? (
                 <JobRoomsView jobId={offlineJob.id} />
               ) : (
