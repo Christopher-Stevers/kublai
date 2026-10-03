@@ -244,6 +244,11 @@ export function JobRoomsView({ jobId }: { jobId: string }) {
   }));
   const selectedFloor =
     floors.find((floor) => floor.id === selectedFloorId) ?? null;
+  const uploadLabel = uploading
+    ? "Processing PDF..."
+    : data?.plan || floors.length > 0
+      ? "Upload additional drawings"
+      : "Upload drawings";
   const selectedRoom =
     selectedFloor?.rooms.find((room) => room.id === selectedRoomId) ?? null;
   const reviewedRoom =
@@ -572,14 +577,7 @@ export function JobRoomsView({ jobId }: { jobId: string }) {
       {!selectedFloor ? (
         <>
           <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h2 className="text-foreground text-xl font-semibold">Rooms</h2>
-              <p className="text-muted-foreground mt-1 text-sm">
-            {canManage
-              ? "Upload drawings (up to 100 pages, 100 MB per PDF). Review each sheet, then rooms are detected on the ones you keep."
-              : "Pick a floor, then tap a room."}
-          </p>
-            </div>
+            <h2 className="text-foreground text-xl font-semibold">Rooms</h2>
             {canManage ? (
           <>
             <input
@@ -593,19 +591,27 @@ export function JobRoomsView({ jobId }: { jobId: string }) {
                 if (file) void handleUpload(file);
               }}
             />
+            {/* Inline on wider screens; phones get the bottom bar below. */}
             <Button
               onClick={() => fileRef.current?.click()}
               disabled={uploading}
               size="lg"
-              className="h-11 w-full sm:w-auto"
+              className="hidden h-11 sm:inline-flex sm:w-auto"
             >
               <UploadIcon className="mr-2 h-5 w-5" />
-              {uploading
-                ? "Processing PDF..."
-                : data?.plan || floors.length > 0
-                  ? "Upload additional drawings"
-                  : "Upload drawings"}
+              {uploadLabel}
             </Button>
+            <div className="bg-background fixed inset-x-0 bottom-0 z-40 border-t px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:hidden">
+              <Button
+                onClick={() => fileRef.current?.click()}
+                disabled={uploading}
+                size="lg"
+                className="h-12 w-full"
+              >
+                <UploadIcon className="mr-2 h-5 w-5" />
+                {uploadLabel}
+              </Button>
+            </div>
           </>
         ) : null}
           </div>
