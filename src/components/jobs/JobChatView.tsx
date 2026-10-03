@@ -58,7 +58,7 @@ const LONG_PRESS_MS = 450;
 const CHECKER_PLATE = {
   backgroundImage: "url(/images/chat-checker-plate.webp)",
   backgroundSize: "96px 96px",
-  backgroundColor: "#a9b6c6",
+  backgroundColor: "#879cb9",
 };
 
 /** Opens a message's actions on a long press (touch or mouse) or right-click. */
@@ -1091,7 +1091,10 @@ function ChatBubble({
   replied: ChatMessage | undefined;
   onActions: () => void;
 }) {
-  const press = useLongPress(onActions);
+  // Deleted messages have nothing to reply to, copy or delete.
+  const press = useLongPress(() => {
+    if (!message.deletedAt) onActions();
+  });
   return (
     <article
       id={`chat-message-${message.id}`}

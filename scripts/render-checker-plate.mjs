@@ -62,7 +62,7 @@ for (let gy = 0; gy < cells; gy++)
 const light = [-0.5, -0.6, 0.62];
 const ln = Math.hypot(...light);
 const [lx, ly, lz] = light.map((c) => c / ln);
-const tint = [0.86, 0.93, 1.04]; // cool, slightly blue aluminium
+const tint = [0.8, 0.9, 1.06]; // cool, slightly blue aluminium
 const brand = [76, 107, 140]; // ~ oklch(0.5 0.075 250)
 const raw = Buffer.alloc(N * N * 3);
 const H = 5 * SS; // bump strength
@@ -87,7 +87,7 @@ for (let y = 0; y < N; y++)
     const shade = base * (0.55 + 0.6 * diffuse) + spec;
     for (let c = 0; c < 3; c++) {
       const metal = shade * 255 * tint[c];
-      const v = metal * 0.88 + brand[c] * 0.12 * (shade + 0.2);
+      const v = metal * 0.8 + brand[c] * 0.2 * (shade + 0.2);
       raw[i * 3 + c] = Math.max(0, Math.min(255, Math.round(v)));
     }
   }
