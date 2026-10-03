@@ -44,6 +44,12 @@ function writeHistory(
   );
 }
 
+/** Start a fresh Jobs screen without discarding Next's browser history metadata. */
+export function resetJobWorkspaceNavigation() {
+  clearLastJobWorkspaceLocation();
+  writeHistory("replaceState", null);
+}
+
 export function useJobWorkspaceNavigation() {
   const [location, setLocation] = useState<JobWorkspaceLocation | null>(null);
 

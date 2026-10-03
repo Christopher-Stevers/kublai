@@ -1,3 +1,4 @@
+import { TutorialGate } from "~/components/tutorial/TutorialGate";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { HydrateClient } from "~/trpc/server";
@@ -48,15 +49,21 @@ export default async function DashboardLayout({
 
   return (
     <HydrateClient>
-      <div className="bg-muted/50 flex min-h-screen flex-col">
-        <ReplicacheSyncBootstrap
-          userId={effectiveUserId}
-          organizationId={organizationId}
-        />
-        <Header />
-        <TabAccessGate />
-        <main className="flex-1">{children}</main>
-      </div>
+      <TutorialGate
+        key={effectiveUserId}
+        userId={effectiveUserId}
+        initialCompleted={!!user.tutorialCompletedAt}
+      >
+        <div className="bg-muted/50 flex min-h-screen flex-col">
+          <ReplicacheSyncBootstrap
+            userId={effectiveUserId}
+            organizationId={organizationId}
+          />
+          <Header />
+          <TabAccessGate />
+          <main className="flex-1">{children}</main>
+        </div>
+      </TutorialGate>
     </HydrateClient>
   );
 }

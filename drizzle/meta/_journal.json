@@ -153,6 +153,13 @@
       "when": 1791054576160,
       "tag": "0045_material_room",
       "breakpoints": false
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1791054576161,
+      "tag": "0046_user_tutorial",
+      "breakpoints": false
     }
   ]
 }

@@ -1,0 +1,22 @@
+.spotlight {
+  border: 2px solid var(--primary);
+  border-radius: 0.875rem;
+  padding: 0.75rem;
+  animation: guide-pulse 2.8s ease-in-out infinite;
+}
+
+@keyframes guide-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 10%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 0 6px color-mix(in srgb, var(--primary) 22%, transparent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spotlight {
+    animation: none;
+  }
+}

@@ -26,6 +26,8 @@ export type RequestUser = {
   subscriptionEndsAt: Date | null;
   oneTimePurchaseDate: Date | null;
   currentJobId: string | null;
+  tutorialCompletedAt: Date | null;
+  tutorialOutcome: "completed" | "skipped" | null;
   createdAt: Date;
   updatedAt: Date;
 };

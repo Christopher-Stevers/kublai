@@ -59,6 +59,10 @@ export const users = createTable("user", (d) => ({
   subscriptionEndsAt: d.timestamp({ withTimezone: true }),
   oneTimePurchaseDate: d.timestamp({ withTimezone: true }),
 
+  // The tutorial uses isolated client demo state; only its terminal state is persisted.
+  tutorialCompletedAt: d.timestamp({ withTimezone: true }),
+  tutorialOutcome: d.varchar({ length: 20 }).$type<"completed" | "skipped">(),
+
   // Current job preference
   currentJobId: d.uuid().references(() => jobs.id, { onDelete: "set null" }),
 

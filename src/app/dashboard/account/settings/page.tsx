@@ -1,5 +1,6 @@
 "use client";
 
+import { RestartTutorialCard } from "~/components/tutorial/TutorialGate";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import Link from "next/link";
@@ -63,6 +64,8 @@ export default function SettingsPage() {
           this device.
         </p>
       </div>
+
+      <RestartTutorialCard />
 
       <Card>
         <CardHeader>
