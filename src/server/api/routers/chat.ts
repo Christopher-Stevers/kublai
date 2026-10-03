@@ -2,13 +2,12 @@ import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { assertChatAccess } from "~/server/chat/access";
 import {
-  bodyInput,
   chatSequence,
   jobInput,
   sendInput,
 } from "~/server/chat/contracts";
 import {
-  changeChatMessage,
+  deleteChatMessage,
   chatHistory,
   chatMembers,
   chatOverview,
@@ -39,15 +38,10 @@ export const chatRouter = createTRPCRouter({
   send: chatProcedure
     .input(sendInput)
     .mutation(({ ctx, input }) => sendChatMessage(ctx.chat, input)),
-  edit: chatProcedure
-    .input(z.object({ messageId: z.uuid(), body: bodyInput.min(1) }))
-    .mutation(({ ctx, input }) =>
-      changeChatMessage(ctx.chat, input.messageId, input.body),
-    ),
   delete: chatProcedure
     .input(z.object({ messageId: z.uuid() }))
     .mutation(async ({ ctx, input }) => {
-      await changeChatMessage(ctx.chat, input.messageId, null);
+      await deleteChatMessage(ctx.chat, input.messageId);
       return { success: true as const };
     }),
   markRead: chatProcedure

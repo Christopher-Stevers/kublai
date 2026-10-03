@@ -1,4 +1,5 @@
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -16,7 +17,6 @@ const mock = vi.hoisted(() => ({
   saved: null as unknown,
   saveDraft: vi.fn().mockResolvedValue(undefined),
   send: vi.fn(),
-  edit: vi.fn(),
   remove: vi.fn(),
   join: vi.fn(),
   markRead: vi.fn().mockResolvedValue({}),
@@ -89,9 +89,6 @@ vi.mock("~/trpc/react", () => ({
       send: {
         useMutation: () => ({ mutateAsync: mock.send, isPending: false }),
       },
-      edit: {
-        useMutation: () => ({ mutateAsync: mock.edit, isPending: false }),
-      },
       delete: {
         useMutation: () => ({ mutateAsync: mock.remove, isPending: false }),
       },
@@ -118,6 +115,20 @@ function message(sequence: number, body = `Message ${sequence}`): ChatMessage {
     deletedAt: null,
     attachments: [],
   };
+}
+function longPress(element: HTMLElement) {
+  vi.useFakeTimers();
+  try {
+    fireEvent.pointerDown(element, {
+      pointerType: "touch",
+      clientX: 5,
+      clientY: 5,
+    });
+    act(() => vi.advanceTimersByTime(500));
+    fireEvent.pointerUp(element);
+  } finally {
+    vi.useRealTimers();
+  }
 }
 async function openChat() {
   const view = render(<JobChatView jobId="job-one" />);
@@ -366,7 +377,7 @@ describe("job chat delivery and scrolling", () => {
     );
   });
 
-  it("includes the selected reply and keeps other people's messages read-only", async () => {
+  it("hides message actions until a long press, then replies and keeps other people's messages read-only", async () => {
     mock.send.mockImplementationOnce(
       async (input: { body: string; clientId: string; replyToId: string }) => ({
         ...message(3, input.body),
@@ -376,13 +387,12 @@ describe("job chat delivery and scrolling", () => {
       }),
     );
     await openChat();
-    expect(
-      screen.queryByRole("button", { name: "Edit" }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: "Delete" }),
-    ).not.toBeInTheDocument();
-    fireEvent.click(screen.getAllByRole("button", { name: "Reply" })[0]!);
+    expect(screen.queryByRole("menuitem", { name: "Reply" })).toBeNull();
+    longPress(screen.getByText("Message 1"));
+    expect(screen.queryByRole("menuitem", { name: "Edit" })).toBeNull();
+    expect(screen.queryByRole("menuitem", { name: "Delete" })).toBeNull();
+    fireEvent.click(screen.getByRole("menuitem", { name: "Reply" }));
+    expect(screen.queryByRole("menu")).toBeNull();
     fireEvent.change(screen.getByRole("textbox", { name: "Message" }), {
       target: { value: "Agreed" },
     });
@@ -394,23 +404,13 @@ describe("job chat delivery and scrolling", () => {
     );
   });
 
-  it("lets an Executive edit and delete a job message", async () => {
+  it("lets an Executive delete a job message from the long-press menu, with no editing", async () => {
     mock.overview.canModerate = true;
-    mock.edit.mockResolvedValue({
-      ...message(1, "Corrected detail"),
-      editedAt: new Date(),
-    });
     mock.remove.mockResolvedValue({ success: true });
     await openChat();
-    fireEvent.click(screen.getAllByRole("button", { name: "Edit" })[0]!);
-    fireEvent.change(screen.getByRole("textbox", { name: "Edit message" }), {
-      target: { value: "Corrected detail" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
-    await waitFor(() =>
-      expect(screen.getByText("Corrected detail")).toBeInTheDocument(),
-    );
-    fireEvent.click(screen.getAllByRole("button", { name: "Delete" })[0]!);
+    fireEvent.contextMenu(screen.getByText("Message 1"));
+    expect(screen.queryByRole("menuitem", { name: "Edit" })).toBeNull();
+    fireEvent.click(screen.getByRole("menuitem", { name: "Delete" }));
     await waitFor(() =>
       expect(screen.getByText("Message deleted")).toBeInTheDocument(),
     );

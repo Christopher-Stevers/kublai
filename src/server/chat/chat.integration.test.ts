@@ -48,7 +48,7 @@ import {
   checkChatAccess,
 } from "./access";
 import {
-  changeChatMessage,
+  deleteChatMessage,
   chatHistory,
   chatMembers,
   chatOverview,
@@ -118,7 +118,7 @@ describe("job chat access and contracts", () => {
     ).toThrow("Job not found");
     expect(checkChatAccess(baseUser, baseJob).user.id).toBe(author);
   });
-  it("allows only the author or an Executive to edit/delete", () => {
+  it("allows only the author or an Executive to delete", () => {
     const access = checkChatAccess(baseUser, baseJob);
     expect(() => assertMessageOwner(access, coworker)).toThrow();
     expect(() => assertMessageOwner(access, author)).not.toThrow();
@@ -349,33 +349,26 @@ describe.skipIf(!socket)(
       expect(after.sequence).toBeGreaterThan(messages[6]!.sequence);
       expect((await chatOverview(access)).unreadCount).toBe(1);
     });
-    it("tombstones edits/deletes in durable events and enforces ownership", async () => {
+    it("tombstones deletes in durable events and enforces ownership", async () => {
       const message = await send();
       const authorAccess = await assertChatAccess(author, job);
       const coworkerAccess = await assertChatAccess(coworker, job);
       await expect(
-        changeChatMessage(coworkerAccess, message.id, "Hijack"),
+        deleteChatMessage(coworkerAccess, message.id),
       ).rejects.toMatchObject({ code: "FORBIDDEN" });
-      expect(
-        (await changeChatMessage(authorAccess, message.id, "Edited")).editedAt,
-      ).toBeInstanceOf(Date);
-      const deleted = await changeChatMessage(
+      const deleted = await deleteChatMessage(
         await assertChatAccess(executive, job),
         message.id,
-        null,
       );
       expect(deleted.body).toBe("");
       expect(deleted.attachments).toEqual([]);
       expect(deleted.deletedAt).toBeInstanceOf(Date);
-      await changeChatMessage(authorAccess, message.id, null);
-      await expect(
-        changeChatMessage(authorAccess, message.id, "Revive"),
-      ).rejects.toMatchObject({ code: "CONFLICT" });
+      await deleteChatMessage(authorAccess, message.id);
       expect(
         (await fixtureDb.select().from(schema.jobChatEvents)).map(
           (e) => e.type,
         ),
-      ).toEqual(["created", "edited", "deleted"]);
+      ).toEqual(["created", "deleted"]);
       expect((await chatOverview(coworkerAccess)).unreadCount).toBe(0);
     });
     it("refuses replies and attachments from another job/user or an expired upload", async () => {
@@ -455,7 +448,7 @@ describe.skipIf(!socket)(
         }),
       ).rejects.toMatchObject({ code: "BAD_REQUEST" });
       expect(
-        (await changeChatMessage(access, message.id, null)).attachments,
+        (await deleteChatMessage(access, message.id)).attachments,
       ).toEqual([]);
     });
     it("keeps pending uploads private, shares sent files only within the job, and revokes tombstones", async () => {
@@ -494,7 +487,7 @@ describe.skipIf(!socket)(
       await expect(
         deletePendingAttachment(author, attachment.id),
       ).rejects.toMatchObject({ code: "CONFLICT" });
-      await changeChatMessage(access, message.id, null);
+      await deleteChatMessage(access, message.id);
       await expect(
         readChatAttachment(coworker, attachment.id),
       ).rejects.toMatchObject({ code: "NOT_FOUND" });

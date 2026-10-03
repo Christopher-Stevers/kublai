@@ -322,11 +322,8 @@ export async function sendChatMessage(
   if (result.created) publishChatEvent(access.job.id);
   return messageById(access.job.id, result.id);
 }
-export async function changeChatMessage(
-  access: ChatAccess,
-  messageId: string,
-  body: string | null,
-) {
+/** Messages cannot be edited; deleting leaves a tombstone for everyone. */
+export async function deleteChatMessage(access: ChatAccess, messageId: string) {
   await db.transaction(async (tx) => {
     await lockChatJob(tx, access.job.id);
     const [message] = await tx
@@ -341,26 +338,15 @@ export async function changeChatMessage(
       .limit(1);
     if (!message) throw new TRPCError({ code: "NOT_FOUND" });
     assertMessageOwner(access, message.authorId);
-    if (message.deletedAt) {
-      if (body === null) return; // Repeated delete is safe.
-      throw new TRPCError({
-        code: "CONFLICT",
-        message: "This message was deleted.",
-      });
-    }
-    if (body !== null && body === message.body) return;
+    if (message.deletedAt) return; // Repeated delete is safe.
     await tx
       .update(jobChatMessages)
-      .set(
-        body === null
-          ? { deletedAt: sql`now()`, body: "" }
-          : { body, editedAt: sql`now()` },
-      )
+      .set({ deletedAt: sql`now()`, body: "" })
       .where(eq(jobChatMessages.id, messageId));
     await tx.insert(jobChatEvents).values({
       jobId: access.job.id,
       messageId,
-      type: body === null ? "deleted" : "edited",
+      type: "deleted",
     });
   });
   publishChatEvent(access.job.id);

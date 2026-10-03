@@ -9,14 +9,17 @@ import {
   useRef,
   useState,
 } from "react";
+import { createPortal } from "react-dom";
 import {
   BellOffIcon,
   BellRingIcon,
+  CopyIcon,
   FileIcon,
   Loader2Icon,
   PaperclipIcon,
   ReplyIcon,
   SendIcon,
+  Trash2Icon,
   UsersIcon,
   WifiOffIcon,
   XIcon,
@@ -50,6 +53,73 @@ function errorText(error: unknown) {
 }
 function nearBottom(element: HTMLElement) {
   return element.scrollHeight - element.scrollTop - element.clientHeight < 90;
+}
+const LONG_PRESS_MS = 450;
+const CHECKER_PLATE = {
+  backgroundImage: "url(/images/chat-checker-plate.webp)",
+  backgroundSize: "96px 96px",
+  backgroundColor: "#a9b6c6",
+};
+
+/** Opens a message's actions on a long press (touch or mouse) or right-click. */
+function useLongPress(onLongPress: () => void) {
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const start = useRef<{ x: number; y: number } | null>(null);
+  const fired = useRef(false);
+  const cancel = () => {
+    clearTimeout(timer.current);
+    start.current = null;
+  };
+  useEffect(() => () => clearTimeout(timer.current), []);
+  return {
+    onPointerDown: (event: React.PointerEvent) => {
+      if (event.pointerType === "mouse" && event.button !== 0) return;
+      fired.current = false;
+      start.current = { x: event.clientX, y: event.clientY };
+      clearTimeout(timer.current);
+      timer.current = setTimeout(() => {
+        fired.current = true;
+        start.current = null;
+        navigator.vibrate?.(10);
+        onLongPress();
+      }, LONG_PRESS_MS);
+    },
+    onPointerMove: (event: React.PointerEvent) => {
+      if (
+        start.current &&
+        Math.hypot(
+          event.clientX - start.current.x,
+          event.clientY - start.current.y,
+        ) > 10
+      )
+        cancel();
+    },
+    onPointerUp: cancel,
+    onPointerCancel: cancel,
+    onPointerLeave: cancel,
+    onContextMenu: (event: React.MouseEvent) => {
+      event.preventDefault();
+      cancel();
+      if (!fired.current) onLongPress();
+      fired.current = true;
+    },
+    // The press that opened the menu must not also open an attachment.
+    onClickCapture: (event: React.MouseEvent) => {
+      if (!fired.current) return;
+      event.preventDefault();
+      event.stopPropagation();
+      fired.current = false;
+    },
+    onKeyDown: (event: React.KeyboardEvent) => {
+      if (
+        event.target === event.currentTarget &&
+        (event.key === "Enter" || event.key === "ContextMenu")
+      ) {
+        event.preventDefault();
+        onLongPress();
+      }
+    },
+  };
 }
 
 export function JobChatView({ jobId }: { jobId: string }) {
@@ -88,9 +158,8 @@ function ChatLobby({ jobId, userId }: { jobId: string; userId: string }) {
   const [error, setError] = useState("");
   const [sending, setSending] = useState(false);
   const sendingRef = useRef(false);
-  const [editing, setEditing] = useState<{ id: string; body: string } | null>(
-    null,
-  );
+  const [showBell, setShowBell] = useState(false);
+  const [actionsFor, setActionsFor] = useState<ChatMessage | null>(null);
   const [atBottom, setAtBottom] = useState(true);
   const atBottomRef = useRef(true);
   const panel = useRef<HTMLElement>(null);
@@ -134,7 +203,6 @@ function ChatLobby({ jobId, userId }: { jobId: string; userId: string }) {
   );
   const join = api.chat.join.useMutation();
   const send = api.chat.send.useMutation();
-  const edit = api.chat.edit.useMutation();
   const remove = api.chat.delete.useMutation();
   const markRead = api.chat.markRead.useMutation();
   const mute = api.chat.setNotifications.useMutation();
@@ -605,19 +673,14 @@ function ChatLobby({ jobId, userId }: { jobId: string; userId: string }) {
       attachments: draft.attachments.filter((file) => file.localId !== localId),
     });
   }
-  async function editMessage() {
-    if (!editing || !online) return;
-    try {
-      const message = await edit.mutateAsync({
-        jobId,
-        messageId: editing.id,
-        body: editing.body,
-      });
-      storeMessage(message);
-      setEditing(null);
-    } catch (reason) {
-      setError(errorText(reason));
-    }
+  function replyTo(message: ChatMessage) {
+    changeDraft({
+      ...draftRef.current,
+      replyToId: message.id,
+      replyName: message.author.name,
+      replyBody: message.body || "Attachment",
+    });
+    composer.current?.focus();
   }
   async function deleteMessage(message: ChatMessage) {
     if (
@@ -666,23 +729,18 @@ function ChatLobby({ jobId, userId }: { jobId: string; userId: string }) {
       className="bg-card flex h-full min-h-0 w-full flex-col overflow-hidden"
       style={{ height: panelHeight }}
     >
-      <header className="min-h-0 shrink space-y-2 overflow-y-auto border-b px-3 py-3 sm:px-4">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="min-w-0">
-            <h1 className="truncate text-lg font-semibold">Chat</h1>
-            <p className="text-muted-foreground text-xs">
-              {!online
-                ? "Offline · messages are not being sent"
-                : connected
-                  ? "Live job conversation"
-                  : "Checking for new messages"}
-            </p>
-          </div>
+      <header className="min-h-0 shrink space-y-2 overflow-y-auto border-b px-3 py-2 sm:px-4">
+        <div className="flex items-center justify-between gap-2">
+          <h1 className="truncate text-lg font-semibold">Chat</h1>
           <div className="flex gap-1">
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => setShowMembers(!showMembers)}
+              onClick={() => {
+                setShowMembers(!showMembers);
+                setShowBell(false);
+              }}
+              aria-label="People"
               aria-expanded={showMembers}
             >
               <UsersIcon className="h-4 w-4" />
@@ -691,15 +749,11 @@ function ChatLobby({ jobId, userId }: { jobId: string; userId: string }) {
             <Button
               variant="ghost"
               size="sm"
-              aria-label={
-                overview.data?.muted ? "Unmute this job" : "Mute this job"
-              }
-              disabled={!online || !overview.data?.joined || mute.isPending}
+              aria-label="Notifications"
+              aria-expanded={showBell}
               onClick={() => {
-                void mute
-                  .mutateAsync({ jobId, muted: !overview.data?.muted })
-                  .then(() => utils.chat.getOverview.invalidate({ jobId }))
-                  .catch((reason: unknown) => setError(errorText(reason)));
+                setShowBell(!showBell);
+                setShowMembers(false);
               }}
             >
               {overview.data?.muted ? (
@@ -710,11 +764,32 @@ function ChatLobby({ jobId, userId }: { jobId: string; userId: string }) {
             </Button>
           </div>
         </div>
-        <ChatNotifications />
-        {overview.data?.muted && (
-          <p className="text-muted-foreground text-xs">
-            Notifications are muted for this job.
-          </p>
+        {showBell && (
+          <div
+            className="bg-muted/40 space-y-3 rounded-md p-3 text-sm"
+            aria-label="Notification settings"
+          >
+            <ChatNotifications />
+            <button
+              type="button"
+              className="inline-flex min-h-11 items-center gap-2 rounded-lg border px-3 py-2 disabled:opacity-50"
+              aria-pressed={overview.data?.muted === true}
+              disabled={!online || !overview.data?.joined || mute.isPending}
+              onClick={() => {
+                void mute
+                  .mutateAsync({ jobId, muted: !overview.data?.muted })
+                  .then(() => utils.chat.getOverview.invalidate({ jobId }))
+                  .catch((reason: unknown) => setError(errorText(reason)));
+              }}
+            >
+              {overview.data?.muted ? (
+                <BellRingIcon className="h-4 w-4" />
+              ) : (
+                <BellOffIcon className="h-4 w-4" />
+              )}
+              {overview.data?.muted ? "Unmute this job" : "Mute this job"}
+            </button>
+          </div>
         )}
         {showMembers && (
           <div
@@ -761,7 +836,8 @@ function ChatLobby({ jobId, userId }: { jobId: string; userId: string }) {
       )}
       <div
         ref={timeline}
-        className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-3 py-4 sm:px-4"
+        className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-4 sm:px-4"
+        style={CHECKER_PLATE}
         aria-label="Messages"
         onScroll={(event) => {
           const bottom = nearBottom(event.currentTarget);
@@ -770,10 +846,11 @@ function ChatLobby({ jobId, userId }: { jobId: string; userId: string }) {
         }}
       >
         {nextBefore != null && (
-          <div className="text-center">
+          <div className="mb-4 text-center">
             <Button
               variant="outline"
               size="sm"
+              className="shadow-sm"
               disabled={loadingOlder || !online}
               onClick={() => void loadOlder()}
             >
@@ -782,18 +859,16 @@ function ChatLobby({ jobId, userId }: { jobId: string; userId: string }) {
           </div>
         )}
         {history.isLoading && online && (
-          <p
-            role="status"
-            className="text-muted-foreground text-center text-sm"
-          >
-            Loading messages…
+          <p role="status" className="text-center">
+            <span className="rounded-full bg-black/35 px-3 py-1 text-sm text-white">
+              Loading messages…
+            </span>
           </p>
         )}
         {!history.isLoading && !messages.length && (
-          <div className="text-muted-foreground py-12 text-center">
-            <p>No messages loaded yet.</p>
-            <p className="mt-1 text-sm">
-              Share a job update, a photo or a question.
+          <div className="py-12 text-center">
+            <p className="bg-card/90 inline-block rounded-xl px-4 py-3 text-sm shadow-sm">
+              No messages yet. Share a job update, a photo or a question.
             </p>
           </div>
         )}
@@ -805,17 +880,17 @@ function ChatLobby({ jobId, userId }: { jobId: string; userId: string }) {
             createdAt.getTime() - new Date(previous.createdAt).getTime() >=
               10 * 60 * 1000;
           const mine = message.author.id === userId;
-          const mayChange = mine || overview.data?.canModerate === true;
-          const replied = message.replyToId
-            ? messages.find((item) => item.id === message.replyToId)
-            : null;
+          // Consecutive messages from one person read as a single group.
+          const grouped =
+            !showTimestamp && previous?.author.id === message.author.id;
           return (
             <Fragment key={message.id}>
               {showTimestamp && (
-                <div className="text-muted-foreground text-center text-xs">
+                <div className="my-3 text-center first:mt-0">
                   <time
                     dateTime={createdAt.toISOString()}
                     title={createdAt.toLocaleString()}
+                    className="rounded-full bg-black/35 px-2.5 py-0.5 text-[11px] font-medium text-white"
                   >
                     {createdAt.toLocaleString(undefined, {
                       month: "short",
@@ -826,177 +901,37 @@ function ChatLobby({ jobId, userId }: { jobId: string; userId: string }) {
                   </time>
                 </div>
               )}
-              <article
-                id={`chat-message-${message.id}`}
-                className={`flex gap-2 ${mine ? "flex-row-reverse" : ""}`}
-              >
-                <div
-                  className="bg-muted flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full text-xs font-semibold"
-                  aria-hidden="true"
-                >
-                  {message.author.image ? (
-                    <img
-                      src={message.author.image}
-                      alt=""
-                      className="h-full w-full object-cover"
-                      loading="lazy"
-                    />
-                  ) : (
-                    message.author.name.slice(0, 2).toUpperCase()
-                  )}
-                </div>
-                <div
-                  className={`max-w-[88%] min-w-0 rounded-xl px-3 py-2 sm:max-w-[80%] ${mine ? "bg-primary/10" : "bg-muted/60"}`}
-                >
-                  <div className="mb-1 flex flex-wrap items-baseline gap-x-2 text-xs">
-                    <span className="font-semibold">
-                      {mine ? "You" : message.author.name}
-                    </span>
-                    {message.editedAt && (
-                      <span className="text-muted-foreground">edited</span>
-                    )}
-                  </div>
-                  {message.deletedAt ? (
-                    <p className="text-muted-foreground text-sm italic">
-                      Message deleted
-                    </p>
-                  ) : (
-                    <>
-                      {message.replyToId && (
-                        <div className="border-primary/40 text-muted-foreground mb-2 border-l-2 pl-2 text-xs">
-                          {replied ? (
-                            <>
-                              <strong>{replied.author.name}</strong>
-                              <p className="line-clamp-2">
-                                {replied.deletedAt
-                                  ? "Message deleted"
-                                  : replied.body || "Attachment"}
-                              </p>
-                            </>
-                          ) : (
-                            "Reply to an earlier message"
-                          )}
-                        </div>
-                      )}
-                      {editing?.id === message.id ? (
-                        <div className="space-y-2">
-                          <textarea
-                            className="bg-background min-h-20 w-full rounded border p-2 text-base"
-                            aria-label="Edit message"
-                            maxLength={8000}
-                            value={editing.body}
-                            onChange={(event) =>
-                              setEditing({
-                                ...editing,
-                                body: event.target.value,
-                              })
-                            }
-                          />
-                          <div className="flex gap-2">
-                            <Button
-                              size="sm"
-                              onClick={() => void editMessage()}
-                              disabled={
-                                edit.isPending ||
-                                !online ||
-                                !editing.body.trim()
-                              }
-                            >
-                              Save
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setEditing(null)}
-                            >
-                              Cancel
-                            </Button>
-                          </div>
-                        </div>
-                      ) : (
-                        <p className="text-sm [overflow-wrap:anywhere] break-words whitespace-pre-wrap">
-                          {message.body}
-                        </p>
-                      )}
-                      {message.attachments.length > 0 && (
-                        <div className="mt-2 grid gap-2">
-                          {message.attachments.map((attachment) => (
-                            <a
-                              key={attachment.id}
-                              href={attachment.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="bg-background block overflow-hidden rounded-lg border text-sm"
-                              aria-label={`Open ${attachment.name}`}
-                            >
-                              {attachment.mimeType.startsWith("image/") ? (
-                                <img
-                                  src={attachment.url}
-                                  alt={attachment.name}
-                                  className="max-h-72 max-w-full object-contain"
-                                  loading="lazy"
-                                />
-                              ) : (
-                                <span className="flex items-center gap-2 p-3">
-                                  <FileIcon className="h-5 w-5 shrink-0" />
-                                  {attachment.name}
-                                </span>
-                              )}
-                            </a>
-                          ))}
-                        </div>
-                      )}
-                      <div className="text-muted-foreground mt-1 flex flex-wrap gap-3 text-xs">
-                        <button
-                          type="button"
-                          className="hover:text-foreground min-h-8"
-                          disabled={Boolean(lockedComposer)}
-                          onClick={() => {
-                            changeDraft({
-                              ...draft,
-                              replyToId: message.id,
-                              replyName: message.author.name,
-                              replyBody: message.body || "Attachment",
-                            });
-                            composer.current?.focus();
-                          }}
-                        >
-                          Reply
-                        </button>
-                        {mayChange && (
-                          <>
-                            <button
-                              type="button"
-                              className="hover:text-foreground min-h-8"
-                              disabled={!online || edit.isPending}
-                              onClick={() =>
-                                setEditing({
-                                  id: message.id,
-                                  body: message.body,
-                                })
-                              }
-                            >
-                              Edit
-                            </button>
-                            <button
-                              type="button"
-                              className="hover:text-destructive min-h-8"
-                              disabled={!online || remove.isPending}
-                              onClick={() => void deleteMessage(message)}
-                            >
-                              Delete
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    </>
-                  )}
-                </div>
-              </article>
+              <ChatBubble
+                message={message}
+                mine={mine}
+                grouped={grouped}
+                replied={
+                  message.replyToId
+                    ? messages.find((item) => item.id === message.replyToId)
+                    : undefined
+                }
+                onActions={() => setActionsFor(message)}
+              />
             </Fragment>
           );
         })}
       </div>
+      {actionsFor && (
+        <MessageActions
+          message={actionsFor}
+          canReply={!lockedComposer && !actionsFor.deletedAt}
+          canDelete={
+            online &&
+            !remove.isPending &&
+            !actionsFor.deletedAt &&
+            (actionsFor.author.id === userId ||
+              overview.data?.canModerate === true)
+          }
+          onClose={() => setActionsFor(null)}
+          onReply={() => replyTo(actionsFor)}
+          onDelete={() => void deleteMessage(actionsFor)}
+        />
+      )}
       {!atBottom && (
         <button
           className="bg-primary/5 text-primary shrink-0 border-y px-3 py-2 text-sm font-medium"
@@ -1140,5 +1075,197 @@ function ChatLobby({ jobId, userId }: { jobId: string; userId: string }) {
         </form>
       </footer>
     </section>
+  );
+}
+
+function ChatBubble({
+  message,
+  mine,
+  grouped,
+  replied,
+  onActions,
+}: {
+  message: ChatMessage;
+  mine: boolean;
+  grouped: boolean;
+  replied: ChatMessage | undefined;
+  onActions: () => void;
+}) {
+  const press = useLongPress(onActions);
+  return (
+    <article
+      id={`chat-message-${message.id}`}
+      className={`flex ${mine ? "justify-end" : "justify-start"} ${grouped ? "mt-1" : "mt-3"}`}
+    >
+      <div
+        {...press}
+        tabIndex={0}
+        aria-haspopup="menu"
+        aria-label={`Message from ${mine ? "you" : message.author.name}. Press and hold for options.`}
+        className={`focus-visible:ring-ring max-w-[85%] min-w-0 cursor-default rounded-2xl px-3 py-2 shadow-[0_1px_2px_rgba(15,23,42,0.25)] transition-transform outline-none select-none [-webkit-touch-callout:none] focus-visible:ring-2 active:scale-[0.99] sm:max-w-[70%] ${
+          mine
+            ? "bg-primary text-primary-foreground rounded-br-md"
+            : "bg-card text-card-foreground rounded-bl-md"
+        }`}
+      >
+        {!mine && !grouped && (
+          <p className="text-primary mb-0.5 text-xs font-semibold">
+            {message.author.name}
+          </p>
+        )}
+        {message.deletedAt ? (
+          <p className="text-sm italic opacity-70">Message deleted</p>
+        ) : (
+          <>
+            {message.replyToId && (
+              <div
+                className={`mb-1.5 rounded-md border-l-[3px] px-2 py-1 text-xs ${
+                  mine
+                    ? "border-primary-foreground/70 bg-black/15"
+                    : "border-primary bg-muted"
+                }`}
+              >
+                {replied ? (
+                  <>
+                    <strong>{replied.author.name}</strong>
+                    <p className="line-clamp-2 opacity-80">
+                      {replied.deletedAt
+                        ? "Message deleted"
+                        : replied.body || "Attachment"}
+                    </p>
+                  </>
+                ) : (
+                  <span className="opacity-80">Reply to an earlier message</span>
+                )}
+              </div>
+            )}
+            {message.body && (
+              <p className="text-[15px] leading-snug [overflow-wrap:anywhere] break-words whitespace-pre-wrap">
+                {message.body}
+              </p>
+            )}
+            {message.attachments.length > 0 && (
+              <div className={`grid gap-2 ${message.body ? "mt-2" : ""}`}>
+                {message.attachments.map((attachment) => (
+                  <a
+                    key={attachment.id}
+                    href={attachment.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    draggable={false}
+                    className="bg-background text-foreground block overflow-hidden rounded-lg text-sm"
+                    aria-label={`Open ${attachment.name}`}
+                  >
+                    {attachment.mimeType.startsWith("image/") ? (
+                      <img
+                        src={attachment.url}
+                        alt={attachment.name}
+                        draggable={false}
+                        className="max-h-72 max-w-full object-contain"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <span className="flex items-center gap-2 p-3">
+                        <FileIcon className="h-5 w-5 shrink-0" />
+                        {attachment.name}
+                      </span>
+                    )}
+                  </a>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </article>
+  );
+}
+
+function MessageActions({
+  message,
+  canReply,
+  canDelete,
+  onClose,
+  onReply,
+  onDelete,
+}: {
+  message: ChatMessage;
+  canReply: boolean;
+  canDelete: boolean;
+  onClose: () => void;
+  onReply: () => void;
+  onDelete: () => void;
+}) {
+  const first = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    first.current?.focus();
+    const close = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", close);
+    return () => window.removeEventListener("keydown", close);
+  }, [onClose]);
+  const item =
+    "flex min-h-12 w-full items-center gap-3 rounded-xl px-4 text-left text-base font-medium outline-none hover:bg-accent focus-visible:bg-accent disabled:opacity-40";
+  const canCopy = Boolean(message.body) && !message.deletedAt;
+  // Portalled so the backdrop also covers the app bar above the chat panel.
+  return createPortal(
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center"
+      onClick={onClose}
+    >
+      <div
+        role="menu"
+        aria-label="Message options"
+        className="bg-card w-full max-w-sm rounded-t-2xl p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] shadow-xl sm:rounded-2xl"
+        onClick={(event) => event.stopPropagation()}
+      >
+        {message.body && (
+          <p className="text-muted-foreground line-clamp-3 border-b px-4 pt-2 pb-3 text-sm">
+            {message.body}
+          </p>
+        )}
+        <button
+          ref={first}
+          type="button"
+          role="menuitem"
+          className={item}
+          disabled={!canReply}
+          onClick={() => {
+            onClose();
+            onReply();
+          }}
+        >
+          <ReplyIcon className="h-5 w-5" /> Reply
+        </button>
+        {canCopy && (
+          <button
+            type="button"
+            role="menuitem"
+            className={item}
+            onClick={() => {
+              onClose();
+              void navigator.clipboard?.writeText(message.body);
+            }}
+          >
+            <CopyIcon className="h-5 w-5" /> Copy text
+          </button>
+        )}
+        {canDelete && (
+          <button
+            type="button"
+            role="menuitem"
+            className={`${item} text-destructive`}
+            onClick={() => {
+              onClose();
+              onDelete();
+            }}
+          >
+            <Trash2Icon className="h-5 w-5" /> Delete
+          </button>
+        )}
+      </div>
+    </div>,
+    document.body,
   );
 }
