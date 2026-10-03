@@ -55,6 +55,32 @@ function nearBottom(element: HTMLElement) {
   return element.scrollHeight - element.scrollTop - element.clientHeight < 90;
 }
 const LONG_PRESS_MS = 450;
+// Expanded steel laid over the (shaded) checker plate, which shows through the holes.
+const EXPANDED_METAL = {
+  backgroundImage:
+    "url(/images/chat-expanded-metal.webp?v=2), linear-gradient(rgba(12,20,32,0.42), rgba(12,20,32,0.42)), url(/images/chat-checker-plate.webp?v=2)",
+  backgroundSize: "56px 28px, auto, 96px 96px",
+  backgroundColor: "#5d6f86",
+};
+/** Riveted steel angle along the join between expanded steel and checker plate. */
+function AngleTrim({ edge }: { edge: "top" | "bottom" }) {
+  return (
+    <div
+      aria-hidden="true"
+      className="relative z-10 h-4 shrink-0"
+      style={{
+        backgroundImage: "url(/images/chat-angle-trim.webp?v=1)",
+        backgroundSize: "96px 16px",
+        backgroundRepeat: "repeat-x",
+        boxShadow:
+          edge === "top"
+            ? "0 3px 5px rgba(0,0,0,0.45)"
+            : "0 -3px 5px rgba(0,0,0,0.35)",
+      }}
+    />
+  );
+}
+const ON_METAL = "text-white hover:bg-white/15 hover:text-white";
 const CHECKER_PLATE = {
   backgroundImage: "url(/images/chat-checker-plate.webp?v=2)",
   backgroundSize: "96px 96px",
@@ -729,13 +755,19 @@ function ChatLobby({ jobId, userId }: { jobId: string; userId: string }) {
       className="bg-card flex h-full min-h-0 w-full flex-col overflow-hidden"
       style={{ height: panelHeight }}
     >
-      <header className="min-h-0 shrink space-y-2 overflow-y-auto border-b px-3 py-2 sm:px-4">
+      <header
+        className="min-h-0 shrink space-y-2 overflow-y-auto px-3 py-2 text-white sm:px-4"
+        style={EXPANDED_METAL}
+      >
         <div className="flex items-center justify-between gap-2">
-          <h1 className="truncate text-lg font-semibold">Chat</h1>
+          <h1 className="truncate text-lg font-semibold [text-shadow:0_1px_3px_rgba(0,0,0,0.9)]">
+            Chat
+          </h1>
           <div className="flex gap-1">
             <Button
               variant="ghost"
               size="sm"
+              className={ON_METAL}
               onClick={() => {
                 setShowMembers(!showMembers);
                 setShowBell(false);
@@ -749,6 +781,7 @@ function ChatLobby({ jobId, userId }: { jobId: string; userId: string }) {
             <Button
               variant="ghost"
               size="sm"
+              className={ON_METAL}
               aria-label="Notifications"
               aria-expanded={showBell}
               onClick={() => {
@@ -766,7 +799,7 @@ function ChatLobby({ jobId, userId }: { jobId: string; userId: string }) {
         </div>
         {showBell && (
           <div
-            className="bg-muted/40 space-y-3 rounded-md p-3 text-sm"
+            className="bg-card text-card-foreground space-y-3 rounded-md p-3 text-sm shadow-md"
             aria-label="Notification settings"
           >
             <ChatNotifications />
@@ -793,7 +826,7 @@ function ChatLobby({ jobId, userId }: { jobId: string; userId: string }) {
         )}
         {showMembers && (
           <div
-            className="bg-muted/40 max-h-40 overflow-y-auto rounded-md p-2 text-sm"
+            className="bg-card text-card-foreground max-h-40 overflow-y-auto rounded-md p-2 text-sm shadow-md"
             aria-label="Job members"
           >
             {members.isLoading ? (
@@ -821,6 +854,7 @@ function ChatLobby({ jobId, userId }: { jobId: string; userId: string }) {
           </div>
         )}
       </header>
+      <AngleTrim edge="top" />
       {!online && (
         <p className="flex shrink-0 items-center gap-2 bg-amber-50 px-3 py-2 text-sm text-amber-950">
           <WifiOffIcon className="h-4 w-4" />
@@ -945,26 +979,30 @@ function ChatLobby({ jobId, userId }: { jobId: string; userId: string }) {
           Jump to latest messages ↓
         </button>
       )}
-      <footer className="bg-card max-h-full min-h-0 shrink overflow-y-auto border-t px-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+      <AngleTrim edge="bottom" />
+      <footer
+        className="max-h-full min-h-0 shrink overflow-y-auto px-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+        style={EXPANDED_METAL}
+      >
         {currentError && (
-          <p role="alert" className="text-destructive mb-2 text-sm">
+          <p role="alert" className="bg-card text-destructive mb-2 rounded-md px-2 py-1 text-sm">
             {currentError}
           </p>
         )}
         {storageError && (
-          <p role="alert" className="mb-2 text-xs text-amber-700">
+          <p role="alert" className="bg-card mb-2 rounded-md px-2 py-1 text-xs text-amber-700">
             Draft storage is unavailable on this device. Keep this screen open
             until your message is sent.
           </p>
         )}
         {draft.attempted && !sending && (
-          <p className="text-muted-foreground mb-2 text-xs">
+          <p className="bg-card text-muted-foreground mb-2 rounded-md px-2 py-1 text-xs">
             Delivery is not confirmed. Retry keeps the same message ID to
             prevent duplicates.
           </p>
         )}
         {draft.replyToId && (
-          <div className="bg-muted/50 mb-2 flex items-start gap-2 rounded p-2 text-xs">
+          <div className="bg-card text-card-foreground mb-2 flex items-start gap-2 rounded p-2 text-xs">
             <ReplyIcon className="h-4 w-4 shrink-0" />
             <div className="min-w-0 flex-1">
               <strong>Replying to {draft.replyName}</strong>
@@ -991,7 +1029,7 @@ function ChatLobby({ jobId, userId }: { jobId: string; userId: string }) {
             {draft.attachments.map((file) => (
               <li
                 key={file.localId}
-                className="flex max-w-full items-center gap-2 rounded border px-2 py-1 text-xs"
+                className="bg-card text-card-foreground flex max-w-full items-center gap-2 rounded border px-2 py-1 text-xs"
               >
                 <PaperclipIcon className="h-3 w-3 shrink-0" />
                 <span className="truncate">{file.name}</span>
@@ -1029,6 +1067,7 @@ function ChatLobby({ jobId, userId }: { jobId: string; userId: string }) {
             type="button"
             variant="ghost"
             size="icon"
+            className={ON_METAL}
             aria-label="Attach photos or PDFs"
             disabled={Boolean(lockedComposer) || draft.attachments.length >= 5}
             onClick={() => fileInput.current?.click()}
