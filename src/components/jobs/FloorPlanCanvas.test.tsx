@@ -121,7 +121,7 @@ describe("drawing double tap", () => {
   });
 
   it("zooms continuously while holding the second tap and stops on release", () => {
-    vi.stubGlobal("PointerEvent", MouseEvent);
+    vi.stubGlobal("PointerEvent", class extends MouseEvent { pointerId = 1; });
     const { svg, viewport, layer, onSelectRoom } = setup();
     Object.defineProperty(viewport, "setPointerCapture", { value: vi.fn() });
     fireEvent.click(svg, { clientX: 120, clientY: 180 });
@@ -130,10 +130,10 @@ describe("drawing double tap", () => {
     vi.advanceTimersByTime(600);
     expect(onSelectRoom).not.toHaveBeenCalled();
     fireEvent.pointerMove(viewport, { clientX: 120, clientY: 330 });
-    const downScale = Number(layer.style.transform.match(/scale\(([^)]+)\)/)![1]);
+    const downScale = Number(/scale\(([^)]+)\)/.exec(layer.style.transform)![1]);
     expect(downScale).toBeCloseTo(Math.E);
     fireEvent.pointerMove(viewport, { clientX: 120, clientY: 255 });
-    const upScale = Number(layer.style.transform.match(/scale\(([^)]+)\)/)![1]);
+    const upScale = Number(/scale\(([^)]+)\)/.exec(layer.style.transform)![1]);
     expect(upScale).toBeCloseTo(Math.exp(0.5));
     fireEvent.pointerUp(viewport, { clientX: 120, clientY: 255 });
     fireEvent.click(viewport, { clientX: 120, clientY: 255 });
@@ -144,7 +144,7 @@ describe("drawing double tap", () => {
   });
 
   it("keeps ordinary double tap zoom when the second tap does not move", () => {
-    vi.stubGlobal("PointerEvent", MouseEvent);
+    vi.stubGlobal("PointerEvent", class extends MouseEvent { pointerId = 1; });
     const { svg, viewport, layer } = setup();
     Object.defineProperty(viewport, "setPointerCapture", { value: vi.fn() });
     fireEvent.click(svg, { clientX: 120, clientY: 180 });

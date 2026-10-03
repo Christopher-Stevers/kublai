@@ -422,7 +422,7 @@ export function FloorPlanCanvas({
           return;
         }
         const zoom = quickZoom.current;
-        if (zoom && zoom.pointerId === event.pointerId) {
+        if (zoom?.pointerId === event.pointerId) {
           const dy = event.clientY - zoom.startY;
           if (!zoom.moved && Math.abs(dy) < 4) return;
           zoom.moved = true;
@@ -482,7 +482,7 @@ export function FloorPlanCanvas({
       }}
       onPointerUp={(event) => {
         const zoom = quickZoom.current;
-        if (zoom && zoom.pointerId === event.pointerId) {
+        if (zoom?.pointerId === event.pointerId) {
           if (!zoom.moved) {
             const scale = Math.min(MAX_SCALE, zoom.scale * 2);
             userMoved.current = true;
