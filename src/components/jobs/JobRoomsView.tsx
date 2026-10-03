@@ -568,9 +568,6 @@ export function JobRoomsView({ jobId, onOpenMaterialList }: { jobId: string; onO
   if (selectedRoom && selectedFloor) {
     return (
       <div className="space-y-4">
-        <p className="text-sm font-semibold text-red-600 dark:text-red-400">
-          Experimental
-        </p>
         <div className="flex items-center justify-between gap-3">
           <div>
             <h2 className="text-foreground text-xl font-semibold">
@@ -597,9 +594,6 @@ export function JobRoomsView({ jobId, onOpenMaterialList }: { jobId: string; onO
 
   return (
     <>
-      <p className="mb-2 text-sm font-semibold text-red-600 dark:text-red-400">
-        Experimental
-      </p>
       {!selectedFloor ? (
         <>
           <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -911,10 +905,7 @@ export function JobRoomsView({ jobId, onOpenMaterialList }: { jobId: string; onO
             />
             <div className="pointer-events-none absolute inset-x-2 top-2 z-10 flex flex-col items-start gap-1">
               <span className="bg-card/90 text-foreground rounded-md px-2 py-1 text-xs shadow-sm backdrop-blur font-semibold">
-                {selectedFloor.name}{" "}
-                <span className="font-semibold text-red-600 dark:text-red-400">
-                  Experimental
-                </span>
+                {selectedFloor.name}
               </span>
               {toolHint ? <span className="bg-card/90 text-foreground rounded-md px-2 py-1 text-xs shadow-sm backdrop-blur">{toolHint}</span> : null}
               {updateRoom.isPending ? (

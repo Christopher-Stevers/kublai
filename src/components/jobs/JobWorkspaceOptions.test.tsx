@@ -14,7 +14,7 @@ it("puts Chat after Rooms and opens it with keyboard or touch", () => {
   fireEvent.click(chat);
   expect(select).toHaveBeenNthCalledWith(1, "chat");
   expect(select).toHaveBeenNthCalledWith(2, "chat");
-  expect(screen.getByText("Experimental")).toBeInTheDocument();
+  expect(screen.queryByText("Experimental")).not.toBeInTheDocument();
 });
 
 it.each([
