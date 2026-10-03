@@ -31,7 +31,12 @@ import { useOnlineStatus } from "~/hooks/use-online-status";
 import { Button } from "~/components/ui/button";
 import { confirmAction } from "~/components/ui/app-dialogs";
 import { ChatNotifications } from "./ChatNotifications";
-import { isIosDevice, useInstallPrompt } from "~/lib/install-prompt";
+import {
+  isIosDevice,
+  isStandaloneApp,
+  useInstallPrompt,
+  useManifestOverride,
+} from "~/lib/install-prompt";
 import {
   loadChatDraft,
   mergeChatMessages,
@@ -234,6 +239,14 @@ function ChatLobby({ jobId, userId }: { jobId: string; userId: string }) {
   const remove = api.chat.delete.useMutation();
   const markRead = api.chat.markRead.useMutation();
   const mute = api.chat.setNotifications.useMutation();
+  const jobName = overview.data?.jobName ?? "";
+  // While this chat is open, "Add to Home Screen" makes an icon for this chat.
+  useManifestOverride(
+    jobName
+      ? `/chat-shortcut/${jobId}/manifest.webmanifest?name=${encodeURIComponent(jobName)}`
+      : null,
+    jobName,
+  );
   const messages = useMemo(
     () =>
       mergeChatMessages(...Object.values(older), history.data?.messages ?? []),
@@ -1316,11 +1329,15 @@ function MessageActions({
   );
 }
 
-/** Puts ForemanHQ on the home screen (also required for iPhone notifications). */
+/** Adds an icon to the home screen that opens this job's chat directly. */
 function HomeScreenShortcut() {
-  const { installed, prompt, install } = useInstallPrompt();
+  const { prompt, install } = useInstallPrompt();
   const [help, setHelp] = useState(false);
-  if (installed) return null;
+  const instructions = isStandaloneApp()
+    ? "Open this chat in your phone's browser (Safari or Chrome), then tap this button again."
+    : isIosDevice()
+      ? "In Safari, tap the Share button (the square with an arrow), then choose Add to Home Screen."
+      : "Open your browser menu (⋮), then choose Add to Home screen.";
   return (
     <div className="space-y-1">
       <button
@@ -1333,14 +1350,10 @@ function HomeScreenShortcut() {
         }}
       >
         <SmartphoneIcon className="h-4 w-4" />
-        Add to Home Screen
+        Add chat to Home Screen
       </button>
       {help && !prompt && (
-        <p className="text-muted-foreground">
-          {isIosDevice()
-            ? "In Safari, tap the Share button (the square with an arrow), then choose Add to Home Screen."
-            : "Open your browser menu (⋮), then choose Install app or Add to Home screen."}
-        </p>
+        <p className="text-muted-foreground">{instructions}</p>
       )}
     </div>
   );

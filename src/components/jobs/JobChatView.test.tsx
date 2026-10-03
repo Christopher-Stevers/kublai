@@ -404,12 +404,27 @@ describe("job chat delivery and scrolling", () => {
     );
   });
 
-  it("offers Add to Home Screen from the notifications button", async () => {
+  it("offers a home screen shortcut to this chat from the notifications button", async () => {
+    const link = document.createElement("link");
+    link.rel = "manifest";
+    link.href = "/manifest.webmanifest";
+    document.head.append(link);
+    mock.overview = { ...mock.overview, jobName: "Alma #2" } as typeof mock.overview;
     await openChat();
-    expect(screen.queryByRole("button", { name: "Add to Home Screen" })).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: "Add chat to Home Screen" }),
+    ).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Notifications" }));
-    fireEvent.click(screen.getByRole("button", { name: "Add to Home Screen" }));
-    expect(screen.getByText(/Install app or Add to Home screen/)).toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Add chat to Home Screen" }),
+    );
+    expect(screen.getByText(/choose Add to Home screen/)).toBeInTheDocument();
+    expect(link.getAttribute("href")).toBe(
+      "/chat-shortcut/job-one/manifest.webmanifest?name=Alma%20%232",
+    );
+    cleanup();
+    expect(link.getAttribute("href")).toBe("/manifest.webmanifest");
+    link.remove();
   });
 
   it("lets an Executive delete a job message from the long-press menu, with no editing", async () => {
