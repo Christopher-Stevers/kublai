@@ -41,26 +41,13 @@ import {
   requestHeaderBack,
   type HeaderBackStateDetail,
 } from "~/lib/header-back-events";
+import { useInstallPrompt } from "~/lib/install-prompt";
 
 const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
 const hasUsableClerkKey =
   typeof publishableKey === "string" &&
   /^(pk|test|live)_/.test(publishableKey) &&
   publishableKey.length > 20;
-type BeforeInstallPromptEvent = Event & {
-  prompt: () => Promise<void>;
-  userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
-};
-
-function isStandaloneApp() {
-  if (typeof window === "undefined") return false;
-  return (
-    window.matchMedia("(display-mode: standalone)").matches ||
-    ("standalone" in window.navigator &&
-      (window.navigator as Navigator & { standalone?: boolean }).standalone ===
-        true)
-  );
-}
 
 function HeaderFrame({
   pathname,
@@ -92,9 +79,7 @@ function HeaderFrame({
 }) {
   const router = useRouter();
   const isOnline = useOnlineStatus();
-  const [installPrompt, setInstallPrompt] =
-    useState<BeforeInstallPromptEvent | null>(null);
-  const [isInstalled, setIsInstalled] = useState(false);
+  const { installed: isInstalled, install } = useInstallPrompt();
   const [showRequestedBackButton, setShowRequestedBackButton] = useState(false);
   const navLinks: { href: string; label: string; icon: LucideIcon }[] = [
     ...(tabAccess.dashboard
@@ -147,31 +132,6 @@ function HeaderFrame({
   const showBackButton = showRouteBackButton || showRequestedBackButton;
 
   useEffect(() => {
-    setIsInstalled(isStandaloneApp());
-
-    const handleBeforeInstallPrompt = (event: Event) => {
-      event.preventDefault();
-      setInstallPrompt(event as BeforeInstallPromptEvent);
-    };
-
-    const handleAppInstalled = () => {
-      setIsInstalled(true);
-      setInstallPrompt(null);
-    };
-
-    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
-    window.addEventListener("appinstalled", handleAppInstalled);
-
-    return () => {
-      window.removeEventListener(
-        "beforeinstallprompt",
-        handleBeforeInstallPrompt,
-      );
-      window.removeEventListener("appinstalled", handleAppInstalled);
-    };
-  }, []);
-
-  useEffect(() => {
     const handleBackState = (event: Event) => {
       const detail = (event as CustomEvent<HeaderBackStateDetail>).detail;
       setShowRequestedBackButton(Boolean(detail?.visible));
@@ -207,17 +167,7 @@ function HeaderFrame({
   const handleInstallApp = async () => {
     if (isInstalled) return;
 
-    if (!installPrompt) {
-      navigate("/dashboard/account");
-      return;
-    }
-
-    await installPrompt.prompt();
-    const choice = await installPrompt.userChoice;
-    setInstallPrompt(null);
-    if (choice.outcome === "accepted") {
-      setIsInstalled(true);
-    }
+    if (!(await install())) navigate("/dashboard/account");
   };
 
   const handleBack = () => {

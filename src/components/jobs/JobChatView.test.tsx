@@ -404,6 +404,14 @@ describe("job chat delivery and scrolling", () => {
     );
   });
 
+  it("offers Add to Home Screen from the notifications button", async () => {
+    await openChat();
+    expect(screen.queryByRole("button", { name: "Add to Home Screen" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Notifications" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add to Home Screen" }));
+    expect(screen.getByText(/Install app or Add to Home screen/)).toBeInTheDocument();
+  });
+
   it("lets an Executive delete a job message from the long-press menu, with no editing", async () => {
     mock.overview.canModerate = true;
     mock.remove.mockResolvedValue({ success: true });

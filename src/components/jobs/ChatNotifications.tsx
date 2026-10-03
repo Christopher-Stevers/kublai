@@ -468,28 +468,6 @@ export function ChatNotifications() {
             ? "Disable device notifications"
             : "Enable device notifications"}
       </button>
-      {available === false && (
-        <p className="text-muted-foreground">
-          Push notifications are unavailable here. On iPhone or iPad, add
-          ForemanHQ to your Home Screen and open it there.
-        </p>
-      )}
-      {missingConfig && (
-        <p className="text-muted-foreground">
-          Notifications have not been configured on the server yet.
-        </p>
-      )}
-      {blocked && (
-        <p className="text-muted-foreground">
-          Notifications are blocked. Allow them in your browser or device
-          settings.
-        </p>
-      )}
-      {enabled && (
-        <p className="text-muted-foreground">
-          Enabled for this account on this device. Muted jobs will stay quiet.
-        </p>
-      )}
       {identity.isError && (
         <p role="alert">
           Could not load notification settings. Reconnect and try again.

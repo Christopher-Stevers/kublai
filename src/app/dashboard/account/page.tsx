@@ -28,40 +28,17 @@ import { useThemePreference } from "~/components/app/ThemeProvider";
 import { type ThemePreference } from "~/lib/theme";
 import { FormSkeleton } from "~/components/ui/skeleton";
 import { PasswordSettings } from "~/components/account/PasswordSettings";
+import { isIosDevice, useInstallPrompt } from "~/lib/install-prompt";
 
-type BeforeInstallPromptEvent = Event & {
-  prompt: () => Promise<void>;
-  userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
-};
-
-function isStandaloneApp() {
-  if (typeof window === "undefined") return false;
-  return (
-    window.matchMedia("(display-mode: standalone)").matches ||
-    ("standalone" in window.navigator &&
-      (window.navigator as Navigator & { standalone?: boolean }).standalone ===
-        true)
-  );
-}
-
-function isAppleTouchDevice() {
-  if (typeof window === "undefined") return false;
-  const navigatorWithTouch = window.navigator as Navigator & {
-    maxTouchPoints?: number;
-  };
-  return (
-    /iPad|iPhone|iPod/.test(window.navigator.userAgent) ||
-    (window.navigator.platform === "MacIntel" &&
-      (navigatorWithTouch.maxTouchPoints ?? 0) > 1)
-  );
-}
 
 export default function AccountPage() {
   const [isCreatingPortal, setIsCreatingPortal] = useState(false);
   const [name, setName] = useState("");
-  const [installPrompt, setInstallPrompt] =
-    useState<BeforeInstallPromptEvent | null>(null);
-  const [isInstalled, setIsInstalled] = useState(false);
+  const {
+    prompt: installPrompt,
+    installed: isInstalled,
+    install,
+  } = useInstallPrompt();
   const [usesAppleInstallFlow, setUsesAppleInstallFlow] = useState(false);
   const [emailClient, setEmailClient] =
     useState<EmailClientPreference>("default");
@@ -78,30 +55,8 @@ export default function AccountPage() {
   }, [me?.name]);
 
   useEffect(() => {
-    setIsInstalled(isStandaloneApp());
-    setUsesAppleInstallFlow(isAppleTouchDevice());
+    setUsesAppleInstallFlow(isIosDevice());
     setEmailClient(getPreferredEmailClient());
-
-    const handleBeforeInstallPrompt = (event: Event) => {
-      event.preventDefault();
-      setInstallPrompt(event as BeforeInstallPromptEvent);
-    };
-
-    const handleAppInstalled = () => {
-      setIsInstalled(true);
-      setInstallPrompt(null);
-    };
-
-    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
-    window.addEventListener("appinstalled", handleAppInstalled);
-
-    return () => {
-      window.removeEventListener(
-        "beforeinstallprompt",
-        handleBeforeInstallPrompt,
-      );
-      window.removeEventListener("appinstalled", handleAppInstalled);
-    };
   }, []);
 
   const { data: status, isLoading } =
@@ -136,14 +91,7 @@ export default function AccountPage() {
   };
 
   const handleInstallApp = async () => {
-    if (!installPrompt || isInstalled) return;
-
-    await installPrompt.prompt();
-    const choice = await installPrompt.userChoice;
-    setInstallPrompt(null);
-    if (choice.outcome === "accepted") {
-      setIsInstalled(true);
-    }
+    if (!isInstalled) await install();
   };
 
   const handleEmailClientChange = (client: EmailClientPreference) => {

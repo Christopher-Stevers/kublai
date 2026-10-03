@@ -174,13 +174,11 @@ describe("device notification opt-in", () => {
     });
     expect(JSON.parse(localStorage.getItem(storageKey)!)).toMatchObject(stored);
   });
-  it("reports unconfigured, unsupported and denied states without claiming enabled", async () => {
+  it("disables the button for unconfigured, unsupported and denied states without helper text", async () => {
     mocks.identity.data = { ...mocks.identity.data, publicKey: null };
     const view = render(<ChatNotifications />);
-    expect(await screen.findByText(/not been configured/)).toBeTruthy();
-    expect(
-      screen.getByRole("button", { name: "Enable device notifications" }),
-    ).toBeDisabled();
+    await waitFor(() => expect(screen.getByRole("button", { name: "Enable device notifications" })).toBeDisabled());
+    expect(view.container.querySelector("p")).toBeNull();
     view.unmount();
     mocks.identity.data = { ...mocks.identity.data, publicKey: "AQID" };
     Object.defineProperty(window, "isSecureContext", {
@@ -188,7 +186,8 @@ describe("device notification opt-in", () => {
       configurable: true,
     });
     const unsupported = render(<ChatNotifications />);
-    expect(await screen.findByText(/unavailable here/)).toBeTruthy();
+    await waitFor(() => expect(screen.getByRole("button", { name: "Enable device notifications" })).toBeDisabled());
+    expect(unsupported.container.querySelector("p")).toBeNull();
     unsupported.unmount();
     Object.defineProperty(window, "isSecureContext", {
       value: true,
@@ -198,8 +197,9 @@ describe("device notification opt-in", () => {
       value: "denied",
       configurable: true,
     });
-    render(<ChatNotifications />);
-    expect(await screen.findByText(/Notifications are blocked/)).toBeTruthy();
+    const denied = render(<ChatNotifications />);
+    await waitFor(() => expect(screen.getByRole("button", { name: "Enable device notifications" })).toBeDisabled());
+    expect(denied.container.querySelector("p")).toBeNull();
     expect(mocks.permission).not.toHaveBeenCalled();
   });
   it("server refusal rolls back a newly created browser subscription and surfaces the error", async () => {
