@@ -110,6 +110,10 @@ export function FloorPlanCanvas({
     ty: number;
   } | null>(null);
   const didPan = useRef(false);
+  const quickZoom = useRef<{
+    pointerId: number; startY: number; x: number; y: number;
+    scale: number; tx: number; ty: number; moved: boolean; minScale: number;
+  } | null>(null);
   const lastTap = useRef<(Point & { time: number }) | null>(null);
   const selectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -147,6 +151,7 @@ export function FloorPlanCanvas({
     if (selectTimer.current) clearTimeout(selectTimer.current);
     if (longPressTimer.current) clearTimeout(longPressTimer.current);
     lastTap.current = null;
+    quickZoom.current = null;
   }, [imageUrl, createMode, detectMode, editingRoomId]);
 
   const toPlanNorm = (clientX: number, clientY: number): Point | null => {
@@ -298,6 +303,7 @@ export function FloorPlanCanvas({
         detectFired.current = false;
         panStart.current = null;
         if (pointers.current.size === 2) {
+          quickZoom.current = null;
           didPan.current = true;
           lastTap.current = null;
           if (selectTimer.current) clearTimeout(selectTimer.current);
@@ -318,6 +324,26 @@ export function FloorPlanCanvas({
             scale: transformRef.current.scale,
             tx: transformRef.current.tx,
             ty: transformRef.current.ty,
+          };
+          return;
+        }
+
+        const previousTap = lastTap.current;
+        if (!detectMode && !createMode && !editingRoomId && previousTap &&
+            Date.now() - previousTap.time <= DOUBLE_TAP_MS &&
+            distance(previousTap, { x: event.clientX, y: event.clientY }) <= DOUBLE_TAP_SLOP_PX) {
+          if (selectTimer.current) clearTimeout(selectTimer.current);
+          clearLongPress();
+          lastTap.current = null;
+          const rect = event.currentTarget.getBoundingClientRect();
+          const plan = planRef.current;
+          const fittedScale = plan?.offsetWidth && plan.offsetHeight
+            ? Math.min(event.currentTarget.clientWidth / plan.offsetWidth,
+                event.currentTarget.clientHeight / plan.offsetHeight) : MIN_SCALE;
+          quickZoom.current = { pointerId: event.pointerId, startY: event.clientY,
+            x: event.clientX - rect.left, y: event.clientY - rect.top,
+            ...transformRef.current, moved: false,
+            minScale: Math.max(0.01, Math.min(MIN_SCALE, fittedScale, transformRef.current.scale)),
           };
           return;
         }
@@ -395,6 +421,20 @@ export function FloorPlanCanvas({
           applyPinch(event);
           return;
         }
+        const zoom = quickZoom.current;
+        if (zoom && zoom.pointerId === event.pointerId) {
+          const dy = event.clientY - zoom.startY;
+          if (!zoom.moved && Math.abs(dy) < 4) return;
+          zoom.moved = true;
+          didPan.current = true;
+          userMoved.current = true;
+          const scale = Math.min(MAX_SCALE, Math.max(zoom.minScale, zoom.scale * Math.exp(dy / 150)));
+          setTransform({ scale,
+            tx: zoom.x - (zoom.x - zoom.tx) * scale / zoom.scale,
+            ty: zoom.y - (zoom.y - zoom.ty) * scale / zoom.scale,
+          });
+          return;
+        }
         const point = toPlanNorm(event.clientX, event.clientY);
         if (canEdit && draggingVertex.current && point && visibleEditShape) {
           const next = movePolygonPoint(
@@ -441,6 +481,20 @@ export function FloorPlanCanvas({
         }
       }}
       onPointerUp={(event) => {
+        const zoom = quickZoom.current;
+        if (zoom && zoom.pointerId === event.pointerId) {
+          if (!zoom.moved) {
+            const scale = Math.min(MAX_SCALE, zoom.scale * 2);
+            userMoved.current = true;
+            setTransform({ scale,
+              tx: zoom.x - (zoom.x - zoom.tx) * scale / zoom.scale,
+              ty: zoom.y - (zoom.y - zoom.ty) * scale / zoom.scale,
+            });
+          }
+          quickZoom.current = null;
+          // Suppress the synthetic click after releasing the zoom gesture.
+          didPan.current = true;
+        }
         pointers.current.delete(event.pointerId);
         if (pointers.current.size < 2) pinch.current = null;
         clearLongPress();
@@ -465,6 +519,7 @@ export function FloorPlanCanvas({
         setDraft(null);
       }}
       onPointerCancel={() => {
+        quickZoom.current = null;
         lastTap.current = null;
         if (selectTimer.current) clearTimeout(selectTimer.current);
         if (detectMode && !didPan.current) {

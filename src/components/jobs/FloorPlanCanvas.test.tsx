@@ -8,6 +8,7 @@ afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
   vi.useRealTimers();
+  vi.unstubAllGlobals();
 });
 describe("room tracing overlay", () => {
   it("shows excluded courtyards and columns as holes in the saved trace preview", () => {
@@ -106,7 +107,7 @@ describe("drawing double tap", () => {
     const rect = { left: 20, top: 80, width: 300, height: 400, right: 320, bottom: 480, x: 20, y: 80, toJSON() { return {}; } };
     vi.spyOn(viewport, "getBoundingClientRect").mockReturnValue(rect);
     vi.spyOn(plan, "getBoundingClientRect").mockReturnValue(rect);
-    return { ...result, layer, onSelectRoom, svg: result.container.querySelector("svg")! };
+    return { ...result, viewport, layer, onSelectRoom, svg: result.container.querySelector("svg")! };
   }
 
   it("zooms around the tapped point without opening the room, including with a header offset", () => {
@@ -117,6 +118,40 @@ describe("drawing double tap", () => {
     expect(layer.style.transform).toBe("translate(-100px, -100px) scale(2)");
     vi.advanceTimersByTime(500);
     expect(onSelectRoom).not.toHaveBeenCalled();
+  });
+
+  it("zooms continuously while holding the second tap and stops on release", () => {
+    vi.stubGlobal("PointerEvent", MouseEvent);
+    const { svg, viewport, layer, onSelectRoom } = setup();
+    Object.defineProperty(viewport, "setPointerCapture", { value: vi.fn() });
+    fireEvent.click(svg, { clientX: 120, clientY: 180 });
+    vi.advanceTimersByTime(100);
+    fireEvent.pointerDown(svg, { clientX: 120, clientY: 180 });
+    vi.advanceTimersByTime(600);
+    expect(onSelectRoom).not.toHaveBeenCalled();
+    fireEvent.pointerMove(viewport, { clientX: 120, clientY: 330 });
+    const downScale = Number(layer.style.transform.match(/scale\(([^)]+)\)/)![1]);
+    expect(downScale).toBeCloseTo(Math.E);
+    fireEvent.pointerMove(viewport, { clientX: 120, clientY: 255 });
+    const upScale = Number(layer.style.transform.match(/scale\(([^)]+)\)/)![1]);
+    expect(upScale).toBeCloseTo(Math.exp(0.5));
+    fireEvent.pointerUp(viewport, { clientX: 120, clientY: 255 });
+    fireEvent.click(viewport, { clientX: 120, clientY: 255 });
+    const released = layer.style.transform;
+    fireEvent.pointerMove(viewport, { clientX: 120, clientY: 400 });
+    expect(layer.style.transform).toBe(released);
+    expect(onSelectRoom).not.toHaveBeenCalled();
+  });
+
+  it("keeps ordinary double tap zoom when the second tap does not move", () => {
+    vi.stubGlobal("PointerEvent", MouseEvent);
+    const { svg, viewport, layer } = setup();
+    Object.defineProperty(viewport, "setPointerCapture", { value: vi.fn() });
+    fireEvent.click(svg, { clientX: 120, clientY: 180 });
+    fireEvent.pointerDown(svg, { clientX: 120, clientY: 180 });
+    fireEvent.pointerUp(viewport, { clientX: 120, clientY: 180 });
+    fireEvent.click(viewport, { clientX: 120, clientY: 180 });
+    expect(layer.style.transform).toBe("translate(-100px, -100px) scale(2)");
   });
 
   it("still opens a room on a single tap", () => {
