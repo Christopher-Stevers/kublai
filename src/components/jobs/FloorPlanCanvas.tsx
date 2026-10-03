@@ -119,6 +119,8 @@ export function FloorPlanCanvas({
   const [editShape, setEditShape] = useState<RoomPolygonShape | null>(null);
   const [transform, setTransform] = useState({ scale: 1, tx: 0, ty: 0 });
   const transformRef = useRef(transform);
+  // Until the user pans or zooms, keep the whole sheet fitted and centred.
+  const userMoved = useRef(false);
   const roomsRef = useRef(rooms);
   useLayoutEffect(() => {
     detectModeRef.current = detectMode;
@@ -170,6 +172,33 @@ export function FloorPlanCanvas({
   }, [editingRoomId]);
 
   useEffect(() => {
+    userMoved.current = false;
+    if (focusRoomId) return;
+    const viewport = viewportRef.current, plan = planRef.current, image = imageRef.current;
+    if (!viewport || !plan || !image) return;
+    const fit = () => {
+      if (userMoved.current) return;
+      const width = plan.offsetWidth, height = plan.offsetHeight;
+      if (!width || !height || !viewport.clientWidth || !viewport.clientHeight) return;
+      const scale = Math.min(
+        MAX_SCALE,
+        viewport.clientWidth / width,
+        viewport.clientHeight / height,
+      );
+      setTransform({
+        scale,
+        tx: (viewport.clientWidth - width * scale) / 2,
+        ty: (viewport.clientHeight - height * scale) / 2,
+      });
+    };
+    image.addEventListener("load", fit);
+    const resize = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(fit);
+    resize?.observe(viewport);
+    if (image.complete) fit();
+    return () => { image.removeEventListener("load", fit); resize?.disconnect(); };
+  }, [focusRoomId, imageUrl]);
+
+  useEffect(() => {
     if (!focusRoomId) return;
     const viewport = viewportRef.current, plan = planRef.current, image = imageRef.current;
     if (!viewport || !plan || !image) return;
@@ -206,6 +235,7 @@ export function FloorPlanCanvas({
       MAX_SCALE,
       Math.max(MIN_SCALE, p.scale * (dist / p.dist)),
     );
+    userMoved.current = true;
     setTransform({
       scale: nextScale,
       tx: mid.x - (p.mid.x - p.tx) * (nextScale / p.scale),
@@ -385,6 +415,7 @@ export function FloorPlanCanvas({
               event.currentTarget.setPointerCapture(event.pointerId);
             }
             didPan.current = true;
+            userMoved.current = true;
             clearLongPress();
             setTransform({
               scale: transformRef.current.scale,
@@ -460,6 +491,7 @@ export function FloorPlanCanvas({
           Math.max(MIN_SCALE, current.scale * factor),
         );
         const p = { x: event.clientX, y: event.clientY };
+        userMoved.current = true;
         setTransform({
           scale: nextScale,
           tx: p.x - (p.x - current.tx) * (nextScale / current.scale),

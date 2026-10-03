@@ -2,8 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import {
-  ChevronDown,
-  ChevronUp,
+  ListIcon,
   DoorOpenIcon,
   Loader2Icon,
   PencilIcon,
@@ -290,6 +289,7 @@ export function JobRoomsView({ jobId }: { jobId: string }) {
     (isDetecting ? "Starting room detection…" : null);
   const detectHistory = detectLog.slice(-8, -1);
   const canEditFloor = canManage && editMode;
+  const editMenuOpen = canManage && (editMode || reviewMode);
   floorNameDraftRef.current = floorNameDraft;
 
   const persistFloorName = (
@@ -794,12 +794,234 @@ export function JobRoomsView({ jobId }: { jobId: string }) {
       ) : null}
 
       {selectedFloor ? (
-        <div className="flex min-h-[70dvh] flex-col gap-3">
-          <div className="shrink-0 space-y-2">
-            <div className="flex items-start gap-2">
-              <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <div className="min-w-0">
-                  {canEditFloor ? (
+        // Full screen under the app bar: the drawing fills everything above
+        // the bottom bar; the room list and edit menu slide up over the bar.
+        <div className="bg-background fixed inset-x-0 top-14 bottom-0 z-30 flex flex-col sm:top-16">
+          <div className="relative min-h-0 flex-1">
+            <FloorPlanCanvas
+              imageUrl={selectedFloor.imageUrl}
+              rooms={selectedFloor.rooms.map((room) => ({
+                id: room.id,
+                name: room.name,
+                confirmed: room.confirmed,
+                reviewStatus: room.reviewStatus,
+                shape: room.shape as FloorRoomShape,
+              }))}
+              previewShape={tracePreview}
+              tracePoints={[
+                    ...traceInclude.map((point) => ({
+                      ...point,
+                      kind: "include" as const,
+                    })),
+                    ...traceExclude.map((point) => ({
+                      ...point,
+                      kind: "exclude" as const,
+                    })),
+                  ]}
+              selectedRoomId={reviewMode ? reviewRoomId : selectedRoomId}
+              focusRoomId={reviewMode ? reviewRoomId : null}
+              editingRoomId={editingRoomId}
+              detectingRoomId={null}
+              createMode={createMode}
+              detectMode={detectMode}
+              vertexMode={vertexMode}
+              canEdit={canEditFloor && !updateRoom.isPending}
+              onSelectRoom={(roomId) => {
+                if (updateRoom.isPending && editMode) return;
+                if (reviewMode) {
+                  setReviewRoomId(roomId);
+                  return;
+                }
+                if (editMode) {
+                  if (editingRoomId === roomId) return;
+                  setSelectedRoomId(null);
+                  setEditingRoomId(roomId);
+                  const room = selectedFloor.rooms.find(
+                      (item) => item.id === roomId,
+                    );
+                  if (room)
+                    roomEditVersions.current.set(
+                      room.id,
+                      room.updatedAt.getTime(),
+                    );
+                  setRoomNameDraft(room?.name ?? "");
+                  return;
+                }
+                if (editingRoomId) return;
+                const room = selectedFloor.rooms.find(
+                      (item) => item.id === roomId,
+                    );
+                setSelectedRoomId(roomId);
+                if (room)
+                  roomEditVersions.current.set(
+                    room.id,
+                    room.updatedAt.getTime(),
+                  );
+                setRoomNameDraft(room?.name ?? "");
+              }}
+              onStartEdit={(roomId) => {
+                if (updateRoom.isPending) return;
+                setSelectedRoomId(null);
+                setEditingRoomId(roomId);
+                const room = selectedFloor.rooms.find(
+                      (item) => item.id === roomId,
+                    );
+                if (room)
+                  roomEditVersions.current.set(
+                    room.id,
+                    room.updatedAt.getTime(),
+                  );
+                setRoomNameDraft(room?.name ?? "");
+              }}
+              onCreateRoom={
+                    canEditFloor && createMode
+                      ? (shape) => {
+                          setCreateMode(false);
+                          const stillCurrent = captureTraceSession();
+                          addRoom.mutate({
+                            floorId: selectedFloor.id,
+                            name: "New room",
+                            shape,
+                          }, {
+                            onSuccess: (room) => {
+                              if (stillCurrent()) focusAddedRoom(room);
+                            },
+                            onError: (error) => {
+                              if (stillCurrent()) setDetectError(`Room could not be added: ${error.message}`);
+                            },
+                          });
+                        }
+                      : undefined
+                  }
+              onDetectAtPoint={
+                    canEditFloor && detectMode ? addTracePoint : undefined
+                  }
+              onUpdateShape={
+                canEditFloor && !updateRoom.isPending
+                  ? (roomId, shape) =>
+                      updateRoom.mutate({
+                        roomId,
+                        shape,
+                        expectedUpdatedAt: roomEditVersions.current.get(roomId),
+                      })
+                  : undefined
+              }
+            />
+            <div className="pointer-events-none absolute inset-x-2 top-2 z-10 flex flex-col items-start gap-1">
+              <span className="bg-card/90 text-foreground rounded-md px-2 py-1 text-xs shadow-sm backdrop-blur font-semibold">
+                {selectedFloor.name}{" "}
+                <span className="font-semibold text-red-600 dark:text-red-400">
+                  Experimental
+                </span>
+              </span>
+              {toolHint ? <span className="bg-card/90 text-foreground rounded-md px-2 py-1 text-xs shadow-sm backdrop-blur">{toolHint}</span> : null}
+              {updateRoom.isPending ? (
+                <span role="status" className="bg-card/90 text-foreground rounded-md px-2 py-1 text-xs shadow-sm backdrop-blur">
+                  Saving outline…
+                </span>
+              ) : null}
+              {detectMode && tracePending ? (
+                <span role="status" className="bg-card/90 text-foreground rounded-md px-2 py-1 text-xs shadow-sm backdrop-blur">
+                  Tracing room…
+                </span>
+              ) : null}
+            </div>
+          </div>
+
+          {detectError || traceError ? (
+            <div className="bg-card shrink-0 border-t px-3 py-2">
+              {detectError || traceError ? (
+            <p className="shrink-0 px-1 text-sm text-red-600">
+              {detectError || traceError}
+              {failedRoomUpdate ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="ml-2"
+                  disabled={updateRoom.isPending}
+                  onClick={async () => {
+                    if (!roomUpdateConflict) {
+                      updateRoom.mutate(failedRoomUpdate);
+                      return;
+                    }
+                    await utils.rooms.getJobRooms.invalidate({ jobId });
+                    roomEditVersions.current.delete(failedRoomUpdate.roomId);
+                    setEditingRoomId(null);
+                    cancelTracePreview();
+                    setTraceRoomId(null);
+                    setFailedRoomUpdate(null);
+                    setRoomUpdateConflict(false);
+                    setDetectError(null);
+                  }}
+                >
+                  {roomUpdateConflict ? "Reload latest outline" : "Retry save"}
+                </Button>
+              ) : null}
+            </p>
+          ) : null}
+            </div>
+          ) : null}
+
+          {isRoomListOpen && selectedFloor.rooms.length > 0 ? (
+            <div
+              className="bg-card max-h-[45dvh] shrink-0 overflow-y-auto overscroll-contain border-t px-3 py-2"
+              aria-label="Room list"
+            >
+              <div className="grid grid-cols-1 gap-1 sm:grid-cols-2 lg:grid-cols-3">
+                {selectedFloor.rooms.map((room, index) => {
+                        const color = getRoomColor(index);
+                        return (
+                          <button
+                            key={room.id}
+                            type="button"
+                            disabled={updateRoom.isPending && editMode}
+                            className="hover:bg-card flex items-center gap-2 rounded px-1 py-0.5 text-left text-sm"
+                            onClick={() => {
+                              setIsRoomListOpen(false);
+                              if (reviewMode) {
+                                setReviewRoomId(room.id);
+                                return;
+                              }
+                              if (editMode) {
+                                    if (editingRoomId === room.id) return;
+                                    setSelectedRoomId(null);
+                                    setEditingRoomId(room.id);
+                                    roomEditVersions.current.set(
+                                      room.id,
+                                      room.updatedAt.getTime(),
+                                    );
+                                    setRoomNameDraft(room.name);
+                                    return;
+                                  }
+                              setSelectedRoomId(room.id);
+                              roomEditVersions.current.set(
+                                room.id,
+                                room.updatedAt.getTime(),
+                              );
+                              setRoomNameDraft(room.name);
+                            }}
+                          >
+                            <span
+                                  className="h-3 w-3 shrink-0 rounded-sm border"
+                                  style={{
+                                    backgroundColor: color.swatch,
+                                    borderColor: color.border,
+                                  }}
+                                />
+                            <span className="truncate">{room.name}</span>
+                          </button>
+                        );
+                      })}
+              </div>
+            </div>
+          ) : null}
+
+          {editMenuOpen ? (
+            <div
+              className="bg-card max-h-[50dvh] shrink-0 space-y-3 overflow-y-auto overscroll-contain border-t px-3 py-3"
+              aria-label="Edit menu"
+            >
+              {canEditFloor ? (
                         <Input
                           value={floorNameDraft}
                           onChange={(event) => {
@@ -820,19 +1042,13 @@ export function JobRoomsView({ jobId }: { jobId: string }) {
                       {selectedFloor.name}
                     </div>
                   )}
-                  {toolHint ? (
-                    <p className="text-muted-foreground mt-1 text-sm">
-                      {toolHint}
-                    </p>
-                  ) : null}
-                </div>
-                <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-2">
                   {canManage ? (
                     <Button
                       variant={reviewMode ? "default" : "outline"}
                       onClick={() => {
                         setReviewMode((value) => !value);
-                        setEditMode(false);
+                        setEditMode(reviewMode);
                         setEditingRoomId(null);
                         setCreateMode(false);
                         setVertexMode(null);
@@ -846,17 +1062,6 @@ export function JobRoomsView({ jobId }: { jobId: string }) {
                       }}
                     >
                       Review detections ({pendingReview.length})
-                    </Button>
-                  ) : null}
-                  {canManage && !editMode ? (
-                    <Button
-                      onClick={() => {
-                        setReviewMode(false);
-                        setEditMode(true);
-                      }}
-                    >
-                      <PencilIcon className="mr-1 h-4 w-4" />
-                      Edit
                     </Button>
                   ) : null}
                   {canEditFloor && detectMode ? (
@@ -1011,9 +1216,6 @@ export function JobRoomsView({ jobId }: { jobId: string }) {
                       >
                         Delete all rooms
                       </Button>
-                      <Button variant="outline" onClick={exitEditMode}>
-                            Done editing
-                          </Button>
                     </>
                   ) : null}
                   {canManage &&
@@ -1037,65 +1239,38 @@ export function JobRoomsView({ jobId }: { jobId: string }) {
                     </Button>
                   ) : null}
                 </div>
-              </div>
-            </div>
-          </div>
-          {detectError || traceError ? (
-            <p className="shrink-0 px-1 text-sm text-red-600">
-              {detectError || traceError}
-              {failedRoomUpdate ? (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="ml-2"
-                  disabled={updateRoom.isPending}
-                  onClick={async () => {
-                    if (!roomUpdateConflict) {
-                      updateRoom.mutate(failedRoomUpdate);
-                      return;
+              {canEditFloor && selectedRoomId ? (
+            <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
+              <Input
+                    value={roomNameDraft}
+                    onChange={(event) => setRoomNameDraft(event.target.value)}
+                  />
+              <Button
+                disabled={updateRoom.isPending}
+                onClick={() =>
+                  updateRoom.mutate({
+                    roomId: selectedRoomId,
+                    expectedUpdatedAt:
+                      roomEditVersions.current.get(selectedRoomId),
+                    name: roomNameDraft.trim() || "Room",
+                  })
+                }
+              >
+                <PencilIcon className="mr-2 h-4 w-4" />
+                Rename
+              </Button>
+              <Button
+                    variant="destructive"
+                    onClick={() =>
+                      deleteRoom.mutate({ roomId: selectedRoomId })
                     }
-                    await utils.rooms.getJobRooms.invalidate({ jobId });
-                    roomEditVersions.current.delete(failedRoomUpdate.roomId);
-                    setEditingRoomId(null);
-                    cancelTracePreview();
-                    setTraceRoomId(null);
-                    setFailedRoomUpdate(null);
-                    setRoomUpdateConflict(false);
-                    setDetectError(null);
-                  }}
-                >
-                  {roomUpdateConflict ? "Reload latest outline" : "Retry save"}
-                </Button>
-              ) : null}
-            </p>
-          ) : null}
-          {updateRoom.isPending ? (
-            <p role="status" className="text-muted-foreground shrink-0 px-1 text-sm">Saving outline…</p>
-          ) : null}
-          {detectMode && tracePending ? (
-            <p role="status" className="text-muted-foreground shrink-0 px-1 text-sm">Tracing room…</p>
-          ) : null}
-          {currentDetectMessage && editMode ? (
-            <div className="max-h-36 shrink-0 overflow-y-auto rounded-md border bg-slate-950 font-mono text-xs text-slate-100">
-              <div className="sticky top-0 z-10 flex items-start gap-2 border-b border-slate-700 bg-slate-950 px-3 py-2 text-sm font-semibold text-emerald-300">
-                    {isDetecting ? (
-                      <Loader2Icon className="mt-0.5 h-4 w-4 shrink-0 animate-spin" />
-                    ) : null}
-                    <span>{currentDetectMessage}</span>
-                  </div>
-              {detectHistory.length > 0 ? (
-                <div className="px-3 py-2 text-slate-300">
-                  {detectHistory.map((entry) => (
-                    <div key={`${entry.at}-${entry.message}`}>
-                      {entry.message}
-                    </div>
-                  ))}
-                </div>
-              ) : null}
+                  >
+                    <TrashIcon className="mr-2 h-4 w-4" />
+                    Delete
+                  </Button>
             </div>
           ) : null}
-
-          {canManage && reviewMode ? (
+              {canManage && reviewMode ? (
             <div
               className="bg-background shrink-0 rounded-md border p-3"
               aria-label="Detection review"
@@ -1240,224 +1415,61 @@ export function JobRoomsView({ jobId }: { jobId: string }) {
               </label>
             </div>
           ) : null}
-
-          <div className="min-h-0 flex-1">
-            <FloorPlanCanvas
-              imageUrl={selectedFloor.imageUrl}
-              rooms={selectedFloor.rooms.map((room) => ({
-                id: room.id,
-                name: room.name,
-                confirmed: room.confirmed,
-                reviewStatus: room.reviewStatus,
-                shape: room.shape as FloorRoomShape,
-              }))}
-              previewShape={tracePreview}
-              tracePoints={[
-                    ...traceInclude.map((point) => ({
-                      ...point,
-                      kind: "include" as const,
-                    })),
-                    ...traceExclude.map((point) => ({
-                      ...point,
-                      kind: "exclude" as const,
-                    })),
-                  ]}
-              selectedRoomId={reviewMode ? reviewRoomId : selectedRoomId}
-              focusRoomId={reviewMode ? reviewRoomId : null}
-              editingRoomId={editingRoomId}
-              detectingRoomId={null}
-              createMode={createMode}
-              detectMode={detectMode}
-              vertexMode={vertexMode}
-              canEdit={canEditFloor && !updateRoom.isPending}
-              onSelectRoom={(roomId) => {
-                if (updateRoom.isPending && editMode) return;
-                if (reviewMode) {
-                  setReviewRoomId(roomId);
-                  return;
-                }
-                if (editMode) {
-                  if (editingRoomId === roomId) return;
-                  setSelectedRoomId(null);
-                  setEditingRoomId(roomId);
-                  const room = selectedFloor.rooms.find(
-                      (item) => item.id === roomId,
-                    );
-                  if (room)
-                    roomEditVersions.current.set(
-                      room.id,
-                      room.updatedAt.getTime(),
-                    );
-                  setRoomNameDraft(room?.name ?? "");
-                  return;
-                }
-                if (editingRoomId) return;
-                const room = selectedFloor.rooms.find(
-                      (item) => item.id === roomId,
-                    );
-                setSelectedRoomId(roomId);
-                if (room)
-                  roomEditVersions.current.set(
-                    room.id,
-                    room.updatedAt.getTime(),
-                  );
-                setRoomNameDraft(room?.name ?? "");
-              }}
-              onStartEdit={(roomId) => {
-                if (updateRoom.isPending) return;
-                setSelectedRoomId(null);
-                setEditingRoomId(roomId);
-                const room = selectedFloor.rooms.find(
-                      (item) => item.id === roomId,
-                    );
-                if (room)
-                  roomEditVersions.current.set(
-                    room.id,
-                    room.updatedAt.getTime(),
-                  );
-                setRoomNameDraft(room?.name ?? "");
-              }}
-              onCreateRoom={
-                    canEditFloor && createMode
-                      ? (shape) => {
-                          setCreateMode(false);
-                          const stillCurrent = captureTraceSession();
-                          addRoom.mutate({
-                            floorId: selectedFloor.id,
-                            name: "New room",
-                            shape,
-                          }, {
-                            onSuccess: (room) => {
-                              if (stillCurrent()) focusAddedRoom(room);
-                            },
-                            onError: (error) => {
-                              if (stillCurrent()) setDetectError(`Room could not be added: ${error.message}`);
-                            },
-                          });
-                        }
-                      : undefined
-                  }
-              onDetectAtPoint={
-                    canEditFloor && detectMode ? addTracePoint : undefined
-                  }
-              onUpdateShape={
-                canEditFloor && !updateRoom.isPending
-                  ? (roomId, shape) =>
-                      updateRoom.mutate({
-                        roomId,
-                        shape,
-                        expectedUpdatedAt: roomEditVersions.current.get(roomId),
-                      })
-                  : undefined
-              }
-            />
-          </div>
-
-          {selectedFloor.rooms.length > 0 ? (
-            <div className="bg-muted/50 shrink-0 border-t">
-              <button
-                    type="button"
-                    onClick={() => setIsRoomListOpen((open) => !open)}
-                    className="flex w-full items-center justify-between gap-2 px-2 py-3 text-left sm:px-3"
-                  >
-                <div className="text-sm font-semibold">
-                  Room list ({selectedFloor.rooms.length})
-                </div>
-                {isRoomListOpen ? (
-                  <ChevronDown className="text-muted-foreground h-4 w-4 shrink-0" />
-                ) : (
-                  <ChevronUp className="text-muted-foreground h-4 w-4 shrink-0" />
-                )}
-              </button>
-              <div
-                className={`grid transition-all duration-200 ease-out ${
-                      isRoomListOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
-                    }`}
-              >
-                <div className="overflow-hidden">
-                  <div className="max-h-32 overflow-y-auto overscroll-contain border-t px-2 py-2 sm:px-3">
-                    <div className="grid grid-cols-1 gap-1 sm:grid-cols-2 lg:grid-cols-3">
-                      {selectedFloor.rooms.map((room, index) => {
-                        const color = getRoomColor(index);
-                        return (
-                          <button
-                            key={room.id}
-                            type="button"
-                            disabled={updateRoom.isPending && editMode}
-                            className="hover:bg-card flex items-center gap-2 rounded px-1 py-0.5 text-left text-sm"
-                            onClick={() => {
-                              if (reviewMode) {
-                                setReviewRoomId(room.id);
-                                return;
-                              }
-                              if (editMode) {
-                                    if (editingRoomId === room.id) return;
-                                    setSelectedRoomId(null);
-                                    setEditingRoomId(room.id);
-                                    roomEditVersions.current.set(
-                                      room.id,
-                                      room.updatedAt.getTime(),
-                                    );
-                                    setRoomNameDraft(room.name);
-                                    return;
-                                  }
-                              setSelectedRoomId(room.id);
-                              roomEditVersions.current.set(
-                                room.id,
-                                room.updatedAt.getTime(),
-                              );
-                              setRoomNameDraft(room.name);
-                            }}
-                          >
-                            <span
-                                  className="h-3 w-3 shrink-0 rounded-sm border"
-                                  style={{
-                                    backgroundColor: color.swatch,
-                                    borderColor: color.border,
-                                  }}
-                                />
-                            <span className="truncate">{room.name}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
+              {currentDetectMessage ? (
+            <div className="max-h-36 shrink-0 overflow-y-auto rounded-md border bg-slate-950 font-mono text-xs text-slate-100">
+              <div className="sticky top-0 z-10 flex items-start gap-2 border-b border-slate-700 bg-slate-950 px-3 py-2 text-sm font-semibold text-emerald-300">
+                    {isDetecting ? (
+                      <Loader2Icon className="mt-0.5 h-4 w-4 shrink-0 animate-spin" />
+                    ) : null}
+                    <span>{currentDetectMessage}</span>
                   </div>
+              {detectHistory.length > 0 ? (
+                <div className="px-3 py-2 text-slate-300">
+                  {detectHistory.map((entry) => (
+                    <div key={`${entry.at}-${entry.message}`}>
+                      {entry.message}
+                    </div>
+                  ))}
                 </div>
-              </div>
+              ) : null}
+            </div>
+          ) : null}
             </div>
           ) : null}
 
-          {canEditFloor && selectedRoomId ? (
-            <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
-              <Input
-                    value={roomNameDraft}
-                    onChange={(event) => setRoomNameDraft(event.target.value)}
-                  />
+          <div className="bg-card shrink-0 border-t px-4 pt-1.5 pb-[calc(0.5rem+env(safe-area-inset-bottom))]">
+            <div className="mx-auto grid max-w-6xl grid-cols-3 gap-1.5">
               <Button
-                disabled={updateRoom.isPending}
-                onClick={() =>
-                  updateRoom.mutate({
-                    roomId: selectedRoomId,
-                    expectedUpdatedAt:
-                      roomEditVersions.current.get(selectedRoomId),
-                    name: roomNameDraft.trim() || "Room",
-                  })
-                }
+                variant={isRoomListOpen ? "default" : "outline"}
+                className="h-10 w-full px-1.5 text-xs leading-tight whitespace-normal"
+                aria-expanded={isRoomListOpen}
+                disabled={selectedFloor.rooms.length === 0}
+                onClick={() => setIsRoomListOpen((open) => !open)}
               >
-                <PencilIcon className="mr-2 h-4 w-4" />
-                Rename
+                <ListIcon className="mr-1 h-4 w-4 shrink-0" />
+                Rooms ({selectedFloor.rooms.length})
               </Button>
               <Button
-                    variant="destructive"
-                    onClick={() =>
-                      deleteRoom.mutate({ roomId: selectedRoomId })
-                    }
-                  >
-                    <TrashIcon className="mr-2 h-4 w-4" />
-                    Delete
-                  </Button>
+                variant={editMenuOpen ? "default" : "outline"}
+                className="h-10 w-full px-1.5 text-xs leading-tight whitespace-normal"
+                aria-expanded={editMenuOpen}
+                disabled={!canManage}
+                onClick={() => {
+                  if (editMenuOpen) {
+                    setReviewMode(false);
+                    exitEditMode();
+                  } else {
+                    setEditMode(true);
+                  }
+                }}
+              >
+                <PencilIcon className="mr-1 h-4 w-4 shrink-0" />
+                {editMenuOpen ? "Done" : "Edit"}
+              </Button>
+              {/* Reserved for a future action. */}
+              <div aria-hidden="true" className="h-10 rounded-md border border-dashed" />
             </div>
-          ) : null}
+          </div>
         </div>
       ) : null}
 

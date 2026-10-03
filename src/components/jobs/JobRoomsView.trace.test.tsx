@@ -229,3 +229,37 @@ describe("trace saves belong to their original editing session", () => {
     expect(screen.getByTestId("trace-preview")).toHaveTextContent("null");
   });
 });
+
+describe("floor plan bottom bar", () => {
+  it("keeps review and confirm in the edit menu and pops up the room list", () => {
+    render(<JobRoomsView jobId="job-a" />);
+    fireEvent.click(screen.getByText("Floor A", { exact: true }));
+
+    // Only the drawing and the bar until a menu is opened.
+    expect(screen.queryByRole("button", { name: /Review detections/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Confirm reviewed floor" })).toBeNull();
+    expect(screen.queryByLabelText("Room list")).toBeNull();
+
+    click("Rooms (1)");
+    expect(screen.getByLabelText("Room list")).toHaveTextContent("Room A");
+    // Picking a room opens it; the back arrow returns to the plan with the popup closed.
+    fireEvent.click(screen.getByRole("button", { name: "Room A" }));
+    expect(screen.getByText("Room options")).toBeInTheDocument();
+    leaveFloor();
+    expect(screen.getByRole("button", { name: "Rooms (1)" })).toBeInTheDocument();
+    expect(screen.queryByLabelText("Room list")).toBeNull();
+
+    click("Edit");
+    const menu = screen.getByLabelText("Edit menu");
+    expect(menu).toContainElement(screen.getByRole("button", { name: /Review detections \(1\)/ }));
+    expect(menu).toContainElement(screen.getByRole("button", { name: "Confirm reviewed floor" }));
+
+    // Switching to review and back keeps the menu open; Done closes it.
+    click("Review detections (1)");
+    expect(screen.getByLabelText("Detection review")).toBeInTheDocument();
+    click("Review detections (1)");
+    expect(screen.getByLabelText("Edit menu")).toBeInTheDocument();
+    click("Done");
+    expect(screen.queryByLabelText("Edit menu")).toBeNull();
+  });
+});
