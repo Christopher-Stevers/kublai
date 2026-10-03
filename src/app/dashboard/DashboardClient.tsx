@@ -578,42 +578,45 @@ export function DashboardClient({
             )
           ) : offlineJob ? (
             <>
-              <div className="mb-6">
-                <div className="mb-2 flex items-center gap-3">
-                  <h1 className="text-2xl font-bold text-foreground sm:text-3xl">
-                    {offlineJob.name}
-                  </h1>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setShowOfflineJobEditDialog(true)}
-                    className="h-8 w-8 p-0"
-                    aria-label="Edit job"
-                  >
-                    <PencilIcon className="h-4 w-4" />
-                  </Button>
+              {/* Job details only on the job overview, not inside Rooms or Material Lists. */}
+              {offlineJobView === "options" && (
+                <div className="mb-6">
+                  <div className="mb-2 flex items-center gap-3">
+                    <h1 className="text-2xl font-bold text-foreground sm:text-3xl">
+                      {offlineJob.name}
+                    </h1>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setShowOfflineJobEditDialog(true)}
+                      className="h-8 w-8 p-0"
+                      aria-label="Edit job"
+                    >
+                      <PencilIcon className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <div className="mt-2 flex flex-wrap gap-4 text-sm text-muted-foreground">
+                    {jobLocationAddress && (
+                      <div className="flex items-center gap-2">
+                        <MapPinIcon className="h-4 w-4" />
+                        <span>{jobLocationAddress}</span>
+                      </div>
+                    )}
+                    {offlineJob.foremanName && (
+                      <div className="flex items-center gap-2">
+                        <UserIcon className="h-4 w-4" />
+                        <span>{offlineJob.foremanName}</span>
+                      </div>
+                    )}
+                    {offlineJob.poNumber && (
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">PO#:</span>
+                        <span>{offlineJob.poNumber}</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <div className="mt-2 flex flex-wrap gap-4 text-sm text-muted-foreground">
-                  {jobLocationAddress && (
-                    <div className="flex items-center gap-2">
-                      <MapPinIcon className="h-4 w-4" />
-                      <span>{jobLocationAddress}</span>
-                    </div>
-                  )}
-                  {offlineJob.foremanName && (
-                    <div className="flex items-center gap-2">
-                      <UserIcon className="h-4 w-4" />
-                      <span>{offlineJob.foremanName}</span>
-                    </div>
-                  )}
-                  {offlineJob.poNumber && (
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">PO#:</span>
-                      <span>{offlineJob.poNumber}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
+              )}
 
               {offlineJobView === "options" ? (
                 <JobWorkspaceOptions
