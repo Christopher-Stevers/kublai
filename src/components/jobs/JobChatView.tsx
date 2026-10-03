@@ -18,7 +18,6 @@ import {
   Loader2Icon,
   PaperclipIcon,
   ReplyIcon,
-  SmartphoneIcon,
   SendIcon,
   Trash2Icon,
   UsersIcon,
@@ -31,12 +30,6 @@ import { useOnlineStatus } from "~/hooks/use-online-status";
 import { Button } from "~/components/ui/button";
 import { confirmAction } from "~/components/ui/app-dialogs";
 import { ChatNotifications } from "./ChatNotifications";
-import {
-  isIosDevice,
-  isStandaloneApp,
-  useInstallPrompt,
-  useManifestOverride,
-} from "~/lib/install-prompt";
 import {
   loadChatDraft,
   mergeChatMessages,
@@ -239,14 +232,6 @@ function ChatLobby({ jobId, userId }: { jobId: string; userId: string }) {
   const remove = api.chat.delete.useMutation();
   const markRead = api.chat.markRead.useMutation();
   const mute = api.chat.setNotifications.useMutation();
-  const jobName = overview.data?.jobName ?? "";
-  // While this chat is open, "Add to Home Screen" makes an icon for this chat.
-  useManifestOverride(
-    jobName
-      ? `/chat-shortcut/${jobId}/manifest.webmanifest?name=${encodeURIComponent(jobName)}`
-      : null,
-    jobName,
-  );
   const messages = useMemo(
     () =>
       mergeChatMessages(...Object.values(older), history.data?.messages ?? []),
@@ -818,7 +803,6 @@ function ChatLobby({ jobId, userId }: { jobId: string; userId: string }) {
             aria-label="Notification settings"
           >
             <ChatNotifications />
-            <HomeScreenShortcut />
             <button
               type="button"
               className="inline-flex min-h-11 items-center gap-2 rounded-lg border px-3 py-2 disabled:opacity-50"
@@ -1326,35 +1310,5 @@ function MessageActions({
       </div>
     </div>,
     document.body,
-  );
-}
-
-/** Adds an icon to the home screen that opens this job's chat directly. */
-function HomeScreenShortcut() {
-  const { prompt, install } = useInstallPrompt();
-  const [help, setHelp] = useState(false);
-  const instructions = isStandaloneApp()
-    ? "Open this chat in your phone's browser (Safari or Chrome), then tap this button again."
-    : isIosDevice()
-      ? "In Safari, tap the Share button (the square with an arrow), then choose Add to Home Screen."
-      : "Open your browser menu (⋮), then choose Add to Home screen.";
-  return (
-    <div className="space-y-1">
-      <button
-        type="button"
-        className="inline-flex min-h-11 items-center gap-2 rounded-lg border px-3 py-2"
-        aria-expanded={prompt ? undefined : help}
-        onClick={() => {
-          if (prompt) void install();
-          else setHelp(!help);
-        }}
-      >
-        <SmartphoneIcon className="h-4 w-4" />
-        Add chat to Home Screen
-      </button>
-      {help && !prompt && (
-        <p className="text-muted-foreground">{instructions}</p>
-      )}
-    </div>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useSyncExternalStore } from "react";
+import { useSyncExternalStore } from "react";
 
 /** Chrome/Edge/Android: the deferred "install app" prompt. Safari never fires it. */
 export type BeforeInstallPromptEvent = Event & {
@@ -52,32 +52,6 @@ if (typeof window !== "undefined") {
   window.addEventListener("appinstalled", () =>
     set({ installed: true, prompt: null }),
   );
-}
-
-/**
- * Points the page at a different manifest (e.g. one job's chat) until the
- * returned function restores the original. Any prompt captured for the old
- * manifest is dropped, so installing never adds the wrong shortcut; the browser
- * offers a new prompt once it has read the new manifest.
- */
-export function useManifestOverride(href: string | null, appleTitle: string) {
-  useEffect(() => {
-    if (!href) return;
-    const link = document.querySelector<HTMLLinkElement>('link[rel="manifest"]');
-    const title = document.querySelector<HTMLMetaElement>(
-      'meta[name="apple-mobile-web-app-title"]',
-    );
-    if (!link) return;
-    const original = { href: link.getAttribute("href"), title: title?.content };
-    link.setAttribute("href", href);
-    if (title) title.content = appleTitle;
-    set({ prompt: null });
-    return () => {
-      if (original.href) link.setAttribute("href", original.href);
-      if (title && original.title !== undefined) title.content = original.title;
-      set({ prompt: null });
-    };
-  }, [href, appleTitle]);
 }
 
 function subscribe(listener: () => void) {
