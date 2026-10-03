@@ -439,8 +439,15 @@ self.addEventListener("push", (event) => {
         return;
       await self.registration.showNotification("ForemanHQ Chat", {
         body: "There is new activity in a job chat. Open ForemanHQ to read it.",
-        icon: "/foremanhq/android-chrome-192x192.png",
+        icon: "/foremanhq/notification-icon.png",
+        // Android status-bar icon (white silhouette; the platform tints it).
+        badge: "/foremanhq/notification-badge.png",
+        // Browsers cannot play a custom sound; a short double buzz stands out instead.
+        vibrate: [90, 60, 90],
         tag: `job-chat-${new URL(url).pathname.split("/")[3]}`,
+        // Alert again for each new message instead of silently replacing the last one.
+        renotify: true,
+        timestamp: Date.now(),
         data: { type: "job-chat", url, account: data.account },
       });
     })(),
