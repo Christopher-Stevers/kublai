@@ -994,7 +994,7 @@ function ChatLobby({
           Jump to latest messages ↓
         </button>
       )}
-      <footer className="bg-card max-h-full shrink-0 overflow-y-auto border-t px-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+      <footer className="bg-card max-h-full min-h-0 shrink overflow-y-auto border-t px-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
         {currentError && (
           <p role="alert" className="text-destructive mb-2 text-sm">
             {currentError}
