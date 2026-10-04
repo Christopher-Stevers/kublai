@@ -628,6 +628,98 @@ export const roomsRouter = createTRPCRouter({
       return { ok: true };
     }),
 
+  /**
+   * Copies a floor and its room outlines, for drawings that cover several
+   * floors. The copy shares the drawing image; room notes start empty because
+   * they belong to the real floor.
+   */
+  copyFloor: hasDashboardAccess
+    .input(z.object({ floorId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      if (!userCan(ctx.user as never, "drawings.manage")) {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+      const organizationId = (ctx.user as { organizationId: string })
+        .organizationId;
+      return ctx.db.transaction(async (tx) => {
+        await tx.execute(sql`select pg_advisory_xact_lock(72491833)`);
+        const [active] = await tx
+          .select({ status: roomDetectionJobs.status })
+          .from(roomDetectionJobs)
+          .where(
+            and(
+              eq(roomDetectionJobs.floorId, input.floorId),
+              eq(roomDetectionJobs.organizationId, organizationId),
+            ),
+          );
+        if (active?.status === "running")
+          throw new TRPCError({
+            code: "CONFLICT",
+            message:
+              "Wait for room detection to finish before copying this floor.",
+          });
+        const [floor] = await tx
+          .select()
+          .from(jobFloors)
+          .where(
+            and(
+              eq(jobFloors.id, input.floorId),
+              eq(jobFloors.organizationId, organizationId),
+            ),
+          )
+          .for("update");
+        if (!floor) throw new TRPCError({ code: "NOT_FOUND" });
+        // Page numbers are unique per drawing set and order the floors; the
+        // copy goes last. Detection reads the source page from the image.
+        const [last] = await tx
+          .select({ page: sql<number>`max(${jobFloors.pageNumber})` })
+          .from(jobFloors)
+          .where(eq(jobFloors.floorPlanId, floor.floorPlanId));
+        const suffix = " (copy)";
+        const [copy] = await tx
+          .insert(jobFloors)
+          .values({
+            organizationId,
+            jobId: floor.jobId,
+            floorPlanId: floor.floorPlanId,
+            pageNumber: Number(last?.page ?? floor.pageNumber) + 1,
+            name: floor.name.slice(0, 255 - suffix.length) + suffix,
+            imageUrl: floor.imageUrl,
+            width: floor.width,
+            height: floor.height,
+            status: floor.status,
+            confirmedAt: floor.confirmedAt,
+            completenessReviewedAt: floor.completenessReviewedAt,
+          })
+          .returning({ id: jobFloors.id });
+        const rooms = await tx
+          .select()
+          .from(jobRooms)
+          .where(
+            and(
+              eq(jobRooms.floorId, floor.id),
+              eq(jobRooms.organizationId, organizationId),
+            ),
+          );
+        if (rooms.length)
+          await tx.insert(jobRooms).values(
+            rooms.map((room) => ({
+              organizationId,
+              jobId: room.jobId,
+              floorId: copy!.id,
+              name: room.name,
+              source: room.source,
+              confirmed: room.confirmed,
+              reviewStatus: room.reviewStatus,
+              detection: room.detection,
+              shape: room.shape,
+              sortOrder: room.sortOrder,
+            })),
+          );
+        return { floorId: copy!.id, roomCount: rooms.length };
+      });
+    }),
+
   addRoom: hasDashboardAccess
     .input(
       z.object({

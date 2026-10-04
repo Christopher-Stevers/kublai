@@ -11,6 +11,8 @@ import {
   PencilIcon,
   SparklesIcon,
   TrashIcon,
+  CopyIcon,
+  MoreVerticalIcon,
   UploadIcon,
 } from "lucide-react";
 
@@ -31,7 +33,14 @@ import { uploadDrawings } from "~/lib/upload-drawings";
 import { roomLabelPoint, toPolygon } from "~/lib/room-shape";
 import { useRoomTracePreview } from "./useRoomTracePreview";
 import { api } from "~/trpc/react";
-import { confirmAction } from "~/components/ui/app-dialogs";
+import { confirmAction, notify } from "~/components/ui/app-dialogs";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "~/components/ui/dropdown-menu";
 import { useHeaderBackOverride } from "~/lib/header-back-events";
 
 export function JobRoomsView({ jobId, onOpenMaterialList }: { jobId: string; onOpenMaterialList?: (id: string) => void }) {
@@ -181,6 +190,17 @@ export function JobRoomsView({ jobId, onOpenMaterialList }: { jobId: string; onO
       setSelectedRoomId(null);
       void utils.rooms.getJobRooms.invalidate({ jobId });
     },
+  });
+  // One drawing can cover several floors: copy it with its rooms, then rename.
+  const copyFloor = api.rooms.copyFloor.useMutation({
+    onSuccess: (result) => {
+      notify(
+        `Floor copied with ${result.roomCount} ${result.roomCount === 1 ? "room" : "rooms"}. Open it to rename it.`,
+        "success",
+      );
+      void utils.rooms.getJobRooms.invalidate({ jobId });
+    },
+    onError: (error) => notify(error.message, "error"),
   });
   const confirmDrawingUpload = api.rooms.confirmDrawingUpload.useMutation();
   const detectRooms = api.rooms.detectRooms.useMutation({
@@ -753,22 +773,47 @@ export function JobRoomsView({ jobId, onOpenMaterialList }: { jobId: string; onO
                     {floor.name}
                   </CardTitle>
                       {canManage ? (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="-mt-3 -mr-3 h-10 w-10 shrink-0 text-red-600 hover:bg-red-50 hover:text-red-700"
-                          aria-label={`Delete floor ${floor.name}`}
-                          onClick={(event) => {
-                        event.stopPropagation();
-                        setFloorToDelete({
-                          id: floor.id,
-                          name: floor.name,
-                          roomCount: floor.rooms.length,
-                        });
-                      }}
-                        >
-                          <TrashIcon className="h-4 w-4" />
-                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-muted-foreground -mt-3 -mr-3 h-10 w-10 shrink-0"
+                              aria-label={`More actions for ${floor.name}`}
+                              onClick={(event) => event.stopPropagation()}
+                            >
+                              <MoreVerticalIcon className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent
+                            align="end"
+                            onClick={(event) => event.stopPropagation()}
+                          >
+                            <DropdownMenuItem
+                              disabled={copyFloor.isPending}
+                              onSelect={() =>
+                                copyFloor.mutate({ floorId: floor.id })
+                              }
+                            >
+                              <CopyIcon className="h-4 w-4" />
+                              Copy floor
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              variant="destructive"
+                              onSelect={() =>
+                                setFloorToDelete({
+                                  id: floor.id,
+                                  name: floor.name,
+                                  roomCount: floor.rooms.length,
+                                })
+                              }
+                            >
+                              <TrashIcon className="h-4 w-4" />
+                              Delete floor
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       ) : null}
                     </div>
                   </CardHeader>

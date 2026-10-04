@@ -284,3 +284,23 @@ describe("floor plan bottom bar", () => {
     expect(screen.queryByLabelText("Edit menu")).toBeNull();
   });
 });
+
+describe("floor card menu", () => {
+  it("replaces the trash can with a menu to copy or delete the floor", async () => {
+    render(<JobRoomsView jobId="job-a" />);
+    expect(screen.queryByRole("button", { name: /^Delete floor/ })).toBeNull();
+    const trigger = screen.getByRole("button", { name: "More actions for Floor A" });
+    fireEvent.pointerDown(trigger, { button: 0, pointerType: "mouse" });
+    fireEvent.click(await screen.findByRole("menuitem", { name: "Copy floor" }));
+    expect(harness.calls.at(-1)).toMatchObject({
+      name: "copyFloor",
+      input: { floorId: "floor-a" },
+    });
+    // Opening the menu does not open the floor.
+    expect(screen.queryByRole("button", { name: /^Rooms \(/ })).toBeNull();
+
+    fireEvent.pointerDown(trigger, { button: 0, pointerType: "mouse" });
+    fireEvent.click(await screen.findByRole("menuitem", { name: "Delete floor" }));
+    expect(await screen.findByText("Delete floor?")).toBeInTheDocument();
+  });
+});
