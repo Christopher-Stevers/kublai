@@ -2,7 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { ArrowDown, ArrowUp } from "lucide-react";
+import {
+  ArrowRight,
+  Check,
+  Loader2,
+  PartyPopper,
+  Sparkles,
+} from "lucide-react";
 import { Button } from "~/components/ui/button";
 import {
   getTutorialGuide,
@@ -12,6 +18,7 @@ import {
   type TutorialPhase,
 } from "./tutorial-guide";
 import styles from "./TutorialExperience.module.css";
+import { TUTORIAL_CHAPTERS } from "./tutorial-chapters";
 
 type Layout = {
   guide: TutorialGuide;
@@ -280,9 +287,21 @@ export function TutorialOverlay({
   const offset = layout.hostRect ?? { left: 0, top: 0 };
   const placement = placeTutorialCard(layout.rect, layout.bounds, cardHeight);
   if (layout.compact) placement.top = layout.bounds.top + 4;
-  const below =
-    !layout.rect || placement.top >= layout.rect.top + layout.rect.height;
   const rect = layout.rect;
+  const below = !rect || placement.top >= rect.top + rect.height;
+  const chapterIndex = TUTORIAL_CHAPTERS.findIndex(
+    (chapter) => chapter.phase === phase,
+  );
+  const chapter = TUTORIAL_CHAPTERS[chapterIndex];
+  const done = phase === "done";
+  const ChapterIcon = done ? PartyPopper : (chapter?.icon ?? Sparkles);
+  // Point the card's caret at the middle of the highlighted control.
+  const caretLeft = rect
+    ? Math.min(
+        placement.width - 22,
+        Math.max(22, rect.left + rect.width / 2 - placement.left),
+      )
+    : null;
   return createPortal(
     <div
       data-tutorial-overlay
@@ -295,90 +314,153 @@ export function TutorialOverlay({
           className={styles.spotlight}
           style={{
             position: "absolute",
-            left: rect.left - offset.left - 4,
-            top: rect.top - offset.top - 4,
-            width: rect.width + 8,
-            height: rect.height + 8,
+            left: rect.left - offset.left - 6,
+            top: rect.top - offset.top - 6,
+            width: rect.width + 12,
+            height: rect.height + 12,
           }}
         />
       )}
+      {done && <Confetti />}
       <aside
         ref={card}
         aria-label="Tutorial guidance"
-        className="bg-card text-card-foreground pointer-events-auto absolute rounded-xl border border-blue-400 p-4 shadow-xl"
+        className={`${styles.card} bg-card text-card-foreground pointer-events-auto absolute rounded-2xl shadow-2xl ring-1 ring-black/5`}
         style={{
           left: placement.left - offset.left,
           top: placement.top - offset.top,
           width: placement.width,
           maxHeight: Math.max(120, layout.bounds.height - 24),
-          overflowY: "auto",
         }}
       >
-        <div className="flex items-center justify-between gap-2 text-xs">
-          <span className="font-semibold text-blue-700 dark:text-blue-300">
-            Tutorial ·{" "}
-            {phase === "materials"
-              ? "Material lists"
-              : phase === "rooms"
-                ? "Rooms"
-                : "Chat"}
-          </span>
-          <button
-            type="button"
-            className="min-h-8 rounded px-2 underline underline-offset-2"
-            onClick={() => onFinish("skipped")}
+        {rect && caretLeft !== null && !layout.compact && (
+          <span
+            aria-hidden="true"
+            className={`bg-card absolute size-4 rotate-45 ring-1 ring-black/5 ${
+              below ? "-top-2" : "-bottom-2"
+            }`}
+            style={{ left: caretLeft - 8 }}
+          />
+        )}
+        <div className="relative max-h-[inherit] overflow-y-auto rounded-2xl p-4">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex min-w-0 items-center gap-2 text-xs font-semibold">
+              <span className="bg-primary/10 text-primary flex size-7 shrink-0 items-center justify-center rounded-full">
+                <ChapterIcon aria-hidden="true" className="size-4" />
+              </span>
+              <span className="text-primary truncate">
+                {done
+                  ? "Tour complete"
+                  : `${chapter?.label ?? "Tour"} · ${chapterIndex + 1} of ${TUTORIAL_CHAPTERS.length}`}
+              </span>
+            </div>
+            <button
+              type="button"
+              className="text-muted-foreground hover:text-foreground min-h-8 shrink-0 rounded-md px-2 text-xs font-medium transition-colors"
+              onClick={() => onFinish("skipped")}
+            >
+              End tutorial
+            </button>
+          </div>
+          <div
+            aria-hidden="true"
+            className="mt-3 grid grid-cols-3 gap-1.5"
           >
-            End tutorial
-          </button>
-        </div>
-        <div
-          aria-live="polite"
-          aria-atomic="true"
-          className={layout.compact ? "sr-only" : "mt-2"}
-        >
-          <p className="flex items-center gap-2 font-semibold">
-            {rect &&
-              (below ? (
-                <ArrowUp
-                  aria-hidden="true"
-                  className="size-5 shrink-0 text-blue-600"
+            {TUTORIAL_CHAPTERS.map((item, index) => (
+              <span
+                key={item.phase}
+                className="bg-muted h-1.5 overflow-hidden rounded-full"
+              >
+                <span
+                  className={`bg-primary block h-full rounded-full transition-[width] duration-500 ease-out ${
+                    done || index < chapterIndex
+                      ? "w-full"
+                      : index === chapterIndex
+                        ? "w-1/2"
+                        : "w-0"
+                  }`}
                 />
-              ) : (
-                <ArrowDown
-                  aria-hidden="true"
-                  className="size-5 shrink-0 text-blue-600"
-                />
-              ))}
-            {layout.guide.title}
-          </p>
-          <p className="text-muted-foreground mt-2 text-sm">
-            {layout.guide.text}
-          </p>
-        </div>
-        {!rect && (
-          <p role="status" className="text-muted-foreground mt-2 text-xs">
-            Waiting for this screen…
-          </p>
-        )}
-        {error && (
-          <p role="status" className="mt-2 text-xs">
-            {error}
-          </p>
-        )}
-        {layout.guide.next && !layout.compact && (
-          <Button
-            className="mt-3 w-full"
-            onClick={() =>
-              layout.guide.next === "finish"
-                ? onFinish("completed")
-                : setPhase("chat")
-            }
+              </span>
+            ))}
+          </div>
+          <div
+            key={layout.guide.title}
+            aria-live="polite"
+            aria-atomic="true"
+            className={layout.compact ? "sr-only" : `${styles.step} mt-3`}
           >
-            {layout.guide.next === "finish" ? "Finish tutorial" : "Next: Chat"}
-          </Button>
-        )}
+            <p className="text-base leading-snug font-semibold">
+              {layout.guide.title}
+            </p>
+            <p className="text-muted-foreground mt-1.5 text-sm leading-relaxed">
+              {layout.guide.text}
+            </p>
+            {done && (
+              <ul className="mt-3 space-y-1.5">
+                {TUTORIAL_CHAPTERS.map((item) => (
+                  <li key={item.phase} className="flex items-center gap-2 text-sm">
+                    <span className="flex size-5 items-center justify-center rounded-full bg-emerald-500 text-white">
+                      <Check aria-hidden="true" className="size-3.5" />
+                    </span>
+                    {item.done}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+          {!rect && (
+            <p
+              role="status"
+              className="text-muted-foreground mt-3 flex items-center gap-2 text-xs"
+            >
+              <Loader2 aria-hidden="true" className="size-3.5 animate-spin" />
+              Waiting for this screen…
+            </p>
+          )}
+          {error && (
+            <p role="status" className="mt-2 text-xs">
+              {error}
+            </p>
+          )}
+          {layout.guide.next && !layout.compact && (
+            <Button
+              size="lg"
+              className="mt-4 h-11 w-full text-base"
+              onClick={() =>
+                layout.guide.next === "finish"
+                  ? onFinish("completed")
+                  : setPhase("chat")
+              }
+            >
+              {layout.guide.next === "finish" ? "Finish tutorial" : "Next: Chat"}
+              <ArrowRight aria-hidden="true" className="ml-1 size-4" />
+            </Button>
+          )}
+        </div>
       </aside>
     </div>,
     layout.host,
+  );
+}
+
+/** A short burst of confetti for the finish card. Decorative only. */
+function Confetti() {
+  const colors = ["#3b82f6", "#22c55e", "#f59e0b", "#ef4444", "#a855f7", "#14b8a6"];
+  return (
+    <div aria-hidden="true" className={styles.confetti}>
+      {Array.from({ length: 36 }, (_, index) => (
+        <span
+          key={index}
+          style={{
+            left: `${(index * 37) % 100}%`,
+            background: colors[index % colors.length],
+            animationDelay: `${(index % 9) * 60}ms`,
+            animationDuration: `${1600 + ((index * 53) % 900)}ms`,
+            ["--drift" as string]: `${((index * 29) % 120) - 60}px`,
+            ["--spin" as string]: `${360 + ((index * 47) % 540)}deg`,
+          }}
+        />
+      ))}
+    </div>
   );
 }

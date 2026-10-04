@@ -1,10 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import { DashboardClient } from "~/app/dashboard/DashboardClient";
 import { Header } from "~/app/_components/Header";
 import { Button } from "~/components/ui/button";
 import { TutorialSandboxProvider } from "./TutorialSandboxProvider";
 import { TutorialOverlay } from "./TutorialOverlay";
+import { TutorialWelcome } from "./TutorialWelcome";
 
 /** Normal production components, with isolated practice data and a guidance overlay. */
 export function TutorialExperience({
@@ -16,6 +18,7 @@ export function TutorialExperience({
   onFinish: (outcome: "completed" | "skipped") => void;
   error?: string | null;
 }) {
+  const [started, setStarted] = useState(false);
   return (
     <TutorialSandboxProvider
       userId={userId}
@@ -32,7 +35,14 @@ export function TutorialExperience({
           <DashboardClient initialJobs={[]} />
         </main>
       </div>
-      <TutorialOverlay onFinish={onFinish} error={error} />
+      {started ? (
+        <TutorialOverlay onFinish={onFinish} error={error} />
+      ) : (
+        <TutorialWelcome
+          onStart={() => setStarted(true)}
+          onSkip={() => onFinish("skipped")}
+        />
+      )}
     </TutorialSandboxProvider>
   );
 }

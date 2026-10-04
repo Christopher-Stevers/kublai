@@ -161,7 +161,7 @@ describe("guidance on real controls", () => {
       </>,
     );
     expect(await screen.findByText("Back to your job")).toBeInTheDocument();
-    expect(screen.getByText("Tutorial · Rooms")).toBeInTheDocument();
+    expect(screen.getByText("Rooms · 2 of 3")).toBeInTheDocument();
   });
 
   it("keeps End inside the real modal focus boundary", async () => {

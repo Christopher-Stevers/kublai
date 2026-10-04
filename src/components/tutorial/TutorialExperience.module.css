@@ -1,13 +1,96 @@
+/* Highlight around the control to tap: a soft slate dim with a glowing ring
+   that glides from one target to the next. */
 .spotlight {
-  border: 3px solid #3b82f6;
-  border-radius: 0.65rem;
-  box-shadow: 0 0 0 9999px rgb(0 0 0 / 32%);
-  animation: guide-pulse 2.8s ease-in-out infinite;
+  border-radius: 0.85rem;
+  box-shadow:
+    0 0 0 3px #60a5fa,
+    0 0 22px 4px rgb(96 165 250 / 55%),
+    0 0 0 9999px rgb(15 23 42 / 58%);
+  transition:
+    left 320ms cubic-bezier(0.22, 1, 0.36, 1),
+    top 320ms cubic-bezier(0.22, 1, 0.36, 1),
+    width 320ms cubic-bezier(0.22, 1, 0.36, 1),
+    height 320ms cubic-bezier(0.22, 1, 0.36, 1);
 }
-@keyframes guide-pulse {
-  0%, 100% { border-color: #60a5fa; }
-  50% { border-color: #1d4ed8; }
+.spotlight::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  border: 2px solid #93c5fd;
+  animation: guide-ripple 1.8s ease-out infinite;
 }
+@keyframes guide-ripple {
+  0% { opacity: 0.9; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.14); }
+}
+
+/* The guidance card follows its target smoothly. */
+.card {
+  transition:
+    left 320ms cubic-bezier(0.22, 1, 0.36, 1),
+    top 320ms cubic-bezier(0.22, 1, 0.36, 1);
+  animation: guide-card-in 260ms ease-out;
+}
+@keyframes guide-card-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+}
+
+/* Each new step's text fades in. */
+.step {
+  animation: guide-step-in 280ms ease-out;
+}
+@keyframes guide-step-in {
+  from { opacity: 0; transform: translateY(6px); }
+}
+
+/* Welcome screen. */
+.welcome {
+  animation: guide-welcome-in 360ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+@keyframes guide-welcome-in {
+  from { opacity: 0; transform: translateY(16px) scale(0.97); }
+}
+.welcomeBackdrop {
+  animation: guide-fade-in 240ms ease-out;
+}
+@keyframes guide-fade-in {
+  from { opacity: 0; }
+}
+
+/* Finish confetti. */
+.confetti {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+.confetti span {
+  position: absolute;
+  top: -12px;
+  width: 8px;
+  height: 12px;
+  border-radius: 2px;
+  opacity: 0;
+  animation-name: guide-confetti;
+  animation-timing-function: cubic-bezier(0.25, 0.6, 0.4, 1);
+  animation-fill-mode: forwards;
+}
+@keyframes guide-confetti {
+  0% { opacity: 1; transform: translate(0, 0) rotate(0); }
+  85% { opacity: 1; }
+  100% {
+    opacity: 0;
+    transform: translate(var(--drift), 70vh) rotate(var(--spin));
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .spotlight { animation: none; }
+  .spotlight,
+  .card { transition: none; }
+  .spotlight::after,
+  .card,
+  .step,
+  .welcome,
+  .welcomeBackdrop { animation: none; }
+  .confetti { display: none; }
 }

@@ -40,6 +40,17 @@ it("mounts the actual dashboard/header with no real initial jobs and keeps the o
   expect(screen.getByText("Normal header")).toBeInTheDocument();
   expect(calls.dashboard).toHaveBeenCalledWith({ initialJobs: [] });
   expect(calls.provider).toHaveBeenCalledWith("practice-user");
+  // The welcome screen comes first; the guided overlay starts with the tour.
+  expect(screen.getByRole("dialog", { name: "Welcome to ForemanHQ" })).toBeInTheDocument();
+  expect(screen.queryByText("End tutorial")).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Start the tour" }));
+  expect(screen.queryByRole("dialog", { name: "Welcome to ForemanHQ" })).toBeNull();
   fireEvent.click(screen.getByText("End tutorial"));
+  expect(finish).toHaveBeenCalledWith("skipped");
+});
+it("can skip the tour from the welcome screen", () => {
+  const finish = vi.fn();
+  render(<TutorialExperience userId="practice-user" onFinish={finish} />);
+  fireEvent.click(screen.getByRole("button", { name: "Skip for now" }));
   expect(finish).toHaveBeenCalledWith("skipped");
 });
