@@ -22,10 +22,7 @@ import {
 import { Search, ChevronDownIcon } from "lucide-react";
 import { LocationFormDialog } from "./LocationFormDialog";
 import { useOnlineStatus } from "~/hooks/use-online-status";
-import {
-  getMaterialListReplicache,
-  mutateMaterialListAndSync,
-} from "~/lib/replicache-material-list";
+import { useWorkspaceMutations } from "~/hooks/use-workspace-mutations";
 
 interface JobInfoModalProps {
   open: boolean;
@@ -42,6 +39,7 @@ export function JobInfoModal({
   initialName,
   initialLocationId,
 }: JobInfoModalProps) {
+  const { getReplicache: getMaterialListReplicache, mutateAndSync: mutateMaterialListAndSync } = useWorkspaceMutations();
   const [jobName, setJobName] = useState(initialName || "");
   const [selectedLocation, setSelectedLocation] = useState<{
     id: string;

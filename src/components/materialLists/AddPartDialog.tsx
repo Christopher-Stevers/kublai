@@ -26,10 +26,8 @@ import { PartStage } from "./wizard/PartStage";
 import { ReviewStage } from "./wizard/ReviewStage";
 import { usePartWizard } from "./wizard/use-part-wizard";
 import { VerticalPickerOverlay } from "./wizard/VerticalPickerOverlay";
-import {
-  getMaterialListReplicache,
-  requestMaterialListReplicacheSync,
-} from "~/lib/replicache-material-list";
+import { useWorkspaceMutations } from "~/hooks/use-workspace-mutations";
+import { useTutorialSandbox } from "~/components/tutorial/tutorial-sandbox-context";
 import { useOnlineStatus } from "~/hooks/use-online-status";
 import { useReplicacheMaterialList } from "~/hooks/use-replicache-material-list";
 import { useCatalogueFirstDownload } from "~/hooks/use-replicache-catalogue";
@@ -50,6 +48,8 @@ export function AddPartDialog({
   onOpenChange,
   materialListId,
 }: AddPartDialogProps) {
+  const sandbox = useTutorialSandbox();
+  const { getReplicache: getMaterialListReplicache, requestSync: requestMaterialListReplicacheSync } = useWorkspaceMutations();
   // Tool request lists pick from tool catalogs; material lists never do.
   const listKind = useReplicacheMaterialList(materialListId).materialList?.kind;
   const isToolRequest = listKind === "tools";
@@ -206,7 +206,7 @@ export function AddPartDialog({
         return;
       }
 
-      const cachedSupplierParts = getOfflineSupplierPartsByPart(partId);
+      const cachedSupplierParts = sandbox ? null : getOfflineSupplierPartsByPart(partId);
       if (cachedSupplierParts) {
         setSupplierPartsData((prev) => {
           const next = new Map(prev);
@@ -245,7 +245,7 @@ export function AddPartDialog({
               };
             }>,
           ) => {
-            setOfflineSupplierPartsByPart(partId, data);
+            if (!sandbox) setOfflineSupplierPartsByPart(partId, data);
             setSupplierPartsData((prev) => {
               const next = new Map(prev);
               next.set(partId, data);
@@ -281,7 +281,7 @@ export function AddPartDialog({
       }
       return hasChanges ? next : prev;
     });
-  }, [isOnline, pendingPartIdsKey]);
+  }, [isOnline, pendingPartIdsKey, sandbox]);
 
   // Auto-select preferred supplier when part is added
   useEffect(() => {
@@ -587,7 +587,7 @@ export function AddPartDialog({
         : [...existing, supplierPart];
       const next = new Map(prev);
       next.set(partId, nextParts);
-      setOfflineSupplierPartsByPart(partId, nextParts);
+      if (!sandbox) setOfflineSupplierPartsByPart(partId, nextParts);
       return next;
     });
   };
@@ -828,7 +828,7 @@ export function AddPartDialog({
   const suppressNextAddPartsPopRef = useRef(false);
 
   useEffect(() => {
-    if (!open || typeof window === "undefined") return;
+    if (sandbox || !open || typeof window === "undefined") return;
     if (window.history.state?.foremenAddPartsDialog) {
       addPartsHistoryEntryRef.current = true;
       return;
@@ -855,10 +855,11 @@ export function AddPartDialog({
     return () => {
       window.removeEventListener("popstate", handlePopState);
     };
-  }, [onOpenChange, open]);
+  }, [onOpenChange, open, sandbox]);
 
   const closeDialogAndCleanHistory = () => {
     if (
+      !sandbox &&
       typeof window !== "undefined" &&
       addPartsHistoryEntryRef.current &&
       window.history.state?.foremenAddPartsDialog
@@ -884,6 +885,9 @@ export function AddPartDialog({
         }}
       >
         <DialogContent
+          data-tutorial="add-part-dialog"
+          data-tutorial-stage={wizardStage}
+          data-tutorial-pending-count={pendingParts.length}
           className={`relative flex h-[calc(100dvh-1rem)] max-h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-none flex-col overflow-hidden p-0 sm:h-[90vh] sm:max-h-[90vh] sm:w-[calc(100vw-3rem)] sm:max-w-[90rem] ${quantityPickerPreview ? "touch-none" : ""}`}
           style={
             isMobileViewport
@@ -954,6 +958,7 @@ export function AddPartDialog({
           )}
 
           <div
+            data-tutorial={`wizard-${isWizardSearchActive ? "part" : wizardStage}`}
             className={`flex-1 space-y-2 overflow-y-auto overscroll-contain pt-2 pb-3 sm:space-y-4 sm:pt-4 sm:pb-4 ${wizardStage === "review" ? "px-4 sm:px-6" : "px-2 sm:px-4 md:px-6"} ${quantityPickerPreview ? "touch-none overflow-hidden" : ""}`}
           >
             {!isOnline && (
@@ -1116,6 +1121,7 @@ export function AddPartDialog({
                   variant="outline"
                   size="sm"
                   onClick={handleReviewAndAdd}
+                  data-tutorial="wizard-review-button"
                   className="h-8 shrink-0 px-2.5 text-xs sm:h-9 sm:text-sm"
                 >
                   {isToolRequest ? "Review Tools" : "Review Parts"}
@@ -1194,6 +1200,7 @@ export function AddPartDialog({
                 </div>
                 <Button
                   onClick={handleAddToMaterialList}
+                  data-tutorial="wizard-confirm"
                   disabled={
                     pendingParts.length === 0 ||
                     !allPartsHaveSuppliers ||

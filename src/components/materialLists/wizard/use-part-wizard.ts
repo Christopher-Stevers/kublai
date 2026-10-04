@@ -10,6 +10,7 @@ import {
 import { facetCount } from "~/lib/catalogue-facets";
 import { api } from "~/trpc/react";
 import { useOnlineStatus } from "~/hooks/use-online-status";
+import { useTutorialSandbox } from "~/components/tutorial/tutorial-sandbox-context";
 import { useReplicacheCatalogue } from "~/hooks/use-replicache-catalogue";
 import { requestCatalogueReplicachePull } from "~/lib/replicache-catalogue";
 import { EMPTY_NAME_KEYWORD_GROUPS, sortMaterialListPartChoices, type NameKeywordGroup, type MaterialListSort } from "~/lib/material-list-sort";
@@ -49,6 +50,7 @@ const catalogKindOf = (catalog: { kind?: string | null }) =>
   catalog.kind === "assets" ? "assets" : "materials";
 
 export function usePartWizard(open = true, sortMode?: MaterialListSort, keywordGroups: readonly NameKeywordGroup[] = EMPTY_NAME_KEYWORD_GROUPS, catalogKind: WizardCatalogKind = "materials") {
+  const sandbox = useTutorialSandbox();
   const [wizardStage, setWizardStage] = useState<WizardStage>("catalog");
   const [selectedCatalogId, setSelectedCatalogId] = useState<string | null>(
     null,
@@ -456,7 +458,7 @@ export function usePartWizard(open = true, sortMode?: MaterialListSort, keywordG
       setCustomCatalogName("");
       setShowCustomCatalogInput(false);
       setWizardStage("material");
-      requestCatalogueReplicachePull(0);
+      if (!sandbox) requestCatalogueReplicachePull(0);
       void utils.catalogue.getPartWizardSummary.invalidate();
       void utils.catalogue.getCatalogs.invalidate();
     },
@@ -470,7 +472,7 @@ export function usePartWizard(open = true, sortMode?: MaterialListSort, keywordG
       setCustomMaterialName("");
       setShowCustomMaterialInput(false);
       setWizardStage("size");
-      requestCatalogueReplicachePull(0);
+      if (!sandbox) requestCatalogueReplicachePull(0);
       void utils.catalogue.getPartWizardSummary.invalidate();
       void utils.catalogue.getMaterials.invalidate();
     },
@@ -506,7 +508,7 @@ export function usePartWizard(open = true, sortMode?: MaterialListSort, keywordG
       setCustomCategoryName("");
       setShowCustomCategoryInput(false);
       setWizardStage("part");
-      requestCatalogueReplicachePull(0);
+      if (!sandbox) requestCatalogueReplicachePull(0);
       void utils.catalogue.getPartWizardSummary.invalidate();
       void utils.catalogue.getCategories.invalidate();
     },

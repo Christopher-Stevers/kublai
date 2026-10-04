@@ -116,7 +116,7 @@ function ReviewQuantityControls({
   onSetQuantity: (partId: string, quantity: number) => void;
 }) {
   return (
-    <div className="flex items-center justify-center">
+    <div data-tutorial="wizard-review-quantity" className="flex items-center justify-center">
       <Button
         variant="outline"
         size="sm"

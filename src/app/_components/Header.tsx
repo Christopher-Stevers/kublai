@@ -43,6 +43,7 @@ import {
   type HeaderBackStateDetail,
 } from "~/lib/header-back-events";
 import { useInstallPrompt } from "~/lib/install-prompt";
+import { useTutorialSandbox } from "~/components/tutorial/tutorial-sandbox-context";
 
 const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
 const hasUsableClerkKey =
@@ -79,6 +80,7 @@ function HeaderFrame({
   showAdmin: boolean;
 }) {
   const router = useRouter();
+  const sandbox = useTutorialSandbox();
   const isOnline = useOnlineStatus();
   const { installed: isInstalled, install } = useInstallPrompt();
   const [showRequestedBackButton, setShowRequestedBackButton] = useState(false);
@@ -146,6 +148,7 @@ function HeaderFrame({
   }, []);
 
   const navigate = (href: string) => {
+    if (sandbox) return;
     if (!isOnline) {
       window.location.href = href;
       return;
@@ -155,6 +158,7 @@ function HeaderFrame({
   };
 
   const handleSignOut = async () => {
+    if (sandbox) return;
     try {
       const { disconnectChatPushDevice } = await import("~/components/jobs/ChatNotifications");
       await disconnectChatPushDevice();
@@ -166,6 +170,7 @@ function HeaderFrame({
   };
 
   const handleInstallApp = async () => {
+    if (sandbox) return;
     if (isInstalled) return;
 
     if (!(await install())) navigate("/dashboard/account");
@@ -178,7 +183,7 @@ function HeaderFrame({
       return;
     }
 
-    router.back();
+    if (!sandbox) router.back();
   };
 
   return (
@@ -191,6 +196,7 @@ function HeaderFrame({
             onClick={handleBack}
             className="h-10 w-10 shrink-0"
             aria-label="Go back"
+            data-tutorial="back"
           >
             <ArrowLeftIcon className="h-5 w-5" />
           </Button>
@@ -463,5 +469,20 @@ function HeaderWithoutClerk() {
 }
 
 export function Header() {
+  const sandbox = useTutorialSandbox();
+  if (sandbox) return <HeaderForPractice />;
   return hasUsableClerkKey ? <HeaderWithClerk /> : <HeaderWithoutClerk />;
+}
+
+function HeaderForPractice() {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  return <HeaderFrame
+    pathname="/dashboard"
+    mobileMenuOpen={mobileMenuOpen}
+    setMobileMenuOpen={setMobileMenuOpen}
+    userEmail="Practice workspace"
+    showAccount={true}
+    tabAccess={{ dashboard: true, catalogue: true, suppliers: true, quotes: true, orders: true, draws: false, assets: true, organization: false }}
+    showAdmin={false}
+  />;
 }

@@ -1,10 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import {
-  getMaterialListReplicache,
-  mutateMaterialListAndSync,
-} from "~/lib/replicache-material-list";
+import { useWorkspaceMutations } from "~/hooks/use-workspace-mutations";
 import {
   Dialog,
   DialogContent,
@@ -49,6 +46,7 @@ export function SupplierFormDialog({
   initialData,
   onSupplierCreated,
 }: SupplierFormDialogProps) {
+  const { getReplicache: getMaterialListReplicache, mutateAndSync: mutateMaterialListAndSync } = useWorkspaceMutations();
   const [name, setName] = useState(initialData?.name || initialName || "");
   const [contactName, setContactName] = useState(
     initialData?.contactName || "",

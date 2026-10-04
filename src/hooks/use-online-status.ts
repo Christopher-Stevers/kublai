@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTutorialSandbox } from "~/components/tutorial/tutorial-sandbox-context";
 
 const DEV_OFFLINE_KEY = "foremenhq.dev.force-offline";
 const DEV_OFFLINE_EVENT = "foremenhq:dev-offline-changed";
@@ -77,6 +78,7 @@ export function setDevOfflineOverride(enabled: boolean) {
 }
 
 export function useOnlineStatus() {
+  const sandbox = useTutorialSandbox();
   const [isOnline, setIsOnline] = useState(getBrowserOnlineStatus);
 
   useEffect(() => {
@@ -96,5 +98,6 @@ export function useOnlineStatus() {
     };
   }, []);
 
-  return isOnline;
+  // Practice requests are handled by local transports, even without internet.
+  return sandbox ? true : isOnline;
 }

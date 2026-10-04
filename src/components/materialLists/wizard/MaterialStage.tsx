@@ -100,6 +100,7 @@ export function MaterialStage({
           <button
             type="button"
             key={entry.key}
+            data-tutorial-choice={entry.name}
             className={`w-full max-w-[4in] cursor-pointer rounded-xl border bg-card p-2 text-center shadow-sm transition hover:shadow-md focus-visible:outline-2 focus-visible:outline-blue-600 sm:p-4 ${entry.kind === "material" && selectedMaterialId === entry.material.id ? "border-primary border-2" : ""}`}
             onClick={() =>
               entry.kind === "group"

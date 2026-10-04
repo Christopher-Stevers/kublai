@@ -12,10 +12,7 @@ import {
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { LocationSelector } from "~/components/ui/LocationSelector";
-import {
-  getMaterialListReplicache,
-  mutateMaterialListAndSync,
-} from "~/lib/replicache-material-list";
+import { useWorkspaceMutations } from "~/hooks/use-workspace-mutations";
 
 interface JobEditDialogProps {
   open: boolean;
@@ -36,6 +33,7 @@ export function JobEditDialog({
   initialForemanName,
   initialPoNumber,
 }: JobEditDialogProps) {
+  const { getReplicache: getMaterialListReplicache, mutateAndSync: mutateMaterialListAndSync } = useWorkspaceMutations();
   const [jobName, setJobName] = useState(initialName || "");
   const [locationId, setLocationId] = useState<string | null>(
     initialLocationId ?? null,

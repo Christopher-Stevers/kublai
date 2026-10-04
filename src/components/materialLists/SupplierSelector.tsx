@@ -12,10 +12,8 @@ import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Search, ChevronDownIcon } from "lucide-react";
 import { SupplierFormDialog } from "~/components/suppliers/SupplierFormDialog";
-import {
-  getMaterialListReplicache,
-  mutateMaterialListAndSync,
-} from "~/lib/replicache-material-list";
+import { useWorkspaceMutations } from "~/hooks/use-workspace-mutations";
+import { useTutorialSandbox } from "~/components/tutorial/tutorial-sandbox-context";
 import { useReplicacheSuppliers } from "~/hooks/use-replicache-suppliers";
 import type { ReplicacheSupplier } from "~/hooks/use-replicache-suppliers";
 import { getOfflineSupplierPartsByPart } from "~/lib/offline-supplier-parts";
@@ -39,6 +37,8 @@ export function SupplierSelector({
   suppliers,
   compact = false,
 }: SupplierSelectorProps) {
+  const sandbox = useTutorialSandbox();
+  const { getReplicache: getMaterialListReplicache, mutateAndSync: mutateMaterialListAndSync } = useWorkspaceMutations();
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -100,8 +100,8 @@ export function SupplierSelector({
   const allSuppliers = suppliers ?? subscribedSuppliers;
 
   useEffect(() => {
-    setCachedSupplierParts(getOfflineSupplierPartsByPart(partDefinitionId) ?? []);
-  }, [partDefinitionId, isDropdownOpen]);
+    setCachedSupplierParts(sandbox ? [] : getOfflineSupplierPartsByPart(partDefinitionId) ?? []);
+  }, [partDefinitionId, isDropdownOpen, sandbox]);
 
   const supplierParts = cachedSupplierParts;
 

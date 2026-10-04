@@ -1,9 +1,9 @@
 "use client";
 
-import { useCallback } from "react";
 import { tryGetMaterialListReplicache } from "~/lib/replicache-material-list";
-import { useReplicacheSubscribe } from "~/hooks/use-replicache-subscribe";
+import { createSharedReplicacheReader } from "~/hooks/use-shared-replicache";
 import type { SupplierContact } from "~/lib/supplier-contacts";
+import { useTutorialSandbox } from "~/components/tutorial/tutorial-sandbox-context";
 
 export interface ReplicacheSupplier {
   id: string;
@@ -28,14 +28,7 @@ function isSupplierRecord(value: unknown): value is ReplicacheSupplier {
   );
 }
 
-export function useReplicacheSuppliers({
-  enabled = true,
-}: { enabled?: boolean } = {}) {
-  const rep = enabled ? tryGetMaterialListReplicache() : null;
-
-  const suppliers = useReplicacheSubscribe(
-    rep,
-    useCallback(async (tx) => {
+const useSuppliers = createSharedReplicacheReader(async (tx) => {
       const entries = await tx
         .scan({ prefix: "supplier/" })
         .entries()
@@ -47,9 +40,12 @@ export function useReplicacheSuppliers({
         }
       }
       return result.sort((a, b) => a.name.localeCompare(b.name));
-    }, []),
-    { default: [] as ReplicacheSupplier[] },
-  );
+}, [] as ReplicacheSupplier[]);
 
-  return suppliers;
+export function useReplicacheSuppliers({
+  enabled = true,
+}: { enabled?: boolean } = {}) {
+  const sandbox = useTutorialSandbox();
+  const rep = enabled ? (sandbox?.material ?? tryGetMaterialListReplicache()) : null;
+  return useSuppliers(rep);
 }

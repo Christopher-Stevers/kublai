@@ -23,7 +23,7 @@ export function MaterialListSheet({
 }) {
   const syncing = useReplicacheSyncing();
   return (
-    <div className={`parts-sheet-scroll ${className}`}>
+    <div data-tutorial={items.length ? "material-items" : undefined} className={`parts-sheet-scroll ${className}`}>
       <table
         aria-label="Material list"
         className="parts-sheet block w-full min-w-[70rem]"

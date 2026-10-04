@@ -13,6 +13,9 @@ import { JobChatView } from "./JobChatView";
 
 const mock = vi.hoisted(() => ({
   online: true,
+  sandbox: null as { userId: string; runId: string } | null,
+  auth: vi.fn(),
+  loadDraft: vi.fn(),
   userId: "user-one",
   saved: null as unknown,
   saveDraft: vi.fn().mockResolvedValue(undefined),
@@ -38,7 +41,13 @@ const mock = vi.hoisted(() => ({
   invalidate: vi.fn().mockResolvedValue(undefined),
 }));
 vi.mock("@clerk/nextjs", () => ({
-  useAuth: () => ({ userId: mock.userId, isLoaded: true }),
+  useAuth: () => {
+    mock.auth();
+    return { userId: mock.userId, isLoaded: true };
+  },
+}));
+vi.mock("~/components/tutorial/tutorial-sandbox-context", () => ({
+  useTutorialSandbox: () => mock.sandbox,
 }));
 vi.mock("~/hooks/use-online-status", () => ({
   useOnlineStatus: () => mock.online,
@@ -51,7 +60,7 @@ vi.mock("~/components/ui/app-dialogs", () => ({
 }));
 vi.mock("~/lib/job-chat-drafts", async (importOriginal) => ({
   ...(await importOriginal<typeof DraftStorage>()),
-  loadChatDraft: vi.fn(async () => mock.saved),
+  loadChatDraft: mock.loadDraft,
   saveChatDraft: mock.saveDraft,
 }));
 const utils = {
@@ -140,8 +149,10 @@ async function openChat() {
 beforeEach(() => {
   vi.clearAllMocks();
   mock.online = true;
+  mock.sandbox = null;
   mock.userId = "user-one";
   mock.saved = null;
+  mock.loadDraft.mockImplementation(async () => mock.saved);
   mock.overview = {
     unreadCount: 0,
     latestSequence: 2,
@@ -170,6 +181,53 @@ afterEach(() => {
 });
 
 describe("job chat delivery and scrolling", () => {
+  it("keeps practice chat in memory without Clerk, streaming, attachments or notification setup", async () => {
+    mock.sandbox = { userId: "practice-user", runId: "run-one" };
+    mock.online = false;
+    const events = vi.fn();
+    vi.stubGlobal("EventSource", events);
+    mock.send.mockImplementation(
+      async (input: { clientId: string; body: string }) => ({
+        ...message(3, input.body),
+        clientId: input.clientId,
+        author: { id: "practice-user", name: "You", image: null },
+      }),
+    );
+    await openChat();
+    expect(mock.auth).not.toHaveBeenCalled();
+    expect(mock.loadDraft).not.toHaveBeenCalled();
+    expect(events).not.toHaveBeenCalled();
+    expect(
+      screen.getByRole("button", { name: "Notifications" }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Attach photos or PDFs" }),
+    ).toBeDisabled();
+    // Guard the handler as well as the disabled file picker.
+    fireEvent.change(document.querySelector('input[type="file"]')!, {
+      target: {
+        files: [new File(["photo"], "practice.png", { type: "image/png" })],
+      },
+    });
+    expect(screen.queryByText("practice.png")).not.toBeInTheDocument();
+    fireEvent.change(screen.getByRole("textbox", { name: "Message" }), {
+      target: { value: "Practice update" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Send message" }));
+    await waitFor(() =>
+      expect(screen.getByText("Practice update")).toBeInTheDocument(),
+    );
+    expect(
+      document.querySelector('[data-tutorial="chat-own-message"]'),
+    ).toHaveTextContent("Practice update");
+    expect(mock.send).toHaveBeenCalledWith(
+      expect.objectContaining({ body: "Practice update", attachmentIds: [] }),
+    );
+    expect(mock.saveDraft).not.toHaveBeenCalled();
+    expect(fetch).not.toHaveBeenCalled();
+    expect(screen.queryByText("Device notifications")).not.toBeInTheDocument();
+  });
+
   it("keeps a failed message and retries exactly the same idempotency key without duplicating it", async () => {
     mock.send
       .mockRejectedValueOnce(new Error("Connection lost"))

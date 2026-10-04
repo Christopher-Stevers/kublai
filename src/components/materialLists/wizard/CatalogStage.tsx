@@ -53,6 +53,7 @@ export function CatalogStage({
         {pagination.paginatedItems.map((catalog) => (
           <WizardOptionCard
             key={catalog.id}
+            tutorialChoice={catalog.name}
             selected={selectedCatalogId === catalog.id}
             onClick={() => onCatalogSelect(catalog.id)}
           >

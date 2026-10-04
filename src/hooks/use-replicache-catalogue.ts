@@ -1,7 +1,7 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import type { ReadonlyJSONValue } from "replicache";
+import type { ReadonlyJSONValue, ReadTransaction } from "replicache";
 import {
   getCatalogueSyncing,
   subscribeCatalogueSyncing,
@@ -9,6 +9,7 @@ import {
 } from "~/lib/replicache-catalogue";
 import { createSharedReplicacheReader } from "~/hooks/use-shared-replicache";
 import { warmOfflineCatalogueImages } from "~/lib/offline-catalogue";
+import { useTutorialSandbox } from "~/components/tutorial/tutorial-sandbox-context";
 
 export interface ReplicacheCatalogueCatalog {
   id: string;
@@ -122,8 +123,7 @@ function readTyped<T>(
   return result;
 }
 
-const useCatalogueSnapshot = createSharedReplicacheReader<ReplicacheCatalogueSnapshot>(
-  async tx => {
+async function readCatalogueSnapshot(tx: ReadTransaction): Promise<ReplicacheCatalogueSnapshot> {
       const [catalogEntries, materialEntries, categoryEntries, unitEntries, partEntries] =
         await Promise.all([
           tx.scan({ prefix: "catalog/" }).values().toArray(),
@@ -151,21 +151,29 @@ const useCatalogueSnapshot = createSharedReplicacheReader<ReplicacheCatalogueSna
         parts: readTyped(partEntries, isPart),
       };
       return nextSnapshot;
-  }, EMPTY_SNAPSHOT, snapshot => {
+}
+const useCatalogueSnapshot = createSharedReplicacheReader(
+  readCatalogueSnapshot, EMPTY_SNAPSHOT, snapshot => {
     if (snapshot.parts.length) void warmOfflineCatalogueImages(snapshot);
   },
 );
+const useSandboxCatalogueSnapshot = createSharedReplicacheReader(readCatalogueSnapshot, EMPTY_SNAPSHOT);
+const subscribeNever = () => () => undefined;
+const neverSyncing = () => false;
 
 export function useReplicacheCatalogue({ enabled = true }: { enabled?: boolean } = {}) {
-  return useCatalogueSnapshot(enabled ? tryGetCatalogueReplicache() : null);
+  const sandbox = useTutorialSandbox();
+  const useSnapshot = sandbox ? useSandboxCatalogueSnapshot : useCatalogueSnapshot;
+  return useSnapshot(enabled ? (sandbox?.catalogue ?? tryGetCatalogueReplicache()) : null);
 }
 
 /** True while this device downloads the catalogue for the first time. */
 export function useCatalogueFirstDownload(enabled = true) {
+  const sandbox = useTutorialSandbox();
   const { parts } = useReplicacheCatalogue({ enabled });
   const syncing = useSyncExternalStore(
-    subscribeCatalogueSyncing,
-    getCatalogueSyncing,
+    sandbox ? subscribeNever : subscribeCatalogueSyncing,
+    sandbox ? neverSyncing : getCatalogueSyncing,
     () => false,
   );
   return enabled && syncing && parts.length === 0;

@@ -9,6 +9,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { runHeaderBackOverride } from "~/lib/header-back-events";
 
 const harness = vi.hoisted(() => ({
+  sandbox: false,
   data: {} as Record<string, unknown>,
   calls: [] as Array<{
     name: string;
@@ -19,6 +20,9 @@ const harness = vi.hoisted(() => ({
 }));
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
+vi.mock("~/components/tutorial/tutorial-sandbox-context", () => ({
+  useTutorialSandbox: () => harness.sandbox ? { userId: "practice-user", runId: "run-one" } : null,
+}));
 vi.mock("~/trpc/react", async () => {
   const { useState } = await import("react");
   const query = {
@@ -106,6 +110,7 @@ const shape = { type: "bbox", x: 0.1, y: 0.1, w: 0.3, h: 0.3 };
 const nextShape = { ...shape, w: 0.6 };
 const saved = { id: "room-added", name: "New room", updatedAt: new Date(2000) };
 beforeEach(() => {
+  harness.sandbox = false;
   harness.calls.length = 0;
   harness.data = {
     canManage: true,
@@ -232,6 +237,21 @@ describe("trace saves belong to their original editing session", () => {
 });
 
 describe("floor plan bottom bar", () => {
+  it("opens the real room controls in practice without upload or detection tools", () => {
+    harness.sandbox = true;
+    render(<JobRoomsView jobId="job-a" />);
+    expect(screen.queryByRole("button", { name: /Upload drawings/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Delete floor/ })).toBeNull();
+    fireEvent.click(document.querySelector('[data-tutorial="floor-card"]')!);
+    expect(document.querySelector('[data-tutorial="drawing-viewer"]')).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Edit" })).toBeDisabled();
+    fireEvent.click(document.querySelector('[data-tutorial="room-list-toggle"]')!);
+    fireEvent.click(document.querySelector('[data-tutorial="room-list-item"]')!);
+    expect(document.querySelector('[data-tutorial="room-details"]')).toBeInTheDocument();
+    expect(document.querySelector('[data-tutorial="room-notes"]')).toBeInTheDocument();
+    expect(harness.calls).toEqual([]);
+  });
+
   it("keeps review and confirm in the edit menu and pops up the room list", () => {
     render(<JobRoomsView jobId="job-a" />);
     fireEvent.click(screen.getByText("Floor A", { exact: true }));

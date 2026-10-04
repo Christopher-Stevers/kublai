@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { RoomDetails, type RoomNotesDraft } from "./RoomDetails";
+import { useTutorialSandbox } from "~/components/tutorial/tutorial-sandbox-context";
 import {
   ListIcon,
   DoorOpenIcon,
@@ -35,6 +36,7 @@ import { useHeaderBackOverride } from "~/lib/header-back-events";
 
 export function JobRoomsView({ jobId, onOpenMaterialList }: { jobId: string; onOpenMaterialList?: (id: string) => void }) {
   const router = useRouter();
+  const sandbox = useTutorialSandbox();
   const [notesDrafts, setNotesDrafts] = useState<Record<string, RoomNotesDraft | undefined>>({});
   const roomEditVersions = useRef(new Map<string, number>());
   const fileRef = useRef<HTMLInputElement | null>(null);
@@ -208,7 +210,7 @@ export function JobRoomsView({ jobId, onOpenMaterialList }: { jobId: string; onO
     {
       // A completed cached run can clear local launch state before the new
       // worker responds. Status belongs to the selected floor, not that state.
-      enabled: Boolean(selectedFloorId && roomsQuery.data?.canManage),
+      enabled: !sandbox && Boolean(selectedFloorId && roomsQuery.data?.canManage),
       refetchInterval: (query) =>
         query.state.data?.status === "running" || detectRooms.isPending || detectingRoomId === selectedFloorId
           ? 1000
@@ -237,7 +239,7 @@ export function JobRoomsView({ jobId, onOpenMaterialList }: { jobId: string; onO
   ]);
 
   const data = roomsQuery.data;
-  const canManage = data?.canManage ?? false;
+  const canManage = !sandbox && (data?.canManage ?? false);
   const floors = (data?.floors ?? []).map((floor) => ({
     ...floor,
     rooms: floor.rooms.filter(
@@ -375,7 +377,7 @@ export function JobRoomsView({ jobId, onOpenMaterialList }: { jobId: string; onO
   const startDetect = (
     method: "standard" | "hybrid" | "complete" = "complete",
   ) => {
-    if (!selectedFloor || isDetecting) return;
+    if (sandbox || !selectedFloor || isDetecting) return;
     setDetectError(null);
     cancelTracePreview();
     setDetectMode(false);
@@ -502,6 +504,7 @@ export function JobRoomsView({ jobId, onOpenMaterialList }: { jobId: string; onO
   };
 
   const handleUpload = async (file: File) => {
+    if (sandbox) return;
     setUploadError(null);
     setUploading(true);
     try {
@@ -521,6 +524,7 @@ export function JobRoomsView({ jobId, onOpenMaterialList }: { jobId: string; onO
   };
 
   const confirmPendingSheets = async () => {
+    if (sandbox) return;
     const keepFloorIds = pendingSheets
       .filter((sheet) => keepSheetIds[sheet.id] !== false)
       .map((sheet) => sheet.id);
@@ -577,7 +581,7 @@ export function JobRoomsView({ jobId, onOpenMaterialList }: { jobId: string; onO
               {selectedFloor.name}
             </p>
           </div>
-          <Button variant="outline" onClick={() => setSelectedRoomId(null)}>
+          <Button data-tutorial="room-back" variant="outline" onClick={() => setSelectedRoomId(null)}>
             Back to floor
           </Button>
         </div>
@@ -597,7 +601,7 @@ export function JobRoomsView({ jobId, onOpenMaterialList }: { jobId: string; onO
       {!selectedFloor ? (
         <>
           <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <h2 className="text-foreground text-xl font-semibold">Rooms</h2>
+            <h2 data-tutorial="rooms-root" className="text-foreground text-xl font-semibold">Rooms</h2>
             {canManage ? (
           <>
             <input
@@ -728,6 +732,8 @@ export function JobRoomsView({ jobId, onOpenMaterialList }: { jobId: string; onO
               {floors.map((floor) => (
                 <Card
                   key={floor.id}
+                  data-tutorial="floor-card"
+                  data-tutorial-floor-id={floor.id}
                   className="cursor-pointer transition-shadow hover:shadow-md"
                   onClick={() => {
                     setSelectedFloorId(floor.id);
@@ -792,7 +798,7 @@ export function JobRoomsView({ jobId, onOpenMaterialList }: { jobId: string; onO
       {selectedFloor ? (
         // Full screen under the app bar: the drawing fills everything above
         // the bottom bar; the room list and edit menu slide up over the bar.
-        <div className="bg-background fixed inset-x-0 top-14 bottom-0 z-30 flex flex-col sm:top-16">
+        <div data-tutorial="drawing-viewer" className="bg-background fixed inset-x-0 top-14 bottom-0 z-30 flex flex-col sm:top-16">
           <div className="relative min-h-0 flex-1">
             <FloorPlanCanvas
               imageUrl={selectedFloor.imageUrl}
@@ -966,6 +972,8 @@ export function JobRoomsView({ jobId, onOpenMaterialList }: { jobId: string; onO
                         return (
                           <button
                             key={room.id}
+                            data-tutorial="room-list-item"
+                            data-tutorial-room-id={room.id}
                             type="button"
                             disabled={updateRoom.isPending && editMode}
                             className="hover:bg-card flex items-center gap-2 rounded px-1 py-0.5 text-left text-sm"
@@ -1433,6 +1441,7 @@ export function JobRoomsView({ jobId, onOpenMaterialList }: { jobId: string; onO
           <div className="bg-card shrink-0 border-t px-4 pt-1.5 pb-[calc(0.5rem+env(safe-area-inset-bottom))]">
             <div className="mx-auto grid max-w-6xl grid-cols-3 gap-1.5">
               <Button
+                data-tutorial="room-list-toggle"
                 variant={isRoomListOpen ? "default" : "outline"}
                 className="h-10 w-full px-1.5 text-xs leading-tight whitespace-normal"
                 aria-expanded={isRoomListOpen}

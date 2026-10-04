@@ -213,8 +213,8 @@ export function TutorialGate({
     return (
       <TutorialBoundary key={run} onEnd={() => finish("skipped")}>
         <TutorialExperience
+          userId={userId}
           onFinish={finish}
-          finishing={false}
           error={saveError}
         />
       </TutorialBoundary>

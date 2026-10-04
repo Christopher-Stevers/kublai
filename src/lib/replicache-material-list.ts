@@ -136,99 +136,7 @@ export type MaterialListReplicacheMutators = {
   ): Promise<void>;
 };
 
-// ---------------------------------------------------------------------------
-// Singleton instance
-// ---------------------------------------------------------------------------
-
-let materialListReplicache: Replicache<MaterialListReplicacheMutators> | null =
-  null;
-let materialListReplicacheResetting = false;
-let materialListReplicacheClosing = false;
-let materialListReplicacheSyncTimer: ReturnType<typeof setTimeout> | null =
-  null;
-let materialListReplicacheSyncInFlight = false;
-let materialListReplicacheSyncRequested: "none" | "pull" | "push-pull" = "none";
-let materialListReplicacheScheduledMode: "pull" | "push-pull" = "pull";
-let materialListReplicacheIsSyncing = false;
-const materialListReplicacheSyncingListeners = new Set<
-  (syncing: boolean) => void
->();
-
-function notifyMaterialListReplicacheSyncing(syncing: boolean) {
-  materialListReplicacheIsSyncing = syncing;
-  for (const listener of materialListReplicacheSyncingListeners) {
-    listener(syncing);
-  }
-}
-
-export function subscribeToMaterialListReplicacheSyncing(
-  listener: (syncing: boolean) => void,
-) {
-  materialListReplicacheSyncingListeners.add(listener);
-  listener(materialListReplicacheIsSyncing);
-  return () => {
-    materialListReplicacheSyncingListeners.delete(listener);
-  };
-}
-
-export function isMaterialListReplicacheSyncing() {
-  return materialListReplicacheIsSyncing;
-}
-
-function mergeSyncMode(
-  current: "none" | "pull" | "push-pull",
-  next: "pull" | "push-pull",
-) {
-  return current === "push-pull" || next === "push-pull" ? "push-pull" : "pull";
-}
-
-function assertBrowser() {
-  if (typeof window === "undefined") {
-    throw new Error("Replicache material-list sync is browser-only");
-  }
-}
-
-function isReplicacheClosedError(error: unknown) {
-  return error instanceof Error && error.message === "Closed";
-}
-
-export async function resetMaterialListReplicacheStorage() {
-  if (materialListReplicacheResetting) return;
-  materialListReplicacheResetting = true;
-
-  if (materialListReplicacheSyncTimer) {
-    clearTimeout(materialListReplicacheSyncTimer);
-    materialListReplicacheSyncTimer = null;
-  }
-  materialListReplicacheSyncRequested = "none";
-  materialListReplicacheScheduledMode = "pull";
-
-  const staleReplicache = materialListReplicache;
-  const staleDbName = staleReplicache?.idbName;
-
-  materialListReplicache = null;
-  materialListReplicacheClosing = true;
-  try {
-    await staleReplicache?.close();
-  } catch (error) {
-    if (!isReplicacheClosedError(error)) throw error;
-  } finally {
-    materialListReplicacheClosing = false;
-  }
-
-  if (staleDbName) await dropDatabase(staleDbName);
-
-  window.location.reload();
-}
-
-export function getMaterialListReplicache() {
-  assertBrowser();
-  if (materialListReplicache) return materialListReplicache;
-
-  const replicache = new Replicache<MaterialListReplicacheMutators>({
-    name: "foremenhq-material-lists",
-    schemaVersion: MATERIAL_LIST_REPLICACHE_SCHEMA_VERSION,
-    indexes: {
+export const MATERIAL_LIST_INDEXES = {
       itemsByList: {
         prefix: "materialListItem/",
         jsonPointer: "/materialListId",
@@ -244,19 +152,10 @@ export function getMaterialListReplicache() {
         jsonPointer: "/jobId",
         allowEmpty: true,
       },
-    },
-    pullURL: "/api/replicache/material-lists/pull",
-    pushURL: "/api/replicache/material-lists/push",
-    // SSE pokes, online/visibility handlers, and user mutations request immediate
-    // sync. Keep polling as a low-frequency safety net instead of a competing
-    // foreground refresh loop.
-    pullInterval: 60_000,
-    pushDelay: 250,
-    requestOptions: {
-      minDelayMs: 100,
-      maxDelayMs: 2_000,
-    },
-    mutators: {
+    };
+
+export function makeMaterialListMutators(): MaterialListReplicacheMutators {
+  return {
       // -----------------------------------------------------------------
       // Material list operations
       // -----------------------------------------------------------------
@@ -535,7 +434,114 @@ export function getMaterialListReplicache() {
       async deleteSupplier(tx, args) {
         await tx.del(`supplier/${args.supplierId}`);
       },
+    };
+}
+
+// ---------------------------------------------------------------------------
+// Singleton instance
+// ---------------------------------------------------------------------------
+
+let materialListReplicache: Replicache<MaterialListReplicacheMutators> | null =
+  null;
+let materialListReplicacheResetting = false;
+let materialListReplicacheClosing = false;
+let materialListReplicacheSyncTimer: ReturnType<typeof setTimeout> | null =
+  null;
+let materialListReplicacheSyncInFlight = false;
+let materialListReplicacheSyncRequested: "none" | "pull" | "push-pull" = "none";
+let materialListReplicacheScheduledMode: "pull" | "push-pull" = "pull";
+let materialListReplicacheIsSyncing = false;
+const materialListReplicacheSyncingListeners = new Set<
+  (syncing: boolean) => void
+>();
+
+function notifyMaterialListReplicacheSyncing(syncing: boolean) {
+  materialListReplicacheIsSyncing = syncing;
+  for (const listener of materialListReplicacheSyncingListeners) {
+    listener(syncing);
+  }
+}
+
+export function subscribeToMaterialListReplicacheSyncing(
+  listener: (syncing: boolean) => void,
+) {
+  materialListReplicacheSyncingListeners.add(listener);
+  listener(materialListReplicacheIsSyncing);
+  return () => {
+    materialListReplicacheSyncingListeners.delete(listener);
+  };
+}
+
+export function isMaterialListReplicacheSyncing() {
+  return materialListReplicacheIsSyncing;
+}
+
+function mergeSyncMode(
+  current: "none" | "pull" | "push-pull",
+  next: "pull" | "push-pull",
+) {
+  return current === "push-pull" || next === "push-pull" ? "push-pull" : "pull";
+}
+
+function assertBrowser() {
+  if (typeof window === "undefined") {
+    throw new Error("Replicache material-list sync is browser-only");
+  }
+}
+
+function isReplicacheClosedError(error: unknown) {
+  return error instanceof Error && error.message === "Closed";
+}
+
+export async function resetMaterialListReplicacheStorage() {
+  if (materialListReplicacheResetting) return;
+  materialListReplicacheResetting = true;
+
+  if (materialListReplicacheSyncTimer) {
+    clearTimeout(materialListReplicacheSyncTimer);
+    materialListReplicacheSyncTimer = null;
+  }
+  materialListReplicacheSyncRequested = "none";
+  materialListReplicacheScheduledMode = "pull";
+
+  const staleReplicache = materialListReplicache;
+  const staleDbName = staleReplicache?.idbName;
+
+  materialListReplicache = null;
+  materialListReplicacheClosing = true;
+  try {
+    await staleReplicache?.close();
+  } catch (error) {
+    if (!isReplicacheClosedError(error)) throw error;
+  } finally {
+    materialListReplicacheClosing = false;
+  }
+
+  if (staleDbName) await dropDatabase(staleDbName);
+
+  window.location.reload();
+}
+
+export function getMaterialListReplicache() {
+  assertBrowser();
+  if (materialListReplicache) return materialListReplicache;
+
+  const replicache = new Replicache<MaterialListReplicacheMutators>({
+    name: "foremenhq-material-lists",
+    schemaVersion: MATERIAL_LIST_REPLICACHE_SCHEMA_VERSION,
+    indexes: MATERIAL_LIST_INDEXES,
+    pullURL: "/api/replicache/material-lists/pull",
+    pushURL: "/api/replicache/material-lists/push",
+    // SSE pokes, online/visibility handlers, and user mutations request immediate
+    // sync. Keep polling as a low-frequency safety net instead of a competing
+    // foreground refresh loop.
+    pullInterval: 60_000,
+    pushDelay: 250,
+    requestOptions: {
+      minDelayMs: 100,
+      maxDelayMs: 2_000,
     },
+    mutators: makeMaterialListMutators(),
   });
 
   replicache.onClientStateNotFound = () => {

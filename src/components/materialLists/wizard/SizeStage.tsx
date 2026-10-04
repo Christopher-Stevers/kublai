@@ -220,6 +220,15 @@ function SizeCard({
 
   return (
     <Card
+      data-tutorial-choice={formatSize(size.nominal, size.unit)}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onSizeSelect({ nominal: size.nominal, unit: size.unit, sizeLabel: null });
+        }
+      }}
       className={`min-w-0 cursor-pointer overflow-hidden transition-all hover:shadow-md ${isSelected ? WIZARD_OPTION_SELECTED_CLASS : ""}`}
       style={{
         WebkitTouchCallout: "none",

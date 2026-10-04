@@ -21,6 +21,7 @@ import {
 import { SupplierFormDialog } from "~/components/suppliers/SupplierFormDialog";
 import { useOnlineStatus } from "~/hooks/use-online-status";
 import { useReplicacheSuppliers } from "~/hooks/use-replicache-suppliers";
+import { useTutorialSandbox } from "~/components/tutorial/tutorial-sandbox-context";
 import {
   addOfflinePartSupplier,
   getOfflinePartSuppliers,
@@ -45,6 +46,7 @@ export function PartSuppliersDropdown({
   currentPreferredSupplierId,
   availableSuppliers,
 }: PartSuppliersDropdownProps) {
+  const sandbox = useTutorialSandbox();
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -74,9 +76,10 @@ export function PartSuppliersDropdown({
   }, [searchQuery]);
 
   useEffect(() => {
+    if (sandbox) return;
     const cached = getOfflinePartSuppliers(partDefinitionId);
     if (cached) setLocalSupplierParts(cached);
-  }, [partDefinitionId]);
+  }, [partDefinitionId, sandbox]);
 
   useEffect(() => {
     if (!serverSupplierParts) return;
@@ -84,9 +87,9 @@ export function PartSuppliersDropdown({
       ...part,
       partDefinitionId,
     }));
-    setOfflinePartSuppliers(partDefinitionId, normalized);
+    if (!sandbox) setOfflinePartSuppliers(partDefinitionId, normalized);
     setLocalSupplierParts(normalized);
-  }, [partDefinitionId, serverSupplierParts]);
+  }, [partDefinitionId, serverSupplierParts, sandbox]);
 
   useEffect(() => {
     if (!isDropdownOpen) {
@@ -113,10 +116,12 @@ export function PartSuppliersDropdown({
   }, [allSuppliers, debouncedSearchQuery]);
 
   const refreshLocalSupplierParts = () => {
+    if (sandbox) return;
     setLocalSupplierParts(getOfflinePartSuppliers(partDefinitionId) ?? []);
   };
 
   const handleToggleSupplier = (supplierId: string) => {
+    if (sandbox) return;
     const hasPart = supplierIdsWithPart.has(supplierId);
 
     if (hasPart) {
@@ -148,6 +153,7 @@ export function PartSuppliersDropdown({
   };
 
   const handleTogglePreferred = (supplierId: string) => {
+    if (sandbox) return;
     if (preferredSupplierId === supplierId) return;
     setOfflinePreferredSupplier(partDefinitionId, supplierId);
     refreshLocalSupplierParts();
@@ -157,6 +163,7 @@ export function PartSuppliersDropdown({
   };
 
   const handleSupplierCreated = (newSupplierId: string) => {
+    if (sandbox) { setIsSupplierDialogOpen(false); return; }
     const supplier = allSuppliers.find((item) => item.id === newSupplierId) ?? {
       id: newSupplierId,
       name: "New Supplier",

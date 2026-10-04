@@ -284,6 +284,18 @@ function PartCard({
 
   return (
     <Card
+      data-tutorial-choice={part.displayName}
+      data-tutorial-part-selected={isPending || undefined}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(event) => {
+        if (event.target !== event.currentTarget) return;
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          if (actionMode === "edit") onEditPart(part.id);
+          else onPartSelect(part);
+        }
+      }}
       className={`relative w-full max-w-[2in] gap-0 overflow-hidden rounded-2xl py-0 transition-all hover:shadow-md ${
         isPending ? "border-primary border-2 shadow-md" : ""
       } cursor-pointer`}
@@ -368,6 +380,7 @@ function PartListRow({
 
   return (
     <div
+      data-tutorial-part-selected={isPending || undefined}
       className={`parts-picker-row ${
         isPending ? "ring-1 ring-inset ring-primary" : ""
       }`}
@@ -457,6 +470,7 @@ function PartListRow({
           ) : (
             <Button
               size="sm"
+              data-tutorial-choice={part.displayName}
               className="h-8 px-2.5 text-xs sm:px-3"
               onClick={() =>
                 actionMode === "edit" ? onEditPart(part.id) : onPartSelect(part)

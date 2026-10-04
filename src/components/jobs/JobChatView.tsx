@@ -30,6 +30,7 @@ import { useOnlineStatus } from "~/hooks/use-online-status";
 import { Button } from "~/components/ui/button";
 import { confirmAction } from "~/components/ui/app-dialogs";
 import { ChatNotifications } from "./ChatNotifications";
+import { useTutorialSandbox } from "~/components/tutorial/tutorial-sandbox-context";
 import {
   loadChatDraft,
   mergeChatMessages,
@@ -149,24 +150,42 @@ function useLongPress(onLongPress: () => void) {
 }
 
 export function JobChatView({ jobId }: { jobId: string }) {
-  const { userId, isLoaded } = useAuth();
+  const sandbox = useTutorialSandbox();
   return (
-    <div className="bg-card fixed inset-x-0 top-14 bottom-0 z-30 overflow-hidden sm:top-16">
-      {!isLoaded ? (
-        <p role="status" className="p-4">
-          Loading chat…
-        </p>
-      ) : userId ? (
-        <ChatLobby key={`${userId}:${jobId}`} jobId={jobId} userId={userId} />
+    <div
+      data-tutorial="chat-view"
+      className="bg-card fixed inset-x-0 top-14 bottom-0 z-30 overflow-hidden sm:top-16"
+    >
+      {sandbox ? (
+        <ChatLobby
+          key={`${sandbox.runId}:${jobId}`}
+          jobId={jobId}
+          userId={sandbox.userId}
+        />
       ) : (
-        <p className="p-4">Sign in to open job chat.</p>
+        <AuthenticatedChatLobby jobId={jobId} />
       )}
     </div>
   );
 }
 
+function AuthenticatedChatLobby({ jobId }: { jobId: string }) {
+  const { userId, isLoaded } = useAuth();
+  return !isLoaded ? (
+    <p role="status" className="p-4">
+      Loading chat…
+    </p>
+  ) : userId ? (
+    <ChatLobby key={`${userId}:${jobId}`} jobId={jobId} userId={userId} />
+  ) : (
+    <p className="p-4">Sign in to open job chat.</p>
+  );
+}
+
 function ChatLobby({ jobId, userId }: { jobId: string; userId: string }) {
-  const online = useOnlineStatus();
+  const inTutorial = Boolean(useTutorialSandbox());
+  const browserOnline = useOnlineStatus();
+  const online = inTutorial || browserOnline;
   const utils = api.useUtils();
   const [visible, setVisible] = useState(
     () =>
@@ -208,7 +227,7 @@ function ChatLobby({ jobId, userId }: { jobId: string; userId: string }) {
       enabled: online,
       retry: 1,
       refetchOnWindowFocus: true,
-      refetchInterval: visible && online ? 30_000 : false,
+      refetchInterval: !inTutorial && visible && online ? 30_000 : false,
     },
   );
   const accessRevoked = ["FORBIDDEN", "UNAUTHORIZED", "NOT_FOUND"].includes(
@@ -220,7 +239,8 @@ function ChatLobby({ jobId, userId }: { jobId: string; userId: string }) {
       enabled: online && !accessRevoked && overview.data?.joined === true,
       retry: 1,
       refetchOnWindowFocus: true,
-      refetchInterval: online && visible && !connected ? 20_000 : false,
+      refetchInterval:
+        !inTutorial && online && visible && !connected ? 20_000 : false,
     },
   );
   const members = api.chat.members.useQuery(
@@ -270,6 +290,10 @@ function ChatLobby({ jobId, userId }: { jobId: string; userId: string }) {
     return () => document.removeEventListener("visibilitychange", update);
   }, []);
   useEffect(() => {
+    if (inTutorial) {
+      setDraftLoaded(true);
+      return;
+    }
     let mounted = true;
     void loadChatDraft(draftKey)
       .then((saved) => {
@@ -288,21 +312,23 @@ function ChatLobby({ jobId, userId }: { jobId: string; userId: string }) {
     return () => {
       mounted = false;
     };
-  }, [draftKey]);
+  }, [draftKey, inTutorial]);
   const changeDraft = useCallback(
     (next: ChatDraft) => {
       draftRef.current = next;
       setDraft(next);
-      void saveChatDraft(draftKey, next).catch(() => setStorageError(true));
+      if (!inTutorial)
+        void saveChatDraft(draftKey, next).catch(() => setStorageError(true));
     },
-    [draftKey],
+    [draftKey, inTutorial],
   );
   const clearDeliveredDraft = useCallback(async () => {
     const next = newChatDraft();
     draftRef.current = next;
     setDraft(next);
-    await saveChatDraft(draftKey, null).catch(() => setStorageError(true));
-  }, [draftKey]);
+    if (!inTutorial)
+      await saveChatDraft(draftKey, null).catch(() => setStorageError(true));
+  }, [draftKey, inTutorial]);
   const joinLobby = useCallback(async () => {
     joinAttempted.current = true;
     setError("");
@@ -327,6 +353,7 @@ function ChatLobby({ jobId, userId }: { jobId: string; userId: string }) {
   // is unavailable, and neither keeps requesting data in a hidden tab.
   useEffect(() => {
     if (
+      inTutorial ||
       !online ||
       !visible ||
       !overview.data?.joined ||
@@ -373,7 +400,15 @@ function ChatLobby({ jobId, userId }: { jobId: string; userId: string }) {
       if (timer) clearTimeout(timer);
       setConnected(false);
     };
-  }, [jobId, online, visible, overview.data?.joined, accessRevoked, utils]);
+  }, [
+    jobId,
+    online,
+    visible,
+    overview.data?.joined,
+    accessRevoked,
+    utils,
+    inTutorial,
+  ]);
 
   useEffect(() => {
     if (!timeline.current || !atBottomRef.current) return;
@@ -535,6 +570,8 @@ function ChatLobby({ jobId, userId }: { jobId: string; userId: string }) {
     if (sendingRef.current || !online || !draftLoaded || !overview.data?.joined)
       return;
     let next = draftRef.current;
+    // Attachments use raw upload URLs, outside the tutorial's local tRPC transport.
+    if (inTutorial && next.attachments.length) return;
     if (!next.body.trim() && !next.attachments.length) return;
     sendingRef.current = true;
     setSending(true);
@@ -579,7 +616,8 @@ function ChatLobby({ jobId, userId }: { jobId: string; userId: string }) {
       }
       next = { ...next, attempted: true };
       changeDraft(next);
-      await saveChatDraft(draftKey, next).catch(() => setStorageError(true));
+      if (!inTutorial)
+        await saveChatDraft(draftKey, next).catch(() => setStorageError(true));
       const message = await send.mutateAsync({
         jobId,
         clientId: next.clientId,
@@ -610,7 +648,7 @@ function ChatLobby({ jobId, userId }: { jobId: string; userId: string }) {
         // internal failures remain locked to the exact payload until retried.
         const expiredAttachments =
           code === "BAD_REQUEST" && /attachment/i.test(errorText(reason));
-        if (expiredAttachments) {
+        if (expiredAttachments && !inTutorial) {
           for (const attachment of next.attachments)
             if (attachment.uploaded) {
               void fetch(attachment.uploaded.url, {
@@ -642,7 +680,7 @@ function ChatLobby({ jobId, userId }: { jobId: string; userId: string }) {
     }
   }
   function chooseFiles(files: FileList | null) {
-    if (!files || draft.attempted) return;
+    if (inTutorial || !files || draft.attempted) return;
     const chosen = [...files];
     if (draft.attachments.length + chosen.length > 5) {
       setError("Attach up to five photos or PDFs per message.");
@@ -675,6 +713,7 @@ function ChatLobby({ jobId, userId }: { jobId: string; userId: string }) {
     setError("");
   }
   async function removeAttachment(localId: string) {
+    if (inTutorial) return;
     const attachment = draft.attachments.find(
       (file) => file.localId === localId,
     );
@@ -709,6 +748,7 @@ function ChatLobby({ jobId, userId }: { jobId: string; userId: string }) {
     composer.current?.focus();
   }
   async function deleteMessage(message: ChatMessage) {
+    if (inTutorial) return;
     if (
       !(await confirmAction({
         title: "Delete this message?",
@@ -784,7 +824,9 @@ function ChatLobby({ jobId, userId }: { jobId: string; userId: string }) {
               className={ON_METAL}
               aria-label="Notifications"
               aria-expanded={showBell}
+              disabled={inTutorial}
               onClick={() => {
+                if (inTutorial) return;
                 setShowBell(!showBell);
                 setShowMembers(false);
               }}
@@ -797,7 +839,7 @@ function ChatLobby({ jobId, userId }: { jobId: string; userId: string }) {
             </Button>
           </div>
         </div>
-        {showBell && (
+        {showBell && !inTutorial && (
           <div
             className="bg-card text-card-foreground space-y-3 rounded-md p-3 text-sm shadow-md"
             aria-label="Notification settings"
@@ -809,6 +851,7 @@ function ChatLobby({ jobId, userId }: { jobId: string; userId: string }) {
               aria-pressed={overview.data?.muted === true}
               disabled={!online || !overview.data?.joined || mute.isPending}
               onClick={() => {
+                if (inTutorial) return;
                 void mute
                   .mutateAsync({ jobId, muted: !overview.data?.muted })
                   .then(() => utils.chat.getOverview.invalidate({ jobId }))
@@ -870,6 +913,7 @@ function ChatLobby({ jobId, userId }: { jobId: string; userId: string }) {
       )}
       <div
         ref={timeline}
+        data-tutorial="chat-timeline"
         className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-4 sm:px-4"
         style={CHECKER_PLATE}
         aria-label="Messages"
@@ -936,6 +980,8 @@ function ChatLobby({ jobId, userId }: { jobId: string; userId: string }) {
                 </div>
               )}
               <ChatBubble
+                allowAttachments={!inTutorial}
+                tutorialOwnMessage={inTutorial && mine}
                 message={message}
                 mine={mine}
                 grouped={grouped}
@@ -955,6 +1001,7 @@ function ChatLobby({ jobId, userId }: { jobId: string; userId: string }) {
           message={actionsFor}
           canReply={!lockedComposer && !actionsFor.deletedAt}
           canDelete={
+            !inTutorial &&
             online &&
             !remove.isPending &&
             !actionsFor.deletedAt &&
@@ -985,12 +1032,18 @@ function ChatLobby({ jobId, userId }: { jobId: string; userId: string }) {
         style={EXPANDED_METAL}
       >
         {currentError && (
-          <p role="alert" className="bg-card text-destructive mb-2 rounded-md px-2 py-1 text-sm">
+          <p
+            role="alert"
+            className="bg-card text-destructive mb-2 rounded-md px-2 py-1 text-sm"
+          >
             {currentError}
           </p>
         )}
         {storageError && (
-          <p role="alert" className="bg-card mb-2 rounded-md px-2 py-1 text-xs text-amber-700">
+          <p
+            role="alert"
+            className="bg-card mb-2 rounded-md px-2 py-1 text-xs text-amber-700"
+          >
             Draft storage is unavailable on this device. Keep this screen open
             until your message is sent.
           </p>
@@ -1053,6 +1106,7 @@ function ChatLobby({ jobId, userId }: { jobId: string; userId: string }) {
         >
           <input
             ref={fileInput}
+            disabled={inTutorial}
             type="file"
             accept="image/jpeg,image/png,image/webp,image/gif,application/pdf"
             multiple
@@ -1069,13 +1123,20 @@ function ChatLobby({ jobId, userId }: { jobId: string; userId: string }) {
             size="icon"
             className={ON_METAL}
             aria-label="Attach photos or PDFs"
-            disabled={Boolean(lockedComposer) || draft.attachments.length >= 5}
-            onClick={() => fileInput.current?.click()}
+            disabled={
+              inTutorial ||
+              Boolean(lockedComposer) ||
+              draft.attachments.length >= 5
+            }
+            onClick={() => {
+              if (!inTutorial) fileInput.current?.click();
+            }}
           >
             <PaperclipIcon className="h-5 w-5" />
           </Button>
           <textarea
             ref={composer}
+            data-tutorial="chat-composer"
             aria-label="Message"
             placeholder="Message everyone on this job…"
             className="bg-background focus-visible:ring-ring max-h-36 min-h-12 min-w-0 flex-1 resize-y rounded-lg border px-3 py-[11px] text-base leading-6 shadow-[0_3px_8px_rgba(0,0,0,0.5)] focus-visible:ring-2"
@@ -1095,6 +1156,7 @@ function ChatLobby({ jobId, userId }: { jobId: string; userId: string }) {
           />
           <Button
             type="submit"
+            data-tutorial="chat-send"
             size="icon"
             className="size-12 shadow-[0_3px_8px_rgba(0,0,0,0.5)]"
             aria-label={draft.attempted ? "Retry message" : "Send message"}
@@ -1124,12 +1186,16 @@ function ChatBubble({
   grouped,
   replied,
   onActions,
+  allowAttachments = true,
+  tutorialOwnMessage = false,
 }: {
   message: ChatMessage;
   mine: boolean;
   grouped: boolean;
   replied: ChatMessage | undefined;
   onActions: () => void;
+  allowAttachments?: boolean;
+  tutorialOwnMessage?: boolean;
 }) {
   // Deleted messages have nothing to reply to, copy or delete.
   const press = useLongPress(() => {
@@ -1137,6 +1203,7 @@ function ChatBubble({
   });
   return (
     <article
+      data-tutorial={tutorialOwnMessage ? "chat-own-message" : undefined}
       id={`chat-message-${message.id}`}
       className={`flex ${mine ? "justify-end" : "justify-start"} ${grouped ? "mt-1" : "mt-3"}`}
     >
@@ -1178,7 +1245,9 @@ function ChatBubble({
                     </p>
                   </>
                 ) : (
-                  <span className="opacity-80">Reply to an earlier message</span>
+                  <span className="opacity-80">
+                    Reply to an earlier message
+                  </span>
                 )}
               </div>
             )}
@@ -1187,7 +1256,7 @@ function ChatBubble({
                 {message.body}
               </p>
             )}
-            {message.attachments.length > 0 && (
+            {allowAttachments && message.attachments.length > 0 && (
               <div className={`grid gap-2 ${message.body ? "mt-2" : ""}`}>
                 {message.attachments.map((attachment) => (
                   <a

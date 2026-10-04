@@ -25,6 +25,12 @@ export function JobWorkspaceOptions({
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       <Card
+        data-tutorial="material-lists"
+        role="button"
+        tabIndex={0}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onSelect("material-lists"); }
+        }}
         className="cursor-pointer transition-shadow hover:shadow-md"
         onClick={() => onSelect("material-lists")}
       >
@@ -45,6 +51,12 @@ export function JobWorkspaceOptions({
         </CardContent>
       </Card>
       <Card
+        data-tutorial="rooms"
+        role="button"
+        tabIndex={0}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onSelect("rooms"); }
+        }}
         className="cursor-pointer transition-shadow hover:shadow-md"
         onClick={() => onSelect("rooms")}
       >
@@ -68,6 +80,7 @@ export function JobWorkspaceOptions({
       </Card>
       <Card
         role="button"
+        data-tutorial="chat"
         tabIndex={0}
         aria-label={chatUnreadCount > 0 ? `Chat, ${chatUnreadCount} unread messages` : "Chat"}
         className="cursor-pointer transition-shadow hover:shadow-md focus-visible:ring-2 focus-visible:ring-ring"

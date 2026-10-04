@@ -39,11 +39,11 @@ vi.mock("~/trpc/react", () => ({
     },
   },
 }));
-vi.mock("~/lib/replicache-material-list", () => ({
-  getMaterialListReplicache: () => ({
-    mutate: { createMaterialList: mocks.create },
+vi.mock("~/hooks/use-workspace-mutations", () => ({
+  useWorkspaceMutations: () => ({
+    getReplicache: () => ({ mutate: { createMaterialList: mocks.create } }),
+    mutateAndSync: (promise: Promise<unknown>) => promise,
   }),
-  mutateMaterialListAndSync: (promise: Promise<unknown>) => promise,
 }));
 function Harness({
   canEditNotes = true,

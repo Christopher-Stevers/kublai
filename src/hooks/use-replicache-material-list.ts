@@ -6,6 +6,7 @@ import {
   tryGetMaterialListReplicache,
 } from "~/lib/replicache-material-list";
 import { createSharedReplicacheReader } from "./use-shared-replicache";
+import { useTutorialSandbox } from "~/components/tutorial/tutorial-sandbox-context";
 
 export type ReplicacheSyncStatus = "synced" | "pending" | "syncing";
 
@@ -18,13 +19,15 @@ export function resolveReplicacheSyncStatus(
 }
 
 export function useReplicacheSyncing() {
+  const sandbox = useTutorialSandbox();
   const [isSyncing, setIsSyncing] = useState(false);
 
   useEffect(() => {
+    if (sandbox) return;
     return subscribeToMaterialListReplicacheSyncing(setIsSyncing);
-  }, []);
+  }, [sandbox]);
 
-  return isSyncing;
+  return sandbox ? false : isSyncing;
 }
 
 export interface ReplicacheMaterialListItem {
@@ -85,6 +88,7 @@ const EMPTY_DETAIL = {
   isLoading: true,
 };
 export function useReplicacheMaterialList(materialListId: string) {
+  const sandbox = useTutorialSandbox();
   const useReader = useMemo(
     () =>
       createSharedReplicacheReader(async (tx) => {
@@ -130,5 +134,5 @@ export function useReplicacheMaterialList(materialListId: string) {
       }, EMPTY_DETAIL),
     [materialListId],
   );
-  return useReader(tryGetMaterialListReplicache());
+  return useReader(sandbox?.material ?? tryGetMaterialListReplicache());
 }

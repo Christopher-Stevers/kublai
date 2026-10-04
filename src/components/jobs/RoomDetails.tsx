@@ -6,10 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Textarea } from "~/components/ui/textarea";
 import { api } from "~/trpc/react";
 import { formatMaterialListDate } from "~/lib/material-list-names";
-import {
-  getMaterialListReplicache,
-  mutateMaterialListAndSync,
-} from "~/lib/replicache-material-list";
+import { useWorkspaceMutations } from "~/hooks/use-workspace-mutations";
 
 export type RoomNotesDraft = { notes: string; notesRevision: number };
 
@@ -31,6 +28,7 @@ export function RoomDetails({
   onOpenMaterialList: (id: string) => void;
 }) {
   const utils = api.useUtils();
+  const { getReplicache, mutateAndSync } = useWorkspaceMutations();
   const updateNotes = api.rooms.updateNotes.useMutation();
   const [saved, setSaved] = useState<RoomNotesDraft | null>(null);
   const [noteError, setNoteError] = useState<string | null>(null);
@@ -104,8 +102,8 @@ export function RoomDetails({
       requestId.current ??= crypto.randomUUID();
       const suffix = ` — ${formatMaterialListDate()}`;
       const name = `${room.name.trim().slice(0, 255 - suffix.length)}${suffix}`;
-      await mutateMaterialListAndSync(
-        getMaterialListReplicache().mutate.createMaterialList({
+      await mutateAndSync(
+        getReplicache().mutate.createMaterialList({
           materialListId: requestId.current,
           roomId: room.id,
           roomName: room.name,
@@ -127,7 +125,11 @@ export function RoomDetails({
   };
 
   return (
-    <div className="space-y-4">
+    <div
+      className="space-y-4"
+      data-tutorial="room-details"
+      data-tutorial-notes-saved={savedMessage && !dirty ? "true" : undefined}
+    >
       <Card>
         <CardHeader>
           <CardTitle>
@@ -136,6 +138,7 @@ export function RoomDetails({
         </CardHeader>
         <CardContent className="space-y-3">
           <Textarea
+            data-tutorial="room-notes"
             id={`room-notes-${room.id}`}
             rows={6}
             maxLength={10000}
@@ -205,6 +208,7 @@ export function RoomDetails({
           {canEditNotes && (
             <div className="flex items-center gap-3">
               <Button
+                data-tutorial="room-notes-save"
                 disabled={!dirty || updateNotes.isPending || creating}
                 onClick={() => void saveNotes()}
               >
@@ -224,6 +228,7 @@ export function RoomDetails({
           </CardHeader>
           <CardContent className="space-y-3">
             <Button
+              data-tutorial="room-request-material"
               onClick={() => void requestMaterial()}
               disabled={creating || updateNotes.isPending}
             >

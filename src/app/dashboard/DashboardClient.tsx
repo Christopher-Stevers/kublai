@@ -56,10 +56,8 @@ import { useJobWorkspaceNavigation } from "~/hooks/use-job-workspace-navigation"
 import { MaterialListNameModal } from "~/components/materialLists/MaterialListNameModal";
 import { ViewToggle } from "~/components/ui/view-toggle";
 import { useOnlineStatus } from "~/hooks/use-online-status";
-import {
-  getMaterialListReplicache,
-  mutateMaterialListAndSync,
-} from "~/lib/replicache-material-list";
+import { useWorkspaceMutations } from "~/hooks/use-workspace-mutations";
+import { useTutorialSandbox } from "~/components/tutorial/tutorial-sandbox-context";
 import { getNextMaterialListNameFromNames } from "~/lib/material-list-names";
 import {
   HEADER_BACK_REQUEST_EVENT,
@@ -213,6 +211,8 @@ export function DashboardClient({
 }: {
   initialJobs: DashboardJob[];
 }) {
+  const { getReplicache: getMaterialListReplicache, mutateAndSync: mutateMaterialListAndSync } = useWorkspaceMutations();
+  const sandbox = useTutorialSandbox();
   const router = useRouter();
   const hasRedirectedRef = useRef(false);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -279,12 +279,12 @@ export function DashboardClient({
       refetchOnWindowFocus: false,
     });
   const can = userData?.permissions.can;
-  const canDeleteJobs = can?.["jobs.delete"] ?? true;
-  const canDeleteLists = can?.["lists.delete"] ?? true;
+  const canDeleteJobs = !sandbox && (can?.["jobs.delete"] ?? true);
+  const canDeleteLists = !sandbox && (can?.["lists.delete"] ?? true);
 
   // Redirect to onboarding if user has no organizationId
   useEffect(() => {
-    if (hasRedirectedRef.current) {
+    if (sandbox || hasRedirectedRef.current) {
       return;
     }
 
@@ -294,7 +294,7 @@ export function DashboardClient({
         window.location.href = "/onboarding";
       }
     }
-  }, [hasFetchedUser, hasRedirectedRef, userData]);
+  }, [hasFetchedUser, hasRedirectedRef, userData, sandbox]);
 
   const replicacheJobs = useReplicacheJobsList();
   const offlineJobDetail = useReplicacheJobDetail(offlineJobId ?? "");
@@ -303,18 +303,18 @@ export function DashboardClient({
   );
   const suppliers = useReplicacheSuppliers();
   const { sortedItems } = useMaterialListSort(offlineMaterialListDetail.items, suppliers);
-  const jobs = replicacheJobs.length > 0 ? replicacheJobs : initialJobs;
+  const jobs = sandbox || replicacheJobs.length > 0 ? replicacheJobs : initialJobs;
   const isWaitingForJobs = false;
 
   useEffect(() => {
-    if (!isBrowserOnline || jobs.length === 0) return;
+    if (sandbox || !isBrowserOnline || jobs.length === 0) return;
 
     // Warm the App Router/RSC cache while online so tapping a job can work
     // after the device loses connectivity.
     for (const job of jobs.slice(0, 50)) {
       router.prefetch(`/dashboard/jobs/${job.id}`);
     }
-  }, [isBrowserOnline, jobs, router]);
+  }, [isBrowserOnline, jobs, router, sandbox]);
 
   const openJob = (jobId: string) => {
     navigateWorkspace({ jobId, view: "options", materialListId: null });
@@ -395,7 +395,7 @@ export function DashboardClient({
     };
   }, [handleLocalWorkspaceBack, offlineJobId]);
 
-  if (hasFetchedUser && userData && !userData.organizationId) return null;
+  if (!sandbox && hasFetchedUser && userData && !userData.organizationId) return null;
 
   if (offlineJobId && !offlineMaterialListId && offlineJobView === "chat") {
     return <JobChatView key={offlineJobId} jobId={offlineJobId} />;
@@ -414,7 +414,9 @@ export function DashboardClient({
     const jobLocationAddress = formatLocationAddress(offlineJob?.location);
     const canQuote = can?.["quotes.create"] ?? true;
     const canOrder = can?.["orders.send"] ?? true;
-    const offlineGenerationBlockReason = !isBrowserOnline
+    const offlineGenerationBlockReason = sandbox
+      ? "Quotes and orders are not sent during the tutorial."
+      : !isBrowserOnline
       ? "Reconnect before generating quotes or orders."
       : !canQuote && !canOrder
         ? "You don't have permission to request quotes or send orders."
@@ -436,6 +438,7 @@ export function DashboardClient({
     };
 
     const handleOfflineGenerateNewQuote = () => {
+      if (sandbox) return;
       setSelectedOfflineQuoteId(undefined);
       setShowOfflineQuoteSheet(true);
     };
@@ -458,7 +461,7 @@ export function DashboardClient({
                 <div className="mb-6 flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <div className="flex min-w-0 items-center gap-2">
-                      <h1 className="min-w-0 text-2xl font-bold break-words text-foreground sm:text-3xl">
+                      <h1 data-tutorial="material-list" className="min-w-0 text-2xl font-bold break-words text-foreground sm:text-3xl">
                         {selectedMaterialList.name}
                       </h1>
                       <Button
@@ -492,7 +495,7 @@ export function DashboardClient({
                         Add parts now. They’ll stay on this device and sync when
                         online.
                       </p>
-                      <Button onClick={() => setShowOfflineAddPartDialog(true)}>
+                      <Button data-tutorial="add-part" onClick={() => setShowOfflineAddPartDialog(true)}>
                         <PlusIcon className="mr-2 h-4 w-4" />
                         Add Part
                       </Button>
@@ -501,7 +504,7 @@ export function DashboardClient({
                 ) : (
                   <>
                     {offlineMaterialListViewMode === "grid" ? (
-                      <div className="grid grid-cols-2 gap-3 pb-24 sm:grid-cols-3 lg:grid-cols-4">
+                      <div data-tutorial="material-items" className="grid grid-cols-2 gap-3 pb-24 sm:grid-cols-3 lg:grid-cols-4">
                         {selectedItems.map((item) => (
                           <MaterialListItem
                             key={item.id}
@@ -652,6 +655,7 @@ export function DashboardClient({
                 </div>
                 {offlineMaterialLists.length === 0 && (
                   <Button
+                    data-tutorial="create-list"
                     onClick={() => handleCreateMaterialList(offlineJob.id)}
                     size="lg"
                     className="h-11 w-full sm:w-auto"
@@ -662,6 +666,7 @@ export function DashboardClient({
                 )}
                 {offlineMaterialLists.length > 0 && (
                   <Button
+                    data-tutorial="create-list"
                     onClick={() => handleCreateMaterialList(offlineJob.id)}
                     size="lg"
                     className="hidden h-11 sm:inline-flex sm:w-auto"
@@ -798,6 +803,7 @@ export function DashboardClient({
               {offlineMaterialLists.length > 0 && (
                 <div className="bg-background fixed inset-x-0 bottom-0 z-40 border-t px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:hidden">
                   <Button
+                    data-tutorial="create-list"
                     onClick={() => handleCreateMaterialList(offlineJob.id)}
                     size="lg"
                     className="h-12 w-full"
@@ -967,6 +973,13 @@ export function DashboardClient({
               return (
                 <Card
                   key={job.id}
+                  data-tutorial="job-card"
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(event) => {
+                    if (event.target !== event.currentTarget) return;
+                    if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openJob(job.id); }
+                  }}
                   className="group hover:border-primary/40 cursor-pointer gap-3 py-4 transition-[box-shadow,border-color] hover:shadow-md"
                   onClick={() => openJob(job.id)}
                 >

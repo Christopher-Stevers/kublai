@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useTutorialSandbox } from "~/components/tutorial/tutorial-sandbox-context";
 import {
   clearLastJobWorkspaceLocation,
   getLastJobWorkspaceLocation,
@@ -51,15 +52,19 @@ export function resetJobWorkspaceNavigation() {
 }
 
 export function useJobWorkspaceNavigation() {
+  const sandbox = useTutorialSandbox();
+  const practiceHistory = useRef<Array<JobWorkspaceLocation | null>>([null]);
   const [location, setLocation] = useState<JobWorkspaceLocation | null>(null);
 
   const restore = useCallback((next: JobWorkspaceLocation | null) => {
     setLocation(next);
+    if (sandbox) return;
     if (next) setLastJobWorkspaceLocation(next);
     else clearLastJobWorkspaceLocation();
-  }, []);
+  }, [sandbox]);
 
   useEffect(() => {
+    if (sandbox) return;
     let entry = readHistory();
     if (!entry) {
       const last = getLastJobWorkspaceLocation();
@@ -94,10 +99,15 @@ export function useJobWorkspaceNavigation() {
     };
     window.addEventListener("popstate", onPopState);
     return () => window.removeEventListener("popstate", onPopState);
-  }, [restore]);
+  }, [restore, sandbox]);
 
   const navigate = useCallback(
     (next: JobWorkspaceLocation) => {
+      if (sandbox) {
+        practiceHistory.current.push(next);
+        restore(next);
+        return;
+      }
       const current = readHistory()?.location;
       if (
         current?.jobId === next.jobId &&
@@ -109,9 +119,14 @@ export function useJobWorkspaceNavigation() {
       writeHistory("pushState", next);
       restore(next);
     },
-    [restore],
+    [restore, sandbox],
   );
 
-  const back = useCallback(() => window.history.back(), []);
+  const back = useCallback(() => {
+    if (sandbox) {
+      if (practiceHistory.current.length > 1) practiceHistory.current.pop();
+      restore(practiceHistory.current.at(-1) ?? null);
+    } else window.history.back();
+  }, [sandbox, restore]);
   return { location, navigate, back };
 }

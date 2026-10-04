@@ -8,10 +8,7 @@ import { QuantityControls } from "~/components/materialLists/QuantityControls";
 import { SupplierSelector } from "~/components/materialLists/SupplierSelector";
 import { Button } from "~/components/ui/button";
 import { AlertCircle, TrashIcon } from "lucide-react";
-import {
-  getMaterialListReplicache,
-  mutateMaterialListAndSync,
-} from "~/lib/replicache-material-list";
+import { useWorkspaceMutations } from "~/hooks/use-workspace-mutations";
 import type { ReplicacheSupplier } from "~/hooks/use-replicache-suppliers";
 
 export interface MaterialListTableRowProps {
@@ -72,6 +69,7 @@ function MaterialListTableRowComponent({
   isReplicacheSyncing = false,
   isToolRequest = false,
 }: MaterialListTableRowProps) {
+  const { getReplicache: getMaterialListReplicache, mutateAndSync: mutateMaterialListAndSync } = useWorkspaceMutations();
   const removeInFlightRef = useRef(false);
 
   const removeItem = () => {

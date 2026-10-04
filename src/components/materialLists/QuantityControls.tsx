@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { MinusIcon, PlusIcon } from "lucide-react";
-import { saveQuantityDurably } from "~/lib/replicache-material-list";
+import { useWorkspaceMutations } from "~/hooks/use-workspace-mutations";
 import { markUserAction } from "~/lib/performance-marks";
 
 interface QuantityControlsProps {
@@ -24,6 +24,7 @@ export function QuantityControls({
   compact = false,
   orientation = "horizontal",
 }: QuantityControlsProps) {
+  const { saveQuantity: saveQuantityDurably } = useWorkspaceMutations();
   const [displayedQuantity, setDisplayedQuantity] = useState(quantity);
   const [inputValue, setInputValue] = useState(quantity.toString());
   const displayedQuantityRef = useRef(quantity);

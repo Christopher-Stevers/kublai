@@ -15,10 +15,7 @@ import {
   XCircleIcon,
 } from "lucide-react";
 import Image from "next/image";
-import {
-  getMaterialListReplicache,
-  mutateMaterialListAndSync,
-} from "~/lib/replicache-material-list";
+import { useWorkspaceMutations } from "~/hooks/use-workspace-mutations";
 import { cn } from "~/lib/utils";
 import type { ReplicacheSupplier } from "~/hooks/use-replicache-suppliers";
 import {
@@ -195,6 +192,7 @@ function MaterialListItemComponent({
   verifyInitialStatus,
   onVerifyStateChange,
 }: MaterialListItemProps) {
+  const { getReplicache: getMaterialListReplicache, mutateAndSync: mutateMaterialListAndSync } = useWorkspaceMutations();
   const removeInFlightRef = useRef(false);
   const verifyLongPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,

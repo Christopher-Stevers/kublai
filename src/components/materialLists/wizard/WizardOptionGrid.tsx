@@ -13,14 +13,22 @@ export const WIZARD_OPTION_SELECTED_CLASS = "border-primary border-2 shadow-md";
 export function WizardOptionCard({
   selected = false,
   onClick,
+  tutorialChoice,
   children,
 }: {
   selected?: boolean;
   onClick: () => void;
+  tutorialChoice?: string;
   children: ReactNode;
 }) {
   return (
     <Card
+      data-tutorial-choice={tutorialChoice}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onClick(); }
+      }}
       className={`${WIZARD_OPTION_CARD_CLASS} ${selected ? WIZARD_OPTION_SELECTED_CLASS : ""}`}
       onClick={onClick}
     >

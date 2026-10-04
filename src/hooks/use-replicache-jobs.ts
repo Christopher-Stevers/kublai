@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { tryGetMaterialListReplicache } from "~/lib/replicache-material-list";
 import { createSharedReplicacheReader } from "~/hooks/use-shared-replicache";
+import { useTutorialSandbox } from "~/components/tutorial/tutorial-sandbox-context";
 import type {
   ReplicacheMaterialListItem,
   ReplicacheMaterialList,
@@ -196,9 +197,11 @@ const useJobs = createSharedReplicacheReader(async (tx) => {
 }, EMPTY_INDEX.jobs);
 
 export function useReplicacheJobsList() {
-  return useJobs(tryGetMaterialListReplicache());
+  const sandbox = useTutorialSandbox();
+  return useJobs(sandbox?.material ?? tryGetMaterialListReplicache());
 }
 export function useReplicacheJobDetail(jobId: string) {
+  const sandbox = useTutorialSandbox();
   const useReader = useMemo(
     () =>
       createSharedReplicacheReader(
@@ -240,13 +243,14 @@ export function useReplicacheJobDetail(jobId: string) {
       ),
     [jobId],
   );
-  return useReader(tryGetMaterialListReplicache());
+  return useReader(sandbox?.material ?? tryGetMaterialListReplicache());
 }
 
 /** Header fields do not depend on every material line in the job. */
 export function useReplicacheJob(jobId: string) {
+  const sandbox = useTutorialSandbox();
   const useReader = useMemo(() => createSharedReplicacheReader(async tx =>
     (await tx.get(`job/${jobId}`) ?? null) as unknown as ReplicacheJob | null,
     null as ReplicacheJob | null), [jobId]);
-  return useReader(tryGetMaterialListReplicache());
+  return useReader(sandbox?.material ?? tryGetMaterialListReplicache());
 }

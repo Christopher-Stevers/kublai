@@ -62,7 +62,7 @@ export function MaterialListActions({
               <SendIcon className="mr-1 h-3.5 w-3.5 shrink-0" />
               Send to Tool Room
             </Button>
-            <Button variant="outline" className={style} onClick={onAdd}>
+            <Button variant="outline" className={style} onClick={onAdd} data-tutorial="add-part">
               <PlusIcon className="mr-1 h-3.5 w-3.5 shrink-0" />
               Add Tool
             </Button>
@@ -88,7 +88,7 @@ export function MaterialListActions({
               <ShoppingCartIcon className="mr-1 h-3.5 w-3.5 shrink-0" />
               Order
             </Button>
-            <Button variant="outline" className={style} onClick={onAdd}>
+            <Button variant="outline" className={style} onClick={onAdd} data-tutorial="add-part">
               <PlusIcon className="mr-1 h-3.5 w-3.5 shrink-0" />
               Add Part
             </Button>

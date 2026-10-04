@@ -59,6 +59,7 @@ export function CategoryStage({
         {pagination.paginatedItems.map((category) => (
           <WizardOptionCard
             key={category.categoryId}
+            tutorialChoice={category.name}
             selected={selectedCategory?.categoryId === category.categoryId}
             onClick={() => onCategorySelect({ categoryId: category.categoryId, name: category.name })}
           >

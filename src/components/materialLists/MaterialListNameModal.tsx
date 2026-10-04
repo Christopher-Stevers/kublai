@@ -11,10 +11,7 @@ import {
 } from "~/components/ui/dialog";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
-import {
-  getMaterialListReplicache,
-  mutateMaterialListAndSync,
-} from "~/lib/replicache-material-list";
+import { useWorkspaceMutations } from "~/hooks/use-workspace-mutations";
 
 interface MaterialListNameModalProps {
   open: boolean;
@@ -29,6 +26,7 @@ export function MaterialListNameModal({
   materialListId,
   initialName,
 }: MaterialListNameModalProps) {
+  const { getReplicache: getMaterialListReplicache, mutateAndSync: mutateMaterialListAndSync } = useWorkspaceMutations();
   const [name, setName] = useState(initialName || "");
 
   useEffect(() => {
