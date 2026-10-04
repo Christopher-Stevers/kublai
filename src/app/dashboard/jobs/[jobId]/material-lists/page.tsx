@@ -336,19 +336,8 @@ export default function JobDetailPage({
             <h2 className="text-xl font-semibold text-foreground">
               Material Lists
             </h2>
-            {(!materialLists || materialLists.length === 0) && (
-              <p className="text-muted-foreground mt-1 text-sm">
-                Create and manage material lists for this job
-              </p>
-            )}
           </div>
-          <div
-            className={
-              materialLists && materialLists.length > 0
-                ? "hidden gap-2 sm:flex"
-                : "flex flex-col gap-2 sm:flex-row"
-            }
-          >
+          <div className="hidden gap-2 sm:flex">
             <Button
               onClick={handleCreateToolRequest}
               size="lg"
@@ -379,6 +368,10 @@ export default function JobDetailPage({
               <p className="text-muted-foreground mb-4 text-center">
                 Create your first material list to get started
               </p>
+              <Button onClick={handleCreateNew}>
+                <PlusIcon className="mr-2 h-4 w-4" />
+                New Material List
+              </Button>
             </CardContent>
           </Card>
         ) : (
@@ -482,25 +475,23 @@ export default function JobDetailPage({
           </div>
         )}
 
-        {materialLists && materialLists.length > 0 && (
-          <div className="bg-background fixed inset-x-0 bottom-0 z-40 border-t px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:hidden">
-            <div className="grid grid-cols-[auto_1fr] gap-2">
-              <Button
-                onClick={handleCreateToolRequest}
-                size="lg"
-                variant="outline"
-                className="h-12"
-                aria-label="New tool request"
-              >
-                <WrenchIcon className="h-5 w-5" />
-              </Button>
-              <Button onClick={handleCreateNew} size="lg" className="h-12 w-full">
-                <PlusIcon className="mr-2 h-5 w-5" />
-                New Material List
-              </Button>
-            </div>
+        <div className="bg-background fixed inset-x-0 bottom-0 z-40 border-t px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:hidden">
+          <div className="grid grid-cols-[auto_1fr] gap-2">
+            <Button
+              onClick={handleCreateToolRequest}
+              size="lg"
+              variant="outline"
+              className="h-12"
+              aria-label="New tool request"
+            >
+              <WrenchIcon className="h-5 w-5" />
+            </Button>
+            <Button onClick={handleCreateNew} size="lg" className="h-12 w-full">
+              <PlusIcon className="mr-2 h-5 w-5" />
+              New Material List
+            </Button>
           </div>
-        )}
+        </div>
 
         <Dialog
           open={!!materialListToDelete}

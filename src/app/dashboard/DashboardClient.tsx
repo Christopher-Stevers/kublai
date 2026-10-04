@@ -646,24 +646,7 @@ export function DashboardClient({
                   <h2 className="text-xl font-semibold text-foreground">
                     Material Lists
                   </h2>
-                  {offlineMaterialLists.length === 0 && (
-                    <p className="text-muted-foreground mt-1 text-sm">
-                      Create and manage material lists offline. New lists sync
-                      when reconnected.
-                    </p>
-                  )}
                 </div>
-                {offlineMaterialLists.length === 0 && (
-                  <Button
-                    data-tutorial="create-list"
-                    onClick={() => handleCreateMaterialList(offlineJob.id)}
-                    size="lg"
-                    className="h-11 w-full sm:w-auto"
-                  >
-                    <PlusIcon className="mr-2 h-5 w-5" />
-                    New Material List
-                  </Button>
-                )}
                 {offlineMaterialLists.length > 0 && (
                   <Button
                     data-tutorial="create-list"
@@ -688,6 +671,13 @@ export function DashboardClient({
                       Create one now. It’ll stay on this device and sync when
                       online.
                     </p>
+                    <Button
+                      data-tutorial="create-list"
+                      onClick={() => handleCreateMaterialList(offlineJob.id)}
+                    >
+                      <PlusIcon className="mr-2 h-4 w-4" />
+                      New Material List
+                    </Button>
                   </CardContent>
                 </Card>
               ) : (
@@ -800,19 +790,17 @@ export function DashboardClient({
                 </div>
               )}
 
-              {offlineMaterialLists.length > 0 && (
-                <div className="bg-background fixed inset-x-0 bottom-0 z-40 border-t px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:hidden">
-                  <Button
-                    data-tutorial="create-list"
-                    onClick={() => handleCreateMaterialList(offlineJob.id)}
-                    size="lg"
-                    className="h-12 w-full"
-                  >
-                    <PlusIcon className="mr-2 h-5 w-5" />
-                    New Material List
-                  </Button>
-                </div>
-              )}
+              <div className="bg-background fixed inset-x-0 bottom-0 z-40 border-t px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:hidden">
+                <Button
+                  data-tutorial="create-list"
+                  onClick={() => handleCreateMaterialList(offlineJob.id)}
+                  size="lg"
+                  className="h-12 w-full"
+                >
+                  <PlusIcon className="mr-2 h-5 w-5" />
+                  New Material List
+                </Button>
+              </div>
                 </>
               )}
             </>
