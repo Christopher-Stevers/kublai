@@ -82,6 +82,8 @@ function AngleTrim({ edge }: { edge: "top" | "bottom" }) {
   );
 }
 const ON_METAL = "text-white hover:bg-white/15 hover:text-white";
+// On wide screens the conversation keeps a readable width; the steel stays full width.
+const CHAT_COLUMN = "mx-auto w-full max-w-3xl";
 const CHECKER_PLATE = {
   backgroundImage: "url(/images/chat-checker-plate.webp?v=2)",
   backgroundSize: "96px 96px",
@@ -796,9 +798,10 @@ function ChatLobby({ jobId, userId }: { jobId: string; userId: string }) {
       style={{ height: panelHeight }}
     >
       <header
-        className="min-h-0 shrink space-y-2 overflow-y-auto px-3 py-2 text-white sm:px-4"
+        className="min-h-0 shrink overflow-y-auto px-3 py-2 text-white sm:px-4"
         style={EXPANDED_METAL}
       >
+        <div className={`${CHAT_COLUMN} space-y-2`}>
         <div className="flex items-center justify-between gap-2">
           <h1 className="truncate text-lg font-semibold [text-shadow:0_1px_3px_rgba(0,0,0,0.9)]">
             Chat
@@ -896,6 +899,7 @@ function ChatLobby({ jobId, userId }: { jobId: string; userId: string }) {
             )}
           </div>
         )}
+        </div>
       </header>
       <AngleTrim edge="top" />
       {!online && (
@@ -923,6 +927,7 @@ function ChatLobby({ jobId, userId }: { jobId: string; userId: string }) {
           setAtBottom(bottom);
         }}
       >
+        <div className={CHAT_COLUMN}>
         {nextBefore != null && (
           <div className="mb-4 text-center">
             <Button
@@ -995,6 +1000,7 @@ function ChatLobby({ jobId, userId }: { jobId: string; userId: string }) {
             </Fragment>
           );
         })}
+        </div>
       </div>
       {actionsFor && (
         <MessageActions
@@ -1031,6 +1037,7 @@ function ChatLobby({ jobId, userId }: { jobId: string; userId: string }) {
         className="max-h-full min-h-0 shrink overflow-y-auto px-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
         style={EXPANDED_METAL}
       >
+        <div className={CHAT_COLUMN}>
         {currentError && (
           <p
             role="alert"
@@ -1175,6 +1182,7 @@ function ChatLobby({ jobId, userId }: { jobId: string; userId: string }) {
             )}
           </Button>
         </form>
+        </div>
       </footer>
     </section>
   );
