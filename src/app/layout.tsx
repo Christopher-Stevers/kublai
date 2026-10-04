@@ -84,7 +84,7 @@ const geist = Geist({
 const themeBootScript = `
 (() => {
   try {
-    const theme = localStorage.getItem("foremenhq-theme") || "system";
+    const theme = localStorage.getItem("foremenhq-theme") || "light";
     const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
     const useDark = theme === "dark" || (theme === "system" && prefersDark);
     document.documentElement.classList.toggle("dark", useDark);

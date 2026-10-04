@@ -10,6 +10,7 @@ import {
   type ReactNode,
 } from "react";
 import {
+  DEFAULT_THEME,
   THEME_STORAGE_KEY,
   isThemePreference,
   type ThemePreference,
@@ -23,9 +24,9 @@ type ThemeContextValue = {
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 function getStoredTheme(): ThemePreference {
-  if (typeof window === "undefined") return "system";
+  if (typeof window === "undefined") return DEFAULT_THEME;
   const storedTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
-  return isThemePreference(storedTheme) ? storedTheme : "system";
+  return isThemePreference(storedTheme) ? storedTheme : DEFAULT_THEME;
 }
 
 function getSystemPrefersDark() {
@@ -43,7 +44,7 @@ function applyTheme(theme: ThemePreference) {
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setThemeState] = useState<ThemePreference>("system");
+  const [theme, setThemeState] = useState<ThemePreference>(DEFAULT_THEME);
 
   useEffect(() => {
     const storedTheme = getStoredTheme();
