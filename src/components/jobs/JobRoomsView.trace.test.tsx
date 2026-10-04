@@ -4,6 +4,7 @@ import {
   fireEvent,
   render,
   screen,
+  within,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { runHeaderBackOverride } from "~/lib/header-back-events";
@@ -11,6 +12,9 @@ import { runHeaderBackOverride } from "~/lib/header-back-events";
 const harness = vi.hoisted(() => ({
   sandbox: false,
   data: {} as Record<string, unknown>,
+  detectStatus: undefined as Record<string, unknown> | undefined,
+  uploadSheets: [] as Array<{ id: string; name: string; imageUrl: string }>,
+  queryOptions: {} as Record<string, { refetchInterval?: (query: { state: { data: unknown } }) => number | false }>,
   calls: [] as Array<{
     name: string;
     input: unknown;
@@ -42,10 +46,13 @@ vi.mock("~/trpc/react", async () => {
         {},
         {
           get: (_target, name: string) => ({
-            useQuery: () => ({
-              data: name === "getJobRooms" ? harness.data : undefined,
-              isLoading: false,
-            }),
+            useQuery: (_input: unknown, options?: typeof harness.queryOptions[string]) => {
+              if (options) harness.queryOptions[name] = options;
+              return {
+                data: name === "getJobRooms" ? harness.data : harness.detectStatus,
+                isLoading: false,
+              };
+            },
             useMutation: (global: Callbacks = {}) => {
               const [isPending, setPending] = useState(false);
               const mutateAsync = async (input: unknown) => {
@@ -101,7 +108,7 @@ vi.mock("~/components/jobs/FloorPlanCanvas", () => ({
     </div>
   ),
 }));
-vi.mock("~/lib/upload-drawings", () => ({ uploadDrawings: vi.fn() }));
+vi.mock("~/lib/upload-drawings", () => ({ uploadDrawings: vi.fn(async () => harness.uploadSheets) }));
 vi.mock("~/components/ui/app-dialogs", () => ({ confirmAction: vi.fn() }));
 
 import { JobRoomsView } from "./JobRoomsView";
@@ -112,6 +119,9 @@ const saved = { id: "room-added", name: "New room", updatedAt: new Date(2000) };
 beforeEach(() => {
   harness.sandbox = false;
   harness.calls.length = 0;
+  harness.detectStatus = undefined;
+  harness.uploadSheets = [];
+  harness.queryOptions = {};
   harness.data = {
     canManage: true,
     plan: null,
@@ -348,5 +358,67 @@ describe("floor name box", () => {
     fireEvent.keyDown(box, { key: "Enter" });
     expect(document.activeElement).not.toBe(box);
     expect(renames().at(-1)?.input).toEqual({ floorId: "floor-a", name: "Level 3" });
+  });
+});
+
+describe("server-managed sheet detection queue", () => {
+  function setFloorDetection(index: number, detection: Record<string, unknown>) {
+    const floors = harness.data.floors as Array<Record<string, unknown>>;
+    floors[index]!.detection = detection;
+  }
+
+  it("confirms a multi-sheet upload once without launching detection from the browser", async () => {
+    harness.uploadSheets = ["a", "b"].map((id) => ({ id: `floor-${id}`, name: `Sheet ${id.toUpperCase()}`, imageUrl: `/floor-${id}.webp` }));
+    render(<JobRoomsView jobId="job-a" />);
+    fireEvent.change(document.querySelector('input[type="file"]')!, {
+      target: { files: [new File(["pdf"], "drawings.pdf", { type: "application/pdf" })] },
+    });
+    expect(await screen.findByText("Review uploaded drawings")).toBeInTheDocument();
+    click("Confirm sheets");
+    const confirmation = harness.calls.find((call) => call.name === "confirmDrawingUpload")!;
+    expect(confirmation.input).toEqual({ jobId: "job-a", keepFloorIds: ["floor-a", "floor-b"] });
+    setFloorDetection(0, { status: "queued", queuePosition: 1 });
+    setFloorDetection(1, { status: "queued", queuePosition: 2 });
+    await act(async () => { confirmation.resolve({ keptFloorIds: ["floor-a", "floor-b"] }); });
+    expect(harness.calls.filter((call) => call.name === "detectRooms")).toEqual([]);
+    expect(screen.getByRole("button", { name: "Queued…" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "New room" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Trace room" })).toBeDisabled();
+  });
+
+  it("shows overview progress and each sheet's queue position without calling queued sheets failures", () => {
+    setFloorDetection(0, { status: "running" });
+    setFloorDetection(1, { status: "queued", queuePosition: 3 });
+    render(<JobRoomsView jobId="job-a" />);
+    expect(screen.getByRole("status", { name: "Room detection queue" })).toHaveTextContent("1 processing · 1 queued");
+    expect(screen.getByText("Queued · position 3")).toBeInTheDocument();
+    expect(screen.getByText("Detecting rooms…")).toBeInTheDocument();
+    const poll = harness.queryOptions.getJobRooms!.refetchInterval!;
+    expect(poll({ state: { data: harness.data } })).toBe(5000);
+    expect(poll({ state: { data: { floors: [{ detection: { status: "done" } }] } } })).toBe(false);
+  });
+
+  it("keeps a queued sheet busy even while the detail query contains an old completed run", () => {
+    setFloorDetection(0, { status: "queued", queuePosition: 2 });
+    harness.detectStatus = { floorId: "floor-a", status: "done", startedAt: 1000, log: [{ at: 1000, message: "Old run complete" }] };
+    render(<JobRoomsView jobId="job-a" />);
+    openFloor();
+    expect(screen.getByRole("button", { name: "Queued…" })).toBeDisabled();
+    expect(screen.queryByText("Old run complete")).not.toBeInTheDocument();
+    expect(screen.getByText(/Queued · position 2 · You can leave/)).toBeInTheDocument();
+    const poll = harness.queryOptions.detectRoomsStatus!.refetchInterval!;
+    expect(poll({ state: { data: { status: "queued" } } })).toBe(1000);
+  });
+
+  it("reports a failed sheet separately and allows retrying just that sheet", () => {
+    setFloorDetection(0, { status: "error", error: "Worker stopped" });
+    setFloorDetection(1, { status: "done" });
+    render(<JobRoomsView jobId="job-a" />);
+    expect(screen.getByRole("status", { name: "Room detection queue" })).toHaveTextContent("0 processing · 0 queued · 1 failed");
+    const failedCard = screen.getByText("Floor A").closest('[data-tutorial="floor-card"]')!;
+    expect(within(failedCard as HTMLElement).getByText("Detection failed: Worker stopped")).toBeInTheDocument();
+    openFloor();
+    click("Detect rooms");
+    expect(harness.calls.filter((call) => call.name === "detectRooms")).toEqual([expect.objectContaining({ input: { floorId: "floor-a", method: "complete" } })]);
   });
 });

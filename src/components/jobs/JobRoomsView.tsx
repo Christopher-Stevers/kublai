@@ -43,6 +43,27 @@ import {
 } from "~/components/ui/dropdown-menu";
 import { useHeaderBackOverride } from "~/lib/header-back-events";
 
+type DetectionProgress = {
+  status: string;
+  queuePosition?: number | null;
+  error?: string | null;
+};
+
+function detectionBusy(detection: DetectionProgress | null | undefined) {
+  return detection?.status === "queued" || detection?.status === "running";
+}
+
+function detectionMessage(detection: DetectionProgress | null | undefined) {
+  if (detection?.status === "queued") {
+    return detection.queuePosition && detection.queuePosition > 0
+      ? `Queued · position ${detection.queuePosition}`
+      : "Queued for room detection";
+  }
+  if (detection?.status === "running") return "Detecting rooms…";
+  if (detection?.status === "error") return detection.error ? `Detection failed: ${detection.error}` : "Room detection failed";
+  return null;
+}
+
 export function JobRoomsView({ jobId, onOpenMaterialList }: { jobId: string; onOpenMaterialList?: (id: string) => void }) {
   const router = useRouter();
   const sandbox = useTutorialSandbox();
@@ -97,7 +118,10 @@ export function JobRoomsView({ jobId, onOpenMaterialList }: { jobId: string; onO
     roomCount: number;
   } | null>(null);
   const utils = api.useUtils();
-  const roomsQuery = api.rooms.getJobRooms.useQuery({ jobId });
+  const roomsQuery = api.rooms.getJobRooms.useQuery({ jobId }, {
+    refetchInterval: (query) => !sandbox && query.state.data?.floors.some((floor) => detectionBusy(floor.detection)) ? 5000 : false,
+    refetchIntervalInBackground: false,
+  });
   const renameFloor = api.rooms.renameFloor.useMutation({
     onSuccess: () => void utils.rooms.getJobRooms.invalidate({ jobId }),
     onError: (error, variables) => {
@@ -217,6 +241,7 @@ export function JobRoomsView({ jobId, onOpenMaterialList }: { jobId: string; onO
     onSuccess: () => {
       setDetectError(null);
       void utils.rooms.detectRoomsStatus.invalidate();
+      void utils.rooms.getJobRooms.invalidate({ jobId });
     },
     onError: (error) => {
       const message = error.message || "";
@@ -242,7 +267,7 @@ export function JobRoomsView({ jobId, onOpenMaterialList }: { jobId: string; onO
       // worker responds. Status belongs to the selected floor, not that state.
       enabled: !sandbox && Boolean(selectedFloorId && roomsQuery.data?.canManage),
       refetchInterval: (query) =>
-        query.state.data?.status === "running" || detectRooms.isPending || detectingRoomId === selectedFloorId
+        detectionBusy(query.state.data) || detectRooms.isPending || (Boolean(selectedFloorId) && detectingRoomId === selectedFloorId)
           ? 1000
           : 5000,
     },
@@ -251,7 +276,7 @@ export function JobRoomsView({ jobId, onOpenMaterialList }: { jobId: string; onO
   useEffect(() => {
     const job = detectStatus.data;
     if (detectRooms.isPending || !job || (job.status !== "done" && job.status !== "error")) return;
-    const key = `${job.status}:${job.startedAt}`;
+    const key = `${job.floorId}:${job.status}:${job.startedAt}`;
     if (handledDetectJob.current === key) return;
     handledDetectJob.current = key;
     setDetectingRoomId(null);
@@ -280,6 +305,9 @@ export function JobRoomsView({ jobId, onOpenMaterialList }: { jobId: string; onO
   }));
   const selectedFloor =
     floors.find((floor) => floor.id === selectedFloorId) ?? null;
+  const queuedFloors = floors.filter((floor) => floor.detection?.status === "queued").length;
+  const runningFloors = floors.filter((floor) => floor.detection?.status === "running").length;
+  const failedFloors = floors.filter((floor) => floor.detection?.status === "error").length;
   // Short instructions only while an edit tool needs them.
   const toolHint = createMode
     ? "Drag on the plan to draw a new room."
@@ -317,12 +345,22 @@ export function JobRoomsView({ jobId, onOpenMaterialList }: { jobId: string; onO
           (b.reviewPriority?.priority ?? 0.5) -
           (a.reviewPriority?.priority ?? 0.5),
       ) ?? [];
-  const isDetecting =
-    detectRooms.isPending || detectStatus.data?.status === "running";
-  const detectLog = detectStatus.data?.log ?? [];
+  // The overview can know a batch is queued before the selected floor's detailed
+  // status has refreshed. Never offer another launch against that known queue.
+  const selectedDetection = detectionBusy(detectStatus.data)
+    ? detectStatus.data
+    : detectionBusy(selectedFloor?.detection)
+      ? selectedFloor?.detection
+      : detectStatus.data?.status !== "idle" ? (detectStatus.data ?? selectedFloor?.detection) : selectedFloor?.detection;
+  const isQueued = selectedDetection?.status === "queued";
+  const isDetecting = detectRooms.isPending || detectionBusy(selectedDetection);
+  const detectLog = detectStatus.data?.status === selectedDetection?.status
+    ? (detectStatus.data?.log ?? [])
+    : [];
   const currentDetectMessage =
-    detectLog.at(-1)?.message ??
-    (isDetecting ? "Starting room detection…" : null);
+    isQueued ? detectionMessage(selectedDetection)
+      : detectLog.at(-1)?.message ??
+        (detectRooms.isPending ? "Adding sheet to detection queue…" : detectionMessage(selectedDetection));
   const detectHistory = detectLog.slice(-8, -1);
   const canEditFloor = canManage && editMode;
   const editMenuOpen = canManage && (editMode || reviewMode);
@@ -544,9 +582,8 @@ export function JobRoomsView({ jobId, onOpenMaterialList }: { jobId: string; onO
       setPendingSheets([]);
       setKeepSheetIds({});
       await utils.rooms.getJobRooms.invalidate({ jobId });
-      for (const floorId of result.keptFloorIds) {
-        detectRooms.mutate({ floorId });
-      }
+      // Confirmation queues every kept sheet atomically on the server. The
+      // browser only follows progress; it does not launch workers per sheet.
       if (result.keptFloorIds[0]) {
         setSelectedFloorId(result.keptFloorIds[0]);
         setDetectingRoomId(result.keptFloorIds[0]);
@@ -656,8 +693,8 @@ export function JobRoomsView({ jobId, onOpenMaterialList }: { jobId: string; onO
               <DialogHeader>
             <DialogTitle>Review uploaded drawings</DialogTitle>
             <DialogDescription>
-              Keep or discard each sheet. Rooms are detected only after you
-              confirm.
+              Keep or discard each sheet. After you confirm, kept sheets are
+              detected one at a time. You can leave this screen while they finish.
             </DialogDescription>
           </DialogHeader>
               <div className="grid gap-4 sm:grid-cols-2">
@@ -722,6 +759,14 @@ export function JobRoomsView({ jobId, onOpenMaterialList }: { jobId: string; onO
         <p className="mb-4 text-sm text-red-600">{data.plan.error}</p>
       ) : null}
 
+          {queuedFloors + runningFloors + failedFloors > 0 ? (
+            <div role="status" aria-label="Room detection queue" className="mb-4 space-y-1 rounded-lg border bg-card p-3 text-sm">
+              <p className="font-medium">{runningFloors} processing · {queuedFloors} queued{failedFloors > 0 ? ` · ${failedFloors} failed` : ""}</p>
+              {queuedFloors + runningFloors > 0 ? <p className="text-muted-foreground">Sheets run one at a time. Detection continues when you leave this screen.</p> : null}
+              {failedFloors > 0 ? <p className="text-muted-foreground">Open a failed sheet and use Edit → Detect rooms to retry it.</p> : null}
+            </div>
+          ) : null}
+
           {floors.length === 0 ? (
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-12">
@@ -776,7 +821,7 @@ export function JobRoomsView({ jobId, onOpenMaterialList }: { jobId: string; onO
                             onClick={(event) => event.stopPropagation()}
                           >
                             <DropdownMenuItem
-                              disabled={copyFloor.isPending}
+                              disabled={copyFloor.isPending || detectionBusy(floor.detection)}
                               onSelect={() =>
                                 copyFloor.mutate({ floorId: floor.id })
                               }
@@ -787,6 +832,7 @@ export function JobRoomsView({ jobId, onOpenMaterialList }: { jobId: string; onO
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
                               variant="destructive"
+                              disabled={detectionBusy(floor.detection)}
                               onSelect={() =>
                                 setFloorToDelete({
                                   id: floor.id,
@@ -813,9 +859,9 @@ export function JobRoomsView({ jobId, onOpenMaterialList }: { jobId: string; onO
                     </span>
                   </div>
                       <div>
-                    {floor.status === "confirmed"
+                    {detectionMessage(floor.detection) ?? (floor.status === "confirmed"
                       ? "Confirmed"
-                      : "Needs review"}
+                      : "Needs review")}
                   </div>
                     </div>
                   </CardContent>
@@ -944,6 +990,11 @@ export function JobRoomsView({ jobId, onOpenMaterialList }: { jobId: string; onO
               <span className="bg-card/90 text-foreground rounded-md px-2 py-1 text-xs shadow-sm backdrop-blur font-semibold">
                 {selectedFloor.name}
               </span>
+              {detectionBusy(selectedDetection) ? (
+                <span role="status" className="bg-card/95 text-foreground max-w-full rounded-md px-2 py-1 text-xs shadow-sm backdrop-blur">
+                  {detectionMessage(selectedDetection)} · You can leave this screen.
+                </span>
+              ) : null}
               {toolHint ? <span className="bg-card/90 text-foreground rounded-md px-2 py-1 text-xs shadow-sm backdrop-blur">{toolHint}</span> : null}
               {updateRoom.isPending ? (
                 <span role="status" className="bg-card/90 text-foreground rounded-md px-2 py-1 text-xs shadow-sm backdrop-blur">
@@ -1208,7 +1259,7 @@ export function JobRoomsView({ jobId, onOpenMaterialList }: { jobId: string; onO
                         disabled={isDetecting || createMode}
                       >
                         <SparklesIcon className="mr-1 h-4 w-4" />
-                        {isDetecting ? "Detecting…" : "Detect rooms"}
+                        {detectRooms.isPending ? "Queuing…" : isQueued ? "Queued…" : isDetecting ? "Detecting…" : "Detect rooms"}
                       </Button>
                       <Button
                             variant={createMode ? "outline" : "default"}

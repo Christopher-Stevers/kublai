@@ -1,8 +1,8 @@
-import { createHash, randomUUID } from "node:crypto";
+import { createHash } from "node:crypto";
 import { detectTaggedRooms } from "./tagged/detect-tagged";
 import { BoundedCache } from "./bounded-cache";
-import { processIdentity, sameProcess } from "./process-identity";
-import { and, desc, eq, ne, sql } from "drizzle-orm";
+import { processIdentity } from "./process-identity";
+import { and, desc, eq, sql } from "drizzle-orm";
 
 import { pointInPolygon, toPolygon, type RoomPoint } from "~/lib/room-shape";
 import { db } from "~/server/db";
@@ -50,12 +50,14 @@ export type DetectJobResult = {
   roomId?: string;
 };
 
-export type DetectLogEntry = { at: number; message: string };
+export type DetectLogEntry = { at: number; message: string; event?: "queue-recovery" };
+export { enqueueDetectJobs } from "./detect-queue";
 
 export type DetectJobState = {
   floorId: string;
   runId: string;
-  status: "running" | "done" | "error";
+  status: "queued" | "running" | "done" | "error";
+  queuePosition?: number;
   error?: string;
   result?: DetectJobResult;
   startedAt: number;
@@ -65,7 +67,6 @@ export type DetectJobState = {
 };
 
 const MAX_LOG_ENTRIES = 400;
-const JOB_STALE_MS = 20 * 60_000;
 
 function toDetectJobState(
   row: typeof roomDetectionJobs.$inferSelect,
@@ -91,75 +92,16 @@ export async function getDetectJob(
     .where(eq(roomDetectionJobs.floorId, floorId))
     .limit(1);
   if (!row) return null;
-  const workerAlive =
-    (!row.workerPid && Date.now() - row.startedAt.getTime() < 15_000) ||
-    (!!row.workerPid &&
-      (!row.workerStartTicks || !row.workerBootId) &&
-      !!(await processIdentity(row.workerPid))) ||
-    (await sameProcess({
-      pid: row.workerPid ?? -1,
-      startTicks: row.workerStartTicks ?? "",
-      bootId: row.workerBootId ?? "",
-    }));
-  if (
-    row.status === "running" &&
-    (!workerAlive || Date.now() - row.heartbeatAt.getTime() >= JOB_STALE_MS)
-  ) {
-    await failDetectJob(
-      floorId,
-      "Room detection worker stopped before completing",
-      row.runId,
-    );
-    return getDetectJob(floorId);
+  const state = toDetectJobState(row);
+  if (row.status === "queued") {
+    const [position] = await db.select({ count: sql<number>`count(*)::int` })
+      .from(roomDetectionJobs).where(and(
+        eq(roomDetectionJobs.status, "queued"),
+        sql`(${roomDetectionJobs.startedAt}, ${roomDetectionJobs.floorId}) <= (${row.startedAt.toISOString()}::timestamptz, ${row.floorId}::uuid)`,
+      ));
+    state.queuePosition = position?.count ?? 1;
   }
-  return toDetectJobState(row);
-}
-
-export async function beginDetectJob(
-  floorId: string,
-  organizationId: string,
-): Promise<string | null> {
-  const running = await db
-    .select({ floorId: roomDetectionJobs.floorId })
-    .from(roomDetectionJobs)
-    .where(eq(roomDetectionJobs.status, "running"));
-  for (const job of running) await getDetectJob(job.floorId);
-  const now = new Date();
-  const runId = randomUUID();
-  return db.transaction(async (tx) => {
-    // Admission is serialized across HTTP processes and organizations.
-    await tx.execute(sql`select pg_advisory_xact_lock(72491833)`);
-    const active = await tx
-      .select({ floorId: roomDetectionJobs.floorId })
-      .from(roomDetectionJobs)
-      .where(eq(roomDetectionJobs.status, "running"));
-    if (active.length >= 2) return null;
-    const values = {
-      floorId,
-      organizationId,
-      runId,
-      status: "running",
-      startedAt: now,
-      heartbeatAt: now,
-      finishedAt: null,
-      workerPid: null,
-      workerBootId: null,
-      workerStartTicks: null,
-      error: null,
-      result: null,
-      log: [],
-    };
-    const [row] = await tx
-      .insert(roomDetectionJobs)
-      .values(values)
-      .onConflictDoUpdate({
-        target: roomDetectionJobs.floorId,
-        set: values,
-        setWhere: ne(roomDetectionJobs.status, "running"),
-      })
-      .returning({ runId: roomDetectionJobs.runId });
-    return row?.runId ?? null;
-  });
+  return state;
 }
 
 function runPredicate(floorId: string, runId: string) {
@@ -188,8 +130,8 @@ async function appendDetectLog(
             COALESCE(${roomDetectionJobs.log}, '[]'::jsonb) ||
             ${JSON.stringify([entry])}::jsonb
           ) WITH ORDINALITY AS entries(item, position)
-          ORDER BY position DESC
-          LIMIT ${MAX_LOG_ENTRIES}
+          WHERE item->>'event' = 'queue-recovery'
+            OR position > jsonb_array_length(COALESCE(${roomDetectionJobs.log}, '[]'::jsonb)) + 1 - ${MAX_LOG_ENTRIES - 2}
         ) recent
       )`,
     })
@@ -243,7 +185,7 @@ export async function failDetectJob(
   error: string,
   runId: string,
 ) {
-  await db
+  const changed = await db
     .update(roomDetectionJobs)
     .set({
       status: "error",
@@ -252,8 +194,9 @@ export async function failDetectJob(
       heartbeatAt: new Date(),
       finishedAt: new Date(),
     })
-    .where(runPredicate(floorId, runId));
-  console.error("[detect-job] error", floorId, error);
+    .where(runPredicate(floorId, runId))
+    .returning({ floorId: roomDetectionJobs.floorId });
+  if (changed.length) console.error("[detect-job] error", floorId, error);
 }
 
 export type FloorSource = {

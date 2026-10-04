@@ -5,7 +5,10 @@ import postgres from "postgres";
 import { registerHooks } from "node:module";
 if (
   !process.env.RELIABILITY_TEST_DB ||
-  !process.env.DATABASE_URL?.includes("/reliability_test")
+  !process.env.DATABASE_URL ||
+  new URL(process.env.DATABASE_URL).pathname !== "/reliability_test" ||
+  new URL(process.env.DATABASE_URL).hostname !== "" ||
+  !process.env.PGHOST?.startsWith("/tmp/")
 )
   throw Error("Disposable database required");
 // The caller supplies an authenticated fixture context. Never call a live identity
@@ -22,6 +25,10 @@ registerHooks({
 });
 const sql = postgres(process.env.DATABASE_URL, { max: 1 });
 try {
+  const [isolation] =
+    await sql`SELECT current_database() AS name, inet_server_addr() AS address`;
+  assert.equal(isolation?.name, "reliability_test");
+  assert.equal(isolation?.address, null, "Disposable Unix socket required");
   await sql.unsafe(
     await readFile("drizzle/0040_room_review_feedback.sql", "utf8"),
   );
@@ -31,7 +38,7 @@ try {
   const { db } = await import("../../src/server/db");
   const { roomsRouter } = await import("../../src/server/api/routers/rooms");
   const [user] =
-    await sql`select * from kublai_user where "organizationId" is not null limit 1`;
+    await sql`select * from kublai_user u where "organizationId" is not null and exists (select 1 from kublai_job_floor f where f."organizationId" = u."organizationId") limit 1`;
   assert.ok(user);
   const [floor] =
     await sql`select * from kublai_job_floor where "organizationId"=${user.organizationId} limit 1`;
@@ -103,8 +110,15 @@ try {
     decision: "pending",
     expectedUpdatedAt: await stamp(),
   });
-  const savedEdit = await api.updateRoom({ roomId: id, shape: { ...shape, w: 0.12 } });
-  assert.equal(savedEdit.updatedAt, await stamp(), "Edit response returns its exact saved CAS version");
+  const savedEdit = await api.updateRoom({
+    roomId: id,
+    shape: { ...shape, w: 0.12 },
+  });
+  assert.equal(
+    savedEdit.updatedAt,
+    await stamp(),
+    "Edit response returns its exact saved CAS version",
+  );
   assert.equal(
     (await sql`select source from kublai_job_room where id=${id}`)[0]!.source,
     "manual",
@@ -188,8 +202,22 @@ try {
     }),
     /FORBIDDEN|Forbidden/,
   );
-  const { beginDetectJob, saveCompleteCandidates } =
+  const { enqueueDetectJobs, saveCompleteCandidates, setDetectWorkerPid } =
     await import("../../src/server/rooms/detect-job");
+  const { claimNextDetectJob } =
+    await import("../../src/server/rooms/detect-queue");
+  const claimFixture = async (floorId: string, organizationId: string) => {
+    await enqueueDetectJobs([floorId], organizationId);
+    const claimed = await claimNextDetectJob();
+    assert.equal(
+      claimed?.floorId,
+      floorId,
+      "Fixture obtains the global worker slot",
+    );
+    assert.ok(claimed);
+    await setDetectWorkerPid(floorId, process.pid, claimed.runId);
+    return claimed.runId;
+  };
   const { toPolygon } = await import("../../src/lib/room-shape");
   await sql`update kublai_room_detection_job set status='error'`;
   const candidate = (x: number, name: string) => ({
@@ -218,7 +246,7 @@ try {
     candidate(0.7, "Correct"),
   ];
   const save = async () => {
-    const runId = await beginDetectJob(floor.id, user.organizationId);
+    const runId = await claimFixture(floor.id, user.organizationId);
     assert.ok(runId);
     return saveCompleteCandidates(
       {
@@ -234,7 +262,7 @@ try {
     );
   };
   await sql`delete from kublai_job_room where id=${id}`;
-  const fencedRun = await beginDetectJob(floor.id, user.organizationId);
+  const fencedRun = await claimFixture(floor.id, user.organizationId);
   assert.ok(fencedRun);
   await assert.rejects(
     saveCompleteCandidates(
@@ -267,7 +295,9 @@ try {
     /Drawing contents changed/,
   );
   assert.equal(
-    (await sql`select count(*)::int as count from kublai_job_room where "floorId"=${floor.id}`)[0]!.count,
+    (
+      await sql`select count(*)::int as count from kublai_job_room where "floorId"=${floor.id}`
+    )[0]!.count,
     0,
     "Rejected source snapshots must not persist proposals",
   );
@@ -317,7 +347,24 @@ try {
     api.confirmFloor({ floorId: floor.id }),
     /Check the entire floor/,
   );
-  const activeRun = await beginDetectJob(floor.id, user.organizationId);
+  await enqueueDetectJobs([floor.id], user.organizationId);
+  await assert.rejects(
+    api.deleteAllRooms({ floorId: floor.id }),
+    /Wait for room detection/,
+  );
+  await assert.rejects(
+    api.deleteFloor({ floorId: floor.id }),
+    /Wait for room detection/,
+  );
+  await assert.rejects(
+    api.copyFloor({ floorId: floor.id }),
+    /Wait for room detection/,
+  );
+  await assert.rejects(
+    api.confirmFloor({ floorId: floor.id, completenessChecked: true }),
+    /Wait for room detection/,
+  );
+  const activeRun = await claimFixture(floor.id, user.organizationId);
   assert.ok(activeRun);
   await assert.rejects(
     api.deleteAllRooms({ floorId: floor.id }),

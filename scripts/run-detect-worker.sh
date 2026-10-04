@@ -9,7 +9,7 @@ case "$upload_id" in
   *) echo "Invalid upload id" >&2; exit 64 ;;
 esac
 
-# Request process supplies the shared bounded budget; reject arbitrary overrides.
+# Each queued drawing has its own bounded runtime.
 worker_seconds=600
 case "$worker_seconds" in
   600) ;;
@@ -22,6 +22,13 @@ if [ -z "$node_binary" ] || [ ! -x "$node_binary" ]; then
   echo "Node runtime unavailable" >&2
   exit 70
 fi
+# Backstop the database lease across process death/floor deletion. A previous
+# worker's native children may still be unwinding even after its parent exits.
+# The inherited descriptor keeps CPU-heavy detection globally serialized.
+lock_root=${XDG_RUNTIME_DIR:-/tmp}
+exec 9>"$lock_root/foremanhq-room-detection-$UID.lock"
+/usr/bin/flock 9
+
 export NODE_ENV=production
 export UV_THREADPOOL_SIZE=2
 export DOTENV_CONFIG_PATH="$repo_root/.env"
@@ -43,7 +50,7 @@ cgroup_dir="$cgroup_parent/foremenhq-detect-$upload_id"
 mkdir -p "$cgroup_dir"
 # Full-resolution hybrid tracing holds several native/typed pixel buffers in
 # addition to the JavaScript heap. Keep a 4 GiB process ceiling; the global
-# two-worker limit bounds detection to 8 GiB on this 128 GiB host.
+# single-worker queue bounds detection to 4 GiB on this host.
 printf '%s\n' 4294967296 > "$cgroup_dir/memory.max"
 printf '%s\n' 0 > "$cgroup_dir/memory.swap.max"
 printf '%s\n' 64 > "$cgroup_dir/pids.max"

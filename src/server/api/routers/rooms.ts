@@ -13,12 +13,11 @@ import {
   roomDetectionJobs,
 } from "~/server/db/schema";
 import {
-  beginDetectJob,
-  failDetectJob,
+  enqueueDetectJobs,
   getDetectJob,
   growRoomOnFloor,
 } from "~/server/rooms/detect-job";
-import { startDetectWorker } from "~/server/rooms/detect-worker-process";
+import { dispatchDetectQueue } from "~/server/rooms/detect-worker-process";
 import { getSourcePageFromFloorImage, JOB_ROOM_FILE_PUBLIC_PREFIX } from "~/server/rooms/storage";
 
 import { sourceDrawingHash } from "~/server/rooms/drawing-hash";
@@ -138,6 +137,36 @@ export const roomsRouter = createTRPCRouter({
             .orderBy(asc(jobRooms.sortOrder), asc(jobRooms.createdAt))
         : [];
 
+      // One lightweight query for the whole overview; queued work keeps running
+      // on the server even when no floor is open in the browser.
+      const detections = canManage && visibleFloors.length
+        ? await ctx.db
+            .select({
+              floorId: roomDetectionJobs.floorId,
+              status: roomDetectionJobs.status,
+              error: roomDetectionJobs.error,
+              queuePosition: sql<number | null>`case when ${roomDetectionJobs.status} = 'queued' then (
+                select count(*)::int from kublai_room_detection_job queued
+                where queued.status = 'queued' and
+                  (queued."startedAt", queued."floorId") <=
+                  (${roomDetectionJobs.startedAt}, ${roomDetectionJobs.floorId})
+              ) else null end`,
+            })
+            .from(roomDetectionJobs)
+            .where(and(
+              eq(roomDetectionJobs.organizationId, organizationId),
+              inArray(roomDetectionJobs.floorId, visibleFloors.map((floor) => floor.id)),
+            ))
+        : [];
+      const detectionByFloor = new Map(detections.map((detection) => [
+        detection.floorId,
+        {
+          status: detection.status as "queued" | "running" | "done" | "error",
+          error: detection.error,
+          queuePosition: detection.queuePosition,
+        },
+      ]));
+
       const feedback =
         canManage && rooms.length
           ? await ctx.db
@@ -178,6 +207,7 @@ export const roomsRouter = createTRPCRouter({
           : null,
         floors: visibleFloors.map((floor) => ({
           ...floor,
+          detection: detectionByFloor.get(floor.id) ?? null,
           rooms: (roomsByFloor.get(floor.id) ?? []).map((room) => ({
             ...room,
             reviewPriority: rankReview(room.shape as RoomShape, room.detection),
@@ -475,7 +505,7 @@ export const roomsRouter = createTRPCRouter({
             ),
           )
           .for("update");
-        if (active?.status === "running")
+        if (active?.status === "running" || active?.status === "queued")
           throw new TRPCError({
             code: "CONFLICT",
             message:
@@ -606,7 +636,7 @@ export const roomsRouter = createTRPCRouter({
             ),
           )
           .for("update");
-        if (active?.status === "running")
+        if (active?.status === "running" || active?.status === "queued")
           throw new TRPCError({
             code: "CONFLICT",
             message:
@@ -652,7 +682,7 @@ export const roomsRouter = createTRPCRouter({
               eq(roomDetectionJobs.organizationId, organizationId),
             ),
           );
-        if (active?.status === "running")
+        if (active?.status === "running" || active?.status === "queued")
           throw new TRPCError({
             code: "CONFLICT",
             message:
@@ -1038,7 +1068,7 @@ export const roomsRouter = createTRPCRouter({
             ),
           )
           .for("update");
-        if (active?.status === "running")
+        if (active?.status === "running" || active?.status === "queued")
           throw new TRPCError({
             code: "CONFLICT",
             message:
@@ -1155,50 +1185,29 @@ export const roomsRouter = createTRPCRouter({
       }
       const organizationId = (ctx.user as { organizationId: string })
         .organizationId;
-      const floor = requireRow(
-        (
-          await ctx.db
-            .select()
-            .from(jobFloors)
-            .where(
-              and(
-                eq(jobFloors.id, input.floorId),
-                eq(jobFloors.organizationId, organizationId),
-              ),
-            )
-            .limit(1)
-        )[0],
-        organizationId,
-      );
-
-      if (!floor.imageUrl.startsWith(`${JOB_ROOM_FILE_PUBLIC_PREFIX}/`)) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "Floor image is missing",
-        });
-      }
-
-      const runId = await beginDetectJob(floor.id, organizationId);
-      if (!runId) {
-        throw new TRPCError({
-          code: "CONFLICT",
-          message:
-            "Room detection is already running, or both processing slots are busy. Retry shortly",
-        });
-      }
-
-      console.log("[rooms.detectRooms] started", floor.id, "complete");
-      try {
-        await startDetectWorker(floor.id, "complete", runId);
-      } catch (error) {
-        const message =
-          error instanceof Error
-            ? error.message
-            : "Room detection worker failed to start";
-        await failDetectJob(floor.id, message, runId);
-        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message });
-      }
-
+      await ctx.db.transaction(async (tx) => {
+        // Share the queue admission lock with confirmation, copy and deletion.
+        await tx.execute(sql`select pg_advisory_xact_lock(72491833)`);
+        const [row] = await tx
+          .select()
+          .from(jobFloors)
+          .where(and(
+            eq(jobFloors.id, input.floorId),
+            eq(jobFloors.organizationId, organizationId),
+          ));
+        const floor = requireRow(row, organizationId);
+        if (floor.status === "pending_review" ||
+            !floor.imageUrl.startsWith(`${JOB_ROOM_FILE_PUBLIC_PREFIX}/`)) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Confirm a sheet with a floor image before detecting rooms",
+          });
+        }
+        await enqueueDetectJobs([floor.id], organizationId, tx);
+      });
+      // Dispatch is a best-effort nudge. Durable jobs are also picked up by the
+      // startup/interval worker if this HTTP process or the connection ends.
+      void dispatchDetectQueue().catch((error) => console.error("[detect-queue]", error));
       return { started: true as const };
     }),
 
@@ -1217,39 +1226,43 @@ export const roomsRouter = createTRPCRouter({
       }
       const organizationId = (ctx.user as { organizationId: string })
         .organizationId;
-      const pending = await ctx.db
-        .select()
-        .from(jobFloors)
-        .where(
-          and(
+      const keptFloorIds = await ctx.db.transaction(async (tx) => {
+        await tx.execute(sql`select pg_advisory_xact_lock(72491833)`);
+        const matchingJobs = await tx.execute(sql`
+          select id from kublai_job
+          where id = ${input.jobId}::uuid and "organizationId" = ${organizationId}::uuid
+        `);
+        if (!matchingJobs.length) throw new TRPCError({ code: "NOT_FOUND" });
+        const pending = await tx
+          .select()
+          .from(jobFloors)
+          .where(and(
             eq(jobFloors.jobId, input.jobId),
             eq(jobFloors.organizationId, organizationId),
             eq(jobFloors.status, "pending_review"),
-          ),
-        );
-      const keep = new Set(input.keepFloorIds);
-      const kept = pending.filter((floor) => keep.has(floor.id));
-      const discarded = pending.filter((floor) => !keep.has(floor.id));
-      if (discarded.length > 0) {
-        await ctx.db.delete(jobFloors).where(
-          inArray(
-            jobFloors.id,
-            discarded.map((floor) => floor.id),
-          ),
-        );
-      }
-      if (kept.length > 0) {
-        await ctx.db
-          .update(jobFloors)
-          .set({ status: "detected", updatedAt: new Date() })
-          .where(
-            inArray(
-              jobFloors.id,
-              kept.map((floor) => floor.id),
-            ),
-          );
-      }
-      return { keptFloorIds: kept.map((floor) => floor.id) };
+          ))
+          .orderBy(asc(jobFloors.pageNumber));
+        const keep = new Set(input.keepFloorIds);
+        const kept = pending.filter((floor) => keep.has(floor.id));
+        const discarded = pending.filter((floor) => !keep.has(floor.id));
+        if (kept.some((floor) => !floor.imageUrl.startsWith(`${JOB_ROOM_FILE_PUBLIC_PREFIX}/`))) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Floor image is missing" });
+        }
+        if (discarded.length > 0) {
+          await tx.delete(jobFloors).where(inArray(jobFloors.id, discarded.map((floor) => floor.id)));
+        }
+        if (kept.length > 0) {
+          await tx.update(jobFloors)
+            .set({ status: "detected", updatedAt: new Date() })
+            .where(inArray(jobFloors.id, kept.map((floor) => floor.id)));
+          // Acceptance and queueing are one commit: closing the app cannot
+          // leave the later sheets saved but never submitted for detection.
+          await enqueueDetectJobs(kept.map((floor) => floor.id), organizationId, tx);
+        }
+        return kept.map((floor) => floor.id);
+      });
+      void dispatchDetectQueue().catch((error) => console.error("[detect-queue]", error));
+      return { keptFloorIds };
     }),
 
   detectRoomsStatus: hasDashboardAccess
