@@ -73,8 +73,10 @@ export function JobRoomsView({ jobId, onOpenMaterialList }: { jobId: string; onO
   const [traceRoomId, setTraceRoomId] = useState<string | null>(null);
   const [vertexMode, setVertexMode] = useState<"add" | "delete" | null>(null);
   const handledDetectJob = useRef("");
-  const floorRenameTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const floorNameDraftRef = useRef("");
+  // The floor name box is left alone while typing (no React re-sets, which
+  // trip up the iPhone keyboard) and saved once when editing ends.
+  const floorNameInput = useRef<HTMLInputElement | null>(null);
+  const lastFloorRename = useRef("");
   const [isRoomListOpen, setIsRoomListOpen] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -83,7 +85,6 @@ export function JobRoomsView({ jobId, onOpenMaterialList }: { jobId: string; onO
   >([]);
   const [keepSheetIds, setKeepSheetIds] = useState<Record<string, boolean>>({});
   const [detectError, setDetectError] = useState<string | null>(null);
-  const [floorNameDraft, setFloorNameDraft] = useState("");
   const [roomNameDraft, setRoomNameDraft] = useState("");
   const [floorToDelete, setFloorToDelete] = useState<{
     id: string;
@@ -99,6 +100,15 @@ export function JobRoomsView({ jobId, onOpenMaterialList }: { jobId: string; onO
   const roomsQuery = api.rooms.getJobRooms.useQuery({ jobId });
   const renameFloor = api.rooms.renameFloor.useMutation({
     onSuccess: () => void utils.rooms.getJobRooms.invalidate({ jobId }),
+    onError: (error, variables) => {
+      lastFloorRename.current = "";
+      notify(`The floor name was not saved: ${error.message}`, "error");
+      const input = floorNameInput.current;
+      const saved = utils.rooms.getJobRooms
+        .getData({ jobId })
+        ?.floors.find((floor) => floor.id === variables.floorId)?.name;
+      if (input && saved) input.value = saved;
+    },
   });
   const confirmFloor = api.rooms.confirmFloor.useMutation({
     onSuccess: () => void utils.rooms.getJobRooms.invalidate({ jobId }),
@@ -316,44 +326,21 @@ export function JobRoomsView({ jobId, onOpenMaterialList }: { jobId: string; onO
   const detectHistory = detectLog.slice(-8, -1);
   const canEditFloor = canManage && editMode;
   const editMenuOpen = canManage && (editMode || reviewMode);
-  floorNameDraftRef.current = floorNameDraft;
-
-  const persistFloorName = (
-    floorId: string,
-    currentName: string,
-    draft: string,
-  ) => {
-    const trimmed = draft.trim();
+  /** Saves the typed floor name; a blank name puts the current one back. */
+  const flushFloorRename = () => {
+    const input = floorNameInput.current;
+    if (!selectedFloor || !input) return;
+    const trimmed = input.value.trim();
     if (!trimmed) {
-      setFloorNameDraft(currentName);
+      input.value = selectedFloor.name;
       return;
     }
-    if (trimmed === currentName) return;
-    renameFloor.mutate({ floorId, name: trimmed });
-  };
-
-  const queueFloorRename = (
-    floorId: string,
-    currentName: string,
-    draft: string,
-  ) => {
-    if (floorRenameTimer.current) clearTimeout(floorRenameTimer.current);
-    floorRenameTimer.current = setTimeout(() => {
-      persistFloorName(floorId, currentName, draft);
-    }, 400);
-  };
-
-  const flushFloorRename = () => {
-    if (floorRenameTimer.current) {
-      clearTimeout(floorRenameTimer.current);
-      floorRenameTimer.current = null;
-    }
-    if (!selectedFloor) return;
-    persistFloorName(
-      selectedFloor.id,
-      selectedFloor.name,
-      floorNameDraftRef.current,
-    );
+    // Blur and Done can both fire for one edit; send each new name once.
+    const request = `${selectedFloor.id}\n${trimmed}`;
+    if (trimmed === selectedFloor.name || lastFloorRename.current === request)
+      return;
+    lastFloorRename.current = request;
+    renameFloor.mutate({ floorId: selectedFloor.id, name: trimmed });
   };
 
   const closeFloorViewer = () => {
@@ -764,7 +751,6 @@ export function JobRoomsView({ jobId, onOpenMaterialList }: { jobId: string; onO
                     setCreateMode(false);
                     setVertexMode(null);
                     setEditMode(false);
-                    setFloorNameDraft(floor.name);
                   }}
                 >
                   <CardHeader>
@@ -1069,15 +1055,16 @@ export function JobRoomsView({ jobId, onOpenMaterialList }: { jobId: string; onO
             >
               {canEditFloor ? (
                         <Input
-                          value={floorNameDraft}
-                          onChange={(event) => {
-                            const name = event.target.value;
-                            setFloorNameDraft(name);
-                            queueFloorRename(
-                              selectedFloor.id,
-                              selectedFloor.name,
-                              name,
-                            );
+                          key={selectedFloor.id}
+                          ref={floorNameInput}
+                          defaultValue={selectedFloor.name}
+                          maxLength={255}
+                          autoComplete="off"
+                          autoCorrect="off"
+                          spellCheck={false}
+                          enterKeyHint="done"
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter") event.currentTarget.blur();
                           }}
                           onBlur={flushFloorRename}
                           className="max-w-xs text-lg font-semibold"

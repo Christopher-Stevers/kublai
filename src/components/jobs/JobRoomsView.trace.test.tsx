@@ -304,3 +304,49 @@ describe("floor card menu", () => {
     expect(await screen.findByText("Delete floor?")).toBeInTheDocument();
   });
 });
+
+describe("floor name box", () => {
+  const renames = () => harness.calls.filter((call) => call.name === "renameFloor");
+  function openNameBox() {
+    render(<JobRoomsView jobId="job-a" />);
+    fireEvent.click(screen.getByText("Floor A", { exact: true }));
+    click("Edit");
+    return screen.getByLabelText("Floor name") as HTMLInputElement;
+  }
+
+  it("does not save or reset the box while typing, then saves once when editing ends", async () => {
+    const box = openNameBox();
+    expect(box.value).toBe("Floor A");
+    vi.useFakeTimers();
+    try {
+      // Clearing the box to retype must not snap the old name back.
+      for (const value of ["", "1", "1st", "1st F", "1st Floor"]) {
+        fireEvent.change(box, { target: { value } });
+        act(() => vi.advanceTimersByTime(2000));
+        expect(box.value).toBe(value);
+      }
+    } finally {
+      vi.useRealTimers();
+    }
+    expect(renames()).toHaveLength(0);
+    fireEvent.blur(box);
+    // Done also saves; the same name is only sent once.
+    click("Done");
+    expect(renames()).toHaveLength(1);
+    expect(renames()[0]!.input).toEqual({ floorId: "floor-a", name: "1st Floor" });
+  });
+
+  it("puts the name back when left blank, and Return finishes editing", () => {
+    const box = openNameBox();
+    fireEvent.change(box, { target: { value: "   " } });
+    fireEvent.blur(box);
+    expect(box.value).toBe("Floor A");
+    expect(renames()).toHaveLength(0);
+
+    box.focus();
+    fireEvent.change(box, { target: { value: "Level 3" } });
+    fireEvent.keyDown(box, { key: "Enter" });
+    expect(document.activeElement).not.toBe(box);
+    expect(renames().at(-1)?.input).toEqual({ floorId: "floor-a", name: "Level 3" });
+  });
+});
