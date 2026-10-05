@@ -371,32 +371,42 @@ export function DrawingSheetViewer({
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img ref={image} src={src} alt={alt} draggable={false} className="absolute inset-0 h-full w-full" />
-        {tileLayers.map((item) =>
-          item.tiles.map(({ col, row }) => {
-            const size = manifest!.tileSize;
-            const w = Math.min(size, item.width - col * size);
-            const h = Math.min(size, item.height - row * size);
-            return (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                key={`${item.factor}/${col}_${row}`}
-                src={`${tiles}/${item.factor}/${col}_${row}.webp`}
-                alt=""
-                draggable={false}
-                decoding="async"
-                className="absolute opacity-0 transition-opacity duration-200"
-                onLoad={(event) => event.currentTarget.classList.remove("opacity-0")}
-                style={{
-                  left: `${((col * size) / item.width) * 100}%`,
-                  top: `${((row * size) / item.height) * 100}%`,
-                  // A hair of overlap hides seams between neighbouring tiles.
-                  width: `calc(${(w / item.width) * 100}% + 0.5px)`,
-                  height: `calc(${(h / item.height) * 100}% + 0.5px)`,
-                }}
-              />
-            );
-          }),
-        )}
+        {tileLayers.map((item) => (
+          // Each level is laid out in its own pixels (whole-number tile
+          // positions, exact sizes) and scaled once to the sheet, so tile edges
+          // meet exactly at any zoom.
+          <div
+            key={item.factor}
+            className="absolute top-0 left-0 origin-top-left"
+            style={{
+              width: item.width,
+              height: item.height,
+              transform: `scale(${(fit?.width ?? 0) / item.width}, ${(fit?.height ?? 0) / item.height})`,
+            }}
+          >
+            {item.tiles.map(({ col, row }) => {
+              const size = manifest!.tileSize;
+              return (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  key={`${col}_${row}`}
+                  src={`${tiles}/${item.factor}/${col}_${row}.webp`}
+                  alt=""
+                  draggable={false}
+                  decoding="async"
+                  className="absolute opacity-0 transition-opacity duration-200"
+                  onLoad={(event) => event.currentTarget.classList.remove("opacity-0")}
+                  style={{
+                    left: col * size,
+                    top: row * size,
+                    width: Math.min(size, item.width - col * size),
+                    height: Math.min(size, item.height - row * size),
+                  }}
+                />
+              );
+            })}
+          </div>
+        ))}
       </div>
       {pdf && (
         <canvas
