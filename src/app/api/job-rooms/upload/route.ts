@@ -24,6 +24,7 @@ import {
   WORKER_SECONDS,
 } from "~/server/rooms/upload-session";
 
+import { ensureDrawingTiles, uploadsFromImageUrls } from "~/server/rooms/tiles";
 import { getRequestIdentity } from "~/server/utils/get-request-identity";
 
 export const dynamic = "force-dynamic";
@@ -217,7 +218,7 @@ export async function GET(request: Request) {
     if (s.drawingSetId) {
       // Drawings: same recovery idea, against the folder's sheets.
       const sheets = await db
-        .select({ id: jobDrawingSheets.id })
+        .select({ id: jobDrawingSheets.id, imageUrl: jobDrawingSheets.imageUrl })
         .from(jobDrawingSheets)
         .where(
           and(
@@ -229,6 +230,11 @@ export async function GET(request: Request) {
       const current = sheets.length
         ? { ...s, status: "ready" as const }
         : await recoverProcessingSession(id);
+      // Sharper zoom tiles are made in the background once the sheets exist.
+      for (const upload of uploadsFromImageUrls(sheets.map((sheet) => sheet.imageUrl)))
+        await ensureDrawingTiles(upload.jobId, upload.uploadId, upload.pages).catch(
+          (error: unknown) => console.error("[drawing-tiles] start failed", id, error),
+        );
       return NextResponse.json(
         {
           uploadId: id,

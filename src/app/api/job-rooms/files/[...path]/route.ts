@@ -26,7 +26,8 @@ export async function GET(
   if (
     !jobId ||
     !new RegExp(
-      `^${uuid}/(?:${uuid}/)?(?:plan\\.pdf|floor-\\d+\\.webp)$`,
+      // Drawings tiles live only under an upload folder.
+      `^${uuid}/(?:${uuid}/)?(?:plan\\.pdf|floor-\\d+\\.webp)$|^${uuid}/${uuid}/tiles/\\d+/(?:manifest\\.json|[24]/\\d+_\\d+\\.webp)$`,
       "i",
     ).test(storageKey)
   ) {
@@ -46,7 +47,9 @@ export async function GET(
     const buffer = await readJobRoomFile(storageKey);
     const contentType = storageKey.endsWith(".pdf")
       ? "application/pdf"
-      : "image/webp";
+      : storageKey.endsWith(".json")
+        ? "application/json"
+        : "image/webp";
     return new NextResponse(buffer, {
       headers: {
         "Content-Type": contentType,

@@ -6,6 +6,7 @@ import { createTRPCRouter, hasDashboardAccess } from "~/server/api/trpc";
 import { userCan } from "~/server/auth/permissions";
 import type { db as database } from "~/server/db";
 import { jobDrawingSets, jobDrawingSheets, jobs } from "~/server/db/schema";
+import { ensureDrawingTiles, uploadsFromImageUrls } from "~/server/rooms/tiles";
 
 /**
  * Drawings: folders ("sets") of plain drawing sheets for a job. Uploading a PDF
@@ -132,6 +133,11 @@ export const drawingsRouter = createTRPCRouter({
         .from(jobDrawingSheets)
         .where(eq(jobDrawingSheets.setId, set.id))
         .orderBy(asc(jobDrawingSheets.sortOrder), asc(jobDrawingSheets.createdAt));
+      // Catch up on any sharp-zoom tiles that are missing (e.g. after a restart).
+      for (const upload of uploadsFromImageUrls(sheets.map((sheet) => sheet.imageUrl)))
+        void ensureDrawingTiles(upload.jobId, upload.uploadId, upload.pages).catch(
+          (error: unknown) => console.error("[drawing-tiles] start failed", error),
+        );
       return {
         canManage: userCan(ctx.user as never, "drawings.manage"),
         set: { id: set.id, jobId: set.jobId, name: set.name },

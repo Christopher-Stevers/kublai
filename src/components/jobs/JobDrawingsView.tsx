@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -34,6 +34,7 @@ import {
   DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu";
 import { useHeaderBackOverride } from "~/lib/header-back-events";
+import { tileBase } from "~/lib/drawing-tiles";
 import { sourcePdfPage } from "~/lib/pdf-client";
 import { uploadDrawings } from "~/lib/upload-drawings";
 import { DrawingSheetViewer } from "./DrawingSheetViewer";
@@ -92,6 +93,24 @@ export function JobDrawingsView({ jobId }: { jobId: string }) {
   const sheetIndex = sheets.findIndex((sheet) => sheet.id === sheetId);
   const sheet = sheetIndex >= 0 ? sheets[sheetIndex] : null;
   const canManage = !sandbox && Boolean(setId ? set.data?.canManage : sets.data?.canManage);
+
+  // Paging should feel instant: warm the neighbouring sheets in the background.
+  const neighbours = sheet
+    ? [sheets[sheetIndex - 1], sheets[sheetIndex + 1]]
+        .filter((item): item is NonNullable<typeof item> => Boolean(item))
+        .map((item) => item.imageUrl)
+        .join("|")
+    : "";
+  useEffect(() => {
+    if (!neighbours) return;
+    for (const url of neighbours.split("|")) {
+      const image = new Image();
+      image.decoding = "async";
+      image.src = url;
+      const tiles = tileBase(url);
+      if (tiles) void fetch(`${tiles}/manifest.json`, { credentials: "same-origin" }).catch(() => undefined);
+    }
+  }, [neighbours]);
 
   // The app bar back arrow steps out of a sheet, then out of a folder.
   useHeaderBackOverride(
@@ -173,6 +192,7 @@ export function JobDrawingsView({ jobId }: { jobId: string }) {
             src={sheet.imageUrl}
             alt={sheet.name}
             pdf={sourcePdfPage(sheet.imageUrl)}
+            tiles={tileBase(sheet.imageUrl)}
           />
           <span className="bg-card/90 pointer-events-none absolute top-2 left-2 rounded-md px-2 py-1 text-xs font-semibold shadow-sm">
             {sheet.name}
