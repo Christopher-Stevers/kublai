@@ -35,19 +35,18 @@ async function runRenderer(args: string[]) {
     );
     let stdout = "";
     let stderr = "";
-    const append = (prior: string, chunk: Buffer) => {
-      const next = prior + chunk.toString("utf8");
-      if (next.length > 64 * 1024) {
+    child.stdout.on("data", (chunk: Buffer) => {
+      // The result is one small JSON line; anything large is a runaway renderer.
+      stdout += chunk.toString("utf8");
+      if (stdout.length > 64 * 1024) {
         child.kill("SIGKILL");
         reject(new Error("PDF renderer produced excessive output"));
       }
-      return next;
-    };
-    child.stdout.on("data", (chunk: Buffer) => {
-      stdout = append(stdout, chunk);
     });
     child.stderr.on("data", (chunk: Buffer) => {
-      stderr = append(stderr, chunk);
+      // Warnings are diagnostics only: keep the tail for error messages, but
+      // never fail a page because a PDF is noisy.
+      stderr = (stderr + chunk.toString("utf8")).slice(-16 * 1024);
     });
     child.once("error", reject);
     child.once("exit", (code, signal) => {

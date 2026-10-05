@@ -1,7 +1,7 @@
 import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { createCanvas } from "@napi-rs/canvas";
-import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
+import { getDocument, VerbosityLevel } from "pdfjs-dist/legacy/build/pdf.mjs";
 import sharp from "sharp";
 import { validateDrawingPageCount } from "~/lib/drawing-upload-limits";
 import { extractSheetName } from "~/server/rooms/sheet-name";
@@ -11,6 +11,9 @@ async function load(dest: string) {
   const bytes = await readFile(path.join(dest, "plan.pdf"));
   const loadingTask = getDocument({
     ...SERVER_PDF_RENDER_OPTIONS,
+    // Exports with removed layers make PDF.js warn thousands of times per page
+    // ("Optional content group not found"); only real errors are useful here.
+    verbosity: VerbosityLevel.ERRORS,
     data: new Uint8Array(bytes),
     maxImageSize: 16_000_000,
     canvasMaxAreaInBytes: 20_000_000,
