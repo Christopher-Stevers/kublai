@@ -85,12 +85,15 @@ export function PermissionEditor({
   onChange,
   disabled,
   lockedKeys = [],
+  showPresets = true,
 }: {
   value: PermissionMap;
   onChange: (next: PermissionMap) => void;
   disabled?: boolean;
   /** Keys that can't be changed here (e.g. your own access to this page). */
   lockedKeys?: PermissionKey[];
+  /** Hide the Quick setup row when the screen shows its own presets. */
+  showPresets?: boolean;
 }) {
   const preset = matchingPreset(value);
   const set = (key: PermissionKey, on: boolean) => {
@@ -105,6 +108,8 @@ export function PermissionEditor({
 
   return (
     <div className="space-y-5">
+      {showPresets && (
+        <>
       <div>
         <p className="mb-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
           Quick setup
@@ -137,6 +142,9 @@ export function PermissionEditor({
           <p className="mt-2 text-xs text-muted-foreground">{preset.description}</p>
         )}
       </div>
+
+        </>
+      )}
 
       <div className="grid gap-3 lg:grid-cols-2">
         {PERMISSION_GROUPS.map((group) => {

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import QRCode from "qrcode";
-import { CheckIcon, ChevronDownIcon, CopyIcon, Loader2Icon, QrCodeIcon, Trash2Icon } from "lucide-react";
+import { CheckIcon, CopyIcon, Loader2Icon, QrCodeIcon, Trash2Icon } from "lucide-react";
 
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
@@ -12,6 +12,7 @@ import {
   INVITE_EXPIRY_DAYS,
   PERMISSION_PRESETS,
   STANDARD_DEFAULTS,
+  matchingPreset,
   type InviteExpiryDays,
   type PermissionMap,
 } from "~/lib/permission-catalog";
@@ -46,7 +47,9 @@ export function InvitesSection({ settings, onSaved }: { settings: Settings; onSa
   const [name, setName] = useState("");
   const [perms, setPerms] = useState<PermissionMap>(JOURNEYMAN);
   const [expiresInDays, setExpiresInDays] = useState<InviteExpiryDays>(DEFAULT_INVITE_EXPIRY_DAYS);
-  const [showAll, setShowAll] = useState(false);
+  // "Custom" stays selected once a permission is changed by hand.
+  const [custom, setCustom] = useState(false);
+  const selectedPreset = custom ? "custom" : (matchingPreset(perms)?.id ?? "custom");
   const create = api.organization.createOrganizationInvite.useMutation({
     onSuccess: async () => {
       setName("");
@@ -70,25 +73,6 @@ export function InvitesSection({ settings, onSaved }: { settings: Settings; onSa
             <Input id="invite-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Shop crew" disabled={!canInvite} />
           </div>
           <div>
-            <p className="mb-2 text-sm font-medium">Starts as</p>
-            <div className="flex flex-wrap gap-2">
-              {PERMISSION_PRESETS.map((p) => (
-                <button
-                  key={p.id}
-                  type="button"
-                  disabled={!canInvite}
-                  onClick={() => setPerms(p.permissions)}
-                  className={cn(
-                    "rounded-full border px-3 py-1.5 text-sm font-medium transition-colors",
-                    roleLabel(perms) === p.label ? "border-primary bg-primary text-primary-foreground" : "hover:bg-accent",
-                  )}
-                >
-                  {p.label}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div>
             <p className="mb-2 text-sm font-medium">Expires after</p>
             <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Invite expiry">
               {INVITE_EXPIRY_DAYS.map((days) => (
@@ -109,11 +93,45 @@ export function InvitesSection({ settings, onSaved }: { settings: Settings; onSa
               ))}
             </div>
           </div>
-          <button type="button" onClick={() => setShowAll((v) => !v)} className="inline-flex items-center gap-1 text-sm font-medium text-primary">
-            <ChevronDownIcon className={cn("h-4 w-4 transition-transform", showAll && "rotate-180")} />
-            {showAll ? "Hide permissions" : "Customize permissions"}
-          </button>
-          {showAll && <PermissionEditor value={perms} onChange={setPerms} disabled={!canInvite} />}
+          <div>
+            <p className="mb-2 text-sm font-medium">Starts as</p>
+            <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Starts as">
+              {[...PERMISSION_PRESETS.map((p) => ({ id: p.id, label: p.label })), { id: "custom", label: "Custom" }].map((option) => (
+                <button
+                  key={option.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={selectedPreset === option.id}
+                  disabled={!canInvite}
+                  onClick={() => {
+                    const preset = PERMISSION_PRESETS.find((p) => p.id === option.id);
+                    if (preset) setPerms(preset.permissions);
+                    setCustom(!preset);
+                  }}
+                  className={cn(
+                    "rounded-full border px-3 py-1.5 text-sm font-medium transition-colors",
+                    selectedPreset === option.id ? "border-primary bg-primary text-primary-foreground" : "hover:bg-accent",
+                  )}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+            <p className="mt-2 text-xs text-muted-foreground">
+              {selectedPreset === "custom"
+                ? "Pick exactly what this invite allows below."
+                : PERMISSION_PRESETS.find((p) => p.id === selectedPreset)?.description}
+            </p>
+          </div>
+          <PermissionEditor
+            value={perms}
+            onChange={(next) => {
+              setPerms(next);
+              setCustom(true);
+            }}
+            disabled={!canInvite}
+            showPresets={false}
+          />
           {create.error && <p className="text-sm text-destructive">{create.error.message}</p>}
           <Button className="w-full" disabled={!canInvite || !name.trim() || create.isPending} onClick={() => create.mutate({ name: name.trim(), permissions: perms, expiresInDays })}>
             {create.isPending ? <Loader2Icon className="h-4 w-4 animate-spin" /> : <QrCodeIcon className="h-4 w-4" />}
