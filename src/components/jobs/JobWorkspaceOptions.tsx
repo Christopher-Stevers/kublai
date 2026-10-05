@@ -1,7 +1,7 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
-import { DoorOpenIcon, MessageCircleIcon, PackageIcon, WrenchIcon } from "lucide-react";
+import { DoorOpenIcon, FolderOpenIcon, MessageCircleIcon, PackageIcon, WrenchIcon } from "lucide-react";
 import { type JobWorkspaceOptionId } from "~/lib/job-workspace-last-option";
 
 export type { JobWorkspaceOptionId };
@@ -75,6 +75,28 @@ export function JobWorkspaceOptions({
                   : `${roomCount} ${roomCount === 1 ? "room" : "rooms"}`}
               </span>
             </div>
+          </div>
+        </CardContent>
+      </Card>
+      <Card
+        data-tutorial="drawings"
+        role="button"
+        tabIndex={0}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onSelect("drawings"); }
+        }}
+        className="cursor-pointer transition-shadow hover:shadow-md"
+        onClick={() => onSelect("drawings")}
+      >
+        <CardHeader>
+          <CardTitle className="line-clamp-2 min-w-0 leading-tight break-words">
+            Drawings
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <FolderOpenIcon className="h-4 w-4" />
+            <span>Drawing sets to view on site</span>
           </div>
         </CardContent>
       </Card>

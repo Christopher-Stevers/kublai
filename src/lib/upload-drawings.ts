@@ -70,9 +70,15 @@ async function request(url: string, init?: RequestInit): Promise<UploadReply> {
   }
   throw last;
 }
+/**
+ * Uploads a PDF and waits until it is split into sheets. Without a drawing set
+ * the sheets become Rooms floors awaiting review (returned here); with
+ * `drawingSetId` they go straight into that Drawings folder (returns []).
+ */
 export async function uploadDrawings(
   jobId: string,
   file: File,
+  options: { drawingSetId?: string } = {},
 ): Promise<UploadedSheet[]> {
   if (
     !file.name.toLowerCase().endsWith(".pdf") ||
@@ -81,7 +87,8 @@ export async function uploadDrawings(
   )
     throw new Error("Choose a PDF up to 100 MB");
   const endpoint = "/api/job-rooms/upload";
-  const storageKey = `drawing-upload:${jobId}:${file.name}:${file.size}:${file.lastModified}`;
+  // Rooms keeps its original key so in-progress uploads still resume.
+  const storageKey = `drawing-upload:${jobId}:${options.drawingSetId ? `set-${options.drawingSetId}:` : ""}${file.name}:${file.size}:${file.lastModified}`;
   let uploadId: string | null = null;
   try {
     uploadId = localStorage.getItem(storageKey);
@@ -110,7 +117,12 @@ export async function uploadDrawings(
     const started = await request(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ jobId, filename: file.name, size: file.size }),
+      body: JSON.stringify({
+        jobId,
+        filename: file.name,
+        size: file.size,
+        ...(options.drawingSetId ? { drawingSetId: options.drawingSetId } : {}),
+      }),
     });
     if (!started.uploadId)
       throw new Error("Upload server did not return an upload id");
@@ -151,6 +163,14 @@ export async function uploadDrawings(
     const result = await request(
       `${endpoint}?uploadId=${encodeURIComponent(uploadId)}`,
     );
+    if (result.status === "ready" && options.drawingSetId) {
+      try {
+        localStorage.removeItem(storageKey);
+      } catch {
+        /* private mode */
+      }
+      return [];
+    }
     if (result.status === "ready") {
       if (
         !Array.isArray(result.floors) ||

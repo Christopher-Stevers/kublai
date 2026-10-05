@@ -166,3 +166,38 @@ test("an explicit retry reprocesses a retained failed upload but finish alone do
   expect(processing.error).toBeUndefined();
   await releaseWorker(uploadId);
 });
+const setId = "5c2c9f0e-8f6b-4a8a-9b55-0d3f1c7a2b11";
+const drawingInit = (body: Record<string, unknown>) =>
+  new Request("http://local/api/job-rooms/upload", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ jobId, filename: "mech.pdf", size: 7, ...body }),
+  });
+test("Drawings uploads remember their folder, reject a missing or invalid folder, and report sheets", async () => {
+  expect((await POST(drawingInit({ drawingSetId: "not-a-uuid" }))).status).toBe(400);
+  // Job found, folder not found in this job/organization.
+  mocks.select
+    .mockImplementationOnce(() => ({ from: () => ({ where: () => ({ limit: async () => [{ id: jobId }] }) }) }))
+    .mockImplementationOnce(() => ({ from: () => ({ where: () => ({ limit: async () => [] }) }) }));
+  const missing = await POST(drawingInit({ drawingSetId: setId }));
+  expect(missing.status).toBe(404);
+  expect((await missing.json()).error).toMatch(/folder/i);
+
+  const started = await POST(drawingInit({ drawingSetId: setId, extra: "ignored" }));
+  expect(started.status).toBe(200);
+  const { uploadId } = await started.json();
+  const session = await readSession(uploadId);
+  expect(session.drawingSetId).toBe(setId);
+  // Unknown JSON keys are not copied into the session.
+  expect(Object.keys(session)).not.toContain("extra");
+
+  const url = `http://local/api/job-rooms/upload?uploadId=${uploadId}`;
+  await POST(new Request(`${url}&offset=0`, { method: "POST", body: "%PDF-12" }));
+  expect((await POST(new Request(`${url}&action=finish`, { method: "POST" }))).status).toBe(202);
+  mocks.rows = [{ id: "sheet-1" }, { id: "sheet-2" }];
+  const body = await (await GET(new Request(url))).json();
+  expect(body).toMatchObject({ status: "ready", sheetCount: 2 });
+  expect(body.floors).toBeUndefined();
+  await releaseWorker(uploadId);
+  await saveSession({ ...(await readSession(uploadId)), status: "ready" });
+});

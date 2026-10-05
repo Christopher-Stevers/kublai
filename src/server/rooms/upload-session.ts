@@ -39,6 +39,8 @@ export type UploadSession = {
   organizationId: string;
   filename: string;
   size: number;
+  /** Set when the PDF goes into a Drawings folder instead of Rooms. */
+  drawingSetId?: string;
   received: number;
   createdAt: number;
   status: "receiving" | "processing" | "ready" | "error";
@@ -241,9 +243,11 @@ export async function boundedBody(
   return Buffer.concat(chunks, size);
 }
 export async function createUpload(
-  input: { jobId: string; filename: string; size: number },
+  input: { jobId: string; filename: string; size: number; drawingSetId?: string },
   owner: { userId: string; organizationId: string },
 ) {
+  if (input.drawingSetId !== undefined && !UUID.test(input.drawingSetId))
+    throw new UploadError("Drawing set id is invalid");
   if (
     !UUID.test(input.jobId) ||
     typeof input.filename !== "string" ||
@@ -296,6 +300,7 @@ export async function createUpload(
       prior.jobId === input.jobId &&
       prior.filename === input.filename &&
       prior.size === input.size &&
+      prior.drawingSetId === input.drawingSetId &&
       Date.now() - prior.createdAt < UPLOAD_TTL
     )
       return prior;
@@ -305,7 +310,10 @@ export async function createUpload(
         409,
       );
     const s: UploadSession = {
-      ...input,
+      jobId: input.jobId,
+      filename: input.filename,
+      size: input.size,
+      ...(input.drawingSetId ? { drawingSetId: input.drawingSetId } : {}),
       ...owner,
       id: randomUUID(),
       received: 0,

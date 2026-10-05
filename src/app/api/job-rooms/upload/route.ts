@@ -4,7 +4,7 @@ import { and, eq, like } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { userCan } from "~/server/auth/permissions";
 import { db } from "~/server/db";
-import { jobFloors, jobs } from "~/server/db/schema";
+import { jobDrawingSets, jobDrawingSheets, jobFloors, jobs } from "~/server/db/schema";
 import {
   appendChunk,
   handoffWorker,
@@ -37,6 +37,21 @@ async function requestUser(request: Request) {
   if (!userCan(user, "drawings.manage"))
     throw new UploadError("You don't have permission to upload drawings", 403);
   return { userId: user.id, organizationId: user.organizationId };
+}
+async function checkDrawingSet(setId: string, jobId: string, organizationId: string) {
+  if (!UUID.test(setId)) throw new UploadError("Drawing set id is invalid");
+  const [set] = await db
+    .select({ id: jobDrawingSets.id })
+    .from(jobDrawingSets)
+    .where(
+      and(
+        eq(jobDrawingSets.id, setId),
+        eq(jobDrawingSets.jobId, jobId),
+        eq(jobDrawingSets.organizationId, organizationId),
+      ),
+    )
+    .limit(1);
+  if (!set) throw new UploadError("Drawing folder not found", 404);
 }
 async function checkJob(jobId: string, organizationId: string) {
   if (!UUID.test(jobId)) throw new UploadError("Job id required");
@@ -113,7 +128,7 @@ export async function POST(request: Request) {
       try {
         input = JSON.parse(
           (await boundedBody(request, 2048)).toString("utf8"),
-        ) as { jobId: string; filename: string; size: number };
+        ) as { jobId: string; filename: string; size: number; drawingSetId?: unknown };
       } catch (e) {
         if (e instanceof UploadError) throw e;
         throw new UploadError("Invalid upload metadata");
@@ -121,7 +136,19 @@ export async function POST(request: Request) {
       if (!input || typeof input.jobId !== "string")
         throw new UploadError("Job id required");
       await checkJob(input.jobId, owner.organizationId);
-      const s = await createUpload(input, owner);
+      if (
+        input.drawingSetId !== undefined &&
+        input.drawingSetId !== null &&
+        typeof input.drawingSetId !== "string"
+      )
+        throw new UploadError("Drawing set id is invalid");
+      const drawingSetId = input.drawingSetId ?? undefined;
+      if (drawingSetId)
+        await checkDrawingSet(drawingSetId, input.jobId, owner.organizationId);
+      const s = await createUpload(
+        { jobId: input.jobId, filename: input.filename, size: input.size, drawingSetId },
+        owner,
+      );
       return NextResponse.json({
         uploadId: s.id,
         received: s.received,
@@ -187,6 +214,33 @@ export async function GET(request: Request) {
     const s = await readSession(id);
     assertOwner(s, owner.userId, owner.organizationId);
     await checkJob(s.jobId, owner.organizationId);
+    if (s.drawingSetId) {
+      // Drawings: same recovery idea, against the folder's sheets.
+      const sheets = await db
+        .select({ id: jobDrawingSheets.id })
+        .from(jobDrawingSheets)
+        .where(
+          and(
+            eq(jobDrawingSheets.setId, s.drawingSetId),
+            eq(jobDrawingSheets.organizationId, owner.organizationId),
+            like(jobDrawingSheets.imageUrl, `/api/job-rooms/files/${s.jobId}/${id}/floor-%`),
+          ),
+        );
+      const current = sheets.length
+        ? { ...s, status: "ready" as const }
+        : await recoverProcessingSession(id);
+      return NextResponse.json(
+        {
+          uploadId: id,
+          received: s.received,
+          status: current.status,
+          sheetCount: sheets.length,
+          error: current.error,
+          restartRequired: current.restartRequired,
+        },
+        { headers: { "Cache-Control": "no-store" } },
+      );
+    }
     // A crash after DB commit but before state.json is recoverable without reimport.
     const floors = await db
       .select({

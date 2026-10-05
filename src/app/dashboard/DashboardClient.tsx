@@ -1,5 +1,5 @@
 "use client";
-import { AddPartDialog, QuotePreviewSheet, OrdersPreviewSheet, ExistingQuotesOrdersDialog, JobRoomsView, JobChatView } from "~/components/app/DeferredFeatures";
+import { AddPartDialog, QuotePreviewSheet, OrdersPreviewSheet, ExistingQuotesOrdersDialog, JobRoomsView, JobDrawingsView, JobChatView } from "~/components/app/DeferredFeatures";
 
 import { MaterialListOrderPickerDialog } from "~/components/materialLists/VerifyOrderButton";
 import { useMaterialListSort } from "~/hooks/use-material-list-sort";
@@ -635,6 +635,8 @@ export function DashboardClient({
                     });
                   }}
                 />
+              ) : offlineJobView === "drawings" ? (
+                <JobDrawingsView jobId={offlineJob.id} />
               ) : offlineJobView === "rooms" ? (
                 <JobRoomsView jobId={offlineJob.id} onOpenMaterialList={(materialListId) =>
                   navigateWorkspace({ jobId: offlineJob.id, view: "material-lists", materialListId })

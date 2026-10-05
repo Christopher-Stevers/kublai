@@ -1,4 +1,4 @@
-export type JobWorkspaceOptionId = "material-lists" | "rooms" | "chat";
+export type JobWorkspaceOptionId = "material-lists" | "rooms" | "drawings" | "chat";
 export type JobWorkspaceView = "options" | JobWorkspaceOptionId;
 
 export type JobWorkspaceLocation = {
@@ -26,6 +26,7 @@ export function getLastJobWorkspaceLocation(): JobWorkspaceLocation | null {
       parsed.view !== "options" &&
       parsed.view !== "material-lists" &&
       parsed.view !== "rooms" &&
+      parsed.view !== "drawings" &&
       parsed.view !== "chat"
     ) {
       return null;

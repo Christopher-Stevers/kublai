@@ -2204,4 +2204,40 @@ export const jobChatAttachments = createTable("job_chat_attachment", (d) => ({
   createdAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
 }), (t) => [index("job_chat_attachment_message_idx").on(t.messageId), index("job_chat_attachment_pending_idx").on(t.uploadedById, t.createdAt)]);
 
+
+// Drawings: folders of plain drawing sheets (no room detection). A PDF uploaded
+// into a set is split into one sheet per page, stored like Rooms uploads.
+export const jobDrawingSets = createTable(
+  "job_drawing_set",
+  (d) => ({
+    id: d.uuid().notNull().primaryKey().$defaultFn(() => crypto.randomUUID()),
+    organizationId: d.uuid().notNull().references(() => organizations.id, { onDelete: "cascade" }),
+    jobId: d.uuid().notNull().references(() => jobs.id, { onDelete: "cascade" }),
+    name: d.varchar({ length: 255 }).notNull(),
+    createdByUserId: d.varchar({ length: 255 }),
+    createdAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
+    updatedAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
+  }),
+  (t) => [index("job_drawing_set_job_idx").on(t.organizationId, t.jobId)],
+);
+
+export const jobDrawingSheets = createTable(
+  "job_drawing_sheet",
+  (d) => ({
+    id: d.uuid().notNull().primaryKey().$defaultFn(() => crypto.randomUUID()),
+    organizationId: d.uuid().notNull().references(() => organizations.id, { onDelete: "cascade" }),
+    jobId: d.uuid().notNull().references(() => jobs.id, { onDelete: "cascade" }),
+    setId: d.uuid().notNull().references(() => jobDrawingSets.id, { onDelete: "cascade" }),
+    name: d.varchar({ length: 255 }).notNull(),
+    imageUrl: d.text().notNull(),
+    width: d.integer().notNull(),
+    height: d.integer().notNull(),
+    sortOrder: d.integer().notNull().default(0),
+    sourceFilename: d.varchar({ length: 255 }),
+    uploadedByUserId: d.varchar({ length: 255 }),
+    createdAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
+  }),
+  (t) => [index("job_drawing_sheet_set_idx").on(t.setId, t.sortOrder)],
+);
+
 export * from "./chat-push-schema";

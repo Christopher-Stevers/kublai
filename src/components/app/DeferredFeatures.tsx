@@ -167,6 +167,13 @@ export const JobRoomsView = feature<
     default: m.JobRoomsView,
   })),
 );
+export const JobDrawingsView = feature<
+  ComponentProps<typeof import("~/components/jobs/JobDrawingsView").JobDrawingsView>
+>(() =>
+  import("~/components/jobs/JobDrawingsView").then((m) => ({
+    default: m.JobDrawingsView,
+  })),
+);
 export const PartStage = feature<
   ComponentProps<
     typeof import("~/components/materialLists/wizard/PartStage").PartStage
