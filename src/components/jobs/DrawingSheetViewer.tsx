@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { loadPdfDocument } from "~/lib/pdf-client";
 
 const MIN_ZOOM = 1;
 const MAX_ZOOM = 16;
@@ -11,8 +12,19 @@ type View = { scale: number; x: number; y: number };
  * Pan-and-zoom for one drawing sheet: pinch, drag, mouse wheel and double
  * tap/click. The sheet starts fitted and centred; zoom is relative to that fit.
  * Give it a `key` per sheet so each sheet opens unzoomed.
+ *
+ * With `pdf`, the original PDF page is redrawn sharp for exactly what is on
+ * screen whenever the view settles; the saved image shows meanwhile.
  */
-export function DrawingSheetViewer({ src, alt }: { src: string; alt: string }) {
+export function DrawingSheetViewer({
+  src,
+  alt,
+  pdf,
+}: {
+  src: string;
+  alt: string;
+  pdf?: { url: string; page: number } | null;
+}) {
   const frame = useRef<HTMLDivElement>(null);
   const image = useRef<HTMLImageElement>(null);
   const [fit, setFit] = useState<{ width: number; height: number } | null>(null);
@@ -20,6 +32,14 @@ export function DrawingSheetViewer({ src, alt }: { src: string; alt: string }) {
   const pointers = useRef(new Map<number, Point>());
   const gesture = useRef<{ view: View; points: Point[] } | null>(null);
   const lastTap = useRef(0);
+  const sharp = useRef<HTMLCanvasElement>(null);
+  const [sharpFor, setSharpFor] = useState("");
+  const [frameSize, setFrameSize] = useState({ width: 0, height: 0 });
+  const viewKey = fit
+    ? [view.scale, view.x, view.y, fit.width, fit.height, frameSize.width, frameSize.height]
+        .map((n) => n.toFixed(2))
+        .join(":")
+    : "";
 
   // Fit the sheet inside the frame whenever the image or frame size changes.
   useEffect(() => {
@@ -33,6 +53,7 @@ export function DrawingSheetViewer({ src, alt }: { src: string; alt: string }) {
         el.clientHeight / img.naturalHeight,
       );
       setFit({ width: img.naturalWidth * ratio, height: img.naturalHeight * ratio });
+      setFrameSize({ width: el.clientWidth, height: el.clientHeight });
     };
     measure();
     img.addEventListener("load", measure);
@@ -43,6 +64,64 @@ export function DrawingSheetViewer({ src, alt }: { src: string; alt: string }) {
       observer.disconnect();
     };
   }, [src]);
+
+  // Once the view stops changing, draw the visible part of the original PDF
+  // at the screen's full resolution.
+  useEffect(() => {
+    if (!pdf || !fit || !frameSize.width) return;
+    let cancelled = false;
+    let task: { cancel: () => void } | null = null;
+    const timer = setTimeout(() => {
+      void (async () => {
+        try {
+          const doc = await loadPdfDocument(pdf.url);
+          const page = await doc.getPage(pdf.page);
+          if (cancelled) return;
+          const dpr = Math.min(window.devicePixelRatio || 1, 3);
+          const { width: w, height: h } = frameSize;
+          const shownWidth = fit.width * view.scale;
+          const shownHeight = fit.height * view.scale;
+          const left = w / 2 + view.x - shownWidth / 2;
+          const top = h / 2 + view.y - shownHeight / 2;
+          const viewport = page.getViewport({
+            scale: (shownWidth / page.getViewport({ scale: 1 }).width) * dpr,
+            offsetX: left * dpr,
+            offsetY: top * dpr,
+          });
+          const work = document.createElement("canvas");
+          work.width = Math.round(w * dpr);
+          work.height = Math.round(h * dpr);
+          const render = page.render({ canvas: work, viewport });
+          task = render;
+          await render.promise;
+          const target = sharp.current;
+          if (cancelled || !target) return;
+          target.width = work.width;
+          target.height = work.height;
+          const ctx = target.getContext("2d")!;
+          // PDF.js paints the whole canvas white; keep only the sheet itself so
+          // the background around it stays as it was.
+          ctx.clearRect(0, 0, target.width, target.height);
+          ctx.save();
+          ctx.beginPath();
+          ctx.rect(left * dpr, top * dpr, shownWidth * dpr, shownHeight * dpr);
+          ctx.clip();
+          ctx.drawImage(work, 0, 0);
+          ctx.restore();
+          setSharpFor(viewKey);
+        } catch {
+          // Keep showing the saved image if the PDF can't be drawn.
+        }
+      })();
+    }, 180);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+      task?.cancel();
+    };
+    // viewKey captures view, fit and frame size.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pdf?.url, pdf?.page, viewKey]);
 
   /** Keeps the sheet from being dragged entirely out of view. */
   const clamp = (next: View): View => {
@@ -147,6 +226,14 @@ export function DrawingSheetViewer({ src, alt }: { src: string; alt: string }) {
           transform: `translate(-50%, -50%) translate(${view.x}px, ${view.y}px) scale(${view.scale})`,
         }}
       />
+      {pdf && (
+        <canvas
+          ref={sharp}
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 h-full w-full"
+          style={{ opacity: sharpFor === viewKey ? 1 : 0 }}
+        />
+      )}
     </div>
   );
 }

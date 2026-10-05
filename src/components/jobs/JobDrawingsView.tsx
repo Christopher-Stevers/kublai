@@ -34,6 +34,7 @@ import {
   DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu";
 import { useHeaderBackOverride } from "~/lib/header-back-events";
+import { sourcePdfPage } from "~/lib/pdf-client";
 import { uploadDrawings } from "~/lib/upload-drawings";
 import { DrawingSheetViewer } from "./DrawingSheetViewer";
 
@@ -167,7 +168,12 @@ export function JobDrawingsView({ jobId }: { jobId: string }) {
     return (
       <div className="bg-background fixed inset-x-0 top-14 bottom-0 z-30 flex flex-col sm:top-16">
         <div className="relative min-h-0 flex-1">
-          <DrawingSheetViewer key={sheet.id} src={sheet.imageUrl} alt={sheet.name} />
+          <DrawingSheetViewer
+            key={sheet.id}
+            src={sheet.imageUrl}
+            alt={sheet.name}
+            pdf={sourcePdfPage(sheet.imageUrl)}
+          />
           <span className="bg-card/90 pointer-events-none absolute top-2 left-2 rounded-md px-2 py-1 text-xs font-semibold shadow-sm">
             {sheet.name}
           </span>
