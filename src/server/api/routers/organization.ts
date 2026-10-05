@@ -15,7 +15,12 @@ import {
   resolvePermissions,
   toStoredConfig,
 } from "~/server/auth/permissions";
-import { isPermissionKey, type PermissionMap } from "~/lib/permission-catalog";
+import {
+  DEFAULT_INVITE_EXPIRY_DAYS,
+  INVITE_EXPIRY_DAYS,
+  isPermissionKey,
+  type PermissionMap,
+} from "~/lib/permission-catalog";
 import {
   locations,
   organizationInvites,
@@ -222,6 +227,13 @@ export const organizationRouter = createTRPCRouter({
       z.object({
         name: z.string().min(1).max(255).trim(),
         permissions: permissionMapSchema,
+        expiresInDays: z
+          .number()
+          .int()
+          .refine((days) =>
+            (INVITE_EXPIRY_DAYS as readonly number[]).includes(days),
+          )
+          .default(DEFAULT_INVITE_EXPIRY_DAYS),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -243,7 +255,9 @@ export const organizationRouter = createTRPCRouter({
           role: "user",
           permissionConfig: toStoredConfig(input.permissions),
           createdByUserId: ctx.userId,
-          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+          expiresAt: new Date(
+            Date.now() + input.expiresInDays * 24 * 60 * 60 * 1000,
+          ),
         })
         .returning();
 

@@ -7,7 +7,14 @@ import { CheckIcon, ChevronDownIcon, CopyIcon, Loader2Icon, QrCodeIcon, Trash2Ic
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { confirmAction } from "~/components/ui/app-dialogs";
-import { PERMISSION_PRESETS, type PermissionMap } from "~/lib/permission-catalog";
+import {
+  DEFAULT_INVITE_EXPIRY_DAYS,
+  INVITE_EXPIRY_DAYS,
+  PERMISSION_PRESETS,
+  STANDARD_DEFAULTS,
+  type InviteExpiryDays,
+  type PermissionMap,
+} from "~/lib/permission-catalog";
 import { cn } from "~/lib/utils";
 import { api, type RouterOutputs } from "~/trpc/react";
 
@@ -17,18 +24,28 @@ type Settings = RouterOutputs["organization"]["getOrganizationSettings"];
 type Invite = Settings["invites"][number];
 
 const PUBLIC_APP_URL = (process.env.NEXT_PUBLIC_APP_URL?.trim() || "https://foremanhq.stellarator.work").replace(/\/+$/, "");
-const FIELD = PERMISSION_PRESETS.find((p) => p.id === "field")!.permissions;
+// New invites start as a Journeyman unless another preset is picked.
+const JOURNEYMAN = PERMISSION_PRESETS.find((p) => p.id === "journeyman")!.permissions;
+const EXPIRY_LABELS: Record<InviteExpiryDays, string> = {
+  1: "1 day",
+  3: "3 days",
+  7: "1 week",
+  14: "2 weeks",
+  30: "30 days",
+  90: "90 days",
+};
 
 /** Invite permissions in either stored format, as a full map for display. */
 function invitePermissions(invite: Invite): PermissionMap | null {
   const config = invite.permissionConfig as { version?: number; permissions?: Partial<PermissionMap> } | null;
-  if (config?.version === 2 && config.permissions) return { ...FIELD, ...config.permissions };
+  if (config?.version === 2 && config.permissions) return { ...STANDARD_DEFAULTS, ...config.permissions };
   return null;
 }
 
 export function InvitesSection({ settings, onSaved }: { settings: Settings; onSaved: () => Promise<void> }) {
   const [name, setName] = useState("");
-  const [perms, setPerms] = useState<PermissionMap>(FIELD);
+  const [perms, setPerms] = useState<PermissionMap>(JOURNEYMAN);
+  const [expiresInDays, setExpiresInDays] = useState<InviteExpiryDays>(DEFAULT_INVITE_EXPIRY_DAYS);
   const [showAll, setShowAll] = useState(false);
   const create = api.organization.createOrganizationInvite.useMutation({
     onSuccess: async () => {
@@ -71,13 +88,34 @@ export function InvitesSection({ settings, onSaved }: { settings: Settings; onSa
               ))}
             </div>
           </div>
+          <div>
+            <p className="mb-2 text-sm font-medium">Expires after</p>
+            <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Invite expiry">
+              {INVITE_EXPIRY_DAYS.map((days) => (
+                <button
+                  key={days}
+                  type="button"
+                  role="radio"
+                  aria-checked={expiresInDays === days}
+                  disabled={!canInvite}
+                  onClick={() => setExpiresInDays(days)}
+                  className={cn(
+                    "rounded-full border px-3 py-1.5 text-sm font-medium transition-colors",
+                    expiresInDays === days ? "border-primary bg-primary text-primary-foreground" : "hover:bg-accent",
+                  )}
+                >
+                  {EXPIRY_LABELS[days]}
+                </button>
+              ))}
+            </div>
+          </div>
           <button type="button" onClick={() => setShowAll((v) => !v)} className="inline-flex items-center gap-1 text-sm font-medium text-primary">
             <ChevronDownIcon className={cn("h-4 w-4 transition-transform", showAll && "rotate-180")} />
             {showAll ? "Hide permissions" : "Customize permissions"}
           </button>
           {showAll && <PermissionEditor value={perms} onChange={setPerms} disabled={!canInvite} />}
           {create.error && <p className="text-sm text-destructive">{create.error.message}</p>}
-          <Button className="w-full" disabled={!canInvite || !name.trim() || create.isPending} onClick={() => create.mutate({ name: name.trim(), permissions: perms })}>
+          <Button className="w-full" disabled={!canInvite || !name.trim() || create.isPending} onClick={() => create.mutate({ name: name.trim(), permissions: perms, expiresInDays })}>
             {create.isPending ? <Loader2Icon className="h-4 w-4 animate-spin" /> : <QrCodeIcon className="h-4 w-4" />}
             Create QR invite
           </Button>

@@ -179,15 +179,26 @@ export const PERMISSION_PRESETS: Array<{
     },
   },
   {
-    id: "field",
-    label: "Field worker",
-    description: "Builds lists and checks in deliveries. Can't order or delete.",
-    permissions: { ...STANDARD_DEFAULTS },
+    // Matches the "Journeyman" invite Tim set up (2026-10-05).
+    id: "journeyman",
+    label: "Journeyman",
+    description:
+      "Builds material lists, adds parts and checks in deliveries. Can't order, quote or delete.",
+    permissions: {
+      ...all(false),
+      "tab.dashboard": true,
+      "tab.orders": true,
+      "lists.edit": true,
+      "parts.create": true,
+      "parts.edit": true,
+      "orders.receive": true,
+    },
   },
   {
     id: "toolroom",
     label: "Tool room",
-    description: "Field worker plus the Asset Management back office.",
+    description:
+      "Builds lists and checks in deliveries, plus the Asset Management back office.",
     permissions: { ...STANDARD_DEFAULTS, "assets.manage": true },
   },
   {
@@ -210,6 +221,11 @@ export function matchingPreset(map: PermissionMap) {
     PERMISSION_KEYS.every((k) => preset.permissions[k] === map[k]),
   );
 }
+
+/** How long a new QR invite stays valid. */
+export const INVITE_EXPIRY_DAYS = [1, 3, 7, 14, 30, 90] as const;
+export type InviteExpiryDays = (typeof INVITE_EXPIRY_DAYS)[number];
+export const DEFAULT_INVITE_EXPIRY_DAYS: InviteExpiryDays = 7;
 
 export function isPermissionKey(value: string): value is PermissionKey {
   return (PERMISSION_KEYS as string[]).includes(value);
