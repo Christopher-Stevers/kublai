@@ -1,0 +1,180 @@
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { DrawingSheetViewer } from "./DrawingSheetViewer";
+
+beforeEach(() => {
+  // Node 26 exposes an unavailable native localStorage in the test environment.
+  const stored = new Map<string, string>();
+  vi.stubGlobal("localStorage", {
+    getItem: (key: string) => stored.get(key) ?? null,
+    setItem: (key: string, value: string) => stored.set(key, value),
+    removeItem: (key: string) => stored.delete(key),
+    clear: () => stored.clear(),
+  });
+  vi.stubGlobal(
+    "ResizeObserver",
+    class {
+      observe() {
+        return undefined;
+      }
+      unobserve() {
+        return undefined;
+      }
+      disconnect() {
+        return undefined;
+      }
+    },
+  );
+  HTMLElement.prototype.setPointerCapture = () => undefined;
+  HTMLElement.prototype.releasePointerCapture = () => undefined;
+});
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+});
+
+/** An 800×600 frame holding a 1000×500 sheet, so the sheet is 800×400 and centred. */
+function openSheet(sheetKey = "sheet-1") {
+  const view = render(
+    <DrawingSheetViewer src="/sheet.webp" alt="Sheet" sheetKey={sheetKey} />,
+  );
+  const image = screen.getByAltText("Sheet");
+  const frame = image.parentElement!.parentElement as HTMLDivElement;
+  Object.defineProperty(image, "naturalWidth", {
+    configurable: true,
+    get: () => 1000,
+  });
+  Object.defineProperty(image, "naturalHeight", {
+    configurable: true,
+    get: () => 500,
+  });
+  Object.defineProperty(frame, "clientWidth", {
+    configurable: true,
+    get: () => 800,
+  });
+  Object.defineProperty(frame, "clientHeight", {
+    configurable: true,
+    get: () => 600,
+  });
+  vi.spyOn(frame, "getBoundingClientRect").mockReturnValue({
+    x: 0,
+    y: 0,
+    left: 0,
+    top: 0,
+    right: 800,
+    bottom: 600,
+    width: 800,
+    height: 600,
+    toJSON() {
+      return {};
+    },
+  });
+  fireEvent.load(image);
+  return { ...view, frame };
+}
+
+function tap(frame: HTMLElement, x: number, y: number) {
+  fireEvent.pointerDown(frame, {
+    clientX: x,
+    clientY: y,
+    button: 0,
+    pointerId: 1,
+  });
+  fireEvent.pointerUp(frame, {
+    clientX: x,
+    clientY: y,
+    button: 0,
+    pointerId: 1,
+  });
+}
+
+describe("drawing measure", () => {
+  it("totals a traced path after the scale is taken from a known length", () => {
+    const { frame } = openSheet();
+    fireEvent.click(screen.getByRole("button", { name: "Measure" }));
+    fireEvent.click(screen.getByRole("button", { name: "Set scale" }));
+
+    // Dragging still pans and does not drop a point.
+    fireEvent.pointerDown(frame, {
+      clientX: 200,
+      clientY: 300,
+      button: 0,
+      pointerId: 1,
+    });
+    fireEvent.pointerMove(frame, {
+      clientX: 250,
+      clientY: 300,
+      button: 0,
+      pointerId: 1,
+    });
+    fireEvent.pointerUp(frame, {
+      clientX: 250,
+      clientY: 300,
+      button: 0,
+      pointerId: 1,
+    });
+    expect(screen.getByRole("status").textContent).toBe(
+      "Tap one end of a length you know on the drawing.",
+    );
+    expect(frame.querySelectorAll("circle")).toHaveLength(0);
+
+    // The full sheet width is 100 feet. The sheet runs from x=0 to x=800.
+    tap(frame, 0, 300);
+    tap(frame, 800, 300);
+    fireEvent.change(screen.getByLabelText("How long is this line?"), {
+      target: { value: "100" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Use this length" }));
+
+    // Half the sheet width, then the full sheet height (25 feet, because the sheet is twice as wide as it is tall).
+    tap(frame, 0, 300);
+    tap(frame, 400, 300);
+    expect(screen.getByRole("status").textContent).toBe("50'-0\"");
+    tap(frame, 400, 500);
+    expect(screen.getByRole("status").textContent).toBe("75'-0\"");
+
+    fireEvent.click(screen.getByRole("button", { name: "Undo" }));
+    expect(screen.getByRole("status").textContent).toBe("50'-0\"");
+    fireEvent.click(screen.getByRole("button", { name: "Clear" }));
+    expect(screen.getByRole("status").textContent).toBe(
+      "Tap each point along the path.",
+    );
+  });
+
+  it("uses the scale saved for that drawing the next time it is opened", () => {
+    const first = openSheet();
+    fireEvent.click(screen.getByRole("button", { name: "Measure" }));
+    fireEvent.click(screen.getByRole("button", { name: "Set scale" }));
+    tap(first.frame, 0, 300);
+    tap(first.frame, 800, 300);
+    fireEvent.change(screen.getByLabelText("How long is this line?"), {
+      target: { value: "24'6\"" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Use this length" }));
+    first.unmount();
+
+    const second = openSheet();
+    fireEvent.click(screen.getByRole("button", { name: "Measure" }));
+    tap(second.frame, 0, 300);
+    tap(second.frame, 800, 300);
+    expect(screen.getByRole("status").textContent).toBe("24'-6\"");
+    fireEvent.click(screen.getByRole("button", { name: "Meters" }));
+    expect(screen.getByRole("status").textContent).toBe("7.47 m");
+  });
+
+  it("rejects a scale that is not a length", () => {
+    const { frame } = openSheet();
+    fireEvent.click(screen.getByRole("button", { name: "Measure" }));
+    fireEvent.click(screen.getByRole("button", { name: "Set scale" }));
+    tap(frame, 0, 300);
+    tap(frame, 800, 300);
+    fireEvent.change(screen.getByLabelText("How long is this line?"), {
+      target: { value: "about yea long" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Use this length" }));
+    expect(
+      screen.getByText("Enter a length like 24'6\" or 7.5."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Total along the points/)).toBeNull();
+  });
+});

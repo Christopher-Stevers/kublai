@@ -8,6 +8,21 @@ import {
   type TileManifest,
 } from "~/lib/drawing-tiles";
 import { loadPdfDocument } from "~/lib/pdf-client";
+import {
+  convertScale,
+  formatLength,
+  MEASURE_TAP_SLOP_PX,
+  parseLength,
+  readSheetScale,
+  realLength,
+  scaleFromKnownLength,
+  sheetPointFromFrame,
+  writeSheetScale,
+  type MeasureUnit,
+  type SheetPoint,
+  type SheetScale,
+} from "~/lib/sheet-measure";
+import { SheetMeasureBar } from "./SheetMeasureBar";
 
 const MIN_ZOOM = 1;
 const MAX_ZOOM = 24;
@@ -25,25 +40,31 @@ const REST: View = { scale: 1, x: 0, y: 0 };
  * - beyond the deepest tiles (or before tiles exist) the visible area is
  *   redrawn from the original PDF once the view settles.
  * Movement is applied straight to the layer once per frame, with momentum.
- * Give it a `key` per sheet so each sheet opens unzoomed.
+ * Measure mode traces points on the sheet and totals the real distance once a
+ * scale has been set from a known length. Give it a `key` per sheet so each
+ * sheet opens unzoomed.
  */
 export function DrawingSheetViewer({
   src,
   alt,
   pdf,
   tiles,
+  sheetKey,
 }: {
   src: string;
   alt: string;
   pdf?: { url: string; page: number } | null;
   /** Folder holding manifest.json and <factor>/<col>_<row>.webp tiles. */
   tiles?: string | null;
+  /** Remembers this sheet's scale on this computer. */
+  sheetKey?: string;
 }) {
   const frame = useRef<HTMLDivElement>(null);
   const layer = useRef<HTMLDivElement>(null);
+  const marks = useRef<HTMLDivElement>(null);
   const image = useRef<HTMLImageElement>(null);
   const sharp = useRef<HTMLCanvasElement>(null);
-  const [fit, setFit] = useState<{ width: number; height: number; natural: number } | null>(null);
+  const [fit, setFit] = useState<{ width: number; height: number; natural: number; aspect: number } | null>(null);
   const [frameSize, setFrameSize] = useState({ width: 0, height: 0 });
   const [manifest, setManifest] = useState<TileManifest | null>(null);
   // `live` follows every pointer move; `view` is committed for tiles/redraws.
@@ -53,6 +74,16 @@ export function DrawingSheetViewer({
   const [sharpFor, setSharpFor] = useState("");
   const pointers = useRef(new Map<number, Point>());
   const gesture = useRef<{ view: View; points: Point[] } | null>(null);
+  const measureTap = useRef<{ x: number; y: number; moved: boolean } | null>(null);
+  const [measuring, setMeasuring] = useState(false);
+  const [calibrating, setCalibrating] = useState(false);
+  const [path, setPath] = useState<SheetPoint[]>([]);
+  const [calPoints, setCalPoints] = useState<SheetPoint[]>([]);
+  const [hover, setHover] = useState<SheetPoint | null>(null);
+  const [sheetScale, setSheetScale] = useState<SheetScale | null>(null);
+  const [unit, setUnit] = useState<MeasureUnit>("ft");
+  const [draft, setDraft] = useState("");
+  const [scaleError, setScaleError] = useState<string | null>(null);
   const lastTap = useRef(0);
   const frameRequest = useRef(0);
   const commitTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -67,7 +98,12 @@ export function DrawingSheetViewer({
     const measure = () => {
       if (!img.naturalWidth || !el.clientWidth || !el.clientHeight) return;
       const ratio = Math.min(el.clientWidth / img.naturalWidth, el.clientHeight / img.naturalHeight);
-      setFit({ width: img.naturalWidth * ratio, height: img.naturalHeight * ratio, natural: img.naturalWidth });
+      setFit({
+        width: img.naturalWidth * ratio,
+        height: img.naturalHeight * ratio,
+        natural: img.naturalWidth,
+        aspect: img.naturalHeight / img.naturalWidth,
+      });
       setFrameSize({ width: el.clientWidth, height: el.clientHeight });
     };
     measure();
@@ -95,6 +131,98 @@ export function DrawingSheetViewer({
     };
   }, [tiles]);
 
+  // Each sheet keeps its own scale. The trace itself lasts only for this visit.
+  useEffect(() => {
+    const stored = sheetKey ? readSheetScale(sheetKey) : null;
+    setSheetScale(stored);
+    setUnit(stored?.unit ?? "ft");
+    setPath([]);
+    setCalPoints([]);
+    setCalibrating(false);
+    setHover(null);
+    setDraft("");
+    setScaleError(null);
+  }, [sheetKey]);
+
+  const rememberHover = (point: SheetPoint | null) => {
+    setHover((current) => (current?.x === point?.x && current?.y === point?.y ? current : point));
+  };
+  const pointFromClient = (clientX: number, clientY: number) => {
+    const el = frame.current;
+    if (!el || !fit) return null;
+    const rect = el.getBoundingClientRect();
+    return sheetPointFromFrame(
+      { x: clientX - rect.left, y: clientY - rect.top },
+      { width: el.clientWidth, height: el.clientHeight },
+      fit,
+      live.current,
+    );
+  };
+  const commitPoint = (point: SheetPoint) => {
+    if (calibrating) setCalPoints((points) => (points.length >= 2 ? points : [...points, point]));
+    else setPath((points) => (points.length >= 400 ? points : [...points, point]));
+    setHover(null);
+  };
+  const undoPoint = useCallback(() => {
+    if (calibrating) setCalPoints((points) => points.slice(0, -1));
+    else setPath((points) => points.slice(0, -1));
+  }, [calibrating]);
+  const changeUnit = (next: MeasureUnit) => {
+    setUnit(next);
+    setSheetScale((current) => {
+      if (!current) return current;
+      const converted = convertScale(current, next);
+      if (sheetKey) writeSheetScale(sheetKey, converted);
+      return converted;
+    });
+  };
+  const applyScale = () => {
+    if (!fit || calPoints.length < 2) return;
+    const known = parseLength(draft, unit);
+    if (known === null) {
+      setScaleError("Enter a length like 24'6\" or 7.5.");
+      return;
+    }
+    if (!(known > 0)) {
+      setScaleError("Enter a length greater than zero.");
+      return;
+    }
+    const unitsPerSheetWidth = scaleFromKnownLength(calPoints[0]!, calPoints[1]!, fit.aspect, known);
+    if (unitsPerSheetWidth === null) {
+      setScaleError("Those two points are on top of each other. Tap the two ends of the length.");
+      return;
+    }
+    const next = { unit, unitsPerSheetWidth };
+    setSheetScale(next);
+    if (sheetKey) writeSheetScale(sheetKey, next);
+    setCalPoints([]);
+    setCalibrating(false);
+    setDraft("");
+    setScaleError(null);
+  };
+  useEffect(() => {
+    if (!measuring) return;
+    const onKey = (event: KeyboardEvent) => {
+      const target = event.target;
+      const typing =
+        target instanceof HTMLElement &&
+        (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.tagName === "SELECT");
+      if (event.key === "Escape") {
+        if (calibrating) {
+          setCalibrating(false);
+          setCalPoints([]);
+          setDraft("");
+          setScaleError(null);
+        } else setMeasuring(false);
+      } else if (!typing && (event.key === "Backspace" || (event.key === "z" && (event.metaKey || event.ctrlKey)))) {
+        event.preventDefault();
+        undoPoint();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [measuring, calibrating, undoPoint]);
+
   /** Keeps the sheet from being dragged entirely out of view. */
   const clamp = useCallback(
     (next: View): View => {
@@ -115,8 +243,11 @@ export function DrawingSheetViewer({
   const paint = () => {
     frameRequest.current = 0;
     const { x, y, scale } = live.current;
-    if (layer.current)
-      layer.current.style.transform = `translate(-50%, -50%) translate3d(${x}px, ${y}px, 0) scale(${scale})`;
+    const transform = `translate(-50%, -50%) translate3d(${x}px, ${y}px, 0) scale(${scale})`;
+    if (layer.current) layer.current.style.transform = transform;
+    // The sharp PDF canvas sits above the sheet, so the trace is a second
+    // layer with the same transform, painted after that canvas.
+    if (marks.current) marks.current.style.transform = transform;
   };
   /** Moves the sheet now (next frame) and lets tiles catch up shortly after. */
   const move = (next: View, settle = false) => {
@@ -287,17 +418,32 @@ export function DrawingSheetViewer({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pdf?.url, pdf?.page, viewKey, needsPdf, moving]);
 
+  const drawn = calibrating ? calPoints : path;
+  const rubber =
+    hover && ((calibrating && calPoints.length === 1) || (!calibrating && path.length >= 1)) ? hover : null;
+  const marked = rubber ? [...drawn, rubber] : drawn;
+  const total =
+    sheetScale && fit && !calibrating && marked.length >= 2
+      ? formatLength(realLength(marked, fit.aspect, sheetScale.unitsPerSheetWidth), sheetScale.unit)
+      : null;
+
   return (
     <div
       ref={frame}
-      className="relative h-full w-full touch-none overflow-hidden bg-muted select-none"
+      className={`relative h-full w-full touch-none overflow-hidden bg-muted select-none${measuring ? " cursor-crosshair" : ""}`}
       onPointerDown={(event) => {
+        if (measuring && event.button !== 0) return;
         stopAnimation();
         event.currentTarget.setPointerCapture(event.pointerId);
         pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
         velocity.current = { x: 0, y: 0, t: performance.now() };
         startGesture();
         if (pointers.current.size === 1) {
+          if (measuring) {
+            // A short press drops a point. A drag still pans, and a second finger still pinches.
+            measureTap.current = { x: event.clientX, y: event.clientY, moved: false };
+            return;
+          }
           const now = Date.now();
           if (now - lastTap.current < 300) {
             // Double tap: zoom in around the point, or back out when zoomed.
@@ -308,9 +454,10 @@ export function DrawingSheetViewer({
             );
             lastTap.current = 0;
           } else lastTap.current = now;
-        }
+        } else if (measureTap.current) measureTap.current.moved = true;
       }}
       onPointerMove={(event) => {
+        if (measuring && event.buttons === 0) rememberHover(pointFromClient(event.clientX, event.clientY));
         const previous = pointers.current.get(event.pointerId);
         if (!previous || !gesture.current) return;
         pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
@@ -318,6 +465,7 @@ export function DrawingSheetViewer({
         const before = gesture.current.points;
         const base = gesture.current.view;
         if (now.length >= 2 && before.length >= 2) {
+          if (measureTap.current) measureTap.current.moved = true;
           const a = now[0]!, b = now[1]!;
           const a0 = before[0]!, b0 = before[1]!;
           const factor =
@@ -328,6 +476,16 @@ export function DrawingSheetViewer({
           move({ ...zoomed, x: zoomed.x + mid.x - mid0.x, y: zoomed.y + mid.y - mid0.y });
         } else if (now.length === 1 && before[0]) {
           const p = now[0]!;
+          if (measuring && measureTap.current && !measureTap.current.moved) {
+            if (Math.hypot(p.x - measureTap.current.x, p.y - measureTap.current.y) <= MEASURE_TAP_SLOP_PX) {
+              rememberHover(pointFromClient(event.clientX, event.clientY));
+              return;
+            }
+            measureTap.current.moved = true;
+            rememberHover(null);
+            gesture.current = { view: live.current, points: [{ x: p.x, y: p.y }] };
+            return;
+          }
           move({ ...base, x: base.x + p.x - before[0].x, y: base.y + p.y - before[0].y });
           // Track the finger's speed for momentum.
           const t = performance.now();
@@ -340,19 +498,30 @@ export function DrawingSheetViewer({
         }
       }}
       onPointerUp={(event) => {
-        const wasPanning = pointers.current.size === 1;
+        const tap = measureTap.current;
+        const wasSingle = pointers.current.size === 1;
         pointers.current.delete(event.pointerId);
+        measureTap.current = null;
         startGesture();
-        if (pointers.current.size === 0) {
-          // Ignore a stale speed if the finger rested before lifting.
-          if (wasPanning && performance.now() - velocity.current.t < 80) glide();
-          else move(live.current, true);
+        if (pointers.current.size > 0) return;
+        if (measuring && tap && !tap.moved && wasSingle) {
+          const point = pointFromClient(event.clientX, event.clientY);
+          if (point) commitPoint(point);
+          move(live.current, true);
+          return;
         }
+        // Ignore a stale speed if the finger rested before lifting.
+        if (wasSingle && performance.now() - velocity.current.t < 80) glide();
+        else move(live.current, true);
       }}
       onPointerCancel={(event) => {
         pointers.current.delete(event.pointerId);
+        measureTap.current = null;
         startGesture();
         if (pointers.current.size === 0) move(live.current, true);
+      }}
+      onPointerLeave={() => {
+        if (measuring) rememberHover(null);
       }}
       onWheel={(event) => {
         stopAnimation();
@@ -416,6 +585,93 @@ export function DrawingSheetViewer({
           style={{ opacity: needsPdf && !moving && sharpFor === viewKey ? 1 : 0 }}
         />
       )}
+      {fit && marked.length > 0 && (
+        <div
+          ref={marks}
+          aria-hidden="true"
+          className="pointer-events-none absolute top-1/2 left-1/2 z-[1] origin-center"
+          style={{ width: fit.width, height: fit.height }}
+        >
+          <svg className="h-full w-full overflow-visible" viewBox={`0 0 ${fit.width} ${fit.height}`}>
+            {marked.length >= 2 && (
+              <g>
+                <polyline
+                  points={marked.map((point) => `${point.x * fit.width},${point.y * fit.height}`).join(" ")}
+                  fill="none"
+                  stroke="#ffffff"
+                  strokeWidth={6}
+                  strokeLinejoin="round"
+                  strokeLinecap="round"
+                  vectorEffect="non-scaling-stroke"
+                />
+                <polyline
+                  points={marked.map((point) => `${point.x * fit.width},${point.y * fit.height}`).join(" ")}
+                  fill="none"
+                  stroke="#d97706"
+                  strokeWidth={3}
+                  strokeLinejoin="round"
+                  strokeLinecap="round"
+                  vectorEffect="non-scaling-stroke"
+                />
+              </g>
+            )}
+            {marked.map((point, index) => (
+              <circle
+                key={index}
+                cx={point.x * fit.width}
+                cy={point.y * fit.height}
+                r={Math.max(3, 6 / view.scale)}
+                fill="#d97706"
+                stroke="#111111"
+                strokeWidth={1.5}
+                vectorEffect="non-scaling-stroke"
+              />
+            ))}
+          </svg>
+        </div>
+      )}
+      <SheetMeasureBar
+        measuring={measuring}
+        calibrating={calibrating}
+        pointCount={path.length}
+        calibrationCount={calPoints.length}
+        total={total}
+        unit={unit}
+        scaleSet={sheetScale !== null}
+        draft={draft}
+        error={scaleError}
+        onToggle={() => {
+          setMeasuring((on) => !on);
+          setCalibrating(false);
+          setCalPoints([]);
+          setHover(null);
+          setScaleError(null);
+        }}
+        onUndo={undoPoint}
+        onClear={() => {
+          setPath([]);
+          setHover(null);
+        }}
+        onStartScale={() => {
+          setCalibrating(true);
+          setCalPoints([]);
+          setDraft("");
+          setScaleError(null);
+          setHover(null);
+        }}
+        onCancelScale={() => {
+          setCalibrating(false);
+          setCalPoints([]);
+          setDraft("");
+          setScaleError(null);
+        }}
+        onDraft={(value) => {
+          setDraft(value);
+          setScaleError(null);
+        }}
+        onUnit={changeUnit}
+        onApply={applyScale}
+      />
     </div>
   );
 }

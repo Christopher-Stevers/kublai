@@ -193,6 +193,7 @@ export function JobDrawingsView({ jobId }: { jobId: string }) {
             alt={sheet.name}
             pdf={sourcePdfPage(sheet.imageUrl)}
             tiles={tileBase(sheet.imageUrl)}
+            sheetKey={sheet.id}
           />
           <span className="bg-card/90 pointer-events-none absolute top-2 left-2 rounded-md px-2 py-1 text-xs font-semibold shadow-sm">
             {sheet.name}
