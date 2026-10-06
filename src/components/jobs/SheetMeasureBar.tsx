@@ -19,6 +19,7 @@ export function SheetMeasureBar({
   total,
   unit,
   scaleSet,
+  snapping,
   draft,
   error,
   onToggle,
@@ -37,6 +38,8 @@ export function SheetMeasureBar({
   total: string | null;
   unit: MeasureUnit;
   scaleSet: boolean;
+  /** Lines were read from this drawing, so a tap can land on one. */
+  snapping?: boolean;
   draft: string;
   error: string | null;
   onToggle: () => void;
@@ -72,6 +75,7 @@ export function SheetMeasureBar({
             <Calibration
               count={calibrationCount}
               unit={unit}
+              snapping={snapping}
               draft={draft}
               error={error}
               onUndo={onUndo}
@@ -86,6 +90,7 @@ export function SheetMeasureBar({
               total={total}
               unit={unit}
               scaleSet={scaleSet}
+              snapping={snapping}
               onUndo={onUndo}
               onClear={onClear}
               onStartScale={onStartScale}
@@ -132,6 +137,7 @@ function Tracing({
   total,
   unit,
   scaleSet,
+  snapping,
   onUndo,
   onClear,
   onStartScale,
@@ -141,6 +147,7 @@ function Tracing({
   total: string | null;
   unit: MeasureUnit;
   scaleSet: boolean;
+  snapping?: boolean;
   onUndo: () => void;
   onClear: () => void;
   onStartScale: () => void;
@@ -155,7 +162,9 @@ function Tracing({
       ) : (
         <p role="status" className="text-sm">
           {pointCount === 0
-            ? "Tap each point along the path."
+            ? snapping
+              ? "Tap each point along the path. Points snap onto lines."
+              : "Tap each point along the path."
             : `${pointCount} ${pointCount === 1 ? "point" : "points"}. Set a scale to see the distance.`}
         </p>
       )}
@@ -204,6 +213,7 @@ function Tracing({
 function Calibration({
   count,
   unit,
+  snapping,
   draft,
   error,
   onUndo,
@@ -214,6 +224,7 @@ function Calibration({
 }: {
   count: number;
   unit: MeasureUnit;
+  snapping?: boolean;
   draft: string;
   error: string | null;
   onUndo: () => void;
@@ -226,9 +237,13 @@ function Calibration({
     <>
       <p role="status" className="text-sm">
         {count === 0
-          ? "Tap one end of a length you know on the drawing."
+          ? snapping
+            ? "Tap one end of a known length. It snaps onto a line."
+            : "Tap one end of a length you know on the drawing."
           : count === 1
-            ? "Tap the other end."
+            ? snapping
+              ? "Tap the other end. It snaps onto a line."
+              : "Tap the other end."
             : "How long is this line?"}
       </p>
       {count >= 2 && (

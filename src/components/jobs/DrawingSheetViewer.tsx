@@ -8,6 +8,7 @@ import {
   type TileManifest,
 } from "~/lib/drawing-tiles";
 import { loadPdfDocument } from "~/lib/pdf-client";
+import { loadSnapLines } from "~/lib/pdf-snap-lines";
 import {
   convertScale,
   formatLength,
@@ -22,10 +23,13 @@ import {
   type SheetPoint,
   type SheetScale,
 } from "~/lib/sheet-measure";
+import { buildSnapIndex, mergeCollinear, snapToLine, type SnapIndex, type SnapSegment } from "~/lib/sheet-snap";
 import { SheetMeasureBar } from "./SheetMeasureBar";
 
 const MIN_ZOOM = 1;
 const MAX_ZOOM = 24;
+/** A tap this close to a line, in screen pixels, lands on that line. */
+const SNAP_PX = 18;
 /** How often tile choices follow the view while it is moving. */
 const COMMIT_MS = 120;
 type Point = { x: number; y: number };
@@ -41,8 +45,9 @@ const REST: View = { scale: 1, x: 0, y: 0 };
  *   redrawn from the original PDF once the view settles.
  * Movement is applied straight to the layer once per frame, with momentum.
  * Measure mode traces points on the sheet and totals the real distance once a
- * scale has been set from a known length. Give it a `key` per sheet so each
- * sheet opens unzoomed.
+ * scale has been set from a known length. A tap near a straight line in the
+ * PDF, including a dashed grid, lands on that line. Give it a `key` per sheet
+ * so each sheet opens unzoomed.
  */
 export function DrawingSheetViewer({
   src,
@@ -65,6 +70,8 @@ export function DrawingSheetViewer({
   const image = useRef<HTMLImageElement>(null);
   const sharp = useRef<HTMLCanvasElement>(null);
   const [fit, setFit] = useState<{ width: number; height: number; natural: number; aspect: number } | null>(null);
+  const fitRef = useRef(fit);
+  fitRef.current = fit;
   const [frameSize, setFrameSize] = useState({ width: 0, height: 0 });
   const [manifest, setManifest] = useState<TileManifest | null>(null);
   // `live` follows every pointer move; `view` is committed for tiles/redraws.
@@ -79,7 +86,12 @@ export function DrawingSheetViewer({
   const [calibrating, setCalibrating] = useState(false);
   const [path, setPath] = useState<SheetPoint[]>([]);
   const [calPoints, setCalPoints] = useState<SheetPoint[]>([]);
+  const [calLine, setCalLine] = useState<SnapSegment | null>(null);
   const [hover, setHover] = useState<SheetPoint | null>(null);
+  const [snapLine, setSnapLine] = useState<SnapSegment | null>(null);
+  const [snapIndex, setSnapIndex] = useState<SnapIndex | null>(null);
+  const snapSegments = useRef<SnapSegment[] | null>(null);
+  const snapKey = useRef<string | null>(null);
   const [sheetScale, setSheetScale] = useState<SheetScale | null>(null);
   const [unit, setUnit] = useState<MeasureUnit>("ft");
   const [draft, setDraft] = useState("");
@@ -138,11 +150,51 @@ export function DrawingSheetViewer({
     setUnit(stored?.unit ?? "ft");
     setPath([]);
     setCalPoints([]);
+    setCalLine(null);
     setCalibrating(false);
     setHover(null);
+    setSnapLine(null);
     setDraft("");
     setScaleError(null);
   }, [sheetKey]);
+
+  // Read the drawing's lines once, when measuring starts. Taps stay free until they arrive.
+  // Depend on the url and page, not the object: the parent builds a new object on every render.
+  const pdfUrl = pdf?.url;
+  const pdfPage = pdf?.page;
+  useEffect(() => {
+    if (!pdfUrl || pdfPage == null) return;
+    if (!measuring) return;
+    const key = `${pdfUrl}#${pdfPage}`;
+    if (snapKey.current === key && snapSegments.current) return;
+    if (snapKey.current !== key) {
+      snapSegments.current = null;
+      snapKey.current = null;
+      setSnapIndex(null);
+      setSnapLine(null);
+      setCalLine(null);
+    }
+    let cancelled = false;
+    void loadSnapLines({ url: pdfUrl, page: pdfPage })
+      .then((segments) => {
+        if (cancelled) return;
+        snapKey.current = key;
+        snapSegments.current = segments;
+        const aspect = fitRef.current?.aspect;
+        if (aspect && aspect > 0) setSnapIndex(buildSnapIndex(mergeCollinear(segments, aspect), aspect));
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [measuring, pdfUrl, pdfPage]);
+
+  useEffect(() => {
+    const segments = snapSegments.current;
+    const aspect = fit?.aspect;
+    if (!segments || !(aspect && aspect > 0)) return;
+    setSnapIndex(buildSnapIndex(mergeCollinear(segments, aspect), aspect));
+  }, [fit?.aspect]);
 
   const rememberHover = (point: SheetPoint | null) => {
     setHover((current) => (current?.x === point?.x && current?.y === point?.y ? current : point));
@@ -158,15 +210,53 @@ export function DrawingSheetViewer({
       live.current,
     );
   };
-  const commitPoint = (point: SheetPoint) => {
-    if (calibrating) setCalPoints((points) => (points.length >= 2 ? points : [...points, point]));
-    else setPath((points) => (points.length >= 400 ? points : [...points, point]));
+  const rememberLine = (segment: SnapSegment | null) => {
+    setSnapLine((current) =>
+      current === segment ||
+      (current !== null &&
+        segment !== null &&
+        current.x1 === segment.x1 &&
+        current.y1 === segment.y1 &&
+        current.x2 === segment.x2 &&
+        current.y2 === segment.y2)
+        ? current
+        : segment,
+    );
+  };
+  const aimFromClient = (clientX: number, clientY: number) => {
+    const point = pointFromClient(clientX, clientY);
+    if (!point) return null;
+    if (!snapIndex || !fit) return { point, segment: null as SnapSegment | null };
+    const shown = fit.width * live.current.scale;
+    if (!(shown > 0)) return { point, segment: null as SnapSegment | null };
+    // The second end of a scale stays on the line the first end landed on.
+    const prefer = calibrating && calPoints.length === 1 ? calLine : null;
+    const hit = snapToLine(point, snapIndex, SNAP_PX / shown, prefer);
+    return hit ? { point: hit.point, segment: hit.segment } : { point, segment: null as SnapSegment | null };
+  };
+  const rememberAim = (clientX: number, clientY: number) => {
+    const aim = aimFromClient(clientX, clientY);
+    rememberHover(aim?.point ?? null);
+    rememberLine(aim?.segment ?? null);
+  };
+  const clearAim = () => {
+    rememberHover(null);
+    rememberLine(null);
+  };
+  const commitPoint = (point: SheetPoint, segment: SnapSegment | null) => {
+    if (calibrating) {
+      if (calPoints.length === 0) setCalLine(segment);
+      setCalPoints((points) => (points.length >= 2 ? points : [...points, point]));
+    } else setPath((points) => (points.length >= 400 ? points : [...points, point]));
     setHover(null);
+    setSnapLine(null);
   };
   const undoPoint = useCallback(() => {
-    if (calibrating) setCalPoints((points) => points.slice(0, -1));
-    else setPath((points) => points.slice(0, -1));
-  }, [calibrating]);
+    if (calibrating) {
+      setCalPoints((points) => points.slice(0, -1));
+      if (calPoints.length <= 1) setCalLine(null);
+    } else setPath((points) => points.slice(0, -1));
+  }, [calibrating, calPoints.length]);
   const changeUnit = (next: MeasureUnit) => {
     setUnit(next);
     setSheetScale((current) => {
@@ -196,6 +286,7 @@ export function DrawingSheetViewer({
     setSheetScale(next);
     if (sheetKey) writeSheetScale(sheetKey, next);
     setCalPoints([]);
+    setCalLine(null);
     setCalibrating(false);
     setDraft("");
     setScaleError(null);
@@ -211,6 +302,7 @@ export function DrawingSheetViewer({
         if (calibrating) {
           setCalibrating(false);
           setCalPoints([]);
+          setCalLine(null);
           setDraft("");
           setScaleError(null);
         } else setMeasuring(false);
@@ -422,6 +514,7 @@ export function DrawingSheetViewer({
   const rubber =
     hover && ((calibrating && calPoints.length === 1) || (!calibrating && path.length >= 1)) ? hover : null;
   const marked = rubber ? [...drawn, rubber] : drawn;
+  const snapMark = Math.max(4, 8 / view.scale);
   const total =
     sheetScale && fit && !calibrating && marked.length >= 2
       ? formatLength(realLength(marked, fit.aspect, sheetScale.unitsPerSheetWidth), sheetScale.unit)
@@ -457,7 +550,7 @@ export function DrawingSheetViewer({
         } else if (measureTap.current) measureTap.current.moved = true;
       }}
       onPointerMove={(event) => {
-        if (measuring && event.buttons === 0) rememberHover(pointFromClient(event.clientX, event.clientY));
+        if (measuring && event.buttons === 0) rememberAim(event.clientX, event.clientY);
         const previous = pointers.current.get(event.pointerId);
         if (!previous || !gesture.current) return;
         pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
@@ -478,11 +571,11 @@ export function DrawingSheetViewer({
           const p = now[0]!;
           if (measuring && measureTap.current && !measureTap.current.moved) {
             if (Math.hypot(p.x - measureTap.current.x, p.y - measureTap.current.y) <= MEASURE_TAP_SLOP_PX) {
-              rememberHover(pointFromClient(event.clientX, event.clientY));
+              rememberAim(event.clientX, event.clientY);
               return;
             }
             measureTap.current.moved = true;
-            rememberHover(null);
+            clearAim();
             gesture.current = { view: live.current, points: [{ x: p.x, y: p.y }] };
             return;
           }
@@ -505,8 +598,8 @@ export function DrawingSheetViewer({
         startGesture();
         if (pointers.current.size > 0) return;
         if (measuring && tap && !tap.moved && wasSingle) {
-          const point = pointFromClient(event.clientX, event.clientY);
-          if (point) commitPoint(point);
+          const aim = aimFromClient(event.clientX, event.clientY);
+          if (aim) commitPoint(aim.point, aim.segment);
           move(live.current, true);
           return;
         }
@@ -521,7 +614,7 @@ export function DrawingSheetViewer({
         if (pointers.current.size === 0) move(live.current, true);
       }}
       onPointerLeave={() => {
-        if (measuring) rememberHover(null);
+        if (measuring) clearAim();
       }}
       onWheel={(event) => {
         stopAnimation();
@@ -585,7 +678,7 @@ export function DrawingSheetViewer({
           style={{ opacity: needsPdf && !moving && sharpFor === viewKey ? 1 : 0 }}
         />
       )}
-      {fit && marked.length > 0 && (
+      {fit && (marked.length > 0 || snapLine) && (
         <div
           ref={marks}
           aria-hidden="true"
@@ -593,6 +686,42 @@ export function DrawingSheetViewer({
           style={{ width: fit.width, height: fit.height }}
         >
           <svg className="h-full w-full overflow-visible" viewBox={`0 0 ${fit.width} ${fit.height}`}>
+            {snapLine && (
+              <g>
+                <line
+                  x1={snapLine.x1 * fit.width}
+                  y1={snapLine.y1 * fit.height}
+                  x2={snapLine.x2 * fit.width}
+                  y2={snapLine.y2 * fit.height}
+                  stroke="#ffffff"
+                  strokeWidth={6}
+                  strokeLinecap="round"
+                  vectorEffect="non-scaling-stroke"
+                />
+                <line
+                  x1={snapLine.x1 * fit.width}
+                  y1={snapLine.y1 * fit.height}
+                  x2={snapLine.x2 * fit.width}
+                  y2={snapLine.y2 * fit.height}
+                  stroke="#22d3ee"
+                  strokeWidth={3}
+                  strokeLinecap="round"
+                  vectorEffect="non-scaling-stroke"
+                />
+              </g>
+            )}
+            {snapLine && hover && (
+              <rect
+                x={hover.x * fit.width - snapMark / 2}
+                y={hover.y * fit.height - snapMark / 2}
+                width={snapMark}
+                height={snapMark}
+                fill="none"
+                stroke="#22d3ee"
+                strokeWidth={2}
+                vectorEffect="non-scaling-stroke"
+              />
+            )}
             {marked.length >= 2 && (
               <g>
                 <polyline
@@ -638,23 +767,28 @@ export function DrawingSheetViewer({
         total={total}
         unit={unit}
         scaleSet={sheetScale !== null}
+        snapping={Boolean(snapIndex && snapIndex.segments.length > 0)}
         draft={draft}
         error={scaleError}
         onToggle={() => {
           setMeasuring((on) => !on);
           setCalibrating(false);
           setCalPoints([]);
+          setCalLine(null);
           setHover(null);
+          setSnapLine(null);
           setScaleError(null);
         }}
         onUndo={undoPoint}
         onClear={() => {
           setPath([]);
           setHover(null);
+          setSnapLine(null);
         }}
         onStartScale={() => {
           setCalibrating(true);
           setCalPoints([]);
+          setCalLine(null);
           setDraft("");
           setScaleError(null);
           setHover(null);
@@ -662,6 +796,7 @@ export function DrawingSheetViewer({
         onCancelScale={() => {
           setCalibrating(false);
           setCalPoints([]);
+          setCalLine(null);
           setDraft("");
           setScaleError(null);
         }}

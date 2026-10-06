@@ -1,6 +1,17 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { loadSnapLines } from "~/lib/pdf-snap-lines";
 import { DrawingSheetViewer } from "./DrawingSheetViewer";
+
+vi.mock("~/lib/pdf-snap-lines", () => ({
+  loadSnapLines: vi.fn(async () => []),
+}));
 
 beforeEach(() => {
   // Node 26 exposes an unavailable native localStorage in the test environment.
@@ -34,9 +45,17 @@ afterEach(() => {
 });
 
 /** An 800×600 frame holding a 1000×500 sheet, so the sheet is 800×400 and centred. */
-function openSheet(sheetKey = "sheet-1") {
+function openSheet(
+  sheetKey = "sheet-1",
+  pdf?: { url: string; page: number } | null,
+) {
   const view = render(
-    <DrawingSheetViewer src="/sheet.webp" alt="Sheet" sheetKey={sheetKey} />,
+    <DrawingSheetViewer
+      src="/sheet.webp"
+      alt="Sheet"
+      sheetKey={sheetKey}
+      pdf={pdf}
+    />,
   );
   const image = screen.getByAltText("Sheet");
   const frame = image.parentElement!.parentElement as HTMLDivElement;
@@ -176,5 +195,34 @@ describe("drawing measure", () => {
       screen.getByText("Enter a length like 24'6\" or 7.5."),
     ).toBeInTheDocument();
     expect(screen.queryByText(/Total along the points/)).toBeNull();
+  });
+
+  it("snaps the scale line onto a line in the drawing", async () => {
+    vi.mocked(loadSnapLines).mockResolvedValue([
+      { x1: 0, y1: 0.5, x2: 1, y2: 0.5 },
+    ]);
+    // The sheet's midline is screen y=300. These taps sit 12px off it.
+    const { frame } = openSheet("sheet-snap", { url: "/plan.pdf", page: 1 });
+    fireEvent.click(screen.getByRole("button", { name: "Measure" }));
+    await waitFor(() => {
+      expect(screen.getByRole("status").textContent).toMatch(/snap onto lines/);
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Set scale" }));
+    expect(screen.getByRole("status").textContent).toBe(
+      "Tap one end of a known length. It snaps onto a line.",
+    );
+    fireEvent.pointerMove(frame, { clientX: 400, clientY: 312, buttons: 0 });
+    expect(frame.querySelector('line[stroke="#22d3ee"]')).toBeTruthy();
+
+    tap(frame, 0, 312);
+    tap(frame, 800, 288);
+    fireEvent.change(screen.getByLabelText("How long is this line?"), {
+      target: { value: "100" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Use this length" }));
+
+    tap(frame, 0, 312);
+    tap(frame, 400, 288);
+    expect(screen.getByRole("status").textContent).toBe("50'-0\"");
   });
 });
