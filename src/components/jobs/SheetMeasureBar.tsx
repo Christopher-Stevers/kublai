@@ -22,10 +22,14 @@ export function SheetMeasureBar({
   snapping,
   draft,
   error,
+  reading,
+  scaleLabel,
+  readError,
   onToggle,
   onUndo,
   onClear,
   onStartScale,
+  onFromLength,
   onCancelScale,
   onDraft,
   onUnit,
@@ -42,10 +46,17 @@ export function SheetMeasureBar({
   snapping?: boolean;
   draft: string;
   error: string | null;
+  /** The printed scale is being read off this drawing. */
+  reading?: boolean;
+  /** The scale as printed, once it has been read. */
+  scaleLabel?: string | null;
+  /** Why the printed scale could not be used. */
+  readError?: string | null;
   onToggle: () => void;
   onUndo: () => void;
   onClear: () => void;
   onStartScale: () => void;
+  onFromLength: () => void;
   onCancelScale: () => void;
   onDraft: (value: string) => void;
   onUnit: (unit: MeasureUnit) => void;
@@ -91,9 +102,13 @@ export function SheetMeasureBar({
               unit={unit}
               scaleSet={scaleSet}
               snapping={snapping}
+              reading={reading}
+              scaleLabel={scaleLabel}
+              readError={readError}
               onUndo={onUndo}
               onClear={onClear}
               onStartScale={onStartScale}
+              onFromLength={onFromLength}
               onUnit={onUnit}
             />
           )}
@@ -132,15 +147,36 @@ function UnitToggle({
   );
 }
 
+function traceStatus(
+  pointCount: number,
+  scaleSet: boolean,
+  snapping: boolean | undefined,
+  scaleLabel: string | null | undefined,
+): string {
+  if (pointCount === 0) {
+    const base = snapping
+      ? "Tap each point along the path. Points snap onto lines."
+      : "Tap each point along the path.";
+    return scaleLabel ? `${base} ${scaleLabel}.` : base;
+  }
+  const count = `${pointCount} ${pointCount === 1 ? "point" : "points"}.`;
+  if (!scaleSet) return `${count} Tap Scale to see the distance.`;
+  return scaleLabel ? `${count} ${scaleLabel}.` : count;
+}
+
 function Tracing({
   pointCount,
   total,
   unit,
   scaleSet,
   snapping,
+  reading,
+  scaleLabel,
+  readError,
   onUndo,
   onClear,
   onStartScale,
+  onFromLength,
   onUnit,
 }: {
   pointCount: number;
@@ -148,34 +184,42 @@ function Tracing({
   unit: MeasureUnit;
   scaleSet: boolean;
   snapping?: boolean;
+  reading?: boolean;
+  scaleLabel?: string | null;
+  readError?: string | null;
   onUndo: () => void;
   onClear: () => void;
   onStartScale: () => void;
+  onFromLength: () => void;
   onUnit: (unit: MeasureUnit) => void;
 }) {
   return (
     <>
-      {total ? (
+      {total && !reading ? (
         <p role="status" className="text-xl font-semibold tabular-nums">
           {total}
         </p>
       ) : (
         <p role="status" className="text-sm">
-          {pointCount === 0
-            ? snapping
-              ? "Tap each point along the path. Points snap onto lines."
-              : "Tap each point along the path."
-            : `${pointCount} ${pointCount === 1 ? "point" : "points"}. Set a scale to see the distance.`}
+          {reading
+            ? "Reading the scale on this drawing."
+            : traceStatus(pointCount, scaleSet, snapping, scaleLabel)}
         </p>
       )}
-      {total && (
+      {total && !reading && (
         <p className="text-muted-foreground text-xs">Total along the points</p>
       )}
-      {!scaleSet && pointCount === 0 && (
+      {total && !reading && scaleLabel && (
+        <p className="text-muted-foreground text-xs">{scaleLabel}</p>
+      )}
+      {!scaleSet && pointCount === 0 && !readError && !reading && (
         <p className="text-muted-foreground text-xs">
-          Set a scale once, from a length printed on this drawing, so the total
+          Tap Scale and the scale printed on this drawing is applied, so the total
           is a real distance.
         </p>
+      )}
+      {readError && !reading && (
+        <p className="text-destructive text-xs">{readError}</p>
       )}
       {scaleSet && <UnitToggle unit={unit} onUnit={onUnit} />}
       <div className="flex flex-wrap gap-2">
@@ -201,10 +245,21 @@ function Tracing({
           type="button"
           size="sm"
           variant="outline"
+          disabled={reading}
           onClick={onStartScale}
         >
-          Set scale
+          Scale
         </Button>
+        {readError && !reading && (
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={onFromLength}
+          >
+            From a length
+          </Button>
+        )}
       </div>
     </>
   );

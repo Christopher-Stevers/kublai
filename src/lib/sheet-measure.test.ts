@@ -84,6 +84,12 @@ describe("sheet distance", () => {
     const back = convertScale({ unit: "m", unitsPerSheetWidth: 30.48 }, "ft");
     expect(back.unit).toBe("ft");
     expect(back.unitsPerSheetWidth).toBeCloseTo(100);
+    const labeled = convertScale(
+      { unit: "ft", unitsPerSheetWidth: 100, label: '1/4" = 1\'-0"' },
+      "m",
+    );
+    expect(labeled.label).toBe('1/4" = 1\'-0"');
+    expect(labeled.unit).toBe("m");
   });
 
   it("reads the lengths a person writes on a drawing", () => {
@@ -134,5 +140,24 @@ describe("sheet distance", () => {
     });
     localStorage.setItem("foremanhq.sheet-scale.sheet-2", "{");
     expect(readSheetScale("sheet-2")).toBeNull();
+    writeSheetScale("sheet-3", {
+      unit: "ft",
+      unitsPerSheetWidth: 80,
+      label: '1/4" = 1\'-0"',
+    });
+    expect(readSheetScale("sheet-3")).toEqual({
+      unit: "ft",
+      unitsPerSheetWidth: 80,
+      label: '1/4" = 1\'-0"',
+    });
+    writeSheetScale("sheet-4", {
+      unit: "ft",
+      unitsPerSheetWidth: 80,
+      label: "x".repeat(81),
+    });
+    expect(readSheetScale("sheet-4")).toEqual({
+      unit: "ft",
+      unitsPerSheetWidth: 80,
+    });
   });
 });

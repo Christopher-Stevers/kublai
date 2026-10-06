@@ -7,6 +7,8 @@ export type SheetScale = {
   /** Real-world length, in `unit`, of the full width of the sheet. */
   unitsPerSheetWidth: number;
   unit: MeasureUnit;
+  /** The scale as printed, such as `1/4" = 1'-0"`, when it was read from the drawing. */
+  label?: string;
 };
 
 /** A finger/mouse press shorter than this is a point. A longer drag pans the sheet. */
@@ -53,7 +55,12 @@ export function realLength(
 export function convertScale(scale: SheetScale, unit: MeasureUnit): SheetScale {
   if (scale.unit === unit) return scale;
   const factor = scale.unit === "ft" ? FEET_TO_METERS : 1 / FEET_TO_METERS;
-  return { unit, unitsPerSheetWidth: scale.unitsPerSheetWidth * factor };
+  const next: SheetScale = {
+    unit,
+    unitsPerSheetWidth: scale.unitsPerSheetWidth * factor,
+  };
+  if (scale.label) next.label = scale.label;
+  return next;
 }
 
 function parseInches(text: string): number | null {
@@ -170,11 +177,15 @@ export function readSheetScale(sheetKey: string): SheetScale | null {
       typeof parsed.unitsPerSheetWidth === "number" &&
       parsed.unitsPerSheetWidth > 0 &&
       Number.isFinite(parsed.unitsPerSheetWidth)
-    )
-      return {
+    ) {
+      const scale: SheetScale = {
         unit: parsed.unit,
         unitsPerSheetWidth: parsed.unitsPerSheetWidth,
       };
+      const label = typeof parsed.label === "string" ? parsed.label.trim() : "";
+      if (label.length > 0 && label.length <= 80) scale.label = label;
+      return scale;
+    }
   } catch {
     // Ignore a broken or blocked store and ask for the scale again.
   }

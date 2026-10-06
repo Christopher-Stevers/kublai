@@ -8,6 +8,7 @@ import {
   type TileManifest,
 } from "~/lib/drawing-tiles";
 import { loadPdfDocument } from "~/lib/pdf-client";
+import { readPdfSheetScale } from "~/lib/pdf-sheet-scale";
 import { loadSnapLines } from "~/lib/pdf-snap-lines";
 import {
   convertScale,
@@ -23,6 +24,7 @@ import {
   type SheetPoint,
   type SheetScale,
 } from "~/lib/sheet-measure";
+import { scaleReadMessage } from "~/lib/sheet-scale-text";
 import { buildSnapIndex, mergeCollinear, snapToLine, type SnapIndex, type SnapSegment } from "~/lib/sheet-snap";
 import { SheetMeasureBar } from "./SheetMeasureBar";
 
@@ -44,8 +46,8 @@ const REST: View = { scale: 1, x: 0, y: 0 };
  * - beyond the deepest tiles (or before tiles exist) the visible area is
  *   redrawn from the original PDF once the view settles.
  * Movement is applied straight to the layer once per frame, with momentum.
- * Measure mode traces points on the sheet and totals the real distance once a
- * scale has been set from a known length. A tap near a straight line in the
+ * Measure mode traces points on the sheet and totals the real distance once the
+ * printed scale has been read. A tap near a straight line in the
  * PDF, including a dashed grid, lands on that line. Give it a `key` per sheet
  * so each sheet opens unzoomed.
  */
@@ -96,6 +98,14 @@ export function DrawingSheetViewer({
   const [unit, setUnit] = useState<MeasureUnit>("ft");
   const [draft, setDraft] = useState("");
   const [scaleError, setScaleError] = useState<string | null>(null);
+  const [readingScale, setReadingScale] = useState(false);
+  const [scaleReadError, setScaleReadError] = useState<string | null>(null);
+  const scaleRead = useRef(0);
+  const seenSheet = useRef(sheetKey);
+  if (seenSheet.current !== sheetKey) {
+    seenSheet.current = sheetKey;
+    scaleRead.current += 1;
+  }
   const lastTap = useRef(0);
   const frameRequest = useRef(0);
   const commitTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -156,6 +166,8 @@ export function DrawingSheetViewer({
     setSnapLine(null);
     setDraft("");
     setScaleError(null);
+    setScaleReadError(null);
+    setReadingScale(false);
   }, [sheetKey]);
 
   // Read the drawing's lines once, when measuring starts. Taps stay free until they arrive.
@@ -266,6 +278,48 @@ export function DrawingSheetViewer({
       return converted;
     });
   };
+  const beginLengthScale = () => {
+    setCalibrating(true);
+    setCalPoints([]);
+    setCalLine(null);
+    setDraft("");
+    setScaleError(null);
+    setScaleReadError(null);
+    setHover(null);
+    setSnapLine(null);
+  };
+  const readPrintedScale = () => {
+    if (!pdfUrl || pdfPage == null) {
+      beginLengthScale();
+      return;
+    }
+    const request = ++scaleRead.current;
+    setScaleReadError(null);
+    setReadingScale(true);
+    void readPdfSheetScale({ url: pdfUrl, page: pdfPage })
+      .then((result) => {
+        if (scaleRead.current !== request) return;
+        if (!result.ok) {
+          setScaleReadError(scaleReadMessage(result));
+          return;
+        }
+        setSheetScale(result.scale);
+        setUnit(result.scale.unit);
+        if (sheetKey) writeSheetScale(sheetKey, result.scale);
+        setCalibrating(false);
+        setCalPoints([]);
+        setCalLine(null);
+        setDraft("");
+        setScaleError(null);
+      })
+      .catch(() => {
+        if (scaleRead.current !== request) return;
+        setScaleReadError(scaleReadMessage({ ok: false, reason: "none" }));
+      })
+      .finally(() => {
+        if (scaleRead.current === request) setReadingScale(false);
+      });
+  };
   const applyScale = () => {
     if (!fit || calPoints.length < 2) return;
     const known = parseLength(draft, unit);
@@ -290,6 +344,7 @@ export function DrawingSheetViewer({
     setCalibrating(false);
     setDraft("");
     setScaleError(null);
+    setScaleReadError(null);
   };
   useEffect(() => {
     if (!measuring) return;
@@ -770,6 +825,9 @@ export function DrawingSheetViewer({
         snapping={Boolean(snapIndex && snapIndex.segments.length > 0)}
         draft={draft}
         error={scaleError}
+        reading={readingScale}
+        scaleLabel={sheetScale?.label}
+        readError={scaleReadError}
         onToggle={() => {
           setMeasuring((on) => !on);
           setCalibrating(false);
@@ -778,6 +836,7 @@ export function DrawingSheetViewer({
           setHover(null);
           setSnapLine(null);
           setScaleError(null);
+          setScaleReadError(null);
         }}
         onUndo={undoPoint}
         onClear={() => {
@@ -785,14 +844,8 @@ export function DrawingSheetViewer({
           setHover(null);
           setSnapLine(null);
         }}
-        onStartScale={() => {
-          setCalibrating(true);
-          setCalPoints([]);
-          setCalLine(null);
-          setDraft("");
-          setScaleError(null);
-          setHover(null);
-        }}
+        onStartScale={readPrintedScale}
+        onFromLength={beginLengthScale}
         onCancelScale={() => {
           setCalibrating(false);
           setCalPoints([]);

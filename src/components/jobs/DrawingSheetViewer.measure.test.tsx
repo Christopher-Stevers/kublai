@@ -6,14 +6,23 @@ import {
   waitFor,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { readPdfSheetScale } from "~/lib/pdf-sheet-scale";
 import { loadSnapLines } from "~/lib/pdf-snap-lines";
 import { DrawingSheetViewer } from "./DrawingSheetViewer";
 
 vi.mock("~/lib/pdf-snap-lines", () => ({
   loadSnapLines: vi.fn(async () => []),
 }));
+vi.mock("~/lib/pdf-sheet-scale", () => ({
+  readPdfSheetScale: vi.fn(async () => ({
+    ok: false,
+    reason: "none" as const,
+  })),
+}));
 
 beforeEach(() => {
+  vi.mocked(loadSnapLines).mockResolvedValue([]);
+  vi.mocked(readPdfSheetScale).mockResolvedValue({ ok: false, reason: "none" });
   // Node 26 exposes an unavailable native localStorage in the test environment.
   const stored = new Map<string, string>();
   vi.stubGlobal("localStorage", {
@@ -111,7 +120,7 @@ describe("drawing measure", () => {
   it("totals a traced path after the scale is taken from a known length", () => {
     const { frame } = openSheet();
     fireEvent.click(screen.getByRole("button", { name: "Measure" }));
-    fireEvent.click(screen.getByRole("button", { name: "Set scale" }));
+    fireEvent.click(screen.getByRole("button", { name: "Scale" }));
 
     // Dragging still pans and does not drop a point.
     fireEvent.pointerDown(frame, {
@@ -163,7 +172,7 @@ describe("drawing measure", () => {
   it("uses the scale saved for that drawing the next time it is opened", () => {
     const first = openSheet();
     fireEvent.click(screen.getByRole("button", { name: "Measure" }));
-    fireEvent.click(screen.getByRole("button", { name: "Set scale" }));
+    fireEvent.click(screen.getByRole("button", { name: "Scale" }));
     tap(first.frame, 0, 300);
     tap(first.frame, 800, 300);
     fireEvent.change(screen.getByLabelText("How long is this line?"), {
@@ -184,7 +193,7 @@ describe("drawing measure", () => {
   it("rejects a scale that is not a length", () => {
     const { frame } = openSheet();
     fireEvent.click(screen.getByRole("button", { name: "Measure" }));
-    fireEvent.click(screen.getByRole("button", { name: "Set scale" }));
+    fireEvent.click(screen.getByRole("button", { name: "Scale" }));
     tap(frame, 0, 300);
     tap(frame, 800, 300);
     fireEvent.change(screen.getByLabelText("How long is this line?"), {
@@ -207,7 +216,13 @@ describe("drawing measure", () => {
     await waitFor(() => {
       expect(screen.getByRole("status").textContent).toMatch(/snap onto lines/);
     });
-    fireEvent.click(screen.getByRole("button", { name: "Set scale" }));
+    fireEvent.click(screen.getByRole("button", { name: "Scale" }));
+    await waitFor(() => {
+      expect(
+        screen.getByText("Couldn't read a scale from this drawing."),
+      ).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByRole("button", { name: "From a length" }));
     expect(screen.getByRole("status").textContent).toBe(
       "Tap one end of a known length. It snaps onto a line.",
     );
@@ -224,5 +239,22 @@ describe("drawing measure", () => {
     tap(frame, 0, 312);
     tap(frame, 400, 288);
     expect(screen.getByRole("status").textContent).toBe("50'-0\"");
+  });
+
+  it("reads the printed scale and measures with it", async () => {
+    vi.mocked(readPdfSheetScale).mockResolvedValue({
+      ok: true,
+      scale: { unit: "ft", unitsPerSheetWidth: 100, label: '1/4" = 1\'-0"' },
+    });
+    const { frame } = openSheet("sheet-read", { url: "/plan.pdf", page: 1 });
+    fireEvent.click(screen.getByRole("button", { name: "Measure" }));
+    fireEvent.click(screen.getByRole("button", { name: "Scale" }));
+    await waitFor(() => {
+      expect(screen.getByRole("status").textContent).toMatch(/1\/4" = 1'-0"/);
+    });
+    tap(frame, 0, 300);
+    tap(frame, 800, 300);
+    expect(screen.getByRole("status").textContent).toBe("100'-0\"");
+    expect(screen.getByText('1/4" = 1\'-0"')).toBeInTheDocument();
   });
 });
