@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import { useReplicacheCatalogue } from "~/hooks/use-replicache-catalogue";
+import { useTutorialSandbox } from "~/components/tutorial/tutorial-sandbox-context";
 import type { ReplicacheMaterialListItem } from "~/hooks/use-replicache-material-list";
 import type { ReplicacheSupplier } from "~/hooks/use-replicache-suppliers";
 import {
@@ -17,6 +18,8 @@ import {
 const PREFERENCE_EVENT = "foremenhq-sort-preferences-changed";
 const STORAGE_KEY = "foremenhq.material-list-sort";
 export function useMaterialListSortPreference() {
+  // The tutorial reads the user's preferences but never writes them.
+  const readOnly = !!useTutorialSandbox();
   const [sortMode, setMode] = useState<MaterialListSort>("material");
   const [keywordGroups, setGroups] = useState<readonly NameKeywordGroup[]>(
     SHARED_NAME_KEYWORD_GROUPS,
@@ -26,7 +29,13 @@ export function useMaterialListSortPreference() {
       try {
         const saved = localStorage.getItem(STORAGE_KEY);
         setMode(isMaterialListSort(saved) ? saved : "material");
-        setGroups(loadNameKeywordGroups(localStorage));
+        setGroups(
+          loadNameKeywordGroups(
+            readOnly
+              ? { getItem: (key) => localStorage.getItem(key), setItem: () => undefined }
+              : localStorage,
+          ),
+        );
       } catch {
         /* Sorting still works when browser storage is unavailable. */
       }
@@ -38,7 +47,7 @@ export function useMaterialListSortPreference() {
       window.removeEventListener("storage", readPreferences);
       window.removeEventListener(PREFERENCE_EVENT, readPreferences);
     };
-  }, []);
+  }, [readOnly]);
   const setSortMode = (mode: MaterialListSort) => {
     setMode(mode);
     try {
