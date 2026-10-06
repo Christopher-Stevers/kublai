@@ -1,0 +1,50 @@
+/**
+ * Adding a prefab to a material list: each prefab part times the multiplier.
+ * A part already on the list gets the quantity added to that line (preferring
+ * the line with the same supplier); anything else becomes a new line.
+ */
+export type PrefabLine = {
+  partDefinitionId: string;
+  supplierPartId: string | null;
+  quantity: number;
+};
+export type ListLine = {
+  id: string;
+  partDefinitionId: string | null;
+  supplierPartId: string | null;
+  quantity: string | number;
+};
+
+export function planPrefabAdd<P extends PrefabLine>(
+  prefabLines: P[],
+  listLines: ListLine[],
+  multiplier: number,
+) {
+  const updates = new Map<string, number>();
+  const adds: Array<P & { quantity: number }> = [];
+  const quantityOf = (line: ListLine) =>
+    updates.get(line.id) ?? (Number(line.quantity) || 0);
+  for (const prefabLine of prefabLines) {
+    const quantity = roundQuantity(prefabLine.quantity * multiplier);
+    if (!(quantity > 0)) continue;
+    const samePart = listLines.filter(
+      (line) => line.partDefinitionId === prefabLine.partDefinitionId,
+    );
+    const target =
+      samePart.find(
+        (line) =>
+          prefabLine.supplierPartId && line.supplierPartId === prefabLine.supplierPartId,
+      ) ?? samePart[0];
+    if (target) updates.set(target.id, roundQuantity(quantityOf(target) + quantity));
+    else adds.push({ ...prefabLine, quantity });
+  }
+  return {
+    updates: [...updates].map(([itemId, quantity]) => ({ itemId, quantity })),
+    adds,
+  };
+}
+
+/** Avoids float noise like 0.1 * 3 = 0.30000000000000004. */
+function roundQuantity(value: number) {
+  return Math.round(value * 1_000_000) / 1_000_000;
+}

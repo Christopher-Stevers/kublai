@@ -7,6 +7,7 @@ import { assetsRouter } from "~/server/api/routers/assets";
 import { catalogueRouter } from "~/server/api/routers/catalogue";
 import { drawsRouter } from "~/server/api/routers/draws";
 import { drawingsRouter } from "~/server/api/routers/drawings";
+import { prefabsRouter } from "~/server/api/routers/prefabs";
 import { jobRouter } from "~/server/api/routers/job";
 import { roomsRouter } from "~/server/api/routers/rooms";
 import { locationRouter } from "~/server/api/routers/location";
@@ -37,6 +38,7 @@ export const appRouter = createTRPCRouter({
   location: locationRouter,
   draws: drawsRouter,
   drawings: drawingsRouter,
+  prefabs: prefabsRouter,
   assets: assetsRouter,
 });
 

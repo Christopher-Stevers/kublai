@@ -13,7 +13,7 @@ import {
 } from "~/components/ui/dialog";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
-import { AlertCircle, Plus, Minus, ChevronDown, ChevronUp } from "lucide-react";
+import { AlertCircle, Plus, Minus, ChevronDown, ChevronUp, BoxesIcon, ChevronRight } from "lucide-react";
 import { CreateCustomPartDialog } from "./CreateCustomPartDialog";
 import { WizardHeader } from "./WizardHeader";
 import { EditPartDialog } from "~/components/catalogue/EditPartDialog";
@@ -36,6 +36,8 @@ import {
   setOfflineSupplierPartsByPart,
 } from "~/lib/offline-supplier-parts";
 import { markUserAction, measureUserAction } from "~/lib/performance-marks";
+import { notify } from "~/components/ui/app-dialogs";
+import { PrefabsPanel, type PrefabView } from "./prefabs/PrefabsPanel";
 
 interface AddPartDialogProps {
   open: boolean;
@@ -51,8 +53,13 @@ export function AddPartDialog({
   const sandbox = useTutorialSandbox();
   const { getReplicache: getMaterialListReplicache, requestSync: requestMaterialListReplicacheSync } = useWorkspaceMutations();
   // Tool request lists pick from tool catalogs; material lists never do.
-  const listKind = useReplicacheMaterialList(materialListId).materialList?.kind;
-  const isToolRequest = listKind === "tools";
+  const { materialList: listHeader, items: listItems } =
+    useReplicacheMaterialList(materialListId);
+  const isToolRequest = listHeader?.kind === "tools";
+  // Prefabs: the panel replaces the wizard while open; with a target set, the
+  // wizard picks parts for that prefab instead of this list.
+  const [prefabView, setPrefabView] = useState<PrefabView | null>(null);
+  const [prefabTarget, setPrefabTarget] = useState<{ id: string; name: string } | null>(null);
   // Wizard state
   const [pendingParts, setPendingParts] = useState<PendingPart[]>([]);
   const [isCreateCustomPartDialogOpen, setIsCreateCustomPartDialogOpen] =
@@ -138,6 +145,7 @@ export function AddPartDialog({
 
   const utils = api.useUtils();
   const isOnline = useOnlineStatus();
+  const addPrefabItems = api.prefabs.addItems.useMutation();
   const catalogueDownloading = useCatalogueFirstDownload(open);
   const { data: currentUser } = api.user.getMe.useQuery(undefined, {
     enabled: open && isOnline,
@@ -678,6 +686,26 @@ export function AddPartDialog({
         return;
       }
 
+      if (prefabTarget) {
+        const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        await addPrefabItems.mutateAsync({
+          prefabId: prefabTarget.id,
+          items: partsReadyToAdd.map((part) => ({
+            partDefinitionId: part.partId,
+            supplierPartId:
+              part.supplierPartId && uuid.test(part.supplierPartId) ? part.supplierPartId : null,
+            quantity: part.quantity,
+          })),
+        });
+        await utils.prefabs.list.invalidate();
+        setPendingParts([]);
+        resetWizard();
+        setPrefabView({ kind: "edit", prefabId: prefabTarget.id });
+        setPrefabTarget(null);
+        setIsAddingParts(false);
+        return;
+      }
+
       const localItems = partsReadyToAdd.map((pendingPart) => {
         const selectedSupplierPart =
           pendingPart.supplierPartSnapshot ??
@@ -752,6 +780,7 @@ export function AddPartDialog({
       }, 0);
     } catch (error) {
       console.error("Error adding parts:", error);
+      if (prefabTarget) notify("Couldn't add the parts to the prefab. Try again.", "error");
       setIsAddingParts(false);
     }
   };
@@ -794,6 +823,8 @@ export function AddPartDialog({
       setPendingParts((prev) => (prev.length === 0 ? prev : []));
       setIsPendingTrayOpen(false);
       setQuantityPickerPreview(null);
+      setPrefabView(null);
+      setPrefabTarget(null);
       supplierPartResolutionPromisesRef.current.clear();
       setResolvingSupplierPartIds(new Set());
       resetWizard();
@@ -908,7 +939,13 @@ export function AddPartDialog({
         >
           <DialogHeader className="shrink-0 px-2 pt-2 pb-1.5 sm:px-4 sm:pt-4 sm:pb-3 md:px-6 md:pt-6 md:pb-4">
             <DialogTitle className="text-base sm:text-lg md:text-xl">
-              {isToolRequest ? "Add Tools" : "Add Parts"}
+              {isToolRequest
+                ? "Add Tools"
+                : prefabTarget
+                  ? `Add Parts to ${prefabTarget.name}`
+                  : prefabView
+                    ? "Prefabs"
+                    : "Add Parts"}
             </DialogTitle>
             <DialogDescription className="hidden text-xs sm:block sm:text-sm">
               {isOnline
@@ -927,7 +964,28 @@ export function AddPartDialog({
             )}
           </DialogHeader>
 
-          {wizardStage !== "review" && (
+          {prefabTarget && (
+            <div className="mx-2 mb-2 flex shrink-0 items-center justify-between gap-2 rounded-md bg-primary/10 px-3 py-1.5 text-xs sm:mx-4 sm:text-sm md:mx-6">
+              <span className="min-w-0 truncate">
+                Picking parts for prefab <span className="font-semibold">{prefabTarget.name}</span>
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 shrink-0 px-2"
+                onClick={() => {
+                  setPendingParts([]);
+                  resetWizard();
+                  setPrefabView({ kind: "edit", prefabId: prefabTarget.id });
+                  setPrefabTarget(null);
+                }}
+              >
+                Back to prefab
+              </Button>
+            </div>
+          )}
+
+          {wizardStage !== "review" && !prefabView && (
             <div className="shrink-0 border-b px-2 pb-2 sm:px-4 sm:pb-4 md:px-6">
               <WizardHeader
                 currentStage={wizardStage}
@@ -975,6 +1033,27 @@ export function AddPartDialog({
                 </div>
               </div>
             )}
+            {prefabView ? (
+              <PrefabsPanel
+                materialListId={materialListId}
+                listItems={listItems}
+                view={prefabView}
+                onViewChange={setPrefabView}
+                onAddParts={(prefab) => {
+                  setPendingParts([]);
+                  resetWizard();
+                  setPrefabTarget(prefab);
+                  setPrefabView(null);
+                }}
+                onAdded={closeDialogAndCleanHistory}
+                isOnline={isOnline}
+                addedBy={
+                  currentUser
+                    ? { id: currentUser.id, name: currentUser.name, email: currentUser.email }
+                    : null
+                }
+              />
+            ) : (<>
             {isWizardSearchActive ? (
               <PartStage
                 partsForSelection={filteredPartsForSelection}
@@ -995,7 +1074,23 @@ export function AddPartDialog({
                 }
               />
             ) : (
-              wizardStage === "catalog" && (
+              wizardStage === "catalog" && (<>
+                {!isToolRequest && !prefabTarget && (
+                  <button
+                    type="button"
+                    onClick={() => setPrefabView({ kind: "list" })}
+                    className="flex w-full items-center gap-3 rounded-lg border border-primary/30 bg-primary/5 px-3 py-3 text-left transition-colors hover:bg-primary/10"
+                  >
+                    <BoxesIcon className="h-6 w-6 shrink-0 text-primary" />
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-sm font-semibold sm:text-base">Prefabs</span>
+                      <span className="block truncate text-xs text-muted-foreground">
+                        Ready-made sets of parts, like a whole room
+                      </span>
+                    </span>
+                    <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  </button>
+                )}
                 <CatalogStage
                   catalogs={catalogsWithCounts}
                   selectedCatalogId={selectedCatalogId}
@@ -1010,7 +1105,7 @@ export function AddPartDialog({
                   onCreateCatalog={createCatalog}
                   isOnline={isOnline}
                 />
-              )
+              </>)
             )}
             {!isWizardSearchActive && wizardStage === "material" && (
               <MaterialStage
@@ -1096,10 +1191,11 @@ export function AddPartDialog({
                 isToolRequest={isToolRequest}
               />
             )}
+            </>)}
           </div>
 
           {/* Pending Parts Tray */}
-          {pendingParts.length > 0 && wizardStage !== "review" && (
+          {pendingParts.length > 0 && wizardStage !== "review" && !prefabView && (
             <div className="shrink-0 border-t bg-muted/50">
               <div className="flex w-full items-center justify-between gap-2 px-2 py-3 text-left sm:px-4 sm:py-4 md:px-6">
                 <button
@@ -1187,7 +1283,7 @@ export function AddPartDialog({
             </div>
           )}
 
-          {wizardStage === "review" && (
+          {wizardStage === "review" && !prefabView && (
             <DialogFooter className="shrink-0 border-t px-2 py-3 sm:px-4 sm:py-4 md:px-6">
               <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className={`text-left sm:text-right ${isToolRequest ? "invisible" : ""}`}>
@@ -1217,7 +1313,7 @@ export function AddPartDialog({
                 >
                   {isAddingParts
                     ? "Adding..."
-                    : `Add ${pendingParts.length} ${isToolRequest ? "Tool" : "Part"}${pendingParts.length !== 1 ? "s" : ""}`}
+                    : `Add ${pendingParts.length} ${isToolRequest ? "Tool" : "Part"}${pendingParts.length !== 1 ? "s" : ""}${prefabTarget ? " to Prefab" : ""}`}
                 </Button>
               </div>
             </DialogFooter>

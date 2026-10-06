@@ -2240,4 +2240,32 @@ export const jobDrawingSheets = createTable(
   (t) => [index("job_drawing_sheet_set_idx").on(t.setId, t.sortOrder)],
 );
 
+// Prefabs: named, company-wide sets of parts (e.g. a whole room) that are added
+// to a material list in one go, times a multiplier.
+export const materialPrefabs = createTable(
+  "material_prefab",
+  (d) => ({
+    id: d.uuid().notNull().primaryKey().$defaultFn(() => crypto.randomUUID()),
+    organizationId: d.uuid().notNull().references(() => organizations.id, { onDelete: "cascade" }),
+    name: d.varchar({ length: 255 }).notNull(),
+    createdByUserId: d.varchar({ length: 255 }),
+    createdAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
+    updatedAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
+  }),
+  (t) => [index("material_prefab_org_idx").on(t.organizationId, t.name)],
+);
+
+export const materialPrefabItems = createTable(
+  "material_prefab_item",
+  (d) => ({
+    id: d.uuid().notNull().primaryKey().$defaultFn(() => crypto.randomUUID()),
+    prefabId: d.uuid().notNull().references(() => materialPrefabs.id, { onDelete: "cascade" }),
+    partDefinitionId: d.uuid().notNull().references(() => partDefinitions.id, { onDelete: "cascade" }),
+    supplierPartId: d.uuid().references(() => supplierParts.id, { onDelete: "set null" }),
+    quantity: d.numeric({ precision: 12, scale: 6 }).notNull().default("1"),
+    createdAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
+  }),
+  (t) => [unique("material_prefab_item_part_uniq").on(t.prefabId, t.partDefinitionId)],
+);
+
 export * from "./chat-push-schema";
