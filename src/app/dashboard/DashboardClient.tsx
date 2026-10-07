@@ -460,9 +460,9 @@ export function DashboardClient({
           {offlineMaterialListId ? (
             selectedMaterialList ? (
               <>
-                <div className="mb-6 flex items-start justify-between gap-3">
+                <div className="mb-6 flex items-center justify-between gap-3">
                   <div className="min-w-0">
-                    <div className="flex min-w-0 items-center gap-2">
+                    <div className="flex min-h-10 min-w-0 items-center gap-2">
                       <h1 data-tutorial="material-list" className="min-w-0 text-2xl font-bold break-words text-foreground sm:text-3xl">
                         {selectedMaterialList.name}
                       </h1>

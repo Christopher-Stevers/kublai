@@ -279,44 +279,40 @@ export default function MaterialListDetailPage({
               </div>
             </div>
           )}
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <div className="flex flex-col content-start items-start gap-0.5">
-                <div className="flex items-center gap-2">
-                  <h1 className="text-lg leading-tight font-bold text-foreground sm:text-xl">
-                    {mlHeader.name || (isToolRequest ? "Tool Request" : "Material List")}
-                  </h1>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setShowMaterialListNameModal(true)}
-                    className="h-8 w-8 shrink-0"
-                    aria-label="Edit material list"
-                  >
-                    <PencilIcon className="h-4 w-4" />
-                  </Button>
-                </div>
-                <button
-                  onClick={() => {
-                    if (mlHeader.jobId) {
-                      router.push(`/dashboard/jobs/${mlHeader.jobId}`);
-                    } else {
-                      handleJobInfoClick();
-                    }
-                  }}
-                  className="text-muted-foreground h-auto text-sm leading-tight hover:text-foreground"
+          <div className="space-y-1">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex min-h-10 min-w-0 items-center gap-2">
+                <h1 className="min-w-0 text-lg leading-tight font-bold break-words text-foreground sm:text-xl">
+                  {mlHeader.name || (isToolRequest ? "Tool Request" : "Material List")}
+                </h1>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setShowMaterialListNameModal(true)}
+                  className="h-8 w-8 shrink-0"
+                  aria-label="Edit material list"
                 >
-                  Job: {jobName || "Not set"}
-                </button>
+                  <PencilIcon className="h-4 w-4" />
+                </Button>
               </div>
+              {!verifyOrderId && (
+                <ViewToggle view={viewMode} onViewChange={setViewMode} showOnMobile />
+              )}
             </div>
-            <div className="flex min-w-[5.75rem] shrink-0 flex-col items-end gap-1">
+            <div className="flex items-center justify-between gap-3">
+              <button
+                onClick={() => {
+                  if (mlHeader.jobId) {
+                    router.push(`/dashboard/jobs/${mlHeader.jobId}`);
+                  } else {
+                    handleJobInfoClick();
+                  }
+                }}
+                className="text-muted-foreground h-auto text-sm leading-tight hover:text-foreground"
+              >
+                Job: {jobName || "Not set"}
+              </button>
               <MaterialListSyncBadge status={listSyncStatus} />
-              {!verifyOrderId && <ViewToggle
-                view={viewMode}
-                onViewChange={setViewMode}
-                showOnMobile
-                  />}
             </div>
           </div>
         </div>
