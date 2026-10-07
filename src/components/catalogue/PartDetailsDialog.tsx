@@ -1,4 +1,5 @@
 "use client";
+import { FinancialOnly, useFinancialVisibility } from "~/components/permissions/FinancialVisibility";
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
@@ -994,6 +995,7 @@ export function PartDetailsDialog({
     window.setTimeout(() => setCopiedPartUuid(false), 1500);
   };
 
+  const showMoney = useFinancialVisibility();
   const handleSubmit = async () => {
     setSubmitError(null);
 
@@ -1027,7 +1029,7 @@ export function PartDetailsDialog({
           supplierId,
           supplierSku: supplierSku.trim() || undefined,
           lastKnownUnitCost:
-            normalizeCurrencyInput(lastKnownUnitCost) || undefined,
+            showMoney ? normalizeCurrencyInput(lastKnownUnitCost) || undefined : undefined,
           supplierIsPreferred: preferredSupplierId === supplierId,
           currency: "CAD",
         }
@@ -1537,7 +1539,7 @@ export function PartDetailsDialog({
                     />
                   </div>
 
-                  <div className="min-w-0">
+                  <FinancialOnly><div className="min-w-0">
                     <Label>Unit Cost</Label>
                     <Input
                       type="text"
@@ -1555,7 +1557,7 @@ export function PartDetailsDialog({
                       className="mt-1 bg-card"
                       disabled={isLoading}
                     />
-                  </div>
+                  </div></FinancialOnly>
 
                   <div>
                     <Label>Preferred</Label>

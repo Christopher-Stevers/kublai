@@ -1,3 +1,5 @@
+import { FinancialVisibilityProvider } from "~/components/permissions/FinancialVisibility";
+import { userCan } from "~/server/auth/permissions";
 import { TutorialGate } from "~/components/tutorial/TutorialGate";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
@@ -55,6 +57,7 @@ export default async function DashboardLayout({
         userId={effectiveUserId}
         initialCompleted={!!user.tutorialCompletedAt}
       >
+        <FinancialVisibilityProvider initialVisible={userCan(user, "financial.view")}>
         <DrawingAccountProvider userId={effectiveUserId} organizationId={organizationId}>
         <div className="bg-canvas flex min-h-screen flex-col">
           <ReplicacheSyncBootstrap
@@ -66,6 +69,7 @@ export default async function DashboardLayout({
           <main className="flex-1">{children}</main>
         </div>
         </DrawingAccountProvider>
+        </FinancialVisibilityProvider>
       </TutorialGate>
     </HydrateClient>
   );

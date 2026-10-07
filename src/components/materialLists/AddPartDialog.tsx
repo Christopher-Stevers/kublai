@@ -1,4 +1,5 @@
 "use client";
+import { FinancialOnly } from "~/components/permissions/FinancialVisibility";
 
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useMaterialListSortPreference } from "~/hooks/use-material-list-sort";
@@ -1372,12 +1373,12 @@ export function AddPartDialog({
           <div className={`shrink-0 border-t bg-card px-4 pt-1.5 sm:px-6 sm:pt-2 ${keyboardViewport ? "pb-1.5" : "pb-[calc(0.5rem+env(safe-area-inset-bottom))]"}`}>
             <div className="space-y-1.5">
               {prefabView ? null : wizardStage === "review" ? (
-                <div className={`flex items-baseline gap-1.5 ${isToolRequest ? "hidden" : ""}`}>
+                <FinancialOnly><div className={`flex items-baseline gap-1.5 ${isToolRequest ? "hidden" : ""}`}>
                   <span className="text-base text-muted-foreground sm:text-lg">Review Total</span>
                   <span className="text-base font-bold sm:text-lg">
                     ${reviewedPartsTotal.toFixed(2)}
                   </span>
-                </div>
+                </div></FinancialOnly>
               ) : null}
               <div className={`grid gap-1.5 ${prefabView ? "grid-cols-1" : "grid-cols-3"}`}>
                 {prefabView || wizardStage === "review" ? (

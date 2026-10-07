@@ -1,3 +1,4 @@
+import { userCan } from "~/server/auth/permissions";
 import { expandLegacyFacets, facetCount } from "~/lib/catalogue-facets";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
@@ -2416,7 +2417,7 @@ export const catalogueRouter = createTRPCRouter({
           const supplierPartValues = {
             supplierSku: input.supplierSku ?? null,
             supplierName: input.supplierName ?? null,
-            lastKnownUnitCost: input.lastKnownUnitCost ?? null,
+            lastKnownUnitCost: userCan(ctx.user, "financial.view") ? input.lastKnownUnitCost ?? null : undefined,
             currency: input.currency ?? "CAD",
             isPreferred: input.supplierIsPreferred ?? false,
           };
@@ -2983,7 +2984,7 @@ export const catalogueRouter = createTRPCRouter({
               partDefinitionId: newPart.id,
               supplierSku: input.supplierSku ?? null,
               supplierName: input.supplierName ?? null,
-              lastKnownUnitCost: input.lastKnownUnitCost ?? null,
+              lastKnownUnitCost: userCan(ctx.user, "financial.view") ? input.lastKnownUnitCost ?? null : undefined,
               currency: input.currency ?? "CAD",
               isPreferred: input.supplierIsPreferred ?? false,
             });

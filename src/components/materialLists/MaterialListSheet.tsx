@@ -1,7 +1,9 @@
 "use client";
+import { useFinancialVisibility } from "~/components/permissions/FinancialVisibility";
 import {
   MaterialListTableRow,
   MATERIAL_LIST_SHEET_COLUMNS,
+  MATERIAL_LIST_SHEET_COLUMNS_NO_MONEY,
   type MaterialListTableRowProps,
 } from "./MaterialListTableRow";
 import { useReplicacheSyncing } from "~/hooks/use-replicache-material-list";
@@ -21,16 +23,17 @@ export function MaterialListSheet({
   className?: string;
   isToolRequest?: boolean;
 }) {
+  const showMoney = useFinancialVisibility();
   const syncing = useReplicacheSyncing();
   return (
     <div data-tutorial={items.length ? "material-items" : undefined} className={`parts-sheet-scroll ${className}`}>
       <table
         aria-label="Material list"
-        className="parts-sheet block w-full min-w-[70rem]"
+        className={`parts-sheet block w-full ${showMoney ? "min-w-[70rem]" : "min-w-[58rem]"}`}
       >
         <thead className="sticky top-0 z-10 block">
           <tr
-            className={`grid ${MATERIAL_LIST_SHEET_COLUMNS} parts-sheet-header`}
+            className={`grid ${showMoney ? MATERIAL_LIST_SHEET_COLUMNS : MATERIAL_LIST_SHEET_COLUMNS_NO_MONEY} parts-sheet-header`}
           >
             {[
               "Photo",
@@ -38,8 +41,7 @@ export function MaterialListSheet({
               "Room",
               "Qty",
               isToolRequest ? "From" : "Supplier",
-              isToolRequest ? " " : "Each",
-              isToolRequest ? "  " : "Total",
+              ...(showMoney ? [isToolRequest ? " " : "Each", isToolRequest ? "  " : "Total"] : []),
               "Sync",
               "Actions",
             ].map((label) => (

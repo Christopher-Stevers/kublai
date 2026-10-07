@@ -240,7 +240,7 @@ function isPermanentMaterialListSyncFailure(message: string) {
 }
 
 import { createTRPCRouter, hasDashboardAccess } from "~/server/api/trpc";
-import { assertCan } from "~/server/auth/permissions";
+import { assertCan, userCan } from "~/server/auth/permissions";
 import { publishMaterialListEvent } from "~/server/material-list-events";
 import { ensureToolRoomSupplier } from "~/server/assets/service";
 import {
@@ -1406,7 +1406,9 @@ export const materialListRouter = createTRPCRouter({
           return sum + price;
         }, 0);
 
-        const markup = input.markupPercent / 100;
+        const effectiveMarkup = userCan(ctx.user, "financial.view")
+          ? input.markupPercent : Number(quote.markupPercent ?? 0);
+        const markup = effectiveMarkup / 100;
         const total = subtotalMaterials * (1 + markup);
 
         // Update quote
@@ -1416,7 +1418,7 @@ export const materialListRouter = createTRPCRouter({
           total: string;
           notes?: string | null;
         } = {
-          markupPercent: input.markupPercent.toString(),
+          markupPercent: effectiveMarkup.toString(),
           subtotalMaterials: subtotalMaterials.toString(),
           total: total.toString(),
         };
@@ -1490,7 +1492,8 @@ export const materialListRouter = createTRPCRouter({
         return sum + price;
       }, 0);
 
-      const markup = input.markupPercent / 100;
+      const effectiveMarkup = userCan(ctx.user, "financial.view") ? input.markupPercent : Number(quote.markupPercent ?? 0);
+      const markup = effectiveMarkup / 100;
       const total = subtotalMaterials * (1 + markup);
 
       // Update quote
@@ -1500,7 +1503,7 @@ export const materialListRouter = createTRPCRouter({
         total: string;
         notes?: string | null;
       } = {
-        markupPercent: input.markupPercent.toString(),
+        markupPercent: effectiveMarkup.toString(),
         subtotalMaterials: subtotalMaterials.toString(),
         total: total.toString(),
       };
@@ -1610,7 +1613,9 @@ export const materialListRouter = createTRPCRouter({
             item.descriptionSnapshot?.trim() ||
             item.partDefinitionDisplayName?.trim() ||
             "Item";
-          return `- ${description} × ${qty}     $${adjustedPrice.toFixed(2)}`;
+          return userCan(ctx.user, "financial.view")
+            ? `- ${description} × ${qty}     $${adjustedPrice.toFixed(2)}`
+            : `- ${description} × ${qty}`;
         })
         .join("\n");
 
@@ -1622,9 +1627,7 @@ export const materialListRouter = createTRPCRouter({
 
 Here's the materials quote for the ${jobName}:
 
-${lineItems}
------------------------------
-Total: $${finalTotal.toFixed(2)}`;
+${lineItems}${userCan(ctx.user, "financial.view") ? `\n-----------------------------\nTotal: $${finalTotal.toFixed(2)}` : ""}`;
 
       // Add notes from quote if available
       if (quote.notes && quote.notes.trim()) {

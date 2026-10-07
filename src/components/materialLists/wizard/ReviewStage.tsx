@@ -1,3 +1,4 @@
+import { FinancialOnly } from "~/components/permissions/FinancialVisibility";
 import { useState, useEffect } from "react";
 import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
@@ -424,14 +425,14 @@ export function ReviewStage({
                           <h3 className="line-clamp-2 text-sm font-semibold text-foreground sm:truncate sm:text-base">
                             {pendingPart.partDefinition.displayName}
                           </h3>
-                          <div className={`mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground ${isToolRequest ? "hidden" : ""}`}>
+                          <FinancialOnly><div className={`mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground ${isToolRequest ? "hidden" : ""}`}>
                             <span>
                               Total:{" "}
                               <span className="font-semibold text-foreground">
                                 ${lineTotal.toFixed(2)}
                               </span>
                             </span>
-                          </div>
+                          </div></FinancialOnly>
                           {pendingPart.partDefinition.material && (
                             <p className="mt-0.5 hidden truncate text-xs text-muted-foreground sm:block">
                               {pendingPart.partDefinition.material}
@@ -525,7 +526,7 @@ export function ReviewStage({
 
                   <div className="flex h-8 min-w-0 items-center justify-end self-center overflow-hidden whitespace-nowrap text-sm font-semibold text-foreground">
                     {!isToolRequest && (
-                      <span className="shrink-0">${lineTotal.toFixed(2)}</span>
+                      <FinancialOnly><span className="shrink-0">${lineTotal.toFixed(2)}</span></FinancialOnly>
                     )}
                   </div>
 

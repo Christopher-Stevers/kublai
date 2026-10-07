@@ -1,4 +1,5 @@
 "use client";
+import { FinancialOnly } from "~/components/permissions/FinancialVisibility";
 
 import { useState } from "react";
 import { api } from "~/trpc/react";
@@ -119,9 +120,9 @@ export function QuotesList() {
                   </h3>
                 </div>
                 <div className="mt-1 flex flex-col gap-1 text-xs text-muted-foreground sm:flex-row sm:flex-wrap sm:gap-4 sm:text-sm">
-                  <span className="font-medium text-foreground">
+                  <FinancialOnly><span className="font-medium text-foreground">
                     {formatCurrency(quote.total)}
-                  </span>
+                  </span></FinancialOnly>
                   {quote.materialListName && (
                     <span className="truncate">
                       Material List: {quote.materialListName}

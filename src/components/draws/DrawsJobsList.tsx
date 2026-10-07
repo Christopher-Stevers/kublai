@@ -1,4 +1,5 @@
 "use client";
+import { useFinancialVisibility } from "~/components/permissions/FinancialVisibility";
 
 import Link from "next/link";
 import { ChevronRightIcon, ReceiptIcon, WifiOffIcon } from "lucide-react";
@@ -12,6 +13,11 @@ import { DrawStatusBadge } from "./DrawStatusBadge";
 import { ListPageSkeleton } from "~/components/ui/skeleton";
 
 export function DrawsJobsList() {
+  const showMoney = useFinancialVisibility();
+  return showMoney ? <DrawsJobsListContent /> : <p>Dollar values are hidden for your account.</p>;
+}
+
+function DrawsJobsListContent() {
   const isOnline = useOnlineStatus();
   const { data: jobs, isLoading, error } = api.draws.listJobs.useQuery(
     undefined,

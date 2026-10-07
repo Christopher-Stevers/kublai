@@ -34,6 +34,7 @@ const percentInput = z.number().min(0).max(100);
 // Draws show billing figures, so every procedure requires the draws tab.
 const drawsProcedure = hasDashboardAccess.use(({ ctx, next }) => {
   assertCanAccessTab(ctx.user, "draws");
+  assertCan(ctx.user, "financial.view", "Dollar values are hidden for your account.");
   return next({
     ctx: { organizationId: ctx.user.organizationId },
   });

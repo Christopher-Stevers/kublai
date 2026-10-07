@@ -2,11 +2,15 @@ import { and, eq, sql } from "drizzle-orm";
 import type { PatchOperation, PullRequestV1, PullResponseV1 } from "replicache";
 import { db } from "~/server/db";
 import { replicacheClientGroups, replicacheClients } from "~/server/db/schema";
+import { userCan } from "~/server/auth/permissions";
+import { redactFinancialValues } from "~/lib/financial-visibility";
 import { ReplicacheViews } from "./views";
 
 export class ReplicacheOwnershipError extends Error {}
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
-type User = { id: string; organizationId: string | null };
+type User = { id: string; organizationId: string | null; role?: string | null;
+  permissionConfig?: unknown; stripeSubscriptionId?: string | null;
+  subscriptionStatus?: string | null; subscriptionEndsAt?: Date | string | null };
 const views = new ReplicacheViews();
 
 export async function ensureClientGroup(
@@ -77,7 +81,8 @@ export async function pullSnapshot(
   if (!user.organizationId)
     throw new Error("User must belong to an organization");
   const org = user.organizationId;
-  const scope = `${kind}:${org}:${request.schemaVersion}:view-v2`;
+  const showMoney = userCan(user, "financial.view");
+  const scope = `${kind}:${org}:${request.schemaVersion}:view-v3:money-${showMoney}`;
   const receivedOrder =
     request.cookie &&
     typeof request.cookie === "object" &&
@@ -124,7 +129,8 @@ export async function pullSnapshot(
           let view = views.find(scope, fingerprint);
           if (!view) {
             const buildStart = Date.now();
-            view = views.create(scope, fingerprint, await build(tx));
+            const patch = await build(tx);
+            view = views.create(scope, fingerprint, showMoney ? patch : redactFinancialValues(patch));
             buildMs = Date.now() - buildStart;
           }
           return {

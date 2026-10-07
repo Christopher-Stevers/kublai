@@ -1,4 +1,5 @@
 "use client";
+import { FinancialOnly, useFinancialVisibility } from "~/components/permissions/FinancialVisibility";
 
 import Image from "next/image";
 import { MaterialListSyncIndicator } from "./MaterialListSyncIndicator";
@@ -62,6 +63,9 @@ export interface MaterialListTableRowProps {
 export const MATERIAL_LIST_SHEET_COLUMNS =
   "grid-cols-[3rem_minmax(16rem,1fr)_10rem_10rem_12rem_6rem_7rem_3rem_3rem]";
 
+export const MATERIAL_LIST_SHEET_COLUMNS_NO_MONEY =
+  "grid-cols-[3rem_minmax(16rem,1fr)_10rem_10rem_12rem_3rem_3rem]";
+
 function MaterialListTableRowComponent({
   item,
   materialListId,
@@ -69,6 +73,7 @@ function MaterialListTableRowComponent({
   isReplicacheSyncing = false,
   isToolRequest = false,
 }: MaterialListTableRowProps) {
+  const showMoney = useFinancialVisibility();
   const { getReplicache: getMaterialListReplicache, mutateAndSync: mutateMaterialListAndSync } = useWorkspaceMutations();
   const removeInFlightRef = useRef(false);
 
@@ -91,7 +96,7 @@ function MaterialListTableRowComponent({
 
   return (
     <tr
-      className={`grid ${MATERIAL_LIST_SHEET_COLUMNS} parts-picker-row parts-sheet-cells`}
+      className={`grid ${showMoney ? MATERIAL_LIST_SHEET_COLUMNS : MATERIAL_LIST_SHEET_COLUMNS_NO_MONEY} parts-picker-row parts-sheet-cells`}
     >
       <td className="relative min-h-11 w-12 overflow-hidden">
         {item.partDefinition?.imageUrl ? (
@@ -163,6 +168,7 @@ function MaterialListTableRowComponent({
           )}
         </div>
       </td>
+      <FinancialOnly>
       <td className="content-center">
         <div className="text-muted-foreground text-sm">
           {isToolRequest ? "" : unitCost > 0 ? `$${unitCost.toFixed(2)}` : "—"}
@@ -173,6 +179,7 @@ function MaterialListTableRowComponent({
           {isToolRequest ? "" : `$${lineTotal.toFixed(2)}`}
         </div>
       </td>
+      </FinancialOnly>
       <td className="content-center text-center">
         <MaterialListSyncIndicator
           status={resolveReplicacheSyncStatus(

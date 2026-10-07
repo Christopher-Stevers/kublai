@@ -47,6 +47,15 @@ export const PERMISSION_GROUPS = [
     ],
   },
   {
+    id: "financial",
+    label: "Dollar values",
+    description: "Visibility of prices, costs and totals throughout the app.",
+    icon: "receipt",
+    permissions: [
+      { key: "financial.view", label: "View dollar values", description: "Show dollar amounts in materials, catalogue, quotes, orders and billing. Turn off to hide all app dollar values for this member." },
+    ],
+  },
+  {
     id: "purchasing",
     label: "Quotes & orders",
     description: "Spending money with suppliers.",
@@ -142,6 +151,7 @@ const all = (value: boolean) =>
 /** Members without a paid seat and not admins (field staff). Matches the pre-2026-10 behaviour. */
 export const STANDARD_DEFAULTS: PermissionMap = {
   ...all(false),
+  "financial.view": true,
   "tab.dashboard": true,
   "tab.catalogue": true,
   "tab.suppliers": true,
@@ -196,6 +206,7 @@ export const PERMISSION_PRESETS: Array<{
       "Builds material lists, adds parts and checks in deliveries. Can't order, quote or delete.",
     permissions: {
       ...all(false),
+      "financial.view": true,
       "tab.dashboard": true,
       "tab.orders": true,
       "lists.edit": true,
@@ -217,6 +228,7 @@ export const PERMISSION_PRESETS: Array<{
     description: "Can look at jobs and lists but change nothing.",
     permissions: {
       ...all(false),
+      "financial.view": true,
       "tab.dashboard": true,
       "tab.catalogue": true,
       "tab.suppliers": true,

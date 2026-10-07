@@ -1,4 +1,5 @@
 "use client";
+import { FinancialOnly } from "~/components/permissions/FinancialVisibility";
 import { AddPartDialog, QuotePreviewSheet, OrdersPreviewSheet, ExistingQuotesOrdersDialog, JobRoomsView, JobDrawingsView, JobDocumentsView, JobChatView } from "~/components/app/DeferredFeatures";
 
 import { MaterialListOrderPickerDialog } from "~/components/materialLists/VerifyOrderButton";
@@ -773,15 +774,11 @@ export function DashboardClient({
                           )}
                         </div>
                       </CardHeader>
-                      <CardContent>
-                        <div className="space-y-2 text-sm text-muted-foreground">
+                      <CardContent className="flex flex-1 flex-col">
+                        <div className="flex flex-1 flex-col gap-2 text-sm text-muted-foreground">
                           <div className="flex items-center gap-2">
                             <PackageIcon className="h-4 w-4" />
                             <span>{list.itemCount} items</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-semibold">Total:</span>
-                            <span>${list.materialTotal.toFixed(2)}</span>
                           </div>
                           {list.contributors &&
                             list.contributors.length > 0 && (
@@ -803,11 +800,20 @@ export function DashboardClient({
                             totalSupplierCount={list.totalSupplierCount}
                             verifiedSupplierCount={list.verifiedSupplierCount}
                           />
-                          <div className="flex items-center gap-2">
-                            <CalendarIcon className="h-4 w-4" />
-                            <span>
-                              {format(new Date(list.createdAt), "MMM d, yyyy")}
-                            </span>
+                          <div className="mt-auto flex items-end justify-between gap-3 pt-1">
+                            <div className="flex items-center gap-2">
+                              <CalendarIcon className="h-4 w-4" />
+                              <span>
+                                {format(new Date(list.createdAt), "MMM d, yyyy")}
+                              </span>
+                            </div>
+                            <FinancialOnly>
+                              {list.kind !== "tools" && (
+                                <span className="shrink-0 font-semibold text-foreground tabular-nums">
+                                  ${list.materialTotal.toFixed(2)}
+                                </span>
+                              )}
+                            </FinancialOnly>
                           </div>
                         </div>
                       </CardContent>

@@ -1,4 +1,5 @@
 "use client";
+import { FinancialOnly } from "~/components/permissions/FinancialVisibility";
 
 import { api } from "~/trpc/react";
 import {
@@ -97,11 +98,11 @@ export function ExistingQuotesOrdersDialog({
                           {(item as { quoteNumber?: string | null })
                             ?.quoteNumber || `#${item.id.slice(0, 8)}`}
                           {(item as { total?: string | null })?.total && (
-                            <span className="ml-2 text-muted-foreground">
+                            <FinancialOnly><span className="ml-2 text-muted-foreground">
                               - ${parseFloat(
                                 (item as { total: string }).total,
                               ).toFixed(2)}
-                            </span>
+                            </span></FinancialOnly>
                           )}
                         </>
                       ) : (

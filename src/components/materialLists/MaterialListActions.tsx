@@ -1,4 +1,5 @@
 "use client";
+import { FinancialOnly } from "~/components/permissions/FinancialVisibility";
 import { useState } from "react";
 import {
   BoxesIcon,
@@ -55,14 +56,14 @@ export function MaterialListActions({
   return (
     <div className="mx-auto max-w-6xl space-y-1.5">
       {!onNotes && !isToolRequest && (
-        <div className="flex items-baseline gap-1.5">
+        <FinancialOnly><div className="flex items-baseline gap-1.5">
           <span className="text-base text-muted-foreground sm:text-lg">
             Material Total
           </span>
           <span className="text-base font-bold sm:text-lg">
             ${total.toFixed(2)}
           </span>
-        </div>
+        </div></FinancialOnly>
       )}
       <div className="grid grid-cols-3 gap-1.5">
         {onNotes ? (

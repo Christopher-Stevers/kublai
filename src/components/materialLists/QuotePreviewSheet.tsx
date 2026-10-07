@@ -1,4 +1,5 @@
 "use client";
+import { FinancialOnly } from "~/components/permissions/FinancialVisibility";
 
 import { useState, useEffect } from "react";
 import { api } from "~/trpc/react";
@@ -221,7 +222,7 @@ export function QuotePreviewSheet({
                       <span>
                         {displayName} × {qty}
                       </span>
-                      <span>${price.toFixed(2)}</span>
+                      <FinancialOnly><span>${price.toFixed(2)}</span></FinancialOnly>
                     </div>
                   );
                 })}
@@ -230,7 +231,7 @@ export function QuotePreviewSheet({
           )}
 
           {/* Totals */}
-          <div className="space-y-2 border-t pt-4">
+          <FinancialOnly><div className="space-y-2 border-t pt-4">
             <div className="flex justify-between">
               <span>Materials Subtotal:</span>
               <span>${subtotal.toFixed(2)}</span>
@@ -286,7 +287,7 @@ export function QuotePreviewSheet({
               <span>Total:</span>
               <span>${total.toFixed(2)}</span>
             </div>
-          </div>
+          </div></FinancialOnly>
 
           {/* Notes */}
           <div className="space-y-2 border-t pt-4">

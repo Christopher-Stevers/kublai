@@ -57,6 +57,7 @@ describe("QR invites", () => {
       .map(([key]) => key)
       .sort();
     expect(allowed).toEqual([
+      "financial.view",
       "lists.edit",
       "orders.receive",
       "parts.create",

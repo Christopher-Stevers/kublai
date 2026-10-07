@@ -1,4 +1,5 @@
 "use client";
+import { FinancialOnly } from "~/components/permissions/FinancialVisibility";
 
 import { useState } from "react";
 import { api } from "~/trpc/react";
@@ -189,9 +190,9 @@ export function SupplierPartsDialog({
                             <div>Supplier Name: {sp.supplierName}</div>
                           )}
                           {sp.lastKnownUnitCost && (
-                            <div>
+                            <FinancialOnly><div>
                               Cost: {sp.currency} {sp.lastKnownUnitCost}
-                            </div>
+                            </div></FinancialOnly>
                           )}
                           {sp.packSize && sp.packUom && (
                             <div>

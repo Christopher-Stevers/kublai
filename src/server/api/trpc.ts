@@ -11,6 +11,8 @@ import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import { ZodError } from "zod";
 
+import { userCan } from "~/server/auth/permissions";
+import { redactFinancialValues } from "~/lib/financial-visibility";
 import { db } from "~/server/db";
 import { withQueryStats } from "~/server/db/query-stats";
 
@@ -87,7 +89,7 @@ const SLOW_REQUEST_MS = 1500;
 
 // Logs duration and database round trips; `scripts/trpc-timing-report.mjs`
 // summarizes these lines from the service journal.
-const timingMiddleware = t.middleware(async ({ next, path }) => {
+const timingMiddleware = t.middleware(async ({ next, path, ctx }) => {
   const start = Date.now();
 
   const { result, stats } = await withQueryStats(() => next());
@@ -97,6 +99,9 @@ const timingMiddleware = t.middleware(async ({ next, path }) => {
   if (duration >= SLOW_REQUEST_MS) console.warn(`${message} [slow]`);
   else console.log(message);
 
+  if (result.ok && ctx.user && !userCan(ctx.user, "financial.view")) {
+    return { ...result, data: redactFinancialValues(result.data) };
+  }
   return result;
 });
 

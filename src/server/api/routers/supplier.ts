@@ -167,6 +167,7 @@ export const supplierRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      if (!userCan(ctx.user, "financial.view") && "lastKnownUnitCost" in input) input.lastKnownUnitCost = undefined;
       // Linking parts to suppliers is part of editing either one.
       if (!userCan(ctx.user, "suppliers.edit") && !userCan(ctx.user, "parts.edit"))
         assertCan(ctx.user, "suppliers.edit");
@@ -397,6 +398,7 @@ export const supplierRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      if (!userCan(ctx.user, "financial.view") && "lastKnownUnitCost" in input) input.lastKnownUnitCost = undefined;
       // Linking parts to suppliers is part of editing either one.
       if (!userCan(ctx.user, "suppliers.edit") && !userCan(ctx.user, "parts.edit"))
         assertCan(ctx.user, "suppliers.edit");
@@ -475,6 +477,7 @@ export const supplierRouter = createTRPCRouter({
   removeSupplierPart: hasDashboardAccess
     .input(z.object({ id: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
+      if (!userCan(ctx.user, "financial.view") && "lastKnownUnitCost" in input) input.lastKnownUnitCost = undefined;
       assertCan(ctx.user, "suppliers.delete");
 
       if (!ctx.user.organizationId) {
@@ -514,6 +517,7 @@ export const supplierRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      if (!userCan(ctx.user, "financial.view") && "lastKnownUnitCost" in input) input.lastKnownUnitCost = undefined;
       // Linking parts to suppliers is part of editing either one.
       if (!userCan(ctx.user, "suppliers.edit") && !userCan(ctx.user, "parts.edit"))
         assertCan(ctx.user, "suppliers.edit");

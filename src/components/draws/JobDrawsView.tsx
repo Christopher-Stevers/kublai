@@ -1,4 +1,5 @@
 "use client";
+import { useFinancialVisibility } from "~/components/permissions/FinancialVisibility";
 
 import Link from "next/link";
 import { useEffect, useState, type KeyboardEvent } from "react";
@@ -104,7 +105,7 @@ function SummaryRow({
   );
 }
 
-export function JobDrawsView({ jobId }: { jobId: string }) {
+function JobDrawsViewContent({ jobId }: { jobId: string }) {
   const isOnline = useOnlineStatus();
   const utils = api.useUtils();
   const { data, isLoading, error } = api.draws.getJob.useQuery(
@@ -757,4 +758,9 @@ export function JobDrawsView({ jobId }: { jobId: string }) {
       </div>
     </div>
   );
+}
+
+export function JobDrawsView({ jobId }: { jobId: string }) {
+  const showMoney = useFinancialVisibility();
+  return showMoney ? <JobDrawsViewContent jobId={jobId} /> : <p>Dollar values are hidden for your account.</p>;
 }
