@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
-import { formatSize } from "~/lib/size-utils";
+import { formatSize, formatSizeDimensions } from "~/lib/size-utils";
 import { Card, CardContent } from "~/components/ui/card";
 import { useClientPagination } from "~/components/ui/list-pagination";
 import {
@@ -247,7 +247,7 @@ function SizeCard({
       }}
     >
       <CardContent className="flex h-full min-w-0 items-center justify-center p-3 text-center sm:p-4">
-        <p className={WIZARD_OPTION_LABEL_CLASS}>{formatSize(size.nominal, size.unit)}</p>
+        <p className={WIZARD_OPTION_LABEL_CLASS}>{formatSizeDimensions(size.nominal, size.unit)}</p>
       </CardContent>
     </Card>
   );
@@ -388,7 +388,7 @@ export function SizeStage({
       {subSizePreview && (
         <VerticalPickerOverlay
           title="Sub-size"
-          subtitle={`${formatSize(subSizePreview.size.nominal, subSizePreview.size.unit)} fittings`}
+          subtitle={`${formatSizeDimensions(subSizePreview.size.nominal, subSizePreview.size.unit)} fittings`}
           centerIndex={subSizePreview.selectedIndex}
           getItem={(index) => subSizePreview.size.subSizes?.[index] ?? null}
           getItemFontSize={(subSize, distance) => {

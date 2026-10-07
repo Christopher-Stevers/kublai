@@ -111,7 +111,7 @@ describe("tutorial on the real ForemanHQ workflow", () => {
     await screen.findByRole("heading", { name: "Select PVC type" });
     fireEvent.click(await screen.findByText("XFR", { exact: true }));
     await screen.findByRole("heading", { name: "Select Size" });
-    fireEvent.pointerUp(await screen.findByText('2 in', { exact: true }));
+    fireEvent.pointerUp(await screen.findByText('2"', { exact: true }));
     await screen.findByRole("heading", { name: "Select Category" });
     fireEvent.click(await screen.findByText("Fittings", { exact: true }));
     fireEvent.pointerUp(await screen.findByText('2" XFR 90', { exact: true }));
@@ -178,7 +178,7 @@ describe("tutorial on the real ForemanHQ workflow", () => {
     await guide("Select your material");
     fireEvent.click(await screen.findByText("XFR", { exact: true }));
     await guide("Select the size");
-    fireEvent.pointerUp(await screen.findByText("2 in", { exact: true }));
+    fireEvent.pointerUp(await screen.findByText('2"', { exact: true }));
     await guide("Select a category");
     fireEvent.click(await screen.findByText("Fittings", { exact: true }));
     await guide("Select a part");

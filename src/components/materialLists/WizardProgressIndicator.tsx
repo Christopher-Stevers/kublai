@@ -1,6 +1,6 @@
 "use client";
 
-import { formatSize } from "~/lib/size-utils";
+import { formatSizeDimensions } from "~/lib/size-utils";
 
 interface WizardProgressIndicatorProps {
   currentStage:
@@ -75,7 +75,7 @@ export function WizardProgressIndicator({
           ? selectedSize.unit === "All Sizes"
             ? "All Sizes"
             : (selectedSize.sizeLabel ??
-              formatSize(selectedSize.nominal, selectedSize.unit))
+              formatSizeDimensions(selectedSize.nominal, selectedSize.unit))
           : stage.label;
       case "category":
         return selectedCategory?.name ?? stage.label;
