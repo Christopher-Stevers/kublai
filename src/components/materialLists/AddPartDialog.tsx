@@ -128,7 +128,6 @@ export function AddPartDialog({
     selectedMaterialName,
     selectedSizeName,
     selectedCategoryName,
-    wizardSearchPlaceholder,
   } = usePartWizard(
     open,
     sortMode,
@@ -918,9 +917,8 @@ export function AddPartDialog({
           className={`fixed inset-x-0 top-14 bottom-0 z-[45] flex flex-col overflow-hidden bg-background sm:top-16 ${quantityPickerPreview ? "touch-none" : ""}`}
         >
           <div className="relative mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col">
-          <div className="shrink-0 px-2 pt-2 pb-1.5 sm:px-4 sm:pt-3 md:px-6">
-            <h2 className="text-base font-semibold sm:text-lg">{pageTitle}</h2>
-            {catalogueDownloading && (
+          {catalogueDownloading && (
+          <div className="shrink-0 px-2 pt-2 sm:px-4 md:px-6">
               <p
                 role="status"
                 className="text-muted-foreground flex items-center gap-2 text-xs"
@@ -929,11 +927,11 @@ export function AddPartDialog({
                 Saving the catalogue to this device for offline use. You can
                 keep working meanwhile.
               </p>
-            )}
           </div>
+          )}
 
           {prefabTarget && (
-            <div className="mx-2 mb-2 flex shrink-0 items-center justify-between gap-2 rounded-md bg-primary/10 px-3 py-1.5 text-xs sm:mx-4 sm:text-sm md:mx-6">
+            <div className="mx-2 mt-2 mb-2 flex shrink-0 items-center justify-between gap-2 rounded-md bg-primary/10 px-3 py-1.5 text-xs sm:mx-4 sm:text-sm md:mx-6">
               <span className="min-w-0 truncate">
                 Picking parts for prefab <span className="font-semibold">{prefabTarget.name}</span>
               </span>
@@ -954,7 +952,7 @@ export function AddPartDialog({
           )}
 
           {wizardStage !== "review" && !prefabView && (
-            <div className="shrink-0 border-b px-2 pb-2 sm:px-4 sm:pb-4 md:px-6">
+            <div className="shrink-0 border-b px-2 pt-2 pb-2 sm:px-4 sm:pt-3 sm:pb-4 md:px-6">
               <WizardHeader
                 currentStage={wizardStage}
                 selectedCatalog={selectedCatalogName}
@@ -1163,16 +1161,6 @@ export function AddPartDialog({
                     <ChevronUp className="h-4 w-4 shrink-0 text-muted-foreground" />
                   )}
                 </button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={handleReviewAndAdd}
-                  data-tutorial="wizard-review-button"
-                  className="h-8 shrink-0 px-2.5 text-xs sm:h-9 sm:text-sm"
-                >
-                  {isToolRequest ? "Review Tools" : "Review Parts"}
-                </Button>
               </div>
 
               <div
@@ -1244,27 +1232,40 @@ export function AddPartDialog({
                     ${reviewedPartsTotal.toFixed(2)}
                   </span>
                 </div>
-              ) : (
-                <div className="relative">
-                  <Search className="absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2 text-muted-foreground/70" />
-                  <Input
-                    value={wizardSearchQuery}
-                    onChange={(event) => setWizardSearchQuery(event.target.value)}
-                    placeholder={wizardSearchPlaceholder}
-                    aria-label="Search parts"
-                    className="h-9 w-full rounded-lg pl-8 text-sm"
-                  />
-                </div>
-              )}
-              <div className={`grid gap-1.5 ${prefabView ? "grid-cols-1" : wizardStage === "review" ? "grid-cols-3" : "grid-cols-2"}`}>
-                <Button
-                  variant="outline"
-                  className={barButton}
-                  onClick={closeDialogAndCleanHistory}
-                >
-                  <XIcon className="mr-1 h-3.5 w-3.5 shrink-0" />
-                  Cancel
-                </Button>
+              ) : null}
+              <div className={`grid gap-1.5 ${prefabView ? "grid-cols-1" : wizardStage === "review" ? "grid-cols-3" : "grid-cols-[2fr_1fr_1fr]"}`}>
+                {prefabView || wizardStage === "review" ? (
+                  <Button
+                    variant="outline"
+                    className={barButton}
+                    onClick={closeDialogAndCleanHistory}
+                  >
+                    <XIcon className="mr-1 h-3.5 w-3.5 shrink-0" />
+                    Cancel
+                  </Button>
+                ) : (
+                  <>
+                    <div className="relative min-w-0">
+                      <Search className="absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2 text-muted-foreground/70" />
+                      <Input
+                        value={wizardSearchQuery}
+                        onChange={(event) => setWizardSearchQuery(event.target.value)}
+                        placeholder="Search parts"
+                        aria-label="Search parts"
+                        className="h-9 w-full rounded-lg pl-8 text-sm"
+                      />
+                    </div>
+                    <Button
+                      variant={pendingParts.length > 0 ? "default" : "outline"}
+                      className={barButton}
+                      onClick={handleReviewAndAdd}
+                      disabled={pendingParts.length === 0}
+                      data-tutorial="wizard-review-button"
+                    >
+                      Review{pendingParts.length > 0 ? ` (${pendingParts.length})` : ""}
+                    </Button>
+                  </>
+                )}
                 {prefabView ? null : wizardStage === "review" ? (
                   <>
                     <Button
@@ -1316,7 +1317,6 @@ export function AddPartDialog({
                       })
                     }
                   >
-                    <PlusIcon className="mr-1 h-3.5 w-3.5 shrink-0" />
                     {isOnline ? "Create Part" : "Create Part (online)"}
                   </Button>
                 )}
