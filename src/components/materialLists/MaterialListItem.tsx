@@ -214,10 +214,6 @@ function MaterialListItemComponent({
     null,
   );
   const quantity = parseFloat(item.quantity);
-  const unitCost = item.unitCost ? parseFloat(item.unitCost) : 0;
-  const lineTotal = item.extendedPrice
-    ? parseFloat(item.extendedPrice)
-    : quantity * unitCost;
 
   const handleRemove = () => {
     if (removeInFlightRef.current) return;
@@ -656,6 +652,17 @@ function MaterialListItemComponent({
       <CardContent className="h-full p-0">
         <div className="flex h-full w-full flex-col px-3 pt-3 pb-2">
           <InitialsSyncBadge user={item.addedBy} status={itemSyncStatus} />
+          {!verifyMode && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="bg-card/90 ring-border text-muted-foreground absolute top-2 right-2 z-20 h-9 w-9 rounded-full p-0 shadow-sm ring-1 transition-colors hover:bg-red-50 hover:text-red-600"
+              onClick={handleRemove}
+              aria-label="Remove item"
+            >
+              <TrashIcon className="h-4 w-4" />
+            </Button>
+          )}
           <div
             className="relative mb-3 aspect-square w-full overflow-hidden rounded-xl bg-muted"
             style={
@@ -758,9 +765,10 @@ function MaterialListItemComponent({
           )}
 
           {!verifyMode && (
-            <div className="mt-auto flex flex-col gap-1 pt-2">
-              <div className="flex min-h-10 items-center gap-1 px-0 py-1">
-                <span className="shrink-0 text-[9px] font-medium tracking-tighter text-muted-foreground/70 uppercase">
+            <div className="mt-auto flex flex-col gap-2 pt-2">
+              {/* Each label sits just above its control. */}
+              <div className="flex flex-col gap-0.5">
+                <span className="px-0.5 text-[10px] font-medium tracking-wide text-muted-foreground/80 uppercase">
                   Quantity
                 </span>
                 <QuantityControls
@@ -772,8 +780,8 @@ function MaterialListItemComponent({
                 />
               </div>
 
-              <div className="flex min-h-10 items-center gap-1 px-0 py-1">
-                <span className="shrink-0 text-[9px] font-medium tracking-tighter text-muted-foreground/70 uppercase">
+              <div className="flex flex-col gap-0.5">
+                <span className="px-0.5 text-[10px] font-medium tracking-wide text-muted-foreground/80 uppercase">
                   Supplier
                 </span>
                 {isToolRequest ? (
@@ -793,23 +801,7 @@ function MaterialListItemComponent({
                 )}
               </div>
 
-              <div className="grid min-h-10 min-w-0 grid-cols-[3rem_minmax(0,1fr)_2rem] items-center gap-0.5 px-1">
-                <span className="text-[10px] font-medium tracking-wide text-muted-foreground/70 uppercase">
-                  {isToolRequest ? "" : "Total"}
-                </span>
-                <span className="min-w-0 truncate text-right text-sm font-semibold text-foreground tabular-nums sm:text-base">
-                  {isToolRequest ? "" : `$${lineTotal.toFixed(2)}`}
-                </span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 w-8 p-0 text-muted-foreground/70 transition-colors hover:bg-red-50 hover:text-red-600"
-                  onClick={handleRemove}
-                  aria-label="Remove item"
-                >
-                  <TrashIcon className="h-4 w-4" />
-                </Button>
-              </div>
+              {/* Line totals are hidden for now (prices are not set up yet). */}
             </div>
           )}
         </div>
