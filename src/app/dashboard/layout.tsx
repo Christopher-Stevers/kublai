@@ -56,7 +56,7 @@ export default async function DashboardLayout({
         initialCompleted={!!user.tutorialCompletedAt}
       >
         <DrawingAccountProvider userId={effectiveUserId} organizationId={organizationId}>
-        <div className="bg-muted/50 flex min-h-screen flex-col">
+        <div className="bg-canvas flex min-h-screen flex-col">
           <ReplicacheSyncBootstrap
             userId={effectiveUserId}
             organizationId={organizationId}

@@ -1062,7 +1062,7 @@ export function AddPartDialog({
           data-tutorial="add-part-dialog"
           data-tutorial-stage={wizardStage}
           data-tutorial-pending-count={pendingParts.length}
-          className={`fixed inset-x-0 flex flex-col overflow-hidden bg-background ${keyboardViewport ? "z-[60]" : "top-14 bottom-0 z-[45] sm:top-16"} ${quantityPickerPreview ? "touch-none" : ""}`}
+          className={`fixed inset-x-0 flex flex-col overflow-hidden bg-canvas ${keyboardViewport ? "z-[60]" : "top-14 bottom-0 z-[45] sm:top-16"} ${quantityPickerPreview ? "touch-none" : ""}`}
           style={
             keyboardViewport
               ? { top: keyboardViewport.top, height: keyboardViewport.height }

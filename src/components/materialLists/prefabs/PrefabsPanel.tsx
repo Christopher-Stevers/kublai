@@ -246,7 +246,7 @@ export function PrefabsPanel({
                 ))}
               </ul>
             )}
-            <div className="sticky bottom-0 -mx-1 space-y-2 bg-background px-1 pt-1 pb-1">
+            <div className="sticky bottom-0 -mx-1 space-y-2 bg-canvas px-1 pt-1 pb-1">
             <div className="grid grid-cols-2 gap-2">
               {canEdit && prefab.items.length > 0 && (
                 <Button

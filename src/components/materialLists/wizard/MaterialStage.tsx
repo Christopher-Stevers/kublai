@@ -108,7 +108,7 @@ export function MaterialStage({
             type="button"
             key={entry.key}
             data-tutorial-choice={entry.name}
-            className={`flex ${WIZARD_OPTION_ITEM_SIZE_CLASS} cursor-pointer items-center justify-center rounded-xl border bg-card p-2 text-center shadow-sm transition hover:shadow-md focus-visible:outline-2 focus-visible:outline-blue-600 sm:p-4 ${entry.kind === "material" && selectedMaterialId === entry.material.id ? "border-primary border-2" : ""}`}
+            className={`flex ${WIZARD_OPTION_ITEM_SIZE_CLASS} cursor-pointer items-center justify-center rounded-xl border bg-card p-2 text-center shadow-[0_1px_2px_rgba(0,0,0,0.08),0_2px_8px_rgba(0,0,0,0.06)] transition hover:shadow-md focus-visible:outline-2 focus-visible:outline-blue-600 sm:p-4 ${entry.kind === "material" && selectedMaterialId === entry.material.id ? "border-primary border-2" : ""}`}
             onClick={() =>
               entry.kind === "group"
                 ? browse(entry.path)
