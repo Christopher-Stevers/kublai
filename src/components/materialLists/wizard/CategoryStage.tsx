@@ -6,6 +6,7 @@ import {
   WizardAllOption,
   WizardOptionCard,
   WIZARD_OPTION_GRID_CLASS,
+  wizardOptionGridStyle,
   WizardOptionPagination,
 } from "./WizardOptionGrid";
 
@@ -51,7 +52,10 @@ export function CategoryStage({
   return (
     <div className="space-y-3 sm:space-y-4">
       <h3 className="text-base font-semibold sm:text-lg">Select Category</h3>
-      <div className={WIZARD_OPTION_GRID_CLASS}>
+      <div
+        className={WIZARD_OPTION_GRID_CLASS}
+        style={wizardOptionGridStyle(1 + pagination.paginatedItems.length)}
+      >
         <WizardAllOption
           selected={allSelected}
           onSelect={() => onCategorySelect({ categoryId: null, name: "All Categories" })}

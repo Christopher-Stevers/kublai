@@ -6,6 +6,7 @@ import { Card, CardContent } from "~/components/ui/card";
 import { useClientPagination } from "~/components/ui/list-pagination";
 import {
   WIZARD_OPTION_GRID_CLASS,
+  wizardOptionGridStyle,
   WIZARD_OPTION_ITEM_SIZE_CLASS,
   WIZARD_OPTION_LABEL_CLASS,
   WIZARD_OPTION_SELECTED_CLASS,
@@ -373,7 +374,10 @@ export function SizeStage({
   return (
     <div className={`relative space-y-3 sm:space-y-4 ${subSizePreview ? "touch-none" : ""}`}>
       <h3 className="text-base font-semibold sm:text-lg">Select Size</h3>
-      <div className={WIZARD_OPTION_GRID_CLASS}>
+      <div
+        className={WIZARD_OPTION_GRID_CLASS}
+        style={wizardOptionGridStyle(1 + pagination.paginatedItems.length)}
+      >
         <WizardAllOption selected={allSelected} onSelect={() => onSizeSelect(null)} />
         {pagination.paginatedItems.map((size, index) => (
           <SizeCard

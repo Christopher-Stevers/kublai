@@ -6,6 +6,7 @@ import {
   WizardAllOption,
   WizardOptionCard,
   WIZARD_OPTION_GRID_CLASS,
+  wizardOptionGridStyle,
   WizardOptionPagination,
 } from "./WizardOptionGrid";
 
@@ -51,7 +52,12 @@ export function CatalogStage({
   return (
     <div className="space-y-3 sm:space-y-4">
       <h3 className="text-base font-semibold sm:text-lg">Select Catalog</h3>
-      <div className={WIZARD_OPTION_GRID_CLASS}>
+      <div
+        className={WIZARD_OPTION_GRID_CLASS}
+        style={wizardOptionGridStyle(
+          1 + (onPrefabsSelect ? 1 : 0) + pagination.paginatedItems.length,
+        )}
+      >
         <WizardAllOption selected={allSelected} onSelect={() => onCatalogSelect(null)} />
         {onPrefabsSelect && (
           <WizardOptionCard tutorialChoice="Prefabs" onClick={onPrefabsSelect}>

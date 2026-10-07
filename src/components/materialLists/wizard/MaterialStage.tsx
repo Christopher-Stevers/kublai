@@ -12,6 +12,7 @@ import {
   WIZARD_OPTION_LABEL_CLASS,
   WizardAllOption,
   WIZARD_OPTION_GRID_CLASS,
+  wizardOptionGridStyle,
   WIZARD_OPTION_ITEM_SIZE_CLASS,
   WizardOptionPagination,
 } from "./WizardOptionGrid";
@@ -90,7 +91,12 @@ export function MaterialStage({
           ))}
         </nav>
       )}
-      <div className={WIZARD_OPTION_GRID_CLASS}>
+      <div
+        className={WIZARD_OPTION_GRID_CLASS}
+        style={wizardOptionGridStyle(
+          (path.length === 0 ? 1 : 0) + pagination.paginatedItems.length,
+        )}
+      >
         {path.length === 0 && (
           <WizardAllOption
             selected={allSelected}
