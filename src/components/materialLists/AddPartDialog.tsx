@@ -835,6 +835,7 @@ export function AddPartDialog({
     wizardStage !== "review" && wizardSearchQuery.trim().length > 0;
 
   const addPartsHistoryEntryRef = useRef(false);
+  const stepBackRef = useRef<() => boolean>(() => false);
   const suppressNextAddPartsPopRef = useRef(false);
 
   useEffect(() => {
@@ -854,6 +855,13 @@ export function AddPartDialog({
     const handlePopState = () => {
       if (suppressNextAddPartsPopRef.current) {
         suppressNextAddPartsPopRef.current = false;
+        return;
+      }
+
+      // A back swipe/button steps back through the wizard; only at the first
+      // step does it leave Add Parts. Re-arm the entry so the next back is ours.
+      if (stepBackRef.current()) {
+        window.history.pushState(dialogState, "");
         return;
       }
 
@@ -927,8 +935,47 @@ export function AddPartDialog({
     };
   }, [showStepsBar]);
 
-  // Add Parts fills the main window: the app bar's back arrow and Escape close it.
-  useHeaderBackOverride(open ? closeDialogAndCleanHistory : null);
+  /** One step back inside Add Parts. Returns false at the first step. */
+  const stepBack = () => {
+    if (quantityPickerPreview) return true;
+    if (prefabTarget) {
+      setPendingParts([]);
+      resetWizard();
+      setPrefabView({ kind: "edit", prefabId: prefabTarget.id });
+      setPrefabTarget(null);
+      return true;
+    }
+    if (prefabView) {
+      setPrefabView(prefabView.kind === "edit" ? { kind: "list" } : null);
+      return true;
+    }
+    if (wizardStage === "review") {
+      setWizardStage(stageBeforeReviewRef.current);
+      return true;
+    }
+    if (wizardSearchQuery.trim()) {
+      setWizardSearchQuery("");
+      return true;
+    }
+    const order: WizardStage[] = ["catalog", "material", "size", "category", "part"];
+    const index = order.indexOf(wizardStage);
+    if (index > 0) {
+      setWizardStage(order[index - 1]!);
+      return true;
+    }
+    return false;
+  };
+  stepBackRef.current = stepBack;
+
+  // Add Parts fills the main window. The app bar's back arrow steps back like
+  // the back gesture; Escape closes it.
+  useHeaderBackOverride(
+    open
+      ? () => {
+          if (!stepBack()) closeDialogAndCleanHistory();
+        }
+      : null,
+  );
   useEffect(() => {
     if (!open) return;
     const onKeyDown = (event: KeyboardEvent) => {
