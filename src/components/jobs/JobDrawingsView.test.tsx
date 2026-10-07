@@ -226,9 +226,15 @@ describe("Drawings", () => {
     fireEvent.change(screen.getByLabelText("Search drawings"), {
       target: { value: "" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Show favorites" }));
+    // Filters live in the bottom bar's Filters menu.
+    const openFilters = () =>
+      fireEvent.keyDown(screen.getByRole("button", { name: /^Filters/ }), { key: "Enter" });
+    openFilters();
+    fireEvent.click(screen.getByRole("menuitemcheckbox", { name: "Starred only" }));
     expect(screen.queryByRole("button", { name: "Open M-101" })).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "List view" }));
+    expect(screen.getByRole("button", { name: "Filters (1)" })).toBeInTheDocument();
+    openFilters();
+    fireEvent.click(screen.getByRole("menuitem", { name: "List view" }));
     expect(screen.getByText("Heating plan")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Unfavorite M-102" }));
     expect(state.calls).toContainEqual([

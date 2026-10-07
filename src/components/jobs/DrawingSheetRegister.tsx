@@ -35,15 +35,24 @@ type Suggestion = {
 export function DrawingSheetRegister({
   jobId,
   sheets,
+  open: controlledOpen,
+  onOpenChange,
 }: {
   jobId: string;
   sheets: Sheet[];
   summaries: DrawingSheetSummary[];
+  /** Opened from elsewhere (e.g. a menu): no trigger button is shown. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
   const utils = api.useUtils();
   const mutation = api.drawingsWorkspace.metadata.useMutation();
-  const [open, setOpen] = useState(false),
+  const [ownOpen, setOwnOpen] = useState(false),
     [busy, setBusy] = useState(false);
+  const controlled = controlledOpen !== undefined;
+  const open = controlled ? controlledOpen : ownOpen;
+  const setOpen = (value: boolean) =>
+    controlled ? onOpenChange?.(value) : setOwnOpen(value);
   const [rows, setRows] = useState<Suggestion[]>([]),
     [status, setStatus] = useState("");
   const [region, setRegion] = useState({
@@ -206,9 +215,11 @@ export function DrawingSheetRegister({
     );
   return (
     <>
-      <Button variant="outline" onClick={() => setOpen(true)}>
-        Read title blocks
-      </Button>
+      {!controlled && (
+        <Button variant="outline" onClick={() => setOpen(true)}>
+          Read title blocks
+        </Button>
+      )}
       <Dialog
         open={open}
         onOpenChange={(value) => {

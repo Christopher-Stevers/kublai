@@ -16,6 +16,8 @@ import {
   DownloadIcon,
   LayoutGridIcon,
   ListIcon,
+  SearchIcon,
+  SlidersHorizontalIcon,
 } from "lucide-react";
 
 import { api } from "~/trpc/react";
@@ -34,8 +36,13 @@ import {
 } from "~/components/ui/dialog";
 import {
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu";
 import { useHeaderBackOverride } from "~/lib/header-back-events";
@@ -56,6 +63,8 @@ type NameDialog =
   | { kind: "rename-set"; id: string; name: string }
   | { kind: "rename-sheet"; id: string; name: string };
 
+const BAR_BUTTON =
+  "h-9 min-h-9 w-full rounded-lg px-1.5 py-1 text-xs leading-tight whitespace-normal";
 const BOTTOM_BAR =
   "bg-background fixed inset-x-0 bottom-0 z-40 border-t px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:hidden";
 
@@ -78,6 +87,7 @@ export function JobDrawingsView({ jobId }: { jobId: string }) {
   const [status, setStatus] = useState("");
   const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [listView, setListView] = useState(false);
+  const [registerOpen, setRegisterOpen] = useState(false);
   const [download, setDownload] = useState<string | null>(null);
   const downloader = useRef<AbortController | null>(null);
   const summaries = api.drawingsWorkspace.list.useQuery(
@@ -399,6 +409,15 @@ export function JobDrawingsView({ jobId }: { jobId: string }) {
 
   // Inside a folder: its sheets.
   if (setId) {
+    const disciplines = [
+      ...new Set(
+        sheets
+          .map((s) => bySheet.get(s.id)?.metadata.discipline)
+          .filter((value): value is string => Boolean(value)),
+      ),
+    ].sort();
+    const activeFilters =
+      (discipline ? 1 : 0) + (status ? 1 : 0) + (favoritesOnly ? 1 : 0);
     const uploadButton = (className: string, size: "default" | "lg" = "lg") => (
       <Button
         size={size}
@@ -431,88 +450,6 @@ export function JobDrawingsView({ jobId }: { jobId: string }) {
           <h2 className="text-foreground min-w-0 truncate text-xl font-semibold">
             {setData?.set.name ?? "Drawings"}
           </h2>
-          {canManage && uploadButton("hidden h-11 sm:inline-flex")}
-        </div>
-        <div className="mb-4 flex flex-wrap items-center gap-2">
-          <Input
-            aria-label="Search drawings"
-            placeholder="Search number, title or tag…"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            className="min-w-48 flex-1"
-          />
-          <select
-            aria-label="Discipline"
-            className="bg-background h-10 rounded border px-2 text-sm"
-            value={discipline}
-            onChange={(e) => setDiscipline(e.target.value)}
-          >
-            <option value="">All disciplines</option>
-            {[
-              ...new Set(
-                sheets
-                  .map((s) => bySheet.get(s.id)?.metadata.discipline)
-                  .filter(Boolean),
-              ),
-            ]
-              .sort()
-              .map((value) => (
-                <option key={value}>{value}</option>
-              ))}
-          </select>
-          <select
-            aria-label="Drawing status"
-            className="bg-background h-10 rounded border px-2 text-sm"
-            value={status}
-            onChange={(e) => setStatus(e.target.value)}
-          >
-            <option value="">All statuses</option>
-            {["draft", "for_review", "approved", "superseded"].map((value) => (
-              <option value={value} key={value}>
-                {value.replaceAll("_", " ")}
-              </option>
-            ))}
-          </select>
-          <Button
-            variant={favoritesOnly ? "default" : "outline"}
-            size="icon"
-            aria-label="Show favorites"
-            aria-pressed={favoritesOnly}
-            onClick={() => setFavoritesOnly((v) => !v)}
-          >
-            <StarIcon className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="outline"
-            size="icon"
-            aria-label={listView ? "Grid view" : "List view"}
-            onClick={() => setListView((v) => !v)}
-          >
-            {listView ? (
-              <LayoutGridIcon className="h-4 w-4" />
-            ) : (
-              <ListIcon className="h-4 w-4" />
-            )}
-          </Button>
-          {canManage && sheets.length > 0 && (
-            <DrawingSheetRegister
-              jobId={jobId}
-              sheets={sheets}
-              summaries={summarySnapshot.data ?? []}
-            />
-          )}
-          {account?.store && (
-            <Button
-              variant="outline"
-              disabled={
-                !setSnapshot.online || !sheets.length || Boolean(download)
-              }
-              onClick={() => void downloadFolder()}
-            >
-              <DownloadIcon className="mr-1 h-4 w-4" />
-              Save folder offline
-            </Button>
-          )}
         </div>
         {!setSnapshot.online && (
           <p role="status" className="mb-3 text-sm">
@@ -692,8 +629,119 @@ export function JobDrawingsView({ jobId }: { jobId: string }) {
             ))}
           </div>
         )}
-        {canManage && (
-          <div className={BOTTOM_BAR}>{uploadButton("h-12 w-full")}</div>
+        {/* Bottom bar like Add Parts: filters menu, search, add drawings. */}
+        <div className="bg-card fixed inset-x-0 bottom-0 z-40 border-t px-4 pt-1.5 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:px-6 sm:pt-2">
+          <div className="mx-auto grid max-w-6xl grid-cols-3 gap-1.5">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant={activeFilters > 0 ? "default" : "outline"}
+                  className={BAR_BUTTON}
+                >
+                  <SlidersHorizontalIcon className="mr-1 h-3.5 w-3.5 shrink-0" />
+                  Filters{activeFilters > 0 ? ` (${activeFilters})` : ""}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                side="top"
+                align="start"
+                className="max-h-[70dvh] min-w-56 overflow-y-auto"
+              >
+                <DropdownMenuLabel>Discipline</DropdownMenuLabel>
+                <DropdownMenuRadioGroup value={discipline} onValueChange={setDiscipline}>
+                  <DropdownMenuRadioItem value="">All disciplines</DropdownMenuRadioItem>
+                  {disciplines.map((value) => (
+                    <DropdownMenuRadioItem key={value} value={value}>
+                      {value}
+                    </DropdownMenuRadioItem>
+                  ))}
+                </DropdownMenuRadioGroup>
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel>Status</DropdownMenuLabel>
+                <DropdownMenuRadioGroup value={status} onValueChange={setStatus}>
+                  <DropdownMenuRadioItem value="">All statuses</DropdownMenuRadioItem>
+                  {["draft", "for_review", "approved", "superseded"].map((value) => (
+                    <DropdownMenuRadioItem key={value} value={value} className="capitalize">
+                      {value.replaceAll("_", " ")}
+                    </DropdownMenuRadioItem>
+                  ))}
+                </DropdownMenuRadioGroup>
+                <DropdownMenuSeparator />
+                <DropdownMenuCheckboxItem
+                  checked={favoritesOnly}
+                  onCheckedChange={(checked) => setFavoritesOnly(checked === true)}
+                >
+                  <StarIcon className="h-4 w-4" />
+                  Starred only
+                </DropdownMenuCheckboxItem>
+                <DropdownMenuItem onSelect={() => setListView((v) => !v)}>
+                  {listView ? (
+                    <LayoutGridIcon className="h-4 w-4" />
+                  ) : (
+                    <ListIcon className="h-4 w-4" />
+                  )}
+                  {listView ? "Grid view" : "List view"}
+                </DropdownMenuItem>
+                {((canManage && sheets.length > 0) || account?.store) && (
+                  <DropdownMenuSeparator />
+                )}
+                {canManage && sheets.length > 0 && (
+                  <DropdownMenuItem onSelect={() => setRegisterOpen(true)}>
+                    <FileTextIcon className="h-4 w-4" />
+                    Read title blocks
+                  </DropdownMenuItem>
+                )}
+                {account?.store && (
+                  <DropdownMenuItem
+                    disabled={!setSnapshot.online || !sheets.length || Boolean(download)}
+                    onSelect={() => void downloadFolder()}
+                  >
+                    <DownloadIcon className="h-4 w-4" />
+                    Save folder offline
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <div className="relative min-w-0">
+              <SearchIcon className="text-muted-foreground/70 pointer-events-none absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2" />
+              <Input
+                type="search"
+                enterKeyHint="search"
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck={false}
+                aria-label="Search drawings"
+                placeholder="Search"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") event.currentTarget.blur();
+                }}
+                className="h-9 w-full rounded-lg pl-8 text-sm [&::-webkit-search-cancel-button]:appearance-none"
+              />
+            </div>
+            <Button
+              className={BAR_BUTTON}
+              disabled={!canManage || uploading !== null}
+              title={canManage ? "Upload a PDF; each page becomes a drawing" : "You can't add drawings"}
+              onClick={() => fileInput.current?.click()}
+            >
+              {uploading && (
+                <Loader2Icon className="mr-1 h-3.5 w-3.5 shrink-0 animate-spin" />
+              )}
+              {uploading ? "Adding…" : "Add Drawings"}
+            </Button>
+          </div>
+        </div>
+        {canManage && sheets.length > 0 && (
+          <DrawingSheetRegister
+            jobId={jobId}
+            sheets={sheets}
+            summaries={summarySnapshot.data ?? []}
+            open={registerOpen}
+            onOpenChange={setRegisterOpen}
+          />
         )}
         {nameDialogView}
       </div>
