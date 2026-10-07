@@ -341,3 +341,53 @@ describe("drawing measure", () => {
     expect(screen.getByText('1/4" = 1\'-0"')).toBeInTheDocument();
   });
 });
+
+describe("drawing one-finger zoom", () => {
+  function pointer(frame: HTMLElement, kind: "pointerDown" | "pointerMove" | "pointerUp" | "pointerCancel", y: number, id = 1, x = 400) {
+    fireEvent[kind](frame, { clientX: x, clientY: y, pointerId: id, button: 0, buttons: kind === "pointerUp" ? 0 : 1 });
+  }
+  function scale(frame: HTMLElement) {
+    return Number(frame.firstElementChild?.getAttribute("style")?.match(/scale\(([^)]+)\)/)?.[1] ?? 1);
+  }
+  it("zooms both ways while holding the second tap, then stops on release", async () => {
+    const { frame } = openSheet();
+    tap(frame, 400, 300);
+    pointer(frame, "pointerDown", 300);
+    pointer(frame, "pointerMove", 430);
+    await waitFor(() => expect(scale(frame)).toBeGreaterThan(2));
+    pointer(frame, "pointerMove", 350);
+    await waitFor(() => expect(scale(frame)).toBeCloseTo(Math.exp(0.4)));
+    pointer(frame, "pointerUp", 350);
+    pointer(frame, "pointerMove", 500);
+    await waitFor(() => expect(scale(frame)).toBeCloseTo(Math.exp(0.4)));
+  });
+  it("retains ordinary double-tap zoom on release", async () => {
+    const { frame } = openSheet();
+    tap(frame, 400, 300);
+    tap(frame, 400, 300);
+    await waitFor(() => expect(scale(frame)).toBeCloseTo(3));
+  });
+  it("cancels the held zoom without latching into the next drag", async () => {
+    const { frame } = openSheet();
+    tap(frame, 400, 300);
+    pointer(frame, "pointerDown", 300);
+    pointer(frame, "pointerMove", 400);
+    pointer(frame, "pointerCancel", 400);
+    await waitFor(() => expect(scale(frame)).toBeCloseTo(Math.exp(0.8)));
+    pointer(frame, "pointerDown", 400);
+    pointer(frame, "pointerMove", 450);
+    pointer(frame, "pointerUp", 450);
+    await waitFor(() => expect(scale(frame)).toBeCloseTo(Math.exp(0.8)));
+  });
+  it("hands a held zoom over to a two-finger pinch without jumping", async () => {
+    const { frame } = openSheet();
+    tap(frame, 400, 300);
+    pointer(frame, "pointerDown", 300);
+    pointer(frame, "pointerMove", 400);
+    pointer(frame, "pointerDown", 400, 2, 500);
+    pointer(frame, "pointerMove", 400, 2, 600);
+    pointer(frame, "pointerUp", 400, 2, 600);
+    pointer(frame, "pointerUp", 400);
+    await waitFor(() => expect(scale(frame)).toBeCloseTo(Math.exp(0.8) * 2));
+  });
+});

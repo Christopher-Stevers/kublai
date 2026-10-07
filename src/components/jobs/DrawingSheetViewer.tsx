@@ -121,7 +121,9 @@ export function DrawingSheetViewer({
     seenSheet.current = sheetKey;
     scaleRead.current += 1;
   }
-  const lastTap = useRef(0);
+  const lastTap = useRef<{ time: number; x: number; y: number } | null>(null);
+  const panTap = useRef<{ time: number; x: number; y: number; moved: boolean } | null>(null);
+  const quickZoom = useRef<{ pointerId: number; y: number; anchor: Point; view: View; moved: boolean } | null>(null);
   const frameRequest = useRef(0);
   const commitTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const wheelSettleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -593,8 +595,16 @@ export function DrawingSheetViewer({
         pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
         velocity.current = { x: 0, y: 0, t: performance.now() };
         startGesture();
-        if (pointers.current.size > 1) editor.cancelGesture();
-        if (!measuring && pointers.current.size === 1 && editor.down(pointFromClient(event.clientX, event.clientY), event.target)) return;
+        if (pointers.current.size > 1) {
+          editor.cancelGesture();
+          quickZoom.current = null;
+          panTap.current = null;
+          lastTap.current = null;
+        }
+        if (!measuring && pointers.current.size === 1 && editor.down(pointFromClient(event.clientX, event.clientY), event.target)) {
+          lastTap.current = null;
+          return;
+        }
         if (pointers.current.size === 1) {
           if (measuring) {
             // A short press drops a point. A drag still pans, and a second finger still pinches.
@@ -602,15 +612,18 @@ export function DrawingSheetViewer({
             return;
           }
           const now = Date.now();
-          if (now - lastTap.current < 300) {
-            // Double tap: zoom in around the point, or back out when zoomed.
-            animateTo(
-              live.current.scale > 1.5
-                ? REST
-                : zoomAt(live.current, 3, fromCentre(event.clientX, event.clientY)),
-            );
-            lastTap.current = 0;
-          } else lastTap.current = now;
+          const previousTap = lastTap.current;
+          lastTap.current = null;
+          if (previousTap && now - previousTap.time < 300 &&
+              Math.hypot(event.clientX - previousTap.x, event.clientY - previousTap.y) < 32) {
+            // Wait for release before step-zooming: dragging the second press
+            // instead controls zoom continuously around its original position.
+            quickZoom.current = { pointerId: event.pointerId, y: event.clientY,
+              anchor: fromCentre(event.clientX, event.clientY), view: live.current, moved: false };
+            panTap.current = null;
+          } else {
+            panTap.current = { time: now, x: event.clientX, y: event.clientY, moved: false };
+          }
         } else if (measureTap.current) measureTap.current.moved = true;
       }}
       onPointerMove={(event) => {
@@ -618,6 +631,16 @@ export function DrawingSheetViewer({
         const previous = pointers.current.get(event.pointerId);
         if (!previous || !gesture.current) return;
         pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+        const zoom = quickZoom.current;
+        if (zoom?.pointerId === event.pointerId && pointers.current.size === 1) {
+          const dy = event.clientY - zoom.y;
+          zoom.moved ||= Math.abs(dy) > 6;
+          if (zoom.moved) move(zoomAt(zoom.view, Math.exp(dy * 0.008), zoom.anchor));
+          return;
+        }
+        if (panTap.current && Math.hypot(event.clientX - panTap.current.x, event.clientY - panTap.current.y) > 6) {
+          panTap.current.moved = true;
+        }
         const now = [...pointers.current.values()];
         const before = gesture.current.points;
         const base = gesture.current.view;
@@ -656,6 +679,21 @@ export function DrawingSheetViewer({
         }
       }}
       onPointerUp={(event) => {
+        if (!pointers.current.has(event.pointerId)) return;
+        const zoom = quickZoom.current;
+        if (zoom?.pointerId === event.pointerId) {
+          pointers.current.delete(event.pointerId);
+          quickZoom.current = null;
+          startGesture();
+          if (zoom.moved) move(zoomAt(zoom.view, Math.exp((event.clientY - zoom.y) * 0.008), zoom.anchor), true);
+          else animateTo(zoom.view.scale > 1.5 ? REST : zoomAt(zoom.view, 3, zoom.anchor));
+          return;
+        }
+        const candidate = panTap.current;
+        lastTap.current = candidate && !candidate.moved && Date.now() - candidate.time < 300 &&
+          Math.hypot(event.clientX - candidate.x, event.clientY - candidate.y) <= 6
+          ? { time: Date.now(), x: event.clientX, y: event.clientY } : null;
+        panTap.current = null;
         const tap = measureTap.current;
         const wasSingle = pointers.current.size === 1;
         const edited = !measuring && wasSingle && editor.up(pointFromClient(event.clientX, event.clientY));
@@ -676,6 +714,9 @@ export function DrawingSheetViewer({
       }}
       onPointerCancel={(event) => {
         editor.cancelGesture();
+        quickZoom.current = null;
+        panTap.current = null;
+        lastTap.current = null;
         pointers.current.delete(event.pointerId);
         measureTap.current = null;
         startGesture();
