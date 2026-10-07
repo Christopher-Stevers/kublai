@@ -19,6 +19,7 @@ import {
   CalendarIcon,
   CheckCircle2Icon,
   UserIcon,
+  UsersIcon,
   SendIcon,
   MoreVerticalIcon,
   TrashIcon,
@@ -472,7 +473,11 @@ export default function JobDetailPage({
                     )}
                     {list.contributors && list.contributors.length > 0 && (
                       <div className="flex items-start gap-2">
-                        <UserIcon className="mt-0.5 h-4 w-4 shrink-0" />
+                        {list.contributors.length > 1 ? (
+                          <UsersIcon className="mt-0.5 h-4 w-4 shrink-0" />
+                        ) : (
+                          <UserIcon className="mt-0.5 h-4 w-4 shrink-0" />
+                        )}
                         <span className="min-w-0 leading-snug">
                           {list.contributors
                             .map(formatContributorName)
