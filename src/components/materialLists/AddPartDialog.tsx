@@ -1,23 +1,16 @@
 "use client";
 
-import { useState, useMemo, useEffect, useRef, useLayoutEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useMaterialListSortPreference } from "~/hooks/use-material-list-sort";
 import { api } from "~/trpc/react";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "~/components/ui/dialog";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
-import { AlertCircle, Plus, Minus, ChevronDown, ChevronUp, BoxesIcon, ChevronRight } from "lucide-react";
+import { AlertCircle, Plus, Minus, ChevronDown, ChevronUp, BoxesIcon, ChevronRight, Search, XIcon, ArrowLeftIcon, PlusIcon } from "lucide-react";
 import { CreateCustomPartDialog } from "./CreateCustomPartDialog";
 import { WizardHeader } from "./WizardHeader";
 import { EditPartDialog } from "~/components/catalogue/EditPartDialog";
-import type { PendingPart, PendingSupplierPartSnapshot } from "./wizard/types";
+import type { PendingPart, PendingSupplierPartSnapshot, WizardStage } from "./wizard/types";
+import { useHeaderBackOverride } from "~/lib/header-back-events";
 import { CatalogStage } from "./wizard/CatalogStage";
 import { MaterialStage } from "./wizard/MaterialStage";
 import { SizeStage } from "./wizard/SizeStage";
@@ -71,7 +64,7 @@ export function AddPartDialog({
     partName: string;
     quantity: number;
   } | null>(null);
-  const [isMobileViewport, setIsMobileViewport] = useState(false);
+  const stageBeforeReviewRef = useRef<WizardStage>("catalog");
   const [isAddingParts, setIsAddingParts] = useState(false);
   const pickerTouchYRef = useRef<number | null>(null);
   const pickerTouchAccumulatorRef = useRef(0);
@@ -626,6 +619,7 @@ export function AddPartDialog({
   };
 
   const handleReviewAndAdd = () => {
+    if (wizardStage !== "review") stageBeforeReviewRef.current = wizardStage;
     setWizardStage("review");
   };
 
@@ -837,20 +831,6 @@ export function AddPartDialog({
     }
   }, [pendingParts.length]);
 
-  useLayoutEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-
-    const updateViewport = () => setIsMobileViewport(window.innerWidth < 640);
-
-    updateViewport();
-    window.addEventListener("resize", updateViewport);
-
-    return () => {
-      window.removeEventListener("resize", updateViewport);
-    };
-  }, []);
 
   const isWizardSearchActive =
     wizardStage !== "review" && wizardSearchQuery.trim().length > 0;
@@ -903,55 +883,43 @@ export function AddPartDialog({
     onOpenChange(false);
   };
 
+  const pageTitle = isToolRequest
+    ? "Add Tools"
+    : prefabTarget
+      ? `Add Parts to ${prefabTarget.name}`
+      : prefabView
+        ? "Prefabs"
+        : "Add Parts";
+  const barButton =
+    "h-9 min-h-9 w-full px-1.5 py-1 text-[11px] leading-tight whitespace-normal sm:text-xs";
+
+  // Add Parts fills the main window: the app bar's back arrow and Escape close it.
+  useHeaderBackOverride(open ? closeDialogAndCleanHistory : null);
+  useEffect(() => {
+    if (!open) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape" || event.defaultPrevented) return;
+      if (document.querySelector('[role="dialog"][data-state="open"]')) return;
+      closeDialogAndCleanHistory();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  });
+
   return (
     <>
-      <Dialog
-        open={open}
-        onOpenChange={(nextOpen) => {
-          if (nextOpen) {
-            onOpenChange(true);
-          } else {
-            closeDialogAndCleanHistory();
-          }
-        }}
-      >
-        <DialogContent
+      {open && (
+        <div
+          role="region"
+          aria-label={pageTitle}
           data-tutorial="add-part-dialog"
           data-tutorial-stage={wizardStage}
           data-tutorial-pending-count={pendingParts.length}
-          className={`relative flex h-[calc(100dvh-1rem)] max-h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-none flex-col overflow-hidden p-0 sm:h-[90vh] sm:max-h-[90vh] sm:w-[calc(100vw-3rem)] sm:max-w-[90rem] ${quantityPickerPreview ? "touch-none" : ""}`}
-          style={
-            isMobileViewport
-              ? {
-                  position: "fixed",
-                  top: "0.5rem",
-                  right: "0.5rem",
-                  left: "0.5rem",
-                  bottom: "auto",
-                  transform: "none",
-                  width: "auto",
-                  height: "calc(100dvh - 1rem)",
-                  maxWidth: "none",
-                  maxHeight: "calc(100dvh - 1rem)",
-                }
-              : undefined
-          }
+          className={`fixed inset-x-0 top-14 bottom-0 z-[45] flex flex-col overflow-hidden bg-background sm:top-16 ${quantityPickerPreview ? "touch-none" : ""}`}
         >
-          <DialogHeader className="shrink-0 px-2 pt-2 pb-1.5 sm:px-4 sm:pt-4 sm:pb-3 md:px-6 md:pt-6 md:pb-4">
-            <DialogTitle className="text-base sm:text-lg md:text-xl">
-              {isToolRequest
-                ? "Add Tools"
-                : prefabTarget
-                  ? `Add Parts to ${prefabTarget.name}`
-                  : prefabView
-                    ? "Prefabs"
-                    : "Add Parts"}
-            </DialogTitle>
-            <DialogDescription className="hidden text-xs sm:block sm:text-sm">
-              {isOnline
-                ? "Select catalog, material, size, and category to add parts to your list"
-                : "Offline: add cached parts and cached suppliers. Creation/editing is online-only."}
-            </DialogDescription>
+          <div className="relative mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col">
+          <div className="shrink-0 px-2 pt-2 pb-1.5 sm:px-4 sm:pt-3 md:px-6">
+            <h2 className="text-base font-semibold sm:text-lg">{pageTitle}</h2>
             {catalogueDownloading && (
               <p
                 role="status"
@@ -962,7 +930,7 @@ export function AddPartDialog({
                 keep working meanwhile.
               </p>
             )}
-          </DialogHeader>
+          </div>
 
           {prefabTarget && (
             <div className="mx-2 mb-2 flex shrink-0 items-center justify-between gap-2 rounded-md bg-primary/10 px-3 py-1.5 text-xs sm:mx-4 sm:text-sm md:mx-6">
@@ -994,23 +962,6 @@ export function AddPartDialog({
                 selectedSize={selectedSizeName}
                 selectedCategory={selectedCategoryName}
                 onStageClick={handleStageClick}
-                searchQuery={wizardSearchQuery}
-                onSearchChange={setWizardSearchQuery}
-                searchPlaceholder={wizardSearchPlaceholder}
-                actionLabel={isOnline ? "Create Part" : "Create Part (online)"}
-                actionDisabled={!isOnline}
-                onActionClick={() =>
-                  handleOpenCustomPartDialog({
-                    materialId: selectedMaterialId,
-                    size: selectedSize,
-                    category: selectedCategory
-                      ? {
-                          categoryId: selectedCategory.categoryId,
-                          name: selectedCategory.name,
-                        }
-                      : undefined,
-                  })
-                }
               />
             </div>
           )}
@@ -1283,41 +1234,95 @@ export function AddPartDialog({
             </div>
           )}
 
-          {wizardStage === "review" && !prefabView && (
-            <DialogFooter className="shrink-0 border-t px-2 py-3 sm:px-4 sm:py-4 md:px-6">
-              <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className={`text-left sm:text-right ${isToolRequest ? "invisible" : ""}`}>
-                  <p className="text-xs text-muted-foreground sm:text-sm">
-                    Review Total
-                  </p>
-                  <p className="text-lg font-semibold sm:text-xl">
+          {/* Bottom bar, laid out like the material list's */}
+          <div className="shrink-0 border-t bg-card px-4 pt-1.5 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:px-6 sm:pt-2">
+            <div className="space-y-1.5">
+              {prefabView ? null : wizardStage === "review" ? (
+                <div className={`flex items-baseline gap-1.5 ${isToolRequest ? "hidden" : ""}`}>
+                  <span className="text-base text-muted-foreground sm:text-lg">Review Total</span>
+                  <span className="text-base font-bold sm:text-lg">
                     ${reviewedPartsTotal.toFixed(2)}
-                  </p>
+                  </span>
                 </div>
+              ) : (
+                <div className="relative">
+                  <Search className="absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2 text-muted-foreground/70" />
+                  <Input
+                    value={wizardSearchQuery}
+                    onChange={(event) => setWizardSearchQuery(event.target.value)}
+                    placeholder={wizardSearchPlaceholder}
+                    aria-label="Search parts"
+                    className="h-9 w-full rounded-lg pl-8 text-sm"
+                  />
+                </div>
+              )}
+              <div className={`grid gap-1.5 ${prefabView ? "grid-cols-1" : wizardStage === "review" ? "grid-cols-3" : "grid-cols-2"}`}>
                 <Button
-                  onClick={handleAddToMaterialList}
-                  data-tutorial="wizard-confirm"
-                  disabled={
-                    pendingParts.length === 0 ||
-                    !allPartsHaveSuppliers ||
-                    isAddingParts
-                  }
-                  title={
-                    !allPartsHaveSuppliers
-                      ? isOnline
-                        ? "Please select a supplier for all parts"
-                        : "Missing cached supplier mapping. Reconnect once or select a cached supplier."
-                      : undefined
-                  }
-                  className="w-full text-xs sm:w-auto sm:text-sm"
+                  variant="outline"
+                  className={barButton}
+                  onClick={closeDialogAndCleanHistory}
                 >
-                  {isAddingParts
-                    ? "Adding..."
-                    : `Add ${pendingParts.length} ${isToolRequest ? "Tool" : "Part"}${pendingParts.length !== 1 ? "s" : ""}${prefabTarget ? " to Prefab" : ""}`}
+                  <XIcon className="mr-1 h-3.5 w-3.5 shrink-0" />
+                  Cancel
                 </Button>
+                {prefabView ? null : wizardStage === "review" ? (
+                  <>
+                    <Button
+                      variant="outline"
+                      className={barButton}
+                      onClick={() => setWizardStage(stageBeforeReviewRef.current)}
+                    >
+                      <ArrowLeftIcon className="mr-1 h-3.5 w-3.5 shrink-0" />
+                      Keep Picking
+                    </Button>
+                    <Button
+                      className={barButton}
+                      onClick={handleAddToMaterialList}
+                      data-tutorial="wizard-confirm"
+                      disabled={
+                        pendingParts.length === 0 ||
+                        !allPartsHaveSuppliers ||
+                        isAddingParts
+                      }
+                      title={
+                        !allPartsHaveSuppliers
+                          ? isOnline
+                            ? "Please select a supplier for all parts"
+                            : "Missing cached supplier mapping. Reconnect once or select a cached supplier."
+                          : undefined
+                      }
+                    >
+                      <PlusIcon className="mr-1 h-3.5 w-3.5 shrink-0" />
+                      {isAddingParts
+                        ? "Adding..."
+                        : `Add ${pendingParts.length} ${isToolRequest ? "Tool" : "Part"}${pendingParts.length !== 1 ? "s" : ""}${prefabTarget ? " to Prefab" : ""}`}
+                    </Button>
+                  </>
+                ) : (
+                  <Button
+                    variant="outline"
+                    className={barButton}
+                    disabled={!isOnline}
+                    onClick={() =>
+                      handleOpenCustomPartDialog({
+                        materialId: selectedMaterialId,
+                        size: selectedSize,
+                        category: selectedCategory
+                          ? {
+                              categoryId: selectedCategory.categoryId,
+                              name: selectedCategory.name,
+                            }
+                          : undefined,
+                      })
+                    }
+                  >
+                    <PlusIcon className="mr-1 h-3.5 w-3.5 shrink-0" />
+                    {isOnline ? "Create Part" : "Create Part (online)"}
+                  </Button>
+                )}
               </div>
-            </DialogFooter>
-          )}
+            </div>
+          </div>
 
           {quantityPickerPreview && (
             <VerticalPickerOverlay
@@ -1329,8 +1334,9 @@ export function AddPartDialog({
               renderItem={(value) => value}
             />
           )}
-        </DialogContent>
-      </Dialog>
+          </div>
+        </div>
+      )}
 
       {isCreateCustomPartDialogOpen && (
         <CreateCustomPartDialog

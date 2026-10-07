@@ -169,8 +169,8 @@ describe("tutorial on the real ForemanHQ workflow", () => {
     await guide("Add material");
     await clickTarget("add-part");
     await guide("Select a catalog");
-    const dialog = screen.getByRole("dialog");
-    expect(within(dialog).getByRole("button", { name: "End tutorial" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Add Parts" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "End tutorial" })).toBeInTheDocument();
     fireEvent.click(await screen.findByText("Plumbing", { exact: true }));
     await guide("Select your material");
     fireEvent.click(await screen.findByText("PVC", { exact: true }));
@@ -186,7 +186,7 @@ describe("tutorial on the real ForemanHQ workflow", () => {
     await guide("Review your selected parts");
     await clickTarget("wizard-review-button");
     await guide("Add the material to your list");
-    expect(within(screen.getByRole("dialog")).getByRole("button", { name: "End tutorial" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "End tutorial" })).toBeInTheDocument();
     fireEvent.change(screen.getByRole("spinbutton", { name: "Quantity" }), { target: { value: "3" } });
     await waitFor(() => expect(target("wizard-confirm")).toBeEnabled());
     await clickTarget("wizard-confirm");
@@ -229,7 +229,7 @@ describe("tutorial on the real ForemanHQ workflow", () => {
     expectIsolated(storageWrites);
   }, 20000);
 
-  it("allows ending from inside the real modal without invoking its close controls or production effects", async () => {
+  it("allows ending from the Add Parts screen without invoking its close controls or production effects", async () => {
     geometry();
     const onFinish = vi.fn();
     const storageWrites = vi.spyOn(Storage.prototype, "setItem");
@@ -243,7 +243,8 @@ describe("tutorial on the real ForemanHQ workflow", () => {
     await guide("Add material");
     await clickTarget("add-part");
     await guide("Select a catalog");
-    const end = within(screen.getByRole("dialog")).getByRole("button", { name: "End tutorial" });
+    expect(screen.getByRole("region", { name: "Add Parts" })).toBeInTheDocument();
+    const end = screen.getByRole("button", { name: "End tutorial" });
     end.focus();
     expect(end).toHaveFocus();
     fireEvent.pointerDown(end);
