@@ -397,7 +397,7 @@ export function SizeStage({
           centerIndex={subSizePreview.selectedIndex}
           getItem={(index) => subSizePreview.size.subSizes?.[index] ?? null}
           getItemFontSize={(subSize, distance) => {
-            const labelLength = subSize.label.length;
+            const labelLength = formatSizeDimensions(subSize.label, subSizePreview.size.unit).length;
 
             if (labelLength >= 22) {
               return distance === 0 ? "1.35rem" : distance === 1 ? "0.85rem" : "0.65rem";
@@ -409,7 +409,9 @@ export function SizeStage({
 
             return undefined;
           }}
-          renderItem={(subSize) => subSize.label}
+          // Every dimension with its unit (labels are stored inconsistently,
+          // e.g. "1 1/4 x 1 x 1/2" and '2" x 4-1/2"').
+          renderItem={(subSize) => formatSizeDimensions(subSize.label, subSizePreview.size.unit)}
           activeFontSize="2.25rem"
           nearFontSize="1.25rem"
           farFontSize="0.85rem"

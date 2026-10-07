@@ -74,8 +74,10 @@ export function WizardProgressIndicator({
         return selectedSize
           ? selectedSize.unit === "All Sizes"
             ? "All Sizes"
-            : (selectedSize.sizeLabel ??
-              formatSizeDimensions(selectedSize.nominal, selectedSize.unit))
+            : formatSizeDimensions(
+                selectedSize.sizeLabel ?? selectedSize.nominal,
+                selectedSize.unit,
+              )
           : stage.label;
       case "category":
         return selectedCategory?.name ?? stage.label;
