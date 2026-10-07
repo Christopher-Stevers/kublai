@@ -244,6 +244,16 @@ function newDocument(
   state.documents.push(doc);
   return doc;
 }
+/** Millisecond timestamps must uniquely identify successive versions for WOPI CAS. */
+export function nextVersionTimestamp(state: DocumentState, documentId: string) {
+  const previous = state.versions
+    .filter((version) => version.documentId === documentId)
+    .reduce(
+      (latest, version) => Math.max(latest, Date.parse(version.createdAt)),
+      0,
+    );
+  return new Date(Math.max(Date.now(), previous + 1)).toISOString();
+}
 export function appendVersion(
   state: DocumentState,
   actor: DocumentActor,
@@ -255,6 +265,7 @@ export function appendVersion(
     size: number;
     mimeType: string;
     sha256: string;
+    revisionSource?: "editor";
   },
 ) {
   const recent = state.versions.filter(
@@ -263,13 +274,13 @@ export function appendVersion(
       Date.parse(version.createdAt) > Date.now() - 86_400_000,
   );
   if (
-    recent.length >= 200 ||
+    recent.length >= (input.revisionSource === "editor" ? 2000 : 200) ||
     recent.reduce((total, version) => total + version.size, 0) + input.size >
       2 * 1024 * 1024 * 1024
   )
     fail(
       "PAYLOAD_TOO_LARGE",
-      "Daily job upload limit reached (200 versions or 2 GB per member).",
+      "Daily job version or storage limit reached. Contact your administrator before saving further versions.",
     );
   const doc = input.documentId
     ? accessibleDocument(state, actor, input.documentId, { write: true })
@@ -298,7 +309,7 @@ export function appendVersion(
     mimeType: input.mimeType,
     sha256: input.sha256,
     createdBy: actor.userId,
-    createdAt: new Date().toISOString(),
+    createdAt: nextVersionTimestamp(state, doc.id),
     restoredFromVersionId: null,
   };
   state.versions.push(version);
@@ -309,8 +320,10 @@ export function appendVersion(
   audit(
     state,
     actor,
-    "upload",
-    `Uploaded version ${version.number}`,
+    input.revisionSource === "editor" ? "editor_save" : "upload",
+    input.revisionSource === "editor"
+      ? `Saved version ${version.number} in live editor`
+      : `Uploaded version ${version.number}`,
     doc.id,
     doc.folderId,
   );
@@ -654,7 +667,7 @@ export function applyDocumentAction(
               state.versions.filter((entry) => entry.documentId === doc.id)
                 .length + 1,
             createdBy: actor.userId,
-            createdAt: now,
+            createdAt: nextVersionTimestamp(state, doc.id),
             restoredFromVersionId: original.id,
           };
           state.versions.push(version);

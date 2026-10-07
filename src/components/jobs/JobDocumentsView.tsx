@@ -6,6 +6,7 @@ import {
   ChevronRightIcon,
   ClipboardCheckIcon,
   FileTextIcon,
+  FileSpreadsheetIcon,
   FolderIcon,
   FolderPlusIcon,
   DownloadIcon,
@@ -50,6 +51,10 @@ import type {
   JobDocument,
 } from "~/server/documents/types";
 import {
+  DocumentEditor,
+  type EditorAvailability,
+} from "./documents/DocumentEditor";
+import {
   DocumentDetails,
   type DocumentDialogKind,
 } from "./documents/DocumentDetails";
@@ -73,6 +78,8 @@ type Modal = {
     | "rename-folder"
     | "permissions"
     | "office"
+    | "new-word"
+    | "new-spreadsheet"
     | DocumentDialogKind
     | "resolve";
   documentIds?: string[];
@@ -185,6 +192,13 @@ export function JobDocumentsView({
   const [draft, setDraft] = useState<Draft>(emptyDraft);
   const [modalError, setModalError] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
+  const [editorStatus, setEditorStatus] = useState<EditorAvailability | null>(
+    null,
+  );
+  const [editorDocument, setEditorDocument] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const uploadTarget = useRef<JobDocument | null>(null);
   const requestNumber = useRef(0);
@@ -216,6 +230,33 @@ export function JobDocumentsView({
       setData(result);
       setError(null);
     }
+  }, [jobId, sandbox]);
+
+  useEffect(() => {
+    if (sandbox) return;
+    const controller = new AbortController();
+    void fetch(`/api/job-documents/editor?jobId=${encodeURIComponent(jobId)}`, {
+      cache: "no-store",
+      credentials: "same-origin",
+      signal: controller.signal,
+    })
+      .then(responseBody<EditorAvailability>)
+      .then((result) => {
+        if (!controller.signal.aborted)
+          setEditorStatus({
+            ...result,
+            configured: result.configured === true,
+          });
+      })
+      .catch(() => {
+        if (!controller.signal.aborted)
+          setEditorStatus({
+            configured: false,
+            provider: "collabora",
+            reason: "The editing service status could not be checked.",
+          });
+      });
+    return () => controller.abort();
   }, [jobId, sandbox]);
 
   useEffect(() => {
@@ -266,13 +307,15 @@ export function JobDocumentsView({
   }, [refresh, sandbox]);
 
   useHeaderBackOverride(
-    selectedId
-      ? () => setSelectedId(null)
-      : folderId
-        ? () => setFolderId(currentFolder?.parentId ?? null)
-        : view !== "files"
-          ? () => setView("files")
-          : null,
+    editorDocument
+      ? null
+      : selectedId
+        ? () => setSelectedId(null)
+        : folderId
+          ? () => setFolderId(currentFolder?.parentId ?? null)
+          : view !== "files"
+            ? () => setView("files")
+            : null,
   );
 
   const mutate = async (action: DocumentAction) => {
@@ -373,6 +416,11 @@ export function JobDocumentsView({
       : undefined;
     setDraft({
       ...emptyDraft,
+      ...(next.kind === "new-word"
+        ? { name: "Untitled document.docx" }
+        : next.kind === "new-spreadsheet"
+          ? { name: "Untitled spreadsheet.xlsx" }
+          : {}),
       folderId: folderId ?? "",
       ...(document
         ? {
@@ -404,6 +452,46 @@ export function JobDocumentsView({
   };
   const saveModal = async () => {
     if (!modal) return;
+    if (modal.kind === "new-word" || modal.kind === "new-spreadsheet") {
+      if (!mutable || processing || !editorStatus?.configured) return;
+      setBusy(true);
+      setModalError(null);
+      try {
+        const result = await responseBody<{
+          documentId: string;
+          versionId: string;
+        }>(
+          await fetch("/api/job-documents/editor/new", {
+            method: "POST",
+            credentials: "same-origin",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              jobId,
+              folderId,
+              kind: modal.kind === "new-word" ? "word" : "spreadsheet",
+              name: draft.name.trim(),
+            }),
+          }),
+        );
+        await refresh().catch(() =>
+          setError(
+            "The document was created, but the list could not refresh. Refresh Documents after editing.",
+          ),
+        );
+        setSelectedId(result.documentId);
+        setEditorDocument({ id: result.documentId, name: draft.name.trim() });
+        setModal(null);
+      } catch (reason) {
+        setModalError(
+          reason instanceof Error
+            ? reason.message
+            : "The document could not be created.",
+        );
+      } finally {
+        setBusy(false);
+      }
+      return;
+    }
     const documentId = modal.documentIds?.[0];
     let action: DocumentAction | undefined;
     switch (modal.kind) {
@@ -548,6 +636,8 @@ export function JobDocumentsView({
     "rename-folder": "Rename folder",
     permissions: "Folder permissions",
     office: "Link Microsoft file",
+    "new-word": "New Word document",
+    "new-spreadsheet": "New spreadsheet",
     metadata: "Edit document details",
     move: "Move document",
     copy: "Copy document",
@@ -592,6 +682,26 @@ export function JobDocumentsView({
         <div className="flex flex-wrap gap-2">
           {canWrite && (
             <>
+              {editorStatus?.configured && (
+                <>
+                  <Button
+                    variant="outline"
+                    disabled={processing}
+                    onClick={() => openModal({ kind: "new-word" })}
+                  >
+                    <FileTextIcon />
+                    New Word document
+                  </Button>
+                  <Button
+                    variant="outline"
+                    disabled={processing}
+                    onClick={() => openModal({ kind: "new-spreadsheet" })}
+                  >
+                    <FileSpreadsheetIcon />
+                    New spreadsheet
+                  </Button>
+                </>
+              )}
               <Button
                 variant="outline"
                 disabled={processing}
@@ -632,6 +742,13 @@ export function JobDocumentsView({
           </Button>
         </div>
       </header>
+      {!sandbox && editorStatus && (
+        <p className="text-muted-foreground text-sm">
+          {editorStatus.configured
+            ? "Create and edit Word documents and spreadsheets together with Collabora Online. No Microsoft account needed."
+            : "Online Word and spreadsheet editing is not set up on this server. Existing documents can still be uploaded and downloaded."}
+        </p>
+      )}
       {sandbox && (
         <p className="bg-muted rounded-lg border p-3 text-sm">
           Documents is read-only in the tutorial. Open a real job to upload
@@ -1198,7 +1315,23 @@ export function JobDocumentsView({
             ))}
         </section>
       )}
-      {selected && !modal && (
+      {editorDocument && (
+        <DocumentEditor
+          key={editorDocument.id}
+          jobId={jobId}
+          documentId={editorDocument.id}
+          name={editorDocument.name}
+          onClose={() => {
+            setEditorDocument(null);
+            void refresh().catch(() =>
+              setError(
+                "The editor closed, but document revisions could not refresh. Please refresh the list.",
+              ),
+            );
+          }}
+        />
+      )}
+      {selected && !modal && !editorDocument && (
         <DocumentDetails
           key={selected.id}
           document={selected}
@@ -1209,6 +1342,10 @@ export function JobDocumentsView({
           onClose={() => setSelectedId(null)}
           onDialog={(kind) => openModal({ kind, documentIds: [selected.id] })}
           onUpload={() => pickFiles(selected)}
+          editorStatus={editorStatus}
+          onEdit={() =>
+            setEditorDocument({ id: selected.id, name: selected.name })
+          }
           mutate={mutate}
         />
       )}
@@ -1222,17 +1359,19 @@ export function JobDocumentsView({
               {modal ? titles[modal.kind] : "Documents"}
             </DialogTitle>
             <DialogDescription>
-              {modal?.kind === "office"
-                ? "Link an existing Word, Excel, or PowerPoint file in OneDrive or SharePoint. Microsoft controls live editing and sharing access."
-                : modal?.kind === "permissions"
-                  ? "An empty list inherits access from the parent folder. A custom list restricts access to these members; project managers retain access."
-                  : modal?.kind === "transmittal"
-                    ? "Record the selected file revisions and recipients. This creates an in-app record and does not send an email."
-                    : modal?.kind === "review"
-                      ? "The assigned reviewer decides on the selected uploaded versions. If a revision changes, request a new review."
-                      : modal?.kind === "resolve"
-                        ? "Check the attached revisions before recording your decision."
-                        : "Changes are saved to this project's document workspace."}
+              {modal?.kind === "new-word" || modal?.kind === "new-spreadsheet"
+                ? "Create a project file and open it in Collabora Online. Changes are saved back to this document’s version history."
+                : modal?.kind === "office"
+                  ? "Link an existing Word, Excel, or PowerPoint file in OneDrive or SharePoint. Microsoft controls live editing and sharing access."
+                  : modal?.kind === "permissions"
+                    ? "An empty list inherits access from the parent folder. A custom list restricts access to these members; project managers retain access."
+                    : modal?.kind === "transmittal"
+                      ? "Record the selected file revisions and recipients. This creates an in-app record and does not send an email."
+                      : modal?.kind === "review"
+                        ? "The assigned reviewer decides on the selected uploaded versions. If a revision changes, request a new review."
+                        : modal?.kind === "resolve"
+                          ? "Check the attached revisions before recording your decision."
+                          : "Changes are saved to this project's document workspace."}
             </DialogDescription>
           </DialogHeader>
           <form
@@ -1537,9 +1676,12 @@ export function JobDocumentsView({
                     ? "Request review"
                     : modal?.kind === "transmittal"
                       ? "Create transmittal"
-                      : modal?.kind === "office"
-                        ? "Link file"
-                        : "Save"}
+                      : modal?.kind === "new-word" ||
+                          modal?.kind === "new-spreadsheet"
+                        ? "Create and edit"
+                        : modal?.kind === "office"
+                          ? "Link file"
+                          : "Save"}
               </Button>
             </DialogFooter>
           </form>

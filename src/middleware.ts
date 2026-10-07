@@ -54,7 +54,15 @@ export default function middleware(
 ) {
   // Database health and explicitly authorized local QA must not depend on
   // Clerk initialization/proxy availability. Other requests retain Clerk auth.
-  if (req.nextUrl.pathname === "/api/health" || hasAgentAuthBypass(req))
+  // WOPI callbacks authenticate with scoped tokens and Collabora proof signatures.
+  // Launch and blank-document endpoints still require normal application auth.
+  if (
+    req.nextUrl.pathname === "/api/health" ||
+    /^\/api\/job-documents\/wopi\/[^/]+(?:\/contents)?$/.test(
+      req.nextUrl.pathname,
+    ) ||
+    hasAgentAuthBypass(req)
+  )
     return NextResponse.next();
   return clerkProtectedMiddleware(req, evt);
 }

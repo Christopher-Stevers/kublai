@@ -61,7 +61,11 @@ export async function documentOverview(
 export async function mutateWorkspace<T>(
   userId: string,
   jobId: string,
-  mutate: (state: DocumentState, actor: DocumentActor) => T | Promise<T>,
+  mutate: (
+    state: DocumentState,
+    actor: DocumentActor,
+    access: DocumentAccess,
+  ) => T | Promise<T>,
 ): Promise<T> {
   return db.transaction(async (tx) => {
     await tx.execute(
@@ -91,6 +95,7 @@ export async function mutateWorkspace<T>(
           canManage: member.canManage,
         })),
       ),
+      access,
     );
     if (row)
       await tx

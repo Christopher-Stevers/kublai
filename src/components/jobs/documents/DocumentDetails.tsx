@@ -1,6 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import {
+  supportsDocumentEditor,
+  type EditorAvailability,
+} from "./DocumentEditor";
 import { DocumentVersionCompare } from "./DocumentVersionCompare";
 import {
   DownloadIcon,
@@ -49,6 +53,8 @@ type Props = {
   onClose: () => void;
   onDialog: (kind: DocumentDialogKind) => void;
   onUpload: () => void;
+  editorStatus: EditorAvailability | null;
+  onEdit: () => void;
   mutate: (action: DocumentAction) => Promise<boolean>;
 };
 
@@ -61,6 +67,8 @@ export function DocumentDetails({
   onClose,
   onDialog,
   onUpload,
+  editorStatus,
+  onEdit,
   mutate,
 }: Props) {
   const [tab, setTab] = useState<
@@ -103,6 +111,9 @@ export function DocumentDetails({
   const currentVersion = versions.find(
     (item) => item.id === document.currentVersionId,
   );
+  const editableFormat =
+    !document.officeWebUrl &&
+    supportsDocumentEditor(currentVersion?.name ?? document.name);
   const comparisonVersion = versions.find(
     (item) => item.id === compareVersionId,
   );
@@ -163,6 +174,14 @@ export function DocumentDetails({
             </p>
           )}
           <div className="flex flex-wrap gap-2">
+            {editableFormat &&
+              editorStatus?.configured &&
+              mutable &&
+              !document.deletedAt && (
+                <Button disabled={busy} onClick={onEdit}>
+                  {canEdit ? "Edit together" : "Open read-only"}
+                </Button>
+              )}
             {document.officeWebUrl && (
               <Button asChild>
                 <a
@@ -224,6 +243,13 @@ export function DocumentDetails({
               </Button>
             )}
           </div>
+          {editableFormat && (
+            <p className="text-muted-foreground rounded-md border p-3 text-sm">
+              {editorStatus?.configured
+                ? "Open this file in Collabora Online to edit together in your browser. Saves become project document revisions; no Microsoft account is required."
+                : "Live editing is not set up on this server. Ask your workspace administrator to connect the Collabora editing service. Your saved file can still be downloaded."}
+            </p>
+          )}
           <div className="grid min-w-0 gap-5 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
             <div className="min-w-0">
               <div className="bg-muted/40 flex min-h-64 flex-col items-center justify-center overflow-hidden rounded-lg border lg:min-h-[480px]">
@@ -278,9 +304,9 @@ export function DocumentDetails({
                     </p>
                     {(kind === "word" || kind === "spreadsheet") && (
                       <p className="text-muted-foreground text-sm">
-                        For live collaboration, place the file in OneDrive or
-                        SharePoint and use “Link Microsoft file”. Uploaded files
-                        do not sync with Microsoft.
+                        Open-source live editing is available for supported
+                        Office files when the Collabora service is configured.
+                        No Microsoft account is needed.
                       </p>
                     )}
                   </div>

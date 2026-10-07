@@ -157,3 +157,20 @@ export type DocumentAction =
       folderId?: string | null;
       webUrl: string;
     };
+
+export type DocumentEditorStatus = {
+  configured: boolean;
+  provider: "collabora";
+  reason?: string;
+};
+export type DocumentEditorLaunch = {
+  actionUrl: string;
+  wopiSrc: string;
+  accessToken: string;
+  /** Absolute epoch milliseconds, as required by Collabora's form field. */
+  accessTokenTtl: number;
+  mode: "edit" | "view";
+  provider: "collabora";
+  documentId: string;
+  versionId: string;
+};

@@ -20,6 +20,9 @@ export const env = createEnv({
     WEB_PUSH_SUBJECT: z.string().optional(),
     TYPESAFE_API_KEY: z.string().optional(),
     TYPESAFE_MODEL: z.string().optional(),
+    COLLABORA_URL: z.string().url().optional(),
+    FOREMANHQ_PUBLIC_URL: z.string().url().optional(),
+    DOCUMENT_EDITOR_SECRET: z.string().min(32).optional(),
     DATABASE_URL: z.string().url(),
     STRIPE_SECRET_KEY: z.string(),
     STRIPE_WEBHOOK_SECRET: z.string().optional(),
@@ -62,6 +65,9 @@ export const env = createEnv({
     WEB_PUSH_SUBJECT: process.env.WEB_PUSH_SUBJECT,
     TYPESAFE_API_KEY: process.env.TYPESAFE_API_KEY,
     TYPESAFE_MODEL: process.env.TYPESAFE_MODEL,
+    COLLABORA_URL: process.env.COLLABORA_URL,
+    FOREMANHQ_PUBLIC_URL: process.env.FOREMANHQ_PUBLIC_URL,
+    DOCUMENT_EDITOR_SECRET: process.env.DOCUMENT_EDITOR_SECRET,
     NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:
       process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,
     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:

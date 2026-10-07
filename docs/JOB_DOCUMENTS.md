@@ -1,9 +1,15 @@
 # Job documents
 
-The **Documents** card in a job opens the document workspace for that job. This
-implementation supplies document management and links to existing Microsoft files.
-It is a foundation for BIM 360-style workflows; it does not provide full BIM 360
-Document Management parity or an embedded Microsoft Office editor.
+The **Documents** card in a job opens the document workspace for that job. It
+includes private document management and an optional Collabora Online integration
+for editing Word documents and Excel spreadsheets in the browser without a
+Microsoft account. Collabora is a separate editor service; the integration remains
+unavailable until that service and the application settings are configured.
+
+The open-source editor is currently a pilot integration. Real file editing,
+coauthoring and mobile workflows have passed local acceptance, and a persistent
+pilot service is running. Public HTTPS acceptance remains pending. This module is
+a foundation for BIM 360-style workflows, with the remaining scope recorded below.
 
 ## Capability matrix
 
@@ -19,7 +25,7 @@ Document Management parity or an embedded Microsoft Office editor.
 | Collaboration | Document comments and activity history | Anchored graphical markups, issue/RFI links and notifications |
 | Reviews | A named reviewer records approval or changes requested against selected versions; replacing/recycling a reviewed file supersedes the pending review | Reusable multi-step/group workflows, deadlines and controlled publication |
 | Transmittals | Stored package records with document/version references, recipients, message and downloadable JSON manifests | ZIP archives of transmitted files, actual delivery and recipient receipts |
-| Word and Excel | Open an existing, linked Microsoft file in Microsoft 365 in a new tab | Automatic upload/sync, integrated identity, provider version capture and embedded coauthoring |
+| Word and Excel | Collabora WOPI integration for local files, browser editing/coauthoring, new DOCX/XLSX creation and saved revisions; requires configured editor service. Optional existing Microsoft file links remain available | Public HTTPS acceptance and a supported production service; full Microsoft-format compatibility is not guaranteed |
 | Field access | Responsive online workspace | Offline document downloads, synchronization and conflict handling |
 
 Transmittal creation records a package; its JSON manifest records the selected
@@ -27,7 +33,124 @@ document revisions without including the file bytes. It does not send email or
 notify the listed recipients. The activity feed is application history, not a
 tamper-evident or regulatory audit archive.
 
-## Word and Excel: what works now
+## Open-source Word and Excel editing
+
+With Collabora configured, use **New Word document** or **New spreadsheet**, or
+upload an existing `.docx` or `.xlsx` and open its editor. The integration also
+accepts `.pptx`, `.odt`, `.ods` and `.odp` uploads. It edits the ForemanHQ file in an
+embedded Collabora frame; it does not require a Microsoft tenant or work account.
+Two authorized users can open the same document for a shared Collabora session.
+Viewers and members blocked by another user's document lock open read-only.
+
+Successful storage callbacks append immutable ForemanHQ revisions when the file
+bytes changed. Saving supersedes a pending review of the earlier revision. Reviews
+and transmittals capture saved revisions, so save and close the editor before
+creating either. ForemanHQ document comments and Collabora's internal document
+comments are separate. Legacy `.doc`/`.xls`, macros, advanced Excel features and
+layout fidelity need separate compatibility assessment; renaming a file extension
+does not convert its contents.
+
+Use the editor's **Save & close** control and wait for confirmation. The host
+keeps the frame open on a save failure or timeout. Browser crashes, closing the
+entire browser tab and lost connectivity cannot guarantee a final asynchronous
+save. Live sessions require a network connection; this is not offline editing.
+
+### Pilot service configuration
+
+Set these server-side environment variables:
+
+| Variable | Purpose |
+| --- | --- |
+| `COLLABORA_URL` | Trusted Collabora origin, optionally with a service path, used for discovery and editor launch |
+| `FOREMANHQ_PUBLIC_URL` | Canonical externally reachable ForemanHQ origin, without a path, query or fragment |
+| `DOCUMENT_EDITOR_SECRET` | Random secret of at least 32 bytes for user/file-scoped editor tokens; keep in the server secret store |
+| `JOB_DOCUMENT_STORAGE_ROOT` | Persistent private file directory, as described below |
+
+Both services need HTTPS for production. Local HTTP is allowed only for loopback
+addresses in a non-production Node environment. Browsers must reach the editor,
+and the editor must reach the canonical ForemanHQ WOPI callbacks. Do not substitute
+an internal callback hostname while retaining a different public origin: proof
+verification includes the exact externally signed URL. Reverse proxies must
+support the editor's WebSocket routes, including `/cool/ws` for current releases.
+See the [Collabora proxy configuration](https://sdk.collaboraonline.com/docs/installation/Proxy_settings.html).
+
+The local pilot uses official `collabora/code:26.04.4.2.1`, pinned to
+`sha256:4e983196eb9878f339cc506c38c21f1cc3473bca3d6de883c5de08f9c0cc3a6c`.
+That image runs `/usr/bin/coolwsd --use-env-vars` directly as UID 1001 and has no
+shell; old recipes that execute a container startup shell script do not apply.
+Pin the selected image digest and retain its configuration when recording a
+successful deployment. [Pinned image source](https://github.com/CollaboraOnline/online.mirror/blob/cp-26.04.4-2/docker/from-packages/Dockerfile).
+
+[The reproducible pilot setup](../scripts/ops/collabora/README.md) includes a private
+configuration/key preparation helper, a named-volume initializer compatible with
+rootless Docker, pinned Compose configuration and an HTTPS proxy example. These
+examples require an explicit deployment step; generating configuration does not
+start or change a service.
+
+The persistent pilot uses `~/.local/share/foremanhq-office` for its Docker data and
+configuration, managed by the user systemd units `foremanhq-office-docker` and
+`foremanhq-office`. It runs rootless in a bridged container namespace, with 2 GiB
+memory, two CPUs and 512 process slots, and publishes only `127.0.0.1:9980`.
+Document chroot isolation and seccomp were verified during local runtime testing.
+The private configuration and key archive were generated by the preparation
+helper, and loading their UID-1001 files into a named volume passed with rootless
+Docker.
+
+The intended public editor origin is `https://office.stellarator.work`, with a
+prepared Cloudflare Tunnel route; its WOPI application origin is
+`https://foremanhq.stellarator.work`. Public HTTPS discovery and editing acceptance
+are still pending, including activation of the prepared route. This deployment
+uses the tunnel, while the repository's Caddy
+file remains an alternative proxy example.
+
+Configure an exact ForemanHQ WOPI host allowlist on Collabora. Generate a persistent
+RSA proof key, mount it at `/etc/coolwsd/proof_key`, and make it readable by the
+editor process. The vendor's `coolconfig generate-proof-key` produces a 4096-bit
+RSA key; an unencrypted RSA PEM generated outside the image is also suitable.
+Discovery must expose a usable `<proof-key>` or all callbacks fail closed.
+Keep document-processing isolation and seccomp enabled, and retain the proof key
+across restarts. Avoid logging callback query strings because they carry tokens.
+[Collabora security guidance](https://www.collaboraonline.com/security/).
+
+CODE is the development/evaluation distribution. Collabora recommends a supported
+deployment for production workloads. Its source uses MPL 2.0 and other applicable
+component licenses; review the selected build's licenses and deployment terms
+when selecting the production service. This pilot does not claim a blanket
+commercial licensing entitlement or production support.
+[Collabora integration guidance](https://www.collaboraonline.com/integrate-collabora-online/),
+[source license](https://github.com/CollaboraOnline/online.mirror/blob/cp-26.04.4-2/COPYING).
+
+### Protocol and save guarantees
+
+The host supplies stable document IDs to Collabora, with `CheckFileInfo`, `GetFile`
+and `PutFile` handlers. Every callback verifies both a signed user/file token and
+the editor's RSA proof, then checks current organization membership and file
+access. Tokens expire after two hours. The host renews them through an authenticated
+application request and sends `Reset_Access_Token` to the existing frame, preserving
+the editing session. Revoked permissions cannot be bypassed through renewal.
+
+RSA verification checks the signed token, uppercase callback URL and .NET timestamp,
+accepts the specified current/old key rotation combinations, and rejects timestamps
+outside a 20-minute window. Proof keys come only from the configured service's
+bounded discovery response. Reverse-proxy host headers are not trusted.
+[WOPI proof specification](https://learn.microsoft.com/en-us/microsoft-365/cloud-storage-partner-program/online/scenarios/proofkeys).
+
+`PutFile` checks `X-COOL-WOPI-Timestamp` against the current immutable revision inside
+the database mutation lock. An outside upload or version restore returns HTTP 409
+with `COOLStatusCode: 1010`; missing timestamps and forced-overwrite retries also
+fail rather than replace a newer revision. A successful save returns the new
+`LastModifiedTime` only after private file storage and metadata persistence finish.
+Unchanged bytes do not create an extra revision.
+
+The frame uses a POST form for its access token. Host messages validate both the
+frame window and exact editor origin. Closing requests one `Action_Save`, waits
+for `Action_Save_Resp` success or `result: "unmodified"`, and then sends
+`Action_Close`. It does not send `Close_Session`, which can close other users'
+sessions. Token renewal uses the pinned release's `App_TokenExpiring` and
+`App_TokenExpired` events. [Collabora host messaging implementation](https://github.com/CollaboraOnline/online.mirror/blob/cp-26.04.4-2/browser/src/map/handler/Map.WOPI.js),
+[save responses and token events](https://github.com/CollaboraOnline/online.mirror/blob/cp-26.04.4-2/browser/src/app/Socket.ts).
+
+## Optional Microsoft file links
 
 Use **Link Microsoft file** for a document that already exists in SharePoint or
 OneDrive. Open the file in Microsoft, copy its full browser address, and enter that
@@ -39,8 +162,8 @@ permissions and licensing of that Microsoft environment.
 ForemanHQ stores the validated URL and local organizational metadata. It does not
 fetch the Microsoft file, verify that it exists, create a Microsoft sharing grant,
 receive save callbacks, show actual editor presence or synchronize its bytes.
-Uploading a Word/Excel file directly to ForemanHQ does not make it editable in
-Microsoft 365. Link the Microsoft-hosted file separately to use Office editing.
+Uploading a Word/Excel file directly to ForemanHQ uses the configured Collabora
+editor. It does not create or synchronize a copy in Microsoft 365.
 
 Folder permissions govern access to the ForemanHQ record and local uploads only.
 Microsoft controls access to the external file independently. Removing a member's
@@ -85,59 +208,17 @@ storage. It is not a ready-to-deploy ephemeral/serverless blob-storage design.
 
 Uploads are limited to 50 MiB each. Workspace metadata is bounded to 12 MiB, with
 limits on documents, folders, versions, comments, activity and workflow records.
-Limits are enforced on the server and are not an archive/retention policy.
+Manual uploads have a 200-revision daily limit per member and job; changed editor
+saves allow up to 2,000 per day. Both are subject to the 2 GiB daily byte limit and
+workspace bounds. Limits are enforced on the server and are not an archive/retention
+policy.
 
-## Completing genuine Office integration
-
-There are two supported Microsoft architectures to evaluate. Neither is enabled
-merely by entering an environment variable or displaying an iframe.
-
-### Microsoft-hosted storage with Graph
-
-Use an existing SharePoint/OneDrive library or provision SharePoint Embedded
-containers, register the application in Microsoft Entra ID, obtain the appropriate
-Microsoft Graph consent, and map each ForemanHQ document to an actual drive item.
-Store tokens server-side with suitable access controls and lifecycle handling.
-For SharePoint Embedded, the Graph permission and container-type permission layers
-are both required; registration and Azure billing must also be configured.
-[Microsoft authentication and authorization documentation](https://learn.microsoft.com/en-us/sharepoint/dev/embedded/build/configure-authentication-authorization).
-
-After provisioning files and access, use the drive item's `webUrl` to launch Office
-editing. Implement permission synchronization deliberately, handle revoked access,
-and reconcile provider versions and changes before claiming ForemanHQ history or
-reviews capture live Office edits. Microsoft documents coauthoring, AutoSave and
-version history for this flow. SharePoint Embedded's editing surface opens in
-another tab; its inline iframe experience is read-only preview.
-[Microsoft Office launch documentation](https://learn.microsoft.com/en-us/sharepoint/dev/embedded/build/open-office-files),
-[editing versus embedded preview](https://learn.microsoft.com/en-us/sharepoint/dev/embedded/plan/office-collaboration-instead-of-building).
-
-SharePoint Embedded setup requires a Microsoft 365 tenant with at least one
-SharePoint license, an administrator, Entra users/guests, container registration
-and billing arrangements. Its document collaboration generally does not require
-each user to hold an Office license, but specific experiences such as mentions
-have exceptions. Confirm the chosen storage and licensing model before rollout.
-[Customer tenant setup](https://learn.microsoft.com/en-us/sharepoint/dev/embedded/publish/customer-tenant-setup-guide).
-
-### Embedded Microsoft Office against ForemanHQ storage
-
-For Office editors embedded in ForemanHQ while files remain in ForemanHQ's cloud
-storage, apply to Microsoft's Cloud Storage Partner Program (CSPP). The program
-reviews qualifying SaaS storage vendors individually. It requires integration for
-Word, Excel and PowerPoint upload, download, viewing and editing, even when only a
-subset is exposed in the product. Editing users need the appropriate Microsoft
-365 licenses. [CSPP eligibility and integration requirements](https://learn.microsoft.com/en-us/microsoft-365/cloud-storage-partner-program/online/overview).
-
-Implement a WOPI host with stable file IDs, version identifiers, user/file-scoped
-tokens, discovery, a host page, proof-key validation, HTTPS and concurrent-write
-protection. Editing needs `CheckFileInfo`, `GetFile`, `PutFile`, `PutRelativeFile`,
-`Lock`, `Unlock`, `UnlockAndRelock` and `RefreshLock`. Complete Microsoft's testing
-and production launch process before exposing it as available.
-[Required WOPI operations](https://learn.microsoft.com/en-us/microsoft-365/cloud-storage-partner-program/online/wopi-requirements),
-[test and production environments](https://learn.microsoft.com/en-us/microsoft-365/cloud-storage-partner-program/online/build-test-ship/environments).
-
-The current module implements neither WOPI nor Graph OAuth/storage integration.
-No Microsoft credentials, tenant resources or external sharing grants are created
-by this change.
+The Collabora WOPI host is not an approved Microsoft Office integration. Embedding
+Microsoft's own editors would require its Cloud Storage Partner Program and the
+additional protocol operations and production validation required by that program.
+No Microsoft OAuth/storage integration, credentials, tenant resources or external
+sharing grants are created by this change.
+[Microsoft CSPP requirements](https://learn.microsoft.com/en-us/microsoft-365/cloud-storage-partner-program/online/overview).
 
 ## Verification
 
@@ -158,6 +239,38 @@ The API routes are `/api/job-documents?jobId=…` for the workspace and actions,
 `download=1` to request attachment download. These responses are private and are
 not cached for offline use.
 
+Editor launch and token renewal use `POST /api/job-documents/editor`; new DOCX/XLSX
+files use `POST /api/job-documents/editor/new`. WOPI callbacks use
+`/api/job-documents/wopi/{documentId}?jobId=…` and its `/contents` child. The editor
+status endpoint indicates configuration only, not successful live editing.
+
+Run document and editor tests:
+
+```sh
+pnpm exec vitest run src/server/documents src/components/jobs/documents/DocumentEditor.test.tsx src/components/jobs/JobDocumentsView.test.tsx
+```
+
+Proof verification has 32 passing signed-RSA tests, including token/URL tampering,
+timestamps, key rotation and unsafe discovery. The full application test suite had
+897 passing tests and 17 skipped tests across 122 passing files and one skipped
+file. Lint and the production build also passed.
+
+Live local acceptance results recorded on October 7, 2026:
+
+| Check | Verified result |
+| --- | --- |
+| Word | Typed DOCX content saved as immutable revision 2; downloaded file contained the exact text |
+| Excel | Entered `1250` and `750`, with `SUM(A1:A2)`; downloaded XLSX retained the formula and calculated result `2000` |
+| Coauthoring | Two distinct users opened the same WOPI document and edited together; the downloaded DOCX retained both users' text, and closing one editor left the other session open |
+| Mobile | At 390 × 844, DOCX typing, revision-2 persistence, save and close, and explicit discard confirmation passed with no JavaScript errors or horizontal overflow |
+| Callback security | All 15 signed HTTP security checks passed against the running integration |
+
+These results establish the tested local workflows. Public HTTPS acceptance is
+pending and must repeat the core editing/persistence flow through the deployed
+origins. Continue to assess longer sessions and token renewal, representative
+customer documents, revoked/read-only access, outside-upload conflicts, outage
+recovery and workload capacity before a supported production rollout.
+
 The Office URL tests use synthetic URLs and never contact Microsoft:
 
 ```sh
@@ -166,7 +279,7 @@ pnpm exec vitest run src/server/documents/office.test.ts
 
 They cover supported document-link shapes, URL normalization, deceptive hostnames,
 credentials, auth tokens, redirect parameters, malformed input and non-file links.
-Passing these tests is not evidence of a live Microsoft editing session. Live
+Passing these tests is not evidence of a live Microsoft editing session. Optional
 acceptance testing needs two authorized Microsoft accounts opening the same test
 document, observing concurrent edits and AutoSave, verifying persistence on reopen,
 and checking denied/revoked access with an unauthorized account.

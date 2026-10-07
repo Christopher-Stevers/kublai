@@ -520,4 +520,103 @@ describe("job documents workspace", () => {
     expect(posts()).toHaveLength(0);
     click.mockRestore();
   });
+  it.each([
+    { label: "New Word document", kind: "word", name: "Site notes.docx" },
+    { label: "New spreadsheet", kind: "spreadsheet", name: "Budget.xlsx" },
+  ])(
+    "creates and opens a $kind file in the configured open-source editor",
+    async ({ label, kind, name }) => {
+      const formSubmit = vi
+        .spyOn(HTMLFormElement.prototype, "submit")
+        .mockImplementation(() => undefined);
+      vi.mocked(fetch).mockImplementation(async (url, init) => {
+        const requestUrl =
+          typeof url === "string"
+            ? url
+            : url instanceof URL
+              ? url.href
+              : url.url;
+        requests.push({ url: requestUrl, init });
+        if (requestUrl.includes("/editor/new")) {
+          overview.documents.push(
+            doc({
+              id: "created-doc",
+              name,
+              currentVersionId: "created-version",
+            }),
+          );
+          return new Response(
+            JSON.stringify({
+              documentId: "created-doc",
+              versionId: "created-version",
+            }),
+            { status: 201 },
+          );
+        }
+        if (requestUrl.includes("/editor") && init?.method === "POST")
+          return new Response(
+            JSON.stringify({
+              provider: "collabora",
+              mode: "edit",
+              actionUrl:
+                "https://office.example.com/browser/editor.html?WOPISrc=example",
+              wopiSrc: "https://example.com/wopi",
+              accessToken: "test-secret",
+              accessTokenTtl: Date.now() + 7_200_000,
+              documentId: "created-doc",
+              versionId: "created-version",
+            }),
+          );
+        if (requestUrl.includes("/editor"))
+          return new Response(
+            JSON.stringify({ configured: true, provider: "collabora" }),
+          );
+        return new Response(JSON.stringify(overview));
+      });
+      render(<JobDocumentsView jobId="job-1" />);
+      await ready();
+      fireEvent.click(await screen.findByRole("button", { name: label }));
+      fireEvent.change(screen.getByLabelText("Name"), {
+        target: { value: name },
+      });
+      fireEvent.click(screen.getByRole("button", { name: "Create and edit" }));
+      expect(await screen.findByTitle(`Edit ${name}`)).toBeInTheDocument();
+      expect(jsonPosts()).toContainEqual({
+        jobId: "job-1",
+        folderId: null,
+        kind,
+        name,
+      });
+      expect(jsonPosts()).toContainEqual({
+        jobId: "job-1",
+        documentId: "created-doc",
+      });
+      expect(formSubmit).toHaveBeenCalledTimes(1);
+      formSubmit.mockRestore();
+    },
+  );
+
+  it("does not offer live creation when the editing service is not configured", async () => {
+    render(<JobDocumentsView jobId="job-1" />);
+    await ready();
+    expect(
+      screen.getByText(/Online Word and spreadsheet editing is not set up/),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "New Word document" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "New spreadsheet" }),
+    ).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Contracts" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Open Agreement.docx" }),
+    );
+    expect(
+      screen.getByText(/Live editing is not set up on this server/),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Edit together" }),
+    ).not.toBeInTheDocument();
+  });
 });
