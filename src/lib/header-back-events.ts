@@ -26,7 +26,7 @@ export function requestHeaderBack() {
 // phone's back button/gesture does the same: while any override is active a
 // "guard" history entry sits on top, so system back lands here instead of
 // skipping past the screen (or closing the installed app on Android).
-const backOverrides: Array<{ current: () => void }> = [];
+const backOverrides: Array<{ current: () => void; guard: boolean }> = [];
 const GUARD_KEY = "foremenhqBackGuard";
 let guardOnTop = false;
 let ignoreNextPop = false;
@@ -40,12 +40,13 @@ function isGuard(state: unknown) {
 /** Adds or removes the guard entry to match whether any override is active. */
 function syncGuard() {
   syncQueued = false;
-  if (backOverrides.length > 0 && !guardOnTop) {
+  const wantGuard = backOverrides.some((entry) => entry.guard);
+  if (wantGuard && !guardOnTop) {
     // Copy the current state (Next's routing data and the workspace location)
     // so leaving the guard restores exactly the same screen.
     window.history.pushState({ ...window.history.state, [GUARD_KEY]: true }, "");
     guardOnTop = true;
-  } else if (backOverrides.length === 0 && guardOnTop) {
+  } else if (!wantGuard && guardOnTop) {
     guardOnTop = false;
     // Closed from the app (e.g. the back arrow): drop the unused guard.
     if (isGuard(window.history.state)) {
@@ -68,7 +69,9 @@ function onPopState() {
     ignoreNextPop = false;
     return;
   }
-  if (!guardOnTop) return;
+  // Still on (or above) the guard, e.g. a screen with its own history entries
+  // stacked over it stepped back: not ours to handle.
+  if (!guardOnTop || isGuard(window.history.state)) return;
   guardOnTop = false;
   backOverrides.at(-1)?.current();
   queueSync();
@@ -86,7 +89,11 @@ export function runHeaderBackOverride() {
  * While `handler` is non-null, the app bar's back arrow and the phone's back
  * button/gesture call it instead of leaving the screen.
  */
-export function useHeaderBackOverride(handler: (() => void) | null) {
+export function useHeaderBackOverride(
+  handler: (() => void) | null,
+  /** historyGuard: false for screens that keep their own history entries. */
+  { historyGuard = true }: { historyGuard?: boolean } = {},
+) {
   const latest = useRef(handler);
   useLayoutEffect(() => {
     latest.current = handler;
@@ -98,7 +105,7 @@ export function useHeaderBackOverride(handler: (() => void) | null) {
       listening = true;
       window.addEventListener("popstate", onPopState);
     }
-    const entry = { current: () => latest.current?.() };
+    const entry = { current: () => latest.current?.(), guard: historyGuard };
     backOverrides.push(entry);
     queueSync();
     return () => {
@@ -106,5 +113,5 @@ export function useHeaderBackOverride(handler: (() => void) | null) {
       if (index >= 0) backOverrides.splice(index, 1);
       queueSync();
     };
-  }, [active]);
+  }, [active, historyGuard]);
 }
