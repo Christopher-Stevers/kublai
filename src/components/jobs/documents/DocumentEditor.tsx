@@ -116,6 +116,12 @@ export function DocumentEditor({
   const closing = useRef(false);
   const closeAfterSave = useRef(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const receiptTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingSave = useRef<{
+    requestId: string;
+    controller: AbortController;
+  } | null>(null);
+  const unconfirmedSave = useRef(false);
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
   const [launch, setLaunch] = useState<EditorLaunch | null>(null);
@@ -146,7 +152,7 @@ export function DocumentEditor({
     onCloseRef.current();
   }, [post]);
   const save = useCallback(
-    (close = false) => {
+    async (close = false) => {
       if (
         !ready.current ||
         !session.current ||
@@ -160,31 +166,131 @@ export function DocumentEditor({
         );
         return;
       }
+      const requestId = crypto.randomUUID();
+      const controller = new AbortController();
+      pendingSave.current = { requestId, controller };
+      const isCurrent = () =>
+        !controller.signal.aborted &&
+        pendingSave.current?.requestId === requestId;
+      const stopWaiting = () => {
+        if (saveTimer.current) clearTimeout(saveTimer.current);
+        if (receiptTimer.current) clearTimeout(receiptTimer.current);
+        controller.abort();
+        pendingSave.current = null;
+        saveInFlight.current = false;
+        setSaving(false);
+      };
       closeAfterSave.current = close;
       saveInFlight.current = true;
+      unconfirmedSave.current = true;
+      dirty.current = true;
       setSaving(true);
+      setModified(true);
       setError(null);
       setSaved(false);
-      // Commit active text/cell editing before the save; only an acknowledgement may close this editor.
-      post("Action_Save", {
-        DontTerminateEdit: false,
-        DontSaveIfUnmodified: true,
-        Notify: true,
-      });
       saveTimer.current = setTimeout(() => {
-        // The protocol has no request ID: a retry could mistake a late acknowledgement for a newer save.
+        if (!isCurrent()) return;
+        closeAfterSave.current = false;
+        stopWaiting();
+        setError(
+          "The project server has not confirmed this save. Your editor remains open. Try Save again before closing; any later response to this attempt will not close the editor.",
+        );
+      }, 45_000);
+      const poll = async () => {
+        if (!isCurrent()) return;
+        try {
+          const query = new URLSearchParams({ jobId, documentId, requestId });
+          const response = await fetch(
+            `/api/job-documents/editor/save?${query}`,
+            {
+              credentials: "same-origin",
+              cache: "no-store",
+              signal: controller.signal,
+            },
+          );
+          const receipt: unknown = await response.json().catch(() => null);
+          if (!isCurrent()) return;
+          if (
+            !response.ok ||
+            !record(receipt) ||
+            receipt.requestId !== requestId ||
+            (receipt.status !== "pending" && receipt.status !== "committed")
+          )
+            throw new Error(
+              "Save confirmation could not be checked. Keep the editor open and check your connection.",
+            );
+          if (
+            receipt.status === "committed" &&
+            typeof receipt.versionId === "string" &&
+            typeof receipt.committedAt === "string"
+          ) {
+            const shouldClose = closeAfterSave.current;
+            stopWaiting();
+            closeAfterSave.current = false;
+            unconfirmedSave.current = false;
+            dirty.current = false;
+            setModified(false);
+            setSaved(true);
+            setError(null);
+            if (shouldClose) finishClose();
+            return;
+          }
+        } catch (reason) {
+          if (isCurrent())
+            setError(
+              reason instanceof Error
+                ? reason.message
+                : "Save confirmation could not be checked.",
+            );
+        }
+        if (isCurrent())
+          receiptTimer.current = setTimeout(() => void poll(), 750);
+      };
+      try {
+        const response = await fetch("/api/job-documents/editor/save", {
+          method: "POST",
+          credentials: "same-origin",
+          cache: "no-store",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ jobId, documentId, requestId }),
+          signal: controller.signal,
+        });
+        const intent: unknown = await response.json().catch(() => null);
+        if (!isCurrent()) return;
+        if (
+          !response.ok ||
+          !record(intent) ||
+          intent.requestId !== requestId ||
+          intent.status !== "pending"
+        )
+          throw new Error(
+            "The project server could not start a verified save. Keep your document open and try again.",
+          );
+        // Collabora's core acknowledgement precedes WOPI storage. Only the correlated receipt above proves persistence.
+        post("Action_Save", {
+          DontTerminateEdit: false,
+          DontSaveIfUnmodified: false,
+          Notify: true,
+          ExtendedData: JSON.stringify({ foremanhqSaveRequestId: requestId }),
+        });
+        void poll();
+      } catch (reason) {
+        if (!isCurrent()) return;
+        stopWaiting();
         closeAfterSave.current = false;
         setError(
-          "The editor has not confirmed the save. Editing is paused while confirmation is pending. Keep this window open, reconnect if needed, or renew your session. A late confirmation will not close the editor.",
+          reason instanceof Error
+            ? reason.message
+            : "The project server could not start a verified save.",
         );
-      }, 30_000);
+      }
     },
-    [post],
+    [documentId, finishClose, jobId, post],
   );
   const requestClose = useCallback(() => {
     if (saveInFlight.current || closing.current) return;
     if (!ready.current || session.current?.mode === "view") finishClose();
-    else save(true);
+    else void save(true);
   }, [finishClose, save]);
   useHeaderBackOverride(requestClose);
 
@@ -249,6 +355,8 @@ export function DocumentEditor({
     return () => {
       controller.abort();
       if (saveTimer.current) clearTimeout(saveTimer.current);
+      if (receiptTimer.current) clearTimeout(receiptTimer.current);
+      pendingSave.current?.controller.abort();
     };
   }, [jobId, documentId, attempt]);
 
@@ -313,29 +421,27 @@ export function DocumentEditor({
           }
           break;
         case "Doc_ModifiedStatus":
-          if (typeof values.Modified === "boolean") {
+          if (
+            typeof values.Modified === "boolean" &&
+            (values.Modified || !unconfirmedSave.current)
+          ) {
+            if (values.Modified) unconfirmedSave.current = true;
             dirty.current = values.Modified;
             setModified(values.Modified);
             if (values.Modified) setSaved(false);
           }
           break;
         case "Action_Save_Resp":
-          if (!saveInFlight.current) break;
-          if (saveTimer.current) clearTimeout(saveTimer.current);
-          saveInFlight.current = false;
-          setSaving(false);
-          if (values.success === true || values.result === "unmodified") {
-            dirty.current = false;
-            setModified(false);
-            setSaved(true);
-            setError(null);
-            if (closeAfterSave.current) finishClose();
-          } else {
-            closeAfterSave.current = false;
+          // This uncorrelated message can describe core serialization rather than durable storage.
+          // It may explain a problem, but never completes or closes a save attempt.
+          if (
+            saveInFlight.current &&
+            values.success === false &&
+            values.result !== "unmodified"
+          )
             setError(
-              "The editor could not save this document. Keep it open and try again. If access changed, download a copy to preserve your work.",
+              "The editor reported a save problem. Waiting for the project server to confirm whether the file was stored. Keep this window open.",
             );
-          }
           break;
         case "Action_Load_Resp":
           if (values.success === false)
@@ -354,7 +460,7 @@ export function DocumentEditor({
     };
     window.addEventListener("message", receive);
     return () => window.removeEventListener("message", receive);
-  }, [finishClose, post, renewToken, requestClose]);
+  }, [post, renewToken, requestClose]);
 
   useEffect(() => {
     if (!launch || loaded) return;
@@ -477,7 +583,7 @@ export function DocumentEditor({
                 variant="outline"
                 size="sm"
                 disabled={saving || offline}
-                onClick={() => save()}
+                onClick={() => void save()}
               >
                 <SaveIcon />
                 Save
@@ -539,6 +645,8 @@ export function DocumentEditor({
           {launch && (
             <iframe
               ref={frame}
+              inert={!loaded || saving}
+              tabIndex={!loaded || saving ? -1 : 0}
               name={frameName}
               title={`Edit ${name}`}
               className="h-full w-full border-0"
@@ -571,7 +679,7 @@ export function DocumentEditor({
             >
               <div className="bg-background flex items-center gap-2 rounded-lg border p-4 shadow-sm">
                 <Loader2Icon className="size-5 animate-spin" />
-                Waiting for save confirmation…
+                Waiting for the project server to confirm the save…
               </div>
             </div>
           )}

@@ -8,7 +8,8 @@ unavailable until that service and the application settings are configured.
 
 The open-source editor is currently a pilot integration. Real file editing,
 coauthoring and mobile workflows have passed local acceptance, and a persistent
-pilot service is running. Public HTTPS acceptance remains pending. This module is
+pilot service is running. Save and close now requires a correlated storage receipt;
+public acceptance of that safeguard remains pending. This module is
 a foundation for BIM 360-style workflows, with the remaining scope recorded below.
 
 ## Capability matrix
@@ -98,9 +99,10 @@ Docker.
 
 The intended public editor origin is `https://office.stellarator.work`, with a
 prepared Cloudflare Tunnel route; its WOPI application origin is
-`https://foremanhq.stellarator.work`. Public HTTPS discovery and editing acceptance
-are still pending, including activation of the prepared route. This deployment
-uses the tunnel, while the repository's Caddy
+`https://foremanhq.stellarator.work`. Public HTTPS, WebSocket connection and signed
+WOPI document loading have passed. Durable save and close acceptance needs a retest
+after the storage receipt change described below. This deployment uses the tunnel,
+while the repository's Caddy
 file remains an alternative proxy example.
 
 Configure an exact ForemanHQ WOPI host allowlist on Collabora. Generate a persistent
@@ -143,12 +145,39 @@ fail rather than replace a newer revision. A successful save returns the new
 Unchanged bytes do not create an extra revision.
 
 The frame uses a POST form for its access token. Host messages validate both the
-frame window and exact editor origin. Closing requests one `Action_Save`, waits
-for `Action_Save_Resp` success or `result: "unmodified"`, and then sends
-`Action_Close`. It does not send `Close_Session`, which can close other users'
-sessions. Token renewal uses the pinned release's `App_TokenExpiring` and
-`App_TokenExpired` events. [Collabora host messaging implementation](https://github.com/CollaboraOnline/online.mirror/blob/cp-26.04.4-2/browser/src/map/handler/Map.WOPI.js),
-[save responses and token events](https://github.com/CollaboraOnline/online.mirror/blob/cp-26.04.4-2/browser/src/app/Socket.ts).
+frame window and exact editor origin. **`Action_Save_Resp` is not a durable storage
+confirmation in this CODE release.** The editor can emit it after its internal
+`.uno:Save` result, before the asynchronous WOPI upload finishes. Its notification
+flag can then suppress a later storage response. Neither `success: true` nor
+`result: "unmodified"` alone proves that ForemanHQ retained the changes.
+[Core response forwarding](https://github.com/CollaboraOnline/online.mirror/blob/cp-26.04.4-2/wsd/ClientSession.cpp),
+[browser save response](https://github.com/CollaboraOnline/online.mirror/blob/cp-26.04.4-2/browser/src/control/Control.Toolbar.js).
+
+The save protocol registers an authenticated, document-scoped save intent, sends
+its unique ID in `Action_Save.Values.ExtendedData`, and waits for an authenticated
+host-side receipt.
+Collabora includes that ID in `X-COOL-WOPI-ExtendedData` on `PutFile`. The server
+records the receipt only in the successful persistence transaction, including
+when identical file bytes need no new revision. The host must match the receipt
+to the specific request before showing save confirmation or closing the frame.
+It requests `DontSaveIfUnmodified: false` so even an unchanged manual save attempts
+serialization/upload; an absent receipt remains unconfirmed. A busy editor or
+failed upload may prevent the callback, so an early editor acknowledgement cannot
+replace this check. [WOPI upload metadata](https://github.com/CollaboraOnline/online.mirror/blob/cp-26.04.4-2/wsd/wopi/WopiStorage.cpp).
+
+Save intents expire after 15 minutes, with at most 256 active records per job.
+The requesting user alone can poll a receipt, subject to current document access.
+A currently authorized coauthor may perform the signed storage callback, but only
+the registered ID for that document completes the receipt. These internal records
+are excluded from the document overview, including folder-restricted records.
+Unknown or expired metadata never blocks an otherwise valid file save; it simply
+cannot confirm the expired request.
+
+After confirmed persistence, close only the current frame with `Action_Close`;
+do not use `Close_Session`, which can close other users' sessions. Token renewal
+uses `App_TokenExpiring` and `App_TokenExpired` and updates the existing frame.
+[Collabora host messaging implementation](https://github.com/CollaboraOnline/online.mirror/blob/cp-26.04.4-2/browser/src/map/handler/Map.WOPI.js),
+[token events](https://github.com/CollaboraOnline/online.mirror/blob/cp-26.04.4-2/browser/src/app/Socket.ts).
 
 ## Optional Microsoft file links
 
@@ -243,6 +272,9 @@ Editor launch and token renewal use `POST /api/job-documents/editor`; new DOCX/X
 files use `POST /api/job-documents/editor/new`. WOPI callbacks use
 `/api/job-documents/wopi/{documentId}?jobId=…` and its `/contents` child. The editor
 status endpoint indicates configuration only, not successful live editing.
+`POST /api/job-documents/editor/save` registers a save intent, and an authenticated
+`GET` to the same route polls its persistence receipt. Both are normal application
+endpoints; neither uses the WOPI callback authentication exemption.
 
 Run document and editor tests:
 
@@ -251,8 +283,9 @@ pnpm exec vitest run src/server/documents src/components/jobs/documents/Document
 ```
 
 Proof verification has 32 passing signed-RSA tests, including token/URL tampering,
-timestamps, key rotation and unsafe discovery. The full application test suite had
-897 passing tests and 17 skipped tests across 122 passing files and one skipped
+timestamps, key rotation and unsafe discovery. Before the storage receipt change,
+the full application test suite had 897 passing tests and 17 skipped tests across
+122 passing files and one skipped
 file. Lint and the production build also passed.
 
 Live local acceptance results recorded on October 7, 2026:
@@ -265,10 +298,14 @@ Live local acceptance results recorded on October 7, 2026:
 | Mobile | At 390 × 844, DOCX typing, revision-2 persistence, save and close, and explicit discard confirmation passed with no JavaScript errors or horizontal overflow |
 | Callback security | All 15 signed HTTP security checks passed against the running integration |
 
-These results establish the tested local workflows. Public HTTPS acceptance is
-pending and must repeat the core editing/persistence flow through the deployed
-origins. Continue to assess longer sessions and token renewal, representative
-customer documents, revoked/read-only access, outside-upload conflicts, outage
+These results establish the tested local file contents and workflows. The first
+public run passed HTTPS, WebSocket and signed WOPI loading, but found that the
+editor reported save success while PostgreSQL still held revision 1. It therefore
+did not pass durable save/close acceptance. The correlated storage receipt has
+since been implemented; public acceptance must now verify persistence before the
+frame closes and inspect the downloaded file. Continue to assess longer sessions
+and token renewal, representative customer documents, revoked/read-only access,
+outside-upload conflicts, outage
 recovery and workload capacity before a supported production rollout.
 
 The Office URL tests use synthetic URLs and never contact Microsoft:

@@ -94,9 +94,27 @@ export type DocumentState = {
   activity: DocumentActivity[];
   reviews: DocumentReview[];
   transmittals: DocumentTransmittal[];
+  /** Internal transaction receipts. Never included in the document overview. */
+  editorSaveReceipts?: DocumentEditorSaveReceipt[];
+};
+export type DocumentEditorSaveReceipt = {
+  requestId: string;
+  documentId: string;
+  userId: string;
+  createdAt: string;
+  expiresAt: string;
+  versionId?: string;
+  committedAt?: string;
+  savedBy?: string;
+};
+export type DocumentEditorSaveStatus = {
+  requestId: string;
+  status: "pending" | "committed";
+  versionId?: string;
+  committedAt?: string;
 };
 export type DocumentMember = { id: string; name: string | null; email: string };
-export type DocumentOverview = DocumentState & {
+export type DocumentOverview = Omit<DocumentState, "editorSaveReceipts"> & {
   members: DocumentMember[];
   capabilities: { canManage: boolean; canWrite: boolean; userId: string };
   office: { mode: "linked"; embeddedConfigured: boolean };

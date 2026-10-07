@@ -75,6 +75,10 @@ import {
 } from "./wopi";
 import { getDocumentEditorConfig } from "./editor-config";
 import { issueEditorToken, verifyEditorToken } from "./editor-token";
+import {
+  registerEditorSaveReceipt,
+  readEditorSaveReceipt,
+} from "./editor-save-receipt";
 const actor: DocumentActor = {
   userId: "writer",
   jobId: randomUUID(),
@@ -312,6 +316,113 @@ describe("Live editor immutable saves", () => {
       wopiSaveFile(claims, mocks.access!, currentVersion().createdAt, changed),
     ).rejects.toThrow("disk full");
     expect(mocks.state!.versions).toHaveLength(1);
+  });
+  it("publishes receipt only after blob persistence and transaction completion", async () => {
+    const requestId = randomUUID();
+    registerEditorSaveReceipt(
+      mocks.state!,
+      actor,
+      claims.documentId,
+      requestId,
+    );
+    let finish: () => void = () => undefined;
+    const persisted = new Promise<void>((resolve) => {
+      finish = resolve;
+    });
+    mocks.persist.mockReturnValue(persisted);
+    const save = wopiSaveFile(
+      claims,
+      mocks.access!,
+      currentVersion().createdAt,
+      changed,
+      JSON.stringify({ foremanhqSaveRequestId: requestId }),
+    );
+    expect(mocks.persist).toHaveBeenCalledOnce();
+    expect(
+      readEditorSaveReceipt(mocks.state!, actor, claims.documentId, requestId)
+        .status,
+    ).toBe("pending");
+    expect(mocks.state!.versions).toHaveLength(1);
+    finish();
+    const saved = await save;
+    expect(
+      readEditorSaveReceipt(mocks.state!, actor, claims.documentId, requestId),
+    ).toMatchObject({
+      requestId,
+      status: "committed",
+      versionId: saved.versionId,
+    });
+  });
+  it("leaves receipts pending for failed, stale and unauthorized writes", async () => {
+    const requestId = randomUUID();
+    registerEditorSaveReceipt(
+      mocks.state!,
+      actor,
+      claims.documentId,
+      requestId,
+    );
+    const metadata = JSON.stringify({ foremanhqSaveRequestId: requestId });
+    await expect(
+      wopiSaveFile(claims, mocks.access!, null, changed, metadata),
+    ).rejects.toMatchObject({ code: "CONFLICT" });
+    await expect(
+      wopiSaveFile(
+        { ...claims, mode: "view" },
+        mocks.access!,
+        currentVersion().createdAt,
+        changed,
+        metadata,
+      ),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    mocks.persist.mockRejectedValue(new Error("disk full"));
+    await expect(
+      wopiSaveFile(
+        claims,
+        mocks.access!,
+        currentVersion().createdAt,
+        changed,
+        metadata,
+      ),
+    ).rejects.toThrow("disk full");
+    expect(
+      readEditorSaveReceipt(mocks.state!, actor, claims.documentId, requestId)
+        .status,
+    ).toBe("pending");
+    expect(mocks.state!.versions).toHaveLength(1);
+  });
+  it("confirms unchanged bytes without manufacturing another version and ignores stale metadata on autosave", async () => {
+    const requestId = randomUUID();
+    registerEditorSaveReceipt(
+      mocks.state!,
+      actor,
+      claims.documentId,
+      requestId,
+    );
+    const saved = await wopiSaveFile(
+      claims,
+      mocks.access!,
+      currentVersion().createdAt,
+      original,
+      JSON.stringify({ foremanhqSaveRequestId: requestId }),
+    );
+    expect(saved.changed).toBe(false);
+    expect(mocks.persist).not.toHaveBeenCalled();
+    expect(mocks.state!.versions).toHaveLength(1);
+    expect(
+      readEditorSaveReceipt(mocks.state!, actor, claims.documentId, requestId),
+    ).toMatchObject({ status: "committed", versionId: saved.versionId });
+    await wopiSaveFile(
+      claims,
+      mocks.access!,
+      currentVersion().createdAt,
+      changed,
+      "undefined",
+    );
+    expect(mocks.state!.versions).toHaveLength(2);
+    expect(
+      readEditorSaveReceipt(mocks.state!, actor, claims.documentId, requestId)
+        .versionId,
+    ).toBe(saved.versionId);
   });
 });
 

@@ -54,6 +54,7 @@ export async function POST(request: Request, context: Context) {
       access,
       request.headers.get("x-cool-wopi-timestamp"),
       bytes,
+      request.headers.get("x-cool-wopi-extendeddata"),
     );
     return Response.json(
       { LastModifiedTime: result.LastModifiedTime },

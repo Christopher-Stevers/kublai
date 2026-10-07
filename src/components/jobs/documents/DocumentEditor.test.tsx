@@ -19,6 +19,8 @@ let submissions: Array<{
   method: string;
   fields: Record<string, FormDataEntryValue>;
 }>;
+let saveRequests: string[];
+let committedReceipts: Set<string>;
 const onClose = vi.fn();
 const frame = () => screen.getByTitle<HTMLIFrameElement>("Edit Scope.docx");
 function message(
@@ -58,6 +60,8 @@ beforeEach(() => {
   onClose.mockReset();
   confirmation.mockReset().mockResolvedValue(true);
   submissions = [];
+  saveRequests = [];
+  committedReceipts = new Set();
   Object.defineProperty(navigator, "onLine", {
     configurable: true,
     value: true,
@@ -75,7 +79,34 @@ beforeEach(() => {
   };
   vi.stubGlobal(
     "fetch",
-    vi.fn(async () => new Response(JSON.stringify(session), { status: 200 })),
+    vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.includes("/editor/save")) {
+        if (init?.method === "POST") {
+          const body = JSON.parse(init.body as string) as { requestId: string };
+          saveRequests.push(body.requestId);
+          return new Response(
+            JSON.stringify({ requestId: body.requestId, status: "pending" }),
+          );
+        }
+        const requestId = new URL(
+          url,
+          "https://app.example.com",
+        ).searchParams.get("requestId")!;
+        return new Response(
+          JSON.stringify({
+            requestId,
+            status: committedReceipts.has(requestId) ? "committed" : "pending",
+            ...(committedReceipts.has(requestId)
+              ? {
+                  versionId: "durable-version",
+                  committedAt: new Date().toISOString(),
+                }
+              : {}),
+          }),
+        );
+      }
+      return new Response(JSON.stringify(session), { status: 200 });
+    }),
   );
   vi.spyOn(HTMLFormElement.prototype, "submit").mockImplementation(function (
     this: HTMLFormElement,
@@ -140,70 +171,115 @@ describe("Collabora document editor", () => {
     expect(screen.getByRole("button", { name: "Save" })).toBeInTheDocument();
   });
 
-  it("waits for a confirmed save before closing and closes only this editor session", async () => {
+  it("waits for a correlated durable receipt, not the editor core acknowledgement, before closing", async () => {
     await start();
     const post = vi.spyOn(frame().contentWindow!, "postMessage");
     ready();
     message("Doc_ModifiedStatus", { Modified: true });
-    fireEvent.click(screen.getByRole("button", { name: "Save & close" }));
-    expect(onClose).not.toHaveBeenCalled();
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Save & close" }));
+    });
+    expect(saveRequests).toHaveLength(1);
+    expect(frame()).toHaveAttribute("inert");
+    expect(frame()).toHaveAttribute("tabindex", "-1");
     expect(post).toHaveBeenCalledWith(
       expect.stringContaining('"MessageId":"Action_Save"'),
       "https://office.example.com",
     );
-    expect(post).toHaveBeenCalledWith(
-      expect.stringContaining('"Notify":true'),
-      "https://office.example.com",
+    const payload: unknown = post.mock.calls.find(
+      ([value]) =>
+        typeof value === "string" &&
+        value.includes('"MessageId":"Action_Save"'),
+    )?.[0];
+    if (typeof payload !== "string")
+      throw new Error("The editor save command was not sent.");
+    const command = JSON.parse(payload) as {
+      Values: { ExtendedData: string; DontSaveIfUnmodified: boolean };
+    };
+    expect(command.Values.ExtendedData).toBe(
+      JSON.stringify({ foremanhqSaveRequestId: saveRequests[0] }),
     );
+    expect(command.Values.DontSaveIfUnmodified).toBe(false);
     message("Action_Save_Resp", { success: true });
-    expect(onClose).toHaveBeenCalledTimes(1);
+    message("Doc_ModifiedStatus", { Modified: false });
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.queryByText("Save confirmed")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Save & close" })).toBeDisabled();
+    committedReceipts.add(saveRequests[0]!);
+    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1), {
+      timeout: 2000,
+    });
     expect(post).toHaveBeenCalledWith(
       expect.stringContaining('"MessageId":"Action_Close"'),
       "https://office.example.com",
     );
     expect(
-      post.mock.calls.some(([payload]) =>
-        String(payload).includes("Close_Session"),
+      post.mock.calls.some(
+        ([payload]) =>
+          typeof payload === "string" && payload.includes("Close_Session"),
       ),
     ).toBe(false);
   });
 
-  it("keeps the editor mounted after save failure and lets the user retry", async () => {
+  it("never treats a core failure or unmodified response as a durable save", async () => {
     await start();
     ready();
-    message("Doc_ModifiedStatus", { Modified: true });
-    fireEvent.click(screen.getByRole("button", { name: "Save & close" }));
-    message("Action_Save_Resp", { success: false, result: "failed" });
-    expect(screen.getByRole("alert")).toHaveTextContent("could not save");
-    expect(frame()).toBeInTheDocument();
-    expect(onClose).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: "Save & close" }));
-    message("Action_Save_Resp", { success: false, result: "unmodified" });
-    expect(onClose).toHaveBeenCalledTimes(1);
-  });
-
-  it("does not close when no save acknowledgement arrives", async () => {
-    await start();
-    ready();
-    vi.useFakeTimers();
-    fireEvent.click(screen.getByRole("button", { name: "Save & close" }));
-    act(() => {
-      vi.advanceTimersByTime(30_001);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Save & close" }));
     });
+    message("Action_Save_Resp", { success: false, result: "failed" });
     expect(screen.getByRole("alert")).toHaveTextContent(
-      "has not confirmed the save",
+      "Waiting for the project server",
     );
     expect(frame()).toBeInTheDocument();
     expect(onClose).not.toHaveBeenCalled();
-    expect(screen.getByRole("button", { name: "Save & close" })).toBeDisabled();
+    message("Action_Save_Resp", { success: false, result: "unmodified" });
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.queryByText("Save confirmed")).not.toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "Close without saving" }),
     ).not.toBeInTheDocument();
-    message("Action_Save_Resp", { success: true });
+    committedReceipts.add(saveRequests[0]!);
+    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1), {
+      timeout: 2000,
+    });
+  });
+
+  it("ignores a timed-out receipt when a newer save is pending", async () => {
+    await start();
+    ready();
+    vi.useFakeTimers();
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Save & close" }));
+    });
+    const oldRequest = saveRequests[0]!;
+    act(() => {
+      vi.advanceTimersByTime(45_001);
+    });
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "has not confirmed this save",
+    );
+    expect(frame()).toBeInTheDocument();
     expect(onClose).not.toHaveBeenCalled();
     expect(
       screen.getByRole("button", { name: "Save & close" }),
     ).not.toBeDisabled();
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Save & close" }));
+    });
+    expect(saveRequests).toHaveLength(2);
+    expect(saveRequests[1]).not.toBe(oldRequest);
+    committedReceipts.add(oldRequest);
+    message("Action_Save_Resp", { success: true });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(800);
+    });
+    expect(onClose).not.toHaveBeenCalled();
+    committedReceipts.add(saveRequests[1]!);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(800);
+    });
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 
   it("renews an expiring token inside the existing iframe", async () => {
@@ -315,8 +391,14 @@ describe("Collabora document editor", () => {
   it("requires explicit confirmation to leave after a definitive save failure", async () => {
     await start();
     ready();
-    fireEvent.click(screen.getByRole("button", { name: "Save & close" }));
-    message("Action_Save_Resp", { success: false });
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(JSON.stringify({ error: "Storage unavailable" }), {
+        status: 503,
+      }),
+    );
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Save & close" }));
+    });
     confirmation.mockResolvedValueOnce(false);
     await act(async () => {
       fireEvent.click(
@@ -338,5 +420,15 @@ describe("Collabora document editor", () => {
       }),
     );
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+  it("retains the navigation guard when core autosave clears its local modified flag before storage is confirmed", async () => {
+    await start();
+    ready();
+    message("Doc_ModifiedStatus", { Modified: true });
+    message("Doc_ModifiedStatus", { Modified: false });
+    expect(screen.getByText("Changes pending")).toBeInTheDocument();
+    const event = new Event("beforeunload", { cancelable: true });
+    window.dispatchEvent(event);
+    expect(event.defaultPrevented).toBe(true);
   });
 });

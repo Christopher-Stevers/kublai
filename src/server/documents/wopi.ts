@@ -25,6 +25,7 @@ import {
   type EditorTokenClaims,
 } from "./editor-token";
 import { verifyWopiProof } from "./wopi-proof";
+import { completeEditorSaveReceipt } from "./editor-save-receipt";
 import { mutateWorkspace, readWorkspace } from "./service";
 import {
   MAX_DOCUMENT_FILE_BYTES,
@@ -299,6 +300,7 @@ export async function wopiSaveFile(
   access: DocumentAccess,
   timestamp: string | null,
   bytes: Uint8Array,
+  extendedData?: string | null,
 ) {
   assertEditorClaimAccess(claims, access);
   return mutateWorkspace(
@@ -309,6 +311,13 @@ export async function wopiSaveFile(
       const result = applyEditorSave(state, actor, claims, timestamp, bytes);
       if (result.changed)
         await writeDocumentBlob(fresh.job.organizationId, bytes);
+      completeEditorSaveReceipt(
+        state,
+        actor,
+        claims.documentId,
+        result.versionId,
+        extendedData,
+      );
       return result;
     },
   );

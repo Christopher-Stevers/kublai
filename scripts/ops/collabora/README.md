@@ -101,6 +101,7 @@ including key retention, private file/archive permissions and strict host settin
 The generated archive and named-volume initialization have also passed with the
 actual rootless Docker pilot. Compose configuration validation passes; this exact
 generic Compose/Caddy deployment has not been acceptance tested. The persistent
-pilot uses user systemd services and a Cloudflare Tunnel instead. Public HTTPS
-acceptance remains pending. Live results and deployed service details are recorded
+pilot uses user systemd services and a Cloudflare Tunnel instead. Public connection
+and document loading passed; durable save/close acceptance needs a retest after the
+correlated storage receipt fix. Live results and deployed service details are recorded
 in [Job documents](../../../docs/JOB_DOCUMENTS.md).
