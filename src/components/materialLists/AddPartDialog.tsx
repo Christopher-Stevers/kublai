@@ -5,7 +5,7 @@ import { useMaterialListSortPreference } from "~/hooks/use-material-list-sort";
 import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
-import { AlertCircle, Plus, Minus, ChevronDown, ChevronUp, BoxesIcon, ChevronRight, Search, XIcon, ArrowLeftIcon, PlusIcon } from "lucide-react";
+import { AlertCircle, Plus, Minus, ChevronDown, ChevronUp, Search, XIcon, ArrowLeftIcon, PlusIcon } from "lucide-react";
 import { CreateCustomPartDialog } from "./CreateCustomPartDialog";
 import { WizardHeader } from "./WizardHeader";
 import { EditPartDialog } from "~/components/catalogue/EditPartDialog";
@@ -918,6 +918,15 @@ export function AddPartDialog({
     };
   }, [open]);
 
+  const showStepsBar = open && wizardStage !== "review" && !prefabView;
+  useEffect(() => {
+    if (!showStepsBar) return;
+    document.body.dataset.flatHeader = "";
+    return () => {
+      delete document.body.dataset.flatHeader;
+    };
+  }, [showStepsBar]);
+
   // Add Parts fills the main window: the app bar's back arrow and Escape close it.
   useHeaderBackOverride(open ? closeDialogAndCleanHistory : null);
   useEffect(() => {
@@ -947,6 +956,22 @@ export function AddPartDialog({
               : undefined
           }
         >
+          {showStepsBar && (
+            // Raised like the app bar above it (which drops its own shadow
+            // while this shows), so the steps read as part of the top bar.
+            <div className="relative z-10 shrink-0 bg-card shadow-[0_2px_3px_rgba(0,0,0,0.35),0_6px_16px_rgba(0,0,0,0.6)]">
+              <div className="mx-auto w-full max-w-6xl px-2 pt-1 pb-2 sm:px-4 sm:pb-3 md:px-6">
+                <WizardHeader
+                  currentStage={wizardStage}
+                  selectedCatalog={selectedCatalogName}
+                  selectedMaterial={selectedMaterialName}
+                  selectedSize={selectedSizeName}
+                  selectedCategory={selectedCategoryName}
+                  onStageClick={handleStageClick}
+                />
+              </div>
+            </div>
+          )}
           <div className="relative mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col">
           {catalogueDownloading && (
           <div className="shrink-0 px-2 pt-2 sm:px-4 md:px-6">
@@ -982,18 +1007,6 @@ export function AddPartDialog({
             </div>
           )}
 
-          {wizardStage !== "review" && !prefabView && (
-            <div className="shrink-0 border-b px-2 pt-2 pb-2 sm:px-4 sm:pt-3 sm:pb-4 md:px-6">
-              <WizardHeader
-                currentStage={wizardStage}
-                selectedCatalog={selectedCatalogName}
-                selectedMaterial={selectedMaterialName}
-                selectedSize={selectedSizeName}
-                selectedCategory={selectedCategoryName}
-                onStageClick={handleStageClick}
-              />
-            </div>
-          )}
 
           <div
             data-tutorial={`wizard-${isWizardSearchActive ? "part" : wizardStage}`}
@@ -1055,23 +1068,12 @@ export function AddPartDialog({
               />
             ) : (
               wizardStage === "catalog" && (<>
-                {!isToolRequest && !prefabTarget && (
-                  <button
-                    type="button"
-                    onClick={() => setPrefabView({ kind: "list" })}
-                    className="flex w-full items-center gap-3 rounded-lg border border-primary/30 bg-primary/5 px-3 py-3 text-left transition-colors hover:bg-primary/10"
-                  >
-                    <BoxesIcon className="h-6 w-6 shrink-0 text-primary" />
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-sm font-semibold sm:text-base">Prefabs</span>
-                      <span className="block truncate text-xs text-muted-foreground">
-                        Ready-made sets of parts, like a whole room
-                      </span>
-                    </span>
-                    <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-                  </button>
-                )}
                 <CatalogStage
+                  onPrefabsSelect={
+                    !isToolRequest && !prefabTarget
+                      ? () => setPrefabView({ kind: "list" })
+                      : undefined
+                  }
                   catalogs={catalogsWithCounts}
                   selectedCatalogId={selectedCatalogId}
                   allSelected={

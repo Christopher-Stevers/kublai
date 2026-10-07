@@ -23,6 +23,8 @@ export interface CatalogStageProps {
     isPending: boolean;
   };
   isOnline?: boolean;
+  /** Shows a Prefabs card next to All (material lists only). */
+  onPrefabsSelect?: () => void;
 }
 
 export function CatalogStage({
@@ -36,6 +38,7 @@ export function CatalogStage({
   onCustomCatalogNameChange,
   onCreateCatalog,
   isOnline = true,
+  onPrefabsSelect,
 }: CatalogStageProps) {
   const pagination = useClientPagination(catalogs);
   void showCustomCatalogInput;
@@ -50,6 +53,11 @@ export function CatalogStage({
       <h3 className="text-base font-semibold sm:text-lg">Select Catalog</h3>
       <div className={WIZARD_OPTION_GRID_CLASS}>
         <WizardAllOption selected={allSelected} onSelect={() => onCatalogSelect(null)} />
+        {onPrefabsSelect && (
+          <WizardOptionCard tutorialChoice="Prefabs" onClick={onPrefabsSelect}>
+            <p className={WIZARD_OPTION_LABEL_CLASS}>Prefabs</p>
+          </WizardOptionCard>
+        )}
         {pagination.paginatedItems.map((catalog) => (
           <WizardOptionCard
             key={catalog.id}

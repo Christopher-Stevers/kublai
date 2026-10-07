@@ -187,7 +187,7 @@ function HeaderFrame({
   };
 
   return (
-    <header className="sticky top-0 z-50 flex h-14 items-center justify-between border-b border-border bg-card shadow-[0_2px_3px_rgba(0,0,0,0.35),0_6px_16px_rgba(0,0,0,0.6)] px-3 sm:h-16 sm:px-6">
+    <header className="sticky top-0 z-50 flex h-14 items-center justify-between border-b border-border bg-card shadow-[0_2px_3px_rgba(0,0,0,0.35),0_6px_16px_rgba(0,0,0,0.6)] px-3 sm:h-16 sm:px-6 [[data-flat-header]_&]:border-b-transparent [[data-flat-header]_&]:shadow-none">
       <div className="flex min-w-0 items-center gap-2 sm:gap-8">
         {showBackButton && (
           <Button
