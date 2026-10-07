@@ -102,6 +102,8 @@ The generated archive and named-volume initialization have also passed with the
 actual rootless Docker pilot. Compose configuration validation passes; this exact
 generic Compose/Caddy deployment has not been acceptance tested. The persistent
 pilot uses user systemd services and a Cloudflare Tunnel instead. Public connection
-and document loading passed; durable save/close acceptance needs a retest after the
-correlated storage receipt fix. Live results and deployed service details are recorded
-in [Job documents](../../../docs/JOB_DOCUMENTS.md).
+and document loading passed, followed by durable save and close acceptance: the
+matching storage receipt was committed and the downloaded immutable DOCX revision
+contained the exact edited text, with no browser errors. These checks validate the
+tested CODE pilot, not a vendor-supported production service. Live results and
+deployed service details are recorded in [Job documents](../../../docs/JOB_DOCUMENTS.md).
