@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isTileManifest, pickTileLevel, tileBase, visibleTiles, type TileManifest } from "./drawing-tiles";
+import { isTileManifest, pickTileLevel, planDrawingTiles, tileBase, visibleTiles, type TileManifest } from "./drawing-tiles";
 
 const manifest: TileManifest = {
   version: 1,
@@ -46,5 +46,20 @@ describe("drawing tiles", () => {
     expect(isTileManifest(manifest)).toBe(true);
     expect(isTileManifest({ version: 2, tileSize: 512, levels: [] })).toBe(false);
     expect(isTileManifest(null)).toBe(false);
+    expect(isTileManifest({ ...manifest, tileSize: 0 })).toBe(false);
+    expect(isTileManifest({ ...manifest, tileSize: Infinity })).toBe(false);
+    expect(isTileManifest({ ...manifest, levels: [] })).toBe(false);
+    expect(isTileManifest({ ...manifest, levels: [{ factor: 4, width: -1, height: 300 }] })).toBe(false);
+  });
+
+  it("requests sharp visible tiles near the center before fallback or off-screen tiles", () => {
+    const requests = planDrawingTiles("/tiles", manifest, 3, { left: 0.4, top: 0.4, right: 0.6, bottom: 0.6 });
+    const sharp = requests.filter((tile) => tile.factor === 4 && tile.visible);
+    const fallback = requests.filter((tile) => tile.factor === 2 && tile.visible);
+    expect(requests.slice(0, sharp.length)).toEqual(sharp);
+    expect(requests.slice(sharp.length, sharp.length + fallback.length)).toEqual(fallback);
+    expect(requests[0]?.url).toBe("/tiles/4/8_6.webp");
+    expect(requests.slice(sharp.length + fallback.length).every((tile) => !tile.visible)).toBe(true);
+    expect(planDrawingTiles("/tiles", manifest, 1, { left: 0, top: 0, right: 1, bottom: 1 })).toEqual([]);
   });
 });

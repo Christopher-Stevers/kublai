@@ -26,15 +26,75 @@ export function isTileManifest(value: unknown): value is TileManifest {
   const manifest = value as Partial<TileManifest>;
   return (
     manifest.version === 1 &&
-    typeof manifest.tileSize === "number" &&
+    Number.isSafeInteger(manifest.tileSize) &&
+    manifest.tileSize! > 0 &&
+    manifest.tileSize! <= 2048 &&
     Array.isArray(manifest.levels) &&
+    manifest.levels.length > 0 &&
+    manifest.levels.length <= 8 &&
     manifest.levels.every(
       (level) =>
-        typeof level?.factor === "number" &&
-        typeof level.width === "number" &&
-        typeof level.height === "number",
+        Number.isFinite(level?.factor) && level.factor > 1 &&
+        Number.isSafeInteger(level.width) && level.width > 0 &&
+        Number.isSafeInteger(level.height) && level.height > 0,
     )
   );
+}
+
+export type DrawingTileRequest = {
+  key: string;
+  url: string;
+  factor: number;
+  col: number;
+  row: number;
+  width: number;
+  height: number;
+  levelWidth: number;
+  levelHeight: number;
+  tileSize: number;
+  visible: boolean;
+};
+
+/** Request useful pixels first, before off-screen margin or fallback pixels. */
+export function planDrawingTiles(
+  baseUrl: string,
+  manifest: TileManifest,
+  density: number,
+  visible: { left: number; top: number; right: number; bottom: number },
+): DrawingTileRequest[] {
+  const level = pickTileLevel(manifest, density);
+  if (!level) return [];
+  const levels = manifest.levels
+    .filter((candidate) => candidate.factor <= level.factor)
+    .sort((a, b) => b.factor - a.factor)
+    .slice(0, 2);
+  const centerX = (visible.left + visible.right) / 2;
+  const centerY = (visible.top + visible.bottom) / 2;
+  const requests = levels.flatMap((item, levelIndex) => {
+    const onScreen = new Set(visibleTiles(item, manifest.tileSize, visible, 0)
+      .map(({ col, row }) => `${col}_${row}`));
+    return visibleTiles(item, manifest.tileSize, visible).map(({ col, row }) => {
+      const isVisible = onScreen.has(`${col}_${row}`);
+      return {
+        key: `${item.factor}/${col}_${row}`,
+        url: `${baseUrl}/${item.factor}/${col}_${row}.webp`,
+        factor: item.factor,
+        col, row,
+        width: Math.min(manifest.tileSize, item.width - col * manifest.tileSize),
+        height: Math.min(manifest.tileSize, item.height - row * manifest.tileSize),
+        levelWidth: item.width,
+        levelHeight: item.height,
+        tileSize: manifest.tileSize,
+        visible: isVisible,
+        priority: (isVisible ? 0 : 2) + levelIndex,
+        distance: Math.hypot(
+          (col + 0.5) * manifest.tileSize / item.width - centerX,
+          (row + 0.5) * manifest.tileSize / item.height - centerY,
+        ),
+      };
+    });
+  });
+  return requests.sort((a, b) => a.priority - b.priority || a.distance - b.distance);
 }
 
 /**

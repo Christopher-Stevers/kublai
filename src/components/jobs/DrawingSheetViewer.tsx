@@ -3,11 +3,9 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   isTileManifest,
-  pickTileLevel,
-  visibleTiles,
+  planDrawingTiles,
   type TileManifest,
 } from "~/lib/drawing-tiles";
-import { loadPdfDocument } from "~/lib/pdf-client";
 import { readPdfSheetScale } from "~/lib/pdf-sheet-scale";
 import { loadSnapLines } from "~/lib/pdf-snap-lines";
 import {
@@ -27,13 +25,15 @@ import {
 import { scaleReadMessage } from "~/lib/sheet-scale-text";
 import { buildSnapIndex, mergeCollinear, snapToLine, type SnapIndex, type SnapSegment } from "~/lib/sheet-snap";
 import { SheetMeasureBar } from "./SheetMeasureBar";
+import { DrawingTileLayer } from "./DrawingTileLayer";
+import { DrawingPdfLayer } from "./DrawingPdfLayer";
 
 const MIN_ZOOM = 1;
 const MAX_ZOOM = 24;
 /** A tap this close to a line, in screen pixels, lands on that line. */
 const SNAP_PX = 18;
 /** How often tile choices follow the view while it is moving. */
-const COMMIT_MS = 120;
+const COMMIT_MS = 50;
 type Point = { x: number; y: number };
 type View = { scale: number; x: number; y: number };
 const REST: View = { scale: 1, x: 0, y: 0 };
@@ -44,7 +44,7 @@ const REST: View = { scale: 1, x: 0, y: 0 };
  * - sharper tiles (2× and 4×) load for just the visible area, with the next
  *   level down kept underneath so nothing is ever blank;
  * - beyond the deepest tiles (or before tiles exist) the visible area is
- *   redrawn from the original PDF once the view settles.
+ *   redrawn from the original PDF, retaining sharp pixels through gestures.
  * Movement is applied straight to the layer once per frame, with momentum.
  * Measure mode traces points on the sheet and totals the real distance once the
  * printed scale has been read. A tap near a straight line in the
@@ -70,7 +70,6 @@ export function DrawingSheetViewer({
   const layer = useRef<HTMLDivElement>(null);
   const marks = useRef<HTMLDivElement>(null);
   const image = useRef<HTMLImageElement>(null);
-  const sharp = useRef<HTMLCanvasElement>(null);
   const [fit, setFit] = useState<{ width: number; height: number; natural: number; aspect: number } | null>(null);
   const fitRef = useRef(fit);
   fitRef.current = fit;
@@ -80,7 +79,6 @@ export function DrawingSheetViewer({
   const live = useRef<View>(REST);
   const [view, setView] = useState<View>(REST);
   const [moving, setMoving] = useState(false);
-  const [sharpFor, setSharpFor] = useState("");
   const pointers = useRef(new Map<number, Point>());
   const gesture = useRef<{ view: View; points: Point[] } | null>(null);
   const measureTap = useRef<{ x: number; y: number; moved: boolean } | null>(null);
@@ -109,6 +107,7 @@ export function DrawingSheetViewer({
   const lastTap = useRef(0);
   const frameRequest = useRef(0);
   const commitTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const wheelSettleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const animation = useRef(0);
   const velocity = useRef<{ x: number; y: number; t: number }>({ x: 0, y: 0, t: 0 });
 
@@ -138,18 +137,40 @@ export function DrawingSheetViewer({
     };
   }, [src]);
 
-  // Tile manifest (absent until the tiles for this sheet have been made).
+  // Tiles can finish generating after this sheet was opened. Retry missing
+  // manifests without requiring navigation away; PDF rendering remains usable.
   useEffect(() => {
+    setManifest(null);
     if (!tiles) return;
-    let cancelled = false;
-    void fetch(`${tiles}/manifest.json`, { credentials: "same-origin" })
-      .then((response) => (response.ok ? response.json() : null))
-      .then((value: unknown) => {
-        if (!cancelled && isTileManifest(value)) setManifest(value);
-      })
-      .catch(() => undefined);
+    const controller = new AbortController();
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let attempt = 0;
+    const retryDelays = [500, 1_000, 2_000, 4_000, 8_000, 15_000, 30_000, 30_000];
+    const load = async () => {
+      try {
+        const response = await fetch(`${tiles}/manifest.json`, {
+          credentials: "same-origin",
+          signal: controller.signal,
+        });
+        if (response.ok) {
+          const value: unknown = await response.json();
+          if (isTileManifest(value)) {
+            if (!controller.signal.aborted) setManifest(value);
+            return;
+          }
+        }
+        // Authentication failures will not improve by polling.
+        if (response.status === 401 || response.status === 403) return;
+      } catch {
+        if (controller.signal.aborted) return;
+      }
+      const delay = retryDelays[attempt++];
+      if (!controller.signal.aborted && delay !== undefined) timer = setTimeout(() => void load(), delay);
+    };
+    void load();
     return () => {
-      cancelled = true;
+      controller.abort();
+      clearTimeout(timer);
     };
   }, [tiles]);
 
@@ -392,8 +413,7 @@ export function DrawingSheetViewer({
     const { x, y, scale } = live.current;
     const transform = `translate(-50%, -50%) translate3d(${x}px, ${y}px, 0) scale(${scale})`;
     if (layer.current) layer.current.style.transform = transform;
-    // The sharp PDF canvas sits above the sheet, so the trace is a second
-    // layer with the same transform, painted after that canvas.
+    // Measurements stay above the image, tiles and persistent PDF patches.
     if (marks.current) marks.current.style.transform = transform;
   };
   /** Moves the sheet now (next frame) and lets tiles catch up shortly after. */
@@ -403,7 +423,9 @@ export function DrawingSheetViewer({
     setMoving(!settle);
     if (settle) {
       if (commitTimer.current) clearTimeout(commitTimer.current);
+      if (wheelSettleTimer.current) clearTimeout(wheelSettleTimer.current);
       commitTimer.current = null;
+      wheelSettleTimer.current = null;
       setView(live.current);
     } else {
       commitTimer.current ??= setTimeout(() => {
@@ -418,6 +440,7 @@ export function DrawingSheetViewer({
       cancelAnimationFrame(frameRequest.current);
       cancelAnimationFrame(animation.current);
       if (commitTimer.current) clearTimeout(commitTimer.current);
+      if (wheelSettleTimer.current) clearTimeout(wheelSettleTimer.current);
     },
     [],
   );
@@ -490,7 +513,6 @@ export function DrawingSheetViewer({
   const left = frameSize.width / 2 + view.x - shownWidth / 2;
   const top = frameSize.height / 2 + view.y - shownHeight / 2;
   const density = fit ? (shownWidth / fit.natural) * dpr : 1; // screen px per saved-image px
-  const level = manifest ? pickTileLevel(manifest, density) : null;
   const deepest = manifest?.levels.reduce((a, b) => Math.max(a, b.factor), 1) ?? 1;
   const visible = shownWidth
     ? {
@@ -500,70 +522,12 @@ export function DrawingSheetViewer({
         bottom: (frameSize.height - top) / shownHeight,
       }
     : null;
-  const tileLayers =
-    manifest && level && visible
-      ? manifest.levels
-          .filter((item) => item.factor <= level.factor)
-          .sort((a, b) => a.factor - b.factor)
-          .slice(-2) // the needed level, with the next one down beneath it
-          .map((item) => ({ ...item, tiles: visibleTiles(item, manifest.tileSize, visible) }))
-      : [];
-  // Redraw from the PDF only past the deepest tiles, or when there are none.
+  const tileRequests = manifest && tiles && visible
+    ? planDrawingTiles(tiles, manifest, density, visible)
+    : [];
+  // Beyond pre-rendered tiles, add a viewport-sized PDF patch. It lives inside
+  // the same transform as the tiles, so already-sharp pixels keep moving.
   const needsPdf = Boolean(pdf) && fit !== null && (!manifest ? density > 1.05 : density > deepest * 1.05);
-  const viewKey = fit
-    ? [view.scale, view.x, view.y, fit.width, fit.height, frameSize.width, frameSize.height]
-        .map((n) => n.toFixed(2))
-        .join(":")
-    : "";
-
-  useEffect(() => {
-    if (!needsPdf || !pdf || !fit || !frameSize.width || moving) return;
-    let cancelled = false;
-    let task: { cancel: () => void } | null = null;
-    const timer = setTimeout(() => {
-      void (async () => {
-        try {
-          const doc = await loadPdfDocument(pdf.url);
-          const page = await doc.getPage(pdf.page);
-          if (cancelled) return;
-          const viewport = page.getViewport({
-            scale: (shownWidth / page.getViewport({ scale: 1 }).width) * dpr,
-            offsetX: left * dpr,
-            offsetY: top * dpr,
-          });
-          const work = document.createElement("canvas");
-          work.width = Math.round(frameSize.width * dpr);
-          work.height = Math.round(frameSize.height * dpr);
-          const render = page.render({ canvas: work, viewport });
-          task = render;
-          await render.promise;
-          const target = sharp.current;
-          if (cancelled || !target) return;
-          target.width = work.width;
-          target.height = work.height;
-          const ctx = target.getContext("2d")!;
-          // Keep only the sheet itself; PDF.js paints the whole canvas white.
-          ctx.clearRect(0, 0, target.width, target.height);
-          ctx.save();
-          ctx.beginPath();
-          ctx.rect(left * dpr, top * dpr, shownWidth * dpr, shownHeight * dpr);
-          ctx.clip();
-          ctx.drawImage(work, 0, 0);
-          ctx.restore();
-          setSharpFor(viewKey);
-        } catch {
-          // Keep showing the image and tiles if the PDF can't be drawn.
-        }
-      })();
-    }, 150);
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-      task?.cancel();
-    };
-    // viewKey captures view, fit and frame size.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pdf?.url, pdf?.page, viewKey, needsPdf, moving]);
 
   const drawn = calibrating ? calPoints : path;
   const rubber =
@@ -674,11 +638,11 @@ export function DrawingSheetViewer({
       onWheel={(event) => {
         stopAnimation();
         move(zoomAt(live.current, Math.exp(-event.deltaY * 0.0015), fromCentre(event.clientX, event.clientY)));
-        if (commitTimer.current) clearTimeout(commitTimer.current);
-        commitTimer.current = setTimeout(() => {
-          commitTimer.current = null;
+        if (wheelSettleTimer.current) clearTimeout(wheelSettleTimer.current);
+        wheelSettleTimer.current = setTimeout(() => {
+          wheelSettleTimer.current = null;
           move(live.current, true);
-        }, COMMIT_MS);
+        }, 80);
       }}
     >
       <div
@@ -688,51 +652,19 @@ export function DrawingSheetViewer({
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img ref={image} src={src} alt={alt} draggable={false} className="absolute inset-0 h-full w-full" />
-        {tileLayers.map((item) => (
-          // Each level is laid out in its own pixels (whole-number tile
-          // positions, exact sizes) and scaled once to the sheet, so tile edges
-          // meet exactly at any zoom.
-          <div
-            key={item.factor}
-            className="absolute top-0 left-0 origin-top-left"
-            style={{
-              width: item.width,
-              height: item.height,
-              transform: `scale(${(fit?.width ?? 0) / item.width}, ${(fit?.height ?? 0) / item.height})`,
-            }}
-          >
-            {item.tiles.map(({ col, row }) => {
-              const size = manifest!.tileSize;
-              return (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  key={`${col}_${row}`}
-                  src={`${tiles}/${item.factor}/${col}_${row}.webp`}
-                  alt=""
-                  draggable={false}
-                  decoding="async"
-                  className="absolute opacity-0 transition-opacity duration-200"
-                  onLoad={(event) => event.currentTarget.classList.remove("opacity-0")}
-                  style={{
-                    left: col * size,
-                    top: row * size,
-                    width: Math.min(size, item.width - col * size),
-                    height: Math.min(size, item.height - row * size),
-                  }}
-                />
-              );
-            })}
-          </div>
-        ))}
+        <DrawingTileLayer key={tiles ?? src} requests={tileRequests} />
+        {pdf && fit && (
+          <DrawingPdfLayer
+            pdf={pdf}
+            fit={fit}
+            frameSize={frameSize}
+            view={view}
+            dpr={dpr}
+            enabled={needsPdf}
+            moving={moving}
+          />
+        )}
       </div>
-      {pdf && (
-        <canvas
-          ref={sharp}
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0 h-full w-full transition-opacity duration-150"
-          style={{ opacity: needsPdf && !moving && sharpFor === viewKey ? 1 : 0 }}
-        />
-      )}
       {fit && (marked.length > 0 || snapLine) && (
         <div
           ref={marks}

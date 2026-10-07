@@ -15,12 +15,18 @@ const documents = new Map<string, Entry>();
 const KEEP_DOCUMENTS = 2;
 
 export function loadPdfJs() {
-  library ??= import("pdfjs-dist/legacy/build/pdf.mjs").then((pdfjs) => {
+  if (library) return library;
+  const pending = import("pdfjs-dist/legacy/build/pdf.mjs").then((pdfjs) => {
     // Served from the installed package (see /api/pdfjs-assets).
-    pdfjs.GlobalWorkerOptions.workerSrc = "/api/pdfjs-assets/legacy/build/pdf.worker.min.mjs";
+    pdfjs.GlobalWorkerOptions.workerSrc =
+      "/api/pdfjs-assets/legacy/build/pdf.worker.min.mjs";
     return pdfjs;
   });
-  return library;
+  library = pending;
+  void pending.catch(() => {
+    if (library === pending) library = null;
+  });
+  return pending;
 }
 
 export function loadPdfDocument(url: string) {
@@ -31,19 +37,37 @@ export function loadPdfDocument(url: string) {
     documents.set(url, cached);
     return cached.promise;
   }
-  let destroy = () => undefined as void;
+  let destroyed = false;
+  let destroyTask = () => undefined as void;
+  const destroy = () => {
+    if (destroyed) return;
+    destroyed = true;
+    destroyTask();
+  };
   const promise = loadPdfJs().then((pdfjs) => {
     const task = pdfjs.getDocument({
       url,
       withCredentials: true,
+      // Read only the objects needed for the visible page. Streaming disables
+      // PDF.js's demand-driven range mode, so turn it off along with prefetch.
+      disableStream: true,
+      disableAutoFetch: true,
+      rangeChunkSize: 256 * 1024,
+      enableHWA: true,
       wasmUrl: "/api/pdfjs-assets/wasm/",
       standardFontDataUrl: "/api/pdfjs-assets/standard_fonts/",
     });
-    destroy = () => void task.destroy();
+    destroyTask = () => {
+      void task.destroy().catch(() => undefined);
+    };
+    if (destroyed) destroyTask();
     return task.promise;
   });
-  promise.catch(() => documents.delete(url));
-  documents.set(url, { promise, destroy: () => destroy() });
+  void promise.catch(() => {
+    destroy();
+    if (documents.get(url)?.promise === promise) documents.delete(url);
+  });
+  documents.set(url, { promise, destroy });
   while (documents.size > KEEP_DOCUMENTS) {
     const [oldest, old] = documents.entries().next().value!;
     documents.delete(oldest);
@@ -58,6 +82,9 @@ export function loadPdfDocument(url: string) {
  * `plan.pdf`, page n.
  */
 export function sourcePdfPage(imageUrl: string) {
-  const match = /^(\/api\/job-rooms\/files\/[0-9a-f-]{36}\/[0-9a-f-]{36})\/floor-(\d+)\.webp$/i.exec(imageUrl);
+  const match =
+    /^(\/api\/job-rooms\/files\/[0-9a-f-]{36}\/[0-9a-f-]{36})\/floor-(\d+)\.webp$/i.exec(
+      imageUrl,
+    );
   return match ? { url: `${match[1]}/plan.pdf`, page: Number(match[2]) } : null;
 }
