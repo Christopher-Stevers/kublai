@@ -525,7 +525,9 @@ export function DashboardClient({
                   </>
                 )}
 
-                <div className="fixed inset-x-0 bottom-0 z-40 border-t bg-card px-4 pt-1.5 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:sticky sm:inset-x-auto sm:z-10 sm:-mx-6 sm:mt-4 sm:px-6 sm:pt-2">
+                {/* Pinned to the bottom of the window on every screen size (sticky left
+                    it floating under a short list on desktop). */}
+                <div className="fixed inset-x-0 bottom-0 z-40 border-t bg-card px-4 pt-1.5 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:px-6 sm:pt-2">
                   <MaterialListActions total={selectedMaterialTotal} canGenerate={canGenerateOfflineQuoteOrOrder} blockedReason={offlineGenerationBlockReason} canQuote={canQuote} canOrder={canOrder}
                     onQuote={handleOfflineGenerateQuote} onOrder={handleOfflineGenerateOrder} onAdd={() => setShowOfflineAddPartDialog(true)} materialListId={offlineMaterialListId ?? undefined} />
                 </div>
