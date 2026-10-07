@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
+  Camera,
   Check,
   ChevronDown,
   ExternalLink,
@@ -26,7 +27,6 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "~/components/ui/dialog";
@@ -295,6 +295,10 @@ export function PartDetailsDialog({
   const [dismissedFamilySuggestionIds, setDismissedFamilySuggestionIds] =
     useState<Set<string>>(() => new Set());
   const [copiedPartUuid, setCopiedPartUuid] = useState(false);
+  const [showMoreDetails, setShowMoreDetails] = useState(false);
+  useEffect(() => {
+    if (open) setShowMoreDetails(false);
+  }, [open]);
   const [isSubmittingInBackground, setIsSubmittingInBackground] =
     useState(false);
   const [showInvalidSizeInputFlash, setShowInvalidSizeInputFlash] =
@@ -1066,115 +1070,231 @@ export function PartDetailsDialog({
     );
   }
 
+  const sectionCard = "space-y-4 rounded-xl border bg-card p-4 shadow-sm";
+  const sectionTitle =
+    "text-xs font-semibold tracking-wide text-muted-foreground uppercase";
+
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-h-[90vh] w-[calc(100vw-1rem)] max-w-2xl overflow-x-hidden overflow-y-auto p-4 sm:p-6">
-          <DialogHeader>
-            <DialogTitle>
-              {isEditMode ? "Edit Part" : "Create Part"}
-            </DialogTitle>
-            <DialogDescription>
-              Fill in all available part fields.
-            </DialogDescription>
+        <DialogContent
+          showCloseButton={false}
+          className="flex h-[calc(100dvh-2rem)] max-h-[calc(100dvh-2rem)] w-full max-w-2xl flex-col gap-0 overflow-hidden p-0 sm:h-auto sm:max-h-[90vh]"
+        >
+          <DialogHeader className="shrink-0 flex-row items-center justify-between gap-3 border-b px-4 py-3 text-left sm:text-left">
+            <div className="min-w-0">
+              <DialogTitle className="text-lg">
+                {isEditMode ? "Edit Part" : "New Part"}
+              </DialogTitle>
+              <DialogDescription className="text-xs">
+                {isEditMode
+                  ? "Changes apply everywhere this part is used."
+                  : "Adds it to the catalogue for everyone."}
+              </DialogDescription>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9 shrink-0"
+              aria-label="Close"
+              onClick={() => onOpenChange(false)}
+              disabled={isLoading}
+            >
+              <X className="h-5 w-5" />
+            </Button>
           </DialogHeader>
 
-          <div className="min-w-0 space-y-4 py-4">
-            <div className="rounded-lg border bg-muted/30 p-3">
-              <Label className="text-sm font-semibold text-foreground">
-                Part Information
-              </Label>
-              <div className="mt-3 space-y-4">
-                <div>
-                  <FieldHeader
-                    label={
-                      <>
-                        Catalog <span className="text-red-600">*</span>
-                      </>
-                    }
-                    onAdd={() => setShowNewCatalogInput((value) => !value)}
-                  />
-                  {showNewCatalogInput ? (
-                    <div className="mt-2 flex min-w-0 gap-2">
-                      <Input
-                        value={newCatalogName}
-                        onChange={(e) => setNewCatalogName(e.target.value)}
-                        placeholder="New catalog name"
-                        className="min-w-0 flex-1"
-                        disabled={isLoading || createCatalog.isPending}
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={handleCatalogAdd}
-                        disabled={
-                          !newCatalogName.trim() ||
-                          isLoading ||
-                          createCatalog.isPending
-                        }
-                      >
-                        Add
-                      </Button>
-                    </div>
+          <div className="min-h-0 min-w-0 flex-1 space-y-3 overflow-x-hidden overflow-y-auto overscroll-contain bg-muted/40 p-3 sm:p-4">
+            {/* Photo and name: what people recognise the part by. */}
+            <section className={sectionCard}>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => imageInputRef.current?.click()}
+                  disabled={isLoading || isProcessingImage}
+                  aria-label={previewImageUrl ? "Change photo" : "Add photo"}
+                  className="relative h-24 w-24 shrink-0 overflow-hidden rounded-xl border bg-muted/50 transition-colors hover:bg-muted"
+                >
+                  {previewImageUrl ? (
+                    <Image
+                      src={previewImageUrl}
+                      alt="Part preview"
+                      fill
+                      className="object-contain p-1.5"
+                      unoptimized
+                    />
                   ) : (
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="outline"
-                          className="mt-1 w-full justify-between"
-                          disabled={isLoading}
-                        >
-                          {selectedCatalog?.name ?? "Select catalog"}
-                          <ChevronDown className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent className="max-h-60 overflow-y-auto">
-                        {pickerCatalogs.map((catalog) => (
-                          <DropdownMenuItem
-                            key={catalog.id}
-                            onClick={() => setCatalogId(catalog.id)}
-                          >
-                            {catalog.name}
-                          </DropdownMenuItem>
-                        ))}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    <span className="flex h-full flex-col items-center justify-center gap-1 text-muted-foreground">
+                      <Camera className="h-6 w-6" />
+                      <span className="text-[11px] font-medium">Add photo</span>
+                    </span>
+                  )}
+                </button>
+                <div className="min-w-0 flex-1">
+                  <Label htmlFor="displayName">
+                    Part name <span className="text-red-600">*</span>
+                  </Label>
+                  <Input
+                    id="displayName"
+                    value={displayName}
+                    onChange={(e) => {
+                      setHasManuallyEditedDisplayName(true);
+                      setDisplayName(e.target.value);
+                    }}
+                    placeholder="e.g., 90° Copper Elbow"
+                    className="mt-1 h-10 text-base font-medium"
+                    disabled={isLoading}
+                  />
+                  {!isEditMode && (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Fills in from size, material and description.
+                    </p>
                   )}
                 </div>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  aria-label="Search For Image"
+                  className="h-9"
+                  onClick={openGoogleImageSearch}
+                  disabled={isLoading || isReviewingPhoto}
+                >
+                  <Search className="h-4 w-4 shrink-0" />
+                  Search
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  aria-label="Get Image / Share Image"
+                  className="h-9"
+                  onClick={openFamilyImageSuggestions}
+                  disabled={
+                    isLoading ||
+                    isReviewingPhoto ||
+                    applyFamilyPartImage.isPending ||
+                    !hasFamilyImageSuggestionSource
+                  }
+                >
+                  <Share2 className="h-4 w-4 shrink-0" />
+                  Similar
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  aria-label="Upload From File"
+                  className="h-9"
+                  onClick={() => imageInputRef.current?.click()}
+                  disabled={isLoading || isProcessingImage}
+                >
+                  <Upload className="h-4 w-4 shrink-0" />
+                  Upload
+                </Button>
+              </div>
+            </section>
+            <input
+              ref={imageInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleImageFileChange}
+            />
 
-                {isToolType && (
-                  <div>
-                    <Label>Tracking</Label>
-                    <div className="mt-1 grid grid-cols-2 gap-2">
-                      {(
-                        [
-                          ["serialized", "Each tool", "Own tag & serial number"],
-                          ["quantity", "By quantity", "Counted, not tagged"],
-                        ] as const
-                      ).map(([value, title, hint]) => (
-                        <button
-                          key={value}
-                          type="button"
-                          onClick={() => setAssetTracking(value)}
-                          disabled={isLoading}
-                          aria-pressed={assetTracking === value}
-                          className={cn(
-                            "rounded-md border px-3 py-2 text-left text-sm",
-                            assetTracking === value
-                              ? "border-primary bg-primary/10"
-                              : "hover:bg-accent",
-                          )}
-                        >
-                          <span className="block font-medium">{title}</span>
-                          <span className="text-muted-foreground block text-xs">
-                            {hint}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
+            <section className={sectionCard}>
+              <h3 className={sectionTitle}>Where it goes</h3>
+              <div>
+                <FieldHeader
+                  label={
+                    <>
+                      Catalog <span className="text-red-600">*</span>
+                    </>
+                  }
+                  onAdd={() => setShowNewCatalogInput((value) => !value)}
+                />
+                {showNewCatalogInput ? (
+                  <div className="mt-2 flex min-w-0 gap-2">
+                    <Input
+                      value={newCatalogName}
+                      onChange={(e) => setNewCatalogName(e.target.value)}
+                      placeholder="New catalog name"
+                      className="min-w-0 flex-1"
+                      disabled={isLoading || createCatalog.isPending}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleCatalogAdd}
+                      disabled={
+                        !newCatalogName.trim() ||
+                        isLoading ||
+                        createCatalog.isPending
+                      }
+                    >
+                      Add
+                    </Button>
                   </div>
+                ) : (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className="mt-1 h-10 w-full justify-between font-normal"
+                        disabled={isLoading}
+                      >
+                        {selectedCatalog?.name ?? "Select catalog"}
+                        <ChevronDown className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="max-h-60 overflow-y-auto">
+                      {pickerCatalogs.map((catalog) => (
+                        <DropdownMenuItem
+                          key={catalog.id}
+                          onClick={() => setCatalogId(catalog.id)}
+                        >
+                          {catalog.name}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 )}
-
+              </div>
+              {isToolType && (
+                <div>
+                  <Label>Tracking</Label>
+                  <div className="mt-1 grid grid-cols-2 gap-2">
+                    {(
+                      [
+                        ["serialized", "Each tool", "Own tag & serial number"],
+                        ["quantity", "By quantity", "Counted, not tagged"],
+                      ] as const
+                    ).map(([value, title, hint]) => (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => setAssetTracking(value)}
+                        disabled={isLoading}
+                        aria-pressed={assetTracking === value}
+                        className={cn(
+                          "rounded-md border px-3 py-2 text-left text-sm",
+                          assetTracking === value
+                            ? "border-primary bg-primary/10"
+                            : "hover:bg-accent",
+                        )}
+                      >
+                        <span className="block font-medium">{title}</span>
+                        <span className="text-muted-foreground block text-xs">
+                          {hint}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <div className="grid gap-4 sm:grid-cols-2">
                 <div>
                   <FieldHeader
                     label="Material"
@@ -1207,7 +1327,7 @@ export function PartDetailsDialog({
                       <DropdownMenuTrigger asChild>
                         <Button
                           variant="outline"
-                          className="mt-1 w-full justify-between"
+                          className="mt-1 h-10 w-full justify-between font-normal"
                           disabled={isLoading}
                         >
                           {selectedMaterial?.name ?? "Select material"}
@@ -1230,74 +1350,6 @@ export function PartDetailsDialog({
                     </DropdownMenu>
                   )}
                 </div>
-
-                <div
-                  className={`grid gap-3 ${sizeValue.trim() ? "grid-cols-[minmax(0,1fr)_7rem] sm:grid-cols-[minmax(0,1fr)_140px]" : "grid-cols-1"}`}
-                >
-                  <div>
-                    <FieldHeader
-                      label="Size"
-                      addLabel="+Add"
-                      onAdd={() => {
-                        if (parsedSizeNominal !== null && sizeUnitId) {
-                          createSize.mutate({
-                            nominal: parsedSizeNominal,
-                            unitId: sizeUnitId,
-                          });
-                        }
-                      }}
-                    />
-                    <div className="relative">
-                      <Input
-                        value={sizeValue}
-                        onChange={(e) => handleSizeValueChange(e.target.value)}
-                        placeholder="1/2, 1.5, 3 x 3 x 3, or 3x2x2"
-                        className="mt-1"
-                        disabled={isLoading}
-                      />
-                      {showInvalidSizeInputFlash && (
-                        <div
-                          className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-red-600"
-                          role="alert"
-                          aria-label="Invalid size input"
-                        >
-                          <X className="h-5 w-5 animate-ping" />
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  {sizeValue.trim() && (
-                    <div>
-                      <FieldHeader label="Size Unit" />
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="outline"
-                            className="mt-1 w-full justify-between"
-                            disabled={isLoading}
-                          >
-                            {selectedSizeUnit?.code ?? "Unit"}
-                            <ChevronDown className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent className="max-h-60 overflow-y-auto">
-                          <DropdownMenuItem onClick={() => setSizeUnitId(null)}>
-                            None
-                          </DropdownMenuItem>
-                          {sizeUnits.map((unit) => (
-                            <DropdownMenuItem
-                              key={unit.id}
-                              onClick={() => setSizeUnitId(unit.id)}
-                            >
-                              {unit.displayName ?? unit.code} ({unit.code})
-                            </DropdownMenuItem>
-                          ))}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  )}
-                </div>
-
                 <div>
                   <FieldHeader
                     label="Category"
@@ -1330,7 +1382,7 @@ export function PartDetailsDialog({
                       <DropdownMenuTrigger asChild>
                         <Button
                           variant="outline"
-                          className="mt-1 w-full justify-between"
+                          className="mt-1 h-10 w-full justify-between font-normal"
                           disabled={isLoading}
                         >
                           {selectedCategory?.name ?? "Select category"}
@@ -1353,96 +1405,87 @@ export function PartDetailsDialog({
                     </DropdownMenu>
                   )}
                 </div>
-
+              </div>
+              <div
+                className={`grid gap-3 ${sizeValue.trim() ? "grid-cols-[minmax(0,1fr)_7rem] sm:grid-cols-[minmax(0,1fr)_140px]" : "grid-cols-1"}`}
+              >
                 <div>
-                  <Label>Description</Label>
-                  <Input
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    placeholder="Part description"
-                    className="mt-1"
-                    disabled={isLoading}
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="displayName">
-                    Part Name <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    id="displayName"
-                    value={displayName}
-                    onChange={(e) => {
-                      setHasManuallyEditedDisplayName(true);
-                      setDisplayName(e.target.value);
+                  <FieldHeader
+                    label="Size"
+                    onAdd={() => {
+                      if (parsedSizeNominal !== null && sizeUnitId) {
+                        createSize.mutate({
+                          nominal: parsedSizeNominal,
+                          unitId: sizeUnitId,
+                        });
+                      }
                     }}
-                    placeholder="e.g., 90° Copper Elbow"
-                    className="mt-1"
-                    disabled={isLoading}
                   />
-                  {!isEditMode && (
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Auto-generated from size, material, and description. You
-                      can still override it.
-                    </p>
-                  )}
-                  <div className="mt-3">
-                    <Label title="Add aliases separated by comma">
-                      Aliases
-                    </Label>
+                  <div className="relative">
                     <Input
-                      value={aliasesText}
-                      onChange={(e) => setAliasesText(e.target.value)}
-                      placeholder="copper 90, 90 elbow"
+                      value={sizeValue}
+                      onChange={(e) => handleSizeValueChange(e.target.value)}
+                      placeholder="1/2, 1.5, 3 x 3 x 3, or 3x2x2"
                       className="mt-1"
                       disabled={isLoading}
-                      title="Add aliases separated by comma"
                     />
+                    {showInvalidSizeInputFlash && (
+                      <div
+                        className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-red-600"
+                        role="alert"
+                        aria-label="Invalid size input"
+                      >
+                        <X className="h-5 w-5 animate-ping" />
+                      </div>
+                    )}
                   </div>
                 </div>
-
-                <div className="flex items-center gap-2">
-                  <input
-                    id="isActive"
-                    type="checkbox"
-                    checked={isActive}
-                    onChange={(e) => setIsActive(e.target.checked)}
-                    className="h-4 w-4"
-                    disabled={isLoading}
-                  />
-                  <Label htmlFor="isActive">
-                    Active (visible in catalogue)
-                  </Label>
-                </div>
-
-                <div>
-                  <Label>UUID</Label>
-                  {partId || part?.id ? (
-                    <button
-                      type="button"
-                      onClick={handlePartUuidCopy}
-                      className="mt-1 w-full rounded-md border bg-muted/50 px-3 py-2 text-left font-mono text-xs break-all text-foreground/80 transition-colors hover:bg-accent"
-                      title="Click to copy UUID"
-                    >
-                      {partId ?? part?.id}
-                      <span className="ml-2 font-sans text-xs text-muted-foreground">
-                        {copiedPartUuid ? "Copied" : "Click to copy"}
-                      </span>
-                    </button>
-                  ) : (
-                    <div className="mt-1 rounded-md border bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
-                      Generated when the part is saved
-                    </div>
-                  )}
-                </div>
+                {sizeValue.trim() && (
+                  <div>
+                    <FieldHeader label="Size Unit" />
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className="mt-1 h-10 w-full justify-between font-normal"
+                          disabled={isLoading}
+                        >
+                          {selectedSizeUnit?.code ?? "Unit"}
+                          <ChevronDown className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent className="max-h-60 overflow-y-auto">
+                        <DropdownMenuItem onClick={() => setSizeUnitId(null)}>
+                          None
+                        </DropdownMenuItem>
+                        {sizeUnits.map((unit) => (
+                          <DropdownMenuItem
+                            key={unit.id}
+                            onClick={() => setSizeUnitId(unit.id)}
+                          >
+                            {unit.displayName ?? unit.code} ({unit.code})
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                )}
               </div>
-            </div>
+              <div>
+                <Label>Description</Label>
+                <Input
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="e.g., Long sweep, DWV"
+                  className="mt-1"
+                  disabled={isLoading}
+                />
+              </div>
+            </section>
 
-            <div className="rounded-lg border bg-muted/30 p-3">
+            <section className={sectionCard}>
               <div className="flex items-center justify-between gap-2">
-                <Label className="text-sm font-semibold text-foreground">
-                  Supplier Information
-                </Label>
+                <h3 className={sectionTitle}>Supplier</h3>
                 <button
                   type="button"
                   onClick={() => setIsSupplierDialogOpen(true)}
@@ -1451,14 +1494,14 @@ export function PartDetailsDialog({
                   + Add
                 </button>
               </div>
-              <div className="mt-3">
-                <Label>Supplier</Label>
+              <div>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button
                       variant="outline"
-                      className="mt-1 w-full justify-between bg-card"
+                      className="h-10 w-full justify-between font-normal"
                       disabled={isLoading}
+                      aria-label="Supplier"
                     >
                       {supplierId
                         ? (suppliers?.find(
@@ -1541,108 +1584,119 @@ export function PartDetailsDialog({
                   Choose a supplier to enter its SKU and cost for this part.
                 </p>
               )}
-            </div>
+            </section>
 
-            <div className="rounded-lg border bg-muted/30 p-3">
-              <Label className="text-sm font-semibold text-foreground">
-                Image
-              </Label>
-              <div className="mt-3 space-y-4">
-                <div className="grid grid-cols-[5rem_minmax(0,1fr)] gap-3 sm:grid-cols-[6rem_minmax(0,1fr)]">
-                  <div className="relative flex h-20 w-20 items-center justify-center overflow-hidden rounded-md border bg-card sm:h-24 sm:w-24">
-                    {previewImageUrl ? (
-                      <Image
-                        src={previewImageUrl}
-                        alt="Part preview"
-                        fill
-                        className="object-contain p-1"
-                        unoptimized
-                      />
-                    ) : (
-                      <Package className="h-8 w-8 text-muted-foreground/70" />
-                    )}
-                  </div>
-                  <div className="grid content-start gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="h-auto min-h-8 justify-start bg-card text-left whitespace-normal"
-                      onClick={openGoogleImageSearch}
-                      disabled={isLoading || isReviewingPhoto}
-                    >
-                      <Search className="h-4 w-4 shrink-0" />
-                      Search For Image
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="h-auto min-h-8 justify-start bg-card text-left whitespace-normal"
-                      onClick={openFamilyImageSuggestions}
-                      disabled={
-                        isLoading ||
-                        isReviewingPhoto ||
-                        applyFamilyPartImage.isPending ||
-                        !hasFamilyImageSuggestionSource
-                      }
-                    >
-                      <Share2 className="h-4 w-4 shrink-0" />
-                      Get Image / Share Image
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="h-auto min-h-8 justify-start bg-card text-left whitespace-normal"
-                      onClick={() => imageInputRef.current?.click()}
-                      disabled={isLoading || isProcessingImage}
-                    >
-                      <Upload className="h-4 w-4 shrink-0" />
-                      Upload From File
-                    </Button>
-                  </div>
-                </div>
-                <input
-                  ref={imageInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handleImageFileChange}
+            <section className="rounded-xl border bg-card shadow-sm">
+              <button
+                type="button"
+                onClick={() => setShowMoreDetails((value) => !value)}
+                aria-expanded={showMoreDetails}
+                className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left"
+              >
+                <span className={sectionTitle}>More details</span>
+                <ChevronDown
+                  className={cn(
+                    "h-4 w-4 text-muted-foreground transition-transform",
+                    showMoreDetails && "rotate-180",
+                  )}
                 />
+              </button>
+              {showMoreDetails && (
+                <div className="space-y-4 border-t px-4 pt-3 pb-4">
+                  <div>
+                    <Label htmlFor="partAliases">Other names</Label>
+                    <Input
+                      id="partAliases"
+                      value={aliasesText}
+                      onChange={(e) => setAliasesText(e.target.value)}
+                      placeholder="copper 90, 90 elbow"
+                      className="mt-1"
+                      disabled={isLoading}
+                    />
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Separate with commas. Search finds the part by these too.
+                    </p>
+                  </div>
 
-                <div>
-                  <Label>Image URL</Label>
-                  <Input
-                    value={imageUrl}
-                    onChange={(e) => {
-                      setImageUrl(e.target.value);
-                    }}
-                    placeholder="https://..."
-                    type="url"
-                    className="mt-1 bg-card"
-                    disabled={isLoading}
-                  />
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <Label htmlFor="isActive">Show in catalogue</Label>
+                      <p className="text-xs text-muted-foreground">
+                        Hidden parts stay on existing lists.
+                      </p>
+                    </div>
+                    <button
+                      id="isActive"
+                      type="button"
+                      role="switch"
+                      aria-checked={isActive}
+                      onClick={() => setIsActive((value) => !value)}
+                      disabled={isLoading}
+                      className={cn(
+                        "relative h-6 w-11 shrink-0 rounded-full transition-colors",
+                        isActive ? "bg-primary" : "bg-muted-foreground/30",
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          "absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform",
+                          isActive && "translate-x-5",
+                        )}
+                      />
+                    </button>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="partImageUrl">Image link</Label>
+                    <Input
+                      id="partImageUrl"
+                      value={imageUrl}
+                      onChange={(e) => setImageUrl(e.target.value)}
+                      placeholder="https://..."
+                      type="url"
+                      className="mt-1"
+                      disabled={isLoading}
+                    />
+                  </div>
+
+                  {(partId || part?.id) && (
+                    <div>
+                      <Label>Part ID</Label>
+                      <button
+                        type="button"
+                        onClick={handlePartUuidCopy}
+                        className="mt-1 w-full rounded-md border bg-muted/50 px-3 py-2 text-left font-mono text-xs break-all text-foreground/80 transition-colors hover:bg-accent"
+                        title="Click to copy UUID"
+                      >
+                        {partId ?? part?.id}
+                        <span className="ml-2 font-sans text-xs text-muted-foreground">
+                          {copiedPartUuid ? "Copied" : "Tap to copy"}
+                        </span>
+                      </button>
+                    </div>
+                  )}
                 </div>
-              </div>
-            </div>
+              )}
+            </section>
+
+            {submitError && (
+              <p className="px-1 text-sm text-red-600" role="alert">
+                {submitError}
+              </p>
+            )}
           </div>
 
-          {submitError && (
-            <p className="text-sm text-red-600" role="alert">
-              {submitError}
-            </p>
-          )}
-
-          <DialogFooter>
+          <div className="grid shrink-0 grid-cols-2 gap-2 border-t bg-card px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:pb-3">
             <Button
               variant="outline"
+              className="h-10"
               onClick={() => onOpenChange(false)}
               disabled={isLoading}
             >
               Cancel
             </Button>
             <Button
+              className="h-10"
               onClick={handleSubmit}
               disabled={
                 isLoading ||
@@ -1660,7 +1714,7 @@ export function PartDetailsDialog({
                   ? "Save"
                   : "Create"}
             </Button>
-          </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
 
