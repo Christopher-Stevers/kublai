@@ -3,16 +3,18 @@
 // Keep API/sync traffic network-only. Cache navigations and static assets so the
 // installed app can open while offline and Replicache can read its IndexedDB cache.
 
-const VERSION = "foremenhq-offline-shell-v12";
+const VERSION = "foremenhq-offline-shell-v13";
 const PAGE_CACHE = `${VERSION}:pages`;
 const STATIC_CACHE = `${VERSION}:static`;
 const IMAGE_CACHE = `${VERSION}:images`;
+const PDF_RUNTIME_CACHE = `${VERSION}:pdf-runtime`;
 const OFFLINE_FALLBACK = "/dashboard";
 const OFFLINE_PAGE = "/offline.html";
 const CACHE_LIMITS = {
   [PAGE_CACHE]: 60,
   [STATIC_CACHE]: 200,
   [IMAGE_CACHE]: 1200,
+  [PDF_RUNTIME_CACHE]: 31,
 };
 
 // Cache storage is optional: quota/privacy failures must never discard a network response.
@@ -70,6 +72,21 @@ self.addEventListener("activate", (event) => {
           )
           .map((key) => caches.delete(key)),
       );
+      // Remove any legacy private drawings or optimized thumbnails even if a cache
+      // was populated by an earlier worker during this activation.
+      const remaining = await caches.keys().catch(() => []);
+      await Promise.allSettled(
+        remaining
+          .filter((key) => key.startsWith("foremenhq-offline-"))
+          .map(async (key) => {
+            const cache = await caches.open(key);
+            await Promise.allSettled(
+              (await cache.keys())
+                .filter((request) => isPrivateChatRequest(new URL(request.url)))
+                .map((request) => cache.delete(request)),
+            );
+          }),
+      );
       await self.clients.claim();
     })(),
   );
@@ -88,7 +105,14 @@ function isApiOrSyncRequest(url) {
 }
 
 function isPrivateChatRequest(url) {
-  if (url.pathname.startsWith("/api/job-chat/") || url.pathname.startsWith("/api/job-documents")) return true;
+  if (
+    url.pathname.startsWith("/api/job-rooms/files/") ||
+    url.pathname === "/api/job-rooms/files" ||
+    url.pathname.startsWith("/api/job-chat/") ||
+    url.pathname.startsWith("/api/job-documents") ||
+    url.pathname.startsWith("/api/drawings/attachments/")
+  )
+    return true;
   if (url.pathname === "/_next/image") {
     try {
       const original = new URL(
@@ -96,7 +120,12 @@ function isPrivateChatRequest(url) {
         self.location.origin,
       );
       return (
-        isSameOrigin(original) && (original.pathname.startsWith("/api/job-chat/") || original.pathname.startsWith("/api/job-documents"))
+        isSameOrigin(original) &&
+        (original.pathname.startsWith("/api/job-rooms/files/") ||
+          original.pathname === "/api/job-rooms/files" ||
+          original.pathname.startsWith("/api/job-chat/") ||
+          original.pathname.startsWith("/api/job-documents") ||
+          original.pathname.startsWith("/api/drawings/attachments/"))
       );
     } catch {
       return true;
@@ -104,6 +133,55 @@ function isPrivateChatRequest(url) {
   }
   return false;
 }
+const PDF_RUNTIME_FILES = new Set([
+  "legacy/build/pdf.worker.min.mjs",
+  "wasm/jbig2.wasm",
+  "wasm/jbig2_nowasm_fallback.js",
+  "wasm/openjpeg.wasm",
+  "wasm/openjpeg_nowasm_fallback.js",
+  "wasm/qcms_bg.wasm",
+  "wasm/quickjs-eval.js",
+  "wasm/quickjs-eval.wasm",
+  "standard_fonts/FoxitDingbats.pfb",
+  "standard_fonts/FoxitFixed.pfb",
+  "standard_fonts/FoxitFixedBold.pfb",
+  "standard_fonts/FoxitFixedBoldItalic.pfb",
+  "standard_fonts/FoxitFixedItalic.pfb",
+  "standard_fonts/FoxitSerif.pfb",
+  "standard_fonts/FoxitSerifBold.pfb",
+  "standard_fonts/FoxitSerifBoldItalic.pfb",
+  "standard_fonts/FoxitSerifItalic.pfb",
+  "standard_fonts/FoxitSymbol.pfb",
+  "standard_fonts/LiberationSans-Bold.ttf",
+  "standard_fonts/LiberationSans-BoldItalic.ttf",
+  "standard_fonts/LiberationSans-Italic.ttf",
+  "standard_fonts/LiberationSans-Regular.ttf",
+]);
+function isPublicPdfRuntime(url) {
+  return (
+    !url.search &&
+    !url.hash &&
+    url.pathname.startsWith("/api/pdfjs-assets/") &&
+    PDF_RUNTIME_FILES.has(url.pathname.slice("/api/pdfjs-assets/".length))
+  );
+}
+async function networkFirstPdfRuntime(request) {
+  try {
+    const response = await fetch(request);
+    if (response.ok)
+      await safePut(PDF_RUNTIME_CACHE, request, response.clone());
+    // Authentication or missing routes must not be disguised as old cached software.
+    return response;
+  } catch (error) {
+    const cached = await safeMatch(request, PDF_RUNTIME_CACHE);
+    if (cached) return cached;
+    throw error;
+  }
+}
+self.addEventListener("message", (event) => {
+  if (event.data?.type === "FOREMANHQ_PDF_RUNTIME_VERSION")
+    event.ports?.[0]?.postMessage(VERSION);
+});
 function isCacheableImageRequest(url, request) {
   // Chat and document files require a fresh permission check and must never enter a shared cache.
   if (isPrivateChatRequest(url)) return false;
@@ -330,6 +408,11 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
   if (!isSameOrigin(url) || isPrivateChatRequest(url)) return;
 
+  if (isPublicPdfRuntime(url)) {
+    event.respondWith(networkFirstPdfRuntime(event.request));
+    return;
+  }
+
   if (isCacheableImageRequest(url, event.request)) {
     event.respondWith(cacheFirstImage(event.request));
     return;
@@ -380,6 +463,39 @@ function safeChatUrl(value) {
     return null;
   }
 }
+function safeDrawingUrl(value) {
+  if (typeof value !== "string") return null;
+  try {
+    const url = new URL(value, self.location.origin);
+    const uuid =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+    if (
+      url.origin !== self.location.origin ||
+      url.hash ||
+      !/^\/dashboard\/jobs\/[0-9a-f-]{36}\/drawings$/.test(url.pathname) ||
+      !uuid.test(url.pathname.split("/")[3])
+    )
+      return null;
+    const keys = [...url.searchParams.keys()];
+    if (
+      keys.length !== 2 ||
+      new Set(keys).size !== 2 ||
+      !uuid.test(url.searchParams.get("drawingSet") ?? "") ||
+      !uuid.test(url.searchParams.get("drawingSheet") ?? "")
+    )
+      return null;
+    return url.href;
+  } catch {
+    return null;
+  }
+}
+function safePushUrl(data) {
+  return data?.type === "job-drawing"
+    ? safeDrawingUrl(data.url)
+    : data?.type === "job-chat"
+      ? safeChatUrl(data.url)
+      : null;
+}
 async function pushAccount() {
   try {
     const response = await (
@@ -409,7 +525,8 @@ self.addEventListener("message", (event) => {
         if (!account) {
           const notifications = await self.registration.getNotifications();
           for (const notification of notifications)
-            if (notification.data?.type === "job-chat") notification.close();
+            if (["job-chat", "job-drawing"].includes(notification.data?.type))
+              notification.close();
         }
         ok = true;
       } catch {
@@ -428,38 +545,47 @@ self.addEventListener("push", (event) => {
       } catch {
         return;
       }
-      const url = safeChatUrl(data?.url);
+      const url = safePushUrl(data);
       if (
-        data?.type !== "job-chat" ||
         !url ||
         typeof data.account !== "string" ||
         !/^[a-f0-9]{64}$/.test(data.account) ||
         data.account !== (await pushAccount())
       )
         return;
-      await self.registration.showNotification("ForemanHQ Chat", {
-        body: "There is new activity in a job chat. Open ForemanHQ to read it.",
-        icon: "/foremanhq/notification-icon.png",
-        // Android status-bar icon (white silhouette; the platform tints it).
-        badge: "/foremanhq/notification-badge.png",
-        // Browsers cannot play a custom sound; a short double buzz stands out instead.
-        vibrate: [90, 60, 90],
-        tag: `job-chat-${new URL(url).pathname.split("/")[3]}`,
-        // Alert again for each new message instead of silently replacing the last one.
-        renotify: true,
-        timestamp: Date.now(),
-        data: { type: "job-chat", url, account: data.account },
-      });
+      await self.registration.showNotification(
+        data.type === "job-drawing" ? "ForemanHQ Drawings" : "ForemanHQ Chat",
+        {
+          body:
+            data.type === "job-drawing"
+              ? "There is new drawing activity. Open ForemanHQ to review it."
+              : "There is new activity in a job chat. Open ForemanHQ to read it.",
+          icon: "/foremanhq/notification-icon.png",
+          // Android status-bar icon (white silhouette; the platform tints it).
+          badge: "/foremanhq/notification-badge.png",
+          // Browsers cannot play a custom sound; a short double buzz stands out instead.
+          vibrate: [90, 60, 90],
+          tag:
+            data.type === "job-drawing"
+              ? `job-drawing-${new URL(url).searchParams.get("drawingSheet")}`
+              : `job-chat-${new URL(url).pathname.split("/")[3]}`,
+          // Alert again for each new message instead of silently replacing the last one.
+          renotify: true,
+          timestamp: Date.now(),
+          data: { type: data.type, url, account: data.account },
+        },
+      );
     })(),
   );
 });
 self.addEventListener("notificationclick", (event) => {
-  if (event.notification.data?.type !== "job-chat") return;
+  if (!["job-chat", "job-drawing"].includes(event.notification.data?.type))
+    return;
   event.notification.close();
   event.waitUntil(
     (async () => {
       const data = event.notification.data;
-      const url = safeChatUrl(data?.url);
+      const url = safePushUrl(data);
       if (
         !url ||
         typeof data.account !== "string" ||

@@ -14,9 +14,18 @@ type Entry = { promise: Promise<PDFDocumentProxy>; destroy: () => void };
 const documents = new Map<string, Entry>();
 const KEEP_DOCUMENTS = 2;
 
+/** Call on logout/account changes: parsed private pages must not outlive identity. */
+export function clearPdfDocuments() {
+  const entries = [...documents.values()];
+  documents.clear();
+  for (const entry of entries) entry.destroy();
+}
+
 export function loadPdfJs() {
   if (library) return library;
-  const pending = import("pdfjs-dist/legacy/build/pdf.mjs").then((pdfjs) => {
+  const pending = import(
+    /* webpackChunkName: "drawing-pdf-runtime" */ "pdfjs-dist/legacy/build/pdf.mjs"
+  ).then((pdfjs) => {
     // Served from the installed package (see /api/pdfjs-assets).
     pdfjs.GlobalWorkerOptions.workerSrc =
       "/api/pdfjs-assets/legacy/build/pdf.worker.min.mjs";

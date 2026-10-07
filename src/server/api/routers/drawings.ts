@@ -1,8 +1,9 @@
 import { TRPCError } from "@trpc/server";
-import { and, asc, count, eq, inArray } from "drizzle-orm";
+import { and, asc, count, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { createTRPCRouter, hasDashboardAccess } from "~/server/api/trpc";
+import { assertSheetsNotReferenced } from "~/server/drawings/service";
 import { userCan } from "~/server/auth/permissions";
 import type { db as database } from "~/server/db";
 import { jobDrawingSets, jobDrawingSheets, jobs } from "~/server/db/schema";
@@ -180,7 +181,12 @@ export const drawingsRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       assertCanManage(ctx);
       const set = await requireSet(ctx, input.setId);
-      await ctx.db.delete(jobDrawingSets).where(eq(jobDrawingSets.id, set.id));
+      await ctx.db.transaction(async (tx) => {
+        await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${set.jobId}, 4151))`);
+        const sheets = await tx.select({ id: jobDrawingSheets.id }).from(jobDrawingSheets).where(eq(jobDrawingSheets.setId, set.id));
+        await assertSheetsNotReferenced(tx, sheets.map((sheet) => sheet.id));
+        await tx.delete(jobDrawingSets).where(eq(jobDrawingSets.id, set.id));
+      });
       return { ok: true as const };
     }),
 
@@ -201,7 +207,11 @@ export const drawingsRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       assertCanManage(ctx);
       const sheet = await requireSheet(ctx, input.sheetId);
-      await ctx.db.delete(jobDrawingSheets).where(eq(jobDrawingSheets.id, sheet.id));
+      await ctx.db.transaction(async (tx) => {
+        await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${sheet.jobId}, 4151))`);
+        await assertSheetsNotReferenced(tx, [sheet.id]);
+        await tx.delete(jobDrawingSheets).where(eq(jobDrawingSheets.id, sheet.id));
+      });
       return { ok: true as const };
     }),
 });

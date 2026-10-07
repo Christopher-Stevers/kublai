@@ -112,6 +112,24 @@ describe("browser PDF document cache", () => {
     expect(third.destroy).not.toHaveBeenCalled();
   });
 
+  it("destroys loaded and still-initializing private documents when the account is cleared", async () => {
+    const pending = loadingTask("pending");
+    getDocument.mockReturnValueOnce(pending);
+    const first = client.loadPdfDocument("/private.pdf");
+    client.clearPdfDocuments();
+    libraryReady.resolve();
+    await first;
+    expect(pending.destroy).toHaveBeenCalledOnce();
+    const replacement = loadingTask("new account");
+    getDocument.mockReturnValueOnce(replacement);
+    const second = client.loadPdfDocument("/private.pdf");
+    expect(second).not.toBe(first);
+    await second;
+    client.clearPdfDocuments();
+    client.clearPdfDocuments();
+    expect(replacement.destroy).toHaveBeenCalledOnce();
+  });
+
   it("cleans up an evicted request even when the PDF.js import has not finished", async () => {
     const evicted = loadingTask("evicted");
     const second = loadingTask("second");

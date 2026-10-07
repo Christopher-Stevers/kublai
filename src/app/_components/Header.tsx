@@ -160,6 +160,10 @@ function HeaderFrame({
   const handleSignOut = async () => {
     if (sandbox) return;
     try {
+      const { clearDrawingDownloadsOnSignOut } = await import("~/components/jobs/DrawingAccountProvider");
+      await clearDrawingDownloadsOnSignOut();
+    } catch { /* Signing out must still work if offline storage is unavailable. */ }
+    try {
       const { disconnectChatPushDevice } = await import("~/components/jobs/ChatNotifications");
       await disconnectChatPushDevice();
     } catch {

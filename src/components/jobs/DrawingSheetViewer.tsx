@@ -27,6 +27,11 @@ import { buildSnapIndex, mergeCollinear, snapToLine, type SnapIndex, type SnapSe
 import { SheetMeasureBar } from "./SheetMeasureBar";
 import { DrawingTileLayer } from "./DrawingTileLayer";
 import { DrawingPdfLayer } from "./DrawingPdfLayer";
+import { DrawingAnnotationLayer } from "./DrawingAnnotationLayer";
+import { DrawingDraftToolbar } from "./DrawingDraftToolbar";
+import { useDrawingEditor, type DrawingEditorProps } from "./useDrawingEditor";
+import { DrawingComparisonLayer, type DrawingComparison } from "./DrawingComparisonLayer";
+export type { DrawingEditorProps } from "./useDrawingEditor";
 
 const MIN_ZOOM = 1;
 const MAX_ZOOM = 24;
@@ -57,7 +62,12 @@ export function DrawingSheetViewer({
   pdf,
   tiles,
   sheetKey,
-}: {
+  comparison,
+  resolveAssetUrl,
+  navigateTo,
+  onViewportChange,
+  ...editorProps
+}: DrawingEditorProps & {
   src: string;
   alt: string;
   pdf?: { url: string; page: number } | null;
@@ -65,6 +75,10 @@ export function DrawingSheetViewer({
   tiles?: string | null;
   /** Remembers this sheet's scale on this computer. */
   sheetKey?: string;
+  comparison?: DrawingComparison;
+  resolveAssetUrl?: (url: string) => Promise<string>;
+  navigateTo?: { center: SheetPoint; zoom: number; requestId: string } | null;
+  onViewportChange?: (viewport: { center: SheetPoint; zoom: number }) => void;
 }) {
   const frame = useRef<HTMLDivElement>(null);
   const layer = useRef<HTMLDivElement>(null);
@@ -92,7 +106,10 @@ export function DrawingSheetViewer({
   const [snapIndex, setSnapIndex] = useState<SnapIndex | null>(null);
   const snapSegments = useRef<SnapSegment[] | null>(null);
   const snapKey = useRef<string | null>(null);
-  const [sheetScale, setSheetScale] = useState<SheetScale | null>(null);
+  const [localSheetScale, setLocalSheetScale] = useState<SheetScale | null>(null);
+  // An explicit null is authoritative: this shared sheet has not been calibrated.
+  const controlledScale = editorProps.sharedScale !== undefined;
+  const sheetScale = editorProps.sharedScale === undefined ? localSheetScale : editorProps.sharedScale;
   const [unit, setUnit] = useState<MeasureUnit>("ft");
   const [draft, setDraft] = useState("");
   const [scaleError, setScaleError] = useState<string | null>(null);
@@ -110,6 +127,12 @@ export function DrawingSheetViewer({
   const wheelSettleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const animation = useRef(0);
   const velocity = useRef<{ x: number; y: number; t: number }>({ x: 0, y: 0, t: 0 });
+  const editor = useDrawingEditor({ ...editorProps, sourceSheetId: editorProps.sourceSheetId ?? sheetKey, sharedScale: sheetScale }, fit?.aspect ?? 1, (fit?.width ?? 1) * live.current.scale);
+  const viewportListener = useRef(onViewportChange);
+  viewportListener.current = onViewportChange;
+  const annotationTool = editorProps.tool ?? "pan";
+  useEffect(() => { setMeasuring(false); setCalibrating(false); }, [annotationTool]);
+
 
   // Fit the sheet inside the frame whenever the image or frame size changes.
   useEffect(() => {
@@ -148,7 +171,8 @@ export function DrawingSheetViewer({
     const retryDelays = [500, 1_000, 2_000, 4_000, 8_000, 15_000, 30_000, 30_000];
     const load = async () => {
       try {
-        const response = await fetch(`${tiles}/manifest.json`, {
+        const manifestUrl = `${tiles}/manifest.json`;
+        const response = await fetch(resolveAssetUrl ? await resolveAssetUrl(manifestUrl) : manifestUrl, {
           credentials: "same-origin",
           signal: controller.signal,
         });
@@ -172,12 +196,12 @@ export function DrawingSheetViewer({
       controller.abort();
       clearTimeout(timer);
     };
-  }, [tiles]);
+  }, [tiles, resolveAssetUrl]);
 
   // Each sheet keeps its own scale. The trace itself lasts only for this visit.
   useEffect(() => {
-    const stored = sheetKey ? readSheetScale(sheetKey) : null;
-    setSheetScale(stored);
+    const stored = !controlledScale && sheetKey ? readSheetScale(sheetKey) : null;
+    if (!controlledScale) setLocalSheetScale(stored);
     setUnit(stored?.unit ?? "ft");
     setPath([]);
     setCalPoints([]);
@@ -189,7 +213,11 @@ export function DrawingSheetViewer({
     setScaleError(null);
     setScaleReadError(null);
     setReadingScale(false);
-  }, [sheetKey]);
+  }, [sheetKey, controlledScale]);
+
+  useEffect(() => {
+    if (editorProps.sharedScale !== undefined) setUnit(editorProps.sharedScale?.unit ?? "ft");
+  }, [editorProps.sharedScale, sheetKey]);
 
   // Read the drawing's lines once, when measuring starts. Taps stay free until they arrive.
   // Depend on the url and page, not the object: the parent builds a new object on every render.
@@ -290,14 +318,17 @@ export function DrawingSheetViewer({
       if (calPoints.length <= 1) setCalLine(null);
     } else setPath((points) => points.slice(0, -1));
   }, [calibrating, calPoints.length]);
+  const proposeScale = (next: SheetScale) => {
+    if (!controlledScale) {
+      setLocalSheetScale(next);
+      setUnit(next.unit);
+      if (sheetKey) writeSheetScale(sheetKey, next);
+    }
+    editorProps.onScaleChange?.(next);
+  };
   const changeUnit = (next: MeasureUnit) => {
-    setUnit(next);
-    setSheetScale((current) => {
-      if (!current) return current;
-      const converted = convertScale(current, next);
-      if (sheetKey) writeSheetScale(sheetKey, converted);
-      return converted;
-    });
+    if (calibrating || !sheetScale) setUnit(next);
+    else proposeScale(convertScale(sheetScale, next));
   };
   const beginLengthScale = () => {
     setCalibrating(true);
@@ -324,9 +355,7 @@ export function DrawingSheetViewer({
           setScaleReadError(scaleReadMessage(result));
           return;
         }
-        setSheetScale(result.scale);
-        setUnit(result.scale.unit);
-        if (sheetKey) writeSheetScale(sheetKey, result.scale);
+        proposeScale(result.scale);
         setCalibrating(false);
         setCalPoints([]);
         setCalLine(null);
@@ -358,8 +387,7 @@ export function DrawingSheetViewer({
       return;
     }
     const next = { unit, unitsPerSheetWidth };
-    setSheetScale(next);
-    if (sheetKey) writeSheetScale(sheetKey, next);
+    proposeScale(next);
     setCalPoints([]);
     setCalLine(null);
     setCalibrating(false);
@@ -506,6 +534,21 @@ export function DrawingSheetViewer({
     gesture.current = { view: live.current, points: [...pointers.current.values()] };
   };
 
+  useEffect(() => {
+    if (!navigateTo || !fit) return;
+    stopAnimation();
+    move({ scale: navigateTo.zoom, x: (0.5 - navigateTo.center.x) * fit.width * navigateTo.zoom, y: (0.5 - navigateTo.center.y) * fit.height * navigateTo.zoom }, true);
+    // A unique request makes selecting the same bookmark again intentional.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [navigateTo?.requestId, fit?.width, fit?.height]);
+  useEffect(() => {
+    if (!fit) return;
+    viewportListener.current?.({ center: {
+      x: Math.min(1, Math.max(0, 0.5 - view.x / (fit.width * view.scale))),
+      y: Math.min(1, Math.max(0, 0.5 - view.y / (fit.height * view.scale))),
+    }, zoom: view.scale });
+  }, [view, fit]);
+
   // Geometry of the committed view.
   const dpr = typeof window === "undefined" ? 1 : Math.min(window.devicePixelRatio || 1, 3);
   const shownWidth = fit ? fit.width * view.scale : 0;
@@ -550,6 +593,8 @@ export function DrawingSheetViewer({
         pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
         velocity.current = { x: 0, y: 0, t: performance.now() };
         startGesture();
+        if (pointers.current.size > 1) editor.cancelGesture();
+        if (!measuring && pointers.current.size === 1 && editor.down(pointFromClient(event.clientX, event.clientY), event.target)) return;
         if (pointers.current.size === 1) {
           if (measuring) {
             // A short press drops a point. A drag still pans, and a second finger still pinches.
@@ -587,6 +632,7 @@ export function DrawingSheetViewer({
           const zoomed = zoomAt(base, factor, mid0);
           move({ ...zoomed, x: zoomed.x + mid.x - mid0.x, y: zoomed.y + mid.y - mid0.y });
         } else if (now.length === 1 && before[0]) {
+          if (!measuring && editor.move(pointFromClient(event.clientX, event.clientY))) return;
           const p = now[0]!;
           if (measuring && measureTap.current && !measureTap.current.moved) {
             if (Math.hypot(p.x - measureTap.current.x, p.y - measureTap.current.y) <= MEASURE_TAP_SLOP_PX) {
@@ -612,10 +658,12 @@ export function DrawingSheetViewer({
       onPointerUp={(event) => {
         const tap = measureTap.current;
         const wasSingle = pointers.current.size === 1;
+        const edited = !measuring && wasSingle && editor.up(pointFromClient(event.clientX, event.clientY));
         pointers.current.delete(event.pointerId);
         measureTap.current = null;
         startGesture();
         if (pointers.current.size > 0) return;
+        if (edited) { move(live.current, true); return; }
         if (measuring && tap && !tap.moved && wasSingle) {
           const aim = aimFromClient(event.clientX, event.clientY);
           if (aim) commitPoint(aim.point, aim.segment);
@@ -627,6 +675,7 @@ export function DrawingSheetViewer({
         else move(live.current, true);
       }}
       onPointerCancel={(event) => {
+        editor.cancelGesture();
         pointers.current.delete(event.pointerId);
         measureTap.current = null;
         startGesture();
@@ -652,7 +701,7 @@ export function DrawingSheetViewer({
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img ref={image} src={src} alt={alt} draggable={false} className="absolute inset-0 h-full w-full" />
-        <DrawingTileLayer key={tiles ?? src} requests={tileRequests} />
+        <DrawingTileLayer key={tiles ?? src} requests={tileRequests} resolveAssetUrl={resolveAssetUrl} />
         {pdf && fit && (
           <DrawingPdfLayer
             pdf={pdf}
@@ -664,6 +713,8 @@ export function DrawingSheetViewer({
             moving={moving}
           />
         )}
+        {comparison && fit && <DrawingComparisonLayer primary={{ src, pdf }} comparison={comparison} fit={fit} frameSize={frameSize} view={view} dpr={dpr} />}
+        {fit && <DrawingAnnotationLayer annotations={editorProps.annotations ?? []} aspect={fit.aspect} selectedId={editorProps.selectedId} draft={measuring ? null : editor.draft} editing={editor.editing} hidden={editorProps.hideAnnotations} sharedScale={sheetScale} onSelect={editorProps.onSelect} screenPixelSize={1000 / (fit.width * view.scale)} />}
       </div>
       {fit && (marked.length > 0 || snapLine) && (
         <div
@@ -746,13 +797,14 @@ export function DrawingSheetViewer({
           </svg>
         </div>
       )}
+      {!measuring && <DrawingDraftToolbar tool={annotationTool} count={editor.pointCount} canFinish={editor.canFinish} onUndo={editor.undo} onCancel={editor.clear} onFinish={editor.finish} />}
       <SheetMeasureBar
         measuring={measuring}
         calibrating={calibrating}
         pointCount={path.length}
         calibrationCount={calPoints.length}
         total={total}
-        unit={unit}
+        unit={calibrating ? unit : sheetScale?.unit ?? unit}
         scaleSet={sheetScale !== null}
         snapping={Boolean(snapIndex && snapIndex.segments.length > 0)}
         draft={draft}

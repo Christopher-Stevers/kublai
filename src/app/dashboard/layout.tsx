@@ -7,6 +7,7 @@ import { getRequestIdentity } from "~/server/utils/get-request-identity";
 import { waitForUser } from "~/server/utils/wait-for-user";
 import { ReplicacheSyncBootstrap } from "~/components/offline/ReplicacheSyncBootstrap";
 import { TabAccessGate } from "./_components/TabAccessGate";
+import { DrawingAccountProvider } from "~/components/jobs/DrawingAccountProvider";
 
 export default async function DashboardLayout({
   children,
@@ -54,6 +55,7 @@ export default async function DashboardLayout({
         userId={effectiveUserId}
         initialCompleted={!!user.tutorialCompletedAt}
       >
+        <DrawingAccountProvider userId={effectiveUserId} organizationId={organizationId}>
         <div className="bg-muted/50 flex min-h-screen flex-col">
           <ReplicacheSyncBootstrap
             userId={effectiveUserId}
@@ -63,6 +65,7 @@ export default async function DashboardLayout({
           <TabAccessGate />
           <main className="flex-1">{children}</main>
         </div>
+        </DrawingAccountProvider>
       </TutorialGate>
     </HydrateClient>
   );

@@ -181,6 +181,13 @@
       "when": 1791345600000,
       "tag": "0049_job_documents",
       "breakpoints": false
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1791374400000,
+      "tag": "0050_drawing_workspace",
+      "breakpoints": false
     }
   ]
 }

@@ -30,6 +30,7 @@ export class DrawingTileCache {
     private readonly container: HTMLElement,
     private readonly budget = DRAWING_TILE_BYTES,
     private readonly makeImage: () => HTMLImageElement = () => new Image(),
+    private readonly resolveAssetUrl?: (url: string) => Promise<string>,
   ) {}
 
   update(requests: DrawingTileRequest[]) {
@@ -130,7 +131,11 @@ export class DrawingTileCache {
       } else finish(true);
     };
     image.onerror = () => finish(false);
-    image.src = request.url;
+    if (this.resolveAssetUrl) {
+      void this.resolveAssetUrl(request.url).then(url => {
+        if (!this.disposed) image.src = url;
+      }, () => finish(false));
+    } else image.src = request.url;
   }
 
   dispose() {

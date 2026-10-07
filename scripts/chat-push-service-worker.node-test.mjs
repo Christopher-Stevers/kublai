@@ -221,3 +221,31 @@ test("private image attachments bypass both image caching and background image w
     data: { type: "FOREMENHQ_CACHE_CATALOGUE_IMAGES", urls: [privateUrl.href] },
   });
 });
+test("drawing push is account bound, generic and opens only its exact drawing deep link", async () => {
+  const h = harness();
+  const drawingUrl = `${origin}/dashboard/jobs/${job}/drawings?drawingSet=${job}&drawingSheet=${job}`;
+  await h.bind(account);
+  await h.emit("push", { data: { json: () => ({ type: "job-drawing", account, url: drawingUrl, title: "Private issue", body: "Private details" }) } });
+  assert.equal(h.shown.length, 1);
+  assert.equal(h.shown[0][0], "ForemanHQ Drawings");
+  assert.equal(h.shown[0][1].body.includes("Private"), false);
+  assert.equal(h.shown[0][1].data.type, "job-drawing");
+  await h.emit("notificationclick", { notification: { data: h.shown[0][1].data, close() {} } });
+  assert.equal(h.opened[0], drawingUrl);
+  for (const target of [drawingUrl + "&redirect=https://evil.test", drawingUrl + "#private", drawingUrl.replace(origin, "https://evil.test"), drawingUrl.replace("drawingSheet", "unknown"), drawingUrl + `&drawingSheet=${job}`]) {
+    await h.emit("push", { data: { json: () => ({ type: "job-drawing", account, url: target }) } });
+  }
+  await h.emit("push", { data: { json: () => ({ type: "job-drawing", account: "b".repeat(64), url: drawingUrl }) } });
+  assert.equal(h.shown.length, 1);
+  let closed = 0;
+  h.self.registration.getNotifications = async () => [{ data: { type: "job-drawing" }, close: () => closed++ }];
+  await h.bind(null);
+  assert.equal(closed, 1);
+});
+test("drawing issue photos cannot enter service worker image caches", async () => {
+  const h = harness();
+  const privateUrl = new URL(`${origin}/api/drawings/attachments/${job}/${job}`);
+  assert.equal(h.context.isCacheableImageRequest(privateUrl, { destination: "image" }), false);
+  const optimized = new URL(`${origin}/_next/image?url=${encodeURIComponent(privateUrl.pathname)}&w=64&q=75`);
+  assert.equal(h.context.isCacheableImageRequest(optimized, { destination: "image" }), false);
+});

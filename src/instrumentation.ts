@@ -20,6 +20,8 @@ export async function register() {
     }
     const { startChatPushWorker } = await import("~/server/chat/push");
     startChatPushWorker();
+    const { startDrawingPushWorker } = await import("~/server/drawings/push-worker");
+    startDrawingPushWorker();
     if (!state.chatMaintenanceTimer) {
       let running = false;
       const cleanup = async () => {

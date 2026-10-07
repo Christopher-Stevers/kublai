@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -12,9 +12,14 @@ import {
   PencilIcon,
   TrashIcon,
   UploadIcon,
+  StarIcon,
+  DownloadIcon,
+  LayoutGridIcon,
+  ListIcon,
 } from "lucide-react";
 
 import { api } from "~/trpc/react";
+import type { DrawingWorkspace as WorkspaceSnapshot } from "~/lib/drawing-workspace";
 import { useTutorialSandbox } from "~/components/tutorial/tutorial-sandbox-context";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
@@ -35,9 +40,16 @@ import {
 } from "~/components/ui/dropdown-menu";
 import { useHeaderBackOverride } from "~/lib/header-back-events";
 import { tileBase } from "~/lib/drawing-tiles";
-import { sourcePdfPage } from "~/lib/pdf-client";
+import { warmDrawingPdfRuntime } from "~/lib/drawing-pdf-offline-runtime";
+import { collectDrawingOfflineUrls } from "~/lib/drawing-offline";
 import { uploadDrawings } from "~/lib/upload-drawings";
-import { DrawingSheetViewer } from "./DrawingSheetViewer";
+import { DrawingWorkspace } from "./DrawingWorkspace";
+import { DrawingSheetRegister } from "./DrawingSheetRegister";
+import { useDrawingAccount } from "./DrawingAccountProvider";
+import { useDrawingSnapshot } from "./useDrawingSnapshot";
+
+const nonempty = (value: string | undefined, fallback: string) =>
+  value?.trim() ? value : fallback;
 
 type NameDialog =
   | { kind: "new-set" }
@@ -60,17 +72,62 @@ export function JobDrawingsView({ jobId }: { jobId: string }) {
   const [nameDraft, setNameDraft] = useState("");
   const [uploading, setUploading] = useState<string | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
+  const account = useDrawingAccount();
+  const [query, setQuery] = useState("");
+  const [discipline, setDiscipline] = useState("");
+  const [status, setStatus] = useState("");
+  const [favoritesOnly, setFavoritesOnly] = useState(false);
+  const [listView, setListView] = useState(false);
+  const [download, setDownload] = useState<string | null>(null);
+  const downloader = useRef<AbortController | null>(null);
+  const summaries = api.drawingsWorkspace.list.useQuery(
+    { jobId },
+    { enabled: !sandbox, staleTime: 30_000 },
+  );
+  const summarySnapshot = useDrawingSnapshot(
+    `drawing-index:${jobId}`,
+    summaries.data,
+  );
+  const bySheet = useMemo(
+    () =>
+      new Map((summarySnapshot.data ?? []).map((row) => [row.sheetId, row])),
+    [summarySnapshot.data],
+  );
+  const favorite = api.drawingsWorkspace.favorite.useMutation({
+    onSuccess: () => utils.drawingsWorkspace.list.invalidate({ jobId }),
+    onError: (error) => notify(error.message, "error"),
+  });
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const id = url.searchParams.get("drawingSheet"),
+      folder = url.searchParams.get("drawingSet");
+    if (
+      id &&
+      folder &&
+      /^[0-9a-f-]{36}$/i.test(id) &&
+      /^[0-9a-f-]{36}$/i.test(folder)
+    ) {
+      setSetId(folder);
+      setSheetId(id);
+    }
+    return () => downloader.current?.abort();
+  }, [jobId]);
 
   const sets = api.drawings.listSets.useQuery({ jobId }, { enabled: !sandbox });
   const set = api.drawings.getSet.useQuery(
     { setId: setId ?? "" },
     { enabled: !sandbox && Boolean(setId) },
   );
+  const setSnapshot = useDrawingSnapshot(`drawing-set:${setId}`, set.data);
+  const setsSnapshot = useDrawingSnapshot(`drawing-sets:${jobId}`, sets.data);
+  const setData = setSnapshot.data;
+  const setsData = setsSnapshot.data;
   const refresh = async () => {
     await utils.drawings.listSets.invalidate({ jobId });
     if (setId) await utils.drawings.getSet.invalidate({ setId });
   };
-  const onError = (error: { message: string }) => notify(error.message, "error");
+  const onError = (error: { message: string }) =>
+    notify(error.message, "error");
   const createSet = api.drawings.createSet.useMutation({
     onSuccess: async (result) => {
       await refresh();
@@ -78,7 +135,10 @@ export function JobDrawingsView({ jobId }: { jobId: string }) {
     },
     onError,
   });
-  const renameSet = api.drawings.renameSet.useMutation({ onSuccess: refresh, onError });
+  const renameSet = api.drawings.renameSet.useMutation({
+    onSuccess: refresh,
+    onError,
+  });
   const deleteSet = api.drawings.deleteSet.useMutation({
     onSuccess: async () => {
       setSetId(null);
@@ -86,13 +146,111 @@ export function JobDrawingsView({ jobId }: { jobId: string }) {
     },
     onError,
   });
-  const renameSheet = api.drawings.renameSheet.useMutation({ onSuccess: refresh, onError });
-  const deleteSheet = api.drawings.deleteSheet.useMutation({ onSuccess: refresh, onError });
+  const renameSheet = api.drawings.renameSheet.useMutation({
+    onSuccess: refresh,
+    onError,
+  });
+  const deleteSheet = api.drawings.deleteSheet.useMutation({
+    onSuccess: refresh,
+    onError,
+  });
 
-  const sheets = set.data?.sheets ?? [];
+  const sheets = setData?.sheets ?? [];
+  const visibleSheets = sheets
+    .filter((item) => {
+      const summary = bySheet.get(item.id),
+        metadata = summary?.metadata;
+      const text = [
+        item.name,
+        item.sourceFilename,
+        metadata?.number,
+        metadata?.title,
+        metadata?.discipline,
+        ...(metadata?.tags ?? []),
+      ]
+        .join(" ")
+        .toLocaleLowerCase();
+      return (
+        (!query.trim() || text.includes(query.trim().toLocaleLowerCase())) &&
+        (!discipline || metadata?.discipline === discipline) &&
+        (!status || metadata?.status === status) &&
+        (!favoritesOnly || summary?.favorite)
+      );
+    })
+    .sort((a, b) =>
+      nonempty(bySheet.get(a.id)?.metadata.number, a.name).localeCompare(
+        nonempty(bySheet.get(b.id)?.metadata.number, b.name),
+        undefined,
+        { numeric: true, sensitivity: "base" },
+      ),
+    );
+  const downloadFolder = async () => {
+    if (!account?.store || downloader.current || !setData) return;
+    const controller = new AbortController();
+    downloader.current = controller;
+    setDownload("Preparing folder…");
+    try {
+      await warmDrawingPdfRuntime({ signal: controller.signal });
+      const workspaces: WorkspaceSnapshot[] = [];
+      const images = new Set(sheets.map((item) => item.imageUrl));
+      for (const item of sheets) {
+        controller.signal.throwIfAborted();
+        setDownload(
+          `Preparing drawing ${workspaces.length + 1} of ${sheets.length}…`,
+        );
+        const workspace = await utils.drawingsWorkspace.get.fetch({
+          sheetId: item.id,
+        });
+        workspaces.push(workspace);
+        const current = workspace.jobSheets.find(
+          (source) => source.id === workspace.metadata.currentSourceSheetId,
+        );
+        if (current) images.add(current.imageUrl);
+      }
+      const urls = await collectDrawingOfflineUrls([...images], {
+        includeTiles: false,
+        signal: controller.signal,
+      });
+      await account.store.saveAssets(urls, {
+        signal: controller.signal,
+        onProgress: (p) =>
+          setDownload(
+            `${p.completed}/${p.total} files · ${(p.bytes / 1048576).toFixed(1)} MB`,
+          ),
+      });
+      await account.store.saveSnapshot(`drawing-set:${setId}`, setData);
+      if (setsData)
+        await account.store.saveSnapshot(`drawing-sets:${jobId}`, setsData);
+      if (summarySnapshot.data)
+        await account.store.saveSnapshot(
+          `drawing-index:${jobId}`,
+          summarySnapshot.data,
+        );
+      for (const workspace of workspaces) {
+        controller.signal.throwIfAborted();
+        await account.store.saveSnapshot(
+          `workspace:${workspace.sheetId}`,
+          workspace,
+        );
+      }
+      notify("Folder saved on this device for offline viewing.", "success");
+    } catch (error) {
+      if (!controller.signal.aborted)
+        notify(
+          error instanceof Error ? error.message : "Download failed",
+          "error",
+        );
+    } finally {
+      downloader.current = null;
+      setDownload(null);
+    }
+  };
   const sheetIndex = sheets.findIndex((sheet) => sheet.id === sheetId);
   const sheet = sheetIndex >= 0 ? sheets[sheetIndex] : null;
-  const canManage = !sandbox && Boolean(setId ? set.data?.canManage : sets.data?.canManage);
+  const canManage =
+    !sandbox &&
+    setSnapshot.online &&
+    Boolean(setId ? setData?.canManage : setsData?.canManage);
 
   // Paging should feel instant: warm the neighbouring sheets in the background.
   const neighbours = sheet
@@ -108,7 +266,10 @@ export function JobDrawingsView({ jobId }: { jobId: string }) {
       image.decoding = "async";
       image.src = url;
       const tiles = tileBase(url);
-      if (tiles) void fetch(`${tiles}/manifest.json`, { credentials: "same-origin" }).catch(() => undefined);
+      if (tiles)
+        void fetch(`${tiles}/manifest.json`, {
+          credentials: "same-origin",
+        }).catch(() => undefined);
     }
   }, [neighbours]);
 
@@ -125,7 +286,8 @@ export function JobDrawingsView({ jobId }: { jobId: string }) {
     const name = nameDraft.trim();
     if (!nameDialog || !name) return;
     if (nameDialog.kind === "new-set") createSet.mutate({ jobId, name });
-    else if (nameDialog.kind === "rename-set") renameSet.mutate({ setId: nameDialog.id, name });
+    else if (nameDialog.kind === "rename-set")
+      renameSet.mutate({ setId: nameDialog.id, name });
     else renameSheet.mutate({ sheetId: nameDialog.id, name });
     setNameDialog(null);
   };
@@ -144,7 +306,10 @@ export function JobDrawingsView({ jobId }: { jobId: string }) {
   };
 
   const nameDialogView = (
-    <Dialog open={nameDialog !== null} onOpenChange={(open) => !open && setNameDialog(null)}>
+    <Dialog
+      open={nameDialog !== null}
+      onOpenChange={(open) => !open && setNameDialog(null)}
+    >
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
@@ -166,11 +331,17 @@ export function JobDrawingsView({ jobId }: { jobId: string }) {
             aria-label="Name"
             maxLength={255}
             value={nameDraft}
-            placeholder={nameDialog?.kind === "new-set" ? "e.g. Mechanical" : undefined}
+            placeholder={
+              nameDialog?.kind === "new-set" ? "e.g. Mechanical" : undefined
+            }
             onChange={(event) => setNameDraft(event.target.value)}
           />
           <DialogFooter className="mt-4">
-            <Button type="button" variant="outline" onClick={() => setNameDialog(null)}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setNameDialog(null)}
+            >
               Cancel
             </Button>
             <Button type="submit" disabled={!nameDraft.trim()}>
@@ -187,17 +358,15 @@ export function JobDrawingsView({ jobId }: { jobId: string }) {
     return (
       <div className="bg-background fixed inset-x-0 top-14 bottom-0 z-30 flex flex-col sm:top-16">
         <div className="relative min-h-0 flex-1">
-          <DrawingSheetViewer
+          <DrawingWorkspace
             key={sheet.id}
-            src={sheet.imageUrl}
-            alt={sheet.name}
-            pdf={sourcePdfPage(sheet.imageUrl)}
-            tiles={tileBase(sheet.imageUrl)}
-            sheetKey={sheet.id}
+            jobId={jobId}
+            sheet={sheet}
+            onOpenSheet={(target) => {
+              setSetId(target.setId);
+              setSheetId(target.id);
+            }}
           />
-          <span className="bg-card/90 pointer-events-none absolute top-2 left-2 rounded-md px-2 py-1 text-xs font-semibold shadow-sm">
-            {sheet.name}
-          </span>
         </div>
         <div className="bg-card shrink-0 border-t px-4 pt-1.5 pb-[calc(0.5rem+env(safe-area-inset-bottom))]">
           <div className="mx-auto grid max-w-6xl grid-cols-[1fr_auto_1fr] items-center gap-2">
@@ -260,17 +429,123 @@ export function JobDrawingsView({ jobId }: { jobId: string }) {
         />
         <div className="mb-6 flex items-center justify-between gap-3">
           <h2 className="text-foreground min-w-0 truncate text-xl font-semibold">
-            {set.data?.set.name ?? "Drawings"}
+            {setData?.set.name ?? "Drawings"}
           </h2>
           {canManage && uploadButton("hidden h-11 sm:inline-flex")}
         </div>
-        {uploading && (
-          <p role="status" className="text-muted-foreground mb-4 text-sm">
-            Uploading {uploading}. Each page becomes its own drawing; large sets can take a few minutes.
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          <Input
+            aria-label="Search drawings"
+            placeholder="Search number, title or tag…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            className="min-w-48 flex-1"
+          />
+          <select
+            aria-label="Discipline"
+            className="bg-background h-10 rounded border px-2 text-sm"
+            value={discipline}
+            onChange={(e) => setDiscipline(e.target.value)}
+          >
+            <option value="">All disciplines</option>
+            {[
+              ...new Set(
+                sheets
+                  .map((s) => bySheet.get(s.id)?.metadata.discipline)
+                  .filter(Boolean),
+              ),
+            ]
+              .sort()
+              .map((value) => (
+                <option key={value}>{value}</option>
+              ))}
+          </select>
+          <select
+            aria-label="Drawing status"
+            className="bg-background h-10 rounded border px-2 text-sm"
+            value={status}
+            onChange={(e) => setStatus(e.target.value)}
+          >
+            <option value="">All statuses</option>
+            {["draft", "for_review", "approved", "superseded"].map((value) => (
+              <option value={value} key={value}>
+                {value.replaceAll("_", " ")}
+              </option>
+            ))}
+          </select>
+          <Button
+            variant={favoritesOnly ? "default" : "outline"}
+            size="icon"
+            aria-label="Show favorites"
+            aria-pressed={favoritesOnly}
+            onClick={() => setFavoritesOnly((v) => !v)}
+          >
+            <StarIcon className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            aria-label={listView ? "Grid view" : "List view"}
+            onClick={() => setListView((v) => !v)}
+          >
+            {listView ? (
+              <LayoutGridIcon className="h-4 w-4" />
+            ) : (
+              <ListIcon className="h-4 w-4" />
+            )}
+          </Button>
+          {canManage && sheets.length > 0 && (
+            <DrawingSheetRegister
+              jobId={jobId}
+              sheets={sheets}
+              summaries={summarySnapshot.data ?? []}
+            />
+          )}
+          {account?.store && (
+            <Button
+              variant="outline"
+              disabled={
+                !setSnapshot.online || !sheets.length || Boolean(download)
+              }
+              onClick={() => void downloadFolder()}
+            >
+              <DownloadIcon className="mr-1 h-4 w-4" />
+              Save folder offline
+            </Button>
+          )}
+        </div>
+        {!setSnapshot.online && (
+          <p role="status" className="mb-3 text-sm">
+            Offline · Saved drawings are available to view. Reconnect to make
+            changes.
           </p>
         )}
-        {set.isLoading ? (
-          <p role="status" className="text-muted-foreground text-sm">Loading drawings…</p>
+        {download && (
+          <p role="status" className="mb-3 text-sm">
+            {download}{" "}
+            <button
+              className="underline"
+              onClick={() => downloader.current?.abort()}
+            >
+              Cancel download
+            </button>
+          </p>
+        )}
+        {set.error && setSnapshot.online && (
+          <p role="alert" className="mb-3 text-sm text-red-600">
+            {set.error.message}
+          </p>
+        )}
+        {uploading && (
+          <p role="status" className="text-muted-foreground mb-4 text-sm">
+            Uploading {uploading}. Each page becomes its own drawing; large sets
+            can take a few minutes.
+          </p>
+        )}
+        {set.isLoading && !setData ? (
+          <p role="status" className="text-muted-foreground text-sm">
+            Loading drawings…
+          </p>
         ) : sheets.length === 0 ? (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12">
@@ -283,14 +558,27 @@ export function JobDrawingsView({ jobId }: { jobId: string }) {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-            {sheets.map((item) => (
+          <div
+            className={
+              listView
+                ? "overflow-hidden rounded border"
+                : "grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4"
+            }
+          >
+            {visibleSheets.length === 0 && (
+              <p className="p-4 text-sm">No drawings match these filters.</p>
+            )}
+            {visibleSheets.map((item) => (
               <Card
                 key={item.id}
                 role="button"
                 tabIndex={0}
                 aria-label={`Open ${item.name}`}
-                className="cursor-pointer gap-0 overflow-hidden py-0 transition-shadow hover:shadow-md"
+                className={
+                  listView
+                    ? "flex cursor-pointer flex-row gap-0 rounded-none border-0 border-b py-0 shadow-none"
+                    : "cursor-pointer gap-0 overflow-hidden py-0 transition-shadow hover:shadow-md"
+                }
                 onClick={() => setSheetId(item.id)}
                 onKeyDown={(event) => {
                   if (event.key === "Enter" || event.key === " ") {
@@ -299,15 +587,56 @@ export function JobDrawingsView({ jobId }: { jobId: string }) {
                   }
                 }}
               >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
+                <DrawingThumbnail
                   src={item.imageUrl}
                   alt=""
                   loading="lazy"
-                  className="bg-muted aspect-[4/3] w-full border-b object-contain"
+                  className={
+                    listView
+                      ? "bg-muted h-16 w-20 shrink-0 border-r object-contain"
+                      : "bg-muted aspect-[4/3] w-full border-b object-contain"
+                  }
                 />
-                <div className="flex items-center gap-1 px-3 py-2">
-                  <span className="min-w-0 flex-1 truncate text-sm font-medium">{item.name}</span>
+                <div className="flex min-w-0 flex-1 items-center gap-1 px-3 py-2">
+                  <div className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-medium">
+                      {nonempty(
+                        bySheet.get(item.id)?.metadata.number,
+                        item.name,
+                      )}
+                    </span>
+                    <span className="text-muted-foreground block truncate text-xs">
+                      {nonempty(
+                        bySheet.get(item.id)?.metadata.title,
+                        item.name,
+                      )}
+                    </span>
+                    {listView && (
+                      <span className="text-muted-foreground text-xs">
+                        {bySheet.get(item.id)?.metadata.discipline} ·{" "}
+                        {(
+                          bySheet.get(item.id)?.metadata.status ?? "draft"
+                        ).replaceAll("_", " ")}
+                      </span>
+                    )}
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    disabled={!setSnapshot.online || favorite.isPending}
+                    aria-label={`${bySheet.get(item.id)?.favorite ? "Unfavorite" : "Favorite"} ${item.name}`}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      favorite.mutate({
+                        sheetId: item.id,
+                        favorite: !bySheet.get(item.id)?.favorite,
+                      });
+                    }}
+                  >
+                    <StarIcon
+                      className={`h-4 w-4 ${bySheet.get(item.id)?.favorite ? "fill-amber-400 text-amber-600" : ""}`}
+                    />
+                  </Button>
                   {canManage && (
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -321,9 +650,18 @@ export function JobDrawingsView({ jobId }: { jobId: string }) {
                           <MoreVerticalIcon className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" onClick={(event) => event.stopPropagation()}>
+                      <DropdownMenuContent
+                        align="end"
+                        onClick={(event) => event.stopPropagation()}
+                      >
                         <DropdownMenuItem
-                          onSelect={() => openNameDialog({ kind: "rename-sheet", id: item.id, name: item.name })}
+                          onSelect={() =>
+                            openNameDialog({
+                              kind: "rename-sheet",
+                              id: item.id,
+                              name: item.name,
+                            })
+                          }
                         >
                           <PencilIcon className="h-4 w-4" />
                           Rename
@@ -334,7 +672,8 @@ export function JobDrawingsView({ jobId }: { jobId: string }) {
                             if (
                               await confirmAction({
                                 title: `Delete ${item.name}?`,
-                                description: "This drawing will be removed from the folder.",
+                                description:
+                                  "This drawing will be removed from the folder.",
                                 confirmLabel: "Delete",
                                 destructive: true,
                               })
@@ -353,15 +692,20 @@ export function JobDrawingsView({ jobId }: { jobId: string }) {
             ))}
           </div>
         )}
-        {canManage && <div className={BOTTOM_BAR}>{uploadButton("h-12 w-full")}</div>}
+        {canManage && (
+          <div className={BOTTOM_BAR}>{uploadButton("h-12 w-full")}</div>
+        )}
         {nameDialogView}
       </div>
     );
   }
 
   // Folders.
-  const folders = sets.data?.sets ?? [];
-  const newFolderButton = (className: string, size: "default" | "lg" = "lg") => (
+  const folders = setsData?.sets ?? [];
+  const newFolderButton = (
+    className: string,
+    size: "default" | "lg" = "lg",
+  ) => (
     <Button
       size={size}
       className={className}
@@ -376,19 +720,28 @@ export function JobDrawingsView({ jobId }: { jobId: string }) {
     <div className="pb-24">
       <div className="mb-6 flex items-center justify-between gap-3">
         <h2 className="text-foreground text-xl font-semibold">Drawings</h2>
-        {canManage && folders.length > 0 && newFolderButton("hidden h-11 sm:inline-flex")}
+        {canManage &&
+          folders.length > 0 &&
+          newFolderButton("hidden h-11 sm:inline-flex")}
       </div>
       {sandbox ? (
-        <p className="text-muted-foreground text-sm">Drawings aren&apos;t part of the practice job.</p>
-      ) : sets.isLoading ? (
-        <p role="status" className="text-muted-foreground text-sm">Loading drawings…</p>
+        <p className="text-muted-foreground text-sm">
+          Drawings aren&apos;t part of the practice job.
+        </p>
+      ) : sets.isLoading && !setsData ? (
+        <p role="status" className="text-muted-foreground text-sm">
+          Loading drawings…
+        </p>
       ) : folders.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
             <FolderIcon className="text-muted-foreground/70 mb-4 h-12 w-12" />
-            <h3 className="mb-2 text-lg font-semibold">No drawing folders yet</h3>
+            <h3 className="mb-2 text-lg font-semibold">
+              No drawing folders yet
+            </h3>
             <p className="text-muted-foreground mb-4 text-center">
-              Create a folder for each drawing set, like Mechanical or Electrical.
+              Create a folder for each drawing set, like Mechanical or
+              Electrical.
             </p>
             {canManage && newFolderButton("", "default")}
           </CardContent>
@@ -411,8 +764,7 @@ export function JobDrawingsView({ jobId }: { jobId: string }) {
               }}
             >
               {folder.coverImageUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
+                <DrawingThumbnail
                   src={folder.coverImageUrl}
                   alt=""
                   loading="lazy"
@@ -424,7 +776,9 @@ export function JobDrawingsView({ jobId }: { jobId: string }) {
                 </div>
               )}
               <CardHeader className="flex flex-row items-start justify-between gap-2 px-4 pt-3 pb-0">
-                <CardTitle className="min-w-0 leading-tight break-words">{folder.name}</CardTitle>
+                <CardTitle className="min-w-0 leading-tight break-words">
+                  {folder.name}
+                </CardTitle>
                 {canManage && (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -438,9 +792,18 @@ export function JobDrawingsView({ jobId }: { jobId: string }) {
                         <MoreVerticalIcon className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" onClick={(event) => event.stopPropagation()}>
+                    <DropdownMenuContent
+                      align="end"
+                      onClick={(event) => event.stopPropagation()}
+                    >
                       <DropdownMenuItem
-                        onSelect={() => openNameDialog({ kind: "rename-set", id: folder.id, name: folder.name })}
+                        onSelect={() =>
+                          openNameDialog({
+                            kind: "rename-set",
+                            id: folder.id,
+                            name: folder.name,
+                          })
+                        }
                       >
                         <PencilIcon className="h-4 w-4" />
                         Rename folder
@@ -467,14 +830,48 @@ export function JobDrawingsView({ jobId }: { jobId: string }) {
                 )}
               </CardHeader>
               <CardContent className="text-muted-foreground px-4 pt-1 pb-4 text-sm">
-                {folder.sheetCount} {folder.sheetCount === 1 ? "drawing" : "drawings"}
+                {folder.sheetCount}{" "}
+                {folder.sheetCount === 1 ? "drawing" : "drawings"}
               </CardContent>
             </Card>
           ))}
         </div>
       )}
-      {canManage && <div className={BOTTOM_BAR}>{newFolderButton("h-12 w-full")}</div>}
+      {canManage && (
+        <div className={BOTTOM_BAR}>{newFolderButton("h-12 w-full")}</div>
+      )}
       {nameDialogView}
     </div>
   );
+}
+
+function DrawingThumbnail(
+  props: React.ImgHTMLAttributes<HTMLImageElement> & { src: string },
+) {
+  const account = useDrawingAccount();
+  const [resolved, setResolved] = useState<{
+    src: string;
+    url: string;
+    account: string;
+  } | null>(null);
+  useEffect(() => {
+    let stopped = false;
+    if (account?.store)
+      void account.store
+        .resolveAssetUrl(props.src)
+        .then((url) => {
+          if (!stopped)
+            setResolved({ src: props.src, url, account: account.accountKey });
+        })
+        .catch(() => undefined);
+    return () => {
+      stopped = true;
+    };
+  }, [account, props.src]);
+  const src =
+    resolved?.src === props.src && resolved.account === account?.accountKey
+      ? resolved.url
+      : props.src;
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img {...props} src={src} alt={props.alt ?? ""} />;
 }

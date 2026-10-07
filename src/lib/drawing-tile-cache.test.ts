@@ -28,6 +28,20 @@ function harness(budget = 32 * 1024 * 1024) {
 }
 
 describe("drawing tile surfaces", () => {
+  it("resolves offline tiles without making a canonical network request and ignores a late resolution after disposal", async () => {
+    const container = document.createElement("div"), images: HTMLImageElement[] = [];
+    const makeImage = () => { const image = document.createElement("img"); images.push(image); return image; };
+    let resolve!: (url: string) => void;
+    const resolver = vi.fn(() => new Promise<string>(done => { resolve = done; }));
+    const cache = new DrawingTileCache(container, undefined, makeImage, resolver);
+    cache.update([tile(0)]);
+    expect(images[0]!.hasAttribute("src")).toBe(false);
+    resolve("blob:offline-tile"); await Promise.resolve();
+    expect(images[0]!.getAttribute("src")).toBe("blob:offline-tile");
+    cache.update([tile(1)]); cache.dispose();
+    resolve("blob:too-late"); await Promise.resolve();
+    expect(images[1]!.hasAttribute("src")).toBe(false);
+  });
   it("limits simultaneous downloads and displays decoded tiles without a fade", async () => {
     const { cache, container, images, finish } = harness();
     cache.update(Array.from({ length: 12 }, (_, col) => tile(col)));

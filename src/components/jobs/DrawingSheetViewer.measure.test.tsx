@@ -8,7 +8,11 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { readPdfSheetScale } from "~/lib/pdf-sheet-scale";
 import { loadSnapLines } from "~/lib/pdf-snap-lines";
-import { DrawingSheetViewer } from "./DrawingSheetViewer";
+import { writeSheetScale } from "~/lib/sheet-measure";
+import {
+  DrawingSheetViewer,
+  type DrawingEditorProps,
+} from "./DrawingSheetViewer";
 
 vi.mock("~/lib/pdf-snap-lines", () => ({
   loadSnapLines: vi.fn(async () => []),
@@ -57,6 +61,7 @@ afterEach(() => {
 function openSheet(
   sheetKey = "sheet-1",
   pdf?: { url: string; page: number } | null,
+  editorProps: DrawingEditorProps = {},
 ) {
   const view = render(
     <DrawingSheetViewer
@@ -64,6 +69,7 @@ function openSheet(
       alt="Sheet"
       sheetKey={sheetKey}
       pdf={pdf}
+      {...editorProps}
     />,
   );
   const image = screen.getByAltText("Sheet");
@@ -117,6 +123,83 @@ function tap(frame: HTMLElement, x: number, y: number) {
 }
 
 describe("drawing measure", () => {
+  it("keeps trace and dimension calibration unchanged until the shared save is accepted", () => {
+    const sharedScale = { unit: "ft" as const, unitsPerSheetWidth: 100 };
+    const onScaleChange = vi.fn(),
+      onCreate = vi.fn();
+    const storage = vi.spyOn(localStorage, "setItem");
+    const { frame, rerender } = openSheet("controlled", undefined, {
+      sharedScale,
+      onScaleChange,
+      onCreate,
+      tool: "dimension",
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Measure" }));
+    tap(frame, 0, 300);
+    tap(frame, 400, 300);
+    expect(screen.getByRole("status")).toHaveTextContent("50'-0\"");
+    fireEvent.click(screen.getByRole("button", { name: "Scale" }));
+    tap(frame, 0, 300);
+    tap(frame, 800, 300);
+    fireEvent.change(screen.getByLabelText("How long is this line?"), {
+      target: { value: "200" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Use this length" }));
+    expect(onScaleChange).toHaveBeenCalledWith({
+      unit: "ft",
+      unitsPerSheetWidth: 200,
+    });
+    // The owner rejected the proposal and leaves the controlled prop unchanged.
+    expect(screen.getByRole("status")).toHaveTextContent("50'-0\"");
+    fireEvent.click(screen.getByRole("button", { name: "Meters" }));
+    expect(screen.getByRole("button", { name: "Feet" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(screen.getByRole("status")).toHaveTextContent("50'-0\"");
+    expect(storage).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Done" }));
+    tap(frame, 200, 300);
+    tap(frame, 600, 300);
+    expect(onCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ type: "dimension", scale: 100, unit: "ft" }),
+    );
+    rerender(
+      <DrawingSheetViewer
+        src="/sheet.webp"
+        alt="Sheet"
+        sheetKey="controlled"
+        sharedScale={{ unit: "ft", unitsPerSheetWidth: 200 }}
+        onCreate={onCreate}
+        tool="dimension"
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Measure" }));
+    expect(screen.getByRole("status")).toHaveTextContent("100'-0\"");
+  });
+
+  it("treats a null shared scale as uncalibrated even when this device has a stored scale", () => {
+    writeSheetScale("shared-null", { unit: "ft", unitsPerSheetWidth: 100 });
+    const onCreate = vi.fn();
+    const { frame } = openSheet("shared-null", undefined, {
+      sharedScale: null,
+      onCreate,
+      tool: "dimension",
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Measure" }));
+    tap(frame, 0, 300);
+    tap(frame, 400, 300);
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Tap Scale to see the distance.",
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Done" }));
+    tap(frame, 200, 300);
+    tap(frame, 600, 300);
+    expect(onCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ type: "dimension" }),
+    );
+    expect(onCreate.mock.calls[0]?.[0]).not.toHaveProperty("scale", 100);
+  });
   it("totals a traced path after the scale is taken from a known length", () => {
     const { frame } = openSheet();
     fireEvent.click(screen.getByRole("button", { name: "Measure" }));
