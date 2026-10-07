@@ -12,6 +12,7 @@ import {
   WIZARD_OPTION_LABEL_CLASS,
   WizardAllOption,
   WIZARD_OPTION_GRID_CLASS,
+  WIZARD_OPTION_ITEM_SIZE_CLASS,
   WizardOptionPagination,
 } from "./WizardOptionGrid";
 
@@ -101,7 +102,7 @@ export function MaterialStage({
             type="button"
             key={entry.key}
             data-tutorial-choice={entry.name}
-            className={`flex h-full min-h-16 w-full max-w-[4in] cursor-pointer items-center justify-center rounded-xl border bg-card p-2 text-center shadow-sm transition hover:shadow-md focus-visible:outline-2 focus-visible:outline-blue-600 sm:p-4 ${entry.kind === "material" && selectedMaterialId === entry.material.id ? "border-primary border-2" : ""}`}
+            className={`flex ${WIZARD_OPTION_ITEM_SIZE_CLASS} cursor-pointer items-center justify-center rounded-xl border bg-card p-2 text-center shadow-sm transition hover:shadow-md focus-visible:outline-2 focus-visible:outline-blue-600 sm:p-4 ${entry.kind === "material" && selectedMaterialId === entry.material.id ? "border-primary border-2" : ""}`}
             onClick={() =>
               entry.kind === "group"
                 ? browse(entry.path)

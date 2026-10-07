@@ -6,11 +6,15 @@ import { Card, CardContent } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
 import { ListPagination, type UseClientPaginationResult } from "~/components/ui/list-pagination";
 
-// auto-rows-fr: every card in the grid is as tall as the tallest one.
-export const WIZARD_OPTION_GRID_CLASS = "grid auto-rows-fr grid-cols-[repeat(auto-fill,minmax(min(1.35in,100%),1fr))] gap-2 sm:grid-cols-[repeat(auto-fill,minmax(min(1.5in,100%),1fr))] sm:gap-3";
-export const WIZARD_OPTION_CARD_CLASS = "h-full min-h-16 w-full max-w-[4in] cursor-pointer justify-center gap-0 py-0 transition-all hover:shadow-md";
+// Rows fill from the centre outwards (a short last row is centred), so the
+// cards sit where thumbs reach. Every card is the same fixed size: 3 per row
+// on a phone, up to 6 on wide screens (widths account for the gaps).
+export const WIZARD_OPTION_GRID_CLASS = "flex flex-wrap justify-center gap-2 sm:gap-3";
+export const WIZARD_OPTION_ITEM_SIZE_CLASS =
+  "h-[4.5rem] w-[calc((100%-1rem)/3)] shrink-0 sm:h-20 sm:w-[calc((100%-2.25rem)/4)] md:w-[calc((100%-3rem)/5)] lg:w-[calc((100%-3.75rem)/6)]";
+export const WIZARD_OPTION_CARD_CLASS = `${WIZARD_OPTION_ITEM_SIZE_CLASS} cursor-pointer justify-center gap-0 py-0 transition-all hover:shadow-md`;
 /** The one line on each card: its name, bold. */
-export const WIZARD_OPTION_LABEL_CLASS = "line-clamp-3 text-sm leading-snug font-bold break-words sm:text-base";
+export const WIZARD_OPTION_LABEL_CLASS = "line-clamp-2 text-sm leading-snug font-bold break-words sm:text-base";
 export const WIZARD_OPTION_SELECTED_CLASS = "border-primary border-2 shadow-md";
 
 export function WizardOptionCard({

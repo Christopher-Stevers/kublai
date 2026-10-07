@@ -901,6 +901,13 @@ export function AddPartDialog({
   }, [open]);
 
   const showStepsBar = open && wizardStage !== "review" && !prefabView;
+  // Catalog/material/size/category cards sit in the middle of the screen
+  // (the last child of the scroll area takes my-auto); long lists still
+  // scroll from the top.
+  const centerOptionCards =
+    !prefabView &&
+    !isWizardSearchActive &&
+    ["catalog", "material", "size", "category"].includes(wizardStage);
   useEffect(() => {
     if (!showStepsBar) return;
     document.body.dataset.flatHeader = "";
@@ -1091,7 +1098,7 @@ export function AddPartDialog({
 
           <div
             data-tutorial={`wizard-${isWizardSearchActive ? "part" : wizardStage}`}
-            className={`flex-1 space-y-2 overflow-y-auto overscroll-contain pt-2 pb-3 sm:space-y-4 sm:pt-4 sm:pb-4 ${wizardStage === "review" ? "px-4 sm:px-6" : "px-2 sm:px-4 md:px-6"} ${quantityPickerPreview ? "touch-none overflow-hidden" : ""}`}
+            className={`flex-1 space-y-2 overflow-y-auto overscroll-contain pt-2 pb-3 sm:space-y-4 sm:pt-4 sm:pb-4 ${wizardStage === "review" ? "px-4 sm:px-6" : "px-2 sm:px-4 md:px-6"} ${quantityPickerPreview ? "touch-none overflow-hidden" : ""} ${centerOptionCards ? "flex flex-col [&>*:last-child]:my-auto" : ""}`}
           >
             {!isOnline && (
               <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 sm:text-sm">

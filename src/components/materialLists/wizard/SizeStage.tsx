@@ -6,6 +6,7 @@ import { Card, CardContent } from "~/components/ui/card";
 import { useClientPagination } from "~/components/ui/list-pagination";
 import {
   WIZARD_OPTION_GRID_CLASS,
+  WIZARD_OPTION_ITEM_SIZE_CLASS,
   WIZARD_OPTION_LABEL_CLASS,
   WIZARD_OPTION_SELECTED_CLASS,
   WizardAllOption,
@@ -230,7 +231,7 @@ function SizeCard({
           onSizeSelect({ nominal: size.nominal, unit: size.unit, sizeLabel: null });
         }
       }}
-      className={`h-full min-h-16 min-w-0 cursor-pointer justify-center gap-0 overflow-hidden py-0 transition-all hover:shadow-md ${isSelected ? WIZARD_OPTION_SELECTED_CLASS : ""}`}
+      className={`${WIZARD_OPTION_ITEM_SIZE_CLASS} min-w-0 cursor-pointer justify-center gap-0 overflow-hidden py-0 transition-all hover:shadow-md ${isSelected ? WIZARD_OPTION_SELECTED_CLASS : ""}`}
       style={{
         WebkitTouchCallout: "none",
         WebkitUserSelect: "none",
