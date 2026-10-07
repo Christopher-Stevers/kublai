@@ -1,6 +1,23 @@
 "use client";
-import { FileTextIcon, PlusIcon, SendIcon, ShoppingCartIcon } from "lucide-react";
+import { useState } from "react";
+import {
+  BoxesIcon,
+  FileTextIcon,
+  MoreHorizontalIcon,
+  PlusIcon,
+  SendIcon,
+  ShoppingCartIcon,
+} from "lucide-react";
 import { Button } from "~/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "~/components/ui/dropdown-menu";
+import { SaveAsPrefabDialog } from "~/components/materialLists/prefabs/SaveAsPrefabDialog";
+import { useTutorialSandbox } from "~/components/tutorial/tutorial-sandbox-context";
+import { useOnlineStatus } from "~/hooks/use-online-status";
 
 export function MaterialListActions({
   total,
@@ -13,6 +30,7 @@ export function MaterialListActions({
   onAdd,
   onNotes,
   isToolRequest = false,
+  materialListId,
 }: {
   total: number;
   canGenerate: boolean;
@@ -26,7 +44,12 @@ export function MaterialListActions({
   onNotes?: () => void;
   /** Tool requests: no totals or quotes; "Request" sends to the tool room. */
   isToolRequest?: boolean;
+  /** The list, for "Save as Prefab" in the More menu. */
+  materialListId?: string;
 }) {
+  const sandbox = useTutorialSandbox();
+  const isOnline = useOnlineStatus();
+  const [savingPrefab, setSavingPrefab] = useState(false);
   const style =
     "h-9 min-h-9 w-full px-1.5 py-1 text-[11px] leading-tight whitespace-normal sm:h-9 sm:text-xs";
   return (
@@ -69,16 +92,32 @@ export function MaterialListActions({
           </>
         ) : (
           <>
-            <Button
-              variant="outline"
-              className={style}
-              onClick={onQuote}
-              disabled={!canGenerate || !canQuote}
-              title={!canQuote ? "You don't have permission to request quotes" : (blockedReason ?? "Generate quote")}
-            >
-              <FileTextIcon className="mr-1 h-3.5 w-3.5 shrink-0" />
-              Quote
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className={style}>
+                  <MoreHorizontalIcon className="mr-1 h-3.5 w-3.5 shrink-0" />
+                  More
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent side="top" align="start" className="min-w-48">
+                <DropdownMenuItem
+                  onSelect={onQuote}
+                  disabled={!canGenerate || !canQuote}
+                  title={!canQuote ? "You don't have permission to request quotes" : (blockedReason ?? undefined)}
+                >
+                  <FileTextIcon className="h-4 w-4" />
+                  Get Quote
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onSelect={() => setSavingPrefab(true)}
+                  disabled={!materialListId || !!sandbox || !isOnline}
+                  title={!isOnline ? "Reconnect to save a prefab" : undefined}
+                >
+                  <BoxesIcon className="h-4 w-4" />
+                  Save as Prefab
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <Button
               className={style}
               onClick={onOrder}
@@ -95,6 +134,13 @@ export function MaterialListActions({
           </>
         )}
       </div>
+      {materialListId && savingPrefab && (
+        <SaveAsPrefabDialog
+          open={savingPrefab}
+          onOpenChange={setSavingPrefab}
+          materialListId={materialListId}
+        />
+      )}
     </div>
   );
 }

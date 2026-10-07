@@ -48,3 +48,28 @@ export function planPrefabAdd<P extends PrefabLine>(
 function roundQuantity(value: number) {
   return Math.round(value * 1_000_000) / 1_000_000;
 }
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * A material list's lines as prefab parts ("Save as prefab"). One-off lines
+ * without a catalogue part are left out; offline supplier ids (not yet synced)
+ * are dropped so the server accepts them.
+ */
+export function prefabItemsFromList(listLines: ListLine[]) {
+  return listLines.flatMap((line) => {
+    const quantity = Number(line.quantity);
+    return line.partDefinitionId && quantity > 0
+      ? [
+          {
+            partDefinitionId: line.partDefinitionId,
+            supplierPartId:
+              line.supplierPartId && UUID.test(line.supplierPartId)
+                ? line.supplierPartId
+                : null,
+            quantity,
+          },
+        ]
+      : [];
+  });
+}

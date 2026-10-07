@@ -434,7 +434,7 @@ export default function MaterialListDetailPage({
         <MaterialListActions total={footerMaterialTotal} canGenerate={canGenerateQuoteOrOrder} blockedReason={generationBlockReason} canQuote={canQuote} canOrder={canOrder}
           onQuote={handleGenerateQuote} onOrder={handleGenerateOrder} onAdd={openAddPartDialog}
           onNotes={verifyOrderId ? () => setShowVerifyNotesDialog(true) : undefined}
-          isToolRequest={isToolRequest} />
+          isToolRequest={isToolRequest} materialListId={id} />
       </div>
 
       {/* Modals and Sheets */}

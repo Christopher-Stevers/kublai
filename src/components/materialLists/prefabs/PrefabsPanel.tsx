@@ -22,13 +22,11 @@ import {
 } from "~/components/ui/dropdown-menu";
 import type { ReplicacheMaterialListItem } from "~/hooks/use-replicache-material-list";
 import { useWorkspaceMutations } from "~/hooks/use-workspace-mutations";
-import { planPrefabAdd } from "~/lib/prefab-add";
+import { planPrefabAdd, prefabItemsFromList } from "~/lib/prefab-add";
 import { api, type RouterOutputs } from "~/trpc/react";
 
 export type Prefab = RouterOutputs["prefabs"]["list"][number];
 export type PrefabView = { kind: "list" } | { kind: "edit"; prefabId: string };
-
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function partCount(prefab: Prefab) {
   return `${prefab.items.length} part${prefab.items.length === 1 ? "" : "s"}`;
@@ -133,23 +131,7 @@ export function PrefabsPanel({
   };
 
   const createPrefab = async (name: string, fromList: boolean) => {
-    const items = fromList
-      ? listItems.flatMap((item) => {
-          const quantity = Number(item.quantity);
-          return item.partDefinitionId && quantity > 0
-            ? [
-                {
-                  partDefinitionId: item.partDefinitionId,
-                  supplierPartId:
-                    item.supplierPartId && UUID.test(item.supplierPartId)
-                      ? item.supplierPartId
-                      : null,
-                  quantity,
-                },
-              ]
-            : [];
-        })
-      : [];
+    const items = fromList ? prefabItemsFromList(listItems) : [];
     const prefab = await create.mutateAsync({ name, items }).catch(() => null);
     if (!prefab) return;
     setNaming(null);
