@@ -233,8 +233,8 @@ describe("Drawings", () => {
     fireEvent.click(screen.getByRole("menuitemcheckbox", { name: "Starred only" }));
     expect(screen.queryByRole("button", { name: "Open M-101" })).toBeNull();
     expect(screen.getByRole("button", { name: "Filters (1)" })).toBeInTheDocument();
-    openFilters();
-    fireEvent.click(screen.getByRole("menuitem", { name: "List view" }));
+    // Grid/list switch sits beside the heading, as on material lists.
+    fireEvent.click(screen.getByRole("button", { name: "Table view" }));
     expect(screen.getByText("Heating plan")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Unfavorite M-102" }));
     expect(state.calls).toContainEqual([

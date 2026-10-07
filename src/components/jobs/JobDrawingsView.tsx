@@ -14,8 +14,6 @@ import {
   UploadIcon,
   StarIcon,
   DownloadIcon,
-  LayoutGridIcon,
-  ListIcon,
   SearchIcon,
   SlidersHorizontalIcon,
 } from "lucide-react";
@@ -26,6 +24,7 @@ import { useTutorialSandbox } from "~/components/tutorial/tutorial-sandbox-conte
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
+import { ViewToggle } from "~/components/ui/view-toggle";
 import { confirmAction, notify } from "~/components/ui/app-dialogs";
 import {
   Dialog,
@@ -450,6 +449,12 @@ export function JobDrawingsView({ jobId }: { jobId: string }) {
           <h2 className="text-foreground min-w-0 truncate text-xl font-semibold">
             {setData?.set.name ?? "Drawings"}
           </h2>
+          {/* Same grid/list switch, in the same place, as material lists. */}
+          <ViewToggle
+            view={listView ? "table" : "grid"}
+            onViewChange={(view) => setListView(view === "table")}
+            showOnMobile
+          />
         </div>
         {!setSnapshot.online && (
           <p role="status" className="mb-3 text-sm">
@@ -674,14 +679,6 @@ export function JobDrawingsView({ jobId }: { jobId: string }) {
                   <StarIcon className="h-4 w-4" />
                   Starred only
                 </DropdownMenuCheckboxItem>
-                <DropdownMenuItem onSelect={() => setListView((v) => !v)}>
-                  {listView ? (
-                    <LayoutGridIcon className="h-4 w-4" />
-                  ) : (
-                    <ListIcon className="h-4 w-4" />
-                  )}
-                  {listView ? "Grid view" : "List view"}
-                </DropdownMenuItem>
                 {((canManage && sheets.length > 0) || account?.store) && (
                   <DropdownMenuSeparator />
                 )}
