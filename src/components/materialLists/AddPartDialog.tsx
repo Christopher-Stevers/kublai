@@ -834,61 +834,9 @@ export function AddPartDialog({
   const isWizardSearchActive =
     wizardStage !== "review" && wizardSearchQuery.trim().length > 0;
 
-  const addPartsHistoryEntryRef = useRef(false);
-  const stepBackRef = useRef<() => boolean>(() => false);
-  const suppressNextAddPartsPopRef = useRef(false);
 
-  useEffect(() => {
-    if (sandbox || !open || typeof window === "undefined") return;
-    if (window.history.state?.foremenAddPartsDialog) {
-      addPartsHistoryEntryRef.current = true;
-      return;
-    }
-
-    const dialogState = {
-      ...(window.history.state ?? {}),
-      foremenAddPartsDialog: true,
-    };
-    addPartsHistoryEntryRef.current = true;
-    window.history.pushState(dialogState, "");
-
-    const handlePopState = () => {
-      if (suppressNextAddPartsPopRef.current) {
-        suppressNextAddPartsPopRef.current = false;
-        return;
-      }
-
-      // A back swipe/button steps back through the wizard; only at the first
-      // step does it leave Add Parts. Re-arm the entry so the next back is ours.
-      if (stepBackRef.current()) {
-        window.history.pushState(dialogState, "");
-        return;
-      }
-
-      addPartsHistoryEntryRef.current = false;
-      onOpenChange(false);
-    };
-
-    window.addEventListener("popstate", handlePopState);
-    return () => {
-      window.removeEventListener("popstate", handlePopState);
-    };
-  }, [onOpenChange, open, sandbox]);
-
-  const closeDialogAndCleanHistory = () => {
-    if (
-      !sandbox &&
-      typeof window !== "undefined" &&
-      addPartsHistoryEntryRef.current &&
-      window.history.state?.foremenAddPartsDialog
-    ) {
-      addPartsHistoryEntryRef.current = false;
-      suppressNextAddPartsPopRef.current = true;
-      window.history.back();
-    }
-
-    onOpenChange(false);
-  };
+  // The phone's back button/gesture goes through useHeaderBackOverride below.
+  const closeDialogAndCleanHistory = () => onOpenChange(false);
 
   const pageTitle = isToolRequest
     ? "Add Tools"
@@ -965,10 +913,9 @@ export function AddPartDialog({
     }
     return false;
   };
-  stepBackRef.current = stepBack;
 
-  // Add Parts fills the main window. The app bar's back arrow steps back like
-  // the back gesture; Escape closes it.
+  // Add Parts fills the main window. Back (app bar arrow or the phone's back)
+  // steps back through it; Escape closes it.
   useHeaderBackOverride(
     open
       ? () => {
