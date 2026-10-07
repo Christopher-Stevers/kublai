@@ -890,7 +890,33 @@ export function AddPartDialog({
         ? "Prefabs"
         : "Add Parts";
   const barButton =
-    "h-9 min-h-9 w-full px-1.5 py-1 text-[11px] leading-tight whitespace-normal sm:text-xs";
+    "h-9 min-h-9 w-full rounded-lg px-1.5 py-1 text-xs leading-tight whitespace-normal";
+
+  // With the on-screen keyboard up, iOS keeps the layout the same height and
+  // slides the page instead; fit Add Parts to the visible area above the
+  // keyboard so the parts stay in view while searching.
+  const [keyboardViewport, setKeyboardViewport] = useState<{
+    top: number;
+    height: number;
+  } | null>(null);
+  useEffect(() => {
+    const viewport = window.visualViewport;
+    if (!open || !viewport) return;
+    const update = () => {
+      const keyboardOpen = window.innerHeight - viewport.height > 120;
+      setKeyboardViewport(
+        keyboardOpen ? { top: viewport.offsetTop, height: viewport.height } : null,
+      );
+    };
+    update();
+    viewport.addEventListener("resize", update);
+    viewport.addEventListener("scroll", update);
+    return () => {
+      viewport.removeEventListener("resize", update);
+      viewport.removeEventListener("scroll", update);
+      setKeyboardViewport(null);
+    };
+  }, [open]);
 
   // Add Parts fills the main window: the app bar's back arrow and Escape close it.
   useHeaderBackOverride(open ? closeDialogAndCleanHistory : null);
@@ -914,7 +940,12 @@ export function AddPartDialog({
           data-tutorial="add-part-dialog"
           data-tutorial-stage={wizardStage}
           data-tutorial-pending-count={pendingParts.length}
-          className={`fixed inset-x-0 top-14 bottom-0 z-[45] flex flex-col overflow-hidden bg-background sm:top-16 ${quantityPickerPreview ? "touch-none" : ""}`}
+          className={`fixed inset-x-0 flex flex-col overflow-hidden bg-background ${keyboardViewport ? "z-[60]" : "top-14 bottom-0 z-[45] sm:top-16"} ${quantityPickerPreview ? "touch-none" : ""}`}
+          style={
+            keyboardViewport
+              ? { top: keyboardViewport.top, height: keyboardViewport.height }
+              : undefined
+          }
         >
           <div className="relative mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col">
           {catalogueDownloading && (
@@ -1223,7 +1254,7 @@ export function AddPartDialog({
           )}
 
           {/* Bottom bar, laid out like the material list's */}
-          <div className="shrink-0 border-t bg-card px-4 pt-1.5 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:px-6 sm:pt-2">
+          <div className={`shrink-0 border-t bg-card px-4 pt-1.5 sm:px-6 sm:pt-2 ${keyboardViewport ? "pb-1.5" : "pb-[calc(0.5rem+env(safe-area-inset-bottom))]"}`}>
             <div className="space-y-1.5">
               {prefabView ? null : wizardStage === "review" ? (
                 <div className={`flex items-baseline gap-1.5 ${isToolRequest ? "hidden" : ""}`}>
@@ -1233,7 +1264,7 @@ export function AddPartDialog({
                   </span>
                 </div>
               ) : null}
-              <div className={`grid gap-1.5 ${prefabView ? "grid-cols-1" : wizardStage === "review" ? "grid-cols-3" : "grid-cols-[2fr_1fr_1fr]"}`}>
+              <div className={`grid gap-1.5 ${prefabView ? "grid-cols-1" : "grid-cols-3"}`}>
                 {prefabView || wizardStage === "review" ? (
                   <Button
                     variant="outline"
@@ -1245,14 +1276,46 @@ export function AddPartDialog({
                   </Button>
                 ) : (
                   <>
+                    <Button
+                      variant="outline"
+                      className={barButton}
+                      disabled={!isOnline}
+                      onClick={() =>
+                        handleOpenCustomPartDialog({
+                          materialId: selectedMaterialId,
+                          size: selectedSize,
+                          category: selectedCategory
+                            ? {
+                                categoryId: selectedCategory.categoryId,
+                                name: selectedCategory.name,
+                              }
+                            : undefined,
+                        })
+                      }
+                    >
+                      {isOnline ? "Create Part" : "Create (online)"}
+                    </Button>
                     <div className="relative min-w-0">
-                      <Search className="absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2 text-muted-foreground/70" />
+                      <Search className="pointer-events-none absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2 text-muted-foreground/70" />
+                      {/* A plain search field: no autofill, autocorrect or
+                          suggestions, so phones skip their extra keyboard bars. */}
                       <Input
+                        type="search"
+                        inputMode="search"
+                        enterKeyHint="search"
+                        name="part-search"
+                        autoComplete="off"
+                        autoCorrect="off"
+                        autoCapitalize="off"
+                        spellCheck={false}
                         value={wizardSearchQuery}
                         onChange={(event) => setWizardSearchQuery(event.target.value)}
-                        placeholder="Search parts"
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter") event.currentTarget.blur();
+                        }}
+                        placeholder="Search"
                         aria-label="Search parts"
-                        className="h-9 w-full rounded-lg pl-8 text-sm"
+                        className="h-9 w-full rounded-lg pl-8 text-sm [&::-webkit-search-cancel-button]:appearance-none"
                       />
                     </div>
                     <Button
@@ -1299,27 +1362,7 @@ export function AddPartDialog({
                         : `Add ${pendingParts.length} ${isToolRequest ? "Tool" : "Part"}${pendingParts.length !== 1 ? "s" : ""}${prefabTarget ? " to Prefab" : ""}`}
                     </Button>
                   </>
-                ) : (
-                  <Button
-                    variant="outline"
-                    className={barButton}
-                    disabled={!isOnline}
-                    onClick={() =>
-                      handleOpenCustomPartDialog({
-                        materialId: selectedMaterialId,
-                        size: selectedSize,
-                        category: selectedCategory
-                          ? {
-                              categoryId: selectedCategory.categoryId,
-                              name: selectedCategory.name,
-                            }
-                          : undefined,
-                      })
-                    }
-                  >
-                    {isOnline ? "Create Part" : "Create Part (online)"}
-                  </Button>
-                )}
+                ) : null}
               </div>
             </div>
           </div>
