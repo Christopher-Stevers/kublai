@@ -8,12 +8,19 @@ import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "~/components/ui/dropdown-menu";
+import {
   PlusIcon,
   PackageIcon,
   CalendarIcon,
   CheckCircle2Icon,
   UserIcon,
   SendIcon,
+  MoreVerticalIcon,
   TrashIcon,
   WifiOffIcon,
   WrenchIcon,
@@ -412,23 +419,39 @@ export default function JobDetailPage({
                       {list.name}
                     </CardTitle>
                     {canDeleteCoreRecords && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="-mt-3 -mr-3 h-10 w-10 shrink-0 text-red-600 hover:bg-red-50 hover:text-red-700"
-                        aria-label={`Delete material list ${list.name}`}
-                        onPointerDown={(e) => e.stopPropagation()}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setMaterialListToDelete({
-                            id: list.id,
-                            name: list.name,
-                            itemCount: list.itemCount,
-                          });
-                        }}
-                      >
-                        <TrashIcon className="h-4 w-4" />
-                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-muted-foreground -mt-1 -mr-2 h-9 w-9 shrink-0"
+                            aria-label={`More actions for ${list.name}`}
+                            onPointerDown={(event) => event.stopPropagation()}
+                            onContextMenu={(event) => event.stopPropagation()}
+                            onClick={(event) => event.stopPropagation()}
+                          >
+                            <MoreVerticalIcon className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent
+                          align="end"
+                          onClick={(event) => event.stopPropagation()}
+                        >
+                          <DropdownMenuItem
+                            variant="destructive"
+                            onSelect={() =>
+                              setMaterialListToDelete({
+                                id: list.id,
+                                name: list.name,
+                                itemCount: list.itemCount,
+                              })
+                            }
+                          >
+                            <TrashIcon className="h-4 w-4" />
+                            Delete list
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     )}
                   </div>
                 </CardHeader>

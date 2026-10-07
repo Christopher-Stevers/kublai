@@ -732,24 +732,39 @@ export function DashboardClient({
                             {list.name}
                           </CardTitle>
                           {canDeleteLists && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="-mt-3 -mr-3 h-10 w-10 shrink-0 text-red-600 hover:bg-red-50 hover:text-red-700"
-                              aria-label={`Delete material list ${list.name}`}
-                              onPointerDown={(event) => event.stopPropagation()}
-                              onContextMenu={(event) => event.stopPropagation()}
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                setMaterialListToDelete({
-                                  id: list.id,
-                                  name: list.name,
-                                  itemCount: list.itemCount,
-                                });
-                              }}
-                            >
-                              <TrashIcon className="h-4 w-4" />
-                            </Button>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="text-muted-foreground -mt-1 -mr-2 h-9 w-9 shrink-0"
+                                  aria-label={`More actions for ${list.name}`}
+                                  onPointerDown={(event) => event.stopPropagation()}
+                                  onContextMenu={(event) => event.stopPropagation()}
+                                  onClick={(event) => event.stopPropagation()}
+                                >
+                                  <MoreVerticalIcon className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent
+                                align="end"
+                                onClick={(event) => event.stopPropagation()}
+                              >
+                                <DropdownMenuItem
+                                  variant="destructive"
+                                  onSelect={() =>
+                                    setMaterialListToDelete({
+                                      id: list.id,
+                                      name: list.name,
+                                      itemCount: list.itemCount,
+                                    })
+                                  }
+                                >
+                                  <TrashIcon className="h-4 w-4" />
+                                  Delete list
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           )}
                         </div>
                       </CardHeader>
