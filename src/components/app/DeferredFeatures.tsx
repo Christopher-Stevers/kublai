@@ -187,3 +187,7 @@ export const PartStage = feature<
 export const JobChatView = feature<ComponentProps<typeof import("~/components/jobs/JobChatView").JobChatView>>(
   () => import("~/components/jobs/JobChatView").then((m) => ({ default: m.JobChatView })),
 );
+
+export const JobDocumentsView = feature<
+  ComponentProps<typeof import("~/components/jobs/JobDocumentsView").JobDocumentsView>
+>(() => import("~/components/jobs/JobDocumentsView").then((m) => ({ default: m.JobDocumentsView })));

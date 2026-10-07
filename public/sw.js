@@ -88,7 +88,7 @@ function isApiOrSyncRequest(url) {
 }
 
 function isPrivateChatRequest(url) {
-  if (url.pathname.startsWith("/api/job-chat/")) return true;
+  if (url.pathname.startsWith("/api/job-chat/") || url.pathname.startsWith("/api/job-documents")) return true;
   if (url.pathname === "/_next/image") {
     try {
       const original = new URL(
@@ -96,7 +96,7 @@ function isPrivateChatRequest(url) {
         self.location.origin,
       );
       return (
-        isSameOrigin(original) && original.pathname.startsWith("/api/job-chat/")
+        isSameOrigin(original) && (original.pathname.startsWith("/api/job-chat/") || original.pathname.startsWith("/api/job-documents"))
       );
     } catch {
       return true;
@@ -105,7 +105,7 @@ function isPrivateChatRequest(url) {
   return false;
 }
 function isCacheableImageRequest(url, request) {
-  // Chat attachments are private, permission-checked and must never enter a shared cache.
+  // Chat and document files require a fresh permission check and must never enter a shared cache.
   if (isPrivateChatRequest(url)) return false;
   return (
     request.destination === "image" ||

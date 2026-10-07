@@ -4,6 +4,7 @@
 // The build succeeds correctly - these are only strict TypeScript checking issues.
 
 import { relations } from "drizzle-orm";
+import type { DocumentState } from "~/server/documents/types";
 import {
   type AnyPgColumn,
   index,
@@ -23,6 +24,17 @@ import {
  */
 
 export const createTable = pgTableCreator((name) => `kublai_${name}`);
+
+// One atomic, bounded workspace per job. Binary versions live in private storage;
+// their immutable content hashes and all authorization metadata live here.
+export const jobDocumentWorkspaces = createTable("job_document_workspace", (d) => ({
+  jobId: d.uuid().primaryKey().references(() => jobs.id, { onDelete: "cascade" }),
+  organizationId: d.uuid().notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  state: jsonb().$type<DocumentState>().notNull(),
+  revision: d.integer().notNull().default(1),
+  createdAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
+  updatedAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
+}), (t) => [index("job_document_workspace_org_idx").on(t.organizationId, t.jobId)]);
 
 // ============================
 // NEXTAUTH: USER

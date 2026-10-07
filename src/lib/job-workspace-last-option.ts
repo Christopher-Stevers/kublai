@@ -1,4 +1,9 @@
-export type JobWorkspaceOptionId = "material-lists" | "rooms" | "drawings" | "chat";
+export type JobWorkspaceOptionId =
+  | "material-lists"
+  | "rooms"
+  | "drawings"
+  | "documents"
+  | "chat";
 export type JobWorkspaceView = "options" | JobWorkspaceOptionId;
 
 export type JobWorkspaceLocation = {
@@ -27,6 +32,7 @@ export function getLastJobWorkspaceLocation(): JobWorkspaceLocation | null {
       parsed.view !== "material-lists" &&
       parsed.view !== "rooms" &&
       parsed.view !== "drawings" &&
+      parsed.view !== "documents" &&
       parsed.view !== "chat"
     ) {
       return null;
@@ -35,7 +41,9 @@ export function getLastJobWorkspaceLocation(): JobWorkspaceLocation | null {
       jobId: parsed.jobId,
       view: parsed.view,
       materialListId:
-        typeof parsed.materialListId === "string" ? parsed.materialListId : null,
+        typeof parsed.materialListId === "string"
+          ? parsed.materialListId
+          : null,
     };
   } catch {
     return null;

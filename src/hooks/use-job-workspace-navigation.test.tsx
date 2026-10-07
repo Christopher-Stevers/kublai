@@ -97,7 +97,7 @@ it("restores the visited dashboard entry instead of reopening the latest saved l
   expect(window.history.length).toBe(length);
 });
 
-it.each(["rooms", "chat"] as const)("restores %s with a job and dashboard to return to", async (view) => {
+it.each(["rooms", "chat", "documents"] as const)("restores %s with a job and dashboard to return to", async (view) => {
   setLastJobWorkspaceLocation({ ...job, view });
   const { result } = renderHook(useJobWorkspaceNavigation);
   expect(result.current.location?.view).toBe(view);

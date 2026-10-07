@@ -69,3 +69,15 @@ test("image cache is bounded and still stores the newest image", async () => {
   assert.equal(entries.size, 1200);
   assert.ok(entries.has("https://test.local/images/1204.jpg"));
 });
+
+test("private document previews never enter the shared image cache", () => {
+  const { context } = harness();
+  for (const pathname of [
+    "/api/job-documents/files/version-id?jobId=job-id",
+    "/_next/image?url=%2Fapi%2Fjob-documents%2Ffiles%2Fversion-id&w=640&q=75",
+  ]) {
+    const url = new URL(pathname, "https://test.local");
+    assert.equal(context.isCacheableImageRequest(url, { destination: "image" }), false);
+  }
+  assert.equal(context.isCacheableImageRequest(new URL("https://test.local/images/logo.png"), { destination: "image" }), true);
+});

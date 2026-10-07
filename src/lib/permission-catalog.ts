@@ -89,6 +89,15 @@ export const PERMISSION_GROUPS = [
     ],
   },
   {
+    id: "documents",
+    label: "Documents",
+    description: "Job files, revisions and document control.",
+    icon: "list",
+    permissions: [
+      { key: "documents.manage", label: "Manage documents", description: "Upload and organize documents, manage versions and reviews, and prepare transmittals. Folder permissions can restrict access further." },
+    ],
+  },
+  {
     id: "draws",
     label: "Draws",
     description: "Progress billing to the owner/GC.",
@@ -175,6 +184,7 @@ export const PERMISSION_PRESETS: Array<{
       "quotes.create": true,
       "orders.send": true,
       "drawings.manage": true,
+      "documents.manage": true,
       "rooms.review": true,
     },
   },
