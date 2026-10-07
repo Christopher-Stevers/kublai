@@ -2,7 +2,7 @@
 
 import { useClientPagination } from "~/components/ui/list-pagination";
 import {
-  PartCount,
+  WIZARD_OPTION_LABEL_CLASS,
   WizardAllOption,
   WizardOptionCard,
   WIZARD_OPTION_GRID_CLASS,
@@ -57,8 +57,7 @@ export function CatalogStage({
             selected={selectedCatalogId === catalog.id}
             onClick={() => onCatalogSelect(catalog.id)}
           >
-            <p className="text-sm font-medium sm:text-base">{catalog.name}</p>
-            <PartCount count={catalog.count} />
+            <p className={WIZARD_OPTION_LABEL_CLASS}>{catalog.name}</p>
           </WizardOptionCard>
         ))}
       </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronRight, Folder } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { useClientPagination } from "~/components/ui/list-pagination";
 import {
   materialGroupEntries,
@@ -9,7 +9,7 @@ import {
   type GroupedMaterial,
 } from "~/lib/material-groups";
 import {
-  PartCount,
+  WIZARD_OPTION_LABEL_CLASS,
   WizardAllOption,
   WIZARD_OPTION_GRID_CLASS,
   WizardOptionPagination,
@@ -101,30 +101,14 @@ export function MaterialStage({
             type="button"
             key={entry.key}
             data-tutorial-choice={entry.name}
-            className={`w-full max-w-[4in] cursor-pointer rounded-xl border bg-card p-2 text-center shadow-sm transition hover:shadow-md focus-visible:outline-2 focus-visible:outline-blue-600 sm:p-4 ${entry.kind === "material" && selectedMaterialId === entry.material.id ? "border-primary border-2" : ""}`}
+            className={`flex h-full min-h-16 w-full max-w-[4in] cursor-pointer items-center justify-center rounded-xl border bg-card p-2 text-center shadow-sm transition hover:shadow-md focus-visible:outline-2 focus-visible:outline-blue-600 sm:p-4 ${entry.kind === "material" && selectedMaterialId === entry.material.id ? "border-primary border-2" : ""}`}
             onClick={() =>
               entry.kind === "group"
                 ? browse(entry.path)
                 : onMaterialSelect(entry.material.id)
             }
           >
-            {entry.kind === "group" && (
-              <Folder
-                className="mx-auto mb-1 h-5 w-5 text-blue-600"
-                aria-hidden="true"
-              />
-            )}
-            <p className="text-sm font-medium sm:text-base">{entry.name}</p>
-            {entry.kind === "group" ? (
-              <>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {entry.materialCount} material types
-                </p>
-                <PartCount count={entry.count} />
-              </>
-            ) : (
-              <PartCount count={entry.material.count} />
-            )}
+            <p className={WIZARD_OPTION_LABEL_CLASS}>{entry.name}</p>
           </button>
         ))}
       </div>

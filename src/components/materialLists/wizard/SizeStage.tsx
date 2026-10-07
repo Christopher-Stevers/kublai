@@ -6,6 +6,7 @@ import { Card, CardContent } from "~/components/ui/card";
 import { useClientPagination } from "~/components/ui/list-pagination";
 import {
   WIZARD_OPTION_GRID_CLASS,
+  WIZARD_OPTION_LABEL_CLASS,
   WIZARD_OPTION_SELECTED_CLASS,
   WizardAllOption,
   WizardOptionPagination,
@@ -229,7 +230,7 @@ function SizeCard({
           onSizeSelect({ nominal: size.nominal, unit: size.unit, sizeLabel: null });
         }
       }}
-      className={`min-w-0 cursor-pointer overflow-hidden transition-all hover:shadow-md ${isSelected ? WIZARD_OPTION_SELECTED_CLASS : ""}`}
+      className={`h-full min-h-16 min-w-0 cursor-pointer justify-center gap-0 overflow-hidden py-0 transition-all hover:shadow-md ${isSelected ? WIZARD_OPTION_SELECTED_CLASS : ""}`}
       style={{
         WebkitTouchCallout: "none",
         WebkitUserSelect: "none",
@@ -245,14 +246,8 @@ function SizeCard({
         clearTimer();
       }}
     >
-      <CardContent className="min-w-0 p-3 text-center sm:p-4">
-        <p className="truncate text-sm font-medium sm:text-base">{formatSize(size.nominal, size.unit)}</p>
-        <p className="mt-1 text-xs text-muted-foreground">
-          {size.count} part{size.count !== 1 ? "s" : ""}
-        </p>
-        {canPickSubSize && (
-          <p className="mt-1 text-[11px] text-muted-foreground/70">Long-press for sub-sizes</p>
-        )}
+      <CardContent className="flex h-full min-w-0 items-center justify-center p-3 text-center sm:p-4">
+        <p className={WIZARD_OPTION_LABEL_CLASS}>{formatSize(size.nominal, size.unit)}</p>
       </CardContent>
     </Card>
   );

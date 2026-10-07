@@ -35,12 +35,12 @@ it("browses PVC and gasketed subgroups offline without selecting a material prem
   const input = props();
   render(<MaterialStage {...input} />);
   expect(screen.queryByText("XFR")).not.toBeInTheDocument();
-  fireEvent.click(screen.getByRole("button", { name: /PVC 4 material types/ }));
+  fireEvent.click(screen.getByRole("button", { name: "PVC" }));
   expect(input.onMaterialSelect).not.toHaveBeenCalled();
   expect(screen.getByText("XFR")).toBeInTheDocument();
   expect(screen.queryByText("Copper")).not.toBeInTheDocument();
   fireEvent.click(
-    screen.getByRole("button", { name: /Gasketed SDR 2 material types/ }),
+    screen.getByRole("button", { name: "Gasketed SDR" }),
   );
   fireEvent.click(screen.getByRole("button", { name: /Gasketed DR35/ }));
   expect(input.onMaterialSelect).toHaveBeenCalledWith("dr35");

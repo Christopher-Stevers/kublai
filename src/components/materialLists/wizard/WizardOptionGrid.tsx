@@ -6,8 +6,11 @@ import { Card, CardContent } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
 import { ListPagination, type UseClientPaginationResult } from "~/components/ui/list-pagination";
 
-export const WIZARD_OPTION_GRID_CLASS = "grid grid-cols-[repeat(auto-fill,minmax(min(1.35in,100%),1fr))] gap-2 sm:grid-cols-[repeat(auto-fill,minmax(min(1.5in,100%),1fr))] sm:gap-3";
-export const WIZARD_OPTION_CARD_CLASS = "w-full max-w-[4in] cursor-pointer transition-all hover:shadow-md";
+// auto-rows-fr: every card in the grid is as tall as the tallest one.
+export const WIZARD_OPTION_GRID_CLASS = "grid auto-rows-fr grid-cols-[repeat(auto-fill,minmax(min(1.35in,100%),1fr))] gap-2 sm:grid-cols-[repeat(auto-fill,minmax(min(1.5in,100%),1fr))] sm:gap-3";
+export const WIZARD_OPTION_CARD_CLASS = "h-full min-h-16 w-full max-w-[4in] cursor-pointer justify-center gap-0 py-0 transition-all hover:shadow-md";
+/** The one line on each card: its name, bold. */
+export const WIZARD_OPTION_LABEL_CLASS = "line-clamp-3 text-sm leading-snug font-bold break-words sm:text-base";
 export const WIZARD_OPTION_SELECTED_CLASS = "border-primary border-2 shadow-md";
 
 export function WizardOptionCard({
@@ -32,18 +35,10 @@ export function WizardOptionCard({
       className={`${WIZARD_OPTION_CARD_CLASS} ${selected ? WIZARD_OPTION_SELECTED_CLASS : ""}`}
       onClick={onClick}
     >
-      <CardContent className="p-2 text-center sm:p-4">{children}</CardContent>
+      <CardContent className="flex h-full items-center justify-center p-2 text-center sm:p-4">
+        {children}
+      </CardContent>
     </Card>
-  );
-}
-
-export function PartCount({ count }: { count?: number }) {
-  if (count === undefined || count <= 0) return null;
-
-  return (
-    <p className="mt-1 text-xs text-muted-foreground">
-      {count} part{count !== 1 ? "s" : ""}
-    </p>
   );
 }
 
@@ -58,7 +53,7 @@ export function WizardAllOption({
 }) {
   return (
     <WizardOptionCard selected={selected} onClick={onSelect}>
-      <p className="text-sm font-medium sm:text-base">{label}</p>
+      <p className={WIZARD_OPTION_LABEL_CLASS}>{label}</p>
     </WizardOptionCard>
   );
 }
