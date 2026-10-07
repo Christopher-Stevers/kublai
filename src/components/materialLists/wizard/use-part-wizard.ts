@@ -5,6 +5,7 @@ import {
   useDeferredValue,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { facetCount } from "~/lib/catalogue-facets";
@@ -81,6 +82,12 @@ export function usePartWizard(open = true, sortMode?: MaterialListSort, keywordG
   const [showCustomCategoryInput, setShowCustomCategoryInput] = useState(false);
   const [customCategoryName, setCustomCategoryName] = useState("");
   const [wizardSearchQuery, setWizardSearchQuery] = useState("");
+  // Steps with nothing to choose are skipped in the direction of travel:
+  // forward after a choice, backward after going back. autoStep marks a skip
+  // so Add Parts keeps it out of the back history: it records the step each
+  // skip lands on (several can chain within one tap).
+  const stepDirectionRef = useRef<"forward" | "back">("forward");
+  const autoReachedRef = useRef(new Set<WizardStage>());
   const deferredWizardSearchQuery = useDeferredValue(wizardSearchQuery);
   const utils = api.useUtils();
   const isOnline = useOnlineStatus();
@@ -515,6 +522,7 @@ export function usePartWizard(open = true, sortMode?: MaterialListSort, keywordG
   });
 
   const handleCatalogSelect = (catalogId: string | null) => {
+    stepDirectionRef.current = "forward";
     setSelectedCatalogId(catalogId);
     setHasCatalogSelection(true);
     setSelectedMaterialId(null);
@@ -527,6 +535,7 @@ export function usePartWizard(open = true, sortMode?: MaterialListSort, keywordG
   };
 
   const handleMaterialSelect = (materialId: string | null) => {
+    stepDirectionRef.current = "forward";
     setSelectedMaterialId(materialId);
     setHasMaterialSelection(true);
     setSelectedSize(null);
@@ -541,6 +550,7 @@ export function usePartWizard(open = true, sortMode?: MaterialListSort, keywordG
   const handleSizeSelect = (
     size: { nominal: number; unit: string; sizeLabel?: string | null } | null,
   ) => {
+    stepDirectionRef.current = "forward";
     setSelectedSize(size);
     setHasSizeSelection(true);
     setSelectedCategory(null);
@@ -555,6 +565,7 @@ export function usePartWizard(open = true, sortMode?: MaterialListSort, keywordG
     categoryId: string | null;
     name: string;
   }) => {
+    stepDirectionRef.current = "forward";
     setSelectedCategory({
       categoryId: category.categoryId,
       name: category.name,
@@ -569,24 +580,51 @@ export function usePartWizard(open = true, sortMode?: MaterialListSort, keywordG
     }
   };
 
+  /**
+   * Going back to a step clears its choice and every later one, so the step
+   * shows nothing selected (picked parts in the pending tray stay).
+   */
+  const returnToStage = useCallback((stage: Exclude<WizardStage, "review">) => {
+    stepDirectionRef.current = "back";
+    const order = ["catalog", "material", "size", "category", "part"] as const;
+    const from = order.indexOf(stage);
+    if (from <= 0) {
+      setSelectedCatalogId(null);
+      setHasCatalogSelection(false);
+    }
+    if (from <= 1) {
+      setSelectedMaterialId(null);
+      setHasMaterialSelection(false);
+    }
+    if (from <= 2) {
+      setSelectedSize(null);
+      setHasSizeSelection(false);
+    }
+    if (from <= 3) {
+      setSelectedCategory(null);
+      setHasCategorySelection(false);
+    }
+    setWizardStage(stage);
+  }, []);
+
   const handleStageClick = (stage: Exclude<WizardStage, "review">) => {
     if (stage === "catalog") {
-      setWizardStage("catalog");
+      returnToStage("catalog");
     } else if (stage === "material" && hasCatalogSelection) {
-      setWizardStage("material");
+      returnToStage("material");
     } else if (
       stage === "size" &&
       hasCatalogSelection &&
       hasMaterialSelection
     ) {
-      setWizardStage("size");
+      returnToStage("size");
     } else if (
       stage === "category" &&
       hasCatalogSelection &&
       hasMaterialSelection &&
       hasSizeSelection
     ) {
-      setWizardStage("category");
+      returnToStage("category");
     } else if (
       stage === "part" &&
       hasCatalogSelection &&
@@ -599,6 +637,8 @@ export function usePartWizard(open = true, sortMode?: MaterialListSort, keywordG
   };
 
   const resetWizard = useCallback(() => {
+    stepDirectionRef.current = "forward";
+    autoReachedRef.current.clear();
     setWizardStage("catalog");
     setSelectedCatalogId(null);
     setHasCatalogSelection(false);
@@ -628,38 +668,45 @@ export function usePartWizard(open = true, sortMode?: MaterialListSort, keywordG
     if (deferredWizardSearchQuery.trim()) return;
     if (!summaryParts) return;
 
+    const back = stepDirectionRef.current === "back";
+
     if (wizardStage === "catalog") {
       if (catalogs === undefined) return;
-      if (catalogsWithCounts.length === 0) {
+      if (catalogsWithCounts.length === 0 && !back) {
         handleCatalogSelect(null);
+        autoReachedRef.current.add("material");
       }
       return;
     }
 
-    if (wizardStage === "material" && hasCatalogSelection) {
+    if (wizardStage === "material" && (hasCatalogSelection || back)) {
       if (materials === undefined) return;
       if (materialsWithCounts.length === 0) {
-        handleMaterialSelect(null);
+        if (back) returnToStage("catalog");
+        else handleMaterialSelect(null);
+        autoReachedRef.current.add(back ? "catalog" : "size");
       }
       return;
     }
 
-    if (wizardStage === "size" && hasCatalogSelection && hasMaterialSelection) {
+    if (wizardStage === "size" && ((hasCatalogSelection && hasMaterialSelection) || back)) {
       if (filteredAvailableSizes.length === 0) {
-        handleSizeSelect(null);
+        if (back) returnToStage("material");
+        else handleSizeSelect(null);
+        autoReachedRef.current.add(back ? "material" : "category");
       }
       return;
     }
 
     if (
       wizardStage === "category" &&
-      hasCatalogSelection &&
-      hasMaterialSelection &&
-      hasSizeSelection
+      ((hasCatalogSelection && hasMaterialSelection && hasSizeSelection) || back)
     ) {
       if (categoryTree === undefined) return;
       if (categoriesWithCounts.length === 0) {
-        handleCategorySelection({ categoryId: null, name: "All Categories" });
+        if (back) returnToStage("size");
+        else handleCategorySelection({ categoryId: null, name: "All Categories" });
+        autoReachedRef.current.add(back ? "size" : "part");
       }
     }
   }, [
@@ -752,6 +799,9 @@ export function usePartWizard(open = true, sortMode?: MaterialListSort, keywordG
     handleCategorySelection,
     handleCustomCategorySubmit,
     handleStageClick,
+    returnToStage,
+    /** True (once) if `stage` was reached by skipping a step with no choices. */
+    consumeAutoStep: (stage: WizardStage) => autoReachedRef.current.delete(stage),
     resetWizard,
     selectedCatalogName,
     selectedMaterialName,

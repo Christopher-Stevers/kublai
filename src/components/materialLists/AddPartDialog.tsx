@@ -125,6 +125,8 @@ export function AddPartDialog({
     handleCategorySelection,
     handleCustomCategorySubmit,
     handleStageClick,
+    returnToStage,
+    consumeAutoStep,
     resetWizard,
     selectedCatalogName,
     selectedMaterialName,
@@ -938,10 +940,10 @@ export function AddPartDialog({
       setWizardSearchQuery("");
       return true;
     }
-    const order: WizardStage[] = ["catalog", "material", "size", "category", "part"];
+    const order = ["catalog", "material", "size", "category", "part"] as const;
     const index = order.indexOf(wizardStage);
     if (index > 0) {
-      setWizardStage(order[index - 1]!);
+      returnToStage(order[index - 1]!);
       return true;
     }
     return false;
@@ -954,7 +956,17 @@ export function AddPartDialog({
     }
     setPrefabTarget(next.prefabTarget);
     setPrefabView(next.prefabView);
-    setWizardStage(next.stage);
+    // Back to an earlier step clears that step's choice (and later ones).
+    const order: WizardStage[] = ["catalog", "material", "size", "category", "part"];
+    if (
+      next.stage !== "review" &&
+      wizardStage !== "review" &&
+      order.indexOf(next.stage) < order.indexOf(wizardStage)
+    ) {
+      returnToStage(next.stage);
+    } else {
+      setWizardStage(next.stage);
+    }
   };
   latestRef.current = { position, onOpenChange, applyPosition };
 
@@ -993,8 +1005,21 @@ export function AddPartDialog({
     if (sandbox || !open || historyDepthRef.current < 0) return;
     const current = (window.history.state as Record<string, unknown> | null)?.[
       ADD_PARTS_HISTORY_KEY
-    ] as { position: AddPartsPosition } | undefined;
+    ] as { depth: number; position: AddPartsPosition } | undefined;
+    const autoStep = consumeAutoStep(wizardStage);
     if (current && JSON.stringify(current.position) === positionKey) return;
+    if (autoStep && current) {
+      // A skipped step (nothing to choose) gets no entry of its own, so back
+      // never lands on it: the current entry becomes where the skip led.
+      window.history.replaceState(
+        {
+          ...window.history.state,
+          [ADD_PARTS_HISTORY_KEY]: { depth: current.depth, position: JSON.parse(positionKey) as AddPartsPosition },
+        },
+        "",
+      );
+      return;
+    }
     historyDepthRef.current += 1;
     window.history.pushState(
       {
