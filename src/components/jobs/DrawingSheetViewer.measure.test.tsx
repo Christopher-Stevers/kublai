@@ -429,6 +429,35 @@ describe("drawing measure", () => {
     expect(screen.queryByText("90°")).toBeNull();
   });
 
+  it("does not let an angle lock move a precise endpoint more than 18 screen pixels", () => {
+    const { frame } = openSheet("bounded-angle", undefined, {
+      sharedScale: { unit: "ft", unitsPerSheetWidth: 100 },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Measure" }));
+    tap(frame, 200, 500);
+    // Under 4° off square, but a 26px correction would move it too far.
+    fireEvent.pointerMove(frame, { clientX: 226, clientY: 100, buttons: 0 });
+    expect(screen.queryByText("90°")).toBeNull();
+    tap(frame, 226, 100);
+    const coordinates = frame.querySelector('polyline[stroke="#d97706"]')?.getAttribute("points")?.split(/[ ,]/).map(Number);
+    expect(coordinates?.slice(0, 2)).toEqual([200, 400]);
+    expect(coordinates?.[2]).toBeCloseTo(226, 9);
+    expect(coordinates?.[3]).toBe(0);
+  });
+
+  it("selects the line under the finger instead of a nearby line chosen at the anchor", async () => {
+    vi.mocked(loadSnapLines).mockResolvedValue([
+      { x1: 0, y1: 0.5, x2: 1, y2: 0.5 },
+      { x1: 0, y1: 0.525, x2: 1, y2: 0.525 },
+    ]);
+    const { frame } = openSheet("precise-neighbor", { url: "/plan.pdf", page: 1 });
+    fireEvent.click(screen.getByRole("button", { name: "Measure" }));
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("snap onto lines"));
+    tap(frame, 400, 300);
+    tap(frame, 600, 310);
+    expect(frame.querySelector('polyline[stroke="#d97706"]')?.getAttribute("points")).toBe("400,200 600,210");
+  });
+
   it("reads the printed scale and measures with it", async () => {
     vi.mocked(readPdfSheetScale).mockResolvedValue({
       ok: true,

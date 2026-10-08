@@ -16,8 +16,10 @@ export type SnapIndex = {
   buckets: Map<string, number[]>;
 };
 
-/** Lines closer than this, in sheet-widths, are the same line (the dashes of one grid). */
+/** Coarse lookup buckets only; never use these to decide two lines coincide. */
 const OFFSET_STEP = 0.0015;
+/** Only allow coordinate roundoff within one millionth of the sheet width. */
+const COLLINEAR_TOLERANCE = 1e-6;
 /** Leftover scraps shorter than this are letter strokes, not something to snap to. */
 const MIN_LENGTH = 0.008;
 const MAX_LINES = 4000;
@@ -62,65 +64,48 @@ function groupKey(segment: SnapSegment, aspect: number) {
   const dx = segment.x2 - segment.x1;
   const dy = (segment.y2 - segment.y1) * aspect;
   const bucket = orientationBucket(dx, dy);
-  const theta = (bucket * Math.PI) / 180;
+  let theta = Math.atan2(dy, dx);
+  if (theta < 0) theta += Math.PI;
+  if (theta >= Math.PI) theta -= Math.PI;
   const mx = (segment.x1 + segment.x2) / 2;
   const my = ((segment.y1 + segment.y2) / 2) * aspect;
   const offset = mx * -Math.sin(theta) + my * Math.cos(theta);
-  return `${bucket}:${Math.round(offset / OFFSET_STEP)}`;
+  return { angle: bucket, offset: Math.round(Math.abs(offset) / OFFSET_STEP) };
+}
+
+function collinear(a: SnapSegment, b: SnapSegment, aspect: number) {
+  const dx = a.x2 - a.x1, dy = (a.y2 - a.y1) * aspect;
+  const length = Math.hypot(dx, dy);
+  if (!(length > 0)) return false;
+  const distance = (x: number, y: number) =>
+    Math.abs((x - a.x1) * dy - (y - a.y1) * aspect * dx) / length;
+  return distance(b.x1, b.y1) <= COLLINEAR_TOLERANCE &&
+    distance(b.x2, b.y2) <= COLLINEAR_TOLERANCE;
 }
 
 function mergeGroup(parts: SnapSegment[], aspect: number): SnapSegment | null {
-  const only = parts[0];
-  if (!only) return null;
-  if (parts.length === 1)
-    return isoLength(only, aspect) >= MIN_LENGTH ? only : null;
-
-  let sx = 0;
-  let sy = 0;
-  for (const segment of parts) {
-    let dx = segment.x2 - segment.x1;
-    let dy = (segment.y2 - segment.y1) * aspect;
-    const len = Math.hypot(dx, dy);
-    if (!(len > 0)) continue;
-    dx /= len;
-    dy /= len;
-    if ((sx !== 0 || sy !== 0) && dx * sx + dy * sy < 0) {
-      dx = -dx;
-      dy = -dy;
-    }
-    sx += dx;
-    sy += dy;
-  }
-  const len = Math.hypot(sx, sy);
-  if (!(len > 0)) return null;
-  const ux = sx / len;
-  const uy = sy / len;
-  const nx = -uy;
-  const ny = ux;
-  let offsetSum = 0;
-  let count = 0;
-  let minT = Infinity;
-  let maxT = -Infinity;
-  for (const segment of parts) {
-    for (const [x, yRaw] of [
-      [segment.x1, segment.y1],
-      [segment.x2, segment.y2],
-    ] as const) {
-      const y = yRaw * aspect;
-      const t = x * ux + y * uy;
-      if (t < minT) minT = t;
-      if (t > maxT) maxT = t;
-      offsetSum += x * nx + y * ny;
-      count += 1;
+  // The longest source segment is the exact supporting line. Averaging nearby
+  // walls or grid dashes creates a guide that is not present in the drawing.
+  const source = parts[0];
+  if (!source) return null;
+  const length = isoLength(source, aspect);
+  const ux = (source.x2 - source.x1) / length;
+  const uy = (source.y2 - source.y1) * aspect / length;
+  let minT = 0, maxT = length;
+  for (const part of parts) {
+    for (const [x, y] of [[part.x1, part.y1], [part.x2, part.y2]]) {
+      const t = (x! - source.x1) * ux + (y! - source.y1) * aspect * uy;
+      minT = Math.min(minT, t);
+      maxT = Math.max(maxT, t);
     }
   }
-  if (!(count > 0) || maxT - minT < MIN_LENGTH) return null;
-  const offset = offsetSum / count;
+  if (maxT - minT < MIN_LENGTH) return null;
+  if (minT === 0 && maxT === length) return source;
   return {
-    x1: nx * offset + ux * minT,
-    y1: (ny * offset + uy * minT) / aspect,
-    x2: nx * offset + ux * maxT,
-    y2: (ny * offset + uy * maxT) / aspect,
+    x1: source.x1 + ux * minT,
+    y1: source.y1 + uy * minT / aspect,
+    x2: source.x1 + ux * maxT,
+    y2: source.y1 + uy * maxT / aspect,
   };
 }
 
@@ -133,18 +118,35 @@ export function mergeCollinear(
   aspect: number,
 ): SnapSegment[] {
   if (!(aspect > 0)) return [];
-  const groups = new Map<string, SnapSegment[]>();
-  for (const segment of segments) {
-    if (!usable(segment) || !(isoLength(segment, aspect) > 0)) continue;
-    const key = groupKey(segment, aspect);
-    const group = groups.get(key);
+  const groups = new Map<string, SnapSegment[][]>();
+  const usableLines = segments.filter((segment) => usable(segment) && isoLength(segment, aspect) > 0);
+  usableLines.sort((a, b) => isoLength(b, aspect) - isoLength(a, aspect));
+  for (const segment of usableLines) {
+    const cell = groupKey(segment, aspect);
+    const key = `${cell.angle}:${cell.offset}`;
+    const candidates = groups.get(key);
+    let group = candidates?.find((parts) => collinear(parts[0]!, segment, aspect));
+    // Rounding can put identical rotated dashes on either side of a bucket
+    // boundary. Lookup neighbors, but still require exact collinearity.
+    if (!group) {
+      for (let angle = -1; angle <= 1 && !group; angle++) {
+        for (let offset = -1; offset <= 1 && !group; offset++) {
+          if (angle === 0 && offset === 0) continue;
+          const nearby = groups.get(`${(cell.angle + angle + 180) % 180}:${cell.offset + offset}`);
+          group = nearby?.find((parts) => collinear(parts[0]!, segment, aspect));
+        }
+      }
+    }
     if (group) group.push(segment);
-    else groups.set(key, [segment]);
+    else if (candidates) candidates.push([segment]);
+    else groups.set(key, [[segment]]);
   }
   const merged: SnapSegment[] = [];
-  for (const parts of groups.values()) {
-    const line = mergeGroup(parts, aspect);
-    if (line) merged.push(line);
+  for (const candidates of groups.values()) {
+    for (const parts of candidates) {
+      const line = mergeGroup(parts, aspect);
+      if (line) merged.push(line);
+    }
   }
   merged.sort((a, b) => isoLength(b, aspect) - isoLength(a, aspect));
   if (merged.length > MAX_LINES) merged.length = MAX_LINES;
@@ -241,19 +243,18 @@ function project(point: SheetPoint, segment: SnapSegment, aspect: number) {
 /**
  * Nearest point on a line, within `maxDistance` sheet-widths.
  * `maxDistance` is `snapPixels / shownSheetWidth`, the same scale as `sheetWidths`.
- * When `prefer` is still within reach, the point stays on that line.
+ * A preferred line stays selected only if it is within `preferSlack` of the
+ * nearest target; it must not pull a precise placement onto a neighboring wall.
  */
 export function snapToLine(
   point: SheetPoint,
   index: SnapIndex,
   maxDistance: number,
   prefer?: SnapSegment | null,
+  preferSlack = maxDistance,
 ): SnapHit | null {
   if (!(maxDistance > 0) || !(index.aspect > 0)) return null;
-  if (prefer) {
-    const hit = project(point, prefer, index.aspect);
-    if (hit.distance <= maxDistance) return { ...hit, segment: prefer };
-  }
+  const preferred = prefer ? { ...project(point, prefer, index.aspect), segment: prefer } : null;
   const scale = 1 / CELL;
   const ix = Math.floor(point.x * scale);
   const iy = Math.floor(point.y * index.aspect * scale);
@@ -285,5 +286,7 @@ export function snapToLine(
       }
     }
   }
+  if (preferred && preferred.distance <= maxDistance &&
+      (best === null || preferred.distance <= best.distance + preferSlack)) return preferred;
   return best;
 }
