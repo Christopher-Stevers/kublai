@@ -56,16 +56,49 @@ export function planDrawingPatch(
 ): DrawingPatch | null {
   const visible = visibleDrawingRect(fit, frame, view);
   if (!visible) return null;
-  const density = Number.isFinite(dpr) ? Math.min(3, Math.max(1, dpr)) : 1;
+  // Slight oversampling keeps fine lines/text crisp through fractional CSS
+  // zoom, within the same fixed buffer budget.
+  const density =
+    (Number.isFinite(dpr) ? Math.min(3, Math.max(1, dpr)) : 1) * 1.1;
   const fullWidth = fit.width * view.scale * density;
   const fullHeight = fit.height * view.scale * density;
   // A guard band prevents ordinary drags from needing another PDF render.
   const marginX = (frame.width / (fit.width * view.scale)) * 0.25;
   const marginY = (frame.height / (fit.height * view.scale)) * 0.25;
-  const left = Math.max(0, visible.left - marginX),
-    top = Math.max(0, visible.top - marginY);
-  const width = Math.min(1, visible.right + marginX) - left;
-  const height = Math.min(1, visible.bottom + marginY) - top;
+  const rectangle = (guard: number) => {
+    const left = Math.max(0, visible.left - marginX * guard);
+    const top = Math.max(0, visible.top - marginY * guard);
+    return {
+      left,
+      top,
+      width: Math.min(1, visible.right + marginX * guard) - left,
+      height: Math.min(1, visible.bottom + marginY * guard) - top,
+    };
+  };
+  const fitsBudget = (guard: number) => {
+    const box = rectangle(guard);
+    const width = box.width * fullWidth,
+      height = box.height * fullHeight;
+    return (
+      width <= MAX_DRAWING_PATCH_EDGE &&
+      height <= MAX_DRAWING_PATCH_EDGE &&
+      width * height <= MAX_DRAWING_PATCH_PIXELS
+    );
+  };
+  let guard = 1;
+  if (!fitsBudget(guard)) {
+    // Spend the budget on visible pixels first. Only reduce their resolution
+    // when even a patch with no offscreen padding exceeds the canvas limits.
+    let low = 0,
+      high = 1;
+    for (let step = 0; step < 12; step++) {
+      const middle = (low + high) / 2;
+      if (fitsBudget(middle)) low = middle;
+      else high = middle;
+    }
+    guard = low;
+  }
+  const { left, top, width, height } = rectangle(guard);
   const requestedWidth = width * fullWidth,
     requestedHeight = height * fullHeight;
   const reduce = Math.min(

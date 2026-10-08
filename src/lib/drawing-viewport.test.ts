@@ -9,6 +9,21 @@ import {
 } from "./drawing-viewport";
 
 describe("drawing viewport geometry", () => {
+  it("prioritizes native-density visible pixels over padding at medium zoom on a high-DPI phone", () => {
+    const fit = { width: 390, height: 292.5 };
+    const frame = { width: 390, height: 700 };
+    const view = { scale: 3, x: 0, y: 0 };
+    const patch = planDrawingPatch(fit, frame, view, 3)!;
+    expect(patchScreenCoverage(patch, fit, frame, view)).toBeCloseTo(1);
+    expect(patch.fullWidth / (fit.width * view.scale)).toBeGreaterThan(3.29);
+    expect(patch.pixelWidth * patch.pixelHeight).toBeLessThanOrEqual(
+      MAX_DRAWING_PATCH_PIXELS,
+    );
+    const visible = visibleDrawingRect(fit, frame, view)!;
+    expect(visible.left - patch.left).toBeLessThan(0.05);
+    expect(patchCoversView(patch, fit, frame, view, 3)).toBe(true);
+  });
+
   it("uses rotated-preview coordinates and excludes the empty letterbox", () => {
     expect(
       visibleDrawingRect(

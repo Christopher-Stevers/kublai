@@ -745,7 +745,6 @@ export function DrawingSheetViewer({
   const left = frameSize.width / 2 + view.x - shownWidth / 2;
   const top = frameSize.height / 2 + view.y - shownHeight / 2;
   const density = fit ? (shownWidth / fit.natural) * dpr : 1; // screen px per saved-image px
-  const deepest = manifest?.levels.reduce((a, b) => Math.max(a, b.factor), 1) ?? 1;
   const visible = shownWidth
     ? {
         left: -left / shownWidth,
@@ -757,9 +756,10 @@ export function DrawingSheetViewer({
   const tileRequests = manifest && tiles && visible
     ? planDrawingTiles(tiles, manifest, density, visible)
     : [];
-  // Beyond pre-rendered tiles, add a viewport-sized PDF patch. It lives inside
-  // the same transform as the tiles, so already-sharp pixels keep moving.
-  const needsPdf = Boolean(pdf) && fit !== null && (!manifest ? density > 1.05 : density > deepest * 1.05);
+  // Raster previews/tiles are fast fallbacks, not a quality gate: thin CAD
+  // lines and small text need original PDF pixels even at intermediate zoom.
+  // The bounded patch moves with the sheet and is replaced only when ready.
+  const needsPdf = Boolean(pdf) && fit !== null;
 
   const savedPoints = calibrating ? calPoints : path;
   const drawn = dragIndex !== null && hover

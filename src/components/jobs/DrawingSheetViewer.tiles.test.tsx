@@ -11,7 +11,7 @@ vi.mock("./DrawingTileLayer", () => ({
   },
 }));
 vi.mock("./DrawingPdfLayer", () => ({
-  DrawingPdfLayer: ({ moving }: { moving: boolean }) => <div data-testid="pdf" data-moving={String(moving)} />,
+  DrawingPdfLayer: ({ moving, enabled }: { moving: boolean; enabled: boolean }) => <div data-testid="pdf" data-moving={String(moving)} data-enabled={String(enabled)} />,
 }));
 
 const manifest = {
@@ -57,6 +57,17 @@ function open() {
 }
 
 describe("drawing detail scheduling", () => {
+  it("uses original PDF detail at fit and medium zoom even when pre-rendered tiles exist", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, status: 200, json: async () => manifest })));
+    const { frame } = open();
+    await act(async () => undefined);
+    expect(screen.getByTestId("pdf")).toHaveAttribute("data-enabled", "true");
+    fireEvent.wheel(frame, { deltaY: -500, clientX: 400, clientY: 300 });
+    await act(async () => { await vi.advanceTimersByTimeAsync(100); });
+    expect(capture.requests.some((tile) => tile.factor === 2)).toBe(true);
+    expect(screen.getByTestId("pdf")).toHaveAttribute("data-enabled", "true");
+  });
+
   it("picks fresh tiles during continued wheel motion instead of waiting for the wheel to stop", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, status: 200, json: async () => manifest })));
     const { frame, image } = open();
