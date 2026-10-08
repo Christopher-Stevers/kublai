@@ -64,6 +64,8 @@ describe("QR invites", () => {
       "parts.edit",
       "tab.dashboard",
       "tab.orders",
+      "tab.timesheets",
+      "timesheets.edit",
     ]);
     expect(matchingPreset({ ...journeyman.permissions } as PermissionMap)?.label).toBe("Journeyman");
   });

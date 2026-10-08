@@ -27,6 +27,7 @@ import {
   ShoppingCartIcon,
   TruckIcon,
   WrenchIcon,
+  ClockIcon,
   UserIcon,
   SettingsIcon,
   XIcon,
@@ -73,6 +74,7 @@ function HeaderFrame({
     orders: boolean;
     draws: boolean;
     assets: boolean;
+    timesheets: boolean;
     organization: boolean;
   };
   showAdmin: boolean;
@@ -100,6 +102,7 @@ function HeaderFrame({
     ...(tabAccess.draws
       ? [{ href: "/dashboard/draws", label: "Draws", icon: ReceiptIcon }]
       : []),
+    ...(tabAccess.timesheets ? [{ href: "/dashboard/timesheets", label: "Timesheets", icon: ClockIcon }] : []),
     ...(tabAccess.assets
       ? [{ href: "/dashboard/assets", label: "Asset Management", icon: WrenchIcon }]
       : []),
@@ -412,7 +415,7 @@ function HeaderWithClerk() {
           quotes: true,
           orders: true,
           draws: false,
-          assets: true,
+          assets: true, timesheets: true,
           organization: false,
         }
       }
@@ -439,7 +442,7 @@ function HeaderWithoutClerk() {
         quotes: true,
         orders: true,
         draws: false,
-        assets: true,
+        assets: true, timesheets: true,
         organization: false,
       }}
       showAdmin={false}
@@ -461,7 +464,7 @@ function HeaderForPractice() {
     setMobileMenuOpen={setMobileMenuOpen}
     userEmail="Practice workspace"
     showAccount={true}
-    tabAccess={{ dashboard: true, catalogue: true, suppliers: true, quotes: true, orders: true, draws: false, assets: true, organization: false }}
+    tabAccess={{ dashboard: true, catalogue: true, suppliers: true, quotes: true, orders: true, draws: false, assets: true, timesheets: false, organization: false }}
     showAdmin={false}
   />;
 }

@@ -21,6 +21,7 @@ export const PERMISSION_GROUPS = [
       { key: "tab.quotes", label: "Quotes", description: "View quotes sent to suppliers." },
       { key: "tab.orders", label: "Orders", description: "View orders and deliveries." },
       { key: "tab.draws", label: "Draws", description: "Progress billing. Shows contract values." },
+      { key: "tab.timesheets", label: "Timesheets", description: "Record time and review submissions." },
       { key: "tab.assets", label: "Asset Management", description: "Tools and equipment." },
       { key: "tab.organization", label: "Organization", description: "This page." },
     ],
@@ -125,6 +126,13 @@ export const PERMISSION_GROUPS = [
     ],
   },
   {
+    id: "timesheets", label: "Timesheets", description: "Recording time and approving submissions.", icon: "list",
+    permissions: [
+      { key: "timesheets.edit", label: "Record time", description: "Record, edit and submit your own hours, and use the time clock." },
+      { key: "timesheets.manage", label: "Manage timesheets", description: "Review company timesheets, return or approve submissions, correct drafts and export reports." },
+    ],
+  },
+  {
     id: "organization",
     label: "Organization",
     description: "Company settings and people.",
@@ -158,6 +166,8 @@ export const STANDARD_DEFAULTS: PermissionMap = {
   "tab.quotes": true,
   "tab.orders": true,
   "tab.assets": true,
+  "tab.timesheets": true,
+  "timesheets.edit": true,
   "jobs.create": true,
   "jobs.edit": true,
   "lists.edit": true,
@@ -196,6 +206,7 @@ export const PERMISSION_PRESETS: Array<{
       "drawings.manage": true,
       "documents.manage": true,
       "rooms.review": true,
+      "timesheets.manage": true,
     },
   },
   {
@@ -209,6 +220,8 @@ export const PERMISSION_PRESETS: Array<{
       "financial.view": true,
       "tab.dashboard": true,
       "tab.orders": true,
+      "tab.timesheets": true,
+      "timesheets.edit": true,
       "lists.edit": true,
       "parts.create": true,
       "parts.edit": true,

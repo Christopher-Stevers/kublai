@@ -29,6 +29,7 @@ export const appTabIds = [
   "orders",
   "draws",
   "assets",
+  "timesheets",
   "organization",
 ] as const;
 

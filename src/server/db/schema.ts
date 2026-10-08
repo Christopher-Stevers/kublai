@@ -2281,3 +2281,144 @@ export const materialPrefabItems = createTable(
 );
 
 export * from "./chat-push-schema";
+
+// Organization-scoped time recording. Approved periods are immutable until returned.
+export const timeSettings = createTable("time_settings", (d) => ({
+  organizationId: d
+    .uuid()
+    .primaryKey()
+    .references(() => organizations.id, { onDelete: "cascade" }),
+  cadence: d.varchar({ length: 10 }).notNull().default("weekly"),
+  weekStartsOn: d.integer().notNull().default(1),
+  timezone: d.varchar({ length: 100 }).notNull().default("America/Toronto"),
+  revision: d.integer().notNull().default(0),
+  updatedAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
+}));
+export const timeSheets = createTable(
+  "time_sheet",
+  (d) => ({
+    id: d
+      .uuid()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    organizationId: d
+      .uuid()
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    userId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => chatUserId, { onDelete: "restrict" }),
+    startDate: d.date().notNull(),
+    endDate: d.date().notNull(),
+    status: d.varchar({ length: 20 }).notNull().default("draft"),
+    revision: d.integer().notNull().default(0),
+    reviewNote: d.text().notNull().default(""),
+    submittedAt: d.timestamp({ withTimezone: true }),
+    reviewedAt: d.timestamp({ withTimezone: true }),
+    reviewerId: d
+      .varchar({ length: 255 })
+      .references(() => chatUserId, { onDelete: "set null" }),
+    createdAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
+    updatedAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
+  }),
+  (table) => [
+    unique("time_sheet_period_unique").on(
+      table.organizationId,
+      table.userId,
+      table.startDate,
+    ),
+    index("time_sheet_org_period_idx").on(
+      table.organizationId,
+      table.startDate,
+    ),
+  ],
+);
+export const timeEntries = createTable(
+  "time_entry",
+  (d) => ({
+    id: d
+      .uuid()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    sheetId: d
+      .uuid()
+      .notNull()
+      .references(() => timeSheets.id, { onDelete: "cascade" }),
+    date: d.date().notNull(),
+    jobId: d.uuid().references(() => chatJobId, { onDelete: "set null" }),
+    jobName: d.varchar({ length: 255 }).notNull().default("General"),
+    category: d.varchar({ length: 20 }).notNull().default("work"),
+    minutes: d.integer().notNull(),
+    breakMinutes: d.integer().notNull().default(0),
+    costCode: d.varchar({ length: 100 }).notNull().default(""),
+    notes: d.text().notNull().default(""),
+    source: d.varchar({ length: 10 }).notNull().default("manual"),
+    createdAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
+    updatedAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
+  }),
+  (table) => [index("time_entry_sheet_idx").on(table.sheetId)],
+);
+export const timeClocks = createTable(
+  "time_clock",
+  (d) => ({
+    id: d
+      .uuid()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    organizationId: d
+      .uuid()
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    userId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => chatUserId, { onDelete: "restrict" }),
+    jobId: d.uuid().references(() => chatJobId, { onDelete: "set null" }),
+    jobName: d.varchar({ length: 255 }).notNull().default("General"),
+    notes: d.text().notNull().default(""),
+    timezone: d.varchar({ length: 100 }).notNull(),
+    periods: jsonb()
+      .$type<import("~/lib/timesheets").ClockPeriod[]>()
+      .notNull(),
+    revision: d.integer().notNull().default(0),
+    startedAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
+  }),
+  (table) => [
+    unique("time_clock_user_unique").on(table.organizationId, table.userId),
+  ],
+);
+export const timeEvents = createTable(
+  "time_event",
+  (d) => ({
+    id: d
+      .uuid()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    organizationId: d
+      .uuid()
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    sheetId: d.uuid().references(() => timeSheets.id, { onDelete: "cascade" }),
+    userId: d.varchar({ length: 255 }).notNull(),
+    actorId: d.varchar({ length: 255 }).notNull(),
+    actorName: d.varchar({ length: 255 }).notNull(),
+    action: d.varchar({ length: 50 }).notNull(),
+    data: jsonb().notNull(),
+    createdAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
+  }),
+  (table) => [
+    index("time_event_sheet_idx").on(table.sheetId, table.createdAt),
+    index("time_event_org_idx").on(
+      table.organizationId,
+      table.createdAt,
+      table.id,
+    ),
+    index("time_event_user_idx").on(
+      table.organizationId,
+      table.userId,
+      table.createdAt,
+      table.id,
+    ),
+  ],
+);
