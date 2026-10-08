@@ -16,7 +16,7 @@ function open(props: DrawingEditorProps = {}) {
   const image = screen.getByAltText("Sheet");
   const frame = image.parentElement!.parentElement!;
   Object.defineProperties(image, { naturalWidth: { value: 1000 }, naturalHeight: { value: 500 } });
-  Object.defineProperties(frame, { clientWidth: { value: 800 }, clientHeight: { value: 600 } });
+  Object.defineProperties(frame, { clientWidth: { value: 800, configurable: true }, clientHeight: { value: 600, configurable: true } });
   vi.spyOn(frame, "getBoundingClientRect").mockReturnValue({ x: 0, y: 0, left: 0, top: 0, right: 800, bottom: 600, width: 800, height: 600, toJSON: () => ({}) });
   fireEvent.load(image);
   return { ...view, frame, image };
@@ -97,6 +97,28 @@ describe("drawing annotation tools in the real viewer", () => {
     expect(container.querySelectorAll("[data-annotation-handle]")).toHaveLength(4);
     fireEvent.keyDown(window, { key: "Delete" }); expect(onDelete).toHaveBeenCalledWith("markup");
   });
+  it.each(["move", "resize"] as const)("moves an unfilled selected rectangle through its interior in %s mode", selectionMode => {
+    const onUpdate = vi.fn();
+    const { frame, container } = open({ tool: "select", selectionMode, annotations: [markup()], selectedId: "markup", onUpdate });
+    const body = container.querySelector('[data-annotation-move-area]')!;
+    expect(body).not.toBeNull();
+    expect(body.getAttribute("pointer-events")).toBe("all");
+    expect(body.getAttribute("fill")).toBe("transparent");
+    fireEvent.pointerDown(body, { clientX: 300, clientY: 250, pointerId: 1, button: 0 });
+    fireEvent.pointerMove(frame, { clientX: 380, clientY: 290, pointerId: 1, button: 0 });
+    fireEvent.pointerUp(frame, { clientX: 380, clientY: 290, pointerId: 1, button: 0 });
+    expect(onUpdate).toHaveBeenCalledOnce();
+    expect(onUpdate).toHaveBeenCalledWith("markup", expect.objectContaining({ points: [{ x: 0.35, y: 0.35 }, { x: 0.6, y: 0.6 }] }));
+  });
+  it("keeps markup interiors free for panning or read-only inspection", () => {
+    const entity = markup();
+    const { container, rerender } = open({ tool: "pan", annotations: [entity], selectedId: entity.id, onUpdate: vi.fn() });
+    expect(container.querySelector('[data-annotation-move-area]')).toBeNull();
+    rerender(<DrawingSheetViewer src="/sheet.webp" alt="Sheet" sheetKey={sourceSheetId} tool="select" annotations={[entity]} selectedId={entity.id} onSelect={vi.fn()} />);
+    expect(container.querySelector('[data-annotation-move-area]')).toBeNull();
+    rerender(<DrawingSheetViewer src="/sheet.webp" alt="Sheet" sheetKey={sourceSheetId} tool="select" annotations={[entity]} selectedId={entity.id} onUpdate={vi.fn()} canEditAnnotation={() => false} />);
+    expect(container.querySelector('[data-annotation-move-area]')).toBeNull();
+  });
   it("selects an ordinary markup from the default Pan tool but pans when dragged", () => {
     const onSelect = vi.fn(), onUpdate = vi.fn();
     const { frame, image, container } = open({ annotations: [markup()], onSelect, onUpdate });
@@ -110,6 +132,51 @@ describe("drawing annotation tools in the real viewer", () => {
     fireEvent.pointerUp(frame, { clientX: 330, clientY: 290, pointerId: 1, button: 0 });
     expect(image.parentElement!.style.transform).toContain("translate3d(80px, 40px, 0)");
     expect(onSelect).not.toHaveBeenCalled();
+    expect(onUpdate).not.toHaveBeenCalled();
+  });
+  it("waits until release to select a new markup when selection changes the viewer layout", () => {
+    const onUpdate = vi.fn();
+    const onSelect = vi.fn(() => {
+      // The selection toolbar occupies part of the viewer. A stationary
+      // pointer then maps to a different normalized sheet position.
+      Object.defineProperty(frame, "clientHeight", { value: 250, configurable: true });
+      fireEvent.load(image);
+    });
+    const { frame, image, container } = open({ tool: "select", annotations: [markup({ type: "text", text: "Note", points: [{ x: 0.25, y: 0.25 }] })], onSelect, onUpdate });
+    const note = container.querySelector('[data-annotation-id="markup"] text')!;
+    fireEvent.pointerDown(note, { clientX: 250, clientY: 250, pointerId: 1, button: 0 });
+    expect(onSelect).not.toHaveBeenCalled();
+    expect(frame.clientHeight).toBe(600);
+    fireEvent.pointerUp(frame, { clientX: 250, clientY: 250, pointerId: 1, button: 0 });
+    expect(onSelect).toHaveBeenCalledOnce();
+    expect(onSelect).toHaveBeenCalledWith("markup");
+    expect(frame.clientHeight).toBe(250);
+    expect(onUpdate).not.toHaveBeenCalled();
+  });
+  it("moves an initially unselected markup and selects it after its single commit", () => {
+    const events: string[] = [];
+    const onSelect = vi.fn(() => { events.push("select"); });
+    const onUpdate = vi.fn(() => { events.push("update"); });
+    const { frame, container } = open({ tool: "select", annotations: [markup()], onSelect, onUpdate });
+    const shape = container.querySelector('[data-annotation-id="markup"] rect')!;
+    fireEvent.pointerDown(shape, { clientX: 250, clientY: 250, pointerId: 1, button: 0 });
+    fireEvent.pointerMove(frame, { clientX: 330, clientY: 290, pointerId: 1, button: 0 });
+    expect(onSelect).not.toHaveBeenCalled();
+    expect(onUpdate).not.toHaveBeenCalled();
+    fireEvent.pointerUp(frame, { clientX: 330, clientY: 290, pointerId: 1, button: 0 });
+    expect(onUpdate).toHaveBeenCalledOnce();
+    expect(onUpdate).toHaveBeenCalledWith("markup", expect.objectContaining({ points: [{ x: 0.35, y: 0.35 }, { x: 0.6, y: 0.6 }] }));
+    expect(events).toEqual(["update", "select"]);
+  });
+  it("selects a read-only markup on release even if its permissions rerender during the tap", () => {
+    const onSelect = vi.fn(), onUpdate = vi.fn();
+    const { frame, container, rerender } = open({ tool: "select", annotations: [markup()], onSelect, onUpdate, canEditAnnotation: () => false });
+    const shape = container.querySelector('[data-annotation-id="markup"] rect')!;
+    fireEvent.pointerDown(shape, { clientX: 250, clientY: 250, pointerId: 1, button: 0 });
+    expect(onSelect).not.toHaveBeenCalled();
+    rerender(<DrawingSheetViewer src="/sheet.webp" alt="Sheet" sheetKey={sourceSheetId} tool="select" annotations={[markup()]} canEditAnnotation={() => false} onSelect={onSelect} onUpdate={onUpdate} />);
+    fireEvent.pointerUp(frame, { clientX: 250, clientY: 250, pointerId: 1, button: 0 });
+    expect(onSelect).toHaveBeenCalledWith("markup");
     expect(onUpdate).not.toHaveBeenCalled();
   });
   it("resizes all points of a long pen stroke and commits only once on release", () => {
@@ -160,7 +227,7 @@ describe("drawing annotation tools in the real viewer", () => {
     const onUpdate = vi.fn();
     const entity = markup();
     const { frame, container, rerender } = open({ tool: "select", annotations: [entity], selectedId: entity.id, onUpdate });
-    const shape = container.querySelector('[data-annotation-id="markup"] rect')!;
+    const shape = container.querySelector('[data-annotation-id="markup"] rect:not([data-annotation-move-area])')!;
     fireEvent.pointerDown(shape, { clientX: 250, clientY: 250, pointerId: 1, button: 0 });
     fireEvent.pointerMove(frame, { clientX: 330, clientY: 290, pointerId: 1, button: 0 });
     expect(shape.getAttribute("x")).toBe("350");

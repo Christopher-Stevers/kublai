@@ -72,6 +72,21 @@ function textDimensions(data: DrawingMarkup, aspect: number) {
     fontSize,
   };
 }
+function usableDrawingBounds(bounds: DrawingBounds, aspect: number) {
+  // A cropped note, horizontal line, or single count still needs distinct,
+  // reachable corners. Keep a small selection box inside the page edge.
+  const pad = 8 / DRAWING_SVG_WIDTH;
+  if (bounds.right - bounds.left < 0.000001) {
+    bounds.left = clamp(bounds.left - pad / 2, 0, 1 - pad);
+    bounds.right = bounds.left + pad;
+  }
+  const verticalPad = Math.min(1, Math.max(0.000001, pad / aspect));
+  if (bounds.bottom - bounds.top < 0.000001) {
+    bounds.top = clamp(bounds.top - verticalPad / 2, 0, 1 - verticalPad);
+    bounds.bottom = bounds.top + verticalPad;
+  }
+  return bounds;
+}
 /** Normalized sheet bounds. Text includes its baseline and approximate glyph box. */
 export function drawingMarkupBounds(
   data: DrawingMarkup,
@@ -79,32 +94,26 @@ export function drawingMarkupBounds(
 ): DrawingBounds {
   const safeAspect = Number.isFinite(aspect) && aspect > 0 ? aspect : 1;
   if (!data.points.length)
-    return { left: 0, top: 0, right: 0.008, bottom: 0.008 / safeAspect };
+    return usableDrawingBounds(
+      { left: 0, top: 0, right: 0, bottom: 0 },
+      safeAspect,
+    );
   if (data.type === "text") {
     const point = data.points[0]!;
     const dimensions = textDimensions(data, safeAspect);
     const top =
       point.y - (dimensions.fontSize * 0.8) / (DRAWING_SVG_WIDTH * safeAspect);
-    return {
-      left: clamp(point.x, 0, 1),
-      top: clamp(top, 0, 1),
-      right: clamp(point.x + dimensions.width, 0, 1),
-      bottom: clamp(top + dimensions.height, 0, 1),
-    };
+    return usableDrawingBounds(
+      {
+        left: clamp(point.x, 0, 1),
+        top: clamp(top, 0, 1),
+        right: clamp(point.x + dimensions.width, 0, 1),
+        bottom: clamp(top + dimensions.height, 0, 1),
+      },
+      safeAspect,
+    );
   }
-  const bounds = drawingBounds(data.points);
-  // A horizontal line or single count still needs distinct, reachable corners.
-  const pad = 8 / DRAWING_SVG_WIDTH;
-  if (bounds.right - bounds.left < 0.000001) {
-    bounds.left = clamp(bounds.left - pad / 2, 0, 1 - pad);
-    bounds.right = bounds.left + pad;
-  }
-  const verticalPad = Math.min(1, pad / safeAspect);
-  if (bounds.bottom - bounds.top < 0.000001) {
-    bounds.top = clamp(bounds.top - verticalPad / 2, 0, 1 - verticalPad);
-    bounds.bottom = bounds.top + verticalPad;
-  }
-  return bounds;
+  return usableDrawingBounds(drawingBounds(data.points), safeAspect);
 }
 /** Resize from one corner around the opposite corner, retaining every vertex. */
 export function resizeDrawingMarkup(

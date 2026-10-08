@@ -45,7 +45,7 @@ Mutation inputs carry expected revisions. Offline writes also carry the expected
 - `scripts/check-drawing-workspace-db.ts` exercises a disposable PostgreSQL database: tenancy, private visibility, permission revocation, concurrent edit conflicts, versions, review ownership, deletion guards and mocked notification delivery/retries.
 - Drawing component tests exercise persistence inputs, selection, gesture coexistence, search/filtering, explicit title-block review, exported content and offline account boundaries.
 - `src/lib/drawing-pdf-export.node-test.ts` renders exported PDFs with native canvas and checks original geometry and markup location across all right-angle rotations, crop boxes and UserUnit values.
-- Browser automation was unavailable in this task (no connected browser surfaces). Automated DOM/pointer and native PDF tests are not a substitute for an actual phone FPS/touch usability measurement.
+- Markup selection was verified in Chromium against an isolated PostgreSQL schema on desktop and at 390 × 844 with touch input: tap selection without changing geometry, body movement, rectangle and dense pen-stroke resizing, text-size persistence, deletion, and reload. Selected controls keep the drawing available on phones. Canceled gestures and permission changes are covered by pointer tests; browser acceptance recorded no uncaught JavaScript errors. This does not measure physical-device frame rates.
 
 ## Autodesk references checked for the feature map
 

@@ -5,11 +5,11 @@ import type { SheetScale } from "~/lib/sheet-measure";
 import { drawingMarkupBounds } from "~/lib/drawing-annotation-geometry";
 import { DrawingAnnotationSvg } from "./DrawingAnnotationSvg";
 
-export function DrawingAnnotationLayer({ annotations, aspect, selectedId, draft, editing, hidden, sharedScale, onSelect, screenPixelSize = 1, showResizeHandles = true, canEditAnnotation }: {
+export function DrawingAnnotationLayer({ annotations, aspect, selectedId, draft, editing, hidden, sharedScale, onSelect, screenPixelSize = 1, showResizeHandles = true, showMoveArea = false, canEditAnnotation }: {
   annotations: DrawingEntity[]; aspect: number; selectedId?: string | null;
   draft?: DrawingMarkup | null; editing?: { id: string; data: DrawingMarkup } | null;
   hidden?: boolean; sharedScale?: SheetScale | null; onSelect?: (id: string) => void; screenPixelSize?: number;
-  showResizeHandles?: boolean; canEditAnnotation?: (entityId: string) => boolean;
+  showResizeHandles?: boolean; showMoveArea?: boolean; canEditAnnotation?: (entityId: string) => boolean;
 }) {
   return <svg className="pointer-events-none absolute inset-0 z-[3] h-full w-full overflow-visible" viewBox={`0 0 1000 ${1000 * aspect}`} aria-label="Drawing annotations">
     {!hidden && annotations.filter(entity => entity.visibility !== "archived").map(entity => {
@@ -17,13 +17,16 @@ export function DrawingAnnotationLayer({ annotations, aspect, selectedId, draft,
       const selected = entity.id === selectedId;
       const data = entity.kind === "markup" ? editing?.id === entity.id ? editing.data : entity.data : null;
       const bounds = data && selected ? drawingMarkupBounds(data, aspect) : null;
-      const editable = selected && showResizeHandles && (canEditAnnotation?.(entity.id) ?? true);
+      const canEdit = selected && (canEditAnnotation?.(entity.id) ?? true);
+      const editable = canEdit && showResizeHandles;
       const vertices = data && ["line", "arrow", "dimension", "polyline", "polycloud", "area", "angle", "count"].includes(data.type);
       return <g key={entity.id} data-annotation-id={entity.id} tabIndex={0} role="button"
         aria-label={entity.kind === "issue" ? `${entity.data.type === "rfi" ? "RFI" : "Issue"}: ${entity.data.title}` : `${entity.data.type} markup${entity.data.text ? `: ${entity.data.text}` : ""}`}
         onKeyDown={event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); event.stopPropagation(); onSelect?.(entity.id); } }}
         style={{ pointerEvents: "visiblePainted", cursor: "pointer" }}>
         {data ? <>
+          {bounds && canEdit && showMoveArea && <rect data-annotation-move-area="" x={bounds.left * 1000} y={bounds.top * 1000 * aspect} width={(bounds.right - bounds.left) * 1000} height={(bounds.bottom - bounds.top) * 1000 * aspect}
+            fill="transparent" pointerEvents="all" style={{ cursor: "move" }} />}
           <DrawingAnnotationSvg data={data} aspect={aspect} sharedScale={sharedScale} />
           {data.type !== "text" && <polyline points={data.points.map(p => `${p.x * 1000},${p.y * 1000 * aspect}`).join(" ")} fill="none" stroke="transparent" strokeWidth={Math.max(18, data.width + 12)} />}
           {bounds && <rect x={bounds.left * 1000} y={bounds.top * 1000 * aspect} width={(bounds.right - bounds.left) * 1000} height={(bounds.bottom - bounds.top) * 1000 * aspect}

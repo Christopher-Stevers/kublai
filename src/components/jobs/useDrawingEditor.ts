@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { DrawingEntity, DrawingMarkup, DrawingPoint, DrawingStyle, DrawingTool } from "~/lib/drawing-workspace";
 import type { SheetScale } from "~/lib/sheet-measure";
 import { isPathTool, isStrokeTool, minimumDrawingPoints, resizeDrawingMarkup, simplifyDrawingStroke, translateDrawingPoints, type DrawingResizeHandle } from "~/lib/drawing-annotation-geometry";
@@ -33,11 +33,12 @@ export function useDrawingEditor(props: DrawingEditorProps, aspect: number, scre
   const gesture = useRef<Gesture | null>(null);
   const committed = useRef(points);
   committed.current = points;
+  const { annotations, canEditAnnotation } = props;
   const clear = () => { gesture.current = null; committed.current = []; setPoints([]); setPreview([]); setEditing(null); };
   useEffect(clear, [tool, props.sourceSheetId, props.selectionMode, props.hideAnnotations]);
-  const canEdit = (entity: DrawingEntity) => entity.kind === "markup" && entity.visibility !== "archived"
-    && props.annotations?.some(current => current.id === entity.id && current.revision === entity.revision && current.visibility !== "archived")
-    && (props.canEditAnnotation?.(entity.id) ?? true);
+  const canEdit = useCallback((entity: DrawingEntity) => entity.kind === "markup" && entity.visibility !== "archived"
+    && annotations?.some(current => current.id === entity.id && current.revision === entity.revision && current.visibility !== "archived")
+    && (canEditAnnotation?.(entity.id) ?? true), [annotations, canEditAnnotation]);
 
   const dataFor = (next: DrawingPoint[]): DrawingMarkup | null => {
     if (tool === "pan" || tool === "select" || tool === "issue" || tool === "rfi") return null;
@@ -60,8 +61,11 @@ export function useDrawingEditor(props: DrawingEditorProps, aspect: number, scre
   const cancelGesture = () => { gesture.current = null; setPreview([]); setEditing(null); };
   useEffect(() => {
     const active = gesture.current;
-    if (active?.entity?.kind === "markup" && !active.activate && (!props.onUpdate || !canEdit(active.entity))) cancelGesture();
-  });
+    if (active?.entity?.kind === "markup" && !active.activate && (!props.onUpdate || !canEdit(active.entity))) {
+      active.edited = undefined;
+      setEditing(null);
+    }
+  }, [props.onUpdate, canEdit]);
   const distance = (a: DrawingPoint, b: DrawingPoint) => Math.hypot(a.x - b.x, (a.y - b.y) * aspect);
   const down = (point: DrawingPoint | null, target: EventTarget | null) => {
     if (!point) return false;
@@ -74,7 +78,8 @@ export function useDrawingEditor(props: DrawingEditorProps, aspect: number, scre
     }
     if (tool === "select") {
       if (!entity) { props.onSelect?.(null); return false; }
-      props.onSelect?.(entity.id);
+      // Selecting can show a toolbar and change the sheet's fitted size. Keep
+      // that layout change after the gesture uses its final coordinates.
       const handleElement = target instanceof Element ? target.closest<SVGElement>("[data-annotation-handle]") : null;
       const handleName = handleElement?.dataset.annotationHandle;
       const corner = handleName && ["nw", "ne", "sw", "se"].includes(handleName) ? handleName as DrawingResizeHandle : undefined;
@@ -132,6 +137,7 @@ export function useDrawingEditor(props: DrawingEditorProps, aspect: number, scre
         else props.onSelect?.(active.entity.id);
       }
       if (active.edited && active.moved && props.onUpdate && canEdit(active.entity)) props.onUpdate(active.entity.id, active.edited);
+      if (!active.activate) props.onSelect?.(active.entity.id);
       setEditing(null);
       return !active.activate || !active.moved;
     }

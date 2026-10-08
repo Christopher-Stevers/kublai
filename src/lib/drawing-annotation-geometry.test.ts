@@ -325,4 +325,46 @@ describe("drawing annotation geometry", () => {
     expect(svg).toContain("First");
     expect(svg).toContain("Second");
   });
+  it("keeps cropped text handles reachable and returns schema-valid resizes at every page corner", () => {
+    const handles: DrawingResizeHandle[] = ["nw", "ne", "sw", "se"];
+    for (const anchor of [
+      { x: 0, y: 0 },
+      { x: 0, y: 1 },
+      { x: 1, y: 0 },
+      { x: 1, y: 1 },
+    ]) {
+      for (const aspect of [0.25, 1, 2]) {
+        for (const text of ["Boundary", "W".repeat(4000), "\n".repeat(4000)]) {
+          const data = drawingMarkupSchema.parse({
+            ...rectangle,
+            type: "text",
+            fontSize: 300,
+            text,
+            points: [anchor],
+          });
+          const bounds = drawingMarkupBounds(data, aspect);
+          expect(bounds.right).toBeGreaterThan(bounds.left);
+          expect(bounds.bottom).toBeGreaterThan(bounds.top);
+          for (const value of Object.values(bounds)) {
+            expect(Number.isFinite(value)).toBe(true);
+            expect(value).toBeGreaterThanOrEqual(0);
+            expect(value).toBeLessThanOrEqual(1);
+          }
+          for (const handle of handles) {
+            const resized = resizeDrawingMarkup(
+              data,
+              handle,
+              { x: 0.5, y: 0.5 },
+              aspect,
+            );
+            expect(drawingMarkupSchema.safeParse(resized).success).toBe(true);
+            expectPointsOnPage(resized);
+            expect(resized.fontSize).toBeGreaterThanOrEqual(6);
+            expect(resized.fontSize).toBeLessThanOrEqual(300);
+            expect(resized.text).toBe(text);
+          }
+        }
+      }
+    }
+  });
 });

@@ -935,7 +935,7 @@ export function DrawingWorkspace({
               Done
             </Button>
             {editable(selected) && tool === "select" && (
-              <span className="text-muted-foreground basis-full text-xs sm:basis-auto">
+              <span className="text-muted-foreground min-h-8 basis-full text-xs sm:min-h-0 sm:basis-auto">
                 {selectionMode === "resize"
                   ? "Drag a handle to resize, or drag the markup to move."
                   : "Drag the markup to move it."}
