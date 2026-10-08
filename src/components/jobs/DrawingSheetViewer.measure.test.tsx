@@ -477,6 +477,81 @@ describe("drawing measure", () => {
   });
 });
 
+describe("dimensions along measuring segments", () => {
+  const labels = (frame: HTMLElement) => [...frame.querySelectorAll("[data-measure-length]")].map((node) => node.textContent);
+
+  it("labels every segment at its midpoint and follows the selected units", () => {
+    const { frame } = openSheet("segment-labels", undefined, {
+      sharedScale: { unit: "ft", unitsPerSheetWidth: 100 },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Measure" }));
+    tap(frame, 200, 300);
+    tap(frame, 400, 300);
+    tap(frame, 400, 460);
+    expect(labels(frame)).toEqual(["25'-0\"", "20'-0\""]);
+    const nodes = frame.querySelectorAll("[data-measure-length]");
+    expect(nodes[0]?.parentElement?.getAttribute("transform")).toBe("translate(300 200) rotate(0)");
+    expect(nodes[1]?.parentElement?.getAttribute("transform")).toBe("translate(400 280) rotate(90)");
+    fireEvent.click(screen.getByRole("button", { name: "mm" }));
+    expect(labels(frame)).toEqual(["7620 mm", "6096 mm"]);
+    fireEvent.click(screen.getByRole("button", { name: "in" }));
+    expect(labels(frame)).toEqual(['300"', '240"']);
+    fireEvent.click(screen.getByRole("button", { name: "m" }));
+    expect(labels(frame)).toEqual(["7.62 m", "6.1 m"]);
+    fireEvent.click(screen.getByRole("button", { name: "Undo" }));
+    expect(labels(frame)).toEqual(["7.62 m"]);
+    fireEvent.click(screen.getByRole("button", { name: "Clear" }));
+    expect(labels(frame)).toEqual([]);
+  });
+
+  it("updates both dimension labels while dragging a middle node", () => {
+    const context = vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(null);
+    try {
+      const { frame } = openSheet("moving-labels", undefined, { sharedScale: { unit: "ft", unitsPerSheetWidth: 100 } });
+      fireEvent.click(screen.getByRole("button", { name: "Measure" }));
+      tap(frame, 200, 300);
+      tap(frame, 400, 300);
+      tap(frame, 400, 460);
+      fireEvent.pointerDown(frame, { clientX: 400, clientY: 300, pointerId: 1, button: 0, buttons: 1 });
+      fireEvent.pointerMove(frame, { clientX: 500, clientY: 300, pointerId: 1, buttons: 1 });
+      expect(labels(frame)).toEqual(["37'-6\"", "23'-7\""]);
+      expect(frame.querySelectorAll("[data-measure-node]")).toHaveLength(3);
+      fireEvent.pointerUp(frame, { clientX: 500, clientY: 300, pointerId: 1, button: 0, buttons: 0 });
+      expect(labels(frame)).toEqual(["37'-6\"", "23'-7\""]);
+    } finally { context.mockRestore(); }
+  });
+
+  it("shows the known Set Scale length as it is typed, without saving early", () => {
+    const onScaleChange = vi.fn();
+    const { frame } = openSheet("known-length-label", undefined, { sharedScale: null, onScaleChange });
+    fireEvent.click(screen.getByRole("button", { name: "Measure" }));
+    fireEvent.click(screen.getByRole("button", { name: "Set Scale" }));
+    tap(frame, 200, 300);
+    tap(frame, 600, 300);
+    expect(labels(frame)).toEqual(["Enter length"]);
+    fireEvent.click(screen.getByRole("button", { name: "mm" }));
+    fireEvent.change(screen.getByLabelText("How long is this line?"), { target: { value: "7500" } });
+    expect(labels(frame)).toEqual(["7500 mm"]);
+    expect(onScaleChange).not.toHaveBeenCalled();
+    fireEvent.change(screen.getByLabelText("How long is this line?"), { target: { value: "bad length" } });
+    expect(labels(frame)).toEqual(["Enter length"]);
+    fireEvent.change(screen.getByLabelText("How long is this line?"), { target: { value: "2.4 m" } });
+    expect(labels(frame)).toEqual(["2400 mm"]);
+    fireEvent.click(screen.getByRole("button", { name: "Use this length" }));
+    expect(onScaleChange).toHaveBeenCalledWith({ unit: "m", unitsPerSheetWidth: 4.8 });
+  });
+
+  it("labels a preview segment and asks for a scale when the distance is unknown", () => {
+    const { frame } = openSheet("unscaled-label", undefined, { sharedScale: null });
+    fireEvent.click(screen.getByRole("button", { name: "Measure" }));
+    tap(frame, 200, 300);
+    fireEvent.pointerMove(frame, { clientX: 400, clientY: 300, buttons: 0 });
+    expect(labels(frame)).toEqual(["Set scale"]);
+    tap(frame, 400, 300);
+    expect(labels(frame)).toEqual(["Set scale"]);
+  });
+});
+
 describe("dragging existing measuring nodes", () => {
   beforeEach(() => {
     vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(null);

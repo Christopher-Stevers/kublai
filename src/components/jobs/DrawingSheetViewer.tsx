@@ -671,9 +671,23 @@ export function DrawingSheetViewer({
   const markStroke = Math.max(0.08, 1.1 / view.scale);
   const markArm = Math.max(0.6, 5 / view.scale);
   const lockedAngle = rubber || dragIndex !== null ? angleSnap : null;
-  const anglePair = dragIndex !== null
-    ? [drawn[dragIndex === 0 ? 1 : dragIndex - 1], drawn[dragIndex]]
-    : [marked.at(-2), marked.at(-1)];
+  const activeAngleSegment = dragIndex !== null ? Math.max(0, dragIndex - 1) : marked.length - 2;
+  const knownLength = calibrating ? parseLengthAs(draft, unit) : null;
+  const dimensionLabels = fit ? marked.slice(1).map((end, index) => {
+    const start = marked[index]!;
+    const dx = (end.x - start.x) * fit.width;
+    const dy = (end.y - start.y) * fit.height;
+    // Keep vertical/reversed labels upright and just above their own segment.
+    let rotation = Math.atan2(dy, dx) * 180 / Math.PI;
+    if (rotation > 90) rotation -= 180;
+    else if (rotation < -90) rotation += 180;
+    const label = knownLength && knownLength.length > 0
+      ? formatLengthAs(knownLength.length, knownLength.unit, unit)
+      : sheetScale
+        ? formatLengthAs(realLength([start, end], fit.aspect, sheetScale.unitsPerSheetWidth), sheetScale.unit, unit)
+        : calibrating ? "Enter length" : "Set scale";
+    return { index, label, rotation, x: (start.x + end.x) * fit.width / 2, y: (start.y + end.y) * fit.height / 2 };
+  }) : [];
 
   // Paint the magnifier from what is on screen: the saved image, any sharper
   // tiles and the PDF redraw, at LOUPE_ZOOM around the aimed point.
@@ -1106,25 +1120,43 @@ export function DrawingSheetViewer({
                     strokeLinecap="round"
                   />
                 </g>
-                {lockedAngle && anglePair[0] && anglePair[1] && (() => {
-                  // Square or 45°: say so next to the middle of the line.
-                  const a = anglePair[0], b = anglePair[1];
-                  const size = Math.max(2.2, 13 / view.scale);
+                {dimensionLabels.map(({ index, label, rotation, x, y }) => {
+                  const angle = index === activeAngleSegment ? lockedAngle : null;
+                  const fontSize = 14 / view.scale;
                   return (
-                    <text
-                      x={((a.x + b.x) / 2) * fit.width + size * 0.6}
-                      y={((a.y + b.y) / 2) * fit.height - size * 0.6}
-                      fontSize={size}
-                      fontWeight={700}
-                      fill="#15803d"
-                      stroke="#ffffff"
-                      strokeWidth={size * 0.25}
-                      paintOrder="stroke"
-                    >
-                      {lockedAngle}°
-                    </text>
+                    <g key={index} transform={`translate(${x} ${y}) rotate(${rotation})`}>
+                      <text
+                        data-measure-length={index}
+                        aria-label={`Segment ${index + 1}: ${label}`}
+                        y={-8 / view.scale}
+                        textAnchor="middle"
+                        fontSize={fontSize}
+                        fontWeight={600}
+                        fill={angle ? "#15803d" : "#92400e"}
+                        stroke="#ffffff"
+                        strokeWidth={4 / view.scale}
+                        strokeLinejoin="round"
+                        paintOrder="stroke"
+                      >
+                        {label}
+                      </text>
+                      {angle && (
+                        <text
+                          y={18 / view.scale}
+                          textAnchor="middle"
+                          fontSize={13 / view.scale}
+                          fontWeight={700}
+                          fill="#15803d"
+                          stroke="#ffffff"
+                          strokeWidth={3 / view.scale}
+                          paintOrder="stroke"
+                        >
+                          {angle}°
+                        </text>
+                      )}
+                    </g>
                   );
-                })()}
+                })}
               </>
             )}
             {/* End points are thin, semi-transparent X marks so they can be
