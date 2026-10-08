@@ -37,6 +37,8 @@ export function SheetMeasureBar({
   onApply,
   color,
   onColor,
+  pipeControl,
+  pipePanel,
 }: {
   measuring: boolean;
   calibrating: boolean;
@@ -68,64 +70,82 @@ export function SheetMeasureBar({
   onApply: () => void;
   color: string;
   onColor: (color: string) => void;
+  pipeControl?: React.ReactNode;
+  pipePanel?: React.ReactNode;
 }) {
   const stop = (event: PointerEvent) => event.stopPropagation();
   return (
-    <div
-      className="absolute top-2 right-2 z-20 flex w-[min(17rem,calc(100%-1rem))] flex-col items-stretch gap-2"
-      onPointerDown={stop}
-      onPointerMove={stop}
-      onPointerUp={stop}
-      onWheel={(event) => event.stopPropagation()}
-    >
-      <Button
-        type="button"
-        variant={measuring ? "default" : "outline"}
-        className="self-end shadow-md"
-        aria-pressed={measuring}
-        onClick={onToggle}
+    <>
+      <div
+        className="absolute top-2 right-2 z-20 flex w-[min(17rem,calc(100%-1rem))] flex-col items-stretch gap-2"
+        onPointerDown={stop}
+        onPointerMove={stop}
+        onPointerUp={stop}
+        onWheel={(event) => event.stopPropagation()}
       >
-        <RulerIcon className="h-4 w-4" />
-        {measuring ? "Done" : "Measure"}
-      </Button>
-      {measuring && (
-        <div className="bg-card/95 max-h-[65dvh] space-y-2 overflow-y-auto overscroll-contain rounded-md p-3 shadow-md">
-          {calibrating ? (
-            <Calibration
-              count={calibrationCount}
-              unit={unit}
-              snapping={snapping}
-              draft={draft}
-              error={error}
-              reading={reading}
-              readError={readError}
-              onUndo={onUndo}
-              onCancel={onCancelScale}
-              onDraft={onDraft}
-              onUnit={onUnit}
-              onApply={onApply}
-              onReadPrinted={onReadPrinted}
-            />
-          ) : (
-            <Tracing
-              pointCount={pointCount}
-              total={total}
-              unit={unit}
-              scaleSet={scaleSet}
-              snapping={snapping}
-              reading={reading}
-              scaleLabel={scaleLabel}
-              readError={readError}
-              onUndo={onUndo}
-              onClear={onClear}
-              onStartScale={onStartScale}
-              onUnit={onUnit}
-            />
-          )}
-          <MeasureColorPicker color={color} onColor={onColor} />
+        <div className="flex items-center justify-end gap-2">
+          {pipeControl}
+          <Button
+            type="button"
+            variant={measuring ? "default" : "outline"}
+            className="self-end shadow-md"
+            aria-pressed={measuring}
+            onClick={onToggle}
+          >
+            <RulerIcon className="h-4 w-4" />
+            {measuring ? "Done" : "Measure"}
+          </Button>
+        </div>
+        {measuring && (
+          <div className="bg-card/95 max-h-[65dvh] space-y-2 overflow-y-auto overscroll-contain rounded-md p-3 shadow-md">
+            {calibrating ? (
+              <Calibration
+                count={calibrationCount}
+                unit={unit}
+                snapping={snapping}
+                draft={draft}
+                error={error}
+                reading={reading}
+                readError={readError}
+                onUndo={onUndo}
+                onCancel={onCancelScale}
+                onDraft={onDraft}
+                onUnit={onUnit}
+                onApply={onApply}
+                onReadPrinted={onReadPrinted}
+              />
+            ) : (
+              <Tracing
+                pointCount={pointCount}
+                total={total}
+                unit={unit}
+                scaleSet={scaleSet}
+                snapping={snapping}
+                reading={reading}
+                scaleLabel={scaleLabel}
+                readError={readError}
+                onUndo={onUndo}
+                onClear={onClear}
+                onStartScale={onStartScale}
+                onUnit={onUnit}
+              />
+            )}
+            <MeasureColorPicker color={color} onColor={onColor} />
+          </div>
+        )}
+      </div>
+      {!measuring && pipePanel && (
+        <div
+          className="absolute right-2 bottom-2 z-20 w-[min(17rem,calc(100%-1rem))] sm:top-14 sm:bottom-auto"
+          onPointerDown={stop}
+          onPointerMove={stop}
+          onPointerUp={stop}
+          onWheel={(event) => event.stopPropagation()}
+        >
+          {pipePanel}
         </div>
       )}
-    </div>
+    </>
   );
 }
 

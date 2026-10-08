@@ -12,6 +12,7 @@ Scope: Tim selected PDF drawing tools first on 2026-10-07. Native DWG, Revit and
 | Collaboration | Private drafts, published team markups, visibility filters, comments, attributed activity, per-entity optimistic concurrency checks and soft archive. Private entities remain private even from drawing managers. |
 | Issues / RFIs | Sheet-position pins, descriptions, assignee, due date, status, comments, secure photo/PDF attachments and links to job documents. Assignment and sheet-watch notifications use the existing opt-in device push system and an in-app inbox. |
 | Measurement | Existing sheet calibration plus saved dimensions, area, angles and counts. Calibration is reset when the current source revision changes. These are drawing-scale measurements, not survey measurements. |
+| Pipe systems | Pipe system mode selects a connected vector run from a pipe line or an embedded label such as ST. Highlights include matching branches on the current sheet and show the calibrated union length in m, mm, ft or in. Disconnected same-code runs remain separate. |
 | Navigation | Saved named views, private/published views, deep links, imported PDF hyperlinks and reviewed suggestions for references to other uploaded sheet numbers. |
 | Revisions | Attach an already uploaded sheet as an immutable revision; history, view earlier versions, restore current version. Markups remain tied to their source sheet. Version references protect source sheets/folders from deletion. |
 | Comparison | Side-by-side, overlay, difference and wipe comparison. Manual offset and scale alignment. |
@@ -31,6 +32,7 @@ Scope: Tim selected PDF drawing tools first on 2026-10-07. Native DWG, Revit and
 - Transmittals record the exact selected source sheets; they do not imply email delivery, electronic signature, public sharing, or an Autodesk integration.
 - Uploading a revision never guesses which existing drawing it should replace. The user chooses the corresponding sheet explicitly.
 - Local drawing attachments are backed up with the existing uploads backup. Unreferenced attachments are retained; no automatic deletion policy is introduced here.
+- Pipe selection follows matching PDF stroke geometry and nearby embedded system labels, including declared dashes, regular expanded CAD dashes, label gaps and rounded elbows. Endpoint and T connections join; interior crossings alone do not. It does not infer authoritative CAD connectivity, elevations, hidden risers or connections to other sheets. Review the highlighted run; inferred gaps and bounded partial results are identified in the result panel. A real distance requires the current sheet's scale. Scanned or image-only drawings use manual Measure.
 
 ## Data and deployment
 
@@ -46,6 +48,7 @@ Mutation inputs carry expected revisions. Offline writes also carry the expected
 - Drawing component tests exercise persistence inputs, selection, gesture coexistence, search/filtering, explicit title-block review, exported content and offline account boundaries.
 - `src/lib/drawing-pdf-export.node-test.ts` renders exported PDFs with native canvas and checks original geometry and markup location across all right-angle rotations, crop boxes and UserUnit values.
 - Markup selection was verified in Chromium against an isolated PostgreSQL schema on desktop and at 390 × 844 with touch input: tap selection without changing geometry, body movement, rectangle and dense pen-stroke resizing, text-size persistence, deletion, and reload. Selected controls keep the drawing available on phones. Canceled gestures and permission changes are covered by pointer tests; browser acceptance recorded no uncaught JavaScript errors. This does not measure physical-device frame rates.
+- Pipe selection passed 19 Chromium checks against an isolated synthetic drawing: ST trunk and branches total 111 m, a detached ST run totals 22 m, and a crossing SAN run totals 32 m. Results match on a 270° rotated/cropped page. Desktop and 390 × 844 touch checks cover label selection, calibration, unit changes, source/reload behavior, raster fallback, and pan/pinch coexistence. The compact phone result leaves the selected geometry visible. Real CAD sampling checks bounded extraction and connected-run selection; it does not establish authoritative construction quantities.
 
 ## Autodesk references checked for the feature map
 

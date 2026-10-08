@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   isTileManifest,
   planDrawingTiles,
@@ -40,6 +40,10 @@ import { DrawingAnnotationLayer } from "./DrawingAnnotationLayer";
 import { DrawingDraftToolbar } from "./DrawingDraftToolbar";
 import { useDrawingEditor, type DrawingEditorProps } from "./useDrawingEditor";
 import { DrawingComparisonLayer, type DrawingComparison } from "./DrawingComparisonLayer";
+import { Button } from "~/components/ui/button";
+import { NetworkIcon } from "lucide-react";
+import { usePipeSystemSelection } from "./usePipeSystemSelection";
+import { PipeSystemPanel } from "./PipeSystemPanel";
 export type { DrawingEditorProps } from "./useDrawingEditor";
 
 const MIN_ZOOM = 1;
@@ -134,6 +138,20 @@ export function DrawingSheetViewer({
     setMeasureColor(color.toLowerCase());
     writeMeasureColor(color);
   };
+  const [pipeMode, setPipeMode] = useState(false);
+  const pipeTap = useRef<{
+    pointerId: number;
+    x: number;
+    y: number;
+    moved: boolean;
+  } | null>(null);
+  const pipeCalibration = useRef(false);
+  const pipe = usePipeSystemSelection({
+    active: pipeMode,
+    url: pdf?.url,
+    page: pdf?.page,
+    sheetKey,
+  });
   const markId = `measure-${useId().replace(/:/g, "")}`;
   const [calibrating, setCalibrating] = useState(false);
   const [trace, setTrace] = useState<MeasureNode[]>([]);
@@ -173,12 +191,36 @@ export function DrawingSheetViewer({
   const commitTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const wheelSettleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const animation = useRef(0);
-  const velocity = useRef<{ x: number; y: number; t: number }>({ x: 0, y: 0, t: 0 });
-  const editor = useDrawingEditor({ ...editorProps, sourceSheetId: editorProps.sourceSheetId ?? sheetKey, sharedScale: sheetScale }, fit?.aspect ?? 1, (fit?.width ?? 1) * live.current.scale);
+  const velocity = useRef<{ x: number; y: number; t: number }>({
+    x: 0,
+    y: 0,
+    t: 0,
+  });
+  const editor = useDrawingEditor(
+    {
+      ...editorProps,
+      ...(pipeMode
+        ? { tool: "pan" as const, onUpdate: undefined, onDelete: undefined }
+        : {}),
+      sourceSheetId: editorProps.sourceSheetId ?? sheetKey,
+      sharedScale: sheetScale,
+    },
+    fit?.aspect ?? 1,
+    (fit?.width ?? 1) * live.current.scale,
+  );
   const viewportListener = useRef(onViewportChange);
   viewportListener.current = onViewportChange;
   const annotationTool = editorProps.tool ?? "pan";
-  useEffect(() => { setMeasuring(false); setCalibrating(false); }, [annotationTool]);
+  useEffect(() => {
+    setMeasuring(false);
+    setCalibrating(false);
+    setPipeMode(false);
+  }, [annotationTool]);
+  useEffect(() => {
+    setPipeMode(false);
+    pipeTap.current = null;
+    pipeCalibration.current = false;
+  }, [sheetKey, pdf?.url, pdf?.page]);
   useEffect(() => {
     nodeDrag.current = null;
     setDragIndex(null);
@@ -435,6 +477,10 @@ export function DrawingSheetViewer({
       if (sheetKey) writeSheetScale(sheetKey, next);
     }
     editorProps.onScaleChange?.(next);
+    if (pipeCalibration.current) {
+      pipeCalibration.current = false;
+      setMeasuring(false);
+    }
   };
   // Changing the unit only changes how lengths are typed and shown here.
   const changeUnit = (next: LengthUnit) => setUnit(next);
@@ -513,6 +559,10 @@ export function DrawingSheetViewer({
           setCalNodes([]);
           setDraft("");
           setScaleError(null);
+          if (pipeCalibration.current) {
+            pipeCalibration.current = false;
+            setMeasuring(false);
+          }
         } else setMeasuring(false);
       } else if (!typing && (event.key === "Backspace" || (event.key === "z" && (event.metaKey || event.ctrlKey)))) {
         event.preventDefault();
@@ -683,7 +733,29 @@ export function DrawingSheetViewer({
     : savedPoints;
   const rubber =
     dragIndex === null && hover && ((calibrating && calPoints.length === 1) || (!calibrating && path.length >= 1)) ? hover : null;
-  const marked = rubber ? [...drawn, rubber] : drawn;
+  const marked =
+    pipeMode && !calibrating ? [] : rubber ? [...drawn, rubber] : drawn;
+  const pipeSelected = Boolean(pipe.selection?.segments.length);
+  const pipeTotal =
+    pipeSelected &&
+    sheetScale &&
+    Number.isFinite(sheetScale.unitsPerSheetWidth) &&
+    sheetScale.unitsPerSheetWidth > 0
+      ? formatLengthAs(
+          pipe.selection!.lengthInSheetWidths * sheetScale.unitsPerSheetWidth,
+          sheetScale.unit,
+          unit,
+        )
+      : null;
+  const pipeHighlight = useMemo(() =>
+    pipeMode && pipeSelected && fit
+      ? pipe
+          .selection!.segments.map(
+            (segment) =>
+              `M${segment.x1 * 1000},${segment.y1 * fit.aspect * 1000}L${segment.x2 * 1000},${segment.y2 * fit.aspect * 1000}`,
+          )
+          .join(" ")
+      : "", [pipeMode, pipeSelected, pipe.selection, fit]);
   // The measuring line and X marks are sized in sheet units (like the
   // drawing's gridlines) so they zoom with it, but never thinner than about a
   // screen pixel or smaller than ~10px across when zoomed out.
@@ -854,7 +926,7 @@ export function DrawingSheetViewer({
       style={{ WebkitTouchCallout: "none" }}
       onContextMenu={(event) => event.preventDefault()}
       onPointerDown={(event) => {
-        if (measuring && event.button !== 0) return;
+        if ((measuring || pipeMode) && event.button !== 0) return;
         stopAnimation();
         event.currentTarget.setPointerCapture(event.pointerId);
         pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
@@ -866,8 +938,27 @@ export function DrawingSheetViewer({
           quickZoom.current = null;
           panTap.current = null;
           lastTap.current = null;
+          pipeTap.current = null;
         }
-        if (!measuring && pointers.current.size === 1 && editor.down(pointFromClient(event.clientX, event.clientY), event.target)) {
+        if (pipeMode && !calibrating && pointers.current.size === 1) {
+          pipeTap.current = {
+            pointerId: event.pointerId,
+            x: event.clientX,
+            y: event.clientY,
+            moved: false,
+          };
+          lastTap.current = null;
+          return;
+        }
+        if (
+          !measuring &&
+          !pipeMode &&
+          pointers.current.size === 1 &&
+          editor.down(
+            pointFromClient(event.clientX, event.clientY),
+            event.target,
+          )
+        ) {
           lastTap.current = null;
           return;
         }
@@ -924,6 +1015,14 @@ export function DrawingSheetViewer({
         const previous = pointers.current.get(event.pointerId);
         if (!previous || !gesture.current) return;
         pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+        if (
+          pipeTap.current &&
+          Math.hypot(
+            event.clientX - pipeTap.current.x,
+            event.clientY - pipeTap.current.y,
+          ) > MEASURE_TAP_SLOP_PX
+        )
+          pipeTap.current.moved = true;
         const drag = nodeDrag.current;
         if (drag?.pointerId === event.pointerId && pointers.current.size === 1) {
           drag.moved ||= Math.hypot(event.clientX - drag.x, event.clientY - drag.y) > 2;
@@ -956,7 +1055,12 @@ export function DrawingSheetViewer({
           const zoomed = zoomAt(base, factor, mid0);
           move({ ...zoomed, x: zoomed.x + mid.x - mid0.x, y: zoomed.y + mid.y - mid0.y });
         } else if (now.length === 1 && before[0]) {
-          if (!measuring && editor.move(pointFromClient(event.clientX, event.clientY))) return;
+          if (
+            !measuring &&
+            !pipeMode &&
+            editor.move(pointFromClient(event.clientX, event.clientY))
+          )
+            return;
           const p = now[0]!;
           if (measuring && measureTap.current?.holding) {
             rememberAim(event.clientX, event.clientY);
@@ -1017,7 +1121,25 @@ export function DrawingSheetViewer({
         panTap.current = null;
         const tap = measureTap.current;
         const wasSingle = pointers.current.size === 1;
-        const edited = !measuring && wasSingle && editor.up(pointFromClient(event.clientX, event.clientY));
+        const pipeCandidate = pipeTap.current;
+        const pipePoint =
+          pipeMode &&
+          !calibrating &&
+          wasSingle &&
+          pipeCandidate?.pointerId === event.pointerId &&
+          !pipeCandidate.moved &&
+          Math.hypot(
+            event.clientX - pipeCandidate.x,
+            event.clientY - pipeCandidate.y,
+          ) <= MEASURE_TAP_SLOP_PX
+            ? pointFromClient(event.clientX, event.clientY)
+            : null;
+        pipeTap.current = null;
+        const edited =
+          !measuring &&
+          !pipeMode &&
+          wasSingle &&
+          editor.up(pointFromClient(event.clientX, event.clientY));
         pointers.current.delete(event.pointerId);
         measureTap.current = null;
         if (holdTimer.current) clearTimeout(holdTimer.current);
@@ -1025,6 +1147,14 @@ export function DrawingSheetViewer({
         setLoupe(null);
         startGesture();
         if (pointers.current.size > 0) return;
+        if (pipePoint && fit) {
+          pipe.select(
+            pipePoint,
+            SNAP_PX / Math.max(1, fit.width * live.current.scale),
+          );
+          move(live.current, true);
+          return;
+        }
         if (edited) { move(live.current, true); return; }
         if (measuring && tap && !tap.moved && wasSingle) {
           const aim = aimFromClient(event.clientX, event.clientY);
@@ -1042,6 +1172,7 @@ export function DrawingSheetViewer({
         quickZoom.current = null;
         panTap.current = null;
         lastTap.current = null;
+        pipeTap.current = null;
         pointers.current.delete(event.pointerId);
         endHold();
         measureTap.current = null;
@@ -1080,8 +1211,72 @@ export function DrawingSheetViewer({
             moving={moving}
           />
         )}
-        {comparison && fit && <DrawingComparisonLayer primary={{ src, pdf }} comparison={comparison} fit={fit} frameSize={frameSize} view={view} dpr={dpr} />}
-        {fit && <DrawingAnnotationLayer annotations={editorProps.annotations ?? []} aspect={fit.aspect} selectedId={editorProps.selectedId} draft={measuring ? null : editor.draft} editing={editor.editing} hidden={editorProps.hideAnnotations} sharedScale={sheetScale} onSelect={editorProps.onSelect} screenPixelSize={1000 / (fit.width * view.scale)} showResizeHandles={!measuring && annotationTool === "select" && editorProps.selectionMode !== "move" && Boolean(editorProps.onUpdate)} showMoveArea={!measuring && annotationTool === "select" && Boolean(editorProps.onUpdate)} canEditAnnotation={editorProps.canEditAnnotation} />}
+        {comparison && fit && (
+          <DrawingComparisonLayer
+            primary={{ src, pdf }}
+            comparison={comparison}
+            fit={fit}
+            frameSize={frameSize}
+            view={view}
+            dpr={dpr}
+          />
+        )}
+        {fit && (
+          <DrawingAnnotationLayer
+            annotations={editorProps.annotations ?? []}
+            aspect={fit.aspect}
+            selectedId={pipeMode ? null : editorProps.selectedId}
+            draft={measuring || pipeMode ? null : editor.draft}
+            editing={editor.editing}
+            hidden={editorProps.hideAnnotations}
+            sharedScale={sheetScale}
+            onSelect={pipeMode ? undefined : editorProps.onSelect}
+            screenPixelSize={1000 / (fit.width * view.scale)}
+            showResizeHandles={
+              !measuring &&
+              !pipeMode &&
+              annotationTool === "select" &&
+              editorProps.selectionMode !== "move" &&
+              Boolean(editorProps.onUpdate)
+            }
+            showMoveArea={
+              !measuring &&
+              !pipeMode &&
+              annotationTool === "select" &&
+              Boolean(editorProps.onUpdate)
+            }
+            canEditAnnotation={editorProps.canEditAnnotation}
+          />
+        )}
+        {fit && pipeHighlight && (
+          <svg
+            aria-label="Selected pipe system"
+            role="img"
+            data-pipe-segment-count={pipe.selection!.segments.length}
+            className="pointer-events-none absolute inset-0 h-full w-full"
+            viewBox={`0 0 1000 ${fit.aspect * 1000}`}
+          >
+            <path
+              d={pipeHighlight}
+              fill="none"
+              stroke="white"
+              strokeOpacity={0.8}
+              strokeWidth={7}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              vectorEffect="non-scaling-stroke"
+            />
+            <path
+              d={pipeHighlight}
+              fill="none"
+              stroke="#0891b2"
+              strokeWidth={4}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              vectorEffect="non-scaling-stroke"
+            />
+          </svg>
+        )}
       </div>
       {fit && (marked.length > 0 || snapLine) && (
         <div
@@ -1273,6 +1468,63 @@ export function DrawingSheetViewer({
         );
       })()}
       <SheetMeasureBar
+        pipeControl={
+          <Button
+            type="button"
+            variant={pipeMode ? "default" : "outline"}
+            aria-pressed={pipeMode}
+            className="shadow-md"
+            onClick={() => {
+              endHold();
+              cancelNodeDrag();
+              editor.cancelGesture();
+              clearAim();
+              pipeTap.current = null;
+              pipeCalibration.current = false;
+              setMeasuring(false);
+              setCalibrating(false);
+              setCalNodes([]);
+              setScaleError(null);
+              setScaleReadError(null);
+              setPipeMode((on) => !on);
+            }}
+          >
+            <NetworkIcon className="h-4 w-4" />
+            Pipe system
+          </Button>
+        }
+        pipePanel={
+          pipeMode ? (
+            <PipeSystemPanel
+              reading={pipe.reading}
+              error={pipe.error}
+              hasPdf={pipe.hasPdf}
+              hasLines={pipe.hasLines}
+              ready={pipe.ready}
+              codes={pipe.codes}
+              system={pipe.system}
+              selectedSystem={pipe.selection?.system}
+              total={pipeTotal}
+              selected={pipeSelected}
+              partial={pipe.selection?.truncated ?? false}
+              warnings={pipe.selection?.warnings ?? []}
+              unit={unit}
+              scaleSet={sheetScale !== null}
+              canSetScale={
+                !controlledScale || Boolean(editorProps.onScaleChange)
+              }
+              onSystem={pipe.setSystem}
+              onClear={pipe.clear}
+              onRetry={pipe.retry}
+              onScale={() => {
+                pipeCalibration.current = true;
+                setMeasuring(true);
+                beginLengthScale();
+              }}
+              onUnit={changeUnit}
+            />
+          ) : null
+        }
         measuring={measuring}
         calibrating={calibrating}
         pointCount={path.length}
@@ -1288,6 +1540,9 @@ export function DrawingSheetViewer({
         readError={scaleReadError}
         onToggle={() => {
           clearAim();
+          pipeCalibration.current = false;
+          pipeTap.current = null;
+          setPipeMode(false);
           setMeasuring((on) => !on);
           setCalibrating(false);
           setCalNodes([]);
@@ -1307,6 +1562,10 @@ export function DrawingSheetViewer({
           setCalNodes([]);
           setDraft("");
           setScaleError(null);
+          if (pipeCalibration.current) {
+            pipeCalibration.current = false;
+            setMeasuring(false);
+          }
         }}
         onDraft={(value) => {
           setDraft(value);
