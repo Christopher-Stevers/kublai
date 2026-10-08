@@ -10,6 +10,8 @@ import { readPdfSheetScale } from "~/lib/pdf-sheet-scale";
 import { loadSnapLines } from "~/lib/pdf-snap-lines";
 import { writeSheetScale } from "~/lib/sheet-measure";
 import { MEASURE_COLOR_KEY } from "~/lib/sheet-measure-color";
+import { drawingMarkupSchema, type DrawingEntity } from "~/lib/drawing-workspace";
+import { drawingMeasurement } from "~/lib/drawing-annotation-geometry";
 import {
   DrawingSheetViewer,
   type DrawingEditorProps,
@@ -124,6 +126,61 @@ function tap(frame: HTMLElement, x: number, y: number) {
 }
 
 describe("drawing measure", () => {
+  it("saves Done as a persistent coloured dimension with converted units, and starts a fresh run", () => {
+    const source = "0391aed4-7773-47ec-9141-09df373ec008";
+    const onCreate = vi.fn();
+    const { frame, unmount } = openSheet(source, undefined, {
+      sourceSheetId: source, sharedScale: { unit: "ft", unitsPerSheetWidth: 100 }, onCreate,
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Measure" }));
+    tap(frame, 200, 300); tap(frame, 600, 300);
+    fireEvent.click(screen.getByRole("button", { name: "mm" }));
+    fireEvent.click(screen.getByRole("button", { name: /^Measuring color:/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Neon cyan" }));
+    fireEvent.click(screen.getByRole("button", { name: "Done" }));
+    expect(onCreate).toHaveBeenCalledOnce();
+    const saved = drawingMarkupSchema.parse(onCreate.mock.calls[0]![0]);
+    expect(saved).toMatchObject({ sourceSheetId: source, type: "dimension", unit: "mm", scale: 30480, stroke: "#00ffff", parents: [null, 0] });
+    expect(drawingMeasurement(saved, .5)).toBe("15240.00 mm");
+    fireEvent.click(screen.getByRole("button", { name: "Measure" }));
+    expect(frame.querySelectorAll("[data-measure-node]")).toHaveLength(0);
+    fireEvent.click(screen.getByRole("button", { name: "Done" }));
+    expect(onCreate).toHaveBeenCalledOnce();
+    unmount();
+    const entity: DrawingEntity = { id: "saved-measure", sheetId: source, kind: "markup", data: saved, revision: 1, visibility: "private", authorId: "tim", authorName: "Tim", createdAt: "", updatedAt: "", comments: [] };
+    const reopened = openSheet(source, undefined, { annotations: [entity], sharedScale: { unit: "ft", unitsPerSheetWidth: 200 } });
+    expect(reopened.frame.querySelector('[data-annotation-id="saved-measure"]')).toHaveTextContent("15240.00 mm");
+  });
+
+  it("saves a branched run as one markup without counting a jump from the end of the trunk", () => {
+    const onCreate = vi.fn();
+    const { frame } = openSheet("0391aed4-7773-47ec-9141-09df373ec008", undefined, { sharedScale: { unit: "ft", unitsPerSheetWidth: 100 }, onCreate });
+    fireEvent.click(screen.getByRole("button", { name: "Measure" }));
+    tap(frame, 200, 300); tap(frame, 600, 300);
+    fireEvent.click(screen.getByRole("button", { name: "Gap" }));
+    tap(frame, 400, 300); tap(frame, 400, 180);
+    fireEvent.click(screen.getByRole("button", { name: "Done" }));
+    expect(onCreate).toHaveBeenCalledOnce();
+    const saved = drawingMarkupSchema.parse(onCreate.mock.calls[0]![0]);
+    expect(saved.parents).toEqual([null, 2, 0, 2]);
+    expect(drawingMeasurement(saved, .5)).toBe("65'-0\"");
+  });
+
+  it("does not create a markup from calibration, an empty run or a single point", () => {
+    const onCreate = vi.fn();
+    const { frame } = openSheet("0391aed4-7773-47ec-9141-09df373ec008", undefined, { sharedScale: null, onCreate });
+    fireEvent.click(screen.getByRole("button", { name: "Measure" }));
+    fireEvent.click(screen.getByRole("button", { name: "Done" }));
+    fireEvent.click(screen.getByRole("button", { name: "Measure" }));
+    tap(frame, 200, 300);
+    fireEvent.click(screen.getByRole("button", { name: "Done" }));
+    fireEvent.click(screen.getByRole("button", { name: "Measure" }));
+    fireEvent.click(screen.getByRole("button", { name: "Set Scale" }));
+    tap(frame, 200, 300); tap(frame, 600, 300);
+    fireEvent.click(screen.getByRole("button", { name: "Done" }));
+    expect(onCreate).not.toHaveBeenCalled();
+  });
+
   it("keeps the measuring and calibration controls below the drawing gesture surface", () => {
     const { frame } = openSheet("footer-measuring", undefined, {
       sharedScale: { unit: "ft", unitsPerSheetWidth: 100 },
@@ -203,6 +260,8 @@ describe("drawing measure", () => {
       />,
     );
     fireEvent.click(screen.getByRole("button", { name: "Measure" }));
+    tap(frame, 200, 300);
+    tap(frame, 600, 300);
     expect(screen.getByRole("status")).toHaveTextContent("100'-0\"");
   });
 

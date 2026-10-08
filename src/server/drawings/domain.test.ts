@@ -87,6 +87,18 @@ function issue() {
 }
 
 describe("drawing workspace authorization and revisions", () => {
+  it("preserves saved measuring branches and scale through creation and editing", () => {
+    const measurement = {
+      ...markup, type: "dimension", unit: "ft", scale: 100, stroke: "#00ffff",
+      points: [{ x: .2, y: .5 }, { x: .8, y: .5 }, { x: .5, y: .5 }, { x: .5, y: .2 }],
+      parents: [null, 2, 0, 2],
+    };
+    const saved = create({ data: measurement });
+    expect(saved).toMatchObject({ kind: "markup", revision: 1, authorId: worker.id, data: measurement });
+    const update = prepareEntity(input({ expectedRevision: saved.revision, data: { ...measurement, stroke: "#ff00ff" } }), saved, worker, sheets, [], now);
+    expect(update).toMatchObject({ revision: 2, data: { parents: measurement.parents, unit: "ft", scale: 100, stroke: "#ff00ff" } });
+  });
+
   it("requires same organization, approved access, and dashboard permission", () => {
     const user = {
       id: "worker",

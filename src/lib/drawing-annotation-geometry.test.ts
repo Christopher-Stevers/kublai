@@ -6,6 +6,7 @@ import {
   drawingFontSize,
   drawingMarkupBounds,
   drawingMeasurement,
+  drawingLinePath,
   resizeDrawingMarkup,
   simplifyDrawingStroke,
   translateDrawingPoints,
@@ -86,6 +87,31 @@ describe("drawing annotation geometry", () => {
         unitsPerSheetWidth: 100,
       }),
     ).toBe("10 m");
+  });
+  it("preserves a branched measurement through schema parsing, SVG and resizing", () => {
+    const data = drawingMarkupSchema.parse({
+      ...rectangle, type: "dimension", unit: "ft", scale: 100,
+      points: [{ x: .2, y: .5 }, { x: .8, y: .5 }, { x: .5, y: .5 }, { x: .5, y: .2 }],
+      parents: [null, 2, 0, 2],
+    });
+    expect(drawingMeasurement(data, .5)).toBe("75'-0\"");
+    expect(drawingLinePath(data, .5)).toBe("M 500 250 L 800 250 M 200 250 L 500 250 M 500 250 L 500 100");
+    const svg = renderToStaticMarkup(createElement(DrawingAnnotationSvg, { data, aspect: .5 }));
+    expect(svg).toContain(drawingLinePath(data, .5));
+    expect(svg).toContain("75&#x27;-0&quot;");
+    expect(svg).toContain('data-measurement-segment="3"');
+    const resized = resizeDrawingMarkup(data, "se", { x: .9, y: .7 }, .5);
+    expect(resized.parents).toEqual(data.parents);
+    expect(drawingMarkupSchema.safeParse(resized).success).toBe(true);
+  });
+
+  it("rejects invalid measurement graphs without rejecting forward references from split branches", () => {
+    const data = { ...rectangle, type: "dimension", points: [{ x: .1, y: .2 }, { x: .5, y: .2 }, { x: .3, y: .2 }] };
+    for (const parents of [[null, 0], [null, 5, 0], [null, 1, 0], [1, 2, 0], [null, null, null]]) {
+      expect(drawingMarkupSchema.safeParse({ ...data, parents }).success).toBe(false);
+    }
+    expect(drawingMarkupSchema.safeParse({ ...data, parents: [null, 2, 0] }).success).toBe(true);
+    expect(drawingMarkupSchema.safeParse({ ...data, type: "polyline", parents: [null, 2, 0] }).success).toBe(false);
   });
   it("moves a whole shape without deforming it or crossing the page edge", () => {
     expect(

@@ -6,6 +6,20 @@ import type {
 import { formatLength, realLength, type SheetScale } from "./sheet-measure";
 
 export const DRAWING_SVG_WIDTH = 1000;
+/** Explicit edges avoid phantom connections when a measuring run branches. */
+export function drawingMarkupEdges(data: Pick<DrawingMarkup, "points" | "parents">) {
+  return data.points.flatMap((_, index) => {
+    const parent = data.parents ? data.parents[index] : index - 1;
+    return parent != null && parent >= 0 && parent !== index && data.points[parent]
+      ? [{ from: parent, to: index }] : [];
+  });
+}
+export function drawingLinePath(data: Pick<DrawingMarkup, "points" | "parents">, aspect: number) {
+  return drawingMarkupEdges(data).map(({ from, to }) => {
+    const a = data.points[from]!, b = data.points[to]!;
+    return `M ${a.x * 1000} ${a.y * 1000 * aspect} L ${b.x * 1000} ${b.y * 1000 * aspect}`;
+  }).join(" ");
+}
 export type DrawingResizeHandle = "nw" | "ne" | "sw" | "se";
 export type DrawingBounds = {
   left: number;
@@ -242,7 +256,9 @@ export function drawingMeasurement(
   if (!scale || !unit) return "Set scale";
   if (data.type === "area")
     return `${drawingArea(data.points, aspect, scale).toFixed(2)} ${unit}²`;
-  const length = realLength(data.points, aspect, scale);
+  const length = data.parents
+    ? drawingMarkupEdges(data).reduce((total, { from, to }) => total + realLength([data.points[from]!, data.points[to]!], aspect, scale), 0)
+    : realLength(data.points, aspect, scale);
   return unit === "ft" || unit === "m"
     ? formatLength(length, unit)
     : `${length.toFixed(2)} ${unit}`;

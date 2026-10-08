@@ -60,6 +60,25 @@ async function mockSource(rotation = 0) {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("vector drawing export", () => {
+  it("exports saved branches as independent edges rather than a connecting polyline", async () => {
+    await mockSource();
+    const result = await PDFDocument.load(await buildDrawingPdf({
+      pdfUrl: "/source.pdf", pageNumber: 1,
+      markups: [{ ...markup, type: "dimension", unit: "ft", scale: 100,
+        points: [{ x: .2, y: .5 }, { x: .8, y: .5 }, { x: .5, y: .5 }, { x: .5, y: .2 }],
+        parents: [null, 2, 0, 2],
+      }],
+    }));
+    const contents = result.getPage(0).node.Contents() as PDFArray;
+    const operators = Array.from({ length: contents.size() }, (_, index) =>
+      new TextDecoder().decode(decodePDFRawStream(contents.lookup(index, PDFRawStream)).decode()),
+    ).join("\n");
+    expect(operators).toContain("500 300 m\n800 300 l");
+    expect(operators).toContain("200 300 m\n500 300 l");
+    expect(operators).toContain("500 300 m\n500 120 l");
+    expect(operators).not.toContain("800 300 m\n500 120 l");
+  });
+
   it("assembles every package page in snapshot order and fetches shared sources once", async () => {
     await mockSource();
     const result = await PDFDocument.load(

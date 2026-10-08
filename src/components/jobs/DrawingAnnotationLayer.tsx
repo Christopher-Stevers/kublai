@@ -2,7 +2,7 @@
 
 import type { DrawingEntity, DrawingMarkup } from "~/lib/drawing-workspace";
 import type { SheetScale } from "~/lib/sheet-measure";
-import { drawingMarkupBounds } from "~/lib/drawing-annotation-geometry";
+import { drawingMarkupBounds, drawingLinePath } from "~/lib/drawing-annotation-geometry";
 import { DrawingAnnotationSvg } from "./DrawingAnnotationSvg";
 
 export function DrawingAnnotationLayer({ annotations, aspect, selectedId, draft, editing, hidden, sharedScale, onSelect, screenPixelSize = 1, showResizeHandles = true, showMoveArea = false, canEditAnnotation }: {
@@ -28,7 +28,9 @@ export function DrawingAnnotationLayer({ annotations, aspect, selectedId, draft,
           {bounds && canEdit && showMoveArea && <rect data-annotation-move-area="" x={bounds.left * 1000} y={bounds.top * 1000 * aspect} width={(bounds.right - bounds.left) * 1000} height={(bounds.bottom - bounds.top) * 1000 * aspect}
             fill="transparent" pointerEvents="all" style={{ cursor: "move" }} />}
           <DrawingAnnotationSvg data={data} aspect={aspect} sharedScale={sharedScale} />
-          {data.type !== "text" && <polyline points={data.points.map(p => `${p.x * 1000},${p.y * 1000 * aspect}`).join(" ")} fill="none" stroke="transparent" strokeWidth={Math.max(18, data.width + 12)} />}
+          {data.type !== "text" && (data.parents
+            ? <path d={drawingLinePath(data, aspect)} fill="none" stroke="transparent" strokeWidth={Math.max(18, data.width + 12)} />
+            : <polyline points={data.points.map(p => `${p.x * 1000},${p.y * 1000 * aspect}`).join(" ")} fill="none" stroke="transparent" strokeWidth={Math.max(18, data.width + 12)} />)}
           {bounds && <rect x={bounds.left * 1000} y={bounds.top * 1000 * aspect} width={(bounds.right - bounds.left) * 1000} height={(bounds.bottom - bounds.top) * 1000 * aspect}
             fill="none" stroke="#2563eb" strokeWidth={screenPixelSize} strokeDasharray={`${4 * screenPixelSize} ${3 * screenPixelSize}`} pointerEvents="none" />}
           {editable && bounds && ([["nw", bounds.left, bounds.top], ["ne", bounds.right, bounds.top], ["sw", bounds.left, bounds.bottom], ["se", bounds.right, bounds.bottom]] as const).map(([corner, x, y]) => <g key={corner} data-annotation-handle={corner} aria-label={`Resize markup ${corner}`} style={{ cursor: corner === "nw" || corner === "se" ? "nwse-resize" : "nesw-resize" }}>

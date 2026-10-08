@@ -10,6 +10,7 @@ import { readPdfSheetScale } from "~/lib/pdf-sheet-scale";
 import { loadSnapLines } from "~/lib/pdf-snap-lines";
 import {
   formatLengthAs,
+  convertScale,
   MEASURE_TAP_SLOP_PX,
   parseLengthAs,
   readSheetScale,
@@ -309,7 +310,7 @@ export function DrawingSheetViewer({
     };
   }, [tiles, resolveAssetUrl]);
 
-  // Each sheet keeps its own scale. The trace itself lasts only for this visit.
+  // Each sheet keeps its own scale. Unfinished traces last only for this visit.
   useEffect(() => {
     const stored = !controlledScale && sheetKey ? readSheetScale(sheetKey) : null;
     if (!controlledScale) setLocalSheetScale(stored);
@@ -1613,6 +1614,28 @@ export function DrawingSheetViewer({
         scaleLabel={sheetScale?.label}
         readError={scaleReadError}
         onToggle={() => {
+          if (measuring && !calibrating && trace.length >= 2 && editorProps.onCreate) {
+            const sourceSheetId = editorProps.sourceSheetId ?? sheetKey;
+            if (sourceSheetId) {
+              const scale = sheetScale && convertScale(sheetScale, scaleUnitFor(unit));
+              editorProps.onCreate({
+                sourceSheetId,
+                type: "dimension",
+                points: trace.map(node => ({ ...node.point })),
+                parents: trace.map(node => node.parent),
+                stroke: measureColor,
+                width: 2,
+                fill: "none",
+                ...(scale ? {
+                  unit,
+                  scale: scale.unitsPerSheetWidth * (unit === "mm" ? 1000 : unit === "in" ? 12 : 1),
+                } : {}),
+              });
+              dispatchRun({ type: "clear" });
+              setGapMode(false);
+              setGapMessage(null);
+            }
+          }
           clearAim();
           pipeCalibration.current = false;
           pipeTap.current = null;

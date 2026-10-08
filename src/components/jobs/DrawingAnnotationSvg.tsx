@@ -5,6 +5,8 @@ import {
   drawingCloudPath,
   drawingFontSize,
   drawingMeasurement,
+  drawingLinePath,
+  drawingMarkupEdges,
 } from "~/lib/drawing-annotation-geometry";
 
 /** Pure SVG primitives shared by the live editor and printable/exported markups.
@@ -68,6 +70,11 @@ export function DrawingAnnotationSvg({
   };
   let geometry;
   switch (data.type) {
+    case "dimension":
+      geometry = data.parents
+        ? <path d={drawingLinePath(data, aspect)} {...common} fill="none" />
+        : <polyline points={line} {...common} fill="none" />;
+      break;
     case "rect":
     case "link":
       geometry = (
@@ -170,9 +177,9 @@ export function DrawingAnnotationSvg({
   return (
     <g opacity={data.opacity ?? (data.type === "highlight" ? 0.35 : 1)}>
       {geometry}
-      {(data.type === "arrow" || data.type === "dimension") &&
+      {(data.type === "arrow" || data.type === "dimension" && !data.parents) &&
         arrow(last, first)}
-      {(data.type === "callout" || data.type === "dimension") &&
+      {(data.type === "callout" || data.type === "dimension" && !data.parents) &&
         arrow(first, last)}
       {data.type === "callout" &&
         label(data.text ?? "Note", last.x + 8, last.y - 8)}
@@ -182,7 +189,17 @@ export function DrawingAnnotationSvg({
           bounds.left + 5,
           bounds.top + fontSize,
         )}
-      {measurement &&
+      {data.type === "dimension" && data.parents && drawingMarkupEdges(data).map(({ from, to }) => {
+        const a = points[from]!, b = points[to]!;
+        let rotation = Math.atan2(b.y - a.y, b.x - a.x) * 180 / Math.PI;
+        if (rotation > 90) rotation -= 180;
+        if (rotation < -90) rotation += 180;
+        const segmentLabel = drawingMeasurement({ ...data, parents: undefined, points: [data.points[from]!, data.points[to]!] }, aspect, sharedScale);
+        return <g key={to} transform={`translate(${(a.x + b.x) / 2} ${(a.y + b.y) / 2}) rotate(${rotation})`} data-measurement-segment={to}>
+          {label(segmentLabel ?? "Set scale", 0, -8)}
+        </g>;
+      })}
+      {measurement && (!data.parents || drawingMarkupEdges(data).length > 1) &&
         label(measurement, (bounds.left + bounds.right) / 2, bounds.top - 8)}
     </g>
   );

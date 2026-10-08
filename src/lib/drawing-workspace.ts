@@ -64,6 +64,8 @@ export const drawingMarkupSchema = z
     sourceSheetId: id,
     type: drawingMarkupTypeSchema,
     points: z.array(drawingPointSchema).min(1).max(4000),
+    /** Saved measuring runs can branch; null starts a disconnected run. */
+    parents: z.array(z.number().int().min(0).max(3999).nullable()).min(2).max(4000).optional(),
     stroke: color.default("#ef4444"),
     width: z.number().finite().min(0.1).max(40).default(2),
     /** Text size in the shared 1000-unit drawing coordinate system. */
@@ -77,6 +79,30 @@ export const drawingMarkupSchema = z
     scale: z.number().finite().positive().max(1e9).optional(),
   })
   .superRefine((markup, ctx) => {
+    if (markup.parents) {
+      const parents = markup.parents;
+      if (markup.type !== "dimension" || parents.length !== markup.points.length ||
+        !parents.some(parent => parent !== null) ||
+        parents.some((parent, index) => parent !== null && (parent >= parents.length || parent === index))) {
+        ctx.addIssue({ code: "custom", path: ["parents"], message: "Invalid measurement connections." });
+      } else {
+        const visited = new Uint8Array(parents.length);
+        for (let index = 0; index < parents.length; index++) {
+          let next: number | null = index;
+          const path: number[] = [];
+          while (next !== null && visited[next] === 0) {
+            visited[next] = 1;
+            path.push(next);
+            next = parents[next]!;
+          }
+          if (next !== null && visited[next] === 1) {
+            ctx.addIssue({ code: "custom", path: ["parents"], message: "Measurement connections cannot form a cycle." });
+            break;
+          }
+          for (const node of path) visited[node] = 2;
+        }
+      }
+    }
     const minimum = ["text", "count"].includes(markup.type)
       ? 1
       : ["area", "polycloud", "angle"].includes(markup.type)

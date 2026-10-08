@@ -19,6 +19,8 @@ import {
   drawingCloudPath,
   drawingFontSize,
   drawingMeasurement,
+  drawingLinePath,
+  drawingMarkupEdges,
 } from "./drawing-annotation-geometry";
 import type { SheetScale } from "./sheet-measure";
 
@@ -166,7 +168,7 @@ async function drawMarkup(
     color: color(data.fill),
     opacity: opacity * alpha(data.fill),
   };
-  const line = `M ${points.map((point) => `${point.x} ${point.y}`).join(" L ")}`;
+  const line = data.parents ? drawingLinePath(data, aspect) : `M ${points.map((point) => `${point.x} ${point.y}`).join(" L ")}`;
   const textSize = drawingFontSize(data) * factor;
   const text = (value: string, x: number, y: number) =>
     label(
@@ -275,8 +277,8 @@ async function drawMarkup(
           data.type === "highlight" ? Math.max(12, data.width * 5) : data.width,
       });
   }
-  if (data.type === "arrow" || data.type === "dimension") arrow(last, first);
-  if (data.type === "callout" || data.type === "dimension") arrow(first, last);
+  if (data.type === "arrow" || data.type === "dimension" && !data.parents) arrow(last, first);
+  if (data.type === "callout" || data.type === "dimension" && !data.parents) arrow(first, last);
   if (data.type === "callout")
     await text(data.text?.length ? data.text : "Note", last.x + 8, last.y - 8);
   if (data.type === "link") {
@@ -306,7 +308,13 @@ async function drawMarkup(
     }
   }
   const measurement = drawingMeasurement(data, aspect, sharedScale);
-  if (measurement)
+  if (data.type === "dimension" && data.parents) {
+    for (const { from, to } of drawingMarkupEdges(data)) {
+      const segmentLabel = drawingMeasurement({ ...data, parents: undefined, points: [data.points[from]!, data.points[to]!] }, aspect, sharedScale);
+      if (segmentLabel) await text(segmentLabel, (points[from]!.x + points[to]!.x) / 2, (points[from]!.y + points[to]!.y) / 2 - 8);
+    }
+  }
+  if (measurement && (!data.parents || drawingMarkupEdges(data).length > 1))
     await text(measurement, (bounds.left + bounds.right) / 2, bounds.top - 8);
 }
 
