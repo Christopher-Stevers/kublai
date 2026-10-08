@@ -60,6 +60,7 @@ import { ViewToggle } from "~/components/ui/view-toggle";
 import { useOnlineStatus } from "~/hooks/use-online-status";
 import { useWorkspaceMutations } from "~/hooks/use-workspace-mutations";
 import { useTutorialSandbox } from "~/components/tutorial/tutorial-sandbox-context";
+import { useInstallPrompt } from "~/lib/install-prompt";
 import { getNextMaterialListNameFromNames } from "~/lib/material-list-names";
 import {
   HEADER_BACK_REQUEST_EVENT,
@@ -216,6 +217,21 @@ export function DashboardClient({
   const { getReplicache: getMaterialListReplicache, mutateAndSync: mutateMaterialListAndSync } = useWorkspaceMutations();
   const sandbox = useTutorialSandbox();
   const router = useRouter();
+  // Until the app is installed: install it (Android/desktop Chrome prompt) or
+  // show how (iPhone and others) on the Account page.
+  const { installed: appInstalled, install: installApp } = useInstallPrompt();
+  const installButton = (className: string) =>
+    sandbox || appInstalled ? null : (
+      <Button
+        variant="outline"
+        className={`h-auto max-w-[11.5rem] shrink-0 px-3 py-1.5 text-center text-xs leading-tight whitespace-normal ${className}`}
+        onClick={async () => {
+          if (!(await installApp())) router.push("/dashboard/account");
+        }}
+      >
+        Add To Homescreen For Notifications and Better Performance
+      </Button>
+    );
   const hasRedirectedRef = useRef(false);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [newJobName, setNewJobName] = useState("");
@@ -935,22 +951,28 @@ export function DashboardClient({
           </div>
         )}
         <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-foreground sm:text-3xl">
-              Dashboard
-            </h1>
-            <p className="text-muted-foreground mt-2 text-sm sm:text-base">
-              Select a job to open it
-            </p>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h1 className="text-2xl font-bold text-foreground sm:text-3xl">
+                Dashboard
+              </h1>
+              <p className="text-muted-foreground mt-2 text-sm sm:text-base">
+                Select a job to open it
+              </p>
+            </div>
+            {installButton("sm:hidden")}
           </div>
-          <Button
-            onClick={() => setShowCreateDialog(true)}
-            size="lg"
-            className={`h-11 w-full sm:w-auto ${jobs.length > 0 ? "hidden sm:inline-flex" : ""}`}
-          >
-            <PlusIcon className="mr-2 h-5 w-5" />
-            Add Job
-          </Button>
+          <div className="flex items-center gap-3">
+            {installButton("hidden sm:inline-flex")}
+            <Button
+              onClick={() => setShowCreateDialog(true)}
+              size="lg"
+              className={`h-11 w-full sm:w-auto ${jobs.length > 0 ? "hidden sm:inline-flex" : ""}`}
+            >
+              <PlusIcon className="mr-2 h-5 w-5" />
+              Add Job
+            </Button>
+          </div>
         </div>
 
         {isWaitingForJobs ? (
