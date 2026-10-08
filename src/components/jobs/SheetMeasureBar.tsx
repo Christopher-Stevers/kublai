@@ -1,11 +1,12 @@
 "use client";
 
-import type { PointerEvent } from "react";
-import { RulerIcon } from "lucide-react";
+import { useId, useState, type PointerEvent } from "react";
+import { CheckIcon, ChevronDownIcon, RulerIcon } from "lucide-react";
 
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { LENGTH_UNITS, type LengthUnit } from "~/lib/sheet-measure";
+import { MEASURE_COLORS, measureColorHalo } from "~/lib/sheet-measure-color";
 
 /**
  * Controls for tracing a distance on a drawing.
@@ -34,6 +35,8 @@ export function SheetMeasureBar({
   onDraft,
   onUnit,
   onApply,
+  color,
+  onColor,
 }: {
   measuring: boolean;
   calibrating: boolean;
@@ -63,6 +66,8 @@ export function SheetMeasureBar({
   onDraft: (value: string) => void;
   onUnit: (unit: LengthUnit) => void;
   onApply: () => void;
+  color: string;
+  onColor: (color: string) => void;
 }) {
   const stop = (event: PointerEvent) => event.stopPropagation();
   return (
@@ -71,6 +76,7 @@ export function SheetMeasureBar({
       onPointerDown={stop}
       onPointerMove={stop}
       onPointerUp={stop}
+      onWheel={(event) => event.stopPropagation()}
     >
       <Button
         type="button"
@@ -83,7 +89,7 @@ export function SheetMeasureBar({
         {measuring ? "Done" : "Measure"}
       </Button>
       {measuring && (
-        <div className="bg-card/95 space-y-2 rounded-md p-3 shadow-md">
+        <div className="bg-card/95 max-h-[65dvh] space-y-2 overflow-y-auto overscroll-contain rounded-md p-3 shadow-md">
           {calibrating ? (
             <Calibration
               count={calibrationCount}
@@ -116,6 +122,60 @@ export function SheetMeasureBar({
               onUnit={onUnit}
             />
           )}
+          <MeasureColorPicker color={color} onColor={onColor} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MeasureColorPicker({ color, onColor }: { color: string; onColor: (color: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const id = useId();
+  const name = MEASURE_COLORS.find((item) => item.value === color)?.name ?? "Custom";
+  return (
+    <div className="border-t pt-2">
+      <button
+        type="button"
+        className="flex min-h-9 w-full items-center gap-2 text-sm"
+        aria-label={`Measuring color: ${name}`}
+        aria-expanded={open}
+        aria-controls={id}
+        onClick={() => setOpen((current) => !current)}
+      >
+        <span className="h-5 w-5 rounded-full border border-current/30" style={{ backgroundColor: color }} />
+        <span>Color</span>
+        <span className="text-muted-foreground ml-auto text-xs">{name}</span>
+        <ChevronDownIcon className={`h-4 w-4 transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+      {open && (
+        <div id={id} className="space-y-2 pt-1">
+          <div role="group" aria-label="Measuring colors" className="grid grid-cols-5 gap-1">
+            {MEASURE_COLORS.map((item) => (
+              <button
+                key={item.value}
+                type="button"
+                aria-label={item.name}
+                aria-pressed={color === item.value}
+                title={item.name}
+                className="flex h-11 items-center justify-center rounded-md border border-current/25 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                style={{ backgroundColor: item.value, color: measureColorHalo(item.value) }}
+                onClick={() => { onColor(item.value); setOpen(false); }}
+              >
+                {color === item.value && <CheckIcon aria-hidden="true" className="h-5 w-5" />}
+              </button>
+            ))}
+          </div>
+          <label className="flex items-center justify-between gap-2 text-sm">
+            Custom color
+            <input
+              type="color"
+              aria-label="Custom measuring color"
+              value={color}
+              onChange={(event) => onColor(event.target.value)}
+              className="h-10 w-12 cursor-pointer rounded border bg-transparent p-0.5"
+            />
+          </label>
         </div>
       )}
     </div>

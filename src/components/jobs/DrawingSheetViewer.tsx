@@ -23,6 +23,13 @@ import {
   type SheetPoint,
   type SheetScale,
 } from "~/lib/sheet-measure";
+import {
+  DEFAULT_MEASURE_COLOR,
+  measureColorHalo,
+  readMeasureColor,
+  validMeasureColor,
+  writeMeasureColor,
+} from "~/lib/sheet-measure-color";
 import { scaleReadMessage } from "~/lib/sheet-scale-text";
 import { buildSnapIndex, mergeCollinear, snapToLine, type SnapIndex, type SnapSegment } from "~/lib/sheet-snap";
 import { SheetMeasureBar } from "./SheetMeasureBar";
@@ -118,6 +125,14 @@ export function DrawingSheetViewer({
     setLoupe(null);
   };
   const [measuring, setMeasuring] = useState(false);
+  const [measureColor, setMeasureColor] = useState(DEFAULT_MEASURE_COLOR);
+  const measureHalo = measureColorHalo(measureColor);
+  useEffect(() => setMeasureColor(readMeasureColor()), []);
+  const changeMeasureColor = (color: string) => {
+    if (!validMeasureColor(color)) return;
+    setMeasureColor(color.toLowerCase());
+    writeMeasureColor(color);
+  };
   const markId = `measure-${useId().replace(/:/g, "")}`;
   const [calibrating, setCalibrating] = useState(false);
   const [trace, setTrace] = useState<MeasureNode[]>([]);
@@ -763,10 +778,11 @@ export function DrawingSheetViewer({
       );
     }
     for (let i = 1; i < marked.length; i++) {
+      strokeLine(map(toClient(marked[i - 1]!)), map(toClient(marked[i]!)), measureHalo, (lockedAngle ? 4.5 : 3.5) * dpr);
       strokeLine(
         map(toClient(marked[i - 1]!)),
         map(toClient(marked[i]!)),
-        lockedAngle ? "rgba(22, 163, 74, 0.95)" : "rgba(217, 119, 6, 0.9)",
+        measureColor,
         (lockedAngle ? 2.5 : 1.5) * dpr,
       );
     }
@@ -781,8 +797,8 @@ export function DrawingSheetViewer({
     const c = map(centre);
     const arm = 10 * dpr;
     for (const [dx, dy] of [[1, 1], [1, -1]] as const) {
-      strokeLine({ x: c.x - dx * arm, y: c.y - dy * arm }, { x: c.x + dx * arm, y: c.y + dy * arm }, "rgba(255,255,255,0.8)", 3.5 * dpr);
-      strokeLine({ x: c.x - dx * arm, y: c.y - dy * arm }, { x: c.x + dx * arm, y: c.y + dy * arm }, "#b45309", 1.5 * dpr);
+      strokeLine({ x: c.x - dx * arm, y: c.y - dy * arm }, { x: c.x + dx * arm, y: c.y + dy * arm }, measureHalo, 3.5 * dpr);
+      strokeLine({ x: c.x - dx * arm, y: c.y - dy * arm }, { x: c.x + dx * arm, y: c.y + dy * arm }, measureColor, 1.5 * dpr);
     }
   });
   const snapMark = Math.max(1.2, 8 / view.scale);
@@ -1105,8 +1121,8 @@ export function DrawingSheetViewer({
                   <polyline
                     points={marked.map((point) => `${point.x * fit.width},${point.y * fit.height}`).join(" ")}
                     fill="none"
-                    stroke="#ffffff"
-                    strokeOpacity={0.6}
+                    stroke={measureHalo}
+                    strokeOpacity={0.85}
                     strokeWidth={markStroke * 2.2}
                     strokeLinejoin="round"
                     strokeLinecap="round"
@@ -1114,7 +1130,9 @@ export function DrawingSheetViewer({
                   <polyline
                     points={marked.map((point) => `${point.x * fit.width},${point.y * fit.height}`).join(" ")}
                     fill="none"
-                    stroke={lockedAngle ? "#16a34a" : "#d97706"}
+                    data-measure-path="true"
+                    data-angle-locked={lockedAngle ? "true" : "false"}
+                    stroke={measureColor}
                     strokeWidth={lockedAngle ? markStroke * 1.6 : markStroke}
                     strokeLinejoin="round"
                     strokeLinecap="round"
@@ -1132,8 +1150,8 @@ export function DrawingSheetViewer({
                         textAnchor="middle"
                         fontSize={fontSize}
                         fontWeight={600}
-                        fill={angle ? "#15803d" : "#92400e"}
-                        stroke="#ffffff"
+                        fill={measureColor}
+                        stroke={measureHalo}
                         strokeWidth={4 / view.scale}
                         strokeLinejoin="round"
                         paintOrder="stroke"
@@ -1177,8 +1195,8 @@ export function DrawingSheetViewer({
                         y1={cy + ay! * arm}
                         x2={cx + bx! * arm}
                         y2={cy + by! * arm}
-                        stroke="#ffffff"
-                        strokeOpacity={0.6}
+                        stroke={measureHalo}
+                        strokeOpacity={0.85}
                         strokeWidth={markStroke * 2.2}
                         strokeLinecap="round"
                       />
@@ -1187,7 +1205,7 @@ export function DrawingSheetViewer({
                         y1={cy + ay! * arm}
                         x2={cx + bx! * arm}
                         y2={cy + by! * arm}
-                        stroke="#b45309"
+                        stroke={measureColor}
                         strokeWidth={markStroke}
                         strokeLinecap="round"
                       />
@@ -1258,6 +1276,8 @@ export function DrawingSheetViewer({
         }}
         onUnit={changeUnit}
         onApply={applyScale}
+        color={measureColor}
+        onColor={changeMeasureColor}
       />
     </div>
   );

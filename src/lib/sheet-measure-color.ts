@@ -1,0 +1,42 @@
+export const MEASURE_COLOR_KEY = "foremanhq-measure-color-v1";
+export const DEFAULT_MEASURE_COLOR = "#d97706";
+export const MEASURE_COLORS = [
+  { name: "Orange", value: DEFAULT_MEASURE_COLOR },
+  { name: "Red", value: "#dc2626" },
+  { name: "Blue", value: "#2563eb" },
+  { name: "Black", value: "#111827" },
+  { name: "White", value: "#ffffff" },
+  { name: "Neon green", value: "#39ff14" },
+  { name: "Neon cyan", value: "#00ffff" },
+  { name: "Neon pink", value: "#ff00cc" },
+  { name: "Neon yellow", value: "#ffff00" },
+  { name: "Neon purple", value: "#bf00ff" },
+] as const;
+
+export function validMeasureColor(value: unknown): value is string {
+  return typeof value === "string" && /^#[0-9a-f]{6}$/i.test(value);
+}
+
+/** Personal device preference; unavailable browser storage must not block measuring. */
+export function readMeasureColor(): string {
+  try {
+    const color = localStorage.getItem(MEASURE_COLOR_KEY);
+    return validMeasureColor(color) ? color.toLowerCase() : DEFAULT_MEASURE_COLOR;
+  } catch { return DEFAULT_MEASURE_COLOR; }
+}
+
+export function writeMeasureColor(color: string) {
+  if (!validMeasureColor(color)) return;
+  try { localStorage.setItem(MEASURE_COLOR_KEY, color.toLowerCase()); } catch { /* Private/restricted storage. */ }
+}
+
+/** Choose the more legible light/dark halo, particularly for neon on white sheets. */
+export function measureColorHalo(color: string): string {
+  if (!validMeasureColor(color)) return "#ffffff";
+  const channel = (offset: number) => {
+    const value = Number.parseInt(color.slice(offset, offset + 2), 16) / 255;
+    return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+  };
+  const luminance = 0.2126 * channel(1) + 0.7152 * channel(3) + 0.0722 * channel(5);
+  return luminance > 0.179 ? "#111827" : "#ffffff";
+}

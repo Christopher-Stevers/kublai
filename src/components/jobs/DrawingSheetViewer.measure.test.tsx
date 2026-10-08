@@ -9,6 +9,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { readPdfSheetScale } from "~/lib/pdf-sheet-scale";
 import { loadSnapLines } from "~/lib/pdf-snap-lines";
 import { writeSheetScale } from "~/lib/sheet-measure";
+import { MEASURE_COLOR_KEY } from "~/lib/sheet-measure-color";
 import {
   DrawingSheetViewer,
   type DrawingEditorProps,
@@ -323,7 +324,7 @@ describe("drawing measure", () => {
     expect(screen.getByRole("status").textContent).toBe("50'-0\"");
   });
 
-  it("locks the second end of a scale square to the first end's line, in green", async () => {
+  it("locks the second end of a scale square to the first end's line", async () => {
     vi.mocked(loadSnapLines).mockResolvedValue([{ x1: 0, y1: 0.5, x2: 1, y2: 0.5 }]);
     const { frame } = openSheet("sheet-square", { url: "/plan.pdf", page: 1 });
     fireEvent.click(screen.getByRole("button", { name: "Measure" }));
@@ -334,11 +335,11 @@ describe("drawing measure", () => {
     tap(frame, 400, 300);
     // Nearly straight up from a point on a horizontal line: locks at 90°.
     fireEvent.pointerMove(frame, { clientX: 408, clientY: 150, buttons: 0 });
-    expect(frame.querySelector('polyline[stroke="#16a34a"]')).toBeTruthy();
+    expect(frame.querySelector('polyline[data-measure-path][data-angle-locked="true"]')).toBeTruthy();
     expect(screen.getByText("90°")).toBeInTheDocument();
     // Well off square or 45°: no lock.
     fireEvent.pointerMove(frame, { clientX: 520, clientY: 150, buttons: 0 });
-    expect(frame.querySelector('polyline[stroke="#16a34a"]')).toBeNull();
+    expect(frame.querySelector('polyline[data-measure-path][data-angle-locked="true"]')).toBeNull();
     // Only two ends: a third tap changes nothing.
     tap(frame, 404, 150);
     tap(frame, 700, 100);
@@ -354,7 +355,7 @@ describe("drawing measure", () => {
     tap(frame, 400, 300);
     fireEvent.pointerMove(frame, { clientX: 408, clientY: 150, buttons: 0 });
     expect(screen.getByText("90°")).toBeInTheDocument();
-    expect(frame.querySelector('polyline[stroke="#16a34a"]')?.getAttribute("points")).toBe("400,200 400,50");
+    expect(frame.querySelector('polyline[data-measure-path][data-angle-locked="true"]')?.getAttribute("points")).toBe("400,200 400,50");
     tap(frame, 408, 150);
     expect(screen.getByRole("status")).toHaveTextContent("18'-9\"");
     // The next segment locks relative to its own anchor, not the first point.
@@ -380,7 +381,7 @@ describe("drawing measure", () => {
     tap(frame, 400, 312);
     fireEvent.pointerMove(frame, { clientX: 408, clientY: 160, buttons: 0 });
     expect(frame.querySelector('line[stroke="#22d3ee"]')).toBeTruthy();
-    expect(frame.querySelector('polyline[stroke="#16a34a"]')?.getAttribute("points")).toBe("400,200 400,50");
+    expect(frame.querySelector('polyline[data-measure-path][data-angle-locked="true"]')?.getAttribute("points")).toBe("400,200 400,50");
     tap(frame, 408, 160);
     expect(screen.getByRole("status")).toHaveTextContent("18'-9\"");
   });
@@ -439,7 +440,7 @@ describe("drawing measure", () => {
     fireEvent.pointerMove(frame, { clientX: 226, clientY: 100, buttons: 0 });
     expect(screen.queryByText("90°")).toBeNull();
     tap(frame, 226, 100);
-    const coordinates = frame.querySelector('polyline[stroke="#d97706"]')?.getAttribute("points")?.split(/[ ,]/).map(Number);
+    const coordinates = frame.querySelector('polyline[data-measure-path]')?.getAttribute("points")?.split(/[ ,]/).map(Number);
     expect(coordinates?.slice(0, 2)).toEqual([200, 400]);
     expect(coordinates?.[2]).toBeCloseTo(226, 9);
     expect(coordinates?.[3]).toBe(0);
@@ -455,7 +456,7 @@ describe("drawing measure", () => {
     await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("snap onto lines"));
     tap(frame, 400, 300);
     tap(frame, 600, 310);
-    expect(frame.querySelector('polyline[stroke="#d97706"]')?.getAttribute("points")).toBe("400,200 600,210");
+    expect(frame.querySelector('polyline[data-measure-path]')?.getAttribute("points")).toBe("400,200 600,210");
   });
 
   it("reads the printed scale and measures with it", async () => {
@@ -577,7 +578,7 @@ describe("dragging existing measuring nodes", () => {
     fireEvent.pointerUp(frame, { clientX: x, clientY: y, pointerId: id, button: 0, buttons: 0 });
   }
   function points(frame: HTMLElement) {
-    return frame.querySelector('polyline[stroke="#d97706"], polyline[stroke="#16a34a"]')?.getAttribute("points");
+    return frame.querySelector('polyline[data-measure-path]')?.getAttribute("points");
   }
 
   it("drags a middle point, updating both segments and the total without adding a node", () => {
@@ -749,5 +750,78 @@ describe("drawing one-finger zoom", () => {
     pointer(frame, "pointerUp", 400, 2, 600);
     pointer(frame, "pointerUp", 400);
     await waitFor(() => expect(scale(frame)).toBeCloseTo(Math.exp(0.8) * 2));
+  });
+});
+
+describe("measuring colors", () => {
+  const choose = (name: string) => {
+    fireEvent.click(screen.getByRole("button", { name: /^Measuring color:/ }));
+    fireEvent.click(screen.getByRole("button", { name }));
+  };
+
+  it("recolors an existing trace, nodes, and lengths without changing geometry, including angle locks", () => {
+    const { frame } = openSheet("color-trace", undefined, {
+      sharedScale: { unit: "ft", unitsPerSheetWidth: 100 },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Measure" }));
+    tap(frame, 200, 300);
+    tap(frame, 400, 300);
+    const points = frame.querySelector("[data-measure-path]")?.getAttribute("points");
+    const drawingLayer = screen.getByAltText("Sheet").parentElement!;
+    const transform = drawingLayer.style.transform;
+    fireEvent.wheel(screen.getByRole("button", { name: /^Measuring color:/ }), { deltaY: 80 });
+    expect(drawingLayer.style.transform).toBe(transform);
+    choose("Neon yellow");
+    expect(frame.querySelector("[data-measure-path]")).toHaveAttribute("stroke", "#ffff00");
+    expect(frame.querySelector("[data-measure-path]")).toHaveAttribute("points", points!);
+    expect(frame.querySelectorAll("[data-measure-node]")).toHaveLength(2);
+    expect(frame.querySelector('[data-measure-node] line[stroke="#ffff00"]')).toBeTruthy();
+    expect(frame.querySelector("[data-measure-length]")).toHaveAttribute("fill", "#ffff00");
+    expect(frame.querySelector("[data-measure-length]")).toHaveAttribute("stroke", "#111827");
+    expect(screen.getByRole("status")).toHaveTextContent("25'-0\"");
+    fireEvent.pointerMove(frame, { clientX: 408, clientY: 150, buttons: 0 });
+    expect(screen.getByText("90°")).toBeInTheDocument();
+    expect(frame.querySelector('[data-measure-path][data-angle-locked="true"]')).toHaveAttribute("stroke", "#ffff00");
+  });
+
+  it("uses custom colors for scale and trace and remembers the choice on another sheet", () => {
+    const { frame } = openSheet("color-scale");
+    fireEvent.click(screen.getByRole("button", { name: "Measure" }));
+    fireEvent.click(screen.getByRole("button", { name: "Set Scale" }));
+    tap(frame, 200, 300);
+    tap(frame, 400, 300);
+    fireEvent.click(screen.getByRole("button", { name: /^Measuring color:/ }));
+    fireEvent.change(screen.getByLabelText("Custom measuring color"), { target: { value: "#00ff88" } });
+    expect(frame.querySelector("[data-measure-path]")).toHaveAttribute("stroke", "#00ff88");
+    expect(frame.querySelectorAll("[data-measure-node]")).toHaveLength(2);
+    expect(localStorage.getItem(MEASURE_COLOR_KEY)).toBe("#00ff88");
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    tap(frame, 200, 300);
+    tap(frame, 400, 300);
+    expect(frame.querySelector("[data-measure-path]")).toHaveAttribute("stroke", "#00ff88");
+    cleanup();
+    const next = openSheet("another-color-sheet");
+    fireEvent.click(screen.getByRole("button", { name: "Measure" }));
+    expect(screen.getByRole("button", { name: "Measuring color: Custom" })).toBeInTheDocument();
+    tap(next.frame, 200, 300);
+    tap(next.frame, 400, 300);
+    expect(next.frame.querySelector("[data-measure-path]")).toHaveAttribute("stroke", "#00ff88");
+  });
+
+  it("still changes color and measures when browser preference storage is blocked", () => {
+    vi.stubGlobal("localStorage", {
+      getItem: () => { throw new Error("Storage blocked"); },
+      setItem: () => { throw new Error("Storage blocked"); },
+    });
+    const { frame } = openSheet("no-color-storage", undefined, {
+      sharedScale: { unit: "ft", unitsPerSheetWidth: 100 },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Measure" }));
+    expect(screen.getByRole("button", { name: "Measuring color: Orange" })).toBeInTheDocument();
+    choose("Neon pink");
+    tap(frame, 200, 300);
+    tap(frame, 400, 300);
+    expect(frame.querySelector("[data-measure-path]")).toHaveAttribute("stroke", "#ff00cc");
+    expect(screen.getByRole("status")).toHaveTextContent("25'-0\"");
   });
 });
