@@ -39,6 +39,7 @@ export function SheetMeasureBar({
   onColor,
   pipeControl,
   pipePanel,
+  zoomControl,
   gap = false,
   canGap = false,
   gapMessage,
@@ -76,6 +77,7 @@ export function SheetMeasureBar({
   onColor: (color: string) => void;
   pipeControl?: React.ReactNode;
   pipePanel?: React.ReactNode;
+  zoomControl?: ReactNode;
   gap?: boolean;
   canGap?: boolean;
   gapMessage?: string | null;
@@ -94,6 +96,12 @@ export function SheetMeasureBar({
       <RulerIcon className="h-4 w-4" />
       {measuring ? "Done" : "Measure"}
     </Button>
+  );
+  const measuringControls = (
+    <div className="flex shrink-0 items-center gap-2">
+      {zoomControl}
+      {toggle}
+    </div>
   );
   return (
     <section
@@ -121,7 +129,7 @@ export function SheetMeasureBar({
               onUnit={onUnit}
               onApply={onApply}
               onReadPrinted={onReadPrinted}
-              controls={toggle}
+              controls={measuringControls}
               color={color}
               onColor={onColor}
             />
@@ -143,13 +151,14 @@ export function SheetMeasureBar({
               gapMessage={gapMessage}
               onGap={onGap}
               onUnit={onUnit}
-              controls={toggle}
+              controls={measuringControls}
               color={color}
               onColor={onColor}
             />
           )
         ) : (
           <div className="flex items-center justify-end gap-2">
+            <div className="mr-auto">{zoomControl}</div>
             {pipeControl}
             {toggle}
           </div>

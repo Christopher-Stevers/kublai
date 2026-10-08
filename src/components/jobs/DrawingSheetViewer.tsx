@@ -194,6 +194,7 @@ export function DrawingSheetViewer({
   const frameRequest = useRef(0);
   const pipeHalo = useRef<SVGPathElement>(null);
   const pipeStroke = useRef<SVGPathElement>(null);
+  const zoomLabel = useRef<HTMLSpanElement>(null);
   const commitTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const wheelSettleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const animation = useRef(0);
@@ -619,6 +620,10 @@ export function DrawingSheetViewer({
     if (layer.current) layer.current.style.transform = transform;
     // Measurements stay above the image, tiles and persistent PDF patches.
     if (marks.current) marks.current.style.transform = transform;
+    const zoomText = `${Math.round(scale * 100)}%`;
+    if (zoomLabel.current && zoomLabel.current.textContent !== zoomText) {
+      zoomLabel.current.textContent = zoomText;
+    }
     if (fit) {
       // Follow the live CSS zoom every frame, before the React/tile state
       // catches up. Ancestor transforms also scale non-scaling SVG strokes.
@@ -1518,6 +1523,16 @@ export function DrawingSheetViewer({
       })()}
     </div>
       <SheetMeasureBar
+        zoomControl={
+          <span
+            ref={zoomLabel}
+            aria-label="Drawing zoom"
+            title="Zoom (100% = fit to screen)"
+            className="text-muted-foreground shrink-0 text-xs tabular-nums"
+          >
+            {Math.round(view.scale * 100)}%
+          </span>
+        }
         pipeControl={
           <Button
             type="button"
