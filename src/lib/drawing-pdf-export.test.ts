@@ -5,6 +5,8 @@ import {
   PDFRawStream,
   PDFString,
   PDFHexString,
+  PDFArray,
+  decodePDFRawStream,
   degrees,
   rgb,
 } from "pdf-lib";
@@ -235,6 +237,45 @@ describe("vector drawing export", () => {
       }),
     );
     expect(result.getPage(0).node.Annots()?.size()).toBe(1);
+  });
+
+  it("prints persisted text size in the same 1000-unit system as the SVG editor", async () => {
+    await mockSource();
+    for (const [fontSize, expectedSize] of [
+      [undefined, 9],
+      [48, 24],
+    ] as const) {
+      const output = await PDFDocument.load(
+        await buildDrawingPdf({
+          pdfUrl: "/source.pdf",
+          pageNumber: 1,
+          markups: [
+            {
+              ...markup,
+              type: "text",
+              text: "Resized note",
+              points: [markup.points[0]!],
+              fontSize,
+            },
+          ],
+        }),
+      );
+      const contents = output.getPage(0).node.Contents();
+      const streams =
+        contents instanceof PDFArray
+          ? Array.from({ length: contents.size() }, (_, index) =>
+              contents.lookup(index, PDFRawStream),
+            )
+          : contents instanceof PDFRawStream
+            ? [contents]
+            : [];
+      const operators = streams
+        .map((stream) =>
+          new TextDecoder().decode(decodePDFRawStream(stream).decode()),
+        )
+        .join("\n");
+      expect(operators).toMatch(new RegExp(`\\s${expectedSize} Tf\\b`));
+    }
   });
 
   it("uses the account-scoped offline resolver and refuses missing pages or failed downloads", async () => {

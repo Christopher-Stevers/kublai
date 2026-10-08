@@ -157,6 +157,9 @@ export function DrawingWorkspace({
     published: true,
   });
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectionMode, setSelectionMode] = useState<"move" | "resize">(
+    "resize",
+  );
   const [form, setForm] = useState<DrawingSave | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [failedDrafts, setFailedDrafts] = useState<DrawingSave[]>([]);
@@ -385,6 +388,24 @@ export function DrawingWorkspace({
         ? { expectedMetadataRevision: data?.metadata.revision ?? 0 }
         : {}),
     }) as DrawingSave;
+  const deletable = (entity: DrawingEntity) =>
+    editable(entity) &&
+    online &&
+    pending === 0 &&
+    !queued.records.some((record) => record.input.id === entity.id) &&
+    Boolean(data && (data.canManage || entity.authorId === data.actor.id));
+  const selectAnnotation = (id: string | null) => {
+    if (id === "search-highlight") return;
+    setSelectedId(id);
+    setForm(null);
+    const entity = entities.find((item) => item.id === id);
+    if (entity?.kind === "markup") {
+      setTool("select");
+      if (id !== selectedId) setSelectionMode("resize");
+      setPanel("");
+    } else if (id) setPanel("selected");
+    else if (panel === "selected") setPanel("");
+  };
   const base = () => ({
     sheetId: sheet.id,
     id: crypto.randomUUID(),
@@ -532,11 +553,7 @@ export function DrawingWorkspace({
     setPanel("selected");
   };
   const archive = async (entity: DrawingEntity) => {
-    if (
-      !online ||
-      queued.records.some((record) => record.input.id === entity.id)
-    )
-      return;
+    if (!deletable(entity)) return;
     setPending((n) => n + 1);
     setError(null);
     try {
@@ -548,6 +565,7 @@ export function DrawingWorkspace({
         }),
       );
       setSelectedId(null);
+      setPanel("");
       await refresh();
     } catch (reason) {
       fail(reason);
@@ -834,6 +852,102 @@ export function DrawingWorkspace({
           </button>
         </div>
       )}
+      {selected?.kind === "markup" &&
+        selected.visibility !== "archived" &&
+        sourceOf(selected) === sourceId &&
+        !form &&
+        !compareId && (
+          <div
+            role="toolbar"
+            aria-label="Selected markup actions"
+            className="bg-background flex shrink-0 flex-wrap items-center gap-2 border-b px-2 py-2"
+          >
+            <span className="max-w-32 truncate text-sm font-medium">
+              {nameOf(selected)}
+            </span>
+            {editable(selected) ? (
+              <>
+                <Button
+                  size="sm"
+                  variant={
+                    selectionMode === "move" && tool === "select"
+                      ? "default"
+                      : "outline"
+                  }
+                  aria-pressed={selectionMode === "move" && tool === "select"}
+                  disabled={pending > 0}
+                  onClick={() => {
+                    setTool("select");
+                    setSelectionMode("move");
+                    setPanel("");
+                  }}
+                >
+                  Move
+                </Button>
+                <Button
+                  size="sm"
+                  variant={
+                    selectionMode === "resize" && tool === "select"
+                      ? "default"
+                      : "outline"
+                  }
+                  aria-pressed={selectionMode === "resize" && tool === "select"}
+                  disabled={pending > 0}
+                  onClick={() => {
+                    setTool("select");
+                    setSelectionMode("resize");
+                    setPanel("");
+                  }}
+                >
+                  Resize
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  aria-label="Delete markup"
+                  disabled={!deletable(selected)}
+                  title={
+                    !online ? "Reconnect to delete this markup" : undefined
+                  }
+                  onClick={() => void archive(selected)}
+                >
+                  Delete
+                </Button>
+              </>
+            ) : (
+              <span className="text-muted-foreground text-xs">Read only</span>
+            )}
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setPanel("selected")}
+            >
+              Details
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => {
+                selectAnnotation(null);
+                setTool("pan");
+              }}
+            >
+              Done
+            </Button>
+            {editable(selected) && tool === "select" && (
+              <span className="text-muted-foreground basis-full text-xs sm:basis-auto">
+                {selectionMode === "resize"
+                  ? "Drag a handle to resize, or drag the markup to move."
+                  : "Drag the markup to move it."}
+              </span>
+            )}
+            {editable(selected) && !online && (
+              <span className="text-muted-foreground basis-full text-xs">
+                Reconnect to delete this markup.
+              </span>
+            )}
+          </div>
+        )}
       {failedDrafts.length > 0 && (
         <div className="flex flex-wrap items-center gap-2 border-b bg-amber-50 px-3 py-2 text-sm text-amber-950">
           <span>
@@ -973,6 +1087,13 @@ export function DrawingWorkspace({
               tool={writable ? tool : "pan"}
               style={style}
               selectedId={selectedId}
+              selectionMode={selectionMode}
+              canEditAnnotation={(id) => {
+                const entity = entities.find((item) => item.id === id);
+                return Boolean(
+                  entity && editable(entity) && pending === 0 && !form,
+                );
+              }}
               sharedScale={current ? data.metadata.scale : undefined}
               onScaleChange={
                 data.canManage && online && writable
@@ -1012,12 +1133,7 @@ export function DrawingWorkspace({
                     }
                   : undefined
               }
-              onSelect={(id) => {
-                if (id === "search-highlight") return;
-                setSelectedId(id);
-                setForm(null);
-                if (id) setPanel("selected");
-              }}
+              onSelect={selectAnnotation}
               onUpdate={(id, markup) => {
                 const entity = entities.find((item) => item.id === id);
                 if (entity && editable(entity))
@@ -1029,7 +1145,7 @@ export function DrawingWorkspace({
               }}
               onDelete={(id) => {
                 const entity = entities.find((item) => item.id === id);
-                if (entity && editable(entity)) void archive(entity);
+                if (entity && deletable(entity)) void archive(entity);
               }}
               onActivate={activate}
               navigateTo={navigate}
@@ -1319,8 +1435,7 @@ export function DrawingWorkspace({
                         className="block w-full rounded border p-3 text-left text-sm"
                         key={entity.id}
                         onClick={() => {
-                          setSelectedId(entity.id);
-                          setPanel("selected");
+                          selectAnnotation(entity.id);
                           setTool("select");
                         }}
                       >

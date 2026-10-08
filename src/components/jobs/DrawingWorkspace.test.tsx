@@ -88,7 +88,11 @@ vi.mock("./DrawingCompare", () => ({
 }));
 vi.mock("./DrawingSheetViewer", () => ({
   DrawingSheetViewer: (props: ComponentProps<typeof DrawingSheetViewer>) => (
-    <div>
+    <div
+      data-testid="markup-editor"
+      data-tool={props.tool}
+      data-selection-mode={props.selectionMode}
+    >
       <div data-testid="viewer-source">
         {props.sourceSheetId ?? props.sheetKey}
       </div>
@@ -115,6 +119,21 @@ vi.mock("./DrawingSheetViewer", () => ({
         onClick={() => props.onSelect?.(props.annotations?.[0]?.id ?? null)}
       >
         Select first annotation
+      </button>
+      <button
+        onClick={() => {
+          const entity = props.annotations?.[0];
+          if (entity?.kind === "markup" && props.canEditAnnotation?.(entity.id))
+            props.onUpdate?.(entity.id, {
+              ...entity.data,
+              points: [
+                { x: 0.3, y: 0.3 },
+                { x: 0.6, y: 0.6 },
+              ],
+            });
+        }}
+      >
+        Move selected annotation
       </button>
     </div>
   ),
@@ -166,6 +185,32 @@ function fixture(): Workspace {
     activity: [],
   };
 }
+function existingMarkup(
+  visibility: "private" | "published" = "private",
+): DrawingEntity {
+  return {
+    id: entityId,
+    sheetId,
+    kind: "markup",
+    visibility,
+    revision: 4,
+    authorId: "tim",
+    authorName: "Tim",
+    comments: [],
+    createdAt: "",
+    updatedAt: "",
+    data: {
+      sourceSheetId: sheetId,
+      type: "rect",
+      points: [
+        { x: 0.2, y: 0.2 },
+        { x: 0.4, y: 0.4 },
+      ],
+      stroke: "#ef4444",
+      width: 2,
+    },
+  };
+}
 const open = () =>
   render(
     <DrawingWorkspace jobId={jobId} sheet={sheet} onOpenSheet={vi.fn()} />,
@@ -208,6 +253,93 @@ afterEach(() => {
 });
 
 describe("drawing workspace workflows", () => {
+  it("keeps the canvas available after selecting a markup and exposes move, resize, and delete", async () => {
+    mocks.data!.entities = [existingMarkup()];
+    open();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Select first annotation" }),
+    );
+    expect(
+      screen.getByRole("toolbar", { name: "Selected markup actions" }),
+    ).toBeVisible();
+    expect(screen.queryByLabelText("Drawing tools panel")).toBeNull();
+    expect(screen.getByRole("button", { name: "Resize" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Move" }));
+    expect(screen.getByTestId("markup-editor")).toHaveAttribute(
+      "data-selection-mode",
+      "move",
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "Move selected annotation" }),
+    );
+    await waitFor(() => expect(mocks.save).toHaveBeenCalledOnce());
+    const saved = mocks.save.mock.calls[0]![0];
+    expect(saved.id).toBe(entityId);
+    expect(saved.expectedRevision).toBe(4);
+    if (saved.kind !== "markup") throw Error("Expected a saved markup");
+    expect(saved.data.points).toEqual([
+      { x: 0.3, y: 0.3 },
+      { x: 0.6, y: 0.6 },
+    ]);
+    await waitFor(() =>
+      expect(screen.getByRole("status")).toHaveTextContent("Saved"),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Details" }));
+    expect(screen.getByLabelText("Drawing tools panel")).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "Resize" }));
+    expect(screen.queryByLabelText("Drawing tools panel")).toBeNull();
+    expect(screen.getByTestId("markup-editor")).toHaveAttribute(
+      "data-selection-mode",
+      "resize",
+    );
+    mocks.archive.mockResolvedValueOnce({
+      ...mocks.data!.entities[0],
+      visibility: "archived",
+      revision: 6,
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Delete markup" }));
+    await waitFor(() =>
+      expect(mocks.archive).toHaveBeenCalledWith({
+        sheetId,
+        id: entityId,
+        expectedRevision: 5,
+      }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("toolbar", { name: "Selected markup actions" }),
+      ).toBeNull(),
+    );
+  });
+  it("shows read-only selection without move, resize, delete, or unsaved previews", () => {
+    mocks.data!.canManage = false;
+    mocks.data!.entities = [existingMarkup("published")];
+    open();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Select first annotation" }),
+    );
+    expect(screen.getByText("Read only")).toBeVisible();
+    expect(
+      screen.queryByRole("button", { name: "Move" }),
+    ).toBeNull();
+    expect(screen.queryByRole("button", { name: "Resize" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Delete markup" })).toBeNull();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Move selected annotation" }),
+    );
+    expect(mocks.save).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Done" }));
+    expect(
+      screen.queryByRole("toolbar", { name: "Selected markup actions" }),
+    ).toBeNull();
+    expect(screen.getByTestId("markup-editor")).toHaveAttribute(
+      "data-tool",
+      "pan",
+    );
+  });
   it("aborts old OCR and discards its words after changing source revision", async () => {
     let finish!: (response: Response) => void;
     const fetcher = vi.fn<typeof fetch>().mockImplementation(

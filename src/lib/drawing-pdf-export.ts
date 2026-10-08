@@ -17,6 +17,7 @@ import { drawingLinkSchema, drawingMarkupSchema } from "./drawing-workspace";
 import {
   drawingBounds,
   drawingCloudPath,
+  drawingFontSize,
   drawingMeasurement,
 } from "./drawing-annotation-geometry";
 import type { SheetScale } from "./sheet-measure";
@@ -166,7 +167,7 @@ async function drawMarkup(
     opacity: opacity * alpha(data.fill),
   };
   const line = `M ${points.map((point) => `${point.x} ${point.y}`).join(" L ")}`;
-  const textSize = Math.max(18, 14 + data.width * 2) * factor;
+  const textSize = drawingFontSize(data) * factor;
   const text = (value: string, x: number, y: number) =>
     label(
       doc,

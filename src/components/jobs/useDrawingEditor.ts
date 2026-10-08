@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { DrawingEntity, DrawingMarkup, DrawingPoint, DrawingStyle, DrawingTool } from "~/lib/drawing-workspace";
 import type { SheetScale } from "~/lib/sheet-measure";
-import { isPathTool, isStrokeTool, minimumDrawingPoints, simplifyDrawingStroke, translateDrawingPoints } from "~/lib/drawing-annotation-geometry";
+import { isPathTool, isStrokeTool, minimumDrawingPoints, resizeDrawingMarkup, simplifyDrawingStroke, translateDrawingPoints, type DrawingResizeHandle } from "~/lib/drawing-annotation-geometry";
 
 export type DrawingEditorProps = {
   annotations?: DrawingEntity[];
@@ -11,6 +11,8 @@ export type DrawingEditorProps = {
   tool?: DrawingTool;
   style?: DrawingStyle;
   selectedId?: string | null;
+  selectionMode?: "move" | "resize";
+  canEditAnnotation?: (entityId: string) => boolean;
   hideAnnotations?: boolean;
   onCreate?: (data: DrawingMarkup) => void;
   onSelect?: (id: string | null) => void;
@@ -21,7 +23,7 @@ export type DrawingEditorProps = {
   sharedScale?: SheetScale | null;
   onScaleChange?: (scale: SheetScale) => void;
 };
-type Gesture = { start: DrawingPoint; points: DrawingPoint[]; moved: boolean; entity?: DrawingEntity; handle?: number; activate?: boolean; edited?: DrawingMarkup };
+type Gesture = { start: DrawingPoint; points: DrawingPoint[]; moved: boolean; entity?: DrawingEntity; handle?: number | DrawingResizeHandle; activate?: boolean; edited?: DrawingMarkup };
 
 export function useDrawingEditor(props: DrawingEditorProps, aspect: number, screenWidth: number) {
   const tool = props.tool ?? "pan";
@@ -32,7 +34,10 @@ export function useDrawingEditor(props: DrawingEditorProps, aspect: number, scre
   const committed = useRef(points);
   committed.current = points;
   const clear = () => { gesture.current = null; committed.current = []; setPoints([]); setPreview([]); setEditing(null); };
-  useEffect(clear, [tool, props.sourceSheetId]);
+  useEffect(clear, [tool, props.sourceSheetId, props.selectionMode, props.hideAnnotations]);
+  const canEdit = (entity: DrawingEntity) => entity.kind === "markup" && entity.visibility !== "archived"
+    && props.annotations?.some(current => current.id === entity.id && current.revision === entity.revision && current.visibility !== "archived")
+    && (props.canEditAnnotation?.(entity.id) ?? true);
 
   const dataFor = (next: DrawingPoint[]): DrawingMarkup | null => {
     if (tool === "pan" || tool === "select" || tool === "issue" || tool === "rfi") return null;
@@ -53,13 +58,17 @@ export function useDrawingEditor(props: DrawingEditorProps, aspect: number, scre
   };
   const undo = () => { const next = committed.current.slice(0, -1); committed.current = next; setPoints(next); setPreview([]); };
   const cancelGesture = () => { gesture.current = null; setPreview([]); setEditing(null); };
+  useEffect(() => {
+    const active = gesture.current;
+    if (active?.entity?.kind === "markup" && !active.activate && (!props.onUpdate || !canEdit(active.entity))) cancelGesture();
+  });
   const distance = (a: DrawingPoint, b: DrawingPoint) => Math.hypot(a.x - b.x, (a.y - b.y) * aspect);
   const down = (point: DrawingPoint | null, target: EventTarget | null) => {
     if (!point) return false;
     const element = target instanceof Element ? target.closest<SVGElement>("[data-annotation-id]") : null;
     const entity = props.hideAnnotations ? undefined : props.annotations?.find(item => item.id === element?.dataset.annotationId);
     if (tool === "pan") {
-      if (!entity || (entity.kind !== "issue" && (entity.kind !== "markup" || entity.data.type !== "link"))) return false;
+      if (!entity || (entity.kind !== "issue" && entity.kind !== "markup")) return false;
       gesture.current = { start: point, points: [point], moved: false, entity, activate: true };
       return true;
     }
@@ -67,7 +76,11 @@ export function useDrawingEditor(props: DrawingEditorProps, aspect: number, scre
       if (!entity) { props.onSelect?.(null); return false; }
       props.onSelect?.(entity.id);
       const handleElement = target instanceof Element ? target.closest<SVGElement>("[data-annotation-handle]") : null;
-      const handle = handleElement ? Number(handleElement.dataset.annotationHandle) : undefined;
+      const handleName = handleElement?.dataset.annotationHandle;
+      const corner = handleName && ["nw", "ne", "sw", "se"].includes(handleName) ? handleName as DrawingResizeHandle : undefined;
+      const vertex = handleName !== undefined ? Number(handleName) : undefined;
+      const handle = props.selectionMode === "move" ? undefined : corner ??
+        (vertex !== undefined && Number.isInteger(vertex) && vertex >= 0 && entity.kind === "markup" && vertex < entity.data.points.length ? vertex : undefined);
       gesture.current = { start: point, points: [point], moved: false, entity, handle };
       return true;
     }
@@ -78,15 +91,25 @@ export function useDrawingEditor(props: DrawingEditorProps, aspect: number, scre
   };
   const move = (point: DrawingPoint | null) => {
     const active = gesture.current;
-    if (!active || !point) return Boolean(active);
+    if (!active) return false;
+    if (!point) {
+      if (active.activate) { active.moved = true; return false; }
+      return true;
+    }
     active.moved ||= distance(point, active.start) * screenWidth > 6;
+    // A markup tap in Pan mode selects it, while a drag continues to pan the
+    // sheet using the viewer's original pointer positions.
+    if (active.activate) return !active.moved;
     if (active.entity?.kind === "markup") {
-      if (!active.moved || active.activate || !props.onUpdate) return true;
+      if (!props.onUpdate || !canEdit(active.entity)) { active.edited = undefined; setEditing(null); return true; }
+      if (!active.moved) return true;
       const original = active.entity.data;
-      const next = active.handle !== undefined
+      const next = typeof active.handle === "string"
+        ? resizeDrawingMarkup(original, active.handle, point, aspect)
+        : { ...original, points: active.handle !== undefined
         ? original.points.map((p, index) => index === active.handle ? point : p)
-        : translateDrawingPoints(original.points, { x: point.x - active.start.x, y: point.y - active.start.y });
-      active.edited = { ...original, points: next };
+        : translateDrawingPoints(original.points, { x: point.x - active.start.x, y: point.y - active.start.y }) };
+      active.edited = next;
       setEditing({ id: active.entity.id, data: active.edited });
     } else if (isStrokeTool(tool)) {
       if (distance(point, active.points.at(-1)!) * screenWidth >= 1 && active.points.length < 3900) active.points.push(point);
@@ -99,15 +122,18 @@ export function useDrawingEditor(props: DrawingEditorProps, aspect: number, scre
   const up = (point: DrawingPoint | null) => {
     const active = gesture.current;
     if (!active) return false;
+    if (point) move(point);
     gesture.current = null;
     setPreview([]);
     if (!point) { setEditing(null); return true; }
     if (active.entity) {
-      if (active.activate && !active.moved && active.entity.kind === "markup") props.onActivate?.(active.entity.data);
-      if (active.activate && !active.moved && active.entity.kind === "issue") props.onSelect?.(active.entity.id);
-      if (active.edited && active.moved && props.onUpdate) props.onUpdate(active.entity.id, active.edited);
+      if (active.activate && !active.moved) {
+        if (active.entity.kind === "markup" && active.entity.data.type === "link") props.onActivate?.(active.entity.data);
+        else props.onSelect?.(active.entity.id);
+      }
+      if (active.edited && active.moved && props.onUpdate && canEdit(active.entity)) props.onUpdate(active.entity.id, active.edited);
       setEditing(null);
-      return true;
+      return !active.activate || !active.moved;
     }
     if (tool === "issue" || tool === "rfi") { if (!active.moved) props.onPoint?.(tool, point); return true; }
     if (tool === "text") { if (!active.moved) finish([point]); return true; }
@@ -124,15 +150,17 @@ export function useDrawingEditor(props: DrawingEditorProps, aspect: number, scre
     return true;
   };
   useEffect(() => {
-    if (tool === "pan") return;
+    if (tool === "pan" && !props.selectedId && !gesture.current) return;
     const key = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) return;
       const target = event.target;
       if (target instanceof HTMLElement && (target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName))) return;
-      if (event.key === "Escape") { event.preventDefault(); clear(); }
-      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") { event.preventDefault(); undo(); }
-      if (event.key === "Enter" && committed.current.length >= minimumDrawingPoints(tool)) { event.preventDefault(); finish(); }
-      if ((event.key === "Delete" || event.key === "Backspace") && tool === "select" && props.selectedId && props.onDelete) {
-        event.preventDefault(); props.onDelete(props.selectedId);
+      if (event.key === "Escape" && (tool !== "pan" || gesture.current)) { event.preventDefault(); clear(); }
+      if (tool !== "pan" && (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") { event.preventDefault(); undo(); }
+      if (tool !== "pan" && event.key === "Enter" && committed.current.length >= minimumDrawingPoints(tool)) { event.preventDefault(); finish(); }
+      const selected = props.annotations?.find(entity => entity.id === props.selectedId);
+      if ((event.key === "Delete" || event.key === "Backspace") && (tool === "select" || tool === "pan") && selected && props.onDelete && canEdit(selected)) {
+        event.preventDefault(); props.onDelete(selected.id);
       }
     };
     window.addEventListener("keydown", key);

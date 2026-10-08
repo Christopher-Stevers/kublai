@@ -66,6 +66,8 @@ export const drawingMarkupSchema = z
     points: z.array(drawingPointSchema).min(1).max(4000),
     stroke: color.default("#ef4444"),
     width: z.number().finite().min(0.1).max(40).default(2),
+    /** Text size in the shared 1000-unit drawing coordinate system. */
+    fontSize: z.number().finite().min(6).max(300).optional(),
     fill: color.optional(),
     opacity: z.number().finite().min(0.05).max(1).optional(),
     text: z.string().max(4000).optional(),

@@ -1009,7 +1009,7 @@ export function DrawingSheetViewer({
           />
         )}
         {comparison && fit && <DrawingComparisonLayer primary={{ src, pdf }} comparison={comparison} fit={fit} frameSize={frameSize} view={view} dpr={dpr} />}
-        {fit && <DrawingAnnotationLayer annotations={editorProps.annotations ?? []} aspect={fit.aspect} selectedId={editorProps.selectedId} draft={measuring ? null : editor.draft} editing={editor.editing} hidden={editorProps.hideAnnotations} sharedScale={sheetScale} onSelect={editorProps.onSelect} screenPixelSize={1000 / (fit.width * view.scale)} />}
+        {fit && <DrawingAnnotationLayer annotations={editorProps.annotations ?? []} aspect={fit.aspect} selectedId={editorProps.selectedId} draft={measuring ? null : editor.draft} editing={editor.editing} hidden={editorProps.hideAnnotations} sharedScale={sheetScale} onSelect={editorProps.onSelect} screenPixelSize={1000 / (fit.width * view.scale)} showResizeHandles={!measuring && annotationTool === "select" && editorProps.selectionMode !== "move" && Boolean(editorProps.onUpdate)} canEditAnnotation={editorProps.canEditAnnotation} />}
       </div>
       {fit && (marked.length > 0 || snapLine) && (
         <div
