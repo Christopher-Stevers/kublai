@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { DrawingSheetViewer } from "./DrawingSheetViewer";
+import { useEffect, useRef, useState } from "react";
+import { DrawingSheetViewer, type DrawingViewport } from "./DrawingSheetViewer";
+import { DEFAULT_OVERLAY_STYLES } from "~/lib/drawing-line-overlay";
 import type { DrawingComparison } from "./DrawingComparisonLayer";
 
 export type DrawingCompareSheet = {
@@ -18,11 +19,15 @@ export function DrawingCompare({
   second: secondSource,
   onClose,
   resolveAssetUrl,
+  initialViewport,
+  onViewportChange,
 }: {
   first: DrawingCompareSheet;
   second: DrawingCompareSheet;
   onClose?: () => void;
   resolveAssetUrl?: (url: string) => Promise<string>;
+  initialViewport?: DrawingViewport | null;
+  onViewportChange?: (value: DrawingViewport) => void;
 }) {
   const sourceKey = JSON.stringify([firstSource, secondSource]);
   const [resolved, setResolved] = useState<{
@@ -83,7 +88,13 @@ export function DrawingCompare({
   const [mode, setMode] = useState<"side-by-side" | DrawingComparison["mode"]>(
     "overlay",
   );
-  const [opacity, setOpacity] = useState(0.5);
+  const [inks, setInks] = useState(DEFAULT_OVERLAY_STYLES);
+  const camera = useRef(initialViewport);
+  const [entryView, setEntryView] = useState(initialViewport);
+  const updateViewport = (value: DrawingViewport) => {
+    camera.current = value;
+    onViewportChange?.(value);
+  };
   const [wipe, setWipe] = useState(0.5);
   const alignmentKey = `${firstSource.id}:${secondSource.id}`;
   const [alignmentState, setAlignment] = useState({
@@ -117,7 +128,10 @@ export function DrawingCompare({
             aria-label="Comparison mode"
             className="bg-background rounded border p-1"
             value={mode}
-            onChange={(event) => setMode(event.target.value as typeof mode)}
+            onChange={(event) => {
+              setEntryView(camera.current);
+              setMode(event.target.value as typeof mode);
+            }}
           >
             <option value="side-by-side">Side by side</option>
             <option value="overlay">Overlay</option>
@@ -137,18 +151,76 @@ export function DrawingCompare({
         {mode !== "side-by-side" && (
           <div className="flex w-full flex-wrap items-center gap-3 text-sm">
             {mode === "overlay" && (
-              <label>
-                Opacity{" "}
-                <input
-                  aria-label="Comparison opacity"
-                  type="range"
-                  min="0"
-                  max="1"
-                  step="0.05"
-                  value={opacity}
-                  onChange={(event) => setOpacity(Number(event.target.value))}
-                />
-              </label>
+              <>
+                {[first, second].map((drawing, index) => {
+                  const slot = index === 0 ? 0 : 1;
+                  const label = index === 0 ? "Drawing A" : "Drawing B";
+                  return (
+                    <fieldset
+                      key={drawing.id}
+                      className="flex min-w-0 flex-wrap items-center gap-2 rounded border px-2 py-1"
+                    >
+                      <legend
+                        className="max-w-56 truncate px-1 text-xs"
+                        title={drawing.name}
+                      >
+                        {label} · {drawing.name}
+                      </legend>
+                      <label className="flex items-center gap-1">
+                        Colour{" "}
+                        <input
+                          type="color"
+                          aria-label={`${label} colour`}
+                          value={inks[slot].color}
+                          onChange={(event) =>
+                            setInks(
+                              (current) =>
+                                current.map((style, at) =>
+                                  at === slot
+                                    ? { ...style, color: event.target.value }
+                                    : style,
+                                ) as typeof current,
+                            )
+                          }
+                          className="h-8 w-10 rounded border bg-transparent p-0.5"
+                        />
+                      </label>
+                      <label className="flex items-center gap-1">
+                        Opacity{" "}
+                        <input
+                          aria-label={`${label} opacity`}
+                          className="w-24"
+                          type="range"
+                          min="0"
+                          max="1"
+                          step="0.05"
+                          value={inks[slot].opacity}
+                          onChange={(event) =>
+                            setInks(
+                              (current) =>
+                                current.map((style, at) =>
+                                  at === slot
+                                    ? {
+                                        ...style,
+                                        opacity: Number(event.target.value),
+                                      }
+                                    : style,
+                                ) as typeof current,
+                            )
+                          }
+                        />
+                        <output className="w-9 text-right tabular-nums">
+                          {Math.round(inks[slot].opacity * 100)}%
+                        </output>
+                      </label>
+                    </fieldset>
+                  );
+                })}
+                <p className="text-muted-foreground text-xs">
+                  Matching lines are black. Align the drawings below if their
+                  positions differ.
+                </p>
+              </>
             )}
             {mode === "wipe" && (
               <label>
@@ -273,6 +345,10 @@ export function DrawingCompare({
               <div className="min-h-0 flex-1">
                 <DrawingSheetViewer
                   src={sheet.imageUrl}
+                  initialViewport={entryView}
+                  onViewportChange={
+                    sheet.id === first.id ? updateViewport : undefined
+                  }
                   alt={sheet.name}
                   pdf={sheet.pdf}
                   tiles={sheet.tiles}
@@ -287,6 +363,8 @@ export function DrawingCompare({
         <div className="min-h-0 flex-1">
           <DrawingSheetViewer
             src={first.imageUrl}
+            initialViewport={entryView}
+            onViewportChange={updateViewport}
             alt={first.name}
             pdf={first.pdf}
             tiles={first.tiles}
@@ -296,7 +374,9 @@ export function DrawingCompare({
               src: second.imageUrl,
               pdf: second.pdf,
               mode,
-              opacity,
+              opacity: inks[1].opacity,
+              primaryInk: inks[0],
+              secondaryInk: inks[1],
               wipe,
               alignment,
             }}

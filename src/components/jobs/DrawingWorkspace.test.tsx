@@ -15,6 +15,7 @@ import type {
 import type { ComponentProps } from "react";
 import type { DrawingSheetViewer } from "./DrawingSheetViewer";
 import { DrawingWorkspace } from "./DrawingWorkspace";
+import type { DrawingCompare } from "./DrawingCompare";
 
 const mocks = vi.hoisted(() => ({
   data: null as Workspace | null,
@@ -87,7 +88,22 @@ vi.mock("./DrawingReferenceLinks", () => ({
   ),
 }));
 vi.mock("./DrawingCompare", () => ({
-  DrawingCompare: () => <div>Comparison</div>,
+  DrawingCompare: (props: ComponentProps<typeof DrawingCompare>) => (
+    <div
+      data-testid="comparison"
+      data-first={props.first.id}
+      data-second={props.second.id}
+    >
+      <button
+        onClick={() =>
+          props.onViewportChange?.({ center: { x: 0.8, y: 0.6 }, zoom: 4 })
+        }
+      >
+        Pan overlay
+      </button>
+      <button onClick={props.onClose}>Close comparison</button>
+    </div>
+  ),
 }));
 vi.mock("./DrawingSheetViewer", () => ({
   DrawingSheetViewer: (props: ComponentProps<typeof DrawingSheetViewer>) => (
@@ -286,6 +302,54 @@ afterEach(() => {
 });
 
 describe("drawing workspace workflows", () => {
+  it("overlays any job drawing pair for read-only users and returns to the original drawing with the comparison viewport", () => {
+    mocks.data!.canManage = false;
+    const third = "53cfe8af-e26a-49f2-b2dc-ef0d4e0ecb24";
+    mocks.data!.jobSheets.push({
+      ...mocks.data!.jobSheets[0]!,
+      id: third,
+      sheetId: third,
+      name: "M201",
+      setId: third,
+    });
+    const onViewportChange = vi.fn();
+    render(
+      <DrawingWorkspace
+        jobId={jobId}
+        sheet={sheet}
+        onOpenSheet={vi.fn()}
+        onViewportChange={onViewportChange}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Overlay drawings" }));
+    fireEvent.change(screen.getByLabelText("Drawing A"), {
+      target: { value: revisionId },
+    });
+    fireEvent.change(screen.getByLabelText("Drawing B"), {
+      target: { value: third },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Open overlay" }));
+    expect(screen.getByTestId("comparison")).toHaveAttribute(
+      "data-first",
+      revisionId,
+    );
+    expect(screen.getByTestId("comparison")).toHaveAttribute(
+      "data-second",
+      third,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Pan overlay" }));
+    expect(onViewportChange).toHaveBeenCalledWith({
+      center: { x: 0.8, y: 0.6 },
+      zoom: 4,
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Close comparison" }));
+    expect(screen.getByTestId("viewer-source")).toHaveTextContent(sheetId);
+    expect(screen.getByTestId("inherited-viewport")).toHaveTextContent(
+      JSON.stringify({ center: { x: 0.8, y: 0.6 }, zoom: 4 }),
+    );
+    expect(mocks.save).not.toHaveBeenCalled();
+    expect(mocks.metadata).not.toHaveBeenCalled();
+  });
   it("passes inherited view to the viewer, reports raw pan for navigation, and bounds only saved bookmarks", async () => {
     const initialViewport = { center: { x: 0.3, y: 0.7 }, zoom: 3 };
     const onViewportChange = vi.fn();

@@ -2,6 +2,11 @@
 
 import { useId, useState } from "react";
 import type { DrawingSize, DrawingView } from "~/lib/drawing-viewport";
+import {
+  DEFAULT_OVERLAY_STYLES,
+  type OverlayInkStyle,
+} from "~/lib/drawing-line-overlay";
+import { DrawingLineOverlayLayer } from "./DrawingLineOverlayLayer";
 import { DrawingPdfLayer } from "./DrawingPdfLayer";
 
 export type ComparisonSource = {
@@ -11,6 +16,8 @@ export type ComparisonSource = {
 export type DrawingComparison = ComparisonSource & {
   mode: "overlay" | "difference" | "wipe";
   opacity: number;
+  primaryInk?: OverlayInkStyle;
+  secondaryInk?: OverlayInkStyle;
   wipe: number;
   alignment: { x: number; y: number; scale: number };
 };
@@ -62,6 +69,22 @@ export function DrawingComparisonLayer({
       ? image.height / image.width
       : fit.height / fit.width;
   const geometry = comparisonGeometry(fit, view, aspect, comparison.alignment);
+  if (comparison.mode === "overlay")
+    return (
+      <DrawingLineOverlayLayer
+        first={primary}
+        second={comparison}
+        styles={[
+          comparison.primaryInk ?? DEFAULT_OVERLAY_STYLES[0],
+          comparison.secondaryInk ?? DEFAULT_OVERLAY_STYLES[1],
+        ]}
+        alignment={comparison.alignment}
+        fit={fit}
+        frameSize={frameSize}
+        view={view}
+        dpr={dpr}
+      />
+    );
   const difference = comparison.mode === "difference";
   const pdf = (
     source: ComparisonSource,

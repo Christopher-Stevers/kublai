@@ -25,6 +25,8 @@ vi.mock("./DrawingSheetViewer", () => ({
       pdf?: { url: string };
       mode: string;
       alignment: { x: number; y: number; scale: number };
+      primaryInk?: { color: string; opacity: number };
+      secondaryInk?: { color: string; opacity: number };
     };
   }) => (
     <div
@@ -35,6 +37,10 @@ vi.mock("./DrawingSheetViewer", () => ({
       data-pdf={pdf?.url}
       data-secondary={comparison?.src}
       data-secondary-pdf={comparison?.pdf?.url}
+      data-inks={JSON.stringify([
+        comparison?.primaryInk,
+        comparison?.secondaryInk,
+      ])}
     >
       {alt}
     </div>
@@ -45,6 +51,33 @@ const first = { id: "one", name: "Original", imageUrl: "/first.webp" };
 const second = { id: "two", name: "Revision", imageUrl: "/second.webp" };
 
 describe("drawing comparison", () => {
+  it("passes independently chosen colours and opacities to the overlay and retains them across comparison modes", () => {
+    render(<DrawingCompare first={first} second={second} />);
+    fireEvent.change(screen.getByLabelText("Drawing A colour"), {
+      target: { value: "#9333ea" },
+    });
+    fireEvent.change(screen.getByLabelText("Drawing B colour"), {
+      target: { value: "#16a34a" },
+    });
+    fireEvent.change(screen.getByLabelText("Drawing A opacity"), {
+      target: { value: "0.3" },
+    });
+    fireEvent.change(screen.getByLabelText("Drawing B opacity"), {
+      target: { value: "0.6" },
+    });
+    const inks = JSON.stringify([
+      { color: "#9333ea", opacity: 0.3 },
+      { color: "#16a34a", opacity: 0.6 },
+    ]);
+    expect(screen.getByTestId("viewer")).toHaveAttribute("data-inks", inks);
+    fireEvent.change(screen.getByLabelText("Comparison mode"), {
+      target: { value: "side-by-side" },
+    });
+    fireEvent.change(screen.getByLabelText("Comparison mode"), {
+      target: { value: "overlay" },
+    });
+    expect(screen.getByTestId("viewer")).toHaveAttribute("data-inks", inks);
+  });
   it("resolves both private PDF and image sources before mounting and ignores a superseded response", async () => {
     let release!: () => void;
     const delay = new Promise<void>((resolve) => {

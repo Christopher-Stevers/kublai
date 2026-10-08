@@ -32,6 +32,7 @@ import {
   DrawingField,
   drawingFieldClass,
 } from "./DrawingEntityForm";
+import { DrawingOverlayPicker } from "./DrawingOverlayPicker";
 import { DrawingCompare } from "./DrawingCompare";
 import { DrawingDocumentActions } from "./DrawingDocumentActions";
 import { DrawingReferenceLinks } from "./DrawingReferenceLinks";
@@ -170,7 +171,11 @@ export function DrawingWorkspace({
   const [pending, setPending] = useState(0);
   const [optimistic, setOptimistic] = useState<DrawingEntity[]>([]);
   const [sourceOverride, setSourceOverride] = useState<string | null>(null);
-  const [compareId, setCompareId] = useState<string | null>(null);
+  const [compareIds, setCompareIds] = useState<{
+    first: string;
+    second: string;
+  } | null>(null);
+  const [overlayPickerOpen, setOverlayPickerOpen] = useState(false);
   const [navigate, setNavigate] = useState<{
     center: { x: number; y: number };
     zoom: number;
@@ -725,7 +730,29 @@ export function DrawingWorkspace({
     : [];
   const resolved =
     assets?.key === source.imageUrl ? assets : { src: source.imageUrl, pdf };
-  const compare = data?.jobSheets.find((item) => item.id === compareId);
+  const compareFirst = data?.jobSheets.find(
+    (item) => item.id === compareIds?.first,
+  );
+  const compare = data?.jobSheets.find(
+    (item) => item.id === compareIds?.second,
+  );
+  const versionLabels = new Map(
+    entities.flatMap((entity) =>
+      entity.kind === "version" && entity.visibility !== "archived"
+        ? [[entity.data.sourceSheetId, entity.data.label] as const]
+        : [],
+    ),
+  );
+  const overlayChoices =
+    data?.jobSheets.map((item) => ({
+      id: item.id,
+      name: item.name,
+      revision:
+        versionLabels.get(item.id) ??
+        (item.id === sheet.id && versionLabels.size
+          ? "Original drawing"
+          : undefined),
+    })) ?? [];
 
   if (!data && !online)
     return (
@@ -762,6 +789,19 @@ export function DrawingWorkspace({
       className="relative flex h-full min-h-0 flex-col"
       aria-label="Drawing workspace"
     >
+      {overlayPickerOpen && (
+        <DrawingOverlayPicker
+          drawings={overlayChoices}
+          initialFirstId={compareIds?.first ?? sourceId}
+          initialSecondId={compareIds?.second}
+          onClose={() => setOverlayPickerOpen(false)}
+          onCompare={(first, second) => {
+            setCompareIds({ first, second });
+            setOverlayPickerOpen(false);
+            setPanel("");
+          }}
+        />
+      )}
       <div className="bg-background flex shrink-0 flex-wrap items-center gap-2 border-b p-2">
         <select
           aria-label="Drawing tool"
@@ -824,6 +864,14 @@ export function DrawingWorkspace({
         <Button
           size="sm"
           variant="outline"
+          disabled={overlayChoices.length < 2}
+          onClick={() => setOverlayPickerOpen(true)}
+        >
+          Overlay drawings
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
           onClick={() =>
             setNavigate({
               center: { x: 0.5, y: 0.5 },
@@ -879,7 +927,7 @@ export function DrawingWorkspace({
         selected.visibility !== "archived" &&
         sourceOf(selected) === sourceId &&
         !form &&
-        !compareId && (
+        !compareIds && (
           <div
             role="toolbar"
             aria-label="Selected markup actions"
@@ -1081,20 +1129,23 @@ export function DrawingWorkspace({
       )}
       <div className="relative flex min-h-0 flex-1">
         <div className="min-h-0 min-w-0 flex-1">
-          {compare ? (
+          {compare && compareFirst ? (
             <DrawingCompare
+              key={`${compareFirst.id}:${compare.id}`}
               resolveAssetUrl={resolveAssetUrl}
               first={{
-                ...source,
-                pdf: sourcePdfPage(source.imageUrl),
-                tiles: tileBase(source.imageUrl),
+                ...compareFirst,
+                pdf: sourcePdfPage(compareFirst.imageUrl),
+                tiles: tileBase(compareFirst.imageUrl),
               }}
               second={{
                 ...compare,
                 pdf: sourcePdfPage(compare.imageUrl),
                 tiles: tileBase(compare.imageUrl),
               }}
-              onClose={() => setCompareId(null)}
+              initialViewport={viewport.current}
+              onViewportChange={updateViewport}
+              onClose={() => setCompareIds(null)}
             />
           ) : (
             <DrawingSheetViewer
@@ -1790,7 +1841,10 @@ export function DrawingWorkspace({
                           size="sm"
                           variant="outline"
                           onClick={() => {
-                            setCompareId(version.id);
+                            setCompareIds({
+                              first: sourceId,
+                              second: version.id,
+                            });
                             setPanel("");
                           }}
                           disabled={version.id === sourceId}
@@ -1827,9 +1881,13 @@ export function DrawingWorkspace({
                   <DrawingField label="Compare with another uploaded sheet">
                     <select
                       className={drawingFieldClass}
-                      value={compareId ?? ""}
+                      value={compareIds?.second ?? ""}
                       onChange={(e) => {
-                        setCompareId(e.target.value || null);
+                        setCompareIds(
+                          e.target.value
+                            ? { first: sourceId, second: e.target.value }
+                            : null,
+                        );
                         setPanel("");
                       }}
                     >

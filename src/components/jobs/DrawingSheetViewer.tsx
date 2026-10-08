@@ -1403,8 +1403,8 @@ export function DrawingSheetViewer({
         style={{ width: fit?.width, height: fit?.height, visibility: fit ? "visible" : "hidden" }}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img ref={image} src={src} alt={alt} draggable={false} className="absolute inset-0 h-full w-full" />
-        <DrawingTileLayer key={tiles ?? src} requests={tileRequests} resolveAssetUrl={resolveAssetUrl} />
+        <img ref={image} src={src} alt={alt} draggable={false} className="absolute inset-0 h-full w-full" style={{ opacity: comparison?.mode === "overlay" ? 0 : undefined }} />
+        <DrawingTileLayer key={tiles ?? src} requests={comparison?.mode === "overlay" ? [] : tileRequests} resolveAssetUrl={resolveAssetUrl} />
         {pdf && fit && (
           <DrawingPdfLayer
             pdf={pdf}
@@ -1412,7 +1412,7 @@ export function DrawingSheetViewer({
             frameSize={frameSize}
             view={view}
             dpr={dpr}
-            enabled={needsPdf}
+            enabled={needsPdf && comparison?.mode !== "overlay"}
             moving={moving}
           />
         )}
