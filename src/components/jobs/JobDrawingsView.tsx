@@ -156,7 +156,10 @@ export function JobDrawingsView({ jobId }: { jobId: string }) {
     onError,
   });
   const renameSheet = api.drawings.renameSheet.useMutation({
-    onSuccess: refresh,
+    onSuccess: async () => {
+      await refresh();
+      await utils.drawingsWorkspace.get.invalidate();
+    },
     onError,
   });
   const deleteSheet = api.drawings.deleteSheet.useMutation({
@@ -378,22 +381,40 @@ export function JobDrawingsView({ jobId }: { jobId: string }) {
           />
         </div>
         <div className="bg-card shrink-0 border-t px-4 pt-1.5 pb-[calc(0.5rem+env(safe-area-inset-bottom))]">
-          <div className="mx-auto grid max-w-6xl grid-cols-[1fr_auto_1fr] items-center gap-2">
+          <div className="mx-auto grid max-w-6xl grid-cols-[minmax(0,1fr)_minmax(0,1.25fr)_minmax(0,1fr)] items-center gap-2">
             <Button
               variant="outline"
-              className="h-10"
+              className="h-10 min-w-0 px-2 text-xs sm:text-sm"
               disabled={sheetIndex <= 0}
               onClick={() => setSheetId(sheets[sheetIndex - 1]!.id)}
             >
               <ChevronLeftIcon className="mr-1 h-4 w-4" />
               Previous
             </Button>
-            <span className="text-muted-foreground text-xs tabular-nums">
-              {sheetIndex + 1} of {sheets.length}
-            </span>
+            <div className="flex min-w-0 flex-col items-center">
+              {canManage ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="h-8 w-full min-w-0 gap-1 px-1 text-sm"
+                  aria-label={`Rename drawing ${sheet.name}`}
+                  title={sheet.name}
+                  disabled={renameSheet.isPending}
+                  onClick={() => openNameDialog({ kind: "rename-sheet", id: sheet.id, name: sheet.name })}
+                >
+                  <span className="truncate">{sheet.name}</span>
+                  <PencilIcon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                </Button>
+              ) : (
+                <span className="w-full truncate py-1 text-center text-sm" title={sheet.name}>{sheet.name}</span>
+              )}
+              <span className="text-muted-foreground text-xs tabular-nums">
+                {sheetIndex + 1} of {sheets.length}
+              </span>
+            </div>
             <Button
               variant="outline"
-              className="h-10"
+              className="h-10 min-w-0 px-2 text-xs sm:text-sm"
               disabled={sheetIndex >= sheets.length - 1}
               onClick={() => setSheetId(sheets[sheetIndex + 1]!.id)}
             >
@@ -402,6 +423,7 @@ export function JobDrawingsView({ jobId }: { jobId: string }) {
             </Button>
           </div>
         </div>
+        {nameDialogView}
       </div>
     );
   }

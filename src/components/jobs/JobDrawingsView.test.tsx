@@ -47,6 +47,10 @@ vi.mock("~/trpc/react", () => {
       isPending: false,
       mutate: (input: unknown) => {
         state.calls.push([name, input]);
+        if (name === "renameSheet") {
+          const renamed = input as { sheetId: string; name: string };
+          state.sheets = state.sheets.map(sheet => sheet.id === renamed.sheetId ? { ...sheet, name: renamed.name } : sheet);
+        }
         void options.onSuccess?.({ id: "new-set" });
       },
     }),
@@ -54,7 +58,7 @@ vi.mock("~/trpc/react", () => {
   return {
     api: {
       useUtils: () => ({
-        drawingsWorkspace: { list: { invalidate: vi.fn() } },
+        drawingsWorkspace: { list: { invalidate: vi.fn() }, get: { invalidate: vi.fn() } },
         drawings: {
           listSets: { invalidate: vi.fn() },
           getSet: { invalidate: vi.fn() },
@@ -144,6 +148,33 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("Drawings", () => {
+  it("shows the current drawing name in the bottom bar and renames the sheet being viewed", async () => {
+    render(<JobDrawingsView jobId="job" />);
+    fireEvent.click(screen.getByRole("button", { name: "Open Mechanical" }));
+    fireEvent.click(screen.getByRole("button", { name: "Open M-101" }));
+    fireEvent.click(screen.getByRole("button", { name: "Rename drawing M-101" }));
+    expect(screen.getByRole("dialog", { name: "Rename drawing" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Name")).toHaveValue("M-101");
+    fireEvent.change(screen.getByLabelText("Name"), { target: { value: "  M-101 Plumbing plan  " } });
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: "Save" })));
+    expect(state.calls).toContainEqual(["renameSheet", { sheetId: "s1", name: "M-101 Plumbing plan" }]);
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(screen.getByRole("button", { name: "Rename drawing M-101 Plumbing plan" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Next/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Rename drawing M-102" }));
+    expect(screen.getByLabelText("Name")).toHaveValue("M-102");
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(state.calls.filter(([name]) => name === "renameSheet")).toHaveLength(1);
+  });
+
+  it("shows the drawing name without a rename control for viewers", () => {
+    state.canManage = false;
+    render(<JobDrawingsView jobId="job" />);
+    fireEvent.click(screen.getByRole("button", { name: "Open Mechanical" }));
+    fireEvent.click(screen.getByRole("button", { name: "Open M-101" }));
+    expect(screen.getByText("M-101")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Rename drawing/ })).toBeNull();
+  });
   it("opens a folder, a sheet, pages through sheets and steps back with the app bar arrow", () => {
     render(<JobDrawingsView jobId="job" />);
     expect(screen.getByText("2 drawings")).toBeInTheDocument();
