@@ -43,13 +43,15 @@ export function compositeDrawingInk(
   styles: [OverlayInkStyle, OverlayInkStyle],
   start = 0,
   end = first.length,
+  commonColor = "#000000",
 ) {
   const a = overlayStyle(styles[0]),
     b = overlayStyle(styles[1]);
   const rgb = (color: string) =>
     [1, 3, 5].map((at) => parseInt(color.slice(at, at + 2), 16));
   const ac = rgb(a.color),
-    bc = rgb(b.color);
+    bc = rgb(b.color),
+    cc = rgb(overlayStyle({ color: commonColor, opacity: 1 }).color);
   for (let i = start; i < end; i++) {
     const ai = a.opacity === 0 ? 0 : first[i]! / 255;
     const bi = b.opacity === 0 ? 0 : second[i]! / 255;
@@ -60,7 +62,9 @@ export function compositeDrawingInk(
     const stronger = Math.max(ai, bi);
     if (stronger > 0 && shared >= stronger * (2 / 3)) {
       const at = i * 4;
-      output[at] = output[at + 1] = output[at + 2] = 0;
+      output[at] = cc[0]!;
+      output[at + 1] = cc[1]!;
+      output[at + 2] = cc[2]!;
       // CAD backgrounds often draw unchanged walls in grey. Make their shared
       // cores solid black while retaining a smooth, faint antialiased fringe
       // and respecting the user's opacity controls.
@@ -75,7 +79,7 @@ export function compositeDrawingInk(
       at = i * 4;
     for (let channel = 0; channel < 3; channel++)
       output[at + channel] = alpha
-        ? (ac[channel]! * aw + bc[channel]! * bw) / alpha
+        ? (ac[channel]! * aw + bc[channel]! * bw + cc[channel]! * black) / alpha
         : 0;
     output[at + 3] = alpha * 255;
   }

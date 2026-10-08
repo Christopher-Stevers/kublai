@@ -31,6 +31,8 @@ import {
   validMeasureColor,
   writeMeasureColor,
 } from "~/lib/sheet-measure-color";
+import { DrawingAppearanceFilter } from "./DrawingAppearanceFilter";
+import { DEFAULT_DRAWING_APPEARANCE, drawingAppearanceMatrix, type DrawingAppearance } from "~/lib/drawing-appearance";
 import { measurementAngleArc, measurementAngleReference } from "~/lib/sheet-measure-angles";
 import { savedMeasureNodes, savedMeasureScale, savedMeasureReferences } from "~/lib/saved-measure-run";
 import type { DrawingMarkup } from "~/lib/drawing-workspace";
@@ -91,6 +93,7 @@ export function DrawingSheetViewer({
   tiles,
   sheetKey,
   comparison,
+  appearance = DEFAULT_DRAWING_APPEARANCE,
   resolveAssetUrl,
   navigateTo,
   onViewportChange,
@@ -106,6 +109,7 @@ export function DrawingSheetViewer({
   /** Remembers this sheet's scale on this computer. */
   sheetKey?: string;
   comparison?: DrawingComparison;
+  appearance?: DrawingAppearance;
   resolveAssetUrl?: (url: string) => Promise<string>;
   navigateTo?: { center: SheetPoint; zoom: number; requestId: string } | null;
   onViewportChange?: (viewport: DrawingViewport) => void;
@@ -122,6 +126,9 @@ export function DrawingSheetViewer({
   };
 }) {
   const usesInkComparison = comparison?.mode === "overlay" || comparison?.mode === "difference";
+  const appearanceId = `drawing-appearance-${useId().replace(/:/g, "")}`;
+  const appearanceMatrix = drawingAppearanceMatrix(appearance);
+  const appearanceFilter = appearanceMatrix ? `url(#${appearanceId})` : undefined;
   const frame = useRef<HTMLDivElement>(null);
   const layer = useRef<HTMLDivElement>(null);
   const marks = useRef<HTMLDivElement>(null);
@@ -1481,9 +1488,12 @@ export function DrawingSheetViewer({
     >
       <div
         ref={layer}
+        data-drawing-sheet-layer="true"
         className="absolute top-1/2 left-1/2 origin-center will-change-transform"
         style={{ width: fit?.width, height: fit?.height, visibility: fit ? "visible" : "hidden" }}
       >
+        {appearanceMatrix && <DrawingAppearanceFilter id={appearanceId} matrix={appearanceMatrix} />}
+        <div data-drawing-image-layer="true" className="absolute inset-0" style={{ filter: appearanceFilter, backgroundColor: "#fff" }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img ref={image} src={src} alt={alt} draggable={false} className="absolute inset-0 h-full w-full" style={{ opacity: usesInkComparison ? 0 : undefined }} />
         <DrawingTileLayer key={tiles ?? src} requests={usesInkComparison ? [] : tileRequests} resolveAssetUrl={resolveAssetUrl} />
@@ -1498,8 +1508,11 @@ export function DrawingSheetViewer({
             moving={moving}
           />
         )}
+        </div>
         {comparison && fit && (
           <DrawingComparisonLayer
+            appearance={appearance}
+            appearanceFilter={appearanceFilter}
             primary={{ src, pdf }}
             comparison={comparison}
             fit={fit}

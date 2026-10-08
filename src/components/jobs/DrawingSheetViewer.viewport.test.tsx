@@ -34,7 +34,7 @@ function open(initialViewport: DrawingViewport | null, height = 500) {
   };
   const result = render(<DrawingSheetViewer {...props} />);
   const image = screen.getByAltText("Sheet");
-  const frame = image.parentElement!.parentElement!;
+  const frame = image.closest<HTMLElement>('[data-drawing-sheet-layer]')!.parentElement!;
   Object.defineProperties(image, {
     naturalWidth: { value: 1000 },
     naturalHeight: { value: height },
@@ -67,7 +67,7 @@ describe("drawing viewport navigation", () => {
     "restores zoom and sheet position after an image of height %i loads",
     (height, x, y) => {
       const { image, onViewportChange } = open(inherited, height);
-      expect(image.parentElement!.style.transform).toContain(
+      expect(image.closest<HTMLElement>('[data-drawing-sheet-layer]')!.style.transform).toContain(
         `translate3d(${x}px, ${y}px, 0) scale(2)`,
       );
       expect(onViewportChange).toHaveBeenCalledWith(inherited);
@@ -114,7 +114,7 @@ describe("drawing viewport navigation", () => {
         navigateTo={{ center: { x: 0.5, y: 0.5 }, zoom: 1, requestId: "fit" }}
       />,
     );
-    expect(image.parentElement!.style.transform).toContain(
+    expect(image.closest<HTMLElement>('[data-drawing-sheet-layer]')!.style.transform).toContain(
       "translate3d(0px, 0px, 0) scale(1)",
     );
     expect(onViewportChange).toHaveBeenLastCalledWith({
@@ -122,6 +122,6 @@ describe("drawing viewport navigation", () => {
       zoom: 1,
     });
     rerender(<DrawingSheetViewer {...props} />);
-    expect(image.parentElement!.style.transform).toContain("scale(1)");
+    expect(image.closest<HTMLElement>('[data-drawing-sheet-layer]')!.style.transform).toContain("scale(1)");
   });
 });

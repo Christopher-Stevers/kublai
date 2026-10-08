@@ -14,7 +14,7 @@ afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 function open(props: DrawingEditorProps = {}) {
   const view = render(<DrawingSheetViewer src="/sheet.webp" alt="Sheet" sheetKey={sourceSheetId} {...props} />);
   const image = screen.getByAltText("Sheet");
-  const frame = image.parentElement!.parentElement!;
+  const frame = image.closest<HTMLElement>('[data-drawing-sheet-layer]')!.parentElement!;
   Object.defineProperties(image, { naturalWidth: { value: 1000 }, naturalHeight: { value: 500 } });
   Object.defineProperties(frame, { clientWidth: { value: 800, configurable: true }, clientHeight: { value: 600, configurable: true } });
   vi.spyOn(frame, "getBoundingClientRect").mockReturnValue({ x: 0, y: 0, left: 0, top: 0, right: 800, bottom: 600, width: 800, height: 600, toJSON: () => ({}) });
@@ -38,7 +38,7 @@ describe("drawing annotation tools in the real viewer", () => {
     fireEvent.pointerDown(shape, { ...mouse, clientX: 250, clientY: 250 });
     fireEvent.pointerMove(frame, { ...mouse, clientX: 330, clientY: 290 });
     fireEvent.pointerUp(frame, { ...mouse, buttons: 0, clientX: 330, clientY: 290 });
-    expect(image.parentElement!.style.transform).toContain("translate3d(80px, 40px, 0)");
+    expect(image.closest<HTMLElement>('[data-drawing-sheet-layer]')!.style.transform).toContain("translate3d(80px, 40px, 0)");
     for (const callback of [onCreate, onSelect, onUpdate, onPoint]) expect(callback).not.toHaveBeenCalled();
     expect(frame).not.toHaveClass("cursor-grabbing");
   });
@@ -51,7 +51,7 @@ describe("drawing annotation tools in the real viewer", () => {
     fireEvent.pointerDown(undo, { ...mouse, clientX: 400, clientY: 300 });
     fireEvent.pointerMove(undo, { ...mouse, clientX: 480, clientY: 340 });
     fireEvent.pointerUp(undo, { ...mouse, buttons: 0, clientX: 480, clientY: 340 });
-    expect(image.parentElement!.style.transform).toContain("translate3d(80px, 40px, 0)");
+    expect(image.closest<HTMLElement>('[data-drawing-sheet-layer]')!.style.transform).toContain("translate3d(80px, 40px, 0)");
     expect(onCreate).not.toHaveBeenCalled();
     tap(frame, 680, 440);
     fireEvent.click(screen.getByRole("button", { name: "Finish" }));
@@ -74,7 +74,7 @@ describe("drawing annotation tools in the real viewer", () => {
     fireEvent.pointerMove(frame, { clientX: 600, clientY: 400, pointerId: 1, button: 0 });
     fireEvent.pointerUp(frame, { clientX: 600, clientY: 400, pointerId: 1, button: 0 });
     expect(onCreate).toHaveBeenCalledWith(expect.objectContaining({ sourceSheetId, type: "rect", points: [{ x: 0.25, y: 0.25 }, { x: 0.75, y: 0.75 }], stroke: "#2563eb", fill: "#ffffff" }));
-    expect(screen.getByLabelText("Drawing annotations").parentElement).toBe(image.parentElement);
+    expect(screen.getByLabelText("Drawing annotations").parentElement).toBe(image.closest('[data-drawing-sheet-layer]'));
   });
   it("supports tap-to-tap dimensions with the calibrated scale attached", () => {
     const onCreate = vi.fn();
@@ -167,7 +167,7 @@ describe("drawing annotation tools in the real viewer", () => {
     fireEvent.pointerDown(shape, { clientX: 250, clientY: 250, pointerId: 1, button: 0 });
     fireEvent.pointerMove(frame, { clientX: 330, clientY: 290, pointerId: 1, button: 0 });
     fireEvent.pointerUp(frame, { clientX: 330, clientY: 290, pointerId: 1, button: 0 });
-    expect(image.parentElement!.style.transform).toContain("translate3d(80px, 40px, 0)");
+    expect(image.closest<HTMLElement>('[data-drawing-sheet-layer]')!.style.transform).toContain("translate3d(80px, 40px, 0)");
     expect(onSelect).not.toHaveBeenCalled();
     expect(onUpdate).not.toHaveBeenCalled();
   });

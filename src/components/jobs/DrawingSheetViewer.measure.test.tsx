@@ -77,7 +77,7 @@ function openSheet(
     />,
   );
   const image = screen.getByAltText("Sheet");
-  const frame = image.parentElement!.parentElement as HTMLDivElement;
+  const frame = image.closest<HTMLElement>('[data-drawing-sheet-layer]')!.parentElement as HTMLDivElement;
   Object.defineProperty(image, "naturalWidth", {
     configurable: true,
     get: () => 1000,
@@ -139,7 +139,7 @@ describe("drawing measure", () => {
     fireEvent.pointerDown(frame, { ...mouse, clientX: 200, clientY: 300 });
     fireEvent.pointerMove(frame, { ...mouse, clientX: 280, clientY: 340 });
     fireEvent.pointerUp(frame, { ...mouse, buttons: 0, clientX: 280, clientY: 340 });
-    expect(image.parentElement!.style.transform).toContain("translate3d(80px, 40px, 0)");
+    expect(image.closest<HTMLElement>('[data-drawing-sheet-layer]')!.style.transform).toContain("translate3d(80px, 40px, 0)");
     expect(nodes()).toEqual(before);
     tap(frame, 680, 340);
     expect(nodes()).toHaveLength(2);
@@ -974,7 +974,7 @@ describe("measuring colors", () => {
     tap(frame, 200, 300);
     tap(frame, 400, 300);
     const points = frame.querySelector("[data-measure-path]")?.getAttribute("points");
-    const drawingLayer = screen.getByAltText("Sheet").parentElement!;
+    const drawingLayer = screen.getByAltText("Sheet").closest<HTMLElement>('[data-drawing-sheet-layer]')!;
     const transform = drawingLayer.style.transform;
     fireEvent.wheel(screen.getByRole("button", { name: /^Measuring color:/ }), { deltaY: 80 });
     expect(drawingLayer.style.transform).toBe(transform);

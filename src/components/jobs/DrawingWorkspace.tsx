@@ -50,6 +50,8 @@ import {
   DrawingField,
   drawingFieldClass,
 } from "./DrawingEntityForm";
+import { DrawingAppearanceDialog } from "./DrawingAppearanceDialog";
+import { useDrawingAppearance } from "./useDrawingAppearance";
 import { DrawingOverlayPicker } from "./DrawingOverlayPicker";
 import { DrawingCompare } from "./DrawingCompare";
 import { DrawingDocumentActions } from "./DrawingDocumentActions";
@@ -147,6 +149,8 @@ export function DrawingWorkspace({
   onViewportChange?: (viewport: DrawingViewport) => void;
 }) {
   const account = useDrawingAccount();
+  const [appearance, changeAppearance] = useDrawingAppearance();
+  const [appearanceOpen, setAppearanceOpen] = useState(false);
   const utils = api.useUtils();
   const [online, setOnline] = useState(
     () => typeof navigator === "undefined" || navigator.onLine,
@@ -789,6 +793,7 @@ export function DrawingWorkspace({
         </p>
         <div className="min-h-0 flex-1">
           <DrawingSheetViewer
+            appearance={appearance}
             src={resolved.src}
             alt={source.name}
             pdf={resolved.pdf}
@@ -828,6 +833,14 @@ export function DrawingWorkspace({
       className="relative flex h-full min-h-0 flex-col"
       aria-label="Drawing workspace"
     >
+      {appearanceOpen && (
+        <DrawingAppearanceDialog
+          appearance={appearance}
+          comparing={Boolean(compareIds)}
+          onChange={changeAppearance}
+          onClose={() => setAppearanceOpen(false)}
+        />
+      )}
       {overlayPickerOpen && (
         <DrawingOverlayPicker
           drawings={overlayChoices}
@@ -1060,6 +1073,7 @@ export function DrawingWorkspace({
         <div className="min-h-0 min-w-0 flex-1">
           {compare && compareFirst ? (
             <DrawingCompare
+              appearance={appearance}
               key={`${compareFirst.id}:${compare.id}`}
               resolveAssetUrl={resolveAssetUrl}
               first={{
@@ -1078,6 +1092,7 @@ export function DrawingWorkspace({
             />
           ) : (
             <DrawingSheetViewer
+              appearance={appearance}
               key={source.id}
               toolControls={{ measureRequest, pipeRequest, onMode: setBottomMode }}
               initialViewport={viewport.current}
@@ -2191,6 +2206,9 @@ export function DrawingWorkspace({
                 onSelect={() => setOverlayPickerOpen(true)}
               >
                 Overlay drawings
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setAppearanceOpen(true)}>
+                Drawing appearance
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               {panels.map(([id, label]) => (

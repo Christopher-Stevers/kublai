@@ -39,7 +39,7 @@ afterEach(() => {
 function open() {
   const view = render(<DrawingSheetViewer src="/sheet.webp" alt="Sheet" tiles="/tiles" pdf={{ url: "/plan.pdf", page: 1 }} />);
   const image = screen.getByAltText("Sheet");
-  const frame = image.parentElement!.parentElement!;
+  const frame = image.closest<HTMLElement>('[data-drawing-sheet-layer]')!.parentElement!;
   Object.defineProperties(image, {
     naturalWidth: { configurable: true, value: 1000 },
     naturalHeight: { configurable: true, value: 500 },
@@ -80,7 +80,7 @@ describe("drawing detail scheduling", () => {
     await act(async () => { await vi.advanceTimersByTimeAsync(10); });
     expect(capture.requests.length).toBeGreaterThan(0);
     expect(screen.getByTestId("pdf").dataset.moving).toBe("true");
-    expect(image.parentElement!.style.transform).toContain("scale(");
+    expect(image.closest<HTMLElement>('[data-drawing-sheet-layer]')!.style.transform).toContain("scale(");
     expect(screen.getByTestId("pdf").parentElement).toBe(image.parentElement);
   });
 

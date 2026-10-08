@@ -28,6 +28,7 @@ type Props = {
   frameSize: DrawingSize;
   view: DrawingView;
   dpr: number;
+  inverted?: boolean;
 };
 type Raster = { patch: DrawingPatch; first: Uint8Array; second: Uint8Array };
 const nextTurn = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
@@ -53,7 +54,8 @@ export function DrawingLineOverlayLayer(props: Props) {
   const [error, setError] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
   const [attempt, setAttempt] = useState(0);
-  const styleKey = JSON.stringify(props.styles);
+  const styleKey = JSON.stringify([props.styles, Boolean(props.inverted)]);
+  const paper = props.inverted ? "#000000" : "#ffffff";
   const sourcesKey = JSON.stringify([
     { src: props.first.src, pdf: props.first.pdf },
     { src: props.second.src, pdf: props.second.pdf },
@@ -112,6 +114,7 @@ export function DrawingLineOverlayLayer(props: Props) {
               raster.first.length,
               offset + 64 * raster.patch.pixelWidth,
             ),
+            latest.current.inverted ? "#ffffff" : "#000000",
           );
           await nextTurn();
           if (disposed || id !== paintId) return;
@@ -322,19 +325,19 @@ export function DrawingLineOverlayLayer(props: Props) {
       data-line-overlay="true"
       data-overlay-ready={ready}
       className="pointer-events-none absolute inset-0"
-      style={{ zIndex: 2, backgroundColor: "#fff" }}
+      style={{ zIndex: 2, backgroundColor: paper }}
     >
       <canvas
         ref={overview}
         data-overlay-overview="true"
         className="absolute"
-        style={{ visibility: "hidden", backgroundColor: "#fff" }}
+        style={{ visibility: "hidden", backgroundColor: paper }}
       />
       <canvas
         ref={detail}
         data-overlay-detail="true"
         className="absolute"
-        style={{ visibility: "hidden", backgroundColor: "#fff" }}
+        style={{ visibility: "hidden", backgroundColor: paper }}
       />
       {(!ready || error) && (
         <p

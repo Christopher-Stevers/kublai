@@ -6,6 +6,10 @@ import {
   DEFAULT_OVERLAY_STYLES,
   type OverlayInkStyle,
 } from "~/lib/drawing-line-overlay";
+import {
+  DEFAULT_DRAWING_APPEARANCE,
+  type DrawingAppearance,
+} from "~/lib/drawing-appearance";
 import { DrawingLineOverlayLayer } from "./DrawingLineOverlayLayer";
 import { DrawingPdfLayer } from "./DrawingPdfLayer";
 
@@ -50,6 +54,8 @@ export function DrawingComparisonLayer({
   frameSize,
   view,
   dpr,
+  appearance = DEFAULT_DRAWING_APPEARANCE,
+  appearanceFilter,
 }: {
   comparison: DrawingComparison;
   primary: ComparisonSource;
@@ -57,6 +63,8 @@ export function DrawingComparisonLayer({
   frameSize: DrawingSize;
   view: DrawingView;
   dpr: number;
+  appearance?: DrawingAppearance;
+  appearanceFilter?: string;
 }) {
   const [image, setImage] = useState<{
     src: string;
@@ -71,6 +79,7 @@ export function DrawingComparisonLayer({
   if (comparison.mode === "overlay" || comparison.mode === "difference")
     return (
       <DrawingLineOverlayLayer
+        inverted={appearance.inverted}
         first={primary}
         second={comparison}
         styles={
@@ -128,6 +137,7 @@ export function DrawingComparisonLayer({
           transformOrigin: "center",
           transform: `translate(${comparison.alignment.x * fit.width}px, ${comparison.alignment.y * fit.height}px) scale(${geometry.scale})`,
           opacity: comparison.opacity,
+          filter: appearanceFilter,
         }}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}

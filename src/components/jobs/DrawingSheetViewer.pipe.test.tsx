@@ -145,7 +145,7 @@ function open(props: Partial<ComponentProps<typeof DrawingSheetViewer>> = {}) {
   };
   const view = render(<DrawingSheetViewer {...base} />);
   const image = screen.getByAltText("Pipe drawing");
-  const frame = image.parentElement!.parentElement!;
+  const frame = image.closest<HTMLElement>('[data-drawing-sheet-layer]')!.parentElement!;
   Object.defineProperties(image, {
     naturalWidth: { value: 1000 },
     naturalHeight: { value: 500 },
@@ -199,7 +199,7 @@ describe("pipe selection in the drawing viewer", () => {
     fireEvent.pointerDown(frame, { ...mouse, clientX: 160, clientY: 460 });
     fireEvent.pointerMove(frame, { ...mouse, clientX: 240, clientY: 500 });
     fireEvent.pointerUp(frame, { ...mouse, buttons: 0, clientX: 240, clientY: 500 });
-    expect(image.parentElement!.style.transform).toContain("translate3d(80px, 40px, 0)");
+    expect(image.closest<HTMLElement>('[data-drawing-sheet-layer]')!.style.transform).toContain("translate3d(80px, 40px, 0)");
     expect(total().textContent).toBe(before);
     tap(frame, 240, 500);
     expect(total()).toHaveTextContent("20 m");

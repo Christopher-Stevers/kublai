@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { DrawingSheetViewer, type DrawingViewport } from "./DrawingSheetViewer";
 import { DEFAULT_OVERLAY_STYLES } from "~/lib/drawing-line-overlay";
+import type { DrawingAppearance } from "~/lib/drawing-appearance";
 import type { DrawingComparison } from "./DrawingComparisonLayer";
 
 export type DrawingCompareSheet = {
@@ -21,6 +22,7 @@ export function DrawingCompare({
   resolveAssetUrl,
   initialViewport,
   onViewportChange,
+  appearance,
 }: {
   first: DrawingCompareSheet;
   second: DrawingCompareSheet;
@@ -28,6 +30,7 @@ export function DrawingCompare({
   resolveAssetUrl?: (url: string) => Promise<string>;
   initialViewport?: DrawingViewport | null;
   onViewportChange?: (value: DrawingViewport) => void;
+  appearance?: DrawingAppearance;
 }) {
   const sourceKey = JSON.stringify([firstSource, secondSource]);
   const [resolved, setResolved] = useState<{
@@ -344,6 +347,7 @@ export function DrawingCompare({
               <p className="truncate p-1 text-center text-xs">{sheet.name}</p>
               <div className="min-h-0 flex-1">
                 <DrawingSheetViewer
+                  appearance={appearance}
                   src={sheet.imageUrl}
                   initialViewport={entryView}
                   onViewportChange={
@@ -362,6 +366,7 @@ export function DrawingCompare({
       ) : (
         <div className="min-h-0 flex-1">
           <DrawingSheetViewer
+            appearance={appearance}
             src={first.imageUrl}
             initialViewport={entryView}
             onViewportChange={updateViewport}

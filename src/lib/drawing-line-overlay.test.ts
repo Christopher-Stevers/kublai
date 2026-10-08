@@ -10,6 +10,24 @@ import {
 } from "./drawing-line-overlay";
 
 describe("drawing line overlays", () => {
+  it("uses white shared lines on inverted paper while retaining each drawing's chosen colour and opacity", () => {
+    const pixels = new Uint8ClampedArray(12);
+    compositeDrawingInk(
+      pixels,
+      new Uint8Array([255, 255, 0]),
+      new Uint8Array([255, 0, 255]),
+      [
+        { color: "#9333ea", opacity: 0.3 },
+        { color: "#16a34a", opacity: 0.6 },
+      ],
+      0,
+      3,
+      "#ffffff",
+    );
+    expect([...pixels]).toEqual([
+      255, 255, 255, 153, 147, 51, 234, 76, 22, 163, 74, 153,
+    ]);
+  });
   it("removes paper and transparent pixels while retaining coloured and antialiased ink", () => {
     expect([
       ...drawingInk(
