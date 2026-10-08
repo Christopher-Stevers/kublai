@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import {
   isTileManifest,
   planDrawingTiles,
@@ -97,6 +97,7 @@ export function DrawingSheetViewer({
   const gesture = useRef<{ view: View; points: Point[] } | null>(null);
   const measureTap = useRef<{ x: number; y: number; moved: boolean } | null>(null);
   const [measuring, setMeasuring] = useState(false);
+  const markId = `measure-${useId().replace(/:/g, "")}`;
   const [calibrating, setCalibrating] = useState(false);
   const [path, setPath] = useState<SheetPoint[]>([]);
   const [calPoints, setCalPoints] = useState<SheetPoint[]>([]);
@@ -587,7 +588,11 @@ export function DrawingSheetViewer({
   return (
     <div
       ref={frame}
-      className={`relative h-full w-full touch-none overflow-hidden bg-muted select-none${measuring ? " cursor-crosshair" : ""}`}
+      className={`relative h-full w-full touch-none overflow-hidden bg-muted select-none [&_img]:pointer-events-none${measuring ? " cursor-crosshair" : ""}`}
+      // No phone long-press menu (copy/save image, open link) on the drawing:
+      // long presses are for working on the sheet.
+      style={{ WebkitTouchCallout: "none" }}
+      onContextMenu={(event) => event.preventDefault()}
       onPointerDown={(event) => {
         if (measuring && event.button !== 0) return;
         stopAnimation();
@@ -802,39 +807,95 @@ export function DrawingSheetViewer({
               />
             )}
             {marked.length >= 2 && (
-              <g>
-                <polyline
-                  points={marked.map((point) => `${point.x * fit.width},${point.y * fit.height}`).join(" ")}
-                  fill="none"
-                  stroke="#ffffff"
-                  strokeWidth={6}
-                  strokeLinejoin="round"
-                  strokeLinecap="round"
-                  vectorEffect="non-scaling-stroke"
-                />
-                <polyline
-                  points={marked.map((point) => `${point.x * fit.width},${point.y * fit.height}`).join(" ")}
-                  fill="none"
-                  stroke="#d97706"
-                  strokeWidth={3}
-                  strokeLinejoin="round"
-                  strokeLinecap="round"
-                  vectorEffect="non-scaling-stroke"
-                />
-              </g>
+              <>
+                {/* A thin line that fades out just before each point, so it
+                    never covers the spot under an X. */}
+                <defs>
+                  <radialGradient id={`${markId}-fade`}>
+                    <stop offset="0.45" stopColor="#000000" />
+                    <stop offset="1" stopColor="#ffffff" />
+                  </radialGradient>
+                  <mask
+                    id={`${markId}-ends`}
+                    maskUnits="userSpaceOnUse"
+                    x={-fit.width}
+                    y={-fit.height}
+                    width={fit.width * 3}
+                    height={fit.height * 3}
+                  >
+                    <rect x={-fit.width} y={-fit.height} width={fit.width * 3} height={fit.height * 3} fill="#ffffff" />
+                    {marked.map((point, index) => (
+                      <circle
+                        key={index}
+                        cx={point.x * fit.width}
+                        cy={point.y * fit.height}
+                        r={16 / view.scale}
+                        fill={`url(#${markId}-fade)`}
+                      />
+                    ))}
+                  </mask>
+                </defs>
+                <g mask={`url(#${markId}-ends)`}>
+                  <polyline
+                    points={marked.map((point) => `${point.x * fit.width},${point.y * fit.height}`).join(" ")}
+                    fill="none"
+                    stroke="#ffffff"
+                    strokeWidth={3.5}
+                    strokeLinejoin="round"
+                    strokeLinecap="round"
+                    vectorEffect="non-scaling-stroke"
+                  />
+                  <polyline
+                    points={marked.map((point) => `${point.x * fit.width},${point.y * fit.height}`).join(" ")}
+                    fill="none"
+                    stroke="#d97706"
+                    strokeWidth={1.5}
+                    strokeLinejoin="round"
+                    strokeLinecap="round"
+                    vectorEffect="non-scaling-stroke"
+                  />
+                </g>
+              </>
             )}
-            {marked.map((point, index) => (
-              <circle
-                key={index}
-                cx={point.x * fit.width}
-                cy={point.y * fit.height}
-                r={Math.max(3, 6 / view.scale)}
-                fill="#d97706"
-                stroke="#111111"
-                strokeWidth={1.5}
-                vectorEffect="non-scaling-stroke"
-              />
-            ))}
+            {/* End points are thin, semi-transparent X marks (a constant
+                ~14px on screen) so they can be placed precisely and the
+                linework under them stays visible. */}
+            {marked.map((point, index) => {
+              const cx = point.x * fit.width;
+              const cy = point.y * fit.height;
+              const arm = 7 / view.scale;
+              return (
+                <g key={index} opacity={0.6}>
+                  {[
+                    [-1, -1, 1, 1],
+                    [-1, 1, 1, -1],
+                  ].map(([ax, ay, bx, by], stroke) => (
+                    <g key={stroke}>
+                      <line
+                        x1={cx + ax! * arm}
+                        y1={cy + ay! * arm}
+                        x2={cx + bx! * arm}
+                        y2={cy + by! * arm}
+                        stroke="#ffffff"
+                        strokeWidth={3}
+                        strokeLinecap="round"
+                        vectorEffect="non-scaling-stroke"
+                      />
+                      <line
+                        x1={cx + ax! * arm}
+                        y1={cy + ay! * arm}
+                        x2={cx + bx! * arm}
+                        y2={cy + by! * arm}
+                        stroke="#b45309"
+                        strokeWidth={1.25}
+                        strokeLinecap="round"
+                        vectorEffect="non-scaling-stroke"
+                      />
+                    </g>
+                  ))}
+                </g>
+              );
+            })}
           </svg>
         </div>
       )}
