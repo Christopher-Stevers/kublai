@@ -56,6 +56,12 @@ const REST: View = { scale: 1, x: 0, y: 0 };
  * PDF, including a dashed grid, lands on that line. Give it a `key` per sheet
  * so each sheet opens unzoomed.
  */
+/** Holding this long while measuring picks up the point to slide it. */
+const MEASURE_HOLD_MS = 250;
+const LOUPE_PX = 128;
+const LOUPE_ZOOM = 2.5;
+const LOUPE_GAP_PX = 56;
+
 export function DrawingSheetViewer({
   src,
   alt,
@@ -95,7 +101,18 @@ export function DrawingSheetViewer({
   const [moving, setMoving] = useState(false);
   const pointers = useRef(new Map<number, Point>());
   const gesture = useRef<{ view: View; points: Point[] } | null>(null);
-  const measureTap = useRef<{ x: number; y: number; moved: boolean } | null>(null);
+  const measureTap = useRef<{ x: number; y: number; moved: boolean; holding?: boolean } | null>(null);
+  // Press and hold while measuring: the point follows the finger (snapping to
+  // lines) with a magnifier above the thumb; lifting sets it.
+  const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [loupe, setLoupe] = useState<{ x: number; y: number } | null>(null);
+  const loupeCanvas = useRef<HTMLCanvasElement>(null);
+  const endHold = () => {
+    if (holdTimer.current) clearTimeout(holdTimer.current);
+    holdTimer.current = null;
+    if (measureTap.current) measureTap.current.holding = false;
+    setLoupe(null);
+  };
   const [measuring, setMeasuring] = useState(false);
   const markId = `measure-${useId().replace(/:/g, "")}`;
   const [calibrating, setCalibrating] = useState(false);
@@ -584,6 +601,90 @@ export function DrawingSheetViewer({
   // screen pixel or smaller than ~10px across when zoomed out.
   const markStroke = Math.max(0.08, 1.1 / view.scale);
   const markArm = Math.max(0.6, 5 / view.scale);
+
+  // Paint the magnifier from what is on screen: the saved image, any sharper
+  // tiles and the PDF redraw, at LOUPE_ZOOM around the aimed point.
+  useEffect(() => {
+    const canvas = loupeCanvas.current;
+    const sheet = layer.current;
+    if (!loupe || !canvas || !sheet) return;
+    const dpr = window.devicePixelRatio || 1;
+    const size = Math.round(LOUPE_PX * dpr);
+    if (canvas.width !== size) {
+      canvas.width = size;
+      canvas.height = size;
+    }
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    const box = sheet.getBoundingClientRect();
+    const toClient = (point: SheetPoint) => ({
+      x: box.left + point.x * box.width,
+      y: box.top + point.y * box.height,
+    });
+    const centre = hover ? toClient(hover) : loupe;
+    const reach = LOUPE_PX / 2 / LOUPE_ZOOM;
+    const src = { left: centre.x - reach, top: centre.y - reach, right: centre.x + reach, bottom: centre.y + reach };
+    const k = LOUPE_ZOOM * dpr;
+    const map = (c: { x: number; y: number }) => ({ x: (c.x - src.left) * k, y: (c.y - src.top) * k });
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, size, size);
+    ctx.imageSmoothingQuality = "high";
+    for (const el of sheet.querySelectorAll<HTMLImageElement | HTMLCanvasElement>("img, canvas")) {
+      const r = el.getBoundingClientRect();
+      const l = Math.max(r.left, src.left), t = Math.max(r.top, src.top);
+      const rr = Math.min(r.right, src.right), b = Math.min(r.bottom, src.bottom);
+      if (rr <= l || b <= t || r.width <= 0 || r.height <= 0) continue;
+      const image = el instanceof HTMLImageElement;
+      if (image && !el.complete) continue;
+      const nw = image ? el.naturalWidth : el.width;
+      const nh = image ? el.naturalHeight : el.height;
+      if (!nw || !nh) continue;
+      const style = getComputedStyle(el);
+      if (style.opacity === "0" || style.visibility === "hidden" || style.display === "none") continue;
+      try {
+        ctx.drawImage(
+          el,
+          ((l - r.left) * nw) / r.width,
+          ((t - r.top) * nh) / r.height,
+          ((rr - l) * nw) / r.width,
+          ((b - t) * nh) / r.height,
+          (l - src.left) * k,
+          (t - src.top) * k,
+          (rr - l) * k,
+          (b - t) * k,
+        );
+      } catch {
+        // An image that cannot be drawn is simply left out of the magnifier.
+      }
+    }
+    const strokeLine = (a: { x: number; y: number }, z: { x: number; y: number }, colour: string, width: number) => {
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(z.x, z.y);
+      ctx.strokeStyle = colour;
+      ctx.lineWidth = width;
+      ctx.lineCap = "round";
+      ctx.stroke();
+    };
+    if (snapLine) {
+      strokeLine(
+        map(toClient({ x: snapLine.x1, y: snapLine.y1 })),
+        map(toClient({ x: snapLine.x2, y: snapLine.y2 })),
+        "rgba(34, 211, 238, 0.85)",
+        1.5 * dpr,
+      );
+    }
+    for (let i = 1; i < marked.length; i++) {
+      strokeLine(map(toClient(marked[i - 1]!)), map(toClient(marked[i]!)), "rgba(217, 119, 6, 0.9)", 1.5 * dpr);
+    }
+    const c = map(centre);
+    const arm = 10 * dpr;
+    for (const [dx, dy] of [[1, 1], [1, -1]] as const) {
+      strokeLine({ x: c.x - dx * arm, y: c.y - dy * arm }, { x: c.x + dx * arm, y: c.y + dy * arm }, "rgba(255,255,255,0.8)", 3.5 * dpr);
+      strokeLine({ x: c.x - dx * arm, y: c.y - dy * arm }, { x: c.x + dx * arm, y: c.y + dy * arm }, "#b45309", 1.5 * dpr);
+    }
+  });
   const snapMark = Math.max(1.2, 8 / view.scale);
   const total =
     sheetScale && fit && !calibrating && marked.length >= 2
@@ -617,8 +718,21 @@ export function DrawingSheetViewer({
         }
         if (pointers.current.size === 1) {
           if (measuring) {
-            // A short press drops a point. A drag still pans, and a second finger still pinches.
+            // A short press drops a point. Holding still lets the point be slid
+            // into place with a magnifier. A drag still pans, and a second
+            // finger still pinches.
             measureTap.current = { x: event.clientX, y: event.clientY, moved: false };
+            if (holdTimer.current) clearTimeout(holdTimer.current);
+            holdTimer.current = setTimeout(() => {
+              holdTimer.current = null;
+              const tap = measureTap.current;
+              const finger = [...pointers.current.values()][0];
+              if (!tap || tap.moved || pointers.current.size !== 1 || !finger) return;
+              tap.holding = true;
+              navigator.vibrate?.(8);
+              rememberAim(finger.x, finger.y);
+              setLoupe({ x: finger.x, y: finger.y });
+            }, MEASURE_HOLD_MS);
             return;
           }
           const now = Date.now();
@@ -634,7 +748,10 @@ export function DrawingSheetViewer({
           } else {
             panTap.current = { time: now, x: event.clientX, y: event.clientY, moved: false };
           }
-        } else if (measureTap.current) measureTap.current.moved = true;
+        } else if (measureTap.current) {
+          measureTap.current.moved = true;
+          endHold();
+        }
       }}
       onPointerMove={(event) => {
         if (measuring && event.buttons === 0) rememberAim(event.clientX, event.clientY);
@@ -656,6 +773,7 @@ export function DrawingSheetViewer({
         const base = gesture.current.view;
         if (now.length >= 2 && before.length >= 2) {
           if (measureTap.current) measureTap.current.moved = true;
+          if (loupe) endHold();
           const a = now[0]!, b = now[1]!;
           const a0 = before[0]!, b0 = before[1]!;
           const factor =
@@ -667,6 +785,11 @@ export function DrawingSheetViewer({
         } else if (now.length === 1 && before[0]) {
           if (!measuring && editor.move(pointFromClient(event.clientX, event.clientY))) return;
           const p = now[0]!;
+          if (measuring && measureTap.current?.holding) {
+            rememberAim(event.clientX, event.clientY);
+            setLoupe({ x: event.clientX, y: event.clientY });
+            return;
+          }
           if (measuring && measureTap.current && !measureTap.current.moved) {
             if (Math.hypot(p.x - measureTap.current.x, p.y - measureTap.current.y) <= MEASURE_TAP_SLOP_PX) {
               rememberAim(event.clientX, event.clientY);
@@ -709,6 +832,9 @@ export function DrawingSheetViewer({
         const edited = !measuring && wasSingle && editor.up(pointFromClient(event.clientX, event.clientY));
         pointers.current.delete(event.pointerId);
         measureTap.current = null;
+        if (holdTimer.current) clearTimeout(holdTimer.current);
+        holdTimer.current = null;
+        setLoupe(null);
         startGesture();
         if (pointers.current.size > 0) return;
         if (edited) { move(live.current, true); return; }
@@ -728,6 +854,7 @@ export function DrawingSheetViewer({
         panTap.current = null;
         lastTap.current = null;
         pointers.current.delete(event.pointerId);
+        endHold();
         measureTap.current = null;
         startGesture();
         if (pointers.current.size === 0) move(live.current, true);
@@ -901,6 +1028,22 @@ export function DrawingSheetViewer({
         </div>
       )}
       {!measuring && <DrawingDraftToolbar tool={annotationTool} count={editor.pointCount} canFinish={editor.canFinish} onUndo={editor.undo} onCancel={editor.clear} onFinish={editor.finish} />}
+      {loupe && fit && frame.current && (() => {
+        const box = frame.current.getBoundingClientRect();
+        const half = LOUPE_PX / 2;
+        // Above the thumb; below it when there is no room at the top.
+        const above = loupe.y - box.top - LOUPE_GAP_PX - half;
+        const top = above - half >= 8 ? above : loupe.y - box.top + LOUPE_GAP_PX + half;
+        const left = Math.min(Math.max(loupe.x - box.left, half + 8), box.width - half - 8);
+        return (
+          <canvas
+            ref={loupeCanvas}
+            aria-hidden="true"
+            className="pointer-events-none absolute z-30 rounded-full border-2 border-white bg-white shadow-[0_4px_16px_rgba(0,0,0,0.45)] ring-1 ring-black/30"
+            style={{ width: LOUPE_PX, height: LOUPE_PX, left: left - half, top: top - half }}
+          />
+        );
+      })()}
       <SheetMeasureBar
         measuring={measuring}
         calibrating={calibrating}
