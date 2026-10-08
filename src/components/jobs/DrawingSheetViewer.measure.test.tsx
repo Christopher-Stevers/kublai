@@ -401,7 +401,8 @@ describe("drawing measure", () => {
       fireEvent.pointerUp(frame, { clientX: 408, clientY: 150, pointerId: 1, button: 0, buttons: 0 });
       expect(screen.getByRole("status")).toHaveTextContent("18'-9\"");
       expect(frame.querySelector("canvas")).toBeNull();
-      expect(screen.queryByText("90°")).toBeNull();
+      expect(frame.querySelector('[data-measure-angle][data-active-angle="true"]')).toBeNull();
+      expect(frame.querySelector('[data-measure-angle]')).toHaveTextContent("90°");
     } finally {
       context.mockRestore();
     }
@@ -823,5 +824,65 @@ describe("measuring colors", () => {
     tap(frame, 400, 300);
     expect(frame.querySelector("[data-measure-path]")).toHaveAttribute("stroke", "#ff00cc");
     expect(screen.getByRole("status")).toHaveTextContent("25'-0\"");
+  });
+});
+
+
+describe("relative measuring angles and drafting arcs", () => {
+  it("starts relative to a rotated PDF line, then uses the last measurement despite another PDF line under its end", async () => {
+    const slope = Math.tan(Math.PI / 6);
+    const endY = 300 - 100 * Math.sqrt(3);
+    vi.mocked(loadSnapLines).mockResolvedValue([
+      { x1: 0.1, y1: 0.5 - 0.8 * slope, x2: 0.9, y2: 0.5 + 0.8 * slope },
+      { x1: 0.55, y1: (endY - 100) / 400, x2: 0.7, y2: (endY - 100) / 400 },
+    ]);
+    const { frame } = openSheet("relative-angles", { url: "/plan.pdf", page: 1 });
+    fireEvent.click(screen.getByRole("button", { name: "Measure" }));
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("snap onto lines"));
+    tap(frame, 400, 300);
+    fireEvent.pointerMove(frame, { clientX: 500, clientY: endY, buttons: 0 });
+    expect(frame.querySelector('[data-measure-path]')).toHaveAttribute("data-angle-locked", "true");
+    expect(frame.querySelector('[data-measure-angle][data-active-angle="true"]')).toHaveTextContent("90°");
+    expect(frame.querySelector('[data-angle-arc]')?.getAttribute("d")).toMatch(/ A /);
+    tap(frame, 500, endY);
+    // A 30° outgoing segment is square to our -60° measurement, but not to
+    // the horizontal PDF line on which the second node landed.
+    const nextY = endY + 150 * slope;
+    fireEvent.pointerMove(frame, { clientX: 650, clientY: nextY + 4, buttons: 0 });
+    expect(frame.querySelector('[data-measure-path]')).toHaveAttribute("data-angle-locked", "true");
+    expect(frame.querySelector('[data-measure-angle][data-active-angle="true"]')).toHaveTextContent("90°");
+    tap(frame, 650, nextY);
+    expect(frame.querySelectorAll('[data-measure-angle]')).toHaveLength(2);
+    expect(frame.querySelectorAll('[data-active-angle="true"]')).toHaveLength(0);
+    // A 45° change of direction has a 135° inside corner. The arc and label
+    // show that actual interior angle rather than marking a 135° arc as 45°.
+    fireEvent.pointerMove(frame, {
+      clientX: 650 + 120 * Math.cos(75 * Math.PI / 180),
+      clientY: nextY + 120 * Math.sin(75 * Math.PI / 180), buttons: 0,
+    });
+    expect(frame.querySelector('[data-measure-path]')).toHaveAttribute("data-angle-locked", "true");
+    expect(frame.querySelector('[data-measure-angle][data-active-angle="true"]')).toHaveTextContent("135°");
+  });
+
+  it("keeps arcs at the corner, updates them while moving a node, and removes them with cleared measurements", () => {
+    const context = vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(null);
+    try {
+      const { frame } = openSheet("corner-arcs");
+      fireEvent.click(screen.getByRole("button", { name: "Measure" }));
+      tap(frame, 200, 300);
+      tap(frame, 400, 300);
+      tap(frame, 400, 460);
+      const corner = frame.querySelector('[data-measure-angle="1"]');
+      expect(corner).toHaveTextContent("90°");
+      const original = corner?.querySelector('path[data-angle-arc]')?.getAttribute("d");
+      fireEvent.pointerDown(frame, { clientX: 400, clientY: 300, pointerId: 1, button: 0 });
+      fireEvent.pointerMove(frame, { clientX: 450, clientY: 350, pointerId: 1, buttons: 1 });
+      expect(frame.querySelectorAll('[data-measure-node]')).toHaveLength(3);
+      expect(frame.querySelector('[data-measure-angle="1"] path[data-angle-arc]')?.getAttribute("d")).not.toBe(original);
+      fireEvent.pointerCancel(frame, { pointerId: 1 });
+      expect(frame.querySelector('[data-measure-angle="1"] path[data-angle-arc]')).toHaveAttribute("d", original!);
+      fireEvent.click(screen.getByRole("button", { name: "Clear" }));
+      expect(frame.querySelector('[data-measure-angle]')).toBeNull();
+    } finally { context.mockRestore(); }
   });
 });

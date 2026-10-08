@@ -258,8 +258,9 @@ export type AngleSnap = { point: SheetPoint; angle: 45 | 90 };
 
 /**
  * Measuring or setting a scale: when the line from `anchor` to `target` is within
- * `toleranceDeg` of square (90°) or 45° to `reference` (the line the first
- * end sits on, or the sheet's horizontal), lock it to that angle. If `line`
+ * `toleranceDeg` of square (90°) or 45° to `reference` (the attached drawing
+ * line for the first segment, then the previous measurement segment), lock it
+ * to that angle. A missing reference falls back to sheet horizontal. If `line`
  * (the line under the second end) is given, the end lands exactly where the
  * locked line crosses it. Angles are measured on the real sheet (y × aspect).
  */

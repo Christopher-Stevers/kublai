@@ -30,6 +30,7 @@ import {
   validMeasureColor,
   writeMeasureColor,
 } from "~/lib/sheet-measure-color";
+import { measurementAngleArc, measurementAngleReference } from "~/lib/sheet-measure-angles";
 import { scaleReadMessage } from "~/lib/sheet-scale-text";
 import { buildSnapIndex, mergeCollinear, snapToLine, type SnapIndex, type SnapSegment } from "~/lib/sheet-snap";
 import { SheetMeasureBar } from "./SheetMeasureBar";
@@ -350,14 +351,17 @@ export function DrawingSheetViewer({
     if (!point) return null;
     // Moving the first node uses its next neighbor; all others use the previous.
     const nodes = calibrating ? calNodes : trace;
-    const anchorNode = movingNode !== undefined
-      ? nodes[movingNode === 0 ? 1 : movingNode - 1]
-      : calibrating ? nodes.length === 1 ? nodes[0] : undefined : nodes.at(-1);
-    const anchor = anchorNode?.point;
-    const reference = anchorNode?.line ?? null;
+    const endIndex = movingNode ?? nodes.length;
+    const angleReference = !calibrating || movingNode !== undefined || nodes.length === 1
+      ? measurementAngleReference(nodes, endIndex) : null;
+    const anchor = angleReference?.anchor;
+    const reference = angleReference?.reference ?? null;
+    // Line selection only prefers actual PDF linework, never the synthesized
+    // measurement reference (which is used solely for angle locking).
+    const attachedLine = angleReference ? nodes[angleReference.anchorIndex]?.line : null;
     const shown = fit ? fit.width * live.current.scale : 0;
     const hit = snapIndex && shown > 0
-      ? snapToLine(point, snapIndex, SNAP_PX / shown, anchor ? reference : null, 4 / shown)
+      ? snapToLine(point, snapIndex, SNAP_PX / shown, attachedLine, 4 / shown)
       : null;
     if (anchor && fit) {
       const angled = snapToAngle(anchor, hit?.point ?? point, fit.aspect, reference, hit?.segment ?? null);
@@ -686,7 +690,24 @@ export function DrawingSheetViewer({
   const markStroke = Math.max(0.08, 1.1 / view.scale);
   const markArm = Math.max(0.6, 5 / view.scale);
   const lockedAngle = rubber || dragIndex !== null ? angleSnap : null;
-  const activeAngleSegment = dragIndex !== null ? Math.max(0, dragIndex - 1) : marked.length - 2;
+  const activeAngleSegment = dragIndex === 0 && marked.length > 2 ? 1
+    : dragIndex !== null ? Math.max(0, dragIndex - 1) : marked.length - 2;
+  const markedNodes = marked.map((point, index) => ({ point, line: index === dragIndex && hover ? snapLine : (calibrating ? calNodes : trace)[index]?.line ?? null }));
+  const angleArcs = fit ? marked.slice(1).flatMap((end, index) => {
+    const active = index === activeAngleSegment && (rubber !== null || dragIndex !== null);
+    // A first-node drag uses the stationary next node as the vertex.
+    const endIndex = active && dragIndex === 0 ? 0 : index + 1;
+    const reference = measurementAngleReference(markedNodes, endIndex);
+    if (!reference) return [];
+    const arc = measurementAngleArc(reference.anchor, endIndex === 0 ? marked[0]! : end, reference.reference,
+      fit.width, fit.height, view.scale, reference.previous);
+    if (!arc) return [];
+    // Without an attached first line, only show the horizontal fallback when
+    // it corresponds to a 45°/90° lock, rather than an arbitrary sheet heading.
+    if (!reference.previous && !reference.reference &&
+      Math.min(Math.abs(arc.degrees - 45), Math.abs(arc.degrees - 90)) > 1e-6) return [];
+    return [{ ...arc, index, active }];
+  }) : [];
   const knownLength = calibrating ? parseLengthAs(draft, unit) : null;
   const dimensionLabels = fit ? marked.slice(1).map((end, index) => {
     const start = marked[index]!;
@@ -786,13 +807,30 @@ export function DrawingSheetViewer({
         (lockedAngle ? 2.5 : 1.5) * dpr,
       );
     }
-    if (lockedAngle) {
+    for (const arc of angleArcs) {
+      const vertex = map(toClient({ x: arc.vertex.x / fit!.width, y: arc.vertex.y / fit!.height }));
+      if (arc.referenceEnd) {
+        strokeLine(vertex, map(toClient({ x: arc.referenceEnd.x / fit!.width, y: arc.referenceEnd.y / fit!.height })), measureColor, 1.5 * dpr);
+      }
+      const start = Math.atan2(arc.start.y - arc.vertex.y, arc.start.x - arc.vertex.x);
+      const finish = Math.atan2(arc.finish.y - arc.vertex.y, arc.finish.x - arc.vertex.x);
+      const sweep = Math.atan2(Math.sin(finish - start), Math.cos(finish - start));
+      for (const [color, width] of [[measureHalo, 3.5], [measureColor, 1.5]] as const) {
+        ctx.beginPath();
+        ctx.arc(vertex.x, vertex.y, arc.radius * box.width / fit!.width * k, start, start + sweep, sweep < 0);
+        ctx.strokeStyle = color;
+        ctx.lineWidth = width * dpr;
+        ctx.stroke();
+      }
+      const label = map(toClient({ x: arc.label.x / fit!.width, y: arc.label.y / fit!.height }));
       ctx.font = `bold ${12 * dpr}px system-ui, sans-serif`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
       ctx.lineWidth = 3 * dpr;
-      ctx.strokeStyle = "#ffffff";
-      ctx.fillStyle = "#15803d";
-      ctx.strokeText(`${lockedAngle}°`, 6 * dpr, 16 * dpr);
-      ctx.fillText(`${lockedAngle}°`, 6 * dpr, 16 * dpr);
+      ctx.strokeStyle = measureHalo;
+      ctx.fillStyle = measureColor;
+      ctx.strokeText(arc.text, label.x, label.y);
+      ctx.fillText(arc.text, label.x, label.y);
     }
     const c = map(centre);
     const arm = 10 * dpr;
@@ -1139,7 +1177,6 @@ export function DrawingSheetViewer({
                   />
                 </g>
                 {dimensionLabels.map(({ index, label, rotation, x, y }) => {
-                  const angle = index === activeAngleSegment ? lockedAngle : null;
                   const fontSize = 14 / view.scale;
                   return (
                     <g key={index} transform={`translate(${x} ${y}) rotate(${rotation})`}>
@@ -1158,23 +1195,24 @@ export function DrawingSheetViewer({
                       >
                         {label}
                       </text>
-                      {angle && (
-                        <text
-                          y={18 / view.scale}
-                          textAnchor="middle"
-                          fontSize={13 / view.scale}
-                          fontWeight={700}
-                          fill="#15803d"
-                          stroke="#ffffff"
-                          strokeWidth={3 / view.scale}
-                          paintOrder="stroke"
-                        >
-                          {angle}°
-                        </text>
-                      )}
                     </g>
                   );
                 })}
+                {angleArcs.map((arc) => (
+                  <g key={arc.index} data-measure-angle={arc.index} data-active-angle={arc.active ? "true" : "false"}>
+                    {arc.referenceEnd && (
+                      <line x1={arc.vertex.x} y1={arc.vertex.y} x2={arc.referenceEnd.x} y2={arc.referenceEnd.y}
+                        stroke={measureColor} strokeWidth={markStroke} strokeDasharray={`${3 / view.scale} ${3 / view.scale}`} />
+                    )}
+                    <path d={arc.path} fill="none" stroke={measureHalo} strokeWidth={markStroke * 3} />
+                    <path data-angle-arc="true" d={arc.path} fill="none" stroke={measureColor} strokeWidth={markStroke * 1.4} />
+                    <text x={arc.label.x} y={arc.label.y} textAnchor="middle" dominantBaseline="central"
+                      fontSize={13 / view.scale} fontWeight={700} fill={measureColor} stroke={measureHalo}
+                      strokeWidth={3 / view.scale} strokeLinejoin="round" paintOrder="stroke">
+                      {arc.text}
+                    </text>
+                  </g>
+                ))}
               </>
             )}
             {/* End points are thin, semi-transparent X marks so they can be
