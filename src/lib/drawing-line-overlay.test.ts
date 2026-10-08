@@ -35,6 +35,59 @@ describe("drawing line overlays", () => {
       0, 0, 0, 255, 147, 51, 234, 255, 22, 163, 74, 255, 0, 0, 0, 0,
     ]);
   });
+  it("keeps antialiased and differently weighted common strokes neutral instead of purple", () => {
+    const pixels = new Uint8ClampedArray(20);
+    compositeDrawingInk(
+      pixels,
+      new Uint8Array([128, 255, 180, 255, 0]),
+      new Uint8Array([128, 180, 255, 0, 255]),
+      [
+        { color: "#ff0000", opacity: 1 },
+        { color: "#0000ff", opacity: 1 },
+      ],
+    );
+    expect([...pixels]).toEqual([
+      0,
+      0,
+      0,
+      255, // grey CAD underlays become solid shared black
+      0,
+      0,
+      0,
+      255, // shared solid core, even with different PDF line weights
+      0,
+      0,
+      0,
+      255,
+      255,
+      0,
+      0,
+      255, // first-sheet-only ink
+      0,
+      0,
+      255,
+      255, // second-sheet-only ink
+    ]);
+  });
+  it("keeps a soft neutral fringe on shared antialiased edges", () => {
+    const pixels = new Uint8ClampedArray(4);
+    compositeDrawingInk(pixels, new Uint8Array([16]), new Uint8Array([16]), [
+      { color: "#ff0000", opacity: 1 },
+      { color: "#0000ff", opacity: 1 },
+    ]);
+    expect([...pixels]).toEqual([0, 0, 0, 64]);
+  });
+  it("does not classify a faint edge against a strong changed line as fully shared", () => {
+    const pixels = new Uint8ClampedArray(4);
+    compositeDrawingInk(pixels, new Uint8Array([255]), new Uint8Array([40]), [
+      { color: "#ff0000", opacity: 1 },
+      { color: "#0000ff", opacity: 1 },
+    ]);
+    expect(pixels[0]).toBeGreaterThan(200);
+    expect(pixels[1]).toBe(0);
+    expect(pixels[2]).toBe(0);
+    expect(pixels[3]).toBe(255);
+  });
   it("applies opacity separately and exposes the other colour when a drawing is hidden", () => {
     const pixels = new Uint8ClampedArray(12);
     const first = new Uint8Array([255, 255, 0]),

@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useState } from "react";
 import type { DrawingSize, DrawingView } from "~/lib/drawing-viewport";
 import {
   DEFAULT_OVERLAY_STYLES,
@@ -58,7 +58,6 @@ export function DrawingComparisonLayer({
   view: DrawingView;
   dpr: number;
 }) {
-  const filterId = useId().replace(/:/g, "");
   const [image, setImage] = useState<{
     src: string;
     width: number;
@@ -69,15 +68,19 @@ export function DrawingComparisonLayer({
       ? image.height / image.width
       : fit.height / fit.width;
   const geometry = comparisonGeometry(fit, view, aspect, comparison.alignment);
-  if (comparison.mode === "overlay")
+  if (comparison.mode === "overlay" || comparison.mode === "difference")
     return (
       <DrawingLineOverlayLayer
         first={primary}
         second={comparison}
-        styles={[
-          comparison.primaryInk ?? DEFAULT_OVERLAY_STYLES[0],
-          comparison.secondaryInk ?? DEFAULT_OVERLAY_STYLES[1],
-        ]}
+        styles={
+          comparison.mode === "difference"
+            ? DEFAULT_OVERLAY_STYLES
+            : [
+                comparison.primaryInk ?? DEFAULT_OVERLAY_STYLES[0],
+                comparison.secondaryInk ?? DEFAULT_OVERLAY_STYLES[1],
+              ]
+        }
         alignment={comparison.alignment}
         fit={fit}
         frameSize={frameSize}
@@ -85,7 +88,6 @@ export function DrawingComparisonLayer({
         dpr={dpr}
       />
     );
-  const difference = comparison.mode === "difference";
   const pdf = (
     source: ComparisonSource,
     size: DrawingSize,
@@ -116,37 +118,6 @@ export function DrawingComparisonLayer({
             : undefined,
       }}
     >
-      <svg className="absolute size-0">
-        <defs>
-          <filter id={`${filterId}-red`} colorInterpolationFilters="sRGB">
-            <feColorMatrix
-              type="matrix"
-              values="0 0 0 0 1 0 1 0 0 0 0 0 1 0 0 0 0 0 1 0"
-            />
-          </filter>
-          <filter id={`${filterId}-blue`} colorInterpolationFilters="sRGB">
-            <feColorMatrix
-              type="matrix"
-              values="1 0 0 0 0 0 1 0 0 0 0 0 0 0 1 0 0 0 1 0"
-            />
-          </filter>
-        </defs>
-      </svg>
-      {difference && (
-        <div
-          className="absolute inset-0"
-          style={{ filter: `url(#${filterId}-red)`, backgroundColor: "#fff" }}
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={primary.src}
-            alt=""
-            draggable={false}
-            className="absolute inset-0 size-full"
-          />
-          {pdf(primary, fit, view)}
-        </div>
-      )}
       <div
         className="absolute"
         style={{
@@ -156,9 +127,7 @@ export function DrawingComparisonLayer({
           left: 0,
           transformOrigin: "center",
           transform: `translate(${comparison.alignment.x * fit.width}px, ${comparison.alignment.y * fit.height}px) scale(${geometry.scale})`,
-          opacity: difference ? 1 : comparison.opacity,
-          mixBlendMode: difference ? "multiply" : undefined,
-          filter: difference ? `url(#${filterId}-blue)` : undefined,
+          opacity: comparison.opacity,
         }}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}

@@ -86,9 +86,9 @@ describe("drawing comparison paper in the app themes", () => {
         dpr={2}
       />,
     );
-    const primary = container.querySelector(
-      '[data-drawing-comparison="difference"] > div',
-    )!;
+    const primary = container.querySelector('[data-line-overlay="true"]')!;
+    expect(container.querySelector("feColorMatrix")).toBeNull();
+    expect(container.querySelector('[style*="multiply"]')).toBeNull();
     expect(getComputedStyle(primary).backgroundColor).toBe(
       "rgb(255, 255, 255)",
     );

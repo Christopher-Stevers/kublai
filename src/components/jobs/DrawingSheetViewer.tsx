@@ -121,6 +121,7 @@ export function DrawingSheetViewer({
     onMode?: (mode: { measuring: boolean; pipe: boolean }) => void;
   };
 }) {
+  const usesInkComparison = comparison?.mode === "overlay" || comparison?.mode === "difference";
   const frame = useRef<HTMLDivElement>(null);
   const layer = useRef<HTMLDivElement>(null);
   const marks = useRef<HTMLDivElement>(null);
@@ -1484,8 +1485,8 @@ export function DrawingSheetViewer({
         style={{ width: fit?.width, height: fit?.height, visibility: fit ? "visible" : "hidden" }}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img ref={image} src={src} alt={alt} draggable={false} className="absolute inset-0 h-full w-full" style={{ opacity: comparison?.mode === "overlay" ? 0 : undefined }} />
-        <DrawingTileLayer key={tiles ?? src} requests={comparison?.mode === "overlay" ? [] : tileRequests} resolveAssetUrl={resolveAssetUrl} />
+        <img ref={image} src={src} alt={alt} draggable={false} className="absolute inset-0 h-full w-full" style={{ opacity: usesInkComparison ? 0 : undefined }} />
+        <DrawingTileLayer key={tiles ?? src} requests={usesInkComparison ? [] : tileRequests} resolveAssetUrl={resolveAssetUrl} />
         {pdf && fit && (
           <DrawingPdfLayer
             pdf={pdf}
@@ -1493,7 +1494,7 @@ export function DrawingSheetViewer({
             frameSize={frameSize}
             view={view}
             dpr={dpr}
-            enabled={needsPdf && comparison?.mode !== "overlay"}
+            enabled={needsPdf && !usesInkComparison}
             moving={moving}
           />
         )}

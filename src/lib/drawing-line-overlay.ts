@@ -54,6 +54,20 @@ export function compositeDrawingInk(
     const ai = a.opacity === 0 ? 0 : first[i]! / 255;
     const bi = b.opacity === 0 ? 0 : second[i]! / 255;
     const shared = Math.min(ai, bi);
+    // The same stroke can have different coverage after PDF antialiasing or
+    // line-weight changes. Give predominantly shared ink a neutral colour
+    // rather than tinting its core with the stronger sheet's residual colour.
+    const stronger = Math.max(ai, bi);
+    if (stronger > 0 && shared >= stronger * (2 / 3)) {
+      const at = i * 4;
+      output[at] = output[at + 1] = output[at + 2] = 0;
+      // CAD backgrounds often draw unchanged walls in grey. Make their shared
+      // cores solid black while retaining a smooth, faint antialiased fringe
+      // and respecting the user's opacity controls.
+      output[at + 3] =
+        Math.min(1, stronger * 4) * Math.max(a.opacity, b.opacity) * 255;
+      continue;
+    }
     const aw = (ai - shared) * a.opacity,
       bw = (bi - shared) * b.opacity;
     const black = shared * Math.max(a.opacity, b.opacity);
