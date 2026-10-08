@@ -190,6 +190,20 @@ function total() {
 }
 
 describe("pipe selection in the drawing viewer", () => {
+  it("middle-pan preserves the selected pipe run instead of selecting another run", async () => {
+    const { frame, image } = open();
+    await activate();
+    tap(frame, 160, 300);
+    const before = total().textContent;
+    const mouse = { pointerId: 1, pointerType: "mouse", button: 1, buttons: 4 };
+    fireEvent.pointerDown(frame, { ...mouse, clientX: 160, clientY: 460 });
+    fireEvent.pointerMove(frame, { ...mouse, clientX: 240, clientY: 500 });
+    fireEvent.pointerUp(frame, { ...mouse, buttons: 0, clientX: 240, clientY: 500 });
+    expect(image.parentElement!.style.transform).toContain("translate3d(80px, 40px, 0)");
+    expect(total().textContent).toBe(before);
+    tap(frame, 240, 500);
+    expect(total()).toHaveTextContent("20 m");
+  });
   it("keeps the highlight four screen pixels wide while zooming the drawing", async () => {
     const { frame } = open();
     await activate();

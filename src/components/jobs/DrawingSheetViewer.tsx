@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useReducer, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useReducer, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import {
   isTileManifest,
   planDrawingTiles,
@@ -121,6 +121,8 @@ export function DrawingSheetViewer({
   const [view, setView] = useState<View>(REST);
   const [moving, setMoving] = useState(false);
   const pointers = useRef(new Map<number, Point>());
+  const middlePan = useRef<{ pointerId: number; x: number; y: number } | null>(null);
+  const [middlePanning, setMiddlePanning] = useState(false);
   const gesture = useRef<{ view: View; points: Point[] } | null>(null);
   const measureTap = useRef<{ x: number; y: number; moved: boolean; holding?: boolean } | null>(null);
   // Press and hold while measuring: the point follows the finger (snapping to
@@ -772,6 +774,14 @@ export function DrawingSheetViewer({
   const startGesture = () => {
     gesture.current = { view: live.current, points: [...pointers.current.values()] };
   };
+  const endMiddlePan = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (middlePan.current?.pointerId !== event.pointerId) return;
+    event.preventDefault();
+    event.stopPropagation();
+    middlePan.current = null;
+    setMiddlePanning(false);
+    move(live.current, true);
+  };
 
   useEffect(() => {
     if (!navigateTo || !fit) return;
@@ -1013,11 +1023,44 @@ export function DrawingSheetViewer({
     <div className="flex h-full min-h-0 w-full flex-col">
     <div
       ref={frame}
-      className={`relative min-h-0 w-full flex-1 touch-none overflow-hidden bg-muted select-none [&_img]:pointer-events-none${measuring ? dragIndex !== null ? " cursor-grabbing" : " cursor-crosshair" : ""}`}
+      className={`relative min-h-0 w-full flex-1 touch-none overflow-hidden bg-muted select-none [&_img]:pointer-events-none${middlePanning || dragIndex !== null ? " cursor-grabbing" : measuring ? " cursor-crosshair" : ""}`}
       // No phone long-press menu (copy/save image, open link) on the drawing:
       // long presses are for working on the sheet.
       style={{ WebkitTouchCallout: "none" }}
       onContextMenu={(event) => event.preventDefault()}
+      onAuxClick={(event) => { if (event.button === 1) event.preventDefault(); }}
+      // Capture gives the middle button priority over every drawing tool and
+      // its overlays. Cancel only in-flight edits; keep committed draft points.
+      onPointerDownCapture={(event) => {
+        if (event.pointerType !== "mouse" || event.button !== 1) return;
+        event.preventDefault();
+        event.stopPropagation();
+        stopAnimation();
+        pointers.current.clear();
+        gesture.current = null;
+        cancelNodeDrag();
+        editor.cancelGesture();
+        measureTap.current = null;
+        pipeTap.current = null;
+        quickZoom.current = null;
+        panTap.current = null;
+        lastTap.current = null;
+        middlePan.current = { pointerId: event.pointerId, x: event.clientX, y: event.clientY };
+        setMiddlePanning(true);
+        event.currentTarget.setPointerCapture(event.pointerId);
+      }}
+      onPointerMoveCapture={(event) => {
+        const pan = middlePan.current;
+        if (pan?.pointerId !== event.pointerId) return;
+        event.preventDefault();
+        event.stopPropagation();
+        move({ ...live.current, x: live.current.x + event.clientX - pan.x, y: live.current.y + event.clientY - pan.y });
+        pan.x = event.clientX;
+        pan.y = event.clientY;
+      }}
+      onPointerUpCapture={endMiddlePan}
+      onPointerCancelCapture={endMiddlePan}
+      onLostPointerCapture={endMiddlePan}
       onPointerDown={(event) => {
         if ((measuring || pipeMode) && event.button !== 0) return;
         stopAnimation();

@@ -126,6 +126,23 @@ function tap(frame: HTMLElement, x: number, y: number) {
 }
 
 describe("drawing measure", () => {
+  it.each([false, true])("middle-pan preserves measurement nodes, including while setting scale (%s)", calibration => {
+    const { frame } = openSheet();
+    const image = screen.getByAltText("Sheet");
+    fireEvent.click(screen.getByRole("button", { name: "Measure" }));
+    if (calibration) fireEvent.click(screen.getByRole("button", { name: "Set Scale" }));
+    tap(frame, 200, 300);
+    const nodes = () => [...frame.querySelectorAll("[data-measure-node]")].map(node => node.innerHTML);
+    const before = nodes();
+    const mouse = { pointerId: 1, pointerType: "mouse", button: 1, buttons: 4 };
+    fireEvent.pointerDown(frame, { ...mouse, clientX: 200, clientY: 300 });
+    fireEvent.pointerMove(frame, { ...mouse, clientX: 280, clientY: 340 });
+    fireEvent.pointerUp(frame, { ...mouse, buttons: 0, clientX: 280, clientY: 340 });
+    expect(image.parentElement!.style.transform).toContain("translate3d(80px, 40px, 0)");
+    expect(nodes()).toEqual(before);
+    tap(frame, 680, 340);
+    expect(nodes()).toHaveLength(2);
+  });
   it("saves Done as a persistent coloured dimension with converted units, and starts a fresh run", () => {
     const source = "0391aed4-7773-47ec-9141-09df373ec008";
     const onCreate = vi.fn();

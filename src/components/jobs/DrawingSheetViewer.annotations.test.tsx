@@ -30,6 +30,43 @@ function markup(data: Partial<DrawingMarkup> = {}): DrawingEntity {
 }
 
 describe("drawing annotation tools in the real viewer", () => {
+  it.each(["pan", "select", "rect", "cloud", "freehand", "dimension", "area", "text", "rfi", "issue"] as const)("middle-drag pans in %s without creating or selecting anything", tool => {
+    const onCreate = vi.fn(), onSelect = vi.fn(), onUpdate = vi.fn(), onPoint = vi.fn();
+    const { frame, image, container } = open({ tool, annotations: [markup()], selectedId: "markup", onCreate, onSelect, onUpdate, onPoint });
+    const shape = container.querySelector('[data-annotation-id="markup"] rect')!;
+    const mouse = { pointerId: 1, pointerType: "mouse", button: 1, buttons: 4 };
+    fireEvent.pointerDown(shape, { ...mouse, clientX: 250, clientY: 250 });
+    fireEvent.pointerMove(frame, { ...mouse, clientX: 330, clientY: 290 });
+    fireEvent.pointerUp(frame, { ...mouse, buttons: 0, clientX: 330, clientY: 290 });
+    expect(image.parentElement!.style.transform).toContain("translate3d(80px, 40px, 0)");
+    for (const callback of [onCreate, onSelect, onUpdate, onPoint]) expect(callback).not.toHaveBeenCalled();
+    expect(frame).not.toHaveClass("cursor-grabbing");
+  });
+  it("keeps existing path points when middle-panning over the draft toolbar, then resumes drawing", () => {
+    const onCreate = vi.fn();
+    const { frame, image } = open({ tool: "area", onCreate });
+    tap(frame, 200, 200); tap(frame, 600, 200);
+    const undo = screen.getByRole("button", { name: "Undo point" });
+    const mouse = { pointerId: 1, pointerType: "mouse", button: 1, buttons: 4 };
+    fireEvent.pointerDown(undo, { ...mouse, clientX: 400, clientY: 300 });
+    fireEvent.pointerMove(undo, { ...mouse, clientX: 480, clientY: 340 });
+    fireEvent.pointerUp(undo, { ...mouse, buttons: 0, clientX: 480, clientY: 340 });
+    expect(image.parentElement!.style.transform).toContain("translate3d(80px, 40px, 0)");
+    expect(onCreate).not.toHaveBeenCalled();
+    tap(frame, 680, 440);
+    fireEvent.click(screen.getByRole("button", { name: "Finish" }));
+    expect(onCreate).toHaveBeenCalledWith(expect.objectContaining({ points: [{ x: .25, y: .25 }, { x: .75, y: .25 }, { x: .75, y: .75 }] }));
+  });
+  it.each(["pointerCancel", "lostPointerCapture"] as const)("releases middle-pan on %s and restores the active tool", cancellation => {
+    const onCreate = vi.fn();
+    const { frame } = open({ tool: "rect", onCreate });
+    fireEvent.pointerDown(frame, { pointerId: 1, pointerType: "mouse", button: 1, clientX: 250, clientY: 250 });
+    fireEvent[cancellation](frame, { pointerId: 1 });
+    expect(frame).not.toHaveClass("cursor-grabbing");
+    fireEvent.pointerDown(frame, { pointerId: 1, button: 0, clientX: 200, clientY: 200 });
+    fireEvent.pointerUp(frame, { pointerId: 1, button: 0, clientX: 600, clientY: 400 });
+    expect(onCreate).toHaveBeenCalledOnce();
+  });
   it("creates normalized rectangle geometry in the same transformed sheet as the image", () => {
     const onCreate = vi.fn();
     const { frame, image } = open({ tool: "rect", onCreate, style: { stroke: "#2563eb", width: 3, fill: "#ffffff" } });
