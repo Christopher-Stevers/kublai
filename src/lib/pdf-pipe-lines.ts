@@ -752,13 +752,13 @@ export function pipeLabelsFromTextItems(
     box: Box;
   }[] = [];
   let truncated = items.length > maxItems;
-  const add = (text: string, box: Box) => {
+  const add = (text: string, box: Box, direction: Point) => {
     for (const system of pipeSystemTokens(text)) {
       if (labels.length >= maxLabels) {
         truncated = true;
         return;
       }
-      labels.push({ text: text.slice(0, 255), system, ...box });
+      labels.push({ text: text.slice(0, 255), system, ...box, direction });
     }
   };
   for (let i = 0; i < Math.min(items.length, maxItems); i++) {
@@ -801,7 +801,7 @@ export function pipeLabelsFromTextItems(
       bottom: Math.max(...points.map((p) => p.y)),
     });
     if (box.left > box.right || box.top > box.bottom) continue;
-    add(item.str, box);
+    add(item.str, box, { x: points[1]!.x - points[0]!.x, y: points[1]!.y - points[0]!.y });
     if (/^[A-Z]$/i.test(item.str.trim()))
       letters.push({
         text: item.str.trim(),
@@ -858,7 +858,7 @@ export function pipeLabelsFromTextItems(
         right: Math.max(box.right, next.box.right),
         bottom: Math.max(box.bottom, next.box.bottom),
       };
-      add(text, box);
+      add(text, box, { x: end.x - first.start.x, y: end.y - first.start.y });
     }
   }
   return { labels, truncated };

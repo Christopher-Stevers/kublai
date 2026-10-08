@@ -188,6 +188,8 @@ export function DrawingSheetViewer({
   const panTap = useRef<{ time: number; x: number; y: number; moved: boolean } | null>(null);
   const quickZoom = useRef<{ pointerId: number; y: number; anchor: Point; view: View; moved: boolean } | null>(null);
   const frameRequest = useRef(0);
+  const pipeHalo = useRef<SVGPathElement>(null);
+  const pipeStroke = useRef<SVGPathElement>(null);
   const commitTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const wheelSettleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const animation = useRef(0);
@@ -597,6 +599,12 @@ export function DrawingSheetViewer({
     if (layer.current) layer.current.style.transform = transform;
     // Measurements stay above the image, tiles and persistent PDF patches.
     if (marks.current) marks.current.style.transform = transform;
+    if (fit) {
+      // Follow the live CSS zoom every frame, before the React/tile state
+      // catches up. Ancestor transforms also scale non-scaling SVG strokes.
+      pipeHalo.current?.setAttribute("stroke-width", String(7000 / (fit.width * scale)));
+      pipeStroke.current?.setAttribute("stroke-width", String(4000 / (fit.width * scale)));
+    }
   };
   /** Moves the sheet now (next frame) and lets tiles catch up shortly after. */
   const move = (next: View, settle = false) => {
@@ -1258,23 +1266,23 @@ export function DrawingSheetViewer({
             viewBox={`0 0 1000 ${fit.aspect * 1000}`}
           >
             <path
+              ref={pipeHalo}
               d={pipeHighlight}
               fill="none"
               stroke="white"
               strokeOpacity={0.8}
-              strokeWidth={7}
+              strokeWidth={7000 / (fit.width * view.scale)}
               strokeLinecap="round"
               strokeLinejoin="round"
-              vectorEffect="non-scaling-stroke"
             />
             <path
+              ref={pipeStroke}
               d={pipeHighlight}
               fill="none"
               stroke="#0891b2"
-              strokeWidth={4}
+              strokeWidth={4000 / (fit.width * view.scale)}
               strokeLinecap="round"
               strokeLinejoin="round"
-              vectorEffect="non-scaling-stroke"
             />
           </svg>
         )}

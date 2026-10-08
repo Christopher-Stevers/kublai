@@ -68,7 +68,7 @@ export function usePipeSystemSelection({
     () =>
       index
         ? [
-            ...new Set(index.linework.labels.map((label) => label.system)),
+            ...new Set([...index.segmentSystems.values()].flatMap(codes => [...codes])),
           ].sort()
         : [],
     [index],

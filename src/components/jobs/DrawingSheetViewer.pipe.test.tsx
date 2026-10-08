@@ -190,6 +190,20 @@ function total() {
 }
 
 describe("pipe selection in the drawing viewer", () => {
+  it("keeps the highlight four screen pixels wide while zooming the drawing", async () => {
+    const { frame } = open();
+    await activate();
+    tap(frame, 160, 300);
+    const highlight = screen.getByRole("img", { name: "Selected pipe system" });
+    const stroke = () => Number(highlight.querySelectorAll("path")[1]!.getAttribute("stroke-width"));
+    expect(stroke() * 800 / 1000).toBeCloseTo(4);
+    fireEvent.wheel(frame, { deltaY: -500, clientX: 400, clientY: 300 });
+    await waitFor(() => expect(stroke()).toBeLessThan(5));
+    const scale = Number(/scale\(([^)]+)\)/.exec(frame.firstElementChild!.getAttribute("style")!)![1]);
+    expect(scale).toBeGreaterThan(1);
+    expect(stroke() * 800 / 1000 * scale).toBeCloseTo(4);
+  });
+
   it("allows a failed PDF read to retry and then select a calibrated run", async () => {
     loadPipeLinework.mockRejectedValueOnce(new Error("offline"));
     const { frame } = open();

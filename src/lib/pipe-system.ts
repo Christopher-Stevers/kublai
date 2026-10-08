@@ -19,6 +19,8 @@ export type PipeLabel = {
   top: number;
   right: number;
   bottom: number;
+  /** Text baseline in sheet coordinates; bounding boxes lose rotated orientation. */
+  direction?: SheetPoint;
 };
 
 export type PipeLinework = {
@@ -312,14 +314,27 @@ function confirmedSameSystem(index: PipeSystemIndex, a: number, b: number) {
     !(firstSegment.layer && secondSegment.layer && firstSegment.layer !== secondSegment.layer);
 }
 
-function collinear(a: PipeSegment, b: PipeSegment, aspect: number) {
+function collinear(a: PipeSegment, b: PipeSegment, aspect: number, tolerance = COLLINEAR) {
   const [start, end] = ends(a, aspect);
   const length = distance(start, end);
   const [p, q] = ends(b, aspect);
   const lineDistance = (point: MetricPoint) => Math.abs(
     (point.x - start.x) * (end.y - start.y) - (point.y - start.y) * (end.x - start.x),
   ) / length;
-  return lineDistance(p) <= COLLINEAR && lineDistance(q) <= COLLINEAR;
+  return lineDistance(p) <= tolerance && lineDistance(q) <= tolerance;
+}
+
+function connectionCollinear(index: PipeSystemIndex, a: number, b: number) {
+  const first = index.segments[a]!, second = index.segments[b]!;
+  // Angled CAD dashes are rounded separately. Bound that error by a fraction
+  // of the source stroke; never move geometry or merge nearby parallel lanes.
+  const tolerance = layerSystem(first.layer) && confirmedSameSystem(index, a, b)
+    ? Math.max(COLLINEAR, Math.min(JOIN, Math.min(first.width, second.width) * 0.25)) : COLLINEAR;
+  // Short CAD dash pieces have less reliable tangents after coordinate
+  // rounding. Native layer evidence lets either interval support the join;
+  // this also keeps dash connectivity independent of the click direction.
+  return collinear(first, second, index.aspect, tolerance) ||
+    tolerance > COLLINEAR && collinear(second, first, index.aspect, tolerance);
 }
 
 function labelBox(label: PipeLabel, aspect: number) {
@@ -336,9 +351,30 @@ function labelBox(label: PipeLabel, aspect: number) {
 
 function labelParallel(label: PipeLabel, segment: PipeSegment, aspect: number) {
   const box = labelBox(label, aspect);
-  const dx = Math.abs(segment.x2 - segment.x1);
-  const dy = Math.abs(segment.y2 - segment.y1) * aspect;
-  return box.horizontal ? dy <= dx * 0.25 : dx <= dy * 0.25;
+  const dx = segment.x2 - segment.x1;
+  const dy = (segment.y2 - segment.y1) * aspect;
+  const direction = label.direction;
+  if (direction && Number.isFinite(direction.x) && Number.isFinite(direction.y)) {
+    const length = Math.hypot(direction.x, direction.y * aspect) * Math.hypot(dx, dy);
+    if (length > 1e-12) return Math.abs(direction.x * dx + direction.y * aspect * dy) / length >= Math.cos(Math.PI / 12);
+  }
+  return box.horizontal ? Math.abs(dy) <= Math.abs(dx) * 0.25 : Math.abs(dx) <= Math.abs(dy) * 0.25;
+}
+
+
+/** Conservative CAD discipline names are stronger than a nearby annotation. */
+function layerSystem(layer?: string): string | null {
+  if (!layer || !/(?:^|[-_| ])(?:PLMB|PIPE|PIPING|HYDR|P)(?:[-_| ]|$)/i.test(layer)) return null;
+  const code = layer.toUpperCase().split(/[-_| ]+/).at(-1)!;
+  const aliases: Record<string, string> = { SANI: "SAN", SANITARY: "SAN", STRM: "ST", STORM: "ST", DCWT: "DCW", DHWT: "DHW" };
+  return aliases[code] ?? (/^(ST|SAN|CW|HW|HWR|DCW|DHW|DHWR|RW|RWL|SW|FW|CHWS|CHWR|HWS|MWS|MWR|NG|LPG|GAS|CD|COND|SD|PD|VENT)$/.test(code) ? code : null);
+}
+
+function annotationLayer(layer?: string) {
+  return Boolean(layer && (
+    /(?:^|[|])A[-_]/i.test(layer) ||
+    /(?:^|[-_| ])(?:ANNO|NOTE|TEXT|TTLB|TITLE|WALL|DOOR|FURN|MASK|GRID)(?:[-_| ]|$)/i.test(layer)
+  ));
 }
 
 function bindLabels(index: PipeSystemIndex) {
@@ -346,13 +382,22 @@ function bindLabels(index: PipeSystemIndex) {
     const box = labelBox(label, index.aspect);
     const nearby = query(index, box.center, box.radius)
       .map((id) => ({ id, hit: project(box.center, index.segments[id]!, index.aspect) }))
-      .filter(({ hit }) => hit.distance <= box.radius)
+      .filter(({ id, hit }) => {
+        const segment = index.segments[id]!;
+        // Text strokes, arrowheads and fitting glyphs must not become a system
+        // simply because they are the closest tiny stroke to its label.
+        return !index.excluded.has(id) && !annotationLayer(segment.layer) &&
+          (!layerSystem(segment.layer) || layerSystem(segment.layer) === label.system) && hit.distance <= box.radius &&
+          segmentLength(segment, index.aspect) >= Math.min(0.0015, Math.min(box.width, box.height) * 0.5) &&
+          !(segment.closed && segment.width === 0);
+      })
       .sort((a, b) => a.hit.distance - b.hit.distance);
     const parallel = nearby.filter(({ id }) => labelParallel(label, index.segments[id]!, index.aspect));
     // CAD labels beside vertical pipes can remain horizontal. Prefer a nearby
     // parallel candidate; a bounded perpendicular candidate is a fallback.
     const candidates = parallel.length > 0 ? parallel : nearby;
-    const first = candidates[0];
+    const first = candidates.find(({ id }) => layerSystem(index.segments[id]!.layer) === label.system) ??
+      candidates.find(({ id }) => index.segments[id]!.stroke.toLowerCase() === "#000000") ?? candidates[0];
     if (!first) {
       index.bindings.push({ label, segments: [] });
       continue;
@@ -374,6 +419,7 @@ function bindLabels(index: PipeSystemIndex) {
     index.bindings.push({ label, segments: bound });
   }
 }
+
 
 function excludeRectangles(index: PipeSystemIndex) {
   const paths = new Map<string, number[]>();
@@ -459,6 +505,11 @@ export function buildPipeSystemIndex(linework: PipeLinework): PipeSystemIndex {
   if (valid.length !== linework.segments.length) warn(index, "Invalid or out-of-page linework was skipped.");
   if (index.truncated) warn(index, PARTIAL_WARNING);
   index.segments.forEach((segment, id) => addToGrid(index, segment, id));
+  index.segments.forEach((segment, id) => {
+    const system = layerSystem(segment.layer);
+    if (system) index.segmentSystems.set(id, new Set([system]));
+    if (annotationLayer(segment.layer)) index.excluded.add(id);
+  });
   bindLabels(index);
   excludeRectangles(index);
   indexConfirmedSystems(index);
@@ -510,14 +561,17 @@ function manualDashPattern(index: PipeSystemIndex, a: number, b: number, gap: nu
   const second = index.segments[b]!;
   const firstLength = segmentLength(first, index.aspect);
   const secondLength = segmentLength(second, index.aspect);
+  const native = Boolean(layerSystem(first.layer) && confirmedSameSystem(index, a, b));
   if (first.dash.length !== 0 || gap > 0.012 || gap < JOIN ||
     firstLength < 0.0004 || firstLength > 0.03 || secondLength < 0.0004 || secondLength > 0.03 ||
-    !similarScalar(firstLength, secondLength) || gap > Math.min(firstLength, secondLength) * 1.5) return false;
+    (!native && !similarScalar(firstLength, secondLength)) || gap > Math.min(firstLength, secondLength) * 1.5) return false;
   const endpoints = [...ends(first, index.aspect), ...ends(second, index.aspect)];
   const supports = (id: number) => {
     if (id === a || id === b || index.excluded.has(id)) return false;
     const third = index.segments[id]!;
-    if (!sameStyle(first, third) || !collinear(first, third, index.aspect) || !similarScalar(firstLength, segmentLength(third, index.aspect))) return false;
+    if (!sameStyle(first, third) || !connectionCollinear(index, a, id) ||
+      (native ? !confirmedSameSystem(index, a, id) || segmentLength(third, index.aspect) < 0.0004 || segmentLength(third, index.aspect) > 0.03
+        : !similarScalar(firstLength, segmentLength(third, index.aspect)))) return false;
     const otherEndpoints = ends(third, index.aspect);
     const thirdGap = Math.min(...endpoints.flatMap((point) => otherEndpoints.map((other) => distance(point, other))));
     return thirdGap > JOIN && Math.abs(thirdGap - gap) <= Math.max(JOIN, gap * 0.25);
@@ -592,7 +646,7 @@ function graphNeighbors(index: PipeSystemIndex, id: number): Edge[] {
       const [p, q] = ends(other, index.aspect);
       const theirEndpoint = distance(endpoint, p) <= distance(endpoint, q) ? p : q;
       const endpointGap = distance(endpoint, theirEndpoint);
-      const parallel = collinear(segment, other, index.aspect);
+      const parallel = connectionCollinear(index, id, otherId);
       if (!parallel || endpointGap <= JOIN || endpointGap > MAX_BRIDGE + EPSILON) continue;
       // Bridging is restricted to opposing ends, never overlapping interiors.
       if (hit.unbounded > 0 && hit.unbounded < 1) continue;
@@ -732,9 +786,9 @@ export function selectPipeSystem(
       .sort((a, b) => a.distance - b.distance);
     let hit = hits[0];
     if (hit && !filter) {
-      // At coincident architectural strokes, the explicitly tagged pipe is a
-      // stronger seed than an equally close unclassified background line.
-      hit = hits.find((candidate) => candidate.distance <= hit!.distance + JOIN && index.segmentSystems.get(candidate.id)?.size === 1) ?? hit;
+      // In pipe mode, a classified pipe inside the actual tap tolerance is
+      // stronger evidence than an unclassified note or wall underneath it.
+      hit = hits.find((candidate) => index.segmentSystems.get(candidate.id)?.size === 1) ?? hit;
     }
     if (filter) hit = hits.find(({ id }) => allowed(index, id, filter) && inferSystem(index, [id]) === filter);
     if (!hit) return empty();

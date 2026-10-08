@@ -314,8 +314,11 @@ describe("embedded pipe labels", () => {
       top: 0.1,
       right: 0.8,
       bottom: 0.4,
+      direction: { x: 0, y: expect.closeTo(0.3) },
     });
     expect(result.labels[1]).toMatchObject({ text: "ST", system: "ST" });
+    expect(result.labels[1]!.direction!.x).toBeCloseTo(0);
+    expect(result.labels[1]!.direction!.y).toBeGreaterThan(0);
     expect(result.truncated).toBe(false);
   });
 

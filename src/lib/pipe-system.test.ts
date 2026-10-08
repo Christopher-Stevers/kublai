@@ -18,6 +18,45 @@ function ids(selection: ReturnType<typeof selectPipeSystem>) {
 }
 
 describe("pipe system trace", () => {
+  it("identifies unlabelled CAD pipes and ignores an architectural line closer to the tap", () => {
+    const drawing = index([
+      line("pipe", 0.1, 0.5, 0.8, 0.5, { layer: "M-PLMB-SANI" }),
+      line("background", 0.1, 0.501, 0.8, 0.501, { layer: "A201|A-GLAZ", stroke: "#757575" }),
+      line("tag", 0.1, 0.502, 0.12, 0.502, { layer: "M-NOTE" }),
+    ]);
+    const selection = selectPipeSystem(drawing, { x: 0.3, y: 0.501 }, 0.003);
+    expect(selection.system).toBe("SAN");
+    expect(ids(selection)).toEqual(["pipe"]);
+    expect(selectPipeSystem(drawing, { x: 0.3, y: 0.501 }, 0.0001).segments).toHaveLength(0);
+  });
+
+  it("binds rotated text to the pipe instead of tiny symbols or grey background", () => {
+    const drawing = index([
+      line("pipe", 0.2, 0.4, 0.4, 0.46, { layer: "M-PLMB-DHWR", stroke: "#000000" }),
+      line("symbol", 0.3, 0.423, 0.30002, 0.423, { layer: "M-PLMB-MISC", width: 0, closed: true }),
+      line("background", 0.28, 0.423, 0.33, 0.423, { layer: "A201|A-GLAZ", stroke: "#757575" }),
+    ], [{ ...label("DHWR", 0.3, 0.423, 0.03, 0.017), direction: { x: 0.2, y: 0.06 } }]);
+    expect(drawing.bindings[0]?.segments).toEqual([0]);
+    expect(ids(selectPipeSystem(drawing, { x: 0.3, y: 0.423 }, 0.001))).toEqual(["pipe"]);
+    const tag = index([line("wall", 0.1, 0.5, 0.3, 0.5, { layer: "A201|A-FIXT" })], [label("PD", 0.2, 0.49)]);
+    expect(tag.bindings[0]?.segments).toEqual([]);
+  });
+
+  it("bridges irregular CAD dashes with rounding error, while preserving a parallel lane", () => {
+    const parts = [
+      line("a", 0.1, 0.5, 0.105, 0.5015),
+      line("b", 0.107, 0.50213, 0.117, 0.50513),
+      line("c", 0.119, 0.50570, 0.124, 0.50720),
+      line("other-lane", 0.107, 0.50263, 0.117, 0.50563),
+    ].map(segment => ({ ...segment, layer: "M-PLMB-DHWR", width: 0.000313 }));
+    for (const segment of parts.slice(0, 3)) {
+      const selection = selectPipeSystem(index(parts), { x: (segment.x1 + segment.x2) / 2, y: (segment.y1 + segment.y2) / 2 }, 0.00001);
+      expect(selection.system).toBe("DHWR");
+      expect(ids(selection)).toEqual(["a", "b", "c"]);
+      expect(selection.segments.filter(part => part.id.startsWith("pipe-bridge:"))).toHaveLength(2);
+    }
+  });
+
   it("selects the whole trunk and T branches from either the trunk or branch", () => {
     const drawing = index([
       line("trunk", 0.1, 0.5, 0.9, 0.5),

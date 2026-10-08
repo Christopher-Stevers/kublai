@@ -78,7 +78,7 @@ export function PipeSystemPanel({
           {selected
             ? selectedSystem
               ? `${selectedSystem} system`
-              : "Connected pipe run"
+              : "Unclassified linework"
             : "Select a pipe system"}
         </p>
         {selected && (
@@ -137,6 +137,11 @@ export function PipeSystemPanel({
               {total ?? "Set scale to see distance"}
             </strong>
           </div>
+          {!selectedSystem && (
+            <p className="text-muted-foreground text-xs">
+              System not identified. Tap a pipe or choose its system in Options.
+            </p>
+          )}
           {!scaleSet && (
             <Button
               size="sm"
