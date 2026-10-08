@@ -103,8 +103,16 @@ vi.mock("~/components/ui/app-dialogs", () => ({
   notify: vi.fn(),
 }));
 vi.mock("./DrawingWorkspace", () => ({
-  DrawingWorkspace: ({ sheet }: { sheet: { name: string } }) => (
-    <div>Viewing {sheet.name}</div>
+  DrawingWorkspace: ({ sheet, initialViewport, onViewportChange }: {
+    sheet: { name: string };
+    initialViewport?: { center: { x: number; y: number }; zoom: number } | null;
+    onViewportChange?: (viewport: { center: { x: number; y: number }; zoom: number }) => void;
+  }) => (
+    <div>
+      <span>Viewing {sheet.name}</span>
+      <span data-testid="inherited-view">{JSON.stringify(initialViewport ?? null)}</span>
+      <button onClick={() => onViewportChange?.({ center: { x: 0.2, y: 0.7 }, zoom: 3 })}>Zoom and pan sample</button>
+    </div>
   ),
 }));
 vi.mock("./DrawingAccountProvider", () => ({ useDrawingAccount: () => null }));
@@ -148,6 +156,27 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("Drawings", () => {
+  it("carries the current view through Next and Previous, including rapid navigation, and clears it when opening from the folder", () => {
+    state.sheets.push({ ...state.sheets[1]!, id: "s3", name: "M-103" });
+    render(<JobDrawingsView jobId="job" />);
+    fireEvent.click(screen.getByRole("button", { name: "Open Mechanical" }));
+    fireEvent.click(screen.getByRole("button", { name: "Open M-101" }));
+    expect(screen.getByTestId("inherited-view")).toHaveTextContent("null");
+    fireEvent.click(screen.getByRole("button", { name: "Zoom and pan sample" }));
+    fireEvent.click(screen.getByRole("button", { name: /Next/ }));
+    const expected = JSON.stringify({ center: { x: 0.2, y: 0.7 }, zoom: 3 });
+    expect(screen.getByText("Viewing M-102")).toBeInTheDocument();
+    expect(screen.getByTestId("inherited-view")).toHaveTextContent(expected);
+    fireEvent.click(screen.getByRole("button", { name: /Next/ }));
+    expect(screen.getByText("Viewing M-103")).toBeInTheDocument();
+    expect(screen.getByTestId("inherited-view")).toHaveTextContent(expected);
+    fireEvent.click(screen.getByRole("button", { name: /Previous/ }));
+    expect(screen.getByTestId("inherited-view")).toHaveTextContent(expected);
+    act(() => void runHeaderBackOverride());
+    fireEvent.click(screen.getByRole("button", { name: "Open M-102" }));
+    expect(screen.getByTestId("inherited-view")).toHaveTextContent("null");
+  });
+
   it("shows the current drawing name in the bottom bar and renames the sheet being viewed", async () => {
     render(<JobDrawingsView jobId="job" />);
     fireEvent.click(screen.getByRole("button", { name: "Open Mechanical" }));
