@@ -39,6 +39,10 @@ export function SheetMeasureBar({
   onColor,
   pipeControl,
   pipePanel,
+  gap = false,
+  canGap = false,
+  gapMessage,
+  onGap,
 }: {
   measuring: boolean;
   calibrating: boolean;
@@ -72,6 +76,10 @@ export function SheetMeasureBar({
   onColor: (color: string) => void;
   pipeControl?: React.ReactNode;
   pipePanel?: React.ReactNode;
+  gap?: boolean;
+  canGap?: boolean;
+  gapMessage?: string | null;
+  onGap?: () => void;
 }) {
   const stop = (event: PointerEvent) => event.stopPropagation();
   const toggle = (
@@ -130,6 +138,10 @@ export function SheetMeasureBar({
               onUndo={onUndo}
               onClear={onClear}
               onStartScale={onStartScale}
+              gap={gap}
+              canGap={canGap}
+              gapMessage={gapMessage}
+              onGap={onGap}
               onUnit={onUnit}
               controls={toggle}
               color={color}
@@ -286,6 +298,10 @@ function Tracing({
   controls,
   color,
   onColor,
+  gap,
+  canGap,
+  gapMessage,
+  onGap,
 }: {
   pointCount: number;
   total: string | null;
@@ -302,6 +318,10 @@ function Tracing({
   controls: ReactNode;
   color: string;
   onColor: (color: string) => void;
+  gap: boolean;
+  canGap: boolean;
+  gapMessage?: string | null;
+  onGap?: () => void;
 }) {
   return (
     <>
@@ -334,7 +354,22 @@ function Tracing({
       {readError && !reading && (
         <p className="text-destructive text-xs">{readError}</p>
       )}
+      {(gap || gapMessage) && (
+        <p role="note" aria-live="polite" className="text-primary text-xs">
+          {gapMessage ?? "Gap: tap anywhere on a measured segment to start a branch."}
+        </p>
+      )}
       <div className="flex flex-wrap items-center gap-2">
+        <Button
+          type="button"
+          size="sm"
+          variant={gap ? "default" : "outline"}
+          aria-pressed={gap}
+          disabled={!canGap || !onGap}
+          onClick={onGap}
+        >
+          Gap
+        </Button>
         <Button
           type="button"
           size="sm"
@@ -366,7 +401,7 @@ function Tracing({
       </div>
       {total && !reading && (
         <p className="text-muted-foreground text-xs">
-          Total along the points · Drag a point to adjust
+          Total measured run · Use Gap to add a branch · Drag a point to adjust
         </p>
       )}
     </>

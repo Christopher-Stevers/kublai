@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useReducer, useRef, useState } from "react";
 import {
   isTileManifest,
   planDrawingTiles,
@@ -31,6 +31,7 @@ import {
   writeMeasureColor,
 } from "~/lib/sheet-measure-color";
 import { measurementAngleArc, measurementAngleReference } from "~/lib/sheet-measure-angles";
+import { emptyMeasureRun, hitMeasureRun, measureRunReducer, measureRunWidths, runAngleReference, MAX_MEASURE_NODES } from "~/lib/sheet-measure-run";
 import { scaleReadMessage } from "~/lib/sheet-scale-text";
 import { buildSnapIndex, mergeCollinear, snapToLine, type SnapIndex, type SnapSegment } from "~/lib/sheet-snap";
 import { SheetMeasureBar } from "./SheetMeasureBar";
@@ -154,7 +155,10 @@ export function DrawingSheetViewer({
   });
   const markId = `measure-${useId().replace(/:/g, "")}`;
   const [calibrating, setCalibrating] = useState(false);
-  const [trace, setTrace] = useState<MeasureNode[]>([]);
+  const [run, dispatchRun] = useReducer(measureRunReducer, undefined, emptyMeasureRun);
+  const trace = run.nodes;
+  const [gapMode, setGapMode] = useState(false);
+  const [gapMessage, setGapMessage] = useState<string | null>(null);
   const path = trace.map(({ point }) => point);
   const [calNodes, setCalNodes] = useState<MeasureNode[]>([]);
   const calPoints = calNodes.map(({ point }) => point);
@@ -236,6 +240,10 @@ export function DrawingSheetViewer({
   }, [measuring, calibrating, sheetKey]);
 
 
+  useEffect(() => {
+    if (!measuring || calibrating) { setGapMode(false); setGapMessage(null); }
+  }, [measuring, calibrating, sheetKey, pdf?.url, pdf?.page]);
+
   // Fit the sheet inside the frame whenever the image or frame size changes.
   useEffect(() => {
     const el = frame.current;
@@ -305,7 +313,9 @@ export function DrawingSheetViewer({
     const stored = !controlledScale && sheetKey ? readSheetScale(sheetKey) : null;
     if (!controlledScale) setLocalSheetScale(stored);
     setUnit(stored?.unit ?? "ft");
-    setTrace([]);
+    dispatchRun({ type: "clear" });
+    setGapMode(false);
+    setGapMessage(null);
     setAngleSnap(null);
     setCalNodes([]);
     setCalibrating(false);
@@ -315,7 +325,7 @@ export function DrawingSheetViewer({
     setScaleError(null);
     setScaleReadError(null);
     setReadingScale(false);
-  }, [sheetKey, controlledScale]);
+  }, [sheetKey, controlledScale, pdf?.url, pdf?.page]);
 
   useEffect(() => {
     const shared = editorProps.sharedScale;
@@ -339,7 +349,7 @@ export function DrawingSheetViewer({
       setSnapIndex(null);
       setSnapLine(null);
       setCalNodes((nodes) => nodes.map((node) => ({ ...node, line: null })));
-      setTrace((nodes) => nodes.map((node) => ({ ...node, line: null })));
+      dispatchRun({ type: "forget-lines" });
     }
     let cancelled = false;
     void loadSnapLines({ url: pdfUrl, page: pdfPage })
@@ -393,11 +403,17 @@ export function DrawingSheetViewer({
   const aimFromClient = (clientX: number, clientY: number, movingNode?: number): { point: SheetPoint; segment: SnapSegment | null; angle?: 45 | 90 } | null => {
     const point = pointFromClient(clientX, clientY);
     if (!point) return null;
-    // Moving the first node uses its next neighbor; all others use the previous.
+    if (gapMode && !calibrating && movingNode === undefined && fit) {
+      const hit = hitMeasureRun(trace, point, fit.aspect, SNAP_PX / Math.max(1, fit.width * live.current.scale));
+      if (!hit) return null;
+      const start = trace[hit.from]!.point, end = trace[hit.to]!.point;
+      return { point: hit.point, segment: { x1: start.x, y1: start.y, x2: end.x, y2: end.y } };
+    }
+    // Moving the first node uses its next neighbor; other nodes follow connectivity.
     const nodes = calibrating ? calNodes : trace;
     const endIndex = movingNode ?? nodes.length;
     const angleReference = !calibrating || movingNode !== undefined || nodes.length === 1
-      ? measurementAngleReference(nodes, endIndex) : null;
+      ? calibrating ? measurementAngleReference(nodes, endIndex) : runAngleReference(trace, endIndex, run.active) : null;
     const anchor = angleReference?.anchor;
     const reference = angleReference?.reference ?? null;
     // Line selection only prefers actual PDF linework, never the synthesized
@@ -456,22 +472,23 @@ export function DrawingSheetViewer({
   const commitPoint = (point: SheetPoint, segment: SnapSegment | null) => {
     if (calibrating) {
       setCalNodes((points) => (points.length >= 2 ? points : [...points, { point, line: segment }]));
-    } else setTrace((points) => (points.length >= 400 ? points : [...points, { point, line: segment }]));
+    } else { dispatchRun({ type: "append", point, line: segment }); setGapMessage(null); }
     setHover(null);
     setSnapLine(null);
     setAngleSnap(null);
   };
   const undoPoint = useCallback(() => {
+    if (gapMode) { setGapMode(false); setGapMessage(null); setHover(null); setSnapLine(null); return; }
     nodeDrag.current = null;
     setDragIndex(null);
     setLoupe(null);
     if (calibrating) {
       setCalNodes((points) => points.slice(0, -1));
-    } else setTrace((points) => points.slice(0, -1));
+    } else { dispatchRun({ type: "undo" }); setGapMessage(null); }
     setHover(null);
     setSnapLine(null);
     setAngleSnap(null);
-  }, [calibrating]);
+  }, [calibrating, gapMode]);
   const proposeScale = (next: SheetScale) => {
     if (!controlledScale) {
       setLocalSheetScale(next);
@@ -487,6 +504,8 @@ export function DrawingSheetViewer({
   // Changing the unit only changes how lengths are typed and shown here.
   const changeUnit = (next: LengthUnit) => setUnit(next);
   const beginLengthScale = () => {
+    setGapMode(false);
+    setGapMessage(null);
     clearAim();
     setCalibrating(true);
     setCalNodes([]);
@@ -556,6 +575,7 @@ export function DrawingSheetViewer({
         target instanceof HTMLElement &&
         (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.tagName === "SELECT");
       if (event.key === "Escape") {
+        if (gapMode) { setGapMode(false); setGapMessage(null); setHover(null); setSnapLine(null); return; }
         if (calibrating) {
           setCalibrating(false);
           setCalNodes([]);
@@ -573,7 +593,7 @@ export function DrawingSheetViewer({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [measuring, calibrating, undoPoint]);
+  }, [measuring, calibrating, gapMode, undoPoint]);
 
   /** Keeps the sheet from being dragged entirely out of view. */
   const clamp = useCallback(
@@ -740,7 +760,7 @@ export function DrawingSheetViewer({
     ? savedPoints.map((point, index) => index === dragIndex ? hover : point)
     : savedPoints;
   const rubber =
-    dragIndex === null && hover && ((calibrating && calPoints.length === 1) || (!calibrating && path.length >= 1)) ? hover : null;
+    !gapMode && dragIndex === null && hover && ((calibrating && calPoints.length === 1) || (!calibrating && path.length >= 1)) ? hover : null;
   const marked =
     pipeMode && !calibrating ? [] : rubber ? [...drawn, rubber] : drawn;
   const pipeSelected = Boolean(pipe.selection?.segments.length);
@@ -772,12 +792,20 @@ export function DrawingSheetViewer({
   const lockedAngle = rubber || dragIndex !== null ? angleSnap : null;
   const activeAngleSegment = dragIndex === 0 && marked.length > 2 ? 1
     : dragIndex !== null ? Math.max(0, dragIndex - 1) : marked.length - 2;
-  const markedNodes = marked.map((point, index) => ({ point, line: index === dragIndex && hover ? snapLine : (calibrating ? calNodes : trace)[index]?.line ?? null }));
-  const angleArcs = fit ? marked.slice(1).flatMap((end, index) => {
+  const markedNodes = marked.map((point, index) => ({ point, line: index === dragIndex && hover ? snapLine : (calibrating ? calNodes : trace)[index]?.line ?? null,
+    parent: calibrating ? index === 0 ? null : index - 1 : index < trace.length ? trace[index]!.parent : run.active }));
+  const markedEdges = markedNodes.flatMap((node, endIndex) => {
+    const start = node.parent === null ? undefined : markedNodes[node.parent];
+    return start ? [{ index: endIndex - 1, endIndex, from: node.parent!, start: start.point, end: node.point }] : [];
+  });
+  const branched = !calibrating && markedNodes.some((node, index) => node.parent !== (index === 0 ? null : index - 1));
+  const MeasureShape = branched ? "path" : "polyline";
+  const measureShape = branched ? { d: markedEdges.map(({ start, end }) => `M${start.x * (fit?.width ?? 0)},${start.y * (fit?.height ?? 0)}L${end.x * (fit?.width ?? 0)},${end.y * (fit?.height ?? 0)}`).join(" ") } : { points: marked.map(point => `${point.x * (fit?.width ?? 0)},${point.y * (fit?.height ?? 0)}`).join(" ") };
+  const angleArcs = fit ? markedEdges.flatMap(({ end, index, endIndex: edgeEnd }) => {
     const active = index === activeAngleSegment && (rubber !== null || dragIndex !== null);
     // A first-node drag uses the stationary next node as the vertex.
-    const endIndex = active && dragIndex === 0 ? 0 : index + 1;
-    const reference = measurementAngleReference(markedNodes, endIndex);
+    const endIndex = active && dragIndex === 0 ? 0 : edgeEnd;
+    const reference = calibrating ? measurementAngleReference(markedNodes, endIndex) : runAngleReference(markedNodes, endIndex, run.active);
     if (!reference) return [];
     const arc = measurementAngleArc(reference.anchor, endIndex === 0 ? marked[0]! : end, reference.reference,
       fit.width, fit.height, view.scale, reference.previous);
@@ -789,8 +817,7 @@ export function DrawingSheetViewer({
     return [{ ...arc, index, active }];
   }) : [];
   const knownLength = calibrating ? parseLengthAs(draft, unit) : null;
-  const dimensionLabels = fit ? marked.slice(1).map((end, index) => {
-    const start = marked[index]!;
+  const dimensionLabels = fit ? markedEdges.map(({ start, end, index }) => {
     const dx = (end.x - start.x) * fit.width;
     const dy = (end.y - start.y) * fit.height;
     // Keep vertical/reversed labels upright and just above their own segment.
@@ -878,11 +905,11 @@ export function DrawingSheetViewer({
         1.5 * dpr,
       );
     }
-    for (let i = 1; i < marked.length; i++) {
-      strokeLine(map(toClient(marked[i - 1]!)), map(toClient(marked[i]!)), measureHalo, (lockedAngle ? 4.5 : 3.5) * dpr);
+    for (const { start, end } of markedEdges) {
+      strokeLine(map(toClient(start)), map(toClient(end)), measureHalo, (lockedAngle ? 4.5 : 3.5) * dpr);
       strokeLine(
-        map(toClient(marked[i - 1]!)),
-        map(toClient(marked[i]!)),
+        map(toClient(start)),
+        map(toClient(end)),
         measureColor,
         (lockedAngle ? 2.5 : 1.5) * dpr,
       );
@@ -922,7 +949,7 @@ export function DrawingSheetViewer({
   const snapMark = Math.max(1.2, 8 / view.scale);
   const total =
     sheetScale && fit && !calibrating && marked.length >= 2
-      ? formatLengthAs(realLength(marked, fit.aspect, sheetScale.unitsPerSheetWidth), sheetScale.unit, unit)
+      ? formatLengthAs(measureRunWidths(markedNodes, fit.aspect) * sheetScale.unitsPerSheetWidth, sheetScale.unit, unit)
       : null;
 
   return (
@@ -974,7 +1001,7 @@ export function DrawingSheetViewer({
         if (pointers.current.size === 1) {
           if (measuring) {
             const index = nodeAtClient(event.clientX, event.clientY);
-            if (index !== null) {
+            if (index !== null && (calibrating || !gapMode && !run.branching)) {
               endHold();
               measureTap.current = null;
               nodeDrag.current = { pointerId: event.pointerId, index, x: event.clientX, y: event.clientY, moved: false };
@@ -1106,7 +1133,7 @@ export function DrawingSheetViewer({
           if (aim) {
             const replace = (nodes: MeasureNode[]) => nodes.map((node, index) => index === drag.index ? { point: aim.point, line: aim.segment } : node);
             if (calibrating) setCalNodes(replace);
-            else setTrace(replace);
+            else dispatchRun({ type: "move", index: drag.index, point: aim.point, line: aim.segment });
           }
           pointers.current.delete(event.pointerId);
           cancelNodeDrag();
@@ -1166,6 +1193,18 @@ export function DrawingSheetViewer({
         }
         if (edited) { move(live.current, true); return; }
         if (measuring && tap && !tap.moved && wasSingle) {
+          if (gapMode && !calibrating && fit) {
+            const point = pointFromClient(event.clientX, event.clientY);
+            const hit = point && hitMeasureRun(trace, point, fit.aspect, SNAP_PX / Math.max(1, fit.width * live.current.scale));
+            if (hit) {
+              dispatchRun({ type: "branch", hit });
+              setGapMode(false);
+              setGapMessage("Branch starts here. Tap the next point to continue.");
+            } else setGapMessage("Tap an existing measured segment to start the branch.");
+            clearAim();
+            move(live.current, true);
+            return;
+          }
           const aim = aimFromClient(event.clientX, event.clientY);
           if (aim) commitPoint(aim.point, aim.segment);
           move(live.current, true);
@@ -1360,8 +1399,8 @@ export function DrawingSheetViewer({
                   </mask>
                 </defs>
                 <g mask={`url(#${markId}-ends)`}>
-                  <polyline
-                    points={marked.map((point) => `${point.x * fit.width},${point.y * fit.height}`).join(" ")}
+                  <MeasureShape
+                    {...measureShape}
                     fill="none"
                     stroke={measureHalo}
                     strokeOpacity={0.85}
@@ -1369,8 +1408,8 @@ export function DrawingSheetViewer({
                     strokeLinejoin="round"
                     strokeLinecap="round"
                   />
-                  <polyline
-                    points={marked.map((point) => `${point.x * fit.width},${point.y * fit.height}`).join(" ")}
+                  <MeasureShape
+                    {...measureShape}
                     fill="none"
                     data-measure-path="true"
                     data-angle-locked={lockedAngle ? "true" : "false"}
@@ -1426,7 +1465,8 @@ export function DrawingSheetViewer({
               const cy = point.y * fit.height;
               const arm = markArm;
               return (
-                <g key={index} data-measure-node={index < drawn.length ? index : undefined} opacity={dragIndex === index ? 1 : 0.6}>
+                <g key={index} data-measure-node={index < drawn.length ? index : undefined} data-measure-active={!calibrating && run.active === index ? "true" : undefined} opacity={dragIndex === index ? 1 : 0.6}>
+                  {measuring && !calibrating && run.active === index && <circle cx={cx} cy={cy} r={markArm * 1.7} fill="none" stroke={measureColor} strokeWidth={markStroke} />}
                   {[
                     [-1, -1, 1, 1],
                     [-1, 1, 1, -1],
@@ -1538,6 +1578,15 @@ export function DrawingSheetViewer({
         measuring={measuring}
         calibrating={calibrating}
         pointCount={path.length}
+        gap={gapMode}
+        canGap={trace.length >= 2 && trace.length < MAX_MEASURE_NODES}
+        gapMessage={gapMessage}
+        onGap={() => {
+          cancelNodeDrag();
+          clearAim();
+          setGapMode(on => !on);
+          setGapMessage(null);
+        }}
         calibrationCount={calPoints.length}
         total={total}
         unit={unit}
@@ -1562,7 +1611,9 @@ export function DrawingSheetViewer({
         onUndo={undoPoint}
         onClear={() => {
           cancelNodeDrag();
-          setTrace([]);
+          dispatchRun({ type: "clear" });
+          setGapMode(false);
+          setGapMessage(null);
         }}
         onStartScale={beginLengthScale}
         onReadPrinted={pdfUrl && pdfPage != null ? readPrintedScale : undefined}

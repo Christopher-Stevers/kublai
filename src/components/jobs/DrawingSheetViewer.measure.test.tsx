@@ -910,3 +910,79 @@ describe("relative measuring angles and drafting arcs", () => {
     } finally { context.mockRestore(); }
   });
 });
+
+describe("Gap branching in Measure", () => {
+  it("creates a node on an existing segment, preserves the trunk, and measures only the new branch", () => {
+    const { frame } = openSheet("gap-run", undefined, { sharedScale: { unit: "ft", unitsPerSheetWidth: 100 } });
+    fireEvent.click(screen.getByRole("button", { name: "Measure" }));
+    expect(screen.getByRole("button", { name: "Gap" })).toBeDisabled();
+    tap(frame, 200, 300); tap(frame, 600, 300);
+    expect(screen.getByRole("status")).toHaveTextContent("50'-0\"");
+    fireEvent.click(screen.getByRole("button", { name: "Gap" }));
+    tap(frame, 400, 305);
+    expect(screen.getByRole("button", { name: "Gap" })).toHaveAttribute("aria-pressed", "false");
+    expect(frame.querySelectorAll("[data-measure-node]")).toHaveLength(3);
+    expect(frame.querySelector('[data-measure-node="2"]')).toHaveAttribute("data-measure-active", "true");
+    expect(screen.getByRole("status")).toHaveTextContent("50'-0\"");
+    tap(frame, 400, 180);
+    expect(screen.getByRole("status")).toHaveTextContent("65'-0\"");
+    const geometry = frame.querySelector("[data-measure-path]")!.getAttribute("d")!;
+    expect(geometry).toContain("M400,200L600,200");
+    expect(geometry).toContain("M200,200L400,200");
+    expect(geometry).toContain("M400,200L400,80");
+    expect(geometry).not.toContain("M600,200L400,200");
+    fireEvent.click(screen.getByRole("button", { name: "Undo" }));
+    expect(screen.getByRole("status")).toHaveTextContent("50'-0\"");
+    fireEvent.click(screen.getByRole("button", { name: "Undo" }));
+    expect(frame.querySelector("[data-measure-path]")).toHaveAttribute("points", "200,200 600,200");
+    tap(frame, 720, 300);
+    expect(screen.getByRole("status")).toHaveTextContent("65'-0\"");
+  });
+  it("does not create gap nodes on blank taps, canceled pointers, panning, or pinching", () => {
+    const { frame } = openSheet("gap-gestures", undefined, { sharedScale: { unit: "m", unitsPerSheetWidth: 100 } });
+    fireEvent.click(screen.getByRole("button", { name: "Measure" }));
+    tap(frame, 200, 300); tap(frame, 600, 300);
+    fireEvent.click(screen.getByRole("button", { name: "Gap" }));
+    tap(frame, 400, 450);
+    expect(screen.getByRole("note")).toHaveTextContent("Tap an existing measured segment");
+    expect(frame.querySelectorAll("[data-measure-node]")).toHaveLength(2);
+    fireEvent.pointerDown(frame, { clientX: 400, clientY: 300, pointerId: 1, button: 0 });
+    fireEvent.pointerCancel(frame, { pointerId: 1 });
+    fireEvent.pointerDown(frame, { clientX: 400, clientY: 300, pointerId: 1, button: 0 });
+    fireEvent.pointerMove(frame, { clientX: 440, clientY: 340, pointerId: 1, button: 0 });
+    fireEvent.pointerUp(frame, { clientX: 440, clientY: 340, pointerId: 1, button: 0 });
+    fireEvent.pointerDown(frame, { clientX: 300, clientY: 300, pointerId: 1, button: 0 });
+    fireEvent.pointerDown(frame, { clientX: 500, clientY: 300, pointerId: 2, button: 0 });
+    fireEvent.pointerUp(frame, { clientX: 500, clientY: 300, pointerId: 2, button: 0 });
+    fireEvent.pointerUp(frame, { clientX: 300, clientY: 300, pointerId: 1, button: 0 });
+    expect(frame.querySelectorAll("[data-measure-node]")).toHaveLength(2);
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(screen.getByRole("button", { name: "Gap" })).toHaveAttribute("aria-pressed", "false");
+    expect(screen.getByRole("button", { name: "Done" })).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("50 m");
+  });
+  it("reuses a trunk endpoint, supports another branch, and clears branch state with the run", () => {
+    const { frame } = openSheet("gap-endpoint", undefined, { sharedScale: { unit: "m", unitsPerSheetWidth: 100 } });
+    fireEvent.click(screen.getByRole("button", { name: "Measure" }));
+    tap(frame, 200, 300); tap(frame, 600, 300);
+    fireEvent.click(screen.getByRole("button", { name: "Gap" })); tap(frame, 200, 300);
+    expect(frame.querySelectorAll("[data-measure-node]")).toHaveLength(2);
+    tap(frame, 200, 380);
+    expect(screen.getByRole("status")).toHaveTextContent("60 m");
+    fireEvent.click(screen.getByRole("button", { name: "Gap" })); tap(frame, 400, 300); tap(frame, 400, 220);
+    expect(screen.getByRole("status")).toHaveTextContent("70 m");
+    fireEvent.click(screen.getByRole("button", { name: "Clear" }));
+    expect(frame.querySelectorAll("[data-measure-node]")).toHaveLength(0);
+    expect(screen.getByRole("button", { name: "Gap" })).toBeDisabled();
+  });
+});
+
+it("places a short first branch instead of grabbing the new gap node", () => {
+  const { frame } = openSheet("gap-short", undefined, { sharedScale: { unit: "ft", unitsPerSheetWidth: 100 } });
+  fireEvent.click(screen.getByRole("button", { name: "Measure" }));
+  tap(frame, 200, 300); tap(frame, 600, 300);
+  fireEvent.click(screen.getByRole("button", { name: "Gap" })); tap(frame, 400, 300);
+  tap(frame, 400, 286);
+  expect(frame.querySelectorAll("[data-measure-node]")).toHaveLength(4);
+  expect(screen.getByRole("status")).toHaveTextContent("51'-9\"");
+});
