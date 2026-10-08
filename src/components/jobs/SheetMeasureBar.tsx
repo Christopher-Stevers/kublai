@@ -154,8 +154,8 @@ function traceStatus(
 ): string {
   if (pointCount === 0) {
     const base = snapping
-      ? "Tap each point along the path. Points snap onto lines."
-      : "Tap each point along the path.";
+      ? "Tap each point along the path. Points snap onto lines and lock at 45° or 90°."
+      : "Tap each point along the path. Angles lock at 45° or 90°.";
     return scaleLabel ? `${base} ${scaleLabel}.` : base;
   }
   const count = `${pointCount} ${pointCount === 1 ? "point" : "points"}.`;

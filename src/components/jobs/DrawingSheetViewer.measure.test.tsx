@@ -251,7 +251,7 @@ describe("drawing measure", () => {
     expect(screen.getByRole("status").textContent).toBe("50'-0\"");
     fireEvent.click(screen.getByRole("button", { name: "Clear" }));
     expect(screen.getByRole("status").textContent).toBe(
-      "Tap each point along the path.",
+      "Tap each point along the path. Angles lock at 45° or 90°.",
     );
   });
 
@@ -344,6 +344,89 @@ describe("drawing measure", () => {
     tap(frame, 700, 100);
     expect(screen.getByLabelText("How long is this line?")).toBeInTheDocument();
     expect(screen.getByRole("status").textContent).toBe("How long is this line?");
+  });
+
+  it("locks measuring segments square and at 45°, with or without PDF lines", () => {
+    const { frame } = openSheet("trace-angles", undefined, {
+      sharedScale: { unit: "ft", unitsPerSheetWidth: 100 },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Measure" }));
+    tap(frame, 400, 300);
+    fireEvent.pointerMove(frame, { clientX: 408, clientY: 150, buttons: 0 });
+    expect(screen.getByText("90°")).toBeInTheDocument();
+    expect(frame.querySelector('polyline[stroke="#16a34a"]')?.getAttribute("points")).toBe("400,200 400,50");
+    tap(frame, 408, 150);
+    expect(screen.getByRole("status")).toHaveTextContent("18'-9\"");
+    // The next segment locks relative to its own anchor, not the first point.
+    fireEvent.pointerMove(frame, { clientX: 550, clientY: 308, buttons: 0 });
+    expect(screen.getByText("45°")).toBeInTheDocument();
+    fireEvent.pointerMove(frame, { clientX: 520, clientY: 330, buttons: 0 });
+    expect(screen.queryByText("45°")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Clear" }));
+    fireEvent.pointerMove(frame, { clientX: 408, clientY: 150, buttons: 0 });
+    expect(screen.queryByText("90°")).toBeNull();
+  });
+
+  it("measures the exact intersection of an angle lock and a drawing line", async () => {
+    vi.mocked(loadSnapLines).mockResolvedValue([
+      { x1: 0, y1: 0.5, x2: 1, y2: 0.5 },
+      { x1: 0, y1: 0.125, x2: 1, y2: 0.125 },
+    ]);
+    const { frame } = openSheet("trace-intersection", { url: "/plan.pdf", page: 1 }, {
+      sharedScale: { unit: "ft", unitsPerSheetWidth: 100 },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Measure" }));
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("snap onto lines"));
+    tap(frame, 400, 312);
+    fireEvent.pointerMove(frame, { clientX: 408, clientY: 160, buttons: 0 });
+    expect(frame.querySelector('line[stroke="#22d3ee"]')).toBeTruthy();
+    expect(frame.querySelector('polyline[stroke="#16a34a"]')?.getAttribute("points")).toBe("400,200 400,50");
+    tap(frame, 408, 160);
+    expect(screen.getByRole("status")).toHaveTextContent("18'-9\"");
+  });
+
+  it("snaps the held measuring point while sliding and commits it on release", async () => {
+    const context = vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(null);
+    try {
+      const { frame } = openSheet("trace-hold", undefined, {
+        sharedScale: { unit: "ft", unitsPerSheetWidth: 100 },
+      });
+      fireEvent.click(screen.getByRole("button", { name: "Measure" }));
+      tap(frame, 400, 300);
+      fireEvent.pointerDown(frame, { clientX: 520, clientY: 220, pointerId: 1, button: 0, buttons: 1 });
+      await waitFor(() => expect(frame.querySelector("canvas")).toBeTruthy());
+      fireEvent.pointerMove(frame, { clientX: 408, clientY: 150, pointerId: 1, buttons: 1 });
+      expect(screen.getByText("90°")).toBeInTheDocument();
+      fireEvent.pointerUp(frame, { clientX: 408, clientY: 150, pointerId: 1, button: 0, buttons: 0 });
+      expect(screen.getByRole("status")).toHaveTextContent("18'-9\"");
+      expect(frame.querySelector("canvas")).toBeNull();
+      expect(screen.queryByText("90°")).toBeNull();
+    } finally {
+      context.mockRestore();
+    }
+  });
+
+  it("restores the previous snapped reference line on Undo", async () => {
+    vi.mocked(loadSnapLines).mockResolvedValue([
+      { x1: 0, y1: 0.5, x2: 1, y2: 0.5 },
+      // A 30° drawing line, in physical sheet coordinates.
+      { x1: 0.25, y1: 0, x2: 0.75, y2: 1 / Math.sqrt(3) },
+    ]);
+    const { frame } = openSheet("trace-undo", { url: "/plan.pdf", page: 1 });
+    fireEvent.click(screen.getByRole("button", { name: "Measure" }));
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("snap onto lines"));
+    tap(frame, 400, 300);
+    tap(frame, 400, 100 + 200 / Math.sqrt(3));
+    fireEvent.pointerMove(frame, { clientX: 300, clientY: 100 + 200 / Math.sqrt(3) + 100 * Math.sqrt(3), buttons: 0 });
+    expect(screen.getByText("90°")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Undo" }));
+    expect(screen.queryByText("90°")).toBeNull();
+    fireEvent.pointerMove(frame, { clientX: 408, clientY: 150, buttons: 0 });
+    expect(screen.getByText("90°")).toBeInTheDocument();
+    // Undo the first point too: no anchor or old reference remains.
+    fireEvent.click(screen.getByRole("button", { name: "Undo" }));
+    fireEvent.pointerMove(frame, { clientX: 408, clientY: 150, buttons: 0 });
+    expect(screen.queryByText("90°")).toBeNull();
   });
 
   it("reads the printed scale and measures with it", async () => {

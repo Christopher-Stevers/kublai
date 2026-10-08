@@ -257,7 +257,7 @@ export function formatLengthAs(length: number, stored: MeasureUnit, shown: Lengt
 export type AngleSnap = { point: SheetPoint; angle: 45 | 90 };
 
 /**
- * Setting a scale: when the line from `anchor` to `target` is within
+ * Measuring or setting a scale: when the line from `anchor` to `target` is within
  * `toleranceDeg` of square (90°) or 45° to `reference` (the line the first
  * end sits on, or the sheet's horizontal), lock it to that angle. If `line`
  * (the line under the second end) is given, the end lands exactly where the
