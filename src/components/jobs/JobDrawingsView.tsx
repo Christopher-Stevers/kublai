@@ -49,6 +49,7 @@ import { tileBase } from "~/lib/drawing-tiles";
 import { warmDrawingPdfRuntime } from "~/lib/drawing-pdf-offline-runtime";
 import { collectDrawingOfflineUrls } from "~/lib/drawing-offline";
 import { uploadDrawings } from "~/lib/upload-drawings";
+import type { DrawingViewport } from "./DrawingSheetViewer";
 import { DrawingWorkspace } from "./DrawingWorkspace";
 import { DrawingSheetRegister } from "./DrawingSheetRegister";
 import { useDrawingAccount } from "./DrawingAccountProvider";
@@ -76,6 +77,13 @@ export function JobDrawingsView({ jobId }: { jobId: string }) {
   const utils = api.useUtils();
   const [setId, setSetId] = useState<string | null>(null);
   const [sheetId, setSheetId] = useState<string | null>(null);
+  const lastViewport = useRef<DrawingViewport | null>(null);
+  const [entryViewport, setEntryViewport] = useState<DrawingViewport | null>(null);
+  const openSheet = (id: string | null, preserveViewport = false) => {
+    setEntryViewport(preserveViewport ? lastViewport.current : null);
+    if (!preserveViewport) lastViewport.current = null;
+    setSheetId(id);
+  };
   const [nameDialog, setNameDialog] = useState<NameDialog | null>(null);
   const [nameDraft, setNameDraft] = useState("");
   const [uploading, setUploading] = useState<string | null>(null);
@@ -287,7 +295,7 @@ export function JobDrawingsView({ jobId }: { jobId: string }) {
 
   // The app bar back arrow steps out of a sheet, then out of a folder.
   useHeaderBackOverride(
-    sheetId ? () => setSheetId(null) : setId ? () => setSetId(null) : null,
+    sheetId ? () => openSheet(null) : setId ? () => setSetId(null) : null,
   );
 
   const openNameDialog = (dialog: NameDialog) => {
@@ -374,9 +382,11 @@ export function JobDrawingsView({ jobId }: { jobId: string }) {
             key={sheet.id}
             jobId={jobId}
             sheet={sheet}
+            initialViewport={entryViewport}
+            onViewportChange={(value) => { lastViewport.current = value; }}
             onOpenSheet={(target) => {
               setSetId(target.setId);
-              setSheetId(target.id);
+              openSheet(target.id);
             }}
           />
         </div>
@@ -386,7 +396,7 @@ export function JobDrawingsView({ jobId }: { jobId: string }) {
               variant="outline"
               className="h-10 min-w-0 px-2 text-xs sm:text-sm"
               disabled={sheetIndex <= 0}
-              onClick={() => setSheetId(sheets[sheetIndex - 1]!.id)}
+              onClick={() => openSheet(sheets[sheetIndex - 1]!.id, true)}
             >
               <ChevronLeftIcon className="mr-1 h-4 w-4" />
               Previous
@@ -416,7 +426,7 @@ export function JobDrawingsView({ jobId }: { jobId: string }) {
               variant="outline"
               className="h-10 min-w-0 px-2 text-xs sm:text-sm"
               disabled={sheetIndex >= sheets.length - 1}
-              onClick={() => setSheetId(sheets[sheetIndex + 1]!.id)}
+              onClick={() => openSheet(sheets[sheetIndex + 1]!.id, true)}
             >
               Next
               <ChevronRightIcon className="ml-1 h-4 w-4" />
@@ -543,11 +553,11 @@ export function JobDrawingsView({ jobId }: { jobId: string }) {
                     ? "flex cursor-pointer flex-row gap-0 rounded-none border-0 border-b py-0 shadow-none"
                     : "cursor-pointer gap-0 overflow-hidden py-0 transition-shadow hover:shadow-md"
                 }
-                onClick={() => setSheetId(item.id)}
+                onClick={() => openSheet(item.id)}
                 onKeyDown={(event) => {
                   if (event.key === "Enter" || event.key === " ") {
                     event.preventDefault();
-                    setSheetId(item.id);
+                    openSheet(item.id);
                   }
                 }}
               >

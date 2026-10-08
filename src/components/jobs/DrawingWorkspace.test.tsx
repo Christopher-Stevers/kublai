@@ -99,6 +99,16 @@ vi.mock("./DrawingSheetViewer", () => ({
       <div data-testid="viewer-source">
         {props.sourceSheetId ?? props.sheetKey}
       </div>
+      <div data-testid="inherited-viewport">
+        {JSON.stringify(props.initialViewport)}
+      </div>
+      <button
+        onClick={() =>
+          props.onViewportChange?.({ center: { x: 0.2, y: 1.1 }, zoom: 2 })
+        }
+      >
+        Pan beyond sheet
+      </button>
       <button
         disabled={!props.onScaleChange}
         onClick={() => {
@@ -108,7 +118,9 @@ vi.mock("./DrawingSheetViewer", () => ({
             )
             .then(mocks.scaleResult)
             .catch((error: unknown) => {
-              mocks.scaleResult(error instanceof Error ? error.message : "Save failed");
+              mocks.scaleResult(
+                error instanceof Error ? error.message : "Save failed",
+              );
             });
         }}
       >
@@ -274,6 +286,41 @@ afterEach(() => {
 });
 
 describe("drawing workspace workflows", () => {
+  it("passes inherited view to the viewer, reports raw pan for navigation, and bounds only saved bookmarks", async () => {
+    const initialViewport = { center: { x: 0.3, y: 0.7 }, zoom: 3 };
+    const onViewportChange = vi.fn();
+    render(
+      <DrawingWorkspace
+        jobId={jobId}
+        sheet={sheet}
+        onOpenSheet={vi.fn()}
+        initialViewport={initialViewport}
+        onViewportChange={onViewportChange}
+      />,
+    );
+    expect(screen.getByTestId("inherited-viewport")).toHaveTextContent(
+      JSON.stringify(initialViewport),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Pan beyond sheet" }));
+    expect(onViewportChange).toHaveBeenCalledWith({
+      center: { x: 0.2, y: 1.1 },
+      zoom: 2,
+    });
+    panel("views");
+    fireEvent.click(screen.getByRole("button", { name: "Save current view" }));
+    fireEvent.change(screen.getByLabelText("Saved view name"), {
+      target: { value: "My view" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /^Save$/ }));
+    await waitFor(() => expect(mocks.save).toHaveBeenCalledOnce());
+    const saved = mocks.save.mock.calls[0]![0];
+    expect(saved.kind).toBe("view");
+    if (saved.kind === "view") {
+      expect(saved.data.center).toEqual({ x: 0.2, y: 1 });
+      expect(saved.data.zoom).toBe(2);
+    }
+  });
+
   it("keeps the canvas available after selecting a markup and exposes move, resize, and delete", async () => {
     mocks.data!.entities = [existingMarkup()];
     open();

@@ -26,7 +26,7 @@ import {
   type DrawingTextIndex,
   type DrawingText,
 } from "~/lib/drawing-text";
-import { DrawingSheetViewer } from "./DrawingSheetViewer";
+import { DrawingSheetViewer, type DrawingViewport } from "./DrawingSheetViewer";
 import {
   DrawingEntityForm,
   DrawingField,
@@ -107,6 +107,8 @@ export function DrawingWorkspace({
   jobId,
   sheet,
   onOpenSheet,
+  initialViewport,
+  onViewportChange,
 }: {
   jobId: string;
   sheet: {
@@ -118,6 +120,8 @@ export function DrawingWorkspace({
     sourceFilename?: string | null;
   };
   onOpenSheet: (sheet: DrawingJobSheet) => void;
+  initialViewport?: DrawingViewport | null;
+  onViewportChange?: (viewport: DrawingViewport) => void;
 }) {
   const account = useDrawingAccount();
   const utils = api.useUtils();
@@ -172,7 +176,13 @@ export function DrawingWorkspace({
     zoom: number;
     requestId: string;
   } | null>(null);
-  const viewport = useRef({ center: { x: 0.5, y: 0.5 }, zoom: 1 });
+  const viewport = useRef<DrawingViewport>(
+    initialViewport ?? { center: { x: 0.5, y: 0.5 }, zoom: 1 },
+  );
+  const updateViewport = (value: DrawingViewport) => {
+    viewport.current = value;
+    onViewportChange?.(value);
+  };
   const [comment, setComment] = useState("");
   const [metadata, setMetadata] = useState<DrawingMetadata | null>(null);
   const [metadataDirty, setMetadataDirty] = useState(false);
@@ -515,7 +525,15 @@ export function DrawingWorkspace({
         ? {
             ...common,
             kind,
-            data: { sourceSheetId: sourceId, name: "", ...viewport.current },
+            data: {
+              sourceSheetId: sourceId,
+              name: "",
+              ...viewport.current,
+              center: {
+                x: Math.min(1, Math.max(0, viewport.current.center.x)),
+                y: Math.min(1, Math.max(0, viewport.current.center.y)),
+              },
+            },
           }
         : kind === "version"
           ? {
@@ -722,6 +740,8 @@ export function DrawingWorkspace({
             pdf={resolved.pdf}
             tiles={tileBase(source.imageUrl)}
             sheetKey={source.id}
+            initialViewport={viewport.current}
+            onViewportChange={updateViewport}
             resolveAssetUrl={resolveAssetUrl}
           />
         </div>
@@ -1079,6 +1099,7 @@ export function DrawingWorkspace({
           ) : (
             <DrawingSheetViewer
               key={source.id}
+              initialViewport={viewport.current}
               src={resolved.src}
               alt={source.name}
               pdf={resolved.pdf}
@@ -1158,9 +1179,7 @@ export function DrawingWorkspace({
               }}
               onActivate={activate}
               navigateTo={navigate}
-              onViewportChange={(value) => {
-                viewport.current = value;
-              }}
+              onViewportChange={updateViewport}
             />
           )}
         </div>

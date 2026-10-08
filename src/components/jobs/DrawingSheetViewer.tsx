@@ -61,6 +61,7 @@ const NODE_GRAB_PX = 24;
 const COMMIT_MS = 50;
 type Point = { x: number; y: number };
 type MeasureNode = { point: SheetPoint; line: SnapSegment | null; referenceOnly?: boolean };
+export type DrawingViewport = { center: SheetPoint; zoom: number };
 type View = { scale: number; x: number; y: number };
 const REST: View = { scale: 1, x: 0, y: 0 };
 
@@ -75,7 +76,7 @@ const REST: View = { scale: 1, x: 0, y: 0 };
  * Measure mode traces points on the sheet and totals the real distance once the
  * printed scale has been read. A tap near a straight line in the
  * PDF, including a dashed grid, lands on that line. Give it a `key` per sheet
- * so each sheet opens unzoomed.
+ * so each sheet starts with fresh tool state.
  */
 /** Holding this long while measuring picks up the point to slide it. */
 const MEASURE_HOLD_MS = 250;
@@ -93,6 +94,7 @@ export function DrawingSheetViewer({
   resolveAssetUrl,
   navigateTo,
   onViewportChange,
+  initialViewport,
   ...editorProps
 }: DrawingEditorProps & {
   src: string;
@@ -105,7 +107,9 @@ export function DrawingSheetViewer({
   comparison?: DrawingComparison;
   resolveAssetUrl?: (url: string) => Promise<string>;
   navigateTo?: { center: SheetPoint; zoom: number; requestId: string } | null;
-  onViewportChange?: (viewport: { center: SheetPoint; zoom: number }) => void;
+  onViewportChange?: (viewport: DrawingViewport) => void;
+  /** Carry the viewing position into a newly opened sheet. */
+  initialViewport?: DrawingViewport | null;
 }) {
   const frame = useRef<HTMLDivElement>(null);
   const layer = useRef<HTMLDivElement>(null);
@@ -118,6 +122,7 @@ export function DrawingSheetViewer({
   const [manifest, setManifest] = useState<TileManifest | null>(null);
   // `live` follows every pointer move; `view` is committed for tiles/redraws.
   const live = useRef<View>(REST);
+  const entryViewport = useRef(initialViewport);
   const [view, setView] = useState<View>(REST);
   const [moving, setMoving] = useState(false);
   const pointers = useRef(new Map<number, Point>());
@@ -714,9 +719,18 @@ export function DrawingSheetViewer({
       pipeStroke.current?.setAttribute("stroke-width", String(4000 / (fit.width * scale)));
     }
   };
+  const publishViewport = () => {
+    if (!fit) return;
+    const current = live.current;
+    viewportListener.current?.({ center: {
+      x: 0.5 - current.x / (fit.width * current.scale),
+      y: 0.5 - current.y / (fit.height * current.scale),
+    }, zoom: current.scale });
+  };
   /** Moves the sheet now (next frame) and lets tiles catch up shortly after. */
   const move = (next: View, settle = false) => {
     live.current = clamp(next);
+    publishViewport();
     frameRequest.current ||= requestAnimationFrame(paint);
     setMoving(!settle);
     if (settle) {
@@ -820,13 +834,19 @@ export function DrawingSheetViewer({
     // A unique request makes selecting the same bookmark again intentional.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [navigateTo?.requestId, fit?.width, fit?.height]);
+  useLayoutEffect(() => {
+    const entry = entryViewport.current;
+    if (!entry || !fit) return;
+    entryViewport.current = null;
+    move({ scale: entry.zoom, x: (0.5 - entry.center.x) * fit.width * entry.zoom, y: (0.5 - entry.center.y) * fit.height * entry.zoom }, true);
+    // The inherited view is applied once, after this sheet's dimensions are known.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fit]);
   useEffect(() => {
-    if (!fit) return;
-    viewportListener.current?.({ center: {
-      x: Math.min(1, Math.max(0, 0.5 - view.x / (fit.width * view.scale))),
-      y: Math.min(1, Math.max(0, 0.5 - view.y / (fit.height * view.scale))),
-    }, zoom: view.scale });
-  }, [view, fit]);
+    publishViewport();
+    // Movement publishes synchronously, including before the redraw timer fires.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fit]);
 
   // Geometry of the committed view.
   const dpr = typeof window === "undefined" ? 1 : Math.min(window.devicePixelRatio || 1, 3);
