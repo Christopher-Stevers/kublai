@@ -17,6 +17,7 @@ import {
   DrawingSheetViewer,
   type DrawingEditorProps,
 } from "./DrawingSheetViewer";
+import { DrawingCompare } from "./DrawingCompare";
 
 vi.mock("~/lib/pdf-snap-lines", () => ({
   loadSnapLines: vi.fn(async () => []),
@@ -127,6 +128,25 @@ function tap(frame: HTMLElement, x: number, y: number) {
 }
 
 describe("drawing measure", () => {
+  it.each(["overlay", "difference", "wipe", "side-by-side"])("uses the host bottom controls without an extra idle bar in %s comparisons", mode => {
+    const first = { id: "one", name: "Original", imageUrl: "/first.webp" };
+    const second = { id: "two", name: "Revision", imageUrl: "/second.webp" };
+    const onMode = vi.fn();
+    const view = render(<DrawingCompare first={first} second={second} toolControls={{ measureRequest: 0, pipeRequest: 0, onMode }} />);
+    fireEvent.change(screen.getByLabelText("Comparison mode"), { target: { value: mode } });
+    expect(screen.queryByRole("region", { name: "Drawing tool options" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Pipe system" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Measure" })).toBeNull();
+
+    view.rerender(<DrawingCompare first={first} second={second} toolControls={{ measureRequest: 1, pipeRequest: 0, onMode }} />);
+    expect(screen.getAllByRole("button", { name: "Done" })).toHaveLength(1);
+    expect(screen.getByRole("button", { name: "Set Scale" })).toBeEnabled();
+    expect(onMode).toHaveBeenLastCalledWith({ measuring: true, pipe: false });
+
+    view.rerender(<DrawingCompare first={first} second={second} toolControls={{ measureRequest: 1, pipeRequest: 1, onMode }} />);
+    expect(screen.getAllByRole("region", { name: "Pipe system selection" })).toHaveLength(1);
+    expect(onMode).toHaveBeenLastCalledWith({ measuring: false, pipe: true });
+  });
   it.each([false, true])("middle-pan preserves measurement nodes, including while setting scale (%s)", calibration => {
     const { frame } = openSheet();
     const image = screen.getByAltText("Sheet");

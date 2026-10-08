@@ -1075,6 +1075,7 @@ export function DrawingWorkspace({
             <DrawingCompare
               appearance={appearance}
               key={`${compareFirst.id}:${compare.id}`}
+              toolControls={{ measureRequest, pipeRequest, onMode: setBottomMode }}
               resolveAssetUrl={resolveAssetUrl}
               first={{
                 ...compareFirst,

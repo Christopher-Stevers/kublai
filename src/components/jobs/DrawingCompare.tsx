@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ComponentProps } from "react";
 import { DrawingSheetViewer, type DrawingViewport } from "./DrawingSheetViewer";
 import { DEFAULT_OVERLAY_STYLES } from "~/lib/drawing-line-overlay";
 import type { DrawingAppearance } from "~/lib/drawing-appearance";
@@ -23,6 +23,7 @@ export function DrawingCompare({
   initialViewport,
   onViewportChange,
   appearance,
+  toolControls,
 }: {
   first: DrawingCompareSheet;
   second: DrawingCompareSheet;
@@ -31,6 +32,7 @@ export function DrawingCompare({
   initialViewport?: DrawingViewport | null;
   onViewportChange?: (value: DrawingViewport) => void;
   appearance?: DrawingAppearance;
+  toolControls?: ComponentProps<typeof DrawingSheetViewer>["toolControls"];
 }) {
   const sourceKey = JSON.stringify([firstSource, secondSource]);
   const [resolved, setResolved] = useState<{
@@ -347,6 +349,13 @@ export function DrawingCompare({
               <p className="truncate p-1 text-center text-xs">{sheet.name}</p>
               <div className="min-h-0 flex-1">
                 <DrawingSheetViewer
+                  toolControls={
+                    sheet.id === first.id
+                      ? toolControls
+                      : toolControls
+                        ? { measureRequest: 0, pipeRequest: 0 }
+                        : undefined
+                  }
                   appearance={appearance}
                   src={sheet.imageUrl}
                   initialViewport={entryView}
@@ -366,6 +375,7 @@ export function DrawingCompare({
       ) : (
         <div className="min-h-0 flex-1">
           <DrawingSheetViewer
+            toolControls={toolControls}
             appearance={appearance}
             src={first.imageUrl}
             initialViewport={entryView}
