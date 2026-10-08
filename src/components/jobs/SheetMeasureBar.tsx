@@ -41,7 +41,6 @@ export function SheetMeasureBar({
   onColor,
   pipeControl,
   pipePanel,
-  zoomControl,
   hideIdle = false,
   gap = false,
   canGap = false,
@@ -82,7 +81,6 @@ export function SheetMeasureBar({
   onColor: (color: string) => void;
   pipeControl?: React.ReactNode;
   pipePanel?: React.ReactNode;
-  zoomControl?: ReactNode;
   /** The Measure / Pipe system buttons live in a host toolbar instead. */
   hideIdle?: boolean;
   gap?: boolean;
@@ -108,7 +106,6 @@ export function SheetMeasureBar({
   );
   const measuringControls = (
     <div className="flex shrink-0 items-center gap-2">
-      {zoomControl}
       {toggle}
     </div>
   );
@@ -169,7 +166,6 @@ export function SheetMeasureBar({
           )
         ) : hideIdle ? null : (
           <div className="flex items-center justify-end gap-2">
-            <div className="mr-auto">{zoomControl}</div>
             {pipeControl}
             {toggle}
           </div>

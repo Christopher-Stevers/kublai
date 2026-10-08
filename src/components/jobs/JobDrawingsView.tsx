@@ -78,6 +78,7 @@ export function JobDrawingsView({ jobId }: { jobId: string }) {
   const [setId, setSetId] = useState<string | null>(null);
   const [sheetId, setSheetId] = useState<string | null>(null);
   const lastViewport = useRef<DrawingViewport | null>(null);
+  const zoomLabel = useRef<HTMLSpanElement>(null);
   const [entryViewport, setEntryViewport] = useState<DrawingViewport | null>(null);
   const openSheet = (id: string | null, preserveViewport = false) => {
     setEntryViewport(preserveViewport ? lastViewport.current : null);
@@ -383,7 +384,12 @@ export function JobDrawingsView({ jobId }: { jobId: string }) {
             jobId={jobId}
             sheet={sheet}
             initialViewport={entryViewport}
-            onViewportChange={(value) => { lastViewport.current = value; }}
+            onViewportChange={(value) => {
+              lastViewport.current = value;
+              const text = `${Math.round(value.zoom * 100)}%`;
+              if (zoomLabel.current && zoomLabel.current.textContent !== text)
+                zoomLabel.current.textContent = text;
+            }}
             onOpenSheet={(target) => {
               setSetId(target.setId);
               openSheet(target.id);
@@ -404,22 +410,32 @@ export function JobDrawingsView({ jobId }: { jobId: string }) {
               Previous
             </Button>
             <div className="flex min-w-0 flex-col items-center">
-              {canManage ? (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  className="h-8 w-full min-w-0 gap-1 px-1 text-sm"
-                  aria-label={`Rename drawing ${sheet.name}`}
-                  title={sheet.name}
-                  disabled={renameSheet.isPending}
-                  onClick={() => openNameDialog({ kind: "rename-sheet", id: sheet.id, name: sheet.name })}
+              <div className="flex w-full min-w-0 items-center justify-center gap-1.5">
+                {canManage ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="h-8 min-w-0 shrink gap-1 px-1 text-sm"
+                    aria-label={`Rename drawing ${sheet.name}`}
+                    title={sheet.name}
+                    disabled={renameSheet.isPending}
+                    onClick={() => openNameDialog({ kind: "rename-sheet", id: sheet.id, name: sheet.name })}
+                  >
+                    <span className="truncate">{sheet.name}</span>
+                    <PencilIcon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                  </Button>
+                ) : (
+                  <span className="min-w-0 truncate py-1 text-center text-sm" title={sheet.name}>{sheet.name}</span>
+                )}
+                <span
+                  ref={zoomLabel}
+                  aria-label="Drawing zoom"
+                  title="Zoom (100% = fit to screen)"
+                  className="text-muted-foreground shrink-0 text-xs tabular-nums"
                 >
-                  <span className="truncate">{sheet.name}</span>
-                  <PencilIcon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                </Button>
-              ) : (
-                <span className="w-full truncate py-1 text-center text-sm" title={sheet.name}>{sheet.name}</span>
-              )}
+                  {Math.round((entryViewport?.zoom ?? 1) * 100)}%
+                </span>
+              </div>
               <span className="text-muted-foreground text-xs tabular-nums">
                 {sheetIndex + 1} of {sheets.length}
               </span>
