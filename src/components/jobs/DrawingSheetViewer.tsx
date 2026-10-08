@@ -342,11 +342,15 @@ export function DrawingSheetViewer({
     const reference = anchorNode?.line ?? null;
     const shown = fit ? fit.width * live.current.scale : 0;
     const hit = snapIndex && shown > 0
-      ? snapToLine(point, snapIndex, SNAP_PX / shown, anchor ? reference : null)
+      ? snapToLine(point, snapIndex, SNAP_PX / shown, anchor ? reference : null, 4 / shown)
       : null;
     if (anchor && fit) {
       const angled = snapToAngle(anchor, hit?.point ?? point, fit.aspect, reference, hit?.segment ?? null);
-      if (angled) return { point: angled.point, segment: hit?.segment ?? null, angle: angled.angle };
+      // Angle locks must stay within the same screen-space reach as line snaps.
+      // A small angular error on a long measurement can otherwise move the end
+      // far from the line or exact point the user is aiming at.
+      if (angled && Math.hypot(angled.point.x - point.x, (angled.point.y - point.y) * fit.aspect) * shown <= SNAP_PX)
+        return { point: angled.point, segment: hit?.segment ?? null, angle: angled.angle };
     }
     return hit ? { point: hit.point, segment: hit.segment } : { point, segment: null };
   };

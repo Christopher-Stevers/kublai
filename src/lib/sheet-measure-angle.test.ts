@@ -23,6 +23,15 @@ describe("snapToAngle", () => {
   it("leaves other angles alone", () => {
     expect(snapToAngle({ x: 0.5, y: 0.5 }, { x: 0.8, y: 0.38 }, 1, horizontal)).toBeNull();
   });
+  it("does not angle-lock an endpoint off a parallel line target", () => {
+    const line = { x1: 0.7, y1: 0.31, x2: 0.9, y2: 0.11 };
+    expect(snapToAngle({ x: 0.5, y: 0.5 }, { x: 0.8, y: 0.21 }, 1, horizontal, line)).toBeNull();
+  });
+  it("does not extrapolate a line target beyond its actual endpoint", () => {
+    const short = { x1: 0.79, y1: 0.2, x2: 0.795, y2: 0.2 };
+    expect(snapToAngle({ x: 0.5, y: 0.5 }, { x: 0.792, y: 0.2 }, 1, horizontal, short)).toBeNull();
+  });
+
 });
 
 describe("lengths in m, mm, in and ft", () => {

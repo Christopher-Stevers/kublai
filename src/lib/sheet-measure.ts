@@ -300,9 +300,21 @@ export function snapToAngle(
       const onLine = (ux * along - lx) * dx + (uy * along - ly) * dy;
       const lengthSq = dx * dx + dy * dy;
       const s = lengthSq > 0 ? onLine / lengthSq : -1;
-      if (along > 0 && s >= -0.02 && s <= 1.02) t = along;
+      if (along > 0 && s >= 0 && s <= 1) t = along;
     }
   }
   if (!(t > 0)) return null;
-  return { point: { x: ax + ux * t, y: (ay + uy * t) / aspect }, angle: best.angle };
+  const point = { x: ax + ux * t, y: (ay + uy * t) / aspect };
+  if (line) {
+    // If the locked ray misses this finite segment (or runs parallel), keep
+    // the actual line snap instead of showing its guide beside an off-line end.
+    const dx = line.x2 - line.x1, dy = (line.y2 - line.y1) * aspect;
+    const lengthSq = dx * dx + dy * dy;
+    const s = lengthSq > 0
+      ? ((point.x - line.x1) * dx + (point.y - line.y1) * aspect * dy) / lengthSq : -1;
+    const onSegment = Math.min(1, Math.max(0, s));
+    const error = Math.hypot(point.x - line.x1 - onSegment * dx, (point.y - line.y1) * aspect - onSegment * dy);
+    if (s < -1e-9 || s > 1 + 1e-9 || error > 1e-7) return null;
+  }
+  return { point, angle: best.angle };
 }
