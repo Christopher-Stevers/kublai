@@ -11,6 +11,7 @@ const state = vi.hoisted(() => ({
   online: true,
   status: "draft",
   failSave: false,
+  empty: false,
   clock: null as null | {
     id: string;
     revision: number;
@@ -55,7 +56,10 @@ vi.mock("~/trpc/react", () => {
                 revision: 3,
               },
               jobs: [job],
-              people: [{ id: "me", name: "Tim", email: "tim@example.invalid" }],
+              people: [
+                { id: "me", name: "Tim", email: "tim@example.invalid" },
+                { id: "coworker", name: "Alex", email: "alex@example.invalid" },
+              ],
               me: "me",
               today: "2026-10-08",
               clock: state.clock,
@@ -71,26 +75,30 @@ vi.mock("~/trpc/react", () => {
               start: "2026-10-05",
               end: "2026-10-11",
               userId: "me",
-              sheet: {
-                id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
-                status: state.status,
-                revision: 2,
-                reviewNote: "",
-              },
-              entries: [
-                {
-                  id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
-                  date: "2026-10-08",
-                  jobId: job.id,
-                  jobName: job.name,
-                  category: "work",
-                  minutes: 450,
-                  breakMinutes: 30,
-                  costCode: "",
-                  notes: "",
-                  source: "manual",
-                },
-              ],
+              sheet: state.empty
+                ? null
+                : {
+                    id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+                    status: state.status,
+                    revision: 2,
+                    reviewNote: "",
+                  },
+              entries: state.empty
+                ? []
+                : [
+                    {
+                      id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+                      date: "2026-10-08",
+                      jobId: job.id,
+                      jobName: job.name,
+                      category: "work",
+                      minutes: 450,
+                      breakMinutes: 30,
+                      costCode: "",
+                      notes: "",
+                      source: "manual",
+                    },
+                  ],
               events: [],
             },
           }),
@@ -118,6 +126,7 @@ beforeEach(() => {
   state.clock = null;
   state.calls = [];
   state.failSave = false;
+  state.empty = false;
 });
 afterEach(cleanup);
 describe("Timesheets real controls", () => {
@@ -177,6 +186,24 @@ describe("Timesheets real controls", () => {
     expect(
       screen.queryByRole("button", { name: "Company settings" }),
     ).not.toBeInTheDocument();
+  });
+  it("lets a manager create an employee's first timesheet", () => {
+    state.manager = true;
+    state.empty = true;
+    render(<TimesheetsView />);
+    fireEvent.click(screen.getByRole("button", { name: "Review" }));
+    fireEvent.change(screen.getByLabelText("Open employee timesheet"), {
+      target: { value: "coworker" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Add time" }));
+    fireEvent.click(
+      within(screen.getByRole("dialog")).getByRole("button", {
+        name: "Save time",
+      }),
+    );
+    expect(
+      state.calls.find(([name]) => name === "saveEntry")?.[1],
+    ).toMatchObject({ userId: "coworker", expectedRevision: 0 });
   });
   it("lets the company choose daily submission and a time zone", () => {
     state.manager = true;

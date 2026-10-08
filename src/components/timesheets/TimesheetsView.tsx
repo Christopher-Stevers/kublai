@@ -830,6 +830,28 @@ function TimesheetsContent({
             {rangeControls}
             {tab === "team" && (
               <label className={label}>
+                Open employee timesheet
+                <select
+                  className={field}
+                  value=""
+                  onChange={(event) => {
+                    if (!event.target.value) return;
+                    setPerson(event.target.value);
+                    setDate(info.today);
+                    setTab("detail");
+                  }}
+                >
+                  <option value="">Select an employee…</option>
+                  {info.people.map((employee) => (
+                    <option key={employee.id} value={employee.id}>
+                      {employee.name ?? employee.email}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+            {tab === "team" && (
+              <label className={label}>
                 Status
                 <select
                   className={field}
