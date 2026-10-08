@@ -134,8 +134,8 @@ export function DrawingComparisonLayer({
       </svg>
       {difference && (
         <div
-          className="absolute inset-0 bg-white"
-          style={{ filter: `url(#${filterId}-red)` }}
+          className="absolute inset-0"
+          style={{ filter: `url(#${filterId}-red)`, backgroundColor: "#fff" }}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img

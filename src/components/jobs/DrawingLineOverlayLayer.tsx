@@ -321,20 +321,20 @@ export function DrawingLineOverlayLayer(props: Props) {
     <div
       data-line-overlay="true"
       data-overlay-ready={ready}
-      className="pointer-events-none absolute inset-0 bg-white"
-      style={{ zIndex: 2 }}
+      className="pointer-events-none absolute inset-0"
+      style={{ zIndex: 2, backgroundColor: "#fff" }}
     >
       <canvas
         ref={overview}
         data-overlay-overview="true"
-        className="absolute bg-white"
-        style={{ visibility: "hidden" }}
+        className="absolute"
+        style={{ visibility: "hidden", backgroundColor: "#fff" }}
       />
       <canvas
         ref={detail}
         data-overlay-detail="true"
-        className="absolute bg-white"
-        style={{ visibility: "hidden" }}
+        className="absolute"
+        style={{ visibility: "hidden", backgroundColor: "#fff" }}
       />
       {(!ready || error) && (
         <p
