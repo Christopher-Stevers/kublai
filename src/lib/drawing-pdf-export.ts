@@ -23,6 +23,7 @@ import {
   drawingMarkupEdges,
 } from "./drawing-annotation-geometry";
 import type { SheetScale } from "./sheet-measure";
+import { savedMeasureAngleArcs } from "./saved-measure-run";
 
 export type DrawingPdfExportOptions = {
   pdfUrl: string;
@@ -312,6 +313,14 @@ async function drawMarkup(
     for (const { from, to } of drawingMarkupEdges(data)) {
       const segmentLabel = drawingMeasurement({ ...data, parents: undefined, points: [data.points[from]!, data.points[to]!] }, aspect, sharedScale);
       if (segmentLabel) await text(segmentLabel, (points[from]!.x + points[to]!.x) / 2, (points[from]!.y + points[to]!.y) / 2 - 8);
+    }
+    for (const arc of savedMeasureAngleArcs(data, aspect)) {
+      page.drawSvgPath(arc.path, { ...style, color: undefined });
+      if (arc.referenceEnd) page.drawSvgPath(`M ${arc.vertex.x} ${arc.vertex.y} L ${arc.referenceEnd.x} ${arc.referenceEnd.y}`, { ...style, color: undefined, borderDashArray: [3, 3] });
+      const size = 13 * factor;
+      await label(doc, page, font, arc.text,
+        arc.label.x * factor - font.widthOfTextAtSize(arc.text, size) / 2,
+        height - arc.label.y * factor - size * 0.35, size, data.stroke, opacity);
     }
   }
   if (measurement && (!data.parents || drawingMarkupEdges(data).length > 1))

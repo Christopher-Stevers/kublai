@@ -5,6 +5,8 @@ export type MeasureRunNode = {
   point: SheetPoint;
   line: SnapSegment | null;
   parent: number | null;
+  /** Restored directions are angle references, not finite PDF snapping targets. */
+  referenceOnly?: boolean;
 };
 type Snapshot = {
   nodes: MeasureRunNode[];
@@ -59,7 +61,10 @@ export function measureRunReducer(
       return emptyMeasureRun();
     case "forget-lines": {
       const clear = (nodes: MeasureRunNode[]) =>
-        nodes.map((node) => ({ ...node, line: null }));
+        nodes.map((node) => ({
+          ...node,
+          line: node.referenceOnly ? node.line : null,
+        }));
       return {
         ...run,
         nodes: clear(run.nodes),
@@ -99,7 +104,12 @@ export function measureRunReducer(
       return save(run, {
         nodes: run.nodes.map((node, index) =>
           index === action.index
-            ? { ...node, point: action.point, line: action.line }
+            ? {
+                ...node,
+                point: action.point,
+                line: action.line,
+                referenceOnly: false,
+              }
             : node,
         ),
         active: run.active,
@@ -121,7 +131,9 @@ export function measureRunReducer(
         if (hit.node !== hit.from && hit.node !== hit.to) return run;
         return save(run, {
           nodes: run.nodes.map((node, index) =>
-            index === hit.node ? { ...node, line } : node,
+            index === hit.node && !node.line
+              ? { ...node, line, referenceOnly: true }
+              : node,
           ),
           active: hit.node,
           branching: true,
@@ -132,7 +144,12 @@ export function measureRunReducer(
       const nodes = run.nodes.map((node, id) =>
         id === hit.to ? { ...node, parent: index } : node,
       );
-      nodes.push({ point: hit.point, line, parent: hit.from });
+      nodes.push({
+        point: hit.point,
+        line,
+        parent: hit.from,
+        referenceOnly: true,
+      });
       return save(run, { nodes, active: index, branching: true });
     }
   }

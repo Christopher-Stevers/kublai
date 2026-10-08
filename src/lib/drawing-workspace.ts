@@ -66,6 +66,11 @@ export const drawingMarkupSchema = z
     points: z.array(drawingPointSchema).min(1).max(4000),
     /** Saved measuring runs can branch; null starts a disconnected run. */
     parents: z.array(z.number().int().min(0).max(3999).nullable()).min(2).max(4000).optional(),
+    /** Attached line directions preserve the first segment's angle after saving. */
+    angleReferences: z.array(z.object({
+      x: z.number().finite().min(-1).max(1),
+      y: z.number().finite().min(-1).max(1),
+    }).nullable()).min(2).max(4000).optional(),
     stroke: color.default("#ef4444"),
     width: z.number().finite().min(0.1).max(40).default(2),
     /** Text size in the shared 1000-unit drawing coordinate system. */
@@ -79,6 +84,11 @@ export const drawingMarkupSchema = z
     scale: z.number().finite().positive().max(1e9).optional(),
   })
   .superRefine((markup, ctx) => {
+    if (markup.angleReferences && (markup.type !== "dimension" || !markup.parents ||
+      markup.angleReferences.length !== markup.points.length ||
+      markup.angleReferences.some(reference => reference && Math.hypot(reference.x, reference.y) < 1e-9))) {
+      ctx.addIssue({ code: "custom", path: ["angleReferences"], message: "Invalid measurement angle references." });
+    }
     if (markup.parents) {
       const parents = markup.parents;
       if (markup.type !== "dimension" || parents.length !== markup.points.length ||

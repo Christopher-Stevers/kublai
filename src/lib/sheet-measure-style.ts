@@ -7,5 +7,7 @@ export function sheetMeasureStyle(screenPixel: number, sheetPixel = 1) {
     fontWeight: 600,
     labelHalo: 4 * screenPixel,
     labelOffset: -8 * screenPixel,
+    angleFont: 13 * screenPixel,
+    angleHalo: 3 * screenPixel,
   };
 }

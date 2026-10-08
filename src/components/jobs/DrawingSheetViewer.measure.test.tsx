@@ -183,6 +183,11 @@ describe("drawing measure", () => {
     if (zoom !== 1) fireEvent.wheel(view.frame, { clientX: 400, clientY: 300, deltaY: -Math.log(zoom) / 0.0015 });
     const activeLine = view.frame.querySelector('[data-measure-path]')!;
     const activeLabel = view.frame.querySelector('[data-measure-length]')!;
+    const angleLabels = Array.from(view.frame.querySelectorAll('[data-measure-angle] text')).map(label => ({
+      text: label.textContent, font: Number(label.getAttribute("font-size")) * zoom,
+      halo: Number(label.getAttribute("stroke-width")) * zoom,
+    }));
+    expect(angleLabels).toHaveLength(1);
     const expected = {
       width: Number(activeLine.getAttribute("stroke-width")) * zoom,
       font: Number(activeLabel.getAttribute("font-size")) * zoom,
@@ -210,6 +215,13 @@ describe("drawing measure", () => {
       expect(label.getAttribute("text-anchor")).toBe(expected.anchor);
       expect(label.textContent).toBe(expected.text);
       expect(frame.querySelectorAll('[data-saved-measure-node]')).toHaveLength(4);
+      const savedAngles = Array.from(frame.querySelectorAll('[data-saved-measure-angle] text'));
+      expect(savedAngles).toHaveLength(angleLabels.length);
+      savedAngles.forEach((label, index) => {
+        expect(label.textContent).toBe(angleLabels[index]!.text);
+        expect(Number(label.getAttribute("font-size")) * screenScale).toBeCloseTo(angleLabels[index]!.font);
+        expect(Number(label.getAttribute("stroke-width")) * screenScale).toBeCloseTo(angleLabels[index]!.halo);
+      });
     };
     check(view.frame, .8 * zoom);
     view.unmount();
@@ -1075,6 +1087,19 @@ describe("Gap branching in Measure", () => {
       expect(frame.querySelector('[data-annotation-id="existing-run"]')).not.toBeNull();
     }
     expect(onUpdate).not.toHaveBeenCalled();
+  });
+
+  it("uses restored directions for angles without snapping new branch points onto a synthesized PDF line", async () => {
+    const entity = savedRun();
+    entity.data.points = [{ x: .3, y: .3 }, { x: .5, y: .3 }];
+    entity.data.angleReferences = [{ x: 0, y: 1 }, null];
+    const { frame } = openSheet(source, { url: "/plan.pdf", page: 1 }, { annotations: [entity], onUpdate: vi.fn() });
+    fireEvent.click(screen.getByRole("button", { name: "Measure" }));
+    await waitFor(() => expect(loadSnapLines).toHaveBeenCalled());
+    fireEvent.click(screen.getByRole("button", { name: "Gap" }));
+    tap(frame, 240, 220); tap(frame, 258, 340);
+    expect(frame.querySelector('[data-measure-path]')!.getAttribute("d")).toContain("L258,240");
+    expect(frame.querySelector('[data-measure-angle]')).toHaveTextContent("90°");
   });
 
   it("does not gap into read-only or hidden runs and discards a stale adopted revision", () => {

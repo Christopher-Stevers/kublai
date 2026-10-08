@@ -32,7 +32,7 @@ import {
   writeMeasureColor,
 } from "~/lib/sheet-measure-color";
 import { measurementAngleArc, measurementAngleReference } from "~/lib/sheet-measure-angles";
-import { savedMeasureNodes, savedMeasureScale } from "~/lib/saved-measure-run";
+import { savedMeasureNodes, savedMeasureScale, savedMeasureReferences } from "~/lib/saved-measure-run";
 import type { DrawingMarkup } from "~/lib/drawing-workspace";
 import { sheetMeasureStyle } from "~/lib/sheet-measure-style";
 import { emptyMeasureRun, hitMeasureRun, measureRunReducer, measureRunWidths, runAngleReference, MAX_MEASURE_NODES } from "~/lib/sheet-measure-run";
@@ -60,7 +60,7 @@ const NODE_GRAB_PX = 24;
 /** How often tile choices follow the view while it is moving. */
 const COMMIT_MS = 50;
 type Point = { x: number; y: number };
-type MeasureNode = { point: SheetPoint; line: SnapSegment | null };
+type MeasureNode = { point: SheetPoint; line: SnapSegment | null; referenceOnly?: boolean };
 type View = { scale: number; x: number; y: number };
 const REST: View = { scale: 1, x: 0, y: 0 };
 
@@ -468,7 +468,8 @@ export function DrawingSheetViewer({
     const reference = angleReference?.reference ?? null;
     // Line selection only prefers actual PDF linework, never the synthesized
     // measurement reference (which is used solely for angle locking).
-    const attachedLine = angleReference ? nodes[angleReference.anchorIndex]?.line : null;
+    const referenceNode = angleReference ? nodes[angleReference.anchorIndex] : null;
+    const attachedLine = referenceNode?.referenceOnly ? null : referenceNode?.line;
     const shown = fit ? fit.width * live.current.scale : 0;
     const hit = snapIndex && shown > 0
       ? snapToLine(point, snapIndex, SNAP_PX / shown, attachedLine, 4 / shown)
@@ -1558,8 +1559,8 @@ export function DrawingSheetViewer({
                     <path d={arc.path} fill="none" stroke={measureHalo} strokeWidth={markStroke * 3} />
                     <path data-angle-arc="true" d={arc.path} fill="none" stroke={measureColor} strokeWidth={markStroke * 1.4} />
                     <text x={arc.label.x} y={arc.label.y} textAnchor="middle" dominantBaseline="central"
-                      fontSize={13 / view.scale} fontWeight={700} fill={measureColor} stroke={measureHalo}
-                      strokeWidth={3 / view.scale} strokeLinejoin="round" paintOrder="stroke">
+                      fontSize={measureStyle.angleFont} fontWeight={700} fill={measureColor} stroke={measureHalo}
+                      strokeWidth={measureStyle.angleHalo} strokeLinejoin="round" paintOrder="stroke">
                       {arc.text}
                     </text>
                   </g>
@@ -1727,6 +1728,7 @@ export function DrawingSheetViewer({
                 type: "dimension",
                 points: trace.map(node => ({ ...node.point })),
                 parents: trace.map(node => node.parent),
+                angleReferences: savedMeasureReferences(trace),
                 stroke: measureColor,
                 width: measureSource?.data.width ?? 2,
                 fill: "none",

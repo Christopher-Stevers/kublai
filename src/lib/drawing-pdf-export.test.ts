@@ -77,6 +77,8 @@ describe("vector drawing export", () => {
     expect(operators).toContain("200 300 m\n500 300 l");
     expect(operators).toContain("500 300 m\n500 120 l");
     expect(operators).not.toContain("800 300 m\n500 120 l");
+    expect(operators).toContain("<3930B0> Tj"); // 90° remains an angle label in the PDF.
+    expect(operators).toMatch(/ c\n/); // The angle arc is exported as vector curves.
   });
 
   it("assembles every package page in snapshot order and fetches shared sources once", async () => {

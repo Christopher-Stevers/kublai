@@ -13,6 +13,7 @@ import {
 } from "~/lib/sheet-measure";
 import { measureColorHalo } from "~/lib/sheet-measure-color";
 import { sheetMeasureStyle } from "~/lib/sheet-measure-style";
+import { savedMeasureAngleArcs } from "~/lib/saved-measure-run";
 
 /** Completed Measure runs keep the same screen-sized marks as the active tool. */
 export function DrawingMeasureRunSvg({
@@ -39,6 +40,7 @@ export function DrawingMeasureRunSvg({
     y: point.y * 1000 * aspect,
   }));
   const edges = drawingMarkupEdges(data);
+  const angles = savedMeasureAngleArcs(data, aspect, screenPixelSize);
   const storedUnit = data.unit ?? sharedScale?.unit;
   const rawScale = data.scale ?? sharedScale?.unitsPerSheetWidth;
   const baseUnit = storedUnit === "ft" || storedUnit === "in" ? "ft" : "m";
@@ -146,6 +148,49 @@ export function DrawingMeasureRunSvg({
           </g>
         );
       })}
+      {angles.map((arc) => (
+        <g key={arc.index} data-saved-measure-angle={arc.index}>
+          {arc.referenceEnd && (
+            <line
+              x1={arc.vertex.x}
+              y1={arc.vertex.y}
+              x2={arc.referenceEnd.x}
+              y2={arc.referenceEnd.y}
+              stroke={data.stroke}
+              strokeWidth={style.stroke}
+              strokeDasharray={`${3 * screenPixelSize} ${3 * screenPixelSize}`}
+            />
+          )}
+          <path
+            d={arc.path}
+            fill="none"
+            stroke={halo}
+            strokeWidth={style.stroke * 3}
+          />
+          <path
+            data-saved-angle-arc="true"
+            d={arc.path}
+            fill="none"
+            stroke={data.stroke}
+            strokeWidth={style.stroke * 1.4}
+          />
+          <text
+            x={arc.label.x}
+            y={arc.label.y}
+            textAnchor="middle"
+            dominantBaseline="central"
+            fontSize={style.angleFont}
+            fontWeight={700}
+            fill={data.stroke}
+            stroke={halo}
+            strokeWidth={style.angleHalo}
+            strokeLinejoin="round"
+            paintOrder="stroke"
+          >
+            {arc.text}
+          </text>
+        </g>
+      ))}
       {edges.length > 1 && (
         <text
           data-saved-measure-total="true"
