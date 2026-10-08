@@ -42,6 +42,7 @@ export function SheetMeasureBar({
   pipeControl,
   pipePanel,
   zoomControl,
+  hideIdle = false,
   gap = false,
   canGap = false,
   gapMessage,
@@ -82,12 +83,15 @@ export function SheetMeasureBar({
   pipeControl?: React.ReactNode;
   pipePanel?: React.ReactNode;
   zoomControl?: ReactNode;
+  /** The Measure / Pipe system buttons live in a host toolbar instead. */
+  hideIdle?: boolean;
   gap?: boolean;
   canGap?: boolean;
   gapMessage?: string | null;
   onGap?: () => void;
 }) {
   const stop = (event: PointerEvent) => event.stopPropagation();
+  if (hideIdle && !measuring && !pipePanel) return null;
   const toggle = (
     <Button
       type="button"
@@ -163,7 +167,7 @@ export function SheetMeasureBar({
               onColor={onColor}
             />
           )
-        ) : (
+        ) : hideIdle ? null : (
           <div className="flex items-center justify-end gap-2">
             <div className="mr-auto">{zoomControl}</div>
             {pipeControl}

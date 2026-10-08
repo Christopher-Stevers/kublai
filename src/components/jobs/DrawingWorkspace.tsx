@@ -4,6 +4,24 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "~/components/ui/dropdown-menu";
+import {
+  ChevronUpIcon,
+  MoreHorizontalIcon,
+  PenLineIcon,
+  RulerIcon,
+  WrenchIcon,
+} from "lucide-react";
 import { notify } from "~/components/ui/app-dialogs";
 import { sourcePdfPage } from "~/lib/pdf-client";
 import { tileBase } from "~/lib/drawing-tiles";
@@ -40,7 +58,11 @@ import { useDrawingAccount } from "./DrawingAccountProvider";
 import { ChatNotifications } from "./ChatNotifications";
 import { useDrawingQueuedEdits } from "./useDrawingQueuedEdits";
 
-const tools: Array<[DrawingTool, string]> = [
+/** Tools menu: everything that is not a markup type. */
+const OTHER_TOOLS = new Set<DrawingTool>(["pan", "select", "link", "issue", "rfi"]);
+const BAR_BUTTON =
+  "h-14 w-full flex-col gap-1 rounded-xl px-1 text-xs font-medium whitespace-normal";
+export const tools: Array<[DrawingTool, string]> = [
   ["pan", "Move"],
   ["select", "Select / edit"],
   ["freehand", "Pen"],
@@ -76,7 +98,7 @@ type Panel =
   | "activity"
   | "selected"
   | "notifications";
-const panels: Array<[Panel, string]> = [
+export const panels: Array<[Panel, string]> = [
   ["notifications", "Drawing notifications"],
   ["markups", "Markups / layers"],
   ["issues", "Issues / RFIs"],
@@ -150,6 +172,11 @@ export function DrawingWorkspace({
       : null);
   const [panel, setPanel] = useState<Panel>("");
   const [tool, setTool] = useState<DrawingTool>("pan");
+  // Bottom bar: the Markup panel, and Measure / Pipe system in the viewer.
+  const [markupOpen, setMarkupOpen] = useState(false);
+  const [measureRequest, setMeasureRequest] = useState(0);
+  const [pipeRequest, setPipeRequest] = useState(0);
+  const [bottomMode, setBottomMode] = useState({ measuring: false, pipe: false });
   const [style, setStyle] = useState<DrawingStyle>({
     stroke: "#ef4444",
     width: 2,
@@ -784,6 +811,18 @@ export function DrawingWorkspace({
       </div>
     );
 
+  const statusText = pending
+            ? "Saving…"
+            : form || failedDrafts.length || metadataDirty
+              ? "Unsaved changes"
+              : queued.records.length
+                ? `${queued.records.length} edit(s) saved on device`
+                : !online
+                  ? "Offline · private drafts only"
+                  : !current
+                    ? "Earlier revision · read only"
+                    : "Saved";
+
   return (
     <div
       className="relative flex h-full min-h-0 flex-col"
@@ -802,116 +841,6 @@ export function DrawingWorkspace({
           }}
         />
       )}
-      <div className="bg-background flex shrink-0 flex-wrap items-center gap-2 border-b p-2">
-        <select
-          aria-label="Drawing tool"
-          className="bg-background min-w-0 rounded-md border p-2 text-sm"
-          value={writable ? tool : "pan"}
-          onChange={(event) => {
-            setTool(event.target.value as DrawingTool);
-            setPanel("");
-            setHighlight(null);
-          }}
-        >
-          {tools.map(([id, label]) => (
-            <option key={id} value={id} disabled={!writable && id !== "pan"}>
-              {label}
-            </option>
-          ))}
-        </select>
-        {writable && !["pan", "select", "issue", "rfi"].includes(tool) && (
-          <>
-            <input
-              aria-label="Markup color"
-              type="color"
-              value={style.stroke.slice(0, 7)}
-              className="h-9 w-10 rounded border"
-              onChange={(e) =>
-                setStyle((old) => ({ ...old, stroke: e.target.value }))
-              }
-            />
-            <select
-              aria-label="Markup width"
-              className="bg-background rounded border p-2 text-sm"
-              value={style.width}
-              onChange={(e) =>
-                setStyle((old) => ({ ...old, width: Number(e.target.value) }))
-              }
-            >
-              {[1, 2, 4, 8].map((width) => (
-                <option key={width} value={width}>
-                  {width}
-                </option>
-              ))}
-            </select>
-            <label className="flex items-center gap-1 text-xs">
-              <input
-                type="checkbox"
-                checked={style.fill !== "none"}
-                onChange={(e) =>
-                  setStyle((old) => ({
-                    ...old,
-                    fill: e.target.checked
-                      ? `${old.stroke.slice(0, 7)}33`
-                      : "none",
-                  }))
-                }
-              />
-              Fill
-            </label>
-          </>
-        )}
-        <Button
-          size="sm"
-          variant="outline"
-          disabled={overlayChoices.length < 2}
-          onClick={() => setOverlayPickerOpen(true)}
-        >
-          Overlay drawings
-        </Button>
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() =>
-            setNavigate({
-              center: { x: 0.5, y: 0.5 },
-              zoom: 1,
-              requestId: crypto.randomUUID(),
-            })
-          }
-        >
-          Fit
-        </Button>
-        <select
-          aria-label="Drawing panel"
-          className="bg-background ml-auto max-w-[11rem] rounded-md border p-2 text-sm"
-          value={panel === "selected" ? "" : panel}
-          onChange={(e) => {
-            setPanel(e.target.value as Panel);
-            setForm(null);
-          }}
-        >
-          <option value="">Drawing tools…</option>
-          {panels.map(([id, label]) => (
-            <option key={id} value={id}>
-              {label}
-            </option>
-          ))}
-        </select>
-        <span role="status" className="text-muted-foreground text-xs">
-          {pending
-            ? "Saving…"
-            : form || failedDrafts.length || metadataDirty
-              ? "Unsaved changes"
-              : queued.records.length
-                ? `${queued.records.length} edit(s) saved on device`
-                : !online
-                  ? "Offline · private drafts only"
-                  : !current
-                    ? "Earlier revision · read only"
-                    : "Saved"}
-        </span>
-      </div>
       {error && (
         <div
           role="alert"
@@ -1150,6 +1079,7 @@ export function DrawingWorkspace({
           ) : (
             <DrawingSheetViewer
               key={source.id}
+              toolControls={{ measureRequest, pipeRequest, onMode: setBottomMode }}
               initialViewport={viewport.current}
               src={resolved.src}
               alt={source.name}
@@ -2140,6 +2070,213 @@ export function DrawingWorkspace({
             </div>
           </aside>
         )}
+      </div>
+      <span
+        role="status"
+        className="bg-card/85 text-muted-foreground pointer-events-none absolute top-2 left-2 z-20 rounded-full px-2 py-0.5 text-[11px] shadow-sm"
+      >
+        {statusText}
+      </span>
+      {/* Bottom bar: More, Tools, Markup, Measure (Previous / Next sit
+          below it in the Drawings screen). */}
+      <div className="bg-card relative shrink-0 border-t px-4 pt-2 pb-1">
+        {markupOpen && (
+          <>
+            <button
+              type="button"
+              aria-label="Close markup tools"
+              className="fixed inset-0 z-40 cursor-default"
+              onClick={() => setMarkupOpen(false)}
+            />
+            <div
+              role="dialog"
+              aria-label="Markup tools"
+              className="bg-card absolute right-2 bottom-full left-2 z-50 mb-2 max-h-[60dvh] overflow-y-auto rounded-xl border p-3 shadow-lg"
+            >
+              <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-5">
+                {tools
+                  .filter(([id]) => !OTHER_TOOLS.has(id))
+                  .map(([id, label]) => (
+                    <Button
+                      key={id}
+                      type="button"
+                      size="sm"
+                      variant={tool === id ? "default" : "outline"}
+                      className="h-9 rounded-lg px-1 text-xs whitespace-normal"
+                      disabled={!writable}
+                      aria-pressed={tool === id}
+                      onClick={() => {
+                        if (bottomMode.measuring) setMeasureRequest((n) => n + 1);
+                        if (bottomMode.pipe) setPipeRequest((n) => n + 1);
+                        setTool(id);
+                        setPanel("");
+                        setHighlight(null);
+                        setMarkupOpen(false);
+                      }}
+                    >
+                      {label}
+                    </Button>
+                  ))}
+              </div>
+              {writable && (
+                <div className="mt-3 flex flex-wrap items-center gap-2 border-t pt-3">
+                  <input
+                    aria-label="Markup color"
+                    type="color"
+                    value={style.stroke.slice(0, 7)}
+                    className="h-9 w-10 rounded border"
+                    onChange={(e) =>
+                      setStyle((old) => ({ ...old, stroke: e.target.value }))
+                    }
+                  />
+                  <select
+                    aria-label="Markup width"
+                    className="bg-background rounded border p-2 text-sm"
+                    value={style.width}
+                    onChange={(e) =>
+                      setStyle((old) => ({ ...old, width: Number(e.target.value) }))
+                    }
+                  >
+                    {[1, 2, 4, 8].map((width) => (
+                      <option key={width} value={width}>
+                        {width}
+                      </option>
+                    ))}
+                  </select>
+                  <label className="flex items-center gap-1 text-xs">
+                    <input
+                      type="checkbox"
+                      checked={style.fill !== "none"}
+                      onChange={(e) =>
+                        setStyle((old) => ({
+                          ...old,
+                          fill: e.target.checked
+                            ? `${old.stroke.slice(0, 7)}33`
+                            : "none",
+                        }))
+                      }
+                    />
+                    Fill
+                  </label>
+                </div>
+              )}
+            </div>
+          </>
+        )}
+        <div className="mx-auto grid max-w-6xl grid-cols-4 gap-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className={BAR_BUTTON} aria-label="More">
+                <MoreHorizontalIcon className="h-5 w-5" />
+                More
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent side="top" align="start" className="max-h-[70dvh] min-w-60 overflow-y-auto">
+              <DropdownMenuLabel className="text-muted-foreground text-xs font-normal">
+                {statusText}
+              </DropdownMenuLabel>
+              <DropdownMenuItem
+                onSelect={() =>
+                  setNavigate({
+                    center: { x: 0.5, y: 0.5 },
+                    zoom: 1,
+                    requestId: crypto.randomUUID(),
+                  })
+                }
+              >
+                Fit to screen
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                disabled={overlayChoices.length < 2}
+                onSelect={() => setOverlayPickerOpen(true)}
+              >
+                Overlay drawings
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              {panels.map(([id, label]) => (
+                <DropdownMenuItem
+                  key={id}
+                  onSelect={() => {
+                    setPanel(id);
+                    setForm(null);
+                  }}
+                >
+                  {label}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant={(OTHER_TOOLS.has(tool) && !bottomMode.measuring) || bottomMode.pipe ? "default" : "outline"}
+                className={BAR_BUTTON}
+                aria-label="Tools"
+              >
+                <WrenchIcon className="h-5 w-5" />
+                Tools
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent side="top" align="center" className="min-w-52">
+              <DropdownMenuRadioGroup
+                value={bottomMode.pipe || bottomMode.measuring ? "" : writable ? tool : "pan"}
+                onValueChange={(value) => {
+                  if (bottomMode.measuring) setMeasureRequest((n) => n + 1);
+                  if (bottomMode.pipe) setPipeRequest((n) => n + 1);
+                  setTool(value as DrawingTool);
+                  setPanel("");
+                  setHighlight(null);
+                }}
+              >
+                {tools
+                  .filter(([id]) => OTHER_TOOLS.has(id))
+                  .map(([id, label]) => (
+                    <DropdownMenuRadioItem key={id} value={id} disabled={!writable && id !== "pan"}>
+                      {label}
+                    </DropdownMenuRadioItem>
+                  ))}
+              </DropdownMenuRadioGroup>
+              <DropdownMenuSeparator />
+              <DropdownMenuCheckboxItem
+                checked={bottomMode.pipe}
+                onCheckedChange={() => {
+                  if (bottomMode.measuring) setMeasureRequest((n) => n + 1);
+                  setTool("pan");
+                  setPipeRequest((n) => n + 1);
+                }}
+              >
+                Pipe system
+              </DropdownMenuCheckboxItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <Button
+            variant={markupOpen || (!OTHER_TOOLS.has(tool) && !bottomMode.measuring) ? "default" : "outline"}
+            className={BAR_BUTTON}
+            aria-label="Markup"
+            aria-expanded={markupOpen}
+            onClick={() => setMarkupOpen((open) => !open)}
+          >
+            <PenLineIcon className="h-5 w-5" />
+            <span className="flex items-center gap-0.5">
+              Markup
+              <ChevronUpIcon className={`h-3.5 w-3.5 transition-transform ${markupOpen ? "rotate-180" : ""}`} />
+            </span>
+          </Button>
+          <Button
+            variant={bottomMode.measuring ? "default" : "outline"}
+            className={BAR_BUTTON}
+            aria-label="Measure"
+            aria-pressed={bottomMode.measuring}
+            onClick={() => {
+              setMarkupOpen(false);
+              if (!bottomMode.measuring) setTool("pan");
+              setMeasureRequest((n) => n + 1);
+            }}
+          >
+            <RulerIcon className="h-5 w-5" />
+            {bottomMode.measuring ? "Done" : "Measure"}
+          </Button>
+        </div>
       </div>
     </div>
   );

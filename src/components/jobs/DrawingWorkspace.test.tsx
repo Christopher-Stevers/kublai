@@ -14,7 +14,7 @@ import type {
 } from "~/lib/drawing-workspace";
 import type { ComponentProps } from "react";
 import type { DrawingSheetViewer } from "./DrawingSheetViewer";
-import { DrawingWorkspace } from "./DrawingWorkspace";
+import { DrawingWorkspace, panels, tools } from "./DrawingWorkspace";
 import type { DrawingCompare } from "./DrawingCompare";
 
 const mocks = vi.hoisted(() => ({
@@ -264,10 +264,25 @@ const open = () =>
   render(
     <DrawingWorkspace jobId={jobId} sheet={sheet} onOpenSheet={vi.fn()} />,
   );
-const panel = (name: string) =>
-  fireEvent.change(screen.getByLabelText("Drawing panel"), {
-    target: { value: name },
-  });
+// The bottom bar: panels are in More, markup types in Markup, others in Tools.
+const openMenu = (name: string) =>
+  fireEvent.keyDown(screen.getByRole("button", { name }), { key: "Enter" });
+const panel = (name: string) => {
+  openMenu("More");
+  fireEvent.click(
+    screen.getByRole("menuitem", { name: panels.find(([id]) => id === name)![1] }),
+  );
+};
+const chooseTool = (id: string) => {
+  const label = tools.find(([tool]) => tool === id)![1];
+  if (["pan", "select", "link", "issue", "rfi"].includes(id)) {
+    openMenu("Tools");
+    fireEvent.click(screen.getByRole("menuitemradio", { name: label }));
+  } else {
+    fireEvent.click(screen.getByRole("button", { name: "Markup" }));
+    fireEvent.click(screen.getByRole("button", { name: label }));
+  }
+};
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.data = fixture();
@@ -321,7 +336,8 @@ describe("drawing workspace workflows", () => {
         onViewportChange={onViewportChange}
       />,
     );
-    fireEvent.click(screen.getByRole("button", { name: "Overlay drawings" }));
+    openMenu("More");
+    fireEvent.click(screen.getByRole("menuitem", { name: "Overlay drawings" }));
     fireEvent.change(screen.getByLabelText("Drawing A"), {
       target: { value: revisionId },
     });
@@ -517,9 +533,7 @@ describe("drawing workspace workflows", () => {
   });
   it("autosaves a drawn shape privately on its immutable source with a new revision", async () => {
     open();
-    fireEvent.change(screen.getByLabelText("Drawing tool"), {
-      target: { value: "rect" },
-    });
+    chooseTool("rect");
     fireEvent.click(screen.getByRole("button", { name: "Draw sample" }));
     await waitFor(() => expect(mocks.save).toHaveBeenCalledOnce());
     expect(mocks.save.mock.calls[0]![0]).toMatchObject({
@@ -542,13 +556,9 @@ describe("drawing workspace workflows", () => {
         }),
     );
     open();
-    fireEvent.change(screen.getByLabelText("Drawing tool"), {
-      target: { value: "rect" },
-    });
+    chooseTool("rect");
     fireEvent.click(screen.getByRole("button", { name: "Draw sample" }));
-    fireEvent.change(screen.getByLabelText("Drawing tool"), {
-      target: { value: "text" },
-    });
+    chooseTool("text");
     fireEvent.click(screen.getByRole("button", { name: "Draw sample" }));
     fireEvent.change(screen.getByLabelText("Note / label"), {
       target: { value: "Keep this note" },
@@ -575,9 +585,7 @@ describe("drawing workspace workflows", () => {
   it("preserves unsaved geometry after a server failure for a visible retry", async () => {
     mocks.save.mockRejectedValueOnce(new Error("Connection interrupted"));
     open();
-    fireEvent.change(screen.getByLabelText("Drawing tool"), {
-      target: { value: "rect" },
-    });
+    chooseTool("rect");
     fireEvent.click(screen.getByRole("button", { name: "Draw sample" }));
     await waitFor(() =>
       expect(screen.getByRole("alert")).toHaveTextContent(

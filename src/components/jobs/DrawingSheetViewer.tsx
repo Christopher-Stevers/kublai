@@ -95,6 +95,7 @@ export function DrawingSheetViewer({
   navigateTo,
   onViewportChange,
   initialViewport,
+  toolControls,
   ...editorProps
 }: DrawingEditorProps & {
   src: string;
@@ -110,6 +111,15 @@ export function DrawingSheetViewer({
   onViewportChange?: (viewport: DrawingViewport) => void;
   /** Carry the viewing position into a newly opened sheet. */
   initialViewport?: DrawingViewport | null;
+  /**
+   * Measure and Pipe system are switched from a host toolbar: each change of
+   * a request number toggles that mode, and the idle Measure strip is hidden.
+   */
+  toolControls?: {
+    measureRequest: number;
+    pipeRequest: number;
+    onMode?: (mode: { measuring: boolean; pipe: boolean }) => void;
+  };
 }) {
   const frame = useRef<HTMLDivElement>(null);
   const layer = useRef<HTMLDivElement>(null);
@@ -1069,6 +1079,82 @@ export function DrawingSheetViewer({
       ? formatLengthAs(measureRunWidths(markedNodes, fit.aspect) * runScale.unitsPerSheetWidth, runScale.unit, unit)
       : null;
 
+  const toggleMeasuring = () => {
+    if (!measuring) editorProps.onSelect?.(null);
+    if (measuring && !calibrating && trace.length >= 2 && (measureSource ? editorProps.onUpdate : editorProps.onCreate)) {
+      const sourceSheetId = editorProps.sourceSheetId ?? sheetKey;
+      if (sourceSheetId) {
+        const scale = runScale && convertScale(runScale, scaleUnitFor(unit));
+        const completed: DrawingMarkup = {
+          ...(measureSource?.data ?? {}),
+          sourceSheetId,
+          type: "dimension",
+          points: trace.map(node => ({ ...node.point })),
+          parents: trace.map(node => node.parent),
+          angleReferences: savedMeasureReferences(trace),
+          stroke: measureColor,
+          width: measureSource?.data.width ?? 2,
+          fill: "none",
+          ...(scale ? {
+            unit,
+            scale: scale.unitsPerSheetWidth * (unit === "mm" ? 1000 : unit === "in" ? 12 : 1),
+          } : {}),
+        };
+        if (measureSource) editorProps.onUpdate?.(measureSource.id, completed);
+        else editorProps.onCreate?.(completed);
+        dispatchRun({ type: "clear" });
+        setMeasureSource(null);
+        setRunScaleOverride(null);
+        setGapMode(false);
+        setGapMessage(null);
+      }
+    }
+    clearAim();
+    pipeCalibration.current = false;
+    pipeTap.current = null;
+    setPipeMode(false);
+    setMeasuring((on) => !on);
+    setCalibrating(false);
+    setCalNodes([]);
+    setScaleError(null);
+    setScaleReadError(null);
+  };
+  const togglePipe = () => {
+    endHold();
+    cancelNodeDrag();
+    editor.cancelGesture();
+    clearAim();
+    pipeTap.current = null;
+    pipeCalibration.current = false;
+    setMeasuring(false);
+    setCalibrating(false);
+    setCalNodes([]);
+    setScaleError(null);
+    setScaleReadError(null);
+    setPipeMode((on) => !on);
+  };
+  // A host toolbar (the Drawings bottom bar) can switch Measure and Pipe
+  // system through the same steps as their own buttons, and is told which is on.
+  const hostToggles = useRef({ toggleMeasuring, togglePipe });
+  hostToggles.current = { toggleMeasuring, togglePipe };
+  const measureRequest = toolControls?.measureRequest ?? 0;
+  const pipeRequest = toolControls?.pipeRequest ?? 0;
+  const seenRequests = useRef({ measure: measureRequest, pipe: pipeRequest });
+  useEffect(() => {
+    if (seenRequests.current.measure === measureRequest) return;
+    seenRequests.current.measure = measureRequest;
+    hostToggles.current.toggleMeasuring();
+  }, [measureRequest]);
+  useEffect(() => {
+    if (seenRequests.current.pipe === pipeRequest) return;
+    seenRequests.current.pipe = pipeRequest;
+    hostToggles.current.togglePipe();
+  }, [pipeRequest]);
+  const reportMode = toolControls?.onMode;
+  useEffect(() => {
+    reportMode?.({ measuring, pipe: pipeMode });
+  }, [measuring, pipeMode, reportMode]);
+
   return (
     <div className="flex h-full min-h-0 w-full flex-col">
     <div
@@ -1676,6 +1762,7 @@ export function DrawingSheetViewer({
       })()}
     </div>
       <SheetMeasureBar
+        hideIdle={Boolean(toolControls)}
         zoomControl={
           <span
             ref={zoomLabel}
@@ -1692,20 +1779,7 @@ export function DrawingSheetViewer({
             variant={pipeMode ? "default" : "outline"}
             aria-pressed={pipeMode}
             className="shadow-md"
-            onClick={() => {
-              endHold();
-              cancelNodeDrag();
-              editor.cancelGesture();
-              clearAim();
-              pipeTap.current = null;
-              pipeCalibration.current = false;
-              setMeasuring(false);
-              setCalibrating(false);
-              setCalNodes([]);
-              setScaleError(null);
-              setScaleReadError(null);
-              setPipeMode((on) => !on);
-            }}
+            onClick={togglePipe}
           >
             <NetworkIcon className="h-4 w-4" />
             Pipe system
@@ -1767,46 +1841,7 @@ export function DrawingSheetViewer({
         canSetScale={!controlledScale || Boolean(editorProps.onScaleChange)}
         scaleLabel={sheetScale?.label}
         readError={scaleReadError}
-        onToggle={() => {
-          if (!measuring) editorProps.onSelect?.(null);
-          if (measuring && !calibrating && trace.length >= 2 && (measureSource ? editorProps.onUpdate : editorProps.onCreate)) {
-            const sourceSheetId = editorProps.sourceSheetId ?? sheetKey;
-            if (sourceSheetId) {
-              const scale = runScale && convertScale(runScale, scaleUnitFor(unit));
-              const completed: DrawingMarkup = {
-                ...(measureSource?.data ?? {}),
-                sourceSheetId,
-                type: "dimension",
-                points: trace.map(node => ({ ...node.point })),
-                parents: trace.map(node => node.parent),
-                angleReferences: savedMeasureReferences(trace),
-                stroke: measureColor,
-                width: measureSource?.data.width ?? 2,
-                fill: "none",
-                ...(scale ? {
-                  unit,
-                  scale: scale.unitsPerSheetWidth * (unit === "mm" ? 1000 : unit === "in" ? 12 : 1),
-                } : {}),
-              };
-              if (measureSource) editorProps.onUpdate?.(measureSource.id, completed);
-              else editorProps.onCreate?.(completed);
-              dispatchRun({ type: "clear" });
-              setMeasureSource(null);
-              setRunScaleOverride(null);
-              setGapMode(false);
-              setGapMessage(null);
-            }
-          }
-          clearAim();
-          pipeCalibration.current = false;
-          pipeTap.current = null;
-          setPipeMode(false);
-          setMeasuring((on) => !on);
-          setCalibrating(false);
-          setCalNodes([]);
-          setScaleError(null);
-          setScaleReadError(null);
-        }}
+        onToggle={toggleMeasuring}
         onUndo={undoPoint}
         onClear={() => {
           cancelNodeDrag();

@@ -390,11 +390,13 @@ export function JobDrawingsView({ jobId }: { jobId: string }) {
             }}
           />
         </div>
-        <div className="bg-card shrink-0 border-t px-4 pt-1.5 pb-[calc(0.5rem+env(safe-area-inset-bottom))]">
+        {/* Second row of the drawing's bottom bar (the workspace draws the
+            first: More, Tools, Markup, Measure). */}
+        <div className="bg-card shrink-0 px-4 pt-1 pb-[calc(0.5rem+env(safe-area-inset-bottom))]">
           <div className="mx-auto grid max-w-6xl grid-cols-[minmax(0,1fr)_minmax(0,1.25fr)_minmax(0,1fr)] items-center gap-2">
             <Button
               variant="outline"
-              className="h-10 min-w-0 px-2 text-xs sm:text-sm"
+              className="h-11 min-w-0 rounded-xl px-2 text-sm"
               disabled={sheetIndex <= 0}
               onClick={() => openSheet(sheets[sheetIndex - 1]!.id, true)}
             >
@@ -424,7 +426,7 @@ export function JobDrawingsView({ jobId }: { jobId: string }) {
             </div>
             <Button
               variant="outline"
-              className="h-10 min-w-0 px-2 text-xs sm:text-sm"
+              className="h-11 min-w-0 rounded-xl px-2 text-sm"
               disabled={sheetIndex >= sheets.length - 1}
               onClick={() => openSheet(sheets[sheetIndex + 1]!.id, true)}
             >
