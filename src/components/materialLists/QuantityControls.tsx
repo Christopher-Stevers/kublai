@@ -125,9 +125,10 @@ export function QuantityControls({
     }
   };
 
+  // Wider than tall so +/- are easy to hit with a thumb.
   const buttonClassName = compact
-    ? "h-8 w-8 shrink-0 p-0"
-    : "h-10 w-10 p-0 sm:h-11 sm:w-11";
+    ? "h-8 w-11 shrink-0 p-0"
+    : "h-10 w-12 p-0 sm:h-11 sm:w-14";
   const inputClassName = compact
     ? "h-8 min-w-0 flex-1 [appearance:textfield] px-1 text-center text-sm font-medium [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
     : "h-10 w-12 [appearance:textfield] px-1 text-center font-medium sm:h-11 sm:w-14 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none";
