@@ -124,6 +124,30 @@ function tap(frame: HTMLElement, x: number, y: number) {
 }
 
 describe("drawing measure", () => {
+  it("keeps the measuring and calibration controls below the drawing gesture surface", () => {
+    const { frame } = openSheet("footer-measuring", undefined, {
+      sharedScale: { unit: "ft", unitsPerSheetWidth: 100 },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Measure" }));
+    tap(frame, 200, 300);
+    tap(frame, 400, 300);
+    const footer = screen.getByRole("region", { name: "Drawing tool options" });
+    expect(frame.contains(footer)).toBe(false);
+    expect(frame.compareDocumentPosition(footer) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(footer.contains(screen.getByRole("button", { name: "Done" }))).toBe(true);
+    const points = frame.querySelector('[data-measure-path]')?.getAttribute("points");
+    const color = screen.getByRole("button", { name: /^Measuring color:/ });
+    fireEvent.pointerDown(color, { clientX: 200, clientY: 300, pointerId: 1, button: 0 });
+    fireEvent.pointerUp(color, { clientX: 200, clientY: 300, pointerId: 1, button: 0 });
+    fireEvent.click(color);
+    expect(footer.contains(screen.getByRole("button", { name: "Neon cyan" }))).toBe(true);
+    expect(frame.querySelector('[data-measure-path]')).toHaveAttribute("points", points!);
+    fireEvent.click(screen.getByRole("button", { name: "Set Scale" }));
+    tap(frame, 200, 300);
+    tap(frame, 400, 300);
+    expect(footer.contains(screen.getByLabelText("How long is this line?"))).toBe(true);
+  });
+
   it("keeps trace and dimension calibration unchanged until the shared save is accepted", () => {
     const sharedScale = { unit: "ft" as const, unitsPerSheetWidth: 100 };
     const onScaleChange = vi.fn(),

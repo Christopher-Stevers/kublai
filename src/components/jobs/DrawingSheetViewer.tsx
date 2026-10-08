@@ -918,9 +918,10 @@ export function DrawingSheetViewer({
       : null;
 
   return (
+    <div className="flex h-full min-h-0 w-full flex-col">
     <div
       ref={frame}
-      className={`relative h-full w-full touch-none overflow-hidden bg-muted select-none [&_img]:pointer-events-none${measuring ? dragIndex !== null ? " cursor-grabbing" : " cursor-crosshair" : ""}`}
+      className={`relative min-h-0 w-full flex-1 touch-none overflow-hidden bg-muted select-none [&_img]:pointer-events-none${measuring ? dragIndex !== null ? " cursor-grabbing" : " cursor-crosshair" : ""}`}
       // No phone long-press menu (copy/save image, open link) on the drawing:
       // long presses are for working on the sheet.
       style={{ WebkitTouchCallout: "none" }}
@@ -1467,6 +1468,7 @@ export function DrawingSheetViewer({
           />
         );
       })()}
+    </div>
       <SheetMeasureBar
         pipeControl={
           <Button

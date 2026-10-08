@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState, type PointerEvent } from "react";
+import { useId, useState, type PointerEvent, type ReactNode } from "react";
 import { CheckIcon, ChevronDownIcon, RulerIcon } from "lucide-react";
 
 import { Button } from "~/components/ui/button";
@@ -74,103 +74,118 @@ export function SheetMeasureBar({
   pipePanel?: React.ReactNode;
 }) {
   const stop = (event: PointerEvent) => event.stopPropagation();
+  const toggle = (
+    <Button
+      type="button"
+      size="sm"
+      variant={measuring ? "default" : "outline"}
+      className="shrink-0"
+      aria-pressed={measuring}
+      onClick={onToggle}
+    >
+      <RulerIcon className="h-4 w-4" />
+      {measuring ? "Done" : "Measure"}
+    </Button>
+  );
   return (
-    <>
-      <div
-        className="absolute top-2 right-2 z-20 flex w-[min(17rem,calc(100%-1rem))] flex-col items-stretch gap-2"
-        onPointerDown={stop}
-        onPointerMove={stop}
-        onPointerUp={stop}
-        onWheel={(event) => event.stopPropagation()}
-      >
-        <div className="flex items-center justify-end gap-2">
-          {pipeControl}
-          <Button
-            type="button"
-            variant={measuring ? "default" : "outline"}
-            className="self-end shadow-md"
-            aria-pressed={measuring}
-            onClick={onToggle}
-          >
-            <RulerIcon className="h-4 w-4" />
-            {measuring ? "Done" : "Measure"}
-          </Button>
-        </div>
-        {measuring && (
-          <div className="bg-card/95 max-h-[65dvh] space-y-2 overflow-y-auto overscroll-contain rounded-md p-3 shadow-md">
-            {calibrating ? (
-              <Calibration
-                count={calibrationCount}
-                unit={unit}
-                snapping={snapping}
-                draft={draft}
-                error={error}
-                reading={reading}
-                readError={readError}
-                onUndo={onUndo}
-                onCancel={onCancelScale}
-                onDraft={onDraft}
-                onUnit={onUnit}
-                onApply={onApply}
-                onReadPrinted={onReadPrinted}
-              />
-            ) : (
-              <Tracing
-                pointCount={pointCount}
-                total={total}
-                unit={unit}
-                scaleSet={scaleSet}
-                snapping={snapping}
-                reading={reading}
-                scaleLabel={scaleLabel}
-                readError={readError}
-                onUndo={onUndo}
-                onClear={onClear}
-                onStartScale={onStartScale}
-                onUnit={onUnit}
-              />
-            )}
-            <MeasureColorPicker color={color} onColor={onColor} />
+    <section
+      aria-label="Drawing tool options"
+      className="bg-card max-h-[45dvh] shrink-0 overflow-y-auto overscroll-contain border-t px-3 py-2"
+      onPointerDown={stop}
+      onPointerMove={stop}
+      onPointerUp={stop}
+      onWheel={(event) => event.stopPropagation()}
+    >
+      <div className="mx-auto max-w-6xl space-y-2">
+        {measuring ? (
+          calibrating ? (
+            <Calibration
+              count={calibrationCount}
+              unit={unit}
+              snapping={snapping}
+              draft={draft}
+              error={error}
+              reading={reading}
+              readError={readError}
+              onUndo={onUndo}
+              onCancel={onCancelScale}
+              onDraft={onDraft}
+              onUnit={onUnit}
+              onApply={onApply}
+              onReadPrinted={onReadPrinted}
+              controls={toggle}
+              color={color}
+              onColor={onColor}
+            />
+          ) : (
+            <Tracing
+              pointCount={pointCount}
+              total={total}
+              unit={unit}
+              scaleSet={scaleSet}
+              snapping={snapping}
+              reading={reading}
+              scaleLabel={scaleLabel}
+              readError={readError}
+              onUndo={onUndo}
+              onClear={onClear}
+              onStartScale={onStartScale}
+              onUnit={onUnit}
+              controls={toggle}
+              color={color}
+              onColor={onColor}
+            />
+          )
+        ) : (
+          <div className="flex items-center justify-end gap-2">
+            {pipeControl}
+            {toggle}
           </div>
         )}
+        {!measuring && pipePanel}
       </div>
-      {!measuring && pipePanel && (
-        <div
-          className="absolute right-2 bottom-2 z-20 w-[min(17rem,calc(100%-1rem))] sm:top-14 sm:bottom-auto"
-          onPointerDown={stop}
-          onPointerMove={stop}
-          onPointerUp={stop}
-          onWheel={(event) => event.stopPropagation()}
-        >
-          {pipePanel}
-        </div>
-      )}
-    </>
+    </section>
   );
 }
 
-function MeasureColorPicker({ color, onColor }: { color: string; onColor: (color: string) => void }) {
+function MeasureColorPicker({
+  color,
+  onColor,
+}: {
+  color: string;
+  onColor: (color: string) => void;
+}) {
   const [open, setOpen] = useState(false);
   const id = useId();
-  const name = MEASURE_COLORS.find((item) => item.value === color)?.name ?? "Custom";
+  const name =
+    MEASURE_COLORS.find((item) => item.value === color)?.name ?? "Custom";
   return (
-    <div className="border-t pt-2">
+    <div className={`min-w-0 ${open ? "basis-full" : "ml-auto"}`}>
       <button
         type="button"
-        className="flex min-h-9 w-full items-center gap-2 text-sm"
+        className="flex min-h-9 items-center gap-2 rounded-md border px-2 text-sm"
         aria-label={`Measuring color: ${name}`}
         aria-expanded={open}
         aria-controls={id}
         onClick={() => setOpen((current) => !current)}
       >
-        <span className="h-5 w-5 rounded-full border border-current/30" style={{ backgroundColor: color }} />
+        <span
+          className="h-5 w-5 rounded-full border border-current/30"
+          style={{ backgroundColor: color }}
+        />
         <span>Color</span>
-        <span className="text-muted-foreground ml-auto text-xs">{name}</span>
-        <ChevronDownIcon className={`h-4 w-4 transition-transform ${open ? "rotate-180" : ""}`} />
+        <span className="sr-only">{name}</span>
+        <ChevronDownIcon
+          className={`h-4 w-4 transition-transform ${open ? "rotate-180" : ""}`}
+        />
       </button>
       {open && (
         <div id={id} className="space-y-2 pt-1">
-          <div role="group" aria-label="Measuring colors" className="grid grid-cols-5 gap-1">
+          <div
+            role="group"
+            aria-label="Measuring colors"
+            className="grid max-w-sm grid-cols-5 gap-1"
+          >
             {MEASURE_COLORS.map((item) => (
               <button
                 key={item.value}
@@ -178,15 +193,23 @@ function MeasureColorPicker({ color, onColor }: { color: string; onColor: (color
                 aria-label={item.name}
                 aria-pressed={color === item.value}
                 title={item.name}
-                className="flex h-11 items-center justify-center rounded-md border border-current/25 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-                style={{ backgroundColor: item.value, color: measureColorHalo(item.value) }}
-                onClick={() => { onColor(item.value); setOpen(false); }}
+                className="focus-visible:outline-primary flex h-11 items-center justify-center rounded-md border border-current/25 focus-visible:outline-2 focus-visible:outline-offset-2"
+                style={{
+                  backgroundColor: item.value,
+                  color: measureColorHalo(item.value),
+                }}
+                onClick={() => {
+                  onColor(item.value);
+                  setOpen(false);
+                }}
               >
-                {color === item.value && <CheckIcon aria-hidden="true" className="h-5 w-5" />}
+                {color === item.value && (
+                  <CheckIcon aria-hidden="true" className="h-5 w-5" />
+                )}
               </button>
             ))}
           </div>
-          <label className="flex items-center justify-between gap-2 text-sm">
+          <label className="flex max-w-sm items-center justify-between gap-2 text-sm">
             Custom color
             <input
               type="color"
@@ -210,7 +233,11 @@ function UnitToggle({
   onUnit: (unit: LengthUnit) => void;
 }) {
   return (
-    <div className="flex rounded-md border p-0.5" role="group" aria-label="Units">
+    <div
+      className="flex w-36 shrink-0 rounded-md border p-0.5"
+      role="group"
+      aria-label="Units"
+    >
       {LENGTH_UNITS.map(({ value, label }) => (
         <button
           key={value}
@@ -256,6 +283,9 @@ function Tracing({
   onClear,
   onStartScale,
   onUnit,
+  controls,
+  color,
+  onColor,
 }: {
   pointCount: number;
   total: string | null;
@@ -269,23 +299,29 @@ function Tracing({
   onClear: () => void;
   onStartScale: () => void;
   onUnit: (unit: LengthUnit) => void;
+  controls: ReactNode;
+  color: string;
+  onColor: (color: string) => void;
 }) {
   return (
     <>
-      {total && !reading ? (
-        <p role="status" className="text-xl font-semibold tabular-nums">
-          {total}
-        </p>
-      ) : (
-        <p role="status" className="text-sm">
-          {reading
-            ? "Reading the scale on this drawing."
-            : traceStatus(pointCount, scaleSet, snapping, scaleLabel)}
-        </p>
-      )}
-      {total && !reading && (
-        <p className="text-muted-foreground text-xs">Total along the points · Drag a point to adjust</p>
-      )}
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="min-w-0 flex-1">
+          {total && !reading ? (
+            <p role="status" className="text-lg font-semibold tabular-nums">
+              {total}
+            </p>
+          ) : (
+            <p role="status" className="text-sm">
+              {reading
+                ? "Reading the scale on this drawing."
+                : traceStatus(pointCount, scaleSet, snapping, scaleLabel)}
+            </p>
+          )}
+        </div>
+        {scaleSet && <UnitToggle unit={unit} onUnit={onUnit} />}
+        {controls}
+      </div>
       {total && !reading && scaleLabel && (
         <p className="text-muted-foreground text-xs">{scaleLabel}</p>
       )}
@@ -298,8 +334,7 @@ function Tracing({
       {readError && !reading && (
         <p className="text-destructive text-xs">{readError}</p>
       )}
-      {scaleSet && <UnitToggle unit={unit} onUnit={onUnit} />}
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <Button
           type="button"
           size="sm"
@@ -327,7 +362,13 @@ function Tracing({
         >
           Set Scale
         </Button>
+        <MeasureColorPicker color={color} onColor={onColor} />
       </div>
+      {total && !reading && (
+        <p className="text-muted-foreground text-xs">
+          Total along the points · Drag a point to adjust
+        </p>
+      )}
     </>
   );
 }
@@ -346,6 +387,9 @@ function Calibration({
   onUnit,
   onApply,
   onReadPrinted,
+  controls,
+  color,
+  onColor,
 }: {
   count: number;
   unit: LengthUnit;
@@ -360,27 +404,42 @@ function Calibration({
   onUnit: (unit: LengthUnit) => void;
   onApply: () => void;
   onReadPrinted?: () => void;
+  controls: ReactNode;
+  color: string;
+  onColor: (color: string) => void;
 }) {
   return (
     <>
-      <p role="status" className="text-sm">
-        {reading
-          ? "Reading the scale on this drawing."
-          : count === 0
-            ? snapping
-              ? "Set Scale: tap one end of a length you know. It snaps onto a line."
-              : "Set Scale: tap one end of a length you know."
-            : count === 1
-              ? "Tap the other end. It snaps to lines, and locks square or at 45° when close."
-              : "How long is this line?"}
-      </p>
+      <div className="flex items-center gap-2">
+        <p role="status" className="min-w-0 flex-1 text-sm">
+          {reading
+            ? "Reading the scale on this drawing."
+            : count === 0
+              ? snapping
+                ? "Set Scale: tap one end of a length you know. It snaps onto a line."
+                : "Set Scale: tap one end of a length you know."
+              : count === 1
+                ? "Tap the other end. It snaps to lines, and locks square or at 45° when close."
+                : "How long is this line?"}
+        </p>
+        {controls}
+      </div>
       {count >= 2 && (
-        <>
+        <div className="flex flex-wrap items-center gap-2">
           <Input
+            className="min-w-24 flex-1"
             autoFocus
             aria-label="How long is this line?"
             inputMode="decimal"
-            placeholder={unit === "ft" ? "24'6\"" : unit === "in" ? "18" : unit === "mm" ? "7500" : "7.5"}
+            placeholder={
+              unit === "ft"
+                ? "24'6\""
+                : unit === "in"
+                  ? "18"
+                  : unit === "mm"
+                    ? "7500"
+                    : "7.5"
+            }
             value={draft}
             onChange={(event) => onDraft(event.target.value)}
             onKeyDown={(event) => {
@@ -391,7 +450,7 @@ function Calibration({
             }}
           />
           <UnitToggle unit={unit} onUnit={onUnit} />
-          {error && <p className="text-destructive text-xs">{error}</p>}
+
           <Button
             type="button"
             size="sm"
@@ -400,10 +459,13 @@ function Calibration({
           >
             Use this length
           </Button>
-        </>
+        </div>
       )}
-      {readError && !reading && <p className="text-destructive text-xs">{readError}</p>}
-      <div className="flex flex-wrap gap-2">
+      {error && <p className="text-destructive text-xs">{error}</p>}
+      {readError && !reading && (
+        <p className="text-destructive text-xs">{readError}</p>
+      )}
+      <div className="flex flex-wrap items-center gap-2">
         <Button
           type="button"
           size="sm"
@@ -416,6 +478,7 @@ function Calibration({
         <Button type="button" size="sm" variant="outline" onClick={onCancel}>
           Cancel
         </Button>
+        <MeasureColorPicker color={color} onColor={onColor} />
       </div>
       {onReadPrinted && count === 0 && (
         <button
