@@ -26,6 +26,7 @@ export const emptyMeasureRun = (): MeasureRun => ({
   history: [],
 });
 export type RunAction =
+  | { type: "load"; nodes: MeasureRunNode[] }
   | { type: "append"; point: SheetPoint; line: SnapSegment | null }
   | { type: "branch"; hit: RunHit }
   | { type: "move"; index: number; point: SheetPoint; line: SnapSegment | null }
@@ -47,6 +48,13 @@ export function measureRunReducer(
   action: RunAction,
 ): MeasureRun {
   switch (action.type) {
+    case "load":
+      return {
+        nodes: action.nodes,
+        active: action.nodes.length - 1,
+        branching: false,
+        history: [],
+      };
     case "clear":
       return emptyMeasureRun();
     case "forget-lines": {

@@ -32,6 +32,9 @@ import {
   writeMeasureColor,
 } from "~/lib/sheet-measure-color";
 import { measurementAngleArc, measurementAngleReference } from "~/lib/sheet-measure-angles";
+import { savedMeasureNodes, savedMeasureScale } from "~/lib/saved-measure-run";
+import type { DrawingMarkup } from "~/lib/drawing-workspace";
+import { sheetMeasureStyle } from "~/lib/sheet-measure-style";
 import { emptyMeasureRun, hitMeasureRun, measureRunReducer, measureRunWidths, runAngleReference, MAX_MEASURE_NODES } from "~/lib/sheet-measure-run";
 import { scaleReadMessage } from "~/lib/sheet-scale-text";
 import { buildSnapIndex, mergeCollinear, snapToLine, type SnapIndex, type SnapSegment } from "~/lib/sheet-snap";
@@ -158,6 +161,8 @@ export function DrawingSheetViewer({
   const [calibrating, setCalibrating] = useState(false);
   const [run, dispatchRun] = useReducer(measureRunReducer, undefined, emptyMeasureRun);
   const trace = run.nodes;
+  const [measureSource, setMeasureSource] = useState<{ id: string; revision: number; data: DrawingMarkup } | null>(null);
+  const [runScaleOverride, setRunScaleOverride] = useState<SheetScale | null>(null);
   const [gapMode, setGapMode] = useState(false);
   const [gapMessage, setGapMessage] = useState<string | null>(null);
   const path = trace.map(({ point }) => point);
@@ -174,6 +179,11 @@ export function DrawingSheetViewer({
   // An explicit null is authoritative: this shared sheet has not been calibrated.
   const controlledScale = editorProps.sharedScale !== undefined;
   const sheetScale = editorProps.sharedScale === undefined ? localSheetScale : editorProps.sharedScale;
+  const runScale = runScaleOverride ?? (measureSource ? savedMeasureScale(measureSource.data, sheetScale) : sheetScale);
+  const { hideAnnotations, onUpdate, annotations, sourceSheetId: measureSheetId, canEditAnnotation } = editorProps;
+  const savedRuns = useMemo(() => hideAnnotations || !onUpdate ? [] : (annotations ?? []).filter(entity =>
+    entity.kind === "markup" && entity.data.type === "dimension" && entity.data.parents && entity.data.points.length < MAX_MEASURE_NODES &&
+    entity.visibility !== "archived" && entity.data.sourceSheetId === (measureSheetId ?? sheetKey) && (canEditAnnotation?.(entity.id) ?? true)), [hideAnnotations, onUpdate, annotations, measureSheetId, canEditAnnotation, sheetKey]);
   // The unit lengths are typed and shown in (m, mm, in, ft). The shared scale
   // itself stays in meters or feet.
   const [unit, setUnit] = useState<LengthUnit>("ft");
@@ -246,6 +256,18 @@ export function DrawingSheetViewer({
     if (!measuring || calibrating) { setGapMode(false); setGapMessage(null); }
   }, [measuring, calibrating, sheetKey, pdf?.url, pdf?.page]);
 
+  useEffect(() => {
+    if (!measureSource) return;
+    const current = savedRuns.find(entity => entity.id === measureSource.id);
+    if (!current || current.revision !== measureSource.revision) {
+      dispatchRun({ type: "clear" });
+      setMeasureSource(null);
+      setRunScaleOverride(null);
+      setGapMode(false);
+      setGapMessage("This measurement changed or is no longer editable. Select it again to continue.");
+    }
+  }, [measureSource, savedRuns]);
+
   // Fit the sheet inside the frame whenever the image or frame size changes.
   useEffect(() => {
     const el = frame.current;
@@ -316,6 +338,8 @@ export function DrawingSheetViewer({
     if (!controlledScale) setLocalSheetScale(stored);
     setUnit(stored?.unit ?? "ft");
     dispatchRun({ type: "clear" });
+    setMeasureSource(null);
+    setRunScaleOverride(null);
     setGapMode(false);
     setGapMessage(null);
     setAngleSnap(null);
@@ -402,14 +426,36 @@ export function DrawingSheetViewer({
         : segment,
     );
   };
+  const gapHit = (point: SheetPoint) => {
+    if (!fit) return null;
+    const tolerance = SNAP_PX / Math.max(1, fit.width * live.current.scale);
+    if (trace.length) {
+      const hit = hitMeasureRun(trace, point, fit.aspect, tolerance);
+      return hit ? { hit, nodes: trace, source: null } : null;
+    }
+    let nearest = tolerance;
+    let result: { hit: NonNullable<ReturnType<typeof hitMeasureRun>>; nodes: typeof trace; source: { id: string; revision: number; data: DrawingMarkup } | null } | null = null;
+    for (const entity of savedRuns) {
+      if (entity.kind !== "markup") continue;
+      const nodes = savedMeasureNodes(entity.data);
+      const hit = hitMeasureRun(nodes, point, fit.aspect, tolerance);
+      if (!hit) continue;
+      const distance = Math.hypot(point.x - hit.point.x, (point.y - hit.point.y) * fit.aspect);
+      if (distance <= nearest) {
+        nearest = distance;
+        result = { hit, nodes, source: { id: entity.id, revision: entity.revision, data: entity.data } };
+      }
+    }
+    return result;
+  };
   const aimFromClient = (clientX: number, clientY: number, movingNode?: number): { point: SheetPoint; segment: SnapSegment | null; angle?: 45 | 90 } | null => {
     const point = pointFromClient(clientX, clientY);
     if (!point) return null;
     if (gapMode && !calibrating && movingNode === undefined && fit) {
-      const hit = hitMeasureRun(trace, point, fit.aspect, SNAP_PX / Math.max(1, fit.width * live.current.scale));
-      if (!hit) return null;
-      const start = trace[hit.from]!.point, end = trace[hit.to]!.point;
-      return { point: hit.point, segment: { x1: start.x, y1: start.y, x2: end.x, y2: end.y } };
+      const selected = gapHit(point);
+      if (!selected) return null;
+      const start = selected.nodes[selected.hit.from]!.point, end = selected.nodes[selected.hit.to]!.point;
+      return { point: selected.hit.point, segment: { x1: start.x, y1: start.y, x2: end.x, y2: end.y } };
     }
     // Moving the first node uses its next neighbor; other nodes follow connectivity.
     const nodes = calibrating ? calNodes : trace;
@@ -492,6 +538,7 @@ export function DrawingSheetViewer({
     setAngleSnap(null);
   }, [calibrating, gapMode]);
   const proposeScale = (next: SheetScale) => {
+    if (measureSource) setRunScaleOverride(next);
     if (!controlledScale) {
       setLocalSheetScale(next);
       setUnit((current) => (scaleUnitFor(current) === next.unit ? current : next.unit));
@@ -587,7 +634,10 @@ export function DrawingSheetViewer({
             pipeCalibration.current = false;
             setMeasuring(false);
           }
-        } else setMeasuring(false);
+        } else {
+          if (measureSource) { dispatchRun({ type: "clear" }); setMeasureSource(null); setRunScaleOverride(null); }
+          setMeasuring(false);
+        }
       } else if (!typing && (event.key === "Backspace" || (event.key === "z" && (event.metaKey || event.ctrlKey)))) {
         event.preventDefault();
         undoPoint();
@@ -595,7 +645,7 @@ export function DrawingSheetViewer({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [measuring, calibrating, gapMode, undoPoint]);
+  }, [measuring, calibrating, gapMode, undoPoint, measureSource]);
 
   /** Keeps the sheet from being dragged entirely out of view. */
   const clamp = useCallback(
@@ -793,8 +843,9 @@ export function DrawingSheetViewer({
   // The measuring line and X marks are sized in sheet units (like the
   // drawing's gridlines) so they zoom with it, but never thinner than about a
   // screen pixel or smaller than ~10px across when zoomed out.
-  const markStroke = Math.max(0.08, 1.1 / view.scale);
-  const markArm = Math.max(0.6, 5 / view.scale);
+  const measureStyle = sheetMeasureStyle(1 / view.scale);
+  const markStroke = measureStyle.stroke;
+  const markArm = measureStyle.arm;
   const lockedAngle = rubber || dragIndex !== null ? angleSnap : null;
   const activeAngleSegment = dragIndex === 0 && marked.length > 2 ? 1
     : dragIndex !== null ? Math.max(0, dragIndex - 1) : marked.length - 2;
@@ -832,8 +883,8 @@ export function DrawingSheetViewer({
     else if (rotation < -90) rotation += 180;
     const label = knownLength && knownLength.length > 0
       ? formatLengthAs(knownLength.length, knownLength.unit, unit)
-      : sheetScale
-        ? formatLengthAs(realLength([start, end], fit.aspect, sheetScale.unitsPerSheetWidth), sheetScale.unit, unit)
+      : (calibrating ? sheetScale : runScale)
+        ? formatLengthAs(realLength([start, end], fit.aspect, (calibrating ? sheetScale : runScale)!.unitsPerSheetWidth), (calibrating ? sheetScale : runScale)!.unit, unit)
         : calibrating ? "Enter length" : "Set scale";
     return { index, label, rotation, x: (start.x + end.x) * fit.width / 2, y: (start.y + end.y) * fit.height / 2 };
   }) : [];
@@ -954,8 +1005,8 @@ export function DrawingSheetViewer({
   });
   const snapMark = Math.max(1.2, 8 / view.scale);
   const total =
-    sheetScale && fit && !calibrating && marked.length >= 2
-      ? formatLengthAs(measureRunWidths(markedNodes, fit.aspect) * sheetScale.unitsPerSheetWidth, sheetScale.unit, unit)
+    runScale && fit && !calibrating && marked.length >= 2
+      ? formatLengthAs(measureRunWidths(markedNodes, fit.aspect) * runScale.unitsPerSheetWidth, runScale.unit, unit)
       : null;
 
   return (
@@ -1201,9 +1252,16 @@ export function DrawingSheetViewer({
         if (measuring && tap && !tap.moved && wasSingle) {
           if (gapMode && !calibrating && fit) {
             const point = pointFromClient(event.clientX, event.clientY);
-            const hit = point && hitMeasureRun(trace, point, fit.aspect, SNAP_PX / Math.max(1, fit.width * live.current.scale));
-            if (hit) {
-              dispatchRun({ type: "branch", hit });
+            const selected = point && gapHit(point);
+            if (selected) {
+              if (selected.source) {
+                setMeasureSource(selected.source);
+                setRunScaleOverride(null);
+                setMeasureColor(selected.source.data.stroke);
+                setUnit(selected.source.data.unit === "cm" ? "m" : selected.source.data.unit ?? sheetScale?.unit ?? "ft");
+                dispatchRun({ type: "load", nodes: selected.nodes });
+              }
+              dispatchRun({ type: "branch", hit: selected.hit });
               setGapMode(false);
               setGapMessage("Branch starts here. Tap the next point to continue.");
             } else setGapMessage("Tap an existing measured segment to start the branch.");
@@ -1277,7 +1335,7 @@ export function DrawingSheetViewer({
         )}
         {fit && (
           <DrawingAnnotationLayer
-            annotations={editorProps.annotations ?? []}
+            annotations={(editorProps.annotations ?? []).filter(entity => !measuring || entity.id !== measureSource?.id)}
             aspect={fit.aspect}
             selectedId={pipeMode ? null : editorProps.selectedId}
             draft={measuring || pipeMode ? null : editor.draft}
@@ -1286,6 +1344,7 @@ export function DrawingSheetViewer({
             sharedScale={sheetScale}
             onSelect={pipeMode ? undefined : editorProps.onSelect}
             screenPixelSize={1000 / (fit.width * view.scale)}
+            sheetPixelSize={1000 / fit.width}
             showResizeHandles={
               !measuring &&
               !pipeMode &&
@@ -1426,19 +1485,19 @@ export function DrawingSheetViewer({
                   />
                 </g>
                 {dimensionLabels.map(({ index, label, rotation, x, y }) => {
-                  const fontSize = 14 / view.scale;
+                  const fontSize = measureStyle.font;
                   return (
                     <g key={index} transform={`translate(${x} ${y}) rotate(${rotation})`}>
                       <text
                         data-measure-length={index}
                         aria-label={`Segment ${index + 1}: ${label}`}
-                        y={-8 / view.scale}
+                        y={measureStyle.labelOffset}
                         textAnchor="middle"
                         fontSize={fontSize}
-                        fontWeight={600}
+                        fontWeight={measureStyle.fontWeight}
                         fill={measureColor}
                         stroke={measureHalo}
-                        strokeWidth={4 / view.scale}
+                        strokeWidth={measureStyle.labelHalo}
                         strokeLinejoin="round"
                         paintOrder="stroke"
                       >
@@ -1595,7 +1654,7 @@ export function DrawingSheetViewer({
         calibrating={calibrating}
         pointCount={path.length}
         gap={gapMode}
-        canGap={trace.length >= 2 && trace.length < MAX_MEASURE_NODES}
+        canGap={trace.length >= 2 && trace.length < MAX_MEASURE_NODES || trace.length === 0 && savedRuns.length > 0}
         gapMessage={gapMessage}
         onGap={() => {
           cancelNodeDrag();
@@ -1606,7 +1665,7 @@ export function DrawingSheetViewer({
         calibrationCount={calPoints.length}
         total={total}
         unit={unit}
-        scaleSet={sheetScale !== null}
+        scaleSet={runScale !== null}
         snapping={Boolean(snapIndex && snapIndex.segments.length > 0)}
         draft={draft}
         error={scaleError}
@@ -1614,24 +1673,30 @@ export function DrawingSheetViewer({
         scaleLabel={sheetScale?.label}
         readError={scaleReadError}
         onToggle={() => {
-          if (measuring && !calibrating && trace.length >= 2 && editorProps.onCreate) {
+          if (!measuring) editorProps.onSelect?.(null);
+          if (measuring && !calibrating && trace.length >= 2 && (measureSource ? editorProps.onUpdate : editorProps.onCreate)) {
             const sourceSheetId = editorProps.sourceSheetId ?? sheetKey;
             if (sourceSheetId) {
-              const scale = sheetScale && convertScale(sheetScale, scaleUnitFor(unit));
-              editorProps.onCreate({
+              const scale = runScale && convertScale(runScale, scaleUnitFor(unit));
+              const completed: DrawingMarkup = {
+                ...(measureSource?.data ?? {}),
                 sourceSheetId,
                 type: "dimension",
                 points: trace.map(node => ({ ...node.point })),
                 parents: trace.map(node => node.parent),
                 stroke: measureColor,
-                width: 2,
+                width: measureSource?.data.width ?? 2,
                 fill: "none",
                 ...(scale ? {
                   unit,
                   scale: scale.unitsPerSheetWidth * (unit === "mm" ? 1000 : unit === "in" ? 12 : 1),
                 } : {}),
-              });
+              };
+              if (measureSource) editorProps.onUpdate?.(measureSource.id, completed);
+              else editorProps.onCreate?.(completed);
               dispatchRun({ type: "clear" });
+              setMeasureSource(null);
+              setRunScaleOverride(null);
               setGapMode(false);
               setGapMessage(null);
             }
@@ -1650,6 +1715,8 @@ export function DrawingSheetViewer({
         onClear={() => {
           cancelNodeDrag();
           dispatchRun({ type: "clear" });
+          setMeasureSource(null);
+          setRunScaleOverride(null);
           setGapMode(false);
           setGapMessage(null);
         }}

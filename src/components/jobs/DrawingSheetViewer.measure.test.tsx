@@ -149,7 +149,56 @@ describe("drawing measure", () => {
     unmount();
     const entity: DrawingEntity = { id: "saved-measure", sheetId: source, kind: "markup", data: saved, revision: 1, visibility: "private", authorId: "tim", authorName: "Tim", createdAt: "", updatedAt: "", comments: [] };
     const reopened = openSheet(source, undefined, { annotations: [entity], sharedScale: { unit: "ft", unitsPerSheetWidth: 200 } });
-    expect(reopened.frame.querySelector('[data-annotation-id="saved-measure"]')).toHaveTextContent("15240.00 mm");
+    expect(reopened.frame.querySelector('[data-annotation-id="saved-measure"]')).toHaveTextContent("15240 mm");
+  });
+
+  it.each([1, 2, 16])("keeps completed run line and label styling at %s× zoom, including reopening", (zoom) => {
+    const source = "0391aed4-7773-47ec-9141-09df373ec008";
+    const onCreate = vi.fn();
+    const sharedScale = { unit: "ft" as const, unitsPerSheetWidth: 100 };
+    const view = openSheet(source, undefined, { sharedScale, onCreate });
+    fireEvent.click(screen.getByRole("button", { name: "Measure" }));
+    tap(view.frame, 200, 300); tap(view.frame, 600, 300);
+    fireEvent.click(screen.getByRole("button", { name: "Gap" }));
+    tap(view.frame, 400, 300); tap(view.frame, 400, 180);
+    fireEvent.click(screen.getByRole("button", { name: /^Measuring color:/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Neon cyan" }));
+    if (zoom !== 1) fireEvent.wheel(view.frame, { clientX: 400, clientY: 300, deltaY: -Math.log(zoom) / 0.0015 });
+    const activeLine = view.frame.querySelector('[data-measure-path]')!;
+    const activeLabel = view.frame.querySelector('[data-measure-length]')!;
+    const expected = {
+      width: Number(activeLine.getAttribute("stroke-width")) * zoom,
+      font: Number(activeLabel.getAttribute("font-size")) * zoom,
+      halo: Number(activeLabel.getAttribute("stroke-width")) * zoom,
+      offset: Number(activeLabel.getAttribute("y")) * zoom,
+      weight: activeLabel.getAttribute("font-weight"),
+      fill: activeLabel.getAttribute("fill"),
+      stroke: activeLabel.getAttribute("stroke"),
+      anchor: activeLabel.getAttribute("text-anchor"),
+      text: activeLabel.textContent,
+    };
+    fireEvent.click(screen.getByRole("button", { name: "Done" }));
+    const entity: DrawingEntity = { id: "style-run", sheetId: source, kind: "markup", data: drawingMarkupSchema.parse(onCreate.mock.calls[0]![0]), revision: 1, visibility: "private", authorId: "tim", authorName: "Tim", createdAt: "", updatedAt: "", comments: [] };
+    view.rerender(<DrawingSheetViewer src="/sheet.webp" alt="Sheet" sheetKey={source} sharedScale={sharedScale} annotations={[entity]} onCreate={onCreate} />);
+    const check = (frame: HTMLElement, screenScale: number) => {
+      const line = frame.querySelector('[data-saved-measure-path]')!;
+      const label = frame.querySelector('[data-measurement-segment] text')!;
+      expect(Number(line.getAttribute("stroke-width")) * screenScale).toBeCloseTo(expected.width);
+      expect(Number(label.getAttribute("font-size")) * screenScale).toBeCloseTo(expected.font);
+      expect(Number(label.getAttribute("stroke-width")) * screenScale).toBeCloseTo(expected.halo);
+      expect(Number(label.getAttribute("y")) * screenScale).toBeCloseTo(expected.offset);
+      expect(label.getAttribute("font-weight")).toBe(expected.weight);
+      expect(label.getAttribute("fill")).toBe(expected.fill);
+      expect(label.getAttribute("stroke")).toBe(expected.stroke);
+      expect(label.getAttribute("text-anchor")).toBe(expected.anchor);
+      expect(label.textContent).toBe(expected.text);
+      expect(frame.querySelectorAll('[data-saved-measure-node]')).toHaveLength(4);
+    };
+    check(view.frame, .8 * zoom);
+    view.unmount();
+    const reopened = openSheet(source, undefined, { sharedScale, annotations: [entity] });
+    if (zoom !== 1) fireEvent.wheel(reopened.frame, { clientX: 400, clientY: 300, deltaY: -Math.log(zoom) / 0.0015 });
+    check(reopened.frame, .8 * zoom);
   });
 
   it("saves a branched run as one markup without counting a jump from the end of the trunk", () => {
@@ -971,6 +1020,62 @@ describe("relative measuring angles and drafting arcs", () => {
 });
 
 describe("Gap branching in Measure", () => {
+  const source = "0391aed4-7773-47ec-9141-09df373ec008";
+  const savedRun = (): Extract<DrawingEntity, { kind: "markup" }> => ({ id: "existing-run", sheetId: source, kind: "markup", data: drawingMarkupSchema.parse({ sourceSheetId: source, type: "dimension", points: [{ x: .25, y: .5 }, { x: .75, y: .5 }], parents: [null, 0], scale: 100, unit: "ft", stroke: "#00ffff", width: 2 }), revision: 1, visibility: "private", authorId: "tim", authorName: "Tim", createdAt: "", updatedAt: "", comments: [] });
+
+  it("gaps into a saved run directly after Measure and updates the same markup using its saved scale", () => {
+    const entity = savedRun(), onCreate = vi.fn(), onUpdate = vi.fn();
+    const { frame } = openSheet(source, undefined, { annotations: [entity], sharedScale: { unit: "m", unitsPerSheetWidth: 200 }, onCreate, onUpdate });
+    fireEvent.click(screen.getByRole("button", { name: "Measure" }));
+    expect(screen.getByRole("button", { name: "Gap" })).toBeEnabled();
+    fireEvent.click(screen.getByRole("button", { name: "Gap" }));
+    tap(frame, 400, 300);
+    expect(frame.querySelectorAll('[data-measure-node]')).toHaveLength(3);
+    expect(frame.querySelector('[data-annotation-id="existing-run"]')).toBeNull();
+    expect(screen.getByRole("status")).toHaveTextContent("50'-0\"");
+    tap(frame, 400, 180);
+    expect(screen.getByRole("status")).toHaveTextContent("65'-0\"");
+    fireEvent.click(screen.getByRole("button", { name: "Done" }));
+    expect(onCreate).not.toHaveBeenCalled();
+    expect(onUpdate).toHaveBeenCalledOnce();
+    expect(onUpdate.mock.calls[0]![0]).toBe(entity.id);
+    const updated = drawingMarkupSchema.parse(onUpdate.mock.calls[0]![1]);
+    expect(updated).toMatchObject({ parents: [null, 2, 0, 2], unit: "ft", scale: 100, stroke: "#00ffff" });
+    expect(drawingMeasurement(updated, .5)).toBe("65'-0\"");
+    expect(entity.data.points).toHaveLength(2);
+  });
+
+  it("cancels an adopted saved run with Escape or Clear without changing the saved markup", () => {
+    const entity = savedRun(), onUpdate = vi.fn();
+    const { frame } = openSheet(source, undefined, { annotations: [entity], onUpdate });
+    for (const action of ["Escape", "Clear"]) {
+      if (action === "Escape") fireEvent.click(screen.getByRole("button", { name: "Measure" }));
+      fireEvent.click(screen.getByRole("button", { name: "Gap" }));
+      tap(frame, 400, 300); tap(frame, 400, 180);
+      if (action === "Escape") { fireEvent.keyDown(window, { key: "Escape" }); fireEvent.click(screen.getByRole("button", { name: "Measure" })); }
+      else fireEvent.click(screen.getByRole("button", { name: "Clear" }));
+      expect(frame.querySelectorAll('[data-measure-node]')).toHaveLength(0);
+      expect(frame.querySelector('[data-annotation-id="existing-run"]')).not.toBeNull();
+    }
+    expect(onUpdate).not.toHaveBeenCalled();
+  });
+
+  it("does not gap into read-only or hidden runs and discards a stale adopted revision", () => {
+    const entity = savedRun(), onUpdate = vi.fn();
+    const view = openSheet(source, undefined, { annotations: [entity], onUpdate, canEditAnnotation: () => false });
+    fireEvent.click(screen.getByRole("button", { name: "Measure" }));
+    expect(screen.getByRole("button", { name: "Gap" })).toBeDisabled();
+    view.rerender(<DrawingSheetViewer src="/sheet.webp" alt="Sheet" sheetKey={source} annotations={[entity]} onUpdate={onUpdate} hideAnnotations />);
+    expect(screen.getByRole("button", { name: "Gap" })).toBeDisabled();
+    view.rerender(<DrawingSheetViewer src="/sheet.webp" alt="Sheet" sheetKey={source} annotations={[entity]} onUpdate={onUpdate} />);
+    fireEvent.click(screen.getByRole("button", { name: "Gap" })); tap(view.frame, 400, 300);
+    view.rerender(<DrawingSheetViewer src="/sheet.webp" alt="Sheet" sheetKey={source} annotations={[{ ...entity, revision: 2 }]} onUpdate={onUpdate} />);
+    expect(view.frame.querySelectorAll('[data-measure-node]')).toHaveLength(0);
+    expect(screen.getByRole("note")).toHaveTextContent("measurement changed");
+    fireEvent.click(screen.getByRole("button", { name: "Done" }));
+    expect(onUpdate).not.toHaveBeenCalled();
+  });
+
   it("creates a node on an existing segment, preserves the trunk, and measures only the new branch", () => {
     const { frame } = openSheet("gap-run", undefined, { sharedScale: { unit: "ft", unitsPerSheetWidth: 100 } });
     fireEvent.click(screen.getByRole("button", { name: "Measure" }));

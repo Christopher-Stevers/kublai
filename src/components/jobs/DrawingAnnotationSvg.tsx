@@ -1,5 +1,6 @@
 import type { DrawingMarkup } from "~/lib/drawing-workspace";
 import type { SheetScale } from "~/lib/sheet-measure";
+import { DrawingMeasureRunSvg } from "./DrawingMeasureRunSvg";
 import {
   drawingBounds,
   drawingCloudPath,
@@ -17,12 +18,19 @@ export function DrawingAnnotationSvg({
   data,
   aspect,
   sharedScale,
+  screenPixelSize,
+  sheetPixelSize,
 }: {
   data: DrawingMarkup;
   aspect: number;
   sharedScale?: SheetScale | null;
+  screenPixelSize?: number;
+  sheetPixelSize?: number;
 }) {
   if (!data.points.length || !(aspect > 0)) return null;
+  if (data.type === "dimension" && data.parents && screenPixelSize) {
+    return <DrawingMeasureRunSvg data={data} aspect={aspect} sharedScale={sharedScale} screenPixelSize={screenPixelSize} sheetPixelSize={sheetPixelSize} />;
+  }
   const points = data.points.map((point) => ({
     x: point.x * 1000,
     y: point.y * 1000 * aspect,

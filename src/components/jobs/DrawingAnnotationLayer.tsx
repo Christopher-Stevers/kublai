@@ -5,10 +5,10 @@ import type { SheetScale } from "~/lib/sheet-measure";
 import { drawingMarkupBounds, drawingLinePath } from "~/lib/drawing-annotation-geometry";
 import { DrawingAnnotationSvg } from "./DrawingAnnotationSvg";
 
-export function DrawingAnnotationLayer({ annotations, aspect, selectedId, draft, editing, hidden, sharedScale, onSelect, screenPixelSize = 1, showResizeHandles = true, showMoveArea = false, canEditAnnotation }: {
+export function DrawingAnnotationLayer({ annotations, aspect, selectedId, draft, editing, hidden, sharedScale, onSelect, screenPixelSize = 1, sheetPixelSize, showResizeHandles = true, showMoveArea = false, canEditAnnotation }: {
   annotations: DrawingEntity[]; aspect: number; selectedId?: string | null;
   draft?: DrawingMarkup | null; editing?: { id: string; data: DrawingMarkup } | null;
-  hidden?: boolean; sharedScale?: SheetScale | null; onSelect?: (id: string) => void; screenPixelSize?: number;
+  hidden?: boolean; sharedScale?: SheetScale | null; onSelect?: (id: string) => void; screenPixelSize?: number; sheetPixelSize?: number;
   showResizeHandles?: boolean; showMoveArea?: boolean; canEditAnnotation?: (entityId: string) => boolean;
 }) {
   return <svg className="pointer-events-none absolute inset-0 z-[3] h-full w-full overflow-visible" viewBox={`0 0 1000 ${1000 * aspect}`} aria-label="Drawing annotations">
@@ -27,7 +27,7 @@ export function DrawingAnnotationLayer({ annotations, aspect, selectedId, draft,
         {data ? <>
           {bounds && canEdit && showMoveArea && <rect data-annotation-move-area="" x={bounds.left * 1000} y={bounds.top * 1000 * aspect} width={(bounds.right - bounds.left) * 1000} height={(bounds.bottom - bounds.top) * 1000 * aspect}
             fill="transparent" pointerEvents="all" style={{ cursor: "move" }} />}
-          <DrawingAnnotationSvg data={data} aspect={aspect} sharedScale={sharedScale} />
+          <DrawingAnnotationSvg data={data} aspect={aspect} sharedScale={sharedScale} screenPixelSize={screenPixelSize} sheetPixelSize={sheetPixelSize} />
           {data.type !== "text" && (data.parents
             ? <path d={drawingLinePath(data, aspect)} fill="none" stroke="transparent" strokeWidth={Math.max(18, data.width + 12)} />
             : <polyline points={data.points.map(p => `${p.x * 1000},${p.y * 1000 * aspect}`).join(" ")} fill="none" stroke="transparent" strokeWidth={Math.max(18, data.width + 12)} />)}
@@ -48,7 +48,7 @@ export function DrawingAnnotationLayer({ annotations, aspect, selectedId, draft,
       </g>;
     })}
     {draft && draft.points.length > 0 && <g opacity={0.75}>
-      <DrawingAnnotationSvg data={draft} aspect={aspect} sharedScale={sharedScale} />
+      <DrawingAnnotationSvg data={draft} aspect={aspect} sharedScale={sharedScale} screenPixelSize={screenPixelSize} sheetPixelSize={sheetPixelSize} />
       {!["freehand", "highlight", "count"].includes(draft.type) && draft.points.slice(-50).map((point, index) => <circle key={index} cx={point.x * 1000} cy={point.y * 1000 * aspect} r={4 * screenPixelSize} fill={draft.stroke} />)}
     </g>}
   </svg>;
