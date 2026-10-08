@@ -58,7 +58,11 @@ beforeEach(() => {
     links: [],
   });
 });
-afterEach(cleanup);
+afterEach(async () => {
+  cleanup();
+  // Radix restores focus on the next task; finish before jsdom is disposed.
+  await new Promise<void>((resolve) => setTimeout(resolve, 0));
+});
 it("reviews extracted title blocks before saving shared metadata", async () => {
   render(
     <DrawingSheetRegister

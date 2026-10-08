@@ -143,8 +143,10 @@ beforeEach(() => {
     }),
   );
 });
-afterEach(() => {
+afterEach(async () => {
   cleanup();
+  // Radix restores focus on the next task; finish before jsdom is disposed.
+  await new Promise<void>((resolve) => setTimeout(resolve, 0));
   vi.unstubAllGlobals();
 });
 
