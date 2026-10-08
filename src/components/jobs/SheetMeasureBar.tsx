@@ -5,7 +5,7 @@ import { RulerIcon } from "lucide-react";
 
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
-import type { MeasureUnit } from "~/lib/sheet-measure";
+import { LENGTH_UNITS, type LengthUnit } from "~/lib/sheet-measure";
 
 /**
  * Controls for tracing a distance on a drawing.
@@ -29,7 +29,7 @@ export function SheetMeasureBar({
   onUndo,
   onClear,
   onStartScale,
-  onFromLength,
+  onReadPrinted,
   onCancelScale,
   onDraft,
   onUnit,
@@ -40,7 +40,7 @@ export function SheetMeasureBar({
   pointCount: number;
   calibrationCount: number;
   total: string | null;
-  unit: MeasureUnit;
+  unit: LengthUnit;
   scaleSet: boolean;
   /** Lines were read from this drawing, so a tap can land on one. */
   snapping?: boolean;
@@ -55,11 +55,13 @@ export function SheetMeasureBar({
   onToggle: () => void;
   onUndo: () => void;
   onClear: () => void;
+  /** Set the scale from two ends of a known length. */
   onStartScale: () => void;
-  onFromLength: () => void;
+  /** Read the scale printed on the drawing (PDF sheets only). */
+  onReadPrinted?: () => void;
   onCancelScale: () => void;
   onDraft: (value: string) => void;
-  onUnit: (unit: MeasureUnit) => void;
+  onUnit: (unit: LengthUnit) => void;
   onApply: () => void;
 }) {
   const stop = (event: PointerEvent) => event.stopPropagation();
@@ -89,11 +91,14 @@ export function SheetMeasureBar({
               snapping={snapping}
               draft={draft}
               error={error}
+              reading={reading}
+              readError={readError}
               onUndo={onUndo}
               onCancel={onCancelScale}
               onDraft={onDraft}
               onUnit={onUnit}
               onApply={onApply}
+              onReadPrinted={onReadPrinted}
             />
           ) : (
             <Tracing
@@ -108,7 +113,6 @@ export function SheetMeasureBar({
               onUndo={onUndo}
               onClear={onClear}
               onStartScale={onStartScale}
-              onFromLength={onFromLength}
               onUnit={onUnit}
             />
           )}
@@ -122,17 +126,12 @@ function UnitToggle({
   unit,
   onUnit,
 }: {
-  unit: MeasureUnit;
-  onUnit: (unit: MeasureUnit) => void;
+  unit: LengthUnit;
+  onUnit: (unit: LengthUnit) => void;
 }) {
   return (
-    <div className="flex rounded-md border p-0.5">
-      {(
-        [
-          ["ft", "Feet"],
-          ["m", "Meters"],
-        ] as const
-      ).map(([value, label]) => (
+    <div className="flex rounded-md border p-0.5" role="group" aria-label="Units">
+      {LENGTH_UNITS.map(({ value, label }) => (
         <button
           key={value}
           type="button"
@@ -160,7 +159,7 @@ function traceStatus(
     return scaleLabel ? `${base} ${scaleLabel}.` : base;
   }
   const count = `${pointCount} ${pointCount === 1 ? "point" : "points"}.`;
-  if (!scaleSet) return `${count} Tap Scale to see the distance.`;
+  if (!scaleSet) return `${count} Tap Set Scale to see the distance.`;
   return scaleLabel ? `${count} ${scaleLabel}.` : count;
 }
 
@@ -176,12 +175,11 @@ function Tracing({
   onUndo,
   onClear,
   onStartScale,
-  onFromLength,
   onUnit,
 }: {
   pointCount: number;
   total: string | null;
-  unit: MeasureUnit;
+  unit: LengthUnit;
   scaleSet: boolean;
   snapping?: boolean;
   reading?: boolean;
@@ -190,8 +188,7 @@ function Tracing({
   onUndo: () => void;
   onClear: () => void;
   onStartScale: () => void;
-  onFromLength: () => void;
-  onUnit: (unit: MeasureUnit) => void;
+  onUnit: (unit: LengthUnit) => void;
 }) {
   return (
     <>
@@ -214,8 +211,8 @@ function Tracing({
       )}
       {!scaleSet && pointCount === 0 && !readError && !reading && (
         <p className="text-muted-foreground text-xs">
-          Tap Scale and the scale printed on this drawing is applied, so the total
-          is a real distance.
+          Tap Set Scale and mark a length you know, so the total is a real
+          distance.
         </p>
       )}
       {readError && !reading && (
@@ -248,18 +245,8 @@ function Tracing({
           disabled={reading}
           onClick={onStartScale}
         >
-          Scale
+          Set Scale
         </Button>
-        {readError && !reading && (
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            onClick={onFromLength}
-          >
-            From a length
-          </Button>
-        )}
       </div>
     </>
   );
@@ -271,35 +258,41 @@ function Calibration({
   snapping,
   draft,
   error,
+  reading,
+  readError,
   onUndo,
   onCancel,
   onDraft,
   onUnit,
   onApply,
+  onReadPrinted,
 }: {
   count: number;
-  unit: MeasureUnit;
+  unit: LengthUnit;
   snapping?: boolean;
   draft: string;
   error: string | null;
+  reading?: boolean;
+  readError?: string | null;
   onUndo: () => void;
   onCancel: () => void;
   onDraft: (value: string) => void;
-  onUnit: (unit: MeasureUnit) => void;
+  onUnit: (unit: LengthUnit) => void;
   onApply: () => void;
+  onReadPrinted?: () => void;
 }) {
   return (
     <>
       <p role="status" className="text-sm">
-        {count === 0
-          ? snapping
-            ? "Tap one end of a known length. It snaps onto a line."
-            : "Tap one end of a length you know on the drawing."
-          : count === 1
+        {reading
+          ? "Reading the scale on this drawing."
+          : count === 0
             ? snapping
-              ? "Tap the other end. It snaps onto a line."
-              : "Tap the other end."
-            : "How long is this line?"}
+              ? "Set Scale: tap one end of a length you know. It snaps onto a line."
+              : "Set Scale: tap one end of a length you know."
+            : count === 1
+              ? "Tap the other end. It snaps to lines, and locks square or at 45° when close."
+              : "How long is this line?"}
       </p>
       {count >= 2 && (
         <>
@@ -307,7 +300,7 @@ function Calibration({
             autoFocus
             aria-label="How long is this line?"
             inputMode="decimal"
-            placeholder={unit === "ft" ? "24'6\"" : "7.5"}
+            placeholder={unit === "ft" ? "24'6\"" : unit === "in" ? "18" : unit === "mm" ? "7500" : "7.5"}
             value={draft}
             onChange={(event) => onDraft(event.target.value)}
             onKeyDown={(event) => {
@@ -329,7 +322,8 @@ function Calibration({
           </Button>
         </>
       )}
-      <div className="flex gap-2">
+      {readError && !reading && <p className="text-destructive text-xs">{readError}</p>}
+      <div className="flex flex-wrap gap-2">
         <Button
           type="button"
           size="sm"
@@ -343,6 +337,16 @@ function Calibration({
           Cancel
         </Button>
       </div>
+      {onReadPrinted && count === 0 && (
+        <button
+          type="button"
+          className="text-primary text-left text-xs font-medium underline-offset-2 hover:underline disabled:opacity-50"
+          disabled={reading}
+          onClick={onReadPrinted}
+        >
+          Read the scale printed on this drawing instead
+        </button>
+      )}
     </>
   );
 }

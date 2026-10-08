@@ -138,7 +138,7 @@ describe("drawing measure", () => {
     tap(frame, 0, 300);
     tap(frame, 400, 300);
     expect(screen.getByRole("status")).toHaveTextContent("50'-0\"");
-    fireEvent.click(screen.getByRole("button", { name: "Scale" }));
+    fireEvent.click(screen.getByRole("button", { name: "Set Scale" }));
     tap(frame, 0, 300);
     tap(frame, 800, 300);
     fireEvent.change(screen.getByLabelText("How long is this line?"), {
@@ -151,12 +151,15 @@ describe("drawing measure", () => {
     });
     // The owner rejected the proposal and leaves the controlled prop unchanged.
     expect(screen.getByRole("status")).toHaveTextContent("50'-0\"");
-    fireEvent.click(screen.getByRole("button", { name: "Meters" }));
-    expect(screen.getByRole("button", { name: "Feet" })).toHaveAttribute(
-      "aria-pressed",
-      "true",
-    );
+    // Changing the unit only changes how this device shows lengths.
+    fireEvent.click(screen.getByRole("button", { name: "m" }));
+    expect(screen.getByRole("button", { name: "m" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("status")).toHaveTextContent("15.24 m");
+    fireEvent.click(screen.getByRole("button", { name: "mm" }));
+    expect(screen.getByRole("status")).toHaveTextContent("15240 mm");
+    fireEvent.click(screen.getByRole("button", { name: "ft" }));
     expect(screen.getByRole("status")).toHaveTextContent("50'-0\"");
+    expect(onScaleChange).toHaveBeenCalledTimes(1);
     expect(storage).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Done" }));
     tap(frame, 200, 300);
@@ -190,7 +193,7 @@ describe("drawing measure", () => {
     tap(frame, 0, 300);
     tap(frame, 400, 300);
     expect(screen.getByRole("status")).toHaveTextContent(
-      "Tap Scale to see the distance.",
+      "Tap Set Scale to see the distance.",
     );
     fireEvent.click(screen.getByRole("button", { name: "Done" }));
     tap(frame, 200, 300);
@@ -203,7 +206,7 @@ describe("drawing measure", () => {
   it("totals a traced path after the scale is taken from a known length", () => {
     const { frame } = openSheet();
     fireEvent.click(screen.getByRole("button", { name: "Measure" }));
-    fireEvent.click(screen.getByRole("button", { name: "Scale" }));
+    fireEvent.click(screen.getByRole("button", { name: "Set Scale" }));
 
     // Dragging still pans and does not drop a point.
     fireEvent.pointerDown(frame, {
@@ -225,7 +228,7 @@ describe("drawing measure", () => {
       pointerId: 1,
     });
     expect(screen.getByRole("status").textContent).toBe(
-      "Tap one end of a length you know on the drawing.",
+      "Set Scale: tap one end of a length you know.",
     );
     expect(frame.querySelectorAll("circle")).toHaveLength(0);
 
@@ -255,7 +258,7 @@ describe("drawing measure", () => {
   it("uses the scale saved for that drawing the next time it is opened", () => {
     const first = openSheet();
     fireEvent.click(screen.getByRole("button", { name: "Measure" }));
-    fireEvent.click(screen.getByRole("button", { name: "Scale" }));
+    fireEvent.click(screen.getByRole("button", { name: "Set Scale" }));
     tap(first.frame, 0, 300);
     tap(first.frame, 800, 300);
     fireEvent.change(screen.getByLabelText("How long is this line?"), {
@@ -269,14 +272,16 @@ describe("drawing measure", () => {
     tap(second.frame, 0, 300);
     tap(second.frame, 800, 300);
     expect(screen.getByRole("status").textContent).toBe("24'-6\"");
-    fireEvent.click(screen.getByRole("button", { name: "Meters" }));
+    fireEvent.click(screen.getByRole("button", { name: "m" }));
     expect(screen.getByRole("status").textContent).toBe("7.47 m");
+    fireEvent.click(screen.getByRole("button", { name: "in" }));
+    expect(screen.getByRole("status").textContent).toBe(`294"`);
   });
 
   it("rejects a scale that is not a length", () => {
     const { frame } = openSheet();
     fireEvent.click(screen.getByRole("button", { name: "Measure" }));
-    fireEvent.click(screen.getByRole("button", { name: "Scale" }));
+    fireEvent.click(screen.getByRole("button", { name: "Set Scale" }));
     tap(frame, 0, 300);
     tap(frame, 800, 300);
     fireEvent.change(screen.getByLabelText("How long is this line?"), {
@@ -284,7 +289,7 @@ describe("drawing measure", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "Use this length" }));
     expect(
-      screen.getByText("Enter a length like 24'6\" or 7.5."),
+      screen.getByText("Enter a length in ft, like 24'6\"."),
     ).toBeInTheDocument();
     expect(screen.queryByText(/Total along the points/)).toBeNull();
   });
@@ -299,15 +304,9 @@ describe("drawing measure", () => {
     await waitFor(() => {
       expect(screen.getByRole("status").textContent).toMatch(/snap onto lines/);
     });
-    fireEvent.click(screen.getByRole("button", { name: "Scale" }));
-    await waitFor(() => {
-      expect(
-        screen.getByText("Couldn't read a scale from this drawing."),
-      ).toBeInTheDocument();
-    });
-    fireEvent.click(screen.getByRole("button", { name: "From a length" }));
+    fireEvent.click(screen.getByRole("button", { name: "Set Scale" }));
     expect(screen.getByRole("status").textContent).toBe(
-      "Tap one end of a known length. It snaps onto a line.",
+      "Set Scale: tap one end of a length you know. It snaps onto a line.",
     );
     fireEvent.pointerMove(frame, { clientX: 400, clientY: 312, buttons: 0 });
     expect(frame.querySelector('line[stroke="#22d3ee"]')).toBeTruthy();
@@ -324,6 +323,29 @@ describe("drawing measure", () => {
     expect(screen.getByRole("status").textContent).toBe("50'-0\"");
   });
 
+  it("locks the second end of a scale square to the first end's line, in green", async () => {
+    vi.mocked(loadSnapLines).mockResolvedValue([{ x1: 0, y1: 0.5, x2: 1, y2: 0.5 }]);
+    const { frame } = openSheet("sheet-square", { url: "/plan.pdf", page: 1 });
+    fireEvent.click(screen.getByRole("button", { name: "Measure" }));
+    await waitFor(() => {
+      expect(screen.getByRole("status").textContent).toMatch(/snap onto lines/);
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Set Scale" }));
+    tap(frame, 400, 300);
+    // Nearly straight up from a point on a horizontal line: locks at 90°.
+    fireEvent.pointerMove(frame, { clientX: 408, clientY: 150, buttons: 0 });
+    expect(frame.querySelector('polyline[stroke="#16a34a"]')).toBeTruthy();
+    expect(screen.getByText("90°")).toBeInTheDocument();
+    // Well off square or 45°: no lock.
+    fireEvent.pointerMove(frame, { clientX: 520, clientY: 150, buttons: 0 });
+    expect(frame.querySelector('polyline[stroke="#16a34a"]')).toBeNull();
+    // Only two ends: a third tap changes nothing.
+    tap(frame, 404, 150);
+    tap(frame, 700, 100);
+    expect(screen.getByLabelText("How long is this line?")).toBeInTheDocument();
+    expect(screen.getByRole("status").textContent).toBe("How long is this line?");
+  });
+
   it("reads the printed scale and measures with it", async () => {
     vi.mocked(readPdfSheetScale).mockResolvedValue({
       ok: true,
@@ -331,7 +353,8 @@ describe("drawing measure", () => {
     });
     const { frame } = openSheet("sheet-read", { url: "/plan.pdf", page: 1 });
     fireEvent.click(screen.getByRole("button", { name: "Measure" }));
-    fireEvent.click(screen.getByRole("button", { name: "Scale" }));
+    fireEvent.click(screen.getByRole("button", { name: "Set Scale" }));
+    fireEvent.click(screen.getByRole("button", { name: "Read the scale printed on this drawing instead" }));
     await waitFor(() => {
       expect(screen.getByRole("status").textContent).toMatch(/1\/4" = 1'-0"/);
     });

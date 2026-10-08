@@ -9,16 +9,17 @@ import {
 import { readPdfSheetScale } from "~/lib/pdf-sheet-scale";
 import { loadSnapLines } from "~/lib/pdf-snap-lines";
 import {
-  convertScale,
-  formatLength,
+  formatLengthAs,
   MEASURE_TAP_SLOP_PX,
-  parseLength,
+  parseLengthAs,
   readSheetScale,
+  scaleUnitFor,
+  snapToAngle,
   realLength,
   scaleFromKnownLength,
   sheetPointFromFrame,
   writeSheetScale,
-  type MeasureUnit,
+  type LengthUnit,
   type SheetPoint,
   type SheetScale,
 } from "~/lib/sheet-measure";
@@ -128,7 +129,11 @@ export function DrawingSheetViewer({
   // An explicit null is authoritative: this shared sheet has not been calibrated.
   const controlledScale = editorProps.sharedScale !== undefined;
   const sheetScale = editorProps.sharedScale === undefined ? localSheetScale : editorProps.sharedScale;
-  const [unit, setUnit] = useState<MeasureUnit>("ft");
+  // The unit lengths are typed and shown in (m, mm, in, ft). The shared scale
+  // itself stays in meters or feet.
+  const [unit, setUnit] = useState<LengthUnit>("ft");
+  // While setting a scale: the second end locked square (90°) or at 45°.
+  const [angleSnap, setAngleSnap] = useState<45 | 90 | null>(null);
   const [draft, setDraft] = useState("");
   const [scaleError, setScaleError] = useState<string | null>(null);
   const [readingScale, setReadingScale] = useState(false);
@@ -236,7 +241,10 @@ export function DrawingSheetViewer({
   }, [sheetKey, controlledScale]);
 
   useEffect(() => {
-    if (editorProps.sharedScale !== undefined) setUnit(editorProps.sharedScale?.unit ?? "ft");
+    const shared = editorProps.sharedScale;
+    // Keep a chosen mm/in when the scale is in the same system.
+    if (shared !== undefined)
+      setUnit((current) => (shared && scaleUnitFor(current) === shared.unit ? current : shared?.unit ?? "ft"));
   }, [editorProps.sharedScale, sheetKey]);
 
   // Read the drawing's lines once, when measuring starts. Taps stay free until they arrive.
@@ -307,22 +315,37 @@ export function DrawingSheetViewer({
   const aimFromClient = (clientX: number, clientY: number) => {
     const point = pointFromClient(clientX, clientY);
     if (!point) return null;
-    if (!snapIndex || !fit) return { point, segment: null as SnapSegment | null };
+    if (!snapIndex || !fit) {
+      if (calibrating && calPoints.length === 1 && fit) {
+        const angled = snapToAngle(calPoints[0]!, point, fit.aspect, calLine);
+        if (angled) return { point: angled.point, segment: null as SnapSegment | null, angle: angled.angle };
+      }
+      return { point, segment: null as SnapSegment | null };
+    }
     const shown = fit.width * live.current.scale;
     if (!(shown > 0)) return { point, segment: null as SnapSegment | null };
     // The second end of a scale stays on the line the first end landed on.
     const prefer = calibrating && calPoints.length === 1 ? calLine : null;
     const hit = snapToLine(point, snapIndex, SNAP_PX / shown, prefer);
+    // Setting a scale: lock the second end square or at 45° to the first
+    // end's line when it is close, landing exactly on the line under it.
+    if (calibrating && calPoints.length === 1) {
+      const angled = snapToAngle(calPoints[0]!, hit?.point ?? point, fit.aspect, calLine, hit?.segment ?? null);
+      if (angled) return { point: angled.point, segment: hit?.segment ?? null, angle: angled.angle };
+    }
     return hit ? { point: hit.point, segment: hit.segment } : { point, segment: null as SnapSegment | null };
   };
   const rememberAim = (clientX: number, clientY: number) => {
     const aim = aimFromClient(clientX, clientY);
     rememberHover(aim?.point ?? null);
     rememberLine(aim?.segment ?? null);
+    const angle = aim && "angle" in aim ? (aim.angle as 45 | 90) : null;
+    setAngleSnap((current) => (current === angle ? current : angle));
   };
   const clearAim = () => {
     rememberHover(null);
     rememberLine(null);
+    setAngleSnap(null);
   };
   const commitPoint = (point: SheetPoint, segment: SnapSegment | null) => {
     if (calibrating) {
@@ -331,6 +354,7 @@ export function DrawingSheetViewer({
     } else setPath((points) => (points.length >= 400 ? points : [...points, point]));
     setHover(null);
     setSnapLine(null);
+    setAngleSnap(null);
   };
   const undoPoint = useCallback(() => {
     if (calibrating) {
@@ -341,15 +365,13 @@ export function DrawingSheetViewer({
   const proposeScale = (next: SheetScale) => {
     if (!controlledScale) {
       setLocalSheetScale(next);
-      setUnit(next.unit);
+      setUnit((current) => (scaleUnitFor(current) === next.unit ? current : next.unit));
       if (sheetKey) writeSheetScale(sheetKey, next);
     }
     editorProps.onScaleChange?.(next);
   };
-  const changeUnit = (next: MeasureUnit) => {
-    if (calibrating || !sheetScale) setUnit(next);
-    else proposeScale(convertScale(sheetScale, next));
-  };
+  // Changing the unit only changes how lengths are typed and shown here.
+  const changeUnit = (next: LengthUnit) => setUnit(next);
   const beginLengthScale = () => {
     setCalibrating(true);
     setCalPoints([]);
@@ -392,9 +414,10 @@ export function DrawingSheetViewer({
   };
   const applyScale = () => {
     if (!fit || calPoints.length < 2) return;
-    const known = parseLength(draft, unit);
-    if (known === null) {
-      setScaleError("Enter a length like 24'6\" or 7.5.");
+    const parsed = parseLengthAs(draft, unit);
+    const known = parsed?.length ?? null;
+    if (known === null || !parsed) {
+      setScaleError(`Enter a length in ${unit}, like ${unit === "ft" ? "24'6\"" : unit === "in" ? "18" : unit === "mm" ? "7500" : "7.5"}.`);
       return;
     }
     if (!(known > 0)) {
@@ -406,7 +429,7 @@ export function DrawingSheetViewer({
       setScaleError("Those two points are on top of each other. Tap the two ends of the length.");
       return;
     }
-    const next = { unit, unitsPerSheetWidth };
+    const next = { unit: parsed.unit, unitsPerSheetWidth };
     proposeScale(next);
     setCalPoints([]);
     setCalLine(null);
@@ -601,6 +624,7 @@ export function DrawingSheetViewer({
   // screen pixel or smaller than ~10px across when zoomed out.
   const markStroke = Math.max(0.08, 1.1 / view.scale);
   const markArm = Math.max(0.6, 5 / view.scale);
+  const lockedAngle = calibrating && calPoints.length === 1 ? angleSnap : null;
 
   // Paint the magnifier from what is on screen: the saved image, any sharper
   // tiles and the PDF redraw, at LOUPE_ZOOM around the aimed point.
@@ -676,7 +700,20 @@ export function DrawingSheetViewer({
       );
     }
     for (let i = 1; i < marked.length; i++) {
-      strokeLine(map(toClient(marked[i - 1]!)), map(toClient(marked[i]!)), "rgba(217, 119, 6, 0.9)", 1.5 * dpr);
+      strokeLine(
+        map(toClient(marked[i - 1]!)),
+        map(toClient(marked[i]!)),
+        lockedAngle ? "rgba(22, 163, 74, 0.95)" : "rgba(217, 119, 6, 0.9)",
+        (lockedAngle ? 2.5 : 1.5) * dpr,
+      );
+    }
+    if (lockedAngle) {
+      ctx.font = `bold ${12 * dpr}px system-ui, sans-serif`;
+      ctx.lineWidth = 3 * dpr;
+      ctx.strokeStyle = "#ffffff";
+      ctx.fillStyle = "#15803d";
+      ctx.strokeText(`${lockedAngle}°`, 6 * dpr, 16 * dpr);
+      ctx.fillText(`${lockedAngle}°`, 6 * dpr, 16 * dpr);
     }
     const c = map(centre);
     const arm = 10 * dpr;
@@ -688,7 +725,7 @@ export function DrawingSheetViewer({
   const snapMark = Math.max(1.2, 8 / view.scale);
   const total =
     sheetScale && fit && !calibrating && marked.length >= 2
-      ? formatLength(realLength(marked, fit.aspect, sheetScale.unitsPerSheetWidth), sheetScale.unit)
+      ? formatLengthAs(realLength(marked, fit.aspect, sheetScale.unitsPerSheetWidth), sheetScale.unit, unit)
       : null;
 
   return (
@@ -979,12 +1016,31 @@ export function DrawingSheetViewer({
                   <polyline
                     points={marked.map((point) => `${point.x * fit.width},${point.y * fit.height}`).join(" ")}
                     fill="none"
-                    stroke="#d97706"
-                    strokeWidth={markStroke}
+                    stroke={lockedAngle ? "#16a34a" : "#d97706"}
+                    strokeWidth={lockedAngle ? markStroke * 1.6 : markStroke}
                     strokeLinejoin="round"
                     strokeLinecap="round"
                   />
                 </g>
+                {lockedAngle && marked.length >= 2 && (() => {
+                  // Square or 45°: say so next to the middle of the line.
+                  const a = marked[marked.length - 2]!, b = marked[marked.length - 1]!;
+                  const size = Math.max(2.2, 13 / view.scale);
+                  return (
+                    <text
+                      x={((a.x + b.x) / 2) * fit.width + size * 0.6}
+                      y={((a.y + b.y) / 2) * fit.height - size * 0.6}
+                      fontSize={size}
+                      fontWeight={700}
+                      fill="#15803d"
+                      stroke="#ffffff"
+                      strokeWidth={size * 0.25}
+                      paintOrder="stroke"
+                    >
+                      {lockedAngle}°
+                    </text>
+                  );
+                })()}
               </>
             )}
             {/* End points are thin, semi-transparent X marks so they can be
@@ -1050,7 +1106,7 @@ export function DrawingSheetViewer({
         pointCount={path.length}
         calibrationCount={calPoints.length}
         total={total}
-        unit={calibrating ? unit : sheetScale?.unit ?? unit}
+        unit={unit}
         scaleSet={sheetScale !== null}
         snapping={Boolean(snapIndex && snapIndex.segments.length > 0)}
         draft={draft}
@@ -1074,8 +1130,8 @@ export function DrawingSheetViewer({
           setHover(null);
           setSnapLine(null);
         }}
-        onStartScale={readPrintedScale}
-        onFromLength={beginLengthScale}
+        onStartScale={beginLengthScale}
+        onReadPrinted={pdfUrl && pdfPage != null ? readPrintedScale : undefined}
         onCancelScale={() => {
           setCalibrating(false);
           setCalPoints([]);

@@ -199,3 +199,110 @@ export function writeSheetScale(sheetKey: string, scale: SheetScale) {
     // The distance still works for this visit when the browser refuses storage.
   }
 }
+
+/**
+ * Units a person can type a known length in, or read totals in. The shared
+ * sheet scale itself is stored in feet or meters (`MeasureUnit`).
+ */
+export type LengthUnit = "m" | "mm" | "in" | "ft";
+
+export const LENGTH_UNITS: ReadonlyArray<{ value: LengthUnit; label: string }> = [
+  { value: "m", label: "m" },
+  { value: "mm", label: "mm" },
+  { value: "in", label: "in" },
+  { value: "ft", label: "ft" },
+];
+
+/** The stored scale unit for a length unit: meters for m/mm, feet for in/ft. */
+export function scaleUnitFor(unit: LengthUnit): MeasureUnit {
+  return unit === "m" || unit === "mm" ? "m" : "ft";
+}
+
+/**
+ * A typed length in `unit`, returned in its stored unit (meters or feet).
+ * A plain number is read in `unit` (e.g. 7500 in mm, 18 in inches); feet and
+ * inches like 24'6" and metric suffixes still work.
+ */
+export function parseLengthAs(
+  text: string,
+  unit: LengthUnit,
+): { length: number; unit: MeasureUnit } | null {
+  const raw = text.trim().toLowerCase().replace(/\s+/g, " ");
+  if (!raw) return null;
+  const plain = /^\d+(?:\.\d+)?$/.test(raw) ? Number(raw) : null;
+  if (unit === "mm") {
+    const length = plain !== null ? plain / 1000 : parseLength(raw, "m");
+    return length === null ? null : { length, unit: "m" };
+  }
+  if (unit === "in") {
+    const length = plain !== null ? plain / 12 : parseLength(raw, "ft");
+    return length === null ? null : { length, unit: "ft" };
+  }
+  const length = parseLength(raw, unit);
+  return length === null ? null : { length, unit };
+}
+
+/** A length stored in `stored` units, written in `shown` units. */
+export function formatLengthAs(length: number, stored: MeasureUnit, shown: LengthUnit): string {
+  if (!Number.isFinite(length)) return "—";
+  const meters = stored === "m" ? length : length * FEET_TO_METERS;
+  if (shown === "m") return formatLength(meters, "m");
+  if (shown === "mm") return `${Math.round(meters * 1000)} mm`;
+  const feet = meters / FEET_TO_METERS;
+  if (shown === "ft") return formatLength(feet, "ft");
+  const inches = Math.round(feet * 12 * 100) / 100;
+  return `${inches.toFixed(2).replace(/\.?0+$/, "")}"`;
+}
+
+export type AngleSnap = { point: SheetPoint; angle: 45 | 90 };
+
+/**
+ * Setting a scale: when the line from `anchor` to `target` is within
+ * `toleranceDeg` of square (90°) or 45° to `reference` (the line the first
+ * end sits on, or the sheet's horizontal), lock it to that angle. If `line`
+ * (the line under the second end) is given, the end lands exactly where the
+ * locked line crosses it. Angles are measured on the real sheet (y × aspect).
+ */
+export function snapToAngle(
+  anchor: SheetPoint,
+  target: SheetPoint,
+  aspect: number,
+  reference: { x1: number; y1: number; x2: number; y2: number } | null,
+  line: { x1: number; y1: number; x2: number; y2: number } | null = null,
+  toleranceDeg = 4,
+): AngleSnap | null {
+  if (!(aspect > 0)) return null;
+  const ax = anchor.x, ay = anchor.y * aspect;
+  const tx = target.x - ax, ty = target.y * aspect - ay;
+  if (Math.hypot(tx, ty) < 1e-9) return null;
+  const base = reference
+    ? Math.atan2((reference.y2 - reference.y1) * aspect, reference.x2 - reference.x1)
+    : 0;
+  const heading = Math.atan2(ty, tx);
+  const tolerance = (toleranceDeg * Math.PI) / 180;
+  let best: { angle: 45 | 90; theta: number; off: number } | null = null;
+  for (let k = -4; k <= 4; k++) {
+    if (k % 2 === 0 && Math.abs(k) !== 2) continue; // 45°, 90°, 135° … only
+    const theta = base + (k * Math.PI) / 4;
+    const off = Math.abs(Math.atan2(Math.sin(heading - theta), Math.cos(heading - theta)));
+    if (off <= tolerance && (!best || off < best.off))
+      best = { angle: Math.abs(k) % 4 === 2 ? 90 : 45, theta, off };
+  }
+  if (!best) return null;
+  const ux = Math.cos(best.theta), uy = Math.sin(best.theta);
+  let t = tx * ux + ty * uy;
+  if (line) {
+    const lx = line.x1 - ax, ly = line.y1 * aspect - ay;
+    const dx = line.x2 - line.x1, dy = (line.y2 - line.y1) * aspect;
+    const denominator = ux * dy - uy * dx;
+    if (Math.abs(denominator) > 1e-9) {
+      const along = (lx * dy - ly * dx) / denominator;
+      const onLine = (ux * along - lx) * dx + (uy * along - ly) * dy;
+      const lengthSq = dx * dx + dy * dy;
+      const s = lengthSq > 0 ? onLine / lengthSq : -1;
+      if (along > 0 && s >= -0.02 && s <= 1.02) t = along;
+    }
+  }
+  if (!(t > 0)) return null;
+  return { point: { x: ax + ux * t, y: (ay + uy * t) / aspect }, angle: best.angle };
+}
