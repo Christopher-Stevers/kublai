@@ -98,6 +98,10 @@ const themeBootScript = `
 })();
 `;
 
+// Chrome offers installation once, possibly before the app's code loads:
+// hold on to the offer from the very start (picked up by install-prompt.ts).
+const installCaptureScript = `window.addEventListener("beforeinstallprompt",function(e){e.preventDefault();window.__foremanhqInstallPrompt=e;});`;
+
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
@@ -105,6 +109,7 @@ export default function RootLayout({
     <html lang="en" className={`${geist.variable}`} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeBootScript }} />
+        <script dangerouslySetInnerHTML={{ __html: installCaptureScript }} />
       </head>
       <body>
         <ThemeProvider>

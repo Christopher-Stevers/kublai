@@ -44,7 +44,9 @@ export function isIosDevice() {
 // The browser fires this once per page load, possibly before any screen that
 // offers installation mounts, so capture it as soon as this module loads.
 if (typeof window !== "undefined") {
-  state = { prompt: null, installed: isStandaloneApp() };
+  const early = (window as Window & { __foremanhqInstallPrompt?: BeforeInstallPromptEvent })
+    .__foremanhqInstallPrompt;
+  state = { prompt: early ?? null, installed: isStandaloneApp() };
   window.addEventListener("beforeinstallprompt", (event) => {
     event.preventDefault();
     set({ prompt: event as BeforeInstallPromptEvent });

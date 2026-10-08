@@ -27,4 +27,21 @@ describe("useInstallPrompt", () => {
       expect(await result.current.install()).toBe(false);
     });
   });
+
+  it("uses an install offer caught by the page's head script before this code loaded", async () => {
+    vi.resetModules();
+    const early = Object.assign(new Event("beforeinstallprompt"), {
+      prompt: vi.fn().mockResolvedValue(undefined),
+      userChoice: Promise.resolve({ outcome: "dismissed" as const, platform: "web" }),
+    });
+    (window as Window & { __foremanhqInstallPrompt?: unknown }).__foremanhqInstallPrompt = early;
+    const { useInstallPrompt } = await import("./install-prompt");
+    const { result } = renderHook(() => useInstallPrompt());
+    expect(result.current.prompt).toBe(early);
+    await act(async () => {
+      expect(await result.current.install()).toBe(true);
+    });
+    expect(early.prompt).toHaveBeenCalledOnce();
+    delete (window as Window & { __foremanhqInstallPrompt?: unknown }).__foremanhqInstallPrompt;
+  });
 });

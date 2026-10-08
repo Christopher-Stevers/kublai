@@ -20,7 +20,6 @@ import {
   BriefcaseIcon,
   Building2Icon,
   ChevronDownIcon,
-  DownloadIcon,
   FileTextIcon,
   MenuIcon,
   ReceiptIcon,
@@ -42,7 +41,6 @@ import {
   runHeaderBackOverride,
   type HeaderBackStateDetail,
 } from "~/lib/header-back-events";
-import { useInstallPrompt } from "~/lib/install-prompt";
 import { useTutorialSandbox } from "~/components/tutorial/tutorial-sandbox-context";
 
 const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
@@ -82,7 +80,6 @@ function HeaderFrame({
   const router = useRouter();
   const sandbox = useTutorialSandbox();
   const isOnline = useOnlineStatus();
-  const { installed: isInstalled, install } = useInstallPrompt();
   const [showRequestedBackButton, setShowRequestedBackButton] = useState(false);
   const navLinks: { href: string; label: string; icon: LucideIcon }[] = [
     ...(tabAccess.dashboard
@@ -173,13 +170,6 @@ function HeaderFrame({
     }
   };
 
-  const handleInstallApp = async () => {
-    if (sandbox) return;
-    if (isInstalled) return;
-
-    if (!(await install())) navigate("/dashboard/account");
-  };
-
   const handleBack = () => {
     if (runHeaderBackOverride()) return;
     if (showRequestedBackButton) {
@@ -266,10 +256,6 @@ function HeaderFrame({
             <DropdownMenuItem onClick={() => navigate("/dashboard/account/settings")}>
               <SettingsIcon className="mr-2 h-4 w-4" />
               Settings
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleInstallApp} disabled={isInstalled}>
-              <DownloadIcon className="mr-2 h-4 w-4" />
-              {isInstalled ? "App Installed" : "Install App"}
             </DropdownMenuItem>
             {signOut ? (
               <DropdownMenuItem
@@ -371,17 +357,6 @@ function HeaderFrame({
                     className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium text-foreground/80 hover:bg-accent"
                   >
                     <SettingsIcon className="h-4 w-4" /> Settings
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMobileMenuOpen(false);
-                      void handleInstallApp();
-                    }}
-                    disabled={isInstalled}
-                    className="block w-full rounded-md px-3 py-2 text-left text-base font-medium text-foreground/80 transition-colors hover:bg-accent hover:text-foreground disabled:text-muted-foreground/70"
-                  >
-                    {isInstalled ? "App Installed" : "Install App"}
                   </button>
                   {signOut ? (
                     <button

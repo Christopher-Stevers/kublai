@@ -60,7 +60,7 @@ import { ViewToggle } from "~/components/ui/view-toggle";
 import { useOnlineStatus } from "~/hooks/use-online-status";
 import { useWorkspaceMutations } from "~/hooks/use-workspace-mutations";
 import { useTutorialSandbox } from "~/components/tutorial/tutorial-sandbox-context";
-import { useInstallPrompt } from "~/lib/install-prompt";
+import { InstallAppButton } from "~/components/app/InstallAppButton";
 import { getNextMaterialListNameFromNames } from "~/lib/material-list-names";
 import {
   HEADER_BACK_REQUEST_EVENT,
@@ -217,21 +217,8 @@ export function DashboardClient({
   const { getReplicache: getMaterialListReplicache, mutateAndSync: mutateMaterialListAndSync } = useWorkspaceMutations();
   const sandbox = useTutorialSandbox();
   const router = useRouter();
-  // Until the app is installed: install it (Android/desktop Chrome prompt) or
-  // show how (iPhone and others) on the Account page.
-  const { installed: appInstalled, install: installApp } = useInstallPrompt();
   const installButton = (className: string) =>
-    sandbox || appInstalled ? null : (
-      <Button
-        variant="outline"
-        className={`h-auto max-w-[11.5rem] shrink-0 px-3 py-1.5 text-center text-xs leading-tight whitespace-normal ${className}`}
-        onClick={async () => {
-          if (!(await installApp())) router.push("/dashboard/account");
-        }}
-      >
-        Add To Homescreen For Notifications and Better Performance
-      </Button>
-    );
+    sandbox ? null : <InstallAppButton className={className} />;
   const hasRedirectedRef = useRef(false);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [newJobName, setNewJobName] = useState("");
