@@ -579,7 +579,12 @@ export function DrawingSheetViewer({
   const rubber =
     hover && ((calibrating && calPoints.length === 1) || (!calibrating && path.length >= 1)) ? hover : null;
   const marked = rubber ? [...drawn, rubber] : drawn;
-  const snapMark = Math.max(4, 8 / view.scale);
+  // The measuring line and X marks are sized in sheet units (like the
+  // drawing's gridlines) so they zoom with it, but never thinner than about a
+  // screen pixel or smaller than ~10px across when zoomed out.
+  const markStroke = Math.max(0.08, 1.1 / view.scale);
+  const markArm = Math.max(0.6, 5 / view.scale);
+  const snapMark = Math.max(1.2, 8 / view.scale);
   const total =
     sheetScale && fit && !calibrating && marked.length >= 2
       ? formatLength(realLength(marked, fit.aspect, sheetScale.unitsPerSheetWidth), sheetScale.unit)
@@ -778,9 +783,9 @@ export function DrawingSheetViewer({
                   x2={snapLine.x2 * fit.width}
                   y2={snapLine.y2 * fit.height}
                   stroke="#ffffff"
-                  strokeWidth={6}
+                  strokeOpacity={0.6}
+                  strokeWidth={markStroke * 2.2}
                   strokeLinecap="round"
-                  vectorEffect="non-scaling-stroke"
                 />
                 <line
                   x1={snapLine.x1 * fit.width}
@@ -788,9 +793,9 @@ export function DrawingSheetViewer({
                   x2={snapLine.x2 * fit.width}
                   y2={snapLine.y2 * fit.height}
                   stroke="#22d3ee"
-                  strokeWidth={3}
+                  strokeOpacity={0.85}
+                  strokeWidth={markStroke}
                   strokeLinecap="round"
-                  vectorEffect="non-scaling-stroke"
                 />
               </g>
             )}
@@ -802,8 +807,7 @@ export function DrawingSheetViewer({
                 height={snapMark}
                 fill="none"
                 stroke="#22d3ee"
-                strokeWidth={2}
-                vectorEffect="non-scaling-stroke"
+                strokeWidth={markStroke}
               />
             )}
             {marked.length >= 2 && (
@@ -829,7 +833,7 @@ export function DrawingSheetViewer({
                         key={index}
                         cx={point.x * fit.width}
                         cy={point.y * fit.height}
-                        r={16 / view.scale}
+                        r={markArm * 1.8}
                         fill={`url(#${markId}-fade)`}
                       />
                     ))}
@@ -840,30 +844,28 @@ export function DrawingSheetViewer({
                     points={marked.map((point) => `${point.x * fit.width},${point.y * fit.height}`).join(" ")}
                     fill="none"
                     stroke="#ffffff"
-                    strokeWidth={3.5}
+                    strokeOpacity={0.6}
+                    strokeWidth={markStroke * 2.2}
                     strokeLinejoin="round"
                     strokeLinecap="round"
-                    vectorEffect="non-scaling-stroke"
                   />
                   <polyline
                     points={marked.map((point) => `${point.x * fit.width},${point.y * fit.height}`).join(" ")}
                     fill="none"
                     stroke="#d97706"
-                    strokeWidth={1.5}
+                    strokeWidth={markStroke}
                     strokeLinejoin="round"
                     strokeLinecap="round"
-                    vectorEffect="non-scaling-stroke"
                   />
                 </g>
               </>
             )}
-            {/* End points are thin, semi-transparent X marks (a constant
-                ~14px on screen) so they can be placed precisely and the
-                linework under them stays visible. */}
+            {/* End points are thin, semi-transparent X marks so they can be
+                placed precisely and the linework under them stays visible. */}
             {marked.map((point, index) => {
               const cx = point.x * fit.width;
               const cy = point.y * fit.height;
-              const arm = 7 / view.scale;
+              const arm = markArm;
               return (
                 <g key={index} opacity={0.6}>
                   {[
@@ -877,9 +879,9 @@ export function DrawingSheetViewer({
                         x2={cx + bx! * arm}
                         y2={cy + by! * arm}
                         stroke="#ffffff"
-                        strokeWidth={3}
+                        strokeOpacity={0.6}
+                        strokeWidth={markStroke * 2.2}
                         strokeLinecap="round"
-                        vectorEffect="non-scaling-stroke"
                       />
                       <line
                         x1={cx + ax! * arm}
@@ -887,9 +889,8 @@ export function DrawingSheetViewer({
                         x2={cx + bx! * arm}
                         y2={cy + by! * arm}
                         stroke="#b45309"
-                        strokeWidth={1.25}
+                        strokeWidth={markStroke}
                         strokeLinecap="round"
-                        vectorEffect="non-scaling-stroke"
                       />
                     </g>
                   ))}
