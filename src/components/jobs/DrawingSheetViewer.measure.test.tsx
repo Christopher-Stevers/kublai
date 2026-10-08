@@ -1,4 +1,5 @@
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -246,7 +247,7 @@ describe("drawing measure", () => {
 
   it("does not create a markup from calibration, an empty run or a single point", () => {
     const onCreate = vi.fn();
-    const { frame } = openSheet("0391aed4-7773-47ec-9141-09df373ec008", undefined, { sharedScale: null, onCreate });
+    const { frame } = openSheet("0391aed4-7773-47ec-9141-09df373ec008", undefined, { sharedScale: null, onCreate, onScaleChange: vi.fn() });
     fireEvent.click(screen.getByRole("button", { name: "Measure" }));
     fireEvent.click(screen.getByRole("button", { name: "Done" }));
     fireEvent.click(screen.getByRole("button", { name: "Measure" }));
@@ -261,6 +262,7 @@ describe("drawing measure", () => {
 
   it("keeps the measuring and calibration controls below the drawing gesture surface", () => {
     const { frame } = openSheet("footer-measuring", undefined, {
+      onScaleChange: vi.fn(),
       sharedScale: { unit: "ft", unitsPerSheetWidth: 100 },
     });
     fireEvent.click(screen.getByRole("button", { name: "Measure" }));
@@ -341,6 +343,49 @@ describe("drawing measure", () => {
     tap(frame, 200, 300);
     tap(frame, 600, 300);
     expect(screen.getByRole("status")).toHaveTextContent("100'-0\"");
+  });
+
+  it("retains calibration after a failed shared save and waits for a successful retry", async () => {
+    let finish!: (saved: boolean) => void;
+    const onScaleChange = vi.fn(() => new Promise<boolean>(resolve => { finish = resolve; }));
+    const { frame, rerender } = openSheet("scale-retry", undefined, { sharedScale: null, onScaleChange });
+    fireEvent.click(screen.getByRole("button", { name: "Measure" }));
+    fireEvent.click(screen.getByRole("button", { name: "Set Scale" }));
+    tap(frame, 0, 300); tap(frame, 800, 300);
+    fireEvent.change(screen.getByLabelText("How long is this line?"), { target: { value: "200" } });
+    const apply = screen.getByRole("button", { name: "Use this length" });
+    fireEvent.click(apply); fireEvent.click(apply);
+    expect(onScaleChange).toHaveBeenCalledOnce();
+    expect(screen.getByRole("status")).toHaveTextContent("Saving scale");
+    expect(screen.getByRole("button", { name: "Done" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Cancel" })).toBeDisabled();
+    await act(async () => finish(false));
+    expect(screen.getByRole("alert")).toHaveTextContent("Scale was not saved");
+    expect(screen.getByLabelText("How long is this line?")).toHaveValue("200");
+    expect(frame.querySelectorAll("[data-measure-node]")).toHaveLength(2);
+    fireEvent.click(apply);
+    rerender(<DrawingSheetViewer src="/sheet.webp" alt="Sheet" sheetKey="scale-retry" sharedScale={{ unit: "ft", unitsPerSheetWidth: 200 }} onScaleChange={onScaleChange} />);
+    await act(async () => finish(true));
+    expect(screen.queryByLabelText("How long is this line?")).not.toBeInTheDocument();
+    tap(frame, 200, 300); tap(frame, 600, 300);
+    expect(screen.getByRole("status")).toHaveTextContent("100'-0\"");
+  });
+
+  it("keeps calibration editable when its owner blocks a save", () => {
+    const { frame } = openSheet("blocked-scale", undefined, { sharedScale: null, onScaleChange: () => { throw new Error("Save your sheet details first."); } });
+    fireEvent.click(screen.getByRole("button", { name: "Measure" }));
+    fireEvent.click(screen.getByRole("button", { name: "Set Scale" }));
+    tap(frame, 0, 300); tap(frame, 800, 300);
+    fireEvent.change(screen.getByLabelText("How long is this line?"), { target: { value: "200" } });
+    fireEvent.click(screen.getByRole("button", { name: "Use this length" }));
+    expect(screen.getByRole("alert")).toHaveTextContent("Save your sheet details first");
+    expect(screen.getByLabelText("How long is this line?")).toHaveValue("200");
+  });
+
+  it("does not offer shared calibration without permission to save it", () => {
+    openSheet("read-only-scale", undefined, { sharedScale: null });
+    fireEvent.click(screen.getByRole("button", { name: "Measure" }));
+    expect(screen.getByRole("button", { name: "Set Scale" })).toBeDisabled();
   });
 
   it("treats a null shared scale as uncalibrated even when this device has a stored scale", () => {

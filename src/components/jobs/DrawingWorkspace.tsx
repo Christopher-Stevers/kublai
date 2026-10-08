@@ -574,7 +574,7 @@ export function DrawingWorkspace({
     }
   };
   const saveMetadata = async (value: DrawingMetadata) => {
-    if (!data?.canManage || !online) return;
+    if (!data?.canManage || !online) return false;
     setPending((n) => n + 1);
     setError(null);
     try {
@@ -583,14 +583,17 @@ export function DrawingWorkspace({
         expectedRevision: value.revision,
         data: drawingMetadataSchema.parse(value),
       });
+      await utils.drawingsWorkspace.get.cancel({ sheetId: sheet.id });
       utils.drawingsWorkspace.get.setData({ sheetId: sheet.id }, (old) =>
         old ? { ...old, metadata: next } : old,
       );
       setMetadata(next);
       setMetadataDirty(false);
-      await refresh();
+      await refresh().catch(fail);
+      return true;
     } catch (reason) {
       fail(reason);
+      return false;
     } finally {
       setPending((n) => n - 1);
     }
@@ -1102,9 +1105,15 @@ export function DrawingWorkspace({
                         setError(
                           "Save or reload your sheet details before changing calibration.",
                         );
-                        return;
+                        throw new Error(
+                          "Save or reload your sheet details before changing calibration.",
+                        );
                       }
-                      void saveMetadata({ ...data.metadata, scale });
+                      if (pending > 0)
+                        throw new Error(
+                          "Wait for the current save, then try again.",
+                        );
+                      return saveMetadata({ ...data.metadata, scale });
                     }
                   : undefined
               }

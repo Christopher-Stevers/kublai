@@ -21,7 +21,7 @@ export type DrawingEditorProps = {
   onDelete?: (id: string) => void;
   onActivate?: (data: DrawingMarkup) => void;
   sharedScale?: SheetScale | null;
-  onScaleChange?: (scale: SheetScale) => void;
+  onScaleChange?: (scale: SheetScale) => boolean | void | Promise<boolean | void>;
 };
 type Gesture = { start: DrawingPoint; points: DrawingPoint[]; moved: boolean; entity?: DrawingEntity; handle?: number | DrawingResizeHandle; activate?: boolean; edited?: DrawingMarkup };
 

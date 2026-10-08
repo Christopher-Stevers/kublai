@@ -194,12 +194,16 @@ export function DrawingSheetViewer({
   const [draft, setDraft] = useState("");
   const [scaleError, setScaleError] = useState<string | null>(null);
   const [readingScale, setReadingScale] = useState(false);
+  const [savingScale, setSavingScale] = useState(false);
+  const scaleSave = useRef(0);
+  const scaleSavePending = useRef(false);
   const [scaleReadError, setScaleReadError] = useState<string | null>(null);
   const scaleRead = useRef(0);
   const seenSheet = useRef(sheetKey);
   if (seenSheet.current !== sheetKey) {
     seenSheet.current = sheetKey;
     scaleRead.current += 1;
+    scaleSave.current += 1;
   }
   const lastTap = useRef<{ time: number; x: number; y: number } | null>(null);
   const panTap = useRef<{ time: number; x: number; y: number; moved: boolean } | null>(null);
@@ -336,9 +340,12 @@ export function DrawingSheetViewer({
 
   // Each sheet keeps its own scale. Unfinished traces last only for this visit.
   useEffect(() => {
+    scaleSave.current += 1;
+    scaleSavePending.current = false;
+    setSavingScale(false);
     const stored = !controlledScale && sheetKey ? readSheetScale(sheetKey) : null;
     if (!controlledScale) setLocalSheetScale(stored);
-    setUnit(stored?.unit ?? "ft");
+    if (!controlledScale) setUnit(stored?.unit ?? "ft");
     dispatchRun({ type: "clear" });
     setMeasureSource(null);
     setRunScaleOverride(null);
@@ -360,7 +367,7 @@ export function DrawingSheetViewer({
     // Keep a chosen mm/in when the scale is in the same system.
     if (shared !== undefined)
       setUnit((current) => (scaleUnitFor(current) === shared?.unit ? current : shared?.unit ?? "ft"));
-  }, [editorProps.sharedScale, sheetKey]);
+  }, [editorProps.sharedScale, sheetKey, pdf?.url, pdf?.page]);
 
   // Read the drawing's lines once, when measuring starts. Taps stay free until they arrive.
   // Depend on the url and page, not the object: the parent builds a new object on every render.
@@ -505,7 +512,7 @@ export function DrawingSheetViewer({
   };
   const nodeAtClient = (clientX: number, clientY: number) => {
     const el = frame.current;
-    if (!el || !fit) return null;
+    if (!el || !fit || scaleSavePending.current) return null;
     const rect = el.getBoundingClientRect();
     const nodes = calibrating ? calNodes : trace;
     const current = live.current;
@@ -521,6 +528,7 @@ export function DrawingSheetViewer({
     return closest;
   };
   const commitPoint = (point: SheetPoint, segment: SnapSegment | null) => {
+    if (scaleSavePending.current) return;
     if (calibrating) {
       setCalNodes((points) => (points.length >= 2 ? points : [...points, { point, line: segment }]));
     } else { dispatchRun({ type: "append", point, line: segment }); setGapMessage(null); }
@@ -541,21 +549,50 @@ export function DrawingSheetViewer({
     setAngleSnap(null);
   }, [calibrating, gapMode]);
   const proposeScale = (next: SheetScale) => {
-    if (measureSource) setRunScaleOverride(next);
-    if (!controlledScale) {
-      setLocalSheetScale(next);
-      setUnit((current) => (scaleUnitFor(current) === next.unit ? current : next.unit));
-      if (sheetKey) writeSheetScale(sheetKey, next);
-    }
-    editorProps.onScaleChange?.(next);
-    if (pipeCalibration.current) {
-      pipeCalibration.current = false;
-      setMeasuring(false);
-    }
+    if (scaleSavePending.current) return;
+    const request = ++scaleSave.current;
+    const finish = (accepted: boolean | void) => {
+      if (scaleSave.current !== request) return;
+      if (accepted === false) throw new Error("Scale was not saved. Try again.");
+      if (measureSource) setRunScaleOverride(next);
+      if (!controlledScale) {
+        setLocalSheetScale(next);
+        setUnit((current) => (scaleUnitFor(current) === next.unit ? current : next.unit));
+        if (sheetKey) writeSheetScale(sheetKey, next);
+      }
+      setCalNodes([]);
+      setCalibrating(false);
+      setDraft("");
+      setScaleError(null);
+      setScaleReadError(null);
+      if (pipeCalibration.current) {
+        pipeCalibration.current = false;
+        setMeasuring(false);
+      }
+    };
+    const failed = (reason: unknown) => {
+      if (scaleSave.current !== request) return;
+      setScaleError(reason instanceof Error ? reason.message : "Scale was not saved. Try again.");
+    };
+    setScaleError(null);
+    try {
+      if (controlledScale && !editorProps.onScaleChange) throw new Error("You cannot change this drawing's scale right now.");
+      const saved = editorProps.onScaleChange?.(next);
+      if (saved instanceof Promise) {
+        scaleSavePending.current = true;
+        setSavingScale(true);
+        void saved.then(finish).catch(failed).finally(() => {
+          if (scaleSave.current !== request) return;
+          scaleSavePending.current = false;
+          setSavingScale(false);
+        });
+      } else finish(saved);
+    } catch (reason) { failed(reason); }
   };
   // Changing the unit only changes how lengths are typed and shown here.
   const changeUnit = (next: LengthUnit) => setUnit(next);
   const beginLengthScale = () => {
+    if (scaleSavePending.current || controlledScale && !editorProps.onScaleChange) return;
     setGapMode(false);
     setGapMessage(null);
     clearAim();
@@ -581,10 +618,6 @@ export function DrawingSheetViewer({
           return;
         }
         proposeScale(result.scale);
-        setCalibrating(false);
-        setCalNodes([]);
-        setDraft("");
-        setScaleError(null);
       })
       .catch(() => {
         if (scaleRead.current !== request) return;
@@ -595,7 +628,7 @@ export function DrawingSheetViewer({
       });
   };
   const applyScale = () => {
-    if (!fit || calPoints.length < 2) return;
+    if (!fit || calPoints.length < 2 || scaleSavePending.current) return;
     const parsed = parseLengthAs(draft, unit);
     const known = parsed?.length ?? null;
     if (known === null || !parsed) {
@@ -613,15 +646,11 @@ export function DrawingSheetViewer({
     }
     const next = { unit: parsed.unit, unitsPerSheetWidth };
     proposeScale(next);
-    setCalNodes([]);
-    setCalibrating(false);
-    setDraft("");
-    setScaleError(null);
-    setScaleReadError(null);
   };
   useEffect(() => {
     if (!measuring) return;
     const onKey = (event: KeyboardEvent) => {
+      if (scaleSavePending.current) return;
       const target = event.target;
       const typing =
         target instanceof HTMLElement &&
@@ -1714,6 +1743,8 @@ export function DrawingSheetViewer({
         draft={draft}
         error={scaleError}
         reading={readingScale}
+        saving={savingScale}
+        canSetScale={!controlledScale || Boolean(editorProps.onScaleChange)}
         scaleLabel={sheetScale?.label}
         readError={scaleReadError}
         onToggle={() => {

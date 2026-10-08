@@ -24,6 +24,8 @@ export function SheetMeasureBar({
   draft,
   error,
   reading,
+  saving = false,
+  canSetScale = true,
   scaleLabel,
   readError,
   onToggle,
@@ -58,6 +60,8 @@ export function SheetMeasureBar({
   error: string | null;
   /** The printed scale is being read off this drawing. */
   reading?: boolean;
+  saving?: boolean;
+  canSetScale?: boolean;
   /** The scale as printed, once it has been read. */
   scaleLabel?: string | null;
   /** Why the printed scale could not be used. */
@@ -91,6 +95,7 @@ export function SheetMeasureBar({
       variant={measuring ? "default" : "outline"}
       className="shrink-0"
       aria-pressed={measuring}
+      disabled={saving}
       onClick={onToggle}
     >
       <RulerIcon className="h-4 w-4" />
@@ -122,6 +127,7 @@ export function SheetMeasureBar({
               draft={draft}
               error={error}
               reading={reading}
+              saving={saving}
               readError={readError}
               onUndo={onUndo}
               onCancel={onCancelScale}
@@ -139,6 +145,7 @@ export function SheetMeasureBar({
               total={total}
               unit={unit}
               scaleSet={scaleSet}
+              canSetScale={canSetScale}
               snapping={snapping}
               reading={reading}
               scaleLabel={scaleLabel}
@@ -249,9 +256,11 @@ function MeasureColorPicker({
 function UnitToggle({
   unit,
   onUnit,
+  disabled = false,
 }: {
   unit: LengthUnit;
   onUnit: (unit: LengthUnit) => void;
+  disabled?: boolean;
 }) {
   return (
     <div
@@ -264,6 +273,7 @@ function UnitToggle({
           key={value}
           type="button"
           aria-pressed={unit === value}
+          disabled={disabled}
           className={`h-8 flex-1 rounded-sm text-sm ${unit === value ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
           onClick={() => onUnit(value)}
         >
@@ -296,6 +306,7 @@ function Tracing({
   total,
   unit,
   scaleSet,
+  canSetScale,
   snapping,
   reading,
   scaleLabel,
@@ -316,6 +327,7 @@ function Tracing({
   total: string | null;
   unit: LengthUnit;
   scaleSet: boolean;
+  canSetScale: boolean;
   snapping?: boolean;
   reading?: boolean;
   scaleLabel?: string | null;
@@ -365,7 +377,8 @@ function Tracing({
       )}
       {(gap || gapMessage) && (
         <p role="note" aria-live="polite" className="text-primary text-xs">
-          {gapMessage ?? "Gap: tap anywhere on a measured segment to start a branch."}
+          {gapMessage ??
+            "Gap: tap anywhere on a measured segment to start a branch."}
         </p>
       )}
       <div className="flex flex-wrap items-center gap-2">
@@ -401,7 +414,7 @@ function Tracing({
           type="button"
           size="sm"
           variant="outline"
-          disabled={reading}
+          disabled={(reading ?? false) || !canSetScale}
           onClick={onStartScale}
         >
           Set Scale
@@ -424,6 +437,7 @@ function Calibration({
   draft,
   error,
   reading,
+  saving,
   readError,
   onUndo,
   onCancel,
@@ -441,6 +455,7 @@ function Calibration({
   draft: string;
   error: string | null;
   reading?: boolean;
+  saving: boolean;
   readError?: string | null;
   onUndo: () => void;
   onCancel: () => void;
@@ -456,15 +471,17 @@ function Calibration({
     <>
       <div className="flex items-center gap-2">
         <p role="status" className="min-w-0 flex-1 text-sm">
-          {reading
-            ? "Reading the scale on this drawing."
-            : count === 0
-              ? snapping
-                ? "Set Scale: tap one end of a length you know. It snaps onto a line."
-                : "Set Scale: tap one end of a length you know."
-              : count === 1
-                ? "Tap the other end. It snaps to lines, and locks square or at 45° when close."
-                : "How long is this line?"}
+          {saving
+            ? "Saving scale…"
+            : reading
+              ? "Reading the scale on this drawing."
+              : count === 0
+                ? snapping
+                  ? "Set Scale: tap one end of a length you know. It snaps onto a line."
+                  : "Set Scale: tap one end of a length you know."
+                : count === 1
+                  ? "Tap the other end. It snaps to lines, and locks square or at 45° when close."
+                  : "How long is this line?"}
         </p>
         {controls}
       </div>
@@ -473,6 +490,7 @@ function Calibration({
           <Input
             className="min-w-24 flex-1"
             autoFocus
+            disabled={saving}
             aria-label="How long is this line?"
             inputMode="decimal"
             placeholder={
@@ -493,19 +511,23 @@ function Calibration({
               }
             }}
           />
-          <UnitToggle unit={unit} onUnit={onUnit} />
+          <UnitToggle unit={unit} onUnit={onUnit} disabled={saving} />
 
           <Button
             type="button"
             size="sm"
-            disabled={!draft.trim()}
+            disabled={!draft.trim() || saving || reading}
             onClick={onApply}
           >
             Use this length
           </Button>
         </div>
       )}
-      {error && <p className="text-destructive text-xs">{error}</p>}
+      {error && (
+        <p role="alert" className="text-destructive text-xs">
+          {error}
+        </p>
+      )}
       {readError && !reading && (
         <p className="text-destructive text-xs">{readError}</p>
       )}
@@ -514,12 +536,18 @@ function Calibration({
           type="button"
           size="sm"
           variant="outline"
-          disabled={count === 0}
+          disabled={count === 0 || saving}
           onClick={onUndo}
         >
           Undo
         </Button>
-        <Button type="button" size="sm" variant="outline" onClick={onCancel}>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          disabled={saving}
+          onClick={onCancel}
+        >
           Cancel
         </Button>
         <MeasureColorPicker color={color} onColor={onColor} />
@@ -528,7 +556,7 @@ function Calibration({
         <button
           type="button"
           className="text-primary text-left text-xs font-medium underline-offset-2 hover:underline disabled:opacity-50"
-          disabled={reading}
+          disabled={(reading ?? false) || saving}
           onClick={onReadPrinted}
         >
           Read the scale printed on this drawing instead

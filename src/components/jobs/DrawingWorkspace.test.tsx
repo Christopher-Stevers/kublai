@@ -26,6 +26,8 @@ const mocks = vi.hoisted(() => ({
   favorite: vi.fn(),
   watch: vi.fn(),
   read: vi.fn(),
+  cancel: vi.fn(async () => undefined),
+  scaleResult: vi.fn(),
   invalidate: vi.fn(async () => undefined),
 }));
 vi.mock("~/trpc/react", () => ({
@@ -34,6 +36,7 @@ vi.mock("~/trpc/react", () => ({
       drawingsWorkspace: {
         get: {
           invalidate: mocks.invalidate,
+          cancel: mocks.cancel,
           setData: (
             _: unknown,
             update: (data: Workspace | null) => Workspace | null,
@@ -95,6 +98,24 @@ vi.mock("./DrawingSheetViewer", () => ({
     >
       <div data-testid="viewer-source">
         {props.sourceSheetId ?? props.sheetKey}
+      </div>
+      <button
+        disabled={!props.onScaleChange}
+        onClick={() => {
+          void Promise.resolve()
+            .then(() =>
+              props.onScaleChange?.({ unit: "m", unitsPerSheetWidth: 120 }),
+            )
+            .then(mocks.scaleResult)
+            .catch((error: unknown) => {
+              mocks.scaleResult(error instanceof Error ? error.message : "Save failed");
+            });
+        }}
+      >
+        Calibrate sample
+      </button>
+      <div data-testid="shared-scale">
+        {props.sharedScale?.unitsPerSheetWidth ?? "unset"}
       </div>
       <button
         onClick={() =>
@@ -322,9 +343,7 @@ describe("drawing workspace workflows", () => {
       screen.getByRole("button", { name: "Select first annotation" }),
     );
     expect(screen.getByText("Read only")).toBeVisible();
-    expect(
-      screen.queryByRole("button", { name: "Move" }),
-    ).toBeNull();
+    expect(screen.queryByRole("button", { name: "Move" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Resize" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Delete markup" })).toBeNull();
     fireEvent.click(
@@ -463,6 +482,43 @@ describe("drawing workspace workflows", () => {
       mocks.save.mock.calls[0]![0].id,
     );
   });
+  it("acknowledges shared calibration only after saving and cancels stale reads before updating the scale", async () => {
+    let finish!: (value: Workspace["metadata"]) => void;
+    mocks.metadata.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+    );
+    render(
+      <DrawingWorkspace jobId={jobId} sheet={sheet} onOpenSheet={vi.fn()} />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Calibrate sample" }));
+    await waitFor(() => expect(mocks.metadata).toHaveBeenCalledOnce());
+    expect(mocks.scaleResult).not.toHaveBeenCalled();
+    expect(screen.getByTestId("shared-scale")).toHaveTextContent("unset");
+    await act(async () =>
+      finish({
+        ...fixture().metadata,
+        scale: { unit: "m", unitsPerSheetWidth: 120 },
+        revision: 8,
+      }),
+    );
+    expect(mocks.cancel).toHaveBeenCalledWith({ sheetId });
+    expect(mocks.scaleResult).toHaveBeenCalledWith(true);
+    expect(screen.getByTestId("shared-scale")).toHaveTextContent("120");
+  });
+
+  it("rejects shared calibration when saving fails", async () => {
+    mocks.metadata.mockRejectedValueOnce(new Error("Connection lost"));
+    render(
+      <DrawingWorkspace jobId={jobId} sheet={sheet} onOpenSheet={vi.fn()} />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Calibrate sample" }));
+    await waitFor(() => expect(mocks.scaleResult).toHaveBeenCalledWith(false));
+    expect(screen.getByTestId("shared-scale")).toHaveTextContent("unset");
+  });
+
   it("keeps local metadata edits during refresh and submits their original expected revision", async () => {
     const view = open();
     panel("details");
