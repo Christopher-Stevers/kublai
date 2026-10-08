@@ -38,9 +38,12 @@ const MIN_ZOOM = 1;
 const MAX_ZOOM = 24;
 /** A tap this close to a line, in screen pixels, lands on that line. */
 const SNAP_PX = 18;
+/** A finger can grab an existing point within this screen-space radius. */
+const NODE_GRAB_PX = 24;
 /** How often tile choices follow the view while it is moving. */
 const COMMIT_MS = 50;
 type Point = { x: number; y: number };
+type MeasureNode = { point: SheetPoint; line: SnapSegment | null };
 type View = { scale: number; x: number; y: number };
 const REST: View = { scale: 1, x: 0, y: 0 };
 
@@ -117,10 +120,12 @@ export function DrawingSheetViewer({
   const [measuring, setMeasuring] = useState(false);
   const markId = `measure-${useId().replace(/:/g, "")}`;
   const [calibrating, setCalibrating] = useState(false);
-  const [trace, setTrace] = useState<{ point: SheetPoint; line: SnapSegment | null }[]>([]);
+  const [trace, setTrace] = useState<MeasureNode[]>([]);
   const path = trace.map(({ point }) => point);
-  const [calPoints, setCalPoints] = useState<SheetPoint[]>([]);
-  const [calLine, setCalLine] = useState<SnapSegment | null>(null);
+  const [calNodes, setCalNodes] = useState<MeasureNode[]>([]);
+  const calPoints = calNodes.map(({ point }) => point);
+  const nodeDrag = useRef<{ pointerId: number; index: number; x: number; y: number; moved: boolean } | null>(null);
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [hover, setHover] = useState<SheetPoint | null>(null);
   const [snapLine, setSnapLine] = useState<SnapSegment | null>(null);
   const [snapIndex, setSnapIndex] = useState<SnapIndex | null>(null);
@@ -158,6 +163,17 @@ export function DrawingSheetViewer({
   viewportListener.current = onViewportChange;
   const annotationTool = editorProps.tool ?? "pan";
   useEffect(() => { setMeasuring(false); setCalibrating(false); }, [annotationTool]);
+  useEffect(() => {
+    nodeDrag.current = null;
+    setDragIndex(null);
+    if (holdTimer.current) clearTimeout(holdTimer.current);
+    holdTimer.current = null;
+    measureTap.current = null;
+    setLoupe(null);
+    setHover(null);
+    setSnapLine(null);
+    setAngleSnap(null);
+  }, [measuring, calibrating, sheetKey]);
 
 
   // Fit the sheet inside the frame whenever the image or frame size changes.
@@ -231,8 +247,7 @@ export function DrawingSheetViewer({
     setUnit(stored?.unit ?? "ft");
     setTrace([]);
     setAngleSnap(null);
-    setCalPoints([]);
-    setCalLine(null);
+    setCalNodes([]);
     setCalibrating(false);
     setHover(null);
     setSnapLine(null);
@@ -263,7 +278,8 @@ export function DrawingSheetViewer({
       snapKey.current = null;
       setSnapIndex(null);
       setSnapLine(null);
-      setCalLine(null);
+      setCalNodes((nodes) => nodes.map((node) => ({ ...node, line: null })));
+      setTrace((nodes) => nodes.map((node) => ({ ...node, line: null })));
     }
     let cancelled = false;
     void loadSnapLines({ url: pdfUrl, page: pdfPage })
@@ -314,14 +330,16 @@ export function DrawingSheetViewer({
         : segment,
     );
   };
-  const aimFromClient = (clientX: number, clientY: number): { point: SheetPoint; segment: SnapSegment | null; angle?: 45 | 90 } | null => {
+  const aimFromClient = (clientX: number, clientY: number, movingNode?: number): { point: SheetPoint; segment: SnapSegment | null; angle?: 45 | 90 } | null => {
     const point = pointFromClient(clientX, clientY);
     if (!point) return null;
-    // Each segment uses the line its anchor landed on, for both tools.
-    const anchor = calibrating
-      ? calPoints.length === 1 ? calPoints[0] : undefined
-      : trace.at(-1)?.point;
-    const reference = calibrating ? calLine : trace.at(-1)?.line ?? null;
+    // Moving the first node uses its next neighbor; all others use the previous.
+    const nodes = calibrating ? calNodes : trace;
+    const anchorNode = movingNode !== undefined
+      ? nodes[movingNode === 0 ? 1 : movingNode - 1]
+      : calibrating ? nodes.length === 1 ? nodes[0] : undefined : nodes.at(-1);
+    const anchor = anchorNode?.point;
+    const reference = anchorNode?.line ?? null;
     const shown = fit ? fit.width * live.current.scale : 0;
     const hit = snapIndex && shown > 0
       ? snapToLine(point, snapIndex, SNAP_PX / shown, anchor ? reference : null)
@@ -332,8 +350,8 @@ export function DrawingSheetViewer({
     }
     return hit ? { point: hit.point, segment: hit.segment } : { point, segment: null };
   };
-  const rememberAim = (clientX: number, clientY: number) => {
-    const aim = aimFromClient(clientX, clientY);
+  const rememberAim = (clientX: number, clientY: number, movingNode?: number) => {
+    const aim = aimFromClient(clientX, clientY, movingNode);
     rememberHover(aim?.point ?? null);
     rememberLine(aim?.segment ?? null);
     const angle = aim?.angle ?? null;
@@ -344,24 +362,49 @@ export function DrawingSheetViewer({
     rememberLine(null);
     setAngleSnap(null);
   };
+  // Keep the saved geometry untouched until release, so Cancel/pinch can roll back.
+  const cancelNodeDrag = () => {
+    nodeDrag.current = null;
+    setDragIndex(null);
+    endHold();
+    clearAim();
+  };
+  const nodeAtClient = (clientX: number, clientY: number) => {
+    const el = frame.current;
+    if (!el || !fit) return null;
+    const rect = el.getBoundingClientRect();
+    const nodes = calibrating ? calNodes : trace;
+    const current = live.current;
+    let closest: number | null = null;
+    let distance = NODE_GRAB_PX;
+    for (let i = 0; i < nodes.length; i++) {
+      const point = nodes[i]!.point;
+      const x = rect.left + el.clientWidth / 2 + current.x + (point.x - 0.5) * fit.width * current.scale;
+      const y = rect.top + el.clientHeight / 2 + current.y + (point.y - 0.5) * fit.height * current.scale;
+      const away = Math.hypot(clientX - x, clientY - y);
+      if (away <= distance) { closest = i; distance = away; }
+    }
+    return closest;
+  };
   const commitPoint = (point: SheetPoint, segment: SnapSegment | null) => {
     if (calibrating) {
-      if (calPoints.length === 0) setCalLine(segment);
-      setCalPoints((points) => (points.length >= 2 ? points : [...points, point]));
+      setCalNodes((points) => (points.length >= 2 ? points : [...points, { point, line: segment }]));
     } else setTrace((points) => (points.length >= 400 ? points : [...points, { point, line: segment }]));
     setHover(null);
     setSnapLine(null);
     setAngleSnap(null);
   };
   const undoPoint = useCallback(() => {
+    nodeDrag.current = null;
+    setDragIndex(null);
+    setLoupe(null);
     if (calibrating) {
-      setCalPoints((points) => points.slice(0, -1));
-      if (calPoints.length <= 1) setCalLine(null);
+      setCalNodes((points) => points.slice(0, -1));
     } else setTrace((points) => points.slice(0, -1));
     setHover(null);
     setSnapLine(null);
     setAngleSnap(null);
-  }, [calibrating, calPoints.length]);
+  }, [calibrating]);
   const proposeScale = (next: SheetScale) => {
     if (!controlledScale) {
       setLocalSheetScale(next);
@@ -375,8 +418,7 @@ export function DrawingSheetViewer({
   const beginLengthScale = () => {
     clearAim();
     setCalibrating(true);
-    setCalPoints([]);
-    setCalLine(null);
+    setCalNodes([]);
     setDraft("");
     setScaleError(null);
     setScaleReadError(null);
@@ -398,8 +440,7 @@ export function DrawingSheetViewer({
         }
         proposeScale(result.scale);
         setCalibrating(false);
-        setCalPoints([]);
-        setCalLine(null);
+        setCalNodes([]);
         setDraft("");
         setScaleError(null);
       })
@@ -430,8 +471,7 @@ export function DrawingSheetViewer({
     }
     const next = { unit: parsed.unit, unitsPerSheetWidth };
     proposeScale(next);
-    setCalPoints([]);
-    setCalLine(null);
+    setCalNodes([]);
     setCalibrating(false);
     setDraft("");
     setScaleError(null);
@@ -447,8 +487,7 @@ export function DrawingSheetViewer({
       if (event.key === "Escape") {
         if (calibrating) {
           setCalibrating(false);
-          setCalPoints([]);
-          setCalLine(null);
+          setCalNodes([]);
           setDraft("");
           setScaleError(null);
         } else setMeasuring(false);
@@ -511,6 +550,7 @@ export function DrawingSheetViewer({
       cancelAnimationFrame(animation.current);
       if (commitTimer.current) clearTimeout(commitTimer.current);
       if (wheelSettleTimer.current) clearTimeout(wheelSettleTimer.current);
+      if (holdTimer.current) clearTimeout(holdTimer.current);
     },
     [],
   );
@@ -614,16 +654,22 @@ export function DrawingSheetViewer({
   // the same transform as the tiles, so already-sharp pixels keep moving.
   const needsPdf = Boolean(pdf) && fit !== null && (!manifest ? density > 1.05 : density > deepest * 1.05);
 
-  const drawn = calibrating ? calPoints : path;
+  const savedPoints = calibrating ? calPoints : path;
+  const drawn = dragIndex !== null && hover
+    ? savedPoints.map((point, index) => index === dragIndex ? hover : point)
+    : savedPoints;
   const rubber =
-    hover && ((calibrating && calPoints.length === 1) || (!calibrating && path.length >= 1)) ? hover : null;
+    dragIndex === null && hover && ((calibrating && calPoints.length === 1) || (!calibrating && path.length >= 1)) ? hover : null;
   const marked = rubber ? [...drawn, rubber] : drawn;
   // The measuring line and X marks are sized in sheet units (like the
   // drawing's gridlines) so they zoom with it, but never thinner than about a
   // screen pixel or smaller than ~10px across when zoomed out.
   const markStroke = Math.max(0.08, 1.1 / view.scale);
   const markArm = Math.max(0.6, 5 / view.scale);
-  const lockedAngle = rubber ? angleSnap : null;
+  const lockedAngle = rubber || dragIndex !== null ? angleSnap : null;
+  const anglePair = dragIndex !== null
+    ? [drawn[dragIndex === 0 ? 1 : dragIndex - 1], drawn[dragIndex]]
+    : [marked.at(-2), marked.at(-1)];
 
   // Paint the magnifier from what is on screen: the saved image, any sharper
   // tiles and the PDF redraw, at LOUPE_ZOOM around the aimed point.
@@ -730,7 +776,7 @@ export function DrawingSheetViewer({
   return (
     <div
       ref={frame}
-      className={`relative h-full w-full touch-none overflow-hidden bg-muted select-none [&_img]:pointer-events-none${measuring ? " cursor-crosshair" : ""}`}
+      className={`relative h-full w-full touch-none overflow-hidden bg-muted select-none [&_img]:pointer-events-none${measuring ? dragIndex !== null ? " cursor-grabbing" : " cursor-crosshair" : ""}`}
       // No phone long-press menu (copy/save image, open link) on the drawing:
       // long presses are for working on the sheet.
       style={{ WebkitTouchCallout: "none" }}
@@ -743,6 +789,7 @@ export function DrawingSheetViewer({
         velocity.current = { x: 0, y: 0, t: performance.now() };
         startGesture();
         if (pointers.current.size > 1) {
+          if (nodeDrag.current) cancelNodeDrag();
           editor.cancelGesture();
           quickZoom.current = null;
           panTap.current = null;
@@ -754,6 +801,17 @@ export function DrawingSheetViewer({
         }
         if (pointers.current.size === 1) {
           if (measuring) {
+            const index = nodeAtClient(event.clientX, event.clientY);
+            if (index !== null) {
+              endHold();
+              measureTap.current = null;
+              nodeDrag.current = { pointerId: event.pointerId, index, x: event.clientX, y: event.clientY, moved: false };
+              setDragIndex(index);
+              clearAim();
+              setHover((calibrating ? calNodes : trace)[index]!.point);
+              setLoupe({ x: event.clientX, y: event.clientY });
+              return;
+            }
             // A short press drops a point. Holding still lets the point be slid
             // into place with a magnifier. A drag still pans, and a second
             // finger still pinches.
@@ -790,10 +848,17 @@ export function DrawingSheetViewer({
         }
       }}
       onPointerMove={(event) => {
-        if (measuring && event.buttons === 0) rememberAim(event.clientX, event.clientY);
+        if (measuring && event.buttons === 0 && !nodeDrag.current) rememberAim(event.clientX, event.clientY);
         const previous = pointers.current.get(event.pointerId);
         if (!previous || !gesture.current) return;
         pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+        const drag = nodeDrag.current;
+        if (drag?.pointerId === event.pointerId && pointers.current.size === 1) {
+          drag.moved ||= Math.hypot(event.clientX - drag.x, event.clientY - drag.y) > 2;
+          if (drag.moved) rememberAim(event.clientX, event.clientY, drag.index);
+          setLoupe({ x: event.clientX, y: event.clientY });
+          return;
+        }
         const zoom = quickZoom.current;
         if (zoom?.pointerId === event.pointerId && pointers.current.size === 1) {
           const dy = event.clientY - zoom.y;
@@ -849,6 +914,21 @@ export function DrawingSheetViewer({
       }}
       onPointerUp={(event) => {
         if (!pointers.current.has(event.pointerId)) return;
+        const drag = nodeDrag.current;
+        if (drag?.pointerId === event.pointerId) {
+          const moved = drag.moved || Math.hypot(event.clientX - drag.x, event.clientY - drag.y) > 2;
+          const aim = moved ? aimFromClient(event.clientX, event.clientY, drag.index) : null;
+          if (aim) {
+            const replace = (nodes: MeasureNode[]) => nodes.map((node, index) => index === drag.index ? { point: aim.point, line: aim.segment } : node);
+            if (calibrating) setCalNodes(replace);
+            else setTrace(replace);
+          }
+          pointers.current.delete(event.pointerId);
+          cancelNodeDrag();
+          startGesture();
+          move(live.current, true);
+          return;
+        }
         const zoom = quickZoom.current;
         if (zoom?.pointerId === event.pointerId) {
           pointers.current.delete(event.pointerId);
@@ -885,6 +965,7 @@ export function DrawingSheetViewer({
         else move(live.current, true);
       }}
       onPointerCancel={(event) => {
+        if (nodeDrag.current) cancelNodeDrag();
         editor.cancelGesture();
         quickZoom.current = null;
         panTap.current = null;
@@ -896,7 +977,7 @@ export function DrawingSheetViewer({
         if (pointers.current.size === 0) move(live.current, true);
       }}
       onPointerLeave={() => {
-        if (measuring) clearAim();
+        if (measuring && !nodeDrag.current) clearAim();
       }}
       onWheel={(event) => {
         stopAnimation();
@@ -1021,9 +1102,9 @@ export function DrawingSheetViewer({
                     strokeLinecap="round"
                   />
                 </g>
-                {lockedAngle && marked.length >= 2 && (() => {
+                {lockedAngle && anglePair[0] && anglePair[1] && (() => {
                   // Square or 45°: say so next to the middle of the line.
-                  const a = marked[marked.length - 2]!, b = marked[marked.length - 1]!;
+                  const a = anglePair[0], b = anglePair[1];
                   const size = Math.max(2.2, 13 / view.scale);
                   return (
                     <text
@@ -1049,7 +1130,7 @@ export function DrawingSheetViewer({
               const cy = point.y * fit.height;
               const arm = markArm;
               return (
-                <g key={index} opacity={0.6}>
+                <g key={index} data-measure-node={index < drawn.length ? index : undefined} opacity={dragIndex === index ? 1 : 0.6}>
                   {[
                     [-1, -1, 1, 1],
                     [-1, 1, 1, -1],
@@ -1117,14 +1198,13 @@ export function DrawingSheetViewer({
           clearAim();
           setMeasuring((on) => !on);
           setCalibrating(false);
-          setCalPoints([]);
-          setCalLine(null);
+          setCalNodes([]);
           setScaleError(null);
           setScaleReadError(null);
         }}
         onUndo={undoPoint}
         onClear={() => {
-          clearAim();
+          cancelNodeDrag();
           setTrace([]);
         }}
         onStartScale={beginLengthScale}
@@ -1132,8 +1212,7 @@ export function DrawingSheetViewer({
         onCancelScale={() => {
           clearAim();
           setCalibrating(false);
-          setCalPoints([]);
-          setCalLine(null);
+          setCalNodes([]);
           setDraft("");
           setScaleError(null);
         }}

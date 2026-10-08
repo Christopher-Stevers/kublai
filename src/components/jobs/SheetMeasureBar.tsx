@@ -204,7 +204,7 @@ function Tracing({
         </p>
       )}
       {total && !reading && (
-        <p className="text-muted-foreground text-xs">Total along the points</p>
+        <p className="text-muted-foreground text-xs">Total along the points · Drag a point to adjust</p>
       )}
       {total && !reading && scaleLabel && (
         <p className="text-muted-foreground text-xs">{scaleLabel}</p>

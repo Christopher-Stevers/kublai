@@ -448,6 +448,156 @@ describe("drawing measure", () => {
   });
 });
 
+describe("dragging existing measuring nodes", () => {
+  beforeEach(() => {
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(null);
+  });
+  afterEach(() => vi.restoreAllMocks());
+
+  function startTrace() {
+    const { frame } = openSheet("node-drag", undefined, {
+      sharedScale: { unit: "ft", unitsPerSheetWidth: 100 },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Measure" }));
+    tap(frame, 200, 300);
+    tap(frame, 400, 300);
+    return frame;
+  }
+  function down(frame: HTMLElement, x: number, y: number, id = 1) {
+    fireEvent.pointerDown(frame, { clientX: x, clientY: y, pointerId: id, button: 0, buttons: 1 });
+  }
+  function move(frame: HTMLElement, x: number, y: number, id = 1) {
+    fireEvent.pointerMove(frame, { clientX: x, clientY: y, pointerId: id, buttons: 1 });
+  }
+  function up(frame: HTMLElement, x: number, y: number, id = 1) {
+    fireEvent.pointerUp(frame, { clientX: x, clientY: y, pointerId: id, button: 0, buttons: 0 });
+  }
+  function points(frame: HTMLElement) {
+    return frame.querySelector('polyline[stroke="#d97706"], polyline[stroke="#16a34a"]')?.getAttribute("points");
+  }
+
+  it("drags a middle point, updating both segments and the total without adding a node", () => {
+    const frame = startTrace();
+    tap(frame, 600, 300);
+    expect(screen.getByRole("status")).toHaveTextContent("50'-0\"");
+    down(frame, 408, 302); // Generous touch target around the middle X.
+    move(frame, 400, 450);
+    expect(points(frame)).toBe("200,200 400,350 600,200");
+    expect(screen.getByRole("status")).toHaveTextContent("62'-6\"");
+    expect(frame.querySelectorAll("[data-measure-node]")).toHaveLength(3);
+    up(frame, 400, 450);
+    expect(points(frame)).toBe("200,200 400,350 600,200");
+    expect(frame.querySelector("canvas")).toBeNull();
+    expect(frame.firstElementChild?.getAttribute("style")).toContain("scale(1)");
+  });
+
+  it("drags the first and last nodes, with angle locking against their neighbor", () => {
+    const frame = startTrace();
+    down(frame, 200, 300);
+    move(frame, 408, 150);
+    expect(screen.getByText("90°")).toBeInTheDocument();
+    up(frame, 408, 150);
+    expect(points(frame)).toBe("400,50 400,200");
+    expect(screen.getByRole("status")).toHaveTextContent("18'-9\"");
+    down(frame, 400, 300);
+    move(frame, 600, 150);
+    up(frame, 600, 150);
+    expect(points(frame)).toBe("400,50 600,50");
+    expect(screen.getByRole("status")).toHaveTextContent("25'-0\"");
+    expect(frame.querySelectorAll("[data-measure-node]")).toHaveLength(2);
+    // Tapping a point without moving does not add or change a point.
+    tap(frame, 600, 150);
+    expect(points(frame)).toBe("400,50 600,50");
+    expect(frame.querySelectorAll("[data-measure-node]")).toHaveLength(2);
+  });
+
+  it("snaps a dragged node to the exact angle/line intersection", async () => {
+    vi.mocked(loadSnapLines).mockResolvedValue([
+      { x1: 0, y1: 0.5, x2: 1, y2: 0.5 },
+      { x1: 0, y1: 0.125, x2: 1, y2: 0.125 },
+    ]);
+    const { frame } = openSheet("node-lines", { url: "/plan.pdf", page: 1 }, {
+      sharedScale: { unit: "ft", unitsPerSheetWidth: 100 },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Measure" }));
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("snap onto lines"));
+    tap(frame, 400, 312);
+    tap(frame, 600, 312);
+    down(frame, 600, 300);
+    move(frame, 408, 160);
+    expect(screen.getByText("90°")).toBeInTheDocument();
+    expect(frame.querySelector('line[stroke="#22d3ee"]')).toBeTruthy();
+    up(frame, 408, 160);
+    expect(points(frame)).toBe("400,200 400,50");
+    expect(screen.getByRole("status")).toHaveTextContent("18'-9\"");
+    expect(frame.querySelectorAll("[data-measure-node]")).toHaveLength(2);
+  });
+
+  it("lets either Set Scale endpoint move before saving the corrected scale", () => {
+    const onScaleChange = vi.fn();
+    const { frame } = openSheet("scale-node-drag", undefined, { sharedScale: null, onScaleChange });
+    fireEvent.click(screen.getByRole("button", { name: "Measure" }));
+    fireEvent.click(screen.getByRole("button", { name: "Set Scale" }));
+    tap(frame, 200, 300);
+    tap(frame, 600, 300);
+    down(frame, 200, 300);
+    move(frame, 100, 300);
+    up(frame, 100, 300);
+    down(frame, 600, 300);
+    move(frame, 500, 300);
+    up(frame, 500, 300);
+    expect(points(frame)).toBe("100,200 500,200");
+    expect(frame.querySelectorAll("[data-measure-node]")).toHaveLength(2);
+    expect(onScaleChange).not.toHaveBeenCalled();
+    fireEvent.change(screen.getByLabelText("How long is this line?"), { target: { value: "100" } });
+    fireEvent.click(screen.getByRole("button", { name: "Use this length" }));
+    expect(onScaleChange).toHaveBeenCalledWith({ unit: "ft", unitsPerSheetWidth: 200 });
+  });
+
+  it("restores the original point on pointer cancellation", () => {
+    const frame = startTrace();
+    down(frame, 400, 300);
+    move(frame, 600, 300);
+    expect(screen.getByRole("status")).toHaveTextContent("50'-0\"");
+    fireEvent.pointerCancel(frame, { pointerId: 1 });
+    expect(points(frame)).toBe("200,200 400,200");
+    expect(screen.getByRole("status")).toHaveTextContent("25'-0\"");
+    expect(frame.querySelector("canvas")).toBeNull();
+    tap(frame, 600, 300);
+    expect(frame.querySelectorAll("[data-measure-node]")).toHaveLength(3);
+  });
+
+  it("abandons a node drag for a two-finger pinch without altering the trace", async () => {
+    const frame = startTrace();
+    down(frame, 400, 300);
+    move(frame, 500, 300);
+    down(frame, 600, 300, 2);
+    expect(points(frame)).toBe("200,200 400,200");
+    move(frame, 650, 300, 2);
+    up(frame, 650, 300, 2);
+    up(frame, 500, 300);
+    await waitFor(() => expect(frame.firstElementChild?.getAttribute("style")).toContain("scale(1.5)"));
+    expect(frame.querySelectorAll("[data-measure-node]")).toHaveLength(2);
+    expect(screen.getByRole("status")).toHaveTextContent("25'-0\"");
+  });
+
+  it("finds a node in screen coordinates after zooming", () => {
+    const frame = startTrace();
+    fireEvent.wheel(frame, { clientX: 400, clientY: 300, deltaY: -Math.log(2) / 0.0015 });
+    // The first node is now at screen x=0, still grabbable 18px away.
+    down(frame, 18, 302);
+    move(frame, 110, 400);
+    up(frame, 110, 400);
+    const coordinates = points(frame)?.split(/[ ,]/).map(Number);
+    expect(coordinates).toHaveLength(4);
+    expect(coordinates![0]).toBeCloseTo(255);
+    expect(coordinates!.slice(1)).toEqual([250, 400, 200]);
+    expect(frame.querySelectorAll("[data-measure-node]")).toHaveLength(2);
+    const scale = frame.firstElementChild?.getAttribute("style")?.match(/scale\(([^)]+)\)/)?.[1];
+    expect(Number(scale)).toBeCloseTo(2);
+  });
+});
+
 describe("drawing one-finger zoom", () => {
   function pointer(frame: HTMLElement, kind: "pointerDown" | "pointerMove" | "pointerUp" | "pointerCancel", y: number, id = 1, x = 400) {
     fireEvent[kind](frame, { clientX: x, clientY: y, pointerId: id, button: 0, buttons: kind === "pointerUp" ? 0 : 1 });
