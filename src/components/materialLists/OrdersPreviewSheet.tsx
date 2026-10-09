@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "~/trpc/react";
 import {
   Dialog,
@@ -15,7 +15,7 @@ import { Input } from "~/components/ui/input";
 import { Textarea } from "~/components/ui/textarea";
 import { ChevronDownIcon, ChevronRightIcon } from "lucide-react";
 import { useOnlineStatus } from "~/hooks/use-online-status";
-import { buildEmailComposeUrl, getPreferredEmailClient } from "~/lib/mailto";
+import { openEmailCompose } from "~/lib/mailto";
 
 interface OrdersPreviewSheetProps {
   open: boolean;
@@ -78,6 +78,7 @@ export function OrdersPreviewSheet({
   const [emailDrafts, setEmailDrafts] = useState<Map<string, EmailDraft>>(
     new Map(),
   );
+  const sendInFlight = useRef(false);
   const [sendingOrderId, setSendingOrderId] = useState<string | null>(null);
   const [syncError, setSyncError] = useState<string | null>(null);
   const [previewData, setPreviewData] = useState<{
@@ -89,12 +90,13 @@ export function OrdersPreviewSheet({
 
   const utils = api.useUtils();
   const isOnline = useOnlineStatus();
-  const { data: userData } = api.user.getMyRole.useQuery(undefined, {
-    enabled: isOnline && open,
-  });
+  const { data: userData, isLoading: loadingPermissions } =
+    api.user.getMyRole.useQuery(undefined, {
+      enabled: isOnline && open,
+    });
   // Anyone can send a tool request; supplier orders need document rights.
   const canGenerateDocuments =
-    isToolRequest || (userData?.permissions.can["orders.send"] ?? true);
+    isToolRequest || (userData?.permissions.can["orders.send"] ?? false);
 
   const sendGeneratedOrder = api.materialList.sendGeneratedOrder.useMutation();
 
@@ -182,7 +184,10 @@ export function OrdersPreviewSheet({
   const sentOrders = previewData?.sent ?? [];
   const allOrders = useMemo(
     () => [
-      ...possibleOrders.map((order) => ({ ...order, kind: "possible" as const })),
+      ...possibleOrders.map((order) => ({
+        ...order,
+        kind: "possible" as const,
+      })),
       ...sentOrders.map((order) => ({ ...order, kind: "sent" as const })),
     ],
     [possibleOrders, sentOrders],
@@ -215,7 +220,7 @@ export function OrdersPreviewSheet({
 
   const handleSendToToolRoom = async (order: PreviewOrder) => {
     if (!order.supplierId) return;
-    const notes = orderNotes.get(order.id) || "";
+    const notes = orderNotes.get(order.id) ?? "";
     setSendingOrderId(order.id);
     try {
       await sendGeneratedOrder.mutateAsync({
@@ -237,6 +242,7 @@ export function OrdersPreviewSheet({
   };
 
   const handleEmailOrder = async (order: PreviewOrder) => {
+    if (sendInFlight.current) return;
     if (!canGenerateDocuments) {
       setSyncError("You don't have permission to send orders.");
       return;
@@ -252,8 +258,11 @@ export function OrdersPreviewSheet({
       return;
     }
 
-    const recipient =
-      emailRecipients.get(order.id)?.trim() || draft.to?.join(", ") || "";
+    const recipient = (
+      emailRecipients.get(order.id) ??
+      draft.to?.join(", ") ??
+      ""
+    ).trim();
     const toRecipients = recipient
       .split(",")
       .map((email) => email.trim())
@@ -268,34 +277,31 @@ export function OrdersPreviewSheet({
       return;
     }
     const ccRecipients = (
-      emailCcRecipients.get(order.id)?.trim() ||
-      draft.cc?.join(", ") ||
+      emailCcRecipients.get(order.id) ??
+      draft.cc?.join(", ") ??
       ""
     )
       .split(",")
       .map((email) => email.trim())
       .filter(Boolean);
 
-    const notes = orderNotes.get(order.id) || "";
+    const notes = orderNotes.get(order.id) ?? "";
+    sendInFlight.current = true;
     setSendingOrderId(order.id);
     try {
+      // Launch from this tap; waiting for persistence first lets Safari block it.
+      openEmailCompose({
+        to: toRecipients,
+        cc: ccRecipients,
+        subject: draft.subject,
+        body: draft.body,
+      });
       await sendGeneratedOrder.mutateAsync({
         materialListId,
         supplierId: order.supplierId,
         sentTo: toRecipients.join(", "),
         notes: notes.trim() || undefined,
       });
-
-      window.open(
-        buildEmailComposeUrl({
-          to: toRecipients,
-          cc: ccRecipients,
-          subject: draft.subject,
-          body: draft.body,
-          client: getPreferredEmailClient(),
-        }),
-        "_blank",
-      );
 
       setSyncError(null);
       await Promise.all([
@@ -313,16 +319,23 @@ export function OrdersPreviewSheet({
           : "Could not send this order. Try again in a moment.",
       );
     } finally {
+      sendInFlight.current = false;
       setSendingOrderId(null);
     }
   };
 
-  if (isGenerating || (open && !previewData && !loadError && isOnline && canGenerateDocuments)) {
+  if (
+    (loadingPermissions && !isToolRequest) ||
+    isGenerating ||
+    (open && !previewData && !loadError && isOnline && canGenerateDocuments)
+  ) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{isToolRequest ? "Preparing Request" : "Preparing Orders"}</DialogTitle>
+            <DialogTitle>
+              {isToolRequest ? "Preparing Request" : "Preparing Orders"}
+            </DialogTitle>
             <DialogDescription>
               {isToolRequest
                 ? "Building the tool room request from this list."
@@ -373,7 +386,9 @@ export function OrdersPreviewSheet({
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{isToolRequest ? "Nothing to Request" : "No Orders to Send"}</DialogTitle>
+            <DialogTitle>
+              {isToolRequest ? "Nothing to Request" : "No Orders to Send"}
+            </DialogTitle>
             <DialogDescription>
               {isToolRequest
                 ? "Add tools to this list, then send it to the tool room."
@@ -417,9 +432,10 @@ export function OrdersPreviewSheet({
             {isSent ? (
               <a
                 href={`/dashboard/assets/requests/${order.id}`}
-                className="text-sm font-medium text-primary hover:underline"
+                className="text-primary text-sm font-medium hover:underline"
               >
-                {TOOL_REQUEST_STATUS[order.fulfillmentStatus ?? "open"] ?? "Sent"}
+                {TOOL_REQUEST_STATUS[order.fulfillmentStatus ?? "open"] ??
+                  "Sent"}
               </a>
             ) : (
               <Button
@@ -446,7 +462,7 @@ export function OrdersPreviewSheet({
           </ul>
           {!isSent && (
             <Textarea
-              value={orderNotes.get(order.id) || ""}
+              value={orderNotes.get(order.id) ?? ""}
               onChange={(event) => {
                 const next = new Map(orderNotes);
                 next.set(order.id, event.target.value);
@@ -481,15 +497,47 @@ export function OrdersPreviewSheet({
               {order.supplier?.name || "Supplier Order"}
             </span>
           </button>
-          <div className="flex h-8 w-20 shrink-0 items-center justify-center">
+          <div className="flex min-h-8 shrink-0 items-center justify-center">
             {isSent ? (
-              <span className="text-sm font-medium text-green-700">Sent</span>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium text-green-700">Sent</span>
+                {draft && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() =>
+                      openEmailCompose({
+                        to: (
+                          emailRecipients.get(order.id) ??
+                          draft.to?.join(", ") ??
+                          ""
+                        )
+                          .split(",")
+                          .map((email) => email.trim())
+                          .filter(Boolean),
+                        cc: (
+                          emailCcRecipients.get(order.id) ??
+                          draft.cc?.join(", ") ??
+                          ""
+                        )
+                          .split(",")
+                          .map((email) => email.trim())
+                          .filter(Boolean),
+                        subject: draft.subject,
+                        body: draft.body,
+                      })
+                    }
+                  >
+                    Open email
+                  </Button>
+                )}
+              </div>
             ) : (
               <Button
                 size="sm"
                 className="h-8 w-full"
                 onClick={() => handleEmailOrder(order)}
-                disabled={!canGenerateDocuments || isSending}
+                disabled={!canGenerateDocuments || isSending || !draft}
               >
                 {isSending ? "Opening..." : "Send"}
               </Button>
@@ -500,9 +548,7 @@ export function OrdersPreviewSheet({
         {isExpanded && (
           <div className="mt-4 space-y-4 pl-6">
             {!draft ? (
-              <p className="text-muted-foreground text-sm">
-                Loading email...
-              </p>
+              <p className="text-muted-foreground text-sm">Loading email...</p>
             ) : (
               <>
                 <div className="space-y-2">
@@ -601,7 +647,7 @@ export function OrdersPreviewSheet({
                   </label>
                   <Textarea
                     id={`order-notes-${order.id}`}
-                    value={orderNotes.get(order.id) || ""}
+                    value={orderNotes.get(order.id) ?? ""}
                     onChange={(event) => {
                       const next = new Map(orderNotes);
                       next.set(order.id, event.target.value);
@@ -624,7 +670,9 @@ export function OrdersPreviewSheet({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{isToolRequest ? "Send to Tool Room" : "Orders"}</DialogTitle>
+          <DialogTitle>
+            {isToolRequest ? "Send to Tool Room" : "Orders"}
+          </DialogTitle>
           <DialogDescription>
             {isToolRequest
               ? "The tool room fills this from the yard and checks the tools out to the job."
@@ -641,8 +689,10 @@ export function OrdersPreviewSheet({
 
           {possibleOrders.length > 0 && (
             <div className="space-y-3">
-              <h3 className="text-sm font-semibold text-foreground/80">
-                {isToolRequest ? "Ready to Send" : `Possible Orders (${possibleOrders.length})`}
+              <h3 className="text-foreground/80 text-sm font-semibold">
+                {isToolRequest
+                  ? "Ready to Send"
+                  : `Possible Orders (${possibleOrders.length})`}
               </h3>
               {possibleOrders.map((order) =>
                 renderOrderCard({ ...order, kind: "possible" }),
@@ -652,8 +702,9 @@ export function OrdersPreviewSheet({
 
           {sentOrders.length > 0 && (
             <div className="space-y-3">
-              <h3 className="text-sm font-semibold text-foreground/80">
-                {isToolRequest ? "Requests Sent" : "Already Sent"} ({sentOrders.length})
+              <h3 className="text-foreground/80 text-sm font-semibold">
+                {isToolRequest ? "Requests Sent" : "Already Sent"} (
+                {sentOrders.length})
               </h3>
               {sentOrders.map((order) =>
                 renderOrderCard({ ...order, kind: "sent" }),

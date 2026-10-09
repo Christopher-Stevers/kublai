@@ -27,13 +27,21 @@ export function isEmailClientPreference(
 
 export function getPreferredEmailClient(): EmailClientPreference {
   if (typeof window === "undefined") return "default";
-  const stored = window.localStorage.getItem(EMAIL_CLIENT_STORAGE_KEY);
-  return isEmailClientPreference(stored) ? stored : "default";
+  try {
+    const stored = window.localStorage.getItem(EMAIL_CLIENT_STORAGE_KEY);
+    return isEmailClientPreference(stored) ? stored : "default";
+  } catch {
+    return "default";
+  }
 }
 
 export function setPreferredEmailClient(client: EmailClientPreference) {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem(EMAIL_CLIENT_STORAGE_KEY, client);
+  try {
+    window.localStorage.setItem(EMAIL_CLIENT_STORAGE_KEY, client);
+  } catch {
+    /* Mail still works when the browser blocks preference storage. */
+  }
 }
 
 function encodeQuery(params: Array<[string, string]>) {
@@ -95,4 +103,27 @@ export function buildMailtoUrl(args: {
   body: string;
 }) {
   return buildEmailComposeUrl(args);
+}
+
+/** Call directly from a tap, before awaiting a request: Safari expires popup activation. */
+export function openEmailCompose(
+  args: Parameters<typeof buildEmailComposeUrl>[0],
+) {
+  const url = buildEmailComposeUrl({
+    ...args,
+    client: args.client ?? getPreferredEmailClient(),
+  });
+  const link = document.createElement("a");
+  link.href = url;
+  // Native mail needs no blank browser window, especially in an installed iOS app.
+  link.target = url.startsWith("mailto:") ? "_self" : "_blank";
+  link.rel = "noopener noreferrer";
+  link.hidden = true;
+  document.body.append(link);
+  try {
+    link.click();
+  } finally {
+    link.remove();
+  }
+  return url;
 }

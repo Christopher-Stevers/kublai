@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { buildEmailComposeUrl } from "./mailto";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { buildEmailComposeUrl, openEmailCompose } from "./mailto";
 
 describe("mailto", () => {
   it("builds default mail links without plus-encoding spaces", () => {
@@ -40,5 +40,67 @@ describe("mailto", () => {
     expect(url).toBe(
       "https://outlook.office.com/mail/deeplink/compose?to=orders%40example.com&cc=buyer%40example.com&subject=Pipe%20order&body=2%20x%20pipe",
     );
+  });
+});
+
+describe("email client launch", () => {
+  beforeEach(() =>
+    vi.stubGlobal("localStorage", {
+      getItem: vi.fn(() => null),
+      setItem: vi.fn(),
+      clear: vi.fn(),
+    }),
+  );
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+  it.each(["default", "gmail", "outlook"] as const)(
+    "opens %s synchronously without a delayed popup",
+    (client) => {
+      const spy = vi
+        .spyOn(HTMLAnchorElement.prototype, "click")
+        .mockImplementation(function (this: HTMLAnchorElement) {
+          expect(this.isConnected).toBe(true);
+          expect(this.target).toBe(client === "default" ? "_self" : "_blank");
+          expect(this.rel).toBe("noopener noreferrer");
+          expect(this.href).toBe(
+            buildEmailComposeUrl({
+              to: ["orders@example.com"],
+              subject: "Order",
+              body: "A\nB",
+              client,
+            }),
+          );
+        });
+      const popup = vi.spyOn(window, "open");
+      openEmailCompose({
+        to: ["orders@example.com"],
+        subject: "Order",
+        body: "A\nB",
+        client,
+      });
+      expect(spy).toHaveBeenCalledOnce();
+      expect(popup).not.toHaveBeenCalled();
+      expect(document.querySelector("a[hidden]")).toBeNull();
+    },
+  );
+  it("falls back to native email when Safari blocks preference storage", () => {
+    vi.spyOn(window.localStorage, "getItem").mockImplementation(() => {
+      throw new DOMException("Storage blocked", "SecurityError");
+    });
+    const spy = vi
+      .spyOn(HTMLAnchorElement.prototype, "click")
+      .mockImplementation(function (this: HTMLAnchorElement) {
+        expect(this.href.startsWith("mailto:")).toBe(true);
+      });
+    expect(() =>
+      openEmailCompose({
+        to: ["orders@example.com"],
+        subject: "Order",
+        body: "Body",
+      }),
+    ).not.toThrow();
+    expect(spy).toHaveBeenCalledOnce();
   });
 });

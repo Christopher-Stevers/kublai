@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { scoreOrderSearch } from "~/lib/order-search";
 import { api } from "~/trpc/react";
 import { Card, CardContent } from "~/components/ui/card";
@@ -28,7 +28,7 @@ import {
   getSupplierEmailRecipients,
   normalizeSupplierContacts,
 } from "~/lib/supplier-contacts";
-import { buildEmailComposeUrl, getPreferredEmailClient } from "~/lib/mailto";
+import { openEmailCompose } from "~/lib/mailto";
 import type { RouterOutputs } from "~/trpc/react";
 import { ListPageSkeleton } from "~/components/ui/skeleton";
 
@@ -59,7 +59,11 @@ function matchesDateFilter(order: ListedOrder, dateFilter: DateFilter) {
   const value = orderDate(order);
   if (Number.isNaN(value.getTime())) return false;
   const now = new Date();
-  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const startOfToday = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate(),
+  );
   if (dateFilter === "today") return value >= startOfToday;
   if (dateFilter === "last7") {
     const start = new Date(startOfToday);
@@ -80,10 +84,18 @@ function matchesDateFilter(order: ListedOrder, dateFilter: DateFilter) {
 export default function OrdersPage() {
   const utils = api.useUtils();
   const isOnline = useOnlineStatus();
+  const { data: userData } = api.user.getMyRole.useQuery(undefined, {
+    enabled: isOnline,
+  });
+  const canSendOrders = userData?.permissions.can["orders.send"] ?? false;
+  const sendInFlight = useRef(false);
   const { data: serverOrders, isLoading } =
-    api.materialList.listOrders.useQuery({ summary: true }, {
-      enabled: isOnline,
-    });
+    api.materialList.listOrders.useQuery(
+      { summary: true },
+      {
+        enabled: isOnline,
+      },
+    );
   const {
     data: orders,
     cacheLoaded,
@@ -175,26 +187,22 @@ export default function OrdersPage() {
   };
 
   const handleResendOrder = async (orderId: string) => {
+    if (sendInFlight.current || !canSendOrders || !isOnline) return;
     const order = orders?.find((item) => item.id === orderId);
     if (!order) return;
 
-    let draft = emailDrafts.get(orderId);
+    const draft = emailDrafts.get(orderId);
     if (!draft) {
+      // Prepare on the first tap; opening the ready draft takes a fresh tap.
+      setExpandedOrders((prev) => new Set(prev).add(orderId));
       await loadEmail(orderId);
-      draft = emailDrafts.get(orderId);
-    }
-    if (!draft) {
-      const fetched = await utils.materialList.getOrderEmailContent.fetch({
-        orderId,
-      });
-      draft = fetched;
-      setEmailDrafts((prev) => new Map(prev).set(orderId, fetched));
+      return;
     }
 
     const recipient =
-      emailRecipients.get(orderId)?.trim() ||
-      order.sentTo?.trim() ||
-      draft.to?.join(", ") ||
+      emailRecipients.get(orderId)?.trim() ??
+      order.sentTo?.trim() ??
+      draft.to?.join(", ") ??
       (order.supplier
         ? getSupplierEmailRecipients(
             normalizeSupplierContacts(order.supplier.contacts, order.supplier),
@@ -215,31 +223,28 @@ export default function OrdersPage() {
       return;
     }
     const ccRecipients = (
-      emailCcRecipients.get(orderId)?.trim() ||
-      draft.cc?.join(", ") ||
+      emailCcRecipients.get(orderId)?.trim() ??
+      draft.cc?.join(", ") ??
       ""
     )
       .split(",")
       .map((email) => email.trim())
       .filter(Boolean);
 
+    sendInFlight.current = true;
     setSendingOrderId(orderId);
     try {
+      openEmailCompose({
+        to: toRecipients,
+        cc: ccRecipients,
+        subject: draft.subject,
+        body: draft.body,
+      });
       await markOrderSent.mutateAsync({
         orderId,
         sentTo: toRecipients.join(", "),
         notes: order.notes ?? undefined,
       });
-      window.open(
-        buildEmailComposeUrl({
-          to: toRecipients,
-          cc: ccRecipients,
-          subject: draft.subject,
-          body: draft.body,
-          client: getPreferredEmailClient(),
-        }),
-        "_blank",
-      );
       setSyncError(null);
     } catch (error) {
       setSyncError(
@@ -248,6 +253,7 @@ export default function OrdersPage() {
           : "Could not send this order. Try again in a moment.",
       );
     } finally {
+      sendInFlight.current = false;
       setSendingOrderId(null);
     }
   };
@@ -281,14 +287,18 @@ export default function OrdersPage() {
     return (orders ?? [])
       .filter((order) => {
         if (jobFilter && order.job?.id !== jobFilter) return false;
-        if (supplierFilter && order.supplier?.id !== supplierFilter) return false;
+        if (supplierFilter && order.supplier?.id !== supplierFilter)
+          return false;
         if (!matchesDateFilter(order, dateFilter)) return false;
         return true;
       })
-      .map(order => ({ order, score: scoreOrderSearch(order, query, emailDrafts.get(order.id)) }))
-      .filter(result => result.score > 0)
+      .map((order) => ({
+        order,
+        score: scoreOrderSearch(order, query, emailDrafts.get(order.id)),
+      }))
+      .filter((result) => result.score > 0)
       .sort((a, b) => b.score - a.score)
-      .map(result => result.order);
+      .map((result) => result.order);
   }, [orders, jobFilter, supplierFilter, dateFilter, searchQuery, emailDrafts]);
 
   const selectedJobName =
@@ -323,7 +333,7 @@ export default function OrdersPage() {
     <div className="px-4 py-6 sm:px-6 sm:py-8">
       <div className="mx-auto max-w-2xl">
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-foreground sm:text-3xl">
+          <h1 className="text-foreground text-2xl font-bold sm:text-3xl">
             Orders
           </h1>
           <p className="text-muted-foreground mt-2 text-sm sm:text-base">
@@ -346,7 +356,7 @@ export default function OrdersPage() {
           <div className="mb-4 space-y-3">
             <div className="flex gap-2">
               <div className="relative flex-1">
-                <SearchIcon className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground/70" />
+                <SearchIcon className="text-muted-foreground/70 absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
                 <Input
                   type="search"
                   value={searchQuery}
@@ -403,8 +413,13 @@ export default function OrdersPage() {
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="h-11 w-full justify-between">
-                    <span className="truncate">{selectedJobName ?? "All jobs"}</span>
+                  <Button
+                    variant="outline"
+                    className="h-11 w-full justify-between"
+                  >
+                    <span className="truncate">
+                      {selectedJobName ?? "All jobs"}
+                    </span>
                     <ChevronDownIcon className="h-4 w-4 shrink-0" />
                   </Button>
                 </DropdownMenuTrigger>
@@ -425,7 +440,10 @@ export default function OrdersPage() {
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="h-11 w-full justify-between">
+                  <Button
+                    variant="outline"
+                    className="h-11 w-full justify-between"
+                  >
                     <span className="truncate">
                       {selectedSupplierName ?? "All suppliers"}
                     </span>
@@ -449,7 +467,10 @@ export default function OrdersPage() {
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="h-11 w-full justify-between">
+                  <Button
+                    variant="outline"
+                    className="h-11 w-full justify-between"
+                  >
                     <span className="truncate">
                       {DATE_FILTER_LABELS[dateFilter]}
                     </span>
@@ -476,29 +497,27 @@ export default function OrdersPage() {
         {!orders || orders.length === 0 ? (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12">
-              <PackageIcon className="mb-4 h-12 w-12 text-muted-foreground/70" />
+              <PackageIcon className="text-muted-foreground/70 mb-4 h-12 w-12" />
               <h3 className="mb-2 text-lg font-semibold">No orders yet</h3>
               <p className="text-muted-foreground mb-4 text-center">
-                Orders will appear here after you send them from a material
-                list
+                Orders will appear here after you send them from a material list
               </p>
             </CardContent>
           </Card>
+        ) : filteredOrders.length === 0 ? (
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center py-12">
+              <PackageIcon className="text-muted-foreground/70 mb-4 h-12 w-12" />
+              <h3 className="mb-2 text-lg font-semibold">No matching orders</h3>
+              <p className="text-muted-foreground mb-4 text-center">
+                Nothing matches these filters.
+              </p>
+              <Button variant="outline" onClick={clearFilters}>
+                Clear filters
+              </Button>
+            </CardContent>
+          </Card>
         ) : (
-          filteredOrders.length === 0 ? (
-            <Card>
-              <CardContent className="flex flex-col items-center justify-center py-12">
-                <PackageIcon className="mb-4 h-12 w-12 text-muted-foreground/70" />
-                <h3 className="mb-2 text-lg font-semibold">No matching orders</h3>
-                <p className="text-muted-foreground mb-4 text-center">
-                  Nothing matches these filters.
-                </p>
-                <Button variant="outline" onClick={clearFilters}>
-                  Clear filters
-                </Button>
-              </CardContent>
-            </Card>
-          ) : (
           <div className="space-y-3">
             {filteredOrders.slice(0, visibleCount).map((order) => {
               const isExpanded = expandedOrders.has(order.id);
@@ -516,7 +535,7 @@ export default function OrdersPage() {
                 .join(" · ");
 
               return (
-                <div key={order.id} className="rounded-lg border bg-card p-4">
+                <div key={order.id} className="bg-card rounded-lg border p-4">
                   <div className="flex items-center justify-between gap-3">
                     <button
                       onClick={() => toggleOrder(order.id)}
@@ -532,7 +551,7 @@ export default function OrdersPage() {
                           {order.supplier?.name || "Supplier Order"}
                         </span>
                         {contextLine && (
-                          <span className="block truncate text-xs font-normal text-muted-foreground">
+                          <span className="text-muted-foreground block truncate text-xs font-normal">
                             {contextLine}
                           </span>
                         )}
@@ -544,9 +563,20 @@ export default function OrdersPage() {
                         variant="outline"
                         className="h-8 w-full"
                         onClick={() => handleResendOrder(order.id)}
-                        disabled={!isOnline || isSending}
+                        disabled={
+                          !isOnline ||
+                          !canSendOrders ||
+                          isSending ||
+                          isDraftLoading
+                        }
                       >
-                        {isSending ? "Opening..." : "Resend"}
+                        {isSending
+                          ? "Opening..."
+                          : isDraftLoading
+                            ? "Preparing..."
+                            : draft
+                              ? "Resend"
+                              : "Prepare email"}
                       </Button>
                     </div>
                   </div>
@@ -669,12 +699,15 @@ export default function OrdersPage() {
               );
             })}
             {filteredOrders.length > visibleCount && (
-              <Button variant="outline" onClick={() => setVisibleCount(count => count + 50)}>
-                Show more orders ({filteredOrders.length - visibleCount} remaining)
+              <Button
+                variant="outline"
+                onClick={() => setVisibleCount((count) => count + 50)}
+              >
+                Show more orders ({filteredOrders.length - visibleCount}{" "}
+                remaining)
               </Button>
             )}
           </div>
-          )
         )}
       </div>
     </div>
