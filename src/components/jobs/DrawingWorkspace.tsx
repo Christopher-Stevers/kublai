@@ -61,7 +61,13 @@ import { ChatNotifications } from "./ChatNotifications";
 import { useDrawingQueuedEdits } from "./useDrawingQueuedEdits";
 
 /** Tools menu: everything that is not a markup type. */
-const OTHER_TOOLS = new Set<DrawingTool>(["pan", "select", "link", "issue", "rfi"]);
+const OTHER_TOOLS = new Set<DrawingTool>([
+  "pan",
+  "select",
+  "link",
+  "issue",
+  "rfi",
+]);
 const BAR_BUTTON =
   "h-14 w-full flex-col gap-1 rounded-xl px-1 text-xs font-medium whitespace-normal";
 export const tools: Array<[DrawingTool, string]> = [
@@ -178,9 +184,31 @@ export function DrawingWorkspace({
   const [tool, setTool] = useState<DrawingTool>("pan");
   // Bottom bar: the Markup panel, and Measure / Pipe system in the viewer.
   const [markupOpen, setMarkupOpen] = useState(false);
-  const [measureRequest, setMeasureRequest] = useState(0);
-  const [pipeRequest, setPipeRequest] = useState(0);
-  const [bottomMode, setBottomMode] = useState({ measuring: false, pipe: false });
+  const [modeRequest, setModeRequest] = useState<{
+    id: number;
+    mode: "idle" | "measure" | "pipe";
+  }>({ id: 0, mode: "idle" });
+  const [moveToolActive, setMoveToolActive] = useState(false);
+  const requestMode = useCallback((mode: "idle" | "measure" | "pipe") => {
+    setModeRequest((current) => ({ id: current.id + 1, mode }));
+  }, []);
+  const selectTool = useCallback(
+    (next: DrawingTool, explicitMove = false) => {
+      requestMode("idle");
+      setTool(next);
+      setMoveToolActive(next === "pan" && explicitMove);
+      setMarkupOpen(false);
+    },
+    [requestMode],
+  );
+  const finishTool = () => {
+    selectTool("pan");
+    setSelectedId(null);
+  };
+  const [bottomMode, setBottomMode] = useState({
+    measuring: false,
+    pipe: false,
+  });
   const [style, setStyle] = useState<DrawingStyle>({
     stroke: "#ef4444",
     width: 2,
@@ -329,7 +357,7 @@ export function DrawingWorkspace({
     setTextBusy(false);
     setWords({ words: [], links: [] });
     setHighlight(null);
-    setTool("pan");
+    selectTool("pan");
     const generation = textRequest;
     const abort = ocrRequest;
     return () => {
@@ -337,7 +365,7 @@ export function DrawingWorkspace({
       generation.current++;
       abort.current?.abort();
     };
-  }, [source.id, source.imageUrl, resolveAssetUrl]);
+  }, [source.id, source.imageUrl, resolveAssetUrl, selectTool]);
 
   const saveMutation = api.drawingsWorkspace.save.useMutation();
   const archiveMutation = api.drawingsWorkspace.archive.useMutation();
@@ -446,7 +474,7 @@ export function DrawingWorkspace({
     setForm(null);
     const entity = entities.find((item) => item.id === id);
     if (entity?.kind === "markup") {
-      setTool("select");
+      selectTool("select");
       if (id !== selectedId) setSelectionMode("resize");
       setPanel("");
     } else if (id) setPanel("selected");
@@ -550,7 +578,7 @@ export function DrawingWorkspace({
     if (["text", "callout", "link"].includes(markup.type)) {
       setForm(value);
       setPanel("selected");
-      setTool("pan");
+      selectTool("pan");
     } else void save(value);
   };
   const newRecord = (kind: "view" | "version" | "review" | "transmittal") => {
@@ -817,16 +845,16 @@ export function DrawingWorkspace({
     );
 
   const statusText = pending
-            ? "Saving…"
-            : form || failedDrafts.length || metadataDirty
-              ? "Unsaved changes"
-              : queued.records.length
-                ? `${queued.records.length} edit(s) saved on device`
-                : !online
-                  ? "Offline · private drafts only"
-                  : !current
-                    ? "Earlier revision · read only"
-                    : "Saved";
+    ? "Saving…"
+    : form || failedDrafts.length || metadataDirty
+      ? "Unsaved changes"
+      : queued.records.length
+        ? `${queued.records.length} edit(s) saved on device`
+        : !online
+          ? "Offline · private drafts only"
+          : !current
+            ? "Earlier revision · read only"
+            : "Saved";
 
   return (
     <div
@@ -891,7 +919,7 @@ export function DrawingWorkspace({
                   aria-pressed={selectionMode === "move" && tool === "select"}
                   disabled={pending > 0}
                   onClick={() => {
-                    setTool("select");
+                    selectTool("select");
                     setSelectionMode("move");
                     setPanel("");
                   }}
@@ -908,7 +936,7 @@ export function DrawingWorkspace({
                   aria-pressed={selectionMode === "resize" && tool === "select"}
                   disabled={pending > 0}
                   onClick={() => {
-                    setTool("select");
+                    selectTool("select");
                     setSelectionMode("resize");
                     setPanel("");
                   }}
@@ -943,7 +971,7 @@ export function DrawingWorkspace({
               variant="ghost"
               onClick={() => {
                 selectAnnotation(null);
-                setTool("pan");
+                selectTool("pan");
               }}
             >
               Done
@@ -1076,7 +1104,12 @@ export function DrawingWorkspace({
             <DrawingCompare
               appearance={appearance}
               key={`${compareFirst.id}:${compare.id}`}
-              toolControls={{ measureRequest, pipeRequest, onMode: setBottomMode }}
+              toolControls={{
+                measureRequest: 0,
+                pipeRequest: 0,
+                modeRequest,
+                onMode: setBottomMode,
+              }}
               resolveAssetUrl={resolveAssetUrl}
               first={{
                 ...compareFirst,
@@ -1096,7 +1129,12 @@ export function DrawingWorkspace({
             <DrawingSheetViewer
               appearance={appearance}
               key={source.id}
-              toolControls={{ measureRequest, pipeRequest, onMode: setBottomMode }}
+              toolControls={{
+                measureRequest: 0,
+                pipeRequest: 0,
+                modeRequest,
+                onMode: setBottomMode,
+              }}
               initialViewport={viewport.current}
               src={resolved.src}
               alt={source.name}
@@ -1157,7 +1195,7 @@ export function DrawingWorkspace({
                         },
                       });
                       setPanel("selected");
-                      setTool("pan");
+                      selectTool("pan");
                     }
                   : undefined
               }
@@ -1430,7 +1468,7 @@ export function DrawingWorkspace({
                         size="sm"
                         disabled={!writable}
                         onClick={() => {
-                          setTool("issue");
+                          selectTool("issue");
                           setPanel("");
                         }}
                       >
@@ -1441,7 +1479,7 @@ export function DrawingWorkspace({
                         disabled={!writable}
                         variant="outline"
                         onClick={() => {
-                          setTool("rfi");
+                          selectTool("rfi");
                           setPanel("");
                         }}
                       >
@@ -1463,7 +1501,7 @@ export function DrawingWorkspace({
                         key={entity.id}
                         onClick={() => {
                           selectAnnotation(entity.id);
-                          setTool("select");
+                          selectTool("select");
                         }}
                       >
                         {nameOf(entity)}
@@ -2089,15 +2127,15 @@ export function DrawingWorkspace({
           </aside>
         )}
       </div>
-      <span
-        role="status"
-        className="sr-only"
-      >
+      <span role="status" className="sr-only">
         {statusText}
       </span>
       {/* Bottom bar: More, Tools, Markup, Measure (Previous / Next sit
           below it in the Drawings screen). */}
-      <div data-drawing-chrome className="bg-card relative shrink-0 border-t px-4 pt-2 pb-1">
+      <div
+        data-drawing-chrome
+        className="bg-card relative shrink-0 border-t px-4 pt-2 pb-1"
+      >
         {markupOpen && (
           <>
             <button
@@ -2124,9 +2162,7 @@ export function DrawingWorkspace({
                       disabled={!writable}
                       aria-pressed={tool === id}
                       onClick={() => {
-                        if (bottomMode.measuring) setMeasureRequest((n) => n + 1);
-                        if (bottomMode.pipe) setPipeRequest((n) => n + 1);
-                        setTool(id);
+                        selectTool(id);
                         setPanel("");
                         setHighlight(null);
                         setMarkupOpen(false);
@@ -2152,7 +2188,10 @@ export function DrawingWorkspace({
                     className="bg-background rounded border p-2 text-sm"
                     value={style.width}
                     onChange={(e) =>
-                      setStyle((old) => ({ ...old, width: Number(e.target.value) }))
+                      setStyle((old) => ({
+                        ...old,
+                        width: Number(e.target.value),
+                      }))
                     }
                   >
                     {[1, 2, 4, 8].map((width) => (
@@ -2181,15 +2220,27 @@ export function DrawingWorkspace({
             </div>
           </>
         )}
-        <div className="mx-auto grid max-w-6xl grid-cols-4 gap-2">
+        <div
+          role="toolbar"
+          aria-label="Drawing tools"
+          className={`relative mx-auto grid max-w-6xl grid-cols-4 gap-2 ${markupOpen ? "z-50" : ""}`}
+        >
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" className={BAR_BUTTON} aria-label="More">
+              <Button
+                variant="outline"
+                className={BAR_BUTTON}
+                aria-label="More"
+              >
                 <MoreHorizontalIcon className="h-5 w-5" />
                 More
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent side="top" align="start" className="max-h-[70dvh] min-w-60 overflow-y-auto">
+            <DropdownMenuContent
+              side="top"
+              align="start"
+              className="max-h-[70dvh] min-w-60 overflow-y-auto"
+            >
               <DropdownMenuLabel className="text-muted-foreground text-xs font-normal">
                 {statusText}
               </DropdownMenuLabel>
@@ -2227,71 +2278,128 @@ export function DrawingWorkspace({
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant={(OTHER_TOOLS.has(tool) && !bottomMode.measuring) || bottomMode.pipe ? "default" : "outline"}
-                className={BAR_BUTTON}
-                aria-label="Tools"
+          {bottomMode.pipe ||
+          (!bottomMode.measuring &&
+            (moveToolActive || (tool !== "pan" && OTHER_TOOLS.has(tool)))) ? (
+            <Button
+              variant="default"
+              className={BAR_BUTTON}
+              aria-label="Done"
+              onClick={finishTool}
+            >
+              <WrenchIcon className="h-5 w-5" />
+              Done
+            </Button>
+          ) : (
+            <DropdownMenu
+              modal={false}
+              onOpenChange={(open) => {
+                if (open) finishTool();
+              }}
+            >
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={BAR_BUTTON}
+                  aria-label="Tools"
+                >
+                  <WrenchIcon className="h-5 w-5" />
+                  Tools
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                side="top"
+                align="center"
+                className="min-w-52"
               >
-                <WrenchIcon className="h-5 w-5" />
-                Tools
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent side="top" align="center" className="min-w-52">
-              <DropdownMenuRadioGroup
-                value={bottomMode.pipe || bottomMode.measuring ? "" : writable ? tool : "pan"}
-                onValueChange={(value) => {
-                  if (bottomMode.measuring) setMeasureRequest((n) => n + 1);
-                  if (bottomMode.pipe) setPipeRequest((n) => n + 1);
-                  setTool(value as DrawingTool);
-                  setPanel("");
-                  setHighlight(null);
-                }}
-              >
-                {tools
-                  .filter(([id]) => OTHER_TOOLS.has(id))
-                  .map(([id, label]) => (
-                    <DropdownMenuRadioItem key={id} value={id} disabled={!writable && id !== "pan"}>
-                      {label}
-                    </DropdownMenuRadioItem>
-                  ))}
-              </DropdownMenuRadioGroup>
-              <DropdownMenuSeparator />
-              <DropdownMenuCheckboxItem
-                checked={bottomMode.pipe}
-                onCheckedChange={() => {
-                  if (bottomMode.measuring) setMeasureRequest((n) => n + 1);
-                  setTool("pan");
-                  setPipeRequest((n) => n + 1);
-                }}
-              >
-                Pipe system
-              </DropdownMenuCheckboxItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+                <DropdownMenuRadioGroup
+                  value={
+                    bottomMode.pipe ||
+                    bottomMode.measuring ||
+                    (tool === "pan" && !moveToolActive)
+                      ? ""
+                      : writable
+                        ? tool
+                        : "pan"
+                  }
+                  onValueChange={(value) => {
+                    selectTool(value as DrawingTool, true);
+                    setPanel("");
+                    setHighlight(null);
+                  }}
+                >
+                  {tools
+                    .filter(([id]) => OTHER_TOOLS.has(id))
+                    .map(([id, label]) => (
+                      <DropdownMenuRadioItem
+                        key={id}
+                        value={id}
+                        disabled={!writable && id !== "pan"}
+                      >
+                        {label}
+                      </DropdownMenuRadioItem>
+                    ))}
+                </DropdownMenuRadioGroup>
+                <DropdownMenuSeparator />
+                <DropdownMenuCheckboxItem
+                  checked={bottomMode.pipe}
+                  onCheckedChange={() => {
+                    setTool("pan");
+                    setMoveToolActive(false);
+                    setMarkupOpen(false);
+                    requestMode("pipe");
+                  }}
+                >
+                  Pipe system
+                </DropdownMenuCheckboxItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
           <Button
-            variant={markupOpen || (!OTHER_TOOLS.has(tool) && !bottomMode.measuring) ? "default" : "outline"}
+            variant={
+              !OTHER_TOOLS.has(tool) && !bottomMode.measuring
+                ? "default"
+                : "outline"
+            }
             className={BAR_BUTTON}
-            aria-label="Markup"
+            aria-label={
+              !OTHER_TOOLS.has(tool) && !bottomMode.measuring
+                ? "Done"
+                : "Markup"
+            }
             aria-expanded={markupOpen}
-            onClick={() => setMarkupOpen((open) => !open)}
+            onClick={() => {
+              if (!OTHER_TOOLS.has(tool) && !bottomMode.measuring) finishTool();
+              else if (markupOpen) setMarkupOpen(false);
+              else {
+                finishTool();
+                setMarkupOpen(true);
+              }
+            }}
           >
             <PenLineIcon className="h-5 w-5" />
             <span className="flex items-center gap-0.5">
-              Markup
-              <ChevronUpIcon className={`h-3.5 w-3.5 transition-transform ${markupOpen ? "rotate-180" : ""}`} />
+              {!OTHER_TOOLS.has(tool) && !bottomMode.measuring
+                ? "Done"
+                : "Markup"}
+              {OTHER_TOOLS.has(tool) && (
+                <ChevronUpIcon
+                  className={`h-3.5 w-3.5 transition-transform ${markupOpen ? "rotate-180" : ""}`}
+                />
+              )}
             </span>
           </Button>
           <Button
             variant={bottomMode.measuring ? "default" : "outline"}
             className={BAR_BUTTON}
-            aria-label="Measure"
+            aria-label={bottomMode.measuring ? "Done" : "Measure"}
             aria-pressed={bottomMode.measuring}
             onClick={() => {
               setMarkupOpen(false);
-              if (!bottomMode.measuring) setTool("pan");
-              setMeasureRequest((n) => n + 1);
+              setTool("pan");
+              setMoveToolActive(false);
+              setSelectedId(null);
+              requestMode(bottomMode.measuring ? "idle" : "measure");
             }}
           >
             <RulerIcon className="h-5 w-5" />
