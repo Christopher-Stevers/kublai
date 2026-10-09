@@ -11,6 +11,9 @@ const config = {
   distDir: process.env.NEXT_DIST_DIR ?? ".next",
   // For Next.js 13+ App Router, we need to configure route handlers differently
   experimental: {
+    // Forward complete 50 MB document uploads plus multipart metadata.
+    // Each route continues to enforce its own file and request limits.
+    proxyClientMaxBodySize: 51 * 1024 * 1024,
     serverActions: {
       bodySizeLimit: "5gb",
     },
