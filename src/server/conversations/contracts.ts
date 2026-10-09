@@ -47,6 +47,9 @@ export const editSnapshotInput = conversationInput.extend({
   body: z.string().trim().min(1).max(8000),
   source: snapshotSourceSchema.nullable(),
 });
+export const replaceSnapshotInput = editSnapshotInput.extend({
+  targetConversationId: z.uuid(),
+});
 export type ConversationMessage = {
   id: string;
   sequence: number;

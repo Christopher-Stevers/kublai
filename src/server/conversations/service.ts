@@ -30,6 +30,7 @@ import type {
   sendConversationInput,
   editSnapshotInput,
   savedSnapshotsInput,
+  replaceSnapshotInput,
 } from "./contracts";
 import type { z } from "zod";
 
@@ -631,6 +632,175 @@ export async function editConversationSnapshot(
     await removeReplacedConversationFile(result.replaced);
   }
   return { id: result.id, revision: result.revision };
+}
+export async function replaceConversationSnapshot(
+  access: ConversationAccess,
+  input: z.infer<typeof replaceSnapshotInput>,
+) {
+  // Both ends are checked against the current effective identity, including
+  // employee simulation. Keep the original until the replacement commits.
+  await conversationAccess(access.user.id, access.conversation.id);
+  const target = await conversationAccess(
+    access.user.id,
+    input.targetConversationId,
+  );
+  const hash = createHash("sha256").update(JSON.stringify(input)).digest("hex");
+  const result = await db.transaction(async (tx) => {
+    // Stable ordering prevents two cross-conversation remakes deadlocking.
+    for (const id of [
+      ...new Set([access.conversation.id, target.conversation.id]),
+    ].sort())
+      await lockConversation(tx, id);
+    const [original] = await tx
+      .select()
+      .from(conversationMessages)
+      .where(
+        and(
+          eq(conversationMessages.id, input.messageId),
+          eq(conversationMessages.conversationId, access.conversation.id),
+          eq(conversationMessages.authorId, access.user.id),
+        ),
+      )
+      .for("update");
+    if (!original)
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: "This snapshot is unavailable.",
+      });
+    const [retry] = await tx
+      .select()
+      .from(conversationMessages)
+      .where(
+        and(
+          eq(conversationMessages.conversationId, target.conversation.id),
+          eq(conversationMessages.authorId, access.user.id),
+          eq(conversationMessages.clientId, input.clientId),
+        ),
+      )
+      .limit(1);
+    if (retry) {
+      if (
+        retry.requestHash !== hash ||
+        original.editClientId !== input.clientId ||
+        original.editRequestHash !== hash
+      )
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "This retry has different contents. Reopen the snapshot.",
+        });
+      return { id: retry.id, removed: [] as string[] };
+    }
+    if (original.deletedAt || original.revision !== input.expectedRevision)
+      throw new TRPCError({
+        code: "CONFLICT",
+        message:
+          "This snapshot changed or was deleted. Reopen it before trying again.",
+      });
+    const originals = await tx
+      .select()
+      .from(conversationAttachments)
+      .where(eq(conversationAttachments.messageId, original.id));
+    if (
+      !originals.some(
+        (file) =>
+          file.id === input.originalAttachmentId &&
+          file.mimeType.startsWith("image/"),
+      )
+    )
+      throw new TRPCError({
+        code: "CONFLICT",
+        message: "The original snapshot image is no longer available.",
+      });
+    const [image] = await tx
+      .select()
+      .from(conversationAttachments)
+      .where(
+        and(
+          eq(conversationAttachments.id, input.attachmentId),
+          eq(conversationAttachments.conversationId, target.conversation.id),
+          eq(conversationAttachments.uploadedById, access.user.id),
+          isNull(conversationAttachments.messageId),
+          sql`${conversationAttachments.mimeType} like 'image/%'`,
+          sql`${conversationAttachments.createdAt} > now() - interval '24 hours'`,
+        ),
+      );
+    if (!image)
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "The new snapshot image is unavailable. Capture it again.",
+      });
+    await tx.execute(
+      sql`select pg_advisory_xact_lock(hashtextextended(${access.user.id}, 4152))`,
+    );
+    const [rate] = await tx
+      .select({ value: count() })
+      .from(conversationMessages)
+      .where(
+        and(
+          eq(conversationMessages.authorId, access.user.id),
+          sql`${conversationMessages.createdAt} > now() - interval '1 minute'`,
+        ),
+      );
+    if ((rate?.value ?? 0) >= 30)
+      throw new TRPCError({
+        code: "TOO_MANY_REQUESTS",
+        message: "Please wait before sending more snapshots.",
+      });
+    const [message] = await tx
+      .insert(conversationMessages)
+      .values({
+        conversationId: target.conversation.id,
+        authorId: access.user.id,
+        clientId: input.clientId,
+        requestHash: hash,
+        body: input.body,
+        source: input.source,
+      })
+      .returning();
+    if (!message) throw new Error("Snapshot insertion failed");
+    await tx
+      .update(conversationAttachments)
+      .set({ messageId: message.id })
+      .where(eq(conversationAttachments.id, image.id));
+    await tx
+      .update(conversationMessages)
+      .set({
+        deletedAt: sql`now()`,
+        body: "",
+        source: null,
+        revision: original.revision + 1,
+        editClientId: input.clientId,
+        editRequestHash: hash,
+      })
+      .where(eq(conversationMessages.id, original.id));
+    await tx
+      .delete(conversationAttachments)
+      .where(eq(conversationAttachments.messageId, original.id));
+    await tx
+      .update(conversations)
+      .set({ updatedAt: sql`now()` })
+      .where(
+        inArray(conversations.id, [
+          access.conversation.id,
+          target.conversation.id,
+        ]),
+      );
+    await enqueueConversationPush(tx, {
+      organizationId: target.conversation.organizationId,
+      conversationId: target.conversation.id,
+      messageId: message.id,
+      senderId: access.user.id,
+      sequence: message.sequence,
+    });
+    return { id: message.id, removed: originals.map((file) => file.id) };
+  });
+  if (result.removed.length) {
+    const { removeReplacedConversationFile } = await import("./attachments");
+    await Promise.all(
+      result.removed.map((id) => removeReplacedConversationFile(id)),
+    );
+  }
+  return { id: result.id };
 }
 export async function markConversationRead(
   access: ConversationAccess,

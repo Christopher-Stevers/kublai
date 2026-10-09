@@ -59,6 +59,7 @@ import {
   savedConversationSnapshot,
   editConversationSnapshot,
   listSavedSnapshots,
+  replaceConversationSnapshot,
 } from "./service";
 import {
   uploadConversationAttachment,
@@ -270,6 +271,150 @@ describe.skipIf(!enabled)("private chat against isolated PostgreSQL", () => {
     const snapshot = await savedConversationSnapshot(author, sent.id);
     return { id, author, original, snapshot };
   };
+  it("deletes the old snapshot and remakes it as a fresh post exactly once", async () => {
+    const { id, author, snapshot, original } = await snapshotFixture();
+    await devices(["recipient"]);
+    const image = await imageFile(author, "#ff0000");
+    const before = (await conversationHistory(author, { limit: 50 }))
+      .messages[0]!;
+    const input = {
+      conversationId: id,
+      targetConversationId: id,
+      messageId: snapshot.id,
+      clientId: randomUUID(),
+      expectedRevision: snapshot.revision,
+      originalAttachmentId: original.id,
+      attachmentId: image.id,
+      body: "New snapshot",
+      source: { ...snapshot.source!, title: "Recaptured view" },
+    };
+    const result = await replaceConversationSnapshot(author, input);
+    expect(result.id).not.toBe(snapshot.id);
+    const posts = (await conversationHistory(author, { limit: 50 })).messages;
+    const old = posts.find((v) => v.id === snapshot.id)!,
+      fresh = posts.find((v) => v.id === result.id)!;
+    expect(old.deletedAt).not.toBeNull();
+    expect(old.body).toBe("");
+    expect(old.source).toBeNull();
+    expect(old.attachments).toEqual([]);
+    expect(fresh.sequence).toBeGreaterThan(before.sequence);
+    expect(fresh.createdAt.getTime()).toBeGreaterThanOrEqual(
+      before.createdAt.getTime(),
+    );
+    expect(fresh.revision).toBe(1);
+    expect(fresh.editedAt).toBeNull();
+    expect(fresh.attachments.map((v) => v.id)).toEqual([image.id]);
+    expect(await replaceConversationSnapshot(author, input)).toEqual(result);
+    expect((await queued()).map((v) => v.messageId)).toEqual([result.id]);
+    expect(
+      (await conversationHistory(author, { limit: 50 })).messages,
+    ).toHaveLength(2);
+    await expect(
+      replaceConversationSnapshot(author, { ...input, body: "Changed retry" }),
+    ).rejects.toThrow("different contents");
+    await expect(
+      readConversationAttachment("recipient", original.id),
+    ).rejects.toThrow();
+    expect(
+      (await listSavedSnapshots("author", { search: "" })).snapshots.map(
+        (v) => v.id,
+      ),
+    ).toEqual([result.id]);
+  });
+  it("can remake a snapshot for different recipients without exposing it to the old recipients", async () => {
+    const { id, author, snapshot, original } = await snapshotFixture();
+    const target = await createConversation("author", {
+      kind: "direct",
+      name: "",
+      recipientIds: ["third"],
+    });
+    const image = await imageFile(
+      await conversationAccess("author", target.id),
+    );
+    const result = await replaceConversationSnapshot(author, {
+      conversationId: id,
+      targetConversationId: target.id,
+      messageId: snapshot.id,
+      clientId: randomUUID(),
+      expectedRevision: 1,
+      originalAttachmentId: original.id,
+      attachmentId: image.id,
+      body: "Remade for another person",
+      source: snapshot.source,
+    });
+    expect(
+      (
+        await conversationHistory(
+          await conversationAccess("third", target.id),
+          { limit: 50 },
+        )
+      ).messages[0]?.id,
+    ).toBe(result.id);
+    expect(
+      (
+        await conversationHistory(await conversationAccess("recipient", id), {
+          limit: 50,
+        })
+      ).messages[0]?.deletedAt,
+    ).not.toBeNull();
+    await expect(
+      readConversationAttachment("recipient", image.id),
+    ).rejects.toThrow();
+    expect((await readConversationAttachment("third", image.id)).mimeType).toBe(
+      "image/png",
+    );
+  });
+  it("preserves the original when replacement validation fails and rejects competing remakes", async () => {
+    const { id, author, snapshot, original } = await snapshotFixture();
+    const input = {
+      conversationId: id,
+      targetConversationId: id,
+      messageId: snapshot.id,
+      clientId: randomUUID(),
+      expectedRevision: 1,
+      originalAttachmentId: original.id,
+      attachmentId: randomUUID(),
+      body: "New",
+      source: snapshot.source,
+    };
+    await expect(replaceConversationSnapshot(author, input)).rejects.toThrow(
+      "unavailable",
+    );
+    const recipient = await conversationAccess("recipient", id);
+    await expect(replaceConversationSnapshot(recipient, input)).rejects.toThrow(
+      "unavailable",
+    );
+    const inaccessible = await createConversation("outsider", {
+      kind: "direct",
+      name: "",
+      recipientIds: ["third"],
+    });
+    await expect(
+      replaceConversationSnapshot(author, {
+        ...input,
+        targetConversationId: inaccessible.id,
+      }),
+    ).rejects.toThrow("not found");
+    expect(
+      (await savedConversationSnapshot(author, snapshot.id)).image.id,
+    ).toBe(original.id);
+    const images = await Promise.all([imageFile(author), imageFile(author)]);
+    const results = await Promise.allSettled(
+      images.map((image) =>
+        replaceConversationSnapshot(author, {
+          ...input,
+          clientId: randomUUID(),
+          attachmentId: image.id,
+        }),
+      ),
+    );
+    expect(results.filter((v) => v.status === "fulfilled")).toHaveLength(1);
+    expect(
+      (await conversationHistory(author, { limit: 50 })).messages.filter(
+        (v) => !v.deletedAt,
+      ),
+    ).toHaveLength(1);
+  });
   it("lists only owned images in accessible conversations and searches literal text", async () => {
     const { id, author, snapshot } = await snapshotFixture();
     expect(

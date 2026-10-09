@@ -4,6 +4,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useEffectEvent,
   useRef,
   useMemo,
   useState,
@@ -210,9 +211,10 @@ export function SnapshotProvider({ children }: { children: React.ReactNode }) {
   } | null>(null);
   const create = api.conversations.create.useMutation(),
     send = api.conversations.send.useMutation(),
-    editSnapshot = api.conversations.editSnapshot.useMutation();
+    replaceSnapshot = api.conversations.replaceSnapshot.useMutation();
   const editAttempt = useRef<{
     conversationId: string;
+    targetConversationId: string;
     messageId: string;
     clientId: string;
     expectedRevision: number;
@@ -225,7 +227,8 @@ export function SnapshotProvider({ children }: { children: React.ReactNode }) {
   const initializedEdit = useRef<string | null>(null);
   const prepareEdit = () => {
     if (saved.data && initializedEdit.current !== saved.data.id) {
-      setMessage(saved.data.body);
+      setMessage("");
+      setTarget({ mode: "direct", recipientIds: [], name: "" });
       initializedEdit.current = saved.data.id;
     }
   };
@@ -315,13 +318,19 @@ export function SnapshotProvider({ children }: { children: React.ReactNode }) {
     window.addEventListener("keydown", handle, true);
     return () => window.removeEventListener("keydown", handle, true);
   }, [phase, busy, release]);
-  const finishCapture = async (promise: Promise<HTMLCanvasElement>) => {
+  const finishCapture = async (
+    makeCanvas: (cancelled: () => boolean) => Promise<HTMLCanvasElement | null>,
+  ) => {
     const current = ++generation.current;
     setPhase("capture");
     setError("");
     try {
-      const canvas = await promise;
+      const canvas = await makeCanvas(() => current !== generation.current);
       if (current !== generation.current) return;
+      if (!canvas) {
+        setPhase("screen");
+        return;
+      }
       setSource(captureSource());
       setCapture({
         canvas,
@@ -349,16 +358,58 @@ export function SnapshotProvider({ children }: { children: React.ReactNode }) {
       setPhase("screen");
       return;
     }
-    void finishCapture(captureVisiblePage());
+    void finishCapture(async (cancelled) => {
+      const state = editing ? currentSnapshotState() : null;
+      const needed = (["drawing", "document", "pdf"] as const).filter(
+        (key) => state?.[key],
+      );
+      const deadline = Date.now() + 15_000;
+      while (
+        (needed.includes("drawing") &&
+          !document.querySelector("[data-snapshot-source-title]")) ||
+        needed.some(
+          (key) =>
+            ![...sources.current.values()].some(
+              (entry) => entry.key === key && entry.read() !== undefined,
+            ),
+        )
+      ) {
+        if (cancelled()) throw new Error("Snapshot cancelled.");
+        if (Date.now() > deadline)
+          throw new Error(
+            "The saved view is still loading. Try Snapshot again when it is ready.",
+          );
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      }
+      if (cancelled()) throw new Error("Snapshot cancelled.");
+      return needsScreenCapture() ? null : captureVisiblePage();
+    });
   };
   const start = () => {
     if (phase !== "idle") return;
     if (editing) beginCapture();
     else setPhase("choose");
   };
+  const captureOnOpen = useEffectEvent(() => beginCapture());
+  const autoStarted = useRef<string | null>(null);
+  useEffect(() => {
+    if (
+      !editing ||
+      !saved.data ||
+      phase !== "idle" ||
+      autoStarted.current === saved.data.id
+    )
+      return;
+    const id = saved.data.id;
+    const timer = setTimeout(() => {
+      autoStarted.current = id;
+      captureOnOpen();
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [editing, saved.data, phase]);
   const screenCapture = () => {
     setUsingScreen(true);
-    void finishCapture(captureSharedScreen());
+    void finishCapture(() => captureSharedScreen());
   };
   const chooseScreenshot = async (file?: File) => {
     if (!file) return;
@@ -392,7 +443,7 @@ export function SnapshotProvider({ children }: { children: React.ReactNode }) {
         image.naturalHeight * scale,
       );
       setUsingScreen(false);
-      await finishCapture(Promise.resolve(canvas));
+      await finishCapture(() => Promise.resolve(canvas));
     } catch {
       setError("Could not open this screenshot. Choose a PNG or JPEG image.");
       setPhase("error");
@@ -422,38 +473,47 @@ export function SnapshotProvider({ children }: { children: React.ReactNode }) {
     }
   };
   const share = async () => {
-    if (
-      busy ||
-      (editing ? !saved.data || !preview : !blob || !validChatTarget(target))
-    )
+    if (busy || !blob || !validChatTarget(target) || (editing && !saved.data))
       return;
     setBusy(true);
     setError("");
     setLocked(true);
     try {
       if (editing && saved.data) {
-        editAttempt.current ??= {
-          conversationId: saved.data.conversationId,
-          messageId: saved.data.id,
-          clientId: crypto.randomUUID(),
-          expectedRevision: saved.data.revision,
-          originalAttachmentId: saved.data.image.id,
-          body: message.trim() || "Snapshot",
-          source,
-        };
+        if (!editAttempt.current) {
+          const destination =
+            target.mode === "existing"
+              ? target.conversationId
+              : (
+                  await create.mutateAsync({
+                    kind: target.mode,
+                    name: target.name,
+                    recipientIds: target.recipientIds,
+                  })
+                ).id;
+          editAttempt.current = {
+            conversationId: saved.data.conversationId,
+            targetConversationId: destination,
+            messageId: saved.data.id,
+            clientId: crypto.randomUUID(),
+            expectedRevision: saved.data.revision,
+            originalAttachmentId: saved.data.image.id,
+            body: message.trim() || "Snapshot",
+            source,
+          };
+        }
         const current = editAttempt.current;
         if (!current.attachmentId) {
-          if (blob) {
-            current.uploaded ??= await uploadConversationFile(
-              current.conversationId,
-              new File([blob], `snapshot-${Date.now()}.png`, {
-                type: "image/png",
-              }),
-            );
-            current.attachmentId = current.uploaded.id;
-          } else current.attachmentId = saved.data.image.id;
+          current.uploaded ??= await uploadConversationFile(
+            current.targetConversationId,
+            new File([blob], `snapshot-${Date.now()}.png`, {
+              type: "image/png",
+            }),
+          );
+          current.attachmentId = current.uploaded.id;
         }
-        await editSnapshot.mutateAsync({
+        await replaceSnapshot.mutateAsync({
+          targetConversationId: current.targetConversationId,
           conversationId: current.conversationId,
           messageId: current.messageId,
           clientId: current.clientId,
@@ -463,12 +523,17 @@ export function SnapshotProvider({ children }: { children: React.ReactNode }) {
           body: current.body,
           source: current.source,
         });
-        const id = current.conversationId;
+        const id = current.targetConversationId;
+        const oldConversationId = current.conversationId;
         editAttempt.current = null;
         release();
         await Promise.all([
           utils.conversations.list.invalidate(),
           utils.conversations.history.invalidate({ conversationId: id }),
+          utils.conversations.history.invalidate({
+            conversationId: oldConversationId,
+          }),
+          utils.conversations.savedSnapshots.invalidate(),
         ]);
         router.push(`/dashboard/chat?conversation=${encodeURIComponent(id)}`);
         return;
@@ -511,7 +576,10 @@ export function SnapshotProvider({ children }: { children: React.ReactNode }) {
       const id = current.conversationId;
       attempt.current = null;
       release();
-      await utils.conversations.list.invalidate();
+      await Promise.all([
+        utils.conversations.list.invalidate(),
+        utils.conversations.savedSnapshots.invalidate(),
+      ]);
       router.push(`/dashboard/chat?conversation=${encodeURIComponent(id)}`);
     } catch (reason) {
       if (!attempt.current && !editAttempt.current) setLocked(false);
@@ -519,7 +587,7 @@ export function SnapshotProvider({ children }: { children: React.ReactNode }) {
         reason instanceof Error
           ? reason.message
           : editing
-            ? "Could not confirm the changes were saved. Try again."
+            ? "Could not confirm the new snapshot was sent. Try again."
             : "Could not confirm the snapshot was sent. Try again.",
       );
     } finally {
@@ -531,14 +599,6 @@ export function SnapshotProvider({ children }: { children: React.ReactNode }) {
     router.push(
       `/dashboard/chat?conversation=${encodeURIComponent(editConversationId ?? "")}`,
     );
-  };
-  const keepImage = () => {
-    if (!saved.data || busy) return;
-    prepareEdit();
-    setBlob(null);
-    setPreview(saved.data.image.url);
-    setSource(saved.data.source);
-    setPhase("share");
   };
   const retake = () => {
     if (attempt.current?.file)
@@ -697,7 +757,7 @@ export function SnapshotProvider({ children }: { children: React.ReactNode }) {
               aria-label="Edit saved snapshot"
               className="bg-background fixed inset-x-3 top-16 z-[90] mx-auto max-w-xl space-y-2 rounded-lg border p-3 shadow-lg"
             >
-              <p className="text-sm font-semibold">Editing saved snapshot</p>
+              <p className="text-sm font-semibold">Remake snapshot</p>
               <p
                 className="text-muted-foreground text-xs"
                 role={saved.error ? "alert" : "status"}
@@ -706,8 +766,8 @@ export function SnapshotProvider({ children }: { children: React.ReactNode }) {
                   ? saved.error.message
                   : saved.data
                     ? saved.data.source
-                      ? "Make your changes, then retake the snapshot."
-                      : "This older snapshot has no saved source. Keep its image or capture a new view."
+                      ? "Capture and send a new snapshot to replace the old one."
+                      : "This older snapshot has no saved source. Capture a new view to replace it."
                     : "Opening the saved snapshot…"}
               </p>
               <div className="flex flex-wrap gap-2">
@@ -716,15 +776,7 @@ export function SnapshotProvider({ children }: { children: React.ReactNode }) {
                   onClick={beginCapture}
                   disabled={!saved.data || Boolean(saved.error)}
                 >
-                  Retake snapshot
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={keepImage}
-                  disabled={!saved.data || Boolean(saved.error)}
-                >
-                  Keep image
+                  Capture snapshot
                 </Button>
                 <Button size="sm" variant="ghost" onClick={cancelEdit}>
                   Cancel edit
@@ -763,7 +815,7 @@ export function SnapshotProvider({ children }: { children: React.ReactNode }) {
             <DialogTitle>
               <span className="flex items-center gap-2">
                 <CameraIcon className="size-5" />
-                {editing ? "Edit snapshot" : "Snapshot"}
+                Snapshot
               </span>
             </DialogTitle>
             <DialogDescription>
@@ -771,7 +823,7 @@ export function SnapshotProvider({ children }: { children: React.ReactNode }) {
                 ? "Capture a new view or reopen one of your saved snapshots to make changes."
                 : phase === "share"
                   ? editing
-                    ? "Review your changes. Saving updates the snapshot in its existing conversation."
+                    ? "Choose who should receive this new snapshot. Sending replaces the old snapshot."
                     : "Review the image and choose who should receive it."
                   : "Capture a selected area and share it in chat."}
             </DialogDescription>
@@ -799,13 +851,11 @@ export function SnapshotProvider({ children }: { children: React.ReactNode }) {
                     view.
                   </p>
                 )}
-                {!editing && (
-                  <RecipientChooser
-                    value={target}
-                    onChange={setTarget}
-                    disabled={busy || locked}
-                  />
-                )}
+                <RecipientChooser
+                  value={target}
+                  onChange={setTarget}
+                  disabled={busy || locked}
+                />
                 <label className="space-y-1 text-sm">
                   Message (optional)
                   <textarea
@@ -837,21 +887,17 @@ export function SnapshotProvider({ children }: { children: React.ReactNode }) {
                   </Button>
                   <Button
                     disabled={
-                      busy || (editing ? !saved.data : !validChatTarget(target))
+                      busy ||
+                      !validChatTarget(target) ||
+                      (editing && !saved.data)
                     }
                     onClick={() => void share()}
                   >
                     {busy
-                      ? editing
-                        ? "Saving…"
-                        : "Sending…"
+                      ? "Sending…"
                       : locked
-                        ? editing
-                          ? "Retry save"
-                          : "Retry send"
-                        : editing
-                          ? "Save changes"
-                          : "Send snapshot"}
+                        ? "Retry send"
+                        : "Send snapshot"}
                   </Button>
                 </div>
               </>

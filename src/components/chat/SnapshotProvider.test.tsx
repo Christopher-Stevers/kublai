@@ -58,12 +58,13 @@ vi.mock("~/trpc/react", () => ({
       conversations: {
         list: { invalidate: mocks.invalidate },
         history: { invalidate: mocks.invalidate },
+        savedSnapshots: { invalidate: mocks.invalidate },
       },
     }),
     conversations: {
       create: { useMutation: () => ({ mutateAsync: mocks.create }) },
       send: { useMutation: () => ({ mutateAsync: mocks.send }) },
-      editSnapshot: { useMutation: () => ({ mutateAsync: mocks.edit }) },
+      replaceSnapshot: { useMutation: () => ({ mutateAsync: mocks.edit }) },
       snapshot: { useQuery: () => ({ data: mocks.saved }) },
       savedSnapshots: {
         useQuery: () => ({ data: { snapshots: [], nextCursor: null } }),
@@ -163,28 +164,28 @@ it("opens the snapshot tool choices before taking a new capture", () => {
     document.querySelector('[data-slot="dialog-overlay"]'),
   ).toHaveAttribute("data-snapshot-ui");
 });
-it("retakes an existing snapshot, preserves its caption and retries one replacement", async () => {
+it("opens the normal capture flow automatically and remakes a snapshot with fresh sharing options", async () => {
   mocks.edit.mockRejectedValueOnce(new Error("Connection interrupted"));
   editSetup();
-  fireEvent.click(await screen.findByText("Retake snapshot"));
   await screen.findByAltText("Page ready for snapshot selection");
   fireEvent.click(screen.getByText("Whole view"));
-  expect(await screen.findByLabelText("Snapshot message")).toHaveValue(
-    "Original caption",
-  );
+  expect(await screen.findByLabelText("Snapshot message")).toHaveValue("");
+  expect(screen.queryByText("Keep image")).not.toBeInTheDocument();
+  expect(screen.getByText("Send snapshot")).toBeDisabled();
+  fireEvent.click(screen.getByRole("radio", { name: "Test recipient" }));
   fireEvent.change(screen.getByLabelText("Snapshot message"), {
     target: { value: "Corrected run" },
   });
-  fireEvent.click(screen.getByText("Save changes"));
+  fireEvent.click(screen.getByText("Send snapshot"));
   await screen.findByText("Connection interrupted");
   expect(screen.getByLabelText("Snapshot message")).toBeDisabled();
-  fireEvent.click(screen.getByText("Retry save"));
+  fireEvent.click(screen.getByText("Retry send"));
   await waitFor(() =>
     expect(mocks.push).toHaveBeenCalledWith(
       "/dashboard/chat?conversation=private-conversation",
     ),
   );
-  expect(mocks.create).not.toHaveBeenCalled();
+  expect(mocks.create).toHaveBeenCalledOnce();
   expect(mocks.send).not.toHaveBeenCalled();
   expect(mocks.upload).toHaveBeenCalledOnce();
   expect(mocks.edit).toHaveBeenCalledTimes(2);
@@ -196,65 +197,79 @@ it("retakes an existing snapshot, preserves its caption and retries one replacem
     attachmentId: "file",
     originalAttachmentId: "original-image",
     body: "Corrected run",
+    targetConversationId: "private-conversation",
   });
   expect(input.source.href).not.toContain("editSnapshot");
   expect(input.source.href).not.toContain("snapshotChat");
 });
-it("updates a caption while keeping the existing image and saved source", async () => {
+it("waits for the saved drawing to load and allows cancellation without capturing a loading page", async () => {
   editSetup();
-  fireEvent.click(await screen.findByText("Keep image"));
-  expect(await screen.findByAltText("Snapshot preview")).toHaveAttribute(
-    "src",
-    "/private/original",
+  const id = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+  const state = {
+    version: 1,
+    drawing: {
+      jobId: id,
+      sheetId: id,
+      setId: id,
+      sourceSheetId: id,
+      viewport: { center: { x: 0.5, y: 0.5 }, zoom: 1 },
+      appearance: { inverted: false, lineColor: null },
+      layers: { markups: true, issues: true, private: true, published: true },
+      selectedId: null,
+    },
+  };
+  window.history.replaceState(
+    {},
+    "",
+    `/dashboard?${mocks.params}#snapshot=${encodeURIComponent(JSON.stringify(state))}`,
   );
-  fireEvent.change(screen.getByLabelText("Snapshot message"), {
-    target: { value: "New caption" },
-  });
-  fireEvent.click(screen.getByText("Save changes"));
-  await waitFor(() => expect(mocks.edit).toHaveBeenCalledOnce());
-  expect(mocks.edit.mock.calls[0]?.[0]).toMatchObject({
-    attachmentId: "original-image",
-    body: "New caption",
-    source: mocks.saved?.source,
-  });
+  await screen.findByText("Preparing snapshot…");
   expect(mocks.capture).not.toHaveBeenCalled();
-  expect(mocks.upload).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByLabelText("Cancel snapshot"));
+  expect(mocks.edit).not.toHaveBeenCalled();
 });
-it("cancels without replacing the saved snapshot", async () => {
+it("offers normal screen capture when the restored live editor loads after editing starts", async () => {
+  mocks.needsScreen.mockReturnValueOnce(false).mockReturnValue(true);
   editSetup();
+  fireEvent.click(await screen.findByText("Capture screen"));
+  await screen.findByAltText("Page ready for snapshot selection");
+  expect(mocks.capture).not.toHaveBeenCalled();
+  expect(mocks.screen).toHaveBeenCalledOnce();
+});
+it("keeps the original snapshot if recreating it is cancelled", async () => {
+  editSetup();
+  await screen.findByAltText("Page ready for snapshot selection");
+  fireEvent.click(screen.getByLabelText("Cancel snapshot"));
   fireEvent.click(await screen.findByText("Cancel edit"));
   expect(mocks.push).toHaveBeenCalledWith(
     "/dashboard/chat?conversation=private-conversation",
   );
   expect(mocks.edit).not.toHaveBeenCalled();
   expect(mocks.upload).not.toHaveBeenCalled();
+  expect(mocks.capture).toHaveBeenCalledOnce();
 });
-it("keeps edit controls and dialogs reachable in fullscreen and after the drawing closes", async () => {
+it("keeps the fresh capture and sharing flow reachable in fullscreen and after the drawing closes", async () => {
   const drawing = document.createElement("div");
   drawing.dataset.drawingFullscreen = "true";
   document.body.append(drawing);
   try {
     editSetup();
-    await waitFor(() =>
-      expect(
-        drawing.contains(screen.getByLabelText("Edit saved snapshot")),
-      ).toBe(true),
-    );
-    fireEvent.click(screen.getByText("Keep image"));
-    await waitFor(() =>
-      expect(drawing.contains(screen.getByAltText("Snapshot preview"))).toBe(
-        true,
+    await screen.findByAltText("Page ready for snapshot selection");
+    expect(
+      drawing.contains(
+        screen.getByRole("dialog", { name: "Select snapshot area" }),
       ),
+    ).toBe(true);
+    fireEvent.click(screen.getByText("Whole view"));
+    await screen.findByAltText("Snapshot preview");
+    expect(drawing.contains(screen.getByAltText("Snapshot preview"))).toBe(
+      true,
     );
-    fireEvent.click(screen.getByText("Retake"));
     drawing.remove();
     await waitFor(() =>
       expect(
-        document.body.contains(screen.getByLabelText("Edit saved snapshot")),
+        document.body.contains(screen.getByAltText("Snapshot preview")),
       ).toBe(true),
-    );
-    expect(drawing.contains(screen.getByLabelText("Edit saved snapshot"))).toBe(
-      false,
     );
   } finally {
     drawing.remove();
