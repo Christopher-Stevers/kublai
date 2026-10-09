@@ -13,25 +13,25 @@
   "categories": ["business", "productivity", "utilities"],
   "icons": [
     {
-      "src": "/foremanhq/android-chrome-192x192.png",
+      "src": "/foremanhq/icon-dark-v2-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/foremanhq/android-chrome-512x512.png",
+      "src": "/foremanhq/icon-dark-v2-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/foremanhq/android-chrome-192x192.png",
+      "src": "/foremanhq/icon-maskable-dark-v2-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "maskable"
     },
     {
-      "src": "/foremanhq/android-chrome-512x512.png",
+      "src": "/foremanhq/icon-maskable-dark-v2-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
@@ -43,7 +43,7 @@
       "short_name": "Dashboard",
       "url": "/dashboard",
       "icons": [
-        { "src": "/foremanhq/android-chrome-192x192.png", "sizes": "192x192" }
+        { "src": "/foremanhq/icon-dark-v2-192.png", "sizes": "192x192" }
       ]
     },
     {
@@ -51,7 +51,7 @@
       "short_name": "Catalogue",
       "url": "/dashboard/catalogue",
       "icons": [
-        { "src": "/foremanhq/android-chrome-192x192.png", "sizes": "192x192" }
+        { "src": "/foremanhq/icon-dark-v2-192.png", "sizes": "192x192" }
       ]
     },
     {
@@ -59,7 +59,7 @@
       "short_name": "Orders",
       "url": "/dashboard/orders",
       "icons": [
-        { "src": "/foremanhq/android-chrome-192x192.png", "sizes": "192x192" }
+        { "src": "/foremanhq/icon-dark-v2-192.png", "sizes": "192x192" }
       ]
     }
   ]

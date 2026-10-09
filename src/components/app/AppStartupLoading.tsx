@@ -28,7 +28,7 @@ export function AppStartupLoading() {
       <div className="sticky top-0 z-50 flex h-14 items-center justify-between border-b border-border bg-card px-3 sm:h-16 sm:px-6">
         <div className="flex items-center gap-2 text-lg font-bold tracking-tight">
           <Image
-            src="/foremanhq/favicon-32x32.png"
+            src="/foremanhq/icon-dark-v2-32.png"
             alt=""
             width={28}
             height={28}

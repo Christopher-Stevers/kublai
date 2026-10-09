@@ -204,7 +204,7 @@ function HeaderFrame({
           className="flex shrink-0 items-center gap-2 text-lg font-bold tracking-tight text-foreground"
         >
           <Image
-            src="/foremanhq/favicon-32x32.png"
+            src="/foremanhq/icon-dark-v2-32.png"
             alt=""
             width={28}
             height={28}

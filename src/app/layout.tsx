@@ -40,31 +40,30 @@ export const metadata: Metadata = {
     telephone: false,
   },
   icons: [
-    { rel: "icon", url: "/foremanhq/favicon.ico" },
     {
       rel: "icon",
       type: "image/png",
       sizes: "16x16",
-      url: "/foremanhq/favicon-16x16.png",
+      url: "/foremanhq/icon-dark-v2-16.png",
     },
     {
       rel: "icon",
       type: "image/png",
       sizes: "32x32",
-      url: "/foremanhq/favicon-32x32.png",
+      url: "/foremanhq/icon-dark-v2-32.png",
     },
-    { rel: "apple-touch-icon", url: "/foremanhq/apple-touch-icon.png" },
+    { rel: "apple-touch-icon", url: "/foremanhq/icon-dark-v2-180.png" },
     {
       rel: "icon",
       type: "image/png",
       sizes: "192x192",
-      url: "/foremanhq/android-chrome-192x192.png",
+      url: "/foremanhq/icon-dark-v2-192.png",
     },
     {
       rel: "icon",
       type: "image/png",
       sizes: "512x512",
-      url: "/foremanhq/android-chrome-512x512.png",
+      url: "/foremanhq/icon-dark-v2-512.png",
     },
   ],
 };
