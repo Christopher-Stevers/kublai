@@ -2089,7 +2089,7 @@ export function DrawingWorkspace({
       </div>
       <span
         role="status"
-        className="bg-card/85 text-muted-foreground pointer-events-none absolute top-2 left-2 z-20 rounded-full px-2 py-0.5 text-[11px] shadow-sm"
+        className="sr-only"
       >
         {statusText}
       </span>
