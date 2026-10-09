@@ -23,7 +23,7 @@ export function AppStartupLoading() {
       data-app-startup-loading
       role="status"
       aria-label="Loading"
-      className="min-h-dvh bg-muted/50 text-foreground"
+      className="min-h-dvh bg-canvas text-foreground"
     >
       <div className="sticky top-0 z-50 flex h-14 items-center justify-between border-b border-border bg-card px-3 sm:h-16 sm:px-6">
         <div className="flex items-center gap-2 text-lg font-bold tracking-tight">
