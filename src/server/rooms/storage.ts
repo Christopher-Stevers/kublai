@@ -1,9 +1,10 @@
 import { randomUUID } from "node:crypto";
 import { mkdir, open, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { MAX_DRAWING_UPLOAD_BYTES, MAX_DRAWING_UPLOAD_MB } from "../../lib/drawing-upload-limits";
 
 export const JOB_ROOM_FILE_PUBLIC_PREFIX = "/api/job-rooms/files";
-export const MAX_JOB_FLOOR_PLAN_UPLOAD_BYTES = 100 * 1024 * 1024;
+export const MAX_JOB_FLOOR_PLAN_UPLOAD_BYTES = MAX_DRAWING_UPLOAD_BYTES;
 
 const UPLOAD_ROOT = path.join(process.cwd(), "uploads", "job-floor-plans");
 
@@ -63,7 +64,7 @@ export function validateJobFloorPlanPdf(file: File) {
     return "Uploaded file must be a PDF";
   }
   if (file.size > MAX_JOB_FLOOR_PLAN_UPLOAD_BYTES) {
-    return "PDF must be at most 100 MB";
+    return `PDF must be at most ${MAX_DRAWING_UPLOAD_MB} MB`;
   }
   return null;
 }

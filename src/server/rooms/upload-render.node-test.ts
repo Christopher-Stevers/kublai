@@ -56,8 +56,8 @@ test("100-page synthetic PDF survives chunk staging and bounded sequential rende
   const dir = await mkdtemp(path.join(os.tmpdir(), "upload-100-test-"));
   process.chdir(dir);
   try {
-    assert.equal(validateJobFloorPlanPdf({ name: "test.pdf", type: "application/pdf", size: 100 * 1024 * 1024 } as File), null);
-    assert.match(validateJobFloorPlanPdf({ name: "test.pdf", type: "application/pdf", size: 100 * 1024 * 1024 + 1 } as File)!, /100 MB/);
+    assert.equal(validateJobFloorPlanPdf({ name: "test.pdf", type: "application/pdf", size: 500 * 1024 * 1024 } as File), null);
+    assert.match(validateJobFloorPlanPdf({ name: "test.pdf", type: "application/pdf", size: 500 * 1024 * 1024 + 1 } as File)!, /500 MB/);
     validateDrawingPageCount(100);
     assert.throws(() => validateDrawingPageCount(101), /more than 100 pages/);
     assert.equal(DRAWING_WORKER_SECONDS, 600);

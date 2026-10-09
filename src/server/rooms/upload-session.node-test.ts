@@ -32,14 +32,15 @@ test("bounded resumable upload protocol (isolated temporary disk, no database)",
   process.chdir(temp);
   try {
     await t.test(
-      "100 MB accepted, 100 MB + 1 rejected before staging",
+      "500 MB accepted, 500 MB + 1 rejected before staging",
       async () => {
+        assert.equal(UPLOAD_BYTES, 500 * 1024 * 1024);
         await assert.rejects(
           createUpload(
             { jobId, filename: "oversize.pdf", size: UPLOAD_BYTES + 1 },
             owner,
           ),
-          /100 MB/,
+          /500 MB/,
         );
         const s = await createUpload(
           { jobId, filename: "large.pdf", size: UPLOAD_BYTES },

@@ -1,4 +1,4 @@
-import { DRAWING_POLL_MS } from "./drawing-upload-limits";
+import { DRAWING_POLL_MS, MAX_DRAWING_UPLOAD_BYTES, MAX_DRAWING_UPLOAD_MB } from "./drawing-upload-limits";
 export type UploadedSheet = { id: string; name: string; imageUrl: string };
 type UploadReply = {
   uploadId?: string;
@@ -9,7 +9,6 @@ type UploadReply = {
   restartRequired?: boolean;
 };
 const CHUNK_BYTES = 5 * 1024 * 1024;
-const MAX_BYTES = 100 * 1024 * 1024;
 const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 export class UploadResponseError extends Error {
   constructor(
@@ -83,9 +82,9 @@ export async function uploadDrawings(
   if (
     !file.name.toLowerCase().endsWith(".pdf") ||
     file.size < 5 ||
-    file.size > MAX_BYTES
+    file.size > MAX_DRAWING_UPLOAD_BYTES
   )
-    throw new Error("Choose a PDF up to 100 MB");
+    throw new Error(`Choose a PDF up to ${MAX_DRAWING_UPLOAD_MB} MB`);
   const endpoint = "/api/job-rooms/upload";
   // Rooms keeps its original key so in-progress uploads still resume.
   const storageKey = `drawing-upload:${jobId}:${options.drawingSetId ? `set-${options.drawingSetId}:` : ""}${file.name}:${file.size}:${file.lastModified}`;

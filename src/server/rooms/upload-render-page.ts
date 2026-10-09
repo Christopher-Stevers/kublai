@@ -14,7 +14,8 @@ async function load(dest: string) {
     // Exports with removed layers make PDF.js warn thousands of times per page
     // ("Optional content group not found"); only real errors are useful here.
     verbosity: VerbosityLevel.ERRORS,
-    data: new Uint8Array(bytes),
+    // Use the existing buffer: copying a 500 MB PDF doubles its memory cost.
+    data: new Uint8Array(bytes.buffer, bytes.byteOffset, bytes.byteLength),
     maxImageSize: 16_000_000,
     canvasMaxAreaInBytes: 20_000_000,
   });

@@ -1,4 +1,6 @@
 // Shared by the browser, request process and isolated PDF renderer.
+export const MAX_DRAWING_UPLOAD_MB = 500;
+export const MAX_DRAWING_UPLOAD_BYTES = MAX_DRAWING_UPLOAD_MB * 1024 * 1024;
 export const MAX_DRAWING_PAGES = 100;
 export const DRAWING_WORKER_SECONDS = 600;
 export const DRAWING_POLL_MS = (DRAWING_WORKER_SECONDS + 60) * 1000;

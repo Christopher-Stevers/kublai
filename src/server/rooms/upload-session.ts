@@ -12,13 +12,14 @@ import {
   rm,
 } from "node:fs/promises";
 import path from "node:path";
+import { MAX_DRAWING_UPLOAD_BYTES, MAX_DRAWING_UPLOAD_MB } from "../../lib/drawing-upload-limits";
 import {
   processIdentity,
   sameProcess,
   type ProcessIdentity,
 } from "./process-identity";
 
-export const UPLOAD_BYTES = 100 * 1024 * 1024;
+export const UPLOAD_BYTES = MAX_DRAWING_UPLOAD_BYTES;
 export const CHUNK_BYTES = 5 * 1024 * 1024;
 export const UPLOAD_TTL = 60 * 60_000;
 export { DRAWING_WORKER_SECONDS as WORKER_SECONDS } from "~/lib/drawing-upload-limits";
@@ -260,7 +261,7 @@ export async function createUpload(
     input.size < 5 ||
     input.size > UPLOAD_BYTES
   )
-    throw new UploadError("PDF must be between 5 bytes and 100 MB", 413);
+    throw new UploadError(`PDF must be between 5 bytes and ${MAX_DRAWING_UPLOAD_MB} MB`, 413);
   await mkdir(uploadRoot(), { recursive: true });
   return withLock(path.join(uploadRoot(), "init.lock"), async () => {
     // Bound abandoned receiving data: at most eight live reservations, one per user.
