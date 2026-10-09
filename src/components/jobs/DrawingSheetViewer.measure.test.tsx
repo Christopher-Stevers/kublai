@@ -6,6 +6,7 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
+import type { ComponentProps } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { readPdfSheetScale } from "~/lib/pdf-sheet-scale";
 import { loadSnapLines } from "~/lib/pdf-snap-lines";
@@ -67,6 +68,7 @@ function openSheet(
   sheetKey = "sheet-1",
   pdf?: { url: string; page: number } | null,
   editorProps: DrawingEditorProps = {},
+  toolControls?: ComponentProps<typeof DrawingSheetViewer>["toolControls"],
 ) {
   const view = render(
     <DrawingSheetViewer
@@ -75,6 +77,7 @@ function openSheet(
       sheetKey={sheetKey}
       pdf={pdf}
       {...editorProps}
+      toolControls={toolControls}
     />,
   );
   const image = screen.getByAltText("Sheet");
@@ -134,6 +137,29 @@ function chooseUnit(unit: string) {
 }
 
 describe("drawing measure", () => {
+
+  it.each(["idle", "pipe"] as const)("saves the measured run when the host switches to %s alongside an annotation tool change", mode => {
+    const onCreate = vi.fn();
+    const onMode = vi.fn();
+    const props = { src: "/sheet.webp", alt: "Sheet", sheetKey: "sheet-1", onCreate, sharedScale: { unit: "m" as const, unitsPerSheetWidth: 100 } };
+    const controls = (id: number, mode: "idle" | "measure" | "pipe") => ({ measureRequest: 0, pipeRequest: 0, modeRequest: { id, mode }, onMode });
+    const view = openSheet("sheet-1", undefined, props, controls(0, "idle"));
+    view.rerender(<DrawingSheetViewer {...props} tool="pan" toolControls={controls(1, "measure")} />);
+    tap(view.frame, 200, 300);
+    tap(view.frame, 600, 300);
+    view.rerender(<DrawingSheetViewer {...props} tool={mode === "idle" ? "line" : "pan"} toolControls={controls(2, mode)} />);
+    expect(onCreate).toHaveBeenCalledTimes(1);
+    expect(onCreate.mock.calls[0]![0]).toMatchObject({ type: "dimension", parents: [null, 0], scale: 100, unit: "m" });
+    expect(onMode).toHaveBeenLastCalledWith({ measuring: false, pipe: mode === "pipe" });
+    expect(screen.queryByRole("button", { name: "Set Scale" })).toBeNull();
+    view.rerender(<DrawingSheetViewer {...props} tool="pan" toolControls={controls(3, "measure")} />);
+    expect(onMode).toHaveBeenLastCalledWith({ measuring: true, pipe: false });
+    expect(view.frame.querySelectorAll("[data-measure-node]")).toHaveLength(0);
+    view.rerender(<DrawingSheetViewer {...props} tool="pan" toolControls={controls(4, "idle")} />);
+    expect(onMode).toHaveBeenLastCalledWith({ measuring: false, pipe: false });
+    expect(onCreate).toHaveBeenCalledTimes(1);
+  });
+
   it.each(["overlay", "difference", "wipe", "side-by-side"])("uses the host bottom controls without an extra idle bar in %s comparisons", mode => {
     const first = { id: "one", name: "Original", imageUrl: "/first.webp" };
     const second = { id: "two", name: "Revision", imageUrl: "/second.webp" };

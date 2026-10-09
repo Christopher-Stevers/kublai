@@ -122,6 +122,8 @@ export function DrawingSheetViewer({
   toolControls?: {
     measureRequest: number;
     pipeRequest: number;
+    /** Atomic switch: finish a run before starting another mode. */
+    modeRequest?: { id: number; mode: "idle" | "measure" | "pipe" };
     onMode?: (mode: { measuring: boolean; pipe: boolean }) => void;
   };
 }) {
@@ -258,10 +260,11 @@ export function DrawingSheetViewer({
   viewportListener.current = onViewportChange;
   const annotationTool = editorProps.tool ?? "pan";
   useEffect(() => {
+    if (toolControls?.modeRequest) return;
     setMeasuring(false);
     setCalibrating(false);
     setPipeMode(false);
-  }, [annotationTool]);
+  }, [annotationTool, toolControls?.modeRequest]);
   useEffect(() => {
     setPipeMode(false);
     pipeTap.current = null;
@@ -1138,8 +1141,27 @@ export function DrawingSheetViewer({
   };
   // A host toolbar (the Drawings bottom bar) can switch Measure and Pipe
   // system through the same steps as their own buttons, and is told which is on.
-  const hostToggles = useRef({ toggleMeasuring, togglePipe });
-  hostToggles.current = { toggleMeasuring, togglePipe };
+  const switchMode = (mode: "idle" | "measure" | "pipe") => {
+    if (measuring && mode !== "measure") toggleMeasuring();
+    else if (!measuring && mode === "measure") toggleMeasuring();
+    if (pipeMode && mode !== "pipe") setPipeMode(false);
+    else if (!pipeMode && mode === "pipe") togglePipe();
+    if (mode !== "measure") {
+      endHold();
+      cancelNodeDrag();
+      editor.cancelGesture();
+      clearAim();
+    }
+  };
+  const hostToggles = useRef({ toggleMeasuring, togglePipe, switchMode });
+  hostToggles.current = { toggleMeasuring, togglePipe, switchMode };
+  const modeRequest = toolControls?.modeRequest;
+  const seenModeRequest = useRef(modeRequest?.id);
+  useEffect(() => {
+    if (!modeRequest || seenModeRequest.current === modeRequest.id) return;
+    seenModeRequest.current = modeRequest.id;
+    hostToggles.current.switchMode(modeRequest.mode);
+  }, [modeRequest]);
   const measureRequest = toolControls?.measureRequest ?? 0;
   const pipeRequest = toolControls?.pipeRequest ?? 0;
   const seenRequests = useRef({ measure: measureRequest, pipe: pipeRequest });

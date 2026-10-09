@@ -5,6 +5,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type {
@@ -12,7 +13,7 @@ import type {
   DrawingSave,
   DrawingWorkspace as Workspace,
 } from "~/lib/drawing-workspace";
-import type { ComponentProps } from "react";
+import { useEffect, type ComponentProps } from "react";
 import type { DrawingSheetViewer } from "./DrawingSheetViewer";
 import { DrawingWorkspace, panels, tools } from "./DrawingWorkspace";
 import type { DrawingCompare } from "./DrawingCompare";
@@ -108,86 +109,99 @@ vi.mock("./DrawingCompare", () => ({
   ),
 }));
 vi.mock("./DrawingSheetViewer", () => ({
-  DrawingSheetViewer: (props: ComponentProps<typeof DrawingSheetViewer>) => (
-    <div
-      data-testid="markup-editor"
-      data-tool={props.tool}
-      data-selection-mode={props.selectionMode}
-    >
-      <div data-testid="viewer-source">
-        {props.sourceSheetId ?? props.sheetKey}
-      </div>
-      <div data-testid="inherited-viewport">
-        {JSON.stringify(props.initialViewport)}
-      </div>
-      <button
-        onClick={() =>
-          props.onViewportChange?.({ center: { x: 0.2, y: 1.1 }, zoom: 2 })
-        }
+  DrawingSheetViewer: (props: ComponentProps<typeof DrawingSheetViewer>) => {
+    const request = props.toolControls?.modeRequest;
+    const onMode = props.toolControls?.onMode;
+    useEffect(() => {
+      onMode?.({
+        measuring: request?.mode === "measure",
+        pipe: request?.mode === "pipe",
+      });
+    }, [request, onMode]);
+    return (
+      <div
+        data-testid="markup-editor"
+        data-tool={props.tool}
+        data-selection-mode={props.selectionMode}
       >
-        Pan beyond sheet
-      </button>
-      <button
-        disabled={!props.onScaleChange}
-        onClick={() => {
-          void Promise.resolve()
-            .then(() =>
-              props.onScaleChange?.({ unit: "m", unitsPerSheetWidth: 120 }),
+        <div data-testid="viewer-source">
+          {props.sourceSheetId ?? props.sheetKey}
+        </div>
+        <div data-testid="inherited-viewport">
+          {JSON.stringify(props.initialViewport)}
+        </div>
+        <button
+          onClick={() =>
+            props.onViewportChange?.({ center: { x: 0.2, y: 1.1 }, zoom: 2 })
+          }
+        >
+          Pan beyond sheet
+        </button>
+        <button
+          disabled={!props.onScaleChange}
+          onClick={() => {
+            void Promise.resolve()
+              .then(() =>
+                props.onScaleChange?.({ unit: "m", unitsPerSheetWidth: 120 }),
+              )
+              .then(mocks.scaleResult)
+              .catch((error: unknown) => {
+                mocks.scaleResult(
+                  error instanceof Error ? error.message : "Save failed",
+                );
+              });
+          }}
+        >
+          Calibrate sample
+        </button>
+        <div data-testid="shared-scale">
+          {props.sharedScale?.unitsPerSheetWidth ?? "unset"}
+        </div>
+        <button
+          onClick={() =>
+            props.onCreate?.({
+              sourceSheetId: props.sourceSheetId!,
+              type: props.tool === "text" ? "text" : "rect",
+              points:
+                props.tool === "text"
+                  ? [{ x: 0.2, y: 0.2 }]
+                  : [
+                      { x: 0.2, y: 0.2 },
+                      { x: 0.4, y: 0.4 },
+                    ],
+              stroke: "#ef4444",
+              width: 2,
+            })
+          }
+        >
+          Draw sample
+        </button>
+        <button
+          onClick={() => props.onSelect?.(props.annotations?.[0]?.id ?? null)}
+        >
+          Select first annotation
+        </button>
+        <button
+          onClick={() => {
+            const entity = props.annotations?.[0];
+            if (
+              entity?.kind === "markup" &&
+              props.canEditAnnotation?.(entity.id)
             )
-            .then(mocks.scaleResult)
-            .catch((error: unknown) => {
-              mocks.scaleResult(
-                error instanceof Error ? error.message : "Save failed",
-              );
-            });
-        }}
-      >
-        Calibrate sample
-      </button>
-      <div data-testid="shared-scale">
-        {props.sharedScale?.unitsPerSheetWidth ?? "unset"}
+              props.onUpdate?.(entity.id, {
+                ...entity.data,
+                points: [
+                  { x: 0.3, y: 0.3 },
+                  { x: 0.6, y: 0.6 },
+                ],
+              });
+          }}
+        >
+          Move selected annotation
+        </button>
       </div>
-      <button
-        onClick={() =>
-          props.onCreate?.({
-            sourceSheetId: props.sourceSheetId!,
-            type: props.tool === "text" ? "text" : "rect",
-            points:
-              props.tool === "text"
-                ? [{ x: 0.2, y: 0.2 }]
-                : [
-                    { x: 0.2, y: 0.2 },
-                    { x: 0.4, y: 0.4 },
-                  ],
-            stroke: "#ef4444",
-            width: 2,
-          })
-        }
-      >
-        Draw sample
-      </button>
-      <button
-        onClick={() => props.onSelect?.(props.annotations?.[0]?.id ?? null)}
-      >
-        Select first annotation
-      </button>
-      <button
-        onClick={() => {
-          const entity = props.annotations?.[0];
-          if (entity?.kind === "markup" && props.canEditAnnotation?.(entity.id))
-            props.onUpdate?.(entity.id, {
-              ...entity.data,
-              points: [
-                { x: 0.3, y: 0.3 },
-                { x: 0.6, y: 0.6 },
-              ],
-            });
-        }}
-      >
-        Move selected annotation
-      </button>
-    </div>
-  ),
+    );
+  },
 }));
 
 const sheetId = "5d9a7cbd-7c52-48ed-b7ca-d14f423b3e19";
@@ -272,11 +286,17 @@ const openMenu = (name: string) =>
 const panel = (name: string) => {
   openMenu("More");
   fireEvent.click(
-    screen.getByRole("menuitem", { name: panels.find(([id]) => id === name)![1] }),
+    screen.getByRole("menuitem", {
+      name: panels.find(([id]) => id === name)![1],
+    }),
   );
 };
 const chooseTool = (id: string) => {
   const label = tools.find(([tool]) => tool === id)![1];
+  const done = within(
+    screen.getByRole("toolbar", { name: "Drawing tools" }),
+  ).queryByRole("button", { name: "Done" });
+  if (done) fireEvent.click(done);
   if (["pan", "select", "link", "issue", "rfi"].includes(id)) {
     openMenu("Tools");
     fireEvent.click(screen.getByRole("menuitemradio", { name: label }));
@@ -335,6 +355,57 @@ describe("drawing workspace workflows", () => {
     fireEvent.click(screen.getByRole("button",{name:"Open overlay"}));
     expect(screen.getByTestId("comparison")).toHaveAttribute("data-additional",JSON.stringify([third]));
     expect(mocks.save).not.toHaveBeenCalled();expect(mocks.metadata).not.toHaveBeenCalled();
+  });
+
+  it("finishes each bottom tool from its own button and restores normal movement", () => {
+    open();
+    expect(screen.queryByRole("button", { name: "Done" })).toBeNull();
+    for (const id of ["pan", "select", "line"]) {
+      chooseTool(id);
+      expect(screen.getAllByRole("button", { name: "Done" })).toHaveLength(1);
+      expect(screen.getByTestId("markup-editor")).toHaveAttribute(
+        "data-tool",
+        id,
+      );
+      expect(
+        screen.queryByRole("button", {
+          name: id === "line" ? "Markup" : "Tools",
+        }),
+      ).toBeNull();
+      fireEvent.click(screen.getByRole("button", { name: "Done" }));
+      expect(screen.getByTestId("markup-editor")).toHaveAttribute(
+        "data-tool",
+        "pan",
+      );
+      expect(screen.queryByRole("button", { name: "Done" })).toBeNull();
+    }
+  });
+
+  it("switches exclusively between markup, measure and pipe, including open choosers", () => {
+    open();
+    chooseTool("line");
+    fireEvent.click(screen.getByRole("button", { name: "Measure" }));
+    expect(screen.getByTestId("markup-editor")).toHaveAttribute(
+      "data-tool",
+      "pan",
+    );
+    expect(screen.getAllByRole("button", { name: "Done" })).toHaveLength(1);
+    expect(screen.getByRole("button", { name: "Markup" })).toBeVisible();
+    openMenu("Tools");
+    expect(screen.queryByRole("button", { name: "Done" })).toBeNull();
+    fireEvent.click(
+      screen.getByRole("menuitemcheckbox", { name: "Pipe system" }),
+    );
+    expect(screen.getAllByRole("button", { name: "Done" })).toHaveLength(1);
+    expect(screen.queryByRole("button", { name: "Tools" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Markup" }));
+    expect(screen.queryByRole("button", { name: "Done" })).toBeNull();
+    expect(screen.getByRole("dialog", { name: "Markup tools" })).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "Measure" }));
+    expect(screen.queryByRole("dialog", { name: "Markup tools" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Done" }));
+    expect(screen.getByRole("button", { name: "Measure" })).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Done" })).toBeNull();
   });
 
   it("overlays any job drawing pair for read-only users and returns to the original drawing with the comparison viewport", () => {
@@ -497,7 +568,11 @@ describe("drawing workspace workflows", () => {
       screen.getByRole("button", { name: "Move selected annotation" }),
     );
     expect(mocks.save).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: "Done" }));
+    fireEvent.click(
+      within(
+        screen.getByRole("toolbar", { name: "Selected markup actions" }),
+      ).getByRole("button", { name: "Done" }),
+    );
     expect(
       screen.queryByRole("toolbar", { name: "Selected markup actions" }),
     ).toBeNull();
