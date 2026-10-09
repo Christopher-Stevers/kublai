@@ -51,17 +51,22 @@ function DialogContent({
   children,
   showCloseButton = true,
   portalContainer,
+  excludeFromSnapshot = false,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
   showCloseButton?: boolean;
+  excludeFromSnapshot?: boolean;
   portalContainer?: React.ComponentProps<
     typeof DialogPrimitive.Portal
   >["container"];
 }) {
   return (
     <DialogPortal data-slot="dialog-portal" container={portalContainer}>
-      <DialogOverlay />
-      <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto overscroll-contain p-4">
+      <DialogOverlay data-snapshot-ui={excludeFromSnapshot ? "" : undefined} />
+      <div
+        data-snapshot-ui={excludeFromSnapshot ? "" : undefined}
+        className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto overscroll-contain p-4"
+      >
         <DialogPrimitive.Content
           data-slot="dialog-content"
           className={cn(

@@ -58,6 +58,7 @@ import {
   removeConversationMessage,
   savedConversationSnapshot,
   editConversationSnapshot,
+  listSavedSnapshots,
 } from "./service";
 import {
   uploadConversationAttachment,
@@ -269,6 +270,82 @@ describe.skipIf(!enabled)("private chat against isolated PostgreSQL", () => {
     const snapshot = await savedConversationSnapshot(author, sent.id);
     return { id, author, original, snapshot };
   };
+  it("lists only owned images in accessible conversations and searches literal text", async () => {
+    const { id, author, snapshot } = await snapshotFixture();
+    expect(
+      (
+        await listSavedSnapshots("author", { search: "Original drawing" })
+      ).snapshots.map((v) => v.id),
+    ).toEqual([snapshot.id]);
+    expect(
+      (await listSavedSnapshots("recipient", { search: "" })).snapshots,
+    ).toEqual([]);
+    expect(
+      (await listSavedSnapshots("outsider", { search: "" })).snapshots,
+    ).toEqual([]);
+    expect(
+      (await listSavedSnapshots("foreign", { search: "" })).snapshots,
+    ).toEqual([]);
+    expect(
+      (await listSavedSnapshots("author", { search: "%" })).snapshots,
+    ).toEqual([]);
+    await expect(
+      listSavedSnapshots("pending", { search: "" }),
+    ).rejects.toThrow();
+    const page = await listSavedSnapshots("author", { search: "" });
+    expect(page.snapshots[0]?.imageUrl).toMatch(/^\/api\/chat\/attachments\//);
+    // Multiple image attachments must still produce one entry per message.
+    const extra = await imageFile(author);
+    await fixture
+      .update(schema.conversationAttachments)
+      .set({ messageId: snapshot.id })
+      .where(eq(schema.conversationAttachments.id, extra.id));
+    expect(
+      (await listSavedSnapshots("author", { search: "" })).snapshots,
+    ).toHaveLength(1);
+    await fixture
+      .delete(schema.conversationMembers)
+      .where(eq(schema.conversationMembers.conversationId, id));
+    expect(
+      (await listSavedSnapshots("author", { search: "" })).snapshots,
+    ).toEqual([]);
+  });
+  it("pages older snapshots without duplicates and omits deleted and text-only posts", async () => {
+    const { id, author } = await snapshotFixture();
+    for (let i = 0; i < 21; i++) {
+      const image = await imageFile(author);
+      await sendConversationMessage(author, {
+        conversationId: id,
+        clientId: randomUUID(),
+        body: `Saved ${i}`,
+        attachmentIds: [image.id],
+      });
+    }
+    await sendConversationMessage(author, {
+      conversationId: id,
+      clientId: randomUUID(),
+      body: "Text only",
+      attachmentIds: [],
+    });
+    const first = await listSavedSnapshots("author", { search: "" });
+    expect(first.snapshots).toHaveLength(20);
+    expect(first.nextCursor).not.toBeNull();
+    const second = await listSavedSnapshots("author", {
+      search: "",
+      beforeSequence: first.nextCursor!,
+    });
+    expect(second.snapshots).toHaveLength(2);
+    expect(second.nextCursor).toBeNull();
+    expect(
+      new Set([...first.snapshots, ...second.snapshots].map((v) => v.id)).size,
+    ).toBe(22);
+    await removeConversationMessage(author, first.snapshots[0]!.id);
+    expect(
+      (await listSavedSnapshots("author", { search: "" })).snapshots.map(
+        (v) => v.id,
+      ),
+    ).not.toContain(first.snapshots[0]!.id);
+  });
   it("replaces a snapshot in place and makes identical edit retries safe", async () => {
     const { id, author, original, snapshot } = await snapshotFixture();
     const before = (await conversationHistory(author, { limit: 50 }))

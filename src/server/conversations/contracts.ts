@@ -4,6 +4,15 @@ import {
   type SnapshotSource,
 } from "~/lib/snapshot-source";
 export const conversationInput = z.object({ conversationId: z.uuid() });
+export const savedSnapshotsInput = z.object({
+  search: z.string().trim().max(200).default(""),
+  beforeSequence: z
+    .number()
+    .int()
+    .min(1)
+    .max(Number.MAX_SAFE_INTEGER)
+    .optional(),
+});
 export const createConversationInput = z
   .object({
     kind: z.enum(["direct", "group"]),

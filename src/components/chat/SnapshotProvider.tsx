@@ -52,6 +52,7 @@ import {
 } from "~/lib/snapshot-source";
 import { capturePageScrolls, restorePageScrolls } from "~/lib/page-view-scroll";
 import { SNAPSHOT_EDIT_MESSAGE, SNAPSHOT_EDIT_CHAT } from "~/lib/snapshot-edit";
+import { SavedSnapshotPicker } from "./SavedSnapshotPicker";
 const SnapshotContext = createContext<{ start: () => void } | null>(null);
 export const useSnapshot = () => useContext(SnapshotContext);
 type Capture = {
@@ -98,7 +99,7 @@ export function SnapshotProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
   const [phase, setPhase] = useState<
-    "idle" | "capture" | "screen" | "select" | "share" | "error"
+    "idle" | "choose" | "capture" | "screen" | "select" | "share" | "error"
   >("idle");
   const [capture, setCapture] = useState<Capture | null>(null);
   const [rect, setRect] = useState<SnapshotRect | null>(null);
@@ -339,8 +340,8 @@ export function SnapshotProvider({ children }: { children: React.ReactNode }) {
       setPhase("error");
     }
   };
-  const start = () => {
-    if (phase !== "idle") return;
+  const beginCapture = () => {
+    if (phase !== "idle" && phase !== "choose") return;
     if (editing && !saved.data) return;
     if (editing) prepareEdit();
     window.dispatchEvent(new Event(SNAPSHOT_FREEZE_EVENT));
@@ -349,6 +350,11 @@ export function SnapshotProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     void finishCapture(captureVisiblePage());
+  };
+  const start = () => {
+    if (phase !== "idle") return;
+    if (editing) beginCapture();
+    else setPhase("choose");
   };
   const screenCapture = () => {
     setUsingScreen(true);
@@ -707,7 +713,7 @@ export function SnapshotProvider({ children }: { children: React.ReactNode }) {
               <div className="flex flex-wrap gap-2">
                 <Button
                   size="sm"
-                  onClick={start}
+                  onClick={beginCapture}
                   disabled={!saved.data || Boolean(saved.error)}
                 >
                   Retake snapshot
@@ -729,12 +735,18 @@ export function SnapshotProvider({ children }: { children: React.ReactNode }) {
           )}
         {overlay}
         <Dialog
-          open={phase === "share" || phase === "screen" || phase === "error"}
+          open={
+            phase === "choose" ||
+            phase === "share" ||
+            phase === "screen" ||
+            phase === "error"
+          }
           onOpenChange={(open) => {
             if (!open && !busy) release();
           }}
         >
           <DialogContent
+            excludeFromSnapshot
             portalContainer={portalHost}
             data-snapshot-ui
             className="max-h-[90dvh] overflow-y-auto sm:max-w-xl"
@@ -755,13 +767,25 @@ export function SnapshotProvider({ children }: { children: React.ReactNode }) {
               </span>
             </DialogTitle>
             <DialogDescription>
-              {phase === "share"
-                ? editing
-                  ? "Review your changes. Saving updates the snapshot in its existing conversation."
-                  : "Review the image and choose who should receive it."
-                : "Capture a selected area and share it in chat."}
+              {phase === "choose"
+                ? "Capture a new view or reopen one of your saved snapshots to make changes."
+                : phase === "share"
+                  ? editing
+                    ? "Review your changes. Saving updates the snapshot in its existing conversation."
+                    : "Review the image and choose who should receive it."
+                  : "Capture a selected area and share it in chat."}
             </DialogDescription>
-            {phase === "share" ? (
+            {phase === "choose" ? (
+              <SavedSnapshotPicker
+                onCapture={beginCapture}
+                onEdit={(href) => {
+                  release();
+                  // Saved view state is restored when its page mounts. A full
+                  // navigation also restores it when editing the same drawing.
+                  window.location.assign(href);
+                }}
+              />
+            ) : phase === "share" ? (
               <>
                 <img
                   alt="Snapshot preview"

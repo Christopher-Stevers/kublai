@@ -65,6 +65,9 @@ vi.mock("~/trpc/react", () => ({
       send: { useMutation: () => ({ mutateAsync: mocks.send }) },
       editSnapshot: { useMutation: () => ({ mutateAsync: mocks.edit }) },
       snapshot: { useQuery: () => ({ data: mocks.saved }) },
+      savedSnapshots: {
+        useQuery: () => ({ data: { snapshots: [], nextCursor: null } }),
+      },
       people: { useQuery: () => ({ data: people }) },
       list: { useQuery: () => ({ data: { conversations: [] } }) },
     },
@@ -82,6 +85,7 @@ function setup() {
     </SnapshotProvider>,
   );
   fireEvent.click(screen.getByText("Start snapshot"));
+  fireEvent.click(screen.getByText("New snapshot"));
 }
 beforeEach(() => {
   mocks.params = "";
@@ -145,6 +149,20 @@ function editSetup() {
     </SnapshotProvider>,
   );
 }
+it("opens the snapshot tool choices before taking a new capture", () => {
+  render(
+    <SnapshotProvider>
+      <Launcher />
+    </SnapshotProvider>,
+  );
+  fireEvent.click(screen.getByText("Start snapshot"));
+  expect(screen.getByText("Edit a saved snapshot")).toBeVisible();
+  expect(screen.getByText("New snapshot")).toBeVisible();
+  expect(mocks.capture).not.toHaveBeenCalled();
+  expect(
+    document.querySelector('[data-slot="dialog-overlay"]'),
+  ).toHaveAttribute("data-snapshot-ui");
+});
 it("retakes an existing snapshot, preserves its caption and retries one replacement", async () => {
   mocks.edit.mockRejectedValueOnce(new Error("Connection interrupted"));
   editSetup();

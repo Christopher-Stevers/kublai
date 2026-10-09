@@ -29,6 +29,7 @@ import type {
   createConversationInput,
   sendConversationInput,
   editSnapshotInput,
+  savedSnapshotsInput,
 } from "./contracts";
 import type { z } from "zod";
 
@@ -411,6 +412,67 @@ export async function sendConversationMessage(
     return message.id;
   });
   return { id };
+}
+export async function listSavedSnapshots(
+  userId: string,
+  input: z.infer<typeof savedSnapshotsInput>,
+) {
+  const user = await conversationUser(userId);
+  const search = `%${input.search.replace(/[\\%_]/g, "\\$&")}%`;
+  // Recheck membership and organization on every page; never list a colleague's
+  // images or snapshots from conversations the effective user has left.
+  const rows = await db
+    .select({
+      id: conversationMessages.id,
+      conversationId: conversationMessages.conversationId,
+      sequence: conversationMessages.sequence,
+      body: conversationMessages.body,
+      source: conversationMessages.source,
+      createdAt: conversationMessages.createdAt,
+      conversationName: conversations.name,
+      imageId: sql<string>`(select a.id from ${conversationAttachments} a
+        where a."messageId" = ${conversationMessages.id}
+        and a."mimeType" like 'image/%' order by a."createdAt", a.id limit 1)`,
+    })
+    .from(conversationMessages)
+    .innerJoin(
+      conversations,
+      eq(conversations.id, conversationMessages.conversationId),
+    )
+    .innerJoin(
+      conversationMembers,
+      and(
+        eq(conversationMembers.conversationId, conversations.id),
+        eq(conversationMembers.userId, user.id),
+      ),
+    )
+    .where(
+      and(
+        eq(conversationMessages.authorId, user.id),
+        eq(conversations.organizationId, user.organizationId),
+        isNull(conversationMessages.deletedAt),
+        input.beforeSequence
+          ? lt(conversationMessages.sequence, input.beforeSequence)
+          : undefined,
+        sql`exists (select 1 from ${conversationAttachments} a
+        where a."messageId" = ${conversationMessages.id} and a."mimeType" like 'image/%')`,
+        input.search
+          ? sql`(${conversationMessages.body} ilike ${search}
+        or ${conversationMessages.source}->>'title' ilike ${search}
+        or ${conversations.name} ilike ${search})`
+          : undefined,
+      ),
+    )
+    .orderBy(desc(conversationMessages.sequence))
+    .limit(21);
+  const page = rows.slice(0, 20);
+  return {
+    snapshots: page.map(({ imageId, ...row }) => ({
+      ...row,
+      imageUrl: `/api/chat/attachments/${imageId}`,
+    })),
+    nextCursor: rows.length > 20 ? page.at(-1)!.sequence : null,
+  };
 }
 export async function savedConversationSnapshot(
   access: ConversationAccess,
