@@ -1,6 +1,7 @@
 "use client";
 
 import { DownloadIcon } from "lucide-react";
+import { DocumentPdfPreview } from "./DocumentPdfPreview";
 import { Button } from "~/components/ui/button";
 import {
   Dialog,
@@ -42,10 +43,10 @@ function VersionPane({
         </Button>
       </div>
       {version.mimeType === "application/pdf" ? (
-        <iframe
+        <DocumentPdfPreview
+          key={version.id}
           title={`PDF version ${version.number}`}
-          src={url}
-          className="min-h-[50vh] w-full flex-1 rounded-md border bg-white"
+          url={url}
         />
       ) : image ? (
         <div className="bg-muted/30 flex min-h-[35vh] flex-1 items-center justify-center overflow-auto rounded-md border p-2">

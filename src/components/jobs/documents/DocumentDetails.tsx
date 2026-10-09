@@ -5,6 +5,10 @@ import {
   supportsDocumentEditor,
   type EditorAvailability,
 } from "./DocumentEditor";
+import { DocumentPdfPreview } from "./DocumentPdfPreview";
+import { SubmittalReviewPanel } from "./SubmittalReviewPanel";
+import { SubmittalBadge } from "./SubmittalsView";
+import { defaultSubmittal } from "~/lib/submittals";
 import { DocumentVersionCompare } from "./DocumentVersionCompare";
 import {
   DownloadIcon,
@@ -13,6 +17,7 @@ import {
   LockIcon,
   MessageSquareIcon,
   UploadIcon,
+  XIcon,
 } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { confirmAction } from "~/components/ui/app-dialogs";
@@ -53,6 +58,7 @@ type Props = {
   onClose: () => void;
   onDialog: (kind: DocumentDialogKind) => void;
   onUpload: () => void;
+  onReview: () => void;
   editorStatus: EditorAvailability | null;
   onEdit: () => void;
   mutate: (action: DocumentAction) => Promise<boolean>;
@@ -67,6 +73,7 @@ export function DocumentDetails({
   onClose,
   onDialog,
   onUpload,
+  onReview,
   editorStatus,
   onEdit,
   mutate,
@@ -74,6 +81,7 @@ export function DocumentDetails({
   const [tab, setTab] = useState<
     "details" | "versions" | "comments" | "activity"
   >("details");
+  const [readyVersionId, setReadyVersionId] = useState<string | null>(null);
   const [previewVersionId, setPreviewVersionId] = useState<string | null>(null);
   const [comment, setComment] = useState("");
   const [compareVersionId, setCompareVersionId] = useState<string | null>(null);
@@ -131,10 +139,31 @@ export function DocumentDetails({
         open={compareVersionId === null}
         onOpenChange={(open) => !open && onClose()}
       >
-        <DialogContent className="max-h-[92dvh] overflow-y-auto sm:max-w-6xl">
-          <DialogHeader className="pr-6 text-left">
+        <DialogContent
+          className="max-h-[92dvh] overflow-y-auto sm:max-w-6xl"
+          showCloseButton={!document.submittal}
+        >
+          <DialogHeader
+            className={`pr-8 text-left ${document.submittal ? "bg-background sticky top-0 z-10 border-b pb-3" : ""}`}
+          >
+            {document.submittal && (
+              <Button
+                type="button"
+                aria-label="Close"
+                variant="ghost"
+                size="icon"
+                className="absolute top-0 right-0 size-8"
+                onClick={onClose}
+              >
+                <XIcon />
+              </Button>
+            )}
             <div className="flex flex-wrap items-center gap-2">
-              <StatusBadge status={document.status} />
+              {document.submittal ? (
+                <SubmittalBadge document={document} data={data} />
+              ) : (
+                <StatusBadge status={document.status} />
+              )}
               {document.officeWebUrl && (
                 <span className="text-muted-foreground text-xs">
                   Microsoft 365 linked file
@@ -145,7 +174,7 @@ export function DocumentDetails({
               )}
             </div>
             <DialogTitle className="text-xl leading-tight break-all">
-              {document.name}
+              {document.submittal?.title ?? document.name}
             </DialogTitle>
             <DialogDescription>
               Updated {formatDate(document.updatedAt)} ·{" "}
@@ -208,13 +237,43 @@ export function DocumentDetails({
                 Upload new version
               </Button>
             )}
-            {canEdit && (
+            {canEdit && !document.submittal && (
               <Button
                 variant="outline"
                 disabled={busy}
                 onClick={() => onDialog("metadata")}
               >
                 Edit details
+              </Button>
+            )}
+            {canEdit &&
+              !document.submittal &&
+              currentVersion?.mimeType === "application/pdf" && (
+                <Button
+                  variant="outline"
+                  disabled={busy}
+                  onClick={() =>
+                    void mutate({
+                      action: "registerSubmittal",
+                      documentId: document.id,
+                      expectedVersionId: currentVersion.id,
+                      details: defaultSubmittal(document.name),
+                    })
+                  }
+                >
+                  Move to Submittals
+                </Button>
+              )}
+            {document.submittal && version && (
+              <Button variant="outline" asChild>
+                <a
+                  href={versionUrl(jobId, version.id)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <ExternalLinkIcon />
+                  Open PDF
+                </a>
               </Button>
             )}
             {canWrite && !document.lockedBy && (
@@ -271,11 +330,11 @@ export function DocumentDetails({
                     </p>
                   </div>
                 ) : version?.mimeType === "application/pdf" ? (
-                  <iframe
+                  <DocumentPdfPreview
+                    key={version.id}
                     title={`Preview ${document.name} version ${version.number}`}
-                    src={versionUrl(jobId, version.id)}
-                    className="h-[55dvh] min-h-80 w-full bg-white"
-                    sandbox="allow-same-origin"
+                    url={versionUrl(jobId, version.id)}
+                    onReady={() => setReadyVersionId(version.id)}
                   />
                 ) : version &&
                   [
@@ -330,6 +389,22 @@ export function DocumentDetails({
               )}
             </div>
             <div className="min-w-0">
+              {document.submittal && (
+                <SubmittalReviewPanel
+                  document={document}
+                  data={data}
+                  canEdit={canEdit}
+                  mutable={mutable}
+                  busy={busy}
+                  reviewingCurrentVersion={
+                    readyVersionId === document.currentVersionId &&
+                    (!previewVersionId ||
+                      previewVersionId === document.currentVersionId)
+                  }
+                  mutate={mutate}
+                  onReview={onReview}
+                />
+              )}
               <div
                 role="tablist"
                 aria-label="Document information"
@@ -413,16 +488,18 @@ export function DocumentDetails({
                             Copy
                           </Button>
                         )}
-                        {canEdit && !document.officeWebUrl && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            disabled={busy}
-                            onClick={() => onDialog("review")}
-                          >
-                            Request review
-                          </Button>
-                        )}
+                        {canEdit &&
+                          !document.officeWebUrl &&
+                          !document.submittal && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              disabled={busy}
+                              onClick={() => onDialog("review")}
+                            >
+                              Request review
+                            </Button>
+                          )}
                         {canEdit && !document.officeWebUrl && (
                           <Button
                             size="sm"

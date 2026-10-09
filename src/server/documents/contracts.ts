@@ -18,7 +18,36 @@ const documentIds = z
   .max(100)
   .refine((ids) => new Set(ids).size === ids.length, "Duplicate documents.");
 const title = z.string().trim().min(1).max(200);
+export const submittalInputSchema = z.object({
+  title,
+  category: z.string().trim().max(100),
+  specSection: z.string().trim().max(100),
+  manufacturer: z.string().trim().max(200),
+  dueDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .refine((value) => {
+      const date = new Date(`${value}T12:00:00Z`);
+      return (
+        !Number.isNaN(date.getTime()) &&
+        date.toISOString().slice(0, 10) === value
+      );
+    }, "Choose a valid date.")
+    .nullable(),
+});
 export const documentActionSchema = z.discriminatedUnion("action", [
+  z.object({
+    action: z.literal("updateSubmittal"),
+    documentId,
+    expectedUpdatedAt: z.iso.datetime(),
+    details: submittalInputSchema,
+  }),
+  z.object({
+    action: z.literal("registerSubmittal"),
+    documentId,
+    expectedVersionId: id,
+    details: submittalInputSchema,
+  }),
   z.object({ action: z.literal("createFolder"), name, parentId: folderId }),
   z.object({
     action: z.literal("updateFolder"),
@@ -90,6 +119,7 @@ export const documentActionSchema = z.discriminatedUnion("action", [
   }),
 ]);
 export const uploadMetadataSchema = z.object({
+  submittal: submittalInputSchema.optional(),
   jobId: id,
   folderId,
   documentId: id.optional(),
@@ -97,3 +127,22 @@ export const uploadMetadataSchema = z.object({
   name,
 });
 export const jobIdSchema = id;
+
+const encodedSubmittalSchema = z
+  .string()
+  .max(8192)
+  .transform((value, context): unknown => {
+    try {
+      return JSON.parse(value) as unknown;
+    } catch {
+      context.addIssue({
+        code: "custom",
+        message: "Invalid submittal metadata.",
+      });
+      return z.NEVER;
+    }
+  })
+  .pipe(submittalInputSchema);
+export function parseSubmittalUpload(value: FormDataEntryValue | null) {
+  return value === null ? undefined : encodedSubmittalSchema.parse(value);
+}

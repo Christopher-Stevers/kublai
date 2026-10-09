@@ -50,6 +50,8 @@ import type {
   FolderPermission,
   JobDocument,
 } from "~/server/documents/types";
+import { SubmittalsView } from "./documents/SubmittalsView";
+import { defaultSubmittal } from "~/lib/submittals";
 import {
   DocumentEditor,
   type EditorAvailability,
@@ -71,7 +73,7 @@ import {
   versionUrl,
 } from "./documents/document-ui";
 
-type View = "files" | "reviews" | "transmittals" | "recycle";
+type View = "submittals" | "files" | "reviews" | "transmittals" | "recycle";
 type Modal = {
   kind:
     | "folder"
@@ -200,8 +202,19 @@ export function JobDocumentsView({
     name: string;
   } | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
+  const uploadAsSubmittal = useRef(false);
+  const uploadMutex = useRef(false);
   const uploadTarget = useRef<JobDocument | null>(null);
   const requestNumber = useRef(0);
+  useEffect(() => {
+    const input = fileInput.current;
+    const cancel = () => {
+      uploadTarget.current = null;
+      uploadAsSubmittal.current = false;
+    };
+    input?.addEventListener("cancel", cancel);
+    return () => input?.removeEventListener("cancel", cancel);
+  }, []);
   const mutable = !sandbox && !offline;
   const currentFolder = data.folders.find((item) => item.id === folderId);
   const canWrite =
@@ -355,39 +368,71 @@ export function JobDocumentsView({
   };
 
   const upload = async (files: File[]) => {
-    if (!mutable || processing || !files.length) return;
+    if (!mutable || processing || uploadMutex.current || !files.length) return;
     const target = uploadTarget.current;
     if (
       target
         ? !target.canWrite || target.officeWebUrl || target.deletedAt
-        : !canWrite
+        : uploadAsSubmittal.current
+          ? !data.capabilities.canWrite
+          : !canWrite
     )
       return;
+    uploadMutex.current = true;
+    const asSubmittal = uploadAsSubmittal.current;
     let uploaded = 0;
+    const failures: string[] = [];
+    setError(null);
     try {
-      for (const file of target ? files.slice(0, 1) : files) {
-        setUploading(file.name);
-        const body = new FormData();
-        body.append("jobId", jobId);
-        body.append("file", file);
-        if (target) {
-          body.append("documentId", target.id);
-          if (target.currentVersionId)
-            body.append("expectedVersionId", target.currentVersionId);
-        } else if (folderId) body.append("folderId", folderId);
-        await responseBody(
-          await fetch(
-            `/api/job-documents/upload?jobId=${encodeURIComponent(jobId)}`,
-            { method: "POST", credentials: "same-origin", body },
-          ),
-        );
-        uploaded++;
+      const queue = target ? files.slice(0, 1) : files;
+      for (const [index, file] of queue.entries()) {
+        try {
+          if ((asSubmittal || target?.submittal) && !/\.pdf$/i.test(file.name))
+            throw new Error("Choose a PDF file for submittals.");
+          if (!file.size || file.size > 50 * 1024 * 1024)
+            throw new Error("Upload a nonempty file up to 50 MB.");
+          setUploading(
+            asSubmittal
+              ? `${file.name} (${index + 1} of ${queue.length})`
+              : file.name,
+          );
+          const body = new FormData();
+          body.append("jobId", jobId);
+          body.append("file", file);
+          if (target) {
+            body.append("documentId", target.id);
+            if (target.currentVersionId)
+              body.append("expectedVersionId", target.currentVersionId);
+          } else if (asSubmittal)
+            body.append(
+              "submittal",
+              JSON.stringify(defaultSubmittal(file.name)),
+            );
+          else if (folderId) body.append("folderId", folderId);
+          await responseBody(
+            await fetch(
+              `/api/job-documents/upload?jobId=${encodeURIComponent(jobId)}`,
+              { method: "POST", credentials: "same-origin", body },
+            ),
+          );
+          uploaded++;
+        } catch (reason) {
+          if (!asSubmittal || target) throw reason;
+          failures.push(
+            `${file.name}: ${reason instanceof Error ? reason.message : "Upload failed."}`,
+          );
+        }
       }
       await refresh();
-      notify(
-        `${uploaded} ${uploaded === 1 ? "file" : "files"} uploaded.`,
-        "success",
-      );
+      if (failures.length) {
+        const message = `${uploaded} uploaded; ${failures.length} could not upload. ${failures.join(" ")}`;
+        setError(message);
+        notify(message, "error");
+      } else
+        notify(
+          `${uploaded} ${uploaded === 1 ? "file" : "files"} uploaded.`,
+          "success",
+        );
     } catch (reason) {
       notify(
         `${uploaded ? `${uploaded} file(s) uploaded. ` : ""}${reason instanceof Error ? reason.message : "Upload failed."}`,
@@ -395,6 +440,8 @@ export function JobDocumentsView({
       );
       await refresh().catch(() => undefined);
     } finally {
+      uploadMutex.current = false;
+      uploadAsSubmittal.current = false;
       setUploading(null);
       uploadTarget.current = null;
       if (fileInput.current) fileInput.current.value = "";
@@ -402,8 +449,13 @@ export function JobDocumentsView({
   };
   const pickFiles = (target: JobDocument | null = null) => {
     uploadTarget.current = target;
+    uploadAsSubmittal.current = !target && view === "submittals";
     if (fileInput.current) {
       fileInput.current.multiple = !target;
+      fileInput.current.accept =
+        uploadAsSubmittal.current || target?.submittal
+          ? ".pdf,application/pdf"
+          : "";
       fileInput.current.click();
     }
   };
@@ -610,7 +662,9 @@ export function JobDocumentsView({
   const filtered = data.documents
     .filter(
       (item) =>
-        (view === "recycle" ? Boolean(item.deletedAt) : !item.deletedAt) &&
+        (view === "recycle"
+          ? Boolean(item.deletedAt)
+          : !item.deletedAt && !item.submittal) &&
         (view === "recycle" || query.trim() || item.folderId === folderId) &&
         (!query.trim() ||
           `${item.name} ${item.description} ${item.tags.join(" ")}`
@@ -680,7 +734,7 @@ export function JobDocumentsView({
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          {canWrite && (
+          {canWrite && view !== "submittals" && (
             <>
               {editorStatus?.configured && (
                 <>
@@ -742,7 +796,7 @@ export function JobDocumentsView({
           </Button>
         </div>
       </header>
-      {!sandbox && editorStatus && (
+      {!sandbox && editorStatus && view !== "submittals" && (
         <p className="text-muted-foreground text-sm">
           {editorStatus.configured
             ? "Create and edit Word documents and spreadsheets together with Collabora Online. No Microsoft account needed."
@@ -782,31 +836,37 @@ export function JobDocumentsView({
           Uploading {uploading}… Keep this page open.
         </p>
       )}
-      <div className="grid grid-cols-3 gap-2 sm:gap-4">
-        {[
-          { icon: FileTextIcon, label: "Documents", count: activeDocs.length },
-          {
-            icon: ClipboardCheckIcon,
-            label: "Pending reviews",
-            count: data.reviews.filter((item) => item.status === "pending")
-              .length,
-          },
-          {
-            icon: CheckCircle2Icon,
-            label: "Approved",
-            count: activeDocs.filter((item) => item.status === "approved")
-              .length,
-          },
-        ].map(({ icon: Icon, label, count }) => (
-          <div className="bg-card rounded-lg border p-3 sm:p-4" key={label}>
-            <div className="text-muted-foreground mb-2 flex items-center gap-2 text-xs sm:text-sm">
-              <Icon className="hidden size-4 sm:block" />
-              {label}
+      {view !== "submittals" && (
+        <div className="grid grid-cols-3 gap-2 sm:gap-4">
+          {[
+            {
+              icon: FileTextIcon,
+              label: "Documents",
+              count: activeDocs.length,
+            },
+            {
+              icon: ClipboardCheckIcon,
+              label: "Pending reviews",
+              count: data.reviews.filter((item) => item.status === "pending")
+                .length,
+            },
+            {
+              icon: CheckCircle2Icon,
+              label: "Approved",
+              count: activeDocs.filter((item) => item.status === "approved")
+                .length,
+            },
+          ].map(({ icon: Icon, label, count }) => (
+            <div className="bg-card rounded-lg border p-3 sm:p-4" key={label}>
+              <div className="text-muted-foreground mb-2 flex items-center gap-2 text-xs sm:text-sm">
+                <Icon className="hidden size-4 sm:block" />
+                {label}
+              </div>
+              <p className="text-xl font-semibold tabular-nums">{count}</p>
             </div>
-            <p className="text-xl font-semibold tabular-nums">{count}</p>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
       <div
         className="flex flex-wrap gap-1 border-b"
         role="tablist"
@@ -815,6 +875,7 @@ export function JobDocumentsView({
         {(
           [
             { id: "files", label: "Files", icon: FolderIcon },
+            { id: "submittals", label: "Submittals", icon: ClipboardCheckIcon },
             { id: "reviews", label: "Reviews", icon: ClipboardCheckIcon },
             { id: "transmittals", label: "Transmittals", icon: PackageIcon },
             { id: "recycle", label: "Recycle bin", icon: Trash2Icon },
@@ -835,6 +896,20 @@ export function JobDocumentsView({
           </button>
         ))}
       </div>
+      {view === "submittals" && (
+        <SubmittalsView
+          data={data}
+          canWrite={mutable && data.capabilities.canWrite}
+          busy={processing}
+          onOpen={setSelectedId}
+          onUpload={() => pickFiles()}
+          onDrop={(files) => {
+            uploadTarget.current = null;
+            uploadAsSubmittal.current = true;
+            void upload(files);
+          }}
+        />
+      )}
       {(view === "files" || view === "recycle") && (
         <section
           aria-label={view === "files" ? "Project files" : "Recycled files"}
@@ -1050,7 +1125,11 @@ export function JobDocumentsView({
               setDragging(false);
               if (canWrite && view === "files") {
                 uploadTarget.current = null;
-                void upload(Array.from(event.dataTransfer.files));
+                {
+                  uploadTarget.current = null;
+                  uploadAsSubmittal.current = false;
+                  void upload(Array.from(event.dataTransfer.files));
+                }
               }
             }}
           >
@@ -1342,6 +1421,10 @@ export function JobDocumentsView({
           onClose={() => setSelectedId(null)}
           onDialog={(kind) => openModal({ kind, documentIds: [selected.id] })}
           onUpload={() => pickFiles(selected)}
+          onReview={() => {
+            setSelectedId(null);
+            setView("reviews");
+          }}
           editorStatus={editorStatus}
           onEdit={() =>
             setEditorDocument({ id: selected.id, name: selected.name })

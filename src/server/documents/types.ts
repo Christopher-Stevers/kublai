@@ -13,7 +13,17 @@ export type DocumentFolder = {
   canWrite?: boolean;
   canManage?: boolean;
 };
+export type SubmittalDetails = {
+  number: string;
+  title: string;
+  category: string;
+  specSection: string;
+  manufacturer: string;
+  dueDate: string | null;
+};
+export type SubmittalInput = Omit<SubmittalDetails, "number">;
 export type JobDocument = {
+  submittal?: SubmittalDetails;
   id: string;
   jobId: string;
   folderId: string | null;
@@ -120,6 +130,18 @@ export type DocumentOverview = Omit<DocumentState, "editorSaveReceipts"> & {
   office: { mode: "linked"; embeddedConfigured: boolean };
 };
 export type DocumentAction =
+  | {
+      action: "updateSubmittal";
+      documentId: string;
+      expectedUpdatedAt: string;
+      details: SubmittalInput;
+    }
+  | {
+      action: "registerSubmittal";
+      documentId: string;
+      expectedVersionId: string;
+      details: SubmittalInput;
+    }
   | { action: "createFolder"; name: string; parentId?: string | null }
   | {
       action: "updateFolder";

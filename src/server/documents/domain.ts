@@ -7,6 +7,7 @@ import type {
   DocumentState,
   DocumentVersion,
   JobDocument,
+  SubmittalInput,
 } from "./types";
 
 export type DocumentActor = {
@@ -254,6 +255,17 @@ export function nextVersionTimestamp(state: DocumentState, documentId: string) {
     );
   return new Date(Math.max(Date.now(), previous + 1)).toISOString();
 }
+function nextSubmittalNumber(state: DocumentState) {
+  const maximum = state.documents.reduce(
+    (max, doc) =>
+      Math.max(
+        max,
+        Number(/^SUB-(\d+)$/.exec(doc.submittal?.number ?? "")?.[1] ?? 0),
+      ),
+    0,
+  );
+  return `SUB-${String(maximum + 1).padStart(3, "0")}`;
+}
 export function appendVersion(
   state: DocumentState,
   actor: DocumentActor,
@@ -266,6 +278,7 @@ export function appendVersion(
     mimeType: string;
     sha256: string;
     revisionSource?: "editor";
+    submittal?: SubmittalInput;
   },
 ) {
   const recent = state.versions.filter(
@@ -282,9 +295,26 @@ export function appendVersion(
       "PAYLOAD_TOO_LARGE",
       "Daily job version or storage limit reached. Contact your administrator before saving further versions.",
     );
+  if (input.submittal && input.documentId)
+    fail("BAD_REQUEST", "Use submittal details to edit an existing submittal.");
+  const existing = input.documentId
+    ? accessibleDocument(state, actor, input.documentId, { write: true })
+    : null;
+  if (
+    (input.submittal || existing?.submittal) &&
+    input.mimeType !== "application/pdf"
+  )
+    fail("BAD_REQUEST", "Submittals and their revisions must be PDF files.");
+  const number = input.submittal ? nextSubmittalNumber(state) : null;
   const doc = input.documentId
     ? accessibleDocument(state, actor, input.documentId, { write: true })
-    : newDocument(state, actor, input.name, input.folderId ?? null);
+    : newDocument(
+        state,
+        actor,
+        number ? `${number} · ${input.name}`.slice(0, 200) : input.name,
+        input.folderId ?? null,
+      );
+  if (input.submittal && number) doc.submittal = { ...input.submittal, number };
   if (doc.officeWebUrl)
     fail(
       "BAD_REQUEST",
@@ -534,6 +564,19 @@ export function applyDocumentAction(
             "A document changed after this review began. Request a new review for the current versions.",
           );
       }
+      if (
+        action.decision === "changes_requested" &&
+        !action.comment?.trim() &&
+        review.documents.some(
+          (entry) =>
+            state.documents.find((doc) => doc.id === entry.documentId)
+              ?.submittal,
+        )
+      )
+        fail(
+          "BAD_REQUEST",
+          "Explain the changes needed before returning a submittal.",
+        );
       review.status = action.decision;
       review.comment = action.comment ?? "";
       review.resolvedAt = now;
@@ -578,11 +621,57 @@ export function applyDocumentAction(
       resultId = auditDocument = doc.id;
       auditFolder = doc.folderId;
       switch (action.action) {
+        case "registerSubmittal": {
+          if (doc.submittal)
+            fail("CONFLICT", "This document is already a submittal.");
+          if (doc.currentVersionId !== action.expectedVersionId)
+            fail(
+              "CONFLICT",
+              "A newer version exists. Refresh before registering.",
+            );
+          if (
+            doc.officeWebUrl ||
+            state.versions.find(
+              (version) => version.id === doc.currentVersionId,
+            )?.mimeType !== "application/pdf"
+          )
+            fail(
+              "BAD_REQUEST",
+              "Only uploaded PDF documents can be registered as submittals.",
+            );
+          doc.submittal = {
+            ...action.details,
+            number: nextSubmittalNumber(state),
+          };
+          detail = `Registered ${doc.submittal.number}: ${doc.submittal.title}`;
+          break;
+        }
+        case "updateSubmittal": {
+          if (!doc.submittal)
+            fail("BAD_REQUEST", "This document is not a submittal.");
+          if (doc.updatedAt !== action.expectedUpdatedAt)
+            fail(
+              "CONFLICT",
+              "This submittal changed. Refresh before editing its details.",
+            );
+          doc.submittal = { ...action.details, number: doc.submittal.number };
+          detail = `Updated ${doc.submittal.number}: ${doc.submittal.title}`;
+          break;
+        }
         case "updateDocument": {
           const target =
             action.folderId === undefined ? doc.folderId : action.folderId;
           assertFolderRole(state, actor, target, "editor");
           siblingName(state, action.name ?? doc.name, target, doc.id);
+          if (
+            doc.submittal &&
+            action.status !== undefined &&
+            action.status !== doc.status
+          )
+            fail(
+              "BAD_REQUEST",
+              "Use the submittal review workflow to change its approval status.",
+            );
           if (action.status === "approved" && doc.status !== "approved")
             fail(
               "BAD_REQUEST",
@@ -634,6 +723,11 @@ export function applyDocumentAction(
           );
           copy.description = doc.description;
           copy.tags = [...doc.tags];
+          if (doc.submittal)
+            copy.submittal = {
+              ...doc.submittal,
+              number: nextSubmittalNumber(state),
+            };
           if (doc.currentVersionId) {
             const original = state.versions.find(
               (version) => version.id === doc.currentVersionId,
@@ -660,6 +754,8 @@ export function applyDocumentAction(
               version.id === action.versionId && version.documentId === doc.id,
           );
           if (!original) fail("NOT_FOUND", "Version not found.");
+          if (doc.submittal && original.mimeType !== "application/pdf")
+            fail("BAD_REQUEST", "Submittal revisions must be PDF files.");
           const version = {
             ...original,
             id: randomUUID(),
@@ -691,7 +787,11 @@ export function applyDocumentAction(
           break;
         }
       }
-      doc.updatedAt = now;
+      doc.updatedAt = doc.submittal
+        ? new Date(
+            Math.max(Date.parse(now), Date.parse(doc.updatedAt) + 1),
+          ).toISOString()
+        : now;
     }
   }
   audit(state, actor, action.action, detail, auditDocument, auditFolder);

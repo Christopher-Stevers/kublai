@@ -8,6 +8,7 @@ import {
 } from "~/server/documents/domain";
 import {
   uploadMetadataSchema,
+  parseSubmittalUpload,
   jobIdSchema,
 } from "~/server/documents/contracts";
 import {
@@ -76,6 +77,7 @@ export async function POST(request: Request) {
     };
     const metadata = uploadMetadataSchema.parse({
       jobId,
+      submittal: parseSubmittalUpload(form.get("submittal")),
       folderId: field("folderId") ?? null,
       documentId: field("documentId") ?? undefined,
       expectedVersionId: field("expectedVersionId") ?? undefined,

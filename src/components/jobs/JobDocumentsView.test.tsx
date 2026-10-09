@@ -13,6 +13,25 @@ vi.mock("~/components/ui/app-dialogs", () => ({
   confirmAction: vi.fn(async () => true),
   notify: vi.fn(),
 }));
+vi.mock("./documents/DocumentPdfPreview", async () => {
+  const { useEffect } = await import("react");
+  return {
+    DocumentPdfPreview: ({
+      url,
+      title,
+      onReady,
+    }: {
+      url: string;
+      title: string;
+      onReady?: () => void;
+    }) => {
+      useEffect(() => {
+        onReady?.();
+      }, [onReady]);
+      return <iframe title={title} src={url} />;
+    },
+  };
+});
 import { JobDocumentsView } from "./JobDocumentsView";
 
 let overview: DocumentOverview;
@@ -621,4 +640,267 @@ describe("job documents workspace", () => {
       screen.queryByRole("button", { name: "Edit together" }),
     ).not.toBeInTheDocument();
   });
+});
+
+function submittalDoc(overrides: Partial<JobDocument> = {}) {
+  const id = overrides.id ?? "submittal-1";
+  overview.versions.push(
+    ...overview.versions
+      .filter((version) => version.documentId === "doc-1")
+      .map((version) => ({
+        ...version,
+        id: `${id}-v${version.number}`,
+        documentId: id,
+      })),
+  );
+  return doc({
+    id,
+    currentVersionId: `${id}-v2`,
+    name: "SUB-001 · valve.pdf",
+    submittal: {
+      number: "SUB-001",
+      title: "Valve product data",
+      category: "Plumbing",
+      specSection: "22 11 16",
+      manufacturer: "Acme",
+      dueDate: "2026-01-01",
+    },
+    ...overrides,
+  });
+}
+function pendingSubmittal() {
+  const document = submittalDoc();
+  overview.documents.push(document);
+  overview.reviews.push({
+    id: "review-submittal",
+    title: "Valve approval",
+    documents: [
+      {
+        documentId: document.id,
+        versionId: document.currentVersionId,
+        name: document.name,
+        officeWebUrl: null,
+      },
+    ],
+    reviewerId: "user-1",
+    status: "pending",
+    comment: "",
+    createdBy: "user-2",
+    createdAt: when,
+    resolvedAt: null,
+  });
+}
+async function openSubmittals() {
+  await ready();
+  fireEvent.click(screen.getByRole("tab", { name: "Submittals" }));
+}
+describe("dedicated submittal workspace", () => {
+  it("keeps submittals out of ordinary files, filters attention and specifications, and previews PDFs", async () => {
+    pendingSubmittal();
+    overview.documents.push(
+      submittalDoc({
+        id: "submittal-2",
+        name: "SUB-002 · motor.pdf",
+        submittal: {
+          number: "SUB-002",
+          title: "Motor",
+          category: "Electrical",
+          manufacturer: "",
+          specSection: "",
+          dueDate: null,
+        },
+      }),
+    );
+    render(<JobDocumentsView jobId="job-1" />);
+    await ready();
+    expect(
+      screen.queryByRole("button", { name: "Open SUB-001 · valve.pdf" }),
+    ).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("tab", { name: "Submittals" }));
+    expect(
+      screen.getByRole("button", { name: "Open SUB-002: Motor" }),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Needs your review/ }));
+    expect(
+      screen.queryByRole("button", { name: "Open SUB-002: Motor" }),
+    ).not.toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Search submittals"), {
+      target: { value: "22 11 16" },
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Open SUB-001: Valve product data" }),
+    );
+    expect(
+      screen.getByTitle("Preview SUB-001 · valve.pdf version 2"),
+    ).toHaveAttribute(
+      "src",
+      "/api/job-documents/files/submittal-1-v2?jobId=job-1",
+    );
+    expect(screen.getByRole("link", { name: "Open PDF" })).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Request review" }),
+    ).not.toBeInTheDocument();
+  });
+  it("uploads PDFs into the register, preserves later files when a selection includes a non-PDF, and uses PDF-only picker", async () => {
+    render(<JobDocumentsView jobId="job-1" />);
+    await openSubmittals();
+    fireEvent.click(screen.getByRole("button", { name: "Upload PDFs" }));
+    expect(screen.getByLabelText("Upload document files")).toHaveAttribute(
+      "accept",
+      ".pdf,application/pdf",
+    );
+    fireEvent.change(screen.getByLabelText("Upload document files"), {
+      target: {
+        files: [
+          new File(["not pdf"], "bad.txt"),
+          new File(["%PDF-1.7"], "Pump_data.pdf", { type: "application/pdf" }),
+        ],
+      },
+    });
+    await waitFor(() => expect(posts()).toHaveLength(1));
+    const body = posts()[0]!.init!.body as FormData;
+    expect(
+      JSON.parse(body.get("submittal") as string) as unknown,
+    ).toMatchObject({
+      title: "Pump data",
+      dueDate: null,
+    });
+    expect(body.get("folderId")).toBeNull();
+    await screen.findByRole("alert");
+    expect(screen.getByRole("alert")).toHaveTextContent("bad.txt");
+  });
+  it("allows assigned read-only reviewers to approve and requires a reason for returning", async () => {
+    pendingSubmittal();
+    overview.capabilities.canWrite = false;
+    overview.capabilities.canManage = false;
+    overview.documents = overview.documents.map((document) => ({
+      ...document,
+      canWrite: false,
+      canManage: false,
+    }));
+    render(<JobDocumentsView jobId="job-1" />);
+    await openSubmittals();
+    expect(
+      screen.queryByRole("button", { name: "Upload PDFs" }),
+    ).not.toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Open SUB-001: Valve product data" }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Return for changes" }));
+    expect(posts()).toHaveLength(0);
+    expect(screen.getByRole("alert")).toHaveTextContent("Describe the changes");
+    fireEvent.change(screen.getByLabelText("Review comments"), {
+      target: { value: "Use the correct rating" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Return for changes" }));
+    await waitFor(() =>
+      expect(jsonPosts()).toContainEqual({
+        jobId: "job-1",
+        action: "resolveReview",
+        reviewId: "review-submittal",
+        decision: "changes_requested",
+        comment: "Use the correct rating",
+      }),
+    );
+  });
+  it("prevents approval while an old PDF revision is displayed", async () => {
+    pendingSubmittal();
+    render(<JobDocumentsView jobId="job-1" />);
+    await openSubmittals();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Open SUB-001: Valve product data" }),
+    );
+    fireEvent.click(screen.getByRole("tab", { name: "versions" }));
+    fireEvent.click(screen.getByRole("button", { name: "Preview v1" }));
+    expect(screen.getByRole("button", { name: "Approve PDF" })).toBeDisabled();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Return to current version" }),
+    );
+    expect(screen.getByRole("button", { name: "Approve PDF" })).toBeEnabled();
+    fireEvent.click(screen.getByRole("button", { name: "Approve PDF" }));
+    await waitFor(() =>
+      expect(jsonPosts()).toContainEqual({
+        jobId: "job-1",
+        action: "resolveReview",
+        reviewId: "review-submittal",
+        decision: "approved",
+        comment: "",
+      }),
+    );
+  });
+  it("saves submittal metadata with a conflict token and requests an assigned approval", async () => {
+    overview.documents.push(submittalDoc());
+    render(<JobDocumentsView jobId="job-1" />);
+    await openSubmittals();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Open SUB-001: Valve product data" }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+    fireEvent.change(screen.getByLabelText("Title"), {
+      target: { value: "Correct valve" },
+    });
+    fireEvent.change(screen.getByLabelText("Approval due date"), {
+      target: { value: "2026-10-31" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save details" }));
+    await waitFor(() =>
+      expect(jsonPosts()).toContainEqual(
+        expect.objectContaining({
+          action: "updateSubmittal",
+          expectedUpdatedAt: when,
+          details: {
+            title: "Correct valve",
+            category: "Plumbing",
+            manufacturer: "Acme",
+            specSection: "22 11 16",
+            dueDate: "2026-10-31",
+          },
+        }),
+      ),
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("button", { name: "Save details" }),
+      ).not.toBeInTheDocument(),
+    );
+    fireEvent.change(screen.getByLabelText("Send for approval"), {
+      target: { value: "user-2" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Request approval" }));
+    await waitFor(() =>
+      expect(jsonPosts()).toContainEqual(
+        expect.objectContaining({
+          action: "createReview",
+          reviewerId: "user-2",
+          documentIds: ["submittal-1"],
+        }),
+      ),
+    );
+  });
+});
+
+it("routes grouped approvals through the full review instead of approving unseen PDFs", async () => {
+  pendingSubmittal();
+  overview.reviews[0]!.documents.push({
+    documentId: "doc-1",
+    versionId: "version-2",
+    name: "Specification.pdf",
+    officeWebUrl: null,
+  });
+  render(<JobDocumentsView jobId="job-1" />);
+  await openSubmittals();
+  fireEvent.click(
+    screen.getByRole("button", { name: "Open SUB-001: Valve product data" }),
+  );
+  expect(
+    screen.queryByRole("button", { name: "Approve PDF" }),
+  ).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Open grouped review" }));
+  expect(screen.getByRole("tab", { name: "Reviews" })).toHaveAttribute(
+    "aria-selected",
+    "true",
+  );
+  expect(
+    screen.getByRole("button", { name: "Complete review" }),
+  ).toBeInTheDocument();
 });
