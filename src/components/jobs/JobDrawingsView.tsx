@@ -146,6 +146,7 @@ export function JobDrawingsView({ jobId }: { jobId: string }) {
   const setsData = setsSnapshot.data;
   const refresh = async () => {
     await utils.drawings.listSets.invalidate({ jobId });
+    await utils.drawingsWorkspace.list.invalidate({ jobId });
     if (setId) await utils.drawings.getSet.invalidate({ setId });
   };
   const onError = (error: { message: string }) =>

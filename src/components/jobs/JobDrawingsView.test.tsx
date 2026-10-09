@@ -39,6 +39,7 @@ const state = vi.hoisted(() => ({
     };
   }>,
   upload: vi.fn(),
+  refreshIdentities: vi.fn(),
 }));
 vi.mock("~/trpc/react", () => {
   const mutation = (name: string) => ({
@@ -59,7 +60,7 @@ vi.mock("~/trpc/react", () => {
   return {
     api: {
       useUtils: () => ({
-        drawingsWorkspace: { list: { invalidate: vi.fn() }, get: { invalidate: vi.fn() } },
+        drawingsWorkspace: { list: { invalidate: state.refreshIdentities }, get: { invalidate: vi.fn() } },
         drawings: {
           listSets: { invalidate: vi.fn() },
           getSet: { invalidate: vi.fn() },
@@ -153,6 +154,7 @@ beforeEach(() => {
   ];
   state.calls = [];
   state.upload.mockReset().mockResolvedValue([]);
+  state.refreshIdentities.mockReset().mockResolvedValue(undefined);
 });
 afterEach(() => {
   cleanup();
@@ -369,6 +371,7 @@ describe("Drawings", () => {
     ]);
 
     // Creating opens the new folder; upload goes into it.
+    state.refreshIdentities.mockClear();
     const file = new File(["%PDF-1"], "elec.pdf", { type: "application/pdf" });
     const input = document.querySelector('input[type="file"]')!;
     await act(async () => {
@@ -377,6 +380,7 @@ describe("Drawings", () => {
     expect(state.upload).toHaveBeenCalledWith("job", file, {
       drawingSetId: "new-set",
     });
+    expect(state.refreshIdentities).toHaveBeenCalledWith({ jobId: "job" });
   });
 
   it("hides folder and upload controls from people who can't manage drawings", () => {
