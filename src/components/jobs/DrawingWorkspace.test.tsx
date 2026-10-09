@@ -124,6 +124,8 @@ vi.mock("./DrawingSheetViewer", () => ({
         data-tool={props.tool}
         data-selection-mode={props.selectionMode}
       >
+        <button onClick={() => props.onPdfLink?.({ left: .1, top: .1, right: .2, bottom: .2, page: 2 })}>Follow original page link</button>
+        <button onClick={() => props.onPdfLink?.({ left: .1, top: .1, right: .2, bottom: .2, url: "http://example.com/drawing" })}>Follow original web link</button>
         <div data-testid="viewer-source">
           {props.sourceSheetId ?? props.sheetKey}
         </div>
@@ -339,6 +341,29 @@ afterEach(() => {
 });
 
 describe("drawing workspace workflows", () => {
+  it("follows original uploaded page links without creating editable markups", () => {
+    const base = `/api/job-rooms/files/${jobId}/${sheetId}`;
+    mocks.data!.jobSheets[0]!.imageUrl = `${base}/floor-1.webp`;
+    mocks.data!.jobSheets[1]!.imageUrl = `${base}/floor-2.webp`;
+    const onOpenSheet = vi.fn();
+    render(<DrawingWorkspace jobId={jobId} sheet={sheet} onOpenSheet={onOpenSheet} />);
+    fireEvent.click(screen.getByRole("button", { name: "Follow original page link" }));
+    expect(onOpenSheet).toHaveBeenCalledExactlyOnceWith(mocks.data!.jobSheets[1]);
+    expect(mocks.save).not.toHaveBeenCalled();
+  });
+  it("opens original web links using their retained protocol", () => {
+    const browser = vi.spyOn(window, "open").mockReturnValue(null);
+    open();
+    fireEvent.click(screen.getByRole("button", { name: "Follow original web link" }));
+    expect(browser).toHaveBeenCalledExactlyOnceWith("http://example.com/drawing", "_blank", "noopener,noreferrer");
+    expect(mocks.save).not.toHaveBeenCalled();
+  });
+  it("explains when an original linked page is absent from this job", () => {
+    mocks.data!.jobSheets[0]!.imageUrl = `/api/job-rooms/files/${jobId}/${sheetId}/floor-1.webp`;
+    open();
+    fireEvent.click(screen.getByRole("button", { name: "Follow original page link" }));
+    expect(screen.getByText("That linked page has not been added to this job.")).toBeInTheDocument();
+  });
   it("opens an ordered stack from the job picker and edits its selected layers", () => {
     const third = "53cfe8af-e26a-49f2-b2dc-ef0d4e0ecb24", fourth = "63cfe8af-e26a-49f2-b2dc-ef0d4e0ecb24";
     mocks.data!.jobSheets.push(...[third,fourth].map((id,i)=>({...mocks.data!.jobSheets[0]!,id,sheetId:id,name:`Drawing ${i+3}`})));

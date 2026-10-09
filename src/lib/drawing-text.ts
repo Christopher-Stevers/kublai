@@ -1,6 +1,7 @@
 "use client";
 
 import { loadPdfDocument } from "./pdf-client";
+import { clearDrawingPdfLinks, readDrawingPdfLinks } from "./drawing-pdf-links";
 
 export type DrawingText = {
   text: string;
@@ -22,6 +23,7 @@ let generation = 0;
 export function clearDrawingTextIndexes() {
   generation++;
   indexes.clear();
+  clearDrawingPdfLinks();
 }
 
 /** Text and imported links use the PDF's rotated viewport, like the drawing canvas. */
@@ -80,52 +82,7 @@ export function readDrawingText(source: { url: string; page: number }) {
         },
       ];
     });
-    const annotations: unknown[] = await page.getAnnotations({
-      intent: "display",
-    });
-    const links: DrawingPdfLink[] = [];
-    for (const raw of annotations.slice(0, 1000)) {
-      const annotation = raw as {
-        subtype?: string;
-        rect?: number[];
-        url?: string;
-        dest?: unknown;
-      };
-      if (annotation.subtype !== "Link" || annotation.rect?.length !== 4)
-        continue;
-      const [x1, y1, x2, y2] = annotation.rect;
-      if (![x1, y1, x2, y2].every(Number.isFinite)) continue;
-      const bounds = box([
-        [x1!, y1!],
-        [x2!, y2!],
-      ]);
-      if (annotation.url) {
-        try {
-          const url = new URL(annotation.url);
-          if (url.protocol === "https:" && !url.username && !url.password)
-            links.push({ ...bounds, url: url.href });
-        } catch {}
-      } else {
-        const destination: unknown =
-          typeof annotation.dest === "string"
-            ? await document.getDestination(annotation.dest)
-            : annotation.dest;
-        if (!Array.isArray(destination)) continue;
-        const ref: unknown = destination[0];
-        try {
-          const index =
-            typeof ref === "number"
-              ? ref
-              : await document.getPageIndex(
-                  ref as { num: number; gen: number },
-                );
-          if (index >= 0 && index < document.numPages)
-            links.push({ ...bounds, page: index + 1 });
-        } catch {
-          /* A damaged PDF link must not disable text search. */
-        }
-      }
-    }
+    const links = await readDrawingPdfLinks(source, document);
     if (generation !== currentGeneration)
       throw new DOMException("The drawing account changed.", "AbortError");
     return { words, links };

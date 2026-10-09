@@ -43,6 +43,9 @@ import { buildSnapIndex, mergeCollinear, snapToLine, type SnapIndex, type SnapSe
 import { SheetMeasureBar } from "./SheetMeasureBar";
 import { DrawingTileLayer } from "./DrawingTileLayer";
 import { DrawingPdfLayer } from "./DrawingPdfLayer";
+import { DrawingPdfLinkLayer } from "./DrawingPdfLinkLayer";
+import { readDrawingPdfLinks } from "~/lib/drawing-pdf-links";
+import type { DrawingPdfLink } from "~/lib/drawing-text";
 import { DrawingAnnotationLayer } from "./DrawingAnnotationLayer";
 import { DrawingDraftToolbar } from "./DrawingDraftToolbar";
 import { useDrawingEditor, type DrawingEditorProps } from "./useDrawingEditor";
@@ -99,10 +102,12 @@ export function DrawingSheetViewer({
   onViewportChange,
   initialViewport,
   toolControls,
+  onPdfLink,
   ...editorProps
 }: DrawingEditorProps & {
   src: string;
   alt: string;
+  onPdfLink?: (link: DrawingPdfLink) => void;
   pdf?: { url: string; page: number } | null;
   /** Folder holding manifest.json and <factor>/<col>_<row>.webp tiles. */
   tiles?: string | null;
@@ -145,6 +150,21 @@ export function DrawingSheetViewer({
   const entryViewport = useRef(initialViewport);
   const [view, setView] = useState<View>(REST);
   const [moving, setMoving] = useState(false);
+  const [pdfLinks, setPdfLinks] = useState<{ key: string; links: DrawingPdfLink[] } | null>(null);
+  const pdfLinkUrl = pdf?.url;
+  const pdfLinkPage = pdf?.page;
+  const pdfLinkKey = pdf ? `${pdf.url}:${pdf.page}` : "";
+  const readsPdfLinks = Boolean(onPdfLink);
+  useEffect(() => {
+    if (!pdfLinkUrl || pdfLinkPage === undefined || !readsPdfLinks) return;
+    let cancelled = false;
+    void readDrawingPdfLinks({ url: pdfLinkUrl, page: pdfLinkPage }).then(links => {
+      if (!cancelled) setPdfLinks({ key: pdfLinkKey, links });
+    }).catch(() => { if (!cancelled) setPdfLinks(null); });
+    return () => { cancelled = true; };
+  }, [pdfLinkUrl, pdfLinkPage, pdfLinkKey, readsPdfLinks]);
+  const importedLinks = pdfLinks?.key === pdfLinkKey ? pdfLinks.links : [];
+  const pdfLinkTap = useRef<{ pointerId: number; x: number; y: number; link: DrawingPdfLink } | null>(null);
   const pointers = useRef(new Map<number, Point>());
   const middlePan = useRef<{ pointerId: number; x: number; y: number } | null>(null);
   const [middlePanning, setMiddlePanning] = useState(false);
@@ -259,6 +279,10 @@ export function DrawingSheetViewer({
   const viewportListener = useRef(onViewportChange);
   viewportListener.current = onViewportChange;
   const annotationTool = editorProps.tool ?? "pan";
+  const pdfLinksEnabled = !measuring && !pipeMode && !comparison && annotationTool === "pan" && Boolean(onPdfLink);
+  const pdfLinkAt = (point: SheetPoint | null) => point && importedLinks.find(link =>
+    point.x >= link.left && point.x <= link.right && point.y >= link.top && point.y <= link.bottom);
+  useEffect(() => { pdfLinkTap.current = null; }, [pdfLinkKey, pdfLinksEnabled]);
   useEffect(() => {
     if (toolControls?.modeRequest) return;
     setMeasuring(false);
@@ -1201,6 +1225,7 @@ export function DrawingSheetViewer({
         gesture.current = null;
         cancelNodeDrag();
         editor.cancelGesture();
+        pdfLinkTap.current = null;
         measureTap.current = null;
         pipeTap.current = null;
         quickZoom.current = null;
@@ -1221,7 +1246,10 @@ export function DrawingSheetViewer({
       }}
       onPointerUpCapture={endMiddlePan}
       onPointerCancelCapture={endMiddlePan}
-      onLostPointerCapture={endMiddlePan}
+      onLostPointerCapture={(event) => {
+        if (pdfLinkTap.current?.pointerId === event.pointerId) pdfLinkTap.current = null;
+        endMiddlePan(event);
+      }}
       onPointerDown={(event) => {
         if ((measuring || pipeMode) && event.button !== 0) return;
         stopAnimation();
@@ -1232,6 +1260,7 @@ export function DrawingSheetViewer({
         if (pointers.current.size > 1) {
           if (nodeDrag.current) cancelNodeDrag();
           editor.cancelGesture();
+          pdfLinkTap.current = null;
           quickZoom.current = null;
           panTap.current = null;
           lastTap.current = null;
@@ -1258,6 +1287,15 @@ export function DrawingSheetViewer({
         ) {
           lastTap.current = null;
           return;
+        }
+        if (pdfLinksEnabled && event.button === 0 && pointers.current.size === 1) {
+          const link = pdfLinkAt(pointFromClient(event.clientX, event.clientY));
+          if (link) {
+            pdfLinkTap.current = { pointerId: event.pointerId, x: event.clientX, y: event.clientY, link };
+            lastTap.current = null;
+            panTap.current = null;
+            return;
+          }
         }
         if (pointers.current.size === 1) {
           if (measuring) {
@@ -1309,6 +1347,8 @@ export function DrawingSheetViewer({
       }}
       onPointerMove={(event) => {
         if (measuring && event.buttons === 0 && !nodeDrag.current) rememberAim(event.clientX, event.clientY);
+        if (pdfLinkTap.current && Math.hypot(event.clientX - pdfLinkTap.current.x, event.clientY - pdfLinkTap.current.y) > 6)
+          pdfLinkTap.current = null;
         const previous = pointers.current.get(event.pointerId);
         if (!previous || !gesture.current) return;
         pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
@@ -1432,6 +1472,12 @@ export function DrawingSheetViewer({
             ? pointFromClient(event.clientX, event.clientY)
             : null;
         pipeTap.current = null;
+        const linkCandidate = pdfLinkTap.current;
+        pdfLinkTap.current = null;
+        const activatedLink = pdfLinksEnabled && wasSingle && linkCandidate?.pointerId === event.pointerId &&
+          Math.hypot(event.clientX - linkCandidate.x, event.clientY - linkCandidate.y) <= 6 &&
+          pdfLinkAt(pointFromClient(event.clientX, event.clientY)) === linkCandidate.link
+          ? linkCandidate.link : null;
         const edited =
           !measuring &&
           !pipeMode &&
@@ -1444,6 +1490,12 @@ export function DrawingSheetViewer({
         setLoupe(null);
         startGesture();
         if (pointers.current.size > 0) return;
+        if (activatedLink) {
+          lastTap.current = null;
+          move(live.current, true);
+          onPdfLink?.(activatedLink);
+          return;
+        }
         if (pipePoint && fit) {
           pipe.select(
             pipePoint,
@@ -1485,6 +1537,7 @@ export function DrawingSheetViewer({
       onPointerCancel={(event) => {
         if (nodeDrag.current) cancelNodeDrag();
         editor.cancelGesture();
+        pdfLinkTap.current = null;
         quickZoom.current = null;
         panTap.current = null;
         lastTap.current = null;
@@ -1543,6 +1596,7 @@ export function DrawingSheetViewer({
             dpr={dpr}
           />
         )}
+        {fit && pdfLinksEnabled && <DrawingPdfLinkLayer links={importedLinks} aspect={fit.aspect} onActivate={link => onPdfLink?.(link)} />}
         {fit && (
           <DrawingAnnotationLayer
             annotations={(editorProps.annotations ?? []).filter(entity => !measuring || entity.id !== measureSource?.id)}

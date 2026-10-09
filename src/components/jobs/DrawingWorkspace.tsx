@@ -23,6 +23,7 @@ import {
   WrenchIcon,
 } from "lucide-react";
 import { notify } from "~/components/ui/app-dialogs";
+import { drawingPdfLinkTarget, drawingPdfLinkUrl } from "~/lib/drawing-pdf-links";
 import { sourcePdfPage } from "~/lib/pdf-client";
 import { tileBase } from "~/lib/drawing-tiles";
 import {
@@ -41,6 +42,7 @@ import {
   findDrawingText,
   readDrawingText,
   suggestSheetMetadata,
+  type DrawingPdfLink,
   type DrawingTextIndex,
   type DrawingText,
 } from "~/lib/drawing-text";
@@ -700,6 +702,16 @@ export function DrawingWorkspace({
       }
     }
   };
+  const activatePdfLink = (link: DrawingPdfLink) => {
+    if (link.url) {
+      const url = drawingPdfLinkUrl(link.url);
+      if (url) window.open(url, "_blank", "noopener,noreferrer");
+    } else if (pdf) {
+      const target = drawingPdfLinkTarget(link, pdf, data?.jobSheets ?? []);
+      if (target) onOpenSheet(target);
+      else setError("That linked page has not been added to this job.");
+    }
+  };
   const readText = async (ocr = false) => {
     const request = ++textRequest.current;
     ocrRequest.current?.abort();
@@ -1144,6 +1156,7 @@ export function DrawingWorkspace({
               src={resolved.src}
               alt={source.name}
               pdf={resolved.pdf}
+              onPdfLink={activatePdfLink}
               tiles={tileBase(source.imageUrl)}
               sheetKey={source.id}
               sourceSheetId={source.id}
@@ -1586,30 +1599,7 @@ export function DrawingWorkspace({
                     <button
                       key={index}
                       className="block w-full rounded border p-2 text-left text-sm"
-                      onClick={() => {
-                        if (link.url)
-                          activate({
-                            sourceSheetId: sourceId,
-                            type: "link",
-                            points: [],
-                            stroke: "#2563eb",
-                            width: 2,
-                            href: link.url,
-                          });
-                        else {
-                          const target = data.jobSheets.find((item) => {
-                            const page = sourcePdfPage(item.imageUrl);
-                            return (
-                              page?.url === pdf?.url && page?.page === link.page
-                            );
-                          });
-                          if (target) onOpenSheet(target);
-                          else
-                            setError(
-                              "That linked page has not been added to this job.",
-                            );
-                        }
-                      }}
+                      onClick={() => activatePdfLink(link)}
                     >
                       {link.url ?? `PDF page ${link.page}`}
                     </button>
