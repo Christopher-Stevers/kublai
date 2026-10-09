@@ -127,6 +127,12 @@ function tap(frame: HTMLElement, x: number, y: number) {
   });
 }
 
+// Units are one button that opens a menu of m, mm, in and ft.
+function chooseUnit(unit: string) {
+  fireEvent.keyDown(screen.getByRole("button", { name: /^Units: / }), { key: "Enter" });
+  fireEvent.click(screen.getByRole("menuitemradio", { name: unit }));
+}
+
 describe("drawing measure", () => {
   it.each(["overlay", "difference", "wipe", "side-by-side"])("uses the host bottom controls without an extra idle bar in %s comparisons", mode => {
     const first = { id: "one", name: "Original", imageUrl: "/first.webp" };
@@ -139,7 +145,8 @@ describe("drawing measure", () => {
     expect(screen.queryByRole("button", { name: "Measure" })).toBeNull();
 
     view.rerender(<DrawingCompare first={first} second={second} toolControls={{ measureRequest: 1, pipeRequest: 0, onMode }} />);
-    expect(screen.getAllByRole("button", { name: "Done" })).toHaveLength(1);
+    // The host bar's Measure button is Done: the strip has none of its own.
+    expect(screen.queryAllByRole("button", { name: "Done" })).toHaveLength(0);
     expect(screen.getByRole("button", { name: "Set Scale" })).toBeEnabled();
     expect(onMode).toHaveBeenLastCalledWith({ measuring: true, pipe: false });
 
@@ -172,7 +179,7 @@ describe("drawing measure", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "Measure" }));
     tap(frame, 200, 300); tap(frame, 600, 300);
-    fireEvent.click(screen.getByRole("button", { name: "mm" }));
+    chooseUnit("mm");
     fireEvent.click(screen.getByRole("button", { name: /^Measuring color:/ }));
     fireEvent.click(screen.getByRole("button", { name: "Neon cyan" }));
     fireEvent.click(screen.getByRole("button", { name: "Done" }));
@@ -334,12 +341,12 @@ describe("drawing measure", () => {
     // The owner rejected the proposal and leaves the controlled prop unchanged.
     expect(screen.getByRole("status")).toHaveTextContent("50'-0\"");
     // Changing the unit only changes how this device shows lengths.
-    fireEvent.click(screen.getByRole("button", { name: "m" }));
-    expect(screen.getByRole("button", { name: "m" })).toHaveAttribute("aria-pressed", "true");
+    chooseUnit("m");
+    expect(screen.getByRole("button", { name: "Units: m" })).toBeInTheDocument();
     expect(screen.getByRole("status")).toHaveTextContent("15.24 m");
-    fireEvent.click(screen.getByRole("button", { name: "mm" }));
+    chooseUnit("mm");
     expect(screen.getByRole("status")).toHaveTextContent("15240 mm");
-    fireEvent.click(screen.getByRole("button", { name: "ft" }));
+    chooseUnit("ft");
     expect(screen.getByRole("status")).toHaveTextContent("50'-0\"");
     expect(onScaleChange).toHaveBeenCalledTimes(1);
     expect(storage).not.toHaveBeenCalled();
@@ -419,9 +426,8 @@ describe("drawing measure", () => {
     fireEvent.click(screen.getByRole("button", { name: "Measure" }));
     tap(frame, 0, 300);
     tap(frame, 400, 300);
-    expect(screen.getByRole("status")).toHaveTextContent(
-      "Tap Set Scale to see the distance.",
-    );
+    // No scale yet: no total, and no instructions either.
+    expect(screen.getByRole("status")).toHaveTextContent("");
     fireEvent.click(screen.getByRole("button", { name: "Done" }));
     tap(frame, 200, 300);
     tap(frame, 600, 300);
@@ -477,9 +483,7 @@ describe("drawing measure", () => {
     fireEvent.click(screen.getByRole("button", { name: "Undo" }));
     expect(screen.getByRole("status").textContent).toBe("50'-0\"");
     fireEvent.click(screen.getByRole("button", { name: "Clear" }));
-    expect(screen.getByRole("status").textContent).toBe(
-      "Tap each point along the path. Angles lock at 45° or 90°.",
-    );
+    expect(screen.getByRole("status").textContent).toBe("");
   });
 
   it("uses the scale saved for that drawing the next time it is opened", () => {
@@ -499,9 +503,9 @@ describe("drawing measure", () => {
     tap(second.frame, 0, 300);
     tap(second.frame, 800, 300);
     expect(screen.getByRole("status").textContent).toBe("24'-6\"");
-    fireEvent.click(screen.getByRole("button", { name: "m" }));
+    chooseUnit("m");
     expect(screen.getByRole("status").textContent).toBe("7.47 m");
-    fireEvent.click(screen.getByRole("button", { name: "in" }));
+    chooseUnit("in");
     expect(screen.getByRole("status").textContent).toBe(`294"`);
   });
 
@@ -529,7 +533,7 @@ describe("drawing measure", () => {
     const { frame } = openSheet("sheet-snap", { url: "/plan.pdf", page: 1 });
     fireEvent.click(screen.getByRole("button", { name: "Measure" }));
     await waitFor(() => {
-      expect(screen.getByRole("status").textContent).toMatch(/snap onto lines/);
+      expect(document.querySelector('[data-snapping="ready"]')).toBeTruthy();
     });
     fireEvent.click(screen.getByRole("button", { name: "Set Scale" }));
     expect(screen.getByRole("status").textContent).toBe(
@@ -555,7 +559,7 @@ describe("drawing measure", () => {
     const { frame } = openSheet("sheet-square", { url: "/plan.pdf", page: 1 });
     fireEvent.click(screen.getByRole("button", { name: "Measure" }));
     await waitFor(() => {
-      expect(screen.getByRole("status").textContent).toMatch(/snap onto lines/);
+      expect(document.querySelector('[data-snapping="ready"]')).toBeTruthy();
     });
     fireEvent.click(screen.getByRole("button", { name: "Set Scale" }));
     tap(frame, 400, 300);
@@ -603,7 +607,7 @@ describe("drawing measure", () => {
       sharedScale: { unit: "ft", unitsPerSheetWidth: 100 },
     });
     fireEvent.click(screen.getByRole("button", { name: "Measure" }));
-    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("snap onto lines"));
+    await waitFor(() => expect(document.querySelector('[data-snapping="ready"]')).toBeTruthy());
     tap(frame, 400, 312);
     fireEvent.pointerMove(frame, { clientX: 408, clientY: 160, buttons: 0 });
     expect(frame.querySelector('line[stroke="#22d3ee"]')).toBeTruthy();
@@ -642,7 +646,7 @@ describe("drawing measure", () => {
     ]);
     const { frame } = openSheet("trace-undo", { url: "/plan.pdf", page: 1 });
     fireEvent.click(screen.getByRole("button", { name: "Measure" }));
-    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("snap onto lines"));
+    await waitFor(() => expect(document.querySelector('[data-snapping="ready"]')).toBeTruthy());
     tap(frame, 400, 300);
     tap(frame, 400, 100 + 200 / Math.sqrt(3));
     fireEvent.pointerMove(frame, { clientX: 300, clientY: 100 + 200 / Math.sqrt(3) + 100 * Math.sqrt(3), buttons: 0 });
@@ -680,7 +684,7 @@ describe("drawing measure", () => {
     ]);
     const { frame } = openSheet("precise-neighbor", { url: "/plan.pdf", page: 1 });
     fireEvent.click(screen.getByRole("button", { name: "Measure" }));
-    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("snap onto lines"));
+    await waitFor(() => expect(document.querySelector('[data-snapping="ready"]')).toBeTruthy());
     tap(frame, 400, 300);
     tap(frame, 600, 310);
     expect(frame.querySelector('polyline[data-measure-path]')?.getAttribute("points")).toBe("400,200 600,210");
@@ -696,7 +700,7 @@ describe("drawing measure", () => {
     fireEvent.click(screen.getByRole("button", { name: "Set Scale" }));
     fireEvent.click(screen.getByRole("button", { name: "Read the scale printed on this drawing instead" }));
     await waitFor(() => {
-      expect(screen.getByRole("status").textContent).toMatch(/1\/4" = 1'-0"/);
+      expect(screen.getByText('1/4" = 1\'-0"')).toBeInTheDocument();
     });
     tap(frame, 0, 300);
     tap(frame, 800, 300);
@@ -720,11 +724,11 @@ describe("dimensions along measuring segments", () => {
     const nodes = frame.querySelectorAll("[data-measure-length]");
     expect(nodes[0]?.parentElement?.getAttribute("transform")).toBe("translate(300 200) rotate(0)");
     expect(nodes[1]?.parentElement?.getAttribute("transform")).toBe("translate(400 280) rotate(90)");
-    fireEvent.click(screen.getByRole("button", { name: "mm" }));
+    chooseUnit("mm");
     expect(labels(frame)).toEqual(["7620 mm", "6096 mm"]);
-    fireEvent.click(screen.getByRole("button", { name: "in" }));
+    chooseUnit("in");
     expect(labels(frame)).toEqual(['300"', '240"']);
-    fireEvent.click(screen.getByRole("button", { name: "m" }));
+    chooseUnit("m");
     expect(labels(frame)).toEqual(["7.62 m", "6.1 m"]);
     fireEvent.click(screen.getByRole("button", { name: "Undo" }));
     expect(labels(frame)).toEqual(["7.62 m"]);
@@ -757,7 +761,7 @@ describe("dimensions along measuring segments", () => {
     tap(frame, 200, 300);
     tap(frame, 600, 300);
     expect(labels(frame)).toEqual(["Enter length"]);
-    fireEvent.click(screen.getByRole("button", { name: "mm" }));
+    chooseUnit("mm");
     fireEvent.change(screen.getByLabelText("How long is this line?"), { target: { value: "7500" } });
     expect(labels(frame)).toEqual(["7500 mm"]);
     expect(onScaleChange).not.toHaveBeenCalled();
@@ -852,7 +856,7 @@ describe("dragging existing measuring nodes", () => {
       sharedScale: { unit: "ft", unitsPerSheetWidth: 100 },
     });
     fireEvent.click(screen.getByRole("button", { name: "Measure" }));
-    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("snap onto lines"));
+    await waitFor(() => expect(document.querySelector('[data-snapping="ready"]')).toBeTruthy());
     tap(frame, 400, 312);
     tap(frame, 600, 312);
     down(frame, 600, 300);
@@ -1064,7 +1068,7 @@ describe("relative measuring angles and drafting arcs", () => {
     ]);
     const { frame } = openSheet("relative-angles", { url: "/plan.pdf", page: 1 });
     fireEvent.click(screen.getByRole("button", { name: "Measure" }));
-    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("snap onto lines"));
+    await waitFor(() => expect(document.querySelector('[data-snapping="ready"]')).toBeTruthy());
     tap(frame, 400, 300);
     fireEvent.pointerMove(frame, { clientX: 500, clientY: endY, buttons: 0 });
     expect(frame.querySelector('[data-measure-path]')).toHaveAttribute("data-angle-locked", "true");

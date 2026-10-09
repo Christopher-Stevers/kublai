@@ -4,6 +4,13 @@ import { useId, useState, type PointerEvent, type ReactNode } from "react";
 import { CheckIcon, ChevronDownIcon, RulerIcon } from "lucide-react";
 
 import { Button } from "~/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from "~/components/ui/dropdown-menu";
 import { Input } from "~/components/ui/input";
 import { LENGTH_UNITS, type LengthUnit } from "~/lib/sheet-measure";
 import { MEASURE_COLORS, measureColorHalo } from "~/lib/sheet-measure-color";
@@ -104,7 +111,8 @@ export function SheetMeasureBar({
       {measuring ? "Done" : "Measure"}
     </Button>
   );
-  const measuringControls = (
+  // With the drawing's main bar, its Measure button is the Done button.
+  const measuringControls = hideIdle ? null : (
     <div className="flex shrink-0 items-center gap-2">
       {toggle}
     </div>
@@ -113,6 +121,7 @@ export function SheetMeasureBar({
     <section
       data-drawing-chrome
       aria-label="Drawing tool options"
+      data-snapping={snapping ? "ready" : undefined}
       className="bg-card max-h-[45dvh] shrink-0 overflow-y-auto overscroll-contain border-t px-3 py-2"
       onPointerDown={stop}
       onPointerMove={stop}
@@ -254,6 +263,7 @@ function MeasureColorPicker({
   );
 }
 
+/** The current unit as one button; tapping it offers m, mm, in and ft. */
 function UnitToggle({
   unit,
   onUnit,
@@ -264,42 +274,31 @@ function UnitToggle({
   disabled?: boolean;
 }) {
   return (
-    <div
-      className="flex w-36 shrink-0 rounded-md border p-0.5"
-      role="group"
-      aria-label="Units"
-    >
-      {LENGTH_UNITS.map(({ value, label }) => (
-        <button
-          key={value}
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
           type="button"
-          aria-pressed={unit === value}
+          size="sm"
+          variant="outline"
+          className="shrink-0 gap-1"
           disabled={disabled}
-          className={`h-8 flex-1 rounded-sm text-sm ${unit === value ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
-          onClick={() => onUnit(value)}
+          aria-label={`Units: ${unit}`}
         >
-          {label}
-        </button>
-      ))}
-    </div>
+          {unit}
+          <ChevronDownIcon className="h-3.5 w-3.5" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent side="top" align="end" className="min-w-28">
+        <DropdownMenuRadioGroup value={unit} onValueChange={(value) => onUnit(value as LengthUnit)}>
+          {LENGTH_UNITS.map(({ value, label }) => (
+            <DropdownMenuRadioItem key={value} value={value}>
+              {label}
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
-}
-
-function traceStatus(
-  pointCount: number,
-  scaleSet: boolean,
-  snapping: boolean | undefined,
-  scaleLabel: string | null | undefined,
-): string {
-  if (pointCount === 0) {
-    const base = snapping
-      ? "Tap each point along the path. Points snap onto lines and lock at 45° or 90°."
-      : "Tap each point along the path. Angles lock at 45° or 90°.";
-    return scaleLabel ? `${base} ${scaleLabel}.` : base;
-  }
-  const count = `${pointCount} ${pointCount === 1 ? "point" : "points"}.`;
-  if (!scaleSet) return `${count} Tap Set Scale to see the distance.`;
-  return scaleLabel ? `${count} ${scaleLabel}.` : count;
 }
 
 function Tracing({
@@ -347,39 +346,25 @@ function Tracing({
 }) {
   return (
     <>
-      <div className="flex flex-wrap items-center gap-2">
+      <div className={`flex flex-wrap items-center gap-2 ${reading || (total && pointCount > 0) || scaleSet || controls ? "" : "hidden"}`}>
         <div className="min-w-0 flex-1">
-          {total && !reading ? (
-            <p role="status" className="text-lg font-semibold tabular-nums">
-              {total}
-            </p>
-          ) : (
-            <p role="status" className="text-sm">
-              {reading
-                ? "Reading the scale on this drawing."
-                : traceStatus(pointCount, scaleSet, snapping, scaleLabel)}
-            </p>
-          )}
+          {/* Just the total (or the scale being read): no instructions. */}
+          <p role="status" className={total && !reading ? "text-lg font-semibold tabular-nums" : "text-sm"}>
+            {reading ? "Reading the scale on this drawing." : total && pointCount > 0 ? total : null}
+          </p>
         </div>
         {scaleSet && <UnitToggle unit={unit} onUnit={onUnit} />}
         {controls}
       </div>
-      {total && !reading && scaleLabel && (
+      {!reading && scaleLabel && (
         <p className="text-muted-foreground text-xs">{scaleLabel}</p>
-      )}
-      {!scaleSet && pointCount === 0 && !readError && !reading && (
-        <p className="text-muted-foreground text-xs">
-          Tap Set Scale and mark a length you know, so the total is a real
-          distance.
-        </p>
       )}
       {readError && !reading && (
         <p className="text-destructive text-xs">{readError}</p>
       )}
-      {(gap || gapMessage) && (
+      {gapMessage && (
         <p role="note" aria-live="polite" className="text-primary text-xs">
-          {gapMessage ??
-            "Gap: tap anywhere on a measured segment to start a branch."}
+          {gapMessage}
         </p>
       )}
       <div className="flex flex-wrap items-center gap-2">
@@ -422,11 +407,6 @@ function Tracing({
         </Button>
         <MeasureColorPicker color={color} onColor={onColor} />
       </div>
-      {total && !reading && (
-        <p className="text-muted-foreground text-xs">
-          Total measured run · Use Gap to add a branch · Drag a point to adjust
-        </p>
-      )}
     </>
   );
 }
