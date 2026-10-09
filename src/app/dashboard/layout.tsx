@@ -11,6 +11,7 @@ import { waitForUser } from "~/server/utils/wait-for-user";
 import { ReplicacheSyncBootstrap } from "~/components/offline/ReplicacheSyncBootstrap";
 import { TabAccessGate } from "./_components/TabAccessGate";
 import { DrawingAccountProvider } from "~/components/jobs/DrawingAccountProvider";
+import { DrawingDestinationProvider } from "~/components/jobs/DrawingDestinationProvider";
 
 export default async function DashboardLayout({
   children,
@@ -64,15 +65,17 @@ export default async function DashboardLayout({
             organizationId={organizationId}
           >
             <SnapshotProvider>
-              <div className="bg-canvas flex min-h-screen flex-col">
-                <ReplicacheSyncBootstrap
-                  userId={effectiveUserId}
-                  organizationId={organizationId}
-                />
-                <Header />
-                <TabAccessGate />
-                <main className="flex-1">{children}</main>
-              </div>
+              <DrawingDestinationProvider>
+                <div className="bg-canvas flex min-h-screen flex-col">
+                  <ReplicacheSyncBootstrap
+                    userId={effectiveUserId}
+                    organizationId={organizationId}
+                  />
+                  <Header />
+                  <TabAccessGate />
+                  <main className="flex-1">{children}</main>
+                </div>
+              </DrawingDestinationProvider>
             </SnapshotProvider>
           </DrawingAccountProvider>
         </FinancialVisibilityProvider>

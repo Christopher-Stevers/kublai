@@ -1,4 +1,5 @@
 "use client";
+import { usePageViewState } from "~/hooks/use-page-view-state";
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -45,7 +46,7 @@ export function WhereView() {
   const { canManage } = useToolRoom();
   const holders = api.assets.holders.useQuery(undefined, { enabled: isOnline });
   const [editing, setEditing] = useState<Location | "new" | null>(null);
-  const [showArchived, setShowArchived] = useState(false);
+  const [showArchived, setShowArchived] = usePageViewState("assets:showArchived", false);
   const data = holders.data;
   const locations = (data?.locations ?? []).filter((l) => showArchived || l.isActive);
 

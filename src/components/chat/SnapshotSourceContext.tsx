@@ -6,8 +6,15 @@ import {
   useLayoutEffect,
   useRef,
 } from "react";
-import type { SnapshotState, SnapshotStateKey } from "~/lib/snapshot-source";
+import type {
+  SnapshotSource,
+  SnapshotState,
+  SnapshotStateKey,
+  PageViewValue,
+} from "~/lib/snapshot-source";
 export type SnapshotSourceRegistry = {
+  captureSource: () => SnapshotSource;
+  registerPage: (key: string, read: () => PageViewValue) => () => void;
   register: <K extends SnapshotStateKey>(
     key: K,
     read: () => SnapshotState[K],

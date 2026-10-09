@@ -21,14 +21,16 @@ export function DrawingLinkEditor({
   workspace,
   offline,
   onUploading,
+  onNavigate,
 }: {
   links: DrawingMarkupLink[];
   onChange: (links: DrawingMarkupLink[]) => void;
   workspace: DrawingWorkspace;
   offline: boolean;
   onUploading: (busy: boolean) => void;
+  onNavigate?: () => void;
 }) {
-  const [kind, setKind] = useState<DrawingLinkTargetKind | "url">("url");
+  const [kind, setKind] = useState<DrawingLinkTargetKind | "url" | "navigate">("url");
   const [jobId, setJobId] = useState(workspace.jobId);
   const [query, setQuery] = useState("");
   const [url, setUrl] = useState("");
@@ -39,11 +41,11 @@ export function DrawingLinkEditor({
   const targets = api.drawingsWorkspace.linkTargets.useQuery(
     {
       sheetId: workspace.sheetId,
-      kind: kind === "url" ? "job" : kind,
+      kind: kind === "url" || kind === "navigate" ? "job" : kind,
       jobId,
       query,
     },
-    { enabled: !offline && kind !== "url", retry: 1 },
+    { enabled: !offline && kind !== "url" && kind !== "navigate", retry: 1 },
   );
   const full = links.length >= MAX_DRAWING_LINKS;
   const add = (link: DrawingMarkupLink) => {
@@ -130,6 +132,7 @@ export function DrawingLinkEditor({
             setKind(event.target.value as typeof kind);
             setQuery("");
             setError(null);
+            if (event.target.value === "navigate") onNavigate?.();
           }}
         >
           <option value="url">Web, email, phone or app address</option>
@@ -139,9 +142,10 @@ export function DrawingLinkEditor({
           <option value="chat">Chat</option>
           <option value="materialList">Material list / tool request</option>
           <option value="job">Job page</option>
+          <option value="navigate" disabled={!onNavigate}>Navigate to Destination</option>
         </select>
       </label>
-      {kind === "url" ? (
+      {kind === "navigate" ? <p className="text-muted-foreground text-xs">Navigate to any page, then tap the floating check mark to save that view.</p> : kind === "url" ? (
         <>
           <label className="grid gap-1 text-sm">
             Address

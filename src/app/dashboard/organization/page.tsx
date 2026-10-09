@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { usePageViewState } from "~/hooks/use-page-view-state";
 import { Building2Icon, MapPinIcon, QrCodeIcon, UsersIcon, WifiOffIcon } from "lucide-react";
 
 import { CompanySection } from "~/components/organization/CompanySection";
@@ -20,7 +20,7 @@ const SECTIONS = [
 export default function OrganizationPage() {
   const isOnline = useOnlineStatus();
   const utils = api.useUtils();
-  const [section, setSection] = useState<(typeof SECTIONS)[number]["id"]>("members");
+  const [section, setSection] = usePageViewState<(typeof SECTIONS)[number]["id"]>("organization:section", "members", ["members", "invites", "company"]);
   const settings = api.organization.getOrganizationSettings.useQuery(undefined, { enabled: isOnline, retry: false });
   const refresh = async () => {
     await utils.organization.getOrganizationSettings.invalidate();

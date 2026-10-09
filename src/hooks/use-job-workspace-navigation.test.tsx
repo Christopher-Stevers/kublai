@@ -7,6 +7,7 @@ import {
   type JobWorkspaceLocation,
 } from "~/lib/job-workspace-last-option";
 import { useJobWorkspaceNavigation } from "./use-job-workspace-navigation";
+import { makeSnapshotSource } from "~/lib/snapshot-source";
 
 const job: JobWorkspaceLocation = {
   jobId: "job-1",
@@ -31,6 +32,21 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
+});
+it("restores a captured nested view instead of the last session and rebuilds its back stack once", async () => {
+  const captured: JobWorkspaceLocation = { jobId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", view: "material-lists", materialListId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb" };
+  setLastJobWorkspaceLocation(job);
+  const source = makeSnapshotSource("/dashboard", { version: 1, workspace: captured }, "Captured list");
+  window.history.replaceState(nextState, "", source.href);
+  const { result, unmount } = renderHook(() => useJobWorkspaceNavigation(), { wrapper: StrictMode });
+  expect(result.current.location).toEqual(captured);
+  const length = window.history.length;
+  expect(window.history.state).toMatchObject(nextState);
+  act(() => window.history.back());
+  await waitFor(() => expect(result.current.location).toEqual({ ...captured, materialListId: null }));
+  unmount();
+  renderHook(() => useJobWorkspaceNavigation(), { wrapper: StrictMode });
+  expect(window.history.length).toBe(length);
 });
 
 it("uses the same stack for the arrow, browser back and forward without duplicate screens", async () => {

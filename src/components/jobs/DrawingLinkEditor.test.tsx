@@ -40,10 +40,12 @@ function Editor({
   initial = [],
   offline = false,
   uploading = vi.fn(),
+  navigate,
 }: {
   initial?: DrawingMarkupLink[];
   offline?: boolean;
   uploading?: (busy: boolean) => void;
+  navigate?: () => void;
 }) {
   const [links, setLinks] = useState(initial);
   return (
@@ -54,6 +56,7 @@ function Editor({
         workspace={workspace}
         offline={offline}
         onUploading={uploading}
+        onNavigate={navigate}
       />
       <output data-testid="saved-links">{JSON.stringify(links)}</output>
     </>
@@ -72,6 +75,14 @@ const saved = () =>
     screen.getByTestId("saved-links").textContent,
   ) as DrawingMarkupLink[];
 describe("hyperlink destination editor", () => {
+  it("starts navigation selection without requesting a resource list or losing existing destinations", () => {
+    const navigate = vi.fn();
+    render(<Editor navigate={navigate} initial={[{ label: "Manual", url: "https://example.com" }]} />);
+    fireEvent.change(screen.getByLabelText("Add a destination"), { target: { value: "navigate" } });
+    expect(navigate).toHaveBeenCalledOnce();
+    expect(mock.query).toHaveBeenLastCalledWith(expect.anything(), expect.objectContaining({ enabled: false }));
+    expect(saved()).toEqual([{ label: "Manual", url: "https://example.com" }]);
+  });
   it("migrates, names, adds, removes, and validates arbitrary destinations", () => {
     render(
       <Editor

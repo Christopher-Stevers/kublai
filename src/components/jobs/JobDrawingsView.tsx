@@ -1,4 +1,5 @@
 "use client";
+import { usePageViewState } from "~/hooks/use-page-view-state";
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -79,8 +80,8 @@ const BOTTOM_BAR =
 export function JobDrawingsView({ jobId }: { jobId: string }) {
   const sandbox = useTutorialSandbox();
   const utils = api.useUtils();
-  const [setId, setSetId] = useState<string | null>(null);
-  const [sheetId, setSheetId] = useState<string | null>(null);
+  const [setId, setSetId] = usePageViewState<string | null>(`drawings:${jobId}:setId`, null);
+  const [sheetId, setSheetId] = usePageViewState<string | null>(`drawings:${jobId}:sheetId`, null);
   const full = useDrawingFullscreen(sheetId !== null);
   const lastViewport = useRef<DrawingViewport | null>(null);
   const zoomLabel = useRef<HTMLSpanElement>(null);
@@ -95,12 +96,12 @@ export function JobDrawingsView({ jobId }: { jobId: string }) {
   const [uploading, setUploading] = useState<string | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const account = useDrawingAccount();
-  const [query, setQuery] = useState("");
-  const [discipline, setDiscipline] = useState("");
-  const [status, setStatus] = useState("");
-  const [favoritesOnly, setFavoritesOnly] = useState(false);
-  const [listView, setListView] = useState(false);
-  const [registerOpen, setRegisterOpen] = useState(false);
+  const [query, setQuery] = usePageViewState(`drawings:${jobId}:query`, "");
+  const [discipline, setDiscipline] = usePageViewState(`drawings:${jobId}:discipline`, "");
+  const [status, setStatus] = usePageViewState(`drawings:${jobId}:status`, "");
+  const [favoritesOnly, setFavoritesOnly] = usePageViewState(`drawings:${jobId}:favoritesOnly`, false);
+  const [listView, setListView] = usePageViewState(`drawings:${jobId}:listView`, false);
+  const [registerOpen, setRegisterOpen] = usePageViewState(`drawings:${jobId}:registerOpen`, false);
   const [download, setDownload] = useState<string | null>(null);
   const downloader = useRef<AbortController | null>(null);
   const summaries = api.drawingsWorkspace.list.useQuery(

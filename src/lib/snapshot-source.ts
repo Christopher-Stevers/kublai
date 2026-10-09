@@ -8,8 +8,84 @@ const viewport = z.object({
   center: point,
   zoom: z.number().min(0.05).max(24),
 });
+export const pageViewValueSchema = z.union([
+  z.string().max(500),
+  z.number().finite(),
+  z.boolean(),
+  z.null(),
+  z.array(z.string().max(255)).max(100),
+]);
+export type PageViewValue = z.infer<typeof pageViewValueSchema>;
 export const snapshotStateSchema = z.object({
   version: z.literal(1),
+  scrolls: z
+    .array(
+      z.object({
+        path: z
+          .string()
+          .max(1000)
+          .regex(
+            /^body(?: > [a-z][a-z0-9-]*:nth-of-type\([1-9][0-9]{0,3}\))+$/,
+          ),
+        x: z.number().finite().min(0).max(10_000_000),
+        y: z.number().finite().min(0).max(10_000_000),
+      }),
+    )
+    .max(20)
+    .optional(),
+  pages: z
+    .record(z.string().max(200), pageViewValueSchema)
+    .refine((value) => Object.keys(value).length <= 100)
+    .optional(),
+  workspace: z
+    .object({
+      jobId: z.uuid(),
+      view: z.enum([
+        "options",
+        "material-lists",
+        "rooms",
+        "drawings",
+        "documents",
+        "chat",
+      ]),
+      materialListId: z.uuid().nullable(),
+    })
+    .nullable()
+    .optional(),
+  catalogue: z
+    .object({
+      scope: z.string().max(500),
+      kind: z.enum(["materials", "assets"]),
+      stage: z.enum([
+        "catalog",
+        "material",
+        "size",
+        "category",
+        "part",
+        "review",
+      ]),
+      catalogId: z.string().max(255).nullable(),
+      materialId: z.string().max(255).nullable(),
+      size: z
+        .object({
+          nominal: z.number().finite(),
+          unit: z.string().max(80),
+          sizeLabel: z.string().max(255).nullable().optional(),
+        })
+        .nullable(),
+      category: z
+        .object({
+          categoryId: z.string().max(255).nullable(),
+          name: z.string().max(255),
+        })
+        .nullable(),
+      hasCatalog: z.boolean(),
+      hasMaterial: z.boolean(),
+      hasSize: z.boolean(),
+      hasCategory: z.boolean(),
+      query: z.string().max(500),
+    })
+    .optional(),
   drawing: z
     .object({
       jobId: z.uuid(),
@@ -28,6 +104,26 @@ export const snapshotStateSchema = z.object({
         published: z.boolean(),
       }),
       selectedId: z.uuid().nullable(),
+      panel: z
+        .enum([
+          "",
+          "markups",
+          "issues",
+          "search",
+          "views",
+          "details",
+          "history",
+          "reviews",
+          "packages",
+          "files",
+          "activity",
+          "selected",
+          "notifications",
+        ])
+        .optional(),
+      search: z.string().max(500).optional(),
+      markupOpen: z.boolean().optional(),
+      appearanceOpen: z.boolean().optional(),
     })
     .optional(),
   overlay: z

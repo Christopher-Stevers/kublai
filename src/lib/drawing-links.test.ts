@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { makeSnapshotSource, readSnapshotState } from "./snapshot-source";
 import {
   drawingLinkSchema,
   drawingMarkupSchema,
@@ -24,6 +25,17 @@ const markup: DrawingMarkup = {
   width: 2,
 };
 describe("drawing hyperlink destinations", () => {
+  it("saves and opens a captured view longer than a normal address, including encoded filter punctuation", () => {
+    const state = { version: 1 as const, pages: Object.fromEntries(Array.from({ length: 15 }, (_, i) => [`filter${i}`, "a/b..c".repeat(15)])) };
+    const source = makeSnapshotSource("/dashboard/orders?search=pipe%2Fvalve", state, "Orders");
+    expect(source.href.length).toBeGreaterThan(2048);
+    const link = drawingMarkupLinkSchema.parse({ label: source.title, url: source.href });
+    const href = drawingLinkHref(link, id, []);
+    expect(href).toBe(source.href);
+    expect(readSnapshotState(new URL(href!, "https://foremanhq.invalid").hash)).toEqual(state);
+    expect(drawingLinkSchema.safeParse(`https://example.com/${"a".repeat(2048)}`).success).toBe(false);
+    expect(drawingLinkSchema.safeParse(`/dashboard#snapshot=${"a".repeat(2200)}`).success).toBe(false);
+  });
   it.each([
     "https://example.com/manual",
     "http://example.com",

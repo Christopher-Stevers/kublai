@@ -16,6 +16,8 @@ import { useReplicacheCatalogue } from "~/hooks/use-replicache-catalogue";
 import { requestCatalogueReplicachePull } from "~/lib/replicache-catalogue";
 import { EMPTY_NAME_KEYWORD_GROUPS, sortMaterialListPartChoices, type NameKeywordGroup, type MaterialListSort } from "~/lib/material-list-sort";
 import type { WizardStage } from "./types";
+import { useSnapshotSource } from "~/components/chat/SnapshotSourceContext";
+import { currentSnapshotState } from "~/lib/snapshot-source";
 
 type PreloadedPart = {
   id: string;
@@ -52,26 +54,30 @@ const catalogKindOf = (catalog: { kind?: string | null }) =>
 
 export function usePartWizard(open = true, sortMode?: MaterialListSort, keywordGroups: readonly NameKeywordGroup[] = EMPTY_NAME_KEYWORD_GROUPS, catalogKind: WizardCatalogKind = "materials") {
   const sandbox = useTutorialSandbox();
-  const [wizardStage, setWizardStage] = useState<WizardStage>("catalog");
+  const [saved] = useState(() => {
+    const entry = currentSnapshotState()?.catalogue;
+    return entry?.kind === catalogKind && entry.scope === window.location.pathname ? entry : null;
+  });
+  const [wizardStage, setWizardStage] = useState<WizardStage>(saved?.stage ?? "catalog");
   const [selectedCatalogId, setSelectedCatalogId] = useState<string | null>(
-    null,
+    saved?.catalogId ?? null,
   );
-  const [hasCatalogSelection, setHasCatalogSelection] = useState(false);
+  const [hasCatalogSelection, setHasCatalogSelection] = useState(saved?.hasCatalog ?? false);
   const [selectedMaterialId, setSelectedMaterialId] = useState<string | null>(
-    null,
+    saved?.materialId ?? null,
   );
-  const [hasMaterialSelection, setHasMaterialSelection] = useState(false);
+  const [hasMaterialSelection, setHasMaterialSelection] = useState(saved?.hasMaterial ?? false);
   const [selectedSize, setSelectedSize] = useState<{
     nominal: number;
     unit: string;
     sizeLabel?: string | null;
-  } | null>(null);
-  const [hasSizeSelection, setHasSizeSelection] = useState(false);
+  } | null>(saved?.size ?? null);
+  const [hasSizeSelection, setHasSizeSelection] = useState(saved?.hasSize ?? false);
   const [selectedCategory, setSelectedCategory] = useState<{
     categoryId: string | null;
     name: string;
-  } | null>(null);
-  const [hasCategorySelection, setHasCategorySelection] = useState(false);
+  } | null>(saved?.category ?? null);
+  const [hasCategorySelection, setHasCategorySelection] = useState(saved?.hasCategory ?? false);
   const [showCustomCatalogInput, setShowCustomCatalogInput] = useState(false);
   const [customCatalogName, setCustomCatalogName] = useState("");
   const [showCustomMaterialInput, setShowCustomMaterialInput] = useState(false);
@@ -81,7 +87,14 @@ export function usePartWizard(open = true, sortMode?: MaterialListSort, keywordG
   const [customSizeUnitId, setCustomSizeUnitId] = useState<string | null>(null);
   const [showCustomCategoryInput, setShowCustomCategoryInput] = useState(false);
   const [customCategoryName, setCustomCategoryName] = useState("");
-  const [wizardSearchQuery, setWizardSearchQuery] = useState("");
+  const [wizardSearchQuery, setWizardSearchQuery] = useState(saved?.query ?? "");
+  useSnapshotSource("catalogue", () => open ? {
+    scope: window.location.pathname, kind: catalogKind, stage: wizardStage,
+    catalogId: selectedCatalogId, materialId: selectedMaterialId,
+    size: selectedSize, category: selectedCategory,
+    hasCatalog: hasCatalogSelection, hasMaterial: hasMaterialSelection,
+    hasSize: hasSizeSelection, hasCategory: hasCategorySelection, query: wizardSearchQuery,
+  } : undefined);
   // Steps with nothing to choose are skipped in the direction of travel:
   // forward after a choice, backward after going back. autoStep marks a skip
   // so Add Parts keeps it out of the back history: it records the step each
@@ -660,8 +673,10 @@ export function usePartWizard(open = true, sortMode?: MaterialListSort, keywordG
     setWizardSearchQuery("");
   }, []);
 
+  const previousStage = useRef(wizardStage);
   useEffect(() => {
-    setWizardSearchQuery("");
+    if (previousStage.current !== wizardStage) setWizardSearchQuery("");
+    previousStage.current = wizardStage;
   }, [wizardStage]);
 
   useEffect(() => {

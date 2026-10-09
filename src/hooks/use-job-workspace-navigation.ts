@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTutorialSandbox } from "~/components/tutorial/tutorial-sandbox-context";
+import { useSnapshotSource } from "~/components/chat/SnapshotSourceContext";
+import { currentSnapshotState } from "~/lib/snapshot-source";
 import {
   clearLastJobWorkspaceLocation,
   getLastJobWorkspaceLocation,
@@ -14,6 +16,7 @@ type WorkspaceHistory = {
   version: 1;
   pathname: string;
   location: JobWorkspaceLocation | null;
+  sourceHash?: string;
 };
 
 function readHistory() {
@@ -29,6 +32,7 @@ function readHistory() {
 function writeHistory(
   method: "pushState" | "replaceState",
   location: JobWorkspaceLocation | null,
+  sourceHash?: string,
 ) {
   // Keep Next's routing metadata so a browser back never triggers a reload.
   // The URL stays on the dashboard: these screens also work entirely offline.
@@ -39,6 +43,7 @@ function writeHistory(
         version: 1,
         pathname: window.location.pathname,
         location,
+        sourceHash: sourceHash ?? readHistory()?.sourceHash,
       } satisfies WorkspaceHistory,
     },
     "",
@@ -55,6 +60,7 @@ export function useJobWorkspaceNavigation() {
   const sandbox = useTutorialSandbox();
   const practiceHistory = useRef<Array<JobWorkspaceLocation | null>>([null]);
   const [location, setLocation] = useState<JobWorkspaceLocation | null>(null);
+  useSnapshotSource("workspace", () => location);
 
   const restore = useCallback((next: JobWorkspaceLocation | null) => {
     setLocation(next);
@@ -66,9 +72,11 @@ export function useJobWorkspaceNavigation() {
   useEffect(() => {
     if (sandbox) return;
     let entry = readHistory();
-    if (!entry) {
-      const last = getLastJobWorkspaceLocation();
-      writeHistory("replaceState", null);
+    const saved = currentSnapshotState()?.workspace;
+    const sourceHash = saved !== undefined ? window.location.hash : undefined;
+    if (!entry || (sourceHash && entry.sourceHash !== sourceHash)) {
+      const last = saved !== undefined ? saved : getLastJobWorkspaceLocation();
+      writeHistory("replaceState", null, sourceHash);
       // Reopening a saved list still needs its parents in browser history.
       if (last) {
         const job: JobWorkspaceLocation = {

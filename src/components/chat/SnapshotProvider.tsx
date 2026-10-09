@@ -48,7 +48,9 @@ import {
   snapshotStateSchema,
   type SnapshotSource,
   type SnapshotStateKey,
+  type PageViewValue,
 } from "~/lib/snapshot-source";
+import { capturePageScrolls, restorePageScrolls } from "~/lib/page-view-scroll";
 const SnapshotContext = createContext<{ start: () => void } | null>(null);
 export const useSnapshot = () => useContext(SnapshotContext);
 type Capture = {
@@ -82,11 +84,49 @@ export function SnapshotProvider({ children }: { children: React.ReactNode }) {
     },
     [],
   );
-  const sourceRegistry = useMemo(() => ({ register }), [register]);
+  const pages = useRef(
+    new Map<symbol, { key: string; read: () => PageViewValue }>(),
+  );
+  const registerPage = useCallback<SnapshotSourceRegistry["registerPage"]>(
+    (key, read) => {
+      const id = Symbol(key);
+      pages.current.set(id, { key, read });
+      return () => {
+        pages.current.delete(id);
+      };
+    },
+    [],
+  );
+  const captureSource = useCallback(() => {
+    window.dispatchEvent(new Event(SNAPSHOT_FREEZE_EVENT));
+    const state = snapshotStateSchema.parse({
+      version: 1,
+      scroll: { x: Math.max(0, scrollX), y: Math.max(0, scrollY) },
+      scrolls: capturePageScrolls(),
+      pages: Object.fromEntries(
+        [...pages.current.values()].map(({ key, read }) => [key, read()]),
+      ),
+      ...Object.fromEntries(
+        [...sources.current.values()]
+          .map(({ key, read }) => [key, read()])
+          .filter(([, value]) => value !== undefined),
+      ),
+    });
+    const title =
+      [...document.querySelectorAll("[data-snapshot-source-title]")]
+        .at(-1)
+        ?.getAttribute("data-snapshot-source-title") ?? document.title;
+    return makeSnapshotSource(window.location.href, state, title);
+  }, []);
+  const sourceRegistry = useMemo(
+    () => ({ register, registerPage, captureSource }),
+    [register, registerPage, captureSource],
+  );
   useEffect(() => {
     const saved = currentSnapshotState();
-    if (!saved?.scroll || saved.drawing || saved.document) return;
-    const { x, y } = saved.scroll;
+    if (!saved?.scroll && !saved?.scrolls?.length) return;
+    const pageScroll =
+      saved.scroll && !saved.drawing && !saved.document ? saved.scroll : null;
     let attempts = 0;
     let timer: ReturnType<typeof setTimeout> | undefined;
     let cancelled = false;
@@ -96,9 +136,13 @@ export function SnapshotProvider({ children }: { children: React.ReactNode }) {
     };
     const restore = () => {
       if (cancelled) return;
-      window.scrollTo(x, y);
-      if (Math.abs(window.scrollY - y) > 1 && ++attempts < 100)
-        timer = setTimeout(restore, 100);
+      if (pageScroll) window.scrollTo(pageScroll.x, pageScroll.y);
+      const complete =
+        restorePageScrolls(saved.scrolls ?? []) &&
+        (!pageScroll ||
+          (Math.abs(window.scrollY - pageScroll.y) <= 1 &&
+            Math.abs(window.scrollX - pageScroll.x) <= 1));
+      if (!complete && ++attempts < 100) timer = setTimeout(restore, 100);
     };
     window.addEventListener("wheel", cancel, { once: true });
     window.addEventListener("pointerdown", cancel, { once: true });
@@ -218,18 +262,7 @@ export function SnapshotProvider({ children }: { children: React.ReactNode }) {
     try {
       const canvas = await promise;
       if (current !== generation.current) return;
-      const state = snapshotStateSchema.parse({
-        version: 1,
-        scroll: { x: Math.max(0, scrollX), y: Math.max(0, scrollY) },
-        ...Object.fromEntries(
-          [...sources.current.values()].map(({ key, read }) => [key, read()]),
-        ),
-      });
-      const title =
-        [...document.querySelectorAll("[data-snapshot-source-title]")]
-          .at(-1)
-          ?.getAttribute("data-snapshot-source-title") ?? document.title;
-      setSource(makeSnapshotSource(window.location.href, state, title));
+      setSource(captureSource());
       setCapture({
         canvas,
         url: canvas.toDataURL("image/png"),

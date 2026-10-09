@@ -1,4 +1,5 @@
 "use client";
+import { usePageViewState } from "~/hooks/use-page-view-state";
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -35,7 +36,7 @@ export function ToolsView() {
   const { canManage } = useToolRoom();
   const status = (STATUSES as readonly string[]).includes(params.get("status") ?? "") ? (params.get("status") as Status) : undefined;
   const partId = params.get("type") ?? undefined;
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = usePageViewState("assets:search", "");
   const deferredSearch = useDeferredValue(search.trim());
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [moveOpen, setMoveOpen] = useState(false);

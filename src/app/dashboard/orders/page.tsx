@@ -1,4 +1,5 @@
 "use client";
+import { usePageViewState } from "~/hooks/use-page-view-state";
 
 import { useMemo, useRef, useState } from "react";
 import { scoreOrderSearch } from "~/lib/order-search";
@@ -101,7 +102,9 @@ export default function OrdersPage() {
     cacheLoaded,
     isOfflineFallback,
   } = useOfflineOrders(serverOrders);
-  const [expandedOrders, setExpandedOrders] = useState<Set<string>>(new Set());
+  const [expandedOrders, setExpandedOrders] = usePageViewState<Set<string>>("orders:expanded", new Set(), undefined, {
+    encode: value => [...value], decode: value => Array.isArray(value) ? new Set(value) : undefined,
+  });
   const [emailDrafts, setEmailDrafts] = useState<Map<string, EmailDraft>>(
     new Map(),
   );
@@ -114,11 +117,11 @@ export default function OrdersPage() {
   const [loadingEmails, setLoadingEmails] = useState<Set<string>>(new Set());
   const [sendingOrderId, setSendingOrderId] = useState<string | null>(null);
   const [syncError, setSyncError] = useState<string | null>(null);
-  const [visibleCount, setVisibleCount] = useState(50);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [jobFilter, setJobFilter] = useState<string | null>(null);
-  const [supplierFilter, setSupplierFilter] = useState<string | null>(null);
-  const [dateFilter, setDateFilter] = useState<DateFilter>("all");
+  const [visibleCount, setVisibleCount] = usePageViewState("orders:visibleCount", 50);
+  const [searchQuery, setSearchQuery] = usePageViewState("orders:searchQuery", "");
+  const [jobFilter, setJobFilter] = usePageViewState<string | null>("orders:jobFilter", null);
+  const [supplierFilter, setSupplierFilter] = usePageViewState<string | null>("orders:supplierFilter", null);
+  const [dateFilter, setDateFilter] = usePageViewState<DateFilter>("orders:dateFilter", "all");
 
   const markOrderSent = api.materialList.markOrderSent.useMutation({
     onSuccess: () => {

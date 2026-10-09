@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSnapshot } from "~/components/chat/SnapshotProvider";
+import { useDrawingDestination } from "./DrawingDestinationProvider";
+import { readSnapshotState } from "~/lib/snapshot-source";
 import { useSnapshotSource } from "~/components/chat/SnapshotSourceContext";
 import { currentSnapshotState } from "~/lib/snapshot-source";
 import { api } from "~/trpc/react";
@@ -172,6 +174,7 @@ export function DrawingWorkspace({
   onViewportChange?: (viewport: DrawingViewport) => void;
 }) {
   const snapshotTool = useSnapshot();
+  const destinationPicker = useDrawingDestination();
   const [entrySnapshot] = useState(currentSnapshotState);
   const entryDrawing =
     entrySnapshot?.drawing?.jobId === jobId &&
@@ -188,7 +191,7 @@ export function DrawingWorkspace({
     setLinkedAppearance(value);
     changeDefaultAppearance(value);
   };
-  const [appearanceOpen, setAppearanceOpen] = useState(false);
+  const [appearanceOpen, setAppearanceOpen] = useState(entryDrawing?.appearanceOpen ?? false);
   const utils = api.useUtils();
   const [online, setOnline] = useState(
     () => typeof navigator === "undefined" || navigator.onLine,
@@ -212,10 +215,10 @@ export function DrawingWorkspace({
     (!boundUser || snapshot.actor.id === boundUser)
       ? snapshot
       : null);
-  const [panel, setPanel] = useState<Panel>("");
+  const [panel, setPanel] = useState<Panel>(entryDrawing?.panel ?? "");
   const [tool, setTool] = useState<DrawingTool>("pan");
   // Bottom bar: the Markup panel, and Measure / Pipe system in the viewer.
-  const [markupOpen, setMarkupOpen] = useState(false);
+  const [markupOpen, setMarkupOpen] = useState(entryDrawing?.markupOpen ?? false);
   const [modeRequest, setModeRequest] = useState<{
     id: number;
     mode: "idle" | "measure" | "pipe";
@@ -301,7 +304,7 @@ export function DrawingWorkspace({
     words: [],
     links: [],
   });
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(entryDrawing?.search ?? "");
   const [textBusy, setTextBusy] = useState(false);
   const textRequest = useRef(0);
   const ocrRequest = useRef<AbortController | null>(null);
@@ -329,6 +332,7 @@ export function DrawingWorkspace({
           appearance,
           layers,
           selectedId,
+          panel, search, markupOpen, appearanceOpen,
         }
       : undefined;
   });
@@ -363,7 +367,7 @@ export function DrawingWorkspace({
     setOptimistic([]);
     setFailedDrafts([]);
     setMetadataDirty(false);
-    setPanel("");
+    setPanel(entryDrawing?.panel ?? "");
     let cancelled = false;
     void account?.store
       ?.readSnapshot<Workspace>(`workspace:${sheet.id}`)
@@ -379,6 +383,7 @@ export function DrawingWorkspace({
     account?.store,
     entryDrawing?.sourceSheetId,
     entryDrawing?.selectedId,
+    entryDrawing?.panel,
   ]);
   useEffect(() => {
     if (serverData && account?.store)
@@ -529,6 +534,22 @@ export function DrawingWorkspace({
         ? { expectedMetadataRevision: data?.metadata.revision ?? 0 }
         : {}),
     }) as DrawingSave;
+  const resumeDestination = destinationPicker?.resume;
+  useEffect(() => {
+    if (!data || !resumeDestination || resumeDestination.draft.sheetId !== sheet.id) return;
+    const entry = readSnapshotState(new URL(resumeDestination.returnTo.href, window.location.origin).hash)?.drawing;
+    if (entry) {
+      setSourceOverride(entry.sourceSheetId);
+      setLinkedAppearance(entry.appearance);
+      setLayers(entry.layers);
+      setNavigate({ ...entry.viewport, requestId: crypto.randomUUID() });
+    }
+    setSelectedId(resumeDestination.draft.id);
+    setForm(resumeDestination.saved ? null : resumeDestination.draft);
+    setPanel("selected");
+    selectTool("select");
+    destinationPicker?.consumed();
+  }, [data, resumeDestination, sheet.id, destinationPicker, selectTool]);
   const deletable = (entity: DrawingEntity) =>
     editable(entity) &&
     online &&
@@ -770,13 +791,16 @@ export function DrawingWorkspace({
       else setError("That linked sheet is no longer available.");
     } else {
       const href = drawingLinkHref(link, jobId, data?.jobSheets ?? []);
-      if (href)
-        window.open(
-          new URL(href, location.origin).href,
-          "_blank",
-          "noopener,noreferrer",
-        );
-      else setError("That destination is no longer available.");
+      if (href) {
+        if (destinationPicker?.active && href.startsWith("/dashboard"))
+          window.location.assign(href);
+        else
+          window.open(
+            new URL(href, location.origin).href,
+            "_blank",
+            "noopener,noreferrer",
+          );
+      } else setError("That destination is no longer available.");
     }
   };
   const activate = (markup: DrawingMarkup) => {
@@ -1413,6 +1437,18 @@ export function DrawingWorkspace({
                       value={form}
                       onChange={setForm}
                       onSubmit={() => void save(form)}
+                      onNavigate={destinationPicker && form.kind === "markup" ? () => {
+                        if (destinationPicker.start({
+                          jobId, draft: form,
+                          baseEntity: entities.find(entity => entity.id === form.id),
+                          authorName: data.actor.name,
+                        })) {
+                          setPanel("");
+                          setForm(null);
+                          setSelectedId(null);
+                          selectTool("pan");
+                        }
+                      } : undefined}
                       pending={pending > 0}
                       workspace={data}
                       offline={!online}

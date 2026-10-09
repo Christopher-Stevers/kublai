@@ -1,4 +1,5 @@
 "use client";
+import { usePageViewState } from "~/hooks/use-page-view-state";
 
 import { useAuth } from "@clerk/nextjs";
 import {
@@ -194,7 +195,7 @@ function ChatLobby({ jobId, userId }: { jobId: string; userId: string }) {
       typeof document === "undefined" || document.visibilityState !== "hidden",
   );
   const [connected, setConnected] = useState(false);
-  const [showMembers, setShowMembers] = useState(false);
+  const [showMembers, setShowMembers] = usePageViewState(`chat:${jobId}:showMembers`, false);
   const [older, setOlder] = useState<Record<string, ChatMessage[]>>({});
   const [olderCursor, setOlderCursor] = useState<number | null | undefined>();
   const [loadingOlder, setLoadingOlder] = useState(false);
@@ -205,7 +206,7 @@ function ChatLobby({ jobId, userId }: { jobId: string; userId: string }) {
   const [error, setError] = useState("");
   const [sending, setSending] = useState(false);
   const sendingRef = useRef(false);
-  const [showBell, setShowBell] = useState(false);
+  const [showBell, setShowBell] = usePageViewState(`chat:${jobId}:showBell`, false);
   const [actionsFor, setActionsFor] = useState<ChatMessage | null>(null);
   const [atBottom, setAtBottom] = useState(true);
   const atBottomRef = useRef(true);

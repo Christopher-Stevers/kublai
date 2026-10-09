@@ -1,4 +1,5 @@
 "use client";
+import { usePageViewState } from "~/hooks/use-page-view-state";
 
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -85,21 +86,21 @@ function TimesheetsContent({
 }) {
   const online = useOnlineStatus();
   const utils = api.useUtils();
-  const [tab, setTab] = useState<
+  const [tab, setTab] = usePageViewState<
     "my" | "team" | "detail" | "reports" | "settings" | "activity"
-  >("my");
-  const [date, setDate] = useState(info.today);
+  >("timesheets:tab", "my");
+  const [date, setDate] = usePageViewState("timesheets:date", info.today);
   const [person, setPerson] = useState<string | undefined>();
-  const [from, setFrom] = useState(addDays(info.today, -28)),
-    [to, setTo] = useState(info.today);
+  const [from, setFrom] = usePageViewState("timesheets:from", addDays(info.today, -28)),
+    [to, setTo] = usePageViewState("timesheets:to", info.today);
   const detail = api.timesheets.period.useQuery(
     { date, userId: person },
     { enabled: online && !!info && (tab === "my" || tab === "detail") },
   );
-  const [status, setStatus] = useState<
+  const [status, setStatus] = usePageViewState<
     "all" | "draft" | "submitted" | "approved" | "returned"
-  >("submitted");
-  const [offset, setOffset] = useState(0);
+  >("timesheets:status", "submitted");
+  const [offset, setOffset] = usePageViewState("timesheets:offset", 0);
   const list = api.timesheets.list.useQuery(
     {
       from,
@@ -110,8 +111,8 @@ function TimesheetsContent({
     },
     { enabled: online && !!info && (tab === "team" || tab === "my") },
   );
-  const [approvedOnly, setApprovedOnly] = useState(true),
-    [reportJob, setReportJob] = useState("");
+  const [approvedOnly, setApprovedOnly] = usePageViewState("timesheets:approvedOnly", true),
+    [reportJob, setReportJob] = usePageViewState("timesheets:reportJob", "");
   const report = api.timesheets.report.useQuery(
     {
       from,

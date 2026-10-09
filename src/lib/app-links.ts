@@ -4,8 +4,8 @@ export function isAppLink(value: string) {
   if (value.startsWith("/")) {
     if (
       value.startsWith("//") ||
-      /%2f|%5c|%2e|%00/i.test(value) ||
-      value.includes("..")
+      /%2f|%5c|%2e|%00/i.test(value.split(/[?#]/, 1)[0]!) ||
+      value.split(/[?#]/, 1)[0]!.includes("..")
     )
       return false;
     const url = new URL(value, "https://foremanhq.invalid");

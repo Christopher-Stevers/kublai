@@ -1,4 +1,5 @@
 "use client";
+import { usePageViewState } from "~/hooks/use-page-view-state";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { currentSnapshotState } from "~/lib/snapshot-source";
@@ -184,13 +185,13 @@ export function JobDocumentsView({
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState<string | null>(null);
   const [offline, setOffline] = useState(false);
-  const [view, setView] = useState<View>("files");
-  const [folderId, setFolderId] = useState<string | null>(null);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [view, setView] = usePageViewState<View>(`documents:${jobId}:view`, "files");
+  const [folderId, setFolderId] = usePageViewState<string | null>(`documents:${jobId}:folderId`, null);
+  const [selectedId, setSelectedId] = usePageViewState<string | null>(`documents:${jobId}:selectedId`, null);
   const [checkedIds, setCheckedIds] = useState<string[]>([]);
-  const [query, setQuery] = useState("");
-  const [status, setStatus] = useState("");
-  const [kind, setKind] = useState("");
+  const [query, setQuery] = usePageViewState(`documents:${jobId}:query`, "");
+  const [status, setStatus] = usePageViewState(`documents:${jobId}:status`, "");
+  const [kind, setKind] = usePageViewState(`documents:${jobId}:kind`, "");
   const [modal, setModal] = useState<Modal | null>(null);
   const [draft, setDraft] = useState<Draft>(emptyDraft);
   const [modalError, setModalError] = useState<string | null>(null);

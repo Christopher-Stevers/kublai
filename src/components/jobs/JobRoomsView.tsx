@@ -1,4 +1,5 @@
 "use client";
+import { usePageViewState } from "~/hooks/use-page-view-state";
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -70,8 +71,8 @@ export function JobRoomsView({ jobId, onOpenMaterialList }: { jobId: string; onO
   const [notesDrafts, setNotesDrafts] = useState<Record<string, RoomNotesDraft | undefined>>({});
   const roomEditVersions = useRef(new Map<string, number>());
   const fileRef = useRef<HTMLInputElement | null>(null);
-  const [selectedFloorId, setSelectedFloorId] = useState<string | null>(null);
-  const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
+  const [selectedFloorId, setSelectedFloorId] = usePageViewState<string | null>(`rooms:${jobId}:selectedFloorId`, null);
+  const [selectedRoomId, setSelectedRoomId] = usePageViewState<string | null>(`rooms:${jobId}:selectedRoomId`, null);
   const [editingRoomId, setEditingRoomId] = useState<string | null>(null);
   const [editMode, setEditMode] = useState(false);
   const [reviewMode, setReviewMode] = useState(false);
@@ -80,7 +81,7 @@ export function JobRoomsView({ jobId, onOpenMaterialList }: { jobId: string; onO
     "not-space" | "boundary" | "merged" | "split" | "duplicate" | "unspecified"
   >("unspecified");
   const [reviewRoomId, setReviewRoomId] = useState<string | null>(null);
-  const [showRejected, setShowRejected] = useState(false);
+  const [showRejected, setShowRejected] = usePageViewState(`rooms:${jobId}:showRejected`, false);
   const [createMode, setCreateMode] = useState(false);
   const [detectMode, setDetectMode] = useState(false);
   const [detectingRoomId, setDetectingRoomId] = useState<string | null>(null);
@@ -98,7 +99,7 @@ export function JobRoomsView({ jobId, onOpenMaterialList }: { jobId: string; onO
   // trip up the iPhone keyboard) and saved once when editing ends.
   const floorNameInput = useRef<HTMLInputElement | null>(null);
   const lastFloorRename = useRef("");
-  const [isRoomListOpen, setIsRoomListOpen] = useState(false);
+  const [isRoomListOpen, setIsRoomListOpen] = usePageViewState(`rooms:${jobId}:isRoomListOpen`, false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [pendingSheets, setPendingSheets] = useState<

@@ -1,4 +1,5 @@
 "use client";
+import { usePageViewState } from "~/hooks/use-page-view-state";
 import { matchesMaterialOrderLine } from "~/lib/material-order-line";
 import { MaterialListSheet as MaterialListTableView } from "~/components/materialLists/MaterialListSheet";
 import { MaterialListActions } from "~/components/materialLists/MaterialListActions";
@@ -83,10 +84,10 @@ export default function MaterialListDetailPage({
     pathname.match(/^\/dashboard\/material-lists\/([^/?#]+)/)?.[1] ?? paramId;
   const verifyOrderId = searchParams.get("orderId");
   const router = useRouter();
-  const [showJobInfoModal, setShowJobInfoModal] = useState(false);
-  const [showQuoteSheet, setShowQuoteSheet] = useState(false);
-  const [showOrdersSheet, setShowOrdersSheet] = useState(false);
-  const [showAddPartDialog, setShowAddPartDialog] = useState(false);
+  const [showJobInfoModal, setShowJobInfoModal] = usePageViewState(`list:${id}:showJobInfoModal`, false);
+  const [showQuoteSheet, setShowQuoteSheet] = usePageViewState(`list:${id}:showQuoteSheet`, false);
+  const [showOrdersSheet, setShowOrdersSheet] = usePageViewState(`list:${id}:showOrdersSheet`, false);
+  const [showAddPartDialog, setShowAddPartDialog] = usePageViewState("list:addParts", false);
   const [showMaterialListNameModal, setShowMaterialListNameModal] =
     useState(false);
   const [showExistingQuotesDialog, setShowExistingQuotesDialog] =
@@ -94,7 +95,7 @@ export default function MaterialListDetailPage({
   const [showVerifyNotesDialog, setShowVerifyNotesDialog] = useState(false);
   const [verifyOrderNotes, setVerifyOrderNotes] = useState("");
   const [selectedQuoteId, setSelectedQuoteId] = useState<string | undefined>();
-  const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
+  const [viewMode, setViewMode] = usePageViewState<"grid" | "table">(`list:${id}:viewMode`, "grid");
   const isBrowserOnline = useOnlineStatus();
 
   const { materialList: mlHeader, items: unsortedItems, materialTotal, isLoading } =

@@ -31,6 +31,7 @@ export function DrawingEntityForm({
   workspace,
   responseOnly = false,
   offline = false,
+  onNavigate,
 }: {
   value: DrawingSave;
   onChange: (value: DrawingSave) => void;
@@ -39,6 +40,7 @@ export function DrawingEntityForm({
   workspace: DrawingWorkspace;
   responseOnly?: boolean;
   offline?: boolean;
+  onNavigate?: () => void;
 }) {
   const [uploading, setUploading] = useState(false);
   const change = (patch: Record<string, unknown>) =>
@@ -213,6 +215,7 @@ export function DrawingEntityForm({
                   workspace={workspace}
                   offline={offline}
                   onUploading={setUploading}
+                  onNavigate={onNavigate}
                 />
               </>
             )}

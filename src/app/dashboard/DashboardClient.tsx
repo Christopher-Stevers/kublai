@@ -1,4 +1,5 @@
 "use client";
+import { usePageViewState } from "~/hooks/use-page-view-state";
 import { FinancialOnly } from "~/components/permissions/FinancialVisibility";
 import { AddPartDialog, QuotePreviewSheet, OrdersPreviewSheet, ExistingQuotesOrdersDialog, JobRoomsView, JobDrawingsView, JobDocumentsView, JobChatView } from "~/components/app/DeferredFeatures";
 
@@ -229,9 +230,9 @@ export function DashboardClient({
     setShowOfflineMaterialListNameModal,
   ] = useState(false);
   const [offlineMaterialListViewMode, setOfflineMaterialListViewMode] =
-    useState<"grid" | "table">("grid");
-  const [showOfflineQuoteSheet, setShowOfflineQuoteSheet] = useState(false);
-  const [showOfflineOrdersSheet, setShowOfflineOrdersSheet] = useState(false);
+    usePageViewState<"grid" | "table">("dashboard:offlineMaterialListViewMode", "grid");
+  const [showOfflineQuoteSheet, setShowOfflineQuoteSheet] = usePageViewState("dashboard:showOfflineQuoteSheet", false);
+  const [showOfflineOrdersSheet, setShowOfflineOrdersSheet] = usePageViewState("dashboard:showOfflineOrdersSheet", false);
   const [showOfflineExistingQuotesDialog, setShowOfflineExistingQuotesDialog] =
     useState(false);
   const [selectedOfflineQuoteId, setSelectedOfflineQuoteId] = useState<
@@ -267,7 +268,7 @@ export function DashboardClient({
   const offlineMaterialListId = workspaceLocation?.materialListId ?? null;
   const offlineJobView = workspaceLocation?.view ?? "options";
   const [showOfflineAddPartDialog, setShowOfflineAddPartDialog] =
-    useState(false);
+    usePageViewState("dashboard:addParts", false);
   const isBrowserOnline = useOnlineStatus();
   const roomCount = useJobRoomCount(offlineJobId, offlineJobView === "options");
 

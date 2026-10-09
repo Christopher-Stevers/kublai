@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { isAppLink } from "./app-links";
 import { MAX_DRAWING_LINKS } from "./drawing-links";
+import { readSnapshotState, safeSnapshotHref } from "./snapshot-source";
 
 export const drawingPointSchema = z.object({
   x: z.number().finite().min(0).max(1),
@@ -38,7 +39,12 @@ export const drawingLinkSchema = z
   .string()
   .trim()
   .min(1)
-  .max(2048)
+  .max(16_000)
+  .refine(
+    value => value.length <= 2048 || (safeSnapshotHref(value) &&
+      Boolean(readSnapshotState(new URL(value, "https://foremanhq.invalid").hash))),
+    "This address is too long.",
+  )
   .refine(isAppLink, "Use a web, email, phone or ForemanHQ link.");
 export const drawingMarkupLinkSchema = z.object({
   label: shortText.min(1, "Give each destination a name."),
