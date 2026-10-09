@@ -81,3 +81,16 @@ test("private document previews never enter the shared image cache", () => {
   }
   assert.equal(context.isCacheableImageRequest(new URL("https://test.local/images/logo.png"), { destination: "image" }), true);
 });
+
+test("private conversation snapshots bypass shared image caching", () => {
+  const { context } = harness();
+  for (const pathname of [
+    "/api/chat/attachments/private-snapshot",
+    "/_next/image?url=%2Fapi%2Fchat%2Fattachments%2Fprivate-snapshot&w=640&q=75",
+  ]) {
+    assert.equal(
+      context.isCacheableImageRequest(new URL(pathname, "https://test.local"), { destination: "image" }),
+      false,
+    );
+  }
+});

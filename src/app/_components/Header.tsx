@@ -16,6 +16,8 @@ import {
 import { Button } from "~/components/ui/button";
 import {
   ArrowLeftIcon,
+  CameraIcon,
+  MessageSquareIcon,
   BookOpenIcon,
   BriefcaseIcon,
   Building2Icon,
@@ -33,6 +35,7 @@ import {
   XIcon,
   type LucideIcon,
 } from "lucide-react";
+import { useSnapshot } from "~/components/chat/SnapshotProvider";
 import { cn } from "~/lib/utils";
 import { APP_NAME } from "~/constants/app";
 import { useOnlineStatus } from "~/hooks/use-online-status";
@@ -80,15 +83,25 @@ function HeaderFrame({
   showAdmin: boolean;
 }) {
   const router = useRouter();
+  const snapshot = useSnapshot();
   const sandbox = useTutorialSandbox();
   const isOnline = useOnlineStatus();
   const [showRequestedBackButton, setShowRequestedBackButton] = useState(false);
   const navLinks: { href: string; label: string; icon: LucideIcon }[] = [
     ...(tabAccess.dashboard
-      ? [{ href: "/dashboard", label: "Jobs", icon: BriefcaseIcon }]
+      ? [
+          { href: "/dashboard", label: "Jobs", icon: BriefcaseIcon },
+          { href: "/dashboard/chat", label: "Chat", icon: MessageSquareIcon },
+        ]
       : []),
     ...(tabAccess.catalogue
-      ? [{ href: "/dashboard/catalogue", label: "Catalogue", icon: BookOpenIcon }]
+      ? [
+          {
+            href: "/dashboard/catalogue",
+            label: "Catalogue",
+            icon: BookOpenIcon,
+          },
+        ]
       : []),
     ...(tabAccess.suppliers
       ? [{ href: "/dashboard/suppliers", label: "Suppliers", icon: TruckIcon }]
@@ -102,9 +115,23 @@ function HeaderFrame({
     ...(tabAccess.draws
       ? [{ href: "/dashboard/draws", label: "Draws", icon: ReceiptIcon }]
       : []),
-    ...(tabAccess.timesheets ? [{ href: "/dashboard/timesheets", label: "Timesheets", icon: ClockIcon }] : []),
+    ...(tabAccess.timesheets
+      ? [
+          {
+            href: "/dashboard/timesheets",
+            label: "Timesheets",
+            icon: ClockIcon,
+          },
+        ]
+      : []),
     ...(tabAccess.assets
-      ? [{ href: "/dashboard/assets", label: "Asset Management", icon: WrenchIcon }]
+      ? [
+          {
+            href: "/dashboard/assets",
+            label: "Asset Management",
+            icon: WrenchIcon,
+          },
+        ]
       : []),
     ...(tabAccess.organization
       ? [
@@ -115,7 +142,9 @@ function HeaderFrame({
           },
         ]
       : []),
-    ...(showAdmin ? [{ href: "/admin", label: "Admin", icon: ShieldIcon }] : []),
+    ...(showAdmin
+      ? [{ href: "/admin", label: "Admin", icon: ShieldIcon }]
+      : []),
   ];
   const isActive = (href: string) => {
     if (href === "/dashboard") {
@@ -129,8 +158,8 @@ function HeaderFrame({
   };
 
   const showRouteBackButton =
-    pathname?.startsWith("/dashboard/jobs/") ||
-    pathname?.startsWith("/dashboard/material-lists/") ||
+    (pathname?.startsWith("/dashboard/jobs/") ?? false) ||
+    (pathname?.startsWith("/dashboard/material-lists/") ?? false) ||
     pathname === "/dashboard/account/settings";
   const showBackButton = showRouteBackButton || showRequestedBackButton;
 
@@ -160,11 +189,15 @@ function HeaderFrame({
   const handleSignOut = async () => {
     if (sandbox) return;
     try {
-      const { clearDrawingDownloadsOnSignOut } = await import("~/components/jobs/DrawingAccountProvider");
+      const { clearDrawingDownloadsOnSignOut } =
+        await import("~/components/jobs/DrawingAccountProvider");
       await clearDrawingDownloadsOnSignOut();
-    } catch { /* Signing out must still work if offline storage is unavailable. */ }
+    } catch {
+      /* Signing out must still work if offline storage is unavailable. */
+    }
     try {
-      const { disconnectChatPushDevice } = await import("~/components/jobs/ChatNotifications");
+      const { disconnectChatPushDevice } =
+        await import("~/components/jobs/ChatNotifications");
       await disconnectChatPushDevice();
     } catch {
       // Local revocation is retained for retry; signing out must still work offline.
@@ -184,8 +217,8 @@ function HeaderFrame({
   };
 
   return (
-    <header className="sticky top-0 z-50 flex h-14 items-center justify-between border-b border-border bg-card shadow-[0_2px_3px_rgba(0,0,0,0.35),0_6px_16px_rgba(0,0,0,0.6)] px-3 sm:h-16 sm:px-6 [[data-flat-header]_&]:border-b-transparent [[data-flat-header]_&]:shadow-none">
-      <div className="flex min-w-0 items-center gap-2 sm:gap-8">
+    <header className="border-border bg-card sticky top-0 z-50 flex h-14 items-center justify-between border-b px-3 shadow-[0_2px_3px_rgba(0,0,0,0.35),0_6px_16px_rgba(0,0,0,0.6)] sm:h-16 sm:px-6 [[data-flat-header]_&]:border-b-transparent [[data-flat-header]_&]:shadow-none">
+      <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-8">
         {showBackButton && (
           <Button
             variant="ghost"
@@ -201,7 +234,7 @@ function HeaderFrame({
         <button
           type="button"
           onClick={() => navigate("/dashboard")}
-          className="flex shrink-0 items-center gap-2 text-lg font-bold tracking-tight text-foreground"
+          className="text-foreground flex shrink-0 items-center gap-2 text-lg font-bold tracking-tight"
         >
           <Image
             src="/foremanhq/icon-dark-v2-32.png"
@@ -213,7 +246,7 @@ function HeaderFrame({
           />
           {APP_NAME}
         </button>
-        <nav className="hidden items-center gap-1 lg:flex">
+        <nav className="hidden min-w-0 items-center gap-1 overflow-x-auto lg:flex">
           {navLinks.map((link) => (
             <button
               key={link.href}
@@ -221,7 +254,7 @@ function HeaderFrame({
               onClick={() => navigate(link.href)}
               aria-current={isActive(link.href) ? "page" : undefined}
               className={cn(
-                "rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                "shrink-0 rounded-md px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors",
                 isActive(link.href)
                   ? "bg-primary/10 text-primary"
                   : "text-muted-foreground hover:bg-accent hover:text-foreground",
@@ -233,10 +266,26 @@ function HeaderFrame({
         </nav>
       </div>
 
-      <div className="hidden items-center gap-4 lg:flex">
+      <div className="hidden shrink-0 items-center gap-2 lg:flex">
+        {tabAccess.dashboard && (
+          <Button
+            variant="ghost"
+            aria-label="Snapshot"
+            onClick={() => {
+              if (!sandbox) snapshot?.start();
+            }}
+          >
+            <CameraIcon className="h-4 w-4" />
+            Snapshot
+          </Button>
+        )}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-11 gap-2 px-3" aria-label="User menu">
+            <Button
+              variant="ghost"
+              className="h-11 gap-2 px-3"
+              aria-label="User menu"
+            >
               <UserIcon className="h-5 w-5" />
               <ChevronDownIcon className="h-4 w-4" />
             </Button>
@@ -245,7 +294,7 @@ function HeaderFrame({
             <DropdownMenuLabel>
               <div className="flex items-center gap-3">
                 <UserIcon className="text-muted-foreground h-5 w-5" />
-                <span className="truncate text-sm text-foreground/80">
+                <span className="text-foreground/80 truncate text-sm">
                   {userEmail}
                 </span>
               </div>
@@ -256,7 +305,9 @@ function HeaderFrame({
                 Manage Account
               </DropdownMenuItem>
             ) : null}
-            <DropdownMenuItem onClick={() => navigate("/dashboard/account/settings")}>
+            <DropdownMenuItem
+              onClick={() => navigate("/dashboard/account/settings")}
+            >
               <SettingsIcon className="mr-2 h-4 w-4" />
               Settings
             </DropdownMenuItem>
@@ -295,10 +346,10 @@ function HeaderFrame({
             className="fixed inset-0 z-40 bg-black/50 lg:hidden"
             onClick={() => setMobileMenuOpen(false)}
           />
-          <div className="fixed inset-y-0 right-0 z-50 w-64 bg-card shadow-lg lg:hidden">
+          <div className="bg-card fixed inset-y-0 right-0 z-50 w-64 shadow-lg lg:hidden">
             <div className="flex h-full flex-col">
               <div className="flex items-center justify-between border-b px-4 py-4">
-                <span className="font-semibold text-foreground">Menu</span>
+                <span className="text-foreground font-semibold">Menu</span>
                 <Button
                   variant="ghost"
                   size="icon"
@@ -311,6 +362,19 @@ function HeaderFrame({
               </div>
               <nav className="flex-1 overflow-y-auto px-4 py-4">
                 <div className="space-y-1">
+                  {tabAccess.dashboard && (
+                    <button
+                      type="button"
+                      className="text-foreground/80 hover:bg-accent flex w-full items-center gap-3 rounded-md px-3 py-3 text-left text-base font-medium"
+                      onClick={() => {
+                        setMobileMenuOpen(false);
+                        if (!sandbox) snapshot?.start();
+                      }}
+                    >
+                      <CameraIcon className="h-5 w-5 shrink-0" />
+                      Snapshot
+                    </button>
+                  )}
                   {navLinks.map((link) => (
                     <button
                       key={link.href}
@@ -334,7 +398,7 @@ function HeaderFrame({
               <div className="border-t px-4 py-4">
                 <div className="mb-3 flex items-center gap-3 rounded-md px-3 py-2">
                   <UserIcon className="text-muted-foreground h-5 w-5" />
-                  <span className="truncate text-sm text-foreground/80">
+                  <span className="text-foreground/80 truncate text-sm">
                     {userEmail}
                   </span>
                 </div>
@@ -346,7 +410,7 @@ function HeaderFrame({
                         setMobileMenuOpen(false);
                         navigate("/dashboard/account");
                       }}
-                      className="block w-full rounded-md px-3 py-2 text-left text-base font-medium text-foreground/80 transition-colors hover:bg-accent hover:text-foreground"
+                      className="text-foreground/80 hover:bg-accent hover:text-foreground block w-full rounded-md px-3 py-2 text-left text-base font-medium transition-colors"
                     >
                       Manage Account
                     </button>
@@ -357,7 +421,7 @@ function HeaderFrame({
                       setMobileMenuOpen(false);
                       navigate("/dashboard/account/settings");
                     }}
-                    className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium text-foreground/80 hover:bg-accent"
+                    className="text-foreground/80 hover:bg-accent flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium"
                   >
                     <SettingsIcon className="h-4 w-4" /> Settings
                   </button>
@@ -367,7 +431,7 @@ function HeaderFrame({
                         setMobileMenuOpen(false);
                         void handleSignOut();
                       }}
-                      className="block w-full rounded-md px-3 py-2 text-left text-base font-medium text-foreground/80 transition-colors hover:bg-accent hover:text-foreground"
+                      className="text-foreground/80 hover:bg-accent hover:text-foreground block w-full rounded-md px-3 py-2 text-left text-base font-medium transition-colors"
                     >
                       Sign out
                     </button>
@@ -378,7 +442,6 @@ function HeaderFrame({
           </div>
         </>
       )}
-
     </header>
   );
 }
@@ -415,7 +478,8 @@ function HeaderWithClerk() {
           quotes: true,
           orders: true,
           draws: false,
-          assets: true, timesheets: true,
+          assets: true,
+          timesheets: true,
           organization: false,
         }
       }
@@ -442,7 +506,8 @@ function HeaderWithoutClerk() {
         quotes: true,
         orders: true,
         draws: false,
-        assets: true, timesheets: true,
+        assets: true,
+        timesheets: true,
         organization: false,
       }}
       showAdmin={false}
@@ -458,13 +523,25 @@ export function Header() {
 
 function HeaderForPractice() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  return <HeaderFrame
-    pathname="/dashboard"
-    mobileMenuOpen={mobileMenuOpen}
-    setMobileMenuOpen={setMobileMenuOpen}
-    userEmail="Practice workspace"
-    showAccount={true}
-    tabAccess={{ dashboard: true, catalogue: true, suppliers: true, quotes: true, orders: true, draws: false, assets: true, timesheets: false, organization: false }}
-    showAdmin={false}
-  />;
+  return (
+    <HeaderFrame
+      pathname="/dashboard"
+      mobileMenuOpen={mobileMenuOpen}
+      setMobileMenuOpen={setMobileMenuOpen}
+      userEmail="Practice workspace"
+      showAccount={true}
+      tabAccess={{
+        dashboard: true,
+        catalogue: true,
+        suppliers: true,
+        quotes: true,
+        orders: true,
+        draws: false,
+        assets: true,
+        timesheets: false,
+        organization: false,
+      }}
+      showAdmin={false}
+    />
+  );
 }

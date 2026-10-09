@@ -109,6 +109,7 @@ function isPrivateChatRequest(url) {
     url.pathname.startsWith("/api/job-rooms/files/") ||
     url.pathname === "/api/job-rooms/files" ||
     url.pathname.startsWith("/api/job-chat/") ||
+    url.pathname.startsWith("/api/chat/") ||
     url.pathname.startsWith("/api/job-documents") ||
     url.pathname.startsWith("/api/drawings/attachments/")
   )
@@ -124,6 +125,7 @@ function isPrivateChatRequest(url) {
         (original.pathname.startsWith("/api/job-rooms/files/") ||
           original.pathname === "/api/job-rooms/files" ||
           original.pathname.startsWith("/api/job-chat/") ||
+          original.pathname.startsWith("/api/chat/") ||
           original.pathname.startsWith("/api/job-documents") ||
           original.pathname.startsWith("/api/drawings/attachments/"))
       );

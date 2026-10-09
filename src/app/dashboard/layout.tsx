@@ -4,6 +4,7 @@ import { TutorialGate } from "~/components/tutorial/TutorialGate";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { HydrateClient } from "~/trpc/server";
+import { SnapshotProvider } from "~/components/chat/SnapshotProvider";
 import { Header } from "../_components/Header";
 import { getRequestIdentity } from "~/server/utils/get-request-identity";
 import { waitForUser } from "~/server/utils/wait-for-user";
@@ -26,9 +27,7 @@ export default async function DashboardLayout({
 
   // If user doesn't exist, wait for webhook to create it (with timeout)
   // This ensures webhook is the single source of truth for user creation
-  if (!user) {
-    user = (await waitForUser(effectiveUserId, 3000, 250)) as typeof user;
-  }
+  user ??= (await waitForUser(effectiveUserId, 3000, 250)) as typeof user;
 
   // If user still doesn't exist after waiting, redirect to onboarding
   // The onboarding page will also wait for the webhook
@@ -57,18 +56,25 @@ export default async function DashboardLayout({
         userId={effectiveUserId}
         initialCompleted={!!user.tutorialCompletedAt}
       >
-        <FinancialVisibilityProvider initialVisible={userCan(user, "financial.view")}>
-        <DrawingAccountProvider userId={effectiveUserId} organizationId={organizationId}>
-        <div className="bg-canvas flex min-h-screen flex-col">
-          <ReplicacheSyncBootstrap
+        <FinancialVisibilityProvider
+          initialVisible={userCan(user, "financial.view")}
+        >
+          <DrawingAccountProvider
             userId={effectiveUserId}
             organizationId={organizationId}
-          />
-          <Header />
-          <TabAccessGate />
-          <main className="flex-1">{children}</main>
-        </div>
-        </DrawingAccountProvider>
+          >
+            <SnapshotProvider>
+              <div className="bg-canvas flex min-h-screen flex-col">
+                <ReplicacheSyncBootstrap
+                  userId={effectiveUserId}
+                  organizationId={organizationId}
+                />
+                <Header />
+                <TabAccessGate />
+                <main className="flex-1">{children}</main>
+              </div>
+            </SnapshotProvider>
+          </DrawingAccountProvider>
         </FinancialVisibilityProvider>
       </TutorialGate>
     </HydrateClient>

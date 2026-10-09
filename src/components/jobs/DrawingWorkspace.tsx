@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSnapshot } from "~/components/chat/SnapshotProvider";
 import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
@@ -168,6 +169,7 @@ export function DrawingWorkspace({
   initialViewport?: DrawingViewport | null;
   onViewportChange?: (viewport: DrawingViewport) => void;
 }) {
+  const snapshotTool = useSnapshot();
   const account = useDrawingAccount();
   const [appearance, changeAppearance] = useDrawingAppearance();
   const [appearanceOpen, setAppearanceOpen] = useState(false);
@@ -2301,6 +2303,7 @@ export function DrawingWorkspace({
               <DropdownMenuLabel className="text-muted-foreground text-xs font-normal">
                 {statusText}
               </DropdownMenuLabel>
+              <DropdownMenuItem onSelect={() => snapshotTool?.start()}>Snapshot</DropdownMenuItem>
               <DropdownMenuItem
                 onSelect={() =>
                   setNavigate({

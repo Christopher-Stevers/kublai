@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useSnapshot } from "~/components/chat/SnapshotProvider";
 import {
   supportsDocumentEditor,
   type EditorAvailability,
@@ -12,6 +13,7 @@ import { defaultSubmittal } from "~/lib/submittals";
 import { DocumentVersionCompare } from "./DocumentVersionCompare";
 import {
   DownloadIcon,
+  CameraIcon,
   ExternalLinkIcon,
   HistoryIcon,
   LockIcon,
@@ -78,6 +80,7 @@ export function DocumentDetails({
   onEdit,
   mutate,
 }: Props) {
+  const snapshot = useSnapshot();
   const [tab, setTab] = useState<
     "details" | "versions" | "comments" | "activity"
   >("details");
@@ -203,6 +206,16 @@ export function DocumentDetails({
             </p>
           )}
           <div className="flex flex-wrap gap-2">
+            {snapshot && (
+              <Button
+                variant="outline"
+                disabled={busy}
+                onClick={snapshot.start}
+              >
+                <CameraIcon />
+                Snapshot
+              </Button>
+            )}
             {editableFormat &&
               editorStatus?.configured &&
               mutable &&

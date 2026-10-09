@@ -807,6 +807,7 @@ function ChatLobby({ jobId, userId }: { jobId: string; userId: string }) {
             Chat
           </h1>
           <div className="flex gap-1">
+            <a href="/dashboard/chat" className="inline-flex items-center rounded-md px-2 text-xs text-white hover:bg-white/15">People &amp; groups</a>
             <Button
               variant="ghost"
               size="sm"

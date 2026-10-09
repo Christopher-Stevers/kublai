@@ -9,6 +9,8 @@ import {
   SaveIcon,
   XIcon,
 } from "lucide-react";
+import { useSnapshot } from "~/components/chat/SnapshotProvider";
+import { CameraIcon } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { confirmAction } from "~/components/ui/app-dialogs";
 import {
@@ -104,6 +106,7 @@ export function DocumentEditor({
   name: string;
   onClose: () => void;
 }) {
+  const snapshot = useSnapshot();
   const frameName = `document-editor-${useId().replaceAll(":", "")}`;
   const frame = useRef<HTMLIFrameElement>(null);
   const savingOverlay = useRef<HTMLDivElement>(null);
@@ -587,6 +590,17 @@ export function DocumentEditor({
               >
                 <SaveIcon />
                 Save
+              </Button>
+            )}
+            {snapshot && (
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={!loaded || saving}
+                onClick={() => snapshot.start()}
+              >
+                <CameraIcon />
+                Snapshot
               </Button>
             )}
             <Button

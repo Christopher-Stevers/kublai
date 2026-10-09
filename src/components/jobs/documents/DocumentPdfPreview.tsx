@@ -92,6 +92,7 @@ export function DocumentPdfPreview({
   return (
     <section
       aria-label={title}
+      data-snapshot-rendering={loading}
       className="flex w-full flex-col overflow-hidden rounded-md border"
     >
       <div className="bg-background flex flex-wrap items-center justify-between gap-2 border-b p-2">

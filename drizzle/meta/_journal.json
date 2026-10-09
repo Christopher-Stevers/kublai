@@ -195,6 +195,13 @@
       "when": 1791477000000,
       "tag": "0051_timesheets",
       "breakpoints": false
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1791525600000,
+      "tag": "0052_private_conversations",
+      "breakpoints": false
     }
   ]
 }
