@@ -5,6 +5,8 @@ import { getDocument, VerbosityLevel } from "pdfjs-dist/legacy/build/pdf.mjs";
 import sharp from "sharp";
 import { validateDrawingPageCount } from "~/lib/drawing-upload-limits";
 import { extractSheetName } from "~/server/rooms/sheet-name";
+import { pdfTitleBlockWord } from "~/lib/drawing-title-block";
+import { readUploadTitleBlock } from "~/server/drawings/upload-title-block";
 import { SERVER_PDF_RENDER_OPTIONS } from "./pdf-render-options";
 
 async function load(dest: string) {
@@ -25,7 +27,8 @@ async function load(dest: string) {
 }
 
 async function main() {
-  const [mode, dest, jobId, uploadId, pageText] = process.argv.slice(2);
+  const [mode, dest, jobId, uploadId, pageText, metadataMode] =
+    process.argv.slice(2);
   if (!dest) throw new Error("PDF renderer destination required");
   const { document, loadingTask } = await load(dest);
   try {
@@ -69,18 +72,24 @@ async function main() {
         .toBuffer();
       await writeFile(path.join(dest, `floor-${pageNumber}.webp`), webp);
       const text = await page.getTextContent();
-      const labels = text.items.flatMap((item) => {
-        if (!("str" in item) || !item.str) return [];
-        const transform = item.transform as number[];
-        const [x, y] = viewport.convertToViewportPoint(
-          transform[4] ?? 0,
-          transform[5] ?? 0,
-        ) as [number, number];
-        return [{ str: item.str, x: x / width, y: y / height }];
-      });
+      const words = text.items.flatMap((item) =>
+        "str" in item && item.str.trim() ? [pdfTitleBlockWord(item, raw)] : [],
+      );
+      const metadata =
+        metadataMode === "metadata"
+          ? await readUploadTitleBlock(page, words)
+          : undefined;
+      const labels = words.map((word) => ({
+        str: word.text,
+        x: word.left,
+        y: word.bottom,
+      }));
       process.stdout.write(
         JSON.stringify({
-          name: extractSheetName(labels, `Sheet ${pageNumber}`),
+          name: metadata
+            ? metadata.number || `Sheet ${pageNumber}`
+            : extractSheetName(labels, `Sheet ${pageNumber}`),
+          ...(metadata ? { metadata } : {}),
           width,
           height,
           imageUrl: `/api/job-rooms/files/${jobId}/${uploadId}/floor-${pageNumber}.webp`,

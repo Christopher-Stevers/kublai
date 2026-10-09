@@ -116,10 +116,7 @@ export function DrawingSheetRegister({
               throw Error(result.error ?? "Recognition failed");
             words = result.words;
           }
-          // The user-selected rectangle replaces the default title-block bounds.
-          const suggestion = suggestSheetMetadata(
-            words.map((w) => ({ ...w, left: 0.7, top: 0.7 })),
-          );
+          const suggestion = suggestSheetMetadata(words);
           if (!stop.current)
             setRows((previous) => [
               ...previous,

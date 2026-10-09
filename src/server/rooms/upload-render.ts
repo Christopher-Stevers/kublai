@@ -3,7 +3,10 @@ import { open } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import type { SheetIdentity } from "~/lib/drawing-title-block";
+
 type RenderedSheet = {
+  metadata?: SheetIdentity;
   name: string;
   width: number;
   height: number;
@@ -66,6 +69,7 @@ export async function renderUploadPdf(
   dest: string,
   jobId: string,
   uploadId: string,
+  options: { drawingMetadata?: boolean } = {},
 ) {
   const file = await open(path.join(dest, "plan.pdf"), "r");
   try {
@@ -90,7 +94,14 @@ export async function renderUploadPdf(
     pageNumber++
   ) {
     const sheet = JSON.parse(
-      await runRenderer(["page", dest, jobId, uploadId, String(pageNumber)]),
+      await runRenderer([
+        "page",
+        dest,
+        jobId,
+        uploadId,
+        String(pageNumber),
+        ...(options.drawingMetadata ? ["metadata"] : []),
+      ]),
     ) as Partial<RenderedSheet>;
     if (
       typeof sheet.name !== "string" ||
@@ -99,6 +110,16 @@ export async function renderUploadPdf(
       typeof sheet.imageUrl !== "string"
     )
       throw new Error("PDF renderer returned invalid sheet metadata");
+    if (
+      options.drawingMetadata &&
+      (!sheet.metadata ||
+        ![
+          sheet.metadata.number,
+          sheet.metadata.title,
+          sheet.metadata.discipline,
+        ].every((value) => typeof value === "string" && value.length <= 255))
+    )
+      throw new Error("PDF renderer returned invalid title-block metadata");
     sheets.push(sheet as RenderedSheet);
   }
   return sheets;
