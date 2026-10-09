@@ -1,4 +1,5 @@
 import { timesheetsRouter } from "~/server/api/routers/timesheets";
+import { notificationsRouter } from "~/server/api/routers/notifications";
 import { pushRouter } from "~/server/api/routers/push";
 import { conversationsRouter } from "~/server/api/routers/conversations";
 import { chatRouter } from "~/server/api/routers/chat";
@@ -26,6 +27,7 @@ import { userRouter } from "~/server/api/routers/user";
  * All routers added in /api/routers should be manually added here.
  */
 export const appRouter = createTRPCRouter({
+  notifications: notificationsRouter,
   timesheets: timesheetsRouter,
   chat: chatRouter,
   conversations: conversationsRouter,

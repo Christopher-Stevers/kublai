@@ -1,6 +1,19 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+@keyframes notification-bell-ring {
+  0%, 100% { transform: rotate(0); }
+  15%, 45%, 75% { transform: rotate(18deg); }
+  30%, 60%, 90% { transform: rotate(-18deg); }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .notification-bell-ring {
+    animation: notification-bell-ring 700ms ease-in-out;
+    transform-origin: top center;
+  }
+}
+
 @custom-variant dark (&:is(.dark *));
 
 @theme {

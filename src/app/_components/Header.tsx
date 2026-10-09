@@ -46,6 +46,7 @@ import {
   type HeaderBackStateDetail,
 } from "~/lib/header-back-events";
 import { useTutorialSandbox } from "~/components/tutorial/tutorial-sandbox-context";
+import { NotificationCenter } from "~/components/notifications/NotificationCenter";
 
 const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
 const hasUsableClerkKey =
@@ -62,6 +63,7 @@ function HeaderFrame({
   showAccount,
   tabAccess,
   showAdmin,
+  sessionKey,
 }: {
   pathname: string | null;
   mobileMenuOpen: boolean;
@@ -81,6 +83,7 @@ function HeaderFrame({
     organization: boolean;
   };
   showAdmin: boolean;
+  sessionKey?: string;
 }) {
   const router = useRouter();
   const snapshot = useSnapshot();
@@ -266,78 +269,87 @@ function HeaderFrame({
         </nav>
       </div>
 
-      <div className="hidden shrink-0 items-center gap-2 lg:flex">
-        {tabAccess.dashboard && (
-          <Button
-            variant="ghost"
-            aria-label="Snapshot"
-            onClick={() => {
-              if (!sandbox) snapshot?.start();
-            }}
-          >
-            <CameraIcon className="h-4 w-4" />
-            Snapshot
-          </Button>
-        )}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
+      <div className="ml-2 flex shrink-0 items-center gap-2">
+        <div className="hidden shrink-0 items-center gap-2 lg:flex">
+          {tabAccess.dashboard && (
             <Button
               variant="ghost"
-              className="h-11 gap-2 px-3"
-              aria-label="User menu"
+              aria-label="Snapshot"
+              onClick={() => {
+                if (!sandbox) snapshot?.start();
+              }}
             >
-              <UserIcon className="h-5 w-5" />
-              <ChevronDownIcon className="h-4 w-4" />
+              <CameraIcon className="h-4 w-4" />
+              Snapshot
             </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuLabel>
-              <div className="flex items-center gap-3">
-                <UserIcon className="text-muted-foreground h-5 w-5" />
-                <span className="text-foreground/80 truncate text-sm">
-                  {userEmail}
-                </span>
-              </div>
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            {showAccount ? (
-              <DropdownMenuItem onClick={() => navigate("/dashboard/account")}>
-                Manage Account
-              </DropdownMenuItem>
-            ) : null}
-            <DropdownMenuItem
-              onClick={() => navigate("/dashboard/account/settings")}
-            >
-              <SettingsIcon className="mr-2 h-4 w-4" />
-              Settings
-            </DropdownMenuItem>
-            {signOut ? (
-              <DropdownMenuItem
-                onClick={() => {
-                  void handleSignOut();
-                }}
-              >
-                Sign out
-              </DropdownMenuItem>
-            ) : null}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-
-      <div className="ml-auto flex items-center gap-2 lg:hidden">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-11 w-11"
-          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          aria-label="Toggle menu"
-        >
-          {mobileMenuOpen ? (
-            <XIcon className="h-6 w-6" />
-          ) : (
-            <MenuIcon className="h-6 w-6" />
           )}
-        </Button>
+        </div>
+        {!sandbox && (
+          <NotificationCenter key={sessionKey} sessionKey={sessionKey} />
+        )}
+        <div className="hidden shrink-0 items-center gap-2 lg:flex">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                className="h-11 gap-2 px-3"
+                aria-label="User menu"
+              >
+                <UserIcon className="h-5 w-5" />
+                <ChevronDownIcon className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel>
+                <div className="flex items-center gap-3">
+                  <UserIcon className="text-muted-foreground h-5 w-5" />
+                  <span className="text-foreground/80 truncate text-sm">
+                    {userEmail}
+                  </span>
+                </div>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {showAccount ? (
+                <DropdownMenuItem
+                  onClick={() => navigate("/dashboard/account")}
+                >
+                  Manage Account
+                </DropdownMenuItem>
+              ) : null}
+              <DropdownMenuItem
+                onClick={() => navigate("/dashboard/account/settings")}
+              >
+                <SettingsIcon className="mr-2 h-4 w-4" />
+                Settings
+              </DropdownMenuItem>
+              {signOut ? (
+                <DropdownMenuItem
+                  onClick={() => {
+                    void handleSignOut();
+                  }}
+                >
+                  Sign out
+                </DropdownMenuItem>
+              ) : null}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+
+        <div className="ml-auto flex items-center gap-2 lg:hidden">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-11 w-11"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            aria-label="Toggle menu"
+          >
+            {mobileMenuOpen ? (
+              <XIcon className="h-6 w-6" />
+            ) : (
+              <MenuIcon className="h-6 w-6" />
+            )}
+          </Button>
+        </div>
       </div>
 
       {mobileMenuOpen && (
@@ -470,6 +482,7 @@ function HeaderWithClerk() {
         }
       }}
       showAccount={true}
+      sessionKey={user?.id ?? "guest"}
       tabAccess={
         userRole?.permissions.tabAccess ?? {
           dashboard: true,
