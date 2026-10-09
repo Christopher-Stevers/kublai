@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSnapshot } from "~/components/chat/SnapshotProvider";
+import { useSnapshotSource } from "~/components/chat/SnapshotSourceContext";
+import { currentSnapshotState } from "~/lib/snapshot-source";
 import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
@@ -170,8 +172,22 @@ export function DrawingWorkspace({
   onViewportChange?: (viewport: DrawingViewport) => void;
 }) {
   const snapshotTool = useSnapshot();
+  const [entrySnapshot] = useState(currentSnapshotState);
+  const entryDrawing =
+    entrySnapshot?.drawing?.jobId === jobId &&
+    entrySnapshot.drawing.sheetId === sheet.id
+      ? entrySnapshot.drawing
+      : null;
   const account = useDrawingAccount();
-  const [appearance, changeAppearance] = useDrawingAppearance();
+  const [defaultAppearance, changeDefaultAppearance] = useDrawingAppearance();
+  const [linkedAppearance, setLinkedAppearance] = useState(
+    entryDrawing?.appearance ?? null,
+  );
+  const appearance = linkedAppearance ?? defaultAppearance;
+  const changeAppearance = (value: typeof appearance) => {
+    setLinkedAppearance(value);
+    changeDefaultAppearance(value);
+  };
   const [appearanceOpen, setAppearanceOpen] = useState(false);
   const utils = api.useUtils();
   const [online, setOnline] = useState(
@@ -230,12 +246,14 @@ export function DrawingWorkspace({
     width: 2,
     fill: "none",
   });
-  const [layers, setLayers] = useState({
-    markups: true,
-    issues: true,
-    private: true,
-    published: true,
-  });
+  const [layers, setLayers] = useState(
+    entryDrawing?.layers ?? {
+      markups: true,
+      issues: true,
+      private: true,
+      published: true,
+    },
+  );
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectionMode, setSelectionMode] = useState<"move" | "resize">(
     "resize",
@@ -246,12 +264,22 @@ export function DrawingWorkspace({
   const [failedDrafts, setFailedDrafts] = useState<DrawingSave[]>([]);
   const [pending, setPending] = useState(0);
   const [optimistic, setOptimistic] = useState<DrawingEntity[]>([]);
-  const [sourceOverride, setSourceOverride] = useState<string | null>(null);
+  const [sourceOverride, setSourceOverride] = useState<string | null>(
+    entryDrawing?.sourceSheetId ?? null,
+  );
   const [compareIds, setCompareIds] = useState<{
     first: string;
     second: string;
     additional?: string[];
-  } | null>(null);
+  } | null>(
+    entryDrawing && entrySnapshot?.overlay
+      ? {
+          first: entrySnapshot.overlay.ids[0]!,
+          second: entrySnapshot.overlay.ids[1]!,
+          additional: entrySnapshot.overlay.ids.slice(2),
+        }
+      : null,
+  );
   const [overlayPickerOpen, setOverlayPickerOpen] = useState(false);
   const [navigate, setNavigate] = useState<{
     center: { x: number; y: number };
@@ -289,6 +317,21 @@ export function DrawingWorkspace({
   };
   const current =
     sourceId === (data?.metadata.currentSourceSheetId ?? sheet.id);
+  useSnapshotSource("drawing", () => {
+    const owner = data?.jobSheets.find((item) => item.id === sheet.id);
+    return owner
+      ? {
+          jobId,
+          sheetId: sheet.id,
+          setId: owner.setId,
+          sourceSheetId: sourceId,
+          viewport: viewport.current,
+          appearance,
+          layers,
+          selectedId,
+        }
+      : undefined;
+  });
 
   const [assets, setAssets] = useState<{
     key: string;
@@ -313,8 +356,8 @@ export function DrawingWorkspace({
   }, []);
   useEffect(() => {
     setSnapshot(null);
-    setSourceOverride(null);
-    setSelectedId(null);
+    setSourceOverride(entryDrawing?.sourceSheetId ?? null);
+    setSelectedId(entryDrawing?.selectedId ?? null);
     setForm(null);
     setLinkChooser(null);
     setOptimistic([]);
@@ -331,7 +374,12 @@ export function DrawingWorkspace({
     return () => {
       cancelled = true;
     };
-  }, [sheet.id, account?.store]);
+  }, [
+    sheet.id,
+    account?.store,
+    entryDrawing?.sourceSheetId,
+    entryDrawing?.selectedId,
+  ]);
   useEffect(() => {
     if (serverData && account?.store)
       void account.store
@@ -913,6 +961,36 @@ export function DrawingWorkspace({
         )}
       </div>
     );
+  if (
+    sourceOverride &&
+    !data.jobSheets.some((item) => item.id === sourceOverride)
+  )
+    return (
+      <div className="grid h-full place-content-center gap-3 p-6 text-center">
+        <p role="alert">
+          The drawing revision used for this snapshot is unavailable.
+        </p>
+        <Button onClick={() => setSourceOverride(null)}>
+          Open the current drawing
+        </Button>
+      </div>
+    );
+  if (
+    compareIds &&
+    [
+      compareIds.first,
+      compareIds.second,
+      ...(compareIds.additional ?? []),
+    ].some((id) => !comparisonSheets.has(id))
+  )
+    return (
+      <div className="grid h-full place-content-center gap-3 p-6 text-center">
+        <p role="alert">A drawing in this snapshot overlay is unavailable.</p>
+        <Button onClick={() => setCompareIds(null)}>
+          Open the source drawing
+        </Button>
+      </div>
+    );
 
   const statusText = pending
     ? "Saving…"
@@ -930,6 +1008,7 @@ export function DrawingWorkspace({
     <div
       className="relative flex h-full min-h-0 flex-col"
       aria-label="Drawing workspace"
+      data-snapshot-source-title={source.name}
     >
       {appearanceOpen && (
         <DrawingAppearanceDialog
@@ -1173,6 +1252,9 @@ export function DrawingWorkspace({
         <div className="min-h-0 min-w-0 flex-1">
           {compare && compareFirst ? (
             <DrawingCompare
+              initialSnapshot={
+                entryDrawing ? entrySnapshot?.overlay : undefined
+              }
               appearance={appearance}
               key={compareFirst.id}
               additional={compareAdditional.map((item) => ({
@@ -2303,7 +2385,9 @@ export function DrawingWorkspace({
               <DropdownMenuLabel className="text-muted-foreground text-xs font-normal">
                 {statusText}
               </DropdownMenuLabel>
-              <DropdownMenuItem onSelect={() => snapshotTool?.start()}>Snapshot</DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => snapshotTool?.start()}>
+                Snapshot
+              </DropdownMenuItem>
               <DropdownMenuItem
                 onSelect={() =>
                   setNavigate({

@@ -1,4 +1,8 @@
 import { z } from "zod";
+import {
+  snapshotSourceSchema,
+  type SnapshotSource,
+} from "~/lib/snapshot-source";
 export const conversationInput = z.object({ conversationId: z.uuid() });
 export const createConversationInput = z
   .object({
@@ -15,6 +19,7 @@ export const sendConversationInput = conversationInput
     clientId: z.uuid(),
     body: z.string().trim().max(8000),
     attachmentIds: z.array(z.uuid()).max(5).default([]),
+    source: snapshotSourceSchema.nullable().optional(),
   })
   .refine(
     (v) => v.body.length > 0 || v.attachmentIds.length > 0,
@@ -33,6 +38,7 @@ export type ConversationMessage = {
   author: { id: string | null; name: string };
   createdAt: Date;
   deletedAt: Date | null;
+  source?: SnapshotSource | null;
   attachments: {
     id: string;
     name: string;

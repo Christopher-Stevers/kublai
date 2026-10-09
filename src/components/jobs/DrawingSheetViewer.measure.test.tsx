@@ -19,6 +19,7 @@ import {
   type DrawingEditorProps,
 } from "./DrawingSheetViewer";
 import { DrawingCompare } from "./DrawingCompare";
+import { SNAPSHOT_FREEZE_EVENT } from "~/lib/snapshot-source";
 
 vi.mock("~/lib/pdf-snap-lines", () => ({
   loadSnapLines: vi.fn(async () => []),
@@ -984,6 +985,15 @@ describe("drawing one-finger zoom", () => {
     tap(frame, 400, 300);
     tap(frame, 400, 300);
     await waitFor(() => expect(scale(frame)).toBeCloseTo(3));
+  });
+  it("freezes an animated zoom before capturing a snapshot", async () => {
+    const { frame } = openSheet();
+    tap(frame, 400, 300);
+    tap(frame, 400, 300);
+    fireEvent(window, new Event(SNAPSHOT_FREEZE_EVENT));
+    const frozen = scale(frame);
+    await act(async () => new Promise(resolve => setTimeout(resolve, 300)));
+    expect(scale(frame)).toBe(frozen);
   });
   it("cancels the held zoom without latching into the next drag", async () => {
     const { frame } = openSheet();

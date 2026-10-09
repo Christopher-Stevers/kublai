@@ -17,6 +17,7 @@ import { useEffect, type ComponentProps } from "react";
 import type { DrawingSheetViewer } from "./DrawingSheetViewer";
 import { DrawingWorkspace, panels, tools } from "./DrawingWorkspace";
 import type { DrawingCompare } from "./DrawingCompare";
+import { makeSnapshotSource } from "~/lib/snapshot-source";
 
 const mocks = vi.hoisted(() => ({
   data: null as Workspace | null,
@@ -388,6 +389,74 @@ afterEach(() => {
 });
 
 describe("drawing workspace workflows", () => {
+  it("pins a snapshot to its captured revision when the current drawing changes", () => {
+    mocks.data!.metadata.currentSourceSheetId = revisionId;
+    const saved = makeSnapshotSource(
+      "/dashboard",
+      {
+        version: 1,
+        drawing: {
+          jobId,
+          sheetId,
+          setId: jobId,
+          sourceSheetId: sheetId,
+          viewport: { center: { x: 0.2, y: 0.7 }, zoom: 3 },
+          appearance: { inverted: true, lineColor: "#336699" },
+          layers: {
+            markups: false,
+            issues: true,
+            private: false,
+            published: true,
+          },
+          selectedId: null,
+        },
+      },
+      "A101",
+    );
+    window.history.replaceState(null, "", saved.href);
+    open();
+    expect(screen.getByTestId("viewer-source")).toHaveTextContent(sheetId);
+    expect(screen.getByTestId("viewer-source")).not.toHaveTextContent(
+      revisionId,
+    );
+  });
+  it("explains a missing snapshot revision before offering the current drawing", () => {
+    const saved = makeSnapshotSource(
+      "/dashboard",
+      {
+        version: 1,
+        drawing: {
+          jobId,
+          sheetId,
+          setId: jobId,
+          sourceSheetId: revisionId,
+          viewport: { center: { x: 0.5, y: 0.5 }, zoom: 1 },
+          appearance: { inverted: false, lineColor: null },
+          layers: {
+            markups: true,
+            issues: true,
+            private: true,
+            published: true,
+          },
+          selectedId: null,
+        },
+      },
+      "A101",
+    );
+    mocks.data!.jobSheets = mocks.data!.jobSheets.filter(
+      (item) => item.id !== revisionId,
+    );
+    window.history.replaceState(null, "", saved.href);
+    open();
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "snapshot is unavailable",
+    );
+    expect(screen.queryByTestId("viewer-source")).not.toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Open the current drawing" }),
+    );
+    expect(screen.getByTestId("viewer-source")).toHaveTextContent(sheetId);
+  });
   it("shows multiple destinations without opening one until it is chosen", () => {
     const entity = existingMarkup();
     if (entity.kind !== "markup") throw Error("fixture");

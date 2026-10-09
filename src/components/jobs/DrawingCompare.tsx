@@ -10,6 +10,8 @@ import {
 import type { OverlayInkStyle } from "~/lib/drawing-line-overlay";
 import type { DrawingAppearance } from "~/lib/drawing-appearance";
 import type { DrawingComparison } from "./DrawingComparisonLayer";
+import { useSnapshotSource } from "~/components/chat/SnapshotSourceContext";
+import type { SnapshotState } from "~/lib/snapshot-source";
 
 export type DrawingCompareSheet = {
   id: string;
@@ -32,6 +34,7 @@ export function DrawingCompare({
   onViewportChange,
   appearance,
   toolControls,
+  initialSnapshot,
 }: {
   first: DrawingCompareSheet;
   second: DrawingCompareSheet;
@@ -43,6 +46,7 @@ export function DrawingCompare({
   onViewportChange?: (value: DrawingViewport) => void;
   appearance?: DrawingAppearance;
   toolControls?: ComponentProps<typeof DrawingSheetViewer>["toolControls"];
+  initialSnapshot?: SnapshotState["overlay"];
 }) {
   const requested = [firstSource, secondSource, ...additional];
   const sourceKey = JSON.stringify(requested);
@@ -114,10 +118,10 @@ export function DrawingCompare({
     DrawingCompareSheet,
     ...DrawingCompareSheet[],
   ];
-  const [wipe, setWipe] = useState(0.5);
+  const [wipe, setWipe] = useState(initialSnapshot?.wipe ?? 0.5);
   const [requestedMode, setMode] = useState<
     "side-by-side" | DrawingComparison["mode"]
-  >("overlay");
+  >(initialSnapshot?.mode ?? "overlay");
   const multi = drawings.length > 2;
   const mode =
     multi && (requestedMode === "side-by-side" || requestedMode === "wipe")
@@ -126,7 +130,10 @@ export function DrawingCompare({
   const [inkState, setInkState] = useState(() => ({
     key: sourceKey,
     values: Object.fromEntries(
-      requested.map((sheet, index) => [sheet.id, defaultOverlayInk(index)]),
+      requested.map((sheet, index) => [
+        sheet.id,
+        initialSnapshot?.inks[sheet.id] ?? defaultOverlayInk(index),
+      ]),
     ),
   }));
   // Preserve each drawing's colours when adding, removing or reordering other layers.
@@ -144,11 +151,15 @@ export function DrawingCompare({
       ...current,
       values: { ...current.values, [id]: { ...current.values[id]!, ...patch } },
     }));
-  const [alignments, setAlignments] = useState<Record<string, Alignment>>({});
+  const [alignments, setAlignments] = useState<Record<string, Alignment>>(
+    initialSnapshot?.alignments ?? {},
+  );
   const alignmentKey = (id: string) => `${firstSource.id}:${id}`;
   const alignmentFor = (id: string) =>
     alignments[alignmentKey(id)] ?? IDENTITY_ALIGNMENT;
-  const [selectedId, setSelectedId] = useState(secondSource.id);
+  const [selectedId, setSelectedId] = useState(
+    initialSnapshot?.selectedId ?? secondSource.id,
+  );
   const selected = drawings.find((sheet) => sheet.id === selectedId) ?? second;
   const alignment = alignmentFor(selected.id);
   const change = (key: keyof Alignment, value: string) => {
@@ -163,6 +174,18 @@ export function DrawingCompare({
     camera.current = value;
     onViewportChange?.(value);
   };
+  useSnapshotSource("overlay", () => ({
+    ids: requested.map((sheet) => sheet.id),
+    mode,
+    wipe,
+    selectedId: selected.id,
+    inks: Object.fromEntries(requested.map((sheet) => [sheet.id, ink(sheet)])),
+    alignments: Object.fromEntries(
+      requested
+        .slice(1)
+        .map((sheet) => [alignmentKey(sheet.id), alignmentFor(sheet.id)]),
+    ),
+  }));
   const configure = multi ? [selected] : drawings;
   return (
     <section

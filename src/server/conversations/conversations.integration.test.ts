@@ -167,6 +167,15 @@ describe.skipIf(!enabled)("private chat against isolated PostgreSQL", () => {
     );
     await conn.unsafe(pushMigration);
     await conn.unsafe(pushMigration);
+    const sourceMigration = await readFile(
+      new URL(
+        "../../../drizzle/0054_snapshot_source_links.sql",
+        import.meta.url,
+      ),
+      "utf8",
+    );
+    await conn.unsafe(sourceMigration);
+    await conn.unsafe(sourceMigration);
   });
   beforeEach(async () => {
     vi.clearAllMocks();
@@ -286,6 +295,37 @@ describe.skipIf(!enabled)("private chat against isolated PostgreSQL", () => {
         (await listConversations(person)).conversations[0]!.unreadCount,
       ).toBe(0);
     }
+  });
+  it("stores snapshot source links, keeps retries immutable and hides sources on deletion", async () => {
+    const { id } = await direct(),
+      access = await conversationAccess("author", id);
+    const source = {
+      href: "/dashboard/jobs/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/documents?document=cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+      title: "Specification · v2 · page 3",
+      capturedAt: "2026-10-09T20:00:00Z",
+    };
+    const input = {
+      conversationId: id,
+      clientId: randomUUID(),
+      body: "Snapshot",
+      attachmentIds: [],
+      source,
+    };
+    const sent = await sendConversationMessage(access, input);
+    expect(await sendConversationMessage(access, input)).toEqual(sent);
+    expect(
+      (await conversationHistory(access, { limit: 50 })).messages[0]?.source,
+    ).toEqual(source);
+    await expect(
+      sendConversationMessage(access, {
+        ...input,
+        source: { ...source, href: "/dashboard" },
+      }),
+    ).rejects.toThrow("different contents");
+    await removeConversationMessage(access, sent.id);
+    expect(
+      (await conversationHistory(access, { limit: 50 })).messages[0]?.source,
+    ).toBeNull();
   });
   it("protects files before and after send, rejects attachment theft, and hides deleted snapshots", async () => {
     const { id } = await direct(),

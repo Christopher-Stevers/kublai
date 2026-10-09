@@ -8,6 +8,7 @@ import {
   PlusIcon,
   SendIcon,
   Trash2Icon,
+  ExternalLinkIcon,
 } from "lucide-react";
 import { api } from "~/trpc/react";
 import { ChatNotifications } from "~/components/jobs/ChatNotifications";
@@ -28,6 +29,7 @@ import {
   removePendingConversationFile,
 } from "~/lib/conversation-upload";
 import type { ConversationMessage } from "~/server/conversations/contracts";
+import { safeSnapshotHref } from "~/lib/snapshot-source";
 import { useOnlineStatus } from "~/hooks/use-online-status";
 const text = (reason: unknown) =>
   reason instanceof Error
@@ -450,6 +452,16 @@ function ConversationThread({
                       )}
                     </a>
                   ))}
+                  {m.source && safeSnapshotHref(m.source.href) && (
+                    <a
+                      href={m.source.href}
+                      title={m.source.title}
+                      className="text-primary mt-3 inline-flex items-center gap-1.5 text-sm font-medium underline underline-offset-4"
+                    >
+                      <ExternalLinkIcon className="size-4" />
+                      Open snapshot source
+                    </a>
+                  )}
                   {m.author.id === userId && (
                     <Button
                       size="sm"

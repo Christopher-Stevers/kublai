@@ -43,6 +43,36 @@ afterEach(() => {
 });
 
 describe("Private PDF preview without browser plugins", () => {
+  it("returns to the captured PDF page, zoom and scroll without resetting later navigation", async () => {
+    vi.spyOn(HTMLElement.prototype, "scrollWidth", "get").mockReturnValue(1200);
+    vi.spyOn(HTMLElement.prototype, "scrollHeight", "get").mockReturnValue(
+      1600,
+    );
+    const onReady = vi.fn();
+    render(
+      <DocumentPdfPreview
+        url="/captured.pdf"
+        title="Captured PDF"
+        onReady={onReady}
+        initialView={{ page: 2, zoom: 2, left: 0.25, top: 0.5 }}
+      />,
+    );
+    await waitFor(() => expect(onReady).toHaveBeenCalledTimes(1));
+    expect(getPage).toHaveBeenLastCalledWith(2);
+    const canvas = screen.getByLabelText<HTMLCanvasElement>(
+      "Captured PDF, page 2",
+    );
+    const frame = canvas.parentElement!;
+    expect(canvas.style.width).toBe("768px");
+    expect(frame.scrollLeft).toBe(300);
+    expect(frame.scrollTop).toBe(800);
+    frame.scrollLeft = 50;
+    fireEvent.click(screen.getByRole("button", { name: "Previous PDF page" }));
+    await waitFor(() => expect(onReady).toHaveBeenCalledTimes(2));
+    expect(getPage).toHaveBeenLastCalledWith(1);
+    expect(frame.scrollLeft).toBe(50);
+    expect(frame.scrollTop).toBe(0);
+  });
   it("renders an authenticated URL, reports readiness, pages through a document, and zooms without a plugin", async () => {
     const onReady = vi.fn();
     render(

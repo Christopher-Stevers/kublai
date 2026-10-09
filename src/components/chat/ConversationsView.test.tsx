@@ -13,6 +13,8 @@ const mocks = vi.hoisted(() => ({
   invalidate: vi.fn(),
   push: vi.fn(),
   denied: false,
+  deleted: false,
+  source: null as null | { href: string; title: string; capturedAt: string },
 }));
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: mocks.push }),
@@ -58,8 +60,9 @@ vi.mock("~/trpc/react", () => ({
                 author: { id: "recipient", name: "Recipient" },
                 body: "Private review",
                 attachments: [],
+                source: mocks.source,
                 createdAt: new Date(),
-                deletedAt: null,
+                deletedAt: mocks.deleted ? new Date() : null,
               },
             ],
             nextBeforeSequence: null,
@@ -80,11 +83,29 @@ import { ConversationsView } from "./ConversationsView";
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.denied = false;
+  mocks.deleted = false;
+  mocks.source = null;
   mocks.send.mockResolvedValue({ id: "sent" });
   mocks.read.mockResolvedValue(undefined);
   mocks.invalidate.mockResolvedValue(undefined);
 });
 afterEach(cleanup);
+it("opens a snapshot's recorded local view and hides the link when the message is deleted", () => {
+  mocks.source = {
+    href: "/dashboard/jobs/test/drawings#snapshot=recorded-view",
+    title: "Mechanical drawing",
+    capturedAt: "2026-10-09T18:00:00Z",
+  };
+  const view = render(<ConversationsView />);
+  expect(
+    screen.getByRole("link", { name: "Open snapshot source" }),
+  ).toHaveAttribute("href", mocks.source.href);
+  mocks.deleted = true;
+  view.rerender(<ConversationsView />);
+  expect(
+    screen.queryByRole("link", { name: "Open snapshot source" }),
+  ).not.toBeInTheDocument();
+});
 it("keeps an uncertain message immutable and reuses its client identity on retry", async () => {
   mocks.send.mockRejectedValueOnce(new Error("Connection interrupted"));
   render(<ConversationsView />);

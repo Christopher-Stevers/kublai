@@ -55,6 +55,7 @@ import type { DrawingViewport } from "./DrawingSheetViewer";
 import { DrawingWorkspace } from "./DrawingWorkspace";
 import { DrawingSheetRegister } from "./DrawingSheetRegister";
 import { useDrawingAccount } from "./DrawingAccountProvider";
+import { currentSnapshotState } from "~/lib/snapshot-source";
 import { useDrawingSnapshot } from "./useDrawingSnapshot";
 import { useDrawingFullscreen } from "./useDrawingFullscreen";
 
@@ -131,6 +132,11 @@ export function JobDrawingsView({ jobId }: { jobId: string }) {
     ) {
       setSetId(folder);
       setSheetId(id);
+      const saved = currentSnapshotState()?.drawing;
+      if (saved?.jobId === jobId && saved.sheetId === id && saved.setId === folder) {
+        setEntryViewport(saved.viewport);
+        lastViewport.current = saved.viewport;
+      }
     }
     return () => downloader.current?.abort();
   }, [jobId]);

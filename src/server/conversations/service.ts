@@ -288,6 +288,7 @@ export async function conversationHistory(
   const messages: ConversationMessage[] = page.map(({ message: m, name }) => ({
     ...m,
     body: m.deletedAt ? "" : m.body,
+    source: m.deletedAt ? null : m.source,
     author: {
       id: m.authorId,
       name: typeof name === "string" ? name : "Former member",
@@ -314,7 +315,12 @@ export async function sendConversationMessage(
   access: ConversationAccess,
   input: z.infer<typeof sendConversationInput>,
 ) {
-  const hash = requestHash(input);
+  const legacyHash = requestHash(input);
+  const hash = input.source
+    ? createHash("sha256")
+        .update(JSON.stringify([legacyHash, input.source]))
+        .digest("hex")
+    : legacyHash;
   const id = await db.transaction(async (tx) => {
     await lockConversation(tx, access.conversation.id);
     const [existing] = await tx
@@ -381,6 +387,7 @@ export async function sendConversationMessage(
         clientId: input.clientId,
         requestHash: hash,
         body: input.body,
+        source: input.source ?? null,
       })
       .returning();
     if (!message) throw new Error("Message insertion failed");

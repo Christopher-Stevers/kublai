@@ -18,7 +18,10 @@ const mocks = vi.hoisted(() => ({
   push: vi.fn(),
   invalidate: vi.fn(),
 }));
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push: mocks.push }) }));
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: mocks.push }),
+  usePathname: () => "/dashboard",
+}));
 vi.mock("~/lib/snapshot-capture", async (original) => ({
   ...(await original<object>()),
   captureVisiblePage: mocks.capture,
@@ -65,6 +68,7 @@ function setup() {
   fireEvent.click(screen.getByText("Start snapshot"));
 }
 beforeEach(() => {
+  window.history.replaceState({}, "", "/dashboard?filter=active");
   vi.clearAllMocks();
   mocks.needsScreen.mockReturnValue(false);
   mocks.capture.mockResolvedValue({
@@ -126,6 +130,11 @@ it("retries the same snapshot, upload and message identity after an uncertain se
   expect(mocks.send.mock.calls[0]?.[0]).toMatchObject({
     body: "Review this branch",
     attachmentIds: ["file"],
+    source: {
+      href: expect.stringContaining(
+        "/dashboard?filter=active#snapshot=",
+      ) as string,
+    },
   });
   expect(mocks.remove).not.toHaveBeenCalled();
 });

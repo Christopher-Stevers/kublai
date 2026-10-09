@@ -10,6 +10,7 @@ import {
   XIcon,
 } from "lucide-react";
 import { useSnapshot } from "~/components/chat/SnapshotProvider";
+import { useSnapshotSource } from "~/components/chat/SnapshotSourceContext";
 import { CameraIcon } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { confirmAction } from "~/components/ui/app-dialogs";
@@ -136,6 +137,13 @@ export function DocumentEditor({
   const [offline, setOffline] = useState(false);
   const [renewingToken, setRenewingToken] = useState(false);
   const [attempt, setAttempt] = useState(0);
+  useSnapshotSource("document", () => ({
+    jobId,
+    documentId,
+    versionId: session.current?.versionId ?? null,
+    tab: "details",
+    viewer: "office",
+  }));
 
   const post = useCallback(
     (MessageId: string, Values: Record<string, unknown> = {}) => {
@@ -228,6 +236,7 @@ export function DocumentEditor({
             typeof receipt.committedAt === "string"
           ) {
             const shouldClose = closeAfterSave.current;
+            if (session.current) session.current.versionId = receipt.versionId;
             stopWaiting();
             closeAfterSave.current = false;
             unconfirmedSave.current = false;
@@ -531,6 +540,7 @@ export function DocumentEditor({
       }}
     >
       <DialogContent
+        data-snapshot-source-title={name}
         showCloseButton={false}
         className="fixed inset-0 flex h-dvh w-screen max-w-none flex-col gap-0 overflow-hidden rounded-none border-0 p-0 sm:max-w-none"
         onInteractOutside={(event) => event.preventDefault()}

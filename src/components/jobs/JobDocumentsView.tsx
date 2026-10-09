@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { currentSnapshotState } from "~/lib/snapshot-source";
 import {
   CheckCircle2Icon,
   ChevronRightIcon,
@@ -217,6 +218,7 @@ export function JobDocumentsView({
   }, []);
   const loadedJobId = useRef<string | null>(null);
   const openedDocumentLink = useRef<string | null>(null);
+  const openedOfficeSnapshot = useRef(false);
   const mutable = !sandbox && !offline;
   const currentFolder = data.folders.find((item) => item.id === folderId);
   const canWrite =
@@ -247,6 +249,26 @@ export function JobDocumentsView({
     setView("files");
     setSelectedId(id);
   }, [data.documents, loading, error, jobId, sandbox]);
+  useEffect(() => {
+    if (
+      openedOfficeSnapshot.current ||
+      sandbox ||
+      offline ||
+      !editorStatus?.configured ||
+      !selected
+    )
+      return;
+    const saved = currentSnapshotState()?.document;
+    if (
+      saved?.viewer !== "office" ||
+      saved.jobId !== jobId ||
+      saved.documentId !== selected.id ||
+      saved.versionId !== selected.currentVersionId
+    )
+      return;
+    openedOfficeSnapshot.current = true;
+    setEditorDocument({ id: selected.id, name: selected.name });
+  }, [selected, editorStatus, jobId, offline, sandbox]);
   const processing = busy || Boolean(uploading);
   const endpoint = `/api/job-documents?jobId=${encodeURIComponent(jobId)}`;
 

@@ -1,4 +1,5 @@
 "use client";
+import { SNAPSHOT_FREEZE_EVENT } from "~/lib/snapshot-source";
 
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useReducer, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import {
@@ -802,6 +803,15 @@ export function DrawingSheetViewer({
     cancelAnimationFrame(animation.current);
     animation.current = 0;
   };
+  useEffect(() => {
+    const freeze = () => {
+      stopAnimation();
+      move(live.current, true);
+      paint();
+    };
+    window.addEventListener(SNAPSHOT_FREEZE_EVENT, freeze);
+    return () => window.removeEventListener(SNAPSHOT_FREEZE_EVENT, freeze);
+  });
   /** Eases to a target view (double tap). */
   const animateTo = (target: View, ms = 240) => {
     stopAnimation();

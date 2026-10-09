@@ -5,10 +5,11 @@ import {
   useContext,
   useEffect,
   useRef,
+  useMemo,
   useState,
 } from "react";
 import { createPortal } from "react-dom";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { CameraIcon, Loader2Icon, XIcon } from "lucide-react";
 import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
@@ -36,6 +37,18 @@ import {
   removePendingConversationFile,
 } from "~/lib/conversation-upload";
 import type { ConversationMessage } from "~/server/conversations/contracts";
+import {
+  SnapshotSourceContext,
+  type SnapshotSourceRegistry,
+} from "./SnapshotSourceContext";
+import {
+  currentSnapshotState,
+  SNAPSHOT_FREEZE_EVENT,
+  makeSnapshotSource,
+  snapshotStateSchema,
+  type SnapshotSource,
+  type SnapshotStateKey,
+} from "~/lib/snapshot-source";
 const SnapshotContext = createContext<{ start: () => void } | null>(null);
 export const useSnapshot = () => useContext(SnapshotContext);
 type Capture = {
@@ -46,6 +59,7 @@ type Capture = {
 };
 export function SnapshotProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter(),
+    pathname = usePathname(),
     utils = api.useUtils();
   const [phase, setPhase] = useState<
     "idle" | "capture" | "screen" | "select" | "share" | "error"
@@ -54,6 +68,47 @@ export function SnapshotProvider({ children }: { children: React.ReactNode }) {
   const [rect, setRect] = useState<SnapshotRect | null>(null);
   const [blob, setBlob] = useState<Blob | null>(null);
   const [preview, setPreview] = useState("");
+  const [source, setSource] = useState<SnapshotSource | null>(null);
+  const sources = useRef(
+    new Map<symbol, { key: SnapshotStateKey; read: () => unknown }>(),
+  );
+  const register = useCallback<SnapshotSourceRegistry["register"]>(
+    (key, read) => {
+      const id = Symbol(key);
+      sources.current.set(id, { key, read });
+      return () => {
+        sources.current.delete(id);
+      };
+    },
+    [],
+  );
+  const sourceRegistry = useMemo(() => ({ register }), [register]);
+  useEffect(() => {
+    const saved = currentSnapshotState();
+    if (!saved?.scroll || saved.drawing || saved.document) return;
+    const { x, y } = saved.scroll;
+    let attempts = 0;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let cancelled = false;
+    const cancel = () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+    const restore = () => {
+      if (cancelled) return;
+      window.scrollTo(x, y);
+      if (Math.abs(window.scrollY - y) > 1 && ++attempts < 100)
+        timer = setTimeout(restore, 100);
+    };
+    window.addEventListener("wheel", cancel, { once: true });
+    window.addEventListener("pointerdown", cancel, { once: true });
+    restore();
+    return () => {
+      cancel();
+      window.removeEventListener("wheel", cancel);
+      window.removeEventListener("pointerdown", cancel);
+    };
+  }, [pathname]);
   const [target, setTarget] = useState<ChatTarget>({
     mode: "direct",
     recipientIds: [],
@@ -72,6 +127,7 @@ export function SnapshotProvider({ children }: { children: React.ReactNode }) {
     file?: ConversationMessage["attachments"][number];
     clientId: string;
     body: string;
+    source: SnapshotSource | null;
   } | null>(null);
   const create = api.conversations.create.useMutation(),
     send = api.conversations.send.useMutation();
@@ -83,6 +139,7 @@ export function SnapshotProvider({ children }: { children: React.ReactNode }) {
     setRect(null);
     setBlob(null);
     setPreview("");
+    setSource(null);
     setUsingScreen(false);
     setError("");
     setLocked(false);
@@ -161,6 +218,18 @@ export function SnapshotProvider({ children }: { children: React.ReactNode }) {
     try {
       const canvas = await promise;
       if (current !== generation.current) return;
+      const state = snapshotStateSchema.parse({
+        version: 1,
+        scroll: { x: Math.max(0, scrollX), y: Math.max(0, scrollY) },
+        ...Object.fromEntries(
+          [...sources.current.values()].map(({ key, read }) => [key, read()]),
+        ),
+      });
+      const title =
+        [...document.querySelectorAll("[data-snapshot-source-title]")]
+          .at(-1)
+          ?.getAttribute("data-snapshot-source-title") ?? document.title;
+      setSource(makeSnapshotSource(window.location.href, state, title));
       setCapture({
         canvas,
         url: canvas.toDataURL("image/png"),
@@ -180,6 +249,7 @@ export function SnapshotProvider({ children }: { children: React.ReactNode }) {
   };
   const start = () => {
     if (phase !== "idle") return;
+    window.dispatchEvent(new Event(SNAPSHOT_FREEZE_EVENT));
     if (needsScreenCapture()) {
       setPhase("screen");
       return;
@@ -272,6 +342,7 @@ export function SnapshotProvider({ children }: { children: React.ReactNode }) {
           conversationId: id,
           clientId: crypto.randomUUID(),
           body: message.trim() || "Snapshot",
+          source,
         };
       }
       const current = attempt.current;
@@ -288,6 +359,7 @@ export function SnapshotProvider({ children }: { children: React.ReactNode }) {
         clientId: current.clientId,
         body: current.body,
         attachmentIds: [current.file.id],
+        source: current.source,
       });
       const id = current.conversationId;
       attempt.current = null;
@@ -432,119 +504,133 @@ export function SnapshotProvider({ children }: { children: React.ReactNode }) {
       : null;
   return (
     <SnapshotContext.Provider value={{ start }}>
-      {children}
-      {overlay}
-      <Dialog
-        open={phase === "share" || phase === "screen" || phase === "error"}
-        onOpenChange={(open) => {
-          if (!open && !busy) release();
-        }}
-      >
-        <DialogContent
-          data-snapshot-ui
-          className="max-h-[90dvh] overflow-y-auto sm:max-w-xl"
-          showCloseButton={!busy}
+      <SnapshotSourceContext.Provider value={sourceRegistry}>
+        {children}
+        {overlay}
+        <Dialog
+          open={phase === "share" || phase === "screen" || phase === "error"}
+          onOpenChange={(open) => {
+            if (!open && !busy) release();
+          }}
         >
-          <input
-            ref={screenshotInput}
-            type="file"
-            accept="image/png,image/jpeg,image/webp"
-            className="hidden"
-            aria-label="Choose screenshot image"
-            onChange={(e) => void chooseScreenshot(e.target.files?.[0])}
-          />
-          <DialogTitle>
-            <span className="flex items-center gap-2">
-              <CameraIcon className="size-5" />
-              Snapshot
-            </span>
-          </DialogTitle>
-          <DialogDescription>
-            {phase === "share"
-              ? "Review the image and choose who should receive it."
-              : "Capture a selected area and share it in chat."}
-          </DialogDescription>
-          {phase === "share" ? (
-            <>
-              <img
-                alt="Snapshot preview"
-                src={preview}
-                className="bg-muted max-h-48 w-full rounded-md border object-contain"
-              />
-              <RecipientChooser
-                value={target}
-                onChange={setTarget}
-                disabled={busy || locked}
-              />
-              <label className="space-y-1 text-sm">
-                Message (optional)
-                <textarea
-                  aria-label="Snapshot message"
-                  disabled={busy || locked}
-                  value={message}
-                  maxLength={8000}
-                  onChange={(e) => setMessage(e.target.value)}
-                  className="bg-background block min-h-20 w-full rounded-md border p-2"
+          <DialogContent
+            data-snapshot-ui
+            className="max-h-[90dvh] overflow-y-auto sm:max-w-xl"
+            showCloseButton={!busy}
+          >
+            <input
+              ref={screenshotInput}
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              className="hidden"
+              aria-label="Choose screenshot image"
+              onChange={(e) => void chooseScreenshot(e.target.files?.[0])}
+            />
+            <DialogTitle>
+              <span className="flex items-center gap-2">
+                <CameraIcon className="size-5" />
+                Snapshot
+              </span>
+            </DialogTitle>
+            <DialogDescription>
+              {phase === "share"
+                ? "Review the image and choose who should receive it."
+                : "Capture a selected area and share it in chat."}
+            </DialogDescription>
+            {phase === "share" ? (
+              <>
+                <img
+                  alt="Snapshot preview"
+                  src={preview}
+                  className="bg-muted max-h-48 w-full rounded-md border object-contain"
                 />
-              </label>
-              {error && (
-                <p role="alert" className="text-destructive text-sm">
-                  {error}
-                </p>
-              )}
-              <div className="flex justify-end gap-2">
-                <Button
-                  variant="outline"
-                  disabled={busy}
-                  onClick={() => {
-                    if (attempt.current?.file)
-                      void removePendingConversationFile(
-                        attempt.current.file.id,
-                      ).catch(() => undefined);
-                    attempt.current = null;
-                    setLocked(false);
-                    setPhase("select");
-                    setRect(null);
-                  }}
-                >
-                  Retake
-                </Button>
-                <Button
-                  disabled={busy || !validChatTarget(target)}
-                  onClick={() => void share()}
-                >
-                  {busy ? "Sending…" : locked ? "Retry send" : "Send snapshot"}
-                </Button>
-              </div>
-            </>
-          ) : (
-            <>
-              {phase === "screen" ? (
-                <p className="text-sm">
-                  For the live document editor, choose this browser tab in the
-                  screen picker. Sharing stops as soon as the image is captured.
-                </p>
-              ) : (
-                <p role="alert" className="text-destructive text-sm">
-                  {error}
-                </p>
-              )}
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={release}>
-                  Cancel
-                </Button>
-                <Button onClick={screenCapture}>Capture screen</Button>
-                <Button
-                  variant="outline"
-                  onClick={() => screenshotInput.current?.click()}
-                >
-                  Choose screenshot
-                </Button>
-              </div>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
+                {source && (
+                  <p className="text-muted-foreground text-xs">
+                    Includes a link back to{" "}
+                    <span className="font-medium">{source.title}</span> in this
+                    view.
+                  </p>
+                )}
+                <RecipientChooser
+                  value={target}
+                  onChange={setTarget}
+                  disabled={busy || locked}
+                />
+                <label className="space-y-1 text-sm">
+                  Message (optional)
+                  <textarea
+                    aria-label="Snapshot message"
+                    disabled={busy || locked}
+                    value={message}
+                    maxLength={8000}
+                    onChange={(e) => setMessage(e.target.value)}
+                    className="bg-background block min-h-20 w-full rounded-md border p-2"
+                  />
+                </label>
+                {error && (
+                  <p role="alert" className="text-destructive text-sm">
+                    {error}
+                  </p>
+                )}
+                <div className="flex justify-end gap-2">
+                  <Button
+                    variant="outline"
+                    disabled={busy}
+                    onClick={() => {
+                      if (attempt.current?.file)
+                        void removePendingConversationFile(
+                          attempt.current.file.id,
+                        ).catch(() => undefined);
+                      attempt.current = null;
+                      setLocked(false);
+                      setPhase("select");
+                      setRect(null);
+                    }}
+                  >
+                    Retake
+                  </Button>
+                  <Button
+                    disabled={busy || !validChatTarget(target)}
+                    onClick={() => void share()}
+                  >
+                    {busy
+                      ? "Sending…"
+                      : locked
+                        ? "Retry send"
+                        : "Send snapshot"}
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <>
+                {phase === "screen" ? (
+                  <p className="text-sm">
+                    For the live document editor, choose this browser tab in the
+                    screen picker. Sharing stops as soon as the image is
+                    captured.
+                  </p>
+                ) : (
+                  <p role="alert" className="text-destructive text-sm">
+                    {error}
+                  </p>
+                )}
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" onClick={release}>
+                    Cancel
+                  </Button>
+                  <Button onClick={screenCapture}>Capture screen</Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => screenshotInput.current?.click()}
+                  >
+                    Choose screenshot
+                  </Button>
+                </div>
+              </>
+            )}
+          </DialogContent>
+        </Dialog>
+      </SnapshotSourceContext.Provider>
     </SnapshotContext.Provider>
   );
 }

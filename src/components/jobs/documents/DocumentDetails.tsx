@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSnapshot } from "~/components/chat/SnapshotProvider";
+import { useSnapshotSource } from "~/components/chat/SnapshotSourceContext";
+import { currentSnapshotState } from "~/lib/snapshot-source";
 import {
   supportsDocumentEditor,
   type EditorAvailability,
@@ -81,20 +83,57 @@ export function DocumentDetails({
   mutate,
 }: Props) {
   const snapshot = useSnapshot();
+  const detailFrame = useRef<HTMLDivElement>(null);
+  const [entry] = useState(currentSnapshotState);
+  const initial =
+    entry?.document?.jobId === jobId &&
+    entry.document.documentId === document.id
+      ? entry.document
+      : null;
   const [tab, setTab] = useState<
     "details" | "versions" | "comments" | "activity"
-  >("details");
+  >(initial?.tab ?? "details");
   const [readyVersionId, setReadyVersionId] = useState<string | null>(null);
-  const [previewVersionId, setPreviewVersionId] = useState<string | null>(null);
+  const [previewVersionId, setPreviewVersionId] = useState<string | null>(
+    initial?.versionId ?? null,
+  );
   const [comment, setComment] = useState("");
   const [compareVersionId, setCompareVersionId] = useState<string | null>(null);
   const versions = data.versions
     .filter((item) => item.documentId === document.id)
     .sort((a, b) => b.number - a.number);
-  const version =
-    versions.find(
-      (item) => item.id === (previewVersionId ?? document.currentVersionId),
-    ) ?? versions[0];
+  const version = previewVersionId
+    ? versions.find((item) => item.id === previewVersionId)
+    : (versions.find((item) => item.id === document.currentVersionId) ??
+      versions[0]);
+  useSnapshotSource("document", () => ({
+    jobId,
+    documentId: document.id,
+    versionId: version?.id ?? null,
+    tab,
+    viewer: "preview",
+    scroll: detailFrame.current
+      ? detailFrame.current.scrollTop /
+        Math.max(1, detailFrame.current.scrollHeight)
+      : 0,
+  }));
+  const restoredScroll = useRef(false);
+  useEffect(() => {
+    if (
+      restoredScroll.current ||
+      !initial?.scroll ||
+      !detailFrame.current ||
+      (version?.mimeType === "application/pdf" && readyVersionId !== version.id)
+    )
+      return;
+    const frame = requestAnimationFrame(() => {
+      if (detailFrame.current)
+        detailFrame.current.scrollTop =
+          initial.scroll! * detailFrame.current.scrollHeight;
+      restoredScroll.current = true;
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [initial, version, readyVersionId]);
   const canWrite = mutable && Boolean(document.canWrite) && !document.deletedAt;
   const lockedElsewhere = Boolean(
     document.lockedBy && document.lockedBy !== data.capabilities.userId,
@@ -143,12 +182,25 @@ export function DocumentDetails({
         onOpenChange={(open) => !open && onClose()}
       >
         <DialogContent
+          ref={detailFrame}
+          data-snapshot-source-title={`${document.name}${version ? ` · v${version.number}` : ""}`}
           className="max-h-[92dvh] overflow-y-auto sm:max-w-6xl"
           showCloseButton={!document.submittal}
         >
           <DialogHeader
             className={`pr-8 text-left ${document.submittal ? "bg-background sticky top-0 z-10 border-b pb-3" : ""}`}
           >
+            {previewVersionId && !version && (
+              <p role="alert" className="text-destructive text-sm">
+                The document version used for this snapshot is unavailable.{" "}
+                <button
+                  className="underline"
+                  onClick={() => setPreviewVersionId(null)}
+                >
+                  Open the current version
+                </button>
+              </p>
+            )}
             {document.submittal && (
               <Button
                 type="button"
@@ -344,6 +396,9 @@ export function DocumentDetails({
                   </div>
                 ) : version?.mimeType === "application/pdf" ? (
                   <DocumentPdfPreview
+                    initialView={
+                      initial?.versionId === version.id ? entry?.pdf : undefined
+                    }
                     key={version.id}
                     title={`Preview ${document.name} version ${version.number}`}
                     url={versionUrl(jobId, version.id)}

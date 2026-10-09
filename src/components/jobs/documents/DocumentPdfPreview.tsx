@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { RenderTask } from "pdfjs-dist/legacy/build/pdf.mjs";
 import {
   ChevronLeftIcon,
@@ -11,26 +11,49 @@ import {
 } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { loadPdfDocument } from "~/lib/pdf-client";
+import { useSnapshotSource } from "~/components/chat/SnapshotSourceContext";
+import type { SnapshotState } from "~/lib/snapshot-source";
 
 /** Render passive PDF pages locally; never depend on mobile browser PDF plugins. */
 export function DocumentPdfPreview({
   url,
   title,
   onReady,
+  initialView,
 }: {
   url: string;
   title: string;
   onReady?: () => void;
+  initialView?: SnapshotState["pdf"];
 }) {
   const frame = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
   const ready = useRef(onReady);
   const [width, setWidth] = useState(0);
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(initialView?.page ?? 1);
   const [pages, setPages] = useState(0);
-  const [zoom, setZoom] = useState(1);
+  const [zoom, setZoom] = useState(initialView?.zoom ?? 1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const position = useRef(initialView);
+  useLayoutEffect(() => {
+    if (loading || error || !position.current || !frame.current) return;
+    // Restore after the loading indicator is removed from the scroll area.
+    frame.current.scrollLeft =
+      position.current.left * frame.current.scrollWidth;
+    frame.current.scrollTop = position.current.top * frame.current.scrollHeight;
+    position.current = undefined;
+  }, [loading, error]);
+  useSnapshotSource("pdf", () => ({
+    page,
+    zoom,
+    left: frame.current
+      ? frame.current.scrollLeft / Math.max(1, frame.current.scrollWidth)
+      : 0,
+    top: frame.current
+      ? frame.current.scrollTop / Math.max(1, frame.current.scrollHeight)
+      : 0,
+  }));
   useEffect(() => {
     ready.current = onReady;
   }, [onReady]);

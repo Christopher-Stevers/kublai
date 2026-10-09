@@ -8,6 +8,7 @@ import {
   bigserial,
   pgTableCreator,
   integer,
+  jsonb,
   primaryKey,
   index,
   uniqueIndex,
@@ -17,6 +18,7 @@ import {
 import { organizations, users as legacyUsers } from "./schema";
 import { chatPushSubscriptions } from "./chat-push-schema";
 const chatPushSubscriptionId = (): AnyPgColumn => chatPushSubscriptions.id;
+import type { SnapshotSource } from "~/lib/snapshot-source";
 
 // Keep this reference lazy: schema.ts re-exports these tables. The legacy user
 // table has loose inferred types; the FK still points to its actual ID column.
@@ -84,6 +86,7 @@ export const conversationMessages = pgTable(
     clientId: uuid().notNull(),
     requestHash: varchar({ length: 64 }).notNull(),
     body: text().notNull(),
+    source: jsonb().$type<SnapshotSource>(),
     createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
     deletedAt: timestamp({ withTimezone: true }),
   },
