@@ -19,6 +19,7 @@ async function serve(
   head = false,
 ) {
   const { user } = await getRequestIdentity(request.headers, {
+    request,
     allowDev: true,
   });
   if (!user?.organizationId) {

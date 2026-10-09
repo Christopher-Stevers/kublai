@@ -11,6 +11,9 @@ const mocks = vi.hoisted(() => ({
   assertAccess: vi.fn(),
   proof: vi.fn(),
   persist: vi.fn(),
+  simulation: vi.fn(),
+  audit: vi.fn(),
+  finishAudit: vi.fn(),
 }));
 vi.mock("./access", () => ({
   assertDocumentAccess: mocks.assertAccess,
@@ -51,6 +54,11 @@ vi.mock("./service", () => ({
   },
 }));
 vi.mock("./wopi-proof", () => ({ verifyWopiProof: mocks.proof }));
+vi.mock("~/server/simulation/service", () => ({
+  assertEditorSimulation: mocks.simulation,
+  recordSimulationAction: mocks.audit,
+  finishSimulationAction: mocks.finishAudit,
+}));
 vi.mock("./storage", () => ({
   MAX_DOCUMENT_FILE_BYTES: 50 * 1024 * 1024,
   writeDocumentBlob: mocks.persist,
@@ -98,6 +106,15 @@ beforeEach(() => {
   vi.stubEnv("DOCUMENT_EDITOR_SECRET", "test-only-secret-".repeat(4));
   mocks.state = emptyDocumentState();
   mocks.persist.mockReset().mockResolvedValue("sha");
+  mocks.simulation
+    .mockReset()
+    .mockResolvedValue({
+      id: "simulation",
+      actorId: "executive",
+      employeeId: "writer",
+    });
+  mocks.audit.mockReset().mockResolvedValue("audit");
+  mocks.finishAudit.mockReset().mockResolvedValue(undefined);
   mocks.proof.mockReset().mockResolvedValue(undefined);
   const uploaded = appendVersion(mocks.state, actor, {
     name: "Report.docx",
@@ -477,4 +494,41 @@ describe("WOPI current authorization and metadata", () => {
     expect(await response.json()).toEqual({ COOLStatusCode: 1010 });
     expect(response.headers.get("cache-control")).toContain("no-store");
   });
+});
+
+it("records simulated editor saves and refuses callbacks after the simulation ends", async () => {
+  const simulated = { ...claims, simulationId: randomUUID() };
+  await wopiSaveFile(
+    simulated,
+    mocks.access!,
+    currentVersion().createdAt,
+    changed,
+  );
+  expect(mocks.audit).toHaveBeenCalledWith(
+    expect.objectContaining({ actorId: "executive" }),
+    `Document editor save ${claims.documentId}`,
+  );
+  expect(mocks.finishAudit).toHaveBeenCalledWith("audit", "succeeded");
+  expect(mocks.simulation).toHaveBeenCalledTimes(2);
+  mocks.persist.mockClear();
+  mocks.simulation.mockRejectedValue(
+    new TRPCError({ code: "FORBIDDEN", message: "Simulation ended" }),
+  );
+  await expect(
+    wopiSaveFile(simulated, mocks.access!, currentVersion().createdAt, changed),
+  ).rejects.toThrow("Simulation ended");
+  expect(mocks.persist).not.toHaveBeenCalled();
+});
+it("rechecks simulation revocation inside the document transaction", async () => {
+  const simulated = { ...claims, simulationId: randomUUID() };
+  mocks.simulation
+    .mockResolvedValueOnce({ id: simulated.simulationId, actorId: "executive" })
+    .mockRejectedValue(
+      new TRPCError({ code: "FORBIDDEN", message: "Simulation ended" }),
+    );
+  await expect(
+    wopiSaveFile(simulated, mocks.access!, currentVersion().createdAt, changed),
+  ).rejects.toThrow("Simulation ended");
+  expect(mocks.persist).not.toHaveBeenCalled();
+  expect(mocks.finishAudit).toHaveBeenCalledWith("audit", "failed");
 });

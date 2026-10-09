@@ -10,7 +10,7 @@ export async function POST(request: Request) {
   if (!z.uuid().safeParse(jobId).success)
     return Response.json({ error: "Invalid job." }, { status: 400 });
   try {
-    const { userId } = await getRequestIdentity(request.headers);
+    const { userId } = await getRequestIdentity(request.headers, { request });
     const access = await assertChatAccess(userId, jobId!);
     return Response.json(
       { attachment: await uploadChatAttachment(access, request) },

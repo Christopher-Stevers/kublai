@@ -12,6 +12,7 @@ const claimsSchema = z
     jobId: z.uuid(),
     documentId: z.uuid(),
     userId: z.string().min(1).max(255),
+    simulationId: z.uuid().optional(),
     mode: z.enum(["view", "edit"]),
     extension: z.enum(EDITOR_EXTENSIONS),
     issuedAt: z.number().int().positive(),
@@ -22,7 +23,13 @@ const claimsSchema = z
 export type EditorTokenClaims = z.infer<typeof claimsSchema>;
 export type EditorTokenScope = Pick<
   EditorTokenClaims,
-  "organizationId" | "jobId" | "documentId" | "userId" | "mode" | "extension"
+  | "organizationId"
+  | "jobId"
+  | "documentId"
+  | "userId"
+  | "mode"
+  | "extension"
+  | "simulationId"
 >;
 function signature(payload: string, secret: string) {
   return createHmac("sha256", secret)

@@ -36,7 +36,7 @@ export async function GET(request: Request) {
   );
   if (!Number.isSafeInteger(cursor) || cursor < 0)
     return new Response("Invalid cursor", { status: 400 });
-  const { userId } = await getRequestIdentity(request.headers);
+  const { userId } = await getRequestIdentity(request.headers, { request });
   try {
     await assertChatAccess(userId, jobId!);
   } catch (error) {

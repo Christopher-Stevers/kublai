@@ -144,3 +144,49 @@ describe("protected member controls", () => {
     expect(screen.queryByText("No members match.")).not.toBeInTheDocument();
   });
 });
+
+describe("Executive employee simulation controls", () => {
+  it("shows simulation at the bottom of an active standard employee detail", () => {
+    const settings = settingsFor("standard");
+    settings.viewer.canSimulateEmployees = true;
+    render(<MembersSection settings={settings} onSaved={vi.fn()} />);
+    expect(
+      screen.getByRole("button", { name: "Simulate employee" }),
+    ).toBeEnabled();
+    expect(screen.getByText("Simulation audit trail")).toBeInTheDocument();
+    fireEvent.click(screen.getAllByRole("switch")[0]!);
+    expect(
+      screen.getByRole("button", { name: "Simulate employee" }),
+    ).toBeDisabled();
+    expect(
+      screen.getByText("Save permission changes before starting simulation."),
+    ).toBeInTheDocument();
+  });
+  it("hides simulation from standard viewers and for protected accounts", () => {
+    const settings = settingsFor("standard");
+    settings.viewer.canSimulateEmployees = false;
+    const view = render(
+      <MembersSection settings={settings} onSaved={vi.fn()} />,
+    );
+    expect(
+      screen.queryByRole("button", { name: "Simulate employee" }),
+    ).not.toBeInTheDocument();
+    const protectedSettings = settingsFor("admin");
+    protectedSettings.viewer.canSimulateEmployees = true;
+    view.rerender(
+      <MembersSection settings={protectedSettings} onSaved={vi.fn()} />,
+    );
+    expect(
+      screen.queryByRole("button", { name: "Simulate employee" }),
+    ).not.toBeInTheDocument();
+  });
+  it("disables simulation until employee organization access is active", () => {
+    const settings = settingsFor("standard");
+    settings.viewer.canSimulateEmployees = true;
+    settings.members[0]!.organizationAccessStatus = "pending";
+    render(<MembersSection settings={settings} onSaved={vi.fn()} />);
+    expect(
+      screen.getByRole("button", { name: "Simulate employee" }),
+    ).toBeDisabled();
+  });
+});

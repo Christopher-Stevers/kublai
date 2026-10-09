@@ -30,15 +30,26 @@ import { getRequestIdentity } from "~/server/utils/get-request-identity";
  *
  * @see https://trpc.io/docs/server/context
  */
-export const createTRPCContext = async (opts: { headers: Headers }) => {
-  const { userId, user: dbUser } = await getRequestIdentity(opts.headers, {
+export const createTRPCContext = async (opts: {
+  headers: Headers;
+  request?: Request;
+}) => {
+  const {
+    userId,
+    user: dbUser,
+    actorUser,
+    simulation,
+  } = await getRequestIdentity(opts.headers, {
     allowDev: true,
+    request: opts.request,
   });
 
   return {
     db,
     userId,
     user: dbUser,
+    actorUser,
+    simulation,
     ...opts,
   };
 };
@@ -89,10 +100,45 @@ const SLOW_REQUEST_MS = 1500;
 
 // Logs duration and database round trips; `scripts/trpc-timing-report.mjs`
 // summarizes these lines from the service journal.
-const timingMiddleware = t.middleware(async ({ next, path, ctx }) => {
+const timingMiddleware = t.middleware(async ({ next, path, type, ctx }) => {
   const start = Date.now();
 
+  const audit =
+    ctx.simulation && type === "mutation"
+      ? await (
+          await import("~/server/simulation/service")
+        ).recordSimulationAction(ctx.simulation, path)
+      : null;
+  if (
+    ctx.simulation &&
+    ((path.startsWith("payment.") &&
+      path !== "payment.getSubscriptionStatus") ||
+      ["push.subscribe", "push.unsubscribe", "push.revokeDevice"].includes(
+        path,
+      ))
+  ) {
+    if (audit)
+      await (
+        await import("~/server/simulation/service")
+      ).finishSimulationAction(audit, "failed");
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message:
+        "End simulation before changing billing or device notifications.",
+    });
+  }
   const { result, stats } = await withQueryStats(() => next());
+  if (audit) {
+    try {
+      await (
+        await import("~/server/simulation/service")
+      ).finishSimulationAction(audit, result.ok ? "succeeded" : "failed");
+    } catch {
+      console.warn(
+        "Simulation action outcome could not update; the original audit entry is retained.",
+      );
+    }
+  }
 
   const duration = Date.now() - start;
   const message = `[TRPC] ${path} took ${duration}ms to execute (${stats.count} queries)`;

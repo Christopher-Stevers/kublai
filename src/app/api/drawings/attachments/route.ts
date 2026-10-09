@@ -21,6 +21,7 @@ export async function POST(request: Request) {
   try {
     assertSameOrigin(request);
     const { user } = await getRequestIdentity(request.headers, {
+    request,
       allowDev: true,
     });
     if (

@@ -1,3 +1,4 @@
+import { simulationCacheName } from "./employee-simulation";
 import { Replicache, dropDatabase } from "replicache";
 
 import { CATALOGUE_REPLICACHE_SCHEMA_VERSION } from "~/lib/replicache-schema";
@@ -70,7 +71,7 @@ export function getCatalogueReplicache() {
   if (catalogueReplicache) return catalogueReplicache;
 
   const replicache = new Replicache({
-    name: "foremenhq-catalogue",
+    name: simulationCacheName("foremenhq-catalogue"),
     schemaVersion: CATALOGUE_REPLICACHE_SCHEMA_VERSION,
     pullURL: "/api/replicache/catalogue/pull",
     pushURL: "/api/replicache/catalogue/push",

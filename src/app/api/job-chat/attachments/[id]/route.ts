@@ -15,7 +15,7 @@ export async function GET(
   if (!z.uuid().safeParse(id).success)
     return new Response("Not found", { status: 404 });
   try {
-    const { userId } = await getRequestIdentity(request.headers);
+    const { userId } = await getRequestIdentity(request.headers, { request });
     const file = await readChatAttachment(userId, id);
     const disposition =
       file.mimeType === "application/pdf" ? "attachment" : "inline";
@@ -41,7 +41,7 @@ export async function DELETE(
   if (!z.uuid().safeParse(id).success)
     return new Response("Not found", { status: 404 });
   try {
-    const { userId } = await getRequestIdentity(request.headers);
+    const { userId } = await getRequestIdentity(request.headers, { request });
     if (!userId) return new Response("Unauthorized", { status: 401 });
     await deletePendingAttachment(userId, id);
     return Response.json({ success: true });

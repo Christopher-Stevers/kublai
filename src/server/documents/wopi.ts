@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import type { EmployeeSimulation } from "~/lib/employee-simulation";
 import { TRPCError } from "@trpc/server";
 import { ZodError } from "zod";
 import {
@@ -88,6 +89,7 @@ export function editorCanWrite(
 export async function launchDocumentEditor(
   access: DocumentAccess,
   documentId: string,
+  simulation?: EmployeeSimulation | null,
 ): Promise<DocumentEditorLaunch> {
   const config = getDocumentEditorConfig();
   const state = await readWorkspace(access);
@@ -110,6 +112,7 @@ export async function launchDocumentEditor(
     jobId: access.job.id,
     documentId,
     userId: access.user.id,
+    ...(simulation ? { simulationId: simulation.id } : {}),
     mode,
     extension,
   });
@@ -149,6 +152,10 @@ export async function authorizeWopiRequest(
   const claims = verifyEditorToken(config, token, { documentId, jobId });
   // The host trusts the configured editor's signed callback, not a Clerk cookie.
   await verifyWopiProof(request, token, config);
+  if (claims.simulationId)
+    await (
+      await import("~/server/simulation/service")
+    ).assertEditorSimulation(claims.simulationId, claims.userId);
   const access = await assertDocumentAccess(claims.userId, claims.jobId);
   assertEditorClaimAccess(claims, access);
   return { config, claims, access };
@@ -303,24 +310,62 @@ export async function wopiSaveFile(
   extendedData?: string | null,
 ) {
   assertEditorClaimAccess(claims, access);
-  return mutateWorkspace(
-    claims.userId,
-    claims.jobId,
-    async (state, actor, fresh) => {
-      assertEditorClaimAccess(claims, fresh);
-      const result = applyEditorSave(state, actor, claims, timestamp, bytes);
-      if (result.changed)
-        await writeDocumentBlob(fresh.job.organizationId, bytes);
-      completeEditorSaveReceipt(
-        state,
-        actor,
-        claims.documentId,
-        result.versionId,
-        extendedData,
-      );
-      return result;
-    },
-  );
+  const audit = claims.simulationId
+    ? await (async () => {
+        const service = await import("~/server/simulation/service");
+        const simulation = await service.assertEditorSimulation(
+          claims.simulationId!,
+          claims.userId,
+        );
+        return service.recordSimulationAction(
+          simulation,
+          `Document editor save ${claims.documentId}`,
+        );
+      })()
+    : null;
+  try {
+    const saved = await mutateWorkspace(
+      claims.userId,
+      claims.jobId,
+      async (state, actor, fresh) => {
+        assertEditorClaimAccess(claims, fresh);
+        if (claims.simulationId)
+          await (
+            await import("~/server/simulation/service")
+          ).assertEditorSimulation(claims.simulationId, claims.userId);
+        const result = applyEditorSave(state, actor, claims, timestamp, bytes);
+        if (result.changed)
+          await writeDocumentBlob(fresh.job.organizationId, bytes);
+        completeEditorSaveReceipt(
+          state,
+          actor,
+          claims.documentId,
+          result.versionId,
+          extendedData,
+        );
+        return result;
+      },
+    );
+    if (audit)
+      await (await import("~/server/simulation/service"))
+        .finishSimulationAction(audit, "succeeded")
+        .catch(() => {
+          console.warn(
+            "Document saved; simulation audit outcome could not update. Original audit retained.",
+          );
+        });
+    return saved;
+  } catch (error) {
+    if (audit)
+      await (await import("~/server/simulation/service"))
+        .finishSimulationAction(audit, "failed")
+        .catch(() => {
+          console.warn(
+            "Simulation audit outcome unavailable; original audit retained.",
+          );
+        });
+    throw error;
+  }
 }
 export function wopiErrorResponse(error: unknown) {
   const status =

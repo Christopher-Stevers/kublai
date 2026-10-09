@@ -33,7 +33,7 @@ export type RequestUser = {
 };
 
 /** Resolve the same identity in middleware-exempt QA and normal Clerk requests. */
-export async function getRequestIdentity(
+export async function getAuthenticatedIdentity(
   headers: Headers,
   options: { allowDev?: boolean } = {},
 ) {
@@ -52,4 +52,47 @@ export async function getRequestIdentity(
     ? ((await getDevBypassUser()) as RequestUser | null)
     : null;
   return { userId: user?.id ?? null, user };
+}
+
+export async function getRequestIdentity(
+  headers: Headers,
+  options: { allowDev?: boolean; request?: Request } = {},
+) {
+  const identity = await getAuthenticatedIdentity(headers, options);
+  let simulation:
+    | import("~/lib/employee-simulation").EmployeeSimulation
+    | null = null;
+  let user = identity.user;
+  // Keep ordinary requests independent of the session database and its migrations.
+  const cookie = headers.get("cookie") ?? "";
+  const expectedView = headers.get("x-foremanhq-session-view");
+  if (cookie.includes("foremanhq_employee_simulation=") || expectedView) {
+    const {
+      resolveEmployeeSimulation,
+      assertSimulationView,
+      recordSimulationAction,
+    } = await import("~/server/simulation/service");
+    const resolved = await resolveEmployeeSimulation(headers, identity.user);
+    simulation = resolved?.simulation ?? null;
+    user = resolved?.employee ?? identity.user;
+    assertSimulationView(headers, identity.user, simulation);
+    if (
+      simulation &&
+      options.request &&
+      !["GET", "HEAD", "OPTIONS"].includes(options.request.method) &&
+      !/^\/api\/replicache\/[^/]+\/pull$/.test(
+        new URL(options.request.url).pathname,
+      )
+    )
+      await recordSimulationAction(
+        simulation,
+        `${options.request.method} ${new URL(options.request.url).pathname}`,
+      );
+  }
+  return {
+    userId: simulation ? (user?.id ?? null) : identity.userId,
+    user,
+    actorUser: identity.user,
+    simulation,
+  };
 }

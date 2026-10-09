@@ -1,6 +1,7 @@
 "use client";
 import { usePageViewState } from "~/hooks/use-page-view-state";
 
+import { useEmployeeSimulation } from "~/components/simulation/SimulationProvider";
 import { useAuth } from "@clerk/nextjs";
 import {
   Fragment,
@@ -173,7 +174,9 @@ export function JobChatView({ jobId }: { jobId: string }) {
 }
 
 function AuthenticatedChatLobby({ jobId }: { jobId: string }) {
-  const { userId, isLoaded } = useAuth();
+  const { userId: signedInUserId, isLoaded } = useAuth();
+  const simulation=useEmployeeSimulation();
+  const userId=simulation?.employeeId ?? signedInUserId;
   return !isLoaded ? (
     <p role="status" className="p-4">
       Loading chat…

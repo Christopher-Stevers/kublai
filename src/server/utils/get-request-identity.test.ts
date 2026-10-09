@@ -32,7 +32,7 @@ test("a validated agent request resolves its local user without Clerk", async ()
   const headers = new Headers({ "x-agent-auth": "test-only" });
   mocks.validAgent.mockReturnValue(true);
   mocks.agentUser.mockResolvedValue(localUser);
-  expect(await getRequestIdentity(headers, { allowDev: true })).toEqual({
+  expect(await getRequestIdentity(headers, { allowDev: true })).toMatchObject({
     userId: localUser.id,
     user: localUser,
   });
@@ -48,7 +48,9 @@ test("a valid agent token with no account stays unauthenticated without any fall
   mocks.agentUser.mockResolvedValue(null);
   mocks.devUser.mockResolvedValue(localUser);
   mocks.auth.mockResolvedValue({ userId: "unexpected-clerk-user" });
-  expect(await getRequestIdentity(new Headers(), { allowDev: true })).toEqual({
+  expect(
+    await getRequestIdentity(new Headers(), { allowDev: true }),
+  ).toMatchObject({
     userId: null,
     user: null,
   });
@@ -60,7 +62,9 @@ test("a valid agent token with no account stays unauthenticated without any fall
 test("ordinary signed-in requests resolve the Clerk account", async () => {
   mocks.auth.mockResolvedValue({ userId: "clerk-user" });
   mocks.ensureUser.mockResolvedValue(localUser);
-  expect(await getRequestIdentity(new Headers(), { allowDev: true })).toEqual({
+  expect(
+    await getRequestIdentity(new Headers(), { allowDev: true }),
+  ).toMatchObject({
     userId: "clerk-user",
     user: localUser,
   });
@@ -71,7 +75,9 @@ test("ordinary signed-in requests resolve the Clerk account", async () => {
 
 test("signed-out requests preserve the explicitly enabled development fallback", async () => {
   mocks.devUser.mockResolvedValue(localUser);
-  expect(await getRequestIdentity(new Headers(), { allowDev: true })).toEqual({
+  expect(
+    await getRequestIdentity(new Headers(), { allowDev: true }),
+  ).toMatchObject({
     userId: localUser.id,
     user: localUser,
   });
@@ -82,7 +88,7 @@ test("signed-out requests preserve the explicitly enabled development fallback",
 
 test("development fallback is disabled by default", async () => {
   mocks.devUser.mockResolvedValue(localUser);
-  expect(await getRequestIdentity(new Headers())).toEqual({
+  expect(await getRequestIdentity(new Headers())).toMatchObject({
     userId: null,
     user: null,
   });

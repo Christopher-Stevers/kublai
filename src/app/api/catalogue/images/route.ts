@@ -17,7 +17,7 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export async function POST(request: Request) {
-  const { userId, user } = await getRequestIdentity(request.headers);
+  const { userId, user } = await getRequestIdentity(request.headers, { request });
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

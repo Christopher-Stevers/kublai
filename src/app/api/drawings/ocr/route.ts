@@ -44,6 +44,7 @@ const reply = (body: unknown, status = 200) =>
 /** Explicit, bounded OCR of a stored sheet. No client URLs or shell expressions. */
 export async function POST(request: Request) {
   const { user } = await getRequestIdentity(request.headers, {
+    request,
     allowDev: true,
   });
   if (

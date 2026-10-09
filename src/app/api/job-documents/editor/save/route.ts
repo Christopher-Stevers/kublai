@@ -21,7 +21,7 @@ const headers = {
   "Referrer-Policy": "no-referrer",
 };
 async function identity(request: Request) {
-  const { userId } = await getRequestIdentity(request.headers);
+  const { userId } = await getRequestIdentity(request.headers, { request });
   if (!userId)
     throw new TRPCError({
       code: "UNAUTHORIZED",

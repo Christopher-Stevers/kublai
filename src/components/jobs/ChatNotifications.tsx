@@ -1,5 +1,6 @@
 "use client";
 
+import { useEmployeeSimulation } from "~/components/simulation/SimulationProvider";
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Bell, BellOff } from "lucide-react";
@@ -260,6 +261,7 @@ export function ChatPushAccountBinding() {
 }
 
 export function ChatNotifications() {
+  const simulation = useEmployeeSimulation();
   const identity = api.push.identity.useQuery(undefined, {
     staleTime: 30000,
     retry: false,
@@ -316,6 +318,7 @@ export function ChatNotifications() {
   }, [identity.data?.userId, utils]);
 
   const toggle = async () => {
+    if (simulation) return;
     setError("");
     setBusy(true);
     let newlyCreated: PushSubscription | null = null;
@@ -451,6 +454,7 @@ export function ChatNotifications() {
         className="inline-flex min-h-11 items-center gap-2 rounded-lg border px-3 py-2 disabled:opacity-50"
         onClick={() => void toggle()}
         disabled={
+          Boolean(simulation) ||
           busy ||
           !available ||
           identity.isPending ||
@@ -468,6 +472,12 @@ export function ChatNotifications() {
             ? "Disable device notifications"
             : "Enable device notifications"}
       </button>
+      {simulation && (
+        <p className="text-muted-foreground text-xs">
+          Device notifications belong to your signed-in account. End simulation
+          to change them.
+        </p>
+      )}
       {identity.isError && (
         <p role="alert">
           Could not load notification settings. Reconnect and try again.

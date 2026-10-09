@@ -1,5 +1,6 @@
 "use client";
 
+import { useEmployeeSimulation } from "~/components/simulation/SimulationProvider";
 import { useRef, useState, type FormEvent } from "react";
 import { useReverification, useUser } from "@clerk/nextjs";
 import {
@@ -11,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
 
 export function PasswordSettings({ isOnline }: { isOnline: boolean }) {
+  const simulation = useEmployeeSimulation();
   // Match SessionProviderWrapper: local previews may run without Clerk.
   const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
   const hasClerk =
@@ -24,7 +26,11 @@ export function PasswordSettings({ isOnline }: { isOnline: boolean }) {
         <CardTitle>Password</CardTitle>
       </CardHeader>
       <CardContent>
-        {hasClerk ? (
+        {simulation ? (
+          <p className="text-muted-foreground text-sm">
+            End simulation before changing your password.
+          </p>
+        ) : hasClerk ? (
           <SignedInPasswordSettings isOnline={isOnline} />
         ) : (
           <p className="text-muted-foreground text-sm">

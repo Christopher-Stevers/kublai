@@ -22,7 +22,7 @@ export async function GET(
     return new Response("Invalid material list id", { status: 400 });
   }
 
-  const { user } = await getRequestIdentity(request.headers, { allowDev: true });
+  const { user } = await getRequestIdentity(request.headers, { allowDev: true, request });
   const organizationId = user?.organizationId;
 
   if (!organizationId) {

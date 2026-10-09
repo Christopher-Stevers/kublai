@@ -19,7 +19,7 @@ export async function GET(request: Request) {
     const jobId = jobIdSchema.parse(
       new URL(request.url).searchParams.get("jobId"),
     );
-    const { userId } = await getRequestIdentity(request.headers);
+    const { userId } = await getRequestIdentity(request.headers, { request });
     return Response.json(
       await documentOverview(await assertDocumentAccess(userId, jobId)),
       { headers: { "Cache-Control": "private, no-store" } },
@@ -36,7 +36,7 @@ export async function POST(request: Request) {
         code: "BAD_REQUEST",
         message: "Send a JSON document action.",
       });
-    const { userId } = await getRequestIdentity(request.headers);
+    const { userId } = await getRequestIdentity(request.headers, { request });
     if (!userId)
       throw new TRPCError({
         code: "UNAUTHORIZED",

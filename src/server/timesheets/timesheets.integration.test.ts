@@ -55,6 +55,8 @@ function caller(id = worker, extra = {}) {
     db,
     headers: new Headers(),
     userId: id,
+    actorUser: null,
+    simulation: null,
     user: {
       ...base,
       id,

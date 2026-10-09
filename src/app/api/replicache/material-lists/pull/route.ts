@@ -8,7 +8,7 @@ import {
 } from "~/server/replicache/material-list-sync";
 
 export async function POST(request: Request) {
-  const ctx = await createTRPCContext({ headers: request.headers });
+  const ctx = await createTRPCContext({ headers: request.headers, request });
   if (!ctx.user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

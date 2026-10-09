@@ -46,6 +46,10 @@ import {
   type HeaderBackStateDetail,
 } from "~/lib/header-back-events";
 import { useTutorialSandbox } from "~/components/tutorial/tutorial-sandbox-context";
+import {
+  EndSimulationButton,
+  useEmployeeSimulation,
+} from "~/components/simulation/SimulationProvider";
 import { NotificationCenter } from "~/components/notifications/NotificationCenter";
 
 const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
@@ -85,6 +89,7 @@ function HeaderFrame({
   showAdmin: boolean;
   sessionKey?: string;
 }) {
+  const simulation = useEmployeeSimulation();
   const router = useRouter();
   const snapshot = useSnapshot();
   const sandbox = useTutorialSandbox();
@@ -247,8 +252,11 @@ function HeaderFrame({
             className="rounded-md"
             priority
           />
-          {APP_NAME}
+          <span className={simulation ? "hidden sm:inline" : undefined}>
+            {APP_NAME}
+          </span>
         </button>
+        <EndSimulationButton />
         <nav className="hidden min-w-0 items-center gap-1 overflow-x-auto lg:flex">
           {navLinks.map((link) => (
             <button
@@ -464,8 +472,12 @@ function HeaderWithClerk() {
   const { user } = useUser();
   const { signOut } = useClerk();
   const isOnline = useOnlineStatus();
+  const simulation = useEmployeeSimulation();
+  const { data: effectiveUser } = api.user.getMe.useQuery(undefined, {
+    enabled: isOnline,
+  });
   const { data: userRole } = api.user.getMyRole.useQuery(undefined, {
-    enabled: !!user && isOnline,
+    enabled: isOnline,
   });
 
   return (
@@ -473,7 +485,12 @@ function HeaderWithClerk() {
       pathname={pathname}
       mobileMenuOpen={mobileMenuOpen}
       setMobileMenuOpen={setMobileMenuOpen}
-      userEmail={user?.primaryEmailAddress?.emailAddress ?? "Not signed in"}
+      userEmail={
+        simulation?.employeeEmail ??
+        effectiveUser?.email ??
+        user?.primaryEmailAddress?.emailAddress ??
+        "Not signed in"
+      }
       signOut={async () => {
         try {
           await fetch("/api/auth/signout", { method: "POST" });
@@ -482,7 +499,9 @@ function HeaderWithClerk() {
         }
       }}
       showAccount={true}
-      sessionKey={user?.id ?? "guest"}
+      sessionKey={
+        simulation?.employeeId ?? effectiveUser?.id ?? user?.id ?? "guest"
+      }
       tabAccess={
         userRole?.permissions.tabAccess ?? {
           dashboard: true,

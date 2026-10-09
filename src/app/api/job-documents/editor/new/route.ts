@@ -35,7 +35,7 @@ export async function POST(request: Request) {
         code: "BAD_REQUEST",
         message: "Send a JSON document request.",
       });
-    const { userId } = await getRequestIdentity(request.headers);
+    const { userId } = await getRequestIdentity(request.headers, { request });
     if (!userId)
       throw new TRPCError({
         code: "UNAUTHORIZED",

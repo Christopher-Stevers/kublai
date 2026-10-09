@@ -14,7 +14,7 @@ function encodeSse(event: string, data: unknown) {
 }
 
 export async function GET(request: Request) {
-  const { user } = await createTRPCContext({ headers: request.headers });
+  const { user } = await createTRPCContext({ headers: request.headers, request });
   const organizationId = user?.organizationId;
 
   if (!organizationId || (user?.organizationAccessStatus && user.organizationAccessStatus !== "approved")) {

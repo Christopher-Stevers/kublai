@@ -15,7 +15,7 @@ export async function GET(
     const url = new URL(request.url);
     const jobId = jobIdSchema.parse(url.searchParams.get("jobId"));
     const versionId = jobIdSchema.parse((await params).versionId);
-    const { userId } = await getRequestIdentity(request.headers);
+    const { userId } = await getRequestIdentity(request.headers, { request });
     const access = await assertDocumentAccess(userId, jobId);
     const { version } = await readableVersion(access, versionId);
     const bytes = await readDocumentBlob(

@@ -38,13 +38,15 @@ const tokenHash = (value: string) =>
 
 export const pushRouter = createTRPCRouter({
   identity: publicProcedure.query(({ ctx }) => {
+    const pushUser = ctx.actorUser ?? ctx.user;
     const eligible =
-      ctx.user?.organizationId &&
-      ctx.user.organizationAccessStatus === "approved" &&
-      userCan(ctx.user, "tab.dashboard");
+      pushUser?.organizationId &&
+      pushUser.organizationAccessStatus === "approved" &&
+      userCan(pushUser, "tab.dashboard");
     return {
-      userId: ctx.userId,
-      account: ctx.userId ? tokenHash(ctx.userId) : null,
+      userId: pushUser?.id ?? null,
+      account: pushUser?.id ? tokenHash(pushUser.id) : null,
+      simulation: Boolean(ctx.simulation),
       eligible: Boolean(eligible),
       publicKey: eligible ? (getPushConfiguration()?.publicKey ?? null) : null,
     };
@@ -58,7 +60,7 @@ export const pushRouter = createTRPCRouter({
         .where(
           and(
             eq(chatPushSubscriptions.endpoint, input.endpoint),
-            eq(chatPushSubscriptions.userId, ctx.userId),
+            eq(chatPushSubscriptions.userId, ctx.actorUser?.id ?? ctx.userId),
           ),
         )
         .limit(1);

@@ -32,7 +32,7 @@ export async function POST(request: Request) {
     const jobId = jobIdSchema.parse(
       new URL(request.url).searchParams.get("jobId"),
     );
-    const { userId } = await getRequestIdentity(request.headers);
+    const { userId } = await getRequestIdentity(request.headers, { request });
     const access = await assertDocumentAccess(userId, jobId);
     if (!access.canWrite)
       throw new TRPCError({

@@ -158,3 +158,18 @@ describe("Editor configuration", () => {
       expect(editorExtension(name)).toBeNull();
   });
 });
+
+it("retains the simulation binding in the signed editor capability", () => {
+  const simulationId = randomUUID();
+  const issued = issueEditorToken(config, { ...scope, simulationId });
+  expect(
+    verifyEditorToken(config, issued.accessToken, scope).simulationId,
+  ).toBe(simulationId);
+  expect(
+    verifyEditorToken(
+      config,
+      issueEditorToken(config, scope).accessToken,
+      scope,
+    ).simulationId,
+  ).toBeUndefined();
+});

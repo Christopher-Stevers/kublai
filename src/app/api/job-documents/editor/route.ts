@@ -17,7 +17,7 @@ export const dynamic = "force-dynamic";
 const launchInput = z.object({ jobId: z.uuid(), documentId: z.uuid() });
 export async function GET(request: Request) {
   try {
-    const { userId } = await getRequestIdentity(request.headers);
+    const { userId } = await getRequestIdentity(request.headers, { request });
     if (!userId)
       throw new TRPCError({
         code: "UNAUTHORIZED",
@@ -38,7 +38,9 @@ export async function POST(request: Request) {
         code: "BAD_REQUEST",
         message: "Send a JSON editor request.",
       });
-    const { userId } = await getRequestIdentity(request.headers);
+    const { userId, simulation } = await getRequestIdentity(request.headers, {
+      request,
+    });
     if (!userId)
       throw new TRPCError({
         code: "UNAUTHORIZED",
@@ -60,12 +62,15 @@ export async function POST(request: Request) {
       throw error;
     }
     const access = await assertDocumentAccess(userId, input.jobId);
-    return Response.json(await launchDocumentEditor(access, input.documentId), {
-      headers: {
-        "Cache-Control": "private, no-store",
-        "Referrer-Policy": "no-referrer",
+    return Response.json(
+      await launchDocumentEditor(access, input.documentId, simulation),
+      {
+        headers: {
+          "Cache-Control": "private, no-store",
+          "Referrer-Policy": "no-referrer",
+        },
       },
-    });
+    );
   } catch (error) {
     if (error instanceof TRPCError && error.code === "PRECONDITION_FAILED")
       return wopiErrorResponse(error);

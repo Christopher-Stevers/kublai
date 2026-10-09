@@ -1,3 +1,5 @@
+import { DrawingDestinationProvider } from "~/components/jobs/DrawingDestinationProvider";
+import { SimulationProvider } from "~/components/simulation/SimulationProvider";
 import { FinancialVisibilityProvider } from "~/components/permissions/FinancialVisibility";
 import { userCan } from "~/server/auth/permissions";
 import { TutorialGate } from "~/components/tutorial/TutorialGate";
@@ -11,7 +13,6 @@ import { waitForUser } from "~/server/utils/wait-for-user";
 import { ReplicacheSyncBootstrap } from "~/components/offline/ReplicacheSyncBootstrap";
 import { TabAccessGate } from "./_components/TabAccessGate";
 import { DrawingAccountProvider } from "~/components/jobs/DrawingAccountProvider";
-import { DrawingDestinationProvider } from "~/components/jobs/DrawingDestinationProvider";
 
 export default async function DashboardLayout({
   children,
@@ -52,34 +53,40 @@ export default async function DashboardLayout({
 
   return (
     <HydrateClient>
-      <TutorialGate
-        key={effectiveUserId}
-        userId={effectiveUserId}
-        initialCompleted={!!user.tutorialCompletedAt}
+      <SimulationProvider
+        simulation={identity.simulation}
+        actorId={identity.actorUser?.id ?? effectiveUserId}
       >
-        <FinancialVisibilityProvider
-          initialVisible={userCan(user, "financial.view")}
+        <TutorialGate
+          key={effectiveUserId}
+          userId={effectiveUserId}
+          initialCompleted={!!user.tutorialCompletedAt}
         >
-          <DrawingAccountProvider
-            userId={effectiveUserId}
-            organizationId={organizationId}
+          <FinancialVisibilityProvider
+            initialVisible={userCan(user, "financial.view")}
           >
-            <SnapshotProvider>
-              <DrawingDestinationProvider>
-                <div className="bg-canvas flex min-h-screen flex-col">
-                  <ReplicacheSyncBootstrap
-                    userId={effectiveUserId}
-                    organizationId={organizationId}
-                  />
-                  <Header />
-                  <TabAccessGate />
-                  <main className="flex-1">{children}</main>
-                </div>
-              </DrawingDestinationProvider>
-            </SnapshotProvider>
-          </DrawingAccountProvider>
-        </FinancialVisibilityProvider>
-      </TutorialGate>
+            <DrawingAccountProvider
+              userId={effectiveUserId}
+              organizationId={organizationId}
+              simulationId={identity.simulation?.id}
+            >
+              <SnapshotProvider>
+                <DrawingDestinationProvider>
+                  <div className="bg-canvas flex min-h-screen flex-col">
+                    <ReplicacheSyncBootstrap
+                      userId={effectiveUserId}
+                      organizationId={organizationId}
+                    />
+                    <Header />
+                    <TabAccessGate />
+                    <main className="flex-1">{children}</main>
+                  </div>
+                </DrawingDestinationProvider>
+              </SnapshotProvider>
+            </DrawingAccountProvider>
+          </FinancialVisibilityProvider>
+        </TutorialGate>
+      </SimulationProvider>
     </HydrateClient>
   );
 }

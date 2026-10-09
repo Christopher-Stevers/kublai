@@ -1,3 +1,4 @@
+import type { RequestUser } from "~/server/utils/get-request-identity";
 import crypto from "node:crypto";
 import { TRPCError } from "@trpc/server";
 import { and, asc, desc, eq, gt, isNull } from "drizzle-orm";
@@ -110,12 +111,14 @@ export const organizationRouter = createTRPCRouter({
       viewer: {
         userId: ctx.userId,
         canManageMembers: viewer["org.members"],
+        canSimulateEmployees: !ctx.simulation && hasManagingSeat(ctx.user),
+        canSimulateAdmins: !ctx.simulation && getUserPermissions(ctx.user).isAdmin,
         canInvite: viewer["org.invite"],
         canEditSettings: viewer["org.settings"],
       },
       locations: locationList,
       invites: inviteList,
-      members: memberList.map((member) => ({
+      members: (memberList as Pick<RequestUser, "id" | "name" | "email" | "role" | "permissionConfig" | "organizationAccessStatus" | "stripeSubscriptionId" | "subscriptionStatus" | "subscriptionEndsAt" | "createdAt">[]).map((member) => ({
         ...member,
         organizationAccessStatus: member.organizationAccessStatus ?? "approved",
         permissions: getUserPermissions(member),

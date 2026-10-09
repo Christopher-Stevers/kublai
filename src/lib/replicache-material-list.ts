@@ -1,3 +1,4 @@
+import { simulationCacheName } from "./employee-simulation";
 import { QuantityJournal, type QuantityIntent } from "./quantity-journal";
 import { Replicache, dropDatabase, type WriteTransaction } from "replicache";
 import type { ReadonlyJSONValue } from "replicache";
@@ -527,7 +528,7 @@ export function getMaterialListReplicache() {
   if (materialListReplicache) return materialListReplicache;
 
   const replicache = new Replicache<MaterialListReplicacheMutators>({
-    name: "foremenhq-material-lists",
+    name: simulationCacheName("foremenhq-material-lists"),
     schemaVersion: MATERIAL_LIST_REPLICACHE_SCHEMA_VERSION,
     indexes: MATERIAL_LIST_INDEXES,
     pullURL: "/api/replicache/material-lists/pull",
@@ -666,7 +667,7 @@ export function initializeQuantityJournal(
   quantityJournal = null;
   const rep = getMaterialListReplicache();
   quantityJournal = new QuantityJournal(
-    `${organizationId}:${userId}`,
+    simulationCacheName(`${organizationId}:${userId}`),
     window.localStorage,
     {
       apply: (intent) => rep.mutate.updateItemQuantity(intent),
@@ -692,4 +693,26 @@ export async function saveQuantityDurably(
   if (!quantityJournal)
     throw new Error("Offline quantity storage is not ready");
   await quantityJournal.save(input);
+}
+
+/** Account switching must not strand material edits in another account's queue. */
+export async function flushMaterialListChangesBeforeAccountSwitch() {
+  const rep = materialListReplicache;
+  if (!rep || !(await rep.experimentalPendingMutations()).length) return;
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  try {
+    await Promise.race([
+      (async () => {
+        await rep.push({ now: true });
+        await rep.pull({ now: true });
+        if ((await rep.experimentalPendingMutations()).length)
+          throw new Error("Pending changes");
+      })(),
+      new Promise<never>((_, reject) => { timeout = setTimeout(() => reject(new Error("Sync timeout")), 8000); }),
+    ]);
+  } catch {
+    throw new Error("Material changes have not synced yet. Reconnect and try again to save them before switching accounts.");
+  } finally {
+    if (timeout) clearTimeout(timeout);
+  }
 }

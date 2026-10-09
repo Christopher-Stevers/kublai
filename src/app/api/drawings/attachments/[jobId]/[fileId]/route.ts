@@ -19,6 +19,7 @@ export async function GET(
 ) {
   try {
     const { user } = await getRequestIdentity(request.headers, {
+    request,
       allowDev: true,
     });
     if (

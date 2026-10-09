@@ -12,7 +12,7 @@ export async function POST(request: Request) {
   if (!z.uuid().safeParse(conversationId).success)
     return Response.json({ error: "Invalid conversation." }, { status: 400 });
   try {
-    const { userId } = await getRequestIdentity(request.headers);
+    const { userId } = await getRequestIdentity(request.headers, { request });
     const access = await conversationAccess(userId, conversationId!);
     return Response.json(
       { attachment: await uploadConversationAttachment(access, request) },

@@ -26,12 +26,14 @@ export function DrawingAccountProvider({
   userId,
   organizationId,
   children,
+  simulationId,
 }: {
   userId: string;
   organizationId: string;
   children: React.ReactNode;
+  simulationId?: string;
 }) {
-  const accountKey = `${organizationId}:${userId}`;
+  const accountKey = `${organizationId}:${userId}${simulationId ? `:simulation:${simulationId}` : ""}`;
   const queryClient = useQueryClient();
   const [value, setValue] = useState<DrawingAccount | null>(null);
   const [locked, setLocked] = useState(false);

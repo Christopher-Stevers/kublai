@@ -33,7 +33,7 @@ export const runtime = "nodejs";
 export const maxDuration = 30;
 
 async function requestUser(request: Request) {
-  const { user } = await getRequestIdentity(request.headers, { allowDev: true });
+  const { user } = await getRequestIdentity(request.headers, { allowDev: true, request });
   if (!user?.organizationId) throw new UploadError("Unauthorized", 401);
   if (!userCan(user, "drawings.manage"))
     throw new UploadError("You don't have permission to upload drawings", 403);
