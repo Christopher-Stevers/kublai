@@ -8,9 +8,16 @@ import { SupplierSelector } from "~/components/materialLists/SupplierSelector";
 import { VerticalPickerOverlay } from "~/components/materialLists/wizard/VerticalPickerOverlay";
 import { Button } from "~/components/ui/button";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "~/components/ui/dropdown-menu";
+import {
   CheckCircle2Icon,
   Clock3Icon,
   Loader2Icon,
+  MoreVerticalIcon,
   TrashIcon,
   XCircleIcon,
 } from "lucide-react";
@@ -653,15 +660,27 @@ function MaterialListItemComponent({
         <div className="flex h-full w-full flex-col px-3 pt-3 pb-2">
           <InitialsSyncBadge user={item.addedBy} status={itemSyncStatus} />
           {!verifyMode && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="bg-card/90 ring-border text-muted-foreground absolute top-2 right-2 z-20 h-9 w-9 rounded-full p-0 shadow-sm ring-1 transition-colors hover:bg-red-50 hover:text-red-600"
-              onClick={handleRemove}
-              aria-label="Remove item"
-            >
-              <TrashIcon className="h-4 w-4" />
-            </Button>
+            // Card actions live in a menu so more can be added later.
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="bg-card/90 ring-border text-muted-foreground hover:text-foreground absolute top-2 right-2 z-20 h-9 w-9 rounded-full p-0 shadow-sm ring-1"
+                  aria-label={`More for ${partName}`}
+                  onPointerDown={(event) => event.stopPropagation()}
+                  onClick={(event) => event.stopPropagation()}
+                >
+                  <MoreVerticalIcon className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" onClick={(event) => event.stopPropagation()}>
+                <DropdownMenuItem variant="destructive" onSelect={handleRemove}>
+                  <TrashIcon className="h-4 w-4" />
+                  Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
           <div
             className="relative mb-3 aspect-square w-full overflow-hidden rounded-xl bg-muted"
