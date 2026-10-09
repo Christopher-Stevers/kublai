@@ -631,20 +631,9 @@ export function JobDrawingsView({ jobId }: { jobId: string }) {
                         item.name,
                       )}
                     </span>
-                    <span className="text-muted-foreground block truncate text-xs">
-                      {nonempty(
-                        bySheet.get(item.id)?.metadata.title,
-                        item.name,
-                      )}
+                    <span className="text-muted-foreground block min-h-4 truncate text-xs">
+                      {bySheet.get(item.id)?.metadata.title?.trim()}
                     </span>
-                    {listView && (
-                      <span className="text-muted-foreground text-xs">
-                        {bySheet.get(item.id)?.metadata.discipline} ·{" "}
-                        {(
-                          bySheet.get(item.id)?.metadata.status ?? "draft"
-                        ).replaceAll("_", " ")}
-                      </span>
-                    )}
                   </div>
                   <Button
                     variant="ghost"
