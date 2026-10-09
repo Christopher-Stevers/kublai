@@ -12,7 +12,7 @@ import {
 import { readFile } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 import { drizzle } from "drizzle-orm/postgres-js";
-import { getTableColumns, getTableName } from "drizzle-orm";
+import { eq, getTableColumns, getTableName } from "drizzle-orm";
 import type { PgTable } from "drizzle-orm/pg-core";
 import postgres from "postgres";
 import sharp from "sharp";
@@ -31,7 +31,21 @@ vi.mock("~/server/db", async () => {
   });
   return { db: drizzle(conn, { schema }), __testConnection: conn };
 });
-vi.mock("~/server/chat/push", () => ({ enqueueChatPush: vi.fn() }));
+const network = vi.hoisted(() => ({ send: vi.fn(), lookup: vi.fn() }));
+vi.mock("web-push", () => ({
+  default: { setVapidDetails: vi.fn(), sendNotification: network.send },
+}));
+vi.mock("node:dns/promises", () => ({ lookup: network.lookup }));
+vi.mock("~/env", () => ({
+  env: {
+    WEB_PUSH_PUBLIC_KEY: "public",
+    WEB_PUSH_PRIVATE_KEY: "private",
+    WEB_PUSH_SUBJECT: "mailto:ops@example.invalid",
+  },
+}));
+import { drainConversationPush, enqueueConversationPush } from "./push";
+import { db } from "~/server/db";
+import { users as userColumns } from "~/server/chat/tables";
 import {
   checkConversationUser,
   conversationAccess,
@@ -138,8 +152,26 @@ describe.skipIf(!enabled)("private chat against isolated PostgreSQL", () => {
     );
     await conn.unsafe(migration);
     await conn.unsafe(migration);
+    const subscriptionMigration = await readFile(
+      new URL("../../../drizzle/0043_job_chat_push.sql", import.meta.url),
+      "utf8",
+    );
+    await conn.unsafe(
+      subscriptionMigration.split(
+        'CREATE TABLE IF NOT EXISTS "kublai_chat_push_outbox"',
+      )[0]!,
+    );
+    const pushMigration = await readFile(
+      new URL("../../../drizzle/0053_conversation_push.sql", import.meta.url),
+      "utf8",
+    );
+    await conn.unsafe(pushMigration);
+    await conn.unsafe(pushMigration);
   });
   beforeEach(async () => {
+    vi.clearAllMocks();
+    network.lookup.mockResolvedValue([{ address: "142.250.1.1", family: 4 }]);
+    network.send.mockResolvedValue({ statusCode: 201 });
     await conn.unsafe(
       "TRUNCATE kublai_organization,kublai_user RESTART IDENTITY CASCADE",
     );
@@ -147,30 +179,28 @@ describe.skipIf(!enabled)("private chat against isolated PostgreSQL", () => {
       { id: org, name: "Synthetic org" },
       { id: foreignOrg, name: "Other org" },
     ]);
-    await fixture
-      .insert(schema.users)
-      .values(
-        [
-          "author",
-          "recipient",
-          "third",
-          "outsider",
-          "foreign",
-          "pending",
-          "disabled",
-        ].map((id) => ({
-          id,
-          email: `${id}@example.invalid`,
-          name: id,
-          role: "user",
-          organizationId: id === "foreign" ? foreignOrg : org,
-          organizationAccessStatus: id === "pending" ? "pending" : "approved",
-          permissionConfig:
-            id === "disabled"
-              ? { version: 2, permissions: { "tab.dashboard": false } }
-              : null,
-        })),
-      );
+    await fixture.insert(schema.users).values(
+      [
+        "author",
+        "recipient",
+        "third",
+        "outsider",
+        "foreign",
+        "pending",
+        "disabled",
+      ].map((id) => ({
+        id,
+        email: `${id}@example.invalid`,
+        name: id,
+        role: "user",
+        organizationId: id === "foreign" ? foreignOrg : org,
+        organizationAccessStatus: id === "pending" ? "pending" : "approved",
+        permissionConfig:
+          id === "disabled"
+            ? { version: 2, permissions: { "tab.dashboard": false } }
+            : null,
+      })),
+    );
   });
   afterAll(async () => {
     await conn.end();
@@ -363,5 +393,227 @@ describe.skipIf(!enabled)("private chat against isolated PostgreSQL", () => {
       }),
     ).rejects.toThrow("unavailable");
     await deleteConversationAttachment("author", file.id);
+  });
+  const devices = async (
+    names = [
+      "author",
+      "recipient",
+      "third",
+      "outsider",
+      "foreign",
+      "pending",
+      "disabled",
+      "recipient-second",
+    ],
+  ) => {
+    await fixture.insert(schema.chatPushSubscriptions).values(
+      names.map((name) => ({
+        userId: name === "recipient-second" ? "recipient" : name,
+        endpoint: `https://fcm.googleapis.com/fcm/send/synthetic-${name}`,
+        p256dh: "fake",
+        auth: "fake",
+        revokeTokenHash: "0".repeat(64),
+      })),
+    );
+  };
+  const post = async (id: string, body = "Private payload") => {
+    const access = await conversationAccess("author", id);
+    const input = {
+      conversationId: id,
+      clientId: randomUUID(),
+      body,
+      attachmentIds: [],
+    };
+    const result = await sendConversationMessage(access, input);
+    return { access, input, result };
+  };
+  const queued = async () =>
+    fixture.select().from(schema.conversationPushOutbox);
+
+  it("queues every recipient device for direct and group chats, never coworkers or the author; retries deduplicate", async () => {
+    await devices();
+    const { id } = await createConversation("author", {
+      kind: "group",
+      name: "Private group",
+      recipientIds: ["recipient", "third"],
+    });
+    const sent = await post(id);
+    expect(await sendConversationMessage(sent.access, sent.input)).toEqual(
+      sent.result,
+    );
+    const rows = await queued();
+    expect(rows.map((r) => r.recipientId).sort()).toEqual([
+      "recipient",
+      "recipient",
+      "third",
+    ]);
+    await db.transaction((tx) =>
+      enqueueConversationPush(tx, {
+        organizationId: org,
+        conversationId: id,
+        messageId: rows[0]!.messageId,
+        senderId: "author",
+        sequence: rows[0]!.sequence,
+      }),
+    );
+    expect(await queued()).toHaveLength(3);
+    await drainConversationPush();
+    expect(network.send).toHaveBeenCalledTimes(3);
+    expect(
+      (await queued()).every(
+        (r) => r.outcome === "sent" && r.completedAt && !r.leaseToken,
+      ),
+    ).toBe(true);
+    for (const call of network.send.mock.calls) {
+      expect(JSON.parse(call[1] as string) as unknown).toMatchObject({
+        type: "conversation-chat",
+        url: `/dashboard/chat?conversation=${id}`,
+      });
+      expect(call[1]).not.toContain("Private payload");
+      expect(call[1]).not.toContain("Private group");
+    }
+    const directRoom = await direct();
+    await post(directRoom.id);
+    expect(
+      (await queued())
+        .filter((r) => r.conversationId === directRoom.id)
+        .map((r) => r.recipientId),
+    ).toEqual(["recipient", "recipient"]);
+  });
+  it("rechecks unread status, membership, organization and permissions before delivery", async () => {
+    await devices(["recipient"]);
+    const { id } = await direct();
+    await post(id);
+    const [row] = await queued();
+    await markConversationRead(
+      await conversationAccess("recipient", id),
+      row!.sequence,
+    );
+    await drainConversationPush();
+    expect((await queued())[0]!.outcome).toBe("skipped");
+    await post(id);
+    await conn`delete from kublai_conversation_member where "conversationId"=${id} and "userId"='recipient'`;
+    await drainConversationPush();
+    expect(network.send).not.toHaveBeenCalled();
+    await fixture
+      .insert(schema.conversationMembers)
+      .values({ conversationId: id, userId: "recipient" });
+    for (const changes of [
+      { organizationAccessStatus: "rejected" },
+      { organizationId: foreignOrg },
+      {
+        permissionConfig: {
+          version: 2,
+          permissions: { "tab.dashboard": false },
+        },
+      },
+    ]) {
+      await post(id);
+      await fixture
+        .update(schema.users)
+        .set(changes)
+        .where(eq(userColumns.id, "recipient"));
+      await drainConversationPush();
+      await conn`update kublai_user set "organizationAccessStatus"='approved', "organizationId"=${org}, "permissionConfig"=null where id='recipient'`;
+    }
+    expect(network.send).not.toHaveBeenCalled();
+    expect(network.lookup).not.toHaveBeenCalled();
+    expect((await queued()).every((r) => r.outcome === "skipped")).toBe(true);
+  });
+  it("does not send deleted messages or devices rebound to another account", async () => {
+    await devices(["recipient"]);
+    const { id } = await direct();
+    const sent = await post(id);
+    await removeConversationMessage(sent.access, sent.result.id);
+    await drainConversationPush();
+    await post(id);
+    await conn`update kublai_chat_push_subscription set "userId"='outsider'`;
+    await drainConversationPush();
+    expect(network.send).not.toHaveBeenCalled();
+    expect((await queued()).every((r) => r.outcome === "skipped")).toBe(true);
+  });
+  it("recovers expired leases, retries provider failures and claims safely across concurrent workers", async () => {
+    await devices(["recipient"]);
+    const { id } = await direct();
+    await post(id);
+    network.send.mockRejectedValueOnce({ statusCode: 429 });
+    await drainConversationPush();
+    expect((await queued())[0]).toMatchObject({
+      outcome: "retry",
+      attempts: 1,
+      completedAt: null,
+    });
+    await drainConversationPush();
+    expect(network.send).toHaveBeenCalledTimes(1);
+    await conn`update kublai_conversation_push_outbox set "availableAt"='2000-01-01', "leasedUntil"='2000-01-01', "leaseToken"=${randomUUID()}`;
+    let release!: () => void;
+    const barrier = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    network.send.mockImplementation(async () => {
+      await barrier;
+      return { statusCode: 201 };
+    });
+    const first = drainConversationPush();
+    await vi.waitFor(() => expect(network.send).toHaveBeenCalledTimes(2));
+    await drainConversationPush();
+    expect(network.send).toHaveBeenCalledTimes(2);
+    release();
+    await first;
+    expect((await queued())[0]).toMatchObject({
+      outcome: "sent",
+      attempts: 2,
+      leaseToken: null,
+    });
+  });
+  it("caps attempts and expires obsolete provider subscriptions", async () => {
+    await devices(["recipient"]);
+    const { id } = await direct();
+    await post(id);
+    await conn`update kublai_conversation_push_outbox set attempts=6`;
+    await drainConversationPush();
+    expect(network.send).not.toHaveBeenCalled();
+    expect((await queued())[0]!.outcome).toBe("expired");
+    await post(id);
+    network.send.mockRejectedValueOnce({ statusCode: 410 });
+    await drainConversationPush();
+    expect(
+      await fixture.select().from(schema.chatPushSubscriptions),
+    ).toHaveLength(0);
+    expect(await queued()).toHaveLength(0);
+  });
+  it("notification enqueue rolls back when the transaction fails", async () => {
+    await devices(["recipient"]);
+    const { id } = await direct();
+    await expect(
+      db.transaction(async (tx) => {
+        const [m] = await tx
+          .insert(schema.conversationMessages)
+          .values({
+            conversationId: id,
+            authorId: "author",
+            clientId: randomUUID(),
+            requestHash: "a".repeat(64),
+            body: "Must roll back",
+          })
+          .returning();
+        await enqueueConversationPush(tx, {
+          organizationId: org,
+          conversationId: id,
+          messageId: m!.id,
+          senderId: "author",
+          sequence: m!.sequence,
+        });
+        throw Error("rollback fixture");
+      }),
+    ).rejects.toThrow("rollback fixture");
+    expect(await queued()).toHaveLength(0);
+    expect(
+      (
+        await conversationHistory(await conversationAccess("recipient", id), {
+          limit: 50,
+        })
+      ).messages,
+    ).toHaveLength(0);
   });
 });

@@ -7,7 +7,8 @@ export async function register() {
     process.env.NEXT_RUNTIME === "nodejs" &&
     process.env.NEXT_PHASE !== "phase-production-build"
   ) {
-    const { dispatchDetectQueue } = await import("~/server/rooms/detect-worker-process");
+    const { dispatchDetectQueue } =
+      await import("~/server/rooms/detect-worker-process");
     if (!state.roomDetectionTimer) {
       const dispatch = () => {
         void dispatchDetectQueue().catch((error) => {
@@ -20,7 +21,11 @@ export async function register() {
     }
     const { startChatPushWorker } = await import("~/server/chat/push");
     startChatPushWorker();
-    const { startDrawingPushWorker } = await import("~/server/drawings/push-worker");
+    const { startConversationPushWorker } =
+      await import("~/server/conversations/push");
+    startConversationPushWorker();
+    const { startDrawingPushWorker } =
+      await import("~/server/drawings/push-worker");
     startDrawingPushWorker();
     if (!state.chatMaintenanceTimer) {
       let running = false;

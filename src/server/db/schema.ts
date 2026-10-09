@@ -2423,4 +2423,4 @@ export const timeEvents = createTable(
   ],
 );
 
-export { conversations, conversationMembers, conversationMessages, conversationAttachments } from "./conversation-schema";
+export { conversations, conversationMembers, conversationMessages, conversationAttachments, conversationPushOutbox } from "./conversation-schema";

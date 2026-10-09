@@ -10,6 +10,7 @@ import {
   Trash2Icon,
 } from "lucide-react";
 import { api } from "~/trpc/react";
+import { ChatNotifications } from "~/components/jobs/ChatNotifications";
 import { Button } from "~/components/ui/button";
 import {
   Dialog,
@@ -95,6 +96,9 @@ export function ConversationsView() {
           New chat
         </Button>
       </header>
+      <div className="shrink-0 border-b px-4 py-2">
+        <ChatNotifications />
+      </div>
       {!online && (
         <p role="status" className="bg-muted px-4 py-2 text-sm">
           Connect to the internet to use person and group chats.

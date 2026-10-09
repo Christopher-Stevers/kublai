@@ -6,6 +6,7 @@ import {
   timestamp,
   bigint,
   bigserial,
+  pgTableCreator,
   integer,
   primaryKey,
   index,
@@ -14,6 +15,8 @@ import {
 } from "drizzle-orm/pg-core";
 
 import { organizations, users as legacyUsers } from "./schema";
+import { chatPushSubscriptions } from "./chat-push-schema";
+const chatPushSubscriptionId = (): AnyPgColumn => chatPushSubscriptions.id;
 
 // Keep this reference lazy: schema.ts re-exports these tables. The legacy user
 // table has loose inferred types; the FK still points to its actual ID column.
@@ -119,6 +122,57 @@ export const conversationAttachments = pgTable(
     index("conversation_attachment_uploader_idx").on(
       t.uploadedById,
       t.createdAt,
+    ),
+  ],
+);
+
+// Shares device subscriptions with job chat; private conversation access is rechecked at delivery.
+const pushTable = pgTableCreator((name) => `kublai_${name}`);
+export const conversationPushOutbox = pushTable(
+  "conversation_push_outbox",
+  (d) => ({
+    id: d.uuid().primaryKey().defaultRandom(),
+    organizationId: d
+      .uuid()
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    conversationId: d
+      .uuid()
+      .notNull()
+      .references(() => conversations.id, {
+        onDelete: "cascade",
+      }),
+    messageId: d
+      .uuid()
+      .notNull()
+      .references(() => conversationMessages.id, { onDelete: "cascade" }),
+    subscriptionId: d
+      .uuid()
+      .notNull()
+      .references(() => chatPushSubscriptionId(), { onDelete: "cascade" }),
+    recipientId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(userIdColumn, { onDelete: "cascade" }),
+    senderId: d.varchar({ length: 255 }).notNull(),
+    sequence: d.bigint({ mode: "number" }).notNull(),
+    attempts: d.integer().notNull().default(0),
+    availableAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
+    leaseToken: d.uuid(),
+    leasedUntil: d.timestamp({ withTimezone: true }),
+    completedAt: d.timestamp({ withTimezone: true }),
+    outcome: d.varchar({ length: 32 }),
+    createdAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
+  }),
+  (t) => [
+    uniqueIndex("conversation_push_message_device_uniq").on(
+      t.messageId,
+      t.subscriptionId,
+    ),
+    index("conversation_push_ready_idx").on(
+      t.completedAt,
+      t.availableAt,
+      t.leasedUntil,
     ),
   ],
 );

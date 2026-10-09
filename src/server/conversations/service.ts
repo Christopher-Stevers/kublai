@@ -21,6 +21,7 @@ import {
   conversationMessages,
   conversationAttachments,
 } from "~/server/db/conversation-schema";
+import { enqueueConversationPush } from "./push";
 import { requestHash } from "~/server/chat/contracts";
 import type { ChatTransaction } from "~/server/chat/types";
 import type {
@@ -392,6 +393,13 @@ export async function sendConversationMessage(
       .update(conversations)
       .set({ updatedAt: sql`now()` })
       .where(eq(conversations.id, access.conversation.id));
+    await enqueueConversationPush(tx, {
+      organizationId: access.conversation.organizationId,
+      conversationId: access.conversation.id,
+      messageId: message.id,
+      senderId: access.user.id,
+      sequence: message.sequence,
+    });
     return message.id;
   });
   return { id };

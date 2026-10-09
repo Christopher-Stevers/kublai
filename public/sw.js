@@ -465,6 +465,23 @@ function safeChatUrl(value) {
     return null;
   }
 }
+function safeConversationUrl(value) {
+  if (typeof value !== "string") return null;
+  try {
+    const url = new URL(value, self.location.origin);
+    return url.origin === self.location.origin &&
+      url.pathname === "/dashboard/chat" &&
+      !url.hash &&
+      [...url.searchParams.keys()].length === 1 &&
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(
+        url.searchParams.get("conversation") ?? "",
+      )
+      ? url.href
+      : null;
+  } catch {
+    return null;
+  }
+}
 function safeDrawingUrl(value) {
   if (typeof value !== "string") return null;
   try {
@@ -492,6 +509,7 @@ function safeDrawingUrl(value) {
   }
 }
 function safePushUrl(data) {
+  if (data?.type === "conversation-chat") return safeConversationUrl(data.url);
   return data?.type === "job-drawing"
     ? safeDrawingUrl(data.url)
     : data?.type === "job-chat"
@@ -527,7 +545,11 @@ self.addEventListener("message", (event) => {
         if (!account) {
           const notifications = await self.registration.getNotifications();
           for (const notification of notifications)
-            if (["job-chat", "job-drawing"].includes(notification.data?.type))
+            if (
+              ["job-chat", "job-drawing", "conversation-chat"].includes(
+                notification.data?.type,
+              )
+            )
               notification.close();
         }
         ok = true;
@@ -561,7 +583,9 @@ self.addEventListener("push", (event) => {
           body:
             data.type === "job-drawing"
               ? "There is new drawing activity. Open ForemanHQ to review it."
-              : "There is new activity in a job chat. Open ForemanHQ to read it.",
+              : data.type === "conversation-chat"
+                ? "You have a new chat message. Open ForemanHQ to read it."
+                : "There is new activity in a job chat. Open ForemanHQ to read it.",
           icon: "/foremanhq/notification-icon.png",
           // Android status-bar icon (white silhouette; the platform tints it).
           badge: "/foremanhq/notification-badge.png",
@@ -570,7 +594,9 @@ self.addEventListener("push", (event) => {
           tag:
             data.type === "job-drawing"
               ? `job-drawing-${new URL(url).searchParams.get("drawingSheet")}`
-              : `job-chat-${new URL(url).pathname.split("/")[3]}`,
+              : data.type === "conversation-chat"
+                ? `conversation-chat-${new URL(url).searchParams.get("conversation")}`
+                : `job-chat-${new URL(url).pathname.split("/")[3]}`,
           // Alert again for each new message instead of silently replacing the last one.
           renotify: true,
           timestamp: Date.now(),
@@ -581,7 +607,11 @@ self.addEventListener("push", (event) => {
   );
 });
 self.addEventListener("notificationclick", (event) => {
-  if (!["job-chat", "job-drawing"].includes(event.notification.data?.type))
+  if (
+    !["job-chat", "job-drawing", "conversation-chat"].includes(
+      event.notification.data?.type,
+    )
+  )
     return;
   event.notification.close();
   event.waitUntil(

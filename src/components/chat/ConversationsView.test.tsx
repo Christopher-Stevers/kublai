@@ -73,6 +73,9 @@ vi.mock("~/trpc/react", () => ({
     },
   },
 }));
+vi.mock("~/components/jobs/ChatNotifications", () => ({
+  ChatNotifications: () => <button>Enable device notifications</button>,
+}));
 import { ConversationsView } from "./ConversationsView";
 beforeEach(() => {
   vi.clearAllMocks();
@@ -104,4 +107,11 @@ it("hides cached private messages and disables sending after access is revoked",
     screen.getByText("This conversation is unavailable."),
   ).toBeInTheDocument();
   expect(screen.getByLabelText("Message")).toBeDisabled();
+});
+
+it("offers device notification setup inside person and group chats", () => {
+  render(<ConversationsView />);
+  expect(
+    screen.getByRole("button", { name: "Enable device notifications" }),
+  ).toBeVisible();
 });
