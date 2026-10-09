@@ -10,9 +10,15 @@ import {
   primaryKey,
   index,
   uniqueIndex,
+  type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 
 import { organizations, users as legacyUsers } from "./schema";
+
+// Keep this reference lazy: schema.ts re-exports these tables. The legacy user
+// table has loose inferred types; the FK still points to its actual ID column.
+const userIdColumn = (): AnyPgColumn =>
+  (legacyUsers as unknown as { id: AnyPgColumn }).id;
 
 // Membership is checked for every read, write and file download. These private
 // conversations are separate from the existing organization-visible job rooms.
@@ -28,7 +34,7 @@ export const conversations = pgTable(
     kind: varchar({ length: 8 }).$type<"direct" | "group">().notNull(),
     name: varchar({ length: 120 }).notNull().default(""),
     directKey: varchar({ length: 64 }),
-    createdById: varchar({ length: 255 }).references(() => legacyUsers.id!, {
+    createdById: varchar({ length: 255 }).references(userIdColumn, {
       onDelete: "set null",
     }),
     createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
@@ -50,7 +56,7 @@ export const conversationMembers = pgTable(
       .references(() => conversations.id, { onDelete: "cascade" }),
     userId: varchar({ length: 255 })
       .notNull()
-      .references(() => legacyUsers.id!, { onDelete: "cascade" }),
+      .references(userIdColumn, { onDelete: "cascade" }),
     lastReadSequence: bigint({ mode: "number" }).notNull().default(0),
     joinedAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
   },
@@ -69,7 +75,7 @@ export const conversationMessages = pgTable(
     conversationId: uuid()
       .notNull()
       .references(() => conversations.id, { onDelete: "cascade" }),
-    authorId: varchar({ length: 255 }).references(() => legacyUsers.id!, {
+    authorId: varchar({ length: 255 }).references(userIdColumn, {
       onDelete: "set null",
     }),
     clientId: uuid().notNull(),
@@ -97,7 +103,7 @@ export const conversationAttachments = pgTable(
     conversationId: uuid()
       .notNull()
       .references(() => conversations.id, { onDelete: "cascade" }),
-    uploadedById: varchar({ length: 255 }).references(() => legacyUsers.id!, {
+    uploadedById: varchar({ length: 255 }).references(userIdColumn, {
       onDelete: "set null",
     }),
     messageId: uuid().references(() => conversationMessages.id, {
