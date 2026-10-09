@@ -123,7 +123,7 @@ export function DrawingCompare({
       className="flex h-full min-h-0 flex-col"
       aria-label="Compare drawings"
     >
-      <div className="bg-background flex flex-wrap items-center gap-2 border-b p-2">
+      <div data-drawing-chrome className="bg-background flex flex-wrap items-center gap-2 border-b p-2">
         <span className="text-sm font-medium">
           {first.name} / {second.name}
         </span>

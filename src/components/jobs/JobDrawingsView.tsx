@@ -16,6 +16,8 @@ import {
   DownloadIcon,
   SearchIcon,
   SlidersHorizontalIcon,
+  MaximizeIcon,
+  MinimizeIcon,
 } from "lucide-react";
 
 import { api } from "~/trpc/react";
@@ -54,6 +56,7 @@ import { DrawingWorkspace } from "./DrawingWorkspace";
 import { DrawingSheetRegister } from "./DrawingSheetRegister";
 import { useDrawingAccount } from "./DrawingAccountProvider";
 import { useDrawingSnapshot } from "./useDrawingSnapshot";
+import { useDrawingFullscreen } from "./useDrawingFullscreen";
 
 const nonempty = (value: string | undefined, fallback: string) =>
   value?.trim() ? value : fallback;
@@ -77,6 +80,7 @@ export function JobDrawingsView({ jobId }: { jobId: string }) {
   const utils = api.useUtils();
   const [setId, setSetId] = useState<string | null>(null);
   const [sheetId, setSheetId] = useState<string | null>(null);
+  const full = useDrawingFullscreen(sheetId !== null);
   const lastViewport = useRef<DrawingViewport | null>(null);
   const zoomLabel = useRef<HTMLSpanElement>(null);
   const [entryViewport, setEntryViewport] = useState<DrawingViewport | null>(null);
@@ -296,7 +300,7 @@ export function JobDrawingsView({ jobId }: { jobId: string }) {
 
   // The app bar back arrow steps out of a sheet, then out of a folder.
   useHeaderBackOverride(
-    sheetId ? () => openSheet(null) : setId ? () => setSetId(null) : null,
+    full.fullscreen ? full.exit : sheetId ? () => openSheet(null) : setId ? () => setSetId(null) : null,
   );
 
   const openNameDialog = (dialog: NameDialog) => {
@@ -377,7 +381,24 @@ export function JobDrawingsView({ jobId }: { jobId: string }) {
   // Sheet viewer: full screen under the app bar.
   if (sheet) {
     return (
-      <div className="bg-background fixed inset-x-0 top-14 bottom-0 z-30 flex flex-col sm:top-16">
+      <div
+        ref={full.surface}
+        data-drawing-fullscreen={full.fullscreen}
+        className={`bg-background fixed flex flex-col ${full.fullscreen ? "inset-0 z-[60] [&_[data-drawing-chrome]]:hidden" : "inset-x-0 top-14 bottom-0 z-30 sm:top-16"}`}
+      >
+        {full.fullscreen && (
+          <Button
+            ref={full.exitButton}
+            type="button"
+            variant="outline"
+            aria-label="Exit full screen"
+            title="Exit full screen (Esc)"
+            className="absolute top-[calc(0.75rem+env(safe-area-inset-top))] right-[calc(0.75rem+env(safe-area-inset-right))] z-50 size-11 rounded-xl shadow-md"
+            onClick={full.exit}
+          >
+            <MinimizeIcon className="size-5" aria-hidden="true" />
+          </Button>
+        )}
         <div className="relative min-h-0 flex-1">
           <DrawingWorkspace
             key={sheet.id}
@@ -398,7 +419,7 @@ export function JobDrawingsView({ jobId }: { jobId: string }) {
         </div>
         {/* Second row of the drawing's bottom bar (the workspace draws the
             first: More, Tools, Markup, Measure). */}
-        <div className="bg-card shrink-0 px-4 pt-1 pb-[calc(0.5rem+env(safe-area-inset-bottom))]">
+        <div data-drawing-chrome className="bg-card shrink-0 px-4 pt-1 pb-[calc(0.5rem+env(safe-area-inset-bottom))]">
           <div className="mx-auto grid max-w-6xl grid-cols-[minmax(0,1fr)_minmax(0,1.25fr)_minmax(0,1fr)] items-center gap-2">
             <Button
               variant="outline"
@@ -436,9 +457,22 @@ export function JobDrawingsView({ jobId }: { jobId: string }) {
                   {Math.round((entryViewport?.zoom ?? 1) * 100)}%
                 </span>
               </div>
-              <span className="text-muted-foreground text-xs tabular-nums">
-                {sheetIndex + 1} of {sheets.length}
-              </span>
+              <div className="flex items-center justify-center gap-1.5">
+                <span className="text-muted-foreground text-xs tabular-nums">
+                  {sheetIndex + 1} of {sheets.length}
+                </span>
+                <Button
+                  ref={full.enterButton}
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label="Full screen"
+                  title="Full screen"
+                  onClick={full.enter}
+                >
+                  <MaximizeIcon className="size-4" aria-hidden="true" />
+                </Button>
+              </div>
             </div>
             <Button
               variant="outline"

@@ -4,6 +4,7 @@ import {
   fireEvent,
   render,
   screen,
+  waitFor,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { runHeaderBackOverride } from "~/lib/header-back-events";
@@ -153,9 +154,137 @@ beforeEach(() => {
   state.calls = [];
   state.upload.mockReset().mockResolvedValue([]);
 });
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+});
 
 describe("Drawings", () => {
+  const openDrawing = () => {
+    const view = render(<JobDrawingsView jobId="job" />);
+    fireEvent.click(screen.getByRole("button", { name: "Open Mechanical" }));
+    fireEvent.click(screen.getByRole("button", { name: "Open M-101" }));
+    return view;
+  };
+
+  const nativeFullscreen = () => {
+    let element: Element | null = null;
+    const elementDescriptor = Object.getOwnPropertyDescriptor(document, "fullscreenElement");
+    Object.defineProperty(document, "fullscreenElement", { configurable: true, get: () => element });
+    const request = vi.fn(async function(this: HTMLElement) {
+      element = this;
+      fireEvent(document, new Event("fullscreenchange"));
+    });
+    const exit = vi.fn(async () => {
+      element = null;
+      fireEvent(document, new Event("fullscreenchange"));
+    });
+    const requestDescriptor = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "requestFullscreen");
+    const exitDescriptor = Object.getOwnPropertyDescriptor(document, "exitFullscreen");
+    Object.defineProperty(HTMLElement.prototype, "requestFullscreen", { configurable: true, value: request });
+    Object.defineProperty(document, "exitFullscreen", { configurable: true, value: exit });
+    return {
+      request, exit,
+      browserExit: () => { element = null; fireEvent(document, new Event("fullscreenchange")); },
+      restore: () => {
+        cleanup();
+        for (const [object, name, descriptor] of [[document, "fullscreenElement", elementDescriptor], [HTMLElement.prototype, "requestFullscreen", requestDescriptor], [document, "exitFullscreen", exitDescriptor]] as const) {
+          if (descriptor) Object.defineProperty(object, name, descriptor);
+          else Reflect.deleteProperty(object, name);
+        }
+      },
+    };
+  };
+
+  it("expands the existing drawing with an exit button, preserves its zoom, and exits on back before closing the sheet", () => {
+    openDrawing();
+    fireEvent.click(screen.getByRole("button", { name: "Zoom and pan sample" }));
+    const workspace = screen.getByText("Viewing M-101");
+    const enter = screen.getByRole("button", { name: "Full screen" });
+    fireEvent.click(enter);
+    const surface = workspace.closest('[data-drawing-fullscreen]')!;
+    expect(surface).toHaveAttribute("data-drawing-fullscreen", "true");
+    expect(surface).toHaveClass("inset-0", "[&_[data-drawing-chrome]]:hidden");
+    expect(screen.getByRole("button", { name: "Exit full screen" })).toHaveFocus();
+    expect(screen.getByText("Viewing M-101")).toBe(workspace);
+    act(() => void runHeaderBackOverride());
+    expect(surface).toHaveAttribute("data-drawing-fullscreen", "false");
+    expect(screen.getByLabelText("Drawing zoom")).toHaveTextContent("300%");
+    expect(enter).toHaveFocus();
+    expect(screen.getByText("Viewing M-101")).toBe(workspace);
+    act(() => void runHeaderBackOverride());
+    expect(screen.getByRole("button", { name: "Open M-101" })).toBeInTheDocument();
+  });
+
+  it("exits expanded viewing with Escape or its exit button without navigating away", () => {
+    openDrawing();
+    fireEvent.click(screen.getByRole("button", { name: "Full screen" }));
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(screen.queryByRole("button", { name: "Exit full screen" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Full screen" }));
+    fireEvent.click(screen.getByRole("button", { name: "Exit full screen" }));
+    expect(screen.getByText("Viewing M-101")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Exit full screen" })).toBeNull();
+  });
+
+  it("requests native fullscreen and synchronizes browser-initiated exit", async () => {
+    const native = nativeFullscreen();
+    try {
+      openDrawing();
+      await act(async () => fireEvent.click(screen.getByRole("button", { name: "Full screen" })));
+      expect(native.request).toHaveBeenCalledWith({ navigationUI: "hide" });
+      expect(document.fullscreenElement).toHaveAttribute("data-drawing-fullscreen", "true");
+      act(native.browserExit);
+      expect(screen.queryByRole("button", { name: "Exit full screen" })).toBeNull();
+      expect(screen.getByRole("button", { name: "Full screen" })).toHaveFocus();
+      await act(async () => fireEvent.click(screen.getByRole("button", { name: "Full screen" })));
+      await act(async () => fireEvent.click(screen.getByRole("button", { name: "Exit full screen" })));
+      expect(native.exit).toHaveBeenCalledOnce();
+      expect(document.fullscreenElement).toBeNull();
+    } finally { native.restore(); }
+  });
+
+  it("retains expanded viewing when native fullscreen is rejected", async () => {
+    const native = nativeFullscreen();
+    native.request.mockRejectedValueOnce(new Error("Fullscreen unavailable"));
+    try {
+      openDrawing();
+      await act(async () => fireEvent.click(screen.getByRole("button", { name: "Full screen" })));
+      expect(screen.getByRole("button", { name: "Exit full screen" })).toBeInTheDocument();
+      expect(document.fullscreenElement).toBeNull();
+      fireEvent.keyDown(window, { key: "Escape" });
+      expect(screen.queryByRole("button", { name: "Exit full screen" })).toBeNull();
+    } finally { native.restore(); }
+  });
+
+  it("does not reopen fullscreen after a pending request is granted following Exit", async () => {
+    const native = nativeFullscreen();
+    const grant = native.request.getMockImplementation()!;
+    let finish!: () => Promise<void>;
+    native.request.mockImplementationOnce(function(this: HTMLElement) {
+      const target = this;
+      return new Promise<void>((resolve) => { finish = async () => { await grant.call(target); resolve(); }; });
+    });
+    try {
+      openDrawing();
+      fireEvent.click(screen.getByRole("button", { name: "Full screen" }));
+      fireEvent.click(screen.getByRole("button", { name: "Exit full screen" }));
+      await act(finish);
+      await waitFor(() => expect(document.fullscreenElement).toBeNull());
+      expect(screen.queryByRole("button", { name: "Exit full screen" })).toBeNull();
+    } finally { native.restore(); }
+  });
+
+  it("exits native fullscreen when the drawing page unmounts", async () => {
+    const native = nativeFullscreen();
+    try {
+      const view = openDrawing();
+      await act(async () => fireEvent.click(screen.getByRole("button", { name: "Full screen" })));
+      view.unmount();
+      expect(native.exit).toHaveBeenCalled();
+      expect(document.fullscreenElement).toBeNull();
+    } finally { native.restore(); }
+  });
   it("carries the current view through Next and Previous, including rapid navigation, and clears it when opening from the folder", () => {
     state.sheets.push({ ...state.sheets[1]!, id: "s3", name: "M-103" });
     render(<JobDrawingsView jobId="job" />);

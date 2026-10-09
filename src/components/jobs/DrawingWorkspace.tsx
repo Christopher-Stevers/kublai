@@ -873,6 +873,7 @@ export function DrawingWorkspace({
           <div
             role="toolbar"
             aria-label="Selected markup actions"
+            data-drawing-chrome
             className="bg-background flex shrink-0 flex-wrap items-center gap-2 border-b px-2 py-2"
           >
             <span className="max-w-32 truncate text-sm font-medium">
@@ -1182,6 +1183,7 @@ export function DrawingWorkspace({
         </div>
         {panel && (
           <aside
+            data-drawing-chrome
             aria-label="Drawing tools panel"
             className="bg-background absolute inset-y-0 right-0 z-30 flex w-[min(22rem,calc(100%-1rem))] flex-col border-l shadow-xl lg:static lg:w-80 lg:shrink-0"
           >
@@ -2095,7 +2097,7 @@ export function DrawingWorkspace({
       </span>
       {/* Bottom bar: More, Tools, Markup, Measure (Previous / Next sit
           below it in the Drawings screen). */}
-      <div className="bg-card relative shrink-0 border-t px-4 pt-2 pb-1">
+      <div data-drawing-chrome className="bg-card relative shrink-0 border-t px-4 pt-2 pb-1">
         {markupOpen && (
           <>
             <button

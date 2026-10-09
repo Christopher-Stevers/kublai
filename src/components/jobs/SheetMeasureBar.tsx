@@ -111,6 +111,7 @@ export function SheetMeasureBar({
   );
   return (
     <section
+      data-drawing-chrome
       aria-label="Drawing tool options"
       className="bg-card max-h-[45dvh] shrink-0 overflow-y-auto overscroll-contain border-t px-3 py-2"
       onPointerDown={stop}
