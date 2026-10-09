@@ -201,9 +201,9 @@ export function DrawingWorkspace({
     { sheetId: sheet.id },
     { refetchInterval: online ? 15_000 : false, retry: 1 },
   );
-  const boundUser = account?.accountKey.slice(
-    account.accountKey.indexOf(":") + 1,
-  );
+  // Cache keys also include the simulation session; identity comes from the
+  // server-validated account, never from parsing a storage namespace.
+  const boundUser = account?.userId;
   const serverData =
     query.data && (!boundUser || query.data.actor.id === boundUser)
       ? query.data
@@ -480,6 +480,7 @@ export function DrawingWorkspace({
   };
   const queued = useDrawingQueuedEdits({
     accountKey: account?.store ? account.accountKey : null,
+    userId: account?.userId ?? null,
     jobId,
     sheetId: sheet.id,
     online,
@@ -955,6 +956,13 @@ export function DrawingWorkspace({
           : undefined),
     })) ?? [];
 
+  if (query.data && boundUser && query.data.actor.id !== boundUser)
+    return (
+      <div className="grid h-full place-content-center gap-3 p-6 text-center">
+        <p role="alert">Your drawing account changed. Reload to continue.</p>
+        <Button onClick={() => window.location.reload()}>Reload session</Button>
+      </div>
+    );
   if (!data && !online)
     return (
       <div className="flex h-full min-h-0 flex-col">

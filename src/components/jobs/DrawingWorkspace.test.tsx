@@ -20,6 +20,7 @@ import type { DrawingCompare } from "./DrawingCompare";
 import { makeSnapshotSource } from "~/lib/snapshot-source";
 
 const mocks = vi.hoisted(() => ({
+  account: null as { userId: string; accountKey: string; store: null } | null,
   data: null as Workspace | null,
   save: vi.fn<(value: DrawingSave) => Promise<DrawingEntity>>(),
   metadata: vi.fn(),
@@ -85,7 +86,9 @@ vi.mock("~/trpc/react", () => ({
 vi.mock("./ChatNotifications", () => ({
   ChatNotifications: () => <button>Enable device notifications</button>,
 }));
-vi.mock("./DrawingAccountProvider", () => ({ useDrawingAccount: () => null }));
+vi.mock("./DrawingAccountProvider", () => ({
+  useDrawingAccount: () => mocks.account,
+}));
 vi.mock("./DrawingDocumentActions", () => ({
   DrawingDocumentActions: () => <div>Document actions</div>,
 }));
@@ -356,6 +359,7 @@ const chooseTool = (id: string) => {
 };
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.account = null;
   mocks.data = fixture();
   vi.spyOn(navigator, "onLine", "get").mockReturnValue(true);
   mocks.save.mockImplementation(
@@ -389,6 +393,29 @@ afterEach(() => {
 });
 
 describe("drawing workspace workflows", () => {
+  it("opens the employee's drawing tools with a simulation-scoped cache", () => {
+    mocks.account = {
+      userId: "tim",
+      accountKey: "org:tim:simulation:session-id",
+      store: null,
+    };
+    open();
+    expect(screen.getByTestId("markup-editor")).toBeVisible();
+    expect(screen.queryByText("Loading drawing tools…")).not.toBeInTheDocument();
+  });
+  it("explains an account mismatch instead of waiting indefinitely", () => {
+    mocks.account = {
+      userId: "another-employee",
+      accountKey: "org:another-employee:simulation:session-id",
+      store: null,
+    };
+    open();
+    expect(screen.queryByTestId("markup-editor")).not.toBeInTheDocument();
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Your drawing account changed. Reload to continue.",
+    );
+    expect(screen.getByRole("button", { name: "Reload session" })).toBeVisible();
+  });
   it("pins a snapshot to its captured revision when the current drawing changes", () => {
     mocks.data!.metadata.currentSourceSheetId = revisionId;
     const saved = makeSnapshotSource(

@@ -25,7 +25,8 @@ vi.mock("~/hooks/use-online-status", () => ({
 }));
 vi.mock("./DrawingAccountProvider", () => ({
   useDrawingAccount: () => ({
-    accountKey: "org:current-user",
+    userId: "current-user",
+    accountKey: "org:current-user:simulation:session-id",
     store: { readSnapshot: async () => null },
   }),
 }));

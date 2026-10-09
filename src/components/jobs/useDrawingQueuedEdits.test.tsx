@@ -51,11 +51,13 @@ beforeEach(() => {
 afterEach(cleanup);
 describe("drawing edit queue screen integration", () => {
   it("keeps a private offline drawing across remount and acknowledges it after reconnect", async () => {
+    binding.active += ":simulation:session-id";
     const save = vi.fn(async (input: DrawingSave) => saved(input)),
       onSaved = vi.fn(),
       onError = vi.fn();
     const options = {
       accountKey: binding.active,
+      userId: "worker",
       jobId,
       sheetId,
       save,
@@ -101,6 +103,7 @@ describe("drawing edit queue screen integration", () => {
     const result = renderHook(() =>
       useDrawingQueuedEdits({
         accountKey: binding.active,
+        userId: "worker",
         jobId,
         sheetId,
         online: true,

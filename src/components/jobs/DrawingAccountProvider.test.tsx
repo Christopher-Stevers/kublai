@@ -38,12 +38,52 @@ function PrivateView() {
   const account = useDrawingAccount();
   const [draft, setDraft] = useState(0);
   return (
-    <button onClick={() => setDraft((value) => value + 1)}>
+    <button
+      data-user-id={account?.userId}
+      onClick={() => setDraft((value) => value + 1)}
+    >
       Private {account?.accountKey} draft {draft}
     </button>
   );
 }
 describe("drawing account boundary", () => {
+  it("keeps the employee identity separate from each simulation's private cache", async () => {
+    const client = new QueryClient();
+    const view = (simulationId?: string) => (
+      <QueryClientProvider client={client}>
+        <DrawingAccountProvider
+          userId="alice"
+          organizationId="org"
+          simulationId={simulationId}
+        >
+          <PrivateView />
+        </DrawingAccountProvider>
+      </QueryClientProvider>
+    );
+    const mounted = render(view("session-one"));
+    const first = await screen.findByRole("button", {
+      name: "Private org:alice:simulation:session-one draft 0",
+    });
+    expect(first).toHaveAttribute("data-user-id", "alice");
+    fireEvent.click(first);
+    mounted.rerender(view("session-two"));
+    expect(
+      await screen.findByRole("button", {
+        name: "Private org:alice:simulation:session-two draft 0",
+      }),
+    ).toHaveAttribute("data-user-id", "alice");
+    mounted.rerender(view());
+    expect(
+      await screen.findByRole("button", { name: "Private org:alice draft 0" }),
+    ).toHaveAttribute("data-user-id", "alice");
+    expect(
+      vi.mocked(setDrawingOfflineAccount).mock.calls.map(([key]) => key),
+    ).toEqual([
+      "org:alice:simulation:session-one",
+      "org:alice:simulation:session-two",
+      "org:alice",
+    ]);
+  });
   it("unmounts private views, clears PDF/text/query data, and locks after another tab changes account", async () => {
     const client = new QueryClient();
     render(

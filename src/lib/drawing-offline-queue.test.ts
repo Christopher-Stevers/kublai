@@ -53,11 +53,32 @@ beforeEach(async () => {
   Queue = (await import("./drawing-offline-queue")).DrawingOfflineQueue;
 });
 describe("durable account-bound drawing edit queue", () => {
+  it("saves simulation edits as the employee and isolates separate sessions", async () => {
+    binding.active = "org:worker:simulation:session-one";
+    const queue = new Queue(binding.active, "worker");
+    const input = draft();
+    const record = await queue.enqueue({ jobId, input, authorName: "Worker" });
+    expect(record).toMatchObject({
+      accountKey: binding.active,
+      input: { expectedUserId: "worker" },
+      preview: { authorId: "worker" },
+    });
+    const send = vi.fn(async (value: DrawingSave) => saved(value));
+    await queue.flush({ save: send });
+    expect(send.mock.calls[0]?.[0].expectedUserId).toBe("worker");
+    expect(await queue.list()).toEqual([]);
+    await queue.enqueue({ jobId, input: draft() });
+    binding.active = "org:worker:simulation:session-two";
+    const next = new Queue(binding.active, "worker");
+    expect(await next.list()).toEqual([]);
+    await expect(queue.flush({ save: send })).rejects.toThrow(/account changed/);
+    expect(send).toHaveBeenCalledOnce();
+  });
   it("persists before returning and survives another queue instance", async () => {
-    const queue = new Queue("org:worker"),
+    const queue = new Queue("org:worker", "worker"),
       input = draft();
     const record = await queue.enqueue({ jobId, input, authorName: "Worker" });
-    const reloaded = new Queue("org:worker");
+    const reloaded = new Queue("org:worker", "worker");
     const rows = await reloaded.list({ jobId, sheetId });
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({
@@ -69,7 +90,7 @@ describe("durable account-bound drawing edit queue", () => {
     expect(await reloaded.list({ sheetId: jobId })).toEqual([]);
   });
   it("coalesces unsent changes without losing the original server CAS revision", async () => {
-    const queue = new Queue("org:worker"),
+    const queue = new Queue("org:worker", "worker"),
       input = draft({ expectedRevision: 2 });
     const base = saved({ ...input, expectedRevision: 1 });
     const first = await queue.enqueue({ jobId, input, baseEntity: base });
@@ -84,7 +105,7 @@ describe("durable account-bound drawing edit queue", () => {
     expect(second.input.data).toHaveProperty("text", "newer");
   });
   it("requires own current private base to edit an existing item and forbids publishing/reviews", async () => {
-    const queue = new Queue("org:worker"),
+    const queue = new Queue("org:worker", "worker"),
       input = draft({ expectedRevision: 1 });
     await expect(queue.enqueue({ jobId, input })).rejects.toThrow(
       /Download your current/,
@@ -104,8 +125,8 @@ describe("durable account-bound drawing edit queue", () => {
     ).rejects.toThrow(/private markup/);
   });
   it("leases pending entries across tabs and deletes only after matching server acknowledgement", async () => {
-    const queue = new Queue("org:worker"),
-      other = new Queue("org:worker");
+    const queue = new Queue("org:worker", "worker"),
+      other = new Queue("org:worker", "worker");
     const input = draft();
     await queue.enqueue({ jobId, input });
     let release: (() => void) | undefined;
@@ -130,7 +151,7 @@ describe("durable account-bound drawing edit queue", () => {
     expect(send.mock.calls[0]?.[0].expectedUserId).toBe("worker");
   });
   it("retains CAS conflicts and denies silent rebase/retry", async () => {
-    const queue = new Queue("org:worker");
+    const queue = new Queue("org:worker", "worker");
     await queue.enqueue({ jobId, input: draft() });
     const send = vi.fn().mockRejectedValue({
       data: { code: "CONFLICT" },
@@ -152,7 +173,7 @@ describe("durable account-bound drawing edit queue", () => {
     expect(await queue.list()).toEqual([]);
   });
   it("keeps forbidden or deleted-resource edits blocked for explicit user handling", async () => {
-    const queue = new Queue("org:worker");
+    const queue = new Queue("org:worker", "worker");
     await queue.enqueue({ jobId, input: draft() });
     await queue.flush({
       save: vi.fn().mockRejectedValue({
@@ -166,7 +187,7 @@ describe("durable account-bound drawing edit queue", () => {
     expect((await queue.list())[0]?.state).toBe("pending");
   });
   it("retains network failures with backoff and does not drop later edits", async () => {
-    const queue = new Queue("org:worker");
+    const queue = new Queue("org:worker", "worker");
     await queue.enqueue({ jobId, input: draft() });
     await queue.enqueue({ jobId, input: draft() });
     const send = vi.fn().mockRejectedValue(new Error("Offline"));
@@ -179,7 +200,7 @@ describe("durable account-bound drawing edit queue", () => {
     expect(send).toHaveBeenCalledOnce();
   });
   it("rejects old account access and never submits old drafts after switching accounts", async () => {
-    const queue = new Queue("org:worker");
+    const queue = new Queue("org:worker", "worker");
     await queue.enqueue({ jobId, input: draft() });
     binding.active = "org:other";
     const send = vi.fn();
@@ -188,14 +209,14 @@ describe("durable account-bound drawing edit queue", () => {
     );
     expect(send).not.toHaveBeenCalled();
     await expect(queue.list()).rejects.toThrow(/account changed/);
-    const other = new Queue("org:other");
+    const other = new Queue("org:other", "other");
     expect(await other.list()).toEqual([]);
     binding.active = "org:worker";
-    const old = new Queue("org:worker");
+    const old = new Queue("org:worker", "worker");
     expect(await old.list()).toEqual([]);
   });
   it("does not resurrect an in-flight record after logout clears account storage", async () => {
-    const queue = new Queue("org:worker");
+    const queue = new Queue("org:worker", "worker");
     await queue.enqueue({ jobId, input: draft() });
     let release: (() => void) | undefined;
     const barrier = new Promise<void>((resolve) => {
@@ -216,11 +237,11 @@ describe("durable account-bound drawing edit queue", () => {
     release!();
     await expect(flushing).rejects.toThrow(/account changed/);
     binding.active = "org:other";
-    expect(await new Queue("org:other").list()).toEqual([]);
+    expect(await new Queue("org:other", "other").list()).toEqual([]);
   });
   it("bounds pending records atomically even with concurrent queues", async () => {
-    const queue = new Queue("org:worker"),
-      other = new Queue("org:worker");
+    const queue = new Queue("org:worker", "worker"),
+      other = new Queue("org:worker", "worker");
     await Promise.all(
       Array.from({ length: 199 }, () =>
         queue.enqueue({ jobId, input: draft() }),

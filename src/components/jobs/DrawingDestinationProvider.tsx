@@ -185,6 +185,7 @@ function DestinationPicker({
   };
   const queued = useDrawingQueuedEdits({
     accountKey: account?.store ? account.accountKey : null,
+    userId: account?.userId ?? null,
     jobId: request.jobId,
     sheetId: request.draft.sheetId,
     online,
@@ -259,9 +260,7 @@ function DestinationPicker({
           throw Error("This destination is already in the hyperlink.");
         const parsed = drawingSaveSchema.parse({
           ...request.draft,
-          expectedUserId: account.accountKey.slice(
-            account.accountKey.indexOf(":") + 1,
-          ),
+          expectedUserId: account.userId,
           data: {
             ...request.draft.data,
             href: undefined,

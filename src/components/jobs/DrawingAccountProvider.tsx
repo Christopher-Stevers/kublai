@@ -8,7 +8,11 @@ import {
 import { clearPdfDocuments } from "~/lib/pdf-client";
 import { clearDrawingTextIndexes } from "~/lib/drawing-text";
 
-type DrawingAccount = { accountKey: string; store: DrawingOfflineStore | null };
+type DrawingAccount = {
+  userId: string;
+  accountKey: string;
+  store: DrawingOfflineStore | null;
+};
 const Context = createContext<DrawingAccount | null>(null);
 function clearPrivateMemory() {
   clearPdfDocuments();
@@ -62,11 +66,11 @@ export function DrawingAccountProvider({
       .then(() => {
         if (disposed) return;
         store = new DrawingOfflineStore(accountKey);
-        setValue({ accountKey, store });
+        setValue({ userId, accountKey, store });
       })
       .catch(() => {
         // Disabled/quota-limited storage must not prevent authenticated online use.
-        if (!disposed) setValue({ accountKey, store: null });
+        if (!disposed) setValue({ userId, accountKey, store: null });
       });
     return () => {
       disposed = true;
@@ -78,7 +82,7 @@ export function DrawingAccountProvider({
         invalidate,
       );
     };
-  }, [accountKey, queryClient]);
+  }, [accountKey, userId, queryClient]);
   if (locked)
     return (
       <main className="mx-auto max-w-lg space-y-3 p-6" role="alert">

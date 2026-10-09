@@ -118,15 +118,15 @@ function errorDetails(error: unknown) {
 }
 /** Durable private field edits. No whole-workspace replacement, offline publishing or silent CAS rebasing. */
 export class DrawingOfflineQueue {
-  readonly userId: string;
   private disposed = false;
   private flushing = false;
   private ready: Promise<void>;
-  constructor(readonly accountKey: string) {
-    const separator = accountKey.indexOf(":");
-    if (separator < 1 || !accountKey.slice(separator + 1))
+  constructor(
+    readonly accountKey: string,
+    readonly userId: string,
+  ) {
+    if (!accountKey || !userId)
       throw new Error("A verified drawing account is required.");
-    this.userId = accountKey.slice(separator + 1);
     this.assertActive();
     listen();
     this.ready = purgeOtherAccounts(accountKey);

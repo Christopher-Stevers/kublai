@@ -16,6 +16,7 @@ import type { DrawingEntity, DrawingSave } from "~/lib/drawing-workspace";
 /** Owns an account-bound durable queue. Screen changes never discard unsynced work. */
 export function useDrawingQueuedEdits(options: {
   accountKey: string | null;
+  userId: string | null;
   jobId: string;
   sheetId: string;
   online: boolean;
@@ -63,10 +64,10 @@ export function useDrawingQueuedEdits(options: {
     }
   }, [options.jobId, options.sheetId, reload]);
   useEffect(() => {
-    if (!options.accountKey) return;
+    if (!options.accountKey || !options.userId) return;
     let active: DrawingOfflineQueue;
     try {
-      active = new DrawingOfflineQueue(options.accountKey);
+      active = new DrawingOfflineQueue(options.accountKey, options.userId);
     } catch (error) {
       callbacks.current.onError(error);
       return;
@@ -84,7 +85,7 @@ export function useDrawingQueuedEdits(options: {
       if (queue.current === active) queue.current = null;
       active.dispose();
     };
-  }, [options.accountKey, reload, sync]);
+  }, [options.accountKey, options.userId, reload, sync]);
   useEffect(() => {
     if (!options.online) return;
     void sync();
