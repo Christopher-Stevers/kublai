@@ -1607,6 +1607,7 @@ export function DrawingSheetViewer({
             hidden={editorProps.hideAnnotations}
             sharedScale={sheetScale}
             onSelect={pipeMode ? undefined : editorProps.onSelect}
+            onActivate={!measuring && !pipeMode && annotationTool === "pan" ? editorProps.onActivate : undefined}
             screenPixelSize={1000 / (fit.width * view.scale)}
             sheetPixelSize={1000 / fit.width}
             showResizeHandles={

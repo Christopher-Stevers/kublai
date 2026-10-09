@@ -1,3 +1,5 @@
+import { drawingLinkTargets } from "~/server/drawings/link-targets";
+import { drawingLinkTargetKinds } from "~/lib/drawing-links";
 import { z } from "zod";
 import {
   drawingMetadataSchema,
@@ -27,6 +29,16 @@ const item = z.object({
   expectedRevision: revision,
 });
 export const drawingsWorkspaceRouter = createTRPCRouter({
+  linkTargets: hasDashboardAccess
+    .input(
+      z.object({
+        sheetId,
+        kind: z.enum(drawingLinkTargetKinds),
+        jobId: z.string().uuid().optional(),
+        query: z.string().trim().max(100).default(""),
+      }),
+    )
+    .query(({ ctx, input }) => drawingLinkTargets(ctx, input)),
   watch: hasDashboardAccess
     .input(z.object({ sheetId, watching: z.boolean() }))
     .mutation(({ ctx, input }) => watchDrawing(ctx, input)),

@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { DrawingEntity } from "~/lib/drawing-workspace";
+import type { DrawingEntity, DrawingMarkup } from "~/lib/drawing-workspace";
+import { drawingMarkupLinks } from "~/lib/drawing-links";
+import { isAppLink } from "~/lib/app-links";
 import type { SheetScale } from "~/lib/sheet-measure";
 import { sourcePdfPage } from "~/lib/pdf-client";
 import {
@@ -16,9 +18,11 @@ type Sheet = {
   name: string;
   imageUrl: string;
   sourceFilename?: string | null;
+  setId?: string;
 };
 export type DrawingDocumentActionsProps = {
   sheet: Sheet;
+  jobId?: string;
   /** Immutable version id if different from the workspace's logical sheet id. */
   sourceSheetId?: string;
   sheets?: Sheet[];
@@ -36,6 +40,7 @@ const megabytes = (bytes: number) => `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 
 export function DrawingDocumentActions({
   sheet,
+  jobId,
   sourceSheetId = sheet.id,
   sheets = [sheet],
   entities = [],
@@ -135,6 +140,25 @@ export function DrawingDocumentActions({
       }
     }
   };
+  const markupLinkUrl = (markup: DrawingMarkup) => {
+    const links = drawingMarkupLinks(markup);
+    if (links.length === 1 && links[0]?.url && isAppLink(links[0].url))
+      return new URL(links[0].url, location.origin).href;
+    if (!jobId) return null;
+    const entity = entities.find(
+      (item) => item.kind === "markup" && item.data === markup,
+    );
+    const targetId =
+      links.length === 1 ? links[0]?.targetSheetId : entity?.sheetId;
+    const target = sheets.find((item) => item.id === targetId);
+    if (!target?.setId) return null;
+    const url = new URL(`/dashboard/jobs/${jobId}/drawings`, location.origin);
+    url.searchParams.set("drawingSet", target.setId);
+    url.searchParams.set("drawingSheet", target.id);
+    if (links.length > 1 && entity)
+      url.searchParams.set("drawingLink", entity.id);
+    return url.href;
+  };
   const options = (signal: AbortSignal) => ({
     pdfUrl: pdf!.url,
     pageNumber: pdf!.page,
@@ -143,6 +167,7 @@ export function DrawingDocumentActions({
     signal,
     resolveSource: resolveAssetUrl,
     sharedScale: scale,
+    markupLinkUrl,
     markups: annotations
       ? entities.flatMap((item) =>
           item.kind === "markup" && item.visibility !== "archived"
@@ -164,6 +189,7 @@ export function DrawingDocumentActions({
         pageNumber: source.page,
         sourceSheetId: item.id,
         title: item.name,
+        markupLinkUrl,
         markups: annotations
           ? entities.flatMap((entity) =>
               entity.kind === "markup" && entity.visibility !== "archived"

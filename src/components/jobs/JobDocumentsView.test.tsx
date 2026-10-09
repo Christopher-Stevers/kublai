@@ -163,6 +163,7 @@ beforeEach(() => {
   );
 });
 afterEach(async () => {
+  window.history.replaceState(null, "", "/");
   cleanup();
   // Radix restores focus on the next task; finish before jsdom is disposed.
   await new Promise<void>((resolve) => setTimeout(resolve, 0));
@@ -170,6 +171,30 @@ afterEach(async () => {
 });
 
 describe("job documents workspace", () => {
+  it("opens an accessible document from a drawing link in its own folder", async () => {
+    window.history.replaceState(null, "", "/?document=doc-2");
+    render(<JobDocumentsView jobId="job-1" />);
+    expect(
+      await screen.findByRole("dialog", { name: "Agreement.docx" }),
+    ).toBeInTheDocument();
+    fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+    );
+    expect(
+      screen.getByRole("button", { name: "Open Agreement.docx" }),
+    ).toBeInTheDocument();
+  });
+  it("does not expose a missing or inaccessible document from a drawing link", async () => {
+    window.history.replaceState(null, "", "/?document=hidden");
+    render(<JobDocumentsView jobId="job-1" />);
+    expect(
+      await screen.findByText(
+        "This document is unavailable or you do not have access to it.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
   it("navigates folders and searches names, descriptions, and tags across the job", async () => {
     render(<JobDocumentsView jobId="job-1" />);
     await ready();

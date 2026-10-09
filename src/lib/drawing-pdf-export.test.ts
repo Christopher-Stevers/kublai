@@ -60,18 +60,114 @@ async function mockSource(rotation = 0) {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("vector drawing export", () => {
-  it("exports saved branches as independent edges rather than a connecting polyline", async () => {
+  it("exports a highlight without covering the equipment label and retains its chooser address", async () => {
     await mockSource();
-    const result = await PDFDocument.load(await buildDrawingPdf({
-      pdfUrl: "/source.pdf", pageNumber: 1,
-      markups: [{ ...markup, type: "dimension", unit: "ft", scale: 100,
-        points: [{ x: .2, y: .5 }, { x: .8, y: .5 }, { x: .5, y: .5 }, { x: .5, y: .2 }],
-        parents: [null, 2, 0, 2],
-      }],
-    }));
+    const link: DrawingMarkup = {
+      ...markup,
+      type: "link",
+      text: "AHU-1",
+      stroke: "#facc15",
+      linkAppearance: "highlight",
+      links: [
+        { label: "Manual", url: "https://example.com/manual" },
+        { label: "Chat", url: "/dashboard/jobs/abc/chat" },
+      ],
+    };
+    const chooser =
+      "https://app.test/dashboard/jobs/abc/drawings?drawingSet=folder&drawingSheet=sheet&drawingLink=link";
+    const resolver = vi.fn(() => chooser);
+    const result = await PDFDocument.load(
+      await buildDrawingPdf({
+        pdfUrl: "/source.pdf",
+        pageNumber: 1,
+        markups: [link],
+        markupLinkUrl: resolver,
+      }),
+    );
+    expect(resolver).toHaveBeenCalledWith(link);
+    const annot = result.getPage(0).node.Annots()!.lookup(0, PDFDict);
+    expect(
+      annot
+        .lookup(PDFName.of("A"), PDFDict)
+        .lookup(PDFName.of("URI"), PDFString)
+        .decodeText(),
+    ).toBe(chooser);
     const contents = result.getPage(0).node.Contents() as PDFArray;
     const operators = Array.from({ length: contents.size() }, (_, index) =>
-      new TextDecoder().decode(decodePDFRawStream(contents.lookup(index, PDFRawStream)).decode()),
+      new TextDecoder().decode(
+        decodePDFRawStream(contents.lookup(index, PDFRawStream)).decode(),
+      ),
+    ).join("\n");
+    expect(operators).not.toContain("Tj");
+    expect(operators).not.toMatch(/\nS\n/);
+    expect(operators).toMatch(/\nf\n/);
+    const gs = result
+      .getPage(0)
+      .node.Resources()!
+      .lookup(PDFName.of("ExtGState"), PDFDict);
+    expect(
+      gs
+        .values()
+        .some(
+          (value) =>
+            result.context
+              .lookup(value, PDFDict)
+              .get(PDFName.of("ca"))
+              ?.toString() === "0.35",
+        ),
+    ).toBe(true);
+  });
+  it("exports a single new URL destination directly", async () => {
+    await mockSource();
+    const result = await PDFDocument.load(
+      await buildDrawingPdf({
+        pdfUrl: "/source.pdf",
+        pageNumber: 1,
+        markups: [
+          {
+            ...markup,
+            type: "link",
+            links: [{ label: "Manual", url: "https://example.com/manual" }],
+          },
+        ],
+      }),
+    );
+    const annot = result.getPage(0).node.Annots()!.lookup(0, PDFDict);
+    expect(
+      annot
+        .lookup(PDFName.of("A"), PDFDict)
+        .lookup(PDFName.of("URI"), PDFString)
+        .decodeText(),
+    ).toBe("https://example.com/manual");
+  });
+  it("exports saved branches as independent edges rather than a connecting polyline", async () => {
+    await mockSource();
+    const result = await PDFDocument.load(
+      await buildDrawingPdf({
+        pdfUrl: "/source.pdf",
+        pageNumber: 1,
+        markups: [
+          {
+            ...markup,
+            type: "dimension",
+            unit: "ft",
+            scale: 100,
+            points: [
+              { x: 0.2, y: 0.5 },
+              { x: 0.8, y: 0.5 },
+              { x: 0.5, y: 0.5 },
+              { x: 0.5, y: 0.2 },
+            ],
+            parents: [null, 2, 0, 2],
+          },
+        ],
+      }),
+    );
+    const contents = result.getPage(0).node.Contents() as PDFArray;
+    const operators = Array.from({ length: contents.size() }, (_, index) =>
+      new TextDecoder().decode(
+        decodePDFRawStream(contents.lookup(index, PDFRawStream)).decode(),
+      ),
     ).join("\n");
     expect(operators).toContain("500 300 m\n800 300 l");
     expect(operators).toContain("200 300 m\n500 300 l");

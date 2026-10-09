@@ -5,6 +5,14 @@ import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  DialogDescription,
+  DialogHeader,
+} from "~/components/ui/dialog";
+import { drawingMarkupLinks, drawingLinkHref } from "~/lib/drawing-links";
+import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
@@ -23,7 +31,10 @@ import {
   WrenchIcon,
 } from "lucide-react";
 import { notify } from "~/components/ui/app-dialogs";
-import { drawingPdfLinkTarget, drawingPdfLinkUrl } from "~/lib/drawing-pdf-links";
+import {
+  drawingPdfLinkTarget,
+  drawingPdfLinkUrl,
+} from "~/lib/drawing-pdf-links";
 import { sourcePdfPage } from "~/lib/pdf-client";
 import { tileBase } from "~/lib/drawing-tiles";
 import {
@@ -32,6 +43,7 @@ import {
   type DrawingEntity,
   type DrawingJobSheet,
   type DrawingMarkup,
+  type DrawingMarkupLink,
   type DrawingMetadata,
   type DrawingSave,
   type DrawingStyle,
@@ -90,7 +102,7 @@ export const tools: Array<[DrawingTool, string]> = [
   ["area", "Area"],
   ["angle", "Angle"],
   ["count", "Count"],
-  ["link", "Sheet / web link"],
+  ["link", "Hyperlink"],
   ["issue", "Issue pin"],
   ["rfi", "RFI pin"],
 ];
@@ -227,6 +239,7 @@ export function DrawingWorkspace({
     "resize",
   );
   const [form, setForm] = useState<DrawingSave | null>(null);
+  const [linkChooser, setLinkChooser] = useState<DrawingMarkup | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [failedDrafts, setFailedDrafts] = useState<DrawingSave[]>([]);
   const [pending, setPending] = useState(0);
@@ -301,6 +314,7 @@ export function DrawingWorkspace({
     setSourceOverride(null);
     setSelectedId(null);
     setForm(null);
+    setLinkChooser(null);
     setOptimistic([]);
     setFailedDrafts([]);
     setMetadataDirty(false);
@@ -577,7 +591,21 @@ export function DrawingWorkspace({
     }
   };
   const createMarkup = (markup: DrawingMarkup) => {
-    const value: DrawingSave = { ...base(), kind: "markup", data: markup };
+    const value: DrawingSave = {
+      ...base(),
+      kind: "markup",
+      data:
+        markup.type === "link"
+          ? {
+              ...markup,
+              linkAppearance: "highlight",
+              stroke: "#facc15",
+              fill: "#facc15",
+              opacity: 0.35,
+              links: [],
+            }
+          : markup,
+    };
     if (["text", "callout", "link"].includes(markup.type)) {
       setForm(value);
       setPanel("selected");
@@ -683,25 +711,49 @@ export function DrawingWorkspace({
       setPending((n) => n - 1);
     }
   };
-  const activate = (markup: DrawingMarkup) => {
-    if (markup.targetSheetId) {
+  const openDestination = (link: DrawingMarkupLink) => {
+    if (link.targetSheetId) {
       const target = data?.jobSheets.find(
-        (item) => item.id === markup.targetSheetId,
+        (item) => item.id === link.targetSheetId,
       );
       if (target) onOpenSheet(target);
-    } else if (markup.href) {
-      try {
-        const url = new URL(markup.href, location.origin);
-        if (
-          url.protocol === "https:" ||
-          (url.origin === location.origin && url.pathname.startsWith("/api/"))
-        )
-          window.open(url.href, "_blank", "noopener,noreferrer");
-      } catch {
-        /* Invalid legacy links stay inert. */
-      }
+      else setError("That linked sheet is no longer available.");
+    } else {
+      const href = drawingLinkHref(link, jobId, data?.jobSheets ?? []);
+      if (href)
+        window.open(
+          new URL(href, location.origin).href,
+          "_blank",
+          "noopener,noreferrer",
+        );
+      else setError("That destination is no longer available.");
     }
   };
+  const activate = (markup: DrawingMarkup) => {
+    const links = drawingMarkupLinks(markup);
+    if (links.length > 1) setLinkChooser(markup);
+    else if (links[0]) openDestination(links[0]);
+    else setError("Add a destination to this hyperlink.");
+  };
+  const requestedLink = useRef<string | null>(null);
+  useEffect(() => {
+    if (!data) return;
+    const id = new URLSearchParams(window.location.search).get("drawingLink");
+    const request = `${sheet.id}:${id ?? ""}`;
+    if (!id || requestedLink.current === request) return;
+    const entity = data.entities.find(
+      (item) =>
+        item.id === id &&
+        item.kind === "markup" &&
+        item.data.type === "link" &&
+        item.visibility !== "archived",
+    );
+    if (!entity || entity.kind !== "markup") return;
+    requestedLink.current = request;
+    setSourceOverride(entity.data.sourceSheetId);
+    // A PDF or shared address must never launch another window without a tap.
+    setLinkChooser(entity.data);
+  }, [data, sheet.id]);
   const activatePdfLink = (link: DrawingPdfLink) => {
     if (link.url) {
       const url = drawingPdfLinkUrl(link.url);
@@ -802,10 +854,12 @@ export function DrawingWorkspace({
     : [];
   const resolved =
     assets?.key === source.imageUrl ? assets : { src: source.imageUrl, pdf };
-  const comparisonSheets = new Map(data?.jobSheets.map(item => [item.id, item]));
+  const comparisonSheets = new Map(
+    data?.jobSheets.map((item) => [item.id, item]),
+  );
   const compareFirst = comparisonSheets.get(compareIds?.first ?? "");
   const compare = comparisonSheets.get(compareIds?.second ?? "");
-  const compareAdditional = (compareIds?.additional ?? []).flatMap(id => {
+  const compareAdditional = (compareIds?.additional ?? []).flatMap((id) => {
     const item = comparisonSheets.get(id);
     return item ? [item] : [];
   });
@@ -1119,7 +1173,11 @@ export function DrawingWorkspace({
             <DrawingCompare
               appearance={appearance}
               key={compareFirst.id}
-              additional={compareAdditional.map(item => ({...item, pdf: sourcePdfPage(item.imageUrl), tiles: tileBase(item.imageUrl)}))}
+              additional={compareAdditional.map((item) => ({
+                ...item,
+                pdf: sourcePdfPage(item.imageUrl),
+                tiles: tileBase(item.imageUrl),
+              }))}
               onEditDrawings={() => setOverlayPickerOpen(true)}
               toolControls={{
                 measureRequest: 0,
@@ -1267,6 +1325,7 @@ export function DrawingWorkspace({
                 (form ? (
                   <>
                     <DrawingEntityForm
+                      key={form.id}
                       value={form}
                       onChange={setForm}
                       onSubmit={() => void save(form)}
@@ -1341,7 +1400,9 @@ export function DrawingWorkspace({
                           variant="outline"
                           onClick={() => activate(selected.data)}
                         >
-                          Open link
+                          {drawingMarkupLinks(selected.data).length > 1
+                            ? "Choose a link"
+                            : "Open link"}
                         </Button>
                       )}
                     {editable(selected) && (
@@ -2018,6 +2079,7 @@ export function DrawingWorkspace({
               {panel === "files" && (
                 <DrawingDocumentActions
                   sheet={source}
+                  jobId={jobId}
                   sheets={data.jobSheets}
                   entities={visible}
                   scale={current ? data.metadata.scale : null}
@@ -2402,6 +2464,41 @@ export function DrawingWorkspace({
           </Button>
         </div>
       </div>
+      <Dialog
+        open={Boolean(linkChooser)}
+        onOpenChange={(open) => {
+          if (!open) setLinkChooser(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {linkChooser?.text?.trim().length
+                ? linkChooser.text.trim()
+                : "Choose a link"}
+            </DialogTitle>
+            <DialogDescription>
+              Choose a destination for this hyperlink.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid max-h-[60vh] gap-2 overflow-y-auto">
+            {linkChooser &&
+              drawingMarkupLinks(linkChooser).map((link, index) => (
+                <Button
+                  key={index}
+                  variant="outline"
+                  className="h-auto min-h-12 justify-start text-left whitespace-normal"
+                  onClick={() => {
+                    setLinkChooser(null);
+                    openDestination(link);
+                  }}
+                >
+                  {link.label}
+                </Button>
+              ))}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

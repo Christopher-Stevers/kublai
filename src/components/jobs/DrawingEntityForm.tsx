@@ -4,6 +4,8 @@ import type { DrawingSave, DrawingWorkspace } from "~/lib/drawing-workspace";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { notify } from "~/components/ui/app-dialogs";
+import { drawingMarkupLinks } from "~/lib/drawing-links";
+import { DrawingLinkEditor } from "./DrawingLinkEditor";
 
 export const drawingFieldClass =
   "border-input bg-background w-full rounded-md border px-3 py-2 text-sm";
@@ -73,7 +75,11 @@ export function DrawingEntityForm({
         )}
         {value.kind === "markup" && (
           <>
-            <DrawingField label="Note / label">
+            <DrawingField
+              label={
+                value.data.type === "link" ? "Hyperlink name" : "Note / label"
+              }
+            >
               <textarea
                 className={drawingFieldClass}
                 rows={3}
@@ -83,7 +89,14 @@ export function DrawingEntityForm({
               />
             </DrawingField>
             <div className="grid grid-cols-2 gap-2">
-              <DrawingField label="Line color">
+              <DrawingField
+                label={
+                  value.data.type === "link" &&
+                  value.data.linkAppearance === "highlight"
+                    ? "Highlight color"
+                    : "Line color"
+                }
+              >
                 <input
                   className="h-10 w-full"
                   type="color"
@@ -92,88 +105,115 @@ export function DrawingEntityForm({
                       ? "#ef4444"
                       : value.data.stroke.slice(0, 7)
                   }
-                  onChange={(e) => change({ stroke: e.target.value })}
+                  onChange={(e) =>
+                    change({
+                      stroke: e.target.value,
+                      ...(value.data.type === "link" &&
+                      value.data.linkAppearance === "highlight"
+                        ? { fill: e.target.value }
+                        : {}),
+                    })
+                  }
                 />
               </DrawingField>
-              <DrawingField label="Line width">
-                <Input
-                  type="number"
-                  min={0.1}
-                  max={40}
-                  step={0.1}
-                  value={value.data.width}
-                  onChange={(e) => change({ width: Number(e.target.value) })}
-                />
-              </DrawingField>
+              {!(
+                value.data.type === "link" &&
+                value.data.linkAppearance === "highlight"
+              ) && (
+                <DrawingField label="Line width">
+                  <Input
+                    type="number"
+                    min={0.1}
+                    max={40}
+                    step={0.1}
+                    value={value.data.width}
+                    onChange={(e) => change({ width: Number(e.target.value) })}
+                  />
+                </DrawingField>
+              )}
             </div>
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={Boolean(value.data.fill && value.data.fill !== "none")}
-                onChange={(event) =>
-                  change({
-                    fill: event.target.checked ? value.data.stroke : "none",
-                  })
-                }
-              />
-              Fill shape
-            </label>
-            {value.data.fill && value.data.fill !== "none" && (
-              <DrawingField label="Fill color">
+            {!(
+              value.data.type === "link" &&
+              value.data.linkAppearance === "highlight"
+            ) && (
+              <label className="flex items-center gap-2 text-sm">
                 <input
-                  type="color"
-                  className="h-10 w-full"
-                  value={value.data.fill.slice(0, 7)}
-                  onChange={(event) => change({ fill: event.target.value })}
+                  type="checkbox"
+                  checked={Boolean(
+                    value.data.fill && value.data.fill !== "none",
+                  )}
+                  onChange={(event) =>
+                    change({
+                      fill: event.target.checked ? value.data.stroke : "none",
+                    })
+                  }
                 />
-              </DrawingField>
+                Fill shape
+              </label>
             )}
+            {!(
+              value.data.type === "link" &&
+              value.data.linkAppearance === "highlight"
+            ) &&
+              value.data.fill &&
+              value.data.fill !== "none" && (
+                <DrawingField label="Fill color">
+                  <input
+                    type="color"
+                    className="h-10 w-full"
+                    value={value.data.fill.slice(0, 7)}
+                    onChange={(event) => change({ fill: event.target.value })}
+                  />
+                </DrawingField>
+              )}
             <DrawingField label="Opacity">
               <input
                 type="range"
                 min={0.05}
                 max={1}
                 step={0.05}
-                value={value.data.opacity ?? 1}
+                value={
+                  value.data.opacity ??
+                  (value.data.type === "link" &&
+                  value.data.linkAppearance === "highlight"
+                    ? 0.35
+                    : 1)
+                }
                 onChange={(e) => change({ opacity: Number(e.target.value) })}
               />
             </DrawingField>
             {value.data.type === "link" && (
               <>
-                <DrawingField label="Link to a sheet">
+                <DrawingField label="Hyperlink appearance">
                   <select
                     className={drawingFieldClass}
-                    value={value.data.targetSheetId ?? ""}
+                    value={value.data.linkAppearance ?? "box"}
                     onChange={(e) =>
                       change({
-                        targetSheetId: e.target.value || undefined,
-                        href: undefined,
+                        linkAppearance: e.target.value,
+                        fill:
+                          e.target.value === "highlight"
+                            ? value.data.stroke
+                            : "none",
+                        opacity: e.target.value === "highlight" ? 0.35 : 1,
                       })
                     }
                   >
-                    <option value="">
-                      Choose a sheet or enter a web address
+                    <option value="highlight">
+                      Highlight · equipment tag stays visible
                     </option>
-                    {workspace.jobSheets.map((sheet) => (
-                      <option key={sheet.id} value={sheet.id}>
-                        {sheet.name}
-                      </option>
-                    ))}
+                    <option value="box">Outlined box with a label</option>
                   </select>
                 </DrawingField>
-                <DrawingField label="Web address">
-                  <Input
-                    type="url"
-                    placeholder="https://…"
-                    value={value.data.href ?? ""}
-                    onChange={(e) =>
-                      change({
-                        href: e.target.value || undefined,
-                        targetSheetId: undefined,
-                      })
-                    }
-                  />
-                </DrawingField>
+                <DrawingLinkEditor
+                  links={drawingMarkupLinks(value.data)}
+                  onChange={(links) =>
+                    change({ links, href: undefined, targetSheetId: undefined })
+                  }
+                  workspace={workspace}
+                  offline={offline}
+                  onUploading={setUploading}
+                />
               </>
             )}
             {["dimension", "area"].includes(value.data.type) && (

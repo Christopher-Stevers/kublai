@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { isAppLink } from "./app-links";
+import { MAX_DRAWING_LINKS } from "./drawing-links";
 
 export const drawingPointSchema = z.object({
   x: z.number().finite().min(0).max(1),
@@ -37,28 +39,13 @@ export const drawingLinkSchema = z
   .trim()
   .min(1)
   .max(2048)
-  .refine((value) => {
-    if (
-      /^\/api\/drawings\/attachments\/[a-f0-9-]{36}\/[a-f0-9-]{36}$/i.test(
-        value,
-      )
-    )
-      return true;
-    if (
-      /^\/api\/(job-rooms\/files|job-documents\/files)\/[a-zA-Z0-9_./%-]+$/.test(
-        value,
-      ) &&
-      !value.includes("..") &&
-      !/%2f|%5c|%2e/i.test(value)
-    )
-      return true;
-    try {
-      const url = new URL(value);
-      return url.protocol === "https:" && !url.username && !url.password;
-    } catch {
-      return false;
-    }
-  }, "Use an HTTPS URL or an existing job file.");
+  .refine(isAppLink, "Use a web, email, phone or ForemanHQ link.");
+export const drawingMarkupLinkSchema = z.object({
+  label: shortText.min(1, "Give each destination a name."),
+  url: drawingLinkSchema.optional(),
+  targetSheetId: id.optional(),
+}).refine(link => Boolean(link.url) !== Boolean(link.targetSheetId), "Choose one destination for each link.");
+export type DrawingMarkupLink = z.infer<typeof drawingMarkupLinkSchema>;
 export const drawingMarkupSchema = z
   .object({
     sourceSheetId: id,
@@ -80,6 +67,8 @@ export const drawingMarkupSchema = z
     text: z.string().max(4000).optional(),
     href: drawingLinkSchema.optional(),
     targetSheetId: id.optional(),
+    links: z.array(drawingMarkupLinkSchema).min(1, "Add at least one destination to the hyperlink.").max(MAX_DRAWING_LINKS).optional(),
+    linkAppearance: z.enum(["box", "highlight"]).optional(),
     unit: z.enum(["mm", "cm", "m", "in", "ft"]).optional(),
     scale: z.number().finite().positive().max(1e9).optional(),
   })

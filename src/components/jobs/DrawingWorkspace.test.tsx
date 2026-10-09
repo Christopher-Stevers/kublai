@@ -51,6 +51,13 @@ vi.mock("~/trpc/react", () => ({
       },
     }),
     drawingsWorkspace: {
+      linkTargets: {
+        useQuery: () => ({
+          data: { jobs: [], targets: [] },
+          isFetching: false,
+          error: null,
+        }),
+      },
       get: {
         useQuery: () => ({
           data: mocks.data,
@@ -94,7 +101,9 @@ vi.mock("./DrawingCompare", () => ({
       data-testid="comparison"
       data-first={props.first.id}
       data-second={props.second.id}
-      data-additional={JSON.stringify(props.additional?.map(sheet => sheet.id) ?? [])}
+      data-additional={JSON.stringify(
+        props.additional?.map((sheet) => sheet.id) ?? [],
+      )}
     >
       <button
         onClick={() =>
@@ -124,8 +133,32 @@ vi.mock("./DrawingSheetViewer", () => ({
         data-tool={props.tool}
         data-selection-mode={props.selectionMode}
       >
-        <button onClick={() => props.onPdfLink?.({ left: .1, top: .1, right: .2, bottom: .2, page: 2 })}>Follow original page link</button>
-        <button onClick={() => props.onPdfLink?.({ left: .1, top: .1, right: .2, bottom: .2, url: "http://example.com/drawing" })}>Follow original web link</button>
+        <button
+          onClick={() =>
+            props.onPdfLink?.({
+              left: 0.1,
+              top: 0.1,
+              right: 0.2,
+              bottom: 0.2,
+              page: 2,
+            })
+          }
+        >
+          Follow original page link
+        </button>
+        <button
+          onClick={() =>
+            props.onPdfLink?.({
+              left: 0.1,
+              top: 0.1,
+              right: 0.2,
+              bottom: 0.2,
+              url: "http://example.com/drawing",
+            })
+          }
+        >
+          Follow original web link
+        </button>
         <div data-testid="viewer-source">
           {props.sourceSheetId ?? props.sheetKey}
         </div>
@@ -163,7 +196,12 @@ vi.mock("./DrawingSheetViewer", () => ({
           onClick={() =>
             props.onCreate?.({
               sourceSheetId: props.sourceSheetId!,
-              type: props.tool === "text" ? "text" : "rect",
+              type:
+                props.tool === "text"
+                  ? "text"
+                  : props.tool === "link"
+                    ? "link"
+                    : "rect",
               points:
                 props.tool === "text"
                   ? [{ x: 0.2, y: 0.2 }]
@@ -182,6 +220,14 @@ vi.mock("./DrawingSheetViewer", () => ({
           onClick={() => props.onSelect?.(props.annotations?.[0]?.id ?? null)}
         >
           Select first annotation
+        </button>
+        <button
+          onClick={() => {
+            const first = props.annotations?.[0];
+            if (first?.kind === "markup") props.onActivate?.(first.data);
+          }}
+        >
+          Tap hyperlink
         </button>
         <button
           onClick={() => {
@@ -338,48 +384,232 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
+  window.history.replaceState(null, "", "/");
 });
 
 describe("drawing workspace workflows", () => {
+  it("shows multiple destinations without opening one until it is chosen", () => {
+    const entity = existingMarkup();
+    if (entity.kind !== "markup") throw Error("fixture");
+    entity.data = {
+      ...entity.data,
+      type: "link",
+      text: "AHU-1",
+      linkAppearance: "highlight",
+      links: [
+        { label: "Equipment manual", url: "https://example.com/manual" },
+        { label: "Revision drawing", targetSheetId: revisionId },
+      ],
+    };
+    mocks.data!.entities = [entity];
+    const open = vi.spyOn(window, "open").mockReturnValue(null);
+    const onOpenSheet = vi.fn();
+    render(
+      <DrawingWorkspace
+        jobId={jobId}
+        sheet={sheet}
+        onOpenSheet={onOpenSheet}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Tap hyperlink" }));
+    expect(screen.getByRole("dialog", { name: "AHU-1" })).toBeInTheDocument();
+    expect(open).not.toHaveBeenCalled();
+    expect(onOpenSheet).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Equipment manual" }));
+    expect(open).toHaveBeenCalledWith(
+      "https://example.com/manual",
+      "_blank",
+      "noopener,noreferrer",
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Tap hyperlink" }));
+    fireEvent.click(screen.getByRole("button", { name: "Revision drawing" }));
+    expect(onOpenSheet).toHaveBeenCalledWith(
+      expect.objectContaining({ id: revisionId }),
+    );
+  });
+  it("opens single and legacy hyperlinks directly", () => {
+    const entity = existingMarkup();
+    if (entity.kind !== "markup") throw Error("fixture");
+    entity.data = {
+      ...entity.data,
+      type: "link",
+      href: "https://example.com/legacy",
+    };
+    mocks.data!.entities = [entity];
+    const open = vi.spyOn(window, "open").mockReturnValue(null);
+    const view = render(
+      <DrawingWorkspace jobId={jobId} sheet={sheet} onOpenSheet={vi.fn()} />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Tap hyperlink" }));
+    expect(open).toHaveBeenLastCalledWith(
+      "https://example.com/legacy",
+      "_blank",
+      "noopener,noreferrer",
+    );
+    entity.data = {
+      ...entity.data,
+      links: [{ label: "Chat", url: `/dashboard/jobs/${jobId}/chat` }],
+    };
+    view.rerender(
+      <DrawingWorkspace jobId={jobId} sheet={sheet} onOpenSheet={vi.fn()} />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Tap hyperlink" }));
+    expect(open).toHaveBeenLastCalledWith(
+      `${location.origin}/dashboard/jobs/${jobId}/chat`,
+      "_blank",
+      "noopener,noreferrer",
+    );
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+  it("creates highlight hyperlinks and persists a named destination list", async () => {
+    render(
+      <DrawingWorkspace jobId={jobId} sheet={sheet} onOpenSheet={vi.fn()} />,
+    );
+    chooseTool("link");
+    fireEvent.click(screen.getByRole("button", { name: "Draw sample" }));
+    expect(screen.getByLabelText("Hyperlink appearance")).toHaveValue(
+      "highlight",
+    );
+    fireEvent.change(screen.getByLabelText("Hyperlink name"), {
+      target: { value: "AHU-1" },
+    });
+    fireEvent.change(screen.getByLabelText("Address"), {
+      target: { value: "https://example.com/manual" },
+    });
+    fireEvent.change(screen.getByLabelText("Link name (optional)"), {
+      target: { value: "Equipment manual" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Add link" }));
+    fireEvent.change(screen.getByLabelText("Address"), {
+      target: { value: `/dashboard/jobs/${jobId}/chat` },
+    });
+    fireEvent.change(screen.getByLabelText("Link name (optional)"), {
+      target: { value: "Job discussion" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Add link" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(mocks.save).toHaveBeenCalledOnce());
+    expect(mocks.save.mock.calls[0]![0]).toMatchObject({
+      kind: "markup",
+      data: {
+        type: "link",
+        linkAppearance: "highlight",
+        opacity: 0.35,
+        text: "AHU-1",
+        links: [
+          { label: "Equipment manual", url: "https://example.com/manual" },
+          { label: "Job discussion", url: `/dashboard/jobs/${jobId}/chat` },
+        ],
+      },
+    });
+  });
+  it("reopens a saved chooser from a PDF address without opening a destination automatically", async () => {
+    const entity = existingMarkup();
+    if (entity.kind !== "markup") throw Error("fixture");
+    entity.data = {
+      ...entity.data,
+      type: "link",
+      text: "AHU-1",
+      links: [
+        { label: "Manual", url: "https://example.com" },
+        { label: "Drawing", targetSheetId: revisionId },
+      ],
+    };
+    mocks.data!.entities = [entity];
+    window.history.replaceState(null, "", `/?drawingLink=${entity.id}`);
+    const open = vi.spyOn(window, "open").mockReturnValue(null);
+    render(
+      <DrawingWorkspace jobId={jobId} sheet={sheet} onOpenSheet={vi.fn()} />,
+    );
+    expect(
+      await screen.findByRole("dialog", { name: "AHU-1" }),
+    ).toBeInTheDocument();
+    expect(open).not.toHaveBeenCalled();
+  });
   it("follows original uploaded page links without creating editable markups", () => {
     const base = `/api/job-rooms/files/${jobId}/${sheetId}`;
     mocks.data!.jobSheets[0]!.imageUrl = `${base}/floor-1.webp`;
     mocks.data!.jobSheets[1]!.imageUrl = `${base}/floor-2.webp`;
     const onOpenSheet = vi.fn();
-    render(<DrawingWorkspace jobId={jobId} sheet={sheet} onOpenSheet={onOpenSheet} />);
-    fireEvent.click(screen.getByRole("button", { name: "Follow original page link" }));
-    expect(onOpenSheet).toHaveBeenCalledExactlyOnceWith(mocks.data!.jobSheets[1]);
+    render(
+      <DrawingWorkspace
+        jobId={jobId}
+        sheet={sheet}
+        onOpenSheet={onOpenSheet}
+      />,
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "Follow original page link" }),
+    );
+    expect(onOpenSheet).toHaveBeenCalledExactlyOnceWith(
+      mocks.data!.jobSheets[1],
+    );
     expect(mocks.save).not.toHaveBeenCalled();
   });
   it("opens original web links using their retained protocol", () => {
     const browser = vi.spyOn(window, "open").mockReturnValue(null);
     open();
-    fireEvent.click(screen.getByRole("button", { name: "Follow original web link" }));
-    expect(browser).toHaveBeenCalledExactlyOnceWith("http://example.com/drawing", "_blank", "noopener,noreferrer");
+    fireEvent.click(
+      screen.getByRole("button", { name: "Follow original web link" }),
+    );
+    expect(browser).toHaveBeenCalledExactlyOnceWith(
+      "http://example.com/drawing",
+      "_blank",
+      "noopener,noreferrer",
+    );
     expect(mocks.save).not.toHaveBeenCalled();
   });
   it("explains when an original linked page is absent from this job", () => {
     mocks.data!.jobSheets[0]!.imageUrl = `/api/job-rooms/files/${jobId}/${sheetId}/floor-1.webp`;
     open();
-    fireEvent.click(screen.getByRole("button", { name: "Follow original page link" }));
-    expect(screen.getByText("That linked page has not been added to this job.")).toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Follow original page link" }),
+    );
+    expect(
+      screen.getByText("That linked page has not been added to this job."),
+    ).toBeInTheDocument();
   });
   it("opens an ordered stack from the job picker and edits its selected layers", () => {
-    const third = "53cfe8af-e26a-49f2-b2dc-ef0d4e0ecb24", fourth = "63cfe8af-e26a-49f2-b2dc-ef0d4e0ecb24";
-    mocks.data!.jobSheets.push(...[third,fourth].map((id,i)=>({...mocks.data!.jobSheets[0]!,id,sheetId:id,name:`Drawing ${i+3}`})));
-    open();openMenu("More");fireEvent.click(screen.getByRole("menuitem",{name:"Overlay drawings"}));
-    fireEvent.change(screen.getByLabelText("Drawing B"),{target:{value:revisionId}});
-    fireEvent.click(screen.getByRole("button",{name:"Add drawing"}));
-    fireEvent.change(screen.getByLabelText("Drawing C"),{target:{value:fourth}});
-    fireEvent.click(screen.getByRole("button",{name:"Add drawing"}));
-    fireEvent.change(screen.getByLabelText("Drawing D"),{target:{value:third}});
-    fireEvent.click(screen.getByRole("button",{name:"Open overlay"}));
-    expect(screen.getByTestId("comparison")).toHaveAttribute("data-additional",JSON.stringify([fourth,third]));
-    fireEvent.click(screen.getByRole("button",{name:"Add / remove drawings"}));
-    fireEvent.click(screen.getByRole("button",{name:"Remove Drawing C"}));
-    fireEvent.click(screen.getByRole("button",{name:"Open overlay"}));
-    expect(screen.getByTestId("comparison")).toHaveAttribute("data-additional",JSON.stringify([third]));
-    expect(mocks.save).not.toHaveBeenCalled();expect(mocks.metadata).not.toHaveBeenCalled();
+    const third = "53cfe8af-e26a-49f2-b2dc-ef0d4e0ecb24",
+      fourth = "63cfe8af-e26a-49f2-b2dc-ef0d4e0ecb24";
+    mocks.data!.jobSheets.push(
+      ...[third, fourth].map((id, i) => ({
+        ...mocks.data!.jobSheets[0]!,
+        id,
+        sheetId: id,
+        name: `Drawing ${i + 3}`,
+      })),
+    );
+    open();
+    openMenu("More");
+    fireEvent.click(screen.getByRole("menuitem", { name: "Overlay drawings" }));
+    fireEvent.change(screen.getByLabelText("Drawing B"), {
+      target: { value: revisionId },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Add drawing" }));
+    fireEvent.change(screen.getByLabelText("Drawing C"), {
+      target: { value: fourth },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Add drawing" }));
+    fireEvent.change(screen.getByLabelText("Drawing D"), {
+      target: { value: third },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Open overlay" }));
+    expect(screen.getByTestId("comparison")).toHaveAttribute(
+      "data-additional",
+      JSON.stringify([fourth, third]),
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "Add / remove drawings" }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Remove Drawing C" }));
+    fireEvent.click(screen.getByRole("button", { name: "Open overlay" }));
+    expect(screen.getByTestId("comparison")).toHaveAttribute(
+      "data-additional",
+      JSON.stringify([third]),
+    );
+    expect(mocks.save).not.toHaveBeenCalled();
+    expect(mocks.metadata).not.toHaveBeenCalled();
   });
 
   it("finishes each bottom tool from its own button and restores normal movement", () => {

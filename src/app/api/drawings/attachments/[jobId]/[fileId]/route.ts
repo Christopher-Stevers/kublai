@@ -52,9 +52,9 @@ export async function GET(
           and(
             eq(drawingWorkspaceEntities.jobId, jobId),
             eq(drawingWorkspaceEntities.organizationId, user.organizationId),
-            sql`${drawingWorkspaceEntities.entity}->>'kind' = 'issue'`,
+            sql`${drawingWorkspaceEntities.entity}->>'kind' in ('issue', 'markup')`,
             sql`(${drawingWorkspaceEntities.entity}->>'visibility' = 'published' OR ${drawingWorkspaceEntities.entity}->>'authorId' = ${user.id})`,
-            sql`${drawingWorkspaceEntities.entity}->'data'->'links' @> ${JSON.stringify([{ url }])}::jsonb`,
+            sql`(${drawingWorkspaceEntities.entity}->'data'->'links' @> ${JSON.stringify([{ url }])}::jsonb OR (${drawingWorkspaceEntities.entity}->'data'->'links' is null AND ${drawingWorkspaceEntities.entity}->'data'->>'href' = ${url}))`,
           ),
         )
         .limit(1);

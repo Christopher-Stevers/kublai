@@ -57,6 +57,9 @@ describe("drawing reference suggestions", () => {
     expect(
       findDrawingReferences([word("A201")], sheets, [], source, [existing]),
     ).toEqual([]);
+    if (existing.kind !== "markup") throw Error("fixture");
+    existing.data = { ...existing.data, targetSheetId: undefined, links: [{ label: "Elevation", targetSheetId: target }, { label: "Manual", url: "https://example.com" }] };
+    expect(findDrawingReferences([word("A201")], sheets, [], source, [existing])).toEqual([]);
   });
   it("caps suggestions and ignores degenerate text boxes", () => {
     expect(

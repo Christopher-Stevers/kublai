@@ -24,6 +24,7 @@ import {
 } from "./drawing-annotation-geometry";
 import type { SheetScale } from "./sheet-measure";
 import { savedMeasureAngleArcs } from "./saved-measure-run";
+import { drawingMarkupLinks } from "./drawing-links";
 
 export type DrawingPdfExportOptions = {
   pdfUrl: string;
@@ -36,6 +37,8 @@ export type DrawingPdfExportOptions = {
   signal?: AbortSignal;
   /** Returns an account-scoped cached URL or the authenticated original. */
   resolveSource?: (url: string) => Promise<string>;
+  /** Resolves sheet destinations and multi-link chooser addresses for saved markups. */
+  markupLinkUrl?: (markup: DrawingMarkup) => string | null;
 };
 
 async function pdfBytes(
@@ -146,6 +149,7 @@ async function drawMarkup(
   font: PDFFont,
   data: DrawingMarkup,
   sharedScale?: SheetScale | null,
+  linkUrl?: string | null,
 ) {
   const width = page.getWidth(),
     height = page.getHeight(),
@@ -158,18 +162,30 @@ async function drawMarkup(
   const first = points[0]!,
     last = points.at(-1)!,
     bounds = drawingBounds(points);
-  const opacity = data.opacity ?? (data.type === "highlight" ? 0.35 : 1);
+  const linkHighlight =
+    data.type === "link" && data.linkAppearance === "highlight";
+  const opacity =
+    data.opacity ?? (data.type === "highlight" || linkHighlight ? 0.35 : 1);
+  const fill = linkHighlight
+    ? data.fill && data.fill !== "none"
+      ? data.fill
+      : data.stroke === "none"
+        ? "#facc15"
+        : data.stroke
+    : data.fill;
   const style = {
     x: 0,
     y: height,
     scale: factor,
-    borderColor: color(data.stroke),
-    borderWidth: data.width,
+    borderColor: linkHighlight ? undefined : color(data.stroke),
+    borderWidth: linkHighlight ? 0 : data.width,
     borderOpacity: opacity * alpha(data.stroke),
-    color: color(data.fill),
-    opacity: opacity * alpha(data.fill),
+    color: color(fill),
+    opacity: opacity * alpha(fill),
   };
-  const line = data.parents ? drawingLinePath(data, aspect) : `M ${points.map((point) => `${point.x} ${point.y}`).join(" L ")}`;
+  const line = data.parents
+    ? drawingLinePath(data, aspect)
+    : `M ${points.map((point) => `${point.x} ${point.y}`).join(" L ")}`;
   const textSize = drawingFontSize(data) * factor;
   const text = (value: string, x: number, y: number) =>
     label(
@@ -278,21 +294,27 @@ async function drawMarkup(
           data.type === "highlight" ? Math.max(12, data.width * 5) : data.width,
       });
   }
-  if (data.type === "arrow" || data.type === "dimension" && !data.parents) arrow(last, first);
-  if (data.type === "callout" || data.type === "dimension" && !data.parents) arrow(first, last);
+  if (data.type === "arrow" || (data.type === "dimension" && !data.parents))
+    arrow(last, first);
+  if (data.type === "callout" || (data.type === "dimension" && !data.parents))
+    arrow(first, last);
   if (data.type === "callout")
     await text(data.text?.length ? data.text : "Note", last.x + 8, last.y - 8);
   if (data.type === "link") {
-    await text(
-      data.text?.length
-        ? data.text
-        : data.targetSheetId
-          ? "Sheet link"
-          : "Link",
-      bounds.left + 5,
-      bounds.top + textSize / factor,
-    );
-    if (data.href && drawingLinkSchema.safeParse(data.href).success) {
+    if (!linkHighlight)
+      await text(
+        data.text?.length
+          ? data.text
+          : data.targetSheetId
+            ? "Sheet link"
+            : "Link",
+        bounds.left + 5,
+        bounds.top + textSize / factor,
+      );
+    const destinations = drawingMarkupLinks(data);
+    const href =
+      linkUrl ?? (destinations.length === 1 ? destinations[0]?.url : null);
+    if (href && drawingLinkSchema.safeParse(href).success) {
       const link = doc.context.obj({
         Type: "Annot",
         Subtype: "Link",
@@ -303,7 +325,7 @@ async function drawMarkup(
           height - bounds.top * factor,
         ],
         Border: [0, 0, 0],
-        A: { Type: "Action", S: "URI", URI: PDFString.of(data.href) },
+        A: { Type: "Action", S: "URI", URI: PDFString.of(href) },
       });
       page.node.addAnnot(doc.context.register(link));
     }
@@ -311,16 +333,41 @@ async function drawMarkup(
   const measurement = drawingMeasurement(data, aspect, sharedScale);
   if (data.type === "dimension" && data.parents) {
     for (const { from, to } of drawingMarkupEdges(data)) {
-      const segmentLabel = drawingMeasurement({ ...data, parents: undefined, points: [data.points[from]!, data.points[to]!] }, aspect, sharedScale);
-      if (segmentLabel) await text(segmentLabel, (points[from]!.x + points[to]!.x) / 2, (points[from]!.y + points[to]!.y) / 2 - 8);
+      const segmentLabel = drawingMeasurement(
+        {
+          ...data,
+          parents: undefined,
+          points: [data.points[from]!, data.points[to]!],
+        },
+        aspect,
+        sharedScale,
+      );
+      if (segmentLabel)
+        await text(
+          segmentLabel,
+          (points[from]!.x + points[to]!.x) / 2,
+          (points[from]!.y + points[to]!.y) / 2 - 8,
+        );
     }
     for (const arc of savedMeasureAngleArcs(data, aspect)) {
       page.drawSvgPath(arc.path, { ...style, color: undefined });
-      if (arc.referenceEnd) page.drawSvgPath(`M ${arc.vertex.x} ${arc.vertex.y} L ${arc.referenceEnd.x} ${arc.referenceEnd.y}`, { ...style, color: undefined, borderDashArray: [3, 3] });
+      if (arc.referenceEnd)
+        page.drawSvgPath(
+          `M ${arc.vertex.x} ${arc.vertex.y} L ${arc.referenceEnd.x} ${arc.referenceEnd.y}`,
+          { ...style, color: undefined, borderDashArray: [3, 3] },
+        );
       const size = 13 * factor;
-      await label(doc, page, font, arc.text,
+      await label(
+        doc,
+        page,
+        font,
+        arc.text,
         arc.label.x * factor - font.widthOfTextAtSize(arc.text, size) / 2,
-        height - arc.label.y * factor - size * 0.35, size, data.stroke, opacity);
+        height - arc.label.y * factor - size * 0.35,
+        size,
+        data.stroke,
+        opacity,
+      );
     }
   }
   if (measurement && (!data.parents || drawingMarkupEdges(data).length > 1))
@@ -442,7 +489,14 @@ async function appendDrawingPage(
     const markup = drawingMarkupSchema.parse(raw);
     if (options.sourceSheetId && markup.sourceSheetId !== options.sourceSheetId)
       continue;
-    await drawMarkup(output, page, font, markup, options.sharedScale);
+    await drawMarkup(
+      output,
+      page,
+      font,
+      markup,
+      options.sharedScale,
+      options.markupLinkUrl?.(raw),
+    );
   }
   options.signal?.throwIfAborted();
 }

@@ -1,7 +1,8 @@
+import { drawingMarkupLinks } from "~/lib/drawing-links";
 import { randomUUID } from "node:crypto";
 import { isDeepStrictEqual } from "node:util";
 import { TRPCError } from "@trpc/server";
-import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import type { z } from "zod";
 import type {
   DrawingActivity,
@@ -14,7 +15,12 @@ import type {
 } from "~/lib/drawing-workspace";
 import type { drawingMetadataSchema } from "~/lib/drawing-workspace";
 import type { db as database } from "~/server/db";
-import { users, jobs } from "~/server/chat/tables";
+import {
+  users,
+  jobs,
+  jobChatAttachments,
+  jobChatMessages,
+} from "~/server/chat/tables";
 import { jobDrawingSheets, jobDocumentWorkspaces } from "~/server/db/schema";
 import {
   drawingWorkspaceEntities as entities,
@@ -56,7 +62,11 @@ async function freshUser(reader: Reader, userId: string) {
     .limit(1);
   return (row ?? null) as RequestUser | null;
 }
-async function accessSheet(reader: Reader, userId: string, sheetId: string) {
+export async function accessSheet(
+  reader: Reader,
+  userId: string,
+  sheetId: string,
+) {
   const [user, rows] = await Promise.all([
     freshUser(reader, userId),
     reader
@@ -282,12 +292,43 @@ async function validateLinks(
 ) {
   const urls =
     input.kind === "markup"
-      ? [input.data.href].filter((url): url is string => !!url)
+      ? drawingMarkupLinks(input.data)
+          .map((link) => link.url)
+          .filter((url): url is string => !!url)
       : input.kind === "issue"
         ? input.data.links.map((link) => link.url)
         : [];
   for (const url of urls) {
-    if (url.startsWith("https://")) continue;
+    if (/^(https?:|mailto:|tel:)/i.test(url) || url.startsWith("/dashboard"))
+      continue;
+    if (url.startsWith("/api/job-chat/attachments/")) {
+      const [photo] = await reader
+        .select({ id: jobChatAttachments.id })
+        .from(jobChatAttachments)
+        .innerJoin(
+          jobs,
+          and(
+            eq(jobs.id, jobChatAttachments.jobId),
+            eq(jobs.organizationId, access.actor.organizationId),
+          ),
+        )
+        .innerJoin(
+          jobChatMessages,
+          and(
+            eq(jobChatMessages.id, jobChatAttachments.messageId),
+            eq(jobChatMessages.jobId, jobChatAttachments.jobId),
+            isNull(jobChatMessages.deletedAt),
+          ),
+        )
+        .where(eq(jobChatAttachments.id, url.split("/").at(-1)!))
+        .limit(1);
+      if (!photo)
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Chat attachment not found.",
+        });
+      continue;
+    }
     if (url.startsWith("/api/drawings/attachments/")) {
       if (!url.startsWith(`/api/drawings/attachments/${access.sheet.jobId}/`))
         throw new TRPCError({
@@ -306,7 +347,7 @@ async function validateLinks(
             and(
               eq(entities.jobId, access.sheet.jobId),
               eq(entities.organizationId, access.actor.organizationId),
-              sql`entity->>'kind'='issue' and (entity->>'visibility'='published' or entity->>'authorId'=${access.actor.id}) and entity->'data'->'links' @> ${JSON.stringify([{ url }])}::jsonb`,
+              sql`entity->>'kind' in ('issue','markup') and (entity->>'visibility'='published' or entity->>'authorId'=${access.actor.id}) and (entity->'data'->'links' @> ${JSON.stringify([{ url }])}::jsonb or (entity->'data'->'links' is null and entity->'data'->>'href'=${url}))`,
             ),
           )
           .limit(1);
@@ -820,7 +861,10 @@ export async function assertSheetsNotReferenced(
       )}) or entity->'data'->>'targetSheetId' in (${sql.join(
         sheetIds.map((id) => sql`${id}`),
         sql`, `,
-      )}) or exists (select 1 from jsonb_array_elements(coalesce(entity->'snapshots', '[]'::jsonb)) s where s->>'sheetId' in (${sql.join(
+      )}) or exists (select 1 from jsonb_array_elements(coalesce(entity->'data'->'links', '[]'::jsonb)) l where l->>'targetSheetId' in (${sql.join(
+        sheetIds.map((id) => sql`${id}`),
+        sql`, `,
+      )})) or exists (select 1 from jsonb_array_elements(coalesce(entity->'snapshots', '[]'::jsonb)) s where s->>'sheetId' in (${sql.join(
         sheetIds.map((id) => sql`${id}`),
         sql`, `,
       )})))`,

@@ -1,3 +1,4 @@
+import { drawingMarkupLinks } from "~/lib/drawing-links";
 import { isDeepStrictEqual } from "node:util";
 import { TRPCError } from "@trpc/server";
 import type {
@@ -186,8 +187,9 @@ export function prepareEntity(
   }
   if ("sourceSheetId" in input.data)
     requireSource(sheets, input.data.sourceSheetId);
-  if (input.kind === "markup" && input.data.targetSheetId)
-    requireSource(sheets, input.data.targetSheetId);
+  if (input.kind === "markup")
+    for (const link of drawingMarkupLinks(input.data))
+      if (link.targetSheetId) requireSource(sheets, link.targetSheetId);
   if (
     input.kind === "review" &&
     input.data.reviewerId &&

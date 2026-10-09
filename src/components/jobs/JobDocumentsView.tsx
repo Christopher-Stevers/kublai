@@ -215,6 +215,8 @@ export function JobDocumentsView({
     input?.addEventListener("cancel", cancel);
     return () => input?.removeEventListener("cancel", cancel);
   }, []);
+  const loadedJobId = useRef<string | null>(null);
+  const openedDocumentLink = useRef<string | null>(null);
   const mutable = !sandbox && !offline;
   const currentFolder = data.folders.find((item) => item.id === folderId);
   const canWrite =
@@ -228,6 +230,23 @@ export function JobDocumentsView({
       ? Boolean(currentFolder.canManage)
       : data.capabilities.canManage);
   const selected = data.documents.find((item) => item.id === selectedId);
+  useEffect(() => {
+    if (loading || error || sandbox || loadedJobId.current !== jobId) return;
+    const id = new URLSearchParams(window.location.search).get("document");
+    const request = `${jobId}:${id ?? ""}`;
+    if (!id || openedDocumentLink.current === request) return;
+    openedDocumentLink.current = request;
+    const document = data.documents.find(
+      (item) => item.id === id && !item.deletedAt,
+    );
+    if (!document) {
+      setError("This document is unavailable or you do not have access to it.");
+      return;
+    }
+    setFolderId(document.folderId);
+    setView("files");
+    setSelectedId(id);
+  }, [data.documents, loading, error, jobId, sandbox]);
   const processing = busy || Boolean(uploading);
   const endpoint = `/api/job-documents?jobId=${encodeURIComponent(jobId)}`;
 
@@ -240,6 +259,7 @@ export function JobDocumentsView({
     );
     const result = await responseBody<DocumentOverview>(response);
     if (number === requestNumber.current) {
+      loadedJobId.current = jobId;
       setData(result);
       setError(null);
     }
@@ -271,15 +291,6 @@ export function JobDocumentsView({
       });
     return () => controller.abort();
   }, [jobId, sandbox]);
-
-  useEffect(() => {
-    const input = fileInput.current;
-    const cancel = () => {
-      uploadTarget.current = null;
-    };
-    input?.addEventListener("cancel", cancel);
-    return () => input?.removeEventListener("cancel", cancel);
-  }, []);
 
   useEffect(() => {
     const update = () => setOffline(!navigator.onLine);

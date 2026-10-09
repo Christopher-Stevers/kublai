@@ -1,4 +1,5 @@
 import type { DrawingText } from "./drawing-text";
+import { drawingMarkupLinks } from "./drawing-links";
 import type {
   DrawingEntity,
   DrawingJobSheet,
@@ -46,7 +47,7 @@ export function findDrawingReferences(
             entity.visibility !== "archived" &&
             entity.data.type === "link" &&
             entity.data.sourceSheetId === sourceSheetId &&
-            entity.data.targetSheetId === sheet.id &&
+            drawingMarkupLinks(entity.data).some(link => link.targetSheetId === sheet.id) &&
             Math.abs((entity.data.points[0]?.x ?? -1) - word.left) < 0.002 &&
             Math.abs((entity.data.points[0]?.y ?? -1) - word.top) < 0.002,
         )

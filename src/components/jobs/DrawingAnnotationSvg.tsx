@@ -38,6 +38,7 @@ export function DrawingAnnotationSvg({
   const first = points[0]!,
     last = points.at(-1)!;
   const bounds = drawingBounds(points);
+  const linkHighlight = data.type === "link" && data.linkAppearance === "highlight";
   const common = {
     stroke: data.stroke,
     strokeWidth: data.width,
@@ -92,7 +93,8 @@ export function DrawingAnnotationSvg({
           width={bounds.right - bounds.left}
           height={bounds.bottom - bounds.top}
           {...common}
-          strokeDasharray={data.type === "link" ? "8 5" : undefined}
+          strokeDasharray={data.type === "link" && !linkHighlight && !linkHighlight ? "8 5" : undefined}
+          {...(linkHighlight ? { stroke: "none", fill: data.fill && data.fill !== "none" ? data.fill : data.stroke === "none" ? "#facc15" : data.stroke } : {})}
         />
       );
       break;
@@ -183,7 +185,7 @@ export function DrawingAnnotationSvg({
   }
   const measurement = drawingMeasurement(data, aspect, sharedScale);
   return (
-    <g opacity={data.opacity ?? (data.type === "highlight" ? 0.35 : 1)}>
+    <g opacity={data.opacity ?? (data.type === "highlight" || linkHighlight ? 0.35 : 1)}>
       {geometry}
       {(data.type === "arrow" || data.type === "dimension" && !data.parents) &&
         arrow(last, first)}
@@ -191,7 +193,7 @@ export function DrawingAnnotationSvg({
         arrow(first, last)}
       {data.type === "callout" &&
         label(data.text ?? "Note", last.x + 8, last.y - 8)}
-      {data.type === "link" &&
+      {data.type === "link" && !linkHighlight &&
         label(
           data.text ?? (data.targetSheetId ? "Sheet link" : "Link"),
           bounds.left + 5,

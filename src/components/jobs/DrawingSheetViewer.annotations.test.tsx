@@ -30,6 +30,28 @@ function markup(data: Partial<DrawingMarkup> = {}): DrawingEntity {
 }
 
 describe("drawing annotation tools in the real viewer", () => {
+  it("keeps equipment-tag highlights translucent and unlabeled, with a full tap area and keyboard activation", () => {
+    const entity = markup({ type: "link", text: "AHU-1", linkAppearance: "highlight", links: [{ label: "Manual", url: "https://example.com" }, { label: "Chat", url: "/dashboard/jobs/abc/chat" }] });
+    const onActivate = vi.fn(), onSelect = vi.fn();
+    const { container, rerender, frame } = open({ annotations: [entity], tool: "pan", onActivate, onSelect });
+    const target = container.querySelector('[data-annotation-id="markup"]')!;
+    expect(target.querySelector("text")).toBeNull();
+    expect(target.querySelector('g[opacity="0.35"] rect')).toHaveAttribute("stroke", "none");
+    const hit = target.querySelector('[data-link-hit-area]')!;
+    expect(hit).toHaveAttribute("pointer-events", "all");
+    expect(hit).toHaveAttribute("width", "250");
+    tap(hit, 350, 250);
+    fireEvent.keyDown(target, { key: "Enter" });
+    expect(onActivate).toHaveBeenCalledTimes(2);
+    fireEvent.pointerDown(hit, { clientX: 350, clientY: 250, pointerId: 1, button: 0 });
+    fireEvent.pointerMove(frame, { clientX: 390, clientY: 280, pointerId: 1, button: 0 });
+    fireEvent.pointerUp(frame, { clientX: 390, clientY: 280, pointerId: 1, button: 0 });
+    expect(onActivate).toHaveBeenCalledTimes(2);
+    rerender(<DrawingSheetViewer src="/sheet.webp" alt="Sheet" sheetKey={sourceSheetId} annotations={[entity]} tool="select" onActivate={onActivate} onSelect={onSelect} />);
+    fireEvent.keyDown(container.querySelector('[data-annotation-id="markup"]')!, { key: "Enter" });
+    expect(onActivate).toHaveBeenCalledTimes(2);
+    expect(onSelect).toHaveBeenCalledWith("markup");
+  });
   it.each(["pan", "select", "rect", "cloud", "freehand", "dimension", "area", "text", "rfi", "issue"] as const)("middle-drag pans in %s without creating or selecting anything", tool => {
     const onCreate = vi.fn(), onSelect = vi.fn(), onUpdate = vi.fn(), onPoint = vi.fn();
     const { frame, image, container } = open({ tool, annotations: [markup()], selectedId: "markup", onCreate, onSelect, onUpdate, onPoint });

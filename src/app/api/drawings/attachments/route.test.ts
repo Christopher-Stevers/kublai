@@ -131,18 +131,20 @@ describe("private drawing attachments", () => {
     expect(mock.read).not.toHaveBeenCalled();
   });
 
-  it("requires a visible issue reference for non-authors", async () => {
+  it("requires a visible issue or hyperlink reference for non-authors", async () => {
     mock.info.mockResolvedValue({ sheetId, authorId: "bob" });
     mock.rows = [[{ id: sheetId }], []];
     expect((await get()).status).toBe(404);
     expect(mock.read).not.toHaveBeenCalled();
     const scope = new PgDialect().sqlToQuery(mock.where.mock.calls[1]![0]);
     expect(scope.sql).toContain("'published'");
+    expect(scope.sql).toMatch(/in \('issue',\s*'markup'\)/);
     expect(scope.params).toEqual([
       jobId,
       "org-a",
       "alice",
       JSON.stringify([{ url: path }]),
+      path,
     ]);
     mock.rows = [[{ id: sheetId }], [{ id: "issue" }]];
     expect((await get()).status).toBe(200);

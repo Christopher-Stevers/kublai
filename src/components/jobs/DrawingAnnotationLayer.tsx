@@ -2,13 +2,13 @@
 
 import type { DrawingEntity, DrawingMarkup } from "~/lib/drawing-workspace";
 import type { SheetScale } from "~/lib/sheet-measure";
-import { drawingMarkupBounds, drawingLinePath } from "~/lib/drawing-annotation-geometry";
+import { drawingMarkupBounds, drawingLinePath, drawingBounds } from "~/lib/drawing-annotation-geometry";
 import { DrawingAnnotationSvg } from "./DrawingAnnotationSvg";
 
-export function DrawingAnnotationLayer({ annotations, aspect, selectedId, draft, editing, hidden, sharedScale, onSelect, screenPixelSize = 1, sheetPixelSize, showResizeHandles = true, showMoveArea = false, canEditAnnotation }: {
+export function DrawingAnnotationLayer({ annotations, aspect, selectedId, draft, editing, hidden, sharedScale, onSelect, onActivate, screenPixelSize = 1, sheetPixelSize, showResizeHandles = true, showMoveArea = false, canEditAnnotation }: {
   annotations: DrawingEntity[]; aspect: number; selectedId?: string | null;
   draft?: DrawingMarkup | null; editing?: { id: string; data: DrawingMarkup } | null;
-  hidden?: boolean; sharedScale?: SheetScale | null; onSelect?: (id: string) => void; screenPixelSize?: number; sheetPixelSize?: number;
+  hidden?: boolean; sharedScale?: SheetScale | null; onSelect?: (id: string) => void; onActivate?: (markup: DrawingMarkup) => void; screenPixelSize?: number; sheetPixelSize?: number;
   showResizeHandles?: boolean; showMoveArea?: boolean; canEditAnnotation?: (entityId: string) => boolean;
 }) {
   return <svg className="pointer-events-none absolute inset-0 z-[3] h-full w-full overflow-visible" viewBox={`0 0 1000 ${1000 * aspect}`} aria-label="Drawing annotations">
@@ -16,17 +16,19 @@ export function DrawingAnnotationLayer({ annotations, aspect, selectedId, draft,
       if (entity.kind !== "markup" && entity.kind !== "issue") return null;
       const selected = entity.id === selectedId;
       const data = entity.kind === "markup" ? editing?.id === entity.id ? editing.data : entity.data : null;
+      const linkBounds = data?.type === "link" ? drawingBounds(data.points) : null;
       const bounds = data && selected ? drawingMarkupBounds(data, aspect) : null;
       const canEdit = selected && (canEditAnnotation?.(entity.id) ?? true);
       const editable = canEdit && showResizeHandles;
       const vertices = data && ["line", "arrow", "dimension", "polyline", "polycloud", "area", "angle", "count"].includes(data.type);
       return <g key={entity.id} data-annotation-id={entity.id} tabIndex={0} role="button"
         aria-label={entity.kind === "issue" ? `${entity.data.type === "rfi" ? "RFI" : "Issue"}: ${entity.data.title}` : `${entity.data.type} markup${entity.data.text ? `: ${entity.data.text}` : ""}`}
-        onKeyDown={event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); event.stopPropagation(); onSelect?.(entity.id); } }}
+        onKeyDown={event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); event.stopPropagation(); if (data?.type === "link" && onActivate) onActivate(data); else onSelect?.(entity.id); } }}
         style={{ pointerEvents: "visiblePainted", cursor: "pointer" }}>
         {data ? <>
           {bounds && canEdit && showMoveArea && <rect data-annotation-move-area="" x={bounds.left * 1000} y={bounds.top * 1000 * aspect} width={(bounds.right - bounds.left) * 1000} height={(bounds.bottom - bounds.top) * 1000 * aspect}
             fill="transparent" pointerEvents="all" style={{ cursor: "move" }} />}
+          {linkBounds && <rect data-link-hit-area="" x={linkBounds.left * 1000} y={linkBounds.top * 1000 * aspect} width={(linkBounds.right - linkBounds.left) * 1000} height={(linkBounds.bottom - linkBounds.top) * 1000 * aspect} fill="transparent" pointerEvents="all" />}
           <DrawingAnnotationSvg data={data} aspect={aspect} sharedScale={sharedScale} screenPixelSize={screenPixelSize} sheetPixelSize={sheetPixelSize} />
           {data.type !== "text" && (data.parents
             ? <path d={drawingLinePath(data, aspect)} fill="none" stroke="transparent" strokeWidth={Math.max(18, data.width + 12)} />

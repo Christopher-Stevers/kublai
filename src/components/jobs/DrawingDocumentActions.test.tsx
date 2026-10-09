@@ -71,6 +71,39 @@ afterEach(() => {
 });
 
 describe("drawing document actions", () => {
+  it("resolves a multiple-destination PDF annotation to its saved ForemanHQ chooser", async () => {
+    const linked: DrawingEntity = {
+      ...entity,
+      id: "hyperlink",
+      sheetId: sheet.id,
+      kind: "markup",
+      data: {
+        ...entity.data,
+        type: "link",
+        links: [
+          { label: "Manual", url: "https://example.com/manual" },
+          { label: "Sheet", targetSheetId: sheet.id },
+        ],
+      },
+    } as DrawingEntity;
+    render(
+      <DrawingDocumentActions
+        sheet={sheet}
+        jobId="job"
+        sheets={[{ ...sheet, setId: "folder" }]}
+        entities={[linked]}
+      />,
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "Download this sheet" }),
+    );
+    await waitFor(() => expect(downloadDrawingPdf).toHaveBeenCalled());
+    const options = vi.mocked(downloadDrawingPdf).mock.calls[0]![0];
+    if (linked.kind !== "markup") throw Error("fixture");
+    expect(options.markupLinkUrl?.(linked.data)).toBe(
+      `${location.origin}/dashboard/jobs/job/drawings?drawingSet=folder&drawingSheet=${sheet.id}&drawingLink=hyperlink`,
+    );
+  });
   it("exports the original page index and only includes visible annotations when selected", async () => {
     render(
       <DrawingDocumentActions
