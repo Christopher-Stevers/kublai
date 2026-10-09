@@ -9,7 +9,7 @@ import {
   useState,
 } from "react";
 import { createPortal } from "react-dom";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { CameraIcon, Loader2Icon, XIcon } from "lucide-react";
 import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
@@ -51,6 +51,7 @@ import {
   type PageViewValue,
 } from "~/lib/snapshot-source";
 import { capturePageScrolls, restorePageScrolls } from "~/lib/page-view-scroll";
+import { SNAPSHOT_EDIT_MESSAGE, SNAPSHOT_EDIT_CHAT } from "~/lib/snapshot-edit";
 const SnapshotContext = createContext<{ start: () => void } | null>(null);
 export const useSnapshot = () => useContext(SnapshotContext);
 type Capture = {
@@ -62,7 +63,40 @@ type Capture = {
 export function SnapshotProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter(),
     pathname = usePathname(),
+    params = useSearchParams(),
     utils = api.useUtils();
+  const editMessageId = params.get(SNAPSHOT_EDIT_MESSAGE);
+  const editConversationId = params.get(SNAPSHOT_EDIT_CHAT);
+  const editing = Boolean(editMessageId && editConversationId);
+  const saved = api.conversations.snapshot.useQuery(
+    {
+      conversationId: editConversationId ?? "",
+      messageId: editMessageId ?? "",
+    },
+    { enabled: editing, retry: false, refetchOnWindowFocus: false },
+  );
+  const [portalHost, setPortalHost] = useState<Element | null>(null);
+  useEffect(() => {
+    const chooseHost = () =>
+      setPortalHost(
+        document.fullscreenElement ??
+          document.querySelector('[data-drawing-fullscreen="true"]') ??
+          document.body,
+      );
+    chooseHost();
+    const observer = new MutationObserver(chooseHost);
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["data-drawing-fullscreen"],
+    });
+    document.addEventListener("fullscreenchange", chooseHost);
+    return () => {
+      observer.disconnect();
+      document.removeEventListener("fullscreenchange", chooseHost);
+    };
+  }, []);
   const [phase, setPhase] = useState<
     "idle" | "capture" | "screen" | "select" | "share" | "error"
   >("idle");
@@ -174,7 +208,26 @@ export function SnapshotProvider({ children }: { children: React.ReactNode }) {
     source: SnapshotSource | null;
   } | null>(null);
   const create = api.conversations.create.useMutation(),
-    send = api.conversations.send.useMutation();
+    send = api.conversations.send.useMutation(),
+    editSnapshot = api.conversations.editSnapshot.useMutation();
+  const editAttempt = useRef<{
+    conversationId: string;
+    messageId: string;
+    clientId: string;
+    expectedRevision: number;
+    originalAttachmentId: string;
+    attachmentId?: string;
+    body: string;
+    source: SnapshotSource | null;
+    uploaded?: ConversationMessage["attachments"][number];
+  } | null>(null);
+  const initializedEdit = useRef<string | null>(null);
+  const prepareEdit = () => {
+    if (saved.data && initializedEdit.current !== saved.data.id) {
+      setMessage(saved.data.body);
+      initializedEdit.current = saved.data.id;
+    }
+  };
   const release = useCallback(() => {
     generation.current++;
     drag.current = null;
@@ -194,6 +247,12 @@ export function SnapshotProvider({ children }: { children: React.ReactNode }) {
         () => undefined,
       );
     attempt.current = null;
+    if (editAttempt.current?.uploaded)
+      void removePendingConversationFile(editAttempt.current.uploaded.id).catch(
+        () => undefined,
+      );
+    editAttempt.current = null;
+    initializedEdit.current = null;
   }, []);
   useEffect(
     () => () => {
@@ -282,6 +341,8 @@ export function SnapshotProvider({ children }: { children: React.ReactNode }) {
   };
   const start = () => {
     if (phase !== "idle") return;
+    if (editing && !saved.data) return;
+    if (editing) prepareEdit();
     window.dispatchEvent(new Event(SNAPSHOT_FREEZE_EVENT));
     if (needsScreenCapture()) {
       setPhase("screen");
@@ -355,11 +416,58 @@ export function SnapshotProvider({ children }: { children: React.ReactNode }) {
     }
   };
   const share = async () => {
-    if (!blob || busy || !validChatTarget(target)) return;
+    if (
+      busy ||
+      (editing ? !saved.data || !preview : !blob || !validChatTarget(target))
+    )
+      return;
     setBusy(true);
     setError("");
     setLocked(true);
     try {
+      if (editing && saved.data) {
+        editAttempt.current ??= {
+          conversationId: saved.data.conversationId,
+          messageId: saved.data.id,
+          clientId: crypto.randomUUID(),
+          expectedRevision: saved.data.revision,
+          originalAttachmentId: saved.data.image.id,
+          body: message.trim() || "Snapshot",
+          source,
+        };
+        const current = editAttempt.current;
+        if (!current.attachmentId) {
+          if (blob) {
+            current.uploaded ??= await uploadConversationFile(
+              current.conversationId,
+              new File([blob], `snapshot-${Date.now()}.png`, {
+                type: "image/png",
+              }),
+            );
+            current.attachmentId = current.uploaded.id;
+          } else current.attachmentId = saved.data.image.id;
+        }
+        await editSnapshot.mutateAsync({
+          conversationId: current.conversationId,
+          messageId: current.messageId,
+          clientId: current.clientId,
+          expectedRevision: current.expectedRevision,
+          originalAttachmentId: current.originalAttachmentId,
+          attachmentId: current.attachmentId,
+          body: current.body,
+          source: current.source,
+        });
+        const id = current.conversationId;
+        editAttempt.current = null;
+        release();
+        await Promise.all([
+          utils.conversations.list.invalidate(),
+          utils.conversations.history.invalidate({ conversationId: id }),
+        ]);
+        router.push(`/dashboard/chat?conversation=${encodeURIComponent(id)}`);
+        return;
+      }
+      if (!blob) return;
       if (!attempt.current) {
         const id =
           target.mode === "existing"
@@ -400,15 +508,50 @@ export function SnapshotProvider({ children }: { children: React.ReactNode }) {
       await utils.conversations.list.invalidate();
       router.push(`/dashboard/chat?conversation=${encodeURIComponent(id)}`);
     } catch (reason) {
-      if (!attempt.current) setLocked(false);
+      if (!attempt.current && !editAttempt.current) setLocked(false);
       setError(
         reason instanceof Error
           ? reason.message
-          : "Could not confirm the snapshot was sent. Try again.",
+          : editing
+            ? "Could not confirm the changes were saved. Try again."
+            : "Could not confirm the snapshot was sent. Try again.",
       );
     } finally {
       setBusy(false);
     }
+  };
+  const cancelEdit = () => {
+    release();
+    router.push(
+      `/dashboard/chat?conversation=${encodeURIComponent(editConversationId ?? "")}`,
+    );
+  };
+  const keepImage = () => {
+    if (!saved.data || busy) return;
+    prepareEdit();
+    setBlob(null);
+    setPreview(saved.data.image.url);
+    setSource(saved.data.source);
+    setPhase("share");
+  };
+  const retake = () => {
+    if (attempt.current?.file)
+      void removePendingConversationFile(attempt.current.file.id).catch(
+        () => undefined,
+      );
+    if (editAttempt.current?.uploaded)
+      void removePendingConversationFile(editAttempt.current.uploaded.id).catch(
+        () => undefined,
+      );
+    attempt.current = null;
+    editAttempt.current = null;
+    setLocked(false);
+    setBlob(null);
+    setPreview("");
+    setRect(null);
+    setError("");
+    if (capture) setPhase("select");
+    else setPhase("idle");
   };
   const overlay =
     ((phase === "capture" && !usingScreen) || phase === "select") &&
@@ -532,13 +675,58 @@ export function SnapshotProvider({ children }: { children: React.ReactNode }) {
               </p>
             )}
           </div>,
-          document.body,
+          portalHost ?? document.body,
         )
       : null;
   return (
     <SnapshotContext.Provider value={{ start }}>
       <SnapshotSourceContext.Provider value={sourceRegistry}>
         {children}
+        {editing &&
+          phase === "idle" &&
+          portalHost &&
+          createPortal(
+            <aside
+              data-snapshot-ui
+              aria-label="Edit saved snapshot"
+              className="bg-background fixed inset-x-3 top-16 z-[90] mx-auto max-w-xl space-y-2 rounded-lg border p-3 shadow-lg"
+            >
+              <p className="text-sm font-semibold">Editing saved snapshot</p>
+              <p
+                className="text-muted-foreground text-xs"
+                role={saved.error ? "alert" : "status"}
+              >
+                {saved.error
+                  ? saved.error.message
+                  : saved.data
+                    ? saved.data.source
+                      ? "Make your changes, then retake the snapshot."
+                      : "This older snapshot has no saved source. Keep its image or capture a new view."
+                    : "Opening the saved snapshot…"}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  size="sm"
+                  onClick={start}
+                  disabled={!saved.data || Boolean(saved.error)}
+                >
+                  Retake snapshot
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={keepImage}
+                  disabled={!saved.data || Boolean(saved.error)}
+                >
+                  Keep image
+                </Button>
+                <Button size="sm" variant="ghost" onClick={cancelEdit}>
+                  Cancel edit
+                </Button>
+              </div>
+            </aside>,
+            portalHost,
+          )}
         {overlay}
         <Dialog
           open={phase === "share" || phase === "screen" || phase === "error"}
@@ -547,6 +735,7 @@ export function SnapshotProvider({ children }: { children: React.ReactNode }) {
           }}
         >
           <DialogContent
+            portalContainer={portalHost}
             data-snapshot-ui
             className="max-h-[90dvh] overflow-y-auto sm:max-w-xl"
             showCloseButton={!busy}
@@ -562,12 +751,14 @@ export function SnapshotProvider({ children }: { children: React.ReactNode }) {
             <DialogTitle>
               <span className="flex items-center gap-2">
                 <CameraIcon className="size-5" />
-                Snapshot
+                {editing ? "Edit snapshot" : "Snapshot"}
               </span>
             </DialogTitle>
             <DialogDescription>
               {phase === "share"
-                ? "Review the image and choose who should receive it."
+                ? editing
+                  ? "Review your changes. Saving updates the snapshot in its existing conversation."
+                  : "Review the image and choose who should receive it."
                 : "Capture a selected area and share it in chat."}
             </DialogDescription>
             {phase === "share" ? (
@@ -584,11 +775,13 @@ export function SnapshotProvider({ children }: { children: React.ReactNode }) {
                     view.
                   </p>
                 )}
-                <RecipientChooser
-                  value={target}
-                  onChange={setTarget}
-                  disabled={busy || locked}
-                />
+                {!editing && (
+                  <RecipientChooser
+                    value={target}
+                    onChange={setTarget}
+                    disabled={busy || locked}
+                  />
+                )}
                 <label className="space-y-1 text-sm">
                   Message (optional)
                   <textarea
@@ -605,32 +798,36 @@ export function SnapshotProvider({ children }: { children: React.ReactNode }) {
                     {error}
                   </p>
                 )}
-                <div className="flex justify-end gap-2">
+                {editing && error && locked && (
                   <Button
                     variant="outline"
                     disabled={busy}
-                    onClick={() => {
-                      if (attempt.current?.file)
-                        void removePendingConversationFile(
-                          attempt.current.file.id,
-                        ).catch(() => undefined);
-                      attempt.current = null;
-                      setLocked(false);
-                      setPhase("select");
-                      setRect(null);
-                    }}
+                    onClick={() => window.location.reload()}
                   >
+                    Reopen saved snapshot
+                  </Button>
+                )}
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" disabled={busy} onClick={retake}>
                     Retake
                   </Button>
                   <Button
-                    disabled={busy || !validChatTarget(target)}
+                    disabled={
+                      busy || (editing ? !saved.data : !validChatTarget(target))
+                    }
                     onClick={() => void share()}
                   >
                     {busy
-                      ? "Sending…"
+                      ? editing
+                        ? "Saving…"
+                        : "Sending…"
                       : locked
-                        ? "Retry send"
-                        : "Send snapshot"}
+                        ? editing
+                          ? "Retry save"
+                          : "Retry send"
+                        : editing
+                          ? "Save changes"
+                          : "Send snapshot"}
                   </Button>
                 </div>
               </>

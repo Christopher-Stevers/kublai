@@ -22,6 +22,10 @@ const root = path.resolve(
   process.env.CONVERSATION_UPLOAD_DIR ??
     path.join(process.cwd(), "uploads", "conversation-chat"),
 );
+/** Called only after metadata has revoked access to replaced files. */
+export async function removeReplacedConversationFile(id: string) {
+  await unlink(path.join(root, id)).catch(() => undefined);
+}
 export async function uploadConversationAttachment(
   access: ConversationAccess,
   request: Request,

@@ -15,6 +15,8 @@ const mocks = vi.hoisted(() => ({
   denied: false,
   deleted: false,
   source: null as null | { href: string; title: string; capturedAt: string },
+  own: false,
+  image: false,
 }));
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: mocks.push }),
@@ -57,9 +59,21 @@ vi.mock("~/trpc/react", () => ({
               {
                 id: "message",
                 sequence: 1,
-                author: { id: "recipient", name: "Recipient" },
+                author: {
+                  id: mocks.own ? "sender" : "recipient",
+                  name: "Recipient",
+                },
                 body: "Private review",
-                attachments: [],
+                attachments: mocks.image
+                  ? [
+                      {
+                        id: "image",
+                        mimeType: "image/png",
+                        name: "snapshot.png",
+                        url: "/image",
+                      },
+                    ]
+                  : [],
                 source: mocks.source,
                 createdAt: new Date(),
                 deletedAt: mocks.deleted ? new Date() : null,
@@ -85,11 +99,41 @@ beforeEach(() => {
   mocks.denied = false;
   mocks.deleted = false;
   mocks.source = null;
+  mocks.own = false;
+  mocks.image = false;
   mocks.send.mockResolvedValue({ id: "sent" });
   mocks.read.mockResolvedValue(undefined);
   mocks.invalidate.mockResolvedValue(undefined);
 });
 afterEach(cleanup);
+it("offers editing only for an author's undeleted image snapshots and preserves the saved view", () => {
+  mocks.own = true;
+  mocks.image = true;
+  mocks.source = {
+    href: "/dashboard/jobs/job/drawings?drawingSheet=sheet#snapshot=recorded",
+    title: "Drawing",
+    capturedAt: "2026-10-09T22:00:00Z",
+  };
+  const view = render(<ConversationsView />);
+  const href = screen
+    .getByRole("link", { name: "Edit snapshot" })
+    .getAttribute("href")!;
+  const url = new URL(href, "https://app.invalid");
+  expect(url.hash).toBe("#snapshot=recorded");
+  expect(url.searchParams.get("editSnapshot")).toBe("message");
+  expect(url.searchParams.get("snapshotChat")).toBe("room");
+  mocks.own = false;
+  view.rerender(<ConversationsView />);
+  expect(
+    screen.queryByRole("link", { name: "Edit snapshot" }),
+  ).not.toBeInTheDocument();
+  mocks.own = true;
+  mocks.deleted = true;
+  view.rerender(<ConversationsView />);
+  expect(
+    screen.queryByRole("link", { name: "Edit snapshot" }),
+  ).not.toBeInTheDocument();
+});
 it("opens a snapshot's recorded local view and hides the link when the message is deleted", () => {
   mocks.source = {
     href: "/dashboard/jobs/test/drawings#snapshot=recorded-view",

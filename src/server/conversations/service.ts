@@ -28,6 +28,7 @@ import type {
   ConversationMessage,
   createConversationInput,
   sendConversationInput,
+  editSnapshotInput,
 } from "./contracts";
 import type { z } from "zod";
 
@@ -410,6 +411,164 @@ export async function sendConversationMessage(
     return message.id;
   });
   return { id };
+}
+export async function savedConversationSnapshot(
+  access: ConversationAccess,
+  messageId: string,
+) {
+  const [message] = await db
+    .select()
+    .from(conversationMessages)
+    .where(
+      and(
+        eq(conversationMessages.id, messageId),
+        eq(conversationMessages.conversationId, access.conversation.id),
+        eq(conversationMessages.authorId, access.user.id),
+        isNull(conversationMessages.deletedAt),
+      ),
+    )
+    .limit(1);
+  const [image] = message
+    ? await db
+        .select()
+        .from(conversationAttachments)
+        .where(
+          and(
+            eq(conversationAttachments.messageId, message.id),
+            sql`${conversationAttachments.mimeType} like 'image/%'`,
+          ),
+        )
+        .limit(1)
+    : [];
+  if (!message || !image)
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message:
+        "This snapshot is unavailable. You can only edit your own snapshots.",
+    });
+  return {
+    id: message.id,
+    conversationId: message.conversationId,
+    revision: message.revision,
+    body: message.body,
+    source: message.source,
+    image: {
+      id: image.id,
+      name: image.name,
+      mimeType: image.mimeType,
+      url: `/api/chat/attachments/${image.id}`,
+    },
+  };
+}
+export async function editConversationSnapshot(
+  access: ConversationAccess,
+  input: z.infer<typeof editSnapshotInput>,
+) {
+  await conversationAccess(access.user.id, access.conversation.id);
+  const hash = createHash("sha256").update(JSON.stringify(input)).digest("hex");
+  const result = await db.transaction(async (tx) => {
+    await lockConversation(tx, access.conversation.id);
+    const [message] = await tx
+      .select()
+      .from(conversationMessages)
+      .where(
+        and(
+          eq(conversationMessages.id, input.messageId),
+          eq(conversationMessages.conversationId, access.conversation.id),
+          eq(conversationMessages.authorId, access.user.id),
+          isNull(conversationMessages.deletedAt),
+        ),
+      )
+      .for("update");
+    if (!message)
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: "This snapshot is unavailable.",
+      });
+    if (message.editClientId === input.clientId) {
+      if (message.editRequestHash !== hash)
+        throw new TRPCError({
+          code: "CONFLICT",
+          message:
+            "This retry has different changes. Reopen the snapshot to edit it again.",
+        });
+      return { id: message.id, revision: message.revision, replaced: null };
+    }
+    if (message.revision !== input.expectedRevision)
+      throw new TRPCError({
+        code: "CONFLICT",
+        message:
+          "This snapshot changed elsewhere. Reopen it before saving your changes.",
+      });
+    const [original] = await tx
+      .select()
+      .from(conversationAttachments)
+      .where(
+        and(
+          eq(conversationAttachments.id, input.originalAttachmentId),
+          eq(conversationAttachments.messageId, message.id),
+          sql`${conversationAttachments.mimeType} like 'image/%'`,
+        ),
+      );
+    if (!original)
+      throw new TRPCError({
+        code: "CONFLICT",
+        message: "The original snapshot image is no longer available.",
+      });
+    const replaced = input.attachmentId !== original.id;
+    if (replaced) {
+      const [image] = await tx
+        .select()
+        .from(conversationAttachments)
+        .where(
+          and(
+            eq(conversationAttachments.id, input.attachmentId),
+            eq(conversationAttachments.conversationId, access.conversation.id),
+            eq(conversationAttachments.uploadedById, access.user.id),
+            isNull(conversationAttachments.messageId),
+            sql`${conversationAttachments.mimeType} like 'image/%'`,
+            sql`${conversationAttachments.createdAt} > now() - interval '24 hours'`,
+          ),
+        );
+      if (!image)
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "The replacement image is unavailable. Upload it again.",
+        });
+      await tx
+        .update(conversationAttachments)
+        .set({ messageId: message.id })
+        .where(eq(conversationAttachments.id, image.id));
+      await tx
+        .delete(conversationAttachments)
+        .where(eq(conversationAttachments.id, original.id));
+    }
+    await tx
+      .update(conversationMessages)
+      .set({
+        body: input.body,
+        source: input.source,
+        revision: message.revision + 1,
+        editedAt: sql`now()`,
+        editClientId: input.clientId,
+        editRequestHash: hash,
+      })
+      .where(eq(conversationMessages.id, message.id));
+    await tx
+      .update(conversations)
+      .set({ updatedAt: sql`now()` })
+      .where(eq(conversations.id, access.conversation.id));
+    return {
+      id: message.id,
+      revision: message.revision + 1,
+      replaced: replaced ? original.id : null,
+    };
+  });
+  if (result.replaced) {
+    const { removeReplacedConversationFile } = await import("./attachments");
+    await removeReplacedConversationFile(result.replaced);
+  }
+  return { id: result.id, revision: result.revision };
 }
 export async function markConversationRead(
   access: ConversationAccess,

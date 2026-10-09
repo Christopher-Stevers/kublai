@@ -56,6 +56,8 @@ import {
   sendConversationMessage,
   markConversationRead,
   removeConversationMessage,
+  savedConversationSnapshot,
+  editConversationSnapshot,
 } from "./service";
 import {
   uploadConversationAttachment,
@@ -176,6 +178,12 @@ describe.skipIf(!enabled)("private chat against isolated PostgreSQL", () => {
     );
     await conn.unsafe(sourceMigration);
     await conn.unsafe(sourceMigration);
+    const editMigration = await readFile(
+      new URL("../../../drizzle/0056_snapshot_editing.sql", import.meta.url),
+      "utf8",
+    );
+    await conn.unsafe(editMigration);
+    await conn.unsafe(editMigration);
   });
   beforeEach(async () => {
     vi.clearAllMocks();
@@ -224,6 +232,193 @@ describe.skipIf(!enabled)("private chat against isolated PostgreSQL", () => {
       name: "",
       recipientIds: ["recipient"],
     });
+  const imageFile = async (
+    access: Awaited<ReturnType<typeof conversationAccess>>,
+    color = "#00ff00",
+  ) => {
+    const png = await sharp({
+      create: { width: 30, height: 20, channels: 3, background: color },
+    })
+      .png()
+      .toBuffer();
+    return uploadConversationAttachment(
+      access,
+      new Request("http://test.invalid", {
+        method: "POST",
+        headers: { "content-type": "image/png", "x-file-name": "snapshot.png" },
+        body: new Uint8Array(png),
+      }),
+    );
+  };
+  const snapshotFixture = async () => {
+    const { id } = await direct(),
+      author = await conversationAccess("author", id);
+    const original = await imageFile(author);
+    const source = {
+      href: "/dashboard?view=original",
+      title: "Original drawing",
+      capturedAt: "2026-10-09T22:00:00Z",
+    };
+    const sent = await sendConversationMessage(author, {
+      conversationId: id,
+      clientId: randomUUID(),
+      body: "Original caption",
+      attachmentIds: [original.id],
+      source,
+    });
+    const snapshot = await savedConversationSnapshot(author, sent.id);
+    return { id, author, original, snapshot };
+  };
+  it("replaces a snapshot in place and makes identical edit retries safe", async () => {
+    const { id, author, original, snapshot } = await snapshotFixture();
+    const before = (await conversationHistory(author, { limit: 50 }))
+      .messages[0]!;
+    const image = await imageFile(author, "#0000ff");
+    const input = {
+      conversationId: id,
+      messageId: snapshot.id,
+      clientId: randomUUID(),
+      expectedRevision: 1,
+      originalAttachmentId: original.id,
+      attachmentId: image.id,
+      body: "Updated caption",
+      source: { ...snapshot.source!, href: "/dashboard?view=updated" },
+    };
+    const first = await editConversationSnapshot(author, input);
+    expect(await editConversationSnapshot(author, input)).toEqual(first);
+    expect(first).toMatchObject({ id: snapshot.id, revision: 2 });
+    const after = (
+      await conversationHistory(await conversationAccess("recipient", id), {
+        limit: 50,
+      })
+    ).messages;
+    expect(after).toHaveLength(1);
+    expect(after[0]).toMatchObject({
+      id: before.id,
+      sequence: before.sequence,
+      createdAt: before.createdAt,
+      body: "Updated caption",
+      revision: 2,
+      source: input.source,
+      attachments: [{ id: image.id }],
+    });
+    expect(after[0]!.editedAt).toBeInstanceOf(Date);
+    await expect(
+      readConversationAttachment("recipient", original.id),
+    ).rejects.toThrow();
+    expect(
+      (await readConversationAttachment("recipient", image.id)).mimeType,
+    ).toBe("image/png");
+    await expect(
+      editConversationSnapshot(author, { ...input, body: "Different retry" }),
+    ).rejects.toThrow("different changes");
+  });
+  it("keeps an existing image when only the caption changes, including legacy snapshots without a source", async () => {
+    const { id, author, original, snapshot } = await snapshotFixture();
+    const result = await editConversationSnapshot(author, {
+      conversationId: id,
+      messageId: snapshot.id,
+      clientId: randomUUID(),
+      expectedRevision: 1,
+      originalAttachmentId: original.id,
+      attachmentId: original.id,
+      body: "Caption only",
+      source: null,
+    });
+    expect(result.revision).toBe(2);
+    expect(await savedConversationSnapshot(author, snapshot.id)).toMatchObject({
+      body: "Caption only",
+      source: null,
+      image: { id: original.id },
+    });
+    expect(
+      (await readConversationAttachment("recipient", original.id)).mimeType,
+    ).toBe("image/png");
+  });
+  it("rejects concurrent stale changes without consuming the pending replacement", async () => {
+    const { id, author, original, snapshot } = await snapshotFixture();
+    const one = await imageFile(author),
+      two = await imageFile(author);
+    const input = {
+      conversationId: id,
+      messageId: snapshot.id,
+      expectedRevision: 1,
+      originalAttachmentId: original.id,
+      body: "Update",
+      source: snapshot.source,
+    };
+    const edits = await Promise.allSettled([
+      editConversationSnapshot(author, {
+        ...input,
+        clientId: randomUUID(),
+        attachmentId: one.id,
+      }),
+      editConversationSnapshot(author, {
+        ...input,
+        clientId: randomUUID(),
+        attachmentId: two.id,
+      }),
+    ]);
+    expect(edits.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+    const conflict = edits.find((r) => r.status === "rejected");
+    const reason: unknown =
+      conflict?.status === "rejected" ? conflict.reason : null;
+    expect(reason).toBeInstanceOf(Error);
+    expect((reason as Error).message).toContain("changed elsewhere");
+    const [pending] =
+      await conn`select count(*)::int as count from kublai_conversation_attachment where "conversationId"=${id} and "messageId" is null`;
+    expect(pending!.count).toBe(1);
+  });
+  it("does not let recipients edit an author's snapshot or restore a deleted one", async () => {
+    const { id, author, original, snapshot } = await snapshotFixture();
+    const recipient = await conversationAccess("recipient", id);
+    const input = {
+      conversationId: id,
+      messageId: snapshot.id,
+      clientId: randomUUID(),
+      expectedRevision: 1,
+      originalAttachmentId: original.id,
+      attachmentId: original.id,
+      body: "Changes",
+      source: snapshot.source,
+    };
+    await expect(
+      savedConversationSnapshot(recipient, snapshot.id),
+    ).rejects.toThrow("own snapshots");
+    await expect(editConversationSnapshot(recipient, input)).rejects.toThrow(
+      "unavailable",
+    );
+    await removeConversationMessage(author, snapshot.id);
+    await expect(editConversationSnapshot(author, input)).rejects.toThrow(
+      "unavailable",
+    );
+  });
+  it("rejects replacement theft and revalidates organization access before saving", async () => {
+    const { id, author, original, snapshot } = await snapshotFixture();
+    const replacement = await imageFile(
+      await conversationAccess("recipient", id),
+    );
+    const input = {
+      conversationId: id,
+      messageId: snapshot.id,
+      clientId: randomUUID(),
+      expectedRevision: 1,
+      originalAttachmentId: original.id,
+      attachmentId: replacement.id,
+      body: "Changes",
+      source: snapshot.source,
+    };
+    await expect(editConversationSnapshot(author, input)).rejects.toThrow(
+      "replacement image is unavailable",
+    );
+    expect(
+      (await savedConversationSnapshot(author, snapshot.id)).revision,
+    ).toBe(1);
+    await conn`update kublai_user set "organizationAccessStatus"='rejected' where id='author'`;
+    await expect(
+      editConversationSnapshot(author, { ...input, attachmentId: original.id }),
+    ).rejects.toThrow("Approved organization");
+  });
   it("reuses simultaneous direct starts; membership hides private rooms from coworkers and executives", async () => {
     const rooms = await Promise.all(Array.from({ length: 6 }, () => direct()));
     expect(new Set(rooms.map((r) => r.id)).size).toBe(1);

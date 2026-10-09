@@ -29,6 +29,15 @@ export const sendConversationInput = conversationInput
     (v) => new Set(v.attachmentIds).size === v.attachmentIds.length,
     "Duplicate attachments.",
   );
+export const editSnapshotInput = conversationInput.extend({
+  messageId: z.uuid(),
+  clientId: z.uuid(),
+  expectedRevision: z.number().int().min(1).max(Number.MAX_SAFE_INTEGER),
+  originalAttachmentId: z.uuid(),
+  attachmentId: z.uuid(),
+  body: z.string().trim().min(1).max(8000),
+  source: snapshotSourceSchema.nullable(),
+});
 export type ConversationMessage = {
   id: string;
   sequence: number;
@@ -39,6 +48,8 @@ export type ConversationMessage = {
   createdAt: Date;
   deletedAt: Date | null;
   source?: SnapshotSource | null;
+  revision?: number;
+  editedAt?: Date | null;
   attachments: {
     id: string;
     name: string;

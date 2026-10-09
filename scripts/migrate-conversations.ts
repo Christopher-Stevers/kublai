@@ -12,6 +12,7 @@ try {
       ["0052_private_conversations", "2026-10-09T06:00:00Z"],
       ["0053_conversation_push", "2026-10-09T17:00:00Z"],
       ["0054_snapshot_source_links", "2026-10-09T20:00:00Z"],
+      ["0056_snapshot_editing", "2026-10-09T22:00:00Z"],
     ].map(async ([tag, date]) => {
       const source = await readFile(
         new URL(`../drizzle/${tag}.sql`, import.meta.url),

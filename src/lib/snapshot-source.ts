@@ -230,7 +230,7 @@ export function makeSnapshotSource(
   // Session credentials never belong in a share link.
   for (const key of [...url.searchParams.keys()])
     if (
-      /^(?:access_token|refresh_token|token|secret|auth|authorization|code|password)$/i.test(
+      /^(?:access_token|refresh_token|token|secret|auth|authorization|code|password|editSnapshot|snapshotChat)$/i.test(
         key,
       )
     )

@@ -9,6 +9,7 @@ import {
   SendIcon,
   Trash2Icon,
   ExternalLinkIcon,
+  PencilIcon,
 } from "lucide-react";
 import { api } from "~/trpc/react";
 import { ChatNotifications } from "~/components/jobs/ChatNotifications";
@@ -30,6 +31,7 @@ import {
 } from "~/lib/conversation-upload";
 import type { ConversationMessage } from "~/server/conversations/contracts";
 import { safeSnapshotHref } from "~/lib/snapshot-source";
+import { snapshotEditHref } from "~/lib/snapshot-edit";
 import { useOnlineStatus } from "~/hooks/use-online-status";
 const text = (reason: unknown) =>
   reason instanceof Error
@@ -432,6 +434,11 @@ function ConversationThread({
                   <p className="text-sm break-words whitespace-pre-wrap">
                     {m.body}
                   </p>
+                  {m.editedAt && (
+                    <span className="text-muted-foreground text-xs">
+                      Edited
+                    </span>
+                  )}
                   {m.attachments.map((file) => (
                     <a
                       key={file.id}
@@ -462,6 +469,23 @@ function ConversationThread({
                       Open snapshot source
                     </a>
                   )}
+                  {m.author.id === userId &&
+                    m.attachments.some((file) =>
+                      file.mimeType.startsWith("image/"),
+                    ) && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="mt-1 h-7 px-1 text-xs"
+                        asChild
+                      >
+                        <a
+                          href={snapshotEditHref({ ...m, conversationId: id })}
+                        >
+                          <PencilIcon className="size-3" /> Edit snapshot
+                        </a>
+                      </Button>
+                    )}
                   {m.author.id === userId && (
                     <Button
                       size="sm"
