@@ -2,7 +2,12 @@
 
 import { useEffect, useRef, useState, type ComponentProps } from "react";
 import { DrawingSheetViewer, type DrawingViewport } from "./DrawingSheetViewer";
-import { DEFAULT_OVERLAY_STYLES } from "~/lib/drawing-line-overlay";
+import {
+  defaultOverlayInk,
+  IDENTITY_ALIGNMENT,
+  overlayLabel,
+} from "~/lib/drawing-overlay-stack";
+import type { OverlayInkStyle } from "~/lib/drawing-line-overlay";
 import type { DrawingAppearance } from "~/lib/drawing-appearance";
 import type { DrawingComparison } from "./DrawingComparisonLayer";
 
@@ -13,12 +18,15 @@ export type DrawingCompareSheet = {
   pdf?: { url: string; page: number } | null;
   tiles?: string | null;
 };
+type Alignment = DrawingComparison["alignment"];
 
-/** The comparison is a temporary view; alignment never modifies either source. */
+/** A temporary, independently configurable stack; no source drawing is modified. */
 export function DrawingCompare({
   first: firstSource,
   second: secondSource,
+  additional = [],
   onClose,
+  onEditDrawings,
   resolveAssetUrl,
   initialViewport,
   onViewportChange,
@@ -27,52 +35,60 @@ export function DrawingCompare({
 }: {
   first: DrawingCompareSheet;
   second: DrawingCompareSheet;
+  additional?: DrawingCompareSheet[];
   onClose?: () => void;
+  onEditDrawings?: () => void;
   resolveAssetUrl?: (url: string) => Promise<string>;
   initialViewport?: DrawingViewport | null;
   onViewportChange?: (value: DrawingViewport) => void;
   appearance?: DrawingAppearance;
   toolControls?: ComponentProps<typeof DrawingSheetViewer>["toolControls"];
 }) {
-  const sourceKey = JSON.stringify([firstSource, secondSource]);
+  const requested = [firstSource, secondSource, ...additional];
+  const sourceKey = JSON.stringify(requested);
   const [resolved, setResolved] = useState<{
     key: string;
     resolver: typeof resolveAssetUrl;
-    first: DrawingCompareSheet;
-    second: DrawingCompareSheet;
+    sheets: DrawingCompareSheet[];
     error?: string;
   } | null>(null);
+  const camera = useRef(initialViewport);
+  const [entryView, setEntryView] = useState(initialViewport);
   useEffect(() => {
     let cancelled = false;
     if (!resolveAssetUrl) return;
-    const [first, second] = JSON.parse(sourceKey) as [
-      DrawingCompareSheet,
-      DrawingCompareSheet,
-    ];
-    const prepare = async (sheet: DrawingCompareSheet) => ({
-      ...sheet,
-      imageUrl: await resolveAssetUrl(sheet.imageUrl),
-      pdf: sheet.pdf
-        ? { ...sheet.pdf, url: await resolveAssetUrl(sheet.pdf.url) }
-        : sheet.pdf,
-    });
-    void Promise.all([prepare(first), prepare(second)])
-      .then(([a, b]) => {
-        if (!cancelled)
-          setResolved({
-            key: sourceKey,
-            resolver: resolveAssetUrl,
-            first: a,
-            second: b,
-          });
+    const sources = JSON.parse(sourceKey) as DrawingCompareSheet[];
+    // Shared PDF URLs (different pages of one upload) resolve only once per stack.
+    const urls = new Map<string, Promise<string>>();
+    const resolve = (url: string) => {
+      let pending = urls.get(url);
+      if (!pending) {
+        pending = resolveAssetUrl(url);
+        urls.set(url, pending);
+      }
+      return pending;
+    };
+    void Promise.all(
+      sources.map(async (sheet) => ({
+        ...sheet,
+        imageUrl: await resolve(sheet.imageUrl),
+        pdf: sheet.pdf
+          ? { ...sheet.pdf, url: await resolve(sheet.pdf.url) }
+          : sheet.pdf,
+      })),
+    )
+      .then((sheets) => {
+        if (!cancelled) {
+          setEntryView(camera.current);
+          setResolved({ key: sourceKey, resolver: resolveAssetUrl, sheets });
+        }
       })
       .catch((error: unknown) => {
         if (!cancelled)
           setResolved({
             key: sourceKey,
             resolver: resolveAssetUrl,
-            first,
-            second,
+            sheets: sources,
             error:
               error instanceof Error
                 ? error.message
@@ -86,80 +102,156 @@ export function DrawingCompare({
   const ready =
     !resolveAssetUrl ||
     (resolved?.key === sourceKey && resolved.resolver === resolveAssetUrl);
-  const first =
-    ready && resolveAssetUrl && resolved ? resolved.first : firstSource;
-  const second =
-    ready && resolveAssetUrl && resolved ? resolved.second : secondSource;
-  const [mode, setMode] = useState<"side-by-side" | DrawingComparison["mode"]>(
-    "overlay",
+  const previousReady = Boolean(
+    resolved && resolved.resolver === resolveAssetUrl && !resolved.error,
   );
-  const [inks, setInks] = useState(DEFAULT_OVERLAY_STYLES);
-  const camera = useRef(initialViewport);
-  const [entryView, setEntryView] = useState(initialViewport);
+  const drawings =
+    (ready || previousReady) && resolveAssetUrl && resolved
+      ? resolved.sheets
+      : requested;
+  const [first, second] = drawings as [
+    DrawingCompareSheet,
+    DrawingCompareSheet,
+    ...DrawingCompareSheet[],
+  ];
+  const [wipe, setWipe] = useState(0.5);
+  const [requestedMode, setMode] = useState<
+    "side-by-side" | DrawingComparison["mode"]
+  >("overlay");
+  const multi = drawings.length > 2;
+  const mode =
+    multi && (requestedMode === "side-by-side" || requestedMode === "wipe")
+      ? "overlay"
+      : requestedMode;
+  const [inkState, setInkState] = useState(() => ({
+    key: sourceKey,
+    values: Object.fromEntries(
+      requested.map((sheet, index) => [sheet.id, defaultOverlayInk(index)]),
+    ),
+  }));
+  // Preserve each drawing's colours when adding, removing or reordering other layers.
+  let inks = inkState.values;
+  if (inkState.key !== sourceKey) {
+    inks = { ...inks };
+    requested.forEach((sheet, index) => {
+      inks[sheet.id] ??= defaultOverlayInk(index);
+    });
+    setInkState({ key: sourceKey, values: inks });
+  }
+  const ink = (sheet: DrawingCompareSheet) => inks[sheet.id]!;
+  const changeInk = (id: string, patch: Partial<OverlayInkStyle>) =>
+    setInkState((current) => ({
+      ...current,
+      values: { ...current.values, [id]: { ...current.values[id]!, ...patch } },
+    }));
+  const [alignments, setAlignments] = useState<Record<string, Alignment>>({});
+  const alignmentKey = (id: string) => `${firstSource.id}:${id}`;
+  const alignmentFor = (id: string) =>
+    alignments[alignmentKey(id)] ?? IDENTITY_ALIGNMENT;
+  const [selectedId, setSelectedId] = useState(secondSource.id);
+  const selected = drawings.find((sheet) => sheet.id === selectedId) ?? second;
+  const alignment = alignmentFor(selected.id);
+  const change = (key: keyof Alignment, value: string) => {
+    const numeric = Number(value);
+    if (Number.isFinite(numeric) && selected.id !== first.id)
+      setAlignments((current) => ({
+        ...current,
+        [alignmentKey(selected.id)]: { ...alignment, [key]: numeric },
+      }));
+  };
   const updateViewport = (value: DrawingViewport) => {
     camera.current = value;
     onViewportChange?.(value);
   };
-  const [wipe, setWipe] = useState(0.5);
-  const alignmentKey = `${firstSource.id}:${secondSource.id}`;
-  const [alignmentState, setAlignment] = useState({
-    key: alignmentKey,
-    value: { x: 0, y: 0, scale: 1 },
-  });
-  const alignment =
-    alignmentState.key === alignmentKey
-      ? alignmentState.value
-      : { x: 0, y: 0, scale: 1 };
-  const change = (key: keyof typeof alignment, value: string) => {
-    const numeric = Number(value);
-    if (Number.isFinite(numeric))
-      setAlignment({
-        key: alignmentKey,
-        value: { ...alignment, [key]: numeric },
-      });
-  };
+  const configure = multi ? [selected] : drawings;
   return (
     <section
       className="flex h-full min-h-0 flex-col"
       aria-label="Compare drawings"
     >
-      <div data-drawing-chrome className="bg-background flex flex-wrap items-center gap-2 border-b p-2">
-        <span className="text-sm font-medium">
-          {first.name} / {second.name}
-        </span>
-        <label className="text-sm">
-          Comparison{" "}
-          <select
-            aria-label="Comparison mode"
-            className="bg-background rounded border p-1"
-            value={mode}
-            onChange={(event) => {
-              setEntryView(camera.current);
-              setMode(event.target.value as typeof mode);
-            }}
-          >
-            <option value="side-by-side">Side by side</option>
-            <option value="overlay">Overlay</option>
-            <option value="difference">Red / blue changes</option>
-            <option value="wipe">Wipe</option>
-          </select>
-        </label>
-        {onClose && (
-          <button
-            type="button"
-            className="ml-auto rounded border px-3 py-1"
-            onClick={onClose}
-          >
-            Close comparison
-          </button>
+      <div
+        data-drawing-chrome
+        className="bg-background max-h-[40dvh] shrink-0 overflow-y-auto overscroll-contain border-b p-2"
+      >
+        {!ready && previousReady && (
+          <p role="status" className="text-muted-foreground text-xs">
+            Opening added drawings…
+          </p>
         )}
+        <div className="flex flex-wrap items-center gap-2">
+          <span
+            className="min-w-0 truncate text-sm font-medium"
+            title={drawings.map((sheet) => sheet.name).join(" / ")}
+          >
+            {multi
+              ? `${first.name} + ${drawings.length - 1} drawings`
+              : `${first.name} / ${second.name}`}
+          </span>
+          <label className="text-sm">
+            Comparison{" "}
+            <select
+              aria-label="Comparison mode"
+              className="bg-background rounded border p-1"
+              value={mode}
+              onChange={(event) => {
+                setEntryView(camera.current);
+                setMode(event.target.value as typeof mode);
+              }}
+            >
+              <option value="side-by-side" disabled={multi}>
+                Side by side{multi ? " (two drawings)" : ""}
+              </option>
+              <option value="overlay">Overlay</option>
+              <option value="difference">Red / blue changes</option>
+              <option value="wipe" disabled={multi}>
+                Wipe{multi ? " (two drawings)" : ""}
+              </option>
+            </select>
+          </label>
+          {onEditDrawings && (
+            <button
+              type="button"
+              className="rounded border px-3 py-1 text-sm"
+              onClick={onEditDrawings}
+            >
+              Add / remove drawings
+            </button>
+          )}
+          {onClose && (
+            <button
+              type="button"
+              className="ml-auto rounded border px-3 py-1"
+              onClick={onClose}
+            >
+              Close comparison
+            </button>
+          )}
+        </div>
         {mode !== "side-by-side" && (
-          <div className="flex w-full flex-wrap items-center gap-3 text-sm">
+          <div className="mt-2 flex flex-wrap items-center gap-3 text-sm">
+            {multi && (
+              <label>
+                Overlay drawing{" "}
+                <select
+                  aria-label="Overlay drawing"
+                  className="bg-background max-w-64 rounded border p-1"
+                  value={selected.id}
+                  onChange={(event) => setSelectedId(event.target.value)}
+                >
+                  {drawings.map((sheet, index) => (
+                    <option key={sheet.id} value={sheet.id}>
+                      {overlayLabel(index)} · {sheet.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
             {mode === "overlay" && (
               <>
-                {[first, second].map((drawing, index) => {
-                  const slot = index === 0 ? 0 : 1;
-                  const label = index === 0 ? "Drawing A" : "Drawing B";
+                {configure.map((drawing) => {
+                  const index = drawings.indexOf(drawing),
+                    label = overlayLabel(index),
+                    style = ink(drawing);
                   return (
                     <fieldset
                       key={drawing.id}
@@ -176,16 +268,9 @@ export function DrawingCompare({
                         <input
                           type="color"
                           aria-label={`${label} colour`}
-                          value={inks[slot].color}
+                          value={style.color}
                           onChange={(event) =>
-                            setInks(
-                              (current) =>
-                                current.map((style, at) =>
-                                  at === slot
-                                    ? { ...style, color: event.target.value }
-                                    : style,
-                                ) as typeof current,
-                            )
+                            changeInk(drawing.id, { color: event.target.value })
                           }
                           className="h-8 w-10 rounded border bg-transparent p-0.5"
                         />
@@ -199,31 +284,23 @@ export function DrawingCompare({
                           min="0"
                           max="1"
                           step="0.05"
-                          value={inks[slot].opacity}
+                          value={style.opacity}
                           onChange={(event) =>
-                            setInks(
-                              (current) =>
-                                current.map((style, at) =>
-                                  at === slot
-                                    ? {
-                                        ...style,
-                                        opacity: Number(event.target.value),
-                                      }
-                                    : style,
-                                ) as typeof current,
-                            )
+                            changeInk(drawing.id, {
+                              opacity: Number(event.target.value),
+                            })
                           }
                         />
                         <output className="w-9 text-right tabular-nums">
-                          {Math.round(inks[slot].opacity * 100)}%
+                          {Math.round(style.opacity * 100)}%
                         </output>
                       </label>
                     </fieldset>
                   );
                 })}
                 <p className="text-muted-foreground text-xs">
-                  Matching lines are black. Align the drawings below if their
-                  positions differ.
+                  Matching lines are black. Each drawing has its own colour,
+                  opacity and alignment.
                 </p>
               </>
             )}
@@ -242,97 +319,113 @@ export function DrawingCompare({
               </label>
             )}
             {mode === "difference" && (
-              <span>
-                <span className="text-red-600">First sheet</span> ·{" "}
-                <span className="text-blue-600">Second sheet</span> · common
-                lines are black
-              </span>
+              <p className="w-full text-xs">
+                {drawings.map((sheet, index) => (
+                  <span
+                    key={sheet.id}
+                    style={{ color: defaultOverlayInk(index).color }}
+                  >
+                    {sheet.name}
+                    {index === drawings.length - 1 ? "" : " · "}
+                  </span>
+                ))}{" "}
+                · common lines are black
+              </p>
             )}
-            <label>
-              Horizontal %{" "}
-              <input
-                aria-label="Horizontal alignment"
-                className="bg-background w-20 rounded border p-1"
-                type="number"
-                min="-100"
-                max="100"
-                step="0.1"
-                value={alignment.x * 100}
-                onChange={(event) =>
-                  change(
-                    "x",
-                    String(
-                      Math.max(
-                        -1,
-                        Math.min(1, Number(event.target.value) / 100),
-                      ),
-                    ),
-                  )
-                }
-              />
-            </label>
-            <label>
-              Vertical %{" "}
-              <input
-                aria-label="Vertical alignment"
-                className="bg-background w-20 rounded border p-1"
-                type="number"
-                min="-100"
-                max="100"
-                step="0.1"
-                value={alignment.y * 100}
-                onChange={(event) =>
-                  change(
-                    "y",
-                    String(
-                      Math.max(
-                        -1,
-                        Math.min(1, Number(event.target.value) / 100),
-                      ),
-                    ),
-                  )
-                }
-              />
-            </label>
-            <label>
-              Scale %{" "}
-              <input
-                aria-label="Comparison scale"
-                className="bg-background w-20 rounded border p-1"
-                type="number"
-                min="25"
-                max="400"
-                step="0.1"
-                value={alignment.scale * 100}
-                onChange={(event) =>
-                  change(
-                    "scale",
-                    String(
-                      Math.max(
-                        0.25,
-                        Math.min(4, Number(event.target.value) / 100),
-                      ),
-                    ),
-                  )
-                }
-              />
-            </label>
-            <button
-              type="button"
-              className="rounded border px-2 py-1"
-              onClick={() =>
-                setAlignment({
-                  key: alignmentKey,
-                  value: { x: 0, y: 0, scale: 1 },
-                })
-              }
-            >
-              Reset alignment
-            </button>
+            {selected.id === first.id ? (
+              <p className="text-muted-foreground text-xs">
+                Drawing A anchors the stack. Select another drawing to adjust
+                its alignment.
+              </p>
+            ) : (
+              <>
+                <label>
+                  Horizontal %{" "}
+                  <input
+                    aria-label="Horizontal alignment"
+                    className="bg-background w-20 rounded border p-1"
+                    type="number"
+                    min="-100"
+                    max="100"
+                    step="0.1"
+                    value={alignment.x * 100}
+                    onChange={(event) =>
+                      change(
+                        "x",
+                        String(
+                          Math.max(
+                            -1,
+                            Math.min(1, Number(event.target.value) / 100),
+                          ),
+                        ),
+                      )
+                    }
+                  />
+                </label>
+                <label>
+                  Vertical %{" "}
+                  <input
+                    aria-label="Vertical alignment"
+                    className="bg-background w-20 rounded border p-1"
+                    type="number"
+                    min="-100"
+                    max="100"
+                    step="0.1"
+                    value={alignment.y * 100}
+                    onChange={(event) =>
+                      change(
+                        "y",
+                        String(
+                          Math.max(
+                            -1,
+                            Math.min(1, Number(event.target.value) / 100),
+                          ),
+                        ),
+                      )
+                    }
+                  />
+                </label>
+                <label>
+                  Scale %{" "}
+                  <input
+                    aria-label="Comparison scale"
+                    className="bg-background w-20 rounded border p-1"
+                    type="number"
+                    min="25"
+                    max="400"
+                    step="0.1"
+                    value={alignment.scale * 100}
+                    onChange={(event) =>
+                      change(
+                        "scale",
+                        String(
+                          Math.max(
+                            0.25,
+                            Math.min(4, Number(event.target.value) / 100),
+                          ),
+                        ),
+                      )
+                    }
+                  />
+                </label>
+                <button
+                  type="button"
+                  className="rounded border px-2 py-1"
+                  onClick={() =>
+                    setAlignments((current) => ({
+                      ...current,
+                      [alignmentKey(selected.id)]: IDENTITY_ALIGNMENT,
+                    }))
+                  }
+                >
+                  Reset alignment
+                </button>
+              </>
+            )}
           </div>
         )}
       </div>
-      {!ready ? (
+      {!ready && !previousReady ? (
         <p role="status" className="p-3">
           Opening comparison…
         </p>
@@ -389,11 +482,20 @@ export function DrawingCompare({
               src: second.imageUrl,
               pdf: second.pdf,
               mode,
-              opacity: inks[1].opacity,
-              primaryInk: inks[0],
-              secondaryInk: inks[1],
+              opacity: ink(second).opacity,
+              primaryInk: ink(first),
+              secondaryInk: ink(second),
               wipe,
-              alignment,
+              alignment: alignmentFor(second.id),
+              additional: drawings.slice(2).map((sheet, index) => ({
+                src: sheet.imageUrl,
+                pdf: sheet.pdf,
+                ink:
+                  mode === "difference"
+                    ? defaultOverlayInk(index + 2)
+                    : ink(sheet),
+                alignment: alignmentFor(sheet.id),
+              })),
             }}
           />
         </div>

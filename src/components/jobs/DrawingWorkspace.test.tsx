@@ -93,6 +93,7 @@ vi.mock("./DrawingCompare", () => ({
       data-testid="comparison"
       data-first={props.first.id}
       data-second={props.second.id}
+      data-additional={JSON.stringify(props.additional?.map(sheet => sheet.id) ?? [])}
     >
       <button
         onClick={() =>
@@ -102,6 +103,7 @@ vi.mock("./DrawingCompare", () => ({
         Pan overlay
       </button>
       <button onClick={props.onClose}>Close comparison</button>
+      <button onClick={props.onEditDrawings}>Add / remove drawings</button>
     </div>
   ),
 }));
@@ -317,6 +319,24 @@ afterEach(() => {
 });
 
 describe("drawing workspace workflows", () => {
+  it("opens an ordered stack from the job picker and edits its selected layers", () => {
+    const third = "53cfe8af-e26a-49f2-b2dc-ef0d4e0ecb24", fourth = "63cfe8af-e26a-49f2-b2dc-ef0d4e0ecb24";
+    mocks.data!.jobSheets.push(...[third,fourth].map((id,i)=>({...mocks.data!.jobSheets[0]!,id,sheetId:id,name:`Drawing ${i+3}`})));
+    open();openMenu("More");fireEvent.click(screen.getByRole("menuitem",{name:"Overlay drawings"}));
+    fireEvent.change(screen.getByLabelText("Drawing B"),{target:{value:revisionId}});
+    fireEvent.click(screen.getByRole("button",{name:"Add drawing"}));
+    fireEvent.change(screen.getByLabelText("Drawing C"),{target:{value:fourth}});
+    fireEvent.click(screen.getByRole("button",{name:"Add drawing"}));
+    fireEvent.change(screen.getByLabelText("Drawing D"),{target:{value:third}});
+    fireEvent.click(screen.getByRole("button",{name:"Open overlay"}));
+    expect(screen.getByTestId("comparison")).toHaveAttribute("data-additional",JSON.stringify([fourth,third]));
+    fireEvent.click(screen.getByRole("button",{name:"Add / remove drawings"}));
+    fireEvent.click(screen.getByRole("button",{name:"Remove Drawing C"}));
+    fireEvent.click(screen.getByRole("button",{name:"Open overlay"}));
+    expect(screen.getByTestId("comparison")).toHaveAttribute("data-additional",JSON.stringify([third]));
+    expect(mocks.save).not.toHaveBeenCalled();expect(mocks.metadata).not.toHaveBeenCalled();
+  });
+
   it("overlays any job drawing pair for read-only users and returns to the original drawing with the comparison viewport", () => {
     mocks.data!.canManage = false;
     const third = "53cfe8af-e26a-49f2-b2dc-ef0d4e0ecb24";

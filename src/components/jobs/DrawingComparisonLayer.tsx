@@ -18,6 +18,12 @@ export type ComparisonSource = {
   pdf?: { url: string; page: number } | null;
 };
 export type DrawingComparison = ComparisonSource & {
+  additional?: Array<
+    ComparisonSource & {
+      ink: OverlayInkStyle;
+      alignment: DrawingComparison["alignment"];
+    }
+  >;
   mode: "overlay" | "difference" | "wipe";
   opacity: number;
   primaryInk?: OverlayInkStyle;
@@ -82,6 +88,11 @@ export function DrawingComparisonLayer({
         inverted={appearance.inverted}
         first={primary}
         second={comparison}
+        additional={comparison.additional?.map((layer) => ({
+          source: layer,
+          style: layer.ink,
+          alignment: layer.alignment,
+        }))}
         styles={
           comparison.mode === "difference"
             ? DEFAULT_OVERLAY_STYLES

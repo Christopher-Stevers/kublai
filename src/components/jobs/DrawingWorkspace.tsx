@@ -205,6 +205,7 @@ export function DrawingWorkspace({
   const [compareIds, setCompareIds] = useState<{
     first: string;
     second: string;
+    additional?: string[];
   } | null>(null);
   const [overlayPickerOpen, setOverlayPickerOpen] = useState(false);
   const [navigate, setNavigate] = useState<{
@@ -761,12 +762,13 @@ export function DrawingWorkspace({
     : [];
   const resolved =
     assets?.key === source.imageUrl ? assets : { src: source.imageUrl, pdf };
-  const compareFirst = data?.jobSheets.find(
-    (item) => item.id === compareIds?.first,
-  );
-  const compare = data?.jobSheets.find(
-    (item) => item.id === compareIds?.second,
-  );
+  const comparisonSheets = new Map(data?.jobSheets.map(item => [item.id, item]));
+  const compareFirst = comparisonSheets.get(compareIds?.first ?? "");
+  const compare = comparisonSheets.get(compareIds?.second ?? "");
+  const compareAdditional = (compareIds?.additional ?? []).flatMap(id => {
+    const item = comparisonSheets.get(id);
+    return item ? [item] : [];
+  });
   const versionLabels = new Map(
     entities.flatMap((entity) =>
       entity.kind === "version" && entity.visibility !== "archived"
@@ -846,9 +848,10 @@ export function DrawingWorkspace({
           drawings={overlayChoices}
           initialFirstId={compareIds?.first ?? sourceId}
           initialSecondId={compareIds?.second}
+          initialAdditionalIds={compareIds?.additional}
           onClose={() => setOverlayPickerOpen(false)}
-          onCompare={(first, second) => {
-            setCompareIds({ first, second });
+          onCompare={(first, second, additional) => {
+            setCompareIds({ first, second, additional });
             setOverlayPickerOpen(false);
             setPanel("");
           }}
@@ -1075,7 +1078,9 @@ export function DrawingWorkspace({
           {compare && compareFirst ? (
             <DrawingCompare
               appearance={appearance}
-              key={`${compareFirst.id}:${compare.id}`}
+              key={compareFirst.id}
+              additional={compareAdditional.map(item => ({...item, pdf: sourcePdfPage(item.imageUrl), tiles: tileBase(item.imageUrl)}))}
+              onEditDrawings={() => setOverlayPickerOpen(true)}
               toolControls={{ measureRequest, pipeRequest, onMode: setBottomMode }}
               resolveAssetUrl={resolveAssetUrl}
               first={{

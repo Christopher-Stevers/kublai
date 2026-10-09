@@ -5,7 +5,6 @@ import type { RenderTask } from "pdfjs-dist/legacy/build/pdf.mjs";
 import { loadPdfDocument } from "~/lib/pdf-client";
 import {
   boundedOverlayPatch,
-  compositeDrawingInk,
   drawingInk,
   overlaySourceRect,
   overlayBounds,
@@ -19,7 +18,19 @@ import {
 } from "~/lib/drawing-viewport";
 import type { ComparisonSource } from "./DrawingComparisonLayer";
 
+import {
+  addStackInk,
+  compositeInkStack,
+  createInkStack,
+  type InkStack,
+} from "~/lib/drawing-overlay-stack";
+
 type Props = {
+  additional?: Array<{
+    source: ComparisonSource;
+    style: OverlayInkStyle;
+    alignment: { x: number; y: number; scale: number };
+  }>;
   first: ComparisonSource;
   second: ComparisonSource;
   styles: [OverlayInkStyle, OverlayInkStyle];
@@ -30,7 +41,7 @@ type Props = {
   dpr: number;
   inverted?: boolean;
 };
-type Raster = { patch: DrawingPatch; first: Uint8Array; second: Uint8Array };
+type Raster = { patch: DrawingPatch; ink: InkStack };
 const nextTurn = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
 function loadImage(src: string) {
   return new Promise<HTMLImageElement>((resolve, reject) => {
@@ -38,7 +49,7 @@ function loadImage(src: string) {
     image.crossOrigin = "anonymous";
     image.onload = () => resolve(image);
     image.onerror = () =>
-      reject(new Error("Could not open both drawings for overlay."));
+      reject(new Error("Could not open the drawings for overlay."));
     image.src = src;
   });
 }
@@ -54,12 +65,30 @@ export function DrawingLineOverlayLayer(props: Props) {
   const [error, setError] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
   const [attempt, setAttempt] = useState(0);
-  const styleKey = JSON.stringify([props.styles, Boolean(props.inverted)]);
+  const layers = [
+    {
+      source: props.first,
+      style: props.styles[0],
+      alignment: { x: 0, y: 0, scale: 1 },
+    },
+    {
+      source: props.second,
+      style: props.styles[1],
+      alignment: props.alignment,
+    },
+    ...(props.additional ?? []),
+  ];
+  const styleKey = JSON.stringify([
+    layers.map((layer) => layer.style),
+    Boolean(props.inverted),
+  ]);
   const paper = props.inverted ? "#000000" : "#ffffff";
   const sourcesKey = JSON.stringify([
-    { src: props.first.src, pdf: props.first.pdf },
-    { src: props.second.src, pdf: props.second.pdf },
-    props.alignment,
+    layers.map(({ source, alignment, style }) => ({
+      source: { src: source.src, pdf: source.pdf },
+      alignment,
+      opacity: style.opacity,
+    })),
     attempt,
   ]);
 
@@ -77,16 +106,20 @@ export function DrawingLineOverlayLayer(props: Props) {
     setReady(false);
     for (const canvas of canvases)
       if (canvas) canvas.style.visibility = "hidden";
-    const [first, second, alignment] = JSON.parse(sourcesKey) as [
-      ComparisonSource,
-      ComparisonSource,
-      Props["alignment"],
+    const [sources] = JSON.parse(sourcesKey) as [
+      Array<{
+        source: ComparisonSource;
+        alignment: Props["alignment"];
+        opacity: number;
+      }>,
     ];
-    const images = Promise.all([loadImage(first.src), loadImage(second.src)]);
     const paint = async () => {
       if (!preview) return;
       const id = ++paintId,
-        styles = latest.current.styles;
+        styles = [
+          ...latest.current.styles,
+          ...(latest.current.additional ?? []).map((layer) => layer.style),
+        ];
       for (const [raster, canvas] of [
         [preview, canvases[0]],
         [sharp, canvases[1]],
@@ -101,17 +134,16 @@ export function DrawingLineOverlayLayer(props: Props) {
         );
         for (
           let offset = 0;
-          offset < raster.first.length;
+          offset < raster.ink.first.length;
           offset += 64 * raster.patch.pixelWidth
         ) {
-          compositeDrawingInk(
+          compositeInkStack(
             pixels.data,
-            raster.first,
-            raster.second,
+            raster.ink,
             styles,
             offset,
             Math.min(
-              raster.first.length,
+              raster.ink.first.length,
               offset + 64 * raster.patch.pixelWidth,
             ),
             latest.current.inverted ? "#ffffff" : "#000000",
@@ -142,11 +174,12 @@ export function DrawingLineOverlayLayer(props: Props) {
       patch: DrawingPatch,
       usePdf: boolean,
     ): Promise<Raster> => {
-      const [a, b] = await images;
-      const masks: Uint8Array[] = [];
-      for (const [index, source] of [first, second].entries()) {
+      const ink = createInkStack(patch.pixelWidth * patch.pixelHeight);
+      for (const [index, { source, alignment, opacity }] of sources.entries()) {
+        if (opacity <= 0) continue;
         if (disposed) throw new Error("Overlay closed");
-        const image = index === 0 ? a : b;
+        const image = await loadImage(source.src);
+        if (disposed) throw new Error("Overlay closed");
         const canvas = document.createElement("canvas");
         canvas.width = patch.pixelWidth;
         canvas.height = patch.pixelHeight;
@@ -157,7 +190,7 @@ export function DrawingLineOverlayLayer(props: Props) {
           patch,
           latest.current.fit,
           image.naturalHeight / image.naturalWidth,
-          index === 0 ? undefined : alignment,
+          alignment,
         );
         context.fillStyle = "#ffffff";
         context.fillRect(0, 0, canvas.width, canvas.height);
@@ -208,16 +241,32 @@ export function DrawingLineOverlayLayer(props: Props) {
             rect.width,
             rect.height,
           );
-        masks.push(
-          drawingInk(
-            context.getImageData(0, 0, canvas.width, canvas.height).data,
-          ),
+        const mask = drawingInk(
+          context.getImageData(0, 0, canvas.width, canvas.height).data,
         );
+        for (
+          let offset = 0;
+          offset < mask.length;
+          offset += 64 * patch.pixelWidth
+        ) {
+          addStackInk(
+            ink,
+            mask,
+            index,
+            opacity,
+            offset,
+            Math.min(mask.length, offset + 64 * patch.pixelWidth),
+          );
+          await nextTurn();
+          if (disposed) throw new Error("Overlay closed");
+        }
+        image.onload = image.onerror = null;
+        image.removeAttribute("src");
         canvas.width = 0;
         canvas.height = 0;
         await nextTurn();
       }
-      return { patch, first: masks[0]!, second: masks[1]! };
+      return { patch, ink };
     };
     const schedule = () => {
       if (disposed || rendering || timer !== null) return;
@@ -267,14 +316,27 @@ export function DrawingLineOverlayLayer(props: Props) {
     };
     request.current = schedule;
     void (async () => {
-      const [, secondImage] = await images;
-      if (disposed) return;
       const { fit } = latest.current;
-      bounds = overlayBounds(
-        fit,
-        secondImage.naturalHeight / secondImage.naturalWidth,
-        alignment,
-      );
+      bounds = { left: 0, top: 0, right: 1, bottom: 1 };
+      for (const { source, alignment, opacity } of sources) {
+        if (opacity <= 0) continue;
+        const image = await loadImage(source.src);
+        if (disposed) return;
+        const sourceBounds = overlayBounds(
+          fit,
+          image.naturalHeight / image.naturalWidth,
+          alignment,
+        );
+        bounds = {
+          left: Math.min(bounds.left, sourceBounds.left),
+          top: Math.min(bounds.top, sourceBounds.top),
+          right: Math.max(bounds.right, sourceBounds.right),
+          bottom: Math.max(bounds.bottom, sourceBounds.bottom),
+        };
+        image.onload = image.onerror = null;
+        image.removeAttribute("src");
+        await nextTurn();
+      }
       const spanX = bounds.right - bounds.left,
         spanY = bounds.bottom - bounds.top;
       const density = Math.min(1200 / (fit.width * spanX), 1);
@@ -296,7 +358,7 @@ export function DrawingLineOverlayLayer(props: Props) {
     })().catch(() => {
       if (!disposed)
         setError(
-          "Could not open both drawings for overlay. Check the connection and try again.",
+          "Could not open the drawings for overlay. Check the connection and try again.",
         );
     });
     return () => {
