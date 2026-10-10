@@ -216,6 +216,8 @@ export function DrawingWorkspace({
       ? snapshot
       : null);
   const [panel, setPanel] = useState<Panel>(entryDrawing?.panel ?? "");
+  const [moreOpen, setMoreOpen] = useState(false);
+  const [toolsOpen, setToolsOpen] = useState(false);
   const [tool, setTool] = useState<DrawingTool>("pan");
   // Bottom bar: the Markup panel, and Measure / Pipe system in the viewer.
   const [markupOpen, setMarkupOpen] = useState(entryDrawing?.markupOpen ?? false);
@@ -2410,62 +2412,85 @@ export function DrawingWorkspace({
           aria-label="Drawing tools"
           className={`relative mx-auto grid max-w-6xl grid-cols-4 gap-2 ${markupOpen ? "z-50" : ""}`}
         >
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="outline"
-                className={BAR_BUTTON}
-                aria-label="More"
-              >
-                <MoreHorizontalIcon className="h-5 w-5" />
-                More
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              side="top"
-              align="start"
-              className="max-h-[70dvh] min-w-60 overflow-y-auto"
+          {panel && panel !== "selected" ? (
+            <Button
+              variant="default"
+              className={BAR_BUTTON}
+              aria-label="Done"
+              onClick={() => {
+                setPanel("");
+                setForm(null);
+              }}
             >
-              <DropdownMenuLabel className="text-muted-foreground text-xs font-normal">
-                {statusText}
-              </DropdownMenuLabel>
-              <DropdownMenuItem onSelect={() => snapshotTool?.start()}>
-                Snapshot
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onSelect={() =>
-                  setNavigate({
-                    center: { x: 0.5, y: 0.5 },
-                    zoom: 1,
-                    requestId: crypto.randomUUID(),
-                  })
-                }
-              >
-                Fit to screen
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                disabled={overlayChoices.length < 2}
-                onSelect={() => setOverlayPickerOpen(true)}
-              >
-                Overlay drawings
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => setAppearanceOpen(true)}>
-                Drawing appearance
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              {panels.map(([id, label]) => (
-                <DropdownMenuItem
-                  key={id}
-                  onSelect={() => {
-                    setPanel(id);
-                    setForm(null);
-                  }}
+              <MoreHorizontalIcon className="h-5 w-5" />
+              Done
+            </Button>
+          ) : (
+            <DropdownMenu
+              modal={false}
+              open={moreOpen}
+              onOpenChange={(open) => {
+                setMoreOpen(open);
+                if (open) finishTool();
+              }}
+            >
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant={moreOpen ? "default" : "outline"}
+                  className={BAR_BUTTON}
+                  aria-label={moreOpen ? "Done" : "More"}
                 >
-                  {label}
+                  <MoreHorizontalIcon className="h-5 w-5" />
+                  {moreOpen ? "Done" : "More"}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                side="top"
+                align="start"
+                className="max-h-[70dvh] min-w-60 overflow-y-auto"
+              >
+                <DropdownMenuLabel className="text-muted-foreground text-xs font-normal">
+                  {statusText}
+                </DropdownMenuLabel>
+                <DropdownMenuItem onSelect={() => snapshotTool?.start()}>
+                  Snapshot
                 </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+                <DropdownMenuItem
+                  onSelect={() =>
+                    setNavigate({
+                      center: { x: 0.5, y: 0.5 },
+                      zoom: 1,
+                      requestId: crypto.randomUUID(),
+                    })
+                  }
+                >
+                  Fit to screen
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  disabled={overlayChoices.length < 2}
+                  onSelect={() => setOverlayPickerOpen(true)}
+                >
+                  Overlay drawings
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => setAppearanceOpen(true)}>
+                  Drawing appearance
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                {panels.map(([id, label]) => (
+                  <DropdownMenuItem
+                    key={id}
+                    onSelect={() => {
+                      setMoreOpen(false);
+                      setPanel(id);
+                      setForm(null);
+                    }}
+                  >
+                    {label}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
           {bottomMode.pipe ||
           (!bottomMode.measuring &&
             (moveToolActive || (tool !== "pan" && OTHER_TOOLS.has(tool)))) ? (
@@ -2481,18 +2506,20 @@ export function DrawingWorkspace({
           ) : (
             <DropdownMenu
               modal={false}
+              open={toolsOpen}
               onOpenChange={(open) => {
+                setToolsOpen(open);
                 if (open) finishTool();
               }}
             >
               <DropdownMenuTrigger asChild>
                 <Button
-                  variant="outline"
+                  variant={toolsOpen ? "default" : "outline"}
                   className={BAR_BUTTON}
-                  aria-label="Tools"
+                  aria-label={toolsOpen ? "Done" : "Tools"}
                 >
                   <WrenchIcon className="h-5 w-5" />
-                  Tools
+                  {toolsOpen ? "Done" : "Tools"}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent
@@ -2545,13 +2572,13 @@ export function DrawingWorkspace({
           )}
           <Button
             variant={
-              !OTHER_TOOLS.has(tool) && !bottomMode.measuring
+              markupOpen || (!OTHER_TOOLS.has(tool) && !bottomMode.measuring)
                 ? "default"
                 : "outline"
             }
             className={BAR_BUTTON}
             aria-label={
-              !OTHER_TOOLS.has(tool) && !bottomMode.measuring
+              markupOpen || (!OTHER_TOOLS.has(tool) && !bottomMode.measuring)
                 ? "Done"
                 : "Markup"
             }
@@ -2567,10 +2594,10 @@ export function DrawingWorkspace({
           >
             <PenLineIcon className="h-5 w-5" />
             <span className="flex items-center gap-0.5">
-              {!OTHER_TOOLS.has(tool) && !bottomMode.measuring
+              {markupOpen || (!OTHER_TOOLS.has(tool) && !bottomMode.measuring)
                 ? "Done"
                 : "Markup"}
-              {OTHER_TOOLS.has(tool) && (
+              {OTHER_TOOLS.has(tool) && !markupOpen && (
                 <ChevronUpIcon
                   className={`h-3.5 w-3.5 transition-transform ${markupOpen ? "rotate-180" : ""}`}
                 />

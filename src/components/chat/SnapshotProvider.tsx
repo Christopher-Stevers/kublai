@@ -818,9 +818,11 @@ export function SnapshotProvider({ children }: { children: React.ReactNode }) {
                 Snapshot
               </span>
             </DialogTitle>
-            <DialogDescription>
+            <DialogDescription
+              className={phase === "choose" ? "sr-only" : undefined}
+            >
               {phase === "choose"
-                ? "Capture a new view or reopen one of your saved snapshots to make changes."
+                ? "Snapshot options"
                 : phase === "share"
                   ? editing
                     ? "Choose who should receive this new snapshot. Sending replaces the old snapshot."

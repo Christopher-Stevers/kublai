@@ -732,6 +732,41 @@ describe("drawing workspace workflows", () => {
     }
   });
 
+  it("turns each open chooser into a blue Done button that closes the chooser", () => {
+    open();
+    const toolbar = screen.getByRole("toolbar", { name: "Drawing tools" });
+    for (const name of ["More", "Tools", "Markup"]) {
+      if (name === "Markup") {
+        fireEvent.click(within(toolbar).getByRole("button", { name }));
+      } else {
+        openMenu(name);
+      }
+      const done = within(toolbar).getByRole("button", { name: "Done" });
+      expect(done).toHaveTextContent("Done");
+      expect(done).toHaveClass("bg-primary");
+      expect(done).toHaveAttribute("aria-expanded", "true");
+      if (name === "Markup") fireEvent.click(done);
+      else fireEvent.keyDown(done, { key: "Enter" });
+      expect(screen.queryByRole("menu")).toBeNull();
+      expect(screen.queryByRole("dialog", { name: "Markup tools" })).toBeNull();
+      expect(within(toolbar).queryByRole("button", { name: "Done" })).toBeNull();
+      expect(within(toolbar).getByRole("button", { name })).not.toHaveClass("bg-primary");
+    }
+  });
+
+  it("keeps More as Done while its panel is open and closes the panel from that button", () => {
+    open();
+    panel("details");
+    const toolbar = screen.getByRole("toolbar", { name: "Drawing tools" });
+    expect(screen.getByRole("heading", { name: "Sheet details" })).toBeVisible();
+    const done = within(toolbar).getByRole("button", { name: "Done" });
+    expect(done).toHaveClass("bg-primary");
+    fireEvent.click(done);
+    expect(screen.queryByRole("heading", { name: "Sheet details" })).toBeNull();
+    expect(within(toolbar).getByRole("button", { name: "More" })).toBeVisible();
+    expect(screen.queryByRole("menu")).toBeNull();
+  });
+
   it("switches exclusively between markup, measure and pipe, including open choosers", () => {
     open();
     chooseTool("line");
@@ -743,14 +778,14 @@ describe("drawing workspace workflows", () => {
     expect(screen.getAllByRole("button", { name: "Done" })).toHaveLength(1);
     expect(screen.getByRole("button", { name: "Markup" })).toBeVisible();
     openMenu("Tools");
-    expect(screen.queryByRole("button", { name: "Done" })).toBeNull();
+    expect(screen.getAllByRole("button", { name: "Done" })).toHaveLength(1);
     fireEvent.click(
       screen.getByRole("menuitemcheckbox", { name: "Pipe system" }),
     );
     expect(screen.getAllByRole("button", { name: "Done" })).toHaveLength(1);
     expect(screen.queryByRole("button", { name: "Tools" })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Markup" }));
-    expect(screen.queryByRole("button", { name: "Done" })).toBeNull();
+    expect(screen.getAllByRole("button", { name: "Done" })).toHaveLength(1);
     expect(screen.getByRole("dialog", { name: "Markup tools" })).toBeVisible();
     fireEvent.click(screen.getByRole("button", { name: "Measure" }));
     expect(screen.queryByRole("dialog", { name: "Markup tools" })).toBeNull();
