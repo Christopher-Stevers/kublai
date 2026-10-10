@@ -1,5 +1,6 @@
 import {
   drawingSaveSchema,
+  isQueuedDrawingEdit,
   type DrawingEntity,
   type DrawingSave,
 } from "./drawing-workspace";
@@ -116,7 +117,7 @@ function errorDetails(error: unknown) {
         : "This edit could not be synced. Reconnect and try again.",
   };
 }
-/** Durable private field edits. No whole-workspace replacement, offline publishing or silent CAS rebasing. */
+/** Durable own annotations. Shared markups publish on sync; never silently rebase conflicts. */
 export class DrawingOfflineQueue {
   private disposed = false;
   private flushing = false;
@@ -210,12 +211,9 @@ export class DrawingOfflineQueue {
       ...options.input,
       expectedUserId: this.userId,
     });
-    if (
-      input.visibility !== "private" ||
-      (input.kind !== "markup" && input.kind !== "issue")
-    )
+    if (!isQueuedDrawingEdit(input))
       throw new Error(
-        "Only private markup and issue drafts can be edited offline. Publish while connected.",
+        "Only your markups and private issue drafts can be edited offline. Other records need a connection.",
       );
     if (!/^[0-9a-f-]{36}$/i.test(options.jobId))
       throw new Error("Invalid drawing job.");
@@ -238,11 +236,13 @@ export class DrawingOfflineQueue {
           base.id !== input.id ||
           base.sheetId !== input.sheetId ||
           base.authorId !== this.userId ||
-          base.visibility !== "private" ||
+          (input.kind === "markup"
+            ? base.kind !== "markup" || base.visibility === "archived"
+            : base.kind !== "issue" || base.visibility !== "private") ||
           base.revision !== input.expectedRevision)
       )
         throw new Error(
-          "Download your current private annotation before editing it offline.",
+          "Download your current annotation before editing it offline.",
         );
       if (
         base &&
@@ -262,7 +262,7 @@ export class DrawingOfflineQueue {
         id: draft.id,
         sheetId: draft.sheetId,
         revision: draft.expectedRevision,
-        visibility: "private" as const,
+        visibility: draft.visibility,
         authorId: this.userId,
         authorName:
           base?.authorName ??

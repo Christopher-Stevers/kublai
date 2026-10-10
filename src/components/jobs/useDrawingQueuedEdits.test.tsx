@@ -50,47 +50,55 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 describe("drawing edit queue screen integration", () => {
-  it("keeps a private offline drawing across remount and acknowledges it after reconnect", async () => {
-    binding.active += ":simulation:session-id";
-    const save = vi.fn(async (input: DrawingSave) => saved(input)),
-      onSaved = vi.fn(),
-      onError = vi.fn();
-    const options = {
-      accountKey: binding.active,
-      userId: "worker",
-      jobId,
-      sheetId,
-      save,
-      onSaved,
-      onError,
-    };
-    const first = renderHook(() =>
-      useDrawingQueuedEdits({ ...options, online: false }),
-    );
-    await waitFor(() => expect(first.result.current.ready).toBe(true));
-    const input = draft();
-    await act(() => first.result.current.enqueue(input));
-    expect(first.result.current.records[0]?.input.id).toBe(input.id);
-    expect(save).not.toHaveBeenCalled();
-    first.unmount();
-    const second = renderHook(
-      ({ online }) => useDrawingQueuedEdits({ ...options, online }),
-      { initialProps: { online: false } },
-    );
-    await waitFor(() => expect(second.result.current.records).toHaveLength(1));
-    second.rerender({ online: true });
-    await waitFor(() => expect(second.result.current.records).toHaveLength(0));
-    expect(save).toHaveBeenCalledTimes(1);
-    expect(save.mock.calls[0]?.[0]).toMatchObject({
-      id: input.id,
-      expectedRevision: 0,
-      expectedUserId: "worker",
-    });
-    expect(onSaved).toHaveBeenCalledWith(
-      expect.objectContaining({ id: input.id, revision: 1 }),
-    );
-    expect(onError).not.toHaveBeenCalled();
-  });
+  it.each(["private", "published"] as const)(
+    "keeps a %s offline drawing across remount and acknowledges it after reconnect",
+    async (visibility) => {
+      binding.active += ":simulation:session-id";
+      const save = vi.fn(async (input: DrawingSave) => saved(input)),
+        onSaved = vi.fn(),
+        onError = vi.fn();
+      const options = {
+        accountKey: binding.active,
+        userId: "worker",
+        jobId,
+        sheetId,
+        save,
+        onSaved,
+        onError,
+      };
+      const first = renderHook(() =>
+        useDrawingQueuedEdits({ ...options, online: false }),
+      );
+      await waitFor(() => expect(first.result.current.ready).toBe(true));
+      const input = { ...draft(), visibility };
+      await act(() => first.result.current.enqueue(input));
+      expect(first.result.current.records[0]?.input.id).toBe(input.id);
+      expect(save).not.toHaveBeenCalled();
+      first.unmount();
+      const second = renderHook(
+        ({ online }) => useDrawingQueuedEdits({ ...options, online }),
+        { initialProps: { online: false } },
+      );
+      await waitFor(() =>
+        expect(second.result.current.records).toHaveLength(1),
+      );
+      second.rerender({ online: true });
+      await waitFor(() =>
+        expect(second.result.current.records).toHaveLength(0),
+      );
+      expect(save).toHaveBeenCalledTimes(1);
+      expect(save.mock.calls[0]?.[0]).toMatchObject({
+        id: input.id,
+        expectedRevision: 0,
+        expectedUserId: "worker",
+        visibility,
+      });
+      expect(onSaved).toHaveBeenCalledWith(
+        expect.objectContaining({ id: input.id, revision: 1 }),
+      );
+      expect(onError).not.toHaveBeenCalled();
+    },
+  );
   it("retains a revision conflict without retrying or overwriting server data", async () => {
     const save = vi
       .fn<(input: DrawingSave) => Promise<DrawingEntity>>()

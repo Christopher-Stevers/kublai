@@ -8,7 +8,10 @@ import type {
   DrawingSave,
   DrawingVisibility,
 } from "~/lib/drawing-workspace";
-import { drawingMetadataSchema } from "~/lib/drawing-workspace";
+import {
+  drawingMetadataSchema,
+  isQueuedDrawingEdit,
+} from "~/lib/drawing-workspace";
 import { userCan } from "~/server/auth/permissions";
 import type { RequestUser } from "~/server/utils/get-request-identity";
 
@@ -27,7 +30,8 @@ export function drawingActor(
     throw new TRPCError({ code: "NOT_FOUND", message: "Drawing not found." });
   if (
     user.organizationAccessStatus !== "approved" ||
-    (!userCan(user, "tab.dashboard") || !userCan(user, "drawings.view"))
+    !userCan(user, "tab.dashboard") ||
+    !userCan(user, "drawings.view")
   )
     throw new TRPCError({
       code: "FORBIDDEN",
@@ -60,6 +64,27 @@ export function assertRevision(actual: number, expected: number) {
       code: "CONFLICT",
       message: "Someone changed this item. Reload it before saving your edits.",
     });
+}
+/** A lost save response may acknowledge only the author's exact next edit. */
+export function isQueuedDrawingReplay(
+  input: DrawingSave,
+  existing: DrawingEntity | null,
+  actor: DrawingActor,
+) {
+  return Boolean(
+    input.expectedUserId === actor.id &&
+    existing?.authorId === actor.id &&
+    existing.id === input.id &&
+    existing.sheetId === input.sheetId &&
+    isQueuedDrawingEdit(input) &&
+    existing.visibility === input.visibility &&
+    existing.kind === input.kind &&
+    existing.revision === input.expectedRevision + 1 &&
+    isDeepStrictEqual(
+      existing.data,
+      JSON.parse(JSON.stringify(input.data)) as unknown,
+    ),
+  );
 }
 export function defaultDrawingMetadata(sheetId: string): DrawingMetadata {
   return {
@@ -101,6 +126,7 @@ export function assertEntityWritable(
     (entity.visibility === "published" ||
       entity.archivedFrom === "published") &&
     entity.kind !== "issue" &&
+    entity.kind !== "markup" &&
     !actor.canManage
   )
     assertDrawingManager(actor);
@@ -116,7 +142,11 @@ export function prepareEntity(
   memberIds: string[],
   now: string,
 ): DrawingEntity {
-  if (input.kind !== "issue" && input.kind !== "review")
+  if (
+    input.kind !== "markup" &&
+    input.kind !== "issue" &&
+    input.kind !== "review"
+  )
     assertVisibility(input.visibility, actor);
   if (existing) {
     assertEntityWritable(existing, actor);

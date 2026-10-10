@@ -1,6 +1,5 @@
 import { drawingMarkupLinks } from "~/lib/drawing-links";
 import { randomUUID } from "node:crypto";
-import { isDeepStrictEqual } from "node:util";
 import { TRPCError } from "@trpc/server";
 import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import type { z } from "zod";
@@ -41,6 +40,7 @@ import {
   canReadEntity,
   defaultDrawingMetadata,
   drawingActor,
+  isQueuedDrawingReplay,
   prepareEntity,
   requireSource,
   type DrawingActor,
@@ -129,7 +129,10 @@ async function members(reader: Reader, organizationId: string) {
       message: "Too many organization members.",
     });
   return (rows as RequestUser[])
-    .filter((user) => userCan(user, "tab.dashboard") && userCan(user, "drawings.view"))
+    .filter(
+      (user) =>
+        userCan(user, "tab.dashboard") && userCan(user, "drawings.view"),
+    )
     .map((user) => ({ id: user.id, name: user.name ?? "Team member" }));
 }
 async function sheetMetadata(
@@ -544,21 +547,9 @@ export async function saveDrawingEntity(
     ]);
     const existing = items.find((item) => item.id === input.id) ?? null;
     // An offline request can commit while its response is lost. A replay may
-    // acknowledge only this account's exact immediately-following private edit.
-    // Changed data, later revisions, published items and other authors still conflict.
-    if (
-      input.expectedUserId === access.actor.id &&
-      existing?.authorId === access.actor.id &&
-      input.visibility === "private" &&
-      existing.visibility === "private" &&
-      (input.kind === "markup" || input.kind === "issue") &&
-      existing.kind === input.kind &&
-      existing.revision === input.expectedRevision + 1 &&
-      isDeepStrictEqual(
-        existing.data,
-        JSON.parse(JSON.stringify(input.data)) as unknown,
-      )
-    )
+    // acknowledge only this account's exact immediately-following queued edit.
+    // Changed data, visibility, later revisions and other authors still conflict.
+    if (existing && isQueuedDrawingReplay(input, existing, access.actor))
       return existing;
     if (input.kind === "version" || input.kind === "review")
       assertRevision(current.revision, input.expectedMetadataRevision);

@@ -67,9 +67,14 @@ export function DrawingEntityForm({
               }
             >
               <option value="private">Private · only me</option>
-              {(workspace.canManage || value.kind === "issue") && (
-                <option disabled={offline} value="published">
-                  Published · job team
+              {(workspace.canManage ||
+                value.kind === "issue" ||
+                value.kind === "markup") && (
+                <option
+                  disabled={offline && value.kind !== "markup"}
+                  value="published"
+                >
+                  Public · job team
                 </option>
               )}
             </select>
@@ -552,14 +557,19 @@ export function DrawingEntityForm({
         )}
         {offline && (
           <p className="text-muted-foreground text-xs">
-            Private draft saved on this device. Reconnect to publish or attach
-            photos.
+            {value.visibility === "published"
+              ? "Saved on this device. The job team will see this markup after you reconnect and it syncs."
+              : "Private draft saved on this device. Reconnect to attach photos."}
           </p>
         )}
         <Button
           type="submit"
           disabled={
-            pending || uploading || (offline && value.visibility !== "private")
+            pending ||
+            uploading ||
+            (offline &&
+              value.visibility !== "private" &&
+              value.kind !== "markup")
           }
         >
           {pending ? "Saving…" : "Save"}

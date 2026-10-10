@@ -399,7 +399,9 @@ describe("drawing workspace workflows", () => {
     };
     open();
     expect(screen.getByTestId("markup-editor")).toBeVisible();
-    expect(screen.queryByText("Loading drawing tools…")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Loading drawing tools…"),
+    ).not.toBeInTheDocument();
   });
   it("explains an account mismatch instead of waiting indefinitely", () => {
     mocks.account = {
@@ -412,7 +414,9 @@ describe("drawing workspace workflows", () => {
     expect(screen.getByRole("alert")).toHaveTextContent(
       "Your drawing account changed. Reload to continue.",
     );
-    expect(screen.getByRole("button", { name: "Reload session" })).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: "Reload session" }),
+    ).toBeVisible();
   });
   it("pins a snapshot to its captured revision when the current drawing changes", () => {
     mocks.data!.metadata.currentSourceSheetId = revisionId;
@@ -747,8 +751,12 @@ describe("drawing workspace workflows", () => {
       else fireEvent.keyDown(done, { key: "Enter" });
       expect(screen.queryByRole("menu")).toBeNull();
       expect(screen.queryByRole("dialog", { name: "Markup tools" })).toBeNull();
-      expect(within(toolbar).queryByRole("button", { name: "Done" })).toBeNull();
-      expect(within(toolbar).getByRole("button", { name })).not.toHaveClass("bg-primary");
+      expect(
+        within(toolbar).queryByRole("button", { name: "Done" }),
+      ).toBeNull();
+      expect(within(toolbar).getByRole("button", { name })).not.toHaveClass(
+        "bg-primary",
+      );
     }
   });
 
@@ -756,7 +764,9 @@ describe("drawing workspace workflows", () => {
     open();
     panel("details");
     const toolbar = screen.getByRole("toolbar", { name: "Drawing tools" });
-    expect(screen.getByRole("heading", { name: "Sheet details" })).toBeVisible();
+    expect(
+      screen.getByRole("heading", { name: "Sheet details" }),
+    ).toBeVisible();
     const done = within(toolbar).getByRole("button", { name: "Done" });
     expect(done).toHaveClass("bg-primary");
     fireEvent.click(done);
@@ -939,7 +949,13 @@ describe("drawing workspace workflows", () => {
   });
   it("shows read-only selection without move, resize, delete, or unsaved previews", () => {
     mocks.data!.canManage = false;
-    mocks.data!.entities = [existingMarkup("published")];
+    mocks.data!.entities = [
+      {
+        ...existingMarkup("published"),
+        authorId: "other",
+        authorName: "Other",
+      },
+    ];
     open();
     fireEvent.click(
       screen.getByRole("button", { name: "Select first annotation" }),
@@ -1010,7 +1026,7 @@ describe("drawing workspace workflows", () => {
     expect(screen.getByTestId("reference-words")).toBeEmptyDOMElement();
     vi.unstubAllGlobals();
   });
-  it("autosaves a drawn shape privately on its immutable source with a new revision", async () => {
+  it("autosaves a drawn shape publicly on its immutable source with a new revision", async () => {
     open();
     chooseTool("rect");
     fireEvent.click(screen.getByRole("button", { name: "Draw sample" }));
@@ -1018,13 +1034,55 @@ describe("drawing workspace workflows", () => {
     expect(mocks.save.mock.calls[0]![0]).toMatchObject({
       sheetId,
       expectedRevision: 0,
-      visibility: "private",
+      visibility: "published",
       kind: "markup",
       data: { sourceSheetId: sheetId, type: "rect" },
     });
     await waitFor(() =>
       expect(screen.getByRole("status")).toHaveTextContent("Saved"),
     );
+  });
+  it("defaults worker text and link markups to public while retaining an explicit private choice", async () => {
+    mocks.data!.canManage = false;
+    open();
+    chooseTool("text");
+    fireEvent.click(screen.getByRole("button", { name: "Draw sample" }));
+    expect(screen.getByLabelText("Visibility")).toHaveValue("published");
+    expect(
+      screen.getByRole("option", { name: "Public · job team" }),
+    ).toBeEnabled();
+    fireEvent.change(screen.getByLabelText("Note / label"), {
+      target: { value: "Crew note" },
+    });
+    fireEvent.change(screen.getByLabelText("Visibility"), {
+      target: { value: "private" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(mocks.save).toHaveBeenCalledOnce());
+    expect(mocks.save.mock.calls[0]![0]).toMatchObject({
+      kind: "markup",
+      visibility: "private",
+    });
+    chooseTool("link");
+    fireEvent.click(screen.getByRole("button", { name: "Draw sample" }));
+    expect(screen.getByLabelText("Visibility")).toHaveValue("published");
+  });
+  it("lets a worker edit their own public markup", async () => {
+    mocks.data!.canManage = false;
+    mocks.data!.entities = [existingMarkup("published")];
+    open();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Select first annotation" }),
+    );
+    expect(screen.getByRole("button", { name: "Move" })).toBeEnabled();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Move selected annotation" }),
+    );
+    await waitFor(() => expect(mocks.save).toHaveBeenCalledOnce());
+    expect(mocks.save.mock.calls[0]![0]).toMatchObject({
+      visibility: "published",
+      expectedRevision: 4,
+    });
   });
   it("does not discard a new text form when an earlier pen save finishes", async () => {
     let complete!: (value: DrawingEntity) => void;

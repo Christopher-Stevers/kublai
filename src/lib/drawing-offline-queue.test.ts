@@ -71,7 +71,9 @@ describe("durable account-bound drawing edit queue", () => {
     binding.active = "org:worker:simulation:session-two";
     const next = new Queue(binding.active, "worker");
     expect(await next.list()).toEqual([]);
-    await expect(queue.flush({ save: send })).rejects.toThrow(/account changed/);
+    await expect(queue.flush({ save: send })).rejects.toThrow(
+      /account changed/,
+    );
     expect(send).toHaveBeenCalledOnce();
   });
   it("persists before returning and survives another queue instance", async () => {
@@ -104,7 +106,7 @@ describe("durable account-bound drawing edit queue", () => {
     expect(await queue.list()).toHaveLength(1);
     expect(second.input.data).toHaveProperty("text", "newer");
   });
-  it("requires own current private base to edit an existing item and forbids publishing/reviews", async () => {
+  it("requires the author’s current base to edit an existing item and queues public markups", async () => {
     const queue = new Queue("org:worker", "worker"),
       input = draft({ expectedRevision: 1 });
     await expect(queue.enqueue({ jobId, input })).rejects.toThrow(
@@ -120,9 +122,18 @@ describe("durable account-bound drawing edit queue", () => {
         },
       }),
     ).rejects.toThrow(/Download your current/);
-    await expect(
-      queue.enqueue({ jobId, input: draft({ visibility: "published" }) }),
-    ).rejects.toThrow(/private markup/);
+    const shared = await queue.enqueue({
+      jobId,
+      input: draft({ visibility: "published" }),
+    });
+    expect(shared.input.visibility).toBe("published");
+    expect(shared.preview.visibility).toBe("published");
+    const reloaded = new Queue("org:worker", "worker");
+    expect((await reloaded.list())[0]?.preview.visibility).toBe("published");
+    const send = vi.fn(async (value: DrawingSave) => saved(value));
+    await reloaded.flush({ save: send });
+    expect(send.mock.calls[0]?.[0].visibility).toBe("published");
+    expect(await reloaded.list()).toEqual([]);
   });
   it("leases pending entries across tabs and deletes only after matching server acknowledgement", async () => {
     const queue = new Queue("org:worker", "worker"),
