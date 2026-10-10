@@ -35,9 +35,9 @@ export const maxDuration = 30;
 async function requestUser(request: Request) {
   const { user } = await getRequestIdentity(request.headers, { allowDev: true, request });
   if (!user?.organizationId) throw new UploadError("Unauthorized", 401);
-  if (!userCan(user, "drawings.manage"))
+  if ((user.organizationAccessStatus ?? "approved") !== "approved" || !userCan(user, "tab.dashboard") || !userCan(user, "drawings.upload"))
     throw new UploadError("You don't have permission to upload drawings", 403);
-  return { userId: user.id, organizationId: user.organizationId };
+  return { userId: user.id, organizationId: user.organizationId, canViewDrawings: userCan(user, "drawings.view") };
 }
 async function checkDrawingSet(setId: string, jobId: string, organizationId: string) {
   if (!UUID.test(setId)) throw new UploadError("Drawing set id is invalid");
@@ -144,6 +144,7 @@ export async function POST(request: Request) {
       )
         throw new UploadError("Drawing set id is invalid");
       const drawingSetId = input.drawingSetId ?? undefined;
+      if (drawingSetId && !owner.canViewDrawings) throw new UploadError("You don't have permission to access drawings", 403);
       if (drawingSetId)
         await checkDrawingSet(drawingSetId, input.jobId, owner.organizationId);
       const s = await createUpload(
@@ -158,6 +159,7 @@ export async function POST(request: Request) {
     }
     const s = await readSession(id);
     assertOwner(s, owner.userId, owner.organizationId);
+    if (s.drawingSetId && !owner.canViewDrawings) throw new UploadError("You don’t have permission to access drawings", 403);
     await checkJob(s.jobId, owner.organizationId);
     const action = url.searchParams.get("action");
     if (action !== "finish" && action !== "retry") {
@@ -214,6 +216,7 @@ export async function GET(request: Request) {
     const id = new URL(request.url).searchParams.get("uploadId") ?? "";
     const s = await readSession(id);
     assertOwner(s, owner.userId, owner.organizationId);
+    if (s.drawingSetId && !owner.canViewDrawings) throw new UploadError("You don’t have permission to access drawings", 403);
     await checkJob(s.jobId, owner.organizationId);
     if (s.drawingSetId) {
       // Drawings: same recovery idea, against the folder's sheets.

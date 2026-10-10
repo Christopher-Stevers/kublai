@@ -82,7 +82,7 @@ export const roomsRouter = createTRPCRouter({
     .query(async ({ ctx, input }) => {
       const organizationId = (ctx.user as { organizationId: string })
         .organizationId;
-      const canManage = (userCan(ctx.user as never, "rooms.review") || userCan(ctx.user as never, "drawings.manage"));
+      const canManage = (userCan(ctx.user as never, "rooms.review") || userCan(ctx.user as never, "drawings.upload"));
 
       const [job] = await ctx.db
         .select({ id: jobs.id, organizationId: jobs.organizationId })
@@ -194,6 +194,8 @@ export const roomsRouter = createTRPCRouter({
 
       return {
         canManage,
+        canUpload: userCan(ctx.user, "drawings.upload"),
+        canDelete: userCan(ctx.user, "drawings.delete"),
         canEditNotes: userCan(ctx.user as never, "jobs.edit"),
         canRequestMaterial: userCan(ctx.user as never, "lists.edit"),
         plan: plan
@@ -231,7 +233,7 @@ export const roomsRouter = createTRPCRouter({
         .organizationId;
       const canManage =
         userCan(ctx.user as never, "rooms.review") ||
-        userCan(ctx.user as never, "drawings.manage");
+        userCan(ctx.user as never, "drawings.upload");
       return ctx.db.transaction(async (tx) => {
         const [target] = await tx
           .select({ floorId: jobRooms.floorId })
@@ -443,7 +445,7 @@ export const roomsRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       if (
-        !userCan(ctx.user as never, "drawings.manage")
+        !userCan(ctx.user as never, "drawings.upload")
       ) {
         throw new TRPCError({ code: "FORBIDDEN" });
       }
@@ -618,7 +620,7 @@ export const roomsRouter = createTRPCRouter({
     .input(z.object({ floorId: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
       if (
-        !userCan(ctx.user as never, "drawings.manage")
+        !userCan(ctx.user as never, "drawings.delete")
       ) {
         throw new TRPCError({ code: "FORBIDDEN" });
       }
@@ -666,7 +668,7 @@ export const roomsRouter = createTRPCRouter({
   copyFloor: hasDashboardAccess
     .input(z.object({ floorId: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
-      if (!userCan(ctx.user as never, "drawings.manage")) {
+      if (!userCan(ctx.user as never, "drawings.upload")) {
         throw new TRPCError({ code: "FORBIDDEN" });
       }
       const organizationId = (ctx.user as { organizationId: string })
@@ -1179,7 +1181,7 @@ export const roomsRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       if (
-        !userCan(ctx.user as never, "drawings.manage")
+        !userCan(ctx.user as never, "drawings.upload")
       ) {
         throw new TRPCError({ code: "FORBIDDEN" });
       }
@@ -1220,7 +1222,7 @@ export const roomsRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       if (
-        !userCan(ctx.user as never, "drawings.manage")
+        !userCan(ctx.user as never, "drawings.upload")
       ) {
         throw new TRPCError({ code: "FORBIDDEN" });
       }
@@ -1269,7 +1271,7 @@ export const roomsRouter = createTRPCRouter({
     .input(z.object({ floorId: z.string().uuid() }))
     .query(async ({ ctx, input }) => {
       if (
-        !(userCan(ctx.user as never, "rooms.review") || userCan(ctx.user as never, "drawings.manage"))
+        !(userCan(ctx.user as never, "rooms.review") || userCan(ctx.user as never, "drawings.upload"))
       ) {
         throw new TRPCError({ code: "FORBIDDEN" });
       }

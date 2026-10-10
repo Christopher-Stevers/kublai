@@ -52,6 +52,10 @@ import { tileBase } from "~/lib/drawing-tiles";
 import { warmDrawingPdfRuntime } from "~/lib/drawing-pdf-offline-runtime";
 import { collectDrawingOfflineUrls } from "~/lib/drawing-offline";
 import { uploadDrawings } from "~/lib/upload-drawings";
+import {
+  DrawingsAccessGate,
+  useDrawingCapabilities,
+} from "~/components/permissions/DrawingsAccess";
 import type { DrawingViewport } from "./DrawingSheetViewer";
 import { DrawingWorkspace } from "./DrawingWorkspace";
 import { DrawingSheetRegister } from "./DrawingSheetRegister";
@@ -78,14 +82,31 @@ const BOTTOM_BAR =
  * splits it into one sheet per page. Sheets are only viewed (no room detection).
  */
 export function JobDrawingsView({ jobId }: { jobId: string }) {
+  return (
+    <DrawingsAccessGate>
+      <JobDrawingsContent jobId={jobId} />
+    </DrawingsAccessGate>
+  );
+}
+
+function JobDrawingsContent({ jobId }: { jobId: string }) {
+  const permissions = useDrawingCapabilities();
   const sandbox = useTutorialSandbox();
   const utils = api.useUtils();
-  const [setId, setSetId] = usePageViewState<string | null>(`drawings:${jobId}:setId`, null);
-  const [sheetId, setSheetId] = usePageViewState<string | null>(`drawings:${jobId}:sheetId`, null);
+  const [setId, setSetId] = usePageViewState<string | null>(
+    `drawings:${jobId}:setId`,
+    null,
+  );
+  const [sheetId, setSheetId] = usePageViewState<string | null>(
+    `drawings:${jobId}:sheetId`,
+    null,
+  );
   const full = useDrawingFullscreen(sheetId !== null);
   const lastViewport = useRef<DrawingViewport | null>(null);
   const zoomLabel = useRef<HTMLSpanElement>(null);
-  const [entryViewport, setEntryViewport] = useState<DrawingViewport | null>(null);
+  const [entryViewport, setEntryViewport] = useState<DrawingViewport | null>(
+    null,
+  );
   const openSheet = (id: string | null, preserveViewport = false) => {
     setEntryViewport(preserveViewport ? lastViewport.current : null);
     if (!preserveViewport) lastViewport.current = null;
@@ -97,11 +118,23 @@ export function JobDrawingsView({ jobId }: { jobId: string }) {
   const fileInput = useRef<HTMLInputElement>(null);
   const account = useDrawingAccount();
   const [query, setQuery] = usePageViewState(`drawings:${jobId}:query`, "");
-  const [discipline, setDiscipline] = usePageViewState(`drawings:${jobId}:discipline`, "");
+  const [discipline, setDiscipline] = usePageViewState(
+    `drawings:${jobId}:discipline`,
+    "",
+  );
   const [status, setStatus] = usePageViewState(`drawings:${jobId}:status`, "");
-  const [favoritesOnly, setFavoritesOnly] = usePageViewState(`drawings:${jobId}:favoritesOnly`, false);
-  const [listView, setListView] = usePageViewState(`drawings:${jobId}:listView`, false);
-  const [registerOpen, setRegisterOpen] = usePageViewState(`drawings:${jobId}:registerOpen`, false);
+  const [favoritesOnly, setFavoritesOnly] = usePageViewState(
+    `drawings:${jobId}:favoritesOnly`,
+    false,
+  );
+  const [listView, setListView] = usePageViewState(
+    `drawings:${jobId}:listView`,
+    false,
+  );
+  const [registerOpen, setRegisterOpen] = usePageViewState(
+    `drawings:${jobId}:registerOpen`,
+    false,
+  );
   const [download, setDownload] = useState<string | null>(null);
   const downloader = useRef<AbortController | null>(null);
   const summaries = api.drawingsWorkspace.list.useQuery(
@@ -134,7 +167,11 @@ export function JobDrawingsView({ jobId }: { jobId: string }) {
       setSetId(folder);
       setSheetId(id);
       const saved = currentSnapshotState()?.drawing;
-      if (saved?.jobId === jobId && saved.sheetId === id && saved.setId === folder) {
+      if (
+        saved?.jobId === jobId &&
+        saved.sheetId === id &&
+        saved.setId === folder
+      ) {
         setEntryViewport(saved.viewport);
         lastViewport.current = saved.viewport;
       }
@@ -280,10 +317,15 @@ export function JobDrawingsView({ jobId }: { jobId: string }) {
   };
   const sheetIndex = sheets.findIndex((sheet) => sheet.id === sheetId);
   const sheet = sheetIndex >= 0 ? sheets[sheetIndex] : null;
-  const canManage =
+  const flags = setId ? setData : setsData;
+  const canUpload =
     !sandbox &&
     setSnapshot.online &&
-    Boolean(setId ? setData?.canManage : setsData?.canManage);
+    Boolean(permissions.canUpload ?? flags?.canUpload ?? flags?.canManage);
+  const canDelete =
+    !sandbox &&
+    setSnapshot.online &&
+    Boolean(permissions.canDelete ?? flags?.canDelete ?? flags?.canManage);
 
   // Paging should feel instant: warm the neighbouring sheets in the background.
   const neighbours = sheet
@@ -308,7 +350,13 @@ export function JobDrawingsView({ jobId }: { jobId: string }) {
 
   // The app bar back arrow steps out of a sheet, then out of a folder.
   useHeaderBackOverride(
-    full.fullscreen ? full.exit : sheetId ? () => openSheet(null) : setId ? () => setSetId(null) : null,
+    full.fullscreen
+      ? full.exit
+      : sheetId
+        ? () => openSheet(null)
+        : setId
+          ? () => setSetId(null)
+          : null,
   );
 
   const openNameDialog = (dialog: NameDialog) => {
@@ -427,7 +475,10 @@ export function JobDrawingsView({ jobId }: { jobId: string }) {
         </div>
         {/* Second row of the drawing's bottom bar (the workspace draws the
             first: More, Tools, Markup, Measure). */}
-        <div data-drawing-chrome className="bg-card shrink-0 px-4 pt-1 pb-[calc(0.5rem+env(safe-area-inset-bottom))]">
+        <div
+          data-drawing-chrome
+          className="bg-card shrink-0 px-4 pt-1 pb-[calc(0.5rem+env(safe-area-inset-bottom))]"
+        >
           <div className="mx-auto grid max-w-6xl grid-cols-[minmax(0,1fr)_minmax(0,1.25fr)_minmax(0,1fr)] items-center gap-2">
             <Button
               variant="outline"
@@ -440,7 +491,7 @@ export function JobDrawingsView({ jobId }: { jobId: string }) {
             </Button>
             <div className="flex min-w-0 flex-col items-center">
               <div className="flex w-full min-w-0 items-center justify-center gap-1.5">
-                {canManage ? (
+                {canUpload ? (
                   <Button
                     type="button"
                     variant="ghost"
@@ -448,13 +499,27 @@ export function JobDrawingsView({ jobId }: { jobId: string }) {
                     aria-label={`Rename drawing ${sheet.name}`}
                     title={sheet.name}
                     disabled={renameSheet.isPending}
-                    onClick={() => openNameDialog({ kind: "rename-sheet", id: sheet.id, name: sheet.name })}
+                    onClick={() =>
+                      openNameDialog({
+                        kind: "rename-sheet",
+                        id: sheet.id,
+                        name: sheet.name,
+                      })
+                    }
                   >
                     <span className="truncate">{sheet.name}</span>
-                    <PencilIcon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                    <PencilIcon
+                      className="h-3.5 w-3.5 shrink-0"
+                      aria-hidden="true"
+                    />
                   </Button>
                 ) : (
-                  <span className="min-w-0 truncate py-1 text-center text-sm" title={sheet.name}>{sheet.name}</span>
+                  <span
+                    className="min-w-0 truncate py-1 text-center text-sm"
+                    title={sheet.name}
+                  >
+                    {sheet.name}
+                  </span>
                 )}
                 <span
                   ref={zoomLabel}
@@ -513,7 +578,7 @@ export function JobDrawingsView({ jobId }: { jobId: string }) {
       <Button
         size={size}
         className={className}
-        disabled={!canManage || uploading !== null}
+        disabled={!canUpload || uploading !== null}
         onClick={() => fileInput.current?.click()}
       >
         {uploading ? (
@@ -588,7 +653,7 @@ export function JobDrawingsView({ jobId }: { jobId: string }) {
               <p className="text-muted-foreground mb-4 text-center">
                 Upload a PDF. Each page becomes its own drawing in this folder.
               </p>
-              {canManage && uploadButton("", "default")}
+              {canUpload && uploadButton("", "default")}
             </CardContent>
           </Card>
         ) : (
@@ -615,6 +680,7 @@ export function JobDrawingsView({ jobId }: { jobId: string }) {
                 }
                 onClick={() => openSheet(item.id)}
                 onKeyDown={(event) => {
+                  if (event.target !== event.currentTarget) return;
                   if (event.key === "Enter" || event.key === " ") {
                     event.preventDefault();
                     openSheet(item.id);
@@ -660,7 +726,7 @@ export function JobDrawingsView({ jobId }: { jobId: string }) {
                       className={`h-4 w-4 ${bySheet.get(item.id)?.favorite ? "fill-amber-400 text-amber-600" : ""}`}
                     />
                   </Button>
-                  {canManage && (
+                  {(canUpload || canDelete) && (
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button
@@ -677,36 +743,40 @@ export function JobDrawingsView({ jobId }: { jobId: string }) {
                         align="end"
                         onClick={(event) => event.stopPropagation()}
                       >
-                        <DropdownMenuItem
-                          onSelect={() =>
-                            openNameDialog({
-                              kind: "rename-sheet",
-                              id: item.id,
-                              name: item.name,
-                            })
-                          }
-                        >
-                          <PencilIcon className="h-4 w-4" />
-                          Rename
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          variant="destructive"
-                          onSelect={async () => {
-                            if (
-                              await confirmAction({
-                                title: `Delete ${item.name}?`,
-                                description:
-                                  "This drawing will be removed from the folder.",
-                                confirmLabel: "Delete",
-                                destructive: true,
+                        {canUpload && (
+                          <DropdownMenuItem
+                            onSelect={() =>
+                              openNameDialog({
+                                kind: "rename-sheet",
+                                id: item.id,
+                                name: item.name,
                               })
-                            )
-                              deleteSheet.mutate({ sheetId: item.id });
-                          }}
-                        >
-                          <TrashIcon className="h-4 w-4" />
-                          Delete
-                        </DropdownMenuItem>
+                            }
+                          >
+                            <PencilIcon className="h-4 w-4" />
+                            Rename
+                          </DropdownMenuItem>
+                        )}
+                        {canDelete && (
+                          <DropdownMenuItem
+                            variant="destructive"
+                            onSelect={async () => {
+                              if (
+                                await confirmAction({
+                                  title: `Delete ${item.name}?`,
+                                  description:
+                                    "This drawing will be removed from the folder.",
+                                  confirmLabel: "Delete",
+                                  destructive: true,
+                                })
+                              )
+                                deleteSheet.mutate({ sheetId: item.id });
+                            }}
+                          >
+                            <TrashIcon className="h-4 w-4" />
+                            Delete
+                          </DropdownMenuItem>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   )}
@@ -734,8 +804,13 @@ export function JobDrawingsView({ jobId }: { jobId: string }) {
                 className="max-h-[70dvh] min-w-56 overflow-y-auto"
               >
                 <DropdownMenuLabel>Discipline</DropdownMenuLabel>
-                <DropdownMenuRadioGroup value={discipline} onValueChange={setDiscipline}>
-                  <DropdownMenuRadioItem value="">All disciplines</DropdownMenuRadioItem>
+                <DropdownMenuRadioGroup
+                  value={discipline}
+                  onValueChange={setDiscipline}
+                >
+                  <DropdownMenuRadioItem value="">
+                    All disciplines
+                  </DropdownMenuRadioItem>
                   {disciplines.map((value) => (
                     <DropdownMenuRadioItem key={value} value={value}>
                       {value}
@@ -744,26 +819,39 @@ export function JobDrawingsView({ jobId }: { jobId: string }) {
                 </DropdownMenuRadioGroup>
                 <DropdownMenuSeparator />
                 <DropdownMenuLabel>Status</DropdownMenuLabel>
-                <DropdownMenuRadioGroup value={status} onValueChange={setStatus}>
-                  <DropdownMenuRadioItem value="">All statuses</DropdownMenuRadioItem>
-                  {["draft", "for_review", "approved", "superseded"].map((value) => (
-                    <DropdownMenuRadioItem key={value} value={value} className="capitalize">
-                      {value.replaceAll("_", " ")}
-                    </DropdownMenuRadioItem>
-                  ))}
+                <DropdownMenuRadioGroup
+                  value={status}
+                  onValueChange={setStatus}
+                >
+                  <DropdownMenuRadioItem value="">
+                    All statuses
+                  </DropdownMenuRadioItem>
+                  {["draft", "for_review", "approved", "superseded"].map(
+                    (value) => (
+                      <DropdownMenuRadioItem
+                        key={value}
+                        value={value}
+                        className="capitalize"
+                      >
+                        {value.replaceAll("_", " ")}
+                      </DropdownMenuRadioItem>
+                    ),
+                  )}
                 </DropdownMenuRadioGroup>
                 <DropdownMenuSeparator />
                 <DropdownMenuCheckboxItem
                   checked={favoritesOnly}
-                  onCheckedChange={(checked) => setFavoritesOnly(checked === true)}
+                  onCheckedChange={(checked) =>
+                    setFavoritesOnly(checked === true)
+                  }
                 >
                   <StarIcon className="h-4 w-4" />
                   Starred only
                 </DropdownMenuCheckboxItem>
-                {((canManage && sheets.length > 0) || account?.store) && (
+                {((canUpload && sheets.length > 0) || account?.store) && (
                   <DropdownMenuSeparator />
                 )}
-                {canManage && sheets.length > 0 && (
+                {canUpload && sheets.length > 0 && (
                   <DropdownMenuItem onSelect={() => setRegisterOpen(true)}>
                     <FileTextIcon className="h-4 w-4" />
                     Read title blocks
@@ -771,7 +859,9 @@ export function JobDrawingsView({ jobId }: { jobId: string }) {
                 )}
                 {account?.store && (
                   <DropdownMenuItem
-                    disabled={!setSnapshot.online || !sheets.length || Boolean(download)}
+                    disabled={
+                      !setSnapshot.online || !sheets.length || Boolean(download)
+                    }
                     onSelect={() => void downloadFolder()}
                   >
                     <DownloadIcon className="h-4 w-4" />
@@ -801,8 +891,12 @@ export function JobDrawingsView({ jobId }: { jobId: string }) {
             </div>
             <Button
               className={BAR_BUTTON}
-              disabled={!canManage || uploading !== null}
-              title={canManage ? "Upload a PDF; each page becomes a drawing" : "You can't add drawings"}
+              disabled={!canUpload || uploading !== null}
+              title={
+                canUpload
+                  ? "Upload a PDF; each page becomes a drawing"
+                  : "You can't add drawings"
+              }
               onClick={() => fileInput.current?.click()}
             >
               {uploading && (
@@ -812,7 +906,7 @@ export function JobDrawingsView({ jobId }: { jobId: string }) {
             </Button>
           </div>
         </div>
-        {canManage && sheets.length > 0 && (
+        {canUpload && sheets.length > 0 && (
           <DrawingSheetRegister
             jobId={jobId}
             sheets={sheets}
@@ -835,7 +929,7 @@ export function JobDrawingsView({ jobId }: { jobId: string }) {
     <Button
       size={size}
       className={className}
-      disabled={!canManage}
+      disabled={!canUpload}
       onClick={() => openNameDialog({ kind: "new-set" })}
     >
       <FolderPlusIcon className="mr-2 h-5 w-5" />
@@ -846,7 +940,7 @@ export function JobDrawingsView({ jobId }: { jobId: string }) {
     <div className="pb-24">
       <div className="mb-6 flex items-center justify-between gap-3">
         <h2 className="text-foreground text-xl font-semibold">Drawings</h2>
-        {canManage &&
+        {canUpload &&
           folders.length > 0 &&
           newFolderButton("hidden h-11 sm:inline-flex")}
       </div>
@@ -869,7 +963,7 @@ export function JobDrawingsView({ jobId }: { jobId: string }) {
               Create a folder for each drawing set, like Mechanical or
               Electrical.
             </p>
-            {canManage && newFolderButton("", "default")}
+            {canUpload && newFolderButton("", "default")}
           </CardContent>
         </Card>
       ) : (
@@ -883,6 +977,7 @@ export function JobDrawingsView({ jobId }: { jobId: string }) {
               className="cursor-pointer gap-0 overflow-hidden py-0 transition-shadow hover:shadow-md"
               onClick={() => setSetId(folder.id)}
               onKeyDown={(event) => {
+                if (event.target !== event.currentTarget) return;
                 if (event.key === "Enter" || event.key === " ") {
                   event.preventDefault();
                   setSetId(folder.id);
@@ -905,7 +1000,7 @@ export function JobDrawingsView({ jobId }: { jobId: string }) {
                 <CardTitle className="min-w-0 leading-tight break-words">
                   {folder.name}
                 </CardTitle>
-                {canManage && (
+                {(canUpload || canDelete) && (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button
@@ -922,35 +1017,39 @@ export function JobDrawingsView({ jobId }: { jobId: string }) {
                       align="end"
                       onClick={(event) => event.stopPropagation()}
                     >
-                      <DropdownMenuItem
-                        onSelect={() =>
-                          openNameDialog({
-                            kind: "rename-set",
-                            id: folder.id,
-                            name: folder.name,
-                          })
-                        }
-                      >
-                        <PencilIcon className="h-4 w-4" />
-                        Rename folder
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        variant="destructive"
-                        onSelect={async () => {
-                          if (
-                            await confirmAction({
-                              title: `Delete ${folder.name}?`,
-                              description: `This deletes the folder and its ${folder.sheetCount} ${folder.sheetCount === 1 ? "drawing" : "drawings"}.`,
-                              confirmLabel: "Delete folder",
-                              destructive: true,
+                      {canUpload && (
+                        <DropdownMenuItem
+                          onSelect={() =>
+                            openNameDialog({
+                              kind: "rename-set",
+                              id: folder.id,
+                              name: folder.name,
                             })
-                          )
-                            deleteSet.mutate({ setId: folder.id });
-                        }}
-                      >
-                        <TrashIcon className="h-4 w-4" />
-                        Delete folder
-                      </DropdownMenuItem>
+                          }
+                        >
+                          <PencilIcon className="h-4 w-4" />
+                          Rename folder
+                        </DropdownMenuItem>
+                      )}
+                      {canDelete && (
+                        <DropdownMenuItem
+                          variant="destructive"
+                          onSelect={async () => {
+                            if (
+                              await confirmAction({
+                                title: `Delete ${folder.name}?`,
+                                description: `This deletes the folder and its ${folder.sheetCount} ${folder.sheetCount === 1 ? "drawing" : "drawings"}.`,
+                                confirmLabel: "Delete folder",
+                                destructive: true,
+                              })
+                            )
+                              deleteSet.mutate({ setId: folder.id });
+                          }}
+                        >
+                          <TrashIcon className="h-4 w-4" />
+                          Delete folder
+                        </DropdownMenuItem>
+                      )}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 )}
@@ -963,7 +1062,7 @@ export function JobDrawingsView({ jobId }: { jobId: string }) {
           ))}
         </div>
       )}
-      {canManage && (
+      {canUpload && (
         <div className={BOTTOM_BAR}>{newFolderButton("h-12 w-full")}</div>
       )}
       {nameDialogView}

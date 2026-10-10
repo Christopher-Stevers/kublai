@@ -3,6 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { DoorOpenIcon, FilesIcon, FolderOpenIcon, MessageCircleIcon, PackageIcon, WrenchIcon } from "lucide-react";
 import { type JobWorkspaceOptionId } from "~/lib/job-workspace-last-option";
+import { useDrawingsAccess } from "~/components/permissions/DrawingsAccess";
 
 export type { JobWorkspaceOptionId };
 
@@ -22,6 +23,7 @@ export function JobWorkspaceOptions({
   /** Opens the job's tools in Asset Management (when that tab is available). */
   onTools?: () => void;
 }) {
+  const canAccessDrawings = useDrawingsAccess();
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       <Card
@@ -78,7 +80,7 @@ export function JobWorkspaceOptions({
           </div>
         </CardContent>
       </Card>
-      <Card
+      {canAccessDrawings && <Card
         data-tutorial="drawings"
         role="button"
         tabIndex={0}
@@ -99,7 +101,7 @@ export function JobWorkspaceOptions({
             <span>Drawing sets to view on site</span>
           </div>
         </CardContent>
-      </Card>
+      </Card>}
       <Card
         data-tutorial="documents"
         role="button"

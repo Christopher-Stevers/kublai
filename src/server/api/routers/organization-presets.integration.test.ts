@@ -131,6 +131,21 @@ describe.skipIf(process.env.RUN_PERMISSION_PRESET_DB_TESTS !== "1")(
       permissions: journeyman,
     });
 
+    it("applies separate drawing permissions to everyone using a live preset", async () => isolated(async ({ caller, db, organizationId }) => {
+      const [legacy] = await db.insert(organizationPermissionPresets).values({ organizationId, name: "Legacy drawings", permissionConfig: { version: 2, permissions: { "drawings.manage": true } } }).returning();
+      if (!legacy) throw new Error("Missing preset fixture");
+      await caller.updateOrganizationMember(memberInput("alice", legacy.id));
+      await caller.updateOrganizationMember(memberInput("bob", legacy.id));
+      await caller.savePermissionPreset({ id: legacy.id, revision: 1, name: "Legacy drawings", permissions: { "drawings.view": true, "drawings.upload": true, "drawings.delete": false } });
+      for (const id of ["alice", "bob"]) {
+        const [member] = await db.select().from(users).where(eq(userIdColumn, id));
+        if (!member) throw new Error("Missing member fixture");
+        expect(resolvePermissions(member)["drawings.view"]).toBe(true);
+        expect(resolvePermissions(member)["drawings.upload"]).toBe(true);
+        expect(() => assertCan(member, "drawings.delete")).toThrow();
+      }
+    }));
+
     it("updates all linked members, preserves detached members, and enforces the latest permissions", async () =>
       isolated(async ({ caller, db }) => {
         const preset = await caller.savePermissionPreset({

@@ -11,6 +11,7 @@ import { runHeaderBackOverride } from "~/lib/header-back-events";
 
 const state = vi.hoisted(() => ({
   canManage: true,
+  canDelete: undefined as boolean | undefined,
   sets: [] as Array<{
     id: string;
     name: string;
@@ -75,7 +76,7 @@ vi.mock("~/trpc/react", () => {
         listSets: {
           useQuery: () => ({
             isLoading: false,
-            data: { canManage: state.canManage, sets: state.sets },
+            data: { canManage: state.canManage, canUpload: state.canManage, canDelete: state.canDelete, sets: state.sets },
           }),
         },
         getSet: {
@@ -84,6 +85,8 @@ vi.mock("~/trpc/react", () => {
             data: input.setId
               ? {
                   canManage: state.canManage,
+                  canUpload: state.canManage,
+                  canDelete: state.canDelete,
                   set: { id: input.setId, jobId: "job", name: "Mechanical" },
                   sheets: state.sheets,
                 }
@@ -125,6 +128,7 @@ beforeEach(() => {
   window.history.replaceState({}, "", "/");
   state.summaries = [];
   state.canManage = true;
+  state.canDelete = undefined;
   state.sets = [
     {
       id: "set-1",
@@ -392,6 +396,42 @@ describe("Drawings", () => {
     expect(
       screen.queryByRole("button", { name: /Upload drawings/ }),
     ).toBeNull();
+  });
+
+  it("shows upload controls without deletion when upload is allowed but delete is denied", () => {
+    state.canManage = true;
+    state.canDelete = false;
+    render(<JobDrawingsView jobId="job" />);
+    expect(screen.getAllByRole("button", { name: "New folder" }).length).toBeGreaterThan(0);
+    fireEvent.keyDown(screen.getByRole("button", { name: "More actions for Mechanical" }), { key: "Enter" });
+    expect(screen.getByRole("menuitem", { name: "Rename folder" })).toBeInTheDocument();
+    expect(screen.queryByRole("menuitem", { name: "Delete folder" })).toBeNull();
+
+  });
+
+  it.each([true, false])("separates sheet actions for upload=%s and the opposite deletion permission", (upload) => {
+    state.canManage = upload;
+    state.canDelete = !upload;
+    render(<JobDrawingsView jobId="job" />);
+    fireEvent.click(screen.getByRole("button", { name: "Open Mechanical" }));
+    fireEvent.keyDown(screen.getByRole("button", { name: "More actions for M-101" }), { key: "Enter" });
+    if (upload) {
+      expect(screen.getByRole("menuitem", { name: "Rename" })).toBeInTheDocument();
+      expect(screen.queryByRole("menuitem", { name: "Delete" })).toBeNull();
+    } else {
+      expect(screen.getByRole("menuitem", { name: "Delete" })).toBeInTheDocument();
+      expect(screen.queryByRole("menuitem", { name: "Rename" })).toBeNull();
+    }
+  });
+
+  it("shows deletion without granting folder creation or renaming", () => {
+    state.canManage = false;
+    state.canDelete = true;
+    render(<JobDrawingsView jobId="job" />);
+    fireEvent.keyDown(screen.getByRole("button", { name: "More actions for Mechanical" }), { key: "Enter" });
+    expect(screen.getByRole("menuitem", { name: "Delete folder" })).toBeInTheDocument();
+    expect(screen.queryByRole("menuitem", { name: "Rename folder" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "New folder" })).toBeNull();
   });
   it("finds sheets by metadata, filters favorites and preserves access in list view", () => {
     state.summaries = [

@@ -129,7 +129,7 @@ async function members(reader: Reader, organizationId: string) {
       message: "Too many organization members.",
     });
   return (rows as RequestUser[])
-    .filter((user) => userCan(user, "tab.dashboard"))
+    .filter((user) => userCan(user, "tab.dashboard") && userCan(user, "drawings.view"))
     .map((user) => ({ id: user.id, name: user.name ?? "Team member" }));
 }
 async function sheetMetadata(

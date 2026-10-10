@@ -1,6 +1,7 @@
 import { DrawingDestinationProvider } from "~/components/jobs/DrawingDestinationProvider";
 import { SimulationProvider } from "~/components/simulation/SimulationProvider";
 import { FinancialVisibilityProvider } from "~/components/permissions/FinancialVisibility";
+import { DrawingsAccessProvider } from "~/components/permissions/DrawingsAccess";
 import { userCan } from "~/server/auth/permissions";
 import { TutorialGate } from "~/components/tutorial/TutorialGate";
 import { headers } from "next/headers";
@@ -65,6 +66,7 @@ export default async function DashboardLayout({
           <FinancialVisibilityProvider
             initialVisible={userCan(user, "financial.view")}
           >
+            <DrawingsAccessProvider initialAllowed={userCan(user, "drawings.view")} initialCanUpload={userCan(user, "drawings.upload")} initialCanDelete={userCan(user, "drawings.delete")}>
             <DrawingAccountProvider
               userId={effectiveUserId}
               organizationId={organizationId}
@@ -84,6 +86,7 @@ export default async function DashboardLayout({
                 </DrawingDestinationProvider>
               </SnapshotProvider>
             </DrawingAccountProvider>
+            </DrawingsAccessProvider>
           </FinancialVisibilityProvider>
         </TutorialGate>
       </SimulationProvider>

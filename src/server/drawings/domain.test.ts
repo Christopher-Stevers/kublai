@@ -141,6 +141,7 @@ describe("drawing workspace authorization and revisions", () => {
       permissionConfig: null,
     } as RequestUser;
     expect(drawingActor(user, "org").canManage).toBe(false);
+    expect(() => drawingActor({ ...user, permissionConfig: { version: 2, permissions: { "drawings.view": false, "drawings.upload": true } } }, "org")).toThrow(/drawing access/);
     expect(() => drawingActor(null, "org")).toThrow();
     expect(() => drawingActor(user, "another org")).toThrow(
       /Drawing not found/,
@@ -178,7 +179,7 @@ describe("drawing workspace authorization and revisions", () => {
         ),
       ).toThrow(/not found/);
   });
-  it("prevents publishing markup without drawings.manage", () => {
+  it("prevents publishing markup without drawings.upload", () => {
     expect(() => create({ visibility: "published" })).toThrow(
       /management permission/,
     );

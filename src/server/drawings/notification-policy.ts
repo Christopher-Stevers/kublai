@@ -46,6 +46,7 @@ export function eligibleDrawingRecipient(input: {
     input.user.organizationId === input.organizationId &&
     input.user.organizationAccessStatus === "approved" &&
     userCan(input.user, "tab.dashboard") &&
+    userCan(input.user, "drawings.view") &&
     drawingNotificationReason(input.entity, input.user.id, input.watching) !==
       null
   );

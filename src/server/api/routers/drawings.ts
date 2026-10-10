@@ -4,7 +4,7 @@ import { z } from "zod";
 
 import { createTRPCRouter, hasDashboardAccess } from "~/server/api/trpc";
 import { assertSheetsNotReferenced } from "~/server/drawings/service";
-import { userCan } from "~/server/auth/permissions";
+import { assertCan, userCan } from "~/server/auth/permissions";
 import type { db as database } from "~/server/db";
 import { jobDrawingSets, jobDrawingSheets, jobs } from "~/server/db/schema";
 import { ensureDrawingTiles, uploadsFromImageUrls } from "~/server/rooms/tiles";
@@ -25,7 +25,8 @@ function organizationOf(ctx: Ctx) {
   return (ctx.user as { organizationId: string }).organizationId;
 }
 function assertCanManage(ctx: Ctx) {
-  if (!userCan(ctx.user as never, "drawings.manage"))
+  assertCan(ctx.user as never, "drawings.view");
+  if (!userCan(ctx.user as never, "drawings.upload"))
     throw new TRPCError({
       code: "FORBIDDEN",
       message: "You don't have permission to manage drawings",
@@ -75,6 +76,7 @@ export const drawingsRouter = createTRPCRouter({
   listSets: hasDashboardAccess
     .input(z.object({ jobId: z.string().uuid() }))
     .query(async ({ ctx, input }) => {
+      assertCan(ctx.user, "drawings.view");
       await requireJob(ctx, input.jobId);
       const sets = await ctx.db
         .select()
@@ -105,7 +107,9 @@ export const drawingsRouter = createTRPCRouter({
             .orderBy(jobDrawingSheets.setId, asc(jobDrawingSheets.sortOrder))
         : [];
       return {
-        canManage: userCan(ctx.user as never, "drawings.manage"),
+        canManage: userCan(ctx.user, "drawings.upload"),
+        canUpload: userCan(ctx.user, "drawings.upload"),
+        canDelete: userCan(ctx.user, "drawings.delete"),
         sets: sets.map((set) => ({
           id: set.id,
           name: set.name,
@@ -121,6 +125,7 @@ export const drawingsRouter = createTRPCRouter({
   getSet: hasDashboardAccess
     .input(z.object({ setId: z.string().uuid() }))
     .query(async ({ ctx, input }) => {
+      assertCan(ctx.user, "drawings.view");
       const set = await requireSet(ctx, input.setId);
       const sheets = await ctx.db
         .select({
@@ -140,7 +145,9 @@ export const drawingsRouter = createTRPCRouter({
           (error: unknown) => console.error("[drawing-tiles] start failed", error),
         );
       return {
-        canManage: userCan(ctx.user as never, "drawings.manage"),
+        canManage: userCan(ctx.user, "drawings.upload"),
+        canUpload: userCan(ctx.user, "drawings.upload"),
+        canDelete: userCan(ctx.user, "drawings.delete"),
         set: { id: set.id, jobId: set.jobId, name: set.name },
         sheets,
       };
@@ -179,7 +186,8 @@ export const drawingsRouter = createTRPCRouter({
   deleteSet: hasDashboardAccess
     .input(z.object({ setId: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
-      assertCanManage(ctx);
+      assertCan(ctx.user, "drawings.view");
+      assertCan(ctx.user, "drawings.delete");
       const set = await requireSet(ctx, input.setId);
       await ctx.db.transaction(async (tx) => {
         await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${set.jobId}, 4151))`);
@@ -205,7 +213,8 @@ export const drawingsRouter = createTRPCRouter({
   deleteSheet: hasDashboardAccess
     .input(z.object({ sheetId: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
-      assertCanManage(ctx);
+      assertCan(ctx.user, "drawings.view");
+      assertCan(ctx.user, "drawings.delete");
       const sheet = await requireSheet(ctx, input.sheetId);
       await ctx.db.transaction(async (tx) => {
         await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${sheet.jobId}, 4151))`);

@@ -12,6 +12,7 @@ import {
 } from "~/server/api/trpc";
 import {
   assertCan,
+  expandDrawingPermissions,
   getUserPermissions,
   hasManagingSeat,
   resolvePermissions,
@@ -44,8 +45,8 @@ const permissionMapSchema = z
   .record(z.string(), z.boolean())
   .transform((raw) => {
     const out: Partial<PermissionMap> = {};
-    for (const [key, value] of Object.entries(raw))
-      if (isPermissionKey(key)) out[key] = value;
+    for (const [key, value] of Object.entries(expandDrawingPermissions(raw)))
+      if (isPermissionKey(key) && typeof value === "boolean") out[key] = value;
     return out;
   });
 const memberAccessStatusSchema = z.enum(["approved", "pending", "denied"]);

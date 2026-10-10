@@ -30,6 +30,7 @@ import {
 import { Input } from "~/components/ui/input";
 import { FloorPlanCanvas, type FloorRoomShape } from "./FloorPlanCanvas";
 import { getRoomColor } from "~/lib/room-colors";
+import { useDrawingCapabilities } from "~/components/permissions/DrawingsAccess";
 import { uploadDrawings } from "~/lib/upload-drawings";
 import { roomLabelPoint, toPolygon } from "~/lib/room-shape";
 import { useRoomTracePreview } from "./useRoomTracePreview";
@@ -296,6 +297,9 @@ export function JobRoomsView({ jobId, onOpenMaterialList }: { jobId: string; onO
 
   const data = roomsQuery.data;
   const canManage = !sandbox && (data?.canManage ?? false);
+  const drawingPermissions = useDrawingCapabilities();
+  const canUpload = !sandbox && (drawingPermissions.canUpload ?? data?.canUpload ?? data?.canManage ?? false);
+  const canDelete = !sandbox && (drawingPermissions.canDelete ?? data?.canDelete ?? data?.canManage ?? false);
   const floors = (data?.floors ?? []).map((floor) => ({
     ...floor,
     rooms: floor.rooms.filter(
@@ -647,7 +651,7 @@ export function JobRoomsView({ jobId, onOpenMaterialList }: { jobId: string; onO
         <>
           <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <h2 data-tutorial="rooms-root" className="text-foreground text-xl font-semibold">Rooms</h2>
-            {canManage ? (
+            {canUpload ? (
           <>
             <input
               ref={fileRef}
@@ -774,7 +778,7 @@ export function JobRoomsView({ jobId, onOpenMaterialList }: { jobId: string; onO
                 <DoorOpenIcon className="text-muted-foreground/70 mb-4 h-12 w-12" />
                 <h3 className="mb-2 text-lg font-semibold">No rooms yet</h3>
                 <p className="text-muted-foreground text-center">
-              {canManage
+              {canUpload
                 ? "Upload the job’s architectural PDF to detect floors and rooms."
                 : "No confirmed floors yet."}
             </p>
@@ -804,7 +808,7 @@ export function JobRoomsView({ jobId, onOpenMaterialList }: { jobId: string; onO
                       <CardTitle className="line-clamp-2 min-w-0 leading-tight break-words">
                     {floor.name}
                   </CardTitle>
-                      {canManage ? (
+                      {(canManage || canDelete) ? (
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button
@@ -821,7 +825,7 @@ export function JobRoomsView({ jobId, onOpenMaterialList }: { jobId: string; onO
                             align="end"
                             onClick={(event) => event.stopPropagation()}
                           >
-                            <DropdownMenuItem
+                            {canUpload && <><DropdownMenuItem
                               disabled={copyFloor.isPending || detectionBusy(floor.detection)}
                               onSelect={() =>
                                 copyFloor.mutate({ floorId: floor.id })
@@ -830,8 +834,8 @@ export function JobRoomsView({ jobId, onOpenMaterialList }: { jobId: string; onO
                               <CopyIcon className="h-4 w-4" />
                               Copy floor
                             </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
+                            <DropdownMenuSeparator /></>}
+                            {canDelete && <DropdownMenuItem
                               variant="destructive"
                               disabled={detectionBusy(floor.detection)}
                               onSelect={() =>
@@ -844,7 +848,7 @@ export function JobRoomsView({ jobId, onOpenMaterialList }: { jobId: string; onO
                             >
                               <TrashIcon className="h-4 w-4" />
                               Delete floor
-                            </DropdownMenuItem>
+                            </DropdownMenuItem>}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       ) : null}
@@ -1590,9 +1594,9 @@ export function JobRoomsView({ jobId, onOpenMaterialList }: { jobId: string; onO
             <Button
               type="button"
               variant="destructive"
-              disabled={!floorToDelete || deleteFloor.isPending}
+              disabled={!canDelete || !floorToDelete || deleteFloor.isPending}
               onClick={() => {
-                if (!floorToDelete) return;
+                if (!canDelete || !floorToDelete) return;
                 deleteFloor.mutate({ floorId: floorToDelete.id });
               }}
             >

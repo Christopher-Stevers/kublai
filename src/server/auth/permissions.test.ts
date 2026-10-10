@@ -135,3 +135,25 @@ describe("resolvePermissions", () => {
     expect(permissions.tabAccess.dashboard).toBe(true);
   });
 });
+
+describe("separate drawing permissions", () => {
+  it.each([true, false])("preserves a legacy combined drawing grant of %s", (legacy) => {
+    const can = resolvePermissions({ permissionConfig: { version: 2, permissions: { "drawings.manage": legacy } } });
+    expect(can["drawings.view"]).toBe(true);
+    expect(can["drawings.upload"]).toBe(legacy);
+    expect(can["drawings.delete"]).toBe(legacy);
+  });
+  it("honors explicit new permissions ahead of a legacy combined grant", () => {
+    const can = resolvePermissions({ permissionConfig: { version: 2, permissions: { "drawings.manage": true, "drawings.view": false, "drawings.upload": true, "drawings.delete": false } } });
+    expect(can["drawings.view"]).toBe(false);
+    expect(can["drawings.upload"]).toBe(true);
+    expect(can["drawings.delete"]).toBe(false);
+  });
+  it("keeps upload and deletion independent for new member and preset configurations", () => {
+    for (const key of ["drawings.upload", "drawings.delete"] as const) {
+      const can = resolvePermissions({ permissionConfig: toStoredConfig({ [key]: true }) });
+      expect(can[key]).toBe(true);
+      expect(can[key === "drawings.upload" ? "drawings.delete" : "drawings.upload"]).toBe(false);
+    }
+  });
+});

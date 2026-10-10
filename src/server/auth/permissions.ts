@@ -90,7 +90,7 @@ export function resolvePermissions(user: PermissionUser): PermissionMap {
   if (!config) return base;
 
   if (config.version === 2) {
-    const stored = asObject(config.permissions) ?? {};
+    const stored = expandDrawingPermissions(asObject(config.permissions) ?? {});
     for (const [key, value] of Object.entries(stored))
       if (isPermissionKey(key) && typeof value === "boolean") base[key] = value;
     return base;
@@ -113,6 +113,17 @@ export function resolvePermissions(user: PermissionUser): PermissionMap {
   base["draws.edit"] = false;
   base["tab.organization"] = false;
   return base;
+}
+
+/** Compatibility for saved configs and cached clients from before the split. */
+export function expandDrawingPermissions(stored: Record<string, unknown>) {
+  const next = { ...stored };
+  const legacy = stored["drawings.manage"];
+  if (typeof legacy === "boolean") {
+    for (const key of ["drawings.upload", "drawings.delete"])
+      if (typeof next[key] !== "boolean") next[key] = legacy;
+  }
+  return next;
 }
 
 /** Stored (version 2) config for a permission map. */

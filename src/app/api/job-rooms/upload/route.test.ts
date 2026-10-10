@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
     organizationId: string;
   } | null,
   managing: true,
+  grants: null as Record<string, boolean> | null,
   rows: [] as unknown[],
   spawn: vi.fn(),
   select: vi.fn(),
@@ -18,7 +19,7 @@ vi.mock("~/server/utils/get-request-identity", () => ({
   getRequestIdentity: async () => ({ userId: mocks.user?.id ?? null, user: mocks.user }),
 }));
 vi.mock("~/server/auth/permissions", () => ({
-  userCan: () => mocks.managing,
+  userCan: (_user: unknown, key: string) => mocks.grants?.[key] ?? mocks.managing,
 }));
 vi.mock("~/server/db", () => ({ db: { select: mocks.select } }));
 vi.mock("node:child_process", () => ({ spawn: mocks.spawn }));
@@ -31,6 +32,14 @@ import {
 const jobId = "0391aed4-7773-47ec-9141-09df373ec008";
 let cwd: string;
 let temp: string;
+test("delete permission does not grant drawing uploads", async () => {
+  mocks.grants = { "tab.dashboard": true, "drawings.view": true, "drawings.upload": false, "drawings.delete": true };
+  const response = await POST(new Request("http://local/api/job-rooms/upload", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ jobId, filename: "drawing.pdf", size: 100 }) }));
+  expect(response.status).toBe(403);
+  expect(mocks.select).not.toHaveBeenCalled();
+  expect(mocks.spawn).not.toHaveBeenCalled();
+});
+
 beforeAll(async () => {
   cwd = process.cwd();
   temp = await mkdtemp(path.join(os.tmpdir(), "upload-route-test-"));
@@ -51,6 +60,7 @@ beforeEach(async () => {
   vi.clearAllMocks();
   mocks.user = { id: "owner", organizationId: "org" };
   mocks.managing = true;
+  mocks.grants = null;
   mocks.rows = [];
   mocks.select.mockImplementation(() => ({
     from: () => ({

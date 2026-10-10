@@ -90,12 +90,22 @@ export const PERMISSION_GROUPS = [
     ],
   },
   {
-    id: "rooms",
-    label: "Drawings & rooms",
-    description: "Floor plans and room detection.",
+    id: "drawings",
+    label: "Drawings",
+    description: "Accessing and maintaining job drawings.",
     icon: "map",
     permissions: [
-      { key: "drawings.manage", label: "Upload drawings", description: "Upload plan sets, run room detection, rename and delete floors." },
+      { key: "drawings.view", label: "Access drawings card", description: "Show the Drawings card and open drawing folders, sheets and their workspace." },
+      { key: "drawings.upload", label: "Upload drawings", description: "Upload drawing PDFs, create folders and rename drawings and floors. Does not allow deleting drawings." },
+      { key: "drawings.delete", label: "Delete drawings", description: "Delete drawing sheets, drawing folders and uploaded floor plans." },
+    ],
+  },
+  {
+    id: "rooms",
+    label: "Rooms",
+    description: "Room detection and review.",
+    icon: "map",
+    permissions: [
       { key: "rooms.review", label: "Review rooms", description: "Approve, reject, draw and edit rooms; confirm floors." },
     ],
   },
@@ -160,6 +170,7 @@ const all = (value: boolean) =>
 /** Members without a paid seat and not admins (field staff). Matches the pre-2026-10 behaviour. */
 export const STANDARD_DEFAULTS: PermissionMap = {
   ...all(false),
+  "drawings.view": true,
   "financial.view": true,
   "tab.dashboard": true,
   "tab.catalogue": true,
@@ -204,7 +215,8 @@ export const PERMISSION_PRESETS: Array<{
       "lists.delete": true,
       "quotes.create": true,
       "orders.send": true,
-      "drawings.manage": true,
+      "drawings.upload": true,
+      "drawings.delete": true,
       "documents.manage": true,
       "rooms.review": true,
       "timesheets.manage": true,
@@ -218,7 +230,8 @@ export const PERMISSION_PRESETS: Array<{
       "Builds material lists, adds parts and checks in deliveries. Can't order, quote or delete.",
     permissions: {
       ...all(false),
-      "financial.view": true,
+      "drawings.view": true,
+  "financial.view": true,
       "tab.dashboard": true,
       "tab.orders": true,
       "tab.timesheets": true,
@@ -242,7 +255,8 @@ export const PERMISSION_PRESETS: Array<{
     description: "Can look at jobs and lists but change nothing.",
     permissions: {
       ...all(false),
-      "financial.view": true,
+      "drawings.view": true,
+  "financial.view": true,
       "tab.dashboard": true,
       "tab.catalogue": true,
       "tab.suppliers": true,

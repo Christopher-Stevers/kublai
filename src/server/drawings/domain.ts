@@ -27,17 +27,17 @@ export function drawingActor(
     throw new TRPCError({ code: "NOT_FOUND", message: "Drawing not found." });
   if (
     user.organizationAccessStatus !== "approved" ||
-    !userCan(user, "tab.dashboard")
+    (!userCan(user, "tab.dashboard") || !userCan(user, "drawings.view"))
   )
     throw new TRPCError({
       code: "FORBIDDEN",
-      message: "Approved dashboard access is required.",
+      message: "Approved dashboard and drawing access are required.",
     });
   return {
     id: user.id,
     name: user.name ?? "Team member",
     organizationId,
-    canManage: userCan(user, "drawings.manage"),
+    canManage: userCan(user, "drawings.upload"),
   };
 }
 export function assertDrawingManager(actor: DrawingActor) {

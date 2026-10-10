@@ -7,6 +7,8 @@ const mocks = vi.hoisted(() => ({
   user: { id: "owner", organizationId: "org-a" } as {
     id: string;
     organizationId: string | null;
+    permissionConfig?: unknown;
+    organizationAccessStatus?: string;
   } | null,
   identity: vi.fn(),
   execute: vi.fn(),
@@ -35,6 +37,23 @@ const bytes = Buffer.from("private drawing");
 const modified = new Date("2026-10-07T12:00:00.000Z");
 const etag = '"fixture-v1"';
 const context = (...path: string[]) => ({ params: Promise.resolve({ path }) });
+
+test.each([GET, HEAD])("blocks drawing file and cache metadata reads after drawings access is revoked", async (serve) => {
+  mocks.user = { id: "owner", organizationId: "org-a", permissionConfig: { version: 2, permissions: { "drawings.view": false } } };
+  mocks.execute.mockResolvedValueOnce([{ id: ownJob }]).mockResolvedValueOnce([]);
+  const response = await serve(request({ "If-None-Match": etag }), context(ownJob, upload, "floor-1.webp"));
+  expect(response.status).toBe(403);
+  expect(response.headers.get("Cache-Control")).toBe("private, no-store");
+  expect(mocks.openFile).not.toHaveBeenCalled();
+});
+
+test("keeps Rooms floor-plan access when the Drawings card is disabled", async () => {
+  mocks.user = { id: "owner", organizationId: "org-a", permissionConfig: { version: 2, permissions: { "drawings.view": false } } };
+  mocks.execute.mockResolvedValueOnce([{ id: ownJob }]).mockResolvedValueOnce([{ id: "room-floor" }]);
+  const response = await GET(request(), context(ownJob, upload, "floor-1.webp"));
+  expect(response.status).toBe(200);
+  expect(mocks.openFile).toHaveBeenCalledOnce();
+});
 
 beforeEach(() => {
   vi.resetAllMocks();
@@ -86,7 +105,7 @@ test("an organization member can read its PDF with private cache headers", async
   expect(response.headers.get("cache-control")).toBe(
     "private, max-age=3600, immutable, no-transform",
   );
-  expect(mocks.identity).toHaveBeenCalledWith(req.headers, { allowDev: true });
+  expect(mocks.identity).toHaveBeenCalledWith(req.headers, { allowDev: true, request: req });
   expect(mocks.query.sql).toContain('"organizationId"');
   expect(mocks.query.params).toEqual([ownJob, "org-a"]);
   expect(mocks.openFile).toHaveBeenCalledWith(`${ownJob}/${upload}/plan.pdf`);

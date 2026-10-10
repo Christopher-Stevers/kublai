@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
 import { db } from "~/server/db";
+import { userCan } from "~/server/auth/permissions";
 import { openJobRoomFile } from "~/server/rooms/storage";
 import {
   isNotModified,
@@ -57,6 +58,20 @@ async function serve(
       { error: "Not found" },
       { status: 404, headers: { "Cache-Control": "private, no-store" } },
     );
+  }
+
+  if ((user.organizationAccessStatus ?? "approved") !== "approved" || !userCan(user, "tab.dashboard")) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403, headers: { "Cache-Control": "private, no-store" } });
+  }
+  if (!userCan(user, "drawings.view")) {
+    // The Rooms card uses the same storage route. Keep access to its floor
+    // plans without exposing files uploaded only to the Drawings card.
+    const prefix = `/api/job-rooms/files/${jobId}/${path.length >= 3 ? `${path[1]}/` : ""}`;
+    const [floor] = await db.execute<{ id: string }>(sql`
+      select id from kublai_job_floor where "jobId"=${jobId}
+        and "organizationId"=${user.organizationId} and "imageUrl" like ${`${prefix}%`} limit 1
+    `);
+    if (!floor) return NextResponse.json({ error: "You don't have permission to access drawings" }, { status: 403, headers: { "Cache-Control": "private, no-store" } });
   }
 
   try {
