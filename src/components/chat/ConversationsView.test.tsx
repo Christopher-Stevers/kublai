@@ -106,7 +106,7 @@ beforeEach(() => {
   mocks.invalidate.mockResolvedValue(undefined);
 });
 afterEach(cleanup);
-it("offers editing only for an author's undeleted image snapshots and preserves the saved view", () => {
+it("keeps snapshot source links without edit or delete controls in chat", () => {
   mocks.own = true;
   mocks.image = true;
   mocks.source = {
@@ -115,24 +115,24 @@ it("offers editing only for an author's undeleted image snapshots and preserves 
     capturedAt: "2026-10-09T22:00:00Z",
   };
   const view = render(<ConversationsView />);
-  const href = screen
-    .getByRole("link", { name: "Edit snapshot" })
-    .getAttribute("href")!;
-  const url = new URL(href, "https://app.invalid");
-  expect(url.hash).toBe("#snapshot=recorded");
-  expect(url.searchParams.get("editSnapshot")).toBe("message");
-  expect(url.searchParams.get("snapshotChat")).toBe("room");
-  mocks.own = false;
-  view.rerender(<ConversationsView />);
+  expect(
+    screen.getByRole("link", { name: "Open snapshot source" }),
+  ).toHaveAttribute("href", mocks.source.href);
+  expect(screen.getByAltText("snapshot.png")).toBeVisible();
   expect(
     screen.queryByRole("link", { name: "Edit snapshot" }),
   ).not.toBeInTheDocument();
-  mocks.own = true;
-  mocks.deleted = true;
+  expect(
+    screen.queryByRole("button", { name: /Delete message/ }),
+  ).not.toBeInTheDocument();
+  mocks.source = null;
   view.rerender(<ConversationsView />);
   expect(
-    screen.queryByRole("link", { name: "Edit snapshot" }),
+    screen.queryByRole("button", { name: /Delete message/ }),
   ).not.toBeInTheDocument();
+  mocks.image = false;
+  view.rerender(<ConversationsView />);
+  expect(screen.getByRole("button", { name: /Delete message/ })).toBeVisible();
 });
 it("opens a snapshot's recorded local view and hides the link when the message is deleted", () => {
   mocks.source = {

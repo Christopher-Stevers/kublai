@@ -9,7 +9,6 @@ import {
   SendIcon,
   Trash2Icon,
   ExternalLinkIcon,
-  PencilIcon,
 } from "lucide-react";
 import { api } from "~/trpc/react";
 import { ChatNotifications } from "~/components/jobs/ChatNotifications";
@@ -31,7 +30,6 @@ import {
 } from "~/lib/conversation-upload";
 import type { ConversationMessage } from "~/server/conversations/contracts";
 import { safeSnapshotHref } from "~/lib/snapshot-source";
-import { snapshotEditHref } from "~/lib/snapshot-edit";
 import { useOnlineStatus } from "~/hooks/use-online-status";
 const text = (reason: unknown) =>
   reason instanceof Error
@@ -470,55 +468,45 @@ function ConversationThread({
                     </a>
                   )}
                   {m.author.id === userId &&
-                    m.attachments.some((file) =>
+                    !m.source &&
+                    !m.attachments.some((file) =>
                       file.mimeType.startsWith("image/"),
                     ) && (
                       <Button
                         size="sm"
                         variant="ghost"
                         className="mt-1 h-7 px-1 text-xs"
-                        asChild
+                        aria-label={`Delete message from ${m.author.name}`}
+                        onClick={() =>
+                          void remove
+                            .mutateAsync({
+                              conversationId: id,
+                              messageId: m.id,
+                            })
+                            .then(() => {
+                              setOlder((current) =>
+                                current.map((message) =>
+                                  message.id === m.id
+                                    ? {
+                                        ...message,
+                                        body: "",
+                                        attachments: [],
+                                        deletedAt: new Date(),
+                                      }
+                                    : message,
+                                ),
+                              );
+                              return utils.conversations.history.invalidate({
+                                conversationId: id,
+                              });
+                            })
+                            .catch((reason) => setError(text(reason)))
+                        }
                       >
-                        <a
-                          href={snapshotEditHref({ ...m, conversationId: id })}
-                        >
-                          <PencilIcon className="size-3" /> Edit snapshot
-                        </a>
+                        <Trash2Icon className="size-3" />
+                        Delete
                       </Button>
                     )}
-                  {m.author.id === userId && (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="mt-1 h-7 px-1 text-xs"
-                      aria-label={`Delete message from ${m.author.name}`}
-                      onClick={() =>
-                        void remove
-                          .mutateAsync({ conversationId: id, messageId: m.id })
-                          .then(() => {
-                            setOlder((current) =>
-                              current.map((message) =>
-                                message.id === m.id
-                                  ? {
-                                      ...message,
-                                      body: "",
-                                      attachments: [],
-                                      deletedAt: new Date(),
-                                    }
-                                  : message,
-                              ),
-                            );
-                            return utils.conversations.history.invalidate({
-                              conversationId: id,
-                            });
-                          })
-                          .catch((reason) => setError(text(reason)))
-                      }
-                    >
-                      <Trash2Icon className="size-3" />
-                      Delete
-                    </Button>
-                  )}
                 </>
               )}
             </article>
