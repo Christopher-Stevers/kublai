@@ -33,6 +33,7 @@ import {
   WrenchIcon,
   ClockIcon,
   UserIcon,
+  UserCogIcon,
   SettingsIcon,
   XIcon,
   type LucideIcon,
@@ -324,6 +325,7 @@ function HeaderFrame({
                 <DropdownMenuItem
                   onClick={() => navigate("/dashboard/account")}
                 >
+                  <UserCogIcon aria-hidden="true" className="mr-2 h-4 w-4 shrink-0" />
                   Manage Account
                 </DropdownMenuItem>
               ) : null}
@@ -433,8 +435,9 @@ function HeaderFrame({
                         setMobileMenuOpen(false);
                         navigate("/dashboard/account");
                       }}
-                      className="text-foreground/80 hover:bg-accent hover:text-foreground block w-full rounded-md px-3 py-2 text-left text-base font-medium transition-colors"
+                      className="text-foreground/80 hover:bg-accent hover:text-foreground flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-base font-medium transition-colors"
                     >
+                      <UserCogIcon aria-hidden="true" className="h-5 w-5 shrink-0" />
                       Manage Account
                     </button>
                   ) : null}
@@ -444,9 +447,9 @@ function HeaderFrame({
                       setMobileMenuOpen(false);
                       navigate("/dashboard/account/settings");
                     }}
-                    className="text-foreground/80 hover:bg-accent flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium"
+                    className="text-foreground/80 hover:bg-accent flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-base font-medium"
                   >
-                    <SettingsIcon className="h-4 w-4" /> Settings
+                    <SettingsIcon aria-hidden="true" className="h-5 w-5 shrink-0" /> Settings
                   </button>
                   {signOut ? (
                     <button
