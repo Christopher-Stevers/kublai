@@ -28,6 +28,13 @@ import { api } from "~/trpc/react";
 import type { ChatAttachment, ChatMessage } from "~/server/chat/contracts";
 import { useOnlineStatus } from "~/hooks/use-online-status";
 import { Button } from "~/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+  DialogTrigger,
+} from "~/components/ui/dialog";
 import { confirmAction } from "~/components/ui/app-dialogs";
 import { useTutorialSandbox } from "~/components/tutorial/tutorial-sandbox-context";
 import {
@@ -127,10 +134,12 @@ function useLongPress(onLongPress: () => void) {
 export function JobChatThread({
   jobId,
   embedded = false,
+  headerControlsTarget = null,
   userId,
 }: {
   jobId: string;
   embedded?: boolean;
+  headerControlsTarget?: HTMLElement | null;
   userId?: string;
 }) {
   const sandbox = useTutorialSandbox();
@@ -149,11 +158,13 @@ export function JobChatThread({
           jobId={jobId}
           userId={sandbox.userId}
           embedded={embedded}
+          headerControlsTarget={headerControlsTarget}
         />
       ) : (
         <AuthenticatedChatLobby
           jobId={jobId}
           embedded={embedded}
+          headerControlsTarget={headerControlsTarget}
           resolvedUserId={userId}
         />
       )}
@@ -164,10 +175,12 @@ export function JobChatThread({
 function AuthenticatedChatLobby({
   jobId,
   embedded,
+  headerControlsTarget,
   resolvedUserId,
 }: {
   jobId: string;
   embedded: boolean;
+  headerControlsTarget: HTMLElement | null;
   resolvedUserId?: string;
 }) {
   const { userId: signedInUserId, isLoaded } = useAuth();
@@ -183,6 +196,7 @@ function AuthenticatedChatLobby({
       jobId={jobId}
       userId={userId}
       embedded={embedded}
+      headerControlsTarget={headerControlsTarget}
     />
   ) : (
     <p className="p-4">Sign in to open job chat.</p>
@@ -193,10 +207,12 @@ function ChatLobby({
   jobId,
   userId,
   embedded = false,
+  headerControlsTarget = null,
 }: {
   jobId: string;
   userId: string;
   embedded?: boolean;
+  headerControlsTarget?: HTMLElement | null;
 }) {
   const inTutorial = Boolean(useTutorialSandbox());
   const browserOnline = useOnlineStatus();
@@ -795,6 +811,35 @@ function ChatLobby({
       failure?.data?.code === "UNAUTHORIZED" ||
       failure?.data?.code === "NOT_FOUND",
   );
+  const memberList = (
+    <div
+      className="bg-card text-card-foreground max-h-40 overflow-y-auto rounded-md p-2 text-sm shadow-md"
+      aria-label="Job members"
+    >
+      {members.isLoading ? (
+        <p>Loading people…</p>
+      ) : members.error ? (
+        <p role="alert">{members.error.message}</p>
+      ) : (
+        <ul>
+          {members.data?.map((member) => (
+            <li
+              key={member.id}
+              className="flex items-center justify-between gap-2 py-1"
+            >
+              <span>
+                {member.name}
+                {member.id === userId ? " (you)" : ""}
+              </span>
+              <span className="text-muted-foreground text-xs">
+                {member.joined ? "In chat" : "On this job"}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
   if (accessError)
     return (
       <p
@@ -811,70 +856,75 @@ function ChatLobby({
       className="bg-card flex h-full min-h-0 w-full flex-col overflow-hidden"
       style={{ height: panelHeight }}
     >
-      <header
-        className="min-h-0 shrink overflow-y-auto px-3 py-2 text-white sm:px-4"
-        style={EXPANDED_METAL}
-      >
-        <div className={`${CHAT_COLUMN} space-y-2`}>
-          <div className="flex items-center justify-between gap-2">
-            <h2 className="truncate text-sm font-semibold [text-shadow:0_1px_3px_rgba(0,0,0,0.9)]">
-              {embedded ? "Job chat" : "Chat"}
-            </h2>
-            <div className="flex gap-1">
-              {!embedded && (
-                <a
-                  href="/dashboard/chat"
-                  className="inline-flex items-center rounded-md px-2 text-xs text-white hover:bg-white/15"
+      {embedded ? (
+        headerControlsTarget && (
+          <Dialog open={showMembers} onOpenChange={setShowMembers}>
+            {createPortal(
+              <>
+                <span className="truncate text-sm font-semibold text-white [text-shadow:0_1px_3px_rgba(0,0,0,0.9)]">
+                  Job chat
+                </span>
+                <DialogTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className={`${ON_METAL} h-11 w-11`}
+                    aria-label="People"
+                    title="People"
+                  >
+                    <UsersIcon className="size-5" aria-hidden />
+                  </Button>
+                </DialogTrigger>
+              </>,
+              headerControlsTarget,
+            )}
+            <DialogContent>
+              <DialogTitle>People</DialogTitle>
+              <DialogDescription>
+                People on this job and who has joined the chat.
+              </DialogDescription>
+              {memberList}
+            </DialogContent>
+          </Dialog>
+        )
+      ) : (
+        <header
+          className="min-h-0 shrink overflow-y-auto px-3 py-2 text-white sm:px-4"
+          style={EXPANDED_METAL}
+        >
+          <div className={`${CHAT_COLUMN} space-y-2`}>
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="truncate text-sm font-semibold [text-shadow:0_1px_3px_rgba(0,0,0,0.9)]">
+                Chat
+              </h2>
+              <div className="flex gap-1">
+                {!embedded && (
+                  <a
+                    href="/dashboard/chat"
+                    className="inline-flex items-center rounded-md px-2 text-xs text-white hover:bg-white/15"
+                  >
+                    All chats
+                  </a>
+                )}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className={ON_METAL}
+                  onClick={() => {
+                    setShowMembers(!showMembers);
+                  }}
+                  aria-label="People"
+                  aria-expanded={showMembers}
                 >
-                  All chats
-                </a>
-              )}
-              <Button
-                variant="ghost"
-                size="sm"
-                className={ON_METAL}
-                onClick={() => {
-                  setShowMembers(!showMembers);
-                }}
-                aria-label="People"
-                aria-expanded={showMembers}
-              >
-                <UsersIcon className="h-4 w-4" />
-                <span className="hidden sm:inline">People</span>
-              </Button>
+                  <UsersIcon className="h-4 w-4" />
+                  <span className="hidden sm:inline">People</span>
+                </Button>
+              </div>
             </div>
+            {showMembers && memberList}
           </div>
-          {showMembers && (
-            <div
-              className="bg-card text-card-foreground max-h-40 overflow-y-auto rounded-md p-2 text-sm shadow-md"
-              aria-label="Job members"
-            >
-              {members.isLoading ? (
-                <p>Loading people…</p>
-              ) : members.error ? (
-                <p role="alert">{members.error.message}</p>
-              ) : (
-                <ul>
-                  {members.data?.map((member) => (
-                    <li
-                      key={member.id}
-                      className="flex items-center justify-between gap-2 py-1"
-                    >
-                      <span>
-                        {member.name}
-                        {member.id === userId ? " (you)" : ""}
-                      </span>
-                      <span className="text-muted-foreground text-xs">
-                        {member.joined ? "In chat" : "On this job"}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          )}
-        </div>
-      </header>
+        </header>
+      )}
       <AngleTrim edge="top" />
       {!online && (
         <p className="flex shrink-0 items-center gap-2 bg-amber-50 px-3 py-2 text-sm text-amber-950">

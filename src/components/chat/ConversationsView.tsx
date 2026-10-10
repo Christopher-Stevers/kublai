@@ -77,6 +77,8 @@ export function ConversationsView({ initialJobId }: { initialJobId?: string }) {
     }),
     [error, setError] = useState("");
   const panel = useRef<HTMLElement>(null);
+  const [headerControlsTarget, setHeaderControlsTarget] =
+    useState<HTMLDivElement | null>(null);
   const drafts = useMemo(() => new Map<string, ConversationDraft>(), []);
   const [height, setHeight] = useState<number>();
   useEffect(() => {
@@ -186,9 +188,17 @@ export function ConversationsView({ initialJobId }: { initialJobId?: string }) {
             <ChevronDownIcon className="size-4" aria-hidden />
           </Button>
         </h1>
-        <div className="flex items-center gap-2">
+        <div className="flex min-w-0 flex-1 items-center gap-1">
+          <div
+            ref={setHeaderControlsTarget}
+            className="flex min-w-0 flex-1 items-center justify-end gap-2"
+          />
           <Button
-            size="sm"
+            variant="ghost"
+            size="icon"
+            className={`${ON_METAL} h-11 w-11`}
+            aria-label="New chat"
+            title="New chat"
             disabled={!online}
             onClick={() => {
               setError("");
@@ -196,8 +206,7 @@ export function ConversationsView({ initialJobId }: { initialJobId?: string }) {
               setNewOpen(true);
             }}
           >
-            <PlusIcon className="size-4" />
-            New chat
+            <PlusIcon className="size-5" aria-hidden />
           </Button>
         </div>
       </header>
@@ -233,6 +242,7 @@ export function ConversationsView({ initialJobId }: { initialJobId?: string }) {
                   key={jobId}
                   jobId={jobId}
                   embedded
+                  headerControlsTarget={headerControlsTarget}
                   userId={list.data?.userId}
                 />
               ) : (
