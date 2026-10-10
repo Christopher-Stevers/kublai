@@ -51,9 +51,14 @@ function displayName(m: Member) {
   return m.name?.trim() || m.email;
 }
 
-function memberRoleLabel(member: Member) {
+function memberRoleLabel(
+  member: Member,
+  presets: Settings["permissionPresets"] = [],
+) {
   if (member.permissions.isAdmin) return "Admin";
   if (member.permissions.isManagingAccount) return "Executive Account";
+  const preset = presets.find((p) => p.id === member.permissionPresetId);
+  if (preset) return `${preset.name} · Live`;
   return roleLabel(member.permissions.can);
 }
 
@@ -65,6 +70,10 @@ export function MembersSection({
   onSaved: () => Promise<void>;
 }) {
   const members = settings.members;
+  const presets = useMemo(
+    () => settings.permissionPresets ?? [],
+    [settings.permissionPresets],
+  );
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<(typeof FILTERS)[number]["id"]>("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -79,7 +88,7 @@ export function MembersSection({
           !q ||
           displayName(m).toLowerCase().includes(q) ||
           m.email.toLowerCase().includes(q) ||
-          memberRoleLabel(m).toLowerCase().includes(q),
+          memberRoleLabel(m, presets).toLowerCase().includes(q),
       )
       .sort((a, b) => {
         // People waiting for approval first, then alphabetical.
@@ -87,7 +96,7 @@ export function MembersSection({
           m.organizationAccessStatus === "pending" ? 0 : 1;
         return w(a) - w(b) || displayName(a).localeCompare(displayName(b));
       });
-  }, [members, query, filter]);
+  }, [members, presets, query, filter]);
 
   // Keep a valid selection on wide screens.
   useEffect(() => {
@@ -180,7 +189,7 @@ export function MembersSection({
                     </p>
                     <div className="mt-1 flex flex-wrap items-center gap-1.5">
                       <span className="bg-muted rounded-full px-2 py-0.5 text-[11px] font-medium">
-                        {memberRoleLabel(m)}
+                        {memberRoleLabel(m, presets)}
                       </span>
                       {status !== "approved" && (
                         <span
@@ -219,6 +228,7 @@ export function MembersSection({
           <MemberDetail
             key={selected.id}
             member={selected}
+            presets={presets}
             isSelf={selected.id === settings.viewer.userId}
             canManage={settings.viewer.canManageMembers}
             canSimulate={
@@ -241,6 +251,7 @@ export function MembersSection({
 
 function MemberDetail({
   member,
+  presets,
   isSelf,
   canManage,
   canSimulate,
@@ -248,6 +259,7 @@ function MemberDetail({
   onSaved,
 }: {
   member: Member;
+  presets: Settings["permissionPresets"];
   isSelf: boolean;
   canManage: boolean;
   canSimulate: boolean;
@@ -258,6 +270,39 @@ function MemberDetail({
   const originalStatus = member.organizationAccessStatus as AccessStatus;
   const [perms, setPerms] = useState<PermissionMap>(original);
   const [status, setStatus] = useState<AccessStatus>(originalStatus);
+  const [presetId, setPresetId] = useState<string | null>(
+    member.permissionPresetId ?? null,
+  );
+  const [baseline, setBaseline] = useState({
+    original,
+    originalStatus,
+    presetId: member.permissionPresetId ?? null,
+  });
+  // Refresh clean drafts while preserving edits when server settings change.
+  if (
+    baseline.original !== original ||
+    baseline.originalStatus !== originalStatus ||
+    baseline.presetId !== (member.permissionPresetId ?? null)
+  ) {
+    const dirty =
+      status !== baseline.originalStatus ||
+      presetId !== baseline.presetId ||
+      (Object.keys(perms) as PermissionKey[]).some(
+        (key) => perms[key] !== baseline.original[key],
+      );
+    if (!dirty) {
+      setPerms(original);
+      setStatus(originalStatus);
+      setPresetId(member.permissionPresetId ?? null);
+    }
+    setBaseline({
+      original,
+      originalStatus,
+      presetId: member.permissionPresetId ?? null,
+    });
+  }
+  const selectedPreset = presets.find((preset) => preset.id === presetId);
+  const displayedPerms = selectedPreset?.permissions ?? perms;
   const update = api.organization.updateOrganizationMember.useMutation({
     onSuccess: async () => {
       await onSaved();
@@ -275,10 +320,12 @@ function MemberDetail({
     : [];
   const changed =
     status !== originalStatus ||
-    (Object.keys(perms) as PermissionKey[]).some(
-      (k) => perms[k] !== original[k],
-    );
-  const { allowed, total } = countAllowed(perms);
+    presetId !== (member.permissionPresetId ?? null) ||
+    (!presetId &&
+      (Object.keys(perms) as PermissionKey[]).some(
+        (k) => perms[k] !== original[k],
+      ));
+  const { allowed, total } = countAllowed(displayedPerms);
 
   return (
     <div className="flex h-full flex-col">
@@ -373,10 +420,44 @@ function MemberDetail({
             their permissions say.
           </div>
         )}
+        {!hasProtectedAccess && (
+          <div className="bg-muted/30 space-y-2 rounded-xl border p-4">
+            <label
+              htmlFor={`preset-${member.id}`}
+              className="text-sm font-semibold"
+            >
+              Permission preset
+            </label>
+            <select
+              id={`preset-${member.id}`}
+              className="bg-background flex h-10 w-full rounded-md border px-3 text-sm"
+              value={presetId ?? ""}
+              disabled={!canManage || update.isPending}
+              onChange={(event) => {
+                const next = event.target.value || null;
+                setPerms(displayedPerms);
+                setPresetId(next);
+              }}
+            >
+              <option value="">Individual permissions</option>
+              {presets.map((preset) => (
+                <option key={preset.id} value={preset.id}>
+                  {preset.name} (live)
+                </option>
+              ))}
+            </select>
+            <p className="text-muted-foreground text-xs">
+              {selectedPreset
+                ? `Changes saved to ${selectedPreset.name} apply automatically to this member. Edit it in Presets, or choose Individual permissions to customize this person.`
+                : "Choose a live preset to keep this member’s permissions linked. Create and edit them in Presets."}
+            </p>
+          </div>
+        )}
         <PermissionEditor
-          value={perms}
+          value={displayedPerms}
           onChange={setPerms}
-          disabled={readOnly || update.isPending}
+          disabled={readOnly || !!presetId || update.isPending}
+          showPresets={!presetId}
           lockedKeys={lockedKeys}
         />
         {update.error && (
@@ -412,6 +493,7 @@ function MemberDetail({
               onClick={() => {
                 setPerms(original);
                 setStatus(originalStatus);
+                setPresetId(member.permissionPresetId ?? null);
               }}
               disabled={update.isPending}
             >
@@ -422,7 +504,10 @@ function MemberDetail({
                 update.mutate({
                   userId: member.id,
                   accessStatus: status,
-                  permissions: perms,
+                  permissions: displayedPerms,
+                  ...(!hasProtectedAccess
+                    ? { permissionPresetId: presetId }
+                    : {}),
                 })
               }
               disabled={update.isPending}

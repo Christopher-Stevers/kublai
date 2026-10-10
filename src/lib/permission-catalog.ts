@@ -4,6 +4,7 @@
  *
  * Stored per member in `users.permissionConfig` as
  *   { version: 2, permissions: { "jobs.create": true, ... } }
+ * Live preset assignments keep this map current through a database trigger.
  * Keys missing from a stored map fall back to the account type's default.
  * Admins and Executive Accounts always have every permission.
  */

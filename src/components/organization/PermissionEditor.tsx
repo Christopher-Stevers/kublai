@@ -79,7 +79,7 @@ export function roleLabel(map: PermissionMap) {
   return matchingPreset(map)?.label ?? "Custom";
 }
 
-/** Preset buttons + grouped permission switches. */
+/** Starting templates + grouped permission switches. Templates copy values; saved organization presets stay linked. */
 export function PermissionEditor({
   value,
   onChange,
@@ -112,7 +112,7 @@ export function PermissionEditor({
         <>
       <div>
         <p className="mb-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-          Quick setup
+          Starting template
         </p>
         <div className="flex flex-wrap gap-2">
           {PERMISSION_PRESETS.map((p) => (

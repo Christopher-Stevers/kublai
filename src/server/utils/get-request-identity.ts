@@ -16,6 +16,7 @@ export type RequestUser = {
   image: string | null;
   role: string | null;
   permissionConfig: unknown;
+  permissionPresetId?: string | null;
   organizationAccessStatus: string | null;
   organizationId: string | null;
   pricingProfileId: string | null;

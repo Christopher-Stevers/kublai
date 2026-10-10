@@ -1,8 +1,9 @@
 import type { RequestUser } from "~/server/utils/get-request-identity";
 import crypto from "node:crypto";
 import { TRPCError } from "@trpc/server";
-import { and, asc, desc, eq, gt, isNull } from "drizzle-orm";
+import { and, asc, desc, eq, gt, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
+import type { AnyPgColumn } from "drizzle-orm/pg-core";
 
 import {
   createTRPCRouter,
@@ -26,10 +27,17 @@ import {
   locations,
   organizationInvites,
   organizations,
+  organizationPermissionPresets,
   pricingProfiles,
   users,
 } from "~/server/db/schema";
 import { seedOrganization } from "~/server/utils/seed-organization";
+
+// Keep the legacy user schema’s circular inference at its column boundary.
+const userPresetColumn = (users as { permissionPresetId: AnyPgColumn })
+  .permissionPresetId;
+const userIdColumn = (users as { id: AnyPgColumn }).id;
+const userOrgColumn = (users as { organizationId: AnyPgColumn }).organizationId;
 
 /** A permission map from the client: only known keys with boolean values are kept. */
 const permissionMapSchema = z
@@ -70,40 +78,52 @@ export const organizationRouter = createTRPCRouter({
       });
     }
 
-    const [locationList, inviteList, memberList] = await Promise.all([
-      ctx.db
-        .select()
-        .from(locations)
-        .where(eq(locations.organizationId, ctx.user.organizationId))
-        .orderBy(asc(locations.name)),
-      ctx.db
-        .select()
-        .from(organizationInvites)
-        .where(
-          and(
-            eq(organizationInvites.organizationId, ctx.user.organizationId),
-            isNull(organizationInvites.revokedAt),
-            gt(organizationInvites.expiresAt, new Date()),
-          ),
-        )
-        .orderBy(desc(organizationInvites.createdAt)),
-      ctx.db
-        .select({
-          id: users.id,
-          name: users.name,
-          email: users.email,
-          role: users.role,
-          permissionConfig: users.permissionConfig,
-          organizationAccessStatus: users.organizationAccessStatus,
-          stripeSubscriptionId: users.stripeSubscriptionId,
-          subscriptionStatus: users.subscriptionStatus,
-          subscriptionEndsAt: users.subscriptionEndsAt,
-          createdAt: users.createdAt,
-        })
-        .from(users)
-        .where(eq(users.organizationId, ctx.user.organizationId))
-        .orderBy(asc(users.name), asc(users.email)),
-    ]);
+    const [locationList, inviteList, memberList, presetList] =
+      await Promise.all([
+        ctx.db
+          .select()
+          .from(locations)
+          .where(eq(locations.organizationId, ctx.user.organizationId))
+          .orderBy(asc(locations.name)),
+        ctx.db
+          .select()
+          .from(organizationInvites)
+          .where(
+            and(
+              eq(organizationInvites.organizationId, ctx.user.organizationId),
+              isNull(organizationInvites.revokedAt),
+              gt(organizationInvites.expiresAt, new Date()),
+            ),
+          )
+          .orderBy(desc(organizationInvites.createdAt)),
+        ctx.db
+          .select({
+            id: users.id,
+            name: users.name,
+            email: users.email,
+            role: users.role,
+            permissionConfig: users.permissionConfig,
+            permissionPresetId: userPresetColumn,
+            organizationAccessStatus: users.organizationAccessStatus,
+            stripeSubscriptionId: users.stripeSubscriptionId,
+            subscriptionStatus: users.subscriptionStatus,
+            subscriptionEndsAt: users.subscriptionEndsAt,
+            createdAt: users.createdAt,
+          })
+          .from(users)
+          .where(eq(users.organizationId, ctx.user.organizationId))
+          .orderBy(asc(users.name), asc(users.email)),
+        ctx.db
+          .select()
+          .from(organizationPermissionPresets)
+          .where(
+            eq(
+              organizationPermissionPresets.organizationId,
+              ctx.user.organizationId,
+            ),
+          )
+          .orderBy(asc(organizationPermissionPresets.name)),
+      ]);
 
     const viewer = resolvePermissions(ctx.user);
     return {
@@ -112,13 +132,47 @@ export const organizationRouter = createTRPCRouter({
         userId: ctx.userId,
         canManageMembers: viewer["org.members"],
         canSimulateEmployees: !ctx.simulation && hasManagingSeat(ctx.user),
-        canSimulateAdmins: !ctx.simulation && getUserPermissions(ctx.user).isAdmin,
+        canSimulateAdmins:
+          !ctx.simulation && getUserPermissions(ctx.user).isAdmin,
         canInvite: viewer["org.invite"],
         canEditSettings: viewer["org.settings"],
       },
       locations: locationList,
       invites: inviteList,
-      members: (memberList as Pick<RequestUser, "id" | "name" | "email" | "role" | "permissionConfig" | "organizationAccessStatus" | "stripeSubscriptionId" | "subscriptionStatus" | "subscriptionEndsAt" | "createdAt">[]).map((member) => ({
+      permissionPresets: (
+        presetList as {
+          id: string;
+          name: string;
+          permissionConfig: unknown;
+          revision: number;
+        }[]
+      ).map((preset) => ({
+        id: preset.id,
+        name: preset.name,
+        revision: preset.revision,
+        permissions: resolvePermissions({
+          permissionConfig: preset.permissionConfig,
+        }),
+        memberCount: memberList.filter(
+          (member) => member.permissionPresetId === preset.id,
+        ).length,
+      })),
+      members: (
+        memberList as Pick<
+          RequestUser,
+          | "id"
+          | "name"
+          | "email"
+          | "role"
+          | "permissionConfig"
+          | "permissionPresetId"
+          | "organizationAccessStatus"
+          | "stripeSubscriptionId"
+          | "subscriptionStatus"
+          | "subscriptionEndsAt"
+          | "createdAt"
+        >[]
+      ).map((member) => ({
         ...member,
         organizationAccessStatus: member.organizationAccessStatus ?? "approved",
         permissions: getUserPermissions(member),
@@ -132,6 +186,8 @@ export const organizationRouter = createTRPCRouter({
         userId: z.string().min(1),
         accessStatus: memberAccessStatusSchema,
         permissions: permissionMapSchema,
+        // Omission from an older client preserves its live assignment.
+        permissionPresetId: z.string().uuid().nullable().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -152,6 +208,34 @@ export const organizationRouter = createTRPCRouter({
 
       const organizationId = ctx.user.organizationId;
       return ctx.db.transaction(async (tx) => {
+        // Serialize member assignments and preset edits for this organization.
+        // Always lock the organization before preset/member rows.
+        await tx.execute(
+          sql`select id from ${organizations} where ${organizations.id} = ${organizationId} for update`,
+        );
+        const [preset] = input.permissionPresetId
+          ? await tx
+              .select()
+              .from(organizationPermissionPresets)
+              .where(
+                and(
+                  eq(
+                    organizationPermissionPresets.id,
+                    input.permissionPresetId,
+                  ),
+                  eq(
+                    organizationPermissionPresets.organizationId,
+                    organizationId,
+                  ),
+                ),
+              )
+              .limit(1)
+          : [];
+        if (input.permissionPresetId && !preset)
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Permission preset not found in this organization.",
+          });
         const targetWhere = and(
           eq(users.id, input.userId),
           eq(users.organizationId, organizationId),
@@ -170,6 +254,12 @@ export const organizationRouter = createTRPCRouter({
         }
 
         const executive = hasManagingSeat(target);
+        if (executive && input.permissionPresetId)
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message:
+              "Executive Accounts and admins always retain every permission and cannot use a preset.",
+          });
         if (
           executive &&
           Object.values(input.permissions).some((value) => !value)
@@ -196,7 +286,12 @@ export const organizationRouter = createTRPCRouter({
         // grants out of storage so they do not survive subscription expiry.
         const permissionConfig: unknown = executive
           ? target.permissionConfig
-          : toStoredConfig(input.permissions);
+          : preset
+            ? preset.permissionConfig
+            : input.permissionPresetId === undefined &&
+                target.permissionPresetId
+              ? target.permissionConfig
+              : toStoredConfig(input.permissions);
         const nextPermissions = resolvePermissions({
           ...target,
           permissionConfig,
@@ -217,11 +312,173 @@ export const organizationRouter = createTRPCRouter({
           .set({
             organizationAccessStatus: input.accessStatus,
             permissionConfig,
+            ...(input.permissionPresetId !== undefined
+              ? { permissionPresetId: input.permissionPresetId }
+              : {}),
             updatedAt: new Date(),
           })
           .where(targetWhere)
           .returning();
         return member;
+      });
+    }),
+
+  savePermissionPreset: hasDashboardAccess
+    .input(
+      z
+        .object({
+          id: z.string().uuid().optional(),
+          revision: z.number().int().positive().optional(),
+          name: z.string().trim().min(1).max(100),
+          permissions: permissionMapSchema,
+        })
+        .refine((input) => !input.id || !!input.revision, {
+          message: "The preset revision is required when editing.",
+        }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      assertCan(ctx.user, "org.members");
+      const organizationId = ctx.user.organizationId;
+      // Store a complete map so the saved choices have explicit values.
+      const permissionConfig = toStoredConfig(
+        resolvePermissions({
+          permissionConfig: toStoredConfig(input.permissions),
+        }),
+      );
+      try {
+        return await ctx.db.transaction(async (tx) => {
+          await tx.execute(
+            sql`select id from ${organizations} where ${organizations.id} = ${organizationId} for update`,
+          );
+          if (!input.id) {
+            const [preset] = await tx
+              .insert(organizationPermissionPresets)
+              .values({ organizationId, name: input.name, permissionConfig })
+              .returning();
+            if (!preset)
+              throw new TRPCError({
+                code: "INTERNAL_SERVER_ERROR",
+                message: "Could not save preset.",
+              });
+            return { id: preset.id, revision: preset.revision };
+          }
+          const where = and(
+            eq(organizationPermissionPresets.id, input.id),
+            eq(organizationPermissionPresets.organizationId, organizationId),
+          );
+          const [preset] = await tx
+            .select()
+            .from(organizationPermissionPresets)
+            .where(where)
+            .limit(1)
+            .for("update");
+          if (!preset)
+            throw new TRPCError({
+              code: "NOT_FOUND",
+              message: "Permission preset not found.",
+            });
+          if (preset.revision !== input.revision)
+            throw new TRPCError({
+              code: "CONFLICT",
+              message:
+                "This preset was changed by someone else. Reload it before saving.",
+            });
+          const [actor] = await tx
+            .select()
+            .from(users)
+            .where(
+              and(
+                eq(userIdColumn, ctx.userId),
+                eq(userOrgColumn, organizationId),
+              ),
+            )
+            .limit(1);
+          if (actor?.permissionPresetId === input.id) {
+            const next = resolvePermissions({ ...actor, permissionConfig });
+            if (!next["org.members"] || !next["tab.organization"])
+              throw new TRPCError({
+                code: "BAD_REQUEST",
+                message:
+                  "You cannot remove your own access to manage organization members.",
+              });
+          }
+          const [saved] = await tx
+            .update(organizationPermissionPresets)
+            .set({
+              name: input.name,
+              permissionConfig,
+              revision: preset.revision + 1,
+              updatedAt: new Date(),
+            })
+            .where(where)
+            .returning();
+          // The database trigger applies this map to every assigned member in
+          // this same transaction, including accounts read outside tRPC.
+          if (!saved)
+            throw new TRPCError({
+              code: "INTERNAL_SERVER_ERROR",
+              message: "Could not save preset.",
+            });
+          return { id: saved.id, revision: saved.revision };
+        });
+      } catch (error) {
+        const cause =
+          error instanceof Error && "cause" in error ? error.cause : error;
+        if (
+          cause &&
+          typeof cause === "object" &&
+          "code" in cause &&
+          cause.code === "23505"
+        )
+          throw new TRPCError({
+            code: "CONFLICT",
+            message:
+              "A preset with this name already exists in your organization.",
+          });
+        throw error;
+      }
+    }),
+
+  deletePermissionPreset: hasDashboardAccess
+    .input(z.object({ id: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      assertCan(ctx.user, "org.members");
+      const organizationId = ctx.user.organizationId;
+      return ctx.db.transaction(async (tx) => {
+        await tx.execute(
+          sql`select id from ${organizations} where ${organizations.id} = ${organizationId} for update`,
+        );
+        const [assigned] = await tx
+          .select({ id: userIdColumn })
+          .from(users)
+          .where(
+            and(
+              eq(userOrgColumn, organizationId),
+              eq(userPresetColumn, input.id),
+            ),
+          )
+          .limit(1);
+        if (assigned)
+          throw new TRPCError({
+            code: "CONFLICT",
+            message:
+              "Reassign members or switch them to individual permissions before deleting this preset.",
+          });
+        const removed = await tx
+          .delete(organizationPermissionPresets)
+          .where(
+            and(
+              eq(organizationPermissionPresets.id, input.id),
+              eq(organizationPermissionPresets.organizationId, organizationId),
+            ),
+          )
+          .returning({ id: organizationPermissionPresets.id });
+        if (!removed.length)
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Permission preset not found.",
+          });
+        return { deleted: true };
       });
     }),
 

@@ -128,6 +128,7 @@ describe("protected member controls", () => {
       userId: "member",
       accessStatus: "denied",
       permissions: { ...STANDARD_DEFAULTS, "tab.organization": true },
+      permissionPresetId: null,
     });
   });
 
@@ -188,5 +189,75 @@ describe("Executive employee simulation controls", () => {
     expect(
       screen.getByRole("button", { name: "Simulate employee" }),
     ).toBeDisabled();
+  });
+});
+
+describe("live member presets", () => {
+  const presetId = "00000000-0000-4000-8000-000000000001";
+  function liveSettings() {
+    const settings = settingsFor("standard");
+    settings.permissionPresets = [
+      {
+        id: presetId,
+        name: "Journeyman",
+        revision: 1,
+        permissions: { ...STANDARD_DEFAULTS, "orders.send": false },
+        memberCount: 1,
+      },
+    ];
+    return settings;
+  }
+  it("assigns a live reference and locks individual switches", () => {
+    render(<MembersSection settings={liveSettings()} onSaved={vi.fn()} />);
+    fireEvent.change(
+      screen.getByRole("combobox", { name: "Permission preset" }),
+      { target: { value: presetId } },
+    );
+    expect(screen.getByRole("switch", { name: "Send orders" })).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    expect(mutate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        permissionPresetId: presetId,
+        userId: "member",
+      }),
+    );
+  });
+  it("allows detaching while keeping the current permissions", () => {
+    const settings = liveSettings();
+    settings.members[0]!.permissionPresetId = presetId;
+    render(<MembersSection settings={settings} onSaved={vi.fn()} />);
+    fireEvent.change(
+      screen.getByRole("combobox", { name: "Permission preset" }),
+      { target: { value: "" } },
+    );
+    expect(screen.getByRole("switch", { name: "Send orders" })).toBeEnabled();
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    expect(mutate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        permissionPresetId: null,
+        permissions: settings.permissionPresets[0]!.permissions,
+      }),
+    );
+  });
+  it("shows new live permissions when the organization data refreshes", () => {
+    const settings = liveSettings();
+    settings.members[0]!.permissionPresetId = presetId;
+    const view = render(
+      <MembersSection settings={settings} onSaved={vi.fn()} />,
+    );
+    expect(screen.getByRole("switch", { name: "Send orders" })).toHaveAttribute(
+      "aria-checked",
+      "false",
+    );
+    const updated = structuredClone(settings);
+    updated.permissionPresets[0]!.permissions["orders.send"] = true;
+    updated.members[0]!.permissions.can["orders.send"] = true;
+    view.rerender(<MembersSection settings={updated} onSaved={vi.fn()} />);
+    expect(screen.getByRole("switch", { name: "Send orders" })).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
+    expect(screen.getByRole("switch", { name: "Send orders" })).toBeDisabled();
+    expect(mutate).not.toHaveBeenCalled();
   });
 });

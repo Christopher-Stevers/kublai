@@ -84,7 +84,7 @@ function setup(target: Row | null, actorPatch: Row = {}, authenticated = true) {
       };
     }),
   }));
-  const tx = { select, update };
+  const tx = { select, update, execute: vi.fn() };
   const db = {
     ...tx,
     transaction: vi.fn(async (run: (value: typeof tx) => unknown) => run(tx)),

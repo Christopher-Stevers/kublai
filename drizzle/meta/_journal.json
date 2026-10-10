@@ -230,6 +230,13 @@
       "when": 1791583200000,
       "tag": "0056_snapshot_editing",
       "breakpoints": false
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1791633600000,
+      "tag": "0057_live_permission_presets",
+      "breakpoints": false
     }
   ]
 }

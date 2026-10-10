@@ -1,11 +1,12 @@
 "use client";
 
 import { usePageViewState } from "~/hooks/use-page-view-state";
-import { Building2Icon, MapPinIcon, QrCodeIcon, UsersIcon, WifiOffIcon } from "lucide-react";
+import { Building2Icon, MapPinIcon, QrCodeIcon, ShieldCheckIcon, UsersIcon, WifiOffIcon } from "lucide-react";
 
 import { CompanySection } from "~/components/organization/CompanySection";
 import { InvitesSection } from "~/components/organization/InvitesSection";
 import { MembersSection } from "~/components/organization/MembersSection";
+import { PresetsSection } from "~/components/organization/PresetsSection";
 import { FormSkeleton } from "~/components/ui/skeleton";
 import { useOnlineStatus } from "~/hooks/use-online-status";
 import { cn } from "~/lib/utils";
@@ -13,6 +14,7 @@ import { api } from "~/trpc/react";
 
 const SECTIONS = [
   { id: "members", label: "Members", icon: UsersIcon },
+  { id: "presets", label: "Presets", icon: ShieldCheckIcon },
   { id: "invites", label: "Invites", icon: QrCodeIcon },
   { id: "company", label: "Company", icon: MapPinIcon },
 ] as const;
@@ -20,8 +22,8 @@ const SECTIONS = [
 export default function OrganizationPage() {
   const isOnline = useOnlineStatus();
   const utils = api.useUtils();
-  const [section, setSection] = usePageViewState<(typeof SECTIONS)[number]["id"]>("organization:section", "members", ["members", "invites", "company"]);
-  const settings = api.organization.getOrganizationSettings.useQuery(undefined, { enabled: isOnline, retry: false });
+  const [section, setSection] = usePageViewState<(typeof SECTIONS)[number]["id"]>("organization:section", "members", ["members", "presets", "invites", "company"]);
+  const settings = api.organization.getOrganizationSettings.useQuery(undefined, { enabled: isOnline, retry: false, refetchInterval: 30_000 });
   const refresh = async () => {
     await utils.organization.getOrganizationSettings.invalidate();
     await utils.user.getMyRole.invalidate();
@@ -81,6 +83,8 @@ export default function OrganizationPage() {
           <div className="rounded-2xl border bg-card p-6 text-center text-sm text-muted-foreground">{settings.error?.message ?? "Could not load the organization."}</div>
         ) : section === "members" ? (
           <MembersSection settings={data} onSaved={refresh} />
+        ) : section === "presets" ? (
+          <PresetsSection settings={data} onSaved={refresh} />
         ) : section === "invites" ? (
           <InvitesSection settings={data} onSaved={refresh} />
         ) : (

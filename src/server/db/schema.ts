@@ -51,6 +51,7 @@ export const users = createTable("user", (d) => ({
   // App fields
   role: d.varchar({ length: 50 }).default("user"), // user | admin | foreman etc.
   permissionConfig: jsonb(),
+  permissionPresetId: d.uuid().references(() => organizationPermissionPresets.id, { onDelete: "restrict" }),
   organizationAccessStatus: d.varchar({ length: 50 }).default("approved"),
 
   // Org membership (single-org MVP; if you need multi-org later, use a join table)
@@ -196,6 +197,17 @@ export const organizations = createTable(
   }),
   (t) => [unique("organization_name_uniq").on(t.name)],
 );
+
+/** Named organization presets. Assigned users are updated atomically by the DB trigger. */
+export const organizationPermissionPresets = createTable("organization_permission_preset", (d) => ({
+  id: d.uuid().primaryKey().$defaultFn(() => crypto.randomUUID()),
+  organizationId: d.uuid().notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  name: d.varchar({ length: 100 }).notNull(),
+  permissionConfig: jsonb().notNull(),
+  revision: d.integer().notNull().default(1),
+  createdAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
+  updatedAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
+}), (t) => [index("organization_permission_preset_org_idx").on(t.organizationId)]);
 
 export const organizationsRelations = relations(organizations, ({ many }) => ({
   users: many(users),
