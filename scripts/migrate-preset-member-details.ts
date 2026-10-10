@@ -1,4 +1,4 @@
-/** Add optional departments and reporting lines without assigning any members. */
+/** Add optional member details to presets without changing existing assignments. */
 import dotenv from "dotenv";
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
@@ -20,7 +20,7 @@ const journal = JSON.parse(
 const entry = journal.entries.find((row) => row.tag === tag);
 if (!entry)
   throw new Error(
-    "Missing member organization details migration journal entry",
+    "Missing preset member details migration journal entry",
   );
 const hash = createHash("sha256").update(source).digest("hex");
 const sql = postgres(process.env.DATABASE_URL, { max: 1 });
@@ -35,7 +35,7 @@ try {
       [entry.when],
     );
     if (existing.length && existing[0]!.hash !== hash)
-      throw new Error("Member organization details migration checksum changed");
+      throw new Error("Preset member details migration checksum changed");
     if (!existing.length) {
       await tx.unsafe(source);
       await tx.unsafe(
