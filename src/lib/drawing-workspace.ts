@@ -41,16 +41,25 @@ export const drawingLinkSchema = z
   .min(1)
   .max(16_000)
   .refine(
-    value => value.length <= 2048 || (safeSnapshotHref(value) &&
-      Boolean(readSnapshotState(new URL(value, "https://foremanhq.invalid").hash))),
+    (value) =>
+      value.length <= 2048 ||
+      (safeSnapshotHref(value) &&
+        Boolean(
+          readSnapshotState(new URL(value, "https://foremanhq.invalid").hash),
+        )),
     "This address is too long.",
   )
   .refine(isAppLink, "Use a web, email, phone or ForemanHQ link.");
-export const drawingMarkupLinkSchema = z.object({
-  label: shortText.min(1, "Give each destination a name."),
-  url: drawingLinkSchema.optional(),
-  targetSheetId: id.optional(),
-}).refine(link => Boolean(link.url) !== Boolean(link.targetSheetId), "Choose one destination for each link.");
+export const drawingMarkupLinkSchema = z
+  .object({
+    label: shortText.min(1, "Give each destination a name."),
+    url: drawingLinkSchema.optional(),
+    targetSheetId: id.optional(),
+  })
+  .refine(
+    (link) => Boolean(link.url) !== Boolean(link.targetSheetId),
+    "Choose one destination for each link.",
+  );
 export type DrawingMarkupLink = z.infer<typeof drawingMarkupLinkSchema>;
 export const drawingMarkupSchema = z
   .object({
@@ -58,12 +67,24 @@ export const drawingMarkupSchema = z
     type: drawingMarkupTypeSchema,
     points: z.array(drawingPointSchema).min(1).max(4000),
     /** Saved measuring runs can branch; null starts a disconnected run. */
-    parents: z.array(z.number().int().min(0).max(3999).nullable()).min(2).max(4000).optional(),
+    parents: z
+      .array(z.number().int().min(0).max(3999).nullable())
+      .min(2)
+      .max(4000)
+      .optional(),
     /** Attached line directions preserve the first segment's angle after saving. */
-    angleReferences: z.array(z.object({
-      x: z.number().finite().min(-1).max(1),
-      y: z.number().finite().min(-1).max(1),
-    }).nullable()).min(2).max(4000).optional(),
+    angleReferences: z
+      .array(
+        z
+          .object({
+            x: z.number().finite().min(-1).max(1),
+            y: z.number().finite().min(-1).max(1),
+          })
+          .nullable(),
+      )
+      .min(2)
+      .max(4000)
+      .optional(),
     stroke: color.default("#ef4444"),
     width: z.number().finite().min(0.1).max(40).default(2),
     /** Text size in the shared 1000-unit drawing coordinate system. */
@@ -73,23 +94,48 @@ export const drawingMarkupSchema = z
     text: z.string().max(4000).optional(),
     href: drawingLinkSchema.optional(),
     targetSheetId: id.optional(),
-    links: z.array(drawingMarkupLinkSchema).min(1, "Add at least one destination to the hyperlink.").max(MAX_DRAWING_LINKS).optional(),
+    links: z
+      .array(drawingMarkupLinkSchema)
+      .min(1, "Add at least one destination to the hyperlink.")
+      .max(MAX_DRAWING_LINKS)
+      .optional(),
     linkAppearance: z.enum(["box", "highlight"]).optional(),
     unit: z.enum(["mm", "cm", "m", "in", "ft"]).optional(),
     scale: z.number().finite().positive().max(1e9).optional(),
   })
   .superRefine((markup, ctx) => {
-    if (markup.angleReferences && (markup.type !== "dimension" || !markup.parents ||
-      markup.angleReferences.length !== markup.points.length ||
-      markup.angleReferences.some(reference => reference && Math.hypot(reference.x, reference.y) < 1e-9))) {
-      ctx.addIssue({ code: "custom", path: ["angleReferences"], message: "Invalid measurement angle references." });
+    if (
+      markup.angleReferences &&
+      (markup.type !== "dimension" ||
+        !markup.parents ||
+        markup.angleReferences.length !== markup.points.length ||
+        markup.angleReferences.some(
+          (reference) =>
+            reference && Math.hypot(reference.x, reference.y) < 1e-9,
+        ))
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["angleReferences"],
+        message: "Invalid measurement angle references.",
+      });
     }
     if (markup.parents) {
       const parents = markup.parents;
-      if (markup.type !== "dimension" || parents.length !== markup.points.length ||
-        !parents.some(parent => parent !== null) ||
-        parents.some((parent, index) => parent !== null && (parent >= parents.length || parent === index))) {
-        ctx.addIssue({ code: "custom", path: ["parents"], message: "Invalid measurement connections." });
+      if (
+        markup.type !== "dimension" ||
+        parents.length !== markup.points.length ||
+        !parents.some((parent) => parent !== null) ||
+        parents.some(
+          (parent, index) =>
+            parent !== null && (parent >= parents.length || parent === index),
+        )
+      ) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["parents"],
+          message: "Invalid measurement connections.",
+        });
       } else {
         const visited = new Uint8Array(parents.length);
         for (let index = 0; index < parents.length; index++) {
@@ -101,7 +147,11 @@ export const drawingMarkupSchema = z
             next = parents[next]!;
           }
           if (next !== null && visited[next] === 1) {
-            ctx.addIssue({ code: "custom", path: ["parents"], message: "Measurement connections cannot form a cycle." });
+            ctx.addIssue({
+              code: "custom",
+              path: ["parents"],
+              message: "Measurement connections cannot form a cycle.",
+            });
             break;
           }
           for (const node of path) visited[node] = 2;
@@ -192,6 +242,7 @@ export const drawingSaveSchema = z.discriminatedUnion("kind", [
   z.object({
     ...mutationBase,
     kind: z.literal("markup"),
+    visibility: drawingVisibilitySchema.default("published"),
     data: drawingMarkupSchema,
   }),
   z.object({
@@ -224,6 +275,16 @@ export const drawingSaveSchema = z.discriminatedUnion("kind", [
 ]);
 export type DrawingSaveInput = z.input<typeof drawingSaveSchema>;
 export type DrawingSave = z.infer<typeof drawingSaveSchema>;
+/** Own markups and private issues can be durably saved before reconnecting. */
+export function isQueuedDrawingEdit(
+  input: DrawingSave,
+): input is Extract<DrawingSave, { kind: "markup" | "issue" }> {
+  return (
+    (input.kind === "markup" &&
+      (input.visibility === "private" || input.visibility === "published")) ||
+    (input.kind === "issue" && input.visibility === "private")
+  );
+}
 export type DrawingEntityKind = DrawingSave["kind"];
 export type DrawingComment = {
   id: string;

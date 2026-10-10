@@ -15,6 +15,7 @@ import {
   canReadEntity,
   defaultDrawingMetadata,
   drawingActor,
+  isQueuedDrawingReplay,
   prepareEntity,
   type DrawingActor,
 } from "./domain";
@@ -141,7 +142,18 @@ describe("drawing workspace authorization and revisions", () => {
       permissionConfig: null,
     } as RequestUser;
     expect(drawingActor(user, "org").canManage).toBe(false);
-    expect(() => drawingActor({ ...user, permissionConfig: { version: 2, permissions: { "drawings.view": false, "drawings.upload": true } } }, "org")).toThrow(/drawing access/);
+    expect(() =>
+      drawingActor(
+        {
+          ...user,
+          permissionConfig: {
+            version: 2,
+            permissions: { "drawings.view": false, "drawings.upload": true },
+          },
+        },
+        "org",
+      ),
+    ).toThrow(/drawing access/);
     expect(() => drawingActor(null, "org")).toThrow();
     expect(() => drawingActor(user, "another org")).toThrow(
       /Drawing not found/,
@@ -179,14 +191,102 @@ describe("drawing workspace authorization and revisions", () => {
         ),
       ).toThrow(/not found/);
   });
-  it("prevents publishing markup without drawings.upload", () => {
-    expect(() => create({ visibility: "published" })).toThrow(
-      /management permission/,
-    );
-    expect(create({ visibility: "published" }, manager).visibility).toBe(
-      "published",
-    );
+  it("defaults omitted markup visibility to public and lets workers edit their own shared work", () => {
+    const publicInput = drawingSaveSchema.parse({
+      sheetId,
+      id,
+      expectedRevision: 0,
+      kind: "markup",
+      data: markup,
+    });
+    expect(publicInput.visibility).toBe("published");
+    const shared = prepareEntity(publicInput, null, worker, sheets, [], now);
+    expect(canReadEntity(shared, other)).toBe(true);
+    expect(
+      prepareEntity(
+        input({
+          expectedRevision: 1,
+          visibility: "published",
+          data: { ...markup, text: "Crew update" },
+        }),
+        shared,
+        worker,
+        sheets,
+        [],
+        now,
+      ),
+    ).toMatchObject({
+      visibility: "published",
+      revision: 2,
+      authorId: worker.id,
+    });
+    expect(() =>
+      prepareEntity(
+        input({ expectedRevision: 1, visibility: "published" }),
+        shared,
+        other,
+        sheets,
+        [],
+        now,
+      ),
+    ).toThrow(/Only the author/);
+    expect(() =>
+      create({
+        kind: "view",
+        visibility: "published",
+        data: {
+          sourceSheetId: sheetId,
+          name: "View",
+          center: { x: 0.5, y: 0.5 },
+          zoom: 1,
+        },
+      }),
+    ).toThrow(/management permission/);
+    expect(create().visibility).toBe("private");
   });
+  it.each(["private", "published"] as const)(
+    "acknowledges an exact %s markup replay but rejects different data, visibility, authors and revisions",
+    (visibility) => {
+      const request = input({ visibility, expectedUserId: worker.id });
+      const saved = prepareEntity(request, null, worker, sheets, [], now);
+      expect(isQueuedDrawingReplay(request, saved, worker)).toBe(true);
+      expect(
+        isQueuedDrawingReplay(
+          { ...request, expectedUserId: other.id },
+          saved,
+          worker,
+        ),
+      ).toBe(false);
+      expect(
+        isQueuedDrawingReplay(
+          request,
+          { ...saved, authorId: other.id },
+          worker,
+        ),
+      ).toBe(false);
+      expect(
+        isQueuedDrawingReplay(
+          request,
+          {
+            ...saved,
+            visibility: visibility === "private" ? "published" : "private",
+          },
+          worker,
+        ),
+      ).toBe(false);
+      expect(
+        isQueuedDrawingReplay(request, { ...saved, revision: 2 }, worker),
+      ).toBe(false);
+      if (request.kind !== "markup") throw Error("fixture");
+      expect(
+        isQueuedDrawingReplay(
+          { ...request, data: { ...request.data, text: "different" } },
+          saved,
+          worker,
+        ),
+      ).toBe(false);
+    },
+  );
   it("retains original authorship when a manager edits published work", () => {
     const original = create({ visibility: "published" }, manager);
     const anotherManager = { ...manager, id: "manager2" };

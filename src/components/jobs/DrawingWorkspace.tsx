@@ -44,6 +44,7 @@ import { sourcePdfPage } from "~/lib/pdf-client";
 import { tileBase } from "~/lib/drawing-tiles";
 import {
   drawingSaveSchema,
+  isQueuedDrawingEdit,
   drawingMetadataSchema,
   type DrawingEntity,
   type DrawingJobSheet,
@@ -190,7 +191,9 @@ export function DrawingWorkspace({
     setLinkedAppearance(value);
     changeDefaultAppearance(value);
   };
-  const [appearanceOpen, setAppearanceOpen] = useState(entryDrawing?.appearanceOpen ?? false);
+  const [appearanceOpen, setAppearanceOpen] = useState(
+    entryDrawing?.appearanceOpen ?? false,
+  );
   const utils = api.useUtils();
   const [online, setOnline] = useState(
     () => typeof navigator === "undefined" || navigator.onLine,
@@ -219,7 +222,9 @@ export function DrawingWorkspace({
   const [toolsOpen, setToolsOpen] = useState(false);
   const [tool, setTool] = useState<DrawingTool>("pan");
   // Bottom bar: the Markup panel, and Measure / Pipe system in the viewer.
-  const [markupOpen, setMarkupOpen] = useState(entryDrawing?.markupOpen ?? false);
+  const [markupOpen, setMarkupOpen] = useState(
+    entryDrawing?.markupOpen ?? false,
+  );
   const [modeRequest, setModeRequest] = useState<{
     id: number;
     mode: "idle" | "measure" | "pipe";
@@ -333,7 +338,10 @@ export function DrawingWorkspace({
           appearance,
           layers,
           selectedId,
-          panel, search, markupOpen, appearanceOpen,
+          panel,
+          search,
+          markupOpen,
+          appearanceOpen,
         }
       : undefined;
   });
@@ -512,16 +520,18 @@ export function DrawingWorkspace({
       (record) => record.input.id === entity.id && record.state !== "pending",
     ) &&
     (online ||
-      (entity.visibility === "private" &&
-        entity.authorId === data?.actor.id &&
-        ["markup", "issue"].includes(entity.kind))) &&
+      (entity.authorId === data?.actor.id &&
+        (entity.kind === "markup" ||
+          (entity.kind === "issue" && entity.visibility === "private")))) &&
     entity.visibility !== "archived" &&
     ["markup", "issue", "view"].includes(entity.kind) &&
     Boolean(
       data &&
       (data.canManage ||
         (entity.authorId === data.actor.id &&
-          (entity.visibility === "private" || entity.kind === "issue")) ||
+          (entity.visibility === "private" ||
+            entity.kind === "issue" ||
+            entity.kind === "markup")) ||
         (entity.kind === "issue" && entity.data.assigneeId === data.actor.id)),
     );
   const toForm = (entity: DrawingEntity): DrawingSave =>
@@ -538,8 +548,15 @@ export function DrawingWorkspace({
     }) as DrawingSave;
   const resumeDestination = destinationPicker?.resume;
   useEffect(() => {
-    if (!data || !resumeDestination || resumeDestination.draft.sheetId !== sheet.id) return;
-    const entry = readSnapshotState(new URL(resumeDestination.returnTo.href, window.location.origin).hash)?.drawing;
+    if (
+      !data ||
+      !resumeDestination ||
+      resumeDestination.draft.sheetId !== sheet.id
+    )
+      return;
+    const entry = readSnapshotState(
+      new URL(resumeDestination.returnTo.href, window.location.origin).hash,
+    )?.drawing;
     if (entry) {
       setSourceOverride(entry.sourceSheetId);
       setLinkedAppearance(entry.appearance);
@@ -570,18 +587,21 @@ export function DrawingWorkspace({
     } else if (id) setPanel("selected");
     else if (panel === "selected") setPanel("");
   };
-  const base = () => ({
+  const base = (kind: DrawingSave["kind"] = "markup") => ({
     sheetId: sheet.id,
     id: crypto.randomUUID(),
     expectedRevision: 0,
-    visibility: "private" as const,
+    visibility:
+      kind === "markup" ? ("published" as const) : ("private" as const),
   });
   const save = async (value: DrawingSave) => {
     if (!data) return;
-    const privateDraft =
-      value.visibility === "private" &&
-      (value.kind === "markup" || value.kind === "issue");
-    if (!online && (!privateDraft || !queued.ready)) {
+    const queueable =
+      isQueuedDrawingEdit(value) &&
+      !data.entities.some(
+        (entity) => entity.id === value.id && entity.authorId !== data.actor.id,
+      );
+    if (!online && (!queueable || !queued.ready)) {
       setError("Reconnect to publish or change shared drawing records.");
       return;
     }
@@ -594,7 +614,7 @@ export function DrawingWorkspace({
     }
     setPending((n) => n + 1);
     setError(null);
-    if (privateDraft && queued.ready) {
+    if (queueable && queued.ready) {
       try {
         await queued.enqueue(
           parsed.data,
@@ -687,7 +707,7 @@ export function DrawingWorkspace({
   };
   const newRecord = (kind: "view" | "version" | "review" | "transmittal") => {
     if (!data || !online) return;
-    const common = base();
+    const common = base(kind);
     const value: DrawingSave =
       kind === "view"
         ? {
@@ -1032,7 +1052,7 @@ export function DrawingWorkspace({
       : queued.records.length
         ? `${queued.records.length} edit(s) saved on device`
         : !online
-          ? "Offline · private drafts only"
+          ? "Offline · markups saved on device"
           : !current
             ? "Earlier revision · read only"
             : "Saved";
@@ -1198,7 +1218,7 @@ export function DrawingWorkspace({
           className="max-h-40 space-y-2 overflow-y-auto border-b bg-amber-50 px-3 py-2 text-sm text-amber-950"
         >
           <div className="flex items-center gap-2">
-            <b>{queued.records.length} private edit(s) saved on this device</b>
+            <b>{queued.records.length} edit(s) saved on this device</b>
             <Button
               size="sm"
               variant="outline"
@@ -1372,7 +1392,7 @@ export function DrawingWorkspace({
                 writable
                   ? (type, point) => {
                       setForm({
-                        ...base(),
+                        ...base("issue"),
                         kind: "issue",
                         visibility: online ? "published" : "private",
                         data: {
@@ -1446,18 +1466,27 @@ export function DrawingWorkspace({
                       value={form}
                       onChange={setForm}
                       onSubmit={() => void save(form)}
-                      onNavigate={destinationPicker && form.kind === "markup" ? () => {
-                        if (destinationPicker.start({
-                          jobId, draft: form,
-                          baseEntity: entities.find(entity => entity.id === form.id),
-                          authorName: data.actor.name,
-                        })) {
-                          setPanel("");
-                          setForm(null);
-                          setSelectedId(null);
-                          selectTool("pan");
-                        }
-                      } : undefined}
+                      onNavigate={
+                        destinationPicker && form.kind === "markup"
+                          ? () => {
+                              if (
+                                destinationPicker.start({
+                                  jobId,
+                                  draft: form,
+                                  baseEntity: entities.find(
+                                    (entity) => entity.id === form.id,
+                                  ),
+                                  authorName: data.actor.name,
+                                })
+                              ) {
+                                setPanel("");
+                                setForm(null);
+                                setSelectedId(null);
+                                selectTool("pan");
+                              }
+                            }
+                          : undefined
+                      }
                       pending={pending > 0}
                       workspace={data}
                       offline={!online}
@@ -1560,7 +1589,7 @@ export function DrawingWorkspace({
                           !queued.records.some(
                             (record) => record.input.id === selected.id,
                           ) &&
-                          data.canManage &&
+                          (data.canManage || selected.kind === "markup") &&
                           selected.visibility === "private" && (
                             <Button
                               size="sm"
