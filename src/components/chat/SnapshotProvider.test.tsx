@@ -157,7 +157,9 @@ it("opens the snapshot tool choices before taking a new capture", () => {
     </SnapshotProvider>,
   );
   fireEvent.click(screen.getByText("Start snapshot"));
-  expect(screen.getByText("Edit a saved snapshot")).toBeVisible();
+  expect(
+    screen.getByRole("searchbox", { name: "Search saved snapshots" }),
+  ).toBeVisible();
   expect(screen.getByText("New snapshot")).toBeVisible();
   expect(mocks.capture).not.toHaveBeenCalled();
   expect(

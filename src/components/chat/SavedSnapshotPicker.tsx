@@ -32,20 +32,15 @@ export function SavedSnapshotPicker({
       <Button className="w-full" onClick={onCapture}>
         <CameraIcon className="size-4" /> New snapshot
       </Button>
-      <div className="space-y-2">
-        <h3 className="flex items-center gap-2 text-sm font-semibold">
-          <PencilIcon className="size-4" /> Edit a saved snapshot
-        </h3>
-        <input
-          type="search"
-          aria-label="Search saved snapshots"
-          placeholder="Search drawing, caption or conversation…"
-          maxLength={200}
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-          className="bg-background w-full rounded-md border px-3 py-2 text-base"
-        />
-      </div>
+      <input
+        type="search"
+        aria-label="Search saved snapshots"
+        placeholder="Search drawing, caption or conversation…"
+        maxLength={200}
+        value={search}
+        onChange={(event) => setSearch(event.target.value)}
+        className="bg-background w-full rounded-md border px-3 py-2 text-base"
+      />
       {saved.isPending ? (
         <p role="status" className="text-muted-foreground text-sm">
           Loading your snapshots…
