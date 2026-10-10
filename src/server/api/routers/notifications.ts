@@ -14,6 +14,8 @@ import {
   notificationOverview,
   notificationPage,
   readNotifications,
+  jobNotificationSettings,
+  setJobNotificationSettings,
 } from "~/server/notifications/service";
 
 const accountProcedure = protectedProcedure
@@ -28,6 +30,14 @@ export const notificationsRouter = createTRPCRouter({
     .input(z.object({ sessionKey: z.string().max(255) }))
     .query(({ ctx }) => ({ accountKey: notificationAccount(ctx.user) })),
   overview: accountProcedure.query(({ ctx }) => notificationOverview(ctx)),
+  jobSettings: accountProcedure.query(({ ctx }) =>
+    jobNotificationSettings(ctx),
+  ),
+  setJobSettings: accountProcedure
+    .input(z.object({ jobId: z.uuid(), muted: z.boolean() }))
+    .mutation(({ ctx, input }) =>
+      setJobNotificationSettings(ctx, input.jobId, input.muted),
+    ),
   list: accountProcedure
     .input(
       z.object({

@@ -125,9 +125,6 @@ vi.mock("~/trpc/react", () => ({
     },
   },
 }));
-vi.mock("~/components/jobs/ChatNotifications", () => ({
-  ChatNotifications: () => <button>Enable device notifications</button>,
-}));
 import { ConversationsView } from "./ConversationsView";
 beforeEach(() => {
   vi.clearAllMocks();
@@ -211,12 +208,14 @@ it("hides cached private messages and disables sending after access is revoked",
   expect(screen.getByLabelText("Message")).toBeDisabled();
 });
 
-it("offers device notification setup inside person and group chats", () => {
+it("keeps notification controls out of person and group chats", () => {
   render(<ConversationsView />);
-  fireEvent.click(screen.getByRole("button", { name: "Device notifications" }));
   expect(
-    screen.getByRole("button", { name: "Enable device notifications" }),
-  ).toBeVisible();
+    screen.queryByRole("button", { name: "Device notifications" }),
+  ).toBeNull();
+  expect(
+    screen.queryByRole("button", { name: /push notifications/ }),
+  ).toBeNull();
 });
 
 it("opens direct chats and job chats in the same workspace", () => {

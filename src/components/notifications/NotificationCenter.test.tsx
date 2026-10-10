@@ -28,6 +28,12 @@ const mocks = vi.hoisted(() => ({
   listInput: {} as { unreadOnly?: boolean },
   more: false,
 }));
+vi.mock("./PushNotifications", () => ({
+  PushNotifications: () => <button>Turn push notifications on</button>,
+}));
+vi.mock("./JobNotificationSettings", () => ({
+  JobNotificationSettings: () => <button>Job chat notifications</button>,
+}));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: mocks.push }) }));
 vi.mock("~/hooks/use-online-status", () => ({
   useOnlineStatus: () => mocks.online,
@@ -119,6 +125,12 @@ it("opens a keyboard accessible window without marking anything read", () => {
   );
   expect(screen.getByRole("dialog", { name: "Notifications" })).toBeVisible();
   expect(screen.getByText("Check equipment tag")).toBeVisible();
+  expect(
+    screen.getByRole("button", { name: "Turn push notifications on" }),
+  ).toBeVisible();
+  expect(
+    screen.getByRole("button", { name: "Job chat notifications" }),
+  ).toBeVisible();
   expect(mocks.read).not.toHaveBeenCalled();
   fireEvent.click(screen.getByRole("button", { name: "Unread" }));
   expect(mocks.listInput.unreadOnly).toBe(true);

@@ -204,9 +204,9 @@ function HeaderFrame({
       /* Signing out must still work if offline storage is unavailable. */
     }
     try {
-      const { disconnectChatPushDevice } =
-        await import("~/components/jobs/ChatNotifications");
-      await disconnectChatPushDevice();
+      const { disconnectPushDevice } =
+        await import("~/components/notifications/PushNotifications");
+      await disconnectPushDevice();
     } catch {
       // Local revocation is retained for retry; signing out must still work offline.
     } finally {

@@ -7,7 +7,7 @@ import { SessionProviderWrapper } from "./_components/SessionProviderWrapper";
 import { TRPCReactProvider } from "~/trpc/react";
 import { APP_NAME } from "~/constants/app";
 import { ClientConsoleErrorReporter } from "~/components/debug/ClientConsoleErrorReporter";
-import { ChatPushAccountBinding } from "~/components/jobs/ChatNotifications";
+import { PushAccountBinding } from "~/components/notifications/PushNotifications";
 import { ServiceWorkerRegistration } from "~/components/offline/ServiceWorkerRegistration";
 import { ThemeProvider } from "~/components/app/ThemeProvider";
 import { AppDialogHost } from "~/components/ui/app-dialogs";
@@ -101,7 +101,7 @@ export default function RootLayout({
             <TRPCReactProvider>
               <ClientConsoleErrorReporter />
               <ServiceWorkerRegistration />
-              <ChatPushAccountBinding />
+              <PushAccountBinding />
               {children}
               <AppDialogHost />
             </TRPCReactProvider>

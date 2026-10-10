@@ -3,7 +3,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import {
-  BellRingIcon,
   ListIcon,
   MessageSquareIcon,
   PaperclipIcon,
@@ -13,7 +12,6 @@ import {
   ExternalLinkIcon,
 } from "lucide-react";
 import { api } from "~/trpc/react";
-import { ChatNotifications } from "~/components/jobs/ChatNotifications";
 import { Button } from "~/components/ui/button";
 import {
   Dialog,
@@ -72,7 +70,6 @@ export function ConversationsView({ initialJobId }: { initialJobId?: string }) {
   const jobs = useReplicacheJobsList();
   const [newOpen, setNewOpen] = useState(false),
     [chatsOpen, setChatsOpen] = useState(false),
-    [notificationsOpen, setNotificationsOpen] = useState(false),
     [target, setTarget] = useState<ChatTarget>({
       mode: "direct",
       recipientIds: [],
@@ -199,16 +196,6 @@ export function ConversationsView({ initialJobId }: { initialJobId?: string }) {
             </Button>
           )}
           <Button
-            variant="ghost"
-            size="icon"
-            className={ON_METAL}
-            aria-label="Device notifications"
-            title="Device notifications"
-            onClick={() => setNotificationsOpen(true)}
-          >
-            <BellRingIcon className="size-4" />
-          </Button>
-          <Button
             size="sm"
             disabled={!online}
             onClick={() => {
@@ -302,15 +289,6 @@ export function ConversationsView({ initialJobId }: { initialJobId?: string }) {
           )}
         </main>
       </div>
-      <Dialog open={notificationsOpen} onOpenChange={setNotificationsOpen}>
-        <DialogContent>
-          <DialogTitle>Device notifications</DialogTitle>
-          <DialogDescription>
-            Manage chat notifications on this device.
-          </DialogDescription>
-          <ChatNotifications />
-        </DialogContent>
-      </Dialog>
       <Dialog open={chatsOpen} onOpenChange={setChatsOpen}>
         <DialogContent className="flex max-h-[85dvh] min-h-0 flex-col gap-1 p-3">
           <DialogTitle className="px-1 pt-1 pr-8">Switch chat</DialogTitle>

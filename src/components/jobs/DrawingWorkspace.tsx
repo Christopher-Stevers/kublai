@@ -76,7 +76,6 @@ import { DrawingCompare } from "./DrawingCompare";
 import { DrawingDocumentActions } from "./DrawingDocumentActions";
 import { DrawingReferenceLinks } from "./DrawingReferenceLinks";
 import { useDrawingAccount } from "./DrawingAccountProvider";
-import { ChatNotifications } from "./ChatNotifications";
 import { useDrawingQueuedEdits } from "./useDrawingQueuedEdits";
 
 /** Tools menu: everything that is not a markup type. */
@@ -2225,7 +2224,6 @@ export function DrawingWorkspace({
               )}
               {panel === "notifications" && (
                 <>
-                  <ChatNotifications />
                   <Button
                     size="sm"
                     variant="outline"

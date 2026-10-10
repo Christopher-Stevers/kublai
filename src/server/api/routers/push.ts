@@ -99,7 +99,7 @@ export const pushRouter = createTRPCRouter({
         throw new TRPCError({
           code: "PRECONDITION_FAILED",
           message:
-            "Chat notifications have not been configured on the server yet.",
+            "Push notifications have not been configured on the server yet.",
         });
       const revokeToken = randomBytes(32).toString("base64url");
       await ctx.db.transaction(async (tx) => {

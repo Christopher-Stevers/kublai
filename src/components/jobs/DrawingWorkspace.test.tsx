@@ -83,9 +83,7 @@ vi.mock("~/trpc/react", () => ({
     },
   },
 }));
-vi.mock("./ChatNotifications", () => ({
-  ChatNotifications: () => <button>Enable device notifications</button>,
-}));
+
 vi.mock("./DrawingAccountProvider", () => ({
   useDrawingAccount: () => mocks.account,
 }));

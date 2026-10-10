@@ -37,6 +37,40 @@ export function assertNotificationAccount(
     });
 }
 
+function jobMembership(ctx: Context) {
+  return sql`(member."userId" is not null or j."createdByUserId"=${ctx.user.id}
+    or j."foremanUserId"=${ctx.user.id} or j.id=${ctx.user.currentJobId}::uuid)`;
+}
+
+export async function jobNotificationSettings(ctx: Context) {
+  const jobs = await ctx.db.execute<{
+    id: string;
+    name: string;
+    muted: boolean;
+  }>(sql`select j.id,j.name,coalesce(member.muted,false) as muted
+    from kublai_job j left join kublai_job_chat_member member
+      on member."jobId"=j.id and member."userId"=${ctx.user.id}
+    where j."organizationId"=${ctx.user.organizationId} and ${jobMembership(ctx)}
+    order by lower(j.name),j.id`);
+  return { accountKey: notificationAccount(ctx.user)!, jobs: Array.from(jobs) };
+}
+
+export async function setJobNotificationSettings(
+  ctx: Context,
+  jobId: string,
+  muted: boolean,
+) {
+  const rows = await ctx.db
+    .execute(sql`insert into kublai_job_chat_member ("jobId","userId",muted)
+    select j.id,${ctx.user.id},${muted} from kublai_job j
+    left join kublai_job_chat_member member on member."jobId"=j.id and member."userId"=${ctx.user.id}
+    where j.id=${jobId}::uuid and j."organizationId"=${ctx.user.organizationId} and ${jobMembership(ctx)}
+    on conflict ("jobId","userId") do update set muted=excluded.muted returning "jobId"`);
+  if (!rows.length)
+    throw new TRPCError({ code: "NOT_FOUND", message: "Job chat not found." });
+  return { muted };
+}
+
 // Each source rechecks current access. Chat alerts follow membership (including
 // job owners/foremen/current job) and mute/read cursors, independently of device
 // push subscriptions. Drawing alerts follow current visibility and recipients.

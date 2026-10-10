@@ -10,6 +10,8 @@ import {
   notificationOverview,
   notificationPage,
   readNotifications,
+  jobNotificationSettings,
+  setJobNotificationSettings,
 } from "./service";
 import {
   notificationCursor,
@@ -151,6 +153,34 @@ describe.skipIf(!process.env.NOTIFICATIONS_TEST_SOCKET)(
           (r) => r.url === `/dashboard/chat?conversation=${groupRoom}`,
         ),
       ).toBe(true);
+    });
+    it("controls existing job mutes centrally and excludes foreign and unrelated jobs", async () => {
+      const unrelatedJob = randomUUID();
+      await conn`insert into kublai_job values (${unrelatedJob},${org},'Unrelated site','sender','sender')`;
+      expect((await jobNotificationSettings(ctx)).jobs).toEqual([
+        { id: job, name: "Job site", muted: false },
+      ]);
+      await setJobNotificationSettings(ctx, job, true);
+      expect((await jobNotificationSettings(ctx)).jobs[0]?.muted).toBe(true);
+      expect(
+        (
+          await notificationPage(ctx, { unreadOnly: true, limit: 30 })
+        ).items.some((item) => item.kind === "job-chat"),
+      ).toBe(false);
+      await setJobNotificationSettings(ctx, job, false);
+      expect(
+        (
+          await notificationPage(ctx, { unreadOnly: true, limit: 30 })
+        ).items.some((item) => item.kind === "job-chat"),
+      ).toBe(true);
+      for (const deniedJob of [otherJob, unrelatedJob]) {
+        await expect(
+          setJobNotificationSettings(ctx, deniedJob, true),
+        ).rejects.toThrow("Job chat not found");
+      }
+      const [member] =
+        await conn`select muted from kublai_job_chat_member where "jobId"=${job} and "userId"='recipient'`;
+      expect(member?.muted).toBe(false);
     });
     it("paginates equal and sub-millisecond timestamps without duplicates or omissions", async () => {
       await conn`update kublai_job_chat_message set "createdAt"='2026-10-09T12:00:00.123456Z'`;

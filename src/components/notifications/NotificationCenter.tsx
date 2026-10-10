@@ -31,6 +31,8 @@ import {
 } from "~/lib/app-notifications";
 import { cn } from "~/lib/utils";
 import { useNotificationReminder } from "./use-notification-reminder";
+import { PushNotifications } from "./PushNotifications";
+import { JobNotificationSettings } from "./JobNotificationSettings";
 
 export function NotificationCenter({
   sessionKey = "local",
@@ -261,9 +263,21 @@ function NotificationInbox({
           </Button>
         </div>
         <div
-          className="min-h-40 overflow-y-auto overscroll-contain"
+          className="min-h-40 flex-1 overflow-y-auto overscroll-contain"
           aria-busy={list.isLoading || working}
         >
+          <section
+            aria-label="Notification preferences"
+            className="space-y-3 border-b px-5 py-4"
+          >
+            <PushNotifications />
+            {accountKey && (
+              <JobNotificationSettings
+                accountKey={accountKey}
+                isOnline={isOnline}
+              />
+            )}
+          </section>
           {actionError && (
             <p role="alert" className="text-destructive px-5 py-3 text-sm">
               {actionError}

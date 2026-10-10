@@ -36,6 +36,7 @@ const mocks = vi.hoisted(() => ({
   fetch: vi.fn(),
   postMessage: vi.fn(),
 }));
+vi.mock("~/hooks/use-online-status", () => ({ useOnlineStatus: () => true }));
 vi.mock("next/navigation", () => ({ usePathname: () => "/dashboard" }));
 const utils = {
   push: {
@@ -53,10 +54,10 @@ vi.mock("~/trpc/react", () => ({
   },
 }));
 import {
-  ChatNotifications,
-  ChatPushAccountBinding,
-  disconnectChatPushDevice,
-} from "./ChatNotifications";
+  PushNotifications,
+  PushAccountBinding,
+  disconnectPushDevice,
+} from "./PushNotifications";
 
 const storageKey = "foremanhq-chat-push-device-v1";
 const stored = {
@@ -159,14 +160,15 @@ afterEach(() => {
 });
 describe("device notification opt-in", () => {
   it("never prompts on mount; only an explicit click requests permission and saves a device", async () => {
-    render(<ChatNotifications />);
+    render(<PushNotifications />);
     const button = await screen.findByRole("button", {
-      name: "Enable device notifications",
+      name: "Turn push notifications on",
     });
     expect(mocks.permission).not.toHaveBeenCalled();
     expect(mocks.subscribe).not.toHaveBeenCalled();
+    await waitFor(() => expect(button).toBeEnabled());
     fireEvent.click(button);
-    await screen.findByRole("button", { name: "Disable device notifications" });
+    await screen.findByRole("button", { name: "Turn push notifications off" });
     expect(mocks.permission).toHaveBeenCalledOnce();
     expect(mocks.browserSubscribe).toHaveBeenCalledWith({
       userVisibleOnly: true,
@@ -174,20 +176,56 @@ describe("device notification opt-in", () => {
     });
     expect(JSON.parse(localStorage.getItem(storageKey)!)).toMatchObject(stored);
   });
-  it("disables the button for unconfigured, unsupported and denied states without helper text", async () => {
+  it("recognizes an existing device opt-in and turns it off without requesting permission again", async () => {
+    localStorage.setItem(storageKey, JSON.stringify(stored));
+    mocks.getSubscription.mockResolvedValue(browserSubscription);
+    Object.defineProperty(Notification, "permission", {
+      value: "granted",
+      configurable: true,
+    });
+    render(<PushNotifications />);
+    const off = await screen.findByRole("button", {
+      name: "Turn push notifications off",
+    });
+    await waitFor(() => expect(off).toBeEnabled());
+    expect(screen.getByRole("status")).toHaveTextContent("On for this device");
+    fireEvent.click(off);
+    await screen.findByRole("button", { name: "Turn push notifications on" });
+    await waitFor(() => expect(localStorage.getItem(storageKey)).toBeNull());
+    expect(mocks.unsubscribe).toHaveBeenCalled();
+    expect(mocks.fetch).toHaveBeenCalledWith(
+      "/api/trpc/push.revokeDevice",
+      expect.objectContaining({ method: "POST" }),
+    );
+    expect(mocks.permission).not.toHaveBeenCalled();
+    expect(mocks.subscribe).not.toHaveBeenCalled();
+  });
+  it("disables the button for unconfigured, unsupported and denied states with clear explanations", async () => {
     mocks.identity.data = { ...mocks.identity.data, publicKey: null };
-    const view = render(<ChatNotifications />);
-    await waitFor(() => expect(screen.getByRole("button", { name: "Enable device notifications" })).toBeDisabled());
-    expect(view.container.querySelector("p")).toBeNull();
+    const view = render(<PushNotifications />);
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "Turn push notifications on" }),
+      ).toBeDisabled(),
+    );
+    await waitFor(() =>
+      expect(screen.getByRole("status")).toHaveTextContent("aren’t configured"),
+    );
     view.unmount();
     mocks.identity.data = { ...mocks.identity.data, publicKey: "AQID" };
     Object.defineProperty(window, "isSecureContext", {
       value: false,
       configurable: true,
     });
-    const unsupported = render(<ChatNotifications />);
-    await waitFor(() => expect(screen.getByRole("button", { name: "Enable device notifications" })).toBeDisabled());
-    expect(unsupported.container.querySelector("p")).toBeNull();
+    const unsupported = render(<PushNotifications />);
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "Turn push notifications on" }),
+      ).toBeDisabled(),
+    );
+    await waitFor(() =>
+      expect(screen.getByRole("status")).toHaveTextContent("aren’t supported"),
+    );
     unsupported.unmount();
     Object.defineProperty(window, "isSecureContext", {
       value: true,
@@ -197,19 +235,25 @@ describe("device notification opt-in", () => {
       value: "denied",
       configurable: true,
     });
-    const denied = render(<ChatNotifications />);
-    await waitFor(() => expect(screen.getByRole("button", { name: "Enable device notifications" })).toBeDisabled());
-    expect(denied.container.querySelector("p")).toBeNull();
+    const denied = render(<PushNotifications />);
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "Turn push notifications on" }),
+      ).toBeDisabled(),
+    );
+    await waitFor(() =>
+      expect(screen.getByRole("status")).toHaveTextContent("blocked"),
+    );
     expect(mocks.permission).not.toHaveBeenCalled();
   });
   it("server refusal rolls back a newly created browser subscription and surfaces the error", async () => {
     mocks.subscribe.mockRejectedValue(new Error("Connection interrupted"));
-    render(<ChatNotifications />);
-    fireEvent.click(
-      await screen.findByRole("button", {
-        name: "Enable device notifications",
-      }),
-    );
+    render(<PushNotifications />);
+    const enable = await screen.findByRole("button", {
+      name: "Turn push notifications on",
+    });
+    await waitFor(() => expect(enable).toBeEnabled());
+    fireEvent.click(enable);
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Connection interrupted",
     );
@@ -224,7 +268,7 @@ describe("device notification opt-in", () => {
       userId: "user-b",
       account: "b".repeat(64),
     };
-    render(<ChatPushAccountBinding />);
+    render(<PushAccountBinding />);
     await waitFor(() => expect(localStorage.getItem(storageKey)).toBeNull());
     expect(mocks.unsubscribe).toHaveBeenCalledOnce();
     expect(mocks.fetch).toHaveBeenCalledWith(
@@ -241,7 +285,7 @@ describe("device notification opt-in", () => {
     localStorage.setItem(storageKey, JSON.stringify(stored));
     mocks.getSubscription.mockResolvedValue(browserSubscription);
     mocks.fetch.mockRejectedValue(new Error("offline"));
-    await expect(disconnectChatPushDevice()).rejects.toThrow("offline");
+    await expect(disconnectPushDevice()).rejects.toThrow("offline");
     expect(JSON.parse(localStorage.getItem(storageKey)!)).toMatchObject({
       ...stored,
       revoked: true,
@@ -254,7 +298,7 @@ describe("device notification opt-in", () => {
   });
   it("logout with no subscription does not register a worker or make a revoke request", async () => {
     mocks.getRegistration.mockResolvedValue(undefined);
-    await act(async () => disconnectChatPushDevice());
+    await act(async () => disconnectPushDevice());
     expect(mocks.register).not.toHaveBeenCalled();
     expect(mocks.fetch).not.toHaveBeenCalled();
   });
@@ -264,7 +308,7 @@ describe("device notification opt-in", () => {
       JSON.stringify({ ...stored, revoked: true }),
     );
     mocks.fetch.mockRejectedValue(new Error("offline"));
-    render(<ChatPushAccountBinding />);
+    render(<PushAccountBinding />);
     await waitFor(() => expect(mocks.fetch).toHaveBeenCalledTimes(1));
     await act(async () => {
       await new Promise((resolve) => setTimeout(resolve, 30));
@@ -286,7 +330,7 @@ describe("device notification opt-in", () => {
         account: replacement.account,
       },
     });
-    render(<ChatPushAccountBinding />);
+    render(<PushAccountBinding />);
     await waitFor(() =>
       expect(mocks.postMessage).toHaveBeenCalledWith(
         { type: "FOREMANHQ_PUSH_ACCOUNT", account: replacement.account },
@@ -305,7 +349,7 @@ describe("device notification opt-in", () => {
           finish = resolve;
         }),
     );
-    const pending = disconnectChatPushDevice();
+    const pending = disconnectPushDevice();
     const replacement = {
       ...stored,
       revokeToken: "s".repeat(43),
@@ -324,15 +368,15 @@ describe("device notification opt-in", () => {
           finish = resolve;
         }),
     );
-    render(<ChatNotifications />);
-    fireEvent.click(
-      await screen.findByRole("button", {
-        name: "Enable device notifications",
-      }),
-    );
+    render(<PushNotifications />);
+    const enable = await screen.findByRole("button", {
+      name: "Turn push notifications on",
+    });
+    await waitFor(() => expect(enable).toBeEnabled());
+    fireEvent.click(enable);
     await waitFor(() => expect(mocks.subscribe).toHaveBeenCalledOnce());
     await act(async () => {
-      await disconnectChatPushDevice();
+      await disconnectPushDevice();
       finish(stored);
     });
     expect(await screen.findByRole("alert")).toHaveTextContent("cancelled");

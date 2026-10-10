@@ -52,9 +52,7 @@ vi.mock("~/components/tutorial/tutorial-sandbox-context", () => ({
 vi.mock("~/hooks/use-online-status", () => ({
   useOnlineStatus: () => mock.online,
 }));
-vi.mock("./ChatNotifications", () => ({
-  ChatNotifications: () => <span>Device notifications</span>,
-}));
+
 vi.mock("~/components/ui/app-dialogs", () => ({
   confirmAction: vi.fn().mockResolvedValue(true),
 }));
@@ -198,8 +196,8 @@ describe("job chat delivery and scrolling", () => {
     expect(mock.loadDraft).not.toHaveBeenCalled();
     expect(events).not.toHaveBeenCalled();
     expect(
-      screen.getByRole("button", { name: "Notifications" }),
-    ).toBeDisabled();
+      screen.queryByRole("button", { name: "Notifications" }),
+    ).not.toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Attach photos or PDFs" }),
     ).toBeDisabled();
@@ -462,14 +460,11 @@ describe("job chat delivery and scrolling", () => {
     );
   });
 
-  it("keeps the notifications panel to notifications and muting", async () => {
+  it("keeps notification setup and job muting out of chat", async () => {
     await openChat();
-    fireEvent.click(screen.getByRole("button", { name: "Notifications" }));
-    expect(screen.getByText("Device notifications")).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Mute this job" }),
-    ).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /Home Screen/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Notifications" })).toBeNull();
+    expect(screen.queryByText("Device notifications")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Mute this job" })).toBeNull();
   });
 
   it("lets an Executive delete a job message from the long-press menu, with no editing", async () => {

@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Bell, BellOff } from "lucide-react";
 import { api } from "~/trpc/react";
+import { useOnlineStatus } from "~/hooks/use-online-status";
 
 const STORAGE_KEY = "foremanhq-chat-push-device-v1";
 const DEVICE_EVENT = "foremanhq-chat-push-device-change";
@@ -146,7 +147,7 @@ async function revoke(device: StoredDevice) {
 /** Called before sign-out as well as on account changes. Never reassign an existing opt-in silently. */
 let disconnectInFlight: Promise<void> | null = null;
 let enrollmentGeneration = 0;
-export function disconnectChatPushDevice() {
+export function disconnectPushDevice() {
   enrollmentGeneration++;
   disconnectInFlight ??= disconnectDevice().finally(() => {
     disconnectInFlight = null;
@@ -202,7 +203,7 @@ async function disconnectDevice() {
     );
 }
 
-export function ChatPushAccountBinding() {
+export function PushAccountBinding() {
   const pathname = usePathname();
   const identity = api.push.identity.useQuery(undefined, {
     staleTime: 0,
@@ -249,7 +250,7 @@ export function ChatPushAccountBinding() {
             current.userId !== fresh.userId ||
             !fresh.eligible
           )
-            return disconnectChatPushDevice();
+            return disconnectPushDevice();
           return setWorkerAccount(current.account);
         })
         .catch(() => {
@@ -260,8 +261,9 @@ export function ChatPushAccountBinding() {
   return null;
 }
 
-export function ChatNotifications() {
+export function PushNotifications() {
   const simulation = useEmployeeSimulation();
+  const isOnline = useOnlineStatus();
   const identity = api.push.identity.useQuery(undefined, {
     staleTime: 30000,
     retry: false,
@@ -271,16 +273,20 @@ export function ChatNotifications() {
   const [available, setAvailable] = useState<boolean | null>(null);
   const [enabled, setEnabled] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [checking, setChecking] = useState(true);
   const [permission, setPermission] =
     useState<NotificationPermission>("default");
   const [error, setError] = useState("");
   useEffect(() => {
     setAvailable(supported());
+    setEnabled(false);
+    setChecking(supported());
     if (!supported()) return;
     let cancelled = false;
     let inspection = 0;
     const inspect = async () => {
       const generation = ++inspection;
+      setChecking(true);
       setPermission(Notification.permission);
       const device = readDevice();
       const reg = await navigator.serviceWorker.getRegistration("/");
@@ -296,15 +302,19 @@ export function ChatNotifications() {
           await utils.push.device.fetch({ endpoint: current.endpoint })
         ).subscribed;
       }
-      if (!cancelled && generation === inspection)
+      if (!cancelled && generation === inspection) {
         setEnabled(subscribed && Notification.permission === "granted");
+        setChecking(false);
+      }
     };
     const inspectSafely = () => {
       void inspect().catch(() => {
-        if (!cancelled)
+        if (!cancelled) {
+          setChecking(false);
           setError(
             "Could not check notification settings. Reconnect and try again.",
           );
+        }
       });
     };
     inspectSafely();
@@ -318,7 +328,8 @@ export function ChatNotifications() {
   }, [identity.data?.userId, utils]);
 
   const toggle = async () => {
-    if (simulation) return;
+    if (simulation || busy || checking || !available || (!isOnline && !enabled))
+      return;
     setError("");
     setBusy(true);
     let newlyCreated: PushSubscription | null = null;
@@ -332,7 +343,7 @@ export function ChatNotifications() {
     };
     try {
       if (enabled) {
-        await disconnectChatPushDevice();
+        await disconnectPushDevice();
         setEnabled(false);
         return;
       }
@@ -360,7 +371,7 @@ export function ChatNotifications() {
       const old = await reg.pushManager.getSubscription();
       const previous = readDevice();
       if (old && (previous?.userId !== expectedUserId || previous.revoked)) {
-        await disconnectChatPushDevice();
+        await disconnectPushDevice();
         throw new Error(
           "The previous notification account was disconnected. Tap enable again for this account.",
         );
@@ -449,6 +460,24 @@ export function ChatNotifications() {
   const blocked = permission === "denied";
   return (
     <div className="space-y-1 text-sm">
+      <p className="font-medium">Push notifications</p>
+      <p className="text-muted-foreground text-xs" role="status">
+        {checking || identity.isPending
+          ? "Checking this device…"
+          : !available
+            ? "Push notifications aren’t supported in this browser. On iPhone, open the app from your Home Screen."
+            : blocked && !enabled
+              ? "Notifications are blocked. Allow them in this site’s browser settings."
+              : missingConfig && !enabled
+                ? "Push notifications aren’t configured yet."
+                : !identity.data?.eligible
+                  ? "Push notifications are available to approved organization members."
+                  : !isOnline && !enabled
+                    ? "Connect to turn push notifications on."
+                    : enabled
+                      ? "On for this device."
+                      : "Off for this device."}
+      </p>
       <button
         type="button"
         className="inline-flex min-h-11 items-center gap-2 rounded-lg border px-3 py-2 disabled:opacity-50"
@@ -456,6 +485,8 @@ export function ChatNotifications() {
         disabled={
           Boolean(simulation) ||
           busy ||
+          checking ||
+          (!isOnline && !enabled) ||
           !available ||
           identity.isPending ||
           identity.isError ||
@@ -467,10 +498,10 @@ export function ChatNotifications() {
       >
         {enabled ? <BellOff size={16} /> : <Bell size={16} />}
         {busy
-          ? "Updating notifications…"
+          ? "Updating push notifications…"
           : enabled
-            ? "Disable device notifications"
-            : "Enable device notifications"}
+            ? "Turn push notifications off"
+            : "Turn push notifications on"}
       </button>
       {simulation && (
         <p className="text-muted-foreground text-xs">

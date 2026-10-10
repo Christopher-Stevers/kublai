@@ -13,8 +13,6 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import {
-  BellOffIcon,
-  BellRingIcon,
   CopyIcon,
   FileIcon,
   Loader2Icon,
@@ -31,7 +29,6 @@ import type { ChatAttachment, ChatMessage } from "~/server/chat/contracts";
 import { useOnlineStatus } from "~/hooks/use-online-status";
 import { Button } from "~/components/ui/button";
 import { confirmAction } from "~/components/ui/app-dialogs";
-import { ChatNotifications } from "./ChatNotifications";
 import { useTutorialSandbox } from "~/components/tutorial/tutorial-sandbox-context";
 import {
   loadChatDraft,
@@ -224,10 +221,6 @@ function ChatLobby({
   const [error, setError] = useState("");
   const [sending, setSending] = useState(false);
   const sendingRef = useRef(false);
-  const [showBell, setShowBell] = usePageViewState(
-    `chat:${jobId}:showBell`,
-    false,
-  );
   const [actionsFor, setActionsFor] = useState<ChatMessage | null>(null);
   const [atBottom, setAtBottom] = useState(true);
   const atBottomRef = useRef(true);
@@ -275,7 +268,6 @@ function ChatLobby({
   const send = api.chat.send.useMutation();
   const remove = api.chat.delete.useMutation();
   const markRead = api.chat.markRead.useMutation();
-  const mute = api.chat.setNotifications.useMutation();
   const messages = useMemo(
     () =>
       mergeChatMessages(...Object.values(older), history.data?.messages ?? []),
@@ -843,7 +835,6 @@ function ChatLobby({
                 className={ON_METAL}
                 onClick={() => {
                   setShowMembers(!showMembers);
-                  setShowBell(false);
                 }}
                 aria-label="People"
                 aria-expanded={showMembers}
@@ -851,55 +842,8 @@ function ChatLobby({
                 <UsersIcon className="h-4 w-4" />
                 <span className="hidden sm:inline">People</span>
               </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className={ON_METAL}
-                aria-label="Notifications"
-                aria-expanded={showBell}
-                disabled={inTutorial}
-                onClick={() => {
-                  if (inTutorial) return;
-                  setShowBell(!showBell);
-                  setShowMembers(false);
-                }}
-              >
-                {overview.data?.muted ? (
-                  <BellOffIcon className="h-4 w-4" />
-                ) : (
-                  <BellRingIcon className="h-4 w-4" />
-                )}
-              </Button>
             </div>
           </div>
-          {showBell && !inTutorial && (
-            <div
-              className="bg-card text-card-foreground space-y-3 rounded-md p-3 text-sm shadow-md"
-              aria-label="Notification settings"
-            >
-              <ChatNotifications />
-              <button
-                type="button"
-                className="inline-flex min-h-11 items-center gap-2 rounded-lg border px-3 py-2 disabled:opacity-50"
-                aria-pressed={overview.data?.muted === true}
-                disabled={!online || !overview.data?.joined || mute.isPending}
-                onClick={() => {
-                  if (inTutorial) return;
-                  void mute
-                    .mutateAsync({ jobId, muted: !overview.data?.muted })
-                    .then(() => utils.chat.getOverview.invalidate({ jobId }))
-                    .catch((reason: unknown) => setError(errorText(reason)));
-                }}
-              >
-                {overview.data?.muted ? (
-                  <BellRingIcon className="h-4 w-4" />
-                ) : (
-                  <BellOffIcon className="h-4 w-4" />
-                )}
-                {overview.data?.muted ? "Unmute this job" : "Mute this job"}
-              </button>
-            </div>
-          )}
           {showMembers && (
             <div
               className="bg-card text-card-foreground max-h-40 overflow-y-auto rounded-md p-2 text-sm shadow-md"
