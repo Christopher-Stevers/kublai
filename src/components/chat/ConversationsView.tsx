@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import {
-  ListIcon,
+  ChevronDownIcon,
   MessageSquareIcon,
   PaperclipIcon,
   PlusIcon,
@@ -115,10 +115,6 @@ export function ConversationsView({ initialJobId }: { initialJobId?: string }) {
     refetchInterval: online ? 5000 : false,
   });
   const create = api.conversations.create.useMutation();
-  const current = list.data?.conversations.find(
-    (chat) => chat.id === conversationId,
-  );
-  const job = jobs.find((item) => item.id === jobId);
   const availableJobs: { id: string; name: string }[] = jobs
     .filter((item) =>
       /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(item.id),
@@ -177,24 +173,20 @@ export function ConversationsView({ initialJobId }: { initialJobId?: string }) {
         className="flex shrink-0 items-center justify-between gap-2 px-3 py-2 text-white sm:px-4"
         style={EXPANDED_METAL}
       >
-        <h1 className="flex items-center gap-2 text-lg font-semibold">
-          <MessageSquareIcon className="size-5" />
-          Chat
+        <h1 className="min-w-0">
+          <Button
+            variant="ghost"
+            className={`${ON_METAL} -ml-2 min-h-11 gap-2 px-2 text-lg font-semibold`}
+            aria-haspopup="dialog"
+            aria-expanded={chatsOpen}
+            onClick={() => setChatsOpen(true)}
+          >
+            <MessageSquareIcon className="size-5" aria-hidden />
+            Chat
+            <ChevronDownIcon className="size-4" aria-hidden />
+          </Button>
         </h1>
         <div className="flex items-center gap-2">
-          {selected && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className={`${ON_METAL} md:hidden`}
-              aria-label="Switch chat"
-              aria-expanded={chatsOpen}
-              onClick={() => setChatsOpen(true)}
-            >
-              <ListIcon className="size-4" />
-              Chats
-            </Button>
-          )}
           <Button
             size="sm"
             disabled={!online}
@@ -236,24 +228,6 @@ export function ConversationsView({ initialJobId }: { initialJobId?: string }) {
         >
           {selected ? (
             <>
-              <header className="bg-card flex shrink-0 items-center justify-between gap-3 border-b px-4 py-3">
-                <div className="min-w-0">
-                  <h2 className="truncate font-semibold">
-                    {jobId
-                      ? (job?.name ?? "Job chat")
-                      : (current?.name ?? "Conversation")}
-                  </h2>
-                  <p className="text-muted-foreground truncate text-xs">
-                    {jobId
-                      ? "Job team"
-                      : current?.kind === "direct"
-                        ? "Direct chat"
-                        : current?.members
-                            .map((member) => member.name)
-                            .join(", ")}
-                  </p>
-                </div>
-              </header>
               {jobId ? (
                 <JobChatThread
                   key={jobId}

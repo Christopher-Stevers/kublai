@@ -235,16 +235,26 @@ it("opens direct chats and job chats in the same workspace", () => {
     "data-user",
     "sender",
   );
-  expect(screen.getByRole("heading", { name: "Site A" })).toBeVisible();
+  expect(
+    within(screen.getByRole("main", { name: "Current chat" })).queryByRole(
+      "heading",
+      { name: "Site A" },
+    ),
+  ).toBeNull();
+  expect(
+    within(screen.getByRole("main", { name: "Current chat" })).queryByText(
+      "Job team",
+    ),
+  ).toBeNull();
   fireEvent.click(screen.getByRole("button", { name: /Review group/ }));
   expect(mocks.push).toHaveBeenLastCalledWith(
     "/dashboard/chat?conversation=room",
     { scroll: false },
   );
 });
-it("lets the phone switcher search and select another chat", () => {
+it("opens the available chats from the main Chat button, then searches and selects", () => {
   render(<ConversationsView />);
-  fireEvent.click(screen.getByRole("button", { name: "Switch chat" }));
+  fireEvent.click(screen.getByRole("button", { name: "Chat" }));
   const switcher = within(screen.getByRole("dialog"));
   fireEvent.change(switcher.getByRole("searchbox", { name: "Search chats" }), {
     target: { value: "Site A" },
