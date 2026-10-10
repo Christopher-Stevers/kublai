@@ -73,7 +73,8 @@ export async function drainMaterialPush(options?: Dependencies) {
         join kublai_chat_push_subscription sub on sub.id=o."subscriptionId" and sub."userId"=n."recipientId"
         join kublai_user u on u.id=n."recipientId" and u."organizationId"=n."organizationId"
         join kublai_user sender on sender.id=n."senderId" and sender."organizationId"=n."organizationId"
-        join kublai_organization_reporting_line r on r."organizationId"=n."organizationId" and r."userId"=n."senderId" and r."reportsToUserId"=n."recipientId"
+        join kublai_organization_department d on d."organizationId"=n."organizationId" and lower(btrim(d.name))=lower(btrim(sender.department))
+        join kublai_organization_department_lead lead on lead."organizationId"=d."organizationId" and lead."departmentId"=d.id and lead."userId"=n."recipientId"
         where o.id=${delivery.id} and o."leaseToken"=${delivery.leaseToken} and o."leasedUntil">now()
           and sub.endpoint=${delivery.endpoint} and sub.p256dh=${delivery.p256dh} and sub.auth=${delivery.auth}`);
       if (

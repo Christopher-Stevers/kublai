@@ -29,11 +29,12 @@ export async function enqueueMaterialNotification(
   },
 ) {
   const people = await tx.execute<{ user: PushRecipient }>(sql`
-    select to_jsonb(manager) as "user" from kublai_organization_reporting_line r
-    join kublai_user manager on manager.id=r."reportsToUserId" and manager."organizationId"=r."organizationId"
-    join kublai_user sender on sender.id=r."userId" and sender."organizationId"=r."organizationId"
-    join kublai_material_list l on l.id=${input.materialListId}::uuid and l."organizationId"=r."organizationId" and l.kind='materials'
-    where r."organizationId"=${input.organizationId}::uuid and r."userId"=${input.senderId}`);
+    select to_jsonb(manager) as "user" from kublai_user sender
+    join kublai_organization_department d on d."organizationId"=sender."organizationId" and lower(btrim(d.name))=lower(btrim(sender.department))
+    join kublai_organization_department_lead lead on lead."departmentId"=d.id and lead."organizationId"=d."organizationId"
+    join kublai_user manager on manager.id=lead."userId" and manager."organizationId"=d."organizationId"
+    join kublai_material_list l on l.id=${input.materialListId}::uuid and l."organizationId"=d."organizationId" and l.kind='materials'
+    where sender."organizationId"=${input.organizationId}::uuid and sender.id=${input.senderId}`);
   const recipients = people.filter(({ user }) =>
     eligibleMaterialRecipient(user, input.organizationId, input.senderId),
   );

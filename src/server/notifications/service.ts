@@ -110,7 +110,8 @@ function sources(ctx: Context) {
     join kublai_material_list l on l.id=n."materialListId" and l."organizationId"=${user.organizationId}
     join kublai_job j on j.id=l."jobId" and j."organizationId"=l."organizationId"
     join kublai_user sender on sender.id=n."senderId" and sender."organizationId"=l."organizationId"
-    join kublai_organization_reporting_line r on r."organizationId"=l."organizationId" and r."userId"=n."senderId" and r."reportsToUserId"=${user.id}
+    join kublai_organization_department d on d."organizationId"=l."organizationId" and lower(btrim(d.name))=lower(btrim(sender.department))
+    join kublai_organization_department_lead lead on lead."organizationId"=d."organizationId" and lead."departmentId"=d.id and lead."userId"=${user.id}
     where n."recipientId"=${user.id} and n."senderId"<>${user.id}
     union all
     select 'job-chat:' || m.id::text, 'job-chat', j.id, m.sequence,
