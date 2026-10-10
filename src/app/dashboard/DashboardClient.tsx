@@ -61,7 +61,6 @@ import { ViewToggle } from "~/components/ui/view-toggle";
 import { useOnlineStatus } from "~/hooks/use-online-status";
 import { useWorkspaceMutations } from "~/hooks/use-workspace-mutations";
 import { useTutorialSandbox } from "~/components/tutorial/tutorial-sandbox-context";
-import { InstallAppButton } from "~/components/app/InstallAppButton";
 import { getNextMaterialListNameFromNames } from "~/lib/material-list-names";
 import {
   HEADER_BACK_REQUEST_EVENT,
@@ -218,8 +217,6 @@ export function DashboardClient({
   const { getReplicache: getMaterialListReplicache, mutateAndSync: mutateMaterialListAndSync } = useWorkspaceMutations();
   const sandbox = useTutorialSandbox();
   const router = useRouter();
-  const installButton = (className: string) =>
-    sandbox ? null : <InstallAppButton className={className} />;
   const hasRedirectedRef = useRef(false);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [newJobName, setNewJobName] = useState("");
@@ -948,10 +945,8 @@ export function DashboardClient({
                 Select a job to open it
               </p>
             </div>
-            {installButton("sm:hidden")}
           </div>
           <div className="flex items-center gap-3">
-            {installButton("hidden sm:inline-flex")}
             <Button
               onClick={() => setShowCreateDialog(true)}
               size="lg"

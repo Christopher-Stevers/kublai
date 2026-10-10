@@ -18,7 +18,13 @@ import { isIosDevice, useInstallPrompt } from "~/lib/install-prompt";
  * this phone (iPhone only installs from Safari's Share menu). Hidden once the
  * app is installed.
  */
-export function InstallAppButton({ className = "" }: { className?: string }) {
+export function InstallAppButton({
+  className = "",
+  compact = false,
+}: {
+  className?: string;
+  compact?: boolean;
+}) {
   const { installed, install } = useInstallPrompt();
   const [stepsOpen, setStepsOpen] = useState(false);
   if (installed) return null;
@@ -27,12 +33,21 @@ export function InstallAppButton({ className = "" }: { className?: string }) {
     <>
       <Button
         variant="outline"
-        className={`h-auto max-w-[11.5rem] shrink-0 px-3 py-1.5 text-center text-xs leading-tight whitespace-normal ${className}`}
+        className={`h-auto shrink-0 py-1.5 text-center text-xs leading-tight whitespace-normal ${compact ? "max-w-[5rem] px-2 sm:max-w-[11.5rem] sm:px-3" : "max-w-[11.5rem] px-3"} ${className}`}
         onClick={async () => {
           if (!(await install())) setStepsOpen(true);
         }}
       >
-        Add To Homescreen For Notifications and Better Performance
+        {compact ? (
+          <>
+            <span className="sm:hidden">Install app</span>
+            <span className="hidden sm:inline">
+              Add To Homescreen For Notifications and Better Performance
+            </span>
+          </>
+        ) : (
+          "Add To Homescreen For Notifications and Better Performance"
+        )}
       </Button>
       <Dialog open={stepsOpen} onOpenChange={setStepsOpen}>
         <DialogContent className="max-w-md">
@@ -48,21 +63,24 @@ export function InstallAppButton({ className = "" }: { className?: string }) {
             {ios ? (
               <>
                 <li>
-                  Open ForemanHQ in <span className="font-semibold">Safari</span>.
+                  Open ForemanHQ in{" "}
+                  <span className="font-semibold">Safari</span>.
                 </li>
                 <li>
-                  Tap the <span className="font-semibold">Share</span> button (the square with
-                  an arrow).
+                  Tap the <span className="font-semibold">Share</span> button
+                  (the square with an arrow).
                 </li>
                 <li>
-                  Choose <span className="font-semibold">Add to Home Screen</span>, then tap{" "}
-                  <span className="font-semibold">Add</span>.
+                  Choose{" "}
+                  <span className="font-semibold">Add to Home Screen</span>,
+                  then tap <span className="font-semibold">Add</span>.
                 </li>
               </>
             ) : (
               <>
                 <li>
-                  Tap the browser's <span className="font-semibold">⋮</span> menu.
+                  Tap the browser's <span className="font-semibold">⋮</span>{" "}
+                  menu.
                 </li>
                 <li>
                   Choose <span className="font-semibold">Install app</span> (or{" "}
@@ -73,7 +91,8 @@ export function InstallAppButton({ className = "" }: { className?: string }) {
             )}
           </ol>
           <p className="text-muted-foreground text-xs">
-            Already installed? Open ForemanHQ from your home screen to get notifications.
+            Already installed? Open ForemanHQ from your home screen to get
+            notifications.
           </p>
           <DialogFooter>
             <Button onClick={() => setStepsOpen(false)}>Got it</Button>

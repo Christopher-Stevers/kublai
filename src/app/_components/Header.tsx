@@ -1,5 +1,7 @@
 "use client";
 
+import { InstallAppButton } from "~/components/app/InstallAppButton";
+
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
@@ -242,17 +244,17 @@ function HeaderFrame({
         <button
           type="button"
           onClick={() => navigate("/dashboard")}
-          className="text-foreground flex shrink-0 items-center gap-2 text-lg font-bold tracking-tight"
+          className="text-foreground flex min-w-0 items-center gap-2 text-lg font-bold tracking-tight lg:shrink-0"
         >
           <Image
             src="/foremanhq/icon-dark-v2-32.png"
             alt=""
             width={28}
             height={28}
-            className="rounded-md"
+            className="shrink-0 rounded-md"
             priority
           />
-          <span className={simulation ? "hidden sm:inline" : undefined}>
+          <span className={cn("truncate", simulation && "hidden sm:inline")}>
             {APP_NAME}
           </span>
         </button>
@@ -292,6 +294,7 @@ function HeaderFrame({
             </Button>
           )}
         </div>
+        <InstallAppButton compact />
         {!sandbox && (
           <NotificationCenter key={sessionKey} sessionKey={sessionKey} />
         )}
