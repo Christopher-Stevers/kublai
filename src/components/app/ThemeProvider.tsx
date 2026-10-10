@@ -15,6 +15,7 @@ import {
   isThemePreference,
   type ThemePreference,
 } from "~/lib/theme";
+import { applyDocumentTheme } from "~/lib/theme-document";
 
 type ThemeContextValue = {
   theme: ThemePreference;
@@ -25,8 +26,12 @@ const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 function getStoredTheme(): ThemePreference {
   if (typeof window === "undefined") return DEFAULT_THEME;
-  const storedTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
-  return isThemePreference(storedTheme) ? storedTheme : DEFAULT_THEME;
+  try {
+    const storedTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
+    return isThemePreference(storedTheme) ? storedTheme : DEFAULT_THEME;
+  } catch {
+    return DEFAULT_THEME;
+  }
 }
 
 function getSystemPrefersDark() {
@@ -36,11 +41,7 @@ function getSystemPrefersDark() {
 function applyTheme(theme: ThemePreference) {
   const shouldUseDark =
     theme === "dark" || (theme === "system" && getSystemPrefersDark());
-  document.documentElement.classList.toggle("dark", shouldUseDark);
-  document.documentElement.style.colorScheme = shouldUseDark ? "dark" : "light";
-  document
-    .querySelector<HTMLMetaElement>("meta[name='theme-color']")
-    ?.setAttribute("content", shouldUseDark ? "#111827" : "#f9fafb");
+  applyDocumentTheme(shouldUseDark);
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {

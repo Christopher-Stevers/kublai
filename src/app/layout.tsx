@@ -11,6 +11,7 @@ import { ChatPushAccountBinding } from "~/components/jobs/ChatNotifications";
 import { ServiceWorkerRegistration } from "~/components/offline/ServiceWorkerRegistration";
 import { ThemeProvider } from "~/components/app/ThemeProvider";
 import { AppDialogHost } from "~/components/ui/app-dialogs";
+import { THEME_BOOT_SCRIPT } from "~/lib/theme-document";
 
 export const metadata: Metadata = {
   title: `${APP_NAME} - Simplified Parts Ordering for Trades Foremen`,
@@ -73,29 +74,13 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 5,
   themeColor: "#111827",
+  colorScheme: "light dark",
 };
 
 const geist = Geist({
   subsets: ["latin"],
   variable: "--font-geist-sans",
 });
-
-const themeBootScript = `
-(() => {
-  try {
-    const theme = localStorage.getItem("foremenhq-theme") || "light";
-    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-    const useDark = theme === "dark" || (theme === "system" && prefersDark);
-    document.documentElement.classList.toggle("dark", useDark);
-    document.documentElement.style.colorScheme = useDark ? "dark" : "light";
-    document.querySelector("meta[name='theme-color']")?.setAttribute(
-      "content",
-      useDark ? "#111827" : "#f9fafb"
-    );
-  } catch {
-  }
-})();
-`;
 
 // Chrome offers installation once, possibly before the app's code loads:
 // hold on to the offer from the very start (picked up by install-prompt.ts).
@@ -107,7 +92,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${geist.variable}`} suppressHydrationWarning>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: themeBootScript }} />
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
         <script dangerouslySetInnerHTML={{ __html: installCaptureScript }} />
       </head>
       <body>
