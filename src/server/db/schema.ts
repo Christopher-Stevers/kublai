@@ -108,7 +108,7 @@ export const organizationDepartmentLeads = createTable("organization_department_
 }), (t) => [
   primaryKey({ columns: [t.departmentId, t.userId] }),
   foreignKey({ columns: [t.organizationId, t.departmentId], foreignColumns: [organizationDepartments.organizationId, organizationDepartments.id] }).onDelete("cascade"),
-  foreignKey({ columns: [t.organizationId, t.userId], foreignColumns: [users.organizationId, users.id] }).onDelete("cascade"),
+  foreignKey({ columns: [t.organizationId, t.userId], foreignColumns: [(users as { organizationId: AnyPgColumn }).organizationId, (users as { id: AnyPgColumn }).id] }).onDelete("cascade"),
 ]);
 
 /** Organization reporting lines: a member may report to several people. */
