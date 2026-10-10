@@ -94,6 +94,23 @@ export const users = createTable("user", (d) => ({
     .$onUpdate(() => new Date()),
 }), (t) => [unique("user_organization_id_uniq").on(t.organizationId, t.id)]);
 
+/** Named departments and their designated leads, scoped to one company. */
+export const organizationDepartments = createTable("organization_department", (d) => ({
+  id: d.uuid().primaryKey().$defaultFn(() => crypto.randomUUID()),
+  organizationId: d.uuid().notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  name: d.varchar({ length: 100 }).notNull(),
+  revision: d.integer().notNull().default(1),
+}), (t) => [unique("organization_department_org_id_uniq").on(t.organizationId, t.id)]);
+export const organizationDepartmentLeads = createTable("organization_department_lead", (d) => ({
+  organizationId: d.uuid().notNull(),
+  departmentId: d.uuid().notNull(),
+  userId: d.varchar({ length: 255 }).notNull(),
+}), (t) => [
+  primaryKey({ columns: [t.departmentId, t.userId] }),
+  foreignKey({ columns: [t.organizationId, t.departmentId], foreignColumns: [organizationDepartments.organizationId, organizationDepartments.id] }).onDelete("cascade"),
+  foreignKey({ columns: [t.organizationId, t.userId], foreignColumns: [users.organizationId, users.id] }).onDelete("cascade"),
+]);
+
 /** Organization reporting lines: a member may report to several people. */
 export const organizationReportingLines = createTable("organization_reporting_line", (d) => ({
   organizationId: d.uuid().notNull().references(() => organizations.id, { onDelete: "cascade" }),

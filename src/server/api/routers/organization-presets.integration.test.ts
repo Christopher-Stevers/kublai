@@ -16,6 +16,8 @@ import type { createTRPCContext } from "~/server/api/trpc";
 import {
   organizationPermissionPresets,
   organizationReportingLines,
+  organizationDepartments,
+  organizationDepartmentLeads,
   users,
 } from "~/server/db/schema";
 import {
@@ -84,6 +86,14 @@ describe.skipIf(process.env.RUN_PERMISSION_PRESET_DB_TESTS !== "1")(
               await readFile("drizzle/0061_preset_member_details.sql", "utf8"),
             ),
           );
+          await tx.execute(
+            sql.raw(
+              await readFile(
+                "drizzle/0062_organization_departments.sql",
+                "utf8",
+              ),
+            ),
+          );
           const organizationId = randomUUID();
           const otherOrganizationId = randomUUID();
           await tx.execute(
@@ -147,6 +157,138 @@ describe.skipIf(process.env.RUN_PERMISSION_PRESET_DB_TESTS !== "1")(
       accessStatus: "approved" as const,
       permissions: journeyman,
     });
+
+    it("creates departments with multiple leads, keeps permissions intact, and supports safe deletion", async () =>
+      isolated(async ({ caller, db }) => {
+        const [before] = await db
+          .select()
+          .from(users)
+          .where(eq(userIdColumn, "alice"));
+        const saved = await caller.saveDepartment({
+          name: "Plumbing",
+          leadUserIds: ["alice", "bob", "bob"],
+        });
+        expect(
+          (await db.select().from(organizationDepartmentLeads))
+            .map((lead) => lead.userId)
+            .sort(),
+        ).toEqual(["alice", "bob"]);
+        expect(
+          (await db.select().from(users).where(eq(userIdColumn, "alice")))[0]
+            ?.permissionConfig,
+        ).toEqual(before?.permissionConfig);
+        expect(await db.select().from(organizationReportingLines)).toEqual([]);
+        const edited = await caller.saveDepartment({
+          ...saved,
+          name: "Plumbing",
+          leadUserIds: [],
+        });
+        expect(await db.select().from(organizationDepartmentLeads)).toEqual([]);
+        await caller.deleteDepartment(edited);
+        expect(await db.select().from(organizationDepartments)).toEqual([]);
+      }));
+
+    it("renames member and preset departments together and prevents deleting an assigned department", async () =>
+      isolated(async ({ caller, db }) => {
+        const saved = await caller.saveDepartment({
+          name: "Plumbing",
+          leadUserIds: ["actor"],
+        });
+        const preset = await caller.savePermissionPreset({
+          name: "Plumber",
+          permissions: journeyman,
+          memberDetails: {
+            department: "plumbing",
+            reportsToUserIds: ["actor"],
+          },
+        });
+        await caller.updateOrganizationMember(memberInput("alice", preset.id));
+        const changed = await caller.saveDepartment({
+          ...saved,
+          name: "Mechanical",
+          leadUserIds: ["bob"],
+        });
+        expect(
+          (await db.select().from(users).where(eq(userIdColumn, "alice")))[0]
+            ?.department,
+        ).toBe("Mechanical");
+        const [updatedPreset] = await db
+          .select()
+          .from(organizationPermissionPresets);
+        expect(updatedPreset?.memberDetails?.department).toBe("Mechanical");
+        expect(updatedPreset?.revision).toBe(preset.revision + 1);
+        await expect(caller.deleteDepartment(changed)).rejects.toThrow(
+          "Move members and presets",
+        );
+        expect(
+          (await db.select().from(organizationReportingLines)).map(
+            (line) => line.reportsToUserId,
+          ),
+        ).toEqual(["actor"]);
+      }));
+
+    it("rejects foreign leads, duplicate names, stale saves, and departments outside the company", async () =>
+      isolated(async ({ caller, db, otherOrganizationId, actor }) => {
+        await expect(
+          caller.saveDepartment({ name: "Invalid", leadUserIds: ["foreign"] }),
+        ).rejects.toThrow("this organization");
+        const saved = await caller.saveDepartment({
+          name: "Plumbing",
+          leadUserIds: ["actor"],
+        });
+        await expect(
+          caller.saveDepartment({ name: " plumbing ", leadUserIds: [] }),
+        ).rejects.toThrow("already exists");
+        const changed = await caller.saveDepartment({
+          ...saved,
+          name: "Mechanical",
+          leadUserIds: [],
+        });
+        await expect(
+          caller.saveDepartment({
+            ...saved,
+            name: "Stale",
+            leadUserIds: ["bob"],
+          }),
+        ).rejects.toThrow("Reload");
+        await expect(caller.deleteDepartment(saved)).rejects.toThrow("Reload");
+        const [foreign] = await db
+          .insert(organizationDepartments)
+          .values({ organizationId: otherOrganizationId, name: "Foreign" })
+          .returning();
+        await expect(
+          caller.saveDepartment({
+            id: foreign!.id,
+            revision: 1,
+            name: "Wrong",
+            leadUserIds: [],
+          }),
+        ).rejects.toThrow("not found");
+        const denied = organizationRouter.createCaller({
+          db,
+          userId: "actor",
+          user: {
+            ...actor,
+            role: "user",
+            permissionConfig: toStoredConfig({
+              "tab.organization": true,
+              "org.members": false,
+            }),
+          },
+          headers: new Headers(),
+        } as unknown as Awaited<ReturnType<typeof createTRPCContext>>);
+        await expect(
+          denied.saveDepartment({ name: "Denied", leadUserIds: [] }),
+        ).rejects.toThrow();
+        expect(
+          (
+            await db
+              .select()
+              .from(organizationDepartments)
+              .where(eq(organizationDepartments.id, changed.id))
+          )[0]?.name,
+        ).toBe("Mechanical");
+      }));
 
     it("applies department and multiple managers, propagates edits, and preserves older clients", async () =>
       isolated(async ({ caller, db }) => {

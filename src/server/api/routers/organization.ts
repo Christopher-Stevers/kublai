@@ -31,6 +31,8 @@ import {
   organizations,
   organizationPermissionPresets,
   organizationReportingLines,
+  organizationDepartments,
+  organizationDepartmentLeads,
   pricingProfiles,
   users,
 } from "~/server/db/schema";
@@ -48,6 +50,19 @@ const presetMemberDetailsSchema = z
   }));
 type OrganizationTx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
+/** Called under the organization lock so member/preset entry also registers new departments. */
+async function ensureDepartment(
+  tx: OrganizationTx,
+  organizationId: string,
+  name: string | null | undefined,
+) {
+  if (name?.trim())
+    await tx
+      .insert(organizationDepartments)
+      .values({ organizationId, name: name.trim() })
+      .onConflictDoNothing();
+}
+
 /** Caller holds the organization lock; validate the final graph before writing. */
 async function applyPresetMemberDetails(
   tx: OrganizationTx,
@@ -55,6 +70,7 @@ async function applyPresetMemberDetails(
   userIds: string[],
   details: z.output<typeof presetMemberDetailsSchema>,
 ) {
+  await ensureDepartment(tx, organizationId, details.department);
   const managerIds = details.reportsToUserIds;
   const managers = managerIds.length
     ? await tx
@@ -164,66 +180,101 @@ export const organizationRouter = createTRPCRouter({
       });
     }
 
-    const [locationList, inviteList, memberList, presetList, reportingLines] =
-      await Promise.all([
-        ctx.db
-          .select()
-          .from(locations)
-          .where(eq(locations.organizationId, ctx.user.organizationId))
-          .orderBy(asc(locations.name)),
-        ctx.db
-          .select()
-          .from(organizationInvites)
-          .where(
-            and(
-              eq(organizationInvites.organizationId, ctx.user.organizationId),
-              isNull(organizationInvites.revokedAt),
-              gt(organizationInvites.expiresAt, new Date()),
-            ),
-          )
-          .orderBy(desc(organizationInvites.createdAt)),
-        ctx.db
-          .select({
-            id: users.id,
-            name: users.name,
-            email: users.email,
-            role: users.role,
-            permissionConfig: users.permissionConfig,
-            permissionPresetId: userPresetColumn,
-            department: userDepartmentColumn,
-            organizationAccessStatus: users.organizationAccessStatus,
-            stripeSubscriptionId: users.stripeSubscriptionId,
-            subscriptionStatus: users.subscriptionStatus,
-            subscriptionEndsAt: users.subscriptionEndsAt,
-            createdAt: users.createdAt,
-          })
-          .from(users)
-          .where(eq(users.organizationId, ctx.user.organizationId))
-          .orderBy(asc(users.name), asc(users.email)),
-        ctx.db
-          .select()
-          .from(organizationPermissionPresets)
-          .where(
-            eq(
-              organizationPermissionPresets.organizationId,
-              ctx.user.organizationId,
-            ),
-          )
-          .orderBy(asc(organizationPermissionPresets.name)),
-        ctx.db
-          .select()
-          .from(organizationReportingLines)
-          .where(
-            eq(
-              organizationReportingLines.organizationId,
-              ctx.user.organizationId,
-            ),
+    const [
+      locationList,
+      inviteList,
+      memberList,
+      presetList,
+      reportingLines,
+      departmentList,
+      departmentLeads,
+    ] = await Promise.all([
+      ctx.db
+        .select()
+        .from(locations)
+        .where(eq(locations.organizationId, ctx.user.organizationId))
+        .orderBy(asc(locations.name)),
+      ctx.db
+        .select()
+        .from(organizationInvites)
+        .where(
+          and(
+            eq(organizationInvites.organizationId, ctx.user.organizationId),
+            isNull(organizationInvites.revokedAt),
+            gt(organizationInvites.expiresAt, new Date()),
           ),
-      ]);
+        )
+        .orderBy(desc(organizationInvites.createdAt)),
+      ctx.db
+        .select({
+          id: users.id,
+          name: users.name,
+          email: users.email,
+          role: users.role,
+          permissionConfig: users.permissionConfig,
+          permissionPresetId: userPresetColumn,
+          department: userDepartmentColumn,
+          organizationAccessStatus: users.organizationAccessStatus,
+          stripeSubscriptionId: users.stripeSubscriptionId,
+          subscriptionStatus: users.subscriptionStatus,
+          subscriptionEndsAt: users.subscriptionEndsAt,
+          createdAt: users.createdAt,
+        })
+        .from(users)
+        .where(eq(users.organizationId, ctx.user.organizationId))
+        .orderBy(asc(users.name), asc(users.email)),
+      ctx.db
+        .select()
+        .from(organizationPermissionPresets)
+        .where(
+          eq(
+            organizationPermissionPresets.organizationId,
+            ctx.user.organizationId,
+          ),
+        )
+        .orderBy(asc(organizationPermissionPresets.name)),
+      ctx.db
+        .select()
+        .from(organizationReportingLines)
+        .where(
+          eq(
+            organizationReportingLines.organizationId,
+            ctx.user.organizationId,
+          ),
+        ),
+      ctx.db
+        .select()
+        .from(organizationDepartments)
+        .where(
+          eq(organizationDepartments.organizationId, ctx.user.organizationId),
+        )
+        .orderBy(asc(organizationDepartments.name)),
+      ctx.db
+        .select()
+        .from(organizationDepartmentLeads)
+        .where(
+          eq(
+            organizationDepartmentLeads.organizationId,
+            ctx.user.organizationId,
+          ),
+        ),
+    ]);
 
     const viewer = resolvePermissions(ctx.user);
     return {
       organization,
+      departments: departmentList.map((department) => ({
+        ...department,
+        leadUserIds: departmentLeads
+          .filter((lead) => lead.departmentId === department.id)
+          .map((lead) => lead.userId)
+          .sort(),
+        memberCount: memberList.filter(
+          (member) =>
+            (member.department as string | null)?.trim().toLowerCase() ===
+            department.name.toLowerCase(),
+        ).length,
+      })),
       viewer: {
         userId: ctx.userId,
         canManageMembers: viewer["org.members"],
@@ -282,6 +333,222 @@ export const organizationRouter = createTRPCRouter({
       })),
     };
   }),
+
+  saveDepartment: hasDashboardAccess
+    .input(
+      z
+        .object({
+          id: z.string().uuid().optional(),
+          revision: z.number().int().positive().optional(),
+          name: z.string().trim().min(1).max(100),
+          leadUserIds: z.array(z.string().min(1).max(255)).max(100),
+        })
+        .refine((input) => !input.id || !!input.revision, {
+          message: "The department revision is required when editing.",
+        }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      assertCan(ctx.user, "org.members");
+      const organizationId = ctx.user.organizationId;
+      return ctx.db.transaction(async (tx) => {
+        await tx.execute(
+          sql`select id from ${organizations} where ${organizations.id} = ${organizationId} for update`,
+        );
+        const [existing] = input.id
+          ? await tx
+              .select()
+              .from(organizationDepartments)
+              .where(
+                and(
+                  eq(organizationDepartments.id, input.id),
+                  eq(organizationDepartments.organizationId, organizationId),
+                ),
+              )
+              .limit(1)
+          : [];
+        if (input.id && !existing)
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Department not found in this organization.",
+          });
+        if (existing && existing.revision !== input.revision)
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: "This department changed. Reload it before saving.",
+          });
+        const [duplicate] = await tx
+          .select()
+          .from(organizationDepartments)
+          .where(
+            and(
+              eq(organizationDepartments.organizationId, organizationId),
+              sql`lower(btrim(${organizationDepartments.name})) = lower(${input.name})`,
+            ),
+          )
+          .limit(1);
+        if (duplicate && duplicate.id !== input.id)
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: "A department with this name already exists.",
+          });
+        const leadIds = [...new Set(input.leadUserIds)];
+        const leads = leadIds.length
+          ? await tx
+              .select({ id: userIdColumn })
+              .from(users)
+              .where(
+                and(
+                  eq(userOrgColumn, organizationId),
+                  inArray(userIdColumn, leadIds),
+                ),
+              )
+              .for("share")
+          : [];
+        if (leads.length !== leadIds.length)
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Department leads must belong to this organization.",
+          });
+        const [saved] = existing
+          ? await tx
+              .update(organizationDepartments)
+              .set({ name: input.name, revision: existing.revision + 1 })
+              .where(
+                and(
+                  eq(organizationDepartments.id, existing.id),
+                  eq(organizationDepartments.organizationId, organizationId),
+                ),
+              )
+              .returning()
+          : await tx
+              .insert(organizationDepartments)
+              .values({ organizationId, name: input.name })
+              .returning();
+        if (!saved)
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Could not save department.",
+          });
+        if (existing && existing.name !== input.name) {
+          await tx
+            .update(users)
+            .set({ department: input.name, updatedAt: new Date() })
+            .where(
+              and(
+                eq(userOrgColumn, organizationId),
+                sql`lower(btrim(${userDepartmentColumn})) = lower(${existing.name})`,
+              ),
+            );
+          await tx
+            .update(organizationPermissionPresets)
+            .set({
+              memberDetails: sql`jsonb_set(${organizationPermissionPresets.memberDetails}, '{department}', to_jsonb(${input.name}::text))`,
+              revision: sql`${organizationPermissionPresets.revision} + 1`,
+              updatedAt: new Date(),
+            })
+            .where(
+              and(
+                eq(
+                  organizationPermissionPresets.organizationId,
+                  organizationId,
+                ),
+                sql`lower(btrim(${organizationPermissionPresets.memberDetails}->>'department')) = lower(${existing.name})`,
+              ),
+            );
+        }
+        await tx
+          .delete(organizationDepartmentLeads)
+          .where(
+            and(
+              eq(organizationDepartmentLeads.organizationId, organizationId),
+              eq(organizationDepartmentLeads.departmentId, saved.id),
+            ),
+          );
+        if (leadIds.length)
+          await tx
+            .insert(organizationDepartmentLeads)
+            .values(
+              leadIds.map((userId) => ({
+                organizationId,
+                departmentId: saved.id,
+                userId,
+              })),
+            );
+        return { id: saved.id, revision: saved.revision };
+      });
+    }),
+
+  deleteDepartment: hasDashboardAccess
+    .input(
+      z.object({
+        id: z.string().uuid(),
+        revision: z.number().int().positive(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      assertCan(ctx.user, "org.members");
+      const organizationId = ctx.user.organizationId;
+      return ctx.db.transaction(async (tx) => {
+        await tx.execute(
+          sql`select id from ${organizations} where ${organizations.id} = ${organizationId} for update`,
+        );
+        const [department] = await tx
+          .select()
+          .from(organizationDepartments)
+          .where(
+            and(
+              eq(organizationDepartments.id, input.id),
+              eq(organizationDepartments.organizationId, organizationId),
+            ),
+          )
+          .limit(1);
+        if (!department)
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Department not found.",
+          });
+        if (department.revision !== input.revision)
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: "This department changed. Reload it before deleting.",
+          });
+        const [member] = await tx
+          .select({ id: userIdColumn })
+          .from(users)
+          .where(
+            and(
+              eq(userOrgColumn, organizationId),
+              sql`lower(btrim(${userDepartmentColumn})) = lower(${department.name})`,
+            ),
+          )
+          .limit(1);
+        const [preset] = await tx
+          .select({ id: organizationPermissionPresets.id })
+          .from(organizationPermissionPresets)
+          .where(
+            and(
+              eq(organizationPermissionPresets.organizationId, organizationId),
+              sql`lower(btrim(${organizationPermissionPresets.memberDetails}->>'department')) = lower(${department.name})`,
+            ),
+          )
+          .limit(1);
+        if (member || preset)
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message:
+              "Move members and presets to another department before deleting this one.",
+          });
+        await tx
+          .delete(organizationDepartments)
+          .where(
+            and(
+              eq(organizationDepartments.id, input.id),
+              eq(organizationDepartments.organizationId, organizationId),
+            ),
+          );
+        return { success: true };
+      });
+    }),
 
   updateOrganizationMember: hasDashboardAccess
     .input(
@@ -496,6 +763,8 @@ export const organizationRouter = createTRPCRouter({
               })),
             );
         }
+        if (!presetDetails)
+          await ensureDepartment(tx, organizationId, input.department);
         const [member] = await tx
           .update(users)
           .set({

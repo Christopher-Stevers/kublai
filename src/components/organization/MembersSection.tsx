@@ -238,6 +238,9 @@ export function MembersSection({
             member={selected}
             members={members}
             presets={presets}
+            departmentNames={(settings.departments ?? []).map(
+              (department) => department.name,
+            )}
             isSelf={selected.id === settings.viewer.userId}
             canManage={settings.viewer.canManageMembers}
             canSimulate={
@@ -262,6 +265,7 @@ function MemberDetail({
   member,
   members,
   presets,
+  departmentNames,
   isSelf,
   canManage,
   canSimulate,
@@ -271,6 +275,7 @@ function MemberDetail({
   member: Member;
   members: Member[];
   presets: Settings["permissionPresets"];
+  departmentNames: string[];
   isSelf: boolean;
   canManage: boolean;
   canSimulate: boolean;
@@ -290,11 +295,12 @@ function MemberDetail({
   const [reportsQuery, setReportsQuery] = useState("");
   const reportsKey = [...reportsToIds].sort().join("\n");
   const departments = [
-    ...new Set(
-      members
+    ...new Set([
+      ...departmentNames,
+      ...members
         .map((person) => person.department)
         .filter((value): value is string => !!value),
-    ),
+    ]),
   ].sort((a, b) => a.localeCompare(b));
   const reportingCandidates = members
     .filter((person) => person.id !== member.id)

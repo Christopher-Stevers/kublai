@@ -350,11 +350,14 @@ function PresetDetail({
             />
             <datalist id="preset-departments">
               {[
-                ...new Set(
-                  settings.members
+                ...new Set([
+                  ...(settings.departments ?? []).map(
+                    (department) => department.name,
+                  ),
+                  ...settings.members
                     .map((member) => member.department)
                     .filter(Boolean),
-                ),
+                ]),
               ].map((value) => (
                 <option key={value} value={value!} />
               ))}
