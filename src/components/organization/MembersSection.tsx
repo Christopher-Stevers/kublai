@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   ArrowLeftIcon,
   CheckIcon,
@@ -48,7 +48,8 @@ const FILTERS = [
 ] as const;
 
 function displayName(m: Member) {
-  return m.name?.trim() || m.email;
+  const name = m.name?.trim();
+  return name ? name : m.email;
 }
 
 function memberRoleLabel(
@@ -88,7 +89,8 @@ export function MembersSection({
           !q ||
           displayName(m).toLowerCase().includes(q) ||
           m.email.toLowerCase().includes(q) ||
-          memberRoleLabel(m, presets).toLowerCase().includes(q),
+          memberRoleLabel(m, presets).toLowerCase().includes(q) ||
+          (m.department ?? "").toLowerCase().includes(q),
       )
       .sort((a, b) => {
         // People waiting for approval first, then alphabetical.
@@ -98,13 +100,14 @@ export function MembersSection({
       });
   }, [members, presets, query, filter]);
 
-  // Keep a valid selection on wide screens.
-  useEffect(() => {
-    if (!selectedId || !members.some((m) => m.id === selectedId))
-      setSelectedId(filtered[0]?.id ?? members[0]?.id ?? null);
-  }, [filtered, members, selectedId]);
-
-  const selected = members.find((m) => m.id === selectedId) ?? null;
+  // Keep a valid selection when a member is removed or settings refresh.
+  const selected =
+    members.find((m) => m.id === selectedId) ??
+    filtered[0] ??
+    members[0] ??
+    null;
+  if ((selected?.id ?? null) !== selectedId)
+    setSelectedId(selected?.id ?? null);
   const pendingCount = members.filter(
     (m) => m.organizationAccessStatus === "pending",
   ).length;
@@ -124,7 +127,7 @@ export function MembersSection({
             <Input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search name, email or role"
+              placeholder="Search name, email, role or department"
               className="pl-9"
               aria-label="Search members"
             />
@@ -191,6 +194,11 @@ export function MembersSection({
                       <span className="bg-muted rounded-full px-2 py-0.5 text-[11px] font-medium">
                         {memberRoleLabel(m, presets)}
                       </span>
+                      {m.department && (
+                        <span className="text-muted-foreground text-[11px]">
+                          {m.department}
+                        </span>
+                      )}
                       {status !== "approved" && (
                         <span
                           className={cn(
@@ -228,6 +236,7 @@ export function MembersSection({
           <MemberDetail
             key={selected.id}
             member={selected}
+            members={members}
             presets={presets}
             isSelf={selected.id === settings.viewer.userId}
             canManage={settings.viewer.canManageMembers}
@@ -251,6 +260,7 @@ export function MembersSection({
 
 function MemberDetail({
   member,
+  members,
   presets,
   isSelf,
   canManage,
@@ -259,6 +269,7 @@ function MemberDetail({
   onSaved,
 }: {
   member: Member;
+  members: Member[];
   presets: Settings["permissionPresets"];
   isSelf: boolean;
   canManage: boolean;
@@ -268,6 +279,31 @@ function MemberDetail({
 }) {
   const original = member.permissions.can;
   const originalStatus = member.organizationAccessStatus as AccessStatus;
+  const originalDepartment = member.department ?? "";
+  const originalReportsKey = [...(member.reportsToUserIds ?? [])]
+    .sort()
+    .join("\n");
+  const [department, setDepartment] = useState(originalDepartment);
+  const [reportsToIds, setReportsToIds] = useState<string[]>(
+    member.reportsToUserIds ?? [],
+  );
+  const [reportsQuery, setReportsQuery] = useState("");
+  const reportsKey = [...reportsToIds].sort().join("\n");
+  const departments = [
+    ...new Set(
+      members
+        .map((person) => person.department)
+        .filter((value): value is string => !!value),
+    ),
+  ].sort((a, b) => a.localeCompare(b));
+  const reportingCandidates = members
+    .filter((person) => person.id !== member.id)
+    .sort((a, b) => displayName(a).localeCompare(displayName(b)));
+  const visibleCandidates = reportingCandidates.filter((person) =>
+    `${displayName(person)} ${person.email} ${person.department ?? ""}`
+      .toLowerCase()
+      .includes(reportsQuery.trim().toLowerCase()),
+  );
   const [perms, setPerms] = useState<PermissionMap>(original);
   const [status, setStatus] = useState<AccessStatus>(originalStatus);
   const [presetId, setPresetId] = useState<string | null>(
@@ -276,16 +312,22 @@ function MemberDetail({
   const [baseline, setBaseline] = useState({
     original,
     originalStatus,
+    originalDepartment,
+    originalReportsKey,
     presetId: member.permissionPresetId ?? null,
   });
   // Refresh clean drafts while preserving edits when server settings change.
   if (
     baseline.original !== original ||
     baseline.originalStatus !== originalStatus ||
+    baseline.originalDepartment !== originalDepartment ||
+    baseline.originalReportsKey !== originalReportsKey ||
     baseline.presetId !== (member.permissionPresetId ?? null)
   ) {
     const dirty =
       status !== baseline.originalStatus ||
+      department !== baseline.originalDepartment ||
+      reportsKey !== baseline.originalReportsKey ||
       presetId !== baseline.presetId ||
       (Object.keys(perms) as PermissionKey[]).some(
         (key) => perms[key] !== baseline.original[key],
@@ -293,11 +335,15 @@ function MemberDetail({
     if (!dirty) {
       setPerms(original);
       setStatus(originalStatus);
+      setDepartment(originalDepartment);
+      setReportsToIds(member.reportsToUserIds ?? []);
       setPresetId(member.permissionPresetId ?? null);
     }
     setBaseline({
       original,
       originalStatus,
+      originalDepartment,
+      originalReportsKey,
       presetId: member.permissionPresetId ?? null,
     });
   }
@@ -318,7 +364,11 @@ function MemberDetail({
   const lockedKeys: PermissionKey[] = isSelf
     ? ["org.members", "tab.organization"]
     : [];
+  const departmentChanged = department.trim() !== originalDepartment;
+  const reportsChanged = reportsKey !== originalReportsKey;
   const changed =
+    departmentChanged ||
+    reportsChanged ||
     status !== originalStatus ||
     presetId !== (member.permissionPresetId ?? null) ||
     (!presetId &&
@@ -397,6 +447,98 @@ function MemberDetail({
       </header>
 
       <div className="flex-1 space-y-4 p-5">
+        <section
+          aria-label="Department and reporting"
+          className="space-y-4 rounded-xl border p-4"
+        >
+          <div className="space-y-2">
+            <label
+              htmlFor={`department-${member.id}`}
+              className="text-sm font-semibold"
+            >
+              Department
+            </label>
+            <Input
+              id={`department-${member.id}`}
+              list={`departments-${member.id}`}
+              value={department}
+              maxLength={100}
+              placeholder="Choose or enter a department"
+              disabled={!canManage || update.isPending}
+              onChange={(event) => setDepartment(event.target.value)}
+            />
+            <datalist id={`departments-${member.id}`}>
+              {departments.map((name) => (
+                <option key={name} value={name} />
+              ))}
+            </datalist>
+            <p className="text-muted-foreground text-xs">
+              Choose an existing department or enter a new one. Leave blank for
+              no department.
+            </p>
+          </div>
+          <fieldset
+            disabled={!canManage || update.isPending}
+            className="space-y-2"
+          >
+            <legend className="text-sm font-semibold">Reports to</legend>
+            <p className="text-muted-foreground text-xs">
+              Select one or more people. Leave everyone unchecked if this person
+              does not report to anyone.
+            </p>
+            <p className="text-sm" aria-live="polite">
+              {reportsToIds.length
+                ? reportingCandidates
+                    .filter((person) => reportsToIds.includes(person.id))
+                    .map(displayName)
+                    .join(", ")
+                : "No one selected"}
+            </p>
+            <Input
+              value={reportsQuery}
+              onChange={(event) => setReportsQuery(event.target.value)}
+              placeholder="Search people…"
+              aria-label="Search people to report to"
+            />
+            <div className="max-h-48 space-y-1 overflow-y-auto rounded-lg border p-2">
+              {visibleCandidates.map((person) => (
+                <label
+                  key={person.id}
+                  className="hover:bg-accent flex cursor-pointer items-center gap-3 rounded-md px-2 py-2"
+                >
+                  <input
+                    type="checkbox"
+                    className="accent-primary h-4 w-4 shrink-0"
+                    checked={reportsToIds.includes(person.id)}
+                    onChange={(event) =>
+                      setReportsToIds((current) =>
+                        event.target.checked
+                          ? [...current, person.id]
+                          : current.filter((id) => id !== person.id),
+                      )
+                    }
+                  />
+                  <span className="min-w-0">
+                    <span className="block text-sm font-medium">
+                      {displayName(person)}
+                    </span>
+                    <span className="text-muted-foreground block truncate text-xs">
+                      {person.department ? `${person.department} · ` : ""}
+                      {person.email}
+                    </span>
+                  </span>
+                </label>
+              ))}
+              {visibleCandidates.length === 0 && (
+                <p className="text-muted-foreground p-2 text-sm">
+                  {reportingCandidates.length
+                    ? "No people match."
+                    : "No other members yet."}
+                </p>
+              )}
+            </div>
+          </fieldset>
+        </section>
         {hasProtectedAccess && (
           <div className="border-primary/30 bg-primary/5 flex items-center gap-2 rounded-lg border px-3 py-2 text-sm">
             <ShieldCheckIcon className="text-primary h-4 w-4 shrink-0" />
@@ -416,7 +558,7 @@ function MemberDetail({
         )}
         {status === "denied" && !hasProtectedAccess && (
           <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-900">
-            Blocked members can't open ForemanHQ for this company, whatever
+            Blocked members can&apos;t open ForemanHQ for this company, whatever
             their permissions say.
           </div>
         )}
@@ -479,7 +621,7 @@ function MemberDetail({
           }
         />
       )}
-      {!accessReadOnly && (
+      {canManage && (!accessReadOnly || changed) && (
         <footer
           className={cn(
             "bg-card/95 sticky bottom-0 z-10 flex items-center justify-between gap-3 rounded-b-2xl border-t px-5 py-3 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] backdrop-blur transition-opacity",
@@ -493,6 +635,8 @@ function MemberDetail({
               onClick={() => {
                 setPerms(original);
                 setStatus(originalStatus);
+                setDepartment(originalDepartment);
+                setReportsToIds(member.reportsToUserIds ?? []);
                 setPresetId(member.permissionPresetId ?? null);
               }}
               disabled={update.isPending}
@@ -504,6 +648,10 @@ function MemberDetail({
                 update.mutate({
                   userId: member.id,
                   accessStatus: status,
+                  ...(departmentChanged
+                    ? { department: department.trim() || null }
+                    : {}),
+                  ...(reportsChanged ? { reportsToUserIds: reportsToIds } : {}),
                   permissions: displayedPerms,
                   ...(!hasProtectedAccess
                     ? { permissionPresetId: presetId }

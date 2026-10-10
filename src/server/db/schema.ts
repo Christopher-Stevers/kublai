@@ -3,10 +3,12 @@
 // with circular references. This is a known limitation and doesn't affect runtime behavior.
 // The build succeeds correctly - these are only strict TypeScript checking issues.
 
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import type { DocumentState } from "~/server/documents/types";
 import {
   type AnyPgColumn,
+  check,
+  foreignKey,
   index,
   jsonb,
   pgTableCreator,
@@ -53,6 +55,7 @@ export const users = createTable("user", (d) => ({
   permissionConfig: jsonb(),
   permissionPresetId: d.uuid().references(() => organizationPermissionPresets.id, { onDelete: "restrict" }),
   organizationAccessStatus: d.varchar({ length: 50 }).default("approved"),
+  department: d.varchar({ length: 100 }),
 
   // Org membership (single-org MVP; if you need multi-org later, use a join table)
   organizationId: d
@@ -88,7 +91,20 @@ export const users = createTable("user", (d) => ({
     .notNull()
     .$defaultFn(() => new Date())
     .$onUpdate(() => new Date()),
-}));
+}), (t) => [unique("user_organization_id_uniq").on(t.organizationId, t.id)]);
+
+/** Organization reporting lines: a member may report to several people. */
+export const organizationReportingLines = createTable("organization_reporting_line", (d) => ({
+  organizationId: d.uuid().notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  userId: d.varchar({ length: 255 }).notNull(),
+  reportsToUserId: d.varchar({ length: 255 }).notNull(),
+}), (t) => [
+  primaryKey({ columns: [t.organizationId, t.userId, t.reportsToUserId] }),
+  foreignKey({ columns: [t.organizationId, t.userId], foreignColumns: [users.organizationId, users.id] }).onDelete("cascade"),
+  foreignKey({ columns: [t.organizationId, t.reportsToUserId], foreignColumns: [users.organizationId, users.id] }).onDelete("cascade"),
+  check("organization_reporting_line_not_self", sql`${t.userId} <> ${t.reportsToUserId}`),
+  index("organization_reporting_line_manager_idx").on(t.organizationId, t.reportsToUserId),
+]);
 
 export const usersRelations = relations(users, ({ many, one }) => ({
   accounts: many(accounts),

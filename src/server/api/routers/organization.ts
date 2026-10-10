@@ -1,7 +1,7 @@
 import type { RequestUser } from "~/server/utils/get-request-identity";
 import crypto from "node:crypto";
 import { TRPCError } from "@trpc/server";
-import { and, asc, desc, eq, gt, isNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, inArray, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
 import type { AnyPgColumn } from "drizzle-orm/pg-core";
 
@@ -29,16 +29,19 @@ import {
   organizationInvites,
   organizations,
   organizationPermissionPresets,
+  organizationReportingLines,
   pricingProfiles,
   users,
 } from "~/server/db/schema";
 import { seedOrganization } from "~/server/utils/seed-organization";
+import { reportingWouldCycle } from "~/lib/organization-reporting";
 
 // Keep the legacy user schema’s circular inference at its column boundary.
 const userPresetColumn = (users as { permissionPresetId: AnyPgColumn })
   .permissionPresetId;
 const userIdColumn = (users as { id: AnyPgColumn }).id;
 const userOrgColumn = (users as { organizationId: AnyPgColumn }).organizationId;
+const userDepartmentColumn = (users as { department: AnyPgColumn }).department;
 
 /** A permission map from the client: only known keys with boolean values are kept. */
 const permissionMapSchema = z
@@ -79,7 +82,7 @@ export const organizationRouter = createTRPCRouter({
       });
     }
 
-    const [locationList, inviteList, memberList, presetList] =
+    const [locationList, inviteList, memberList, presetList, reportingLines] =
       await Promise.all([
         ctx.db
           .select()
@@ -105,6 +108,7 @@ export const organizationRouter = createTRPCRouter({
             role: users.role,
             permissionConfig: users.permissionConfig,
             permissionPresetId: userPresetColumn,
+            department: userDepartmentColumn,
             organizationAccessStatus: users.organizationAccessStatus,
             stripeSubscriptionId: users.stripeSubscriptionId,
             subscriptionStatus: users.subscriptionStatus,
@@ -124,6 +128,15 @@ export const organizationRouter = createTRPCRouter({
             ),
           )
           .orderBy(asc(organizationPermissionPresets.name)),
+        ctx.db
+          .select()
+          .from(organizationReportingLines)
+          .where(
+            eq(
+              organizationReportingLines.organizationId,
+              ctx.user.organizationId,
+            ),
+          ),
       ]);
 
     const viewer = resolvePermissions(ctx.user);
@@ -159,7 +172,7 @@ export const organizationRouter = createTRPCRouter({
         ).length,
       })),
       members: (
-        memberList as Pick<
+        memberList as (Pick<
           RequestUser,
           | "id"
           | "name"
@@ -172,9 +185,14 @@ export const organizationRouter = createTRPCRouter({
           | "subscriptionStatus"
           | "subscriptionEndsAt"
           | "createdAt"
-        >[]
+        > & { department: string | null })[]
       ).map((member) => ({
         ...member,
+        department: member.department ?? null,
+        reportsToUserIds: reportingLines
+          .filter((line) => line.userId === member.id)
+          .map((line) => line.reportsToUserId)
+          .sort(),
         organizationAccessStatus: member.organizationAccessStatus ?? "approved",
         permissions: getUserPermissions(member),
       })),
@@ -189,6 +207,11 @@ export const organizationRouter = createTRPCRouter({
         permissions: permissionMapSchema,
         // Omission from an older client preserves its live assignment.
         permissionPresetId: z.string().uuid().nullable().optional(),
+        department: z.string().trim().max(100).nullable().optional(),
+        reportsToUserIds: z
+          .array(z.string().min(1).max(255))
+          .max(100)
+          .optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -308,11 +331,65 @@ export const organizationRouter = createTRPCRouter({
               "You cannot remove your own access to manage organization members.",
           });
         }
+        if (input.reportsToUserIds !== undefined) {
+          const managerIds = [...new Set(input.reportsToUserIds)];
+          const managers = managerIds.length
+            ? await tx
+                .select({ id: userIdColumn })
+                .from(users)
+                .where(
+                  and(
+                    eq(userOrgColumn, organizationId),
+                    inArray(userIdColumn, managerIds),
+                  ),
+                )
+                .for("share")
+            : [];
+          if (managers.length !== managerIds.length)
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message:
+                "Everyone selected in Reports to must belong to this organization.",
+            });
+          const lines = await tx
+            .select()
+            .from(organizationReportingLines)
+            .where(
+              eq(organizationReportingLines.organizationId, organizationId),
+            );
+          if (reportingWouldCycle(input.userId, managerIds, lines))
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message:
+                "Reports to cannot include this person or create a reporting loop.",
+            });
+          await tx
+            .delete(organizationReportingLines)
+            .where(
+              and(
+                eq(organizationReportingLines.organizationId, organizationId),
+                eq(organizationReportingLines.userId, input.userId),
+              ),
+            );
+          if (managerIds.length)
+            await tx.insert(organizationReportingLines).values(
+              managerIds.map((reportsToUserId) => ({
+                organizationId,
+                userId: input.userId,
+                reportsToUserId,
+              })),
+            );
+        }
         const [member] = await tx
           .update(users)
           .set({
             organizationAccessStatus: input.accessStatus,
             permissionConfig,
+            ...(input.department !== undefined
+              ? {
+                  department: input.department === "" ? null : input.department,
+                }
+              : {}),
             ...(input.permissionPresetId !== undefined
               ? { permissionPresetId: input.permissionPresetId }
               : {}),

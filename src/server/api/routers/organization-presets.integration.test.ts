@@ -13,7 +13,11 @@ vi.mock("~/server/utils/seed-organization", () => ({
 }));
 import { organizationRouter } from "./organization";
 import type { createTRPCContext } from "~/server/api/trpc";
-import { organizationPermissionPresets, users } from "~/server/db/schema";
+import {
+  organizationPermissionPresets,
+  organizationReportingLines,
+  users,
+} from "~/server/db/schema";
 import {
   assertCan,
   resolvePermissions,
@@ -21,7 +25,7 @@ import {
 } from "~/server/auth/permissions";
 import { PERMISSION_PRESETS } from "~/lib/permission-catalog";
 
-const userIdColumn = (users as { id: AnyPgColumn }).id;
+const userIdColumn = (users as unknown as { id: AnyPgColumn }).id;
 
 // Explicit opt-in only. Each test creates an isolated schema and rolls back
 // every DDL/data change. No real organization or member is ever modified.
@@ -56,13 +60,21 @@ describe.skipIf(process.env.RUN_PERMISSION_PRESET_DB_TESTS !== "1")(
           );
           await tx.execute(
             sql.raw(
-              `CREATE TABLE kublai_organization (id uuid PRIMARY KEY, name varchar(255) NOT NULL, "createdAt" timestamptz NOT NULL DEFAULT now()); CREATE TABLE kublai_user (LIKE public.kublai_user INCLUDING DEFAULTS); ALTER TABLE kublai_user DROP COLUMN IF EXISTS "permissionPresetId"; ALTER TABLE kublai_user ADD PRIMARY KEY (id)`,
+              `CREATE TABLE kublai_organization (id uuid PRIMARY KEY, name varchar(255) NOT NULL, "createdAt" timestamptz NOT NULL DEFAULT now()); CREATE TABLE kublai_user (LIKE public.kublai_user INCLUDING DEFAULTS); ALTER TABLE kublai_user DROP COLUMN IF EXISTS "permissionPresetId"; ALTER TABLE kublai_user DROP COLUMN IF EXISTS "department"; ALTER TABLE kublai_user ADD PRIMARY KEY (id); CREATE TABLE kublai_location (LIKE public.kublai_location INCLUDING DEFAULTS); CREATE TABLE kublai_organization_invite (LIKE public.kublai_organization_invite INCLUDING DEFAULTS)`,
             ),
           );
           await tx.execute(
             sql.raw(
               await readFile(
                 "drizzle/0057_live_permission_presets.sql",
+                "utf8",
+              ),
+            ),
+          );
+          await tx.execute(
+            sql.raw(
+              await readFile(
+                "drizzle/0058_member_departments_reporting.sql",
                 "utf8",
               ),
             ),
@@ -131,20 +143,43 @@ describe.skipIf(process.env.RUN_PERMISSION_PRESET_DB_TESTS !== "1")(
       permissions: journeyman,
     });
 
-    it("applies separate drawing permissions to everyone using a live preset", async () => isolated(async ({ caller, db, organizationId }) => {
-      const [legacy] = await db.insert(organizationPermissionPresets).values({ organizationId, name: "Legacy drawings", permissionConfig: { version: 2, permissions: { "drawings.manage": true } } }).returning();
-      if (!legacy) throw new Error("Missing preset fixture");
-      await caller.updateOrganizationMember(memberInput("alice", legacy.id));
-      await caller.updateOrganizationMember(memberInput("bob", legacy.id));
-      await caller.savePermissionPreset({ id: legacy.id, revision: 1, name: "Legacy drawings", permissions: { "drawings.view": true, "drawings.upload": true, "drawings.delete": false } });
-      for (const id of ["alice", "bob"]) {
-        const [member] = await db.select().from(users).where(eq(userIdColumn, id));
-        if (!member) throw new Error("Missing member fixture");
-        expect(resolvePermissions(member)["drawings.view"]).toBe(true);
-        expect(resolvePermissions(member)["drawings.upload"]).toBe(true);
-        expect(() => assertCan(member, "drawings.delete")).toThrow();
-      }
-    }));
+    it("applies separate drawing permissions to everyone using a live preset", async () =>
+      isolated(async ({ caller, db, organizationId }) => {
+        const [legacy] = await db
+          .insert(organizationPermissionPresets)
+          .values({
+            organizationId,
+            name: "Legacy drawings",
+            permissionConfig: {
+              version: 2,
+              permissions: { "drawings.manage": true },
+            },
+          })
+          .returning();
+        if (!legacy) throw new Error("Missing preset fixture");
+        await caller.updateOrganizationMember(memberInput("alice", legacy.id));
+        await caller.updateOrganizationMember(memberInput("bob", legacy.id));
+        await caller.savePermissionPreset({
+          id: legacy.id,
+          revision: 1,
+          name: "Legacy drawings",
+          permissions: {
+            "drawings.view": true,
+            "drawings.upload": true,
+            "drawings.delete": false,
+          },
+        });
+        for (const id of ["alice", "bob"]) {
+          const [member] = await db
+            .select()
+            .from(users)
+            .where(eq(userIdColumn, id));
+          if (!member) throw new Error("Missing member fixture");
+          expect(resolvePermissions(member)["drawings.view"]).toBe(true);
+          expect(resolvePermissions(member)["drawings.upload"]).toBe(true);
+          expect(() => assertCan(member, "drawings.delete")).toThrow();
+        }
+      }));
 
     it("updates all linked members, preserves detached members, and enforces the latest permissions", async () =>
       isolated(async ({ caller, db }) => {
@@ -327,6 +362,149 @@ describe.skipIf(process.env.RUN_PERMISSION_PRESET_DB_TESTS !== "1")(
         await expect(
           caller.updateOrganizationMember(memberInput("actor", preset.id)),
         ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+      }));
+
+    it("saves a department and several reporting lines, reloads them, and preserves them for older clients", async () =>
+      isolated(async ({ caller, db }) => {
+        const preset = await caller.savePermissionPreset({
+          name: "Journeyman",
+          permissions: journeyman,
+        });
+        await caller.updateOrganizationMember({
+          ...memberInput("alice", preset.id),
+          department: "  Electrical  ",
+          reportsToUserIds: ["actor", "bob", "bob"],
+        });
+        const settings = await caller.getOrganizationSettings();
+        expect(
+          settings.members.find((person) => person.id === "alice"),
+        ).toMatchObject({
+          department: "Electrical",
+          reportsToUserIds: ["actor", "bob"],
+          permissionPresetId: preset.id,
+        });
+        expect(
+          settings.members.find((person) => person.id === "foreign"),
+        ).toBeUndefined();
+        await caller.updateOrganizationMember(memberInput("alice"));
+        const [alice] = await db
+          .select()
+          .from(users)
+          .where(eq(userIdColumn, "alice"));
+        if (!alice) throw new Error("Missing alice fixture");
+        expect(alice.department).toBe("Electrical");
+        expect(await db.select().from(organizationReportingLines)).toHaveLength(
+          2,
+        );
+        await caller.updateOrganizationMember({
+          ...memberInput("alice"),
+          department: "",
+          reportsToUserIds: [],
+        });
+        const cleared = await caller.getOrganizationSettings();
+        expect(
+          cleared.members.find((person) => person.id === "alice"),
+        ).toMatchObject({
+          department: null,
+          reportsToUserIds: [],
+          permissionPresetId: preset.id,
+        });
+      }));
+
+    it("rejects foreign people, missing people, self-reporting and indirect reporting loops atomically", async () =>
+      isolated(async ({ caller, db }) => {
+        await caller.updateOrganizationMember({
+          ...memberInput("alice"),
+          department: "Electrical",
+          reportsToUserIds: ["bob"],
+        });
+        for (const managers of [["foreign"], ["missing"], ["alice"]]) {
+          await expect(
+            caller.updateOrganizationMember({
+              ...memberInput("alice"),
+              department: "Wrong",
+              reportsToUserIds: managers,
+            }),
+          ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+        }
+        await caller.updateOrganizationMember({
+          ...memberInput("bob"),
+          reportsToUserIds: ["actor"],
+        });
+        await expect(
+          caller.updateOrganizationMember({
+            ...memberInput("actor"),
+            permissions: {},
+            reportsToUserIds: ["alice"],
+          }),
+        ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+        const [alice] = await db
+          .select()
+          .from(users)
+          .where(eq(userIdColumn, "alice"));
+        if (!alice) throw new Error("Missing alice fixture");
+        expect(alice.department).toBe("Electrical");
+        expect(await db.select().from(organizationReportingLines)).toHaveLength(
+          2,
+        );
+      }));
+
+    it("allows organization details for protected members without changing their permissions", async () =>
+      isolated(async ({ caller, db }) => {
+        const [before] = await db
+          .select()
+          .from(users)
+          .where(eq(userIdColumn, "actor"));
+        if (!before) throw new Error("Missing actor fixture");
+        await caller.updateOrganizationMember({
+          ...memberInput("actor"),
+          permissions: resolvePermissions(before),
+          department: "Management",
+          reportsToUserIds: ["bob"],
+        });
+        const [after] = await db
+          .select()
+          .from(users)
+          .where(eq(userIdColumn, "actor"));
+        if (!after) throw new Error("Missing actor fixture");
+        expect(after.department).toBe("Management");
+        expect(after.permissionConfig).toEqual(before.permissionConfig);
+        expect(resolvePermissions(after)["org.members"]).toBe(true);
+      }));
+
+    it("enforces organization boundaries in SQL and clears old assignments when a person leaves", async () =>
+      isolated(async ({ caller, db, organizationId, otherOrganizationId }) => {
+        await expect(
+          db.transaction(async (tx) => {
+            await tx.insert(organizationReportingLines).values({
+              organizationId,
+              userId: "alice",
+              reportsToUserId: "foreign",
+            });
+          }),
+        ).rejects.toThrow();
+        await caller.updateOrganizationMember({
+          ...memberInput("alice"),
+          department: "Electrical",
+          reportsToUserIds: ["bob"],
+        });
+        await db
+          .update(users)
+          .set({ organizationId: otherOrganizationId })
+          .where(eq(userIdColumn, "bob"));
+        expect(await db.select().from(organizationReportingLines)).toHaveLength(
+          0,
+        );
+        await db
+          .update(users)
+          .set({ organizationId: otherOrganizationId })
+          .where(eq(userIdColumn, "alice"));
+        const [alice] = await db
+          .select()
+          .from(users)
+          .where(eq(userIdColumn, "alice"));
+        if (!alice) throw new Error("Missing alice fixture");
+        expect(alice.department).toBeNull();
       }));
   },
 );

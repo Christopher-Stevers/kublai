@@ -261,3 +261,140 @@ describe("live member presets", () => {
     expect(mutate).not.toHaveBeenCalled();
   });
 });
+
+describe("member departments and reporting", () => {
+  function organizationSettings(
+    kind: "executive" | "admin" | "standard" = "standard",
+  ) {
+    const settings = settingsFor(kind);
+    const member = settings.members[0]!;
+    member.department = "Electrical";
+    member.reportsToUserIds = ["manager-a"];
+    settings.members.push(
+      {
+        ...member,
+        id: "manager-a",
+        name: "Alice Manager",
+        email: "alice@example.test",
+        department: "Operations",
+        reportsToUserIds: [],
+      },
+      {
+        ...member,
+        id: "manager-b",
+        name: "Bob Manager",
+        email: "bob@example.test",
+        department: "Operations",
+        reportsToUserIds: [],
+      },
+    );
+    return settings;
+  }
+  function selectPat() {
+    fireEvent.click(
+      screen.getByRole("button", { name: /Pat Example.*pat@example.test/ }),
+    );
+  }
+  it("saves a department and multiple managers together without including the person themself", () => {
+    const settings = organizationSettings();
+    render(<MembersSection settings={settings} onSaved={vi.fn()} />);
+    selectPat();
+    expect(screen.getByLabelText("Department")).toHaveValue("Electrical");
+    expect(
+      screen.getByRole("checkbox", { name: /Alice Manager/ }),
+    ).toBeChecked();
+    expect(
+      screen.queryByRole("checkbox", { name: /Pat Example/ }),
+    ).not.toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Department"), {
+      target: { value: "Service" },
+    });
+    fireEvent.click(screen.getByRole("checkbox", { name: /Bob Manager/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    expect(mutate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        department: "Service",
+        reportsToUserIds: ["manager-a", "manager-b"],
+      }),
+    );
+  });
+  it.each(["admin", "executive"] as const)(
+    "edits %s organization details while retaining protected access",
+    (kind) => {
+      render(
+        <MembersSection
+          settings={organizationSettings(kind)}
+          onSaved={vi.fn()}
+        />,
+      );
+      selectPat();
+      fireEvent.change(screen.getByLabelText("Department"), {
+        target: { value: "Management" },
+      });
+      fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+      expect(mutate).toHaveBeenCalledWith(
+        expect.objectContaining({ department: "Management" }),
+      );
+      for (const status of screen.getAllByRole("radio"))
+        expect(status).toBeDisabled();
+      for (const permission of screen.getAllByRole("switch"))
+        expect(permission).toBeDisabled();
+    },
+  );
+  it("discards changes and supports clearing assignments", () => {
+    render(
+      <MembersSection settings={organizationSettings()} onSaved={vi.fn()} />,
+    );
+    selectPat();
+    fireEvent.change(screen.getByLabelText("Department"), {
+      target: { value: "" },
+    });
+    fireEvent.click(screen.getByRole("checkbox", { name: /Alice Manager/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Discard" }));
+    expect(screen.getByLabelText("Department")).toHaveValue("Electrical");
+    expect(
+      screen.getByRole("checkbox", { name: /Alice Manager/ }),
+    ).toBeChecked();
+    fireEvent.change(screen.getByLabelText("Department"), {
+      target: { value: "" },
+    });
+    fireEvent.click(screen.getByRole("checkbox", { name: /Alice Manager/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    expect(mutate).toHaveBeenCalledWith(
+      expect.objectContaining({ department: null, reportsToUserIds: [] }),
+    );
+  });
+  it("makes assignments read only for viewers without member management permission", () => {
+    const settings = organizationSettings();
+    settings.viewer.canManageMembers = false;
+    render(<MembersSection settings={settings} onSaved={vi.fn()} />);
+    selectPat();
+    expect(screen.getByLabelText("Department")).toBeDisabled();
+    for (const person of screen.getAllByRole("checkbox"))
+      expect(person).toBeDisabled();
+    expect(
+      screen.queryByRole("button", { name: "Save changes" }),
+    ).not.toBeInTheDocument();
+    expect(mutate).not.toHaveBeenCalled();
+  });
+  it("refreshes saved assignments but preserves unsaved edits during a refresh", () => {
+    const settings = organizationSettings();
+    const view = render(
+      <MembersSection settings={settings} onSaved={vi.fn()} />,
+    );
+    selectPat();
+    const updated = structuredClone(settings);
+    updated.members[0]!.department = "Service";
+    updated.members[0]!.reportsToUserIds = ["manager-b"];
+    view.rerender(<MembersSection settings={updated} onSaved={vi.fn()} />);
+    expect(screen.getByLabelText("Department")).toHaveValue("Service");
+    expect(screen.getByRole("checkbox", { name: /Bob Manager/ })).toBeChecked();
+    fireEvent.change(screen.getByLabelText("Department"), {
+      target: { value: "Construction" },
+    });
+    const refreshed = structuredClone(updated);
+    refreshed.members[0]!.department = "Operations";
+    view.rerender(<MembersSection settings={refreshed} onSaved={vi.fn()} />);
+    expect(screen.getByLabelText("Department")).toHaveValue("Construction");
+  });
+});

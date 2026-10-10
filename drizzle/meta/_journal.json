@@ -237,6 +237,13 @@
       "when": 1791633600000,
       "tag": "0057_live_permission_presets",
       "breakpoints": false
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1791675000000,
+      "tag": "0058_member_departments_reporting",
+      "breakpoints": false
     }
   ]
 }
