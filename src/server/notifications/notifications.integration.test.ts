@@ -199,7 +199,9 @@ describe.skipIf(!process.env.NOTIFICATIONS_TEST_SOCKET)(
       await enqueueMaterialNotification(ctx.db, change);
       expect(
         (
-          await conn`select "recipientId" from kublai_material_notification`
+          await conn<
+            { recipientId: string }[]
+          >`select "recipientId" from kublai_material_notification`
         ).map((row) => row.recipientId),
       ).toEqual(["recipient"]);
     });
