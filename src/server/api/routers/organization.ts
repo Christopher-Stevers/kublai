@@ -1,3 +1,4 @@
+import type { db } from "~/server/db";
 import type { RequestUser } from "~/server/utils/get-request-identity";
 import crypto from "node:crypto";
 import { TRPCError } from "@trpc/server";
@@ -35,6 +36,87 @@ import {
 } from "~/server/db/schema";
 import { seedOrganization } from "~/server/utils/seed-organization";
 import { reportingWouldCycle } from "~/lib/organization-reporting";
+
+const presetMemberDetailsSchema = z
+  .object({
+    department: z.string().trim().max(100).nullable(),
+    reportsToUserIds: z.array(z.string().min(1).max(255)).max(100),
+  })
+  .transform((details) => ({
+    department: details.department || null,
+    reportsToUserIds: [...new Set(details.reportsToUserIds)].sort(),
+  }));
+type OrganizationTx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+/** Caller holds the organization lock; validate the final graph before writing. */
+async function applyPresetMemberDetails(
+  tx: OrganizationTx,
+  organizationId: string,
+  userIds: string[],
+  details: z.output<typeof presetMemberDetailsSchema>,
+) {
+  const managerIds = details.reportsToUserIds;
+  const managers = managerIds.length
+    ? await tx
+        .select({ id: userIdColumn })
+        .from(users)
+        .where(
+          and(
+            eq(userOrgColumn, organizationId),
+            inArray(userIdColumn, managerIds),
+          ),
+        )
+        .for("share")
+    : [];
+  if (managers.length !== managerIds.length)
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message:
+        "Everyone selected in Reports to must belong to this organization.",
+    });
+  const existing = await tx
+    .select()
+    .from(organizationReportingLines)
+    .where(eq(organizationReportingLines.organizationId, organizationId));
+  const affected = new Set(userIds);
+  const finalLines = existing.filter((line) => !affected.has(line.userId));
+  for (const userId of userIds)
+    for (const reportsToUserId of managerIds)
+      finalLines.push({ organizationId, userId, reportsToUserId });
+  if (
+    userIds.some((userId) =>
+      reportingWouldCycle(userId, managerIds, finalLines),
+    )
+  )
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message:
+        "This preset would make a member report to themselves or create a reporting loop.",
+    });
+  if (!userIds.length) return;
+  await tx
+    .delete(organizationReportingLines)
+    .where(
+      and(
+        eq(organizationReportingLines.organizationId, organizationId),
+        inArray(organizationReportingLines.userId, userIds),
+      ),
+    );
+  const added = userIds.flatMap((userId) =>
+    managerIds.map((reportsToUserId) => ({
+      organizationId,
+      userId,
+      reportsToUserId,
+    })),
+  );
+  if (added.length) await tx.insert(organizationReportingLines).values(added);
+  await tx
+    .update(users)
+    .set({ department: details.department, updatedAt: new Date() })
+    .where(
+      and(eq(userOrgColumn, organizationId), inArray(userIdColumn, userIds)),
+    );
+}
 
 // Keep the legacy user schema’s circular inference at its column boundary.
 const userPresetColumn = (users as { permissionPresetId: AnyPgColumn })
@@ -159,11 +241,13 @@ export const organizationRouter = createTRPCRouter({
           name: string;
           permissionConfig: unknown;
           revision: number;
+          memberDetails: z.output<typeof presetMemberDetailsSchema> | null;
         }[]
       ).map((preset) => ({
         id: preset.id,
         name: preset.name,
         revision: preset.revision,
+        memberDetails: preset.memberDetails ?? null,
         permissions: resolvePermissions({
           permissionConfig: preset.permissionConfig,
         }),
@@ -331,7 +415,39 @@ export const organizationRouter = createTRPCRouter({
               "You cannot remove your own access to manage organization members.",
           });
         }
-        if (input.reportsToUserIds !== undefined) {
+        const [retainedPreset] =
+          !preset &&
+          input.permissionPresetId === undefined &&
+          target.permissionPresetId
+            ? await tx
+                .select()
+                .from(organizationPermissionPresets)
+                .where(
+                  and(
+                    eq(
+                      organizationPermissionPresets.id,
+                      target.permissionPresetId,
+                    ),
+                    eq(
+                      organizationPermissionPresets.organizationId,
+                      organizationId,
+                    ),
+                  ),
+                )
+                .limit(1)
+            : [];
+        const presetDetails = (preset ?? retainedPreset)?.memberDetails as
+          | z.output<typeof presetMemberDetailsSchema>
+          | null
+          | undefined;
+        if (presetDetails) {
+          await applyPresetMemberDetails(
+            tx,
+            organizationId,
+            [input.userId],
+            presetMemberDetailsSchema.parse(presetDetails),
+          );
+        } else if (input.reportsToUserIds !== undefined) {
           const managerIds = [...new Set(input.reportsToUserIds)];
           const managers = managerIds.length
             ? await tx
@@ -385,7 +501,7 @@ export const organizationRouter = createTRPCRouter({
           .set({
             organizationAccessStatus: input.accessStatus,
             permissionConfig,
-            ...(input.department !== undefined
+            ...(!presetDetails && input.department !== undefined
               ? {
                   department: input.department === "" ? null : input.department,
                 }
@@ -409,6 +525,7 @@ export const organizationRouter = createTRPCRouter({
           revision: z.number().int().positive().optional(),
           name: z.string().trim().min(1).max(100),
           permissions: permissionMapSchema,
+          memberDetails: presetMemberDetailsSchema.optional(),
         })
         .refine((input) => !input.id || !!input.revision, {
           message: "The preset revision is required when editing.",
@@ -429,9 +546,21 @@ export const organizationRouter = createTRPCRouter({
             sql`select id from ${organizations} where ${organizations.id} = ${organizationId} for update`,
           );
           if (!input.id) {
+            if (input.memberDetails)
+              await applyPresetMemberDetails(
+                tx,
+                organizationId,
+                [],
+                input.memberDetails,
+              );
             const [preset] = await tx
               .insert(organizationPermissionPresets)
-              .values({ organizationId, name: input.name, permissionConfig })
+              .values({
+                organizationId,
+                name: input.name,
+                permissionConfig,
+                memberDetails: input.memberDetails ?? null,
+              })
               .returning();
             if (!preset)
               throw new TRPCError({
@@ -480,11 +609,32 @@ export const organizationRouter = createTRPCRouter({
                   "You cannot remove your own access to manage organization members.",
               });
           }
+          if (input.memberDetails) {
+            const assigned = await tx
+              .select({ id: userIdColumn })
+              .from(users)
+              .where(
+                and(
+                  eq(userOrgColumn, organizationId),
+                  eq(userPresetColumn, input.id),
+                ),
+              )
+              .for("update");
+            await applyPresetMemberDetails(
+              tx,
+              organizationId,
+              assigned.map((member) => member.id as string),
+              input.memberDetails,
+            );
+          }
           const [saved] = await tx
             .update(organizationPermissionPresets)
             .set({
               name: input.name,
               permissionConfig,
+              ...(input.memberDetails
+                ? { memberDetails: input.memberDetails }
+                : {}),
               revision: preset.revision + 1,
               updatedAt: new Date(),
             })

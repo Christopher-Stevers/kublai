@@ -221,6 +221,7 @@ export const organizationPermissionPresets = createTable("organization_permissio
   organizationId: d.uuid().notNull().references(() => organizations.id, { onDelete: "cascade" }),
   name: d.varchar({ length: 100 }).notNull(),
   permissionConfig: jsonb().notNull(),
+  memberDetails: jsonb().$type<{ department: string | null; reportsToUserIds: string[] }>(),
   revision: d.integer().notNull().default(1),
   createdAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
   updatedAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),

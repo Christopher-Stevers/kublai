@@ -203,6 +203,7 @@ describe("live member presets", () => {
         revision: 1,
         permissions: { ...STANDARD_DEFAULTS, "orders.send": false },
         memberCount: 1,
+        memberDetails: null,
       },
     ];
     return settings;

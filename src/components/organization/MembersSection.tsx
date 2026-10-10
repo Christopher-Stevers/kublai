@@ -447,6 +447,12 @@ function MemberDetail({
       </header>
 
       <div className="flex-1 space-y-4 p-5">
+        {selectedPreset?.memberDetails && (
+          <p className="text-muted-foreground text-sm">
+            Department and Reports to are managed by {selectedPreset.name}.
+            Change them in Presets or choose Individual permissions.
+          </p>
+        )}
         <section
           aria-label="Department and reporting"
           className="space-y-4 rounded-xl border p-4"
@@ -464,7 +470,11 @@ function MemberDetail({
               value={department}
               maxLength={100}
               placeholder="Choose or enter a department"
-              disabled={!canManage || update.isPending}
+              disabled={
+                !canManage ||
+                update.isPending ||
+                !!selectedPreset?.memberDetails
+              }
               onChange={(event) => setDepartment(event.target.value)}
             />
             <datalist id={`departments-${member.id}`}>
@@ -478,7 +488,9 @@ function MemberDetail({
             </p>
           </div>
           <fieldset
-            disabled={!canManage || update.isPending}
+            disabled={
+              !canManage || update.isPending || !!selectedPreset?.memberDetails
+            }
             className="space-y-2"
           >
             <legend className="text-sm font-semibold">Reports to</legend>
@@ -579,6 +591,13 @@ function MemberDetail({
                 const next = event.target.value || null;
                 setPerms(displayedPerms);
                 setPresetId(next);
+                const details = presets.find(
+                  (preset) => preset.id === next,
+                )?.memberDetails;
+                if (details) {
+                  setDepartment(details.department ?? "");
+                  setReportsToIds(details.reportsToUserIds);
+                }
               }}
             >
               <option value="">Individual permissions</option>

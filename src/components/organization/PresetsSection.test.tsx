@@ -56,6 +56,28 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 describe("permission preset editor", () => {
+  it("saves a department and multiple reporting managers with the preset", () => {
+    render(<PresetsSection settings={settings()} onSaved={vi.fn()} />);
+    fireEvent.click(
+      screen.getByRole("checkbox", {
+        name: "Include department and reporting in this preset",
+      }),
+    );
+    fireEvent.change(screen.getByRole("combobox", { name: "Department" }), {
+      target: { value: "Mechanical" },
+    });
+    fireEvent.click(screen.getByRole("checkbox", { name: "Alice" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Bob" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save preset" }));
+    expect(save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        memberDetails: {
+          department: "Mechanical",
+          reportsToUserIds: ["alice", "bob"],
+        },
+      }),
+    );
+  });
   it("edits a saved preset and clearly shows everyone affected", () => {
     render(<PresetsSection settings={settings()} onSaved={vi.fn()} />);
     expect(
@@ -72,6 +94,7 @@ describe("permission preset editor", () => {
       name: "Journeyman",
       revision: 3,
       permissions: { ...journeyman.permissions, "orders.send": true },
+      memberDetails: undefined,
     });
   });
   it("creates a named preset from a quick template", () => {
@@ -87,6 +110,7 @@ describe("permission preset editor", () => {
       revision: undefined,
       name: "Journeyman A",
       permissions: journeyman.permissions,
+      memberDetails: { department: null, reportsToUserIds: [] },
     });
   });
   it("keeps unsaved edits and their revision when another manager changes the preset", () => {

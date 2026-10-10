@@ -79,6 +79,11 @@ describe.skipIf(process.env.RUN_PERMISSION_PRESET_DB_TESTS !== "1")(
               ),
             ),
           );
+          await tx.execute(
+            sql.raw(
+              await readFile("drizzle/0061_preset_member_details.sql", "utf8"),
+            ),
+          );
           const organizationId = randomUUID();
           const otherOrganizationId = randomUUID();
           await tx.execute(
@@ -142,6 +147,117 @@ describe.skipIf(process.env.RUN_PERMISSION_PRESET_DB_TESTS !== "1")(
       accessStatus: "approved" as const,
       permissions: journeyman,
     });
+
+    it("applies department and multiple managers, propagates edits, and preserves older clients", async () =>
+      isolated(async ({ caller, db }) => {
+        const saved = await caller.savePermissionPreset({
+          name: "Mechanical",
+          permissions: journeyman,
+          memberDetails: {
+            department: "Mechanical",
+            reportsToUserIds: ["actor", "bob"],
+          },
+        });
+        await caller.updateOrganizationMember({
+          ...memberInput("alice", saved.id),
+          department: "Wrong",
+          reportsToUserIds: [],
+        });
+        const [alice] = await db
+          .select()
+          .from(users)
+          .where(eq(userIdColumn, "alice"));
+        expect(alice?.department).toBe("Mechanical");
+        expect(
+          (await db.select().from(organizationReportingLines))
+            .map((line) => line.reportsToUserId)
+            .sort(),
+        ).toEqual(["actor", "bob"]);
+        await caller.savePermissionPreset({
+          id: saved.id,
+          revision: saved.revision,
+          name: "Mechanical",
+          permissions: journeyman,
+          memberDetails: {
+            department: "Plumbing",
+            reportsToUserIds: ["actor"],
+          },
+        });
+        await caller.updateOrganizationMember({
+          ...memberInput("alice"),
+          department: "Wrong",
+          reportsToUserIds: [],
+        });
+        const [updated] = await db
+          .select()
+          .from(users)
+          .where(eq(userIdColumn, "alice"));
+        expect(updated?.department).toBe("Plumbing");
+        expect(
+          (await db.select().from(organizationReportingLines)).map(
+            (line) => line.reportsToUserId,
+          ),
+        ).toEqual(["actor"]);
+        await caller.savePermissionPreset({
+          id: saved.id,
+          revision: saved.revision + 1,
+          name: "Mechanical",
+          permissions: journeyman,
+          memberDetails: { department: null, reportsToUserIds: [] },
+        });
+        expect(
+          (await db.select().from(users).where(eq(userIdColumn, "alice")))[0]
+            ?.department,
+        ).toBeNull();
+        expect(await db.select().from(organizationReportingLines)).toEqual([]);
+      }));
+
+    it("rejects foreign managers and rolls back assignments and live changes that create loops", async () =>
+      isolated(async ({ caller, db }) => {
+        await expect(
+          caller.savePermissionPreset({
+            name: "Foreign",
+            permissions: journeyman,
+            memberDetails: {
+              department: "Mechanical",
+              reportsToUserIds: ["foreign"],
+            },
+          }),
+        ).rejects.toThrow("this organization");
+        const saved = await caller.savePermissionPreset({
+          name: "Mechanical",
+          permissions: journeyman,
+          memberDetails: {
+            department: "Mechanical",
+            reportsToUserIds: ["bob"],
+          },
+        });
+        await expect(
+          caller.updateOrganizationMember(memberInput("bob", saved.id)),
+        ).rejects.toThrow("report to themselves");
+        await caller.updateOrganizationMember(memberInput("alice", saved.id));
+        await expect(
+          caller.savePermissionPreset({
+            id: saved.id,
+            revision: saved.revision,
+            name: "Changed",
+            permissions: journeyman,
+            memberDetails: {
+              department: "Changed",
+              reportsToUserIds: ["alice"],
+            },
+          }),
+        ).rejects.toThrow("report to themselves");
+        const [preset] = await db.select().from(organizationPermissionPresets);
+        expect(preset?.name).toBe("Mechanical");
+        expect(preset?.revision).toBe(saved.revision);
+        await expect(
+          caller.updateOrganizationMember({
+            ...memberInput("bob"),
+            reportsToUserIds: ["alice"],
+          }),
+        ).rejects.toThrow("reporting loop");
+      }));
 
     it("applies separate drawing permissions to everyone using a live preset", async () =>
       isolated(async ({ caller, db, organizationId }) => {

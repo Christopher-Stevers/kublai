@@ -251,6 +251,13 @@
       "when": 1791672485736,
       "tag": "0060_material_notifications",
       "breakpoints": false
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1791675000001,
+      "tag": "0061_preset_member_details",
+      "breakpoints": false
     }
   ]
 }

@@ -44,7 +44,7 @@ export function PresetsSection({
     <div className="space-y-4">
       <p className="text-muted-foreground text-sm">
         Create a preset such as Journeyman, then assign it in Members. Every
-        saved permission change applies to everyone using that preset.
+        saved change applies to everyone using that preset.
       </p>
       <div className="bg-card grid rounded-2xl border shadow-sm lg:grid-cols-[20rem_minmax(0,1fr)]">
         <aside
@@ -159,6 +159,20 @@ function PresetDetail({
   const [permissions, setPermissions] = useState<PermissionMap>(
     preset?.permissions ?? { ...STANDARD_DEFAULTS },
   );
+  const [applyDetails, setApplyDetails] = useState(
+    !preset || !!preset.memberDetails,
+  );
+  const [baselineApplyDetails, setBaselineApplyDetails] =
+    useState(applyDetails);
+  const [department, setDepartment] = useState(
+    preset?.memberDetails?.department ?? "",
+  );
+  const [reportsToUserIds, setReportsToUserIds] = useState<string[]>(
+    preset?.memberDetails?.reportsToUserIds ?? [],
+  );
+  const detailsKey = JSON.stringify([department, [...reportsToUserIds].sort()]);
+  const [baselineDetailsKey, setBaselineDetailsKey] = useState(detailsKey);
+  const [reportsQuery, setReportsQuery] = useState("");
   const [revision, setRevision] = useState(preset?.revision);
   const [baseline, setBaseline] = useState({ name, permissions });
   const [loadedPreset, setLoadedPreset] = useState(preset);
@@ -167,11 +181,23 @@ function PresetDetail({
   if (preset && loadedPreset !== preset) {
     const before = baseline;
     const dirty =
+      applyDetails !== baselineApplyDetails ||
+      detailsKey !== baselineDetailsKey ||
       name !== before.name ||
       PERMISSION_KEYS.some(
         (key) => permissions[key] !== before.permissions[key],
       );
     if (!dirty) {
+      setApplyDetails(!!preset.memberDetails);
+      setBaselineApplyDetails(!!preset.memberDetails);
+      setDepartment(preset.memberDetails?.department ?? "");
+      setReportsToUserIds(preset.memberDetails?.reportsToUserIds ?? []);
+      setBaselineDetailsKey(
+        JSON.stringify([
+          preset.memberDetails?.department ?? "",
+          [...(preset.memberDetails?.reportsToUserIds ?? [])].sort(),
+        ]),
+      );
       setName(preset.name);
       setPermissions(preset.permissions);
       setRevision(preset.revision);
@@ -184,12 +210,14 @@ function PresetDetail({
       if (preset && error.data?.code === "CONFLICT") await onSaved(preset.id);
     },
     onSuccess: async (saved) => {
+      setBaselineApplyDetails(applyDetails);
+      setBaselineDetailsKey(detailsKey);
       setBaseline({ name: name.trim(), permissions });
       setName(name.trim());
       setRevision(saved.revision);
       await onSaved(saved.id);
       notify(
-        `Saved ${name.trim()}. Everyone using this preset now has its permissions.`,
+        `Saved ${name.trim()}. Everyone using this preset now has its permissions, department and reporting assignments.`,
         "success",
       );
     },
@@ -204,6 +232,8 @@ function PresetDetail({
   const readOnly = !settings.viewer.canManageMembers || pending;
   const changed =
     !preset ||
+    applyDetails !== baselineApplyDetails ||
+    detailsKey !== baselineDetailsKey ||
     name !== baseline.name ||
     PERMISSION_KEYS.some(
       (key) => permissions[key] !== baseline.permissions[key],
@@ -224,7 +254,18 @@ function PresetDetail({
       onSubmit={(event) => {
         event.preventDefault();
         if (!readOnly && changed && name.trim())
-          save.mutate({ id: preset?.id, revision, name, permissions });
+          save.mutate({
+            id: preset?.id,
+            revision,
+            name,
+            permissions,
+            memberDetails: applyDetails
+              ? {
+                  department: department.trim() || null,
+                  reportsToUserIds,
+                }
+              : undefined,
+          });
       }}
     >
       <header className="space-y-4 border-b p-5">
@@ -276,6 +317,100 @@ function PresetDetail({
         </div>
       </header>
       <div className="space-y-4 p-5">
+        <section
+          aria-label="Preset department and reporting"
+          className="space-y-4 rounded-xl border p-4"
+        >
+          {preset && !preset.memberDetails && (
+            <label className="flex items-center gap-3 text-sm">
+              <input
+                type="checkbox"
+                checked={applyDetails}
+                disabled={readOnly}
+                onChange={(event) => setApplyDetails(event.target.checked)}
+              />
+              Include department and reporting in this preset
+            </label>
+          )}
+          <div className="space-y-2">
+            <label
+              htmlFor="preset-department"
+              className="text-sm font-semibold"
+            >
+              Department
+            </label>
+            <Input
+              id="preset-department"
+              list="preset-departments"
+              value={department}
+              maxLength={100}
+              disabled={readOnly || !applyDetails}
+              placeholder="Choose or enter a department"
+              onChange={(event) => setDepartment(event.target.value)}
+            />
+            <datalist id="preset-departments">
+              {[
+                ...new Set(
+                  settings.members
+                    .map((member) => member.department)
+                    .filter(Boolean),
+                ),
+              ].map((value) => (
+                <option key={value} value={value!} />
+              ))}
+            </datalist>
+          </div>
+          <fieldset disabled={readOnly || !applyDetails} className="space-y-2">
+            <legend className="text-sm font-semibold">Reports to</legend>
+            <Input
+              value={reportsQuery}
+              onChange={(event) => setReportsQuery(event.target.value)}
+              aria-label="Search preset reporting managers"
+              placeholder="Search people…"
+            />
+            <div className="max-h-48 space-y-1 overflow-y-auto rounded-lg border p-2">
+              {settings.members
+                .filter((member) =>
+                  `${member.name ?? ""} ${member.email} ${member.department ?? ""}`
+                    .toLowerCase()
+                    .includes(reportsQuery.toLowerCase()),
+                )
+                .map((member) => (
+                  <label
+                    key={member.id}
+                    className="hover:bg-accent flex items-center gap-3 rounded-md p-2"
+                  >
+                    <input
+                      type="checkbox"
+                      className="accent-primary h-4 w-4"
+                      checked={reportsToUserIds.includes(member.id)}
+                      onChange={(event) =>
+                        setReportsToUserIds((current) =>
+                          event.target.checked
+                            ? [...current, member.id]
+                            : current.filter((id) => id !== member.id),
+                        )
+                      }
+                    />
+                    <span className="text-sm">
+                      {member.name?.trim() || member.email}
+                    </span>
+                  </label>
+                ))}
+            </div>
+          </fieldset>
+          <p className="text-muted-foreground text-xs">
+            These choices apply to everyone using this preset. A blank
+            department means no department; no checked people means no reporting
+            manager.
+          </p>
+          {preset && !preset.memberDetails && (
+            <p className="text-muted-foreground text-xs">
+              Existing member assignments stay unchanged until you include
+              department and reporting in this preset.
+            </p>
+          )}
+        </section>
         <PermissionEditor
           value={permissions}
           onChange={setPermissions}
@@ -292,6 +427,16 @@ function PresetDetail({
             type="button"
             variant="outline"
             onClick={() => {
+              setApplyDetails(!!preset.memberDetails);
+              setBaselineApplyDetails(!!preset.memberDetails);
+              setDepartment(preset.memberDetails?.department ?? "");
+              setReportsToUserIds(preset.memberDetails?.reportsToUserIds ?? []);
+              setBaselineDetailsKey(
+                JSON.stringify([
+                  preset.memberDetails?.department ?? "",
+                  [...(preset.memberDetails?.reportsToUserIds ?? [])].sort(),
+                ]),
+              );
               setName(preset.name);
               setPermissions(preset.permissions);
               setRevision(preset.revision);
