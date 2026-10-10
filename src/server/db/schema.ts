@@ -3,6 +3,7 @@
 // with circular references. This is a known limitation and doesn't affect runtime behavior.
 // The build succeeds correctly - these are only strict TypeScript checking issues.
 
+import { chatPushSubscriptions } from "./chat-push-schema";
 import { relations, sql } from "drizzle-orm";
 import type { DocumentState } from "~/server/documents/types";
 import {
@@ -2454,3 +2455,35 @@ export const timeEvents = createTable(
 export { conversations, conversationMembers, conversationMessages, conversationAttachments, conversationPushOutbox } from "./conversation-schema";
 
 export { employeeSimulationSessions, employeeSimulationAudit } from "./simulation-schema";
+
+// Reporting-manager material alerts are stored independently of push devices.
+export const materialNotifications = createTable("material_notification", (d) => ({
+  id: d.uuid().primaryKey().defaultRandom(),
+  organizationId: d.uuid().notNull().references(() => (organizations as unknown as { id: AnyPgColumn }).id, { onDelete: "cascade" }),
+  materialListId: d.uuid().notNull().references(() => (materialLists as unknown as { id: AnyPgColumn }).id, { onDelete: "cascade" }),
+  senderId: d.varchar({ length: 255 }).notNull().references(() => (users as unknown as { id: AnyPgColumn }).id, { onDelete: "cascade" }),
+  recipientId: d.varchar({ length: 255 }).notNull().references(() => (users as unknown as { id: AnyPgColumn }).id, { onDelete: "cascade" }),
+  eventKey: d.text().notNull(),
+  action: d.varchar({ length: 16 }).$type<"added" | "edited">().notNull(),
+  createdAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
+  readAt: d.timestamp({ withTimezone: true }),
+}), (t) => [
+  unique("material_notification_event_recipient_uniq").on(t.organizationId,t.eventKey,t.recipientId),
+  index("material_notification_recipient_idx").on(t.recipientId,t.createdAt,t.id),
+  check("material_notification_action_check",sql`${t.action} in ('added','edited')`),
+]);
+export const materialPushOutbox = createTable("material_push_outbox", (d) => ({
+  id: d.uuid().primaryKey().defaultRandom(),
+  notificationId: d.uuid().notNull().references(() => (materialNotifications as unknown as { id: AnyPgColumn }).id, { onDelete: "cascade" }),
+  subscriptionId: d.uuid().notNull().references(() => (chatPushSubscriptions as unknown as { id: AnyPgColumn }).id, { onDelete: "cascade" }),
+  attempts: d.integer().notNull().default(0),
+  availableAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
+  leaseToken: d.uuid(),
+  leasedUntil: d.timestamp({ withTimezone: true }),
+  completedAt: d.timestamp({ withTimezone: true }),
+  outcome: d.varchar({ length: 32 }),
+  createdAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
+}), (t) => [
+  unique("material_push_notification_device_uniq").on(t.notificationId,t.subscriptionId),
+  index("material_push_ready_idx").on(t.completedAt,t.availableAt,t.leasedUntil),
+]);

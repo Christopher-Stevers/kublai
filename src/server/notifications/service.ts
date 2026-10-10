@@ -100,6 +100,19 @@ function sources(ctx: Context) {
         where decision."sheetId"=s.id and decision.entity->>'kind'='review'
           and decision.entity->'data'->>'requestId'=e.id::text)
     union all
+    select 'material-list:' || n.id::text, 'material-list', n.id, null::bigint,
+      coalesce(sender.name,'A team member') || case n.action when 'added' then ' added material' else ' edited material' end,
+      j.name || ' · ' || l.name,
+      case n.action when 'added' then 'Material was added to this list.' else 'Material in this list was changed.' end,
+      n."createdAt", n."readAt" is null,
+      '/dashboard/material-lists/' || l.id
+    from kublai_material_notification n
+    join kublai_material_list l on l.id=n."materialListId" and l."organizationId"=${user.organizationId}
+    join kublai_job j on j.id=l."jobId" and j."organizationId"=l."organizationId"
+    join kublai_user sender on sender.id=n."senderId" and sender."organizationId"=l."organizationId"
+    join kublai_organization_reporting_line r on r."organizationId"=l."organizationId" and r."userId"=n."senderId" and r."reportsToUserId"=${user.id}
+    where n."recipientId"=${user.id} and n."senderId"<>${user.id}
+    union all
     select 'job-chat:' || m.id::text, 'job-chat', j.id, m.sequence,
       coalesce(a.name, 'Former member') || ' in job chat', j.name,
       left(case when m.body='' then 'Shared an attachment' else m.body end, 240),
@@ -197,11 +210,14 @@ export async function readNotifications(
   ), selected as (
     select n.kind,n."sourceId",max(n.sequence) as sequence from notifications n
     join requested r on r.kind=n.kind and r.id=n."sourceId"
-      and (n.kind='drawing' or n.sequence<=r.sequence)
+      and (n.kind in ('drawing','material-list') or n.sequence<=r.sequence)
     group by n.kind,n."sourceId"
   ), drawing_reads as (
     update kublai_drawing_notification n set "readAt"=coalesce(n."readAt",now())
     from selected s where s.kind='drawing' and n.id=s."sourceId" and n."recipientId"=${ctx.user.id} returning n.id
+  ), material_reads as (
+    update kublai_material_notification n set "readAt"=coalesce(n."readAt",now())
+    from selected s where s.kind='material-list' and n.id=s."sourceId" and n."recipientId"=${ctx.user.id} returning n.id
   ), job_reads as (
     insert into kublai_job_chat_member ("jobId","userId","lastReadSequence")
     select "sourceId",${ctx.user.id},sequence from selected where kind='job-chat'

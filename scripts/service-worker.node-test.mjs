@@ -8,6 +8,8 @@ const source = await readFile(
 );
 function harness(failure) {
   const entries = new Map();
+  const handlers = new Map();
+  const shown = [];
   const cache = {
     match: async (key) => {
       if (failure === "read") throw Error("blocked");
@@ -35,10 +37,10 @@ function harness(failure) {
       },
       match: cache.match,
     },
-    self: { location: { origin: "https://test.local" }, addEventListener() {} },
+    self: { location: { origin: "https://test.local" }, registration: {showNotification:async (title,options)=>shown.push({title,...options})}, addEventListener(type,handler) {handlers.set(type,handler);} },
   });
   vm.runInContext(source, context);
-  return { context, entries };
+  return { context, entries, handlers, shown };
 }
 for (const failure of ["open", "read", "quota"])
   test(`valid image response survives cache ${failure} failure`, async () => {
@@ -93,4 +95,33 @@ test("private conversation snapshots bypass shared image caching", () => {
       false,
     );
   }
+});
+
+
+test("material alerts accept only same-origin list deep links", () => {
+  const { context } = harness();
+  const id = "11111111-1111-4111-8111-111111111111";
+  const good = `/dashboard/material-lists/${id}`;
+  assert.equal(context.safePushUrl({type:"material-list",url:good}),`https://test.local${good}`);
+  for (const url of ["https://evil.example"+good,good+"?redirect=evil",good+"#x","/dashboard/chat",good.replace(id,"invalid")])
+    assert.equal(context.safePushUrl({type:"material-list",url}),null);
+});
+
+test("material push displays the right title, list tag, and account-bound target", async()=>{
+  const {context,handlers,shown}=harness();
+  const account='a'.repeat(64),id='11111111-1111-4111-8111-111111111111';
+  let pending;
+  const waitUntil=p=>{pending=p;};
+  handlers.get('message')({data:{type:'FOREMANHQ_PUSH_ACCOUNT',account},waitUntil});
+  await pending;
+  const data={type:'material-list',url:`/dashboard/material-lists/${id}`,account};
+  handlers.get('push')({data:{json:()=>data},waitUntil});
+  await pending;
+  assert.equal(shown.length,1);
+  assert.equal(shown[0].title,'ForemanHQ Materials');
+  assert.equal(shown[0].tag,`material-list-${id}`);
+  assert.equal(shown[0].data.url,`https://test.local${data.url}`);
+  handlers.get('push')({data:{json:()=>({...data,account:'b'.repeat(64)})},waitUntil});
+  await pending;
+  assert.equal(shown.length,1);
 });

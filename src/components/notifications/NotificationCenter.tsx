@@ -10,6 +10,7 @@ import {
   FilePenLineIcon,
   Loader2Icon,
   MessageSquareIcon,
+  PackageIcon,
   RefreshCwIcon,
 } from "lucide-react";
 import { api } from "~/trpc/react";
@@ -343,6 +344,8 @@ function NotificationInbox({
                     <span className="text-muted-foreground mt-0.5 shrink-0">
                       {notification.kind === "drawing" ? (
                         <FilePenLineIcon className="h-5 w-5" />
+                      ) : notification.kind === "material-list" ? (
+                        <PackageIcon className="h-5 w-5" />
                       ) : (
                         <MessageSquareIcon className="h-5 w-5" />
                       )}

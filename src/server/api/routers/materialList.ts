@@ -1,3 +1,4 @@
+import { enqueueMaterialNotification } from "~/server/notifications/materials";
 import { TRPCError } from "@trpc/server";
 import { eq, and, sql, desc, asc, inArray, gte } from "drizzle-orm";
 import { z } from "zod";
@@ -692,85 +693,94 @@ export const materialListRouter = createTRPCRouter({
         });
       }
 
-      const quantityUpdates = input.mutations.filter(
-        (
-          mutation,
-        ): mutation is Extract<
-          (typeof input.mutations)[number],
-          { type: "updateItemQuantity" }
-        > => mutation.type === "updateItemQuantity",
-      );
-      const removeItemIds = input.mutations
-        .filter((mutation) => mutation.type === "removeItem")
-        .map((mutation) => mutation.itemId);
-      const latestRename = [...input.mutations]
-        .reverse()
-        .find((mutation) => mutation.type === "renameMaterialList");
+      const organizationId = ctx.user.organizationId;
+      await ctx.db.transaction(async (tx) => {
+        let changed = false;
+        const quantityUpdates = input.mutations.filter(
+          (
+            mutation,
+          ): mutation is Extract<
+            (typeof input.mutations)[number],
+            { type: "updateItemQuantity" }
+          > => mutation.type === "updateItemQuantity",
+        );
+        const removeItemIds = input.mutations
+          .filter((mutation) => mutation.type === "removeItem")
+          .map((mutation) => mutation.itemId);
+        const latestRename = [...input.mutations]
+          .reverse()
+          .find((mutation) => mutation.type === "renameMaterialList");
 
-      if (latestRename?.type === "renameMaterialList") {
-        await ctx.db
-          .update(materialLists)
-          .set({ name: latestRename.name })
-          .where(eq(materialLists.id, input.materialListId));
-      }
+        if (latestRename?.type === "renameMaterialList") {
+          await tx
+            .update(materialLists)
+            .set({ name: latestRename.name })
+            .where(eq(materialLists.id, input.materialListId));
+        }
 
-      if (quantityUpdates.length > 0) {
-        const itemIds = quantityUpdates.map((mutation) => mutation.itemId);
-        const currentItems = await ctx.db
-          .select({
-            id: quoteItems.id,
-            quoteId: quoteItems.quoteId,
-            unitCost: quoteItems.unitCost,
-          })
-          .from(quoteItems)
-          .where(inArray(quoteItems.id, itemIds));
-        const itemById = new Map(currentItems.map((item) => [item.id, item]));
-
-        for (const mutation of quantityUpdates) {
-          const item = itemById.get(mutation.itemId);
-          if (!item || item.quoteId !== materialList.quoteId) continue;
-
-          const unitCost = item.unitCost
-            ? parseFloat(item.unitCost.toString())
-            : 0;
-          const extendedPrice = mutation.quantity * unitCost;
-          await ctx.db
-            .update(quoteItems)
-            .set({
-              quantity: mutation.quantity.toString(),
-              extendedPrice: extendedPrice.toString(),
-              updatedAt: new Date(),
+        if (quantityUpdates.length > 0) {
+          const itemIds = quantityUpdates.map((mutation) => mutation.itemId);
+          const currentItems = await tx
+            .select({
+              id: quoteItems.id,
+              quoteId: quoteItems.quoteId,
+              unitCost: quoteItems.unitCost,
+              quantity: quoteItems.quantity,
             })
-            .where(eq(quoteItems.id, mutation.itemId));
+            .from(quoteItems)
+            .where(inArray(quoteItems.id, itemIds));
+          const itemById = new Map(currentItems.map((item) => [item.id, item]));
+
+          for (const mutation of quantityUpdates) {
+            const item = itemById.get(mutation.itemId);
+            if (!item || item.quoteId !== materialList.quoteId) continue;
+
+            if (Number(item.quantity) === mutation.quantity) continue;
+            changed = true;
+            item.quantity = String(mutation.quantity);
+            const unitCost = item.unitCost
+              ? parseFloat(item.unitCost.toString())
+              : 0;
+            const extendedPrice = mutation.quantity * unitCost;
+            await tx
+              .update(quoteItems)
+              .set({
+                quantity: mutation.quantity.toString(),
+                extendedPrice: extendedPrice.toString(),
+                updatedAt: new Date(),
+              })
+              .where(eq(quoteItems.id, mutation.itemId));
+          }
         }
-      }
 
-      if (removeItemIds.length > 0) {
-        const removableItems = await ctx.db
-          .select({ id: quoteItems.id, quoteId: quoteItems.quoteId })
-          .from(quoteItems)
-          .where(inArray(quoteItems.id, removeItemIds));
-        const verifiedIds = removableItems
-          .filter((item) => item.quoteId === materialList.quoteId)
-          .map((item) => item.id);
+        if (removeItemIds.length > 0) {
+          const removableItems = await tx
+            .select({ id: quoteItems.id, quoteId: quoteItems.quoteId })
+            .from(quoteItems)
+            .where(inArray(quoteItems.id, removeItemIds));
+          const verifiedIds = removableItems
+            .filter((item) => item.quoteId === materialList.quoteId)
+            .map((item) => item.id);
 
-        if (verifiedIds.length > 0) {
-          await ctx.db
-            .delete(quoteItems)
-            .where(inArray(quoteItems.id, verifiedIds));
-          await Promise.all(
-            verifiedIds.map((itemId) =>
-              recordMaterialListItemTombstone(ctx.db, {
-                organizationId: ctx.user.organizationId,
-                materialListId: input.materialListId,
-                itemId,
-              }),
-            ),
-          );
+          if (verifiedIds.length > 0) {
+            await tx
+              .delete(quoteItems)
+              .where(inArray(quoteItems.id, verifiedIds));
+            await Promise.all(
+              verifiedIds.map((itemId) =>
+                recordMaterialListItemTombstone(tx, {
+                  organizationId: ctx.user.organizationId,
+                  materialListId: input.materialListId,
+                  itemId,
+                }),
+              ),
+            );
+          }
         }
-      }
 
-      await recalculateQuoteTotals(ctx.db, materialList.quoteId);
+        await recalculateQuoteTotals(tx, materialList.quoteId);
+        if (changed) await enqueueMaterialNotification(tx, { organizationId, materialListId: input.materialListId, senderId: ctx.userId, action: "edited" });
+      });
       publishMaterialListEvent(
         input.materialListId,
         "updated",
@@ -932,6 +942,7 @@ export const materialListRouter = createTRPCRouter({
           }
 
           try {
+            let materialChanged = false;
             let serverItemId: string | null = null;
             let clientItemId: string | null = null;
 
@@ -1025,6 +1036,7 @@ export const materialListRouter = createTRPCRouter({
                   .returning({ id: quoteItems.id });
 
                 if (!quoteItem) throw new Error("Failed to create quote item");
+                materialChanged = true;
                 serverItemId = quoteItem.id;
                 clientItemId = mutation.localItemId;
                 batchItemIdMap.set(mutation.localItemId, quoteItem.id);
@@ -1039,6 +1051,7 @@ export const materialListRouter = createTRPCRouter({
                   .select({
                     quoteId: quoteItems.quoteId,
                     unitCost: quoteItems.unitCost,
+                    quantity: quoteItems.quantity,
                   })
                   .from(quoteItems)
                   .where(eq(quoteItems.id, resolvedItemId))
@@ -1047,6 +1060,7 @@ export const materialListRouter = createTRPCRouter({
                   throw new Error("Quote item not found for quantity update");
                 }
 
+                materialChanged = Number(item.quantity) !== mutation.quantity;
                 const cost = item.unitCost
                   ? parseFloat(item.unitCost.toString())
                   : 0;
@@ -1071,6 +1085,9 @@ export const materialListRouter = createTRPCRouter({
                   .select({
                     quoteId: quoteItems.quoteId,
                     quantity: quoteItems.quantity,
+                    supplierPartId: quoteItems.supplierPartId,
+                    supplierId: quoteItems.supplierId,
+                    unitCost: quoteItems.unitCost,
                   })
                   .from(quoteItems)
                   .where(eq(quoteItems.id, resolvedItemId))
@@ -1102,6 +1119,7 @@ export const materialListRouter = createTRPCRouter({
                   unitCost = supplierPart?.lastKnownUnitCost ?? null;
                 }
 
+                materialChanged = item.supplierPartId !== serverSupplierPartId || item.supplierId !== resolvedSupplierId || Number(item.unitCost ?? 0) !== Number(unitCost ?? 0);
                 const quantity = item.quantity
                   ? parseFloat(item.quantity.toString())
                   : 0;
@@ -1181,6 +1199,14 @@ export const materialListRouter = createTRPCRouter({
               serverItemId,
               clientItemId,
               payload: mutation,
+            });
+
+            if (materialChanged) await enqueueMaterialNotification(tx, {
+              organizationId: ctx.user.organizationId,
+              materialListId: input.materialListId,
+              senderId: ctx.userId,
+              action: mutation.type === "addItem" ? "added" : "edited",
+              eventKey: `legacy:${mutation.clientMutationId}`,
             });
 
             applied.push({

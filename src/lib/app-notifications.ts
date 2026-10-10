@@ -1,6 +1,11 @@
 import { z } from "zod";
 
-export const notificationKind = z.enum(["drawing", "job-chat", "conversation"]);
+export const notificationKind = z.enum([
+  "drawing",
+  "job-chat",
+  "conversation",
+  "material-list",
+]);
 export type NotificationKind = z.infer<typeof notificationKind>;
 export const notificationReadTarget = z.object({
   kind: notificationKind,

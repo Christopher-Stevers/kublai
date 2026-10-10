@@ -1,3 +1,7 @@
+import { sql } from "drizzle-orm";
+import { enqueueMaterialNotification } from "./materials";
+import { drainMaterialPush } from "./material-push-worker";
+import { readFile } from "node:fs/promises";
 // @vitest-environment node
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { randomUUID } from "node:crypto";
@@ -95,7 +99,11 @@ describe.skipIf(!process.env.NOTIFICATIONS_TEST_SOCKET)(
       // The actual projection uses all source tables; this isolated cluster never
       // reads or modifies the application's database or uploaded files.
       await conn.unsafe(`
-      create table kublai_user (id text primary key,name text,email text);
+      create table kublai_user (id text primary key,name text,email text,"organizationId" uuid,"organizationAccessStatus" text default 'approved',role text default 'user',"permissionConfig" jsonb);
+      create table kublai_organization (id uuid primary key);
+      create table kublai_material_list (id uuid primary key,"organizationId" uuid,"jobId" uuid,name text,kind text default 'materials');
+      create table kublai_organization_reporting_line ("organizationId" uuid,"userId" text,"reportsToUserId" text,primary key("organizationId","userId","reportsToUserId"));
+      create table kublai_chat_push_subscription (id uuid primary key,"userId" text,endpoint text,p256dh text,auth text);
       create table kublai_job (id uuid primary key,"organizationId" uuid,name text,"createdByUserId" text,"foremanUserId" text);
       create table kublai_job_chat_member ("jobId" uuid,"userId" text,muted boolean default false,"lastReadSequence" bigint default 0,primary key("jobId","userId"));
       create table kublai_job_chat_message (id uuid primary key,sequence bigserial,"jobId" uuid,"authorId" text,body text,"createdAt" timestamptz default now(),"deletedAt" timestamptz);
@@ -107,12 +115,15 @@ describe.skipIf(!process.env.NOTIFICATIONS_TEST_SOCKET)(
       create table kublai_drawing_workspace_watch ("sheetId" uuid,"userId" text);
       create table kublai_drawing_notification (id uuid primary key,"sheetId" uuid,"entityId" uuid,"recipientId" text,"senderId" text,reason text,"createdAt" timestamptz default now(),"readAt" timestamptz);
     `);
+      await conn.unsafe(await readFile(new URL("../../../drizzle/0060_material_notifications.sql", import.meta.url), "utf8"));
     });
     beforeEach(async () => {
       await conn.unsafe(
-        "TRUNCATE kublai_user,kublai_job,kublai_job_chat_member,kublai_job_chat_message,kublai_conversation,kublai_conversation_member,kublai_conversation_message,kublai_job_drawing_sheet,kublai_drawing_workspace_entity,kublai_drawing_workspace_watch,kublai_drawing_notification RESTART IDENTITY",
+        "TRUNCATE kublai_user,kublai_job,kublai_job_chat_member,kublai_job_chat_message,kublai_conversation,kublai_conversation_member,kublai_conversation_message,kublai_job_drawing_sheet,kublai_drawing_workspace_entity,kublai_drawing_workspace_watch,kublai_drawing_notification,kublai_organization,kublai_material_list,kublai_organization_reporting_line,kublai_chat_push_subscription,kublai_material_notification,kublai_material_push_outbox RESTART IDENTITY CASCADE",
       );
-      await conn`insert into kublai_user values ('recipient','Recipient','recipient@example.invalid'),('sender','Sender','sender@example.invalid'),('outsider','Outsider','outsider@example.invalid')`;
+      await conn`insert into kublai_user (id,name,email) values ('recipient','Recipient','recipient@example.invalid'),('sender','Sender','sender@example.invalid'),('outsider','Outsider','outsider@example.invalid')`;
+      await conn`insert into kublai_organization values (${org}),(${foreignOrg})`;
+      await conn`update kublai_user set "organizationId"=case when id='outsider' then ${foreignOrg}::uuid else ${org}::uuid end`;
       await conn`insert into kublai_job values (${job},${org},'Job site','sender','recipient'),(${otherJob},${foreignOrg},'Secret site','sender','outsider')`;
       for (const [id, organizationId, kind, name] of [
         [privateRoom, org, "direct", ""],
@@ -127,6 +138,97 @@ describe.skipIf(!process.env.NOTIFICATIONS_TEST_SOCKET)(
       await conn`insert into kublai_job_drawing_sheet values (${sheet},${org},${job},${randomUUID()},'M-101')`;
       await conn`insert into kublai_drawing_workspace_entity values (${entity},${sheet},${JSON.stringify({ kind: "issue", visibility: "published", data: { assigneeId: "recipient", title: "Check equipment" } })})`;
       await conn`insert into kublai_drawing_notification (id,"sheetId","entityId","recipientId","senderId",reason) values (${alert},${sheet},${entity},'recipient','sender','assignment')`;
+    });
+    const list = randomUUID();
+    async function materialFixture() {
+      await conn`insert into kublai_material_list (id,"organizationId","jobId",name) values (${list},${org},${job},'Room supplies')`;
+      await conn`insert into kublai_organization_reporting_line values (${org},'sender','recipient')`;
+      await conn`insert into kublai_chat_push_subscription values (${randomUUID()},'recipient','https://fcm.googleapis.com/test-material','key','auth')`;
+    }
+    const change = { organizationId: org, materialListId: list, senderId: 'sender', action: 'added' as const, eventKey: 'test-change' };
+    const pushConfig = { publicKey:'test', privateKey:'test', subject:'mailto:test@example.invalid' };
+    it("routes material additions to the reporting manager in the bell and reads them", async () => {
+      await materialFixture();
+      await enqueueMaterialNotification(ctx.db,change);
+      const page = await notificationPage(ctx,{ unreadOnly:true,limit:30 });
+      const item = page.items.find(n=>n.kind==='material-list')!;
+      expect(item.title).toBe('Sender added material');
+      expect(item.context).toBe('Job site · Room supplies');
+      expect(item.url).toBe(`/dashboard/material-lists/${list}`);
+      expect((await notificationOverview(ctx)).unreadCount).toBe(5);
+      await readNotifications(ctx,[item.target]);
+      expect((await notificationOverview(ctx)).unreadCount).toBe(4);
+      const sent: string[]=[];
+      await drainMaterialPush({ db:ctx.db as never,configuration:pushConfig,send:async (_d,_c,p)=>{sent.push(p);} });
+      expect(sent).toEqual([]);
+    });
+    it("deduplicates replayed offline changes and delivers a private deep link once", async () => {
+      await materialFixture();
+      await enqueueMaterialNotification(ctx.db,change);
+      await enqueueMaterialNotification(ctx.db,change);
+      expect((await conn`select * from kublai_material_notification`).length).toBe(1);
+      expect((await conn`select * from kublai_material_push_outbox`).length).toBe(1);
+      const sent: string[]=[];
+      const deps={ db:ctx.db as never,configuration:pushConfig,send:async (_d:unknown,_c:unknown,p:string)=>{sent.push(p);} };
+      await Promise.all([drainMaterialPush(deps),drainMaterialPush(deps)]);
+      await drainMaterialPush(deps);
+      expect(sent).toHaveLength(1);
+      expect(JSON.parse(sent[0]!)).toMatchObject({type:'material-list',url:`/dashboard/material-lists/${list}`});
+      expect(sent[0]).not.toMatch(/Sender|Room supplies|recipient|unitCost/);
+    });
+    it("notifies all assigned managers, including one without a push subscription", async () => {
+      await materialFixture();
+      await conn`update kublai_user set "organizationId"=${org} where id='outsider'`;
+      await conn`insert into kublai_organization_reporting_line values (${org},'sender','outsider')`;
+      await enqueueMaterialNotification(ctx.db,{...change,action:'edited'});
+      expect((await conn`select * from kublai_material_notification`).length).toBe(2);
+      expect((await conn`select * from kublai_material_push_outbox`).length).toBe(1);
+    });
+    it("excludes foreign, pending and disabled accounts and tool lists", async () => {
+      await materialFixture();
+      for (const field of [sql`"organizationId"=${foreignOrg}::uuid`,sql`"organizationAccessStatus"='pending'`,sql`"permissionConfig"='{"version":2,"permissions":{"tab.dashboard":false}}'::jsonb`]) {
+        await ctx.db.execute(sql`update kublai_user set ${field} where id='recipient'`);
+        await enqueueMaterialNotification(ctx.db,change);
+        expect((await conn`select * from kublai_material_notification`).length).toBe(0);
+        await conn`update kublai_user set "organizationId"=${org},"organizationAccessStatus"='approved',"permissionConfig"=null where id='recipient'`;
+      }
+      await conn`update kublai_material_list set kind='tools' where id=${list}`;
+      await enqueueMaterialNotification(ctx.db,change);
+      expect((await conn`select * from kublai_material_notification`).length).toBe(0);
+    });
+    it("rechecks reporting lines and device ownership before delivery", async () => {
+      await materialFixture();
+      await enqueueMaterialNotification(ctx.db,change);
+      await conn`delete from kublai_organization_reporting_line`;
+      expect((await notificationPage(ctx,{unreadOnly:true,limit:30})).items.some(n=>n.kind==='material-list')).toBe(false);
+      let sends=0;
+      await drainMaterialPush({db:ctx.db as never,configuration:pushConfig,send:async()=>{sends++;}});
+      expect(sends).toBe(0);
+      expect((await conn`select outcome from kublai_material_push_outbox`)[0]!.outcome).toBe('skipped');
+    });
+    it("rolls back alerts with an unsuccessful edit transaction",async()=>{
+      await materialFixture();
+      await expect(ctx.db.transaction(async tx=>{await enqueueMaterialNotification(tx,change);throw Error('edit failed');})).rejects.toThrow('edit failed');
+      expect((await conn`select * from kublai_material_notification`).length).toBe(0);
+      expect((await conn`select * from kublai_material_push_outbox`).length).toBe(0);
+    });
+    it("does not deliver to a device signed into a different account",async()=>{
+      await materialFixture();
+      await enqueueMaterialNotification(ctx.db,change);
+      await conn`update kublai_chat_push_subscription set "userId"='sender'`;
+      let sends=0;
+      await drainMaterialPush({db:ctx.db as never,configuration:pushConfig,send:async()=>{sends++;}});
+      expect(sends).toBe(0);
+    });
+    it("retains alerts on a temporary push failure and retries successfully", async () => {
+      await materialFixture();
+      await enqueueMaterialNotification(ctx.db,change);
+      await drainMaterialPush({db:ctx.db as never,configuration:pushConfig,send:async()=>{throw Object.assign(Error('temporary'),{statusCode:503});}});
+      expect((await conn`select "completedAt" from kublai_material_push_outbox`)[0]!.completedAt).toBeNull();
+      expect((await conn`select * from kublai_material_notification`).length).toBe(1);
+      await conn`update kublai_material_push_outbox set "availableAt"=now()`;
+      await drainMaterialPush({db:ctx.db as never,configuration:pushConfig,send:()=>Promise.resolve()});
+      expect((await conn`select outcome from kublai_material_push_outbox`)[0]!.outcome).toBe('sent');
     });
     afterAll(async () => {
       await conn.end();

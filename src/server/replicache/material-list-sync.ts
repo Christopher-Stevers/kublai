@@ -1,3 +1,4 @@
+import { enqueueMaterialNotification } from "~/server/notifications/materials";
 import { pullSnapshot, ensureClientGroup, ReplicacheOwnershipError } from "./pull";
 export { ReplicacheOwnershipError } from "./pull";
 import { resolvePermissions, type PermissionKey } from "~/server/auth/permissions";
@@ -425,6 +426,7 @@ async function applyReplicacheMutation(
   tx: ReplicacheTx,
   input: {
     name: string;
+    eventKey: string;
     args: unknown;
     organizationId: string;
     userId: string;
@@ -458,6 +460,7 @@ async function applyReplicacheMutation(
           id: quoteItems.id,
           quoteId: quoteItems.quoteId,
           unitCost: quoteItems.unitCost,
+          quantity: quoteItems.quantity,
           materialListId: quotes.materialListId,
         })
         .from(quoteItems)
@@ -481,6 +484,7 @@ async function applyReplicacheMutation(
         );
       }
 
+      if (Number(item.quantity) === args.quantity) return;
       const unitCost = item.unitCost ? parseFloat(String(item.unitCost)) : 0;
       const extendedPrice =
         args.quantity * (Number.isFinite(unitCost) ? unitCost : 0);
@@ -492,6 +496,7 @@ async function applyReplicacheMutation(
           updatedAt: new Date(),
         })
         .where(eq(quoteItems.id, args.itemId));
+      await enqueueMaterialNotification(tx, { ...input, materialListId: item.materialListId, senderId: input.userId, action: "edited" });
       input.sideEffects.quoteIdsToRecalculate.add(item.quoteId);
       input.sideEffects.materialListIdsToTouch.add(item.materialListId);
       publishMaterialListEvent(
@@ -573,7 +578,7 @@ async function applyReplicacheMutation(
 
       const extendedPrice = args.quantity * unitCost;
 
-      await tx
+      const inserted = await tx
         .insert(quoteItems)
         .values({
           id: args.itemId,
@@ -588,7 +593,9 @@ async function applyReplicacheMutation(
           descriptionSnapshot: args.descriptionSnapshot ?? null,
           addedByUserId: input.userId,
         })
-        .onConflictDoNothing(); // Idempotent: skip if already applied
+        .onConflictDoNothing().returning({ id: quoteItems.id }); // Idempotent: skip if already applied
+      if (!inserted.length) return;
+      await enqueueMaterialNotification(tx, { ...input, materialListId: args.materialListId, senderId: input.userId, action: "added" });
 
       input.sideEffects.quoteIdsToRecalculate.add(materialList.quoteId);
       input.sideEffects.materialListIdsToTouch.add(args.materialListId);
@@ -607,6 +614,9 @@ async function applyReplicacheMutation(
           id: quoteItems.id,
           quoteId: quoteItems.quoteId,
           quantity: quoteItems.quantity,
+          supplierPartId: quoteItems.supplierPartId,
+          supplierId: quoteItems.supplierId,
+          unitCost: quoteItems.unitCost,
           materialListId: quotes.materialListId,
         })
         .from(quoteItems)
@@ -645,6 +655,7 @@ async function applyReplicacheMutation(
       }
       if (!Number.isFinite(unitCost)) unitCost = 0;
 
+      if (item.supplierPartId === serverSupplierPartId && item.supplierId === resolvedSupplierId && Number(item.unitCost ?? 0) === unitCost) return;
       const quantity = parseFloat(String(item.quantity));
       const extendedPrice =
         (Number.isFinite(quantity) ? quantity : 0) * unitCost;
@@ -660,6 +671,7 @@ async function applyReplicacheMutation(
         })
         .where(eq(quoteItems.id, args.itemId));
 
+      await enqueueMaterialNotification(tx, { ...input, materialListId: item.materialListId, senderId: input.userId, action: "edited" });
       input.sideEffects.quoteIdsToRecalculate.add(item.quoteId);
       input.sideEffects.materialListIdsToTouch.add(item.materialListId);
       publishMaterialListEvent(
@@ -1073,6 +1085,7 @@ export async function handleMaterialListReplicachePush(
         try {
           await applyReplicacheMutation(tx, {
             name: mutation.name,
+            eventKey: `replicache:${mutation.clientID}:${mutation.id}`,
             args: mutation.args,
             organizationId,
             userId: user.id,
@@ -1261,7 +1274,7 @@ export async function handleMaterialListReplicachePull(
               .from(users)
               .where(inArray(users.id, contributorUserIds))
           : [];
-      const contributorUserMap = new Map(
+      const contributorUserMap = new Map<string, { id: string; name: string | null; email: string | null }>(
         contributorUserRows.map((user) => [user.id, user]),
       );
 
@@ -1393,7 +1406,7 @@ export async function handleMaterialListReplicachePull(
             createdBy: materialList.createdByUserId
               ? (() => {
                   const createdByUser = contributorUserMap.get(
-                    materialList.createdByUserId,
+                    materialList.createdByUserId as string,
                   );
                   return {
                     id: materialList.createdByUserId,

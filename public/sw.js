@@ -508,7 +508,24 @@ function safeDrawingUrl(value) {
     return null;
   }
 }
+function safeMaterialListUrl(value) {
+  if (typeof value !== "string") return null;
+  try {
+    const url = new URL(value, self.location.origin);
+    return url.origin === self.location.origin &&
+      !url.search &&
+      !url.hash &&
+      /^\/dashboard\/material-lists\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(
+        url.pathname,
+      )
+      ? url.href
+      : null;
+  } catch {
+    return null;
+  }
+}
 function safePushUrl(data) {
+  if (data?.type === "material-list") return safeMaterialListUrl(data.url);
   if (data?.type === "conversation-chat") return safeConversationUrl(data.url);
   return data?.type === "job-drawing"
     ? safeDrawingUrl(data.url)
@@ -546,9 +563,12 @@ self.addEventListener("message", (event) => {
           const notifications = await self.registration.getNotifications();
           for (const notification of notifications)
             if (
-              ["job-chat", "job-drawing", "conversation-chat"].includes(
-                notification.data?.type,
-              )
+              [
+                "job-chat",
+                "job-drawing",
+                "conversation-chat",
+                "material-list",
+              ].includes(notification.data?.type)
             )
               notification.close();
         }
@@ -578,25 +598,33 @@ self.addEventListener("push", (event) => {
       )
         return;
       await self.registration.showNotification(
-        data.type === "job-drawing" ? "ForemanHQ Drawings" : "ForemanHQ Chat",
+        data.type === "material-list"
+          ? "ForemanHQ Materials"
+          : data.type === "job-drawing"
+            ? "ForemanHQ Drawings"
+            : "ForemanHQ Chat",
         {
           body:
-            data.type === "job-drawing"
-              ? "There is new drawing activity. Open ForemanHQ to review it."
-              : data.type === "conversation-chat"
-                ? "You have a new chat message. Open ForemanHQ to read it."
-                : "There is new activity in a job chat. Open ForemanHQ to read it.",
+            data.type === "material-list"
+              ? "Someone who reports to you added or edited material. Open ForemanHQ to review the list."
+              : data.type === "job-drawing"
+                ? "There is new drawing activity. Open ForemanHQ to review it."
+                : data.type === "conversation-chat"
+                  ? "You have a new chat message. Open ForemanHQ to read it."
+                  : "There is new activity in a job chat. Open ForemanHQ to read it.",
           icon: "/foremanhq/notification-icon.png",
           // Android status-bar icon (white silhouette; the platform tints it).
           badge: "/foremanhq/notification-badge.png",
           // Browsers cannot play a custom sound; a short double buzz stands out instead.
           vibrate: [90, 60, 90],
           tag:
-            data.type === "job-drawing"
-              ? `job-drawing-${new URL(url).searchParams.get("drawingSheet")}`
-              : data.type === "conversation-chat"
-                ? `conversation-chat-${new URL(url).searchParams.get("conversation")}`
-                : `job-chat-${new URL(url).pathname.split("/")[3]}`,
+            data.type === "material-list"
+              ? `material-list-${new URL(url).pathname.split("/").at(-1)}`
+              : data.type === "job-drawing"
+                ? `job-drawing-${new URL(url).searchParams.get("drawingSheet")}`
+                : data.type === "conversation-chat"
+                  ? `conversation-chat-${new URL(url).searchParams.get("conversation")}`
+                  : `job-chat-${new URL(url).pathname.split("/")[3]}`,
           // Alert again for each new message instead of silently replacing the last one.
           renotify: true,
           timestamp: Date.now(),
@@ -608,7 +636,7 @@ self.addEventListener("push", (event) => {
 });
 self.addEventListener("notificationclick", (event) => {
   if (
-    !["job-chat", "job-drawing", "conversation-chat"].includes(
+    !["job-chat", "job-drawing", "conversation-chat", "material-list"].includes(
       event.notification.data?.type,
     )
   )

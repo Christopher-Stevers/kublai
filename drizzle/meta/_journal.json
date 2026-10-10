@@ -244,6 +244,13 @@
       "when": 1791675000000,
       "tag": "0058_member_departments_reporting",
       "breakpoints": false
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1791672485736,
+      "tag": "0060_material_notifications",
+      "breakpoints": false
     }
   ]
 }

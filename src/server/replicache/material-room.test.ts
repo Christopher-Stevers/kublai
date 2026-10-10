@@ -25,6 +25,7 @@ vi.mock("~/server/api/trpc", async () => {
 });
 vi.mock("~/server/assets/service", () => ({ ensureToolRoomSupplier: vi.fn() }));
 
+import { enqueueMaterialNotification } from "~/server/notifications/materials";
 import { handleMaterialListReplicachePush } from "./material-list-sync";
 import { materialListRouter } from "~/server/api/routers/materialList";
 import { jobRouter } from "~/server/api/routers/job";
@@ -70,10 +71,11 @@ function setup(reads: Row[][]) {
     }),
     insert: (table: unknown) => ({ values: (data: Row) => {
       writes.push({ kind: "insert", table, data });
-      return Object.assign(Promise.resolve(), {
-        onConflictDoNothing: () => Promise.resolve(),
+      const query = Object.assign(Promise.resolve(), {
+        onConflictDoNothing: () => query,
         returning: async () => [{ id: table === materialLists ? listId : itemId }],
       });
+      return query;
     } }),
     update: (table: unknown) => ({ set: (data: Row) => ({
       where: async () => { writes.push({ kind: "update", table, data }); },
@@ -124,6 +126,7 @@ describe("material-line room attribution", () => {
     const test = setup([[client], [{ lastMutationId: 0 }], [list], [{ id: roomId }], [], [{ cvrVersion: 0 }]]);
     await push("addItem", addArgs(inputRoom));
     expect(test.writes.find((w) => w.table === quoteItems)?.data).toMatchObject({ roomId, partDefinitionId: partId, quantity: "2" });
+    expect(enqueueMaterialNotification).toHaveBeenCalledWith(test.tx, expect.objectContaining({materialListId:listId,senderId:user.id,action:"added",eventKey:"replicache:client:1"}));
     assertRoomScope(test);
     test.assertConsumed();
   });
@@ -209,7 +212,26 @@ describe("material-line room attribution", () => {
       oneOffDisplayName: "Custom room fitting", queuedAt: new Date().toISOString(),
     }] });
     expect(result.failed).toEqual([]);
+    expect(enqueueMaterialNotification).toHaveBeenCalledWith(test.tx, expect.objectContaining({action:"added",eventKey:"legacy:legacy-line"}));
     expect(test.writes.find((w) => w.table === quoteItems)?.data).toMatchObject({ roomId, oneOffDisplayName: "Custom room fitting" });
     assertRoomScope(test);
   });
 });
+
+describe("material mutation notifications", () => {
+  it.each([2,3])("quantity %s sends an alert only for a real change", async (quantity) => {
+    const changed = quantity !== 2;
+    const test=setup([[client],[{lastMutationId:0}],[{id:itemId,quoteId,materialListId:listId,quantity:"2",unitCost:"0"}],...(changed?[[]]:[]),[{cvrVersion:0}]]);
+    await push("updateItemQuantity",{itemId,materialListId:listId,quantity});
+    expect(enqueueMaterialNotification).toHaveBeenCalledTimes(changed?1:0);
+    test.assertConsumed();
+  });
+  it("does not notify again for a replayed Replicache mutation", async () => {
+    const test=setup([[client],[{lastMutationId:1}],[{cvrVersion:0}]]);
+    await push("addItem",addArgs());
+    expect(enqueueMaterialNotification).not.toHaveBeenCalled();
+    test.assertConsumed();
+  });
+});
+
+vi.mock("~/server/notifications/materials", () => ({ enqueueMaterialNotification: vi.fn(() => Promise.resolve()) }));

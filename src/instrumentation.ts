@@ -27,6 +27,9 @@ export async function register() {
     const { startDrawingPushWorker } =
       await import("~/server/drawings/push-worker");
     startDrawingPushWorker();
+    const { startMaterialPushWorker } =
+      await import("~/server/notifications/material-push-worker");
+    startMaterialPushWorker();
     if (!state.chatMaintenanceTimer) {
       let running = false;
       const cleanup = async () => {
