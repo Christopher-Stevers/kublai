@@ -15,8 +15,11 @@ import { cn } from "~/lib/utils";
 
 type Settings = RouterOutputs["organization"]["getOrganizationSettings"];
 type Department = Settings["departments"][number];
-const personName = (person: Settings["members"][number]) =>
-  person.name?.trim() || person.email;
+const personName = (person: Settings["members"][number]) => {
+  const name = person.name?.trim();
+  if (name) return name;
+  return person.email;
+};
 
 export function DepartmentsSection({
   settings,
