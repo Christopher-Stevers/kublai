@@ -210,6 +210,9 @@ describe("pipe selection in the drawing viewer", () => {
     await activate();
     await tap(frame, 160, 300);
     const highlight = screen.getByRole("img", { name: "Selected pipe system" });
+    expect(highlight.parentElement).toBe(frame);
+    expect(highlight.closest("[data-drawing-sheet-layer]")).toBeNull();
+    expect(highlight.getAttribute("style")).toBeNull();
     const stroke = () => Number(highlight.querySelectorAll("path")[1]!.getAttribute("stroke-width"));
     expect(stroke() * 800 / 1000).toBeCloseTo(4);
     fireEvent.wheel(frame, { deltaY: -500, clientX: 400, clientY: 300 });

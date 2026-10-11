@@ -8,6 +8,7 @@ import {
   type TileManifest,
 } from "~/lib/drawing-tiles";
 import { readPdfSheetScale } from "~/lib/pdf-sheet-scale";
+import { drawingVectorViewBox } from "~/lib/drawing-viewport";
 import { buildDrawingSnapIndex } from "~/lib/drawing-geometry-client";
 import { loadSnapLines } from "~/lib/pdf-snap-lines";
 import {
@@ -141,7 +142,9 @@ export function DrawingSheetViewer({
   const appearanceFilter = appearanceMatrix ? `url(#${appearanceId})` : undefined;
   const frame = useRef<HTMLDivElement>(null);
   const layer = useRef<HTMLDivElement>(null);
-  const marks = useRef<HTMLDivElement>(null);
+  const annotationViewport = useRef<SVGSVGElement>(null);
+  const pipeViewport = useRef<SVGSVGElement>(null);
+  const marks = useRef<SVGSVGElement>(null);
   const image = useRef<HTMLImageElement>(null);
   const [fit, setFit] = useState<{ width: number; height: number; natural: number; aspect: number } | null>(null);
   const fitRef = useRef(fit);
@@ -765,11 +768,17 @@ export function DrawingSheetViewer({
     const { x, y, scale } = live.current;
     const transform = `translate(-50%, -50%) translate3d(${x}px, ${y}px, 0) scale(${scale})`;
     if (layer.current) layer.current.style.transform = transform;
-    // Measurements stay above the image, tiles and persistent PDF patches.
-    if (marks.current) marks.current.style.transform = transform;
-    if (fit) {
-      // Follow the live CSS zoom every frame, before the React/tile state
-      // catches up. Ancestor transforms also scale non-scaling SVG strokes.
+    if (fit && frame.current) {
+      const size = { width: frame.current.clientWidth, height: frame.current.clientHeight };
+      const camera = drawingVectorViewBox(fit, size, live.current);
+      if (camera) {
+        annotationViewport.current?.setAttribute("viewBox", camera);
+        pipeViewport.current?.setAttribute("viewBox", camera);
+      }
+      const measureCamera = drawingVectorViewBox(fit, size, live.current, fit.width);
+      if (measureCamera) marks.current?.setAttribute("viewBox", measureCamera);
+      // Screen-sized pipe highlights follow the live camera before the
+      // throttled React/tile state catches up.
       pipeHalo.current?.setAttribute("stroke-width", String(7000 / (fit.width * scale)));
       pipeStroke.current?.setAttribute("stroke-width", String(4000 / (fit.width * scale)));
     }
@@ -1622,8 +1631,13 @@ export function DrawingSheetViewer({
           />
         )}
         {fit && pdfLinksEnabled && <DrawingPdfLinkLayer links={importedLinks} aspect={fit.aspect} onActivate={link => onPdfLink?.(link)} />}
+      </div>
+      {/* Vector overlays fill the viewport rather than the CSS-scaled sheet.
+          Their camera follows every gesture frame without rebuilding ink. */}
         {fit && (
           <DrawingAnnotationLayer
+            viewportRef={annotationViewport}
+            viewBox={drawingVectorViewBox(fit, frameSize, view) ?? undefined}
             annotations={visibleAnnotations}
             aspect={fit.aspect}
             selectedId={pipeMode ? null : editorProps.selectedId}
@@ -1653,11 +1667,12 @@ export function DrawingSheetViewer({
         )}
         {fit && pipeHighlight && (
           <svg
+            ref={pipeViewport}
             aria-label="Selected pipe system"
             role="img"
             data-pipe-segment-count={pipe.selection!.segments.length}
-            className="pointer-events-none absolute inset-0 h-full w-full"
-            viewBox={`0 0 1000 ${fit.aspect * 1000}`}
+            className="pointer-events-none absolute inset-0 z-[2] h-full w-full"
+            viewBox={drawingVectorViewBox(fit, frameSize, view) ?? `0 0 1000 ${fit.aspect * 1000}`}
           >
             <path
               ref={pipeHalo}
@@ -1680,15 +1695,13 @@ export function DrawingSheetViewer({
             />
           </svg>
         )}
-      </div>
       {fit && (marked.length > 0 || snapLine) && (
-        <div
+        <svg
           ref={marks}
           aria-hidden="true"
-          className="pointer-events-none absolute top-1/2 left-1/2 z-[1] origin-center"
-          style={{ width: fit.width, height: fit.height }}
+          className="pointer-events-none absolute inset-0 z-[4] h-full w-full overflow-hidden"
+          viewBox={drawingVectorViewBox(fit, frameSize, view, fit.width) ?? `0 0 ${fit.width} ${fit.height}`}
         >
-          <svg className="h-full w-full overflow-visible" viewBox={`0 0 ${fit.width} ${fit.height}`}>
             {snapLine && (
               <g>
                 <line
@@ -1851,8 +1864,7 @@ export function DrawingSheetViewer({
                 </g>
               );
             })}
-          </svg>
-        </div>
+        </svg>
       )}
       {!measuring && <DrawingDraftToolbar tool={annotationTool} count={editor.pointCount} canFinish={editor.canFinish} onUndo={editor.undo} onCancel={editor.clear} onFinish={editor.finish} />}
       {loupe && fit && frame.current && (() => {

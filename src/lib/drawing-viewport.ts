@@ -30,6 +30,29 @@ function valid(fit: DrawingSize, frame: DrawingSize, view: DrawingView) {
     Number.isFinite(view.y)
   );
 }
+
+/** Camera for a viewport-sized SVG. Zoom stays in SVG coordinates, so mobile
+ * compositors never enlarge a sheet-sized bitmap of the annotation layer. */
+export function drawingVectorViewBox(
+  fit: DrawingSize,
+  frame: DrawingSize,
+  view: DrawingView,
+  coordinateWidth = 1000,
+): string | null {
+  if (
+    !valid(fit, frame, view) ||
+    !(coordinateWidth > 0) ||
+    !Number.isFinite(coordinateWidth)
+  )
+    return null;
+  const unit = coordinateWidth / (fit.width * view.scale);
+  const left = coordinateWidth / 2 - (frame.width / 2 + view.x) * unit;
+  const top =
+    (coordinateWidth * fit.height) / fit.width / 2 -
+    (frame.height / 2 + view.y) * unit;
+  return `${left} ${top} ${frame.width * unit} ${frame.height * unit}`;
+}
+
 export function visibleDrawingRect(
   fit: DrawingSize,
   frame: DrawingSize,

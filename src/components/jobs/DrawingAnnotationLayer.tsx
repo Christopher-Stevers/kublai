@@ -1,6 +1,6 @@
 "use client";
 
-import { memo } from "react";
+import { memo, type Ref } from "react";
 import type { DrawingEntity, DrawingMarkup } from "~/lib/drawing-workspace";
 import type { SheetScale } from "~/lib/sheet-measure";
 import {
@@ -25,6 +25,9 @@ type DrawingAnnotationLayerProps = {
   showResizeHandles?: boolean;
   showMoveArea?: boolean;
   canEditAnnotation?: (entityId: string) => boolean;
+  /** Live SVG camera used by the viewer; printable layers keep the full sheet. */
+  viewportRef?: Ref<SVGSVGElement>;
+  viewBox?: string;
 };
 
 /** Saved geometry is independent of viewport movement; only one edited entity changes. */
@@ -280,11 +283,16 @@ export const DrawingAnnotationLayer = memo(function DrawingAnnotationLayer({
   showResizeHandles = true,
   showMoveArea = false,
   canEditAnnotation,
+  viewportRef,
+  viewBox,
 }: DrawingAnnotationLayerProps) {
+  // Clip the live camera so offscreen ink/masks do not paint a huge sheet
+  // surface. Printable layers can still extend beyond sheet edges.
   return (
     <svg
-      className="pointer-events-none absolute inset-0 z-[3] h-full w-full overflow-visible"
-      viewBox={`0 0 1000 ${1000 * aspect}`}
+      ref={viewportRef}
+      className={`pointer-events-none absolute inset-0 z-[3] h-full w-full ${viewBox ? "overflow-hidden" : "overflow-visible"}`}
+      viewBox={viewBox ?? `0 0 1000 ${1000 * aspect}`}
       aria-label="Drawing annotations"
     >
       {!hidden &&
