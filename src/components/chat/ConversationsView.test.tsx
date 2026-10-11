@@ -237,6 +237,7 @@ it("keeps notification controls out of person and group chats", () => {
 
 it("opens direct chats and job chats in the same workspace", () => {
   const view = render(<ConversationsView />);
+  fireEvent.click(screen.getByRole("button", { name: "Chat" }));
   fireEvent.click(screen.getByRole("button", { name: /Alex/ }));
   expect(mocks.push).toHaveBeenLastCalledWith(
     "/dashboard/chat?conversation=direct-other",
@@ -263,6 +264,7 @@ it("opens direct chats and job chats in the same workspace", () => {
       "Job team",
     ),
   ).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Chat" }));
   fireEvent.click(screen.getByRole("button", { name: /Review group/ }));
   expect(mocks.push).toHaveBeenLastCalledWith(
     "/dashboard/chat?conversation=room",
@@ -301,7 +303,7 @@ it("slides the chat panel open with a swipe and closed from the backdrop", () =>
   fireEvent.click(within(chats).getByRole("button", { name: "Close chats" }));
   expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 });
-it("renders one chat navigator when opening, dragging and closing the picker", () => {
+it("keeps the only chat navigator in the wood drawer when opening, dragging and closing", () => {
   const view = render(<ConversationsView />);
   const expectOneNavigator = () => {
     expect(
@@ -315,16 +317,22 @@ it("renders one chat navigator when opening, dragging and closing the picker", (
   fireEvent.click(screen.getByRole("button", { name: "Chat" }));
   expectOneNavigator();
   expect(screen.queryByLabelText("Chat list")).not.toBeInTheDocument();
-  expect(screen.getByRole("dialog", { name: "Chats" })).toBeVisible();
-  fireEvent.change(screen.getByRole("searchbox", { name: "Search chats" }), {
+  const woodDrawer = screen.getByRole("dialog", { name: "Chats" });
+  expect(woodDrawer).toBeVisible();
+  expect(woodDrawer.style.backgroundImage).toContain("chat-oak-planks.webp");
+  expect(woodDrawer.querySelector('nav[aria-label="Chats"]')).not.toBeNull();
+  const search = screen.getByRole("searchbox", { name: "Search chats" });
+  fireEvent.change(search, {
     target: { value: "Review" },
   });
   fireEvent.click(screen.getByRole("button", { name: "Close chats" }));
   expectOneNavigator();
   expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-  expect(screen.getByRole("searchbox", { name: "Search chats" })).toHaveValue(
-    "Review",
-  );
+  expect(
+    screen.queryByRole("searchbox", { name: "Search chats" }),
+  ).not.toBeInTheDocument();
+  expect(screen.queryByLabelText("Chat list")).not.toBeInTheDocument();
+  expect(search).toHaveValue("Review");
   const main = screen.getByRole("main", { name: "Current chat" });
   fireEvent.touchStart(main, { touches: [{ clientX: 20, clientY: 300 }] });
   fireEvent.touchMove(main, { touches: [{ clientX: 120, clientY: 305 }] });
@@ -334,6 +342,18 @@ it("renders one chat navigator when opening, dragging and closing the picker", (
     changedTouches: [{ clientX: 260, clientY: 305 }],
   });
   expectOneNavigator();
+});
+it("opens the wood picker on first visiting Chat without a selected conversation", () => {
+  mocks.params = "";
+  render(<ConversationsView />);
+  const drawer = screen.getByRole("dialog", { name: "Chats" });
+  expect(drawer.style.backgroundImage).toContain("chat-oak-planks.webp");
+  expect(screen.queryByLabelText("Chat list")).not.toBeInTheDocument();
+  fireEvent.click(within(drawer).getByRole("button", { name: "Close chats" }));
+  expect(screen.getByRole("main", { name: "Current chat" })).toBeVisible();
+  expect(
+    screen.queryByRole("navigation", { name: "Chats" }),
+  ).not.toBeInTheDocument();
 });
 it("keeps separate drafts and retry identities when switching conversations", async () => {
   mocks.send.mockRejectedValueOnce(new Error("Connection interrupted"));
@@ -383,9 +403,11 @@ it("returns to the selected conversation, draft, search and reading position aft
   fireEvent.change(screen.getByRole("textbox", { name: "Message" }), {
     target: { value: "Keep this draft" },
   });
+  fireEvent.click(screen.getByRole("button", { name: "Chat" }));
   fireEvent.change(screen.getByRole("searchbox", { name: "Search chats" }), {
     target: { value: "Review" },
   });
+  fireEvent.click(screen.getByRole("button", { name: "Close chats" }));
   const timeline = screen.getByLabelText("Messages");
   Object.defineProperties(timeline, {
     scrollHeight: { value: 2000 },
@@ -400,9 +422,11 @@ it("returns to the selected conversation, draft, search and reading position aft
   expect(screen.getByRole("textbox", { name: "Message" })).toHaveValue(
     "Keep this draft",
   );
+  fireEvent.click(screen.getByRole("button", { name: "Chat" }));
   expect(screen.getByRole("searchbox", { name: "Search chats" })).toHaveValue(
     "Review",
   );
+  fireEvent.click(screen.getByRole("button", { name: "Close chats" }));
   expect(screen.getByLabelText("Messages").scrollTop).toBe(640);
   mocks.params = "job=aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
   view.rerender(page(true));
@@ -484,7 +508,9 @@ it("does not restore another account's private chat", async () => {
     expect(screen.queryByText("Private review")).not.toBeInTheDocument(),
   );
   expect(
-    screen.getByText("Choose a direct, group or job chat from the list."),
+    screen.getByText(
+      "Select Chat above to choose a direct, group or job chat.",
+    ),
   ).toBeVisible();
 });
 

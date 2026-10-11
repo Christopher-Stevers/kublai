@@ -99,12 +99,21 @@ function ChatWorkspace({ initialJobId }: { initialJobId?: string }) {
     "drafts",
     () => new Map<string, ConversationDraft>(),
   );
-  const [chatsOpen, setChatsOpen] = useChatViewState("switcher", false);
-  const [search, setSearch] = useChatViewState("search", "");
   const [remembered, setRemembered] = useChatViewState<ChatDestination | null>(
     "destination",
     null,
   );
+  const [chatsOpen, setChatsOpen] = useChatViewState(
+    "switcher",
+    () =>
+      !(
+        params.get("conversation") ??
+        params.get("job") ??
+        initialJobId ??
+        remembered
+      ),
+  );
+  const [search, setSearch] = useChatViewState("search", "");
   const drawer = useRef<HTMLDivElement>(null);
   const chatButton = useRef<HTMLButtonElement>(null);
   // Live drawer position (0 closed, 1 open) while a finger is dragging it.
@@ -137,7 +146,7 @@ function ChatWorkspace({ initialJobId }: { initialJobId?: string }) {
       window.removeEventListener("keydown", escape);
       button?.focus({ preventScroll: true });
     };
-  }, [chatsOpen]);
+  }, [chatsOpen, setChatsOpen]);
   const [height, setHeight] = useState<number>();
   useEffect(() => {
     const resize = () => {
@@ -240,18 +249,6 @@ function ChatWorkspace({ initialJobId }: { initialJobId?: string }) {
       setError(text(reason));
     }
   };
-  const navigation = (memoryKey: string) => (
-    <ChatNavigation
-      memoryKey={memoryKey}
-      conversations={list.data?.conversations ?? []}
-      jobs={availableJobs}
-      selected={selected}
-      onSelect={choose}
-      loading={list.isLoading}
-      search={search}
-      onSearch={setSearch}
-    />
-  );
   const progress = drag ?? (chatsOpen ? 1 : 0);
   const pickerVisible = chatsOpen || drag !== null;
   const motion =
@@ -399,17 +396,9 @@ function ChatWorkspace({ initialJobId }: { initialJobId?: string }) {
             transition: motion,
           }}
         >
-          {!pickerVisible && (
-            <aside
-              aria-label="Chat list"
-              className={`${selected ? "hidden md:flex" : "flex"} min-h-0 w-full shrink-0 flex-col border-r md:w-72`}
-            >
-              {navigation("scroll:navigation:sidebar")}
-            </aside>
-          )}
           <main
             aria-label="Current chat"
-            className={`${selected ? "flex" : "hidden md:flex"} min-h-0 min-w-0 flex-1 flex-col`}
+            className="flex min-h-0 min-w-0 flex-1 flex-col"
           >
             {selected ? (
               <>
@@ -445,7 +434,7 @@ function ChatWorkspace({ initialJobId }: { initialJobId?: string }) {
                     Your conversations, in one place
                   </p>
                   <p className="text-muted-foreground mt-1 text-sm">
-                    Choose a direct, group or job chat from the list.
+                    Select Chat above to choose a direct, group or job chat.
                   </p>
                 </div>
               </div>
@@ -517,20 +506,18 @@ function ChatWorkspace({ initialJobId }: { initialJobId?: string }) {
             </Button>
           </div>
           <div className="min-h-0 flex-1">
-            {pickerVisible && (
-              <ChatNavigation
-                key={openCount}
-                conversations={list.data?.conversations ?? []}
-                jobs={availableJobs}
-                selected={selected}
-                onSelect={choose}
-                loading={list.isLoading}
-                search={search}
-                onSearch={setSearch}
-                memoryKey="scroll:navigation:switcher"
-                animate
-              />
-            )}
+            <ChatNavigation
+              key={openCount}
+              conversations={list.data?.conversations ?? []}
+              jobs={availableJobs}
+              selected={selected}
+              onSelect={choose}
+              loading={list.isLoading}
+              search={search}
+              onSearch={setSearch}
+              memoryKey="scroll:navigation:switcher"
+              animate
+            />
           </div>
         </div>
       </div>
