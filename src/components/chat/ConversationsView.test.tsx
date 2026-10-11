@@ -301,6 +301,40 @@ it("slides the chat panel open with a swipe and closed from the backdrop", () =>
   fireEvent.click(within(chats).getByRole("button", { name: "Close chats" }));
   expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 });
+it("renders one chat navigator when opening, dragging and closing the picker", () => {
+  const view = render(<ConversationsView />);
+  const expectOneNavigator = () => {
+    expect(
+      view.container.querySelectorAll('nav[aria-label="Chats"]'),
+    ).toHaveLength(1);
+    expect(
+      view.container.querySelectorAll('input[aria-label="Search chats"]'),
+    ).toHaveLength(1);
+  };
+  expectOneNavigator();
+  fireEvent.click(screen.getByRole("button", { name: "Chat" }));
+  expectOneNavigator();
+  expect(screen.queryByLabelText("Chat list")).not.toBeInTheDocument();
+  expect(screen.getByRole("dialog", { name: "Chats" })).toBeVisible();
+  fireEvent.change(screen.getByRole("searchbox", { name: "Search chats" }), {
+    target: { value: "Review" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Close chats" }));
+  expectOneNavigator();
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  expect(screen.getByRole("searchbox", { name: "Search chats" })).toHaveValue(
+    "Review",
+  );
+  const main = screen.getByRole("main", { name: "Current chat" });
+  fireEvent.touchStart(main, { touches: [{ clientX: 20, clientY: 300 }] });
+  fireEvent.touchMove(main, { touches: [{ clientX: 120, clientY: 305 }] });
+  expectOneNavigator();
+  expect(screen.queryByLabelText("Chat list")).not.toBeInTheDocument();
+  fireEvent.touchEnd(main, {
+    changedTouches: [{ clientX: 260, clientY: 305 }],
+  });
+  expectOneNavigator();
+});
 it("keeps separate drafts and retry identities when switching conversations", async () => {
   mocks.send.mockRejectedValueOnce(new Error("Connection interrupted"));
   const view = render(<ConversationsView />);

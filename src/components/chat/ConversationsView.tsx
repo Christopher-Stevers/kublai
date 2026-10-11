@@ -253,6 +253,7 @@ function ChatWorkspace({ initialJobId }: { initialJobId?: string }) {
     />
   );
   const progress = drag ?? (chatsOpen ? 1 : 0);
+  const pickerVisible = chatsOpen || drag !== null;
   const motion =
     drag === null
       ? "transform 420ms cubic-bezier(0.22, 1.18, 0.36, 1), opacity 300ms ease, border-radius 300ms ease"
@@ -388,7 +389,7 @@ function ChatWorkspace({ initialJobId }: { initialJobId?: string }) {
         onTouchCancel={touchEnd}
       >
         <div
-          inert={chatsOpen}
+          inert={pickerVisible}
           className="bg-card flex min-h-0 flex-1 origin-left overflow-hidden"
           style={{
             transform: progress
@@ -398,12 +399,14 @@ function ChatWorkspace({ initialJobId }: { initialJobId?: string }) {
             transition: motion,
           }}
         >
-          <aside
-            aria-label="Chat list"
-            className={`${selected ? "hidden md:flex" : "flex"} min-h-0 w-full shrink-0 flex-col border-r md:w-72`}
-          >
-            {navigation("scroll:navigation:sidebar")}
-          </aside>
+          {!pickerVisible && (
+            <aside
+              aria-label="Chat list"
+              className={`${selected ? "hidden md:flex" : "flex"} min-h-0 w-full shrink-0 flex-col border-r md:w-72`}
+            >
+              {navigation("scroll:navigation:sidebar")}
+            </aside>
+          )}
           <main
             aria-label="Current chat"
             className={`${selected ? "flex" : "hidden md:flex"} min-h-0 min-w-0 flex-1 flex-col`}
@@ -514,18 +517,20 @@ function ChatWorkspace({ initialJobId }: { initialJobId?: string }) {
             </Button>
           </div>
           <div className="min-h-0 flex-1">
-            <ChatNavigation
-              key={openCount}
-              conversations={list.data?.conversations ?? []}
-              jobs={availableJobs}
-              selected={selected}
-              onSelect={choose}
-              loading={list.isLoading}
-              search={search}
-              onSearch={setSearch}
-              memoryKey="scroll:navigation:switcher"
-              animate
-            />
+            {pickerVisible && (
+              <ChatNavigation
+                key={openCount}
+                conversations={list.data?.conversations ?? []}
+                jobs={availableJobs}
+                selected={selected}
+                onSelect={choose}
+                loading={list.isLoading}
+                search={search}
+                onSearch={setSearch}
+                memoryKey="scroll:navigation:switcher"
+                animate
+              />
+            )}
           </div>
         </div>
       </div>
