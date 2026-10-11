@@ -612,9 +612,9 @@ self.addEventListener("push", (event) => {
                 : data.type === "conversation-chat"
                   ? "You have a new chat message. Open ForemanHQ to read it."
                   : "There is new activity in a job chat. Open ForemanHQ to read it.",
-          icon: "/foremanhq/notification-icon.png",
+          icon: "/foremanhq/notification-icon-v2.png",
           // Android status-bar icon (white silhouette; the platform tints it).
-          badge: "/foremanhq/notification-badge.png",
+          badge: "/foremanhq/notification-badge-v2.png",
           // Browsers cannot play a custom sound; a short double buzz stands out instead.
           vibrate: [90, 60, 90],
           tag:
