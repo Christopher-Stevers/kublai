@@ -149,11 +149,13 @@ export function JobChatThread({
   embedded = false,
   headerControlsTarget = null,
   userId,
+  onUnavailable,
 }: {
   jobId: string;
   embedded?: boolean;
   headerControlsTarget?: HTMLElement | null;
   userId?: string;
+  onUnavailable?: (jobId: string) => void;
 }) {
   const sandbox = useTutorialSandbox();
   const memory = useChatViewMemory();
@@ -186,6 +188,7 @@ export function JobChatThread({
           embedded={embedded}
           headerControlsTarget={headerControlsTarget}
           resolvedUserId={userId}
+          onUnavailable={onUnavailable}
         />
       )}
     </div>
@@ -197,11 +200,13 @@ function AuthenticatedChatLobby({
   embedded,
   headerControlsTarget,
   resolvedUserId,
+  onUnavailable,
 }: {
   jobId: string;
   embedded: boolean;
   headerControlsTarget: HTMLElement | null;
   resolvedUserId?: string;
+  onUnavailable?: (jobId: string) => void;
 }) {
   const { userId: signedInUserId, isLoaded } = useAuth();
   const simulation = useEmployeeSimulation();
@@ -215,6 +220,7 @@ function AuthenticatedChatLobby({
       key={`${userId}:${jobId}`}
       jobId={jobId}
       userId={userId}
+      onUnavailable={onUnavailable}
       embedded={embedded}
       headerControlsTarget={headerControlsTarget}
     />
@@ -224,6 +230,7 @@ function AuthenticatedChatLobby({
 }
 
 function ChatLobby({
+  onUnavailable,
   jobId,
   userId,
   embedded = false,
@@ -231,6 +238,7 @@ function ChatLobby({
 }: {
   jobId: string;
   userId: string;
+  onUnavailable?: (jobId: string) => void;
   embedded?: boolean;
   headerControlsTarget?: HTMLElement | null;
 }) {
@@ -292,7 +300,8 @@ function ChatLobby({
       enabled: online,
       retry: 1,
       refetchOnWindowFocus: true,
-      refetchInterval: !inTutorial && visible && online ? 30_000 : false,
+      refetchInterval:
+        !inTutorial && visible && online ? (connected ? 30_000 : 5_000) : false,
     },
   );
   const accessRevoked = ["FORBIDDEN", "UNAUTHORIZED", "NOT_FOUND"].includes(
@@ -308,9 +317,21 @@ function ChatLobby({
         !inTutorial && online && visible && !connected ? 20_000 : false,
     },
   );
+  const unavailable = [overview.error, history.error].some((failure) =>
+    ["NOT_FOUND", "FORBIDDEN"].includes(failure?.data?.code ?? ""),
+  );
+  useEffect(() => {
+    if (unavailable && !inTutorial) onUnavailable?.(jobId);
+  }, [unavailable, inTutorial, onUnavailable, jobId]);
   const members = api.chat.members.useQuery(
     { jobId },
-    { enabled: online && showMembers && overview.data?.joined === true },
+    {
+      enabled:
+        online &&
+        !accessRevoked &&
+        showMembers &&
+        overview.data?.joined === true,
+    },
   );
   const join = api.chat.join.useMutation();
   const send = api.chat.send.useMutation();
@@ -886,8 +907,12 @@ function ChatLobby({
   }
   const lockedComposer = !draftLoaded || sending || draft.attempted;
   useReplyFocus(composer, !lockedComposer);
+  const connectionError = overview.error ?? history.error;
   const currentError =
-    error || (overview.error?.message ?? history.error?.message);
+    error ||
+    (connectionError
+      ? "Chat is temporarily unavailable. Reconnecting… Your draft is kept here."
+      : undefined);
   const accessError = [overview.error, history.error].find(
     (failure) =>
       failure?.data?.code === "FORBIDDEN" ||
@@ -1160,6 +1185,18 @@ function ChatLobby({
               className="bg-card text-destructive mb-2 rounded-md px-2 py-1 text-sm"
             >
               {currentError}
+              {!error && connectionError && (
+                <button
+                  type="button"
+                  className="ml-2 underline"
+                  onClick={() => {
+                    void utils.chat.getOverview.invalidate({ jobId });
+                    void utils.chat.history.invalidate({ jobId });
+                  }}
+                >
+                  Retry connection
+                </button>
+              )}
             </p>
           )}
           {storageError && (

@@ -14,6 +14,7 @@ import { JobChatThread as JobChatView } from "./JobChatThread";
 
 const mock = vi.hoisted(() => ({
   online: true,
+  overviewError: null as null | { message: string; data?: { code: string } },
   sandbox: null as { userId: string; runId: string } | null,
   auth: vi.fn(),
   loadDraft: vi.fn(),
@@ -81,7 +82,9 @@ vi.mock("~/trpc/react", () => ({
   api: {
     useUtils: () => utils,
     chat: {
-      getOverview: { useQuery: () => ({ data: mock.overview, error: null }) },
+      getOverview: {
+        useQuery: () => ({ data: mock.overview, error: mock.overviewError }),
+      },
       history: {
         useQuery: () => ({
           data: mock.history,
@@ -148,6 +151,7 @@ async function openChat() {
 beforeEach(() => {
   vi.clearAllMocks();
   mock.online = true;
+  mock.overviewError = null;
   mock.sandbox = null;
   mock.userId = "user-one";
   mock.saved = null;
@@ -632,4 +636,46 @@ it("retains job chat's older messages and reading position when leaving and retu
     expect(
       Number.isFinite((input as { beforeSequence: number }).beforeSequence),
     ).toBe(true);
+});
+
+it("reports a deleted job to the chat workspace without exposing cached messages or composer", async () => {
+  mock.overviewError = {
+    message: "Job not found.",
+    data: { code: "NOT_FOUND" },
+  };
+  const unavailable = vi.fn();
+  render(<JobChatView jobId="job-one" onUnavailable={unavailable} />);
+  await waitFor(() => expect(unavailable).toHaveBeenCalledWith("job-one"));
+  expect(
+    screen.queryByRole("textbox", { name: "Message" }),
+  ).not.toBeInTheDocument();
+  expect(screen.queryByText("Message 1")).not.toBeInTheDocument();
+});
+it("retains chat and draft during a gateway outage and recovers without leaving the job", async () => {
+  const unavailable = vi.fn();
+  const view = render(
+    <JobChatView jobId="job-one" onUnavailable={unavailable} />,
+  );
+  await waitFor(() =>
+    expect(screen.getByRole("textbox", { name: "Message" })).not.toBeDisabled(),
+  );
+  fireEvent.change(screen.getByRole("textbox", { name: "Message" }), {
+    target: { value: "Keep my unsent message" },
+  });
+  mock.overviewError = {
+    message: "ForemenHQ API returned HTTP 502 with text/html; charset=utf-8",
+  };
+  view.rerender(<JobChatView jobId="job-one" onUnavailable={unavailable} />);
+  expect(screen.getByText(/Chat is temporarily unavailable/)).toBeVisible();
+  expect(unavailable).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole("button", { name: "Retry connection" }));
+  expect(mock.invalidate).toHaveBeenCalledWith({ jobId: "job-one" });
+  mock.overviewError = null;
+  view.rerender(<JobChatView jobId="job-one" onUnavailable={unavailable} />);
+  expect(
+    screen.queryByText(/Chat is temporarily unavailable/),
+  ).not.toBeInTheDocument();
+  expect(screen.getByRole("textbox", { name: "Message" })).toHaveValue(
+    "Keep my unsent message",
+  );
 });

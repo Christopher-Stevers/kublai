@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import {
@@ -83,6 +83,7 @@ function ChatWorkspace({ initialJobId }: { initialJobId?: string }) {
     online = useOnlineStatus(),
     utils = api.useUtils();
   const jobs = useReplicacheJobsList();
+  const [unavailableJob, setUnavailableJob] = useState<string | null>(null);
   const [newOpen, setNewOpen] = useState(false),
     [target, setTarget] = useState<ChatTarget>({
       mode: "direct",
@@ -166,11 +167,12 @@ function ChatWorkspace({ initialJobId }: { initialJobId?: string }) {
   const conversationId =
     params.get("conversation") ??
     (!explicit && remembered?.kind === "conversation" ? remembered.id : null);
-  const jobId = conversationId
+  const requestedJobId = conversationId
     ? null
     : (params.get("job") ??
       initialJobId ??
       (!explicit && remembered?.kind === "job" ? remembered.id : null));
+  const jobId = requestedJobId === unavailableJob ? null : requestedJobId;
   const selected: ChatDestination | null = conversationId
     ? { kind: "conversation", id: conversationId }
     : jobId
@@ -185,10 +187,21 @@ function ChatWorkspace({ initialJobId }: { initialJobId?: string }) {
       setRemembered({ kind: "conversation", id: conversationId });
     else if (jobId) setRemembered({ kind: "job", id: jobId });
   }, [conversationId, jobId, setRemembered]);
+  const leaveUnavailableJob = useCallback(
+    (id: string) => {
+      setUnavailableJob(id);
+      setRemembered(null);
+      setChatsOpen(true);
+      router.replace("/dashboard/chat", { scroll: false });
+    },
+    [router, setRemembered, setChatsOpen],
+  );
   const create = api.conversations.create.useMutation();
   const availableJobs: { id: string; name: string }[] = jobs
-    .filter((item) =>
-      /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(item.id),
+    .filter(
+      (item) =>
+        item.id !== unavailableJob &&
+        /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(item.id),
     )
     .map(({ id, name }) => ({ id, name }));
   if (jobId && !availableJobs.some((item) => item.id === jobId))
@@ -197,6 +210,7 @@ function ChatWorkspace({ initialJobId }: { initialJobId?: string }) {
       name: "Current job",
     });
   const choose = (chat: ChatDestination) => {
+    setUnavailableJob(null);
     setChatsOpen(false);
     setDrag(null);
     router.push(
@@ -351,6 +365,11 @@ function ChatWorkspace({ initialJobId }: { initialJobId?: string }) {
           your draft.
         </p>
       )}
+      {unavailableJob && (
+        <p role="status" className="bg-muted shrink-0 px-4 py-2 text-sm">
+          That job was deleted or is no longer available. Choose another chat.
+        </p>
+      )}
       {list.error && (
         <p role="alert" className="text-destructive shrink-0 px-4 py-2 text-sm">
           Could not load chats.{" "}
@@ -397,6 +416,7 @@ function ChatWorkspace({ initialJobId }: { initialJobId?: string }) {
                     embedded
                     headerControlsTarget={headerControlsTarget}
                     userId={list.data?.userId}
+                    onUnavailable={leaveUnavailableJob}
                   />
                 ) : (
                   conversationId && (

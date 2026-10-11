@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
   read: vi.fn(),
   invalidate: vi.fn(),
   push: vi.fn(),
+  replace: vi.fn(),
   denied: false,
   deleted: false,
   source: null as null | { href: string; title: string; capturedAt: string },
@@ -25,12 +26,18 @@ const mocks = vi.hoisted(() => ({
   next: null as number | null,
 }));
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: mocks.push }),
+  useRouter: () => ({ push: mocks.push, replace: mocks.replace }),
   useSearchParams: () => new URLSearchParams(mocks.params),
 }));
 vi.mock("next/dynamic", () => ({
   default:
-    () => (props: { jobId: string; embedded: boolean; userId?: string }) => (
+    () =>
+    (props: {
+      jobId: string;
+      embedded: boolean;
+      userId?: string;
+      onUnavailable?: (id: string) => void;
+    }) => (
       <div
         data-testid="job-thread"
         data-job={props.jobId}
@@ -38,6 +45,9 @@ vi.mock("next/dynamic", () => ({
         data-user={props.userId}
       >
         Job messages
+        <button onClick={() => props.onUnavailable?.(props.jobId)}>
+          Job unavailable
+        </button>
       </div>
     ),
 }));
@@ -442,4 +452,27 @@ it("does not restore another account's private chat", async () => {
   expect(
     screen.getByText("Choose a direct, group or job chat from the list."),
   ).toBeVisible();
+});
+
+it("leaves a deleted job, removes its navigation entry and forgets it on returning to Chat", async () => {
+  mocks.params = "job=aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+  const page = (visible: boolean) => (
+    <ChatViewProvider>
+      {visible ? <ConversationsView /> : <div>Other page</div>}
+    </ChatViewProvider>
+  );
+  const view = render(page(true));
+  fireEvent.click(screen.getByRole("button", { name: "Job unavailable" }));
+  expect(mocks.replace).toHaveBeenCalledWith("/dashboard/chat", {
+    scroll: false,
+  });
+  expect(screen.queryByTestId("job-thread")).not.toBeInTheDocument();
+  expect(screen.getByText(/That job was deleted/)).toBeVisible();
+  expect(
+    screen.queryByRole("button", { name: /Site A/ }),
+  ).not.toBeInTheDocument();
+  view.rerender(page(false));
+  mocks.params = "";
+  view.rerender(page(true));
+  expect(screen.queryByTestId("job-thread")).not.toBeInTheDocument();
 });
