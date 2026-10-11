@@ -11,7 +11,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { CameraIcon, Loader2Icon, XIcon } from "lucide-react";
+import { CameraIcon, ScanIcon, Loader2Icon, XIcon } from "lucide-react";
 import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
 import {
@@ -100,7 +100,7 @@ export function SnapshotProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
   const [phase, setPhase] = useState<
-    "idle" | "choose" | "capture" | "screen" | "select" | "share" | "error"
+    "idle" | "capture" | "screen" | "select" | "share" | "error"
   >("idle");
   const [capture, setCapture] = useState<Capture | null>(null);
   const [rect, setRect] = useState<SnapshotRect | null>(null);
@@ -200,6 +200,7 @@ export function SnapshotProvider({ children }: { children: React.ReactNode }) {
   const screenshotInput = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [locked, setLocked] = useState(false);
+  const pendingSelection = useRef<SnapshotRect | null>(null);
   const drag = useRef<{ x: number; y: number } | null>(null),
     generation = useRef(0);
   const attempt = useRef<{
@@ -235,6 +236,7 @@ export function SnapshotProvider({ children }: { children: React.ReactNode }) {
   const release = useCallback(() => {
     generation.current++;
     drag.current = null;
+    pendingSelection.current = null;
     setPhase("idle");
     setCapture(null);
     setRect(null);
@@ -294,16 +296,14 @@ export function SnapshotProvider({ children }: { children: React.ReactNode }) {
     const handle = (e: KeyboardEvent) => {
       if (e.key === "Tab" && overlay) {
         const buttons = [
-          ...overlay.querySelectorAll<HTMLButtonElement>(
-            "button:not(:disabled)",
+          ...overlay.querySelectorAll<HTMLElement>(
+            "button:not(:disabled), input:not(:disabled)",
           ),
         ];
         if (buttons.length) {
           e.preventDefault();
           e.stopImmediatePropagation();
-          const index = buttons.indexOf(
-            document.activeElement as HTMLButtonElement,
-          );
+          const index = buttons.indexOf(document.activeElement as HTMLElement);
           buttons[
             (index + (e.shiftKey ? buttons.length - 1 : 1)) % buttons.length
           ]?.focus();
@@ -350,7 +350,7 @@ export function SnapshotProvider({ children }: { children: React.ReactNode }) {
     }
   };
   const beginCapture = () => {
-    if (phase !== "idle" && phase !== "choose") return;
+    if (phase !== "idle") return;
     if (editing && !saved.data) return;
     if (editing) prepareEdit();
     window.dispatchEvent(new Event(SNAPSHOT_FREEZE_EVENT));
@@ -387,8 +387,7 @@ export function SnapshotProvider({ children }: { children: React.ReactNode }) {
   };
   const start = () => {
     if (phase !== "idle") return;
-    if (editing) beginCapture();
-    else setPhase("choose");
+    beginCapture();
   };
   const captureOnOpen = useEffectEvent(() => beginCapture());
   const autoStarted = useRef<string | null>(null);
@@ -472,6 +471,16 @@ export function SnapshotProvider({ children }: { children: React.ReactNode }) {
       setBusy(false);
     }
   };
+  const completePendingSelection = useEffectEvent(() => {
+    const selected = pendingSelection.current;
+    if (!selected) return;
+    pendingSelection.current = null;
+    void crop(selected);
+  });
+  useEffect(() => {
+    if (phase === "select" && capture && pendingSelection.current)
+      completePendingSelection();
+  }, [phase, capture]);
   const share = async () => {
     if (busy || !blob || !validChatTarget(target) || (editing && !saved.data))
       return;
@@ -629,17 +638,17 @@ export function SnapshotProvider({ children }: { children: React.ReactNode }) {
             role="dialog"
             aria-modal="true"
             aria-label="Select snapshot area"
-            className="fixed inset-0 z-[200] touch-none overflow-hidden bg-black/20"
+            className="fixed inset-0 z-[200] overflow-hidden bg-black/20"
             style={{
-              cursor: phase === "select" ? "crosshair" : "wait",
+              cursor: "crosshair",
               pointerEvents: "auto",
             }}
             onPointerDown={(e) => {
               if (
-                phase !== "select" ||
+                (phase !== "select" && phase !== "capture") ||
                 busy ||
                 e.button !== 0 ||
-                (e.target as Element).closest("button")
+                (e.target as Element).closest("[data-snapshot-controls]")
               )
                 return;
               e.preventDefault();
@@ -649,29 +658,31 @@ export function SnapshotProvider({ children }: { children: React.ReactNode }) {
               setError("");
             }}
             onPointerMove={(e) => {
-              if (!drag.current || !capture) return;
+              if (!drag.current) return;
               setRect(
                 snapshotRect(
                   drag.current,
                   { x: e.clientX, y: e.clientY },
-                  capture.width,
-                  capture.height,
+                  capture?.width ?? innerWidth,
+                  capture?.height ?? innerHeight,
                 ),
               );
             }}
             onPointerUp={(e) => {
-              if (!drag.current || !capture) return;
+              if (!drag.current) return;
               const selected = snapshotRect(
                 drag.current,
                 { x: e.clientX, y: e.clientY },
-                capture.width,
-                capture.height,
+                capture?.width ?? innerWidth,
+                capture?.height ?? innerHeight,
               );
               drag.current = null;
               setRect(selected);
-              void crop(selected);
+              if (capture) void crop(selected);
+              else pendingSelection.current = selected;
             }}
             onPointerCancel={() => {
+              pendingSelection.current = null;
               drag.current = null;
               setRect(null);
             }}
@@ -683,6 +694,7 @@ export function SnapshotProvider({ children }: { children: React.ReactNode }) {
                 className="pointer-events-none absolute inset-0 h-full w-full"
               />
             )}
+            <div aria-hidden="true" className="absolute inset-0 touch-none" />
             {rect && (
               <div
                 className="pointer-events-none absolute border-2 border-sky-400 bg-sky-300/10"
@@ -695,41 +707,56 @@ export function SnapshotProvider({ children }: { children: React.ReactNode }) {
                 }}
               />
             )}
-            <div className="bg-background absolute top-3 left-1/2 flex max-w-[calc(100%-1rem)] -translate-x-1/2 items-center gap-3 rounded-lg border px-3 py-2 shadow-lg">
-              <span className="text-sm">
-                {phase === "capture"
-                  ? "Preparing snapshot…"
-                  : busy
-                    ? "Creating image…"
-                    : "Drag a window around the area to share."}
-              </span>
-              {phase === "capture" || busy ? (
-                <Loader2Icon className="size-4 shrink-0 animate-spin" />
-              ) : (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() =>
-                    capture &&
-                    void crop({
-                      x: 0,
-                      y: 0,
-                      width: capture.width,
-                      height: capture.height,
-                    })
-                  }
-                >
-                  Whole view
-                </Button>
+            <div
+              data-snapshot-controls
+              className="bg-background/70 border-border/50 absolute top-3 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-full border p-1 shadow-lg backdrop-blur-md"
+            >
+              {(phase === "capture" || busy) && (
+                <span role="status" className="sr-only">
+                  {busy ? "Creating image…" : "Preparing snapshot…"}
+                </span>
               )}
+              <SavedSnapshotPicker
+                disabled={busy || phase !== "select"}
+                onEdit={(href) => {
+                  release();
+                  window.location.assign(href);
+                }}
+              />
               <Button
                 size="icon"
                 variant="ghost"
+                className="rounded-full"
+                aria-label="Full screen snapshot"
+                disabled={busy || phase !== "select"}
+                onClick={() =>
+                  capture &&
+                  void crop({
+                    x: 0,
+                    y: 0,
+                    width: capture.width,
+                    height: capture.height,
+                  })
+                }
+              >
+                {phase === "capture" || busy ? (
+                  <Loader2Icon
+                    aria-hidden="true"
+                    className="size-4 animate-spin"
+                  />
+                ) : (
+                  <ScanIcon aria-hidden="true" className="size-4" />
+                )}
+              </Button>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="rounded-full"
                 disabled={busy}
                 aria-label="Cancel snapshot"
                 onClick={release}
               >
-                <XIcon className="size-4" />
+                <XIcon aria-hidden="true" className="size-4" />
               </Button>
             </div>
             {error && (
@@ -787,12 +814,7 @@ export function SnapshotProvider({ children }: { children: React.ReactNode }) {
           )}
         {overlay}
         <Dialog
-          open={
-            phase === "choose" ||
-            phase === "share" ||
-            phase === "screen" ||
-            phase === "error"
-          }
+          open={phase === "share" || phase === "screen" || phase === "error"}
           onOpenChange={(open) => {
             if (!open && !busy) release();
           }}
@@ -818,28 +840,14 @@ export function SnapshotProvider({ children }: { children: React.ReactNode }) {
                 Snapshot
               </span>
             </DialogTitle>
-            <DialogDescription
-              className={phase === "choose" ? "sr-only" : undefined}
-            >
-              {phase === "choose"
-                ? "Snapshot options"
-                : phase === "share"
-                  ? editing
-                    ? "Choose who should receive this new snapshot. Sending replaces the old snapshot."
-                    : "Review the image and choose who should receive it."
-                  : "Capture a selected area and share it in chat."}
+            <DialogDescription>
+              {phase === "share"
+                ? editing
+                  ? "Choose who should receive this new snapshot. Sending replaces the old snapshot."
+                  : "Review the image and choose who should receive it."
+                : "Capture a selected area and share it in chat."}
             </DialogDescription>
-            {phase === "choose" ? (
-              <SavedSnapshotPicker
-                onCapture={beginCapture}
-                onEdit={(href) => {
-                  release();
-                  // Saved view state is restored when its page mounts. A full
-                  // navigation also restores it when editing the same drawing.
-                  window.location.assign(href);
-                }}
-              />
-            ) : phase === "share" ? (
+            {phase === "share" ? (
               <>
                 <img
                   alt="Snapshot preview"

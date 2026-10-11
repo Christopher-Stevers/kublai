@@ -86,7 +86,6 @@ function setup() {
     </SnapshotProvider>,
   );
   fireEvent.click(screen.getByText("Start snapshot"));
-  fireEvent.click(screen.getByText("New snapshot"));
 }
 beforeEach(() => {
   mocks.params = "";
@@ -150,26 +149,37 @@ function editSetup() {
     </SnapshotProvider>,
   );
 }
-it("opens the snapshot tool choices before taking a new capture", () => {
-  render(
-    <SnapshotProvider>
-      <Launcher />
-    </SnapshotProvider>,
-  );
-  fireEvent.click(screen.getByText("Start snapshot"));
-  // Minimal menu: saved snapshots fold away behind a small arrow.
-  expect(screen.getByRole("button", { name: "My snapshots" })).toBeVisible();
-  expect(screen.getByText("New snapshot")).toBeVisible();
-  expect(mocks.capture).not.toHaveBeenCalled();
-  expect(
-    document.querySelector('[data-slot="dialog-overlay"]'),
-  ).toHaveAttribute("data-snapshot-ui");
+it("opens directly in selection mode with compact capture controls", async () => {
+  setup();
+  await screen.findByAltText("Page ready for snapshot selection");
+  expect(mocks.capture).toHaveBeenCalledOnce();
+  expect(screen.queryByText("New snapshot")).toBeNull();
+  expect(screen.queryByText("Drag a window around the area to share.")).toBeNull();
+  expect(screen.getByRole("button", { name: "Saved snapshots" })).toBeVisible();
+  expect(screen.getByRole("button", { name: "Full screen snapshot" })).toBeEnabled();
+  fireEvent.click(screen.getByRole("button", { name: "Saved snapshots" }));
+  expect(screen.getByLabelText("Search saved snapshots")).toBeVisible();
+  expect(mocks.crop).not.toHaveBeenCalled();
 });
+it("accepts an area dragged while the page capture is preparing", async () => {
+  let ready!: (canvas: { toDataURL: () => string }) => void;
+  mocks.capture.mockReturnValue(new Promise(resolve => { ready = resolve; }));
+  setup();
+  const overlay = screen.getByRole("dialog", { name: "Select snapshot area" });
+  overlay.setPointerCapture = vi.fn();
+  fireEvent.pointerDown(overlay, { button: 0, clientX: 20, clientY: 30, pointerId: 1 });
+  fireEvent.pointerUp(overlay, { button: 0, clientX: 220, clientY: 180, pointerId: 1 });
+  expect(mocks.crop).not.toHaveBeenCalled();
+  ready({ toDataURL: () => "data:image/png;base64,a" });
+  await screen.findByAltText("Snapshot preview");
+  expect(mocks.crop).toHaveBeenCalledWith(expect.anything(), { x: 20, y: 30, width: 200, height: 150 }, expect.anything());
+});
+
 it("opens the normal capture flow automatically and remakes a snapshot with fresh sharing options", async () => {
   mocks.edit.mockRejectedValueOnce(new Error("Connection interrupted"));
   editSetup();
   await screen.findByAltText("Page ready for snapshot selection");
-  fireEvent.click(screen.getByText("Whole view"));
+  fireEvent.click(screen.getByRole("button", { name: "Full screen snapshot" }));
   expect(await screen.findByLabelText("Snapshot message")).toHaveValue("");
   expect(screen.queryByText("Keep image")).not.toBeInTheDocument();
   expect(screen.getByText("Send snapshot")).toBeDisabled();
@@ -261,7 +271,7 @@ it("keeps the fresh capture and sharing flow reachable in fullscreen and after t
         screen.getByRole("dialog", { name: "Select snapshot area" }),
       ),
     ).toBe(true);
-    fireEvent.click(screen.getByText("Whole view"));
+    fireEvent.click(screen.getByRole("button", { name: "Full screen snapshot" }));
     await screen.findByAltText("Snapshot preview");
     expect(drawing.contains(screen.getByAltText("Snapshot preview"))).toBe(
       true,
@@ -285,7 +295,7 @@ it("retries the same snapshot, upload and message identity after an uncertain se
   mocks.send.mockRejectedValueOnce(new Error("Connection interrupted"));
   setup();
   await screen.findByAltText("Page ready for snapshot selection");
-  fireEvent.click(screen.getByText("Whole view"));
+  fireEvent.click(screen.getByRole("button", { name: "Full screen snapshot" }));
   await screen.findByAltText("Snapshot preview");
   fireEvent.click(screen.getByRole("radio", { name: "Test recipient" }));
   fireEvent.change(screen.getByLabelText("Snapshot message"), {

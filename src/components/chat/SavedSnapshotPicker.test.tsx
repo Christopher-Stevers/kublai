@@ -34,20 +34,18 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 it("opens a saved view for editing directly from the snapshot picker", () => {
-  const edit = vi.fn(),
-    capture = vi.fn();
-  render(<SavedSnapshotPicker onCapture={capture} onEdit={edit} />);
-  fireEvent.click(screen.getByRole("button", { name: "My snapshots" }));
+  const edit = vi.fn();
+  render(<SavedSnapshotPicker onEdit={edit} />);
+  fireEvent.click(screen.getByRole("button", { name: "Saved snapshots" }));
   fireEvent.click(screen.getByRole("button", { name: /M-302/ }));
   expect(edit).toHaveBeenCalledWith(
     "/dashboard?drawingSheet=sheet&editSnapshot=saved&snapshotChat=chat#snapshot=saved",
   );
-  fireEvent.click(screen.getByText("New snapshot"));
-  expect(capture).toHaveBeenCalledOnce();
+  expect(screen.queryByText("New snapshot")).toBeNull();
 });
 it("searches with debounce and resets pagination for a different query", async () => {
-  render(<SavedSnapshotPicker onCapture={vi.fn()} onEdit={vi.fn()} />);
-  fireEvent.click(screen.getByRole("button", { name: "My snapshots" }));
+  render(<SavedSnapshotPicker onEdit={vi.fn()} />);
+  fireEvent.click(screen.getByRole("button", { name: "Saved snapshots" }));
   fireEvent.click(screen.getByText("Older"));
   expect(mocks.query).toHaveBeenLastCalledWith(
     { search: "", beforeSequence: 40 },
@@ -64,32 +62,32 @@ it("searches with debounce and resets pagination for a different query", async (
     ),
   );
 });
-it("shows an empty library and still allows new captures", () => {
+it("shows an empty library in the saved-list popover", () => {
   mocks.query.mockReturnValue({ data: { snapshots: [], nextCursor: null } });
-  render(<SavedSnapshotPicker onCapture={vi.fn()} onEdit={vi.fn()} />);
-  fireEvent.click(screen.getByRole("button", { name: "My snapshots" }));
+  render(<SavedSnapshotPicker onEdit={vi.fn()} />);
+  fireEvent.click(screen.getByRole("button", { name: "Saved snapshots" }));
   expect(
     screen.getByText("Snapshots you send in chat will appear here."),
   ).toBeVisible();
-  expect(screen.getByText("New snapshot")).toBeEnabled();
+  expect(screen.getByRole("button", { name: "Saved snapshots" })).toBeEnabled();
 });
 it("shows load errors and retries without navigating away", () => {
   mocks.query.mockReturnValue({
     error: new Error("Connection lost"),
     refetch: mocks.refetch,
   });
-  render(<SavedSnapshotPicker onCapture={vi.fn()} onEdit={vi.fn()} />);
-  fireEvent.click(screen.getByRole("button", { name: "My snapshots" }));
+  render(<SavedSnapshotPicker onEdit={vi.fn()} />);
+  fireEvent.click(screen.getByRole("button", { name: "Saved snapshots" }));
   expect(screen.getByRole("alert")).toHaveTextContent("Connection lost");
   fireEvent.click(screen.getByText("Try again"));
   expect(mocks.refetch).toHaveBeenCalledOnce();
 });
-it("keeps saved snapshots folded away until the arrow is tapped", () => {
+it("keeps saved snapshots folded away until the list button is tapped", () => {
   mocks.query.mockClear();
-  render(<SavedSnapshotPicker onCapture={vi.fn()} onEdit={vi.fn()} />);
+  render(<SavedSnapshotPicker onEdit={vi.fn()} />);
   expect(screen.queryByRole("button", { name: /M-302/ })).toBeNull();
   expect(screen.queryByLabelText("Search saved snapshots")).toBeNull();
   expect(mocks.query).toHaveBeenLastCalledWith(expect.anything(), { enabled: false });
-  fireEvent.click(screen.getByRole("button", { name: "My snapshots" }));
+  fireEvent.click(screen.getByRole("button", { name: "Saved snapshots" }));
   expect(screen.getByRole("button", { name: /M-302/ })).toBeVisible();
 });

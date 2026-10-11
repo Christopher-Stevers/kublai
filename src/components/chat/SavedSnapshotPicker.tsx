@@ -1,19 +1,16 @@
 "use client";
 import { useEffect, useState } from "react";
-import { CameraIcon, ChevronDownIcon, PencilIcon } from "lucide-react";
+import { ListIcon, PencilIcon } from "lucide-react";
 import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
 import { snapshotEditHref } from "~/lib/snapshot-edit";
 
-/**
- * Minimal snapshot menu: New snapshot, plus a small arrow that drops down
- * your saved snapshots for editing (only fetched when opened).
- */
+/** Saved snapshots popover, fetched only when the list button is opened. */
 export function SavedSnapshotPicker({
-  onCapture,
+  disabled = false,
   onEdit,
 }: {
-  onCapture: () => void;
+  disabled?: boolean;
   onEdit: (href: string) => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -33,24 +30,22 @@ export function SavedSnapshotPicker({
     { enabled: open },
   );
   return (
-    <div className="space-y-2">
-      <Button className="w-full" onClick={onCapture}>
-        <CameraIcon className="size-4" /> New snapshot
-      </Button>
-      <button
+    <div className="relative">
+      <Button
         type="button"
+        size="icon"
+        variant="ghost"
+        className="rounded-full"
+        aria-label="Saved snapshots"
         aria-expanded={open}
+        disabled={disabled}
         onClick={() => setOpen((value) => !value)}
-        className="text-muted-foreground hover:text-foreground flex w-full items-center justify-center gap-1 py-1 text-sm"
       >
-        My snapshots
-        <ChevronDownIcon
-          className={`size-4 transition-transform ${open ? "rotate-180" : ""}`}
-          aria-hidden="true"
-        />
-      </button>
+        <ListIcon className="size-4" aria-hidden="true" />
+      </Button>
       {open && (
-        <div className="space-y-2">
+        <div className="bg-background/95 absolute top-full left-1/2 z-10 mt-2 w-[min(20rem,calc(100vw-2rem))] -translate-x-1/3 space-y-2 rounded-xl border p-3 shadow-xl backdrop-blur-md">
+          <p className="text-sm font-medium">Saved snapshots</p>
           <input
             type="search"
             aria-label="Search saved snapshots"
@@ -61,7 +56,10 @@ export function SavedSnapshotPicker({
             className="bg-background h-9 w-full rounded-md border px-3 text-sm"
           />
           {saved.isPending ? (
-            <p role="status" className="text-muted-foreground py-2 text-center text-sm">
+            <p
+              role="status"
+              className="text-muted-foreground py-2 text-center text-sm"
+            >
               Loading…
             </p>
           ) : saved.error ? (
@@ -69,13 +67,19 @@ export function SavedSnapshotPicker({
               <p role="alert" className="text-destructive text-sm">
                 {saved.error.message}
               </p>
-              <Button size="sm" variant="outline" onClick={() => void saved.refetch()}>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => void saved.refetch()}
+              >
                 Try again
               </Button>
             </div>
           ) : !saved.data?.snapshots.length ? (
             <p className="text-muted-foreground py-2 text-center text-sm">
-              {query ? "No snapshots match your search." : "Snapshots you send in chat will appear here."}
+              {query
+                ? "No snapshots match your search."
+                : "Snapshots you send in chat will appear here."}
             </p>
           ) : (
             <div className="max-h-[40dvh] overflow-y-auto rounded-md border">
@@ -94,13 +98,17 @@ export function SavedSnapshotPicker({
                   />
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm font-medium">
-                      {snapshot.source?.title ?? (snapshot.body.trim() ? snapshot.body : "Snapshot")}
+                      {snapshot.source?.title ??
+                        (snapshot.body.trim() ? snapshot.body : "Snapshot")}
                     </span>
                     <span className="text-muted-foreground block truncate text-xs">
                       {snapshot.createdAt.toLocaleDateString()}
                     </span>
                   </span>
-                  <PencilIcon className="text-muted-foreground size-4 shrink-0" aria-hidden="true" />
+                  <PencilIcon
+                    className="text-muted-foreground size-4 shrink-0"
+                    aria-hidden="true"
+                  />
                 </button>
               ))}
             </div>
@@ -110,7 +118,9 @@ export function SavedSnapshotPicker({
               <Button
                 size="sm"
                 variant="ghost"
-                disabled={!cursors.length || saved.isFetching || search.trim() !== query}
+                disabled={
+                  !cursors.length || saved.isFetching || search.trim() !== query
+                }
                 onClick={() => setCursors((values) => values.slice(0, -1))}
               >
                 Newer
@@ -118,7 +128,11 @@ export function SavedSnapshotPicker({
               <Button
                 size="sm"
                 variant="ghost"
-                disabled={!saved.data?.nextCursor || saved.isFetching || search.trim() !== query}
+                disabled={
+                  !saved.data?.nextCursor ||
+                  saved.isFetching ||
+                  search.trim() !== query
+                }
                 onClick={() => {
                   const next = saved.data?.nextCursor;
                   if (next) setCursors((values) => [...values, next]);
