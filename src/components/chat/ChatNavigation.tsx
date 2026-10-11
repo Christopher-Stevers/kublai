@@ -2,7 +2,6 @@
 import { useRef, useState, type CSSProperties } from "react";
 import { ChevronDownIcon, HardHatIcon, UsersIcon } from "lucide-react";
 import { useChatScroll } from "~/hooks/use-chat-scroll";
-import { Input } from "~/components/ui/input";
 import { cn } from "~/lib/utils";
 
 export type ChatDestination = { kind: "conversation" | "job"; id: string };
@@ -44,7 +43,6 @@ export function ChatNavigation({
   onSelect,
   loading,
   search,
-  onSearch,
   memoryKey,
   animate = false,
 }: {
@@ -54,7 +52,6 @@ export function ChatNavigation({
   onSelect: (chat: ChatDestination) => void;
   loading: boolean;
   search: string;
-  onSearch: (value: string) => void;
   memoryKey: string;
   /** Stagger the rows in, for the slide-out panel. */
   animate?: boolean;
@@ -110,16 +107,6 @@ export function ChatNavigation({
     animate ? { animationDelay: `${Math.min(row++, 14) * 28}ms` } : undefined;
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="shrink-0 p-3">
-        <Input
-          type="search"
-          aria-label="Search chats"
-          placeholder="Search chats…"
-          value={search}
-          onChange={(event) => onSearch(event.target.value)}
-          className="bg-muted/60 rounded-xl border-transparent"
-        />
-      </div>
       <nav
         ref={list}
         onScroll={rememberScroll}

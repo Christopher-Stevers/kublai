@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
+import { Input } from "~/components/ui/input";
 import {
   Dialog,
   DialogContent,
@@ -470,20 +471,19 @@ function ChatWorkspace({ initialJobId }: { initialJobId?: string }) {
             transition: `${motion}, visibility 0s linear ${chatsOpen || drag !== null ? "0ms" : "420ms"}`,
           }}
         >
-          <div className="flex shrink-0 items-center gap-3 px-4 pt-4">
-            <span className="bg-primary text-primary-foreground flex size-10 items-center justify-center rounded-2xl shadow-sm">
-              <MessageSquareIcon className="size-5" aria-hidden />
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="text-base leading-tight font-bold">Chats</p>
-              <p className="text-muted-foreground text-xs">
-                Swipe to switch, tap to jump in
-              </p>
-            </div>
+          <div className="flex shrink-0 items-center gap-2 px-3 pt-3 pb-2">
+            <Input
+              type="search"
+              aria-label="Search chats"
+              placeholder="Search chats…"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              className="bg-muted/60 h-10 min-w-0 flex-1 rounded-xl border-transparent"
+            />
             <Button
               variant="secondary"
               size="icon"
-              className="size-10 rounded-full"
+              className="size-10 shrink-0 rounded-full"
               aria-label="Start a new chat"
               disabled={!online}
               onClick={() => {
@@ -498,7 +498,7 @@ function ChatWorkspace({ initialJobId }: { initialJobId?: string }) {
             <Button
               variant="ghost"
               size="icon"
-              className="text-muted-foreground -mr-2 size-10 rounded-full"
+              className="text-muted-foreground -mr-2 size-10 shrink-0 rounded-full"
               aria-label="Close chats"
               onClick={() => setDrawer(false)}
             >
@@ -514,7 +514,6 @@ function ChatWorkspace({ initialJobId }: { initialJobId?: string }) {
               onSelect={choose}
               loading={list.isLoading}
               search={search}
-              onSearch={setSearch}
               memoryKey="scroll:navigation:switcher"
               animate
             />
