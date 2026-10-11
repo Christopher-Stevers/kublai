@@ -1,5 +1,7 @@
 "use client";
 
+import { isIosDevice, useInstallPrompt } from "~/lib/install-prompt";
+import { CheckCircle2Icon, DownloadIcon } from "lucide-react";
 import { RestartTutorialCard } from "~/components/tutorial/TutorialGate";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
@@ -31,6 +33,15 @@ const themes: { value: ThemePreference; label: string; icon: typeof Sun }[] = [
 ];
 
 export default function SettingsPage() {
+  const {
+    prompt: installPrompt,
+    installed: isInstalled,
+    install,
+  } = useInstallPrompt();
+  const [usesAppleInstallFlow, setUsesAppleInstallFlow] = useState(false);
+  const handleInstallApp = async () => {
+    if (!isInstalled) await install();
+  };
   const { theme, setTheme } = useThemePreference();
   const { sortMode, setSortMode, keywordGroups, setKeywordGroups } =
     useMaterialListSortPreference();
@@ -39,6 +50,7 @@ export default function SettingsPage() {
   const [message, setMessage] = useState("");
   useEffect(() => {
     setEmailClient(getPreferredEmailClient());
+    setUsesAppleInstallFlow(isIosDevice());
   }, []);
 
   const updateKeywords = (groups: readonly NameKeywordGroup[]) => {
@@ -66,6 +78,45 @@ export default function SettingsPage() {
       </div>
 
       <RestartTutorialCard />
+
+      <Card>
+        <CardHeader>
+          <CardTitle>App</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-1">
+            <p className="text-foreground text-sm font-medium">
+              Install ForemanHQ
+            </p>
+            <p className="text-muted-foreground text-sm">
+              Add the app to your device for a faster, full-screen experience.
+            </p>
+          </div>
+
+          {isInstalled ? (
+            <div className="inline-flex items-center gap-2 rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-900">
+              <CheckCircle2Icon className="h-3 w-3" /> App installed
+            </div>
+          ) : installPrompt ? (
+            <Button onClick={handleInstallApp} className="w-full sm:w-auto">
+              <DownloadIcon className="mr-2 h-4 w-4" /> Install App
+            </Button>
+          ) : (
+            <div className="border-border bg-muted/50 text-foreground/80 rounded-md border p-4 text-sm">
+              <p className="text-foreground font-medium">
+                {usesAppleInstallFlow
+                  ? "Use Add to Home Screen"
+                  : "Install from the browser menu"}
+              </p>
+              <p className="text-muted-foreground mt-1 text-sm">
+                {usesAppleInstallFlow
+                  ? "On iPhone or iPad, open the browser share menu and choose Add to Home Screen."
+                  : "Open your browser menu and choose Install app or Add to Home Screen."}
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
@@ -137,9 +188,9 @@ export default function SettingsPage() {
           <div className="mt-4 space-y-3 border-t pt-4">
             <h3 className="text-sm font-semibold">Name keyword priority</h3>
             <p className="text-muted-foreground text-sm">
-              Within each catalog, material, size, and category, groups higher in this
-              list come first. Separate related keywords with commas. The first
-              matching group wins; unmatched parts go last. Names sort
+              Within each catalog, material, size, and category, groups higher
+              in this list come first. Separate related keywords with commas.
+              The first matching group wins; unmatched parts go last. Names sort
               alphabetically within each group.
             </p>
             <p className="text-muted-foreground text-sm">

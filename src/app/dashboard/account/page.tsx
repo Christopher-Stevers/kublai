@@ -6,45 +6,16 @@ import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Badge } from "~/components/ui/badge";
 import { Input } from "~/components/ui/input";
-import {
-  Loader2,
-  ExternalLink,
-  WifiOffIcon,
-  DownloadIcon,
-  CheckCircle2Icon,
-  MailIcon,
-  MonitorIcon,
-  MoonIcon,
-  SunIcon,
-} from "lucide-react";
+import { Loader2, ExternalLink, WifiOffIcon } from "lucide-react";
 import { useOnlineStatus } from "~/hooks/use-online-status";
-import {
-  EMAIL_CLIENT_OPTIONS,
-  type EmailClientPreference,
-  getPreferredEmailClient,
-  setPreferredEmailClient,
-} from "~/lib/mailto";
-import { useThemePreference } from "~/components/app/ThemeProvider";
-import { type ThemePreference } from "~/lib/theme";
 import { FormSkeleton } from "~/components/ui/skeleton";
 import { PasswordSettings } from "~/components/account/PasswordSettings";
-import { isIosDevice, useInstallPrompt } from "~/lib/install-prompt";
-
 
 export default function AccountPage() {
   const [isCreatingPortal, setIsCreatingPortal] = useState(false);
   const [name, setName] = useState("");
-  const {
-    prompt: installPrompt,
-    installed: isInstalled,
-    install,
-  } = useInstallPrompt();
-  const [usesAppleInstallFlow, setUsesAppleInstallFlow] = useState(false);
-  const [emailClient, setEmailClient] =
-    useState<EmailClientPreference>("default");
   const isOnline = useOnlineStatus();
   const utils = api.useUtils();
-  const { theme, setTheme } = useThemePreference();
 
   const { data: me } = api.user.getMe.useQuery(undefined, {
     enabled: isOnline,
@@ -53,11 +24,6 @@ export default function AccountPage() {
   useEffect(() => {
     if (me?.name) setName(me.name);
   }, [me?.name]);
-
-  useEffect(() => {
-    setUsesAppleInstallFlow(isIosDevice());
-    setEmailClient(getPreferredEmailClient());
-  }, []);
 
   const { data: status, isLoading } =
     api.payment.getSubscriptionStatus.useQuery(undefined, {
@@ -90,30 +56,11 @@ export default function AccountPage() {
     updateProfile.mutate({ name: name.trim() });
   };
 
-  const handleInstallApp = async () => {
-    if (!isInstalled) await install();
-  };
-
-  const handleEmailClientChange = (client: EmailClientPreference) => {
-    setEmailClient(client);
-    setPreferredEmailClient(client);
-  };
-
-  const themeOptions: {
-    value: ThemePreference;
-    label: string;
-    icon: typeof SunIcon;
-  }[] = [
-    { value: "system", label: "System", icon: MonitorIcon },
-    { value: "light", label: "Light", icon: SunIcon },
-    { value: "dark", label: "Dark", icon: MoonIcon },
-  ];
-
   if (isLoading && isOnline) {
     return (
       <div className="px-4 py-6 sm:px-6 sm:py-8">
         <div className="mx-auto max-w-4xl">
-          <h1 className="mb-6 text-2xl font-bold text-foreground sm:mb-8 sm:text-3xl">
+          <h1 className="text-foreground mb-6 text-2xl font-bold sm:mb-8 sm:text-3xl">
             Account
           </h1>
           <Card>
@@ -129,7 +76,7 @@ export default function AccountPage() {
   return (
     <div className="px-4 py-6 sm:px-6 sm:py-8">
       <div className="mx-auto max-w-4xl">
-        <h1 className="mb-6 text-2xl font-bold text-foreground sm:mb-8 sm:text-3xl">
+        <h1 className="text-foreground mb-6 text-2xl font-bold sm:mb-8 sm:text-3xl">
           Account
         </h1>
         <div className="space-y-6 sm:space-y-8">
@@ -147,7 +94,7 @@ export default function AccountPage() {
               <div className="space-y-1">
                 <label
                   htmlFor="account-name"
-                  className="text-sm font-medium text-foreground"
+                  className="text-foreground text-sm font-medium"
                 >
                   Name
                 </label>
@@ -180,107 +127,6 @@ export default function AccountPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>App</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-1">
-                <p className="text-sm font-medium text-foreground">
-                  Install ForemenHQ
-                </p>
-                <p className="text-muted-foreground text-sm">
-                  Add the app to your device for a faster, full-screen
-                  experience.
-                </p>
-              </div>
-
-              {isInstalled ? (
-                <div className="inline-flex items-center gap-2 rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-900">
-                  <CheckCircle2Icon className="h-3 w-3" /> App installed
-                </div>
-              ) : installPrompt ? (
-                <Button onClick={handleInstallApp} className="w-full sm:w-auto">
-                  <DownloadIcon className="mr-2 h-4 w-4" /> Install App
-                </Button>
-              ) : (
-                <div className="rounded-md border border-border bg-muted/50 p-4 text-sm text-foreground/80">
-                  <p className="font-medium text-foreground">
-                    {usesAppleInstallFlow
-                      ? "Use Add to Home Screen"
-                      : "Install from the browser menu"}
-                  </p>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    {usesAppleInstallFlow
-                      ? "On iPad, open the browser share menu and choose Add to Home Screen."
-                      : "Open your browser menu and choose Install app or Add to Home Screen."}
-                  </p>
-                </div>
-              )}
-
-              <div className="border-t border-border pt-4">
-                <p className="mb-2 text-sm font-medium text-foreground">
-                  Appearance
-                </p>
-                <div className="grid grid-cols-3 gap-2 sm:max-w-sm">
-                  {themeOptions.map((option) => {
-                    const Icon = option.icon;
-                    const isSelected = theme === option.value;
-
-                    return (
-                      <button
-                        key={option.value}
-                        type="button"
-                        onClick={() => setTheme(option.value)}
-                        className={`flex min-h-16 flex-col items-center justify-center gap-1 rounded-md border px-2 py-2 text-sm font-medium transition-colors ${
-                          isSelected
-                            ? "border-primary bg-primary text-primary-foreground"
-                            : "border-border bg-card text-foreground/80 hover:bg-accent"
-                        }`}
-                        aria-pressed={isSelected}
-                      >
-                        <Icon className="h-4 w-4" />
-                        <span>{option.label}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-                <p className="text-muted-foreground mt-2 text-xs">
-                  Saved on this device.
-                </p>
-              </div>
-
-              <div className="border-t border-border pt-4">
-                <label
-                  htmlFor="email-client"
-                  className="mb-2 flex items-center gap-2 text-sm font-medium text-foreground"
-                >
-                  <MailIcon className="h-4 w-4 text-muted-foreground" />
-                  Email client
-                </label>
-                <select
-                  id="email-client"
-                  value={emailClient}
-                  onChange={(event) =>
-                    handleEmailClientChange(
-                      event.target.value as EmailClientPreference,
-                    )
-                  }
-                  className="border-input bg-background ring-offset-background focus-visible:ring-ring h-9 w-full rounded-md border px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-offset-2 sm:max-w-xs"
-                >
-                  {EMAIL_CLIENT_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-                <p className="text-muted-foreground mt-2 text-xs">
-                  Orders open with this choice on the current device.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
               <CardTitle>Account Type</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -301,7 +147,7 @@ export default function AccountPage() {
                 >
                   {status?.accountTypeLabel ?? "Standard Account"}
                 </Badge>
-                <span className="text-sm text-muted-foreground">
+                <span className="text-muted-foreground text-sm">
                   {status?.hasManagingAccount
                     ? "You can manage lists, generate quotes, and generate orders."
                     : "You can use the dashboard with standard account permissions."}
@@ -311,7 +157,7 @@ export default function AccountPage() {
               {status?.hasActiveSubscription && (
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-foreground">
+                    <span className="text-foreground text-sm font-medium">
                       Subscription Status:
                     </span>
                     <Badge variant="outline">
@@ -320,10 +166,10 @@ export default function AccountPage() {
                   </div>
                   {status.subscriptionEndsAt && (
                     <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium text-foreground">
+                      <span className="text-foreground text-sm font-medium">
                         Renews:
                       </span>
-                      <span className="text-sm text-muted-foreground">
+                      <span className="text-muted-foreground text-sm">
                         {new Date(
                           status.subscriptionEndsAt,
                         ).toLocaleDateString()}
@@ -354,16 +200,16 @@ export default function AccountPage() {
               {status?.hasOneTimeAccess && status.oneTimePurchaseDate && (
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-foreground">
+                    <span className="text-foreground text-sm font-medium">
                       Purchase Type:
                     </span>
                     <Badge variant="outline">One-Time Purchase</Badge>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-foreground">
+                    <span className="text-foreground text-sm font-medium">
                       Purchased:
                     </span>
-                    <span className="text-sm text-muted-foreground">
+                    <span className="text-muted-foreground text-sm">
                       {new Date(
                         status.oneTimePurchaseDate,
                       ).toLocaleDateString()}
