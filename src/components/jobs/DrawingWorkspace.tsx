@@ -356,7 +356,7 @@ export function DrawingWorkspace({
       account?.store ? account.store.resolveAssetUrl(url) : url,
     [account?.store],
   );
-  const pdf = sourcePdfPage(source.imageUrl);
+  const pdf = useMemo(() => sourcePdfPage(source.imageUrl), [source.imageUrl]);
 
   useEffect(() => {
     const update = () => setOnline(navigator.onLine);
@@ -499,26 +499,23 @@ export function DrawingWorkspace({
   });
   const writable = current && Boolean(data) && (online || queued.ready);
   const entities = useMemo(() => {
+    const queuedIds = new Set(queued.records.map(record => record.preview.id));
     const local = [
-      ...optimistic.filter(
-        (entity) =>
-          !queued.records.some((record) => record.preview.id === entity.id),
-      ),
+      ...optimistic.filter(entity => !queuedIds.has(entity.id)),
       ...queued.records.map((record) => record.preview),
     ];
+    const localIds = new Set(local.map(entity => entity.id));
     return [
-      ...(data?.entities ?? []).filter(
-        (entity) => !local.some((item) => item.id === entity.id),
-      ),
+      ...(data?.entities ?? []).filter(entity => !localIds.has(entity.id)),
       ...local,
     ];
   }, [data?.entities, optimistic, queued.records]);
-  const selected = entities.find((entity) => entity.id === selectedId);
-  const editable = (entity: DrawingEntity) =>
+  const entitiesById = useMemo(() => new Map(entities.map(entity => [entity.id, entity])), [entities]);
+  const blockedEdits = useMemo(() => new Set(queued.records.filter(record => record.state !== "pending").map(record => record.input.id)), [queued.records]);
+  const selected = entitiesById.get(selectedId ?? "");
+  const editable = useCallback((entity: DrawingEntity) =>
     writable &&
-    !queued.records.some(
-      (record) => record.input.id === entity.id && record.state !== "pending",
-    ) &&
+    !blockedEdits.has(entity.id) &&
     (online ||
       (entity.authorId === data?.actor.id &&
         (entity.kind === "markup" ||
@@ -533,7 +530,7 @@ export function DrawingWorkspace({
             entity.kind === "issue" ||
             entity.kind === "markup")) ||
         (entity.kind === "issue" && entity.data.assigneeId === data.actor.id)),
-    );
+    ), [writable, blockedEdits, online, data]);
   const toForm = (entity: DrawingEntity): DrawingSave =>
     ({
       sheetId: sheet.id,
@@ -575,7 +572,7 @@ export function DrawingWorkspace({
     pending === 0 &&
     !queued.records.some((record) => record.input.id === entity.id) &&
     Boolean(data && (data.canManage || entity.authorId === data.actor.id));
-  const selectAnnotation = (id: string | null) => {
+  const selectAnnotation = useCallback((id: string | null) => {
     if (id === "search-highlight") return;
     setSelectedId(id);
     setForm(null);
@@ -585,8 +582,8 @@ export function DrawingWorkspace({
       if (id !== selectedId) setSelectionMode("resize");
       setPanel("");
     } else if (id) setPanel("selected");
-    else if (panel === "selected") setPanel("");
-  };
+    else setPanel(current => current === "selected" ? "" : current);
+  }, [entities, selectTool, selectedId]);
   const base = (kind: DrawingSave["kind"] = "markup") => ({
     sheetId: sheet.id,
     id: crypto.randomUUID(),
@@ -804,7 +801,7 @@ export function DrawingWorkspace({
       setPending((n) => n - 1);
     }
   };
-  const openDestination = (link: DrawingMarkupLink) => {
+  const openDestination = useCallback((link: DrawingMarkupLink) => {
     if (link.targetSheetId) {
       const target = data?.jobSheets.find(
         (item) => item.id === link.targetSheetId,
@@ -824,13 +821,13 @@ export function DrawingWorkspace({
           );
       } else setError("That destination is no longer available.");
     }
-  };
-  const activate = (markup: DrawingMarkup) => {
+  }, [data?.jobSheets, onOpenSheet, jobId, destinationPicker?.active]);
+  const activate = useCallback((markup: DrawingMarkup) => {
     const links = drawingMarkupLinks(markup);
     if (links.length > 1) setLinkChooser(markup);
     else if (links[0]) openDestination(links[0]);
     else setError("Add a destination to this hyperlink.");
-  };
+  }, [openDestination]);
   const requestedLink = useRef<string | null>(null);
   useEffect(() => {
     if (!data) return;
@@ -850,7 +847,7 @@ export function DrawingWorkspace({
     // A PDF or shared address must never launch another window without a tap.
     setLinkChooser(entity.data);
   }, [data, sheet.id]);
-  const activatePdfLink = (link: DrawingPdfLink) => {
+  const activatePdfLink = useCallback((link: DrawingPdfLink) => {
     if (link.url) {
       const url = drawingPdfLinkUrl(link.url);
       if (url) window.open(url, "_blank", "noopener,noreferrer");
@@ -859,7 +856,7 @@ export function DrawingWorkspace({
       if (target) onOpenSheet(target);
       else setError("That linked page has not been added to this job.");
     }
-  };
+  }, [pdf, data?.jobSheets, onOpenSheet]);
   const readText = async (ocr = false) => {
     const request = ++textRequest.current;
     ocrRequest.current?.abort();
@@ -910,7 +907,7 @@ export function DrawingWorkspace({
     });
     setPanel("");
   };
-  const visible = entities.filter(
+  const visible = useMemo(() => entities.filter(
     (entity) =>
       entity.visibility !== "archived" &&
       sourceOf(entity) === sourceId &&
@@ -920,8 +917,8 @@ export function DrawingWorkspace({
           ? layers.issues
           : false) &&
       (entity.visibility === "private" ? layers.private : layers.published),
-  );
-  const highlighted: DrawingEntity[] = highlight
+  ), [entities, sourceId, layers.markups, layers.issues, layers.private, layers.published]);
+  const highlighted = useMemo<DrawingEntity[]>(() => highlight
     ? [
         {
           id: "search-highlight",
@@ -947,7 +944,12 @@ export function DrawingWorkspace({
           },
         },
       ]
-    : [];
+    : [], [highlight, sheet.id, sourceId]);
+  const viewerAnnotations = useMemo(() => highlighted.length ? [...visible, ...highlighted] : visible, [visible, highlighted]);
+  const canEditAnnotation = useCallback((id: string) => {
+    const entity = entitiesById.get(id);
+    return Boolean(entity && editable(entity) && pending === 0 && !form);
+  }, [entitiesById, editable, pending, form]);
   const resolved =
     assets?.key === source.imageUrl ? assets : { src: source.imageUrl, pdf };
   const comparisonSheets = new Map(
@@ -1356,17 +1358,12 @@ export function DrawingWorkspace({
               sheetKey={source.id}
               sourceSheetId={source.id}
               resolveAssetUrl={resolveAssetUrl}
-              annotations={[...visible, ...highlighted]}
+              annotations={viewerAnnotations}
               tool={writable ? tool : "pan"}
               style={style}
               selectedId={selectedId}
               selectionMode={selectionMode}
-              canEditAnnotation={(id) => {
-                const entity = entities.find((item) => item.id === id);
-                return Boolean(
-                  entity && editable(entity) && pending === 0 && !form,
-                );
-              }}
+              canEditAnnotation={canEditAnnotation}
               sharedScale={current ? data.metadata.scale : undefined}
               onScaleChange={
                 data.canManage && online && writable

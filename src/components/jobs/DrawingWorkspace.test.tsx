@@ -20,6 +20,7 @@ import type { DrawingCompare } from "./DrawingCompare";
 import { makeSnapshotSource } from "~/lib/snapshot-source";
 
 const mocks = vi.hoisted(() => ({
+  viewer: vi.fn(),
   account: null as { userId: string; accountKey: string; store: null } | null,
   data: null as Workspace | null,
   save: vi.fn<(value: DrawingSave) => Promise<DrawingEntity>>(),
@@ -121,6 +122,7 @@ vi.mock("./DrawingCompare", () => ({
 }));
 vi.mock("./DrawingSheetViewer", () => ({
   DrawingSheetViewer: (props: ComponentProps<typeof DrawingSheetViewer>) => {
+    mocks.viewer(props);
     const request = props.toolControls?.modeRequest;
     const onMode = props.toolControls?.onMode;
     useEffect(() => {
@@ -1295,3 +1297,14 @@ describe("drawing workspace workflows", () => {
     expect(screen.queryByLabelText("Visibility")).toBeNull();
   });
 });
+
+ it("reuses saved annotation geometry and callbacks when opening an unrelated tools panel", () => {
+  open();
+  const before = mocks.viewer.mock.calls.at(-1)![0] as ComponentProps<typeof DrawingSheetViewer>;
+  panel("details");
+  const after = mocks.viewer.mock.calls.at(-1)![0] as ComponentProps<typeof DrawingSheetViewer>;
+  expect(after.annotations).toBe(before.annotations);
+  expect(after.onSelect).toBe(before.onSelect);
+  expect(after.onActivate).toBe(before.onActivate);
+  expect(after.canEditAnnotation).toBe(before.canEditAnnotation);
+ });

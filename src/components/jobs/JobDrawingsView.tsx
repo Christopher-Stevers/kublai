@@ -225,8 +225,8 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
     onError,
   });
 
-  const sheets = setData?.sheets ?? [];
-  const visibleSheets = sheets
+  const sheets = useMemo(() => setData?.sheets ?? [], [setData?.sheets]);
+  const visibleSheets = useMemo(() => sheets
     .filter((item) => {
       const summary = bySheet.get(item.id),
         metadata = summary?.metadata;
@@ -253,7 +253,7 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
         undefined,
         { numeric: true, sensitivity: "base" },
       ),
-    );
+    ), [sheets, bySheet, query, discipline, status, favoritesOnly]);
   const downloadFolder = async () => {
     if (!account?.store || downloader.current || !setData) return;
     const controller = new AbortController();
@@ -347,6 +347,23 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
         }).catch(() => undefined);
     }
   }, [neighbours]);
+
+  const neighbourIds = sheet ? [sheets[sheetIndex + 1]?.id, sheets[sheetIndex - 1]?.id].filter(Boolean).join("|") : "";
+  useEffect(() => {
+    if (!neighbourIds || sandbox || !setSnapshot.online) return;
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      void (async () => {
+        for (const id of neighbourIds.split("|")) {
+          if (cancelled) return;
+          // Cache is account scoped by the drawing provider. Normal mount still
+          // revalidates permissions; prefetch only removes the empty wait.
+          await utils.drawingsWorkspace.get.prefetch({ sheetId: id }, { staleTime: 15_000 });
+        }
+      })().catch(() => undefined);
+    }, 500);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [neighbourIds, sandbox, setSnapshot.online, utils]);
 
   // The app bar back arrow steps out of a sheet, then out of a folder.
   useHeaderBackOverride(
@@ -678,6 +695,12 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
                     ? "flex cursor-pointer flex-row gap-0 rounded-none border-0 border-b py-0 shadow-none"
                     : "cursor-pointer gap-0 overflow-hidden py-0 transition-shadow hover:shadow-md"
                 }
+                onPointerEnter={() => {
+                  if (!sandbox && setSnapshot.online) void utils.drawingsWorkspace.get.prefetch({ sheetId: item.id }, { staleTime: 15_000 });
+                }}
+                onFocus={() => {
+                  if (!sandbox && setSnapshot.online) void utils.drawingsWorkspace.get.prefetch({ sheetId: item.id }, { staleTime: 15_000 });
+                }}
                 onClick={() => openSheet(item.id)}
                 onKeyDown={(event) => {
                   if (event.target !== event.currentTarget) return;

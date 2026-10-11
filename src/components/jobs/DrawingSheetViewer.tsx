@@ -8,6 +8,7 @@ import {
   type TileManifest,
 } from "~/lib/drawing-tiles";
 import { readPdfSheetScale } from "~/lib/pdf-sheet-scale";
+import { buildDrawingSnapIndex } from "~/lib/drawing-geometry-client";
 import { loadSnapLines } from "~/lib/pdf-snap-lines";
 import {
   formatLengthAs,
@@ -40,7 +41,7 @@ import type { DrawingMarkup } from "~/lib/drawing-workspace";
 import { sheetMeasureStyle } from "~/lib/sheet-measure-style";
 import { emptyMeasureRun, hitMeasureRun, measureRunReducer, measureRunWidths, runAngleReference, MAX_MEASURE_NODES } from "~/lib/sheet-measure-run";
 import { scaleReadMessage } from "~/lib/sheet-scale-text";
-import { buildSnapIndex, mergeCollinear, snapToLine, type SnapIndex, type SnapSegment } from "~/lib/sheet-snap";
+import { snapToLine, type SnapIndex, type SnapSegment } from "~/lib/sheet-snap";
 import { SheetMeasureBar } from "./SheetMeasureBar";
 import { DrawingTileLayer } from "./DrawingTileLayer";
 import { DrawingPdfLayer } from "./DrawingPdfLayer";
@@ -443,18 +444,20 @@ export function DrawingSheetViewer({
       setCalNodes((nodes) => nodes.map((node) => ({ ...node, line: null })));
       dispatchRun({ type: "forget-lines" });
     }
-    let cancelled = false;
+    const controller = new AbortController();
     void loadSnapLines({ url: pdfUrl, page: pdfPage })
-      .then((segments) => {
-        if (cancelled) return;
+      .then(async (segments) => {
+        if (controller.signal.aborted) return;
+        const aspect = fitRef.current?.aspect;
+        const index = aspect && aspect > 0 ? await buildDrawingSnapIndex(segments, aspect, controller.signal) : null;
+        if (controller.signal.aborted) return;
         snapKey.current = key;
         snapSegments.current = segments;
-        const aspect = fitRef.current?.aspect;
-        if (aspect && aspect > 0) setSnapIndex(buildSnapIndex(mergeCollinear(segments, aspect), aspect));
+        setSnapIndex(index);
       })
       .catch(() => undefined);
     return () => {
-      cancelled = true;
+      controller.abort();
     };
   }, [measuring, pdfUrl, pdfPage]);
 
@@ -462,7 +465,11 @@ export function DrawingSheetViewer({
     const segments = snapSegments.current;
     const aspect = fit?.aspect;
     if (!segments || !(aspect && aspect > 0)) return;
-    setSnapIndex(buildSnapIndex(mergeCollinear(segments, aspect), aspect));
+    const controller = new AbortController();
+    void buildDrawingSnapIndex(segments, aspect, controller.signal).then(index => {
+      if (!controller.signal.aborted) setSnapIndex(index);
+    }).catch(() => undefined);
+    return () => controller.abort();
   }, [fit?.aspect]);
 
   const rememberHover = (point: SheetPoint | null) => {
@@ -912,17 +919,14 @@ export function DrawingSheetViewer({
   const left = frameSize.width / 2 + view.x - shownWidth / 2;
   const top = frameSize.height / 2 + view.y - shownHeight / 2;
   const density = fit ? (shownWidth / fit.natural) * dpr : 1; // screen px per saved-image px
-  const visible = shownWidth
-    ? {
-        left: -left / shownWidth,
-        top: -top / shownHeight,
-        right: (frameSize.width - left) / shownWidth,
-        bottom: (frameSize.height - top) / shownHeight,
-      }
-    : null;
-  const tileRequests = manifest && tiles && visible
-    ? planDrawingTiles(tiles, manifest, density, visible)
-    : [];
+  const tileRequests = useMemo(() => {
+    if (!manifest || !tiles || !shownWidth || !shownHeight) return [];
+    return planDrawingTiles(tiles, manifest, density, {
+      left: -left / shownWidth, top: -top / shownHeight,
+      right: (frameSize.width - left) / shownWidth,
+      bottom: (frameSize.height - top) / shownHeight,
+    });
+  }, [manifest, tiles, density, shownWidth, shownHeight, left, top, frameSize.width, frameSize.height]);
   // Raster previews/tiles are fast fallbacks, not a quality gate: thin CAD
   // lines and small text need original PDF pixels even at intermediate zoom.
   // The bounded patch moves with the sheet and is replaced only when ready.
@@ -1412,7 +1416,11 @@ export function DrawingSheetViewer({
           if (
             !measuring &&
             !pipeMode &&
-            editor.move(pointFromClient(event.clientX, event.clientY))
+            (() => {
+              const samples = event.nativeEvent.getCoalescedEvents?.() ?? [];
+              for (const sample of samples) editor.move(pointFromClient(sample.clientX, sample.clientY));
+              return editor.move(pointFromClient(event.clientX, event.clientY));
+            })()
           )
             return;
           const p = now[0]!;
@@ -1882,6 +1890,7 @@ export function DrawingSheetViewer({
           pipeMode ? (
             <PipeSystemPanel
               reading={pipe.reading}
+              selecting={pipe.selecting}
               error={pipe.error}
               hasPdf={pipe.hasPdf}
               hasLines={pipe.hasLines}

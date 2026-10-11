@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DrawingSheetViewer, type DrawingEditorProps } from "./DrawingSheetViewer";
 import type { DrawingEntity, DrawingMarkup } from "~/lib/drawing-workspace";
@@ -282,14 +282,14 @@ describe("drawing annotation tools in the real viewer", () => {
     expect(data.text).toBe("Note");
     expect(data.points[0]!.x).toBe(0.25);
   });
-  it("drops a move preview if permissions are revoked before release", () => {
+  it("drops a move preview if permissions are revoked before release", async () => {
     const onUpdate = vi.fn();
     const entity = markup();
     const { frame, container, rerender } = open({ tool: "select", annotations: [entity], selectedId: entity.id, onUpdate });
     const shape = container.querySelector('[data-annotation-id="markup"] rect:not([data-annotation-move-area])')!;
     fireEvent.pointerDown(shape, { clientX: 250, clientY: 250, pointerId: 1, button: 0 });
     fireEvent.pointerMove(frame, { clientX: 330, clientY: 290, pointerId: 1, button: 0 });
-    expect(shape.getAttribute("x")).toBe("350");
+    await waitFor(() => expect(shape.getAttribute("x")).toBe("350"));
     rerender(<DrawingSheetViewer src="/sheet.webp" alt="Sheet" sheetKey={sourceSheetId} tool="select" annotations={[entity]} selectedId={entity.id} canEditAnnotation={() => false} onUpdate={onUpdate} />);
     expect(shape.getAttribute("x")).toBe("250");
     fireEvent.pointerUp(frame, { clientX: 330, clientY: 290, pointerId: 1, button: 0 });

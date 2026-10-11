@@ -176,7 +176,7 @@ async function activate() {
     ).toBeInTheDocument(),
   );
 }
-function tap(frame: Element, x: number, y: number, pointerId = 1) {
+async function tap(frame: Element, x: number, y: number, pointerId = 1) {
   fireEvent.pointerDown(frame, {
     clientX: x,
     clientY: y,
@@ -184,6 +184,7 @@ function tap(frame: Element, x: number, y: number, pointerId = 1) {
     button: 0,
   });
   fireEvent.pointerUp(frame, { clientX: x, clientY: y, pointerId, button: 0 });
+  await act(async () => { await Promise.resolve(); });
 }
 function total() {
   return screen.getByRole("status", { name: "Pipe total distance" });
@@ -193,7 +194,7 @@ describe("pipe selection in the drawing viewer", () => {
   it("middle-pan preserves the selected pipe run instead of selecting another run", async () => {
     const { frame, image } = open();
     await activate();
-    tap(frame, 160, 300);
+    await tap(frame, 160, 300);
     const before = total().textContent;
     const mouse = { pointerId: 1, pointerType: "mouse", button: 1, buttons: 4 };
     fireEvent.pointerDown(frame, { ...mouse, clientX: 160, clientY: 460 });
@@ -201,13 +202,13 @@ describe("pipe selection in the drawing viewer", () => {
     fireEvent.pointerUp(frame, { ...mouse, buttons: 0, clientX: 240, clientY: 500 });
     expect(image.closest<HTMLElement>('[data-drawing-sheet-layer]')!.style.transform).toContain("translate3d(80px, 40px, 0)");
     expect(total().textContent).toBe(before);
-    tap(frame, 240, 500);
+    await tap(frame, 240, 500);
     expect(total()).toHaveTextContent("20 m");
   });
   it("keeps the highlight four screen pixels wide while zooming the drawing", async () => {
     const { frame } = open();
     await activate();
-    tap(frame, 160, 300);
+    await tap(frame, 160, 300);
     const highlight = screen.getByRole("img", { name: "Selected pipe system" });
     const stroke = () => Number(highlight.querySelectorAll("path")[1]!.getAttribute("stroke-width"));
     expect(stroke() * 800 / 1000).toBeCloseTo(4);
@@ -230,7 +231,7 @@ describe("pipe selection in the drawing viewer", () => {
         screen.getByRole("combobox", { name: "Pipe system" }),
       ).toBeInTheDocument(),
     );
-    tap(frame, 160, 300);
+    await tap(frame, 160, 300);
     expect(total()).toHaveTextContent("110 m");
     expect(screen.queryByRole("alert")).toBeNull();
     expect(loadPipeLinework).toHaveBeenCalledTimes(2);
@@ -243,7 +244,7 @@ describe("pipe selection in the drawing viewer", () => {
     async (x, y, _kind) => {
       const { frame } = open();
       await activate();
-      tap(frame, x, y);
+      await tap(frame, x, y);
       expect(screen.getByText("ST system")).toBeInTheDocument();
       expect(total()).toHaveTextContent("110 m");
       expect(total()).toHaveTextContent("Total distance · this sheet");
@@ -273,7 +274,7 @@ describe("pipe selection in the drawing viewer", () => {
   it("highlights a run without inventing a distance when the sheet scale is unset", async () => {
     const { frame } = open({ sharedScale: null });
     await activate();
-    tap(frame, 160, 300);
+    await tap(frame, 160, 300);
     expect(
       screen.getByRole("img", { name: "Selected pipe system" }),
     ).toBeInTheDocument();
@@ -285,7 +286,7 @@ describe("pipe selection in the drawing viewer", () => {
   it("converts the same calibrated total among meters, millimeters, feet, and inches", async () => {
     const { frame } = open();
     await activate();
-    tap(frame, 160, 300);
+    await tap(frame, 160, 300);
     const units = screen.getByRole("group", { name: "Pipe distance units" });
     for (const unit of ["mm", "ft", "in", "m"] as const) {
       fireEvent.click(within(units).getByRole("button", { name: unit }));
@@ -383,7 +384,7 @@ describe("pipe selection in the drawing viewer", () => {
       await activate();
       expect(container.querySelector("[data-annotation-handle]")).toBeNull();
       expect(container.querySelector("[data-annotation-move-area]")).toBeNull();
-      tap(frame, 160, 300);
+      await tap(frame, 160, 300);
       const shape = container.querySelector(
         '[data-annotation-id="markup"] rect',
       )!;
@@ -416,7 +417,7 @@ describe("pipe selection in the drawing viewer", () => {
   it("clears selection and pipe mode when the source sheet, URL, or page changes", async () => {
     const { frame, rerender, base } = open();
     await activate();
-    tap(frame, 160, 300);
+    await tap(frame, 160, 300);
     expect(total()).toHaveTextContent("110 m");
     rerender(
       <DrawingSheetViewer
@@ -439,10 +440,11 @@ describe("pipe selection in the drawing viewer", () => {
     expect(
       screen.queryByRole("status", { name: "Pipe total distance" }),
     ).toBeNull();
-    expect(loadPipeLinework).toHaveBeenLastCalledWith({
+    expect(loadPipeLinework).toHaveBeenLastCalledWith(expect.objectContaining({
       url: "/second.pdf",
       page: 2,
-    });
+      signal: expect.any(AbortSignal) as AbortSignal,
+    }));
   });
 
   it("ignores stale loading results when the PDF changes before extraction completes", async () => {
@@ -471,10 +473,11 @@ describe("pipe selection in the drawing viewer", () => {
         ([source]) => source.url === "/pipe-drawing.pdf",
       ),
     ).toHaveLength(1);
-    expect(loadPipeLinework).toHaveBeenLastCalledWith({
+    expect(loadPipeLinework).toHaveBeenLastCalledWith(expect.objectContaining({
       url: "/second.pdf",
       page: 2,
-    });
+      signal: expect.any(AbortSignal) as AbortSignal,
+    }));
     expect(
       screen.queryByRole("status", { name: "Pipe total distance" }),
     ).toBeNull();
@@ -497,7 +500,7 @@ describe("pipe selection in the drawing viewer", () => {
     loadPipeLinework.mockResolvedValueOnce({ ...linework, truncated: true });
     const { frame } = open();
     await activate();
-    tap(frame, 160, 300);
+    await tap(frame, 160, 300);
     expect(total()).toHaveTextContent("Partial distance · this sheet");
     expect(
       screen.getByText(/Highlight and length are partial/),

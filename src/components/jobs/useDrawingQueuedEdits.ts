@@ -13,6 +13,8 @@ import {
 } from "~/lib/drawing-offline-queue";
 import type { DrawingEntity, DrawingSave } from "~/lib/drawing-workspace";
 
+const NO_QUEUED_EDITS: DrawingQueuedMutation[] = [];
+
 /** Owns an account-bound durable queue. Screen changes never discard unsynced work. */
 export function useDrawingQueuedEdits(options: {
   accountKey: string | null;
@@ -35,7 +37,7 @@ export function useDrawingQueuedEdits(options: {
     records: DrawingQueuedMutation[];
   } | null>(null);
   const ready = state?.scope === scope;
-  const records = ready ? state.records : [];
+  const records = ready ? state.records : NO_QUEUED_EDITS;
   const reload = useCallback(async () => {
     const active = queue.current;
     if (!active) return;

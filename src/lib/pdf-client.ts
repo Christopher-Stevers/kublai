@@ -1,5 +1,7 @@
 "use client";
 
+import { clearDrawingGeometryWorkers } from "./drawing-geometry-client";
+
 import type * as PdfJsModule from "pdfjs-dist/legacy/build/pdf.mjs";
 import type { PDFDocumentProxy } from "pdfjs-dist/legacy/build/pdf.mjs";
 
@@ -16,6 +18,7 @@ const KEEP_DOCUMENTS = 2;
 
 /** Call on logout/account changes: parsed private pages must not outlive identity. */
 export function clearPdfDocuments() {
+  clearDrawingGeometryWorkers();
   const entries = [...documents.values()];
   documents.clear();
   for (const entry of entries) entry.destroy();

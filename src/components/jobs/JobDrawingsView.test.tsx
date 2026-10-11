@@ -41,6 +41,7 @@ const state = vi.hoisted(() => ({
   }>,
   upload: vi.fn(),
   refreshIdentities: vi.fn(),
+  prefetch: vi.fn(async () => undefined),
 }));
 vi.mock("~/trpc/react", () => {
   const mutation = (name: string) => ({
@@ -61,7 +62,7 @@ vi.mock("~/trpc/react", () => {
   return {
     api: {
       useUtils: () => ({
-        drawingsWorkspace: { list: { invalidate: state.refreshIdentities }, get: { invalidate: vi.fn() } },
+        drawingsWorkspace: { list: { invalidate: state.refreshIdentities }, get: { invalidate: vi.fn(), prefetch: state.prefetch } },
         drawings: {
           listSets: { invalidate: vi.fn() },
           getSet: { invalidate: vi.fn() },
@@ -157,6 +158,7 @@ beforeEach(() => {
     },
   ];
   state.calls = [];
+  state.prefetch.mockClear();
   state.upload.mockReset().mockResolvedValue([]);
   state.refreshIdentities.mockReset().mockResolvedValue(undefined);
 });
@@ -488,3 +490,11 @@ describe("Drawings", () => {
     expect(screen.getByText("Viewing M-101")).toBeInTheDocument();
   });
 });
+
+ it("warms a focused sheet without opening or changing it", () => {
+  render(<JobDrawingsView jobId="job" />);
+  fireEvent.click(screen.getByRole("button", { name: "Open Mechanical" }));
+  fireEvent.focus(screen.getByRole("button", { name: "Open M-101" }));
+  expect(state.prefetch).toHaveBeenCalledWith({ sheetId: "s1" }, { staleTime: 15_000 });
+  expect(screen.queryByText("Viewing M-101")).toBeNull();
+ });

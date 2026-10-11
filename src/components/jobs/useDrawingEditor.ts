@@ -23,7 +23,7 @@ export type DrawingEditorProps = {
   sharedScale?: SheetScale | null;
   onScaleChange?: (scale: SheetScale) => boolean | void | Promise<boolean | void>;
 };
-type Gesture = { start: DrawingPoint; points: DrawingPoint[]; moved: boolean; entity?: DrawingEntity; handle?: number | DrawingResizeHandle; activate?: boolean; edited?: DrawingMarkup };
+type Gesture = { start: DrawingPoint; points: DrawingPoint[]; moved: boolean; entity?: DrawingEntity; handle?: number | DrawingResizeHandle; activate?: boolean; edited?: DrawingMarkup; latest?: DrawingPoint };
 
 export function useDrawingEditor(props: DrawingEditorProps, aspect: number, screenWidth: number) {
   const tool = props.tool ?? "pan";
@@ -34,8 +34,24 @@ export function useDrawingEditor(props: DrawingEditorProps, aspect: number, scre
   const committed = useRef(points);
   committed.current = points;
   const { annotations, canEditAnnotation } = props;
-  const clear = () => { gesture.current = null; committed.current = []; setPoints([]); setPreview([]); setEditing(null); };
-  useEffect(clear, [tool, props.sourceSheetId, props.selectionMode, props.hideAnnotations]);
+  const previewFrame = useRef<number | null>(null);
+  const publishRef = useRef<(show?: boolean) => void>(() => undefined);
+  const cancelPreview = useCallback(() => {
+    if (previewFrame.current !== null) cancelAnimationFrame(previewFrame.current);
+    previewFrame.current = null;
+  }, []);
+  useEffect(() => cancelPreview, [cancelPreview]);
+  const schedulePreview = () => {
+    if (previewFrame.current !== null) return;
+    previewFrame.current = requestAnimationFrame(() => {
+      previewFrame.current = null;
+      // Use current permissions and callbacks, even if the workspace changed
+      // between a pointer sample and the next display frame.
+      publishRef.current();
+    });
+  };
+  const clear = () => { cancelPreview(); gesture.current = null; committed.current = []; setPoints([]); setPreview([]); setEditing(null); };
+  useEffect(clear, [tool, props.sourceSheetId, props.selectionMode, props.hideAnnotations, cancelPreview]);
   const canEdit = useCallback((entity: DrawingEntity) => entity.kind === "markup" && entity.visibility !== "archived"
     && annotations?.some(current => current.id === entity.id && current.revision === entity.revision && current.visibility !== "archived")
     && (canEditAnnotation?.(entity.id) ?? true), [annotations, canEditAnnotation]);
@@ -57,8 +73,8 @@ export function useDrawingEditor(props: DrawingEditorProps, aspect: number, scre
     const data = dataFor(next);
     if (data && props.onCreate) { props.onCreate(data); clear(); }
   };
-  const undo = () => { const next = committed.current.slice(0, -1); committed.current = next; setPoints(next); setPreview([]); };
-  const cancelGesture = () => { gesture.current = null; setPreview([]); setEditing(null); };
+  const undo = () => { cancelPreview(); const next = committed.current.slice(0, -1); committed.current = next; setPoints(next); setPreview([]); };
+  const cancelGesture = () => { cancelPreview(); gesture.current = null; setPreview([]); setEditing(null); };
   useEffect(() => {
     const active = gesture.current;
     if (active?.entity?.kind === "markup" && !active.activate && (!props.onUpdate || !canEdit(active.entity))) {
@@ -94,6 +110,31 @@ export function useDrawingEditor(props: DrawingEditorProps, aspect: number, scre
     if (isStrokeTool(tool)) setPreview([point]);
     return true;
   };
+  const publishPreview = (show = true) => {
+    const active = gesture.current;
+    const point = active?.latest;
+    if (!active || !point || active.activate) return;
+    if (active.entity?.kind === "markup") {
+      if (!props.onUpdate || !canEdit(active.entity)) {
+        active.edited = undefined;
+        if (show) setEditing(null);
+        return;
+      }
+      if (!active.moved) return;
+      const original = active.entity.data;
+      active.edited = typeof active.handle === "string"
+        ? resizeDrawingMarkup(original, active.handle, point, aspect)
+        : { ...original, points: active.handle !== undefined
+          ? original.points.map((p, index) => index === active.handle ? point : p)
+          : translateDrawingPoints(original.points, { x: point.x - active.start.x, y: point.y - active.start.y }) };
+      if (show) setEditing({ id: active.entity.id, data: active.edited });
+    } else if (show && isStrokeTool(tool)) {
+      setPreview([...active.points]);
+    } else if (show && tool !== "select" && tool !== "issue" && tool !== "rfi" && tool !== "text") {
+      setPreview(isPathTool(tool) ? [...committed.current, point] : [committed.current[0] ?? active.start, point]);
+    }
+  };
+  publishRef.current = publishPreview;
   const move = (point: DrawingPoint | null) => {
     const active = gesture.current;
     if (!active) return false;
@@ -102,32 +143,27 @@ export function useDrawingEditor(props: DrawingEditorProps, aspect: number, scre
       return true;
     }
     active.moved ||= distance(point, active.start) * screenWidth > 6;
-    // A markup tap in Pan mode selects it, while a drag continues to pan the
-    // sheet using the viewer's original pointer positions.
     if (active.activate) return !active.moved;
+    active.latest = point;
     if (active.entity?.kind === "markup") {
-      if (!props.onUpdate || !canEdit(active.entity)) { active.edited = undefined; setEditing(null); return true; }
       if (!active.moved) return true;
-      const original = active.entity.data;
-      const next = typeof active.handle === "string"
-        ? resizeDrawingMarkup(original, active.handle, point, aspect)
-        : { ...original, points: active.handle !== undefined
-        ? original.points.map((p, index) => index === active.handle ? point : p)
-        : translateDrawingPoints(original.points, { x: point.x - active.start.x, y: point.y - active.start.y }) };
-      active.edited = next;
-      setEditing({ id: active.entity.id, data: active.edited });
     } else if (isStrokeTool(tool)) {
-      if (distance(point, active.points.at(-1)!) * screenWidth >= 1 && active.points.length < 3900) active.points.push(point);
-      setPreview([...active.points]);
-    } else if (tool !== "select" && tool !== "issue" && tool !== "rfi" && tool !== "text") {
-      setPreview(isPathTool(tool) ? [...committed.current, point] : [committed.current[0] ?? active.start, point]);
+      // Retain input samples independently of display rate. Rendering once per
+      // frame must not throw away a pen corner or change the final saved path.
+      if (distance(point, active.points.at(-1)!) * screenWidth < 1 || active.points.length >= 3900) return true;
+      active.points.push(point);
     }
+    schedulePreview();
     return true;
   };
   const up = (point: DrawingPoint | null) => {
     const active = gesture.current;
     if (!active) return false;
     if (point) move(point);
+    cancelPreview();
+    // Release can happen before the scheduled frame. Commit the final geometry
+    // synchronously so a fast drag never saves an earlier pointer position.
+    publishPreview(false);
     gesture.current = null;
     setPreview([]);
     if (!point) { setEditing(null); return true; }

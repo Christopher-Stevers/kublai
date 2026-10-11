@@ -7,6 +7,7 @@ import { LENGTH_UNITS, type LengthUnit } from "~/lib/sheet-measure";
 
 export function PipeSystemPanel({
   reading,
+  selecting = false,
   error,
   hasPdf,
   hasLines,
@@ -28,6 +29,7 @@ export function PipeSystemPanel({
   onUnit,
 }: {
   reading: boolean;
+  selecting?: boolean;
   error: string | null;
   hasPdf: boolean;
   hasLines: boolean;
@@ -71,6 +73,7 @@ export function PipeSystemPanel({
   return (
     <section
       aria-label="Pipe system selection"
+      aria-busy={reading || selecting}
       className="bg-card/95 max-h-[55dvh] space-y-2 overflow-y-auto overscroll-contain rounded-md p-3 shadow-md"
     >
       <div className="flex items-center gap-2">
@@ -109,6 +112,7 @@ export function PipeSystemPanel({
           </>
         )}
       </div>
+      {selecting && <p role="status" className="text-muted-foreground text-xs">Tracing connected pipes…</p>}
       {!hasPdf ? (
         <p className="text-muted-foreground text-xs">
           Upload the original vector PDF to select connected pipes. For a
