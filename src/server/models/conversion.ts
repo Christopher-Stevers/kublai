@@ -5,18 +5,17 @@ import { bimModels, bimActivity } from "~/server/db/bim-schema";
 import { modelAccess, requireModelUpload, type ModelAccess } from "./access";
 import { modelScope, readModel } from "./service";
 import {
-  apsConfigured,
-  startRevitTranslation,
-  readRevitTranslation,
-} from "./translation";
+  nativeConversionAvailable,
+  convertNativeRevit,
+} from "./native-conversion";
 import { modelBlobPath, storeConvertedModel } from "./storage";
 import type { BimModel } from "~/lib/bim/types";
 export async function convertRevitModel(a: ModelAccess, id: string) {
   requireModelUpload(a);
-  if (!(await apsConfigured(a.job.organizationId)))
+  if (!(await nativeConversionAvailable()))
     throw new TRPCError({
       code: "PRECONDITION_FAILED",
-      message: "Connect Autodesk before converting native Revit files.",
+      message: "The local Revit converter is unavailable on this server.",
     });
   return db.transaction(async (tx) => {
     await tx.execute(
@@ -32,7 +31,11 @@ export async function convertRevitModel(a: ModelAccess, id: string) {
     const data: BimModel = {
       ...m.data,
       status: "processing",
-      conversionMessage: "Queued for Autodesk conversion",
+      conversionMessage: "Queued for local Revit conversion",
+      conversionEngine: "native",
+      publication:
+        m.data.publication === "archived" ? "archived" : "coordination",
+      nativeConversion: undefined,
     };
     await tx
       .update(bimModels)
@@ -44,16 +47,14 @@ export async function convertRevitModel(a: ModelAccess, id: string) {
         conversionUrn: null,
       })
       .where(and(modelScope(a), eq(bimModels.id, id)));
-    await tx
-      .insert(bimActivity)
-      .values({
-        organizationId: a.job.organizationId,
-        jobId: a.job.id,
-        actorId: a.user.id,
-        entityId: id,
-        action: "model.conversion_queued",
-        data: {},
-      });
+    await tx.insert(bimActivity).values({
+      organizationId: a.job.organizationId,
+      jobId: a.job.id,
+      actorId: a.user.id,
+      entityId: id,
+      action: "model.conversion_queued",
+      data: { engine: "native" },
+    });
     return data;
   });
 }
@@ -92,27 +93,15 @@ export async function dispatchModelConversions() {
       requireModelUpload(a);
       if (a.job.organizationId !== leased.organizationId)
         throw Error("Model access changed.");
-      let urn = leased.conversionUrn;
-      if (!urn) {
-        await db
-          .update(bimModels)
-          .set({
-            data: sql`${bimModels.data} || ${JSON.stringify({ conversionMessage: "Sending model to Autodesk" })}::jsonb`,
-          })
-          .where(eq(bimModels.id, leased.id));
-        urn = await startRevitTranslation(
-          a.job.organizationId,
-          leased.id,
-          modelBlobPath(a.job.organizationId, leased.sourceSha),
-          leased.data.size,
-        );
-        // Checkpoint the submitted job before downloading or any subsequent work.
-        await db
-          .update(bimModels)
-          .set({ conversionUrn: urn })
-          .where(eq(bimModels.id, leased.id));
-      }
-      const result = await readRevitTranslation(a.job.organizationId, urn);
+      await db
+        .update(bimModels)
+        .set({
+          data: sql`${bimModels.data} || ${JSON.stringify({ conversionEngine: "native", conversionMessage: "Reading Revit geometry locally" })}::jsonb`,
+        })
+        .where(eq(bimModels.id, leased.id));
+      const result = await convertNativeRevit(
+        modelBlobPath(a.job.organizationId, leased.sourceSha),
+      );
       const fresh = await modelAccess(a.user.id, a.job.id);
       requireModelUpload(fresh);
       const sha =
@@ -121,7 +110,13 @@ export async function dispatchModelConversions() {
           : null;
       const change = {
         status: result.status,
-        conversionMessage: result.status === "ready" ? null : result.message,
+        conversionEngine: "native",
+        nativeConversion: result.report,
+        conversionMessage:
+          result.status === "ready"
+            ? "Experimental local preview · geometry is unverified"
+            : (result.report.warnings.at(-1) ??
+              "This Revit file is not supported yet."),
       };
       await db.transaction(async (tx) => {
         await tx
@@ -133,17 +128,14 @@ export async function dispatchModelConversions() {
             conversionCheckedAt: new Date(),
           })
           .where(and(modelScope(fresh), eq(bimModels.id, leased.id)));
-        if (result.status !== "processing")
-          await tx
-            .insert(bimActivity)
-            .values({
-              organizationId: a.job.organizationId,
-              jobId: a.job.id,
-              actorId: a.user.id,
-              entityId: leased.id,
-              action: `model.conversion_${result.status}`,
-              data: change,
-            });
+        await tx.insert(bimActivity).values({
+          organizationId: a.job.organizationId,
+          jobId: a.job.id,
+          actorId: a.user.id,
+          entityId: leased.id,
+          action: `model.conversion_${result.status}`,
+          data: change,
+        });
       });
     } catch (error) {
       const message =

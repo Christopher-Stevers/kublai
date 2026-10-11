@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { NativeRevitReport } from "./native-conversion";
 
 export const MAX_MODEL_BYTES = 250 * 1024 * 1024;
 export const MODEL_CHUNK_BYTES = 8 * 1024 * 1024;
@@ -109,6 +110,8 @@ export type BimModel = {
   status: "ready" | "awaiting_conversion" | "processing" | "failed";
   publication: "coordination" | "construction" | "archived";
   conversionMessage: string | null;
+  conversionEngine?: "native";
+  nativeConversion?: NativeRevitReport;
   uploadedBy: string;
   createdAt: string;
 };

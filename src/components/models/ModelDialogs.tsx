@@ -161,10 +161,11 @@ export function UploadModelDialog({
           {file?.name.toLowerCase().endsWith(".rvt") && (
             <p className="bg-muted text-muted-foreground rounded-md p-3 text-sm">
               {workspace.conversionAvailable
-                ? "After upload, choose Convert to send this file to Autodesk for preparation. Autodesk usage charges may apply."
-                : "You can store this file now. Your company administrator must connect Autodesk before it can open in 3D."}{" "}
-              Linked Revit files should be uploaded separately using matching
-              shared coordinates.
+                ? "After upload, choose Prepare local preview. FormanHQ detects the Revit version and reads supported geometry on this server. No Autodesk account is needed."
+                : "You can store this file now. The local Revit converter must be available before it can open in 3D."}{" "}
+              Native conversion is experimental. Some shapes may be missing;
+              measurements, linked models and shared coordinates are not yet
+              verified.
             </p>
           )}
           {busy && (

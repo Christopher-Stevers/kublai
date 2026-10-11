@@ -23,7 +23,11 @@ import type {
 } from "~/lib/bim/types";
 import { requireModelUpload, type ModelAccess } from "./access";
 import { canConfigureAutodesk } from "./connection";
-import { apsConfigured } from "./translation";
+import { nativeConversionAvailable } from "./native-conversion";
+import {
+  isNativeRevitPreview,
+  nativeViewRestriction,
+} from "~/lib/bim/native-conversion";
 export const modelScope = (a: ModelAccess) =>
   and(
     eq(bimModels.organizationId, a.job.organizationId),
@@ -37,16 +41,14 @@ async function audit(
   action: string,
   data: unknown,
 ) {
-  await tx
-    .insert(bimActivity)
-    .values({
-      organizationId: a.job.organizationId,
-      jobId: a.job.id,
-      actorId: a.user.id,
-      entityId,
-      action,
-      data,
-    });
+  await tx.insert(bimActivity).values({
+    organizationId: a.job.organizationId,
+    jobId: a.job.id,
+    actorId: a.user.id,
+    entityId,
+    action,
+    data,
+  });
 }
 async function lock(tx: Writer, a: ModelAccess) {
   await tx.execute(
@@ -113,7 +115,7 @@ export async function modelWorkspace(a: ModelAccess): Promise<BimWorkspace> {
     userId: a.user.id,
     canUpload: a.canUpload,
     canDelete: a.canDelete,
-    conversionAvailable: await apsConfigured(a.job.organizationId),
+    conversionAvailable: await nativeConversionAvailable(),
     canConfigureAutodesk: canConfigureAutodesk(a),
     models: models.map((m) => m.data),
     views: views.map((v) => v.data),
@@ -174,18 +176,16 @@ export async function registerModel(
       uploadedBy: a.user.name ?? "Team member",
       createdAt: new Date().toISOString(),
     };
-    await tx
-      .insert(bimModels)
-      .values({
-        id,
-        organizationId: a.job.organizationId,
-        jobId: a.job.id,
-        seriesId,
-        version,
-        data: model,
-        sourceSha: sha,
-        viewSha: format === "ifc" ? sha : null,
-      });
+    await tx.insert(bimModels).values({
+      id,
+      organizationId: a.job.organizationId,
+      jobId: a.job.id,
+      seriesId,
+      version,
+      data: model,
+      sourceSha: sha,
+      viewSha: format === "ifc" ? sha : null,
+    });
     await audit(tx, a, id, "model.uploaded", { model, sha });
     return model;
   });
@@ -204,6 +204,15 @@ export async function setModelPublication(
   return db.transaction(async (tx) => {
     await lock(tx, a);
     const m = await readModel(a, id, tx);
+    if (
+      publication === "construction" &&
+      (isNativeRevitPreview(m.data) || m.data.status !== "ready")
+    )
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message:
+          "Experimental or unconverted models cannot be issued for construction. Use a verified IFC export.",
+      });
     const data = { ...m.data, publication };
     await tx
       .update(bimModels)
@@ -237,6 +246,12 @@ async function validateView(
       message:
         "Every viewpoint model must belong to this job and be ready to view.",
     });
+  const restriction = nativeViewRestriction(
+    rows.map((r) => r.data),
+    view,
+  );
+  if (restriction)
+    throw new TRPCError({ code: "BAD_REQUEST", message: restriction });
   const ids = new Set(view.modelIds);
   for (const key of [...view.hidden, ...view.isolated, ...view.levels])
     if (!ids.has(key.split(":")[0]!))
@@ -260,14 +275,12 @@ export async function saveModelView(
       authorName: a.user.name ?? "Team member",
       createdAt: new Date().toISOString(),
     };
-    await tx
-      .insert(bimViews)
-      .values({
-        id: data.id,
-        organizationId: a.job.organizationId,
-        jobId: a.job.id,
-        data,
-      });
+    await tx.insert(bimViews).values({
+      id: data.id,
+      organizationId: a.job.organizationId,
+      jobId: a.job.id,
+      data,
+    });
     await audit(tx, a, data.id, "view.saved", data);
     return data;
   });
@@ -392,15 +405,13 @@ export async function saveModelIssue(
           ),
         );
     else
-      await tx
-        .insert(bimIssues)
-        .values({
-          id,
-          organizationId: a.job.organizationId,
-          jobId: a.job.id,
-          revision: 1,
-          data,
-        });
+      await tx.insert(bimIssues).values({
+        id,
+        organizationId: a.job.organizationId,
+        jobId: a.job.id,
+        revision: 1,
+        data,
+      });
     await audit(tx, a, id, row ? "issue.updated" : "issue.created", data);
     return data;
   });

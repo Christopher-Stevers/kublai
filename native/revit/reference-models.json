@@ -1,0 +1,62 @@
+[
+  {
+    "name": "core-2024",
+    "revitVersion": 2024,
+    "license": "MIT",
+    "rvt": {
+      "url": "https://media.githubusercontent.com/media/magnetar-io/revit-test-datasets/main/Revit/2024_Core_Interior.rvt",
+      "sha256": "c805df445d613b408e37337765572021265e3f5dfdc7d1fa53b22ba1600b8014"
+    },
+    "ifc": {
+      "url": "https://media.githubusercontent.com/media/magnetar-io/revit-test-datasets/main/IFC%20Exports/2024_Core_Interior_slim.ifc",
+      "sha256": "bfdf36ffb0bb768f3409d818403990e64d4c262c6780603be87f8077387ad86d"
+    },
+    "baseline": {
+      "geometry": 970,
+      "omitted": 0,
+      "matchingIds": 854,
+      "matchingGuids": 854,
+      "boundsWithin5mm": 854
+    }
+  },
+  {
+    "name": "re1-architecture",
+    "revitVersion": 2025,
+    "license": "MIT",
+    "rvt": {
+      "url": "https://raw.githubusercontent.com/Drshelden/IFC-ECS/main/data/RE1/RE1-Architecture.rvt",
+      "sha256": "4a78bdd68e7f4dd7806060db07c222da9a810e20b3f303c17a443294b91c8ce4"
+    },
+    "ifc": {
+      "url": "https://raw.githubusercontent.com/Drshelden/IFC-ECS/main/data/RE1/RE1-Architecture.ifc",
+      "sha256": "a9b5d36677aa6a8bb91b77d8bc354ed9028a7ca3e9e2491a47ba14cfd8e26200"
+    },
+    "baseline": {
+      "geometry": 82,
+      "omitted": 2,
+      "matchingIds": 71,
+      "matchingGuids": 71,
+      "boundsWithin5mm": 62
+    }
+  },
+  {
+    "name": "re1-mechanical",
+    "revitVersion": 2025,
+    "license": "MIT",
+    "rvt": {
+      "url": "https://raw.githubusercontent.com/Drshelden/IFC-ECS/main/data/RE1/RE1-Mechanical.rvt",
+      "sha256": "d559720177aa0ec435133f804e7c45d60da2deb9d5585bb3d55f4830139c014b"
+    },
+    "ifc": {
+      "url": "https://raw.githubusercontent.com/Drshelden/IFC-ECS/main/data/RE1/RE1-Mechanical.ifc",
+      "sha256": "9e56cf7246ce86ef73646dd588a1efb8a4756e5e102b30e28b3b58577a454db0"
+    },
+    "baseline": {
+      "geometry": 74,
+      "omitted": 0,
+      "matchingIds": 74,
+      "matchingGuids": 74,
+      "boundsWithin5mm": 74
+    }
+  }
+]

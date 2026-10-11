@@ -94,6 +94,8 @@ export class ModelScene {
     });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+    // Keep bright/white BIM surfaces shaded instead of clipping them to white.
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.localClippingEnabled = true;
     this.renderer.domElement.className =
       "absolute inset-0 h-full w-full outline-none";
@@ -108,7 +110,7 @@ export class ModelScene {
       "position:absolute;inset:0;pointer-events:none;overflow:hidden";
     host.appendChild(this.labels.domElement);
     this.scene.background = new THREE.Color("#edf1f5");
-    this.scene.add(new THREE.HemisphereLight(0xffffff, 0x748094, 2.4));
+    this.scene.add(new THREE.HemisphereLight(0xffffff, 0x748094, 1));
     const light = new THREE.DirectionalLight(0xffffff, 2.8);
     light.position.set(15, 30, 20);
     this.scene.add(light);
@@ -358,7 +360,7 @@ export class ModelScene {
     for (const batch of batches) {
       this.scene.remove(batch);
       batch.dispose();
-      (batch.material).dispose();
+      batch.material.dispose();
       this.batchKeys.delete(batch);
     }
     this.batches = this.batches.filter((b) => !batches.includes(b));
@@ -723,8 +725,8 @@ export class ModelScene {
     }
     this.clipping = planes;
     for (const b of this.batches) {
-      (b.material).clippingPlanes = planes;
-      (b.material).needsUpdate = true;
+      b.material.clippingPlanes = planes;
+      b.material.needsUpdate = true;
     }
     this.invalidate();
   }
@@ -781,9 +783,14 @@ export class ModelScene {
   private clearGroup(group: THREE.Group) {
     group.traverse((obj) => {
       if (obj instanceof THREE.Line || obj instanceof THREE.Mesh) {
-        const mesh=obj as THREE.Mesh<THREE.BufferGeometry,THREE.Material|THREE.Material[]>;
+        const mesh = obj as THREE.Mesh<
+          THREE.BufferGeometry,
+          THREE.Material | THREE.Material[]
+        >;
         mesh.geometry.dispose();
-        const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+        const materials = Array.isArray(mesh.material)
+          ? mesh.material
+          : [mesh.material];
         materials.forEach((m) => m.dispose());
       }
       if (obj instanceof CSS2DObject) obj.element.remove();

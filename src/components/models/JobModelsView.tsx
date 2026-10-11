@@ -20,7 +20,6 @@ import {
   Bookmark,
   Camera,
   Download,
-  Settings2,
   X,
   RotateCcw,
   LoaderCircle,
@@ -42,12 +41,7 @@ import {
   DialogDescription,
 } from "~/components/ui/dialog";
 import { useModelScene } from "./use-model-scene";
-import {
-  AutodeskDialog,
-  IssueDialog,
-  UploadModelDialog,
-  inputClass,
-} from "./ModelDialogs";
+import { IssueDialog, UploadModelDialog, inputClass } from "./ModelDialogs";
 import type { ModelTool } from "~/lib/bim/scene";
 import type {
   BimElement,
@@ -64,6 +58,11 @@ import {
   measureArea,
   measureDistance,
 } from "~/lib/bim/geometry";
+import {
+  isNativeRevitPreview,
+  nativeViewRestriction,
+} from "~/lib/bim/native-conversion";
+import { NativeConversionReport } from "./NativeConversionReport";
 import { cn } from "~/lib/utils";
 type Panel =
   | "models"
@@ -138,7 +137,6 @@ export function ModelWorkspace({
     [error, setError] = useState(""),
     [expanded, setExpanded] = useState(false),
     [upload, setUpload] = useState<{ revision: BimModel | null } | null>(null),
-    [autodesk, setAutodesk] = useState(false),
     [search, setSearch] = useState(""),
     [category, setCategory] = useState(""),
     [level, setLevel] = useState(""),
@@ -165,6 +163,9 @@ export function ModelWorkspace({
     error: setError,
   });
   const { scene, elements, progress, properties, measures, ready } = viewport;
+  const nativePreview = w.models.some(
+    (m) => ids.includes(m.id) && isNativeRevitPreview(m),
+  );
   const mutationOptions = {
     onSuccess: refresh,
     onError: (e: { message: string }) => setError(e.message),
@@ -216,8 +217,12 @@ export function ModelWorkspace({
     scene?.setIssues(w.issues);
   }, [scene, w.issues, elements]);
   useEffect(() => {
-    scene?.setTool(tool);
-  }, [scene, tool]);
+    scene?.setTool(
+      nativePreview && (tool === "distance" || tool === "area")
+        ? "inspect"
+        : tool,
+    );
+  }, [scene, tool, nativePreview]);
   useEffect(() => {
     scene?.setUnits(units);
   }, [scene, units]);
@@ -234,6 +239,14 @@ export function ModelWorkspace({
     if (window.matchMedia("(max-width: 767px)").matches) setPanel(null);
   };
   function restoreView(v: BimViewState) {
+    const restriction = nativeViewRestriction(
+      w.models.filter((m) => v.modelIds.includes(m.id)),
+      v,
+    );
+    if (restriction) {
+      setError(restriction);
+      return;
+    }
     setError("");
     setSelected(null);
     setRestore(v);
@@ -277,16 +290,20 @@ export function ModelWorkspace({
   const toggleModel = (m: BimModel) => {
     setError("");
     setRestore(null);
+    setTool("inspect");
     setIds((old) =>
       old.includes(m.id)
         ? old.filter((id) => id !== m.id)
-        : [
-            ...old.filter(
-              (id) =>
-                w.models.find((row) => row.id === id)?.seriesId !== m.seriesId,
-            ),
-            m.id,
-          ],
+        : isNativeRevitPreview(m) || nativePreview
+          ? [m.id]
+          : [
+              ...old.filter(
+                (id) =>
+                  w.models.find((row) => row.id === id)?.seriesId !==
+                  m.seriesId,
+              ),
+              m.id,
+            ],
     );
     closeMobilePanel();
   };
@@ -383,6 +400,16 @@ export function ModelWorkspace({
           >
             <X className="size-4" />
           </button>
+        </div>
+      )}
+      {nativePreview && (
+        <div
+          role="status"
+          className="z-10 shrink-0 border-b border-amber-500/25 bg-amber-50 px-4 py-2 text-xs leading-relaxed text-amber-950 dark:bg-amber-950/40 dark:text-amber-100"
+        >
+          <strong>Experimental Revit preview</strong> · Shapes may be missing or
+          incomplete. Measurements and model alignment are unavailable until
+          accuracy is verified.
         </div>
       )}
       <div className="relative flex min-h-0 flex-1">
@@ -537,7 +564,15 @@ export function ModelWorkspace({
                   ).map(([id, Icon, label]) => (
                     <button
                       key={id}
-                      disabled={!ready}
+                      disabled={
+                        !ready ||
+                        (nativePreview && (id === "distance" || id === "area"))
+                      }
+                      title={
+                        nativePreview && (id === "distance" || id === "area")
+                          ? "Requires verified model geometry"
+                          : label
+                      }
                       className={cn(
                         "flex min-h-12 min-w-14 flex-col items-center justify-center gap-1 rounded-lg px-2 text-[11px] disabled:opacity-40",
                         tool === id
@@ -696,22 +731,23 @@ export function ModelWorkspace({
                                       })
                                     }
                                   >
-                                    Convert with Autodesk
+                                    Prepare local preview
                                   </Button>
                                   <p className="text-muted-foreground text-[10px]">
-                                    Sends this model to Autodesk. Usage charges
-                                    may apply.
+                                    Runs on FormanHQ. No Autodesk account
+                                    required.
                                   </p>
                                 </>
                               ) : (
-                                <button
-                                  className="font-medium text-blue-600 underline"
-                                  onClick={() => setAutodesk(true)}
-                                >
-                                  Connect Autodesk to open
-                                </button>
+                                <p>
+                                  The local converter is unavailable. Your
+                                  original file is stored safely.
+                                </p>
                               ))}
                           </div>
+                        )}
+                        {m.nativeConversion && (
+                          <NativeConversionReport report={m.nativeConversion} />
                         )}
                         <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-xs">
                           <a
@@ -747,7 +783,13 @@ export function ModelWorkspace({
                               }
                             >
                               <option value="coordination">Coordination</option>
-                              <option value="construction">
+                              <option
+                                value="construction"
+                                disabled={
+                                  isNativeRevitPreview(m) ||
+                                  m.status !== "ready"
+                                }
+                              >
                                 For construction
                               </option>
                               {(w.canDelete ||
@@ -766,15 +808,11 @@ export function ModelWorkspace({
                       viewer. Shared coordinates align separate trade models.
                     </p>
                   )}
-                  <button
-                    className="text-muted-foreground flex min-h-11 w-full items-center gap-2 border-t pt-3 text-xs"
-                    onClick={() => setAutodesk(true)}
-                  >
-                    <Settings2 className="size-4" />
-                    {w.conversionAvailable
-                      ? "Autodesk connected · Manage"
-                      : "Set up Revit conversion"}
-                  </button>
+                  <p className="text-muted-foreground border-t pt-3 text-xs leading-relaxed">
+                    Native Revit conversion runs locally. Version detection is
+                    automatic. Experimental previews open one model at a time;
+                    IFC supports construction coordination.
+                  </p>
                 </>
               )}
               {panel === "elements" && (
@@ -1314,21 +1352,15 @@ export function ModelWorkspace({
               setIds((old) => [
                 ...old.filter(
                   (id) =>
+                    !nativePreview &&
                     w.models.find((row) => row.id === id)?.seriesId !==
-                    m.seriesId,
+                      m.seriesId,
                 ),
                 m.id,
               ]);
               closeMobilePanel();
             }
           }}
-        />
-      )}
-      {autodesk && (
-        <AutodeskDialog
-          workspace={w}
-          onClose={() => setAutodesk(false)}
-          onConnected={refresh}
         />
       )}
       {issueOpen && (
@@ -1400,11 +1432,12 @@ export function ModelWorkspace({
             <div>
               <dt className="font-semibold">Revit and IFC</dt>
               <dd className="text-muted-foreground mt-1">
-                Revit files are converted by Autodesk after your company
-                connects APS. IFC opens directly. This viewer displays exported
-                geometry and properties. Revit editing, sheets and embedded
-                links are not included. Load separate trade models with matching
-                shared coordinates.
+                Revit files are read by FormanHQ’s local converter. The version
+                is detected automatically. Native conversion is experimental:
+                some shapes or properties may be missing, and previews use
+                internal coordinates. Measurements and combining models require
+                a verified IFC export. IFC opens directly. Revit editing, sheets
+                and embedded links are not included.
               </dd>
             </div>
             <div>
