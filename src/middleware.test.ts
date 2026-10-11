@@ -58,7 +58,7 @@ afterEach(() => vi.unstubAllEnvs());
 
 describe("middleware provider isolation", () => {
   it.each(["header", "cookie"])(
-    "valid enabled %s bypass avoids Clerk entirely",
+    "retired %s credentials cannot bypass Clerk, even if old configuration is enabled",
     async (mechanism) => {
       const response = await run(
         request(
@@ -67,22 +67,14 @@ describe("middleware provider isolation", () => {
           mechanism === "cookie" ? SECRET : undefined,
         ),
       );
-      expect(response).toEqual({ kind: "next" });
-      expect(mocks.clerkGate).not.toHaveBeenCalled();
-      expect(mocks.auth).not.toHaveBeenCalled();
+      expect(response).toEqual({
+        kind: "redirect",
+        url: "http://test.invalid/sign-in",
+      });
+      expect(mocks.clerkGate).toHaveBeenCalledOnce();
+      expect(mocks.auth).toHaveBeenCalledOnce();
     },
   );
-
-  it("a valid token cannot bypass when the feature is disabled", async () => {
-    vi.stubEnv("FOREMENHQ_AGENT_AUTH_BYPASS", "false");
-    const response = await run(request("/dashboard/jobs", SECRET));
-    expect(response).toEqual({
-      kind: "redirect",
-      url: "http://test.invalid/sign-in",
-    });
-    expect(mocks.clerkGate).toHaveBeenCalledTimes(1);
-    expect(mocks.auth).toHaveBeenCalledTimes(1);
-  });
 
   it.each(["wrong-secret", "", undefined])(
     "rejects an absent or incorrect token (%s)",
@@ -97,7 +89,7 @@ describe("middleware provider isolation", () => {
     },
   );
 
-  it("rejects an exactly matching secret shorter than the configured minimum", async () => {
+  it("does not authenticate using an obsolete short secret", async () => {
     vi.stubEnv("FOREMENHQ_AGENT_AUTH_SECRET", "too-short");
     const response = await run(request("/dashboard/jobs", "too-short"));
     expect(response).toEqual({
@@ -123,6 +115,17 @@ describe("middleware provider isolation", () => {
     expect(mocks.clerkGate).not.toHaveBeenCalled();
     expect(mocks.auth).not.toHaveBeenCalled();
   });
+
+  it.each([
+    "/api/job-documents/wopi/test-id",
+    "/api/job-documents/wopi/test-id/contents",
+  ])(
+    "preserves independently token-authenticated WOPI callback %s",
+    async (path) => {
+      expect(await run(request(path))).toEqual({ kind: "next" });
+      expect(mocks.clerkGate).not.toHaveBeenCalled();
+    },
+  );
 
   it("does not extend the health exemption to protected paths sharing its prefix", async () => {
     const response = await run(request("/api/health/private"));

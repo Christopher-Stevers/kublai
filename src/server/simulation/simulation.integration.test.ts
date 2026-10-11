@@ -34,9 +34,6 @@ vi.mock("~/server/utils/ensure-user", () => ({
     return user ?? null;
   },
 }));
-vi.mock("~/server/utils/get-agent-bypass-user", () => ({
-  hasValidAgentAuthBypass: () => false,
-}));
 vi.mock("~/server/utils/get-dev-bypass-user", () => ({
   getDevBypassUser: async () => null,
 }));
@@ -486,4 +483,3 @@ describe.skipIf(!socket)(
     });
   },
 );
-

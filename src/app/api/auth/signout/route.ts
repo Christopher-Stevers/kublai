@@ -3,8 +3,8 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getAuthenticatedIdentity } from "~/server/utils/get-request-identity";
 import { endEmployeeSimulation } from "~/server/simulation/service";
 import { SIMULATION_COOKIE } from "~/lib/employee-simulation";
-import { AGENT_AUTH_COOKIE } from "~/server/utils/get-agent-bypass-user";
-
+// Clear obsolete shortcut cookies on devices that used the retired beta login.
+const AGENT_AUTH_COOKIE = "foremenhq_agent_auth";
 const BETA_MARKER_COOKIE = "foremenhq_beta_access";
 
 function clearAccessCookies(response: NextResponse) {

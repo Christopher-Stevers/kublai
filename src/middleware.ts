@@ -1,23 +1,6 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse, type NextRequest } from "next/server";
 
-const AGENT_AUTH_COOKIE = "foremenhq_agent_auth";
-const AGENT_AUTH_HEADER = "x-foremenhq-agent-auth";
-
-function hasAgentAuthBypass(req: NextRequest) {
-  if (process.env.FOREMENHQ_AGENT_AUTH_BYPASS !== "true") return false;
-
-  const expectedSecret = process.env.FOREMENHQ_AGENT_AUTH_SECRET?.trim() ?? "";
-  if (expectedSecret.length < 32) return false;
-
-  const providedToken =
-    req.headers.get(AGENT_AUTH_HEADER)?.trim() ??
-    req.cookies.get(AGENT_AUTH_COOKIE)?.value.trim() ??
-    "";
-
-  return providedToken === expectedSecret;
-}
-
 const isPublicRoute = createRouteMatcher([
   "/",
   "/sign-in(.*)",
@@ -52,16 +35,15 @@ export default function middleware(
   req: NextRequest,
   evt: Parameters<typeof clerkProtectedMiddleware>[1],
 ) {
-  // Database health and explicitly authorized local QA must not depend on
-  // Clerk initialization/proxy availability. Other requests retain Clerk auth.
+  // Database health must not depend on Clerk initialization/proxy availability.
+  // Application requests, including QA, use normal Clerk authentication.
   // WOPI callbacks authenticate with scoped tokens and Collabora proof signatures.
   // Launch and blank-document endpoints still require normal application auth.
   if (
     req.nextUrl.pathname === "/api/health" ||
     /^\/api\/job-documents\/wopi\/[^/]+(?:\/contents)?$/.test(
       req.nextUrl.pathname,
-    ) ||
-    hasAgentAuthBypass(req)
+    )
   )
     return NextResponse.next();
   return clerkProtectedMiddleware(req, evt);

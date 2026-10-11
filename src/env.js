@@ -34,8 +34,6 @@ export const env = createEnv({
     SMTP_USER: z.string().optional(),
     SMTP_PASSWORD: z.string().optional(),
     SMTP_FROM: z.string().optional(),
-    FOREMENHQ_AGENT_AUTH_BYPASS: z.enum(["true", "false"]).optional(),
-    FOREMENHQ_AGENT_AUTH_SECRET: z.string().min(32).optional(),
     NODE_ENV: z
       .enum(["development", "test", "production"])
       .default("development"),
@@ -80,8 +78,6 @@ export const env = createEnv({
     SMTP_USER: process.env.SMTP_USER,
     SMTP_PASSWORD: process.env.SMTP_PASSWORD,
     SMTP_FROM: process.env.SMTP_FROM,
-    FOREMENHQ_AGENT_AUTH_BYPASS: process.env.FOREMENHQ_AGENT_AUTH_BYPASS,
-    FOREMENHQ_AGENT_AUTH_SECRET: process.env.FOREMENHQ_AGENT_AUTH_SECRET,
     NODE_ENV: process.env.NODE_ENV,
   },
   /**
