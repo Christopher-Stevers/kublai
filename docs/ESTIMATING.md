@@ -10,6 +10,12 @@
 6. Download a customer PDF, private internal PDF, Excel workbook, or CSV. Customer proposals omit internal unit costs, profit breakdowns, and internal notes. Draft PDFs are clearly marked.
 7. An approved or won CAD estimate can prepare a new material list from catalogue-linked scope. The list retains required quantities; supplier pack rounding is calculated for purchasing. This action does not send orders. Repeated clicks on the same approved snapshot return the same list. Non-material rows and unsupported units are reported as exclusions from the handoff.
 
+## Phones and tablets
+
+The register, takeoff worksheet and pricebook use stacked, labeled items below desktop widths. Quantity, unit, material rate and direct cost remain visible; **More detail** opens an item's other cost, classification and review fields. **All cost fields** opens the full worksheet details. These edit the same saved estimate as the desktop spreadsheet.
+
+Use the section selector on a phone to switch between costs, proposal, pricing, alternates and review. The selling price is above the workspace; **Totals & actions** opens the breakdown, workflow status and exports without scrolling through every cost row. Drawing source titles wrap, and import dialogs and their fields fit the viewport.
+
 ## Calculation rules
 
 - Demand is entered quantity multiplied by the assembly/repetition factor.

@@ -5,7 +5,7 @@ import type { EstimateStatus } from "~/lib/estimating/types";
 import { cn } from "~/lib/utils";
 
 export const selectClass =
-  "h-9 rounded-md border bg-background px-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:opacity-60";
+  "h-11 min-w-0 max-w-full rounded-md border bg-background px-2 text-base sm:h-9 sm:text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:opacity-60";
 export const actionClass = "bg-blue-600 text-white hover:bg-blue-700";
 export const statusLabels: Record<EstimateStatus, string> = {
   draft: "Draft",
@@ -60,7 +60,7 @@ export function Field({
   hint?: string;
 }) {
   return (
-    <label className="grid gap-1.5 text-xs font-medium">
+    <label className="grid min-w-0 gap-1.5 text-xs font-medium [&_input]:max-w-full [&_input]:min-w-0 [&_select]:w-full">
       {label}
       {children}
       {hint && (
@@ -106,7 +106,7 @@ export function NumberInput({
         else if (Number.isFinite(parsed) && parsed >= 0) onChange(parsed);
       }}
       className={cn(
-        "hover:border-border focus:bg-background h-8 w-full min-w-16 rounded border border-transparent bg-transparent px-2 text-right text-sm tabular-nums outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 disabled:opacity-70",
+        "hover:border-border focus:bg-background h-11 w-full min-w-0 rounded border bg-transparent px-2 text-right text-base tabular-nums outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 disabled:opacity-70 sm:text-sm lg:h-8 lg:min-w-16 lg:border-transparent",
         props.className,
       )}
     />
@@ -128,4 +128,12 @@ export function errorMessage(error: unknown) {
   return error instanceof Error
     ? error.message
     : "The operation could not be completed.";
+}
+
+export function MobileFieldLabel({ children }: { children: ReactNode }) {
+  return (
+    <span className="text-muted-foreground mb-1 block text-[11px] font-medium lg:hidden">
+      {children}
+    </span>
+  );
 }

@@ -32,6 +32,7 @@ import {
   actionClass,
   Field,
   money,
+  MobileFieldLabel,
   NumberInput,
   quantity,
   selectClass,
@@ -93,6 +94,7 @@ export function EstimateLines({
   const [reviewFilter, setReviewFilter] = useState("");
   const [inspectId, setInspectId] = useState<string | null>(null);
   const [advanced, setAdvanced] = useState(false);
+  const [expandedRows, setExpandedRows] = useState<string[]>([]);
   const [rowPage, setRowPage] = useState(() =>
     Math.max(
       0,
@@ -145,6 +147,12 @@ export function EstimateLines({
   const inspectorSheet = sheets.find(
     (sheet) => sheet.id === inspect?.source.sheetId,
   );
+  const detailCell = (id: string, classes = "") =>
+    cn(
+      advanced || expandedRows.includes(id) ? "block" : "hidden",
+      "lg:table-cell",
+      classes,
+    );
   const allSelected =
     visible.length > 0 && visible.every((line) => selected.includes(line.id));
   return (
@@ -157,7 +165,7 @@ export function EstimateLines({
             adds waste and order multiples.
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex w-full flex-wrap gap-2 sm:w-auto">
           <Button
             variant="outline"
             size="sm"
@@ -218,9 +226,7 @@ export function EstimateLines({
           <option value="excluded">Excluded</option>
         </select>
       </div>
-      <p className="text-muted-foreground px-4 pb-2 text-[11px] sm:hidden">
-        Swipe the table horizontally to reach rates and review fields.
-      </p>
+
       {selected.length > 0 && (
         <div className="flex flex-wrap items-center gap-2 border-y bg-blue-500/5 px-4 py-2 text-xs">
           <span className="mr-auto font-medium">
@@ -281,11 +287,11 @@ export function EstimateLines({
           </Button>
         </div>
       )}
-      <div className="max-h-[68svh] overflow-auto">
+      <div className="lg:max-h-[68svh] lg:overflow-auto">
         <table
-          className={`w-full text-left text-xs ${advanced ? "min-w-[2350px]" : "min-w-[1300px]"}`}
+          className={`block w-full text-left text-sm lg:table lg:text-xs ${advanced ? "lg:min-w-[2350px]" : "lg:min-w-[1300px]"}`}
         >
-          <thead className="bg-muted text-muted-foreground sticky top-0 z-10 text-[11px]">
+          <thead className="bg-muted text-muted-foreground sticky top-0 z-10 hidden text-[11px] lg:table-header-group">
             <tr>
               <th className="w-10 px-3 py-3">
                 <input
@@ -364,13 +370,13 @@ export function EstimateLines({
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y">
+          <tbody className="block divide-y lg:table-row-group">
             {visible.map((line) => (
               <tr
                 key={line.id}
-                className={`group transition-colors ${selected.includes(line.id) ? "bg-blue-500/5" : "hover:bg-muted/30"} ${line.reviewStatus === "excluded" ? "opacity-50" : ""}`}
+                className={`group relative grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-x-3 gap-y-3 p-4 transition-colors lg:table-row lg:p-0 ${selected.includes(line.id) ? "bg-blue-500/5" : "hover:bg-muted/30"} ${line.reviewStatus === "excluded" ? "opacity-50" : ""}`}
               >
-                <td className="px-3">
+                <td className="absolute top-2 right-2 p-3 lg:static lg:px-3">
                   <input
                     type="checkbox"
                     aria-label={`Select ${line.description}`}
@@ -384,11 +390,12 @@ export function EstimateLines({
                     }
                   />
                 </td>
-                <td className="p-1.5">
-                  <Input
+                <td className="col-span-2 min-w-0 pr-10 lg:p-1.5">
+                  <Textarea
                     aria-label="Line description"
                     value={line.description}
-                    className="hover:border-border focus:bg-background h-8 min-w-52 border-transparent bg-transparent px-1 text-xs shadow-none"
+                    rows={2}
+                    className="hover:border-border focus:bg-background [field-sizing:content] min-h-11 w-full min-w-0 resize-none border-transparent bg-transparent px-0 py-1 text-base leading-snug shadow-none lg:[field-sizing:fixed] lg:h-8 lg:min-h-8 lg:min-w-52 lg:px-1 lg:text-xs"
                     disabled={disabled}
                     onChange={(event) =>
                       update(line.id, { description: event.target.value })
@@ -396,7 +403,7 @@ export function EstimateLines({
                   />
                   <button
                     onClick={() => setInspectId(line.id)}
-                    className="text-muted-foreground flex max-w-64 items-center gap-1 truncate px-1 text-left text-[10px] hover:text-blue-600"
+                    className="text-muted-foreground flex min-h-9 w-full min-w-0 items-center gap-1 text-left text-xs break-words hover:text-blue-600 lg:max-w-64 lg:px-1 lg:text-[10px]"
                   >
                     <InfoIcon className="h-3 w-3 shrink-0" />
                     {line.warnings.length
@@ -408,12 +415,29 @@ export function EstimateLines({
                 {(
                   ["quantity", "unit", "multiplier", "wastePercent"] as const
                 ).map((key) => (
-                  <td key={key} className="p-1">
+                  <td
+                    key={key}
+                    className={
+                      key === "quantity" || key === "unit"
+                        ? "min-w-0 lg:p-1"
+                        : detailCell(line.id, "min-w-0 lg:p-1")
+                    }
+                  >
+                    <MobileFieldLabel>
+                      {
+                        {
+                          quantity: "Quantity",
+                          unit: "Unit",
+                          multiplier: "Multiplier",
+                          wastePercent: "Waste %",
+                        }[key]
+                      }
+                    </MobileFieldLabel>
                     {key === "unit" ? (
                       <Input
                         aria-label={`Unit for ${line.description}`}
                         value={line.unit}
-                        className="hover:border-border h-8 w-16 border-transparent bg-transparent px-2 text-xs"
+                        className="hover:border-border h-11 w-full min-w-0 bg-transparent px-2 text-base lg:h-8 lg:w-16 lg:border-transparent lg:text-xs"
                         disabled={disabled}
                         onChange={(event) =>
                           update(line.id, { unit: event.target.value })
@@ -431,13 +455,28 @@ export function EstimateLines({
                     )}
                   </td>
                 ))}
-                <td className="text-muted-foreground px-2 text-right tabular-nums">
+                <td
+                  className={detailCell(
+                    line.id,
+                    "text-muted-foreground min-w-0 break-words tabular-nums lg:px-2 lg:text-right",
+                  )}
+                >
+                  <MobileFieldLabel>Demand</MobileFieldLabel>
                   {calculationValid ? quantity(line.demand) : "—"}
                 </td>
-                <td className="px-2 text-right tabular-nums">
+                <td
+                  className={detailCell(
+                    line.id,
+                    "min-w-0 break-words tabular-nums lg:px-2 lg:text-right",
+                  )}
+                >
+                  <MobileFieldLabel>Purchase share</MobileFieldLabel>
                   {calculationValid ? quantity(line.purchaseQuantity) : "—"}
                 </td>
-                <td className="p-1">
+                <td className="min-w-0 lg:p-1">
+                  <MobileFieldLabel>
+                    Material / unit · {currency}
+                  </MobileFieldLabel>
                   <NumberInput
                     aria-label={`Material unit price for ${line.description}`}
                     value={line.materialUnitCost}
@@ -460,7 +499,8 @@ export function EstimateLines({
                     }
                   />
                 </td>
-                <td className="p-1">
+                <td className={detailCell(line.id, "min-w-0 lg:p-1")}>
+                  <MobileFieldLabel>Labor hours / unit</MobileFieldLabel>
                   <NumberInput
                     aria-label={`Labor hours per unit for ${line.description}`}
                     value={line.laborHoursPerUnit}
@@ -470,10 +510,16 @@ export function EstimateLines({
                     }
                   />
                 </td>
-                <td className="text-muted-foreground px-2 text-right tabular-nums">
+                <td
+                  className={detailCell(
+                    line.id,
+                    "text-muted-foreground min-w-0 break-words tabular-nums lg:px-2 lg:text-right",
+                  )}
+                >
+                  <MobileFieldLabel>Labor hours</MobileFieldLabel>
                   {calculationValid ? quantity(line.laborHours) : "—"}
                 </td>
-                {advanced && (
+                {(advanced || expandedRows.includes(line.id)) && (
                   <>
                     {(
                       [
@@ -484,7 +530,24 @@ export function EstimateLines({
                         "laborRate",
                       ] as const
                     ).map((key) => (
-                      <td key={key} className="p-1">
+                      <td
+                        key={key}
+                        className={cn(
+                          "min-w-0 lg:p-1",
+                          !advanced && "lg:hidden",
+                        )}
+                      >
+                        <MobileFieldLabel>
+                          {
+                            {
+                              equipmentUnitCost: "Equipment / unit",
+                              subcontractUnitCost: "Subcontract / unit",
+                              otherUnitCost: "Other / unit",
+                              orderMultiple: "Order multiple",
+                              laborRate: "Labor rate",
+                            }[key]
+                          }
+                        </MobileFieldLabel>
                         <NumberInput
                           aria-label={`${key} for ${line.description}`}
                           value={line[key]}
@@ -508,12 +571,29 @@ export function EstimateLines({
                         "supplierName",
                       ] as const
                     ).map((key) => (
-                      <td key={key} className="p-1">
+                      <td
+                        key={key}
+                        className={cn(
+                          "min-w-0 lg:p-1",
+                          !advanced && "lg:hidden",
+                        )}
+                      >
+                        <MobileFieldLabel>
+                          {
+                            {
+                              trade: "Trade",
+                              area: "Area",
+                              phase: "Phase",
+                              costCode: "Cost code",
+                              supplierName: "Supplier",
+                            }[key]
+                          }
+                        </MobileFieldLabel>
                         <Input
                           aria-label={`${key} for ${line.description}`}
                           value={line[key]}
                           disabled={disabled}
-                          className="hover:border-border h-8 min-w-24 border-transparent bg-transparent px-2 text-xs"
+                          className="hover:border-border h-11 w-full min-w-0 bg-transparent px-2 text-base lg:h-8 lg:min-w-24 lg:border-transparent lg:text-xs"
                           onChange={(event) =>
                             update(line.id, { [key]: event.target.value })
                           }
@@ -522,69 +602,99 @@ export function EstimateLines({
                     ))}
                   </>
                 )}
-                <td className="px-2 text-right font-medium tabular-nums">
+                <td className="flex min-w-0 flex-col justify-center font-semibold break-words tabular-nums lg:table-cell lg:px-2 lg:text-right">
+                  <MobileFieldLabel>Direct cost · {currency}</MobileFieldLabel>
                   {calculationValid ? money(line.directCost, currency) : "—"}
                 </td>
-                <td className="space-y-1 p-1.5">
-                  <select
-                    aria-label={`Review ${line.description}`}
-                    value={line.reviewStatus}
-                    className={cn(
-                      selectClass,
-                      "h-7 w-full border-transparent bg-transparent text-[10px]",
-                    )}
-                    disabled={disabled}
-                    onChange={(event) => {
-                      const reviewStatus = event.target
-                        .value as EstimateLine["reviewStatus"];
-                      if (
-                        reviewStatus === "approved" &&
-                        line.reviewStatus !== "approved" &&
-                        [
-                          "ai",
-                          "room",
-                          "drawing-measurement",
-                          "drawing-schedule",
-                        ].includes(line.source.kind)
-                      ) {
-                        onSelected([line.id]);
-                        setInspectId(line.id);
-                      } else update(line.id, { reviewStatus });
-                    }}
-                  >
-                    <option value="unreviewed">Unreviewed</option>
-                    <option value="approved">Reviewed</option>
-                    <option value="excluded">Excluded</option>
-                  </select>
-                  <select
-                    aria-label={`Alternate for ${line.description}`}
-                    value={line.alternateId ?? ""}
-                    className={cn(
-                      selectClass,
-                      "h-7 w-full border-transparent bg-transparent text-[10px]",
-                    )}
-                    disabled={disabled}
-                    onChange={(event) =>
-                      update(line.id, {
-                        alternateId: event.target.value || null,
-                      })
-                    }
-                  >
-                    <option value="">Base bid</option>
-                    {document.alternates.map((alternate) => (
-                      <option key={alternate.id} value={alternate.id}>
-                        {alternate.name}
-                      </option>
-                    ))}
-                  </select>
+                <td
+                  className={detailCell(
+                    line.id,
+                    "col-span-2 min-w-0 space-y-2 lg:space-y-1 lg:p-1.5",
+                  )}
+                >
+                  <label className="min-w-0">
+                    <MobileFieldLabel>Review</MobileFieldLabel>
+                    <select
+                      aria-label={`Review ${line.description}`}
+                      value={line.reviewStatus}
+                      className={cn(
+                        selectClass,
+                        "h-11 w-full min-w-0 bg-transparent text-base lg:h-7 lg:border-transparent lg:text-[10px]",
+                      )}
+                      disabled={disabled}
+                      onChange={(event) => {
+                        const reviewStatus = event.target
+                          .value as EstimateLine["reviewStatus"];
+                        if (
+                          reviewStatus === "approved" &&
+                          line.reviewStatus !== "approved" &&
+                          [
+                            "ai",
+                            "room",
+                            "drawing-measurement",
+                            "drawing-schedule",
+                          ].includes(line.source.kind)
+                        ) {
+                          onSelected([line.id]);
+                          setInspectId(line.id);
+                        } else update(line.id, { reviewStatus });
+                      }}
+                    >
+                      <option value="unreviewed">Unreviewed</option>
+                      <option value="approved">Reviewed</option>
+                      <option value="excluded">Excluded</option>
+                    </select>
+                  </label>
+                  <label className="min-w-0">
+                    <MobileFieldLabel>Bid option</MobileFieldLabel>
+                    <select
+                      aria-label={`Alternate for ${line.description}`}
+                      value={line.alternateId ?? ""}
+                      className={cn(
+                        selectClass,
+                        "h-11 w-full min-w-0 bg-transparent text-base lg:h-7 lg:border-transparent lg:text-[10px]",
+                      )}
+                      disabled={disabled}
+                      onChange={(event) =>
+                        update(line.id, {
+                          alternateId: event.target.value || null,
+                        })
+                      }
+                    >
+                      <option value="">Base bid</option>
+                      {document.alternates.map((alternate) => (
+                        <option key={alternate.id} value={alternate.id}>
+                          {alternate.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
                 </td>
-                <td className="p-1">
-                  <div className="flex">
+                <td className="col-span-2 border-t pt-2 lg:border-0 lg:p-1">
+                  <div className="flex flex-wrap items-center gap-1 lg:gap-0">
+                    <Button
+                      className="mr-auto h-11 px-2 lg:hidden"
+                      size="sm"
+                      variant="ghost"
+                      aria-expanded={advanced || expandedRows.includes(line.id)}
+                      onClick={() =>
+                        setExpandedRows(
+                          expandedRows.includes(line.id)
+                            ? expandedRows.filter((id) => id !== line.id)
+                            : [...expandedRows, line.id],
+                        )
+                      }
+                      disabled={advanced}
+                    >
+                      {advanced || expandedRows.includes(line.id)
+                        ? "Less detail"
+                        : "More detail"}
+                    </Button>
                     <Button
                       size="icon"
                       variant="ghost"
                       aria-label={`Duplicate ${line.description}`}
-                      className="h-7 w-7"
+                      className="h-11 w-11 lg:h-7 lg:w-7"
                       disabled={disabled}
                       onClick={() =>
                         onChange({
@@ -610,7 +720,7 @@ export function EstimateLines({
                       size="icon"
                       variant="ghost"
                       aria-label={`Delete ${line.description}`}
-                      className="h-7 w-7"
+                      className="h-11 w-11 lg:h-7 lg:w-7"
                       disabled={disabled}
                       onClick={() => remove([line.id])}
                     >
@@ -680,7 +790,7 @@ export function EstimateLines({
           </DialogHeader>
           {inspect && (
             <>
-              <div className="grid grid-cols-2 gap-4 border-y py-4 text-sm">
+              <div className="grid min-w-0 grid-cols-2 gap-4 border-y py-4 text-sm [&>div]:min-w-0 [&>div]:break-words">
                 <div>
                   <p className="text-muted-foreground text-xs">Source</p>
                   <p className="mt-1">
@@ -719,7 +829,7 @@ export function EstimateLines({
                 allocations, not individual order quantities.
               </p>
               {inspect.source.evidence && (
-                <p className="bg-muted/40 rounded p-3 text-sm whitespace-pre-wrap">
+                <p className="bg-muted/40 rounded p-3 text-sm break-words whitespace-pre-wrap">
                   {inspect.source.evidence}
                 </p>
               )}
@@ -770,9 +880,9 @@ export function EstimateLines({
                   rows={3}
                 />
               </Field>
-              <div className="flex justify-end">
+              <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
                 <Button
-                  className="mr-2"
+                  className="h-auto min-h-11 whitespace-normal sm:mr-2"
                   variant="outline"
                   disabled={disabled}
                   onClick={() => {
@@ -783,7 +893,10 @@ export function EstimateLines({
                   Assign catalogue material
                 </Button>
                 <Button
-                  className={actionClass}
+                  className={cn(
+                    actionClass,
+                    "h-auto min-h-11 whitespace-normal",
+                  )}
                   disabled={disabled}
                   onClick={() => {
                     onSelected([inspect.id]);

@@ -98,7 +98,7 @@ export function TakeoffSources({
   const selected = document.selectedSheetIds;
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[88svh] overflow-y-auto sm:max-w-4xl">
+      <DialogContent className="max-h-[88svh] min-w-0 overflow-y-auto p-4 sm:max-w-4xl sm:p-6">
         <DialogHeader>
           <DialogTitle>
             {assignmentLine
@@ -179,7 +179,7 @@ export function TakeoffSources({
                     {sheets.map((sheet) => (
                       <label
                         key={sheet.id}
-                        className="hover:bg-muted/40 flex cursor-pointer items-center gap-3 px-3 py-3 text-sm"
+                        className="hover:bg-muted/40 grid min-w-0 cursor-pointer grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 px-3 py-3 text-sm sm:flex"
                       >
                         <input
                           type="checkbox"
@@ -194,14 +194,14 @@ export function TakeoffSources({
                             })
                           }
                         />
-                        <span className="min-w-16 font-medium">
+                        <span className="min-w-0 font-medium break-words sm:min-w-16">
                           {sheet.number || `Page ${sheet.pageNumber}`}
                         </span>
-                        <span className="text-muted-foreground min-w-0 flex-1 truncate">
+                        <span className="text-muted-foreground col-start-2 min-w-0 flex-1 break-words">
                           {sheet.title}
                         </span>
                         {sheet.revision && (
-                          <span className="text-muted-foreground text-xs">
+                          <span className="text-muted-foreground col-start-2 text-xs break-words">
                             Rev {sheet.revision}
                           </span>
                         )}
@@ -209,7 +209,7 @@ export function TakeoffSources({
                           href={`/dashboard/jobs/${jobId}/drawings?drawingSheet=${sheet.id}${sheet.setId ? `&drawingSet=${sheet.setId}` : ""}`}
                           aria-label={`Open drawing ${sheet.number || sheet.title}`}
                           onClick={(event) => event.stopPropagation()}
-                          className="hover:bg-muted inline-flex h-8 w-8 items-center justify-center rounded"
+                          className="hover:bg-muted col-start-3 row-span-3 row-start-1 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded sm:h-8 sm:w-8"
                         >
                           <ExternalLinkIcon className="h-4 w-4" />
                         </Link>
@@ -264,7 +264,7 @@ export function TakeoffSources({
                 aria-live="polite"
                 className="bg-muted/30 space-y-2 rounded border p-3"
               >
-                <div className="flex items-center justify-between gap-3 text-sm">
+                <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
                   <span>
                     {progress.running
                       ? "Drawing takeoff in progress"
@@ -299,8 +299,8 @@ export function TakeoffSources({
         )}
         {activeTab === "catalogue" && (
           <div className="space-y-4">
-            <div className="flex gap-3">
-              <div className="relative flex-1">
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <div className="relative min-w-0 flex-1">
                 <SearchIcon className="text-muted-foreground absolute top-2.5 left-3 h-4 w-4" />
                 <Input
                   value={search}
@@ -404,7 +404,9 @@ export function TakeoffSources({
                     key={list.id}
                     className="flex items-center justify-between gap-3 py-3"
                   >
-                    <span className="text-sm">{list.name}</span>
+                    <span className="min-w-0 flex-1 text-sm break-words">
+                      {list.name}
+                    </span>
                     <Button
                       size="sm"
                       variant="outline"
@@ -423,7 +425,7 @@ export function TakeoffSources({
               )}
             </section>
             <section>
-              <div className="mb-2 flex items-center justify-between gap-3">
+              <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
                 <h3 className="text-sm font-semibold">Prefabs</h3>
                 <div className="flex items-center gap-1 text-xs">
                   <span>Quantity</span>
@@ -442,7 +444,9 @@ export function TakeoffSources({
                     key={prefab.id}
                     className="flex items-center justify-between gap-3 py-3"
                   >
-                    <span className="text-sm">{prefab.name}</span>
+                    <span className="min-w-0 flex-1 text-sm break-words">
+                      {prefab.name}
+                    </span>
                     <Button
                       size="sm"
                       variant="outline"
@@ -464,7 +468,7 @@ export function TakeoffSources({
         )}
         {activeTab === "assemblies" && (
           <div>
-            <div className="mb-3 flex items-center justify-between gap-3">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
               <p className="text-muted-foreground text-xs">
                 Saved organization assemblies add their component costs.
               </p>
@@ -488,7 +492,9 @@ export function TakeoffSources({
               {pricebook.data?.assemblies.map((assembly) => (
                 <div key={assembly.id} className="flex items-center gap-3 py-3">
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium">{assembly.name}</p>
+                    <p className="text-sm font-medium break-words">
+                      {assembly.name}
+                    </p>
                     <p className="text-muted-foreground mt-1 text-xs">
                       {assembly.lines.length} components per {assembly.unit}
                     </p>

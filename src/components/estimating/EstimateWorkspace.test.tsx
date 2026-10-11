@@ -434,6 +434,84 @@ describe("estimating workspace integrity", () => {
     expect(screen.getByLabelText("Quantity for Copper pipe")).toHaveValue(1);
   });
 
+  it("opens per-item cost fields and retains those edits when collapsed", async () => {
+    render(<EstimateWorkspace id={estimateId} />);
+    expect(
+      screen.queryByLabelText("orderMultiple for Copper pipe"),
+    ).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "More detail" }));
+    fireEvent.change(screen.getByLabelText("orderMultiple for Copper pipe"), {
+      target: { value: "25" },
+    });
+    fireEvent.change(screen.getByLabelText("trade for Copper pipe"), {
+      target: { value: "Plumbing" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Less detail" }));
+    expect(
+      screen.queryByLabelText("orderMultiple for Copper pipe"),
+    ).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    await waitFor(() => expect(methods.save).toHaveBeenCalled());
+    const saved = methods.save.mock.calls[0]?.[0] as {
+      document: EstimateDocument;
+    };
+    expect(saved.document.lines[0]).toMatchObject({
+      orderMultiple: 25,
+      trade: "Plumbing",
+      quantity: 10,
+    });
+  });
+
+  it("switches every section using the phone selector and toggles totals/actions", () => {
+    render(<EstimateWorkspace id={estimateId} />);
+    fireEvent.change(screen.getByLabelText("Estimate section"), {
+      target: { value: "settings" },
+    });
+    expect(screen.getByLabelText("Estimate currency")).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Estimate section"), {
+      target: { value: "costs" },
+    });
+    expect(
+      screen.getByLabelText("Quantity for Copper pipe"),
+    ).toBeInTheDocument();
+    const show = screen.getByRole("button", {
+      name: "Totals & actions",
+    });
+    expect(show).toHaveAttribute("aria-expanded", "false");
+    expect(show).toHaveAttribute("aria-controls", "estimate-summary");
+    fireEvent.click(show);
+    expect(screen.getByRole("button", { name: "Hide totals" })).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Hide totals" }));
+    expect(
+      screen.getByRole("button", { name: "Totals & actions" }),
+    ).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("discloses all rate fields on phones and saves edits from that disclosure", async () => {
+    methods.savePricing.mockImplementation(
+      async (input: typeof fixtureState.pricing) => ({
+        ...input,
+        revision: 5,
+      }),
+    );
+    render(<PricebookDialog open onOpenChange={() => undefined} canEdit />);
+    fireEvent.click(screen.getByRole("button", { name: "More detail" }));
+    fireEvent.change(screen.getByLabelText("orderMultiple for Copper pipe"), {
+      target: { value: "50" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Less detail" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save pricebook" }));
+    await waitFor(() => expect(methods.savePricing).toHaveBeenCalled());
+    const saved = methods.savePricing.mock
+      .calls[0]?.[0] as typeof fixtureState.pricing;
+    expect(saved.rows[0]).toMatchObject({
+      orderMultiple: 50,
+    });
+  });
+
   it("pages editable rows while retaining document-wide totals and filters", () => {
     fixtureState.record!.document.lines = Array.from(
       { length: 64 },

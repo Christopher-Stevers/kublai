@@ -31,6 +31,7 @@ import {
   errorMessage,
   Field,
   NumberInput,
+  MobileFieldLabel,
 } from "./estimating-ui";
 
 type Pricebook = {
@@ -54,6 +55,11 @@ export function PricebookDialog({
   const query = api.estimating.pricing.useQuery(undefined, { enabled: open });
   const save = api.estimating.savePricing.useMutation();
   const [book, setBook] = useState<Pricebook | null>(null);
+  const [expandedRates, setExpandedRates] = useState<string[]>([]);
+  const rateDetails = (id: string) =>
+    expandedRates.includes(id)
+      ? "min-w-0 lg:p-1"
+      : "hidden lg:table-cell lg:p-1";
   const [dirty, setDirty] = useState(false);
   const [tab, setTab] = useState<"rates" | "import" | "assemblies">("rates");
   const [csv, setCsv] = useState("");
@@ -208,7 +214,7 @@ export function PricebookDialog({
   };
   return (
     <Dialog open={open} onOpenChange={(value) => void close(value)}>
-      <DialogContent className="max-h-[90svh] overflow-y-auto sm:max-w-6xl">
+      <DialogContent className="max-h-[90svh] min-w-0 overflow-y-auto p-4 sm:max-w-6xl sm:p-6">
         <DialogHeader>
           <DialogTitle>Organization pricebook & assemblies</DialogTitle>
           <DialogDescription>
@@ -217,10 +223,11 @@ export function PricebookDialog({
           </DialogDescription>
         </DialogHeader>
         <div className="flex flex-wrap items-center justify-between gap-3 border-b pb-3">
-          <div className="flex gap-1">
+          <div className="grid w-full min-w-0 grid-cols-3 gap-1 sm:flex sm:w-auto">
             {(["rates", "import", "assemblies"] as const).map((value) => (
               <Button
                 key={value}
+                className="h-auto min-h-11 min-w-0 px-1 whitespace-normal sm:min-h-9 sm:px-3"
                 size="sm"
                 variant={tab === value ? "secondary" : "ghost"}
                 onClick={() => setTab(value)}
@@ -283,9 +290,9 @@ export function PricebookDialog({
                 </Button>
               )}
             </div>
-            <div className="max-h-[45svh] overflow-auto rounded border">
-              <table className="w-full min-w-[1800px] text-left text-xs">
-                <thead className="bg-muted sticky top-0 z-10">
+            <div className="rounded border lg:max-h-[45svh] lg:overflow-auto">
+              <table className="block w-full text-left text-sm lg:table lg:min-w-[1800px] lg:text-xs">
+                <thead className="bg-muted sticky top-0 z-10 hidden lg:table-header-group">
                   <tr>
                     {[
                       "Description",
@@ -311,32 +318,57 @@ export function PricebookDialog({
                     ))}
                   </tr>
                 </thead>
-                <tbody className="divide-y">
+                <tbody className="block divide-y lg:table-row-group">
                   {book.rows.map((row) => (
-                    <tr key={row.id} className="hover:bg-muted/30">
-                      {(["description", "sku", "unit"] as const).map((key) => (
-                        <td key={key} className="p-1">
+                    <tr
+                      key={row.id}
+                      className="hover:bg-muted/30 grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-3 p-3 lg:table-row lg:p-0"
+                    >
+                      <td className="col-span-2 min-w-0 lg:p-1">
+                        <MobileFieldLabel>Description</MobileFieldLabel>
+                        <Textarea
+                          aria-label={`description for ${row.description}`}
+                          value={row.description}
+                          rows={2}
+                          disabled={!canEdit || save.isPending}
+                          className="[field-sizing:content] min-h-11 min-w-0 resize-none text-base lg:[field-sizing:fixed] lg:h-8 lg:min-h-8 lg:min-w-52 lg:text-xs"
+                          onChange={(event) =>
+                            updateRow(row.id, {
+                              description: event.target.value,
+                            })
+                          }
+                        />
+                      </td>
+                      {(["sku", "unit"] as const).map((key) => (
+                        <td
+                          key={key}
+                          className={
+                            key === "sku"
+                              ? rateDetails(row.id)
+                              : "min-w-0 lg:p-1"
+                          }
+                        >
+                          <MobileFieldLabel>
+                            {key === "sku" ? "SKU" : "Unit"}
+                          </MobileFieldLabel>
                           <Input
                             aria-label={`${key} for ${row.description}`}
                             value={row[key]}
                             disabled={!canEdit || save.isPending}
-                            className={
-                              key === "description"
-                                ? "h-8 min-w-52 text-xs"
-                                : "h-8 min-w-20 text-xs"
-                            }
+                            className="h-11 min-w-0 text-base lg:h-8 lg:min-w-20 lg:text-xs"
                             onChange={(event) =>
                               updateRow(row.id, { [key]: event.target.value })
                             }
                           />
                         </td>
                       ))}
-                      <td className="p-1">
+                      <td className="min-w-0 lg:p-1">
+                        <MobileFieldLabel>Currency</MobileFieldLabel>
                         <select
                           aria-label={`Currency for ${row.description}`}
                           value={row.currency ?? ""}
                           disabled={!canEdit || save.isPending}
-                          className="bg-background h-8 rounded border px-2 text-xs"
+                          className="bg-background h-11 w-full min-w-0 rounded border px-2 text-base lg:h-8 lg:w-auto lg:text-xs"
                           onChange={(event) =>
                             updateRow(row.id, {
                               currency: event.target.value
@@ -347,7 +379,7 @@ export function PricebookDialog({
                             })
                           }
                         >
-                          <option value="">Estimate currency</option>
+                          <option value="">Default</option>
                           {["CAD", "USD", "GBP", "EUR"].map((currency) => (
                             <option key={currency}>{currency}</option>
                           ))}
@@ -363,7 +395,27 @@ export function PricebookDialog({
                           "orderMultiple",
                         ] as const
                       ).map((key) => (
-                        <td key={key} className="p-1">
+                        <td
+                          key={key}
+                          className={
+                            key === "materialUnitCost" ||
+                            key === "laborHoursPerUnit"
+                              ? "min-w-0 lg:p-1"
+                              : rateDetails(row.id)
+                          }
+                        >
+                          <MobileFieldLabel>
+                            {
+                              {
+                                materialUnitCost: "Material / unit",
+                                laborHoursPerUnit: "Labor hr / unit",
+                                equipmentUnitCost: "Equipment / unit",
+                                subcontractUnitCost: "Subcontract / unit",
+                                otherUnitCost: "Other / unit",
+                                orderMultiple: "Order multiple",
+                              }[key]
+                            }
+                          </MobileFieldLabel>
                           <NumberInput
                             aria-label={`${key} for ${row.description}`}
                             value={row[key]}
@@ -380,11 +432,20 @@ export function PricebookDialog({
                       ))}
                       {(["supplierName", "trade", "costCode"] as const).map(
                         (key) => (
-                          <td key={key} className="p-1">
+                          <td key={key} className={rateDetails(row.id)}>
+                            <MobileFieldLabel>
+                              {
+                                {
+                                  supplierName: "Supplier",
+                                  trade: "Trade",
+                                  costCode: "Cost code",
+                                }[key]
+                              }
+                            </MobileFieldLabel>
                             <Input
                               aria-label={`${key} for ${row.description}`}
                               value={row[key]}
-                              className="h-8 min-w-32 text-xs"
+                              className="h-11 min-w-0 text-base lg:h-8 lg:min-w-32 lg:text-xs"
                               disabled={!canEdit || save.isPending}
                               onChange={(event) =>
                                 updateRow(row.id, { [key]: event.target.value })
@@ -393,12 +454,13 @@ export function PricebookDialog({
                           </td>
                         ),
                       )}
-                      <td className="p-1">
+                      <td className={`${rateDetails(row.id)} col-span-2`}>
+                        <MobileFieldLabel>Price date</MobileFieldLabel>
                         <Input
                           aria-label={`Price date for ${row.description}`}
                           type="date"
                           value={row.updatedAt?.slice(0, 10) ?? ""}
-                          className="h-8 min-w-36 text-xs"
+                          className="h-11 w-full min-w-0 text-base lg:h-8 lg:min-w-36 lg:text-xs"
                           disabled={!canEdit || save.isPending}
                           onChange={(event) =>
                             updateRow(row.id, {
@@ -407,12 +469,13 @@ export function PricebookDialog({
                           }
                         />
                       </td>
-                      <td className="p-1">
+                      <td className={`${rateDetails(row.id)} col-span-2`}>
+                        <MobileFieldLabel>Evidence source</MobileFieldLabel>
                         <select
                           aria-label={`Pricing evidence for ${row.description}`}
                           value={row.priceSource ?? ""}
                           disabled={!canEdit || save.isPending}
-                          className="bg-background h-8 rounded border px-2 text-xs"
+                          className="bg-background h-11 w-full min-w-0 rounded border px-2 text-base lg:h-8 lg:w-auto lg:text-xs"
                           onChange={(event) =>
                             updateRow(row.id, {
                               priceSource: event.target.value
@@ -435,25 +498,45 @@ export function PricebookDialog({
                           ))}
                         </select>
                       </td>
-                      <td>
-                        {canEdit && (
+                      <td className="col-span-2 border-t pt-2 lg:border-0 lg:p-0">
+                        <div className="flex items-center justify-between gap-2">
                           <Button
-                            aria-label={`Delete rate ${row.description}`}
-                            size="icon"
+                            className="h-11 lg:hidden"
                             variant="ghost"
-                            disabled={save.isPending}
+                            size="sm"
+                            aria-expanded={expandedRates.includes(row.id)}
                             onClick={() =>
-                              change({
-                                ...book,
-                                rows: book.rows.filter(
-                                  (item) => item.id !== row.id,
-                                ),
-                              })
+                              setExpandedRates(
+                                expandedRates.includes(row.id)
+                                  ? expandedRates.filter((id) => id !== row.id)
+                                  : [...expandedRates, row.id],
+                              )
                             }
                           >
-                            <Trash2Icon className="h-3.5 w-3.5" />
+                            {expandedRates.includes(row.id)
+                              ? "Less detail"
+                              : "More detail"}
                           </Button>
-                        )}
+                          {canEdit && (
+                            <Button
+                              aria-label={`Delete rate ${row.description}`}
+                              className="h-11 w-11 lg:h-9 lg:w-9"
+                              size="icon"
+                              variant="ghost"
+                              disabled={save.isPending}
+                              onClick={() =>
+                                change({
+                                  ...book,
+                                  rows: book.rows.filter(
+                                    (item) => item.id !== row.id,
+                                  ),
+                                })
+                              }
+                            >
+                              <Trash2Icon className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -654,7 +737,9 @@ export function PricebookDialog({
                       key={line.id}
                       className="flex items-center gap-3 py-1 text-xs"
                     >
-                      <span className="flex-1">{line.description}</span>
+                      <span className="min-w-0 flex-1 break-words">
+                        {line.description}
+                      </span>
                       <NumberInput
                         className="max-w-24"
                         aria-label={`Quantity of ${line.description} in ${assembly.name}`}

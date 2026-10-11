@@ -93,7 +93,7 @@ export function EstimatesList() {
     }
   };
   return (
-    <div className="mx-auto w-full max-w-[1600px] px-4 py-6 sm:px-6 lg:px-8">
+    <div className="mx-auto w-full max-w-[1600px] min-w-0 px-4 py-6 sm:px-6 lg:px-8">
       <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="text-muted-foreground mb-1 text-xs font-semibold tracking-[0.14em] uppercase">
@@ -107,7 +107,7 @@ export function EstimatesList() {
             proposal.
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex w-full flex-wrap gap-2 sm:w-auto">
           <Button variant="outline" onClick={() => setPricingOpen(true)}>
             <SlidersHorizontalIcon className="mr-2 h-4 w-4" />
             Pricebook & assemblies
@@ -127,7 +127,7 @@ export function EstimatesList() {
         </div>
       </div>
       <div className="mb-4 flex flex-wrap gap-3 border-y py-3">
-        <div className="relative min-w-56 flex-1">
+        <div className="relative min-w-0 flex-1 basis-full sm:basis-56">
           <SearchIcon className="text-muted-foreground absolute top-2.5 left-3 h-4 w-4" />
           <Input
             aria-label="Search estimates"
@@ -147,7 +147,7 @@ export function EstimatesList() {
             resetPages();
             setJobId(event.target.value);
           }}
-          className={`${selectClass} max-w-full sm:w-56`}
+          className={`${selectClass} w-full sm:w-56`}
         >
           <option value="">All jobs</option>
           {jobs.data?.map((job) => (
@@ -163,7 +163,7 @@ export function EstimatesList() {
             resetPages();
             setStatus(event.target.value as EstimateStatus | "");
           }}
-          className={`${selectClass} sm:w-40`}
+          className={`${selectClass} w-full sm:w-40`}
         >
           <option value="">All statuses</option>
           {estimateStatusSchema.options.map((value) => (
@@ -181,9 +181,9 @@ export function EstimatesList() {
           </Button>
         </p>
       )}
-      <div className="bg-background overflow-x-auto rounded-lg border">
-        <table className="w-full min-w-[700px] text-left text-sm">
-          <thead className="bg-muted/40 text-muted-foreground text-xs">
+      <div className="bg-background min-w-0 rounded-lg border lg:overflow-x-auto">
+        <table className="block w-full text-left text-sm lg:table lg:min-w-[700px]">
+          <thead className="bg-muted/40 text-muted-foreground hidden text-xs lg:table-header-group">
             <tr>
               <th className="p-4 font-medium">Estimate / job</th>
               <th className="p-4 font-medium">Status</th>
@@ -195,14 +195,14 @@ export function EstimatesList() {
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y">
+          <tbody className="block divide-y lg:table-row-group">
             {items.map((estimate) => {
               return (
                 <tr
                   key={estimate.id}
-                  className="hover:bg-muted/30 transition-colors"
+                  className="hover:bg-muted/30 relative grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-3 p-4 transition-colors lg:table-row lg:p-0"
                 >
-                  <td className="p-4">
+                  <td className="col-span-2 min-w-0 pr-10 break-words lg:p-4">
                     <Link
                       href={`/dashboard/estimating/${estimate.id}`}
                       className="block font-medium hover:text-blue-600"
@@ -213,25 +213,25 @@ export function EstimatesList() {
                       {estimate.jobName} · Revision {estimate.revision}
                     </span>
                   </td>
-                  <td className="p-4">
+                  <td className="min-w-0 lg:p-4">
                     <StatusBadge status={estimate.status} />
                   </td>
-                  <td className="p-4 text-right font-semibold tabular-nums">
+                  <td className="min-w-0 text-right font-semibold break-words tabular-nums lg:p-4">
                     {money(estimate.summary.total, estimate.summary.currency)}
                   </td>
-                  <td className="text-muted-foreground p-4 text-xs">
+                  <td className="text-muted-foreground min-w-0 text-xs lg:p-4">
                     {estimate.summary.readiness.ready
                       ? "Ready"
                       : "Needs review"}
                   </td>
-                  <td className="text-muted-foreground p-4 text-xs">
+                  <td className="text-muted-foreground min-w-0 text-right text-xs lg:p-4 lg:text-left">
                     {shortDate(estimate.updatedAt)}
                   </td>
-                  <td className="p-4">
+                  <td className="absolute top-2 right-2 lg:static lg:p-4">
                     <Link
                       href={`/dashboard/estimating/${estimate.id}`}
                       aria-label={`Open ${estimate.name}`}
-                      className="hover:bg-muted inline-flex h-8 w-8 items-center justify-center rounded"
+                      className="hover:bg-muted inline-flex h-11 w-11 items-center justify-center rounded lg:h-8 lg:w-8"
                     >
                       <ArrowUpRightIcon className="h-4 w-4" />
                     </Link>

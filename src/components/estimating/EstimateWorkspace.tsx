@@ -118,6 +118,7 @@ export function EstimateWorkspace({ id }: { id: string }) {
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
   const [conflict, setConflict] = useState(false);
+  const [showSummary, setShowSummary] = useState(false);
   const [tab, setTab] = useState<Tab>("costs");
   const [selected, setSelected] = useState<string[]>([]);
   const [sourcesOpen, setSourcesOpen] = useState(false);
@@ -514,8 +515,8 @@ export function EstimateWorkspace({ id }: { id: string }) {
     { label: "Other costs", value: total.otherTotal },
   ];
   return (
-    <div className="mx-auto w-full max-w-[1920px] px-3 py-5 sm:px-6 lg:px-8">
-      <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
+    <div className="mx-auto w-full max-w-[1920px] min-w-0 px-3 py-5 sm:px-6 lg:px-8">
+      <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
         <div className="min-w-0 flex-1">
           <Button
             variant="ghost"
@@ -546,7 +547,7 @@ export function EstimateWorkspace({ id }: { id: string }) {
               disabled={disabled}
               onChange={(event) => updateName(event.target.value)}
               maxLength={255}
-              className="hover:border-border focus:bg-background h-auto min-w-48 flex-1 border-transparent bg-transparent px-0 py-1 text-xl font-semibold tracking-tight shadow-none sm:text-2xl md:text-2xl"
+              className="hover:border-border focus:bg-background h-auto w-full min-w-0 flex-1 border-transparent bg-transparent px-0 py-1 text-xl font-semibold tracking-tight shadow-none sm:text-2xl md:text-2xl"
             />
             <StatusBadge status={record.status} />
           </div>
@@ -556,8 +557,11 @@ export function EstimateWorkspace({ id }: { id: string }) {
             {record.createdByName ? ` · ${record.createdByName}` : ""}
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2 self-end">
-          <span role="status" className="text-muted-foreground mr-1 text-xs">
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:self-end">
+          <span
+            role="status"
+            className="text-muted-foreground w-full text-xs sm:mr-1 sm:w-auto"
+          >
             {busy
               ? `${busy}…`
               : dirty
@@ -567,6 +571,7 @@ export function EstimateWorkspace({ id }: { id: string }) {
           <Button
             variant="outline"
             size="sm"
+            className="h-11 flex-1 sm:h-9 sm:flex-none"
             disabled={Boolean(busy)}
             onClick={() => {
               setHistoryBefore(undefined);
@@ -580,6 +585,7 @@ export function EstimateWorkspace({ id }: { id: string }) {
           <Button
             variant="outline"
             size="sm"
+            className="h-11 flex-1 sm:h-9 sm:flex-none"
             disabled={!permissions.edit || Boolean(busy)}
             onClick={() =>
               void run("Duplicating", async (latest) => {
@@ -594,12 +600,14 @@ export function EstimateWorkspace({ id }: { id: string }) {
           {writable && (
             <Button
               size="sm"
-              className={actionClass}
+              className={`${actionClass} h-11 flex-1 sm:h-9 sm:flex-none`}
+              aria-label="Save changes"
               disabled={!dirty || Boolean(busy)}
               onClick={() => void run("Saving")}
             >
               <SaveIcon className="mr-1.5 h-4 w-4" />
-              Save changes
+              <span className="sm:hidden">Save</span>
+              <span className="hidden sm:inline">Save changes</span>
             </Button>
           )}
         </div>
@@ -666,10 +674,48 @@ export function EstimateWorkspace({ id }: { id: string }) {
           estimate. Your editable rows are retained.
         </p>
       )}
+      <section
+        aria-label="Estimate total"
+        className="mb-4 flex min-w-0 items-center justify-between gap-3 border-y py-3 xl:hidden"
+      >
+        <div className="min-w-0">
+          <p className="text-muted-foreground text-xs">
+            Selling price · {currency}
+          </p>
+          <p className="text-xl font-semibold break-words tabular-nums">
+            {displayMoney(total.total)}
+          </p>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-11 shrink-0"
+          aria-expanded={showSummary}
+          aria-controls="estimate-summary"
+          onClick={() => setShowSummary(!showSummary)}
+        >
+          {showSummary ? "Hide totals" : "Totals & actions"}
+        </Button>
+      </section>
       <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_300px]">
         <main className="bg-background min-w-0 overflow-hidden rounded-lg border">
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b px-3 pt-3">
-            <div className="flex max-w-full gap-1 overflow-x-auto">
+          <div className="flex min-w-0 flex-wrap items-center justify-between gap-2 border-b px-3 pt-3">
+            <select
+              aria-label="Estimate section"
+              className={`${selectClass} mb-1 w-full sm:hidden`}
+              value={tab}
+              onChange={(event) => setTab(event.target.value as Tab)}
+            >
+              {tabs.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.label}
+                  {item.id === "review" && issueCount > 0
+                    ? ` (${issueCount})`
+                    : ""}
+                </option>
+              ))}
+            </select>
+            <div className="hidden max-w-full flex-wrap gap-1 sm:flex">
               {tabs.map((item) => (
                 <button
                   key={item.id}
@@ -683,10 +729,11 @@ export function EstimateWorkspace({ id }: { id: string }) {
                 </button>
               ))}
             </div>
-            <div className="mb-3 flex gap-1">
+            <div className="mb-3 flex w-full gap-1 sm:w-auto">
               <Button
                 variant="ghost"
                 size="sm"
+                className="h-11 flex-1 sm:h-9 sm:flex-none"
                 disabled={disabled}
                 onClick={() => {
                   setAssignmentLineId(undefined);
@@ -700,6 +747,7 @@ export function EstimateWorkspace({ id }: { id: string }) {
                 variant="ghost"
                 size="icon"
                 aria-label="Organization pricebook"
+                className="h-11 w-11 sm:h-9 sm:w-9"
                 onClick={() => setPricingOpen(true)}
               >
                 <SlidersHorizontalIcon className="h-4 w-4" />
@@ -749,7 +797,7 @@ export function EstimateWorkspace({ id }: { id: string }) {
           )}
           {tab === "review" && (
             <section className="p-5 sm:p-6">
-              <div className="mb-5 flex items-center justify-between gap-3">
+              <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <h2 className="text-base font-semibold">Estimate review</h2>
                   <p className="text-muted-foreground mt-1 text-sm">
@@ -841,11 +889,11 @@ export function EstimateWorkspace({ id }: { id: string }) {
               <h3 className="mt-8 mb-2 text-sm font-semibold">
                 Included direct cost by trade
               </h3>
-              <table className="w-full text-sm">
+              <table className="w-full table-fixed text-sm">
                 <tbody className="divide-y">
                   {calculation.groups.trade.map((group) => (
                     <tr key={group.name}>
-                      <td className="py-2">
+                      <td className="py-2 pr-2 break-words">
                         {group.name}
                         <span className="text-muted-foreground ml-2 text-xs">
                           {group.lineCount} rows
@@ -878,13 +926,16 @@ export function EstimateWorkspace({ id }: { id: string }) {
             </section>
           )}
         </main>
-        <aside className="space-y-4 xl:sticky xl:top-20 xl:self-start">
+        <aside
+          id="estimate-summary"
+          className={`${showSummary ? "block" : "hidden"} order-first min-w-0 space-y-4 xl:sticky xl:top-20 xl:order-last xl:block xl:self-start`}
+        >
           <section className="bg-background overflow-hidden rounded-lg border">
             <div className="bg-muted/30 border-b p-5">
               <p className="text-muted-foreground text-xs font-medium">
                 Selling price · {currency}
               </p>
-              <p className="mt-2 text-3xl font-semibold tracking-tight tabular-nums">
+              <p className="mt-2 text-3xl font-semibold tracking-tight break-words tabular-nums">
                 {displayMoney(total.total)}
               </p>
               <p className="text-muted-foreground mt-2 text-xs">
@@ -895,7 +946,10 @@ export function EstimateWorkspace({ id }: { id: string }) {
             </div>
             <div className="space-y-2 p-5 text-xs">
               {breakdown.map((item) => (
-                <div key={item.label} className="flex justify-between gap-3">
+                <div
+                  key={item.label}
+                  className="flex min-w-0 justify-between gap-3 [&>span]:min-w-0 [&>span]:break-words"
+                >
                   <span className="text-muted-foreground">{item.label}</span>
                   <span className="tabular-nums">
                     {displayMoney(item.value)}
@@ -926,7 +980,10 @@ export function EstimateWorkspace({ id }: { id: string }) {
                   value: total.tax,
                 },
               ].map((item) => (
-                <div key={item.label} className="flex justify-between gap-3">
+                <div
+                  key={item.label}
+                  className="flex min-w-0 justify-between gap-3 [&>span]:min-w-0 [&>span]:break-words"
+                >
                   <span className="text-muted-foreground">{item.label}</span>
                   <span className="tabular-nums">
                     {displayMoney(item.value)}
@@ -1178,7 +1235,7 @@ export function EstimateWorkspace({ id }: { id: string }) {
         }}
       />
       <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
-        <DialogContent className="max-h-[88svh] overflow-auto sm:max-w-3xl">
+        <DialogContent className="max-h-[88svh] min-w-0 overflow-auto p-4 sm:max-w-3xl sm:p-6">
           <DialogHeader>
             <DialogTitle>Revision history</DialogTitle>
             <DialogDescription>
