@@ -11,16 +11,21 @@ type Pending = {
   cancel: ReturnType<typeof vi.fn>;
 };
 const pending: Pending[] = [];
-const renderPage = vi.fn(() => {
-  let resolve!: () => void, reject!: (reason: Error) => void;
-  const promise = new Promise<void>((done, fail) => {
-    resolve = done;
-    reject = fail;
-  });
-  const cancel = vi.fn();
-  pending.push({ resolve, reject, cancel });
-  return { promise, cancel };
-});
+const renderPage = vi.fn(
+  (_options: {
+    recordOperations?: boolean;
+    operationsFilter?: (index: number) => boolean;
+  }) => {
+    let resolve!: () => void, reject!: (reason: Error) => void;
+    const promise = new Promise<void>((done, fail) => {
+      resolve = done;
+      reject = fail;
+    });
+    const cancel = vi.fn();
+    pending.push({ resolve, reject, cancel });
+    return { promise, cancel };
+  },
+);
 const props = {
   pdf: { url: "/plan.pdf", page: 1 },
   fit: { width: 400, height: 300 },
@@ -44,14 +49,16 @@ beforeEach(() => {
   vi.useFakeTimers();
   pending.length = 0;
   renderPage.mockClear();
-  vi.mocked(loadPdfDocument).mockResolvedValue({
-    getPage: async () => ({
-      getViewport: ({ scale }: { scale: number }) => ({
-        width: 1000 * scale,
-        height: 750 * scale,
-      }),
-      render: renderPage,
+  const page = {
+    getViewport: ({ scale }: { scale: number }) => ({
+      width: 1000 * scale,
+      height: 750 * scale,
     }),
+    render: renderPage,
+    recordedBBoxes: null,
+  };
+  vi.mocked(loadPdfDocument).mockResolvedValue({
+    getPage: async () => page,
   } as unknown as Awaited<ReturnType<typeof loadPdfDocument>>);
 });
 afterEach(() => {
@@ -233,5 +240,48 @@ describe("persistent PDF detail during gestures", () => {
       await vi.advanceTimersByTimeAsync(60_000);
     });
     expect(pending).toHaveLength(4);
+  });
+  it("records a complete page once, then filters cropped detail from confirmed bounds", async () => {
+    const whole = { ...props, view: { scale: 1, x: 0, y: 0 } };
+    const document = await loadPdfDocument(props.pdf.url);
+    const page = await document.getPage(1);
+    const bounds = {
+      isEmpty: () => true,
+      minX: () => 0,
+      maxX: () => 0,
+      minY: () => 0,
+      maxY: () => 0,
+    };
+    const view = render(<DrawingPdfLayer {...whole} />);
+    await tick();
+    expect(renderPage.mock.calls[0]![0]).toMatchObject({
+      recordOperations: true,
+      operationsFilter: undefined,
+    });
+    page.recordedBBoxes = bounds;
+    await finish(0);
+    view.rerender(<DrawingPdfLayer {...props} />);
+    await tick();
+    const options = renderPage.mock.calls[1]![0];
+    expect(options.recordOperations).toBe(false);
+    expect(options.operationsFilter?.(0)).toBe(false);
+  });
+
+  it("ignores incomplete bounds from a failed whole-page render when reopening zoomed in", async () => {
+    const document = await loadPdfDocument(props.pdf.url);
+    const page = await document.getPage(1);
+    const view = render(
+      <DrawingPdfLayer {...props} view={{ scale: 1, x: 0, y: 0 }} />,
+    );
+    await tick();
+    page.recordedBBoxes = { isEmpty: () => true };
+    await act(async () => {
+      pending[0]!.reject(new Error("Interrupted rendering"));
+      await vi.advanceTimersByTimeAsync(1);
+    });
+    view.unmount();
+    render(<DrawingPdfLayer {...props} />);
+    await tick();
+    expect(renderPage.mock.calls[1]![0].operationsFilter).toBeUndefined();
   });
 });

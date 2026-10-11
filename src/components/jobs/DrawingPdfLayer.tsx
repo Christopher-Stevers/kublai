@@ -2,6 +2,11 @@
 
 import { useEffect, useRef, type RefCallback } from "react";
 import type { RenderTask } from "pdfjs-dist/legacy/build/pdf.mjs";
+import {
+  drawingPdfOperationsFilter,
+  isFullDrawingPatch,
+  type PdfOperationBounds,
+} from "~/lib/drawing-pdf-operations";
 import { loadPdfDocument } from "~/lib/pdf-client";
 import {
   patchCoversView,
@@ -22,6 +27,9 @@ type Props = {
   moving: boolean;
 };
 type Snapshot = { index: number; patch: DrawingPatch };
+// Only successful full-page renders are safe to reuse. PDF.js can expose
+// incomplete bounds after cancellation; never use those for filtering.
+const completedPageBounds = new WeakMap<object, PdfOperationBounds>();
 
 /**
  * Double-buffered, overscanned PDF detail inside the transformed sheet layer.
@@ -114,9 +122,17 @@ export function DrawingPdfLayer(props: Props) {
         canvas.style.visibility = "hidden";
         canvas.width = patch.pixelWidth;
         canvas.height = patch.pixelHeight;
+        const bounds = completedPageBounds.get(page);
+        const recordFullPage = !bounds && isFullDrawingPatch(patch);
+        if (recordFullPage) page.recordedBBoxes = null;
         const render = page.render({
           canvas,
           viewport,
+          // Recording while the whole page is visible lets later crops skip
+          // offscreen ink and its unused state. Deep-link opens without a full
+          // recording retain the complete rendering path.
+          recordOperations: recordFullPage,
+          operationsFilter: drawingPdfOperationsFilter(bounds, patch),
           transform: [
             1,
             0,
@@ -131,6 +147,11 @@ export function DrawingPdfLayer(props: Props) {
         // Keep that scheduler instead of adding another frame of latency.
         await render.promise;
         if (disposed) return;
+        if (recordFullPage && page.recordedBBoxes)
+          completedPageBounds.set(
+            page,
+            page.recordedBBoxes as PdfOperationBounds,
+          );
         const now = latest.current;
         const coverage = patchScreenCoverage(
           patch,

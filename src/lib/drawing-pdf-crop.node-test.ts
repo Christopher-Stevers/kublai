@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { createCanvas } from "@napi-rs/canvas";
+import {
+  drawingPdfOperationsFilter,
+  type PdfOperationBounds,
+} from "./drawing-pdf-operations";
 import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
 
 /** An independently authored vector fixture, never a customer drawing. */
@@ -12,6 +16,9 @@ function vectorPdf(rotation: number) {
     "0.9 0.15 0.1 rg 49 60 47 33 re f",
     "0.1 0.7 0.2 rg 131 77 41 44 re f",
     "0.15 0.1 0.7 RG 2 w 40 51 m 194 51 l 194 109 l S",
+    // Isolated offscreen marks, with scoped color and transform state.
+    "q 1 0 0 1 19 25 cm 0.2 0.6 0.8 rg 0 0 3 3 re f Q",
+    "q 1 0 0 1 211 137 cm 0.8 0.6 0.2 rg 0 0 3 3 re f Q",
   ].join("\n");
   const objects = [
     "<< /Type /Catalog /Pages 2 0 R >>",
@@ -51,6 +58,7 @@ for (const rotation of [0, 90, 180, 270]) {
         await page.render({
           canvas: full as unknown as HTMLCanvasElement,
           viewport: fullViewport,
+          recordOperations: true,
           transform: [1, 0, 0, verticalScale, 0, 0],
         }).promise;
 
@@ -58,7 +66,30 @@ for (const rotation of [0, 90, 180, 270]) {
         const left = full.width / 4;
         const top = full.height / 4;
         const crop = createCanvas(full.width / 2, full.height / 2);
+        assert.ok(
+          page.recordedBBoxes,
+          "The whole-page render must record operation bounds",
+        );
+        const filter = drawingPdfOperationsFilter(
+          page.recordedBBoxes as PdfOperationBounds,
+          {
+            left: 0.25,
+            top: 0.25,
+            width: 0.5,
+            height: 0.5,
+            pixelWidth: crop.width,
+            pixelHeight: crop.height,
+            fullWidth: full.width,
+            fullHeight: full.height,
+          },
+        )!;
+        let skipped = 0;
         await page.render({
+          operationsFilter: (index) => {
+            const keep = filter(index);
+            if (!keep) skipped++;
+            return keep;
+          },
           canvas: crop as unknown as HTMLCanvasElement,
           viewport: page.getViewport({ scale: 2 }),
           // Same normalized-page transform used by DrawingPdfLayer, including
@@ -66,6 +97,10 @@ for (const rotation of [0, 90, 180, 270]) {
           // A larger 1.5 fixture stretch makes transform order errors obvious.
           transform: [1, 0, 0, verticalScale, -left, -top],
         }).promise;
+        assert.ok(
+          skipped > 0,
+          "The optimized crop must skip offscreen operations",
+        );
         const expected = full
           .getContext("2d")
           .getImageData(left, top, crop.width, crop.height).data;

@@ -70,6 +70,7 @@ type MeasureNode = { point: SheetPoint; line: SnapSegment | null; referenceOnly?
 export type DrawingViewport = { center: SheetPoint; zoom: number };
 type View = { scale: number; x: number; y: number };
 const REST: View = { scale: 1, x: 0, y: 0 };
+const NO_ANNOTATIONS: NonNullable<DrawingEditorProps["annotations"]> = [];
 
 /**
  * Pan-and-zoom for one drawing sheet, built like a map:
@@ -213,6 +214,12 @@ export function DrawingSheetViewer({
   const [runScaleOverride, setRunScaleOverride] = useState<SheetScale | null>(null);
   const [gapMode, setGapMode] = useState(false);
   const [gapMessage, setGapMessage] = useState<string | null>(null);
+  const visibleAnnotations = useMemo(() => {
+    const annotations = editorProps.annotations ?? NO_ANNOTATIONS;
+    return measuring && measureSource
+      ? annotations.filter(entity => entity.id !== measureSource.id)
+      : annotations;
+  }, [editorProps.annotations, measuring, measureSource]);
   const path = trace.map(({ point }) => point);
   const [calNodes, setCalNodes] = useState<MeasureNode[]>([]);
   const calPoints = calNodes.map(({ point }) => point);
@@ -1609,7 +1616,7 @@ export function DrawingSheetViewer({
         {fit && pdfLinksEnabled && <DrawingPdfLinkLayer links={importedLinks} aspect={fit.aspect} onActivate={link => onPdfLink?.(link)} />}
         {fit && (
           <DrawingAnnotationLayer
-            annotations={(editorProps.annotations ?? []).filter(entity => !measuring || entity.id !== measureSource?.id)}
+            annotations={visibleAnnotations}
             aspect={fit.aspect}
             selectedId={pipeMode ? null : editorProps.selectedId}
             draft={measuring || pipeMode ? null : editor.draft}
