@@ -43,6 +43,7 @@ import {
   CHAT_COLUMN,
   CHECKER_PLATE,
   EXPANDED_METAL,
+  OAK_PLANKS,
   ON_METAL,
 } from "./ChatChrome";
 const JobChatThread = dynamic(
@@ -466,8 +467,11 @@ function ChatWorkspace({ initialJobId }: { initialJobId?: string }) {
           aria-hidden={!chatsOpen}
           inert={!chatsOpen}
           tabIndex={-1}
-          className="bg-card absolute inset-y-0 left-0 z-40 flex w-[86%] max-w-sm flex-col rounded-r-3xl border-r shadow-2xl outline-none"
+          className="dark text-foreground absolute inset-y-0 left-0 z-40 flex w-[86%] max-w-sm flex-col rounded-r-3xl border-r border-black/60 shadow-2xl outline-none"
           style={{
+            ...OAK_PLANKS,
+            boxShadow:
+              "inset -1px 0 0 rgba(255,220,170,0.08), 12px 0 32px rgba(0,0,0,0.45)",
             transform: `translateX(${(progress - 1) * 100}%)`,
             // Stay visible until the closing slide has finished.
             visibility: chatsOpen || drag !== null ? "visible" : "hidden",

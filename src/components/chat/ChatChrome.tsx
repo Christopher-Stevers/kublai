@@ -26,6 +26,13 @@ export function AngleTrim({ edge }: { edge: "top" | "bottom" }) {
 export const ON_METAL = "text-white hover:bg-white/15 hover:text-white";
 // On wide screens the conversation keeps a readable width; the steel stays full width.
 export const CHAT_COLUMN = "mx-auto w-full max-w-3xl";
+/** Dark oak planks behind the slide-out chat panel. */
+export const OAK_PLANKS = {
+  backgroundImage:
+    "linear-gradient(90deg, rgba(0,0,0,0.25), rgba(0,0,0,0) 30%), url(/images/chat-oak-planks.webp?v=1)",
+  backgroundSize: "auto, 400px 600px",
+  backgroundColor: "#2e1d0f",
+};
 export const CHECKER_PLATE = {
   backgroundImage: "url(/images/chat-checker-plate.webp?v=2)",
   backgroundSize: "96px 96px",

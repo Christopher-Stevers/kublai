@@ -32,8 +32,24 @@
 .dark .part-photo {
   filter: brightness(0.78) contrast(0.96);
   mask-image:
-    linear-gradient(to right, transparent, #000 12%, #000 88%, transparent),
-    linear-gradient(to bottom, transparent, #000 12%, #000 88%, transparent);
+    linear-gradient(
+      to right,
+      rgb(0 0 0 / 0.15),
+      rgb(0 0 0 / 0.6) 7%,
+      #000 18%,
+      #000 82%,
+      rgb(0 0 0 / 0.6) 93%,
+      rgb(0 0 0 / 0.15)
+    ),
+    linear-gradient(
+      to bottom,
+      rgb(0 0 0 / 0.15),
+      rgb(0 0 0 / 0.6) 7%,
+      #000 18%,
+      #000 82%,
+      rgb(0 0 0 / 0.6) 93%,
+      rgb(0 0 0 / 0.15)
+    );
   mask-composite: intersect;
   -webkit-mask-composite: source-in;
 }
