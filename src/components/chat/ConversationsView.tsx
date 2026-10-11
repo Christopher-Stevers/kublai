@@ -3,8 +3,9 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import {
-  ChevronDownIcon,
+  ChevronRightIcon,
   MessageSquareIcon,
+  XIcon,
   PaperclipIcon,
   PlusIcon,
   SendIcon,
@@ -101,6 +102,39 @@ function ChatWorkspace({ initialJobId }: { initialJobId?: string }) {
     "destination",
     null,
   );
+  const drawer = useRef<HTMLDivElement>(null);
+  const chatButton = useRef<HTMLButtonElement>(null);
+  // Live drawer position (0 closed, 1 open) while a finger is dragging it.
+  const [drag, setDrag] = useState<number | null>(null);
+  const [openCount, setOpenCount] = useState(0);
+  const gesture = useRef<{
+    x: number;
+    y: number;
+    time: number;
+    from: number;
+    width: number;
+    state: "pending" | "dragging" | "ignored";
+    last: number;
+  } | null>(null);
+  const setDrawer = (open: boolean) => {
+    if (open === chatsOpen) return;
+    navigator.vibrate?.(8);
+    if (open) setOpenCount((count) => count + 1);
+    setChatsOpen(open);
+  };
+  useEffect(() => {
+    if (!chatsOpen) return;
+    drawer.current?.focus({ preventScroll: true });
+    const button = chatButton.current;
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setChatsOpen(false);
+    };
+    window.addEventListener("keydown", escape);
+    return () => {
+      window.removeEventListener("keydown", escape);
+      button?.focus({ preventScroll: true });
+    };
+  }, [chatsOpen]);
   const [height, setHeight] = useState<number>();
   useEffect(() => {
     const resize = () => {
@@ -163,6 +197,7 @@ function ChatWorkspace({ initialJobId }: { initialJobId?: string }) {
     });
   const choose = (chat: ChatDestination) => {
     setChatsOpen(false);
+    setDrag(null);
     router.push(
       `/dashboard/chat?${chat.kind === "job" ? "job" : "conversation"}=${encodeURIComponent(chat.id)}`,
       { scroll: false },
@@ -201,6 +236,63 @@ function ChatWorkspace({ initialJobId }: { initialJobId?: string }) {
       onSearch={setSearch}
     />
   );
+  const progress = drag ?? (chatsOpen ? 1 : 0);
+  const motion =
+    drag === null
+      ? "transform 420ms cubic-bezier(0.22, 1.18, 0.36, 1), opacity 300ms ease, border-radius 300ms ease"
+      : "none";
+  const touchStart = (event: React.TouchEvent) => {
+    const touch = event.touches[0];
+    if (!touch || event.touches.length > 1) return;
+    const field = (event.target as HTMLElement).closest(
+      "input, textarea, [contenteditable=true], [data-no-drawer-swipe]",
+    );
+    gesture.current = {
+      x: touch.clientX,
+      y: touch.clientY,
+      time: event.timeStamp,
+      from: chatsOpen ? 1 : 0,
+      width: drawer.current?.offsetWidth ?? 320,
+      state: field ? "ignored" : "pending",
+      last: chatsOpen ? 1 : 0,
+    };
+  };
+  const touchMove = (event: React.TouchEvent) => {
+    const current = gesture.current,
+      touch = event.touches[0];
+    if (!current || !touch || current.state === "ignored") return;
+    const dx = touch.clientX - current.x,
+      dy = touch.clientY - current.y;
+    if (current.state === "pending") {
+      if (Math.abs(dy) > 12 && Math.abs(dy) > Math.abs(dx)) {
+        current.state = "ignored";
+        return;
+      }
+      const opening = current.from === 0 && dx > 12;
+      const closing = current.from === 1 && dx < -12;
+      if (!(opening || closing) || Math.abs(dx) < Math.abs(dy) * 1.3) return;
+      current.state = "dragging";
+      if (opening) setOpenCount((count) => count + 1);
+    }
+    const next = Math.min(1, Math.max(0, current.from + dx / current.width));
+    current.last = next;
+    setDrag(next);
+  };
+  const touchEnd = (event: React.TouchEvent) => {
+    const current = gesture.current;
+    gesture.current = null;
+    if (current?.state !== "dragging") return;
+    const touch = event.changedTouches[0];
+    const elapsed = Math.max(1, event.timeStamp - current.time);
+    const velocity = touch ? (touch.clientX - current.x) / elapsed : 0;
+    const open =
+      velocity > 0.35 ? true : velocity < -0.35 ? false : current.last > 0.5;
+    setDrag(null);
+    if (open !== chatsOpen) {
+      navigator.vibrate?.(8);
+      setChatsOpen(open);
+    }
+  };
   return (
     <section
       ref={panel}
@@ -214,15 +306,20 @@ function ChatWorkspace({ initialJobId }: { initialJobId?: string }) {
       >
         <h1 className="min-w-0">
           <Button
+            ref={chatButton}
             variant="ghost"
             className={`${ON_METAL} -ml-2 min-h-11 gap-2 px-2 text-lg font-semibold`}
             aria-haspopup="dialog"
             aria-expanded={chatsOpen}
-            onClick={() => setChatsOpen(true)}
+            onClick={() => setDrawer(!chatsOpen)}
           >
             <MessageSquareIcon className="size-5" aria-hidden />
             Chat
-            <ChevronDownIcon className="size-4" aria-hidden />
+            <ChevronRightIcon
+              className="size-4 transition-transform duration-300"
+              style={{ transform: `rotate(${progress * 180}deg)` }}
+              aria-hidden
+            />
           </Button>
         </h1>
         <div className="flex min-w-0 flex-1 items-center gap-1">
@@ -261,66 +358,152 @@ function ChatWorkspace({ initialJobId }: { initialJobId?: string }) {
           </button>
         </p>
       )}
-      <div className="flex min-h-0 flex-1">
-        <aside
-          aria-label="Chat list"
-          className={`${selected ? "hidden md:flex" : "flex"} min-h-0 w-full shrink-0 flex-col border-r md:w-72`}
+      <div
+        className="relative flex min-h-0 flex-1 overflow-hidden"
+        style={{ touchAction: "pan-y" }}
+        onTouchStart={touchStart}
+        onTouchMove={touchMove}
+        onTouchEnd={touchEnd}
+        onTouchCancel={touchEnd}
+      >
+        <div
+          inert={chatsOpen}
+          className="bg-card flex min-h-0 flex-1 origin-left overflow-hidden"
+          style={{
+            transform: progress
+              ? `translateX(calc(min(86%, 24rem) * ${progress})) scale(${1 - progress * 0.04})`
+              : undefined,
+            borderRadius: progress ? 24 * progress : undefined,
+            transition: motion,
+          }}
         >
-          {navigation("scroll:navigation:sidebar")}
-        </aside>
-        <main
-          aria-label="Current chat"
-          className={`${selected ? "flex" : "hidden md:flex"} min-h-0 min-w-0 flex-1 flex-col`}
-        >
-          {selected ? (
-            <>
-              {jobId ? (
-                <JobChatThread
-                  key={jobId}
-                  jobId={jobId}
-                  embedded
-                  headerControlsTarget={headerControlsTarget}
-                  userId={list.data?.userId}
-                />
-              ) : (
-                conversationId && (
-                  <ConversationThread
-                    key={`${list.data?.userId}:${conversationId}`}
-                    id={conversationId}
+          <aside
+            aria-label="Chat list"
+            className={`${selected ? "hidden md:flex" : "flex"} min-h-0 w-full shrink-0 flex-col border-r md:w-72`}
+          >
+            {navigation("scroll:navigation:sidebar")}
+          </aside>
+          <main
+            aria-label="Current chat"
+            className={`${selected ? "flex" : "hidden md:flex"} min-h-0 min-w-0 flex-1 flex-col`}
+          >
+            {selected ? (
+              <>
+                {jobId ? (
+                  <JobChatThread
+                    key={jobId}
+                    jobId={jobId}
+                    embedded
+                    headerControlsTarget={headerControlsTarget}
                     userId={list.data?.userId}
-                    online={online}
-                    drafts={drafts}
                   />
-                )
-              )}
-            </>
-          ) : (
-            <div
-              className="text-muted-foreground flex min-h-0 flex-1 flex-col items-center justify-center gap-3 p-8 text-center"
-              style={CHECKER_PLATE}
-            >
-              <div className="bg-card text-card-foreground max-w-sm rounded-xl px-6 py-5 shadow-sm">
-                <MessageSquareIcon className="text-primary mx-auto mb-3 size-8" />
-                <p className="font-medium">Your conversations, in one place</p>
-                <p className="text-muted-foreground mt-1 text-sm">
-                  Choose a direct, group or job chat from the list.
-                </p>
+                ) : (
+                  conversationId && (
+                    <ConversationThread
+                      key={`${list.data?.userId}:${conversationId}`}
+                      id={conversationId}
+                      userId={list.data?.userId}
+                      online={online}
+                      drafts={drafts}
+                    />
+                  )
+                )}
+              </>
+            ) : (
+              <div
+                className="text-muted-foreground flex min-h-0 flex-1 flex-col items-center justify-center gap-3 p-8 text-center"
+                style={CHECKER_PLATE}
+              >
+                <div className="bg-card text-card-foreground max-w-sm rounded-xl px-6 py-5 shadow-sm">
+                  <MessageSquareIcon className="text-primary mx-auto mb-3 size-8" />
+                  <p className="font-medium">
+                    Your conversations, in one place
+                  </p>
+                  <p className="text-muted-foreground mt-1 text-sm">
+                    Choose a direct, group or job chat from the list.
+                  </p>
+                </div>
               </div>
+            )}
+          </main>
+        </div>
+        <div
+          aria-hidden
+          className="absolute inset-0 z-30 bg-black"
+          style={{
+            opacity: progress * 0.5,
+            pointerEvents: chatsOpen ? "auto" : "none",
+            transition: drag === null ? "opacity 300ms ease" : "none",
+          }}
+          onClick={() => setDrawer(false)}
+        />
+        <div
+          ref={drawer}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Chats"
+          aria-hidden={!chatsOpen}
+          inert={!chatsOpen}
+          tabIndex={-1}
+          className="bg-card absolute inset-y-0 left-0 z-40 flex w-[86%] max-w-sm flex-col rounded-r-3xl border-r shadow-2xl outline-none"
+          style={{
+            transform: `translateX(${(progress - 1) * 100}%)`,
+            // Stay visible until the closing slide has finished.
+            visibility: chatsOpen || drag !== null ? "visible" : "hidden",
+            transition: `${motion}, visibility 0s linear ${chatsOpen || drag !== null ? "0ms" : "420ms"}`,
+          }}
+        >
+          <div className="flex shrink-0 items-center gap-3 px-4 pt-4">
+            <span className="bg-primary text-primary-foreground flex size-10 items-center justify-center rounded-2xl shadow-sm">
+              <MessageSquareIcon className="size-5" aria-hidden />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-base leading-tight font-bold">Chats</p>
+              <p className="text-muted-foreground text-xs">
+                Swipe to switch, tap to jump in
+              </p>
             </div>
-          )}
-        </main>
-      </div>
-      <Dialog open={chatsOpen} onOpenChange={setChatsOpen}>
-        <DialogContent className="flex max-h-[85dvh] min-h-0 flex-col gap-1 p-3">
-          <DialogTitle className="px-1 pt-1 pr-8">Switch chat</DialogTitle>
-          <DialogDescription className="px-1 text-sm">
-            Choose a direct, group or job chat.
-          </DialogDescription>
-          <div className="min-h-0 flex-1 overflow-hidden">
-            {navigation("scroll:navigation:switcher")}
+            <Button
+              variant="secondary"
+              size="icon"
+              className="size-10 rounded-full"
+              aria-label="Start a new chat"
+              disabled={!online}
+              onClick={() => {
+                setChatsOpen(false);
+                setError("");
+                setTarget({ mode: "direct", recipientIds: [], name: "" });
+                setNewOpen(true);
+              }}
+            >
+              <PlusIcon className="size-5" aria-hidden />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-muted-foreground -mr-2 size-10 rounded-full"
+              aria-label="Close chats"
+              onClick={() => setDrawer(false)}
+            >
+              <XIcon className="size-5" aria-hidden />
+            </Button>
           </div>
-        </DialogContent>
-      </Dialog>
+          <div className="min-h-0 flex-1">
+            <ChatNavigation
+              key={openCount}
+              conversations={list.data?.conversations ?? []}
+              jobs={availableJobs}
+              selected={selected}
+              onSelect={choose}
+              loading={list.isLoading}
+              search={search}
+              onSearch={setSearch}
+              memoryKey="scroll:navigation:switcher"
+              animate
+            />
+          </div>
+        </div>
+      </div>
       <Dialog
         open={newOpen}
         onOpenChange={(open) => {

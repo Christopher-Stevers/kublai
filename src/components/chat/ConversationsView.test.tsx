@@ -276,6 +276,21 @@ it("opens the available chats from the main Chat button, then searches and selec
   );
   expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 });
+it("slides the chat panel open with a swipe and closed from the backdrop", () => {
+  render(<ConversationsView />);
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  const main = screen.getByRole("main", { name: "Current chat" });
+  fireEvent.touchStart(main, { touches: [{ clientX: 20, clientY: 300 }] });
+  fireEvent.touchMove(main, { touches: [{ clientX: 120, clientY: 305 }] });
+  fireEvent.touchMove(main, { touches: [{ clientX: 260, clientY: 306 }] });
+  fireEvent.touchEnd(main, {
+    changedTouches: [{ clientX: 260, clientY: 306 }],
+  });
+  const chats = screen.getByRole("dialog", { name: "Chats" });
+  expect(within(chats).getByRole("button", { name: /Site A/ })).toBeVisible();
+  fireEvent.click(within(chats).getByRole("button", { name: "Close chats" }));
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+});
 it("keeps separate drafts and retry identities when switching conversations", async () => {
   mocks.send.mockRejectedValueOnce(new Error("Connection interrupted"));
   const view = render(<ConversationsView />);
