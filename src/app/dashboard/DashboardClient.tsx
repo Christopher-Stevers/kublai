@@ -939,7 +939,7 @@ export function DashboardClient({
           <div className="flex items-start justify-between gap-3">
             <div>
               <h1 className="text-2xl font-bold text-foreground sm:text-3xl">
-                Dashboard
+                Jobs
               </h1>
               <p className="text-muted-foreground mt-2 text-sm sm:text-base">
                 Select a job to open it
