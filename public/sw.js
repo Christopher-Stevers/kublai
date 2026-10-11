@@ -597,24 +597,37 @@ self.addEventListener("push", (event) => {
         data.account !== (await pushAccount())
       )
         return;
+      const chat =
+        data.type === "job-chat" || data.type === "conversation-chat";
+      // Chat pushes carry the sender and message, like a messaging app.
+      const text = (value, max) =>
+        typeof value === "string" && value.trim()
+          ? value.trim().slice(0, max)
+          : null;
+      const title = chat ? text(data.title, 120) : null;
+      const message = chat ? text(data.body, 300) : null;
       await self.registration.showNotification(
-        data.type === "material-list"
-          ? "ForemanHQ Materials"
-          : data.type === "job-drawing"
-            ? "ForemanHQ Drawings"
-            : "ForemanHQ Chat",
+        title ??
+          (data.type === "material-list"
+            ? "ForemanHQ Materials"
+            : data.type === "job-drawing"
+              ? "ForemanHQ Drawings"
+              : "ForemanHQ Chat"),
         {
           body:
-            data.type === "material-list"
+            message ??
+            (data.type === "material-list"
               ? "Someone who reports to you added or edited material. Open ForemanHQ to review the list."
               : data.type === "job-drawing"
                 ? "There is new drawing activity. Open ForemanHQ to review it."
                 : data.type === "conversation-chat"
                   ? "You have a new chat message. Open ForemanHQ to read it."
-                  : "There is new activity in a job chat. Open ForemanHQ to read it.",
-          icon: "/foremanhq/notification-icon-v2.png",
+                  : "There is new activity in a job chat. Open ForemanHQ to read it."),
+          // Android shows this as a button; it opens the chat ready to type.
+          actions: chat ? [{ action: "reply", title: "Reply" }] : [],
+          icon: "/foremanhq/notification-icon-v3.png",
           // Android status-bar icon (white silhouette; the platform tints it).
-          badge: "/foremanhq/notification-badge-v2.png",
+          badge: "/foremanhq/notification-badge-v3.png",
           // Browsers cannot play a custom sound; a short double buzz stands out instead.
           vibrate: [90, 60, 90],
           tag:
@@ -645,7 +658,7 @@ self.addEventListener("notificationclick", (event) => {
   event.waitUntil(
     (async () => {
       const data = event.notification.data;
-      const url = safePushUrl(data);
+      let url = safePushUrl(data);
       if (
         !url ||
         typeof data.account !== "string" ||
@@ -653,6 +666,12 @@ self.addEventListener("notificationclick", (event) => {
         data.account !== (await pushAccount())
       )
         return;
+      // Reply opens the chat with the message box focused.
+      if (event.action === "reply") {
+        const target = new URL(url);
+        target.searchParams.set("reply", "1");
+        url = target.href;
+      }
       const windows = await self.clients.matchAll({
         type: "window",
         includeUncontrolled: true,

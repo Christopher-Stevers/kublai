@@ -2,6 +2,7 @@
 import { describe, expect, it } from "vitest";
 import {
   chatPushPayload,
+  messagePreview,
   eligibleForChatPush,
   isAllowedPushEndpoint,
   isPublicPushAddress,
@@ -163,7 +164,7 @@ describe("push transport boundaries", () => {
     expect(pushFailure(new Error("timeout"), 6).permanent).toBe(true);
     expect(pushFailure({ statusCode: 503 }, 1).permanent).toBe(false);
   });
-  it("keeps message bodies, sender names and job names out of lockscreen payloads", () => {
+  it("links to the job chat without naming the recipient", () => {
     const payload: Record<string, unknown> = JSON.parse(
       chatPushPayload("job", "recipient"),
     ) as Record<string, unknown>;
@@ -176,5 +177,24 @@ describe("push transport boundaries", () => {
       "url",
     ]);
     expect(JSON.stringify(payload)).not.toContain("recipient");
+  });
+  it("shows the job, sender and message like a messaging app", () => {
+    const payload = JSON.parse(
+      chatPushPayload("job", "recipient", {
+        chatName: "Alma Phase #2",
+        senderName: "Derek Cunningham",
+        body: "  Copper  arrives\nThursday ",
+      }),
+    ) as Record<string, unknown>;
+    expect(payload).toMatchObject({
+      title: "Alma Phase #2",
+      body: "Derek Cunningham: Copper arrives Thursday",
+    });
+    expect(JSON.stringify(payload)).not.toContain("recipient");
+  });
+  it("shortens long messages and describes attachment-only ones", () => {
+    expect(messagePreview("x".repeat(400))).toHaveLength(180);
+    expect(messagePreview("x".repeat(400)).endsWith("…")).toBe(true);
+    expect(messagePreview("   ")).toBe("Sent an attachment");
   });
 });

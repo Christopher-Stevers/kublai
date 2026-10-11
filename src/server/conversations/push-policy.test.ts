@@ -62,4 +62,27 @@ describe("private chat push eligibility", () => {
     expect(payload).not.toHaveProperty("body");
     expect(payload).not.toHaveProperty("title");
   });
+  it("reads like a text in direct chats and names the group otherwise", () => {
+    const direct = JSON.parse(
+      conversationPushPayload("c", "recipient", {
+        kind: "direct",
+        chatName: "",
+        senderName: "Derek",
+        body: "On my way",
+      }),
+    ) as Record<string, unknown>;
+    expect(direct).toMatchObject({ title: "Derek", body: "On my way" });
+    const group = JSON.parse(
+      conversationPushPayload("c", "recipient", {
+        kind: "group",
+        chatName: "Site leads",
+        senderName: null,
+        body: "",
+      }),
+    ) as Record<string, unknown>;
+    expect(group).toMatchObject({
+      title: "Site leads",
+      body: "Someone: Sent an attachment",
+    });
+  });
 });

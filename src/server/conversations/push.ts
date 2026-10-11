@@ -22,6 +22,12 @@ type Candidate = {
   user: PushRecipient;
   member: { lastReadSequence: number } | null;
 };
+type DeliveryCandidate = Candidate & {
+  kind: "direct" | "group";
+  chatName: string | null;
+  senderName: string | null;
+  body: string | null;
+};
 export async function enqueueConversationPush(
   tx: ChatTransaction,
   message: {
@@ -75,11 +81,16 @@ type Delivery = {
 async function sendToProvider(
   delivery: Delivery,
   configuration: NonNullable<ReturnType<typeof getPushConfiguration>>,
+  preview: DeliveryCandidate,
 ) {
   return sendPushPayload(
     delivery,
     configuration,
-    conversationPushPayload(delivery.conversationId, delivery.recipientId),
+    conversationPushPayload(
+      delivery.conversationId,
+      delivery.recipientId,
+      preview,
+    ),
   );
 }
 
@@ -95,9 +106,11 @@ async function deliver(
   configuration: NonNullable<ReturnType<typeof getPushConfiguration>>,
 ) {
   // Read access, subscription ownership, read position, membership and deleted message again at delivery time.
-  const [current] = await db.execute<Candidate>(sql`
+  const [current] = await db.execute<DeliveryCandidate>(sql`
     SELECT s."userId" AS "subscriptionUserId", to_jsonb(u) AS "user",
-      jsonb_build_object('lastReadSequence',m."lastReadSequence") AS member
+      jsonb_build_object('lastReadSequence',m."lastReadSequence") AS member,
+      c.kind AS "kind", c.name AS "chatName", msg.body AS "body",
+      (SELECT a.name FROM kublai_user a WHERE a.id=msg."authorId") AS "senderName"
     FROM kublai_conversation_push_outbox o JOIN kublai_chat_push_subscription s ON s.id=o."subscriptionId"
     JOIN kublai_user u ON u.id=o."recipientId"
     JOIN kublai_conversation c ON c.id=o."conversationId" AND c."organizationId"=o."organizationId"
@@ -111,7 +124,7 @@ async function deliver(
     return;
   }
   try {
-    await sendToProvider(delivery, configuration);
+    await sendToProvider(delivery, configuration, current);
     await settle(delivery, "sent");
   } catch (error) {
     const failure = pushFailure(error, delivery.attempts);

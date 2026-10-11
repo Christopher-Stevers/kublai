@@ -33,6 +33,7 @@ import type { ConversationMessage } from "~/server/conversations/contracts";
 import { safeSnapshotHref } from "~/lib/snapshot-source";
 import { useOnlineStatus } from "~/hooks/use-online-status";
 import { useChatScroll } from "~/hooks/use-chat-scroll";
+import { useReplyFocus } from "~/hooks/use-reply-focus";
 import { useChatHistoryResume } from "~/hooks/use-chat-history-resume";
 import { useChatViewMemory, useChatViewState } from "./ChatViewProvider";
 import { useReplicacheJobsList } from "~/hooks/use-replicache-jobs";
@@ -583,6 +584,7 @@ function ConversationThread({
     } | null>(cached?.attempt ?? null),
     fileInput = useRef<HTMLInputElement>(null),
     timeline = useRef<HTMLDivElement>(null),
+    composer = useRef<HTMLTextAreaElement>(null),
     lastRead = useRef(0),
     tail = useRef(""),
     bottom = useRef(true);
@@ -737,6 +739,7 @@ function ConversationThread({
   const denied = ["NOT_FOUND", "FORBIDDEN", "UNAUTHORIZED"].includes(
     history.error?.data?.code ?? "",
   );
+  useReplyFocus(composer, Boolean(userId) && !denied && !busy && !locked);
   return (
     <>
       {restoring && !denied && (
@@ -969,6 +972,7 @@ function ConversationThread({
               <PaperclipIcon className="size-4" />
             </Button>
             <textarea
+              ref={composer}
               aria-label="Message"
               value={body}
               maxLength={8000}

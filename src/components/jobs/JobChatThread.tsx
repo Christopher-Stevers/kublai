@@ -1,5 +1,6 @@
 "use client";
 import { usePageViewState } from "~/hooks/use-page-view-state";
+import { useReplyFocus } from "~/hooks/use-reply-focus";
 import { useChatScroll } from "~/hooks/use-chat-scroll";
 import { useChatHistoryResume } from "~/hooks/use-chat-history-resume";
 import { useChatViewMemory } from "~/components/chat/ChatViewProvider";
@@ -884,6 +885,7 @@ function ChatLobby({
     }
   }
   const lockedComposer = !draftLoaded || sending || draft.attempted;
+  useReplyFocus(composer, !lockedComposer);
   const currentError =
     error || (overview.error?.message ?? history.error?.message);
   const accessError = [overview.error, history.error].find(

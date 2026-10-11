@@ -8,6 +8,7 @@ import { sendPushPayload } from "./push-transport";
 import type { ChatTransaction } from "./types";
 import {
   chatPushPayload,
+  type ChatPushPreview,
   eligibleForChatPush,
   MAX_PUSH_ATTEMPTS,
   pushFailure,
@@ -38,6 +39,7 @@ type Candidate = {
   foremanId: string | null;
   member: { muted: boolean; lastReadSequence: number } | null;
 };
+type DeliveryCandidate = Candidate & ChatPushPreview;
 export async function enqueueChatPush(
   tx: ChatTransaction,
   message: {
@@ -88,11 +90,12 @@ type Delivery = {
 async function sendToProvider(
   delivery: Delivery,
   configuration: NonNullable<ReturnType<typeof getPushConfiguration>>,
+  preview: ChatPushPreview,
 ) {
   return sendPushPayload(
     delivery,
     configuration,
-    chatPushPayload(delivery.jobId, delivery.recipientId),
+    chatPushPayload(delivery.jobId, delivery.recipientId, preview),
   );
 }
 
@@ -108,8 +111,9 @@ async function deliver(
   configuration: NonNullable<ReturnType<typeof getPushConfiguration>>,
 ) {
   // Read access, subscription ownership, read position, mute and deleted message again at delivery time.
-  const [current] = await db.execute<Candidate>(sql`
+  const [current] = await db.execute<DeliveryCandidate>(sql`
     SELECT s."userId" AS "subscriptionUserId", to_jsonb(u) AS "user", j."createdByUserId" AS "createdById", j."foremanUserId" AS "foremanId",
+      j.name AS "chatName", msg.body AS "body", (SELECT a.name FROM kublai_user a WHERE a.id=msg."authorId") AS "senderName",
       CASE WHEN m."userId" IS NULL THEN NULL ELSE jsonb_build_object('muted',m.muted,'lastReadSequence',m."lastReadSequence") END AS member
     FROM kublai_chat_push_outbox o JOIN kublai_chat_push_subscription s ON s.id=o."subscriptionId"
     JOIN kublai_user u ON u.id=o."recipientId" JOIN kublai_job j ON j.id=o."jobId" AND j."organizationId"=o."organizationId"
@@ -123,7 +127,7 @@ async function deliver(
     return;
   }
   try {
-    await sendToProvider(delivery, configuration);
+    await sendToProvider(delivery, configuration, current);
     await settle(delivery, "sent");
   } catch (error) {
     const failure = pushFailure(error, delivery.attempts);

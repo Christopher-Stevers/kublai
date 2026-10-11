@@ -1,6 +1,6 @@
 // Renders the push notification icons, a single big wrench:
-//  - notification-icon-v2.png: the large colour icon shown in the notification
-//  - notification-badge-v2.png: the small white status-bar icon (Android masks it)
+//  - notification-icon-v3.png: the large icon shown in the notification (white wrench on black)
+//  - notification-badge-v3.png: the small white status-bar icon (Android masks it)
 // Usage: node scripts/render-notification-icons.mjs public/foremanhq
 import sharp from "sharp";
 
@@ -18,8 +18,8 @@ const wrench = (stroke, width, size) => {
 const icon = `<svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 96 96">
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#4f7cae"/>
-      <stop offset="1" stop-color="#2b4c74"/>
+      <stop offset="0" stop-color="#262626"/>
+      <stop offset="1" stop-color="#000000"/>
     </linearGradient>
   </defs>
   <rect width="96" height="96" rx="22" fill="url(#bg)"/>
@@ -31,10 +31,10 @@ const badge = `<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" vi
   ${wrench("#fff", 0.8, 80)}
 </svg>`;
 
-await sharp(Buffer.from(icon)).png().toFile(`${dir}/notification-icon-v2.png`);
-await sharp(Buffer.from(badge)).png().toFile(`${dir}/notification-badge-v2.png`);
+await sharp(Buffer.from(icon)).png().toFile(`${dir}/notification-icon-v3.png`);
+await sharp(Buffer.from(badge)).png().toFile(`${dir}/notification-badge-v3.png`);
 console.log(
   "wrote",
-  `${dir}/notification-icon-v2.png`,
-  `${dir}/notification-badge-v2.png`,
+  `${dir}/notification-icon-v3.png`,
+  `${dir}/notification-badge-v3.png`,
 );

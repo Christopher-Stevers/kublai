@@ -118,12 +118,39 @@ export function pushFailure(
   };
 }
 
-export function chatPushPayload(jobId: string, recipientId: string) {
-  // Job names, names of people and message bodies never appear on a lock screen.
+/** A trimmed name, or the fallback when it is missing or blank. */
+export function nameOr(value: string | null | undefined, fallback: string) {
+  const name = value?.trim();
+  if (name) return name;
+  return fallback;
+}
+
+/** One short line of message text for a notification, like a messaging app. */
+export function messagePreview(body: string | null | undefined) {
+  const text = (body ?? "").replace(/\s+/g, " ").trim();
+  if (!text) return "Sent an attachment";
+  return text.length > 180 ? `${text.slice(0, 179).trimEnd()}…` : text;
+}
+
+export type ChatPushPreview = {
+  chatName: string | null;
+  senderName: string | null;
+  body: string | null;
+};
+
+export function chatPushPayload(
+  jobId: string,
+  recipientId: string,
+  preview?: ChatPushPreview,
+) {
   return JSON.stringify({
     type: "job-chat",
     url: `/dashboard/jobs/${jobId}/chat`,
     account: createHash("sha256").update(recipientId).digest("hex"),
     tag: `job-chat-${jobId}`,
+    ...(preview && {
+      title: nameOr(preview.chatName, "Job chat"),
+      body: `${nameOr(preview.senderName, "Someone")}: ${messagePreview(preview.body)}`,
+    }),
   });
 }
