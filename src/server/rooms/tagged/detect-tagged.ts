@@ -37,9 +37,9 @@ export async function detectTaggedRooms(pdf: Buffer, pageNumber: number) {
   const nameSeeds = physicalRoomSeeds(extractPdfRoomSeeds(labels));
   const seeds = mergeRoomSeeds(tagSeeds, nameSeeds);
 
-  const outdoor = openSpaceMask(rgba, width, height, seeds);
+  const outdoor = await openSpaceMask(rgba, width, height, seeds);
   paintMask(rgba, outdoor.mask);
-  keepDoubleLineWalls(rgba, width, height);
+  await keepDoubleLineWalls(rgba, width, height);
   const walls = new Uint8Array(width * height);
   for (let i = 0; i < walls.length; i++) walls[i] = rgba[i * 4]! < 128 ? 1 : 0;
 

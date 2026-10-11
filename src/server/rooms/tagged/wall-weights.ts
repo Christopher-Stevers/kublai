@@ -1,13 +1,12 @@
 import {
-  close,
   createMask,
   freeComponents,
   inkMask,
-  open,
   sealAxisGaps,
   union,
   type Mask,
 } from "../raster-rooms";
+import { closeOpenSteps, rasterMorphology } from "../raster-native";
 
 /**
  * Open space (courtyards, site, parking) inside the footprint. With every
@@ -15,7 +14,7 @@ import {
  * typical labelled room is outdoors, not a room. Relative to the drawing's
  * own rooms, so large halls are kept while courtyards are not.
  */
-export function openSpaceMask(
+export async function openSpaceMask(
   rgba: Uint8ClampedArray,
   width: number,
   height: number,
@@ -24,7 +23,10 @@ export function openSpaceMask(
 ) {
   const long = Math.max(width, height);
   const ink = inkMask(rgba, width, height, 200);
-  const walls = open(close(ink, Math.max(2, Math.round(long / 1700))), 1);
+  const walls = await rasterMorphology(
+    ink,
+    closeOpenSteps(Math.max(2, Math.round(long / 1700)), 1),
+  );
   const door = 0.0095 * long;
   const wideGap = Math.round(door * 2.2);
   const minRun = Math.max(4, Math.round(door * 0.4));
@@ -72,7 +74,7 @@ export function paintMask(rgba: Uint8ClampedArray, mask: Mask) {
  * or solid bands. Single thin strokes (door swings, fixtures, furniture,
  * leaders, hatching) are dropped. Repaints the page with walls only.
  */
-export function keepDoubleLineWalls(
+export async function keepDoubleLineWalls(
   rgba: Uint8ClampedArray,
   width: number,
   height: number,
@@ -81,7 +83,7 @@ export function keepDoubleLineWalls(
   const ink = inkMask(rgba, width, height, 128);
   const pairGap = Math.max(2, Math.round(long / 1700));
   const thin = Math.max(1, Math.round(long / 2500));
-  const walls = open(close(ink, pairGap), thin);
+  const walls = await rasterMorphology(ink, closeOpenSteps(pairGap, thin));
   for (let i = 0; i < walls.data.length; i++) {
     const p = i * 4;
     const v = walls.data[i] ? 0 : 255;
