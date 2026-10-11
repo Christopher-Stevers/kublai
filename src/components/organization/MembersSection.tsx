@@ -10,6 +10,11 @@ import {
   UsersIcon,
 } from "lucide-react";
 
+import {
+  MemberAppBadge,
+  MemberAppDevices,
+  type MemberAppDeviceState,
+} from "./MemberAppDevices";
 import { EmployeeSimulationControl } from "~/components/simulation/EmployeeSimulationControl";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
@@ -71,6 +76,19 @@ export function MembersSection({
   onSaved: () => Promise<void>;
 }) {
   const members = settings.members;
+  const appDevices = api.appDevices.organization.useQuery(
+    { organizationId: settings.organization.id },
+    {
+      enabled: settings.viewer.canManageMembers,
+      staleTime: 30_000,
+      refetchInterval: 60_000,
+    },
+  );
+  const appState = (id: string): MemberAppDeviceState => ({
+    devices: appDevices.data?.filter((d) => d.userId === id) ?? [],
+    loading: appDevices.isLoading,
+    unavailable: appDevices.isError,
+  });
   const presets = useMemo(
     () => settings.permissionPresets ?? [],
     [settings.permissionPresets],
@@ -210,6 +228,9 @@ export function MembersSection({
                         </span>
                       )}
                     </div>
+                    {settings.viewer.canManageMembers && (
+                      <MemberAppBadge {...appState(m.id)} />
+                    )}
                   </div>
                   <span
                     className="text-muted-foreground shrink-0 text-xs tabular-nums"
@@ -235,6 +256,7 @@ export function MembersSection({
         {selected ? (
           <MemberDetail
             key={selected.id}
+            appDevices={appState(selected.id)}
             member={selected}
             members={members}
             presets={presets}
@@ -262,6 +284,7 @@ export function MembersSection({
 }
 
 function MemberDetail({
+  appDevices,
   member,
   members,
   presets,
@@ -272,6 +295,7 @@ function MemberDetail({
   onBack,
   onSaved,
 }: {
+  appDevices: MemberAppDeviceState;
   member: Member;
   members: Member[];
   presets: Settings["permissionPresets"];
@@ -453,6 +477,7 @@ function MemberDetail({
       </header>
 
       <div className="flex-1 space-y-4 p-5">
+        {canManage && <MemberAppDevices {...appDevices} />}
         {selectedPreset?.memberDetails && (
           <p className="text-muted-foreground text-sm">
             Department and Reports to are managed by {selectedPreset.name}.

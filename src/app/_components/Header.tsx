@@ -1,5 +1,6 @@
 "use client";
 
+import { AppDeviceReporter } from "~/components/app/AppDeviceReporter";
 import { InstallAppButton } from "~/components/app/InstallAppButton";
 
 import { useEffect, useState } from "react";
@@ -302,6 +303,9 @@ function HeaderFrame({
           )}
         </div>
         <InstallAppButton compact />
+        {!sandbox && !simulation && sessionKey && (
+          <AppDeviceReporter key={sessionKey} userId={sessionKey} />
+        )}
         {!sandbox && (
           <NotificationCenter key={sessionKey} sessionKey={sessionKey} />
         )}

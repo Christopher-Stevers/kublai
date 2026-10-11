@@ -32,6 +32,7 @@ export function InstallAppButton({
   return (
     <>
       <Button
+        data-app-install-button
         variant="outline"
         className={`h-auto shrink-0 py-1.5 text-center text-xs leading-tight whitespace-normal ${compact ? "max-w-[5rem] px-2 sm:max-w-[11.5rem] sm:px-3" : "max-w-[11.5rem] px-3"} ${className}`}
         onClick={async () => {

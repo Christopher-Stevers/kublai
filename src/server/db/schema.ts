@@ -2505,3 +2505,5 @@ export const materialPushOutbox = createTable("material_push_outbox", (d) => ({
   unique("material_push_notification_device_uniq").on(t.notificationId,t.subscriptionId),
   index("material_push_ready_idx").on(t.completedAt,t.availableAt,t.leasedUntil),
 ]);
+
+export * from "./app-devices-schema";
