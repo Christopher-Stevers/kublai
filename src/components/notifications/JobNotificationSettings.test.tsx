@@ -65,20 +65,13 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 
-it("loads preferences only when expanded, and never mutes on mount", () => {
+it("lists job chats with switches, and never mutes on mount", () => {
   render(<JobNotificationSettings accountKey="user:org" isOnline />);
-  expect(mocks.query).toHaveBeenLastCalledWith(
-    { accountKey: "user:org" },
-    expect.objectContaining({ enabled: false }),
-  );
-  expect(mocks.update).not.toHaveBeenCalled();
-  fireEvent.click(
-    screen.getByRole("button", { name: "Job chat notifications" }),
-  );
   expect(mocks.query).toHaveBeenLastCalledWith(
     { accountKey: "user:org" },
     expect.objectContaining({ enabled: true }),
   );
+  expect(mocks.update).not.toHaveBeenCalled();
   expect(
     screen.getByRole("switch", { name: "Site A notifications" }),
   ).toHaveAttribute("aria-checked", "true");
@@ -86,9 +79,6 @@ it("loads preferences only when expanded, and never mutes on mount", () => {
 it("mutes and unmutes a job from the notification window, refreshing its inbox", async () => {
   const view = render(
     <JobNotificationSettings accountKey="user:org" isOnline />,
-  );
-  fireEvent.click(
-    screen.getByRole("button", { name: "Job chat notifications" }),
   );
   fireEvent.click(screen.getByRole("switch", { name: "Site A notifications" }));
   await waitFor(() => expect(mocks.invalidate).toHaveBeenCalledTimes(4));
@@ -112,9 +102,6 @@ it("mutes and unmutes a job from the notification window, refreshing its inbox",
 it("retains the current preference after a failed change", async () => {
   mocks.update.mockRejectedValue(Error("Offline"));
   render(<JobNotificationSettings accountKey="user:org" isOnline />);
-  fireEvent.click(
-    screen.getByRole("button", { name: "Job chat notifications" }),
-  );
   fireEvent.click(screen.getByRole("switch"));
   expect(await screen.findByRole("alert")).toHaveTextContent(
     "Could not change job notifications",
@@ -124,9 +111,6 @@ it("retains the current preference after a failed change", async () => {
 it("hides a previous account's preferences and prevents changes offline", () => {
   const view = render(
     <JobNotificationSettings accountKey="different:org" isOnline />,
-  );
-  fireEvent.click(
-    screen.getByRole("button", { name: "Job chat notifications" }),
   );
   expect(screen.queryByRole("switch")).toBeNull();
   view.rerender(

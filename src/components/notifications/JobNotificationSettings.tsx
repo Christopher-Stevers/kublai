@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDownIcon, Loader2Icon } from "lucide-react";
+import { Loader2Icon, MessageSquareIcon } from "lucide-react";
 import { api } from "~/trpc/react";
-import { Button } from "~/components/ui/button";
+import { SwitchTrack } from "~/components/ui/switch";
 
 export function JobNotificationSettings({
   accountKey,
@@ -12,12 +12,11 @@ export function JobNotificationSettings({
   accountKey: string;
   isOnline: boolean;
 }) {
-  const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const utils = api.useUtils();
   const settings = api.notifications.jobSettings.useQuery(
     { accountKey },
-    { enabled: open && isOnline, staleTime: 0, retry: false },
+    { enabled: isOnline, staleTime: 0, retry: false },
   );
   const update = api.notifications.setJobSettings.useMutation();
 
@@ -37,75 +36,79 @@ export function JobNotificationSettings({
     }
   };
 
+  const jobs =
+    settings.data?.accountKey === accountKey ? settings.data.jobs : [];
   return (
-    <div>
-      <Button
-        variant="ghost"
-        size="sm"
-        className="w-full justify-between px-0 hover:bg-transparent"
-        aria-expanded={open}
-        onClick={() => setOpen(!open)}
-      >
-        Job chat notifications
-        <ChevronDownIcon className={open ? "size-4 rotate-180" : "size-4"} />
-      </Button>
-      {open && (
-        <div className="mt-2 space-y-2 text-sm">
-          <p className="text-muted-foreground text-xs">
-            Choose which job chats appear in your notifications and send push
-            alerts.
+    <section aria-labelledby="job-chat-settings" className="space-y-2">
+      <div className="px-1">
+        <h3 id="job-chat-settings" className="text-sm font-semibold">
+          Job chats
+        </h3>
+        <p className="text-muted-foreground text-xs">
+          Turn a chat off to stop its notifications and push alerts.
+        </p>
+      </div>
+      <div className="bg-card overflow-hidden rounded-xl border text-sm">
+        {!isOnline ? (
+          <p role="status" className="text-muted-foreground p-4">
+            Connect to change job notifications.
           </p>
-          {!isOnline ? (
-            <p role="status">Connect to change job notifications.</p>
-          ) : settings.isError ? (
-            <p role="alert">
-              Could not load job notifications.{" "}
-              <button
-                className="underline"
-                onClick={() => void settings.refetch()}
-              >
-                Retry
-              </button>
-            </p>
-          ) : settings.isLoading ? (
-            <p role="status" className="flex items-center gap-2">
-              <Loader2Icon className="size-4 animate-spin" /> Loading job chats…
-            </p>
-          ) : settings.data?.accountKey === accountKey &&
-            settings.data.jobs.length ? (
-            <ul className="max-h-48 overflow-y-auto overscroll-contain">
-              {settings.data.jobs.map((job) => (
-                <li
-                  key={job.id}
-                  className="flex min-h-12 items-center justify-between gap-3 border-t py-2"
+        ) : settings.isError ? (
+          <p role="alert" className="p-4">
+            Could not load job notifications.{" "}
+            <button
+              className="underline"
+              onClick={() => void settings.refetch()}
+            >
+              Retry
+            </button>
+          </p>
+        ) : settings.isLoading ? (
+          <p
+            role="status"
+            className="text-muted-foreground flex items-center gap-2 p-4"
+          >
+            <Loader2Icon className="size-4 animate-spin" /> Loading job chats…
+          </p>
+        ) : jobs.length ? (
+          <ul className="divide-y">
+            {jobs.map((job) => (
+              <li key={job.id}>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-label={`${job.name} notifications`}
+                  aria-checked={!job.muted}
+                  disabled={!isOnline || update.isPending}
+                  onClick={() => void toggle(job.id, !job.muted)}
+                  className="hover:bg-accent focus-visible:ring-ring flex min-h-14 w-full items-center gap-3 px-4 py-2 text-left transition-colors focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-inset disabled:opacity-60"
                 >
-                  <span className="min-w-0 break-words">{job.name}</span>
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-label={`${job.name} notifications`}
-                    aria-checked={!job.muted}
-                    disabled={!isOnline || update.isPending}
-                    onClick={() => void toggle(job.id, !job.muted)}
-                    className={`inline-flex min-h-11 min-w-14 shrink-0 items-center justify-center rounded-lg border px-3 text-xs font-medium disabled:opacity-50 ${job.muted ? "text-muted-foreground" : "border-primary text-primary bg-primary/10"}`}
+                  <span
+                    className={`flex size-9 shrink-0 items-center justify-center rounded-full ${job.muted ? "bg-muted text-muted-foreground" : "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"}`}
                   >
-                    {job.muted ? "Off" : "On"}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-muted-foreground">
-              Your job chats will appear here.
-            </p>
-          )}
-          {error && (
-            <p role="alert" className="text-destructive">
-              {error}
-            </p>
-          )}
-        </div>
+                    <MessageSquareIcon className="size-4" />
+                  </span>
+                  <span
+                    className={`min-w-0 flex-1 break-words ${job.muted ? "text-muted-foreground" : "font-medium"}`}
+                  >
+                    {job.name}
+                  </span>
+                  <SwitchTrack checked={!job.muted} />
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-muted-foreground p-4">
+            Your job chats will appear here.
+          </p>
+        )}
+      </div>
+      {error && (
+        <p role="alert" className="text-destructive px-1 text-sm">
+          {error}
+        </p>
       )}
-    </div>
+    </section>
   );
 }

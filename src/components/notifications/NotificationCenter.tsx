@@ -339,18 +339,16 @@ function NotificationInbox({
           {settingsOpen ? (
             <section
               aria-label="Notification preferences"
-              className="space-y-3 p-4"
+              className="space-y-5 p-4"
             >
               <div className="bg-card rounded-xl border p-4">
                 <PushNotifications />
               </div>
               {accountKey && (
-                <div className="bg-card rounded-xl border px-1.5 py-1">
-                  <JobNotificationSettings
-                    accountKey={accountKey}
-                    isOnline={isOnline}
-                  />
-                </div>
+                <JobNotificationSettings
+                  accountKey={accountKey}
+                  isOnline={isOnline}
+                />
               )}
             </section>
           ) : (

@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { Bell, BellOff } from "lucide-react";
 import { api } from "~/trpc/react";
 import { useOnlineStatus } from "~/hooks/use-online-status";
+import { SwitchTrack } from "~/components/ui/switch";
 
 const STORAGE_KEY = "foremanhq-chat-push-device-v1";
 const DEVICE_EVENT = "foremanhq-chat-push-device-change";
@@ -458,51 +459,67 @@ export function PushNotifications() {
     identity.data?.eligible && !identity.data.publicKey,
   );
   const blocked = permission === "denied";
+  const status =
+    checking || identity.isPending
+      ? "Checking this device…"
+      : !available
+        ? "Push notifications aren’t supported in this browser. On iPhone, open the app from your Home Screen."
+        : blocked && !enabled
+          ? "Notifications are blocked. Allow them in this site’s browser settings."
+          : missingConfig && !enabled
+            ? "Push notifications aren’t configured yet."
+            : !identity.data?.eligible
+              ? "Push notifications are available to approved organization members."
+              : !isOnline && !enabled
+                ? "Connect to turn push notifications on."
+                : enabled
+                  ? "On for this device."
+                  : "Off for this device.";
   return (
-    <div className="space-y-1 text-sm">
-      <p className="font-medium">Push notifications</p>
-      <p className="text-muted-foreground text-xs" role="status">
-        {checking || identity.isPending
-          ? "Checking this device…"
-          : !available
-            ? "Push notifications aren’t supported in this browser. On iPhone, open the app from your Home Screen."
-            : blocked && !enabled
-              ? "Notifications are blocked. Allow them in this site’s browser settings."
-              : missingConfig && !enabled
-                ? "Push notifications aren’t configured yet."
-                : !identity.data?.eligible
-                  ? "Push notifications are available to approved organization members."
-                  : !isOnline && !enabled
-                    ? "Connect to turn push notifications on."
-                    : enabled
-                      ? "On for this device."
-                      : "Off for this device."}
-      </p>
-      <button
-        type="button"
-        className="inline-flex min-h-11 items-center gap-2 rounded-lg border px-3 py-2 disabled:opacity-50"
-        onClick={() => void toggle()}
-        disabled={
-          Boolean(simulation) ||
-          busy ||
-          checking ||
-          (!isOnline && !enabled) ||
-          !available ||
-          identity.isPending ||
-          identity.isError ||
-          !identity.data?.eligible ||
-          (missingConfig && !enabled) ||
-          (blocked && !enabled)
-        }
-        aria-pressed={enabled}
-      >
-        {enabled ? <BellOff size={16} /> : <Bell size={16} />}
-        {busy
-          ? "Updating push notifications…"
-          : enabled
-            ? "Turn push notifications off"
-            : "Turn push notifications on"}
-      </button>
+    <div className="space-y-2 text-sm">
+      <div className="flex items-center gap-3">
+        <span
+          className={`flex size-10 shrink-0 items-center justify-center rounded-full ${enabled ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"}`}
+        >
+          {enabled ? <Bell size={20} /> : <BellOff size={20} />}
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="font-semibold">Push notifications</p>
+          <p className="text-muted-foreground text-xs" role="status">
+            {status}
+          </p>
+        </div>
+        <button
+          type="button"
+          className="focus-visible:ring-ring -mr-1 inline-flex min-h-11 min-w-14 shrink-0 items-center justify-center rounded-full focus-visible:ring-2 focus-visible:outline-none disabled:opacity-50"
+          onClick={() => void toggle()}
+          disabled={
+            Boolean(simulation) ||
+            busy ||
+            checking ||
+            (!isOnline && !enabled) ||
+            !available ||
+            identity.isPending ||
+            identity.isError ||
+            !identity.data?.eligible ||
+            (missingConfig && !enabled) ||
+            (blocked && !enabled)
+          }
+          aria-pressed={enabled}
+          aria-label={
+            busy
+              ? "Updating push notifications…"
+              : enabled
+                ? "Turn push notifications off"
+                : "Turn push notifications on"
+          }
+        >
+          <SwitchTrack
+            checked={enabled}
+            className={busy ? "animate-pulse" : ""}
+          />
+        </button>
+      </div>
       {simulation && (
         <p className="text-muted-foreground text-xs">
           Device notifications belong to your signed-in account. End simulation
