@@ -1,3 +1,4 @@
+import { orderMultipleInput, refreshSupplierPurchaseTotals } from "~/server/purchasing";
 import { userCan } from "~/server/auth/permissions";
 import { expandLegacyFacets, facetCount } from "~/lib/catalogue-facets";
 import { z } from "zod";
@@ -2190,6 +2191,7 @@ export const catalogueRouter = createTRPCRouter({
         supplierId: z.string().uuid().optional(),
         supplierSku: z.string().max(255).optional(),
         supplierName: z.string().optional(),
+        packSize: orderMultipleInput.optional(),
         lastKnownUnitCost: z.string().optional(),
         supplierIsPreferred: z.boolean().optional(),
         currency: z.string().max(10).default("CAD"),
@@ -2417,6 +2419,7 @@ export const catalogueRouter = createTRPCRouter({
           const supplierPartValues = {
             supplierSku: input.supplierSku ?? null,
             supplierName: input.supplierName ?? null,
+            packSize: input.packSize,
             lastKnownUnitCost: userCan(ctx.user, "financial.view") ? input.lastKnownUnitCost ?? null : undefined,
             currency: input.currency ?? "CAD",
             isPreferred: input.supplierIsPreferred ?? false,
@@ -2427,6 +2430,7 @@ export const catalogueRouter = createTRPCRouter({
               .update(supplierParts)
               .set(supplierPartValues)
               .where(eq(supplierParts.id, existingSupplierPart.id));
+            if (input.packSize !== undefined) await refreshSupplierPurchaseTotals(ctx.db, [existingSupplierPart.id], organizationId);
           } else {
             await ctx.db.insert(supplierParts).values({
               organizationId,
@@ -2855,6 +2859,7 @@ export const catalogueRouter = createTRPCRouter({
         supplierId: z.string().uuid().optional(),
         supplierSku: z.string().max(255).optional(),
         supplierName: z.string().optional(),
+        packSize: orderMultipleInput.optional(),
         lastKnownUnitCost: z.string().optional(),
         supplierIsPreferred: z.boolean().optional(),
         currency: z.string().max(10).default("CAD"),
@@ -2984,6 +2989,7 @@ export const catalogueRouter = createTRPCRouter({
               partDefinitionId: newPart.id,
               supplierSku: input.supplierSku ?? null,
               supplierName: input.supplierName ?? null,
+              packSize: input.packSize,
               lastKnownUnitCost: userCan(ctx.user, "financial.view") ? input.lastKnownUnitCost ?? null : undefined,
               currency: input.currency ?? "CAD",
               isPreferred: input.supplierIsPreferred ?? false,

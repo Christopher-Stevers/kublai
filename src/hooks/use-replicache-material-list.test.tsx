@@ -17,13 +17,29 @@ it("reads only one list's indexes, retains legacy quote lines, and computes tota
       scans.push(`${indexName}:${prefix}`);
       const data =
         indexName === "itemsByList"
-          ? [{ id: "a", materialListId: "list", extendedPrice: "6" }]
+          ? [
+              {
+                id: "a",
+                materialListId: "list",
+                quantity: "3",
+                unitCost: "2",
+                extendedPrice: "6",
+              },
+            ]
           : [
-              { id: "a", materialListId: "list", extendedPrice: "6" },
+              {
+                id: "a",
+                materialListId: "list",
+                quantity: "3",
+                unitCost: "2",
+                extendedPrice: "6",
+              },
               {
                 id: "b",
                 materialListId: null,
                 quoteId: "quote",
+                quantity: "3",
+                unitCost: "3",
                 extendedPrice: "9",
               },
             ];

@@ -129,3 +129,47 @@ describe("offline material room attribution", () => {
     });
   });
 });
+
+it("keeps offline demand separate and replaces supplier rounding when switching suppliers", async () => {
+  await mutators().createMaterialList(tx, listArgs);
+  const supplier = {
+    id: "supplier-part",
+    supplierId: "supplier",
+    supplierSku: null,
+    lastKnownUnitCost: "2",
+    packSize: "25",
+    supplier: { id: "supplier", name: "Supplier" },
+  };
+  await mutators().addItem(tx, {
+    ...addArgs,
+    quantity: 37,
+    unitCost: 2,
+    supplierPartSnapshot: supplier,
+  });
+  expect(rows.get("materialListItem/item")).toMatchObject({
+    quantity: "37",
+    extendedPrice: "100",
+  });
+  await mutators().updateItemQuantity(tx, {
+    materialListId: "list",
+    itemId: "item",
+    quantity: 51,
+  });
+  expect(rows.get("materialListItem/item")).toMatchObject({
+    quantity: "51",
+    extendedPrice: "150",
+  });
+  await mutators().updateItemSupplierPart(tx, {
+    materialListId: "list",
+    itemId: "item",
+    supplierPartId: "other-part",
+    supplierId: "other",
+    unitCost: 2,
+    supplierPartSnapshot: { ...supplier, id: "other-part", packSize: "10" },
+  });
+  expect(rows.get("materialListItem/item")).toMatchObject({
+    quantity: "51",
+    extendedPrice: "120",
+    supplierPart: { packSize: "10" },
+  });
+});

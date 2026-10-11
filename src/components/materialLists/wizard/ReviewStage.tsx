@@ -1,3 +1,4 @@
+import { purchaseLineTotal, purchaseQuantity } from "~/lib/purchase-quantity";
 import { FinancialOnly } from "~/components/permissions/FinancialVisibility";
 import { useState, useEffect } from "react";
 import { api } from "~/trpc/react";
@@ -40,6 +41,7 @@ type SupplierPartOption = {
   supplierId: string;
   supplierSku: string | null;
   lastKnownUnitCost: string | null;
+  packSize?: string | null;
   isPreferred: boolean;
   supplier: {
     id: string;
@@ -51,6 +53,7 @@ type OptimisticSupplierSelection = {
   supplierPartId: string;
   label: string;
   lastKnownUnitCost: string | null;
+  packSize?: string | null;
 };
 
 export interface ReviewStageProps {
@@ -63,7 +66,10 @@ export interface ReviewStageProps {
     supplierPartId: string,
     supplierPartSnapshot?: PendingSupplierPartSnapshot | null,
   ) => void;
-  onCacheSupplierPart: (partId: string, supplierPart: SupplierPartOption) => void;
+  onCacheSupplierPart: (
+    partId: string,
+    supplierPart: SupplierPartOption,
+  ) => void;
   onSupplierPartResolutionStart: (
     partId: string,
     resolution: Promise<string>,
@@ -76,7 +82,7 @@ export interface ReviewStageProps {
 
 function PartImage({ part }: { part: PendingPart["partDefinition"] }) {
   return (
-    <div className="part-photo-frame relative h-full w-full overflow-hidden rounded-md bg-muted">
+    <div className="part-photo-frame bg-muted relative h-full w-full overflow-hidden rounded-md">
       {part.imageUrl ? (
         <Image
           src={part.imageUrl}
@@ -85,7 +91,7 @@ function PartImage({ part }: { part: PendingPart["partDefinition"] }) {
           className="part-photo object-cover"
         />
       ) : (
-        <div className="flex h-full items-center justify-center text-muted-foreground/70">
+        <div className="text-muted-foreground/70 flex h-full items-center justify-center">
           <svg
             className="h-4 w-4 sm:h-8 sm:w-8"
             fill="none"
@@ -108,16 +114,21 @@ function PartImage({ part }: { part: PendingPart["partDefinition"] }) {
 function ReviewQuantityControls({
   partId,
   quantity,
+  orderMultiple,
   onUpdateQuantity,
   onSetQuantity,
 }: {
   partId: string;
   quantity: number;
+  orderMultiple?: string | null;
   onUpdateQuantity: (partId: string, delta: number) => void;
   onSetQuantity: (partId: string, quantity: number) => void;
 }) {
   return (
-    <div data-tutorial="wizard-review-quantity" className="flex items-center justify-center">
+    <div
+      data-tutorial="wizard-review-quantity"
+      className="flex items-center justify-center"
+    >
       <Button
         variant="outline"
         size="sm"
@@ -132,9 +143,14 @@ function ReviewQuantityControls({
         min="0"
         value={quantity}
         onChange={(e) => onSetQuantity(partId, parseInt(e.target.value) || 0)}
-        className="h-8 w-16 rounded-none border-x-0 [appearance:textfield] text-center text-sm [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+        className="h-8 w-16 [appearance:textfield] rounded-none border-x-0 text-center text-sm [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
         aria-label="Quantity"
       />
+      {purchaseQuantity(quantity, orderMultiple) !== quantity && (
+        <span className="text-muted-foreground px-1 text-xs tabular-nums">
+          ({purchaseQuantity(quantity, orderMultiple)})
+        </span>
+      )}
       <Button
         variant="outline"
         size="sm"
@@ -159,12 +175,14 @@ export function ReviewStage({
   allPartsHaveSuppliers,
   isToolRequest = false,
 }: ReviewStageProps) {
-  const [supplierDialogPartId, setSupplierDialogPartId] = useState<string | null>(null);
-  const [supplierCountBeforeDialog, setSupplierCountBeforeDialog] = useState<number>(0);
+  const [supplierDialogPartId, setSupplierDialogPartId] = useState<
+    string | null
+  >(null);
+  const [supplierCountBeforeDialog, setSupplierCountBeforeDialog] =
+    useState<number>(0);
   const [reviewView, setReviewView] = useState<"grid" | "table">("table");
-  const [optimisticSupplierSelections, setOptimisticSupplierSelections] = useState<
-    Record<string, OptimisticSupplierSelection>
-  >({});
+  const [optimisticSupplierSelections, setOptimisticSupplierSelections] =
+    useState<Record<string, OptimisticSupplierSelection>>({});
 
   const utils = api.useUtils();
   const isOnline = useOnlineStatus();
@@ -181,11 +199,14 @@ export function ReviewStage({
           continue;
         }
 
-        const matchedSupplier = (supplierPartsData.get(pendingPart.partId) ?? []).find(
-          (sp) => sp.id === pendingPart.supplierPartId,
-        );
+        const matchedSupplier = (
+          supplierPartsData.get(pendingPart.partId) ?? []
+        ).find((sp) => sp.id === pendingPart.supplierPartId);
 
-        if (matchedSupplier && matchedSupplier.id === optimisticSelection.supplierPartId) {
+        if (
+          matchedSupplier &&
+          matchedSupplier.id === optimisticSelection.supplierPartId
+        ) {
           delete next[pendingPart.partId];
           changed = true;
         }
@@ -200,16 +221,19 @@ export function ReviewStage({
     { enabled: isOnline && !!supplierDialogPartId },
   );
 
-  const { data: dialogSupplierParts } = api.supplier.getSupplierPartsByPart.useQuery(
-    { partDefinitionId: supplierDialogPartId || "" },
-    { enabled: isOnline && !!supplierDialogPartId },
-  );
+  const { data: dialogSupplierParts } =
+    api.supplier.getSupplierPartsByPart.useQuery(
+      { partDefinitionId: supplierDialogPartId || "" },
+      { enabled: isOnline && !!supplierDialogPartId },
+    );
 
   useEffect(() => {
     if (!supplierDialogPartId || !dialogSupplierParts) return;
 
     const currentCount = dialogSupplierParts.length;
-    const pendingPart = pendingParts.find((part) => part.partId === supplierDialogPartId);
+    const pendingPart = pendingParts.find(
+      (part) => part.partId === supplierDialogPartId,
+    );
 
     if (
       currentCount > supplierCountBeforeDialog &&
@@ -234,11 +258,12 @@ export function ReviewStage({
 
   const getSupplierSelection = (pendingPart: PendingPart) => {
     const partsData = supplierPartsData.get(pendingPart.partId) ?? [];
-    const selectedSupplierPart = partsData.find(
-      (sp) => sp.id === pendingPart.supplierPartId,
-    );
+    const selectedSupplierPart =
+      pendingPart.supplierPartSnapshot ??
+      partsData.find((sp) => sp.id === pendingPart.supplierPartId);
 
-    const optimisticSelection = optimisticSupplierSelections[pendingPart.partId];
+    const optimisticSelection =
+      optimisticSupplierSelections[pendingPart.partId];
 
     return {
       partsData,
@@ -255,7 +280,10 @@ export function ReviewStage({
     };
   };
 
-  const renderSupplierPicker = (pendingPart: PendingPart, isMissingSupplier: boolean) => {
+  const renderSupplierPicker = (
+    pendingPart: PendingPart,
+    isMissingSupplier: boolean,
+  ) => {
     const { partsData, label } = getSupplierSelection(pendingPart);
     const hasAvailableSuppliers = partsData.length > 0;
 
@@ -269,9 +297,7 @@ export function ReviewStage({
             }`}
             style={{ touchAction: "auto" }}
           >
-            <span className="truncate">
-              {label}
-            </span>
+            <span className="truncate">{label}</span>
             <ChevronDownIcon className="h-4 w-4 shrink-0" />
           </Button>
         </DropdownMenuTrigger>
@@ -296,6 +322,7 @@ export function ReviewStage({
                   supplierId: sp.supplierId,
                   supplierSku: sp.supplierSku,
                   lastKnownUnitCost: sp.lastKnownUnitCost,
+                  packSize: sp.packSize,
                   supplier: sp.supplier,
                 });
               }}
@@ -307,14 +334,18 @@ export function ReviewStage({
           ))}
           {allSuppliers
             ?.filter(
-              (supplier) => !partsData.some((sp) => sp.supplierId === supplier.id),
+              (supplier) =>
+                !partsData.some((sp) => sp.supplierId === supplier.id),
             )
             .map((supplier) => (
               <DropdownMenuItem
                 key={supplier.id}
                 onClick={() => {
                   const localSupplierPart: SupplierPartOption = {
-                    id: makeOfflineSupplierPartId(pendingPart.partId, supplier.id),
+                    id: makeOfflineSupplierPartId(
+                      pendingPart.partId,
+                      supplier.id,
+                    ),
                     supplierId: supplier.id,
                     supplierSku: null,
                     lastKnownUnitCost: null,
@@ -347,17 +378,20 @@ export function ReviewStage({
               No cached suppliers available
             </DropdownMenuItem>
           )}
-          {!hasAvailableSuppliers && isOnline && (!allSuppliers || allSuppliers.length === 0) && (
-            <DropdownMenuItem
-              onClick={() => {
-                const currentPartsData = supplierPartsData.get(pendingPart.partId) ?? [];
-                setSupplierCountBeforeDialog(currentPartsData.length);
-                setSupplierDialogPartId(pendingPart.partId);
-              }}
-            >
-              Add supplier
-            </DropdownMenuItem>
-          )}
+          {!hasAvailableSuppliers &&
+            isOnline &&
+            (!allSuppliers || allSuppliers.length === 0) && (
+              <DropdownMenuItem
+                onClick={() => {
+                  const currentPartsData =
+                    supplierPartsData.get(pendingPart.partId) ?? [];
+                  setSupplierCountBeforeDialog(currentPartsData.length);
+                  setSupplierDialogPartId(pendingPart.partId);
+                }}
+              >
+                Add supplier
+              </DropdownMenuItem>
+            )}
         </DropdownMenuContent>
       </DropdownMenu>
     );
@@ -384,7 +418,11 @@ export function ReviewStage({
           <h3 className="text-base font-semibold sm:text-lg">
             {isToolRequest ? "Review Tools" : "Review Parts"}
           </h3>
-          <ViewToggle view={reviewView} onViewChange={setReviewView} showOnMobile />
+          <ViewToggle
+            view={reviewView}
+            onViewChange={setReviewView}
+            showOnMobile
+          />
         </div>
         {!allPartsHaveSuppliers && !isToolRequest && (
           <div className="flex items-center gap-2 rounded-md bg-amber-50 px-2 py-1.5 text-xs text-amber-800 sm:px-3 sm:text-sm">
@@ -405,13 +443,22 @@ export function ReviewStage({
             const unitCost = supplierSelection.lastKnownUnitCost
               ? parseFloat(supplierSelection.lastKnownUnitCost)
               : 0;
-            const lineTotal = pendingPart.quantity * unitCost;
-            const isMissingSupplier = !isToolRequest && !supplierSelection.hasSupplier;
+            const lineTotal = purchaseLineTotal(
+              pendingPart.quantity,
+              unitCost,
+              supplierSelection.selectedSupplierPart?.packSize,
+            );
+            const isMissingSupplier =
+              !isToolRequest && !supplierSelection.hasSupplier;
 
             return (
               <Card
                 key={pendingPart.partId}
-                className={isMissingSupplier ? "border-amber-300 bg-amber-50/50" : undefined}
+                className={
+                  isMissingSupplier
+                    ? "border-amber-300 bg-amber-50/50"
+                    : undefined
+                }
               >
                 <CardContent className="p-3 sm:p-4">
                   <div className="grid grid-cols-[8.5rem_minmax(0,1fr)_2.5rem] gap-1.5 sm:grid-cols-[4rem_minmax(0,1fr)_9.5rem_13rem_2.75rem] sm:items-center sm:gap-4">
@@ -422,19 +469,23 @@ export function ReviewStage({
                         </div>
 
                         <div className="min-w-0 flex-1 sm:block">
-                          <h3 className="line-clamp-2 text-sm font-semibold text-foreground sm:truncate sm:text-base">
+                          <h3 className="text-foreground line-clamp-2 text-sm font-semibold sm:truncate sm:text-base">
                             {pendingPart.partDefinition.displayName}
                           </h3>
-                          <FinancialOnly><div className={`mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground ${isToolRequest ? "hidden" : ""}`}>
-                            <span>
-                              Total:{" "}
-                              <span className="font-semibold text-foreground">
-                                ${lineTotal.toFixed(2)}
+                          <FinancialOnly>
+                            <div
+                              className={`text-muted-foreground mt-0.5 flex flex-wrap items-center gap-1.5 text-xs ${isToolRequest ? "hidden" : ""}`}
+                            >
+                              <span>
+                                Total:{" "}
+                                <span className="text-foreground font-semibold">
+                                  ${lineTotal.toFixed(2)}
+                                </span>
                               </span>
-                            </span>
-                          </div></FinancialOnly>
+                            </div>
+                          </FinancialOnly>
                           {pendingPart.partDefinition.material && (
-                            <p className="mt-0.5 hidden truncate text-xs text-muted-foreground sm:block">
+                            <p className="text-muted-foreground mt-0.5 hidden truncate text-xs sm:block">
                               {pendingPart.partDefinition.material}
                             </p>
                           )}
@@ -446,6 +497,11 @@ export function ReviewStage({
                       <ReviewQuantityControls
                         partId={pendingPart.partId}
                         quantity={pendingPart.quantity}
+                        orderMultiple={
+                          isToolRequest
+                            ? null
+                            : supplierSelection.selectedSupplierPart?.packSize
+                        }
                         onUpdateQuantity={onUpdateQuantity}
                         onSetQuantity={onSetQuantity}
                       />
@@ -453,7 +509,9 @@ export function ReviewStage({
 
                     <div className="flex h-10 min-w-0 items-center sm:h-11">
                       {isToolRequest ? (
-                        <span className="text-muted-foreground text-sm">Tool room</span>
+                        <span className="text-muted-foreground text-sm">
+                          Tool room
+                        </span>
                       ) : (
                         renderSupplierPicker(pendingPart, isMissingSupplier)
                       )}
@@ -487,8 +545,13 @@ export function ReviewStage({
               const unitCost = supplierSelection.lastKnownUnitCost
                 ? parseFloat(supplierSelection.lastKnownUnitCost)
                 : 0;
-              const lineTotal = pendingPart.quantity * unitCost;
-              const isMissingSupplier = !isToolRequest && !supplierSelection.hasSupplier;
+              const lineTotal = purchaseLineTotal(
+                pendingPart.quantity,
+                unitCost,
+                supplierSelection.selectedSupplierPart?.packSize,
+              );
+              const isMissingSupplier =
+                !isToolRequest && !supplierSelection.hasSupplier;
 
               return (
                 <div
@@ -505,28 +568,39 @@ export function ReviewStage({
                     <ReviewQuantityControls
                       partId={pendingPart.partId}
                       quantity={pendingPart.quantity}
+                      orderMultiple={
+                        isToolRequest
+                          ? null
+                          : supplierSelection.selectedSupplierPart?.packSize
+                      }
                       onUpdateQuantity={onUpdateQuantity}
                       onSetQuantity={onSetQuantity}
                     />
                   </div>
 
                   <div className="min-w-0 py-0.5">
-                    <div className="line-clamp-2 whitespace-normal break-words text-sm font-medium leading-tight sm:text-base">
+                    <div className="line-clamp-2 text-sm leading-tight font-medium break-words whitespace-normal sm:text-base">
                       {pendingPart.partDefinition.displayName}
                     </div>
                   </div>
 
                   <div className="flex h-8 min-w-0 items-center self-center">
                     {isToolRequest ? (
-                      <span className="text-muted-foreground text-sm">Tool room</span>
+                      <span className="text-muted-foreground text-sm">
+                        Tool room
+                      </span>
                     ) : (
                       renderSupplierPicker(pendingPart, isMissingSupplier)
                     )}
                   </div>
 
-                  <div className="flex h-8 min-w-0 items-center justify-end self-center overflow-hidden whitespace-nowrap text-sm font-semibold text-foreground">
+                  <div className="text-foreground flex h-8 min-w-0 items-center justify-end self-center overflow-hidden text-sm font-semibold whitespace-nowrap">
                     {!isToolRequest && (
-                      <FinancialOnly><span className="shrink-0">${lineTotal.toFixed(2)}</span></FinancialOnly>
+                      <FinancialOnly>
+                        <span className="shrink-0">
+                          ${lineTotal.toFixed(2)}
+                        </span>
+                      </FinancialOnly>
                     )}
                   </div>
 
@@ -556,27 +630,34 @@ export function ReviewStage({
         >
           <DialogContent className="max-w-md">
             <DialogHeader>
-              <DialogTitle className="text-base sm:text-lg">Manage Suppliers</DialogTitle>
+              <DialogTitle className="text-base sm:text-lg">
+                Manage Suppliers
+              </DialogTitle>
               <DialogDescription className="text-xs sm:text-sm">
                 Connect existing suppliers or create a new one for this part.
               </DialogDescription>
             </DialogHeader>
             <div className="py-2 sm:py-4">
               <div>
-                <label className="text-xs font-medium sm:text-sm">Suppliers</label>
+                <label className="text-xs font-medium sm:text-sm">
+                  Suppliers
+                </label>
                 <div className="mt-1" onClick={(e) => e.stopPropagation()}>
                   <PartSuppliersDropdown
                     partDefinitionId={supplierDialogPartId}
                     currentPreferredSupplierId={
-                      supplierInfo?.[supplierDialogPartId]?.preferredSupplier?.id || null
+                      supplierInfo?.[supplierDialogPartId]?.preferredSupplier
+                        ?.id || null
                     }
                     availableSuppliers={
-                      supplierInfo?.[supplierDialogPartId]?.availableSuppliers ?? []
+                      supplierInfo?.[supplierDialogPartId]
+                        ?.availableSuppliers ?? []
                     }
                   />
                 </div>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Select suppliers that provide this part and set a preferred supplier.
+                <p className="text-muted-foreground mt-1 text-xs">
+                  Select suppliers that provide this part and set a preferred
+                  supplier.
                 </p>
               </div>
             </div>

@@ -1,3 +1,5 @@
+import { recalculatePurchaseTotals } from "~/server/purchasing";
+import { purchaseLineTotal } from "~/lib/purchase-quantity";
 import { enqueueMaterialNotification } from "~/server/notifications/materials";
 import { pullSnapshot, ensureClientGroup, ReplicacheOwnershipError } from "./pull";
 export { ReplicacheOwnershipError } from "./pull";
@@ -307,24 +309,7 @@ async function bumpClientGroupVersion(tx: ReplicacheTx, clientGroupId: string) {
 // Domain helpers
 // ---------------------------------------------------------------------------
 
-async function recalculateQuoteTotals(tx: ReplicacheTx, quoteId: string) {
-  const allItems = await tx
-    .select({ extendedPrice: quoteItems.extendedPrice })
-    .from(quoteItems)
-    .where(eq(quoteItems.quoteId, quoteId));
-
-  const subtotal = allItems.reduce((sum, item) => {
-    const value = item.extendedPrice
-      ? parseFloat(String(item.extendedPrice))
-      : 0;
-    return sum + (Number.isFinite(value) ? value : 0);
-  }, 0);
-
-  await tx
-    .update(quotes)
-    .set({ subtotalMaterials: subtotal.toString(), total: subtotal.toString() })
-    .where(eq(quotes.id, quoteId));
-}
+const recalculateQuoteTotals = recalculatePurchaseTotals;
 
 async function touchMaterialList(tx: ReplicacheTx, materialListId: string) {
   await tx
@@ -1215,6 +1200,7 @@ export async function handleMaterialListReplicachePull(
           supplierId: quoteItems.supplierId,
           supplierPartSku: supplierParts.supplierSku,
           supplierPartLastKnownUnitCost: supplierParts.lastKnownUnitCost,
+            supplierPartPackSize: supplierParts.packSize,
           supplierName: suppliers.name,
           addedByUserId: quoteItems.addedByUserId,
           updatedAt: quoteItems.updatedAt,
@@ -1438,7 +1424,7 @@ export async function handleMaterialListReplicachePull(
             materialListId: item.materialListId,
             quantity: item.quantity,
             unitCost: item.unitCost,
-            extendedPrice: item.extendedPrice,
+            extendedPrice: String(purchaseLineTotal(item.quantity, item.unitCost, item.supplierPartPackSize)),
             descriptionSnapshot: item.descriptionSnapshot,
             partDefinitionId: item.partDefinitionId,
             supplierPartId: item.supplierPartId,
@@ -1460,7 +1446,8 @@ export async function handleMaterialListReplicachePull(
                   id: item.supplierPartId,
                   supplierId: item.supplierId ?? "",
                   supplierSku: item.supplierPartSku ?? null,
-                  lastKnownUnitCost: item.supplierPartLastKnownUnitCost ?? null,
+                  packSize: item.supplierPartPackSize,
+              lastKnownUnitCost: item.supplierPartLastKnownUnitCost ?? null,
                   supplier: item.supplierId
                     ? {
                         id: item.supplierId,

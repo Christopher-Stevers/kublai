@@ -1,5 +1,7 @@
 "use client";
 
+import { purchaseLineTotal, purchaseQuantity } from "~/lib/purchase-quantity";
+
 import { useEffect, useMemo, useState } from "react";
 import {
   subscribeToMaterialListReplicacheSyncing,
@@ -37,6 +39,7 @@ export interface ReplicacheMaterialListItem {
   roomName?: string | null;
   quoteId: string | null;
   quantity: string;
+  orderQuantity?: string;
   unitCost: string | null;
   extendedPrice: string | null;
   descriptionSnapshot: string | null;
@@ -58,6 +61,7 @@ export interface ReplicacheMaterialListItem {
     supplierId: string;
     supplierSku: string | null;
     lastKnownUnitCost: string | null;
+    packSize?: string | null;
     supplier: { id: string; name: string } | null;
   } | null;
   addedBy?: {
@@ -118,14 +122,27 @@ export function useReplicacheMaterialList(materialListId: string) {
               .map((item) => [item.id, item]),
           ).values(),
         ];
-        items.sort(
+        const pricedItems = items.map((item) => ({
+          ...item,
+          orderQuantity: String(
+            purchaseQuantity(item.quantity, item.supplierPart?.packSize),
+          ),
+          extendedPrice: String(
+            purchaseLineTotal(
+              item.quantity,
+              item.unitCost,
+              item.supplierPart?.packSize,
+            ),
+          ),
+        }));
+        pricedItems.sort(
           (a, b) =>
             Date.parse(a.createdAt ?? "") - Date.parse(b.createdAt ?? ""),
         );
         return {
           materialList,
-          items,
-          materialTotal: items.reduce(
+          items: pricedItems,
+          materialTotal: pricedItems.reduce(
             (sum, item) => sum + Number(item.extendedPrice ?? 0),
             0,
           ),

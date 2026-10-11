@@ -1,5 +1,7 @@
 "use client";
 
+import { purchaseQuantity } from "~/lib/purchase-quantity";
+
 import { useEffect, useRef, useState } from "react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
@@ -10,6 +12,7 @@ import { markUserAction } from "~/lib/performance-marks";
 interface QuantityControlsProps {
   itemId: string;
   quantity: number;
+  orderMultiple?: string | null;
   materialListId: string;
   pendingSync?: boolean;
   compact?: boolean;
@@ -19,6 +22,7 @@ interface QuantityControlsProps {
 export function QuantityControls({
   itemId,
   quantity,
+  orderMultiple,
   materialListId,
   pendingSync = false,
   compact = false,
@@ -79,7 +83,8 @@ export function QuantityControls({
       quantity: nextQuantity,
     })
       .then(() => {
-        if (lastQueuedQuantityRef.current?.quantity === nextQuantity) setSaveError(false);
+        if (lastQueuedQuantityRef.current?.quantity === nextQuantity)
+          setSaveError(false);
       })
       .catch(() => {
         if (lastQueuedQuantityRef.current?.quantity === nextQuantity) {
@@ -125,6 +130,19 @@ export function QuantityControls({
     }
   };
 
+  const orderedQuantity = purchaseQuantity(displayedQuantity, orderMultiple);
+  const purchaseSuffix =
+    orderedQuantity !== displayedQuantity ? (
+      <span
+        className="text-muted-foreground shrink-0 pr-1 text-xs tabular-nums"
+        aria-label={`Order quantity: ${orderedQuantity}`}
+        title={`Orders in multiples of ${orderMultiple}`}
+      >
+        ({orderedQuantity.toLocaleString("en-CA", { maximumFractionDigits: 6 })}
+        )
+      </span>
+    ) : null;
+
   // Wider than tall so +/- are easy to hit with a thumb.
   const buttonClassName = compact
     ? "h-8 w-11 shrink-0 p-0"
@@ -151,25 +169,28 @@ export function QuantityControls({
         >
           <PlusIcon className="h-4 w-4" />
         </Button>
-        <Input
-          type="text"
-          inputMode="numeric"
-          pattern="[0-9]*"
-          value={inputValue}
-          onChange={(event) => handleInputChange(event.target.value)}
-          onBlur={(event) => commitInputQuantity(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === "Enter") event.currentTarget.blur();
-          }}
-          className={inputClassName}
-          aria-label="Quantity"
-          aria-invalid={saveError}
-          title={
-            saveError
-              ? "Quantity could not be saved. Press Enter to retry."
-              : undefined
-          }
-        />
+        <div className="border-input focus-within:ring-ring/50 flex w-full min-w-0 items-center rounded-md border focus-within:ring-2">
+          <Input
+            type="text"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            value={inputValue}
+            onChange={(event) => handleInputChange(event.target.value)}
+            onBlur={(event) => commitInputQuantity(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") event.currentTarget.blur();
+            }}
+            className={`${inputClassName} border-0 shadow-none focus-visible:ring-0`}
+            aria-label="Quantity"
+            aria-invalid={saveError}
+            title={
+              saveError
+                ? "Quantity could not be saved. Press Enter to retry."
+                : undefined
+            }
+          />
+          {purchaseSuffix}
+        </div>
         <Button
           variant="outline"
           size="sm"
@@ -180,7 +201,16 @@ export function QuantityControls({
         >
           <MinusIcon className="h-4 w-4" />
         </Button>
-        {saveError ? <Button variant="outline" size="sm" aria-label="Retry quantity save" onClick={() => commitQuantity(displayedQuantityRef.current)}>Retry</Button> : null}
+        {saveError ? (
+          <Button
+            variant="outline"
+            size="sm"
+            aria-label="Retry quantity save"
+            onClick={() => commitQuantity(displayedQuantityRef.current)}
+          >
+            Retry
+          </Button>
+        ) : null}
       </div>
     );
   }
@@ -203,25 +233,28 @@ export function QuantityControls({
       >
         <MinusIcon className="h-4 w-4" />
       </Button>
-      <Input
-        type="text"
-        inputMode="numeric"
-        pattern="[0-9]*"
-        value={inputValue}
-        onChange={(event) => handleInputChange(event.target.value)}
-        onBlur={(event) => commitInputQuantity(event.target.value)}
-        onKeyDown={(event) => {
-          if (event.key === "Enter") event.currentTarget.blur();
-        }}
-        className={inputClassName}
-        aria-label="Quantity"
-        aria-invalid={saveError}
-        title={
-          saveError
-            ? "Quantity could not be saved. Press Enter to retry."
-            : undefined
-        }
-      />
+      <div className="border-input focus-within:ring-ring/50 flex min-w-0 flex-1 items-center rounded-md border focus-within:ring-2">
+        <Input
+          type="text"
+          inputMode="numeric"
+          pattern="[0-9]*"
+          value={inputValue}
+          onChange={(event) => handleInputChange(event.target.value)}
+          onBlur={(event) => commitInputQuantity(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") event.currentTarget.blur();
+          }}
+          className={`${inputClassName} border-0 shadow-none focus-visible:ring-0`}
+          aria-label="Quantity"
+          aria-invalid={saveError}
+          title={
+            saveError
+              ? "Quantity could not be saved. Press Enter to retry."
+              : undefined
+          }
+        />
+        {purchaseSuffix}
+      </div>
       <Button
         variant="outline"
         size="sm"
@@ -231,7 +264,16 @@ export function QuantityControls({
       >
         <PlusIcon className="h-4 w-4" />
       </Button>
-      {saveError ? <Button variant="outline" size="sm" aria-label="Retry quantity save" onClick={() => commitQuantity(displayedQuantityRef.current)}>Retry</Button> : null}
+      {saveError ? (
+        <Button
+          variant="outline"
+          size="sm"
+          aria-label="Retry quantity save"
+          onClick={() => commitQuantity(displayedQuantityRef.current)}
+        >
+          Retry
+        </Button>
+      ) : null}
     </div>
   );
 }

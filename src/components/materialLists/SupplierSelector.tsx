@@ -59,6 +59,7 @@ export function SupplierSelector({
       supplierId: string;
       supplierSku: string | null;
       lastKnownUnitCost: string | null;
+    packSize?: string | null;
       isPreferred: boolean;
       supplier: { id: string; name: string };
     }>
@@ -186,6 +187,7 @@ export function SupplierSelector({
       itemId,
       supplierPartId: nextSupplierPartId,
       supplierId: selectedSupplierPart?.supplierId ?? null,
+      supplierPartSnapshot: selectedSupplierPart,
       unitCost,
     }));
   };

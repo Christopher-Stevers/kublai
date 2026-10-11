@@ -1,4 +1,6 @@
 "use client";
+
+import { purchaseLineTotal } from "~/lib/purchase-quantity";
 import { FinancialOnly } from "~/components/permissions/FinancialVisibility";
 
 import { useState, useMemo, useEffect, useRef } from "react";
@@ -157,6 +159,7 @@ export function AddPartDialog({
         supplierId: string;
         supplierSku: string | null;
         lastKnownUnitCost: string | null;
+    packSize?: string | null;
         isPreferred: boolean;
         supplier: {
           id: string;
@@ -243,6 +246,7 @@ export function AddPartDialog({
               supplierId: string;
               supplierSku: string | null;
               lastKnownUnitCost: string | null;
+    packSize?: string | null;
               isPreferred: boolean;
               supplier: {
                 id: string;
@@ -581,6 +585,7 @@ export function AddPartDialog({
       supplierId: string;
       supplierSku: string | null;
       lastKnownUnitCost: string | null;
+    packSize?: string | null;
       isPreferred: boolean;
       supplier: { id: string; name: string };
     },
@@ -726,6 +731,7 @@ export function AddPartDialog({
               supplierId: selectedSupplierPart.supplierId,
               supplierSku: selectedSupplierPart.supplierSku,
               lastKnownUnitCost: selectedSupplierPart.lastKnownUnitCost,
+              packSize: selectedSupplierPart.packSize ?? null,
               supplier: selectedSupplierPart.supplier,
             }
           : null;
@@ -804,7 +810,7 @@ export function AddPartDialog({
         ? parseFloat(selectedSupplierPart.lastKnownUnitCost)
         : 0;
 
-      return sum + pendingPart.quantity * unitCost;
+      return sum + purchaseLineTotal(pendingPart.quantity, unitCost, selectedSupplierPart?.packSize);
     }, 0);
   }, [pendingParts, supplierPartsData]);
 

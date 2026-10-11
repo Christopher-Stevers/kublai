@@ -1,3 +1,5 @@
+import { purchaseQuantity, purchaseLineTotal, formatPurchaseQuantity } from "~/lib/purchase-quantity";
+import { recalculatePurchaseTotals } from "~/server/purchasing";
 import { TRPCError } from "@trpc/server";
 import { and, asc, desc, eq, gte, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
@@ -70,6 +72,9 @@ type OrderableQuoteItem = {
   descriptionSnapshot: string | null;
   supplierPartSupplierId: string | null;
   supplierSku: string | null;
+  packSize?: string | null;
+  requestedQuantity?: string;
+  orderMultipleSnapshot?: string | null;
   roomId: string | null;
   roomName: string | null;
 };
@@ -80,7 +85,7 @@ function groupOrderableItemsBySupplier(items: OrderableQuoteItem[]) {
     const supplierId = item.selectedSupplierId ?? item.supplierPartSupplierId;
     if (!supplierId || !item.partDefinitionId) continue;
     const bucket = itemsBySupplier.get(supplierId) ?? [];
-    bucket.push(item);
+    bucket.push({ ...item, requestedQuantity: item.quantity, quantity: String(purchaseQuantity(item.quantity, item.packSize)), orderMultipleSnapshot: item.packSize ?? null });
     itemsBySupplier.set(supplierId, bucket);
   }
   return itemsBySupplier;
@@ -197,6 +202,7 @@ async function loadOrderableQuoteItems(
       descriptionSnapshot: quoteItems.descriptionSnapshot,
       supplierPartSupplierId: supplierParts.supplierId,
       supplierSku: supplierParts.supplierSku,
+      packSize: supplierParts.packSize,
     })
     .from(quoteItems)
     .leftJoin(jobRooms, eq(quoteItems.roomId, jobRooms.id))
@@ -338,6 +344,7 @@ export const materialListRouter = createTRPCRouter({
             supplierPartSupplierId: supplierParts.supplierId,
             supplierPartSku: supplierParts.supplierSku,
             supplierPartLastKnownUnitCost: supplierParts.lastKnownUnitCost,
+            supplierPartPackSize: supplierParts.packSize,
             supplierId: suppliers.id,
             supplierName: suppliers.name,
             uomId: units.id,
@@ -386,7 +393,7 @@ export const materialListRouter = createTRPCRouter({
         roomName: item.roomName,
         quantity: item.quantity,
         unitCost: item.unitCost,
-        extendedPrice: item.extendedPrice,
+        extendedPrice: String(purchaseLineTotal(item.quantity, item.unitCost, item.supplierPartPackSize)),
         descriptionSnapshot: item.descriptionSnapshot,
         createdAt: item.createdAt,
         updatedAt: item.updatedAt,
@@ -416,6 +423,7 @@ export const materialListRouter = createTRPCRouter({
               id: item.supplierPartId,
               supplierId: item.supplierPartSupplierId,
               supplierSku: item.supplierPartSku,
+              packSize: item.supplierPartPackSize,
               lastKnownUnitCost: item.supplierPartLastKnownUnitCost,
               supplier: item.supplierId
                 ? {
@@ -652,17 +660,7 @@ export const materialListRouter = createTRPCRouter({
         }
 
         // Calculate totals for this quote
-        const items = await ctx.db
-          .select({ extendedPrice: quoteItems.extendedPrice })
-          .from(quoteItems)
-          .where(eq(quoteItems.quoteId, quote.id));
-
-        const subtotalMaterials = items.reduce((sum, item) => {
-          const price = item.extendedPrice
-            ? parseFloat(item.extendedPrice.toString())
-            : 0;
-          return sum + price;
-        }, 0);
+        const subtotalMaterials = await recalculatePurchaseTotals(ctx.db, String(quote.id));
 
         const effectiveMarkup = userCan(ctx.user, "financial.view")
           ? input.markupPercent
@@ -739,17 +737,7 @@ export const materialListRouter = createTRPCRouter({
       }
 
       // Calculate totals
-      const items = await ctx.db
-        .select({ extendedPrice: quoteItems.extendedPrice })
-        .from(quoteItems)
-        .where(eq(quoteItems.quoteId, quote.id));
-
-      const subtotalMaterials = items.reduce((sum, item) => {
-        const price = item.extendedPrice
-          ? parseFloat(item.extendedPrice.toString())
-          : 0;
-        return sum + price;
-      }, 0);
+      const subtotalMaterials = await recalculatePurchaseTotals(ctx.db, String(quote.id));
 
       const effectiveMarkup = userCan(ctx.user, "financial.view")
         ? input.markupPercent
@@ -843,12 +831,15 @@ export const materialListRouter = createTRPCRouter({
           partDefinitionDisplayName: partDefinitions.displayName,
           quantity: quoteItems.quantity,
           extendedPrice: quoteItems.extendedPrice,
+          unitCost: quoteItems.unitCost,
+          packSize: supplierParts.packSize,
         })
         .from(quoteItems)
         .leftJoin(
           partDefinitions,
           eq(quoteItems.partDefinitionId, partDefinitions.id),
         )
+        .leftJoin(supplierParts, eq(quoteItems.supplierPartId, supplierParts.id))
         .where(eq(quoteItems.quoteId, input.quoteId));
 
       const foremanName = quote.foreman?.name || "Foreman";
@@ -863,10 +854,9 @@ export const materialListRouter = createTRPCRouter({
       let adjustedTotal = 0;
       const lineItems = items
         .map((item) => {
-          const qty = item.quantity ? parseFloat(item.quantity.toString()) : 0;
-          const basePrice = item.extendedPrice
-            ? parseFloat(item.extendedPrice.toString())
-            : 0;
+          const ordered = purchaseQuantity(item.quantity, item.packSize);
+          const qty = formatPurchaseQuantity(item.quantity, ordered);
+          const basePrice = purchaseLineTotal(item.quantity, item.unitCost, item.packSize);
           // Apply markup to get the customer-facing price
           const adjustedPrice = basePrice * markupMultiplier;
           adjustedTotal += adjustedPrice;
@@ -1034,6 +1024,7 @@ ${foremanName}`;
               roomName: jobRooms.name,
               orderId: orderItems.orderId,
               quantity: orderItems.quantity,
+              requestedQuantity: orderItems.requestedQuantity,
               descriptionSnapshot: orderItems.descriptionSnapshot,
               supplierSkuSnapshot: orderItems.supplierSkuSnapshot,
               partDefinitionDisplayName: partDefinitions.displayName,
@@ -1126,6 +1117,7 @@ ${foremanName}`;
             roomId: item.roomId,
             roomName: item.roomName,
             quantity: item.quantity,
+            requestedQuantity: item.requestedQuantity ?? item.quantity,
             descriptionSnapshot:
               item.descriptionSnapshot?.trim() ||
               item.partDefinitionDisplayName?.trim() ||
@@ -1344,6 +1336,8 @@ ${foremanName}`;
             supplierPartId: item.supplierPartId ?? undefined,
             partDefinitionId: item.partDefinitionId!,
             quantity: item.quantity ?? "1",
+            requestedQuantity: item.requestedQuantity ?? item.quantity,
+            orderMultipleSnapshot: item.orderMultipleSnapshot ?? null,
             uomId: item.uomId ?? undefined,
             unitCostAtOrderTime: item.unitCost ?? undefined,
             descriptionSnapshot:
@@ -1791,6 +1785,8 @@ ${foremanName}`;
           supplierPartId: orderItems.supplierPartId,
           partDefinitionId: orderItems.partDefinitionId,
           quantity: orderItems.quantity,
+          requestedQuantity: orderItems.requestedQuantity,
+          orderMultipleSnapshot: orderItems.orderMultipleSnapshot,
           receivedQuantity: orderItems.receivedQuantity,
           verificationStatus: orderItems.verificationStatus,
           descriptionSnapshot: orderItems.descriptionSnapshot,

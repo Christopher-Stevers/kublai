@@ -1,3 +1,5 @@
+
+import { purchaseLineTotal } from "~/lib/purchase-quantity";
 import { simulationCacheName } from "./employee-simulation";
 import { QuantityJournal, type QuantityIntent } from "./quantity-journal";
 import { Replicache, dropDatabase, type WriteTransaction } from "replicache";
@@ -50,6 +52,7 @@ export type MaterialListReplicacheMutators = {
         supplierId: string;
         supplierSku: string | null;
         lastKnownUnitCost: string | null;
+        packSize?: string | null;
         supplier: { id: string; name: string } | null;
       } | null;
       addedBySnapshot?: {
@@ -67,6 +70,7 @@ export type MaterialListReplicacheMutators = {
       supplierPartId: string | null;
       supplierId: string | null;
       unitCost?: number | null;
+      supplierPartSnapshot?: { id: string; supplierId: string; supplierSku: string | null; lastKnownUnitCost: string | null; packSize?: string | null; supplier: { id: string; name: string } | null } | null;
     },
   ): Promise<void>;
 
@@ -184,8 +188,8 @@ export function makeMaterialListMutators(): MaterialListReplicacheMutators {
         )
           return;
         const unitCost = Number("unitCost" in existing ? existing.unitCost : 0);
-        const extendedPrice =
-          args.quantity * (Number.isFinite(unitCost) ? unitCost : 0);
+        const supplierPart = ("supplierPart" in existing ? existing.supplierPart : null) as { packSize?: string | null } | null | undefined;
+        const extendedPrice = purchaseLineTotal(args.quantity, unitCost, supplierPart?.packSize);
         await tx.put(`materialListItem/${args.itemId}`, {
           ...existing,
           materialListId: args.materialListId,
@@ -218,8 +222,7 @@ export function makeMaterialListMutators(): MaterialListReplicacheMutators {
           ? (args.roomName ?? (roomId === listRoomId ? listRoomName : null))
           : null;
         const unitCost = args.unitCost ?? 0;
-        const extendedPrice =
-          args.quantity * (Number.isFinite(unitCost) ? unitCost : 0);
+        const extendedPrice = purchaseLineTotal(args.quantity, unitCost, args.supplierPartSnapshot?.packSize);
         await tx.put(`materialListItem/${args.itemId}`, {
           id: args.itemId,
           materialListId: args.materialListId,
@@ -253,13 +256,12 @@ export function makeMaterialListMutators(): MaterialListReplicacheMutators {
           return;
         const quantity = Number("quantity" in existing ? existing.quantity : 0);
         const unitCost = args.unitCost ?? 0;
-        const extendedPrice =
-          (Number.isFinite(quantity) ? quantity : 0) *
-          (Number.isFinite(unitCost) ? unitCost : 0);
+        const extendedPrice = purchaseLineTotal(quantity, unitCost, args.supplierPartSnapshot?.packSize);
         await tx.put(`materialListItem/${args.itemId}`, {
           ...existing,
           supplierPartId: args.supplierPartId,
           supplierId: args.supplierId,
+          supplierPart: args.supplierPartSnapshot ?? null,
           unitCost: String(unitCost),
           extendedPrice: String(extendedPrice),
           pendingSync: true,

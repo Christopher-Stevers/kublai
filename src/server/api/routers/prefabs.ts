@@ -159,6 +159,7 @@ export const prefabsRouter = createTRPCRouter({
         supplierId: supplierParts.supplierId,
         supplierSku: supplierParts.supplierSku,
         lastKnownUnitCost: supplierParts.lastKnownUnitCost,
+        packSize: supplierParts.packSize,
         supplierName: suppliers.name,
       })
       .from(materialPrefabItems)
@@ -178,7 +179,7 @@ export const prefabsRouter = createTRPCRouter({
       updatedAt: prefab.updatedAt,
       items: items
         .filter((item) => item.prefabId === prefab.id)
-        .map(({ prefabId: _prefabId, supplierId, supplierSku, lastKnownUnitCost, supplierName, ...item }) => ({
+        .map(({ prefabId: _prefabId, supplierId, supplierSku, lastKnownUnitCost, packSize, supplierName, ...item }) => ({
           ...item,
           quantity: Number(item.quantity),
           supplierPart:
@@ -188,6 +189,7 @@ export const prefabsRouter = createTRPCRouter({
                   supplierId,
                   supplierSku,
                   lastKnownUnitCost,
+                  packSize,
                   supplier: { id: supplierId, name: supplierName ?? "" },
                 }
               : null,

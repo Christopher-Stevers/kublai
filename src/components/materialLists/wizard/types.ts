@@ -1,10 +1,17 @@
-export type WizardStage = "catalog" | "material" | "size" | "category" | "part" | "review";
+export type WizardStage =
+  | "catalog"
+  | "material"
+  | "size"
+  | "category"
+  | "part"
+  | "review";
 
 export interface PendingSupplierPartSnapshot {
   id: string;
   supplierId: string;
   supplierSku: string | null;
   lastKnownUnitCost: string | null;
+  packSize?: string | null;
   supplier: {
     id: string;
     name: string;

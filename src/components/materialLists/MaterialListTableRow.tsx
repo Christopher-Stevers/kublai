@@ -1,4 +1,6 @@
 "use client";
+
+import { purchaseLineTotal } from "~/lib/purchase-quantity";
 import { FinancialOnly, useFinancialVisibility } from "~/components/permissions/FinancialVisibility";
 
 import Image from "next/image";
@@ -41,6 +43,7 @@ export interface MaterialListTableRowProps {
       supplierId: string;
       supplierSku: string | null;
       lastKnownUnitCost: string | null;
+    packSize?: string | null;
       supplier: {
         id: string;
         name: string;
@@ -90,9 +93,7 @@ function MaterialListTableRowComponent({
 
   const quantity = parseFloat(item.quantity);
   const unitCost = item.unitCost ? parseFloat(item.unitCost) : 0;
-  const lineTotal = item.extendedPrice
-    ? parseFloat(item.extendedPrice)
-    : quantity * unitCost;
+  const lineTotal = purchaseLineTotal(quantity, unitCost, isToolRequest ? null : item.supplierPart?.packSize);
 
   return (
     <tr
@@ -138,6 +139,7 @@ function MaterialListTableRowComponent({
         <QuantityControls
           itemId={item.id}
           quantity={quantity}
+                  orderMultiple={isToolRequest ? null : item.supplierPart?.packSize}
           materialListId={materialListId}
           pendingSync={item.pendingSync}
           compact

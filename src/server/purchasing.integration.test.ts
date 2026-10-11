@@ -1,0 +1,276 @@
+// @vitest-environment node
+import {
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
+import { readFile } from "node:fs/promises";
+import { eq, getTableColumns, getTableName } from "drizzle-orm";
+import type { PgTable } from "drizzle-orm/pg-core";
+import postgres from "postgres";
+import * as schema from "~/server/db/schema";
+
+vi.mock("~/server/db", async () => {
+  const { drizzle } = await import("drizzle-orm/postgres-js");
+  const { default: postgres } = await import("postgres");
+  const schema = await import("~/server/db/schema");
+  const connection = postgres({
+    host: process.env.PURCHASE_TEST_SOCKET ?? "/tmp/no-purchase-db",
+    port: 55461,
+    database: "purchase_integration",
+    max: 2,
+  });
+  return { db: drizzle(connection, { schema }), __testConnection: connection };
+});
+vi.mock("~/server/api/trpc", async () => {
+  const { initTRPC } = await import("@trpc/server");
+  const t = initTRPC.create();
+  return { createTRPCRouter: t.router, hasDashboardAccess: t.procedure };
+});
+vi.mock("~/server/auth/permissions", () => ({
+  assertCan: vi.fn(),
+  userCan: () => true,
+}));
+vi.mock("~/server/material-list-events", () => ({
+  publishMaterialListEvent: vi.fn(),
+  publishOrganizationReplicachePoke: vi.fn(),
+}));
+vi.mock("~/server/orders/delivery-calendar", () => ({
+  userDeliveryDate: async () => "2026-10-12",
+}));
+import { db } from "~/server/db";
+import { materialListRouter } from "~/server/api/routers/materialList";
+import { supplierRouter } from "~/server/api/routers/supplier";
+import { recalculatePurchaseTotals, orderMultipleInput } from "./purchasing";
+
+const socket = process.env.PURCHASE_TEST_SOCKET;
+const conn = postgres({
+  host: socket ?? "/tmp/no-purchase-db",
+  port: 55461,
+  database: "purchase_integration",
+  max: 1,
+});
+const id = (n: number) =>
+  `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
+const org = id(1),
+  job = id(2),
+  supplier = id(3),
+  part = id(4),
+  sp = id(5),
+  list = id(6),
+  quote = id(7),
+  item = id(8);
+const context = {
+  db,
+  userId: "worker",
+  user: { id: "worker", organizationId: org, name: "Worker" },
+};
+const material = materialListRouter.createCaller(context as never);
+const suppliers = supplierRouter.createCaller(context as never);
+const tables = [
+  schema.organizations,
+  schema.users,
+  schema.locations,
+  schema.jobs,
+  schema.materialLists,
+  schema.quotes,
+  schema.quoteItems,
+  schema.materials,
+  schema.units,
+  schema.partDefinitions,
+  schema.supplierParts,
+  schema.suppliers,
+  schema.orders,
+  schema.orderItems,
+  schema.jobRooms,
+];
+
+describe.skipIf(!socket)(
+  "required vs ordered quantities with isolated PostgreSQL",
+  () => {
+    beforeAll(async () => {
+      if (!socket?.startsWith("/tmp/foremanhq-purchase-pg."))
+        throw Error("Refusing a non-isolated database");
+      if (
+        (await conn`select current_database() as name`)[0]?.name !==
+        "purchase_integration"
+      )
+        throw Error("Unexpected database");
+      for (const table of tables) {
+        const columns = Object.values(getTableColumns(table as PgTable)).map(
+          (column) => `"${column.name}" ${column.getSQLType()}`,
+        );
+        await conn.unsafe(
+          `CREATE TABLE IF NOT EXISTS "${getTableName(table)}" (${columns.join(",")}, PRIMARY KEY ("id"))`,
+        );
+      }
+      const migration = await readFile(
+        new URL(
+          "../../drizzle/0065_order_requested_quantity.sql",
+          import.meta.url,
+        ),
+        "utf8",
+      );
+      await conn.unsafe(migration);
+      await conn.unsafe(migration);
+    });
+    beforeEach(async () => {
+      await conn.unsafe(
+        `TRUNCATE ${tables.map((table) => `"${getTableName(table)}"`).join(",")}`,
+      );
+      await db
+        .insert(schema.organizations)
+        .values({ id: org, name: "Synthetic company" });
+      await db.insert(schema.users).values({
+        id: "worker",
+        organizationId: org,
+        name: "Worker",
+        email: "worker@example.test",
+      });
+      await db.insert(schema.jobs).values({
+        id: job,
+        organizationId: org,
+        name: "Synthetic job",
+        poNumber: "PO-TEST",
+      });
+      await db.insert(schema.suppliers).values({
+        id: supplier,
+        organizationId: org,
+        name: "Synthetic supplier",
+        contactEmail: "supplier@example.test",
+      });
+      await db.insert(schema.partDefinitions).values({
+        id: part,
+        organizationId: org,
+        displayName: '1/2" PEX pipe clip',
+        catalogId: id(9),
+      });
+      await db.insert(schema.supplierParts).values({
+        id: sp,
+        organizationId: org,
+        supplierId: supplier,
+        partDefinitionId: part,
+        packSize: "25",
+        lastKnownUnitCost: "2",
+      });
+      await db.insert(schema.materialLists).values({
+        id: list,
+        organizationId: org,
+        jobId: job,
+        name: "Test list",
+        quoteId: quote,
+      });
+      await db.insert(schema.quotes).values({
+        id: quote,
+        organizationId: org,
+        materialListId: list,
+        jobId: job,
+        markupPercent: "30",
+      });
+      await db.insert(schema.quoteItems).values({
+        id: item,
+        quoteId: quote,
+        partDefinitionId: part,
+        supplierPartId: sp,
+        supplierId: supplier,
+        quantity: "37",
+        unitCost: "2",
+        extendedPrice: "74",
+      });
+    });
+    afterAll(async () => {
+      await conn.end();
+      const databaseModule = (await import("~/server/db")) as unknown as {
+        __testConnection: postgres.Sql;
+      };
+      await databaseModule.__testConnection.end();
+    });
+    it("shows 37 required but charges 50, including markup", async () => {
+      await recalculatePurchaseTotals(db, quote);
+      const detail = await material.getMaterialList({ materialListId: list });
+      expect(detail.items[0]).toMatchObject({
+        quantity: "37.000000",
+        extendedPrice: "100",
+        supplierPart: { packSize: "25.000000" },
+      });
+      expect(detail.materialTotal).toBe(100);
+      const saved = await material.generateQuote({
+        materialListId: list,
+        markupPercent: 30,
+      });
+      expect(Number(saved!.total)).toBe(130);
+      const email = await material.getQuoteEmailContent({ quoteId: quote });
+      expect(email.body).toContain("37 (50)");
+      expect(email.body).toContain("$130.00");
+    });
+    it("uses 50 in the supplier email and persists both amounts on the sent order", async () => {
+      const preview = await material.previewOrders({ materialListId: list });
+      expect(preview.possible[0]?.items[0]).toMatchObject({
+        quantity: "50",
+        requestedQuantity: "37.000000",
+      });
+      expect(preview.possible[0]?.email.body).toContain(
+        '50 - 1/2" PEX pipe clip',
+      );
+      const sent = await material.sendGeneratedOrder({
+        materialListId: list,
+        supplierId: supplier,
+        sentTo: "supplier@example.test",
+      });
+      const [line] = await db
+        .select()
+        .from(schema.orderItems)
+        .where(eq(schema.orderItems.orderId, sent.id));
+      expect(Number(line!.quantity)).toBe(50);
+      expect(Number(line!.requestedQuantity)).toBe(37);
+      expect(Number(line!.orderMultipleSnapshot)).toBe(25);
+      const required = (
+        await db
+          .select()
+          .from(schema.quoteItems)
+          .where(eq(schema.quoteItems.id, item))
+      )[0];
+      expect(Number(required!.quantity)).toBe(37);
+      expect(
+        (await material.getOrderEmailContent({ orderId: sent.id })).body,
+      ).toContain('50 - 1/2" PEX pipe clip');
+      expect(
+        Number(
+          (await material.getOrderById({ orderId: sent.id })).items[0]
+            ?.quantity,
+        ),
+      ).toBe(50);
+    });
+    it("recalculates active lists after a rule edit but preserves historical orders", async () => {
+      const sent = await material.sendGeneratedOrder({
+        materialListId: list,
+        supplierId: supplier,
+        sentTo: "supplier@example.test",
+      });
+      await suppliers.updateSupplierPart({ id: sp, packSize: "20" });
+      const detail = await material.getMaterialList({ materialListId: list });
+      expect(detail.materialTotal).toBe(80);
+      expect(Number(detail.items[0]?.quantity)).toBe(37);
+      const [old] = await db
+        .select()
+        .from(schema.orderItems)
+        .where(eq(schema.orderItems.orderId, sent.id));
+      expect(Number(old!.quantity)).toBe(50);
+      expect(Number(old!.orderMultipleSnapshot)).toBe(25);
+      expect(
+        (await material.previewOrders({ materialListId: list })).possible[0]
+          ?.items[0]?.quantity,
+      ).toBe("40");
+    });
+    it("rejects zero, negatives, malformed and excessive precision rules", () => {
+      for (const value of ["0", "-25", "25abc", "NaN", "1000000", "0.0000001"])
+        expect(orderMultipleInput.safeParse(value).success).toBe(false);
+      for (const value of ["1", "25", "50", "0.25"])
+        expect(orderMultipleInput.safeParse(value).success).toBe(true);
+    });
+  },
+);

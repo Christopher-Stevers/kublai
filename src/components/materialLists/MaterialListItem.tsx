@@ -58,6 +58,7 @@ interface MaterialListItemProps {
       supplierId: string;
       supplierSku: string | null;
       lastKnownUnitCost: string | null;
+    packSize?: string | null;
       supplier: {
         id: string;
         name: string;
@@ -793,6 +794,7 @@ function MaterialListItemComponent({
                 <QuantityControls
                   itemId={item.id}
                   quantity={quantity}
+                  orderMultiple={isToolRequest ? null : item.supplierPart?.packSize}
                   materialListId={materialListId}
                   pendingSync={item.pendingSync}
                   compact

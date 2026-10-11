@@ -94,3 +94,40 @@ describe("durable quantity edits", () => {
     expect(screen.getByLabelText("Quantity")).toHaveValue("2");
   });
 });
+
+describe("required and purchase quantity display", () => {
+  it("edits only the required amount while updating the supplier-adjusted amount immediately", async () => {
+    render(
+      <QuantityControls {...props} quantity={37} orderMultiple="25" compact />,
+    );
+    expect(screen.getByLabelText("Quantity")).toHaveValue("37");
+    expect(screen.getByLabelText("Order quantity: 50")).toHaveTextContent(
+      "(50)",
+    );
+    fireEvent.change(screen.getByLabelText("Quantity"), {
+      target: { value: "51" },
+    });
+    expect(screen.getByLabelText("Order quantity: 75")).toHaveTextContent(
+      "(75)",
+    );
+    expect(update).toHaveBeenCalledWith({
+      itemId: "item",
+      materialListId: "list",
+      quantity: 51,
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+  });
+  it("updates purchasing when suppliers change without rewriting demand", () => {
+    const view = render(
+      <QuantityControls {...props} quantity={37} orderMultiple="25" />,
+    );
+    view.rerender(
+      <QuantityControls {...props} quantity={37} orderMultiple="10" />,
+    );
+    expect(screen.getByLabelText("Quantity")).toHaveValue("37");
+    expect(screen.getByLabelText("Order quantity: 40")).toBeVisible();
+    expect(update).not.toHaveBeenCalled();
+  });
+});

@@ -1,5 +1,8 @@
 "use client";
-import { FinancialOnly, useFinancialVisibility } from "~/components/permissions/FinancialVisibility";
+import {
+  FinancialOnly,
+  useFinancialVisibility,
+} from "~/components/permissions/FinancialVisibility";
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
@@ -40,6 +43,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu";
+import { isValidOrderMultiple } from "~/lib/purchase-quantity";
 import { SupplierFormDialog } from "~/components/suppliers/SupplierFormDialog";
 import { requestCatalogueReplicachePull } from "~/lib/replicache-catalogue";
 
@@ -274,11 +278,15 @@ export function PartDetailsDialog({
   const [supplierId, setSupplierId] = useState<string | null>(null);
   const [supplierSku, setSupplierSku] = useState("");
   const [lastKnownUnitCost, setLastKnownUnitCost] = useState("");
+  const [packSize, setPackSize] = useState("1");
   const [preferredSupplierId, setPreferredSupplierId] = useState<string | null>(
     null,
   );
   const [supplierFieldDrafts, setSupplierFieldDrafts] = useState<
-    Record<string, { supplierSku: string; lastKnownUnitCost: string }>
+    Record<
+      string,
+      { supplierSku: string; lastKnownUnitCost: string; packSize: string }
+    >
   >({});
   const [isSupplierDialogOpen, setIsSupplierDialogOpen] = useState(false);
   const [isProcessingImage, setIsProcessingImage] = useState(false);
@@ -367,7 +375,9 @@ export function PartDetailsDialog({
         part.aliases?.map((alias) => alias.synonym).join("\n") ?? "",
       );
       setCatalogId(part.catalogId ?? null);
-      setAssetTracking(part.assetTracking === "quantity" ? "quantity" : "serialized");
+      setAssetTracking(
+        part.assetTracking === "quantity" ? "quantity" : "serialized",
+      );
       setCategoryId(part.categoryId ?? null);
       setMaterialId(part.materialId ?? null);
       setSizeValue(part.sizeLabel ?? formatSizeDecimal(part.sizeNominal));
@@ -375,6 +385,7 @@ export function PartDetailsDialog({
       setIsActive(part.isActive ?? true);
       setSupplierId(null);
       setSupplierSku("");
+      setPackSize("1");
       setLastKnownUnitCost("");
       setPreferredSupplierId(null);
       setSupplierFieldDrafts({});
@@ -403,6 +414,7 @@ export function PartDetailsDialog({
       setIsActive(true);
       setSupplierId(null);
       setSupplierSku("");
+      setPackSize("1");
       setLastKnownUnitCost("");
       setPreferredSupplierId(null);
       setSupplierFieldDrafts({});
@@ -463,21 +475,25 @@ export function PartDetailsDialog({
     : undefined;
 
   useEffect(() => {
-    if (isEditMode || !supplierId) return;
+    if (!supplierId) return;
 
     if (selectedSupplierDraft) {
       setSupplierSku(selectedSupplierDraft.supplierSku);
       setLastKnownUnitCost(selectedSupplierDraft.lastKnownUnitCost);
+      setPackSize(selectedSupplierDraft.packSize);
       return;
     }
 
-    setSupplierSku(matchingSelectedSupplierPart?.supplierSku ?? "");
-    setLastKnownUnitCost(
-      matchingSelectedSupplierPart?.lastKnownUnitCost?.toString() ?? "",
-    );
+    const selected = isEditMode
+      ? partSupplierParts?.find((sp) => sp.supplierId === supplierId)
+      : matchingSelectedSupplierPart;
+    setPackSize(selected?.packSize ?? "1");
+    setSupplierSku(selected?.supplierSku ?? "");
+    setLastKnownUnitCost(selected?.lastKnownUnitCost?.toString() ?? "");
   }, [
     isEditMode,
     matchingSelectedSupplierPart,
+    partSupplierParts,
     selectedSupplierDraft,
     supplierId,
   ]);
@@ -493,6 +509,7 @@ export function PartDetailsDialog({
 
     setSupplierId(initialSupplierPart.supplierId);
     setSupplierSku(initialSupplierPart.supplierSku ?? "");
+    setPackSize(initialSupplierPart.packSize ?? "1");
     setLastKnownUnitCost(
       formatCurrencyInput(
         initialSupplierPart.lastKnownUnitCost?.toString() ?? "",
@@ -506,7 +523,7 @@ export function PartDetailsDialog({
   const saveSupplierFieldDraft = (draftSupplierId: string) => {
     setSupplierFieldDrafts((current) => ({
       ...current,
-      [draftSupplierId]: { supplierSku, lastKnownUnitCost },
+      [draftSupplierId]: { supplierSku, lastKnownUnitCost, packSize },
     }));
   };
 
@@ -521,6 +538,7 @@ export function PartDetailsDialog({
     }
     if (!nextSupplierId) {
       setSupplierSku("");
+      setPackSize("1");
       setLastKnownUnitCost("");
     }
   };
@@ -533,6 +551,7 @@ export function PartDetailsDialog({
       [supplierId]: {
         supplierSku: value,
         lastKnownUnitCost,
+        packSize,
       },
     }));
   };
@@ -545,6 +564,7 @@ export function PartDetailsDialog({
       [supplierId]: {
         supplierSku,
         lastKnownUnitCost: value,
+        packSize,
       },
     }));
   };
@@ -1027,19 +1047,31 @@ export function PartDetailsDialog({
       ? {
           supplierId,
           supplierSku: supplierSku.trim() || undefined,
-          lastKnownUnitCost:
-            showMoney ? normalizeCurrencyInput(lastKnownUnitCost) || undefined : undefined,
+          packSize: packSize.trim() || "1",
+          lastKnownUnitCost: showMoney
+            ? normalizeCurrencyInput(lastKnownUnitCost) || undefined
+            : undefined,
           supplierIsPreferred: preferredSupplierId === supplierId,
           currency: "CAD",
         }
       : {};
 
+    if (supplierId && !isValidOrderMultiple(packSize)) {
+      setSubmitError(
+        "Enter a positive supplier order multiple (for example, 25).",
+      );
+      return;
+    }
     setIsSubmittingInBackground(true);
 
     if (isEditMode) {
       if (!partId) return;
       try {
-        await updatePart.mutateAsync({ partId, ...payload, ...supplierPayload });
+        await updatePart.mutateAsync({
+          partId,
+          ...payload,
+          ...supplierPayload,
+        });
         requestCatalogueReplicachePull(0);
         setIsSubmittingInBackground(false);
         onOpenChange(false);
@@ -1105,7 +1137,7 @@ export function PartDetailsDialog({
             </Button>
           </DialogHeader>
 
-          <div className="min-h-0 min-w-0 flex-1 space-y-3 overflow-x-hidden overflow-y-auto overscroll-contain bg-muted/40 p-3 sm:p-4">
+          <div className="bg-muted/40 min-h-0 min-w-0 flex-1 space-y-3 overflow-x-hidden overflow-y-auto overscroll-contain p-3 sm:p-4">
             {/* Photo and name: what people recognise the part by. */}
             <section className={sectionCard}>
               <div className="flex gap-3">
@@ -1114,7 +1146,7 @@ export function PartDetailsDialog({
                   onClick={() => imageInputRef.current?.click()}
                   disabled={isLoading || isProcessingImage}
                   aria-label={previewImageUrl ? "Change photo" : "Add photo"}
-                  className="relative h-24 w-24 shrink-0 overflow-hidden rounded-xl border bg-muted/50 transition-colors hover:bg-muted"
+                  className="bg-muted/50 hover:bg-muted relative h-24 w-24 shrink-0 overflow-hidden rounded-xl border transition-colors"
                 >
                   {previewImageUrl ? (
                     <Image
@@ -1125,7 +1157,7 @@ export function PartDetailsDialog({
                       unoptimized
                     />
                   ) : (
-                    <span className="flex h-full flex-col items-center justify-center gap-1 text-muted-foreground">
+                    <span className="text-muted-foreground flex h-full flex-col items-center justify-center gap-1">
                       <Camera className="h-6 w-6" />
                       <span className="text-[11px] font-medium">Add photo</span>
                     </span>
@@ -1147,7 +1179,7 @@ export function PartDetailsDialog({
                     disabled={isLoading}
                   />
                   {!isEditMode && (
-                    <p className="mt-1 text-xs text-muted-foreground">
+                    <p className="text-muted-foreground mt-1 text-xs">
                       Fills in from size, material and description.
                     </p>
                   )}
@@ -1526,37 +1558,68 @@ export function PartDetailsDialog({
               </div>
 
               {supplierId ? (
-                <div className="mt-3 grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] items-end gap-3">
+                <div className="mt-3 grid grid-cols-2 items-end gap-3">
                   <div className="min-w-0">
                     <Label>Supplier SKU</Label>
                     <Input
                       value={supplierSku}
                       onChange={(e) => handleSupplierSkuChange(e.target.value)}
                       placeholder="Supplier SKU"
-                      className="mt-1 bg-card"
+                      className="bg-card mt-1"
                       disabled={isLoading}
                     />
                   </div>
 
-                  <FinancialOnly><div className="min-w-0">
-                    <Label>Unit Cost</Label>
+                  <div className="min-w-0">
+                    <Label htmlFor="supplier-order-multiple">
+                      Minimum / order multiple
+                    </Label>
                     <Input
+                      id="supplier-order-multiple"
                       type="text"
                       inputMode="decimal"
-                      value={lastKnownUnitCost}
-                      onChange={(e) =>
-                        handleLastKnownUnitCostChange(e.target.value)
-                      }
-                      onBlur={() =>
-                        handleLastKnownUnitCostChange(
-                          formatCurrencyInput(lastKnownUnitCost),
-                        )
-                      }
-                      placeholder="$0.00"
-                      className="mt-1 bg-card"
+                      value={packSize}
+                      onChange={(event) => {
+                        const value = event.target.value;
+                        setPackSize(value);
+                        if (supplierId)
+                          setSupplierFieldDrafts((current) => ({
+                            ...current,
+                            [supplierId]: {
+                              supplierSku,
+                              lastKnownUnitCost,
+                              packSize: value,
+                            },
+                          }));
+                      }}
+                      className="bg-card mt-1"
                       disabled={isLoading}
                     />
-                  </div></FinancialOnly>
+                    <p className="text-muted-foreground mt-1 text-xs">
+                      25 orders 25, 50, 75… Use 1 for individual units.
+                    </p>
+                  </div>
+                  <FinancialOnly>
+                    <div className="min-w-0">
+                      <Label>Cost per unit</Label>
+                      <Input
+                        type="text"
+                        inputMode="decimal"
+                        value={lastKnownUnitCost}
+                        onChange={(e) =>
+                          handleLastKnownUnitCostChange(e.target.value)
+                        }
+                        onBlur={() =>
+                          handleLastKnownUnitCostChange(
+                            formatCurrencyInput(lastKnownUnitCost),
+                          )
+                        }
+                        placeholder="$0.00"
+                        className="bg-card mt-1"
+                        disabled={isLoading}
+                      />
+                    </div>
+                  </FinancialOnly>
 
                   <div>
                     <Label>Preferred</Label>
@@ -1565,7 +1628,7 @@ export function PartDetailsDialog({
                       onClick={() => {
                         if (supplierId) setPreferredSupplierId(supplierId);
                       }}
-                      className="mt-1 flex h-9 w-9 items-center justify-center rounded-md border bg-card transition-colors hover:bg-accent"
+                      className="bg-card hover:bg-accent mt-1 flex h-9 w-9 items-center justify-center rounded-md border transition-colors"
                       disabled={isLoading}
                       aria-pressed={preferredSupplierId === supplierId}
                       aria-label="Preferred supplier"
@@ -1581,13 +1644,13 @@ export function PartDetailsDialog({
                   </div>
                 </div>
               ) : (
-                <p className="mt-2 text-xs text-muted-foreground">
+                <p className="text-muted-foreground mt-2 text-xs">
                   Choose a supplier to enter its SKU and cost for this part.
                 </p>
               )}
             </section>
 
-            <section className="rounded-xl border bg-card shadow-sm">
+            <section className="bg-card rounded-xl border shadow-sm">
               <button
                 type="button"
                 onClick={() => setShowMoreDetails((value) => !value)}
@@ -1597,7 +1660,7 @@ export function PartDetailsDialog({
                 <span className={sectionTitle}>More details</span>
                 <ChevronDown
                   className={cn(
-                    "h-4 w-4 text-muted-foreground transition-transform",
+                    "text-muted-foreground h-4 w-4 transition-transform",
                     showMoreDetails && "rotate-180",
                   )}
                 />
@@ -1614,7 +1677,7 @@ export function PartDetailsDialog({
                       className="mt-1"
                       disabled={isLoading}
                     />
-                    <p className="mt-1 text-xs text-muted-foreground">
+                    <p className="text-muted-foreground mt-1 text-xs">
                       Separate with commas. Search finds the part by these too.
                     </p>
                   </div>
@@ -1622,7 +1685,7 @@ export function PartDetailsDialog({
                   <div className="flex items-center justify-between gap-3">
                     <div className="min-w-0">
                       <Label htmlFor="isActive">Show in catalogue</Label>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-muted-foreground text-xs">
                         Hidden parts stay on existing lists.
                       </p>
                     </div>
@@ -1666,11 +1729,11 @@ export function PartDetailsDialog({
                       <button
                         type="button"
                         onClick={handlePartUuidCopy}
-                        className="mt-1 w-full rounded-md border bg-muted/50 px-3 py-2 text-left font-mono text-xs break-all text-foreground/80 transition-colors hover:bg-accent"
+                        className="bg-muted/50 text-foreground/80 hover:bg-accent mt-1 w-full rounded-md border px-3 py-2 text-left font-mono text-xs break-all transition-colors"
                         title="Click to copy UUID"
                       >
                         {partId ?? part?.id}
-                        <span className="ml-2 font-sans text-xs text-muted-foreground">
+                        <span className="text-muted-foreground ml-2 font-sans text-xs">
                           {copiedPartUuid ? "Copied" : "Tap to copy"}
                         </span>
                       </button>
@@ -1687,7 +1750,7 @@ export function PartDetailsDialog({
             )}
           </div>
 
-          <div className="grid shrink-0 grid-cols-2 gap-2 border-t bg-card px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:pb-3">
+          <div className="bg-card grid shrink-0 grid-cols-2 gap-2 border-t px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:pb-3">
             <Button
               variant="outline"
               className="h-10"
@@ -1735,11 +1798,11 @@ export function PartDetailsDialog({
           </DialogHeader>
 
           <div
-            className="space-y-3 rounded-lg border bg-muted/50 p-3 text-sm"
+            className="bg-muted/50 space-y-3 rounded-lg border p-3 text-sm"
             onPaste={handleGoogleImagePaste}
           >
             <div className="flex items-center justify-between gap-3">
-              <span className="min-w-0 truncate text-muted-foreground">
+              <span className="text-muted-foreground min-w-0 truncate">
                 Search: {googleImageSearchQuery || displayName}
               </span>
               <Button
@@ -1754,7 +1817,7 @@ export function PartDetailsDialog({
               </Button>
             </div>
             <div
-              className="focus:border-primary space-y-3 rounded-md border border-dashed bg-card p-4 text-center text-sm text-muted-foreground outline-none"
+              className="focus:border-primary bg-card text-muted-foreground space-y-3 rounded-md border border-dashed p-4 text-center text-sm outline-none"
               tabIndex={0}
             >
               <div>
@@ -1795,7 +1858,7 @@ export function PartDetailsDialog({
 
           <div className="min-h-0 flex-1 space-y-3 overflow-y-auto">
             {isLoadingFamilySuggestions ? (
-              <div className="rounded-md border bg-muted/50 p-4 text-sm text-muted-foreground">
+              <div className="bg-muted/50 text-muted-foreground rounded-md border p-4 text-sm">
                 Finding matching parts...
               </div>
             ) : familyImageMode === "get" ? (
@@ -1803,9 +1866,9 @@ export function PartDetailsDialog({
                 familyImageChoices.map((choice) => (
                   <div
                     key={choice.imageUrl}
-                    className="flex items-center gap-3 rounded-lg border bg-card p-3"
+                    className="bg-card flex items-center gap-3 rounded-lg border p-3"
                   >
-                    <div className="relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted/50">
+                    <div className="bg-muted/50 relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-md">
                       <Image
                         src={choice.imageUrl}
                         alt=""
@@ -1815,11 +1878,11 @@ export function PartDetailsDialog({
                       />
                     </div>
                     <div className="min-w-0 flex-1 text-sm">
-                      <div className="font-medium text-foreground">
+                      <div className="text-foreground font-medium">
                         Used by {choice.partNames.length} similar{" "}
                         {choice.partNames.length === 1 ? "part" : "parts"}
                       </div>
-                      <div className="mt-1 text-xs break-words text-muted-foreground">
+                      <div className="text-muted-foreground mt-1 text-xs break-words">
                         {choice.partNames.slice(0, 3).join(", ")}
                         {choice.partNames.length > 3
                           ? ` and ${choice.partNames.length - 3} more`
@@ -1839,7 +1902,7 @@ export function PartDetailsDialog({
                   </div>
                 ))
               ) : (
-                <div className="rounded-md border bg-muted/50 p-4 text-sm text-muted-foreground">
+                <div className="bg-muted/50 text-muted-foreground rounded-md border p-4 text-sm">
                   No similar parts have an image yet.
                 </div>
               )
@@ -1847,9 +1910,9 @@ export function PartDetailsDialog({
               visibleFamilyImageSuggestions.map((suggestion) => (
                 <div
                   key={suggestion.id}
-                  className="flex items-start gap-3 rounded-lg border bg-card p-3"
+                  className="bg-card flex items-start gap-3 rounded-lg border p-3"
                 >
-                  <div className="relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted/50">
+                  <div className="bg-muted/50 relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-md">
                     <Image
                       src={previewImageUrl}
                       alt=""
@@ -1859,16 +1922,16 @@ export function PartDetailsDialog({
                     />
                   </div>
                   <div className="min-w-0 flex-1 space-y-1">
-                    <div className="text-sm font-medium break-words text-foreground">
+                    <div className="text-foreground text-sm font-medium break-words">
                       {suggestion.displayName}
                     </div>
-                    <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                    <div className="text-muted-foreground mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs">
                       {suggestion.size && <span>{suggestion.size}</span>}
                       {suggestion.material && (
                         <span>{suggestion.material}</span>
                       )}
                       {suggestion.description && (
-                        <span className="basis-full break-words text-muted-foreground">
+                        <span className="text-muted-foreground basis-full break-words">
                           {suggestion.description}
                         </span>
                       )}
@@ -1902,7 +1965,7 @@ export function PartDetailsDialog({
                 </div>
               ))
             ) : (
-              <div className="rounded-md border bg-muted/50 p-4 text-sm text-muted-foreground">
+              <div className="bg-muted/50 text-muted-foreground rounded-md border p-4 text-sm">
                 No matching parts need this image.
               </div>
             )}

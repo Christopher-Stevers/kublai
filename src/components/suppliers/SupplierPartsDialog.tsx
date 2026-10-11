@@ -1,4 +1,7 @@
 "use client";
+
+import { isValidOrderMultiple } from "~/lib/purchase-quantity";
+import { notify } from "~/components/ui/app-dialogs";
 import { FinancialOnly } from "~/components/permissions/FinancialVisibility";
 
 import { useState } from "react";
@@ -77,6 +80,11 @@ export function SupplierPartsDialog({
   });
 
   const updateSupplierPart = api.supplier.updateSupplierPart.useMutation({
+    onError: (error) =>
+      notify(
+        error.message ?? "Could not save supplier order multiple",
+        "error",
+      ),
     onSuccess: () => {
       void utils.supplier.getById.invalidate({ id: supplierId });
     },
@@ -190,10 +198,46 @@ export function SupplierPartsDialog({
                             <div>Supplier Name: {sp.supplierName}</div>
                           )}
                           {sp.lastKnownUnitCost && (
-                            <FinancialOnly><div>
-                              Cost: {sp.currency} {sp.lastKnownUnitCost}
-                            </div></FinancialOnly>
+                            <FinancialOnly>
+                              <div>
+                                Cost: {sp.currency} {sp.lastKnownUnitCost}
+                              </div>
+                            </FinancialOnly>
                           )}
+                          <label className="block">
+                            Minimum / order multiple
+                            <Input
+                              key={`${sp.id}:${sp.packSize}`}
+                              type="text"
+                              inputMode="decimal"
+                              defaultValue={sp.packSize ?? "1"}
+                              className="mt-1 w-28"
+                              disabled={
+                                !isOnline ||
+                                !(
+                                  userData?.permissions.can["suppliers.edit"] ||
+                                  userData?.permissions.can["parts.edit"]
+                                )
+                              }
+                              onBlur={(event) => {
+                                const value = event.target.value.trim();
+                                if (Number(value) === Number(sp.packSize ?? 1))
+                                  return;
+                                if (!isValidOrderMultiple(value)) {
+                                  notify(
+                                    "Enter a positive order multiple",
+                                    "error",
+                                  );
+                                  event.target.value = sp.packSize ?? "1";
+                                  return;
+                                }
+                                updateSupplierPart.mutate({
+                                  id: sp.id,
+                                  packSize: value,
+                                });
+                              }}
+                            />
+                          </label>
                           {sp.packSize && sp.packUom && (
                             <div>
                               Pack: {sp.packSize} {sp.packUom.displayName}
@@ -298,7 +342,7 @@ export function SupplierPartsDialog({
                         key={part.id}
                         type="button"
                         onClick={() => setSelectedPartId(part.id)}
-                        className={`w-full p-3 text-left hover:bg-accent ${
+                        className={`hover:bg-accent w-full p-3 text-left ${
                           selectedPartId === part.id ? "bg-blue-50" : ""
                         }`}
                       >
@@ -334,7 +378,7 @@ export function SupplierPartsDialog({
               <div className="rounded-md bg-blue-50 p-3 text-sm">
                 Part selected:{" "}
                 {searchResults?.find((p) => p.id === selectedPartId)
-                  ?.displayName || "Unknown"}
+                  ?.displayName ?? "Unknown"}
               </div>
             )}
           </div>

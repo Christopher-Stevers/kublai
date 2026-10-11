@@ -1,4 +1,9 @@
 "use client";
+
+import {
+  formatPurchaseQuantity,
+  purchaseQuantity,
+} from "~/lib/purchase-quantity";
 import { FinancialOnly } from "~/components/permissions/FinancialVisibility";
 
 import { useState, useEffect } from "react";
@@ -41,7 +46,8 @@ export function QuotePreviewSheet({
   const { data: userData } = api.user.getMyRole.useQuery(undefined, {
     enabled: isOnline && open,
   });
-  const canGenerateDocuments = userData?.permissions.can["quotes.create"] ?? true;
+  const canGenerateDocuments =
+    userData?.permissions.can["quotes.create"] ?? true;
   const { data: materialList } = api.materialList.getMaterialList.useQuery(
     { materialListId },
     { enabled: isOnline && open && !!materialListId && !providedQuoteId },
@@ -203,7 +209,13 @@ export function QuotePreviewSheet({
               <h3 className="mb-2 font-semibold">Materials:</h3>
               <div className="space-y-2">
                 {displayMaterialList.items.map((item) => {
-                  const qty = parseFloat(String(item.quantity));
+                  const qty = formatPurchaseQuantity(
+                    item.quantity,
+                    purchaseQuantity(
+                      item.quantity,
+                      item.supplierPart?.packSize,
+                    ),
+                  );
                   const price = item.extendedPrice
                     ? parseFloat(String(item.extendedPrice))
                     : 0;
@@ -222,7 +234,9 @@ export function QuotePreviewSheet({
                       <span>
                         {displayName} × {qty}
                       </span>
-                      <FinancialOnly><span>${price.toFixed(2)}</span></FinancialOnly>
+                      <FinancialOnly>
+                        <span>${price.toFixed(2)}</span>
+                      </FinancialOnly>
                     </div>
                   );
                 })}
@@ -231,63 +245,65 @@ export function QuotePreviewSheet({
           )}
 
           {/* Totals */}
-          <FinancialOnly><div className="space-y-2 border-t pt-4">
-            <div className="flex justify-between">
-              <span>Materials Subtotal:</span>
-              <span>${subtotal.toFixed(2)}</span>
+          <FinancialOnly>
+            <div className="space-y-2 border-t pt-4">
+              <div className="flex justify-between">
+                <span>Materials Subtotal:</span>
+                <span>${subtotal.toFixed(2)}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span>
+                  Markup(this will be auto applied to each item in the quote):
+                </span>
+                {isEditingMarkup ? (
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="number"
+                      value={markupPercent}
+                      onChange={(e) =>
+                        setMarkupPercent(parseFloat(e.target.value) || 0)
+                      }
+                      className="w-20"
+                      min="0"
+                      max="1000"
+                    />
+                    <span>%</span>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setIsEditingMarkup(false);
+                        generateQuote.mutate({
+                          materialListId,
+                          markupPercent,
+                          notes: notes.trim() || undefined,
+                          quoteId: providedQuoteId,
+                        });
+                      }}
+                      disabled={!canGenerateDocuments}
+                    >
+                      Save
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <span>{markupPercent}%</span>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setIsEditingMarkup(true)}
+                    >
+                      Edit
+                    </Button>
+                  </div>
+                )}
+              </div>
+              <div className="flex justify-between border-t pt-2 font-bold">
+                <span>Total:</span>
+                <span>${total.toFixed(2)}</span>
+              </div>
             </div>
-            <div className="flex items-center justify-between">
-              <span>
-                Markup(this will be auto applied to each item in the quote):
-              </span>
-              {isEditingMarkup ? (
-                <div className="flex items-center gap-2">
-                  <Input
-                    type="number"
-                    value={markupPercent}
-                    onChange={(e) =>
-                      setMarkupPercent(parseFloat(e.target.value) || 0)
-                    }
-                    className="w-20"
-                    min="0"
-                    max="1000"
-                  />
-                  <span>%</span>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => {
-                      setIsEditingMarkup(false);
-                      generateQuote.mutate({
-                        materialListId,
-                        markupPercent,
-                        notes: notes.trim() || undefined,
-                        quoteId: providedQuoteId,
-                      });
-                    }}
-                    disabled={!canGenerateDocuments}
-                  >
-                    Save
-                  </Button>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2">
-                  <span>{markupPercent}%</span>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => setIsEditingMarkup(true)}
-                  >
-                    Edit
-                  </Button>
-                </div>
-              )}
-            </div>
-            <div className="flex justify-between border-t pt-2 font-bold">
-              <span>Total:</span>
-              <span>${total.toFixed(2)}</span>
-            </div>
-          </div></FinancialOnly>
+          </FinancialOnly>
 
           {/* Notes */}
           <div className="space-y-2 border-t pt-4">

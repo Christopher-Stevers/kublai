@@ -3,6 +3,7 @@ export interface OfflineSupplierPartOption {
   supplierId: string;
   supplierSku: string | null;
   lastKnownUnitCost: string | null;
+  packSize?: string | null;
   isPreferred: boolean;
   supplier: {
     id: string;
