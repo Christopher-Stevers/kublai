@@ -28,6 +28,7 @@ export const appTabIds = [
   "quotes",
   "orders",
   "draws",
+  "estimating",
   "assets",
   "timesheets",
   "organization",
@@ -141,7 +142,7 @@ export function getUserPermissions(user: PermissionUser) {
   const isManagingAccount = hasManagingSeat(user);
   const can = resolvePermissions(user);
   const tabAccess = Object.fromEntries(
-    appTabIds.map((tab) => [tab, can[`tab.${tab}` as PermissionKey] && (tab !== "draws" || can["financial.view"])]),
+    appTabIds.map((tab) => [tab, can[`tab.${tab}` as PermissionKey] && (!["draws", "estimating"].includes(tab) || can["financial.view"])]),
   ) as Record<AppTabId, boolean>;
 
   return {

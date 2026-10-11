@@ -16,6 +16,7 @@ import {
   pgTableCreator,
   primaryKey,
   unique,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 
 /**
@@ -976,6 +977,7 @@ export const jobs = createTable(
   (t) => [
     index("job_org_idx").on(t.organizationId),
     index("job_org_updated_idx").on(t.organizationId, t.updatedAt, t.id),
+    uniqueIndex("estimating_job_org_unique").on(t.id, t.organizationId),
     // @ts-expect-error - Drizzle type inference limitation with nullable columns
     index("job_location_idx").on(t.locationId as any),
     // @ts-expect-error - Drizzle type inference limitation with nullable columns
@@ -2477,6 +2479,7 @@ export const timeEvents = createTable(
 export { conversations, conversationMembers, conversationMessages, conversationAttachments, conversationPushOutbox } from "./conversation-schema";
 
 export { employeeSimulationSessions, employeeSimulationAudit } from "./simulation-schema";
+export { estimates, estimateRevisions, estimatingPricing, estimatingPricingRevisions } from "./estimating-schema";
 
 // Reporting-manager material alerts are stored independently of push devices.
 export const materialNotifications = createTable("material_notification", (d) => ({

@@ -6,6 +6,7 @@ import { conversationsRouter } from "~/server/api/routers/conversations";
 import { drawingsRouter } from "~/server/api/routers/drawings";
 import { drawingsWorkspaceRouter } from "~/server/api/routers/drawingsWorkspace";
 import { drawsRouter } from "~/server/api/routers/draws";
+import { estimatingRouter } from "~/server/api/routers/estimating";
 import { jobRouter } from "~/server/api/routers/job";
 import { locationRouter } from "~/server/api/routers/location";
 import { materialListRouter } from "~/server/api/routers/materialList";
@@ -27,6 +28,7 @@ import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
  * All routers added in /api/routers should be manually added here.
  */
 export const appRouter = createTRPCRouter({
+  estimating: estimatingRouter,
   orderDelivery: orderDeliveryRouter,
   appDevices: appDevicesRouter,
   notifications: notificationsRouter,

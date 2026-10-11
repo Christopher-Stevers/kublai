@@ -7,6 +7,7 @@ import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader } from "~/components/ui/card";
 import {
   MapPinIcon,
+  CalculatorIcon,
   PencilIcon,
   UserIcon,
   WifiOffIcon,
@@ -66,6 +67,7 @@ export default function JobOptionsPage({
     enabled: isBrowserOnline, refetchInterval: 30_000, refetchIntervalInBackground: false,
   });
   const canOpenAssets = roleData?.permissions.tabAccess.assets === true;
+  const canOpenEstimating = roleData?.permissions.tabAccess.estimating === true;
   const roomCount = useJobRoomCount(jobId);
   const jobDetail = useReplicacheJobDetail(jobId);
   const { data: serverJob, isFetched: hasFetchedServerJob } =
@@ -208,6 +210,17 @@ export default function JobOptionsPage({
               : undefined
           }
         />
+
+        {canOpenEstimating && (
+          <Button
+            variant="outline"
+            className="mt-4 gap-2"
+            onClick={() => router.push(`/dashboard/estimating?jobId=${job.id}`)}
+          >
+            <CalculatorIcon className="h-4 w-4" />
+            Estimate this job
+          </Button>
+        )}
 
         <JobEditDialog
           open={showEditDialog}

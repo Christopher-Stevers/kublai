@@ -10,6 +10,7 @@ import {
   BriefcaseIcon,
   Building2Icon,
   CameraIcon,
+  CalculatorIcon,
   ChevronDownIcon,
   ClockIcon,
   FileTextIcon,
@@ -82,6 +83,7 @@ function HeaderFrame({
     quotes: boolean;
     orders: boolean;
     draws: boolean;
+    estimating: boolean;
     assets: boolean;
     timesheets: boolean;
     organization: boolean;
@@ -129,6 +131,9 @@ function HeaderFrame({
       : []),
     ...(tabAccess.draws
       ? [{ href: "/dashboard/draws", label: "Draws", icon: ReceiptIcon }]
+      : []),
+    ...(tabAccess.estimating
+      ? [{ href: "/dashboard/estimating", label: "Estimating", icon: CalculatorIcon }]
       : []),
     ...(tabAccess.timesheets
       ? [
@@ -531,6 +536,7 @@ function HeaderWithClerk() {
           quotes: true,
           orders: true,
           draws: false,
+          estimating: false,
           assets: true,
           timesheets: true,
           organization: false,
@@ -558,6 +564,7 @@ function HeaderWithoutClerk() {
         quotes: true,
         orders: true,
         draws: false,
+        estimating: false,
         assets: true,
         timesheets: true,
         organization: false,
@@ -588,6 +595,7 @@ function HeaderForPractice() {
         quotes: true,
         orders: true,
         draws: false,
+        estimating: false,
         assets: true,
         timesheets: false,
         organization: false,

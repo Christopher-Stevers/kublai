@@ -22,6 +22,7 @@ export const PERMISSION_GROUPS = [
       { key: "tab.quotes", label: "Quotes", description: "View quotes sent to suppliers." },
       { key: "tab.orders", label: "Orders", description: "View orders and deliveries." },
       { key: "tab.draws", label: "Draws", description: "Progress billing. Shows contract values." },
+      { key: "tab.estimating", label: "Estimating", description: "Drawing takeoffs, cost estimates and bid proposals. Requires dollar-value access." },
       { key: "tab.timesheets", label: "Timesheets", description: "Record time and review submissions." },
       { key: "tab.assets", label: "Asset Management", description: "Tools and equipment." },
       { key: "tab.organization", label: "Organization", description: "This page." },
@@ -125,6 +126,16 @@ export const PERMISSION_GROUPS = [
     icon: "receipt",
     permissions: [
       { key: "draws.edit", label: "Edit draws", description: "Set up schedules of values and create, submit and close draws." },
+    ],
+  },
+  {
+    id: "estimating",
+    label: "Estimating",
+    description: "Preparing bids and approving estimates.",
+    icon: "receipt",
+    permissions: [
+      { key: "estimating.edit", label: "Build estimates", description: "Create estimates, import pricing and drawing takeoffs, and maintain assemblies." },
+      { key: "estimating.approve", label: "Approve estimates", description: "Approve reviewed estimates and record bid outcomes." },
     ],
   },
   {
