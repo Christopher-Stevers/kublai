@@ -1,17 +1,17 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { getRoomColor } from "~/lib/room-colors";
 import { roomReviewTransform } from "~/lib/floor-plan-viewport";
+import { getRoomColor } from "~/lib/room-colors";
 import {
   findRoomAtPoint,
   insertPointAtClick,
   movePolygonPoint,
-  polygonPointsAttr,
   polygonPathAttr,
+  polygonPointsAttr,
   removePolygonPoint,
-  shapeBBox,
   roomLabelPoint,
+  shapeBBox,
   toPolygon,
   type RoomPolygonShape,
   type RoomShape,
@@ -111,8 +111,15 @@ export function FloorPlanCanvas({
   } | null>(null);
   const didPan = useRef(false);
   const quickZoom = useRef<{
-    pointerId: number; startY: number; x: number; y: number;
-    scale: number; tx: number; ty: number; moved: boolean; minScale: number;
+    pointerId: number;
+    startY: number;
+    x: number;
+    y: number;
+    scale: number;
+    tx: number;
+    ty: number;
+    moved: boolean;
+    minScale: number;
   } | null>(null);
   const lastTap = useRef<(Point & { time: number }) | null>(null);
   const selectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -147,12 +154,15 @@ export function FloorPlanCanvas({
     }
   };
 
-  useEffect(() => () => {
-    if (selectTimer.current) clearTimeout(selectTimer.current);
-    if (longPressTimer.current) clearTimeout(longPressTimer.current);
-    lastTap.current = null;
-    quickZoom.current = null;
-  }, [imageUrl, createMode, detectMode, editingRoomId]);
+  useEffect(
+    () => () => {
+      if (selectTimer.current) clearTimeout(selectTimer.current);
+      if (longPressTimer.current) clearTimeout(longPressTimer.current);
+      lastTap.current = null;
+      quickZoom.current = null;
+    },
+    [imageUrl, createMode, detectMode, editingRoomId],
+  );
 
   const toPlanNorm = (clientX: number, clientY: number): Point | null => {
     const plan = planRef.current?.getBoundingClientRect();
@@ -189,12 +199,16 @@ export function FloorPlanCanvas({
   useEffect(() => {
     userMoved.current = false;
     if (focusRoomId) return;
-    const viewport = viewportRef.current, plan = planRef.current, image = imageRef.current;
+    const viewport = viewportRef.current,
+      plan = planRef.current,
+      image = imageRef.current;
     if (!viewport || !plan || !image) return;
     const fit = () => {
       if (userMoved.current) return;
-      const width = plan.offsetWidth, height = plan.offsetHeight;
-      if (!width || !height || !viewport.clientWidth || !viewport.clientHeight) return;
+      const width = plan.offsetWidth,
+        height = plan.offsetHeight;
+      if (!width || !height || !viewport.clientWidth || !viewport.clientHeight)
+        return;
       const scale = Math.min(
         MAX_SCALE,
         viewport.clientWidth / width,
@@ -207,30 +221,42 @@ export function FloorPlanCanvas({
       });
     };
     image.addEventListener("load", fit);
-    const resize = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(fit);
+    const resize =
+      typeof ResizeObserver === "undefined" ? null : new ResizeObserver(fit);
     resize?.observe(viewport);
     if (image.complete) fit();
-    return () => { image.removeEventListener("load", fit); resize?.disconnect(); };
+    return () => {
+      image.removeEventListener("load", fit);
+      resize?.disconnect();
+    };
   }, [focusRoomId, imageUrl]);
 
   useEffect(() => {
     if (!focusRoomId) return;
-    const viewport = viewportRef.current, plan = planRef.current, image = imageRef.current;
+    const viewport = viewportRef.current,
+      plan = planRef.current,
+      image = imageRef.current;
     if (!viewport || !plan || !image) return;
     const focus = () => {
       const room = roomsRef.current.find((item) => item.id === focusRoomId);
       if (!room) return;
-      const next = roomReviewTransform(shapeBBox(toPolygon(room.shape)),
+      const next = roomReviewTransform(
+        shapeBBox(toPolygon(room.shape)),
         { width: plan.offsetWidth, height: plan.offsetHeight },
-        { width: viewport.clientWidth, height: viewport.clientHeight });
+        { width: viewport.clientWidth, height: viewport.clientHeight },
+      );
       if (next) setTransform(next);
     };
     // Native dimensions are not available until a newly selected sheet loads.
     image.addEventListener("load", focus);
-    const resize = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(focus);
+    const resize =
+      typeof ResizeObserver === "undefined" ? null : new ResizeObserver(focus);
     resize?.observe(viewport);
     if (image.complete) focus();
-    return () => { image.removeEventListener("load", focus); resize?.disconnect(); };
+    return () => {
+      image.removeEventListener("load", focus);
+      resize?.disconnect();
+    };
   }, [focusRoomId, imageUrl]);
 
   const applyPinch = (event: React.PointerEvent<HTMLDivElement>) => {
@@ -289,7 +315,7 @@ export function FloorPlanCanvas({
   return (
     <div
       ref={viewportRef}
-      className={`relative h-full min-h-0 w-full touch-none overflow-hidden rounded-lg bg-muted ${detectMode ? "cursor-crosshair" : ""}`}
+      className={`bg-muted relative h-full min-h-0 w-full touch-none overflow-hidden rounded-lg ${detectMode ? "cursor-crosshair" : ""}`}
       onPointerDown={(event) => {
         if (!detectMode) {
           event.currentTarget.setPointerCapture(event.pointerId);
@@ -329,21 +355,38 @@ export function FloorPlanCanvas({
         }
 
         const previousTap = lastTap.current;
-        if (!detectMode && !createMode && !editingRoomId && previousTap &&
-            Date.now() - previousTap.time <= DOUBLE_TAP_MS &&
-            distance(previousTap, { x: event.clientX, y: event.clientY }) <= DOUBLE_TAP_SLOP_PX) {
+        if (
+          !detectMode &&
+          !createMode &&
+          !editingRoomId &&
+          previousTap &&
+          Date.now() - previousTap.time <= DOUBLE_TAP_MS &&
+          distance(previousTap, { x: event.clientX, y: event.clientY }) <=
+            DOUBLE_TAP_SLOP_PX
+        ) {
           if (selectTimer.current) clearTimeout(selectTimer.current);
           clearLongPress();
           lastTap.current = null;
           const rect = event.currentTarget.getBoundingClientRect();
           const plan = planRef.current;
-          const fittedScale = plan?.offsetWidth && plan.offsetHeight
-            ? Math.min(event.currentTarget.clientWidth / plan.offsetWidth,
-                event.currentTarget.clientHeight / plan.offsetHeight) : MIN_SCALE;
-          quickZoom.current = { pointerId: event.pointerId, startY: event.clientY,
-            x: event.clientX - rect.left, y: event.clientY - rect.top,
-            ...transformRef.current, moved: false,
-            minScale: Math.max(0.01, Math.min(MIN_SCALE, fittedScale, transformRef.current.scale)),
+          const fittedScale =
+            plan?.offsetWidth && plan.offsetHeight
+              ? Math.min(
+                  event.currentTarget.clientWidth / plan.offsetWidth,
+                  event.currentTarget.clientHeight / plan.offsetHeight,
+                )
+              : MIN_SCALE;
+          quickZoom.current = {
+            pointerId: event.pointerId,
+            startY: event.clientY,
+            x: event.clientX - rect.left,
+            y: event.clientY - rect.top,
+            ...transformRef.current,
+            moved: false,
+            minScale: Math.max(
+              0.01,
+              Math.min(MIN_SCALE, fittedScale, transformRef.current.scale),
+            ),
           };
           return;
         }
@@ -381,7 +424,12 @@ export function FloorPlanCanvas({
           }, LONG_PRESS_MS);
         }
 
-        if (canEdit && editingRoomId && visibleEditShape && vertexMode === "add") {
+        if (
+          canEdit &&
+          editingRoomId &&
+          visibleEditShape &&
+          vertexMode === "add"
+        ) {
           const point = toPlanNorm(event.clientX, event.clientY);
           if (point) {
             const next = insertPointAtClick(visibleEditShape, point);
@@ -428,10 +476,14 @@ export function FloorPlanCanvas({
           zoom.moved = true;
           didPan.current = true;
           userMoved.current = true;
-          const scale = Math.min(MAX_SCALE, Math.max(zoom.minScale, zoom.scale * Math.exp(dy / 150)));
-          setTransform({ scale,
-            tx: zoom.x - (zoom.x - zoom.tx) * scale / zoom.scale,
-            ty: zoom.y - (zoom.y - zoom.ty) * scale / zoom.scale,
+          const scale = Math.min(
+            MAX_SCALE,
+            Math.max(zoom.minScale, zoom.scale * Math.exp(dy / 150)),
+          );
+          setTransform({
+            scale,
+            tx: zoom.x - ((zoom.x - zoom.tx) * scale) / zoom.scale,
+            ty: zoom.y - ((zoom.y - zoom.ty) * scale) / zoom.scale,
           });
           return;
         }
@@ -486,9 +538,10 @@ export function FloorPlanCanvas({
           if (!zoom.moved) {
             const scale = Math.min(MAX_SCALE, zoom.scale * 2);
             userMoved.current = true;
-            setTransform({ scale,
-              tx: zoom.x - (zoom.x - zoom.tx) * scale / zoom.scale,
-              ty: zoom.y - (zoom.y - zoom.ty) * scale / zoom.scale,
+            setTransform({
+              scale,
+              tx: zoom.x - ((zoom.x - zoom.tx) * scale) / zoom.scale,
+              ty: zoom.y - ((zoom.y - zoom.ty) * scale) / zoom.scale,
             });
           }
           quickZoom.current = null;
@@ -537,34 +590,49 @@ export function FloorPlanCanvas({
       }}
       onClick={(event) => {
         if (!detectMode) {
-          if (didPan.current || longPressHandled.current || editingRoomId || createMode) return;
+          if (
+            didPan.current ||
+            longPressHandled.current ||
+            editingRoomId ||
+            createMode
+          )
+            return;
           const point = { x: event.clientX, y: event.clientY };
           const previous = lastTap.current;
           const now = Date.now();
-          if (previous && now - previous.time <= DOUBLE_TAP_MS &&
-              distance(previous, point) <= DOUBLE_TAP_SLOP_PX) {
+          if (
+            previous &&
+            now - previous.time <= DOUBLE_TAP_MS &&
+            distance(previous, point) <= DOUBLE_TAP_SLOP_PX
+          ) {
             if (selectTimer.current) clearTimeout(selectTimer.current);
             lastTap.current = null;
             const rect = event.currentTarget.getBoundingClientRect();
             const current = transformRef.current;
             const scale = Math.min(MAX_SCALE, current.scale * 2);
-            const x = point.x - rect.left, y = point.y - rect.top;
+            const x = point.x - rect.left,
+              y = point.y - rect.top;
             userMoved.current = true;
-            setTransform({ scale,
-              tx: x - (x - current.tx) * scale / current.scale,
-              ty: y - (y - current.ty) * scale / current.scale,
+            setTransform({
+              scale,
+              tx: x - ((x - current.tx) * scale) / current.scale,
+              ty: y - ((y - current.ty) * scale) / current.scale,
             });
             return;
           }
           lastTap.current = { ...point, time: now };
           const normalized = toPlanNorm(point.x, point.y);
           const onDrawing = (event.target as Element).closest("svg");
-          const room = normalized && onDrawing ? findRoomAtPoint(roomsRef.current, normalized) : null;
+          const room =
+            normalized && onDrawing
+              ? findRoomAtPoint(roomsRef.current, normalized)
+              : null;
           if (selectTimer.current) clearTimeout(selectTimer.current);
-          if (room) selectTimer.current = setTimeout(() => {
-            lastTap.current = null;
-            onSelectRoom(room.id);
-          }, DOUBLE_TAP_MS);
+          if (room)
+            selectTimer.current = setTimeout(() => {
+              lastTap.current = null;
+              onSelectRoom(room.id);
+            }, DOUBLE_TAP_MS);
           return;
         }
         if (didPan.current || detectFired.current) return;
@@ -608,7 +676,7 @@ export function FloorPlanCanvas({
           transform: `translate(${transform.tx}px, ${transform.ty}px) scale(${transform.scale})`,
         }}
       >
-        <div ref={planRef} className="relative inline-block bg-card">
+        <div ref={planRef} className="bg-card relative inline-block">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             ref={imageRef}
@@ -621,7 +689,6 @@ export function FloorPlanCanvas({
             className="absolute inset-0 h-full w-full"
             viewBox="0 0 1 1"
             preserveAspectRatio="none"
-
           >
             {rooms.map((room, index) => {
               const selected =
@@ -637,11 +704,10 @@ export function FloorPlanCanvas({
                 <path
                   key={room.id}
                   data-room-id={room.id}
-                  data-review-status={room.reviewStatus ?? "pending"}
                   d={polygonPathAttr(polygon)}
                   fillRule="evenodd"
                   fill={color.fill}
-                  stroke={room.reviewStatus === "approved" ? "#16a34a" : room.reviewStatus === "rejected" ? "#dc2626" : color.border}
+                  stroke={color.border}
                   strokeWidth={(selected ? 0.006 : 0.003) / transform.scale}
                   pointerEvents="none"
                 />
@@ -697,7 +763,7 @@ export function FloorPlanCanvas({
               const color = getRoomColor(index);
               const box = shapeBBox(polygon);
               const fontSize = roomLabelFontSize(room.name, box);
-              const labelPoint=roomLabelPoint(polygon);
+              const labelPoint = roomLabelPoint(polygon);
               return (
                 <text
                   key={`${room.id}-label`}

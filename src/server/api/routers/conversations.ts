@@ -3,10 +3,9 @@ import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import {
   conversationInput,
   createConversationInput,
-  sendConversationInput,
-  editSnapshotInput,
-  savedSnapshotsInput,
   replaceSnapshotInput,
+  savedSnapshotsInput,
+  sendConversationInput,
 } from "~/server/conversations/contracts";
 import {
   conversationAccess,
@@ -14,13 +13,12 @@ import {
   conversationPeople,
   createConversation,
   listConversations,
+  listSavedSnapshots,
   markConversationRead,
   removeConversationMessage,
-  sendConversationMessage,
-  savedConversationSnapshot,
-  editConversationSnapshot,
-  listSavedSnapshots,
   replaceConversationSnapshot,
+  savedConversationSnapshot,
+  sendConversationMessage,
 } from "~/server/conversations/service";
 const memberProcedure = protectedProcedure
   .input(conversationInput)
@@ -66,11 +64,6 @@ export const conversationsRouter = createTRPCRouter({
     .input(z.object({ messageId: z.uuid() }))
     .query(({ ctx, input }) =>
       savedConversationSnapshot(ctx.conversation, input.messageId),
-    ),
-  editSnapshot: memberProcedure
-    .input(editSnapshotInput)
-    .mutation(({ ctx, input }) =>
-      editConversationSnapshot(ctx.conversation, input),
     ),
   replaceSnapshot: memberProcedure
     .input(replaceSnapshotInput)

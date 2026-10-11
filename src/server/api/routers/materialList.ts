@@ -1,18 +1,15 @@
-import { userDeliveryDate } from "~/server/orders/delivery-calendar";
-import { formatDeliveryDate } from "~/lib/delivery-calendar";
-import { enqueueMaterialNotification } from "~/server/notifications/materials";
 import { TRPCError } from "@trpc/server";
-import { eq, and, sql, desc, asc, inArray, gte } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
-import type { db as appDb } from "~/server/db";
+import { formatDeliveryDate } from "~/lib/delivery-calendar";
 import {
   formatSupplierGreetingName,
   getSupplierEmailRecipients,
   normalizeSupplierContacts,
 } from "~/lib/supplier-contacts";
-
-import { resolveMaterialRoom } from "~/server/material-room";
-
+import type { db as appDb } from "~/server/db";
+import { userDeliveryDate } from "~/server/orders/delivery-calendar";
+import { retiredOfflineMutation } from "../retired-offline-sync";
 
 function formatEmailItemLine(item: {
   quantity: string | null;
@@ -80,8 +77,7 @@ type OrderableQuoteItem = {
 function groupOrderableItemsBySupplier(items: OrderableQuoteItem[]) {
   const itemsBySupplier = new Map<string, OrderableQuoteItem[]>();
   for (const item of items) {
-    const supplierId =
-      item.selectedSupplierId ?? item.supplierPartSupplierId;
+    const supplierId = item.selectedSupplierId ?? item.supplierPartSupplierId;
     if (!supplierId || !item.partDefinitionId) continue;
     const bucket = itemsBySupplier.get(supplierId) ?? [];
     bucket.push(item);
@@ -141,7 +137,11 @@ function buildOrderEmailContent({
  * request; closed (cancelled) requests don't count.
  */
 async function withoutAlreadyRequestedTools<
-  T extends { partDefinitionId: string | null; roomId: string | null; quantity: string | null },
+  T extends {
+    partDefinitionId: string | null;
+    roomId: string | null;
+    quantity: string | null;
+  },
 >(db: Pick<typeof appDb, "select">, materialListId: string, items: T[]) {
   const requested = await db
     .select({
@@ -160,7 +160,10 @@ async function withoutAlreadyRequestedTools<
     )
     .groupBy(orderItems.partDefinitionId, orderItems.roomId);
   const alreadyRequested = new Map(
-    requested.map((row) => [JSON.stringify([row.partDefinitionId, row.roomId]), Number(row.quantity)]),
+    requested.map((row) => [
+      JSON.stringify([row.partDefinitionId, row.roomId]),
+      Number(row.quantity),
+    ]),
   );
   const remaining: T[] = [];
   for (const item of items) {
@@ -205,167 +208,30 @@ async function loadOrderableQuoteItems(
     .where(eq(quoteItems.quoteId, quoteId)) as Promise<OrderableQuoteItem[]>;
 }
 
-function isUuid(value: string | null | undefined) {
-  return (
-    !!value &&
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-      value,
-    )
-  );
-}
-
-function parseOfflineSupplierPartId(value: string | null | undefined) {
-  if (!value) return null;
-  const match = /^offline-supplier-part:([^:]+):([^:]+)$/.exec(value);
-  if (!match?.[1] || !match[2]) return null;
-  return { partDefinitionId: match[1], supplierId: match[2] };
-}
-
-function isPermanentMaterialListSyncFailure(message: string) {
-  return (
-    message.includes("No server item mapping for local item id") ||
-    message.includes("Quote item not found") ||
-    message.includes("Part definition not found") ||
-    message.includes("Room does not belong to this job") ||
-    message.includes("Add item requires")
-  );
-}
-
 import { createTRPCRouter, hasDashboardAccess } from "~/server/api/trpc";
-import { assertCan, userCan } from "~/server/auth/permissions";
-import { publishMaterialListEvent } from "~/server/material-list-events";
 import { ensureToolRoomSupplier } from "~/server/assets/service";
+import { assertCan, userCan } from "~/server/auth/permissions";
 import {
-  jobs,
   jobRooms,
+  jobs,
+  locations,
   materialLists,
-  quotes,
-  quoteItems,
-  orders,
+  materialListSyncTombstones,
+  materials,
   orderItems,
+  orders,
   partDefinitions,
+  quoteItems,
+  quotes,
   supplierParts,
   suppliers,
   units,
-  locations,
   users,
-  materials,
-  materialListSyncMutations,
-  materialListSyncTombstones,
 } from "~/server/db/schema";
 
-async function recalculateQuoteTotals(
-  database: typeof appDb | any,
-  quoteId: string,
-) {
-  const allItems = await database
-    .select({ extendedPrice: quoteItems.extendedPrice })
-    .from(quoteItems)
-    .where(eq(quoteItems.quoteId, quoteId));
-
-  const subtotal = allItems.reduce(
-    (sum: number, item: { extendedPrice: unknown }) => {
-      const price = item.extendedPrice
-        ? parseFloat(item.extendedPrice.toString())
-        : 0;
-      return sum + price;
-    },
-    0,
-  );
-
-  await database
-    .update(quotes)
-    .set({
-      subtotalMaterials: subtotal.toString(),
-      total: subtotal.toString(),
-    })
-    .where(eq(quotes.id, quoteId));
-
-  return subtotal;
-}
-
-async function touchMaterialList(
-  database: typeof appDb | any,
-  materialListId: string,
-) {
-  await database
-    .update(materialLists)
-    .set({ updatedAt: new Date() })
-    .where(eq(materialLists.id, materialListId));
-}
-
-async function recordMaterialListItemTombstone(
-  database: typeof appDb | any,
-  input: { organizationId: string; materialListId: string; itemId: string },
-) {
-  await database
-    .insert(materialListSyncTombstones)
-    .values({
-      organizationId: input.organizationId,
-      materialListId: input.materialListId,
-      entityType: "quoteItem",
-      entityId: input.itemId,
-    })
-    .onConflictDoNothing();
-}
-
-const materialListSyncMutationInput = z.discriminatedUnion("type", [
-  z.object({
-    type: z.literal("addItem"),
-    roomId: z.string().uuid().nullable().optional(),
-    clientMutationId: z.string().min(1).max(255),
-    queuedAt: z.string(),
-    localItemId: z.string().min(1).max(255),
-    partDefinitionId: z.string().min(1).optional(),
-    quantity: z.number().positive(),
-    supplierPartId: z.string().optional().nullable(),
-    supplierId: z.string().optional().nullable(),
-    unitCost: z.number().optional(),
-    oneOffDisplayName: z.string().min(1).optional(),
-    oneOffDescription: z.string().optional(),
-    oneOffMaterial: z.string().optional(),
-    oneOffSizeNominal: z.number().optional(),
-    oneOffSizeUnitId: z.string().uuid().optional(),
-    partDefinitionSnapshot: z
-      .object({
-        id: z.string(),
-        displayName: z.string(),
-        imageUrl: z.string().nullable(),
-        material: z.string().nullable(),
-      })
-      .optional()
-      .nullable(),
-  }),
-  z.object({
-    type: z.literal("updateItemQuantity"),
-    clientMutationId: z.string().min(1).max(255),
-    queuedAt: z.string(),
-    itemId: z.string().min(1).max(255),
-    quantity: z.number().positive(),
-  }),
-  z.object({
-    type: z.literal("updateItemSupplierPart"),
-    clientMutationId: z.string().min(1).max(255),
-    queuedAt: z.string(),
-    itemId: z.string().min(1).max(255),
-    supplierPartId: z.string().nullable(),
-    supplierId: z.string().optional().nullable(),
-  }),
-  z.object({
-    type: z.literal("removeItem"),
-    clientMutationId: z.string().min(1).max(255),
-    queuedAt: z.string(),
-    itemId: z.string().min(1).max(255),
-  }),
-  z.object({
-    type: z.literal("renameMaterialList"),
-    clientMutationId: z.string().min(1).max(255),
-    queuedAt: z.string(),
-    name: z.string().min(1).max(255),
-  }),
-]);
-
 export const materialListRouter = createTRPCRouter({
+  applyMaterialListMutationsBatch: retiredOfflineMutation,
+  syncMaterialListMutations: retiredOfflineMutation,
 
   /**
    * Get a material list with all items
@@ -628,631 +494,6 @@ export const materialListRouter = createTRPCRouter({
       };
     }),
 
-  /**
-   * Apply several latency-sensitive material-list edits in one server round trip.
-   * The client still updates locally first; this endpoint is for background sync.
-   */
-  applyMaterialListMutationsBatch: hasDashboardAccess
-    .input(
-      z.object({
-        materialListId: z.string().uuid(),
-        mutations: z
-          .array(
-            z.discriminatedUnion("type", [
-              z.object({
-                type: z.literal("updateItemQuantity"),
-                itemId: z.string().uuid(),
-                quantity: z.number().positive(),
-              }),
-              z.object({
-                type: z.literal("removeItem"),
-                itemId: z.string().uuid(),
-              }),
-              z.object({
-                type: z.literal("renameMaterialList"),
-                name: z.string().min(1).max(255),
-              }),
-            ]),
-          )
-          .min(1),
-      }),
-    )
-    .mutation(async ({ ctx, input }) => {
-      assertCan(ctx.user, "lists.edit");
-      if (!ctx.user.organizationId) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "User must belong to an organization",
-        });
-      }
-
-      const [materialList] = await ctx.db
-        .select({ id: materialLists.id, quoteId: materialLists.quoteId })
-        .from(materialLists)
-        .where(
-          and(
-            eq(materialLists.id, input.materialListId),
-            eq(materialLists.organizationId, ctx.user.organizationId),
-          ),
-        )
-        .limit(1);
-
-      if (!materialList?.quoteId) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Material list not found",
-        });
-      }
-
-      const organizationId = ctx.user.organizationId;
-      await ctx.db.transaction(async (tx) => {
-        let changed = false;
-        const quantityUpdates = input.mutations.filter(
-          (
-            mutation,
-          ): mutation is Extract<
-            (typeof input.mutations)[number],
-            { type: "updateItemQuantity" }
-          > => mutation.type === "updateItemQuantity",
-        );
-        const removeItemIds = input.mutations
-          .filter((mutation) => mutation.type === "removeItem")
-          .map((mutation) => mutation.itemId);
-        const latestRename = [...input.mutations]
-          .reverse()
-          .find((mutation) => mutation.type === "renameMaterialList");
-
-        if (latestRename?.type === "renameMaterialList") {
-          await tx
-            .update(materialLists)
-            .set({ name: latestRename.name })
-            .where(eq(materialLists.id, input.materialListId));
-        }
-
-        if (quantityUpdates.length > 0) {
-          const itemIds = quantityUpdates.map((mutation) => mutation.itemId);
-          const currentItems = await tx
-            .select({
-              id: quoteItems.id,
-              quoteId: quoteItems.quoteId,
-              unitCost: quoteItems.unitCost,
-              quantity: quoteItems.quantity,
-            })
-            .from(quoteItems)
-            .where(inArray(quoteItems.id, itemIds));
-          const itemById = new Map(currentItems.map((item) => [item.id, item]));
-
-          for (const mutation of quantityUpdates) {
-            const item = itemById.get(mutation.itemId);
-            if (!item || item.quoteId !== materialList.quoteId) continue;
-
-            if (Number(item.quantity) === mutation.quantity) continue;
-            changed = true;
-            item.quantity = String(mutation.quantity);
-            const unitCost = item.unitCost
-              ? parseFloat(item.unitCost.toString())
-              : 0;
-            const extendedPrice = mutation.quantity * unitCost;
-            await tx
-              .update(quoteItems)
-              .set({
-                quantity: mutation.quantity.toString(),
-                extendedPrice: extendedPrice.toString(),
-                updatedAt: new Date(),
-              })
-              .where(eq(quoteItems.id, mutation.itemId));
-          }
-        }
-
-        if (removeItemIds.length > 0) {
-          const removableItems = await tx
-            .select({ id: quoteItems.id, quoteId: quoteItems.quoteId })
-            .from(quoteItems)
-            .where(inArray(quoteItems.id, removeItemIds));
-          const verifiedIds = removableItems
-            .filter((item) => item.quoteId === materialList.quoteId)
-            .map((item) => item.id);
-
-          if (verifiedIds.length > 0) {
-            await tx
-              .delete(quoteItems)
-              .where(inArray(quoteItems.id, verifiedIds));
-            await Promise.all(
-              verifiedIds.map((itemId) =>
-                recordMaterialListItemTombstone(tx, {
-                  organizationId: ctx.user.organizationId,
-                  materialListId: input.materialListId,
-                  itemId,
-                }),
-              ),
-            );
-          }
-        }
-
-        await recalculateQuoteTotals(tx, materialList.quoteId);
-        if (changed) await enqueueMaterialNotification(tx, { organizationId, materialListId: input.materialListId, senderId: ctx.userId, action: "edited" });
-      });
-      publishMaterialListEvent(
-        input.materialListId,
-        "updated",
-        ctx.user.organizationId,
-      );
-
-      return { success: true };
-    }),
-
-  /**
-   * Custom local-first sync push endpoint for material-list edits.
-   *
-   * Client mutations are idempotent by organization + clientMutationId. This is
-   * the server-side sync boundary that lets Dexie stay the local source of truth
-   * while Postgres remains authoritative after reconnect.
-   */
-  syncMaterialListMutations: hasDashboardAccess
-    .input(
-      z.object({
-        materialListId: z.string().uuid(),
-        mutations: z.array(materialListSyncMutationInput).min(1),
-      }),
-    )
-    .mutation(async ({ ctx, input }) => {
-      assertCan(ctx.user, "lists.edit");
-      if (!ctx.user.organizationId) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "User must belong to an organization",
-        });
-      }
-
-      console.log("[material-list-sync] request", {
-        materialListId: input.materialListId,
-        mutationCount: input.mutations.length,
-        mutationTypes: input.mutations.map((mutation) => mutation.type),
-        clientMutationIds: input.mutations.map(
-          (mutation) => mutation.clientMutationId,
-        ),
-        organizationId: ctx.user.organizationId,
-        userId: ctx.userId,
-      });
-
-      const [materialList] = await ctx.db
-        .select({ id: materialLists.id, quoteId: materialLists.quoteId, jobId: materialLists.jobId, roomId: materialLists.roomId })
-        .from(materialLists)
-        .where(
-          and(
-            eq(materialLists.id, input.materialListId),
-            eq(materialLists.organizationId, ctx.user.organizationId),
-          ),
-        )
-        .limit(1);
-
-      if (!materialList?.quoteId) {
-        console.warn("[material-list-sync] material list not found", {
-          materialListId: input.materialListId,
-          organizationId: ctx.user.organizationId,
-          knownRecentLists: await ctx.db
-            .select({
-              id: materialLists.id,
-              name: materialLists.name,
-              jobId: materialLists.jobId,
-            })
-            .from(materialLists)
-            .where(eq(materialLists.organizationId, ctx.user.organizationId))
-            .orderBy(desc(materialLists.updatedAt))
-            .limit(8),
-        });
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Material list not found",
-        });
-      }
-
-      const syncResult = await ctx.db.transaction(async (tx) => {
-        const applied: Array<{
-          clientMutationId: string;
-          type: string;
-          localItemId?: string;
-          serverItemId?: string | null;
-          duplicate?: boolean;
-        }> = [];
-        const failed: Array<{ clientMutationId: string; message: string }> = [];
-        const batchItemIdMap = new Map<string, string>();
-        let needsTotalRecalc = false;
-
-        const resolveServerItemId = async (clientOrServerItemId: string) => {
-          const batchMapped = batchItemIdMap.get(clientOrServerItemId);
-          if (batchMapped) return batchMapped;
-          if (isUuid(clientOrServerItemId)) return clientOrServerItemId;
-
-          const [existingMapping] = await tx
-            .select({ serverItemId: materialListSyncMutations.serverItemId })
-            .from(materialListSyncMutations)
-            .where(
-              and(
-                eq(
-                  materialListSyncMutations.organizationId,
-                  ctx.user.organizationId,
-                ),
-                eq(
-                  materialListSyncMutations.materialListId,
-                  input.materialListId,
-                ),
-                eq(
-                  materialListSyncMutations.clientItemId,
-                  clientOrServerItemId,
-                ),
-              ),
-            )
-            .limit(1);
-
-          if (existingMapping?.serverItemId) {
-            batchItemIdMap.set(
-              clientOrServerItemId,
-              existingMapping.serverItemId,
-            );
-            return existingMapping.serverItemId;
-          }
-
-          throw new Error("No server item mapping for local item id");
-        };
-
-        for (const mutation of input.mutations) {
-          const [existing] = await tx
-            .select({
-              serverItemId: materialListSyncMutations.serverItemId,
-              clientItemId: materialListSyncMutations.clientItemId,
-              mutationType: materialListSyncMutations.mutationType,
-            })
-            .from(materialListSyncMutations)
-            .where(
-              and(
-                eq(
-                  materialListSyncMutations.organizationId,
-                  ctx.user.organizationId,
-                ),
-                eq(
-                  materialListSyncMutations.clientMutationId,
-                  mutation.clientMutationId,
-                ),
-              ),
-            )
-            .limit(1);
-
-          if (existing) {
-            if (existing.clientItemId && existing.serverItemId) {
-              batchItemIdMap.set(existing.clientItemId, existing.serverItemId);
-            }
-            applied.push({
-              clientMutationId: mutation.clientMutationId,
-              type: existing.mutationType,
-              localItemId: existing.clientItemId ?? undefined,
-              serverItemId: existing.serverItemId,
-              duplicate: true,
-            });
-            continue;
-          }
-
-          try {
-            let materialChanged = false;
-            let serverItemId: string | null = null;
-            let clientItemId: string | null = null;
-
-            switch (mutation.type) {
-              case "addItem": {
-                const roomId = await resolveMaterialRoom(tx, {
-                  organizationId: ctx.user.organizationId, jobId: materialList.jobId,
-                  roomId: mutation.roomId, defaultRoomId: materialList.roomId,
-                });
-                if (
-                  !mutation.partDefinitionId &&
-                  !mutation.oneOffDisplayName &&
-                  !mutation.partDefinitionSnapshot?.displayName
-                ) {
-                  throw new Error(
-                    "Add item requires a part definition, snapshot, or one-off name",
-                  );
-                }
-
-                let unitCost = mutation.unitCost?.toString() ?? null;
-                let descriptionSnapshot =
-                  mutation.oneOffDisplayName ??
-                  mutation.partDefinitionSnapshot?.displayName ??
-                  "";
-                const offlineSupplierPart = parseOfflineSupplierPartId(
-                  mutation.supplierPartId,
-                );
-                const serverSupplierPartId = isUuid(mutation.supplierPartId)
-                  ? mutation.supplierPartId
-                  : null;
-                const serverPartDefinitionId = isUuid(mutation.partDefinitionId)
-                  ? mutation.partDefinitionId
-                  : null;
-                const resolvedSupplierId =
-                  mutation.supplierId ??
-                  offlineSupplierPart?.supplierId ??
-                  null;
-
-                if (serverPartDefinitionId) {
-                  const [partDef] = await tx
-                    .select({ displayName: partDefinitions.displayName })
-                    .from(partDefinitions)
-                    .where(eq(partDefinitions.id, serverPartDefinitionId))
-                    .limit(1);
-
-                  if (!partDef) throw new Error("Part definition not found");
-                  descriptionSnapshot = partDef.displayName;
-
-                  if (serverSupplierPartId) {
-                    const [supplierPart] = await tx
-                      .select({
-                        lastKnownUnitCost: supplierParts.lastKnownUnitCost,
-                      })
-                      .from(supplierParts)
-                      .where(eq(supplierParts.id, serverSupplierPartId))
-                      .limit(1);
-                    unitCost = supplierPart?.lastKnownUnitCost ?? unitCost;
-                  }
-                }
-
-                if (!serverPartDefinitionId && !descriptionSnapshot) {
-                  throw new Error(
-                    "Add item requires a server part definition or snapshot name",
-                  );
-                }
-
-                const cost = unitCost ? parseFloat(unitCost.toString()) : 0;
-                const extendedPrice = mutation.quantity * cost;
-                const [quoteItem] = await tx
-                  .insert(quoteItems)
-                  .values({
-                    quoteId: materialList.quoteId,
-                    roomId,
-                    supplierPartId: serverSupplierPartId,
-                    supplierId: resolvedSupplierId,
-                    partDefinitionId: serverPartDefinitionId,
-                    quantity: mutation.quantity.toString(),
-                    unitCost,
-                    extendedPrice: extendedPrice.toString(),
-                    descriptionSnapshot,
-                    oneOffDisplayName: mutation.oneOffDisplayName ?? null,
-                    oneOffDescription: mutation.oneOffDescription ?? null,
-                    oneOffMaterial: mutation.oneOffMaterial ?? null,
-                    oneOffSizeNominal:
-                      mutation.oneOffSizeNominal !== undefined
-                        ? mutation.oneOffSizeNominal.toString()
-                        : null,
-                    oneOffSizeUnitId: mutation.oneOffSizeUnitId ?? null,
-                    addedByUserId: ctx.userId,
-                  })
-                  .returning({ id: quoteItems.id });
-
-                if (!quoteItem) throw new Error("Failed to create quote item");
-                materialChanged = true;
-                serverItemId = quoteItem.id;
-                clientItemId = mutation.localItemId;
-                batchItemIdMap.set(mutation.localItemId, quoteItem.id);
-                needsTotalRecalc = true;
-                break;
-              }
-              case "updateItemQuantity": {
-                const resolvedItemId = await resolveServerItemId(
-                  mutation.itemId,
-                );
-                const [item] = await tx
-                  .select({
-                    quoteId: quoteItems.quoteId,
-                    unitCost: quoteItems.unitCost,
-                    quantity: quoteItems.quantity,
-                  })
-                  .from(quoteItems)
-                  .where(eq(quoteItems.id, resolvedItemId))
-                  .limit(1);
-                if (!item || item.quoteId !== materialList.quoteId) {
-                  throw new Error("Quote item not found for quantity update");
-                }
-
-                materialChanged = Number(item.quantity) !== mutation.quantity;
-                const cost = item.unitCost
-                  ? parseFloat(item.unitCost.toString())
-                  : 0;
-                await tx
-                  .update(quoteItems)
-                  .set({
-                    quantity: mutation.quantity.toString(),
-                    extendedPrice: (mutation.quantity * cost).toString(),
-                    updatedAt: new Date(),
-                  })
-                  .where(eq(quoteItems.id, resolvedItemId));
-                serverItemId = resolvedItemId;
-                clientItemId = mutation.itemId;
-                needsTotalRecalc = true;
-                break;
-              }
-              case "updateItemSupplierPart": {
-                const resolvedItemId = await resolveServerItemId(
-                  mutation.itemId,
-                );
-                const [item] = await tx
-                  .select({
-                    quoteId: quoteItems.quoteId,
-                    quantity: quoteItems.quantity,
-                    supplierPartId: quoteItems.supplierPartId,
-                    supplierId: quoteItems.supplierId,
-                    unitCost: quoteItems.unitCost,
-                  })
-                  .from(quoteItems)
-                  .where(eq(quoteItems.id, resolvedItemId))
-                  .limit(1);
-                if (!item || item.quoteId !== materialList.quoteId) {
-                  throw new Error("Quote item not found for supplier update");
-                }
-
-                let unitCost: string | null = null;
-                const offlineSupplierPart = parseOfflineSupplierPartId(
-                  mutation.supplierPartId,
-                );
-                const serverSupplierPartId = isUuid(mutation.supplierPartId)
-                  ? mutation.supplierPartId
-                  : null;
-                const resolvedSupplierId =
-                  mutation.supplierId ??
-                  offlineSupplierPart?.supplierId ??
-                  null;
-
-                if (serverSupplierPartId) {
-                  const [supplierPart] = await tx
-                    .select({
-                      lastKnownUnitCost: supplierParts.lastKnownUnitCost,
-                    })
-                    .from(supplierParts)
-                    .where(eq(supplierParts.id, serverSupplierPartId))
-                    .limit(1);
-                  unitCost = supplierPart?.lastKnownUnitCost ?? null;
-                }
-
-                materialChanged = item.supplierPartId !== serverSupplierPartId || item.supplierId !== resolvedSupplierId || Number(item.unitCost ?? 0) !== Number(unitCost ?? 0);
-                const quantity = item.quantity
-                  ? parseFloat(item.quantity.toString())
-                  : 0;
-                const cost = unitCost ? parseFloat(unitCost.toString()) : 0;
-                await tx
-                  .update(quoteItems)
-                  .set({
-                    supplierPartId: serverSupplierPartId,
-                    supplierId: resolvedSupplierId,
-                    unitCost,
-                    extendedPrice: (quantity * cost).toString(),
-                    updatedAt: new Date(),
-                  })
-                  .where(eq(quoteItems.id, resolvedItemId));
-                serverItemId = resolvedItemId;
-                clientItemId = mutation.itemId;
-                needsTotalRecalc = true;
-                break;
-              }
-              case "removeItem": {
-                clientItemId = mutation.itemId;
-
-                try {
-                  const resolvedItemId = await resolveServerItemId(
-                    mutation.itemId,
-                  );
-                  const [item] = await tx
-                    .select({ quoteId: quoteItems.quoteId })
-                    .from(quoteItems)
-                    .where(eq(quoteItems.id, resolvedItemId))
-                    .limit(1);
-                  if (item?.quoteId === materialList.quoteId) {
-                    await tx
-                      .delete(quoteItems)
-                      .where(eq(quoteItems.id, resolvedItemId));
-                    await recordMaterialListItemTombstone(tx, {
-                      organizationId: ctx.user.organizationId,
-                      materialListId: input.materialListId,
-                      itemId: resolvedItemId,
-                    });
-                    needsTotalRecalc = true;
-                  }
-                  serverItemId = resolvedItemId;
-                } catch (error) {
-                  if (
-                    isUuid(mutation.itemId) ||
-                    !(error instanceof Error) ||
-                    error.message !== "No server item mapping for local item id"
-                  ) {
-                    throw error;
-                  }
-
-                  // A queued remove for a local-only item means the item was never
-                  // created on the server (for example after add/remove queue
-                  // compaction or an older stale client queue). Treat it as an
-                  // idempotent no-op so sync can clear the mutation instead of
-                  // dead-lettering forever.
-                  serverItemId = null;
-                }
-                break;
-              }
-              case "renameMaterialList": {
-                await tx
-                  .update(materialLists)
-                  .set({ name: mutation.name })
-                  .where(eq(materialLists.id, input.materialListId));
-                break;
-              }
-            }
-
-            await tx.insert(materialListSyncMutations).values({
-              organizationId: ctx.user.organizationId,
-              userId: ctx.userId,
-              materialListId: input.materialListId,
-              clientMutationId: mutation.clientMutationId,
-              mutationType: mutation.type,
-              serverItemId,
-              clientItemId,
-              payload: mutation,
-            });
-
-            if (materialChanged) await enqueueMaterialNotification(tx, {
-              organizationId: ctx.user.organizationId,
-              materialListId: input.materialListId,
-              senderId: ctx.userId,
-              action: mutation.type === "addItem" ? "added" : "edited",
-              eventKey: `legacy:${mutation.clientMutationId}`,
-            });
-
-            applied.push({
-              clientMutationId: mutation.clientMutationId,
-              type: mutation.type,
-              localItemId: clientItemId ?? undefined,
-              serverItemId,
-            });
-          } catch (error) {
-            const message =
-              error instanceof Error ? error.message : "Sync mutation failed";
-            const logContext = {
-              materialListId: input.materialListId,
-              clientMutationId: mutation.clientMutationId,
-              type: mutation.type,
-              message,
-            };
-            if (isPermanentMaterialListSyncFailure(message)) {
-              // This is an expected stale/offline mutation outcome. The client
-              // dead-letters it and continues draining the queue, so don't log it
-              // like a runtime exception for the repair watchdog.
-              console.info(
-                "[material-list-sync] permanent mutation skipped",
-                logContext,
-              );
-            } else {
-              console.warn("Material-list sync mutation failed", logContext);
-            }
-            failed.push({
-              clientMutationId: mutation.clientMutationId,
-              message,
-            });
-          }
-        }
-
-        if (needsTotalRecalc) {
-          await recalculateQuoteTotals(tx, materialList.quoteId);
-        }
-        if (applied.length > 0) {
-          await touchMaterialList(tx, input.materialListId);
-        }
-        return { applied, failed };
-      });
-
-      if (syncResult.applied.length > 0) {
-        publishMaterialListEvent(
-          input.materialListId,
-          "updated",
-          ctx.user.organizationId,
-        );
-      }
-
-      return syncResult;
-    }),
-
   pullMaterialListSyncChanges: hasDashboardAccess
     .input(
       z.object({
@@ -1424,7 +665,8 @@ export const materialListRouter = createTRPCRouter({
         }, 0);
 
         const effectiveMarkup = userCan(ctx.user, "financial.view")
-          ? input.markupPercent : Number(quote.markupPercent ?? 0);
+          ? input.markupPercent
+          : Number(quote.markupPercent ?? 0);
         const markup = effectiveMarkup / 100;
         const total = subtotalMaterials * (1 + markup);
 
@@ -1509,7 +751,9 @@ export const materialListRouter = createTRPCRouter({
         return sum + price;
       }, 0);
 
-      const effectiveMarkup = userCan(ctx.user, "financial.view") ? input.markupPercent : Number(quote.markupPercent ?? 0);
+      const effectiveMarkup = userCan(ctx.user, "financial.view")
+        ? input.markupPercent
+        : Number(quote.markupPercent ?? 0);
       const markup = effectiveMarkup / 100;
       const total = subtotalMaterials * (1 + markup);
 
@@ -1666,7 +910,6 @@ ${foremanName}`;
   previewOrders: hasDashboardAccess
     .input(z.object({ materialListId: z.string().uuid() }))
     .query(async ({ ctx, input }) => {
-
       if (!ctx.user.organizationId) {
         throw new TRPCError({
           code: "BAD_REQUEST",
@@ -1732,19 +975,28 @@ ${foremanName}`;
         });
       }
 
-      const quoteItemsList = await loadOrderableQuoteItems(
-        ctx.db,
-        quote.id,
-      );
+      const quoteItemsList = await loadOrderableQuoteItems(ctx.db, quote.id);
       // Every tool on a tool request goes to the organization's tool room,
       // minus anything this list has already requested.
       const toolItems = isToolRequest
-        ? await withoutAlreadyRequestedTools(ctx.db, materialList.id, quoteItemsList)
+        ? await withoutAlreadyRequestedTools(
+            ctx.db,
+            materialList.id,
+            quoteItemsList,
+          )
         : [];
       const orderableItemsBySupplier = isToolRequest
         ? new Map(
             toolItems.length
-              ? [[await ensureToolRoomSupplier(ctx.db, ctx.user.organizationId), toolItems]]
+              ? [
+                  [
+                    await ensureToolRoomSupplier(
+                      ctx.db,
+                      ctx.user.organizationId,
+                    ),
+                    toolItems,
+                  ],
+                ]
               : [],
           )
         : groupOrderableItemsBySupplier(quoteItemsList);
@@ -1834,13 +1086,10 @@ ${foremanName}`;
       const possible = possibleSupplierIds.map((supplierId) => {
         const supplier = possibleSuppliersById.get(supplierId) ?? null;
         const items = orderableItemsBySupplier.get(supplierId) ?? [];
-        const supplierContacts = normalizeSupplierContacts(
-          supplier?.contacts,
-          {
-            contactName: supplier?.contactName ?? supplier?.name ?? null,
-            contactEmail: supplier?.contactEmail ?? null,
-          },
-        );
+        const supplierContacts = normalizeSupplierContacts(supplier?.contacts, {
+          contactName: supplier?.contactName ?? supplier?.name ?? null,
+          contactEmail: supplier?.contactEmail ?? null,
+        });
         const recipients = getSupplierEmailRecipients(supplierContacts);
         const supplierContactName =
           formatSupplierGreetingName(supplierContacts) ||
@@ -1968,7 +1217,6 @@ ${foremanName}`;
       }),
     )
     .mutation(async ({ ctx, input }) => {
-
       if (!ctx.user.organizationId) {
         throw new TRPCError({
           code: "BAD_REQUEST",
@@ -2028,8 +1276,9 @@ ${foremanName}`;
             input.materialListId,
             quoteItemsList,
           )
-        : (groupOrderableItemsBySupplier(quoteItemsList).get(input.supplierId) ??
-          []);
+        : (groupOrderableItemsBySupplier(quoteItemsList).get(
+            input.supplierId,
+          ) ?? []);
 
       if (items.length === 0) {
         throw new TRPCError({
@@ -2699,114 +1948,125 @@ ${foremanName}`;
   listOrders: hasDashboardAccess
     .input(z.object({ summary: z.boolean() }).optional())
     .query(async ({ ctx, input }) => {
-    if (!ctx.user.organizationId) {
-      throw new TRPCError({
-        code: "BAD_REQUEST",
-        message: "User must belong to an organization",
-      });
-    }
+      if (!ctx.user.organizationId) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "User must belong to an organization",
+        });
+      }
 
-    // Orders and their items load together; the item query joins on the same
-    // organization/status filter instead of sending every order id back.
-    const sentOrderFilter = and(
-      eq(orders.organizationId, ctx.user.organizationId),
-      eq(orders.status, "sent"),
-      // Tool requests and returns live in Asset Management.
-      eq(orders.kind, "materials"),
-    );
-    const [ordersList, itemRows] = await Promise.all([
-      ctx.db
-        .select({
-          id: orders.id,
-          orderNumber: orders.orderNumber,
-          status: orders.status,
-          notes: orders.notes,
-          createdAt: orders.createdAt,
-          sentAt: orders.sentAt,
-          sentTo: orders.sentTo,
-          jobId: orders.jobId,
-          jobName: jobs.name,
-          materialListId: materialLists.id,
-          materialListName: materialLists.name,
-          supplierId: orders.supplierId,
-          supplierName: suppliers.name,
-          supplierContactEmail: suppliers.contactEmail,
-          supplierContacts: suppliers.contacts,
-        })
-        .from(orders)
-        .leftJoin(jobs, eq(orders.jobId, jobs.id))
-        .leftJoin(materialLists, eq(orders.materialListId, materialLists.id))
-        .leftJoin(suppliers, eq(orders.supplierId, suppliers.id))
-        .where(sentOrderFilter)
-        .orderBy(desc(orders.createdAt)),
-      ctx.db
-        .select({
-          orderId: orderItems.orderId,
-          roomId: orderItems.roomId,
-          roomName: jobRooms.name,
-          quantity: orderItems.quantity,
-          descriptionSnapshot: orderItems.descriptionSnapshot,
-          supplierSkuSnapshot: orderItems.supplierSkuSnapshot,
-          partDefinitionDisplayName: partDefinitions.displayName,
-        })
-        .from(orderItems)
-        .leftJoin(jobRooms, eq(orderItems.roomId, jobRooms.id))
-        .innerJoin(orders, eq(orderItems.orderId, orders.id))
-        .leftJoin(
-          partDefinitions,
-          eq(orderItems.partDefinitionId, partDefinitions.id),
-        )
-        .where(sentOrderFilter),
-    ]);
+      // Orders and their items load together; the item query joins on the same
+      // organization/status filter instead of sending every order id back.
+      const sentOrderFilter = and(
+        eq(orders.organizationId, ctx.user.organizationId),
+        eq(orders.status, "sent"),
+        // Tool requests and returns live in Asset Management.
+        eq(orders.kind, "materials"),
+      );
+      const [ordersList, itemRows] = await Promise.all([
+        ctx.db
+          .select({
+            id: orders.id,
+            orderNumber: orders.orderNumber,
+            status: orders.status,
+            notes: orders.notes,
+            createdAt: orders.createdAt,
+            sentAt: orders.sentAt,
+            sentTo: orders.sentTo,
+            jobId: orders.jobId,
+            jobName: jobs.name,
+            materialListId: materialLists.id,
+            materialListName: materialLists.name,
+            supplierId: orders.supplierId,
+            supplierName: suppliers.name,
+            supplierContactEmail: suppliers.contactEmail,
+            supplierContacts: suppliers.contacts,
+          })
+          .from(orders)
+          .leftJoin(jobs, eq(orders.jobId, jobs.id))
+          .leftJoin(materialLists, eq(orders.materialListId, materialLists.id))
+          .leftJoin(suppliers, eq(orders.supplierId, suppliers.id))
+          .where(sentOrderFilter)
+          .orderBy(desc(orders.createdAt)),
+        ctx.db
+          .select({
+            orderId: orderItems.orderId,
+            roomId: orderItems.roomId,
+            roomName: jobRooms.name,
+            quantity: orderItems.quantity,
+            descriptionSnapshot: orderItems.descriptionSnapshot,
+            supplierSkuSnapshot: orderItems.supplierSkuSnapshot,
+            partDefinitionDisplayName: partDefinitions.displayName,
+          })
+          .from(orderItems)
+          .leftJoin(jobRooms, eq(orderItems.roomId, jobRooms.id))
+          .innerJoin(orders, eq(orderItems.orderId, orders.id))
+          .leftJoin(
+            partDefinitions,
+            eq(orderItems.partDefinitionId, partDefinitions.id),
+          )
+          .where(sentOrderFilter),
+      ]);
 
-    const itemsByOrderId = new Map<string, typeof itemRows>();
-    for (const item of itemRows) {
-      const bucket = itemsByOrderId.get(item.orderId) ?? [];
-      bucket.push(item);
-      itemsByOrderId.set(item.orderId, bucket);
-    }
+      const itemsByOrderId = new Map<string, typeof itemRows>();
+      for (const item of itemRows) {
+        const bucket = itemsByOrderId.get(item.orderId) ?? [];
+        bucket.push(item);
+        itemsByOrderId.set(item.orderId, bucket);
+      }
 
-    return ordersList.map((order) => ({
-      id: order.id,
-      orderNumber: order.orderNumber,
-      status: order.status,
-      notes: order.notes,
-      createdAt: order.createdAt,
-      sentAt: order.sentAt,
-      sentTo: order.sentTo,
-      job: {
-        id: order.jobId,
-        name: order.jobName ?? "",
-      },
-      supplier: order.supplierId
-        ? {
-            id: order.supplierId,
-            name: order.supplierName ?? "",
-            contactEmail: order.supplierContactEmail,
-            contacts: order.supplierContacts,
-          }
-        : null,
-      materialList: order.materialListId
-        ? {
-            id: order.materialListId,
-            name: order.materialListName ?? "",
-          }
-        : null,
-      // Current clients search this compact text and load email details on demand.
-      // Preserve item arrays for cached/older clients that omit the summary flag.
-      searchableItems: input?.summary ? (itemsByOrderId.get(order.id) ?? []).flatMap(item => [
-        item.roomName,
-        item.quantity,
-        item.descriptionSnapshot?.trim() || item.partDefinitionDisplayName?.trim(),
-        item.supplierSkuSnapshot,
-      ]).filter(Boolean).join(" ") : undefined,
-      items: input?.summary ? [] : (itemsByOrderId.get(order.id) ?? []).map((item) => ({
-        roomId: item.roomId,
-        roomName: item.roomName,
-        quantity: item.quantity,
-        description: item.descriptionSnapshot?.trim() || item.partDefinitionDisplayName?.trim() || null,
-        supplierSku: item.supplierSkuSnapshot,
-      })),
-    }));
-  }),
+      return ordersList.map((order) => ({
+        id: order.id,
+        orderNumber: order.orderNumber,
+        status: order.status,
+        notes: order.notes,
+        createdAt: order.createdAt,
+        sentAt: order.sentAt,
+        sentTo: order.sentTo,
+        job: {
+          id: order.jobId,
+          name: order.jobName ?? "",
+        },
+        supplier: order.supplierId
+          ? {
+              id: order.supplierId,
+              name: order.supplierName ?? "",
+              contactEmail: order.supplierContactEmail,
+              contacts: order.supplierContacts,
+            }
+          : null,
+        materialList: order.materialListId
+          ? {
+              id: order.materialListId,
+              name: order.materialListName ?? "",
+            }
+          : null,
+        // Current clients search this compact text and load email details on demand.
+        // Preserve item arrays for cached/older clients that omit the summary flag.
+        searchableItems: input?.summary
+          ? (itemsByOrderId.get(order.id) ?? [])
+              .flatMap((item) => [
+                item.roomName,
+                item.quantity,
+                item.descriptionSnapshot?.trim() ||
+                  item.partDefinitionDisplayName?.trim(),
+                item.supplierSkuSnapshot,
+              ])
+              .filter(Boolean)
+              .join(" ")
+          : undefined,
+        items: input?.summary
+          ? []
+          : (itemsByOrderId.get(order.id) ?? []).map((item) => ({
+              roomId: item.roomId,
+              roomName: item.roomName,
+              quantity: item.quantity,
+              description:
+                item.descriptionSnapshot?.trim() ||
+                item.partDefinitionDisplayName?.trim() ||
+                null,
+              supplierSku: item.supplierSkuSnapshot,
+            })),
+      }));
+    }),
 });

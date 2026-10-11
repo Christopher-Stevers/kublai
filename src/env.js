@@ -9,9 +9,6 @@ export const env = createEnv({
   client: {
     NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: z.string(),
     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: z.string(),
-    NEXT_PUBLIC_ENABLE_OFFLINE_TEST_TOGGLE: z
-      .enum(["true", "false"])
-      .optional(),
     NEXT_PUBLIC_DEXIE_CLOUD_DATABASE_URL: z.string().url().optional(),
   },
   server: {
@@ -37,9 +34,6 @@ export const env = createEnv({
     SMTP_USER: z.string().optional(),
     SMTP_PASSWORD: z.string().optional(),
     SMTP_FROM: z.string().optional(),
-    CAP_PROD_URL: z.string().url().optional(),
-    CAP_DEV_URL: z.string().url().optional(),
-    CAP_MODE: z.enum(["dev", "prod"]).optional(),
     FOREMENHQ_AGENT_AUTH_BYPASS: z.enum(["true", "false"]).optional(),
     FOREMENHQ_AGENT_AUTH_SECRET: z.string().min(32).optional(),
     NODE_ENV: z
@@ -68,8 +62,6 @@ export const env = createEnv({
       process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,
     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:
       process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
-    NEXT_PUBLIC_ENABLE_OFFLINE_TEST_TOGGLE:
-      process.env.NEXT_PUBLIC_ENABLE_OFFLINE_TEST_TOGGLE,
     NEXT_PUBLIC_DEXIE_CLOUD_DATABASE_URL:
       process.env.NEXT_PUBLIC_DEXIE_CLOUD_DATABASE_URL,
     DATABASE_URL: process.env.DATABASE_URL,
@@ -88,9 +80,6 @@ export const env = createEnv({
     SMTP_USER: process.env.SMTP_USER,
     SMTP_PASSWORD: process.env.SMTP_PASSWORD,
     SMTP_FROM: process.env.SMTP_FROM,
-    CAP_PROD_URL: process.env.CAP_PROD_URL,
-    CAP_DEV_URL: process.env.CAP_DEV_URL,
-    CAP_MODE: process.env.CAP_MODE,
     FOREMENHQ_AGENT_AUTH_BYPASS: process.env.FOREMENHQ_AGENT_AUTH_BYPASS,
     FOREMENHQ_AGENT_AUTH_SECRET: process.env.FOREMENHQ_AGENT_AUTH_SECRET,
     NODE_ENV: process.env.NODE_ENV,

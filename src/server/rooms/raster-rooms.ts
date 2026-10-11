@@ -23,8 +23,7 @@ export function inkMask(
 ): Mask {
   const mask = createMask(width, height);
   for (let i = 0, p = 0; i < mask.data.length; i += 1, p += 4) {
-    const luma =
-      0.299 * rgba[p]! + 0.587 * rgba[p + 1]! + 0.114 * rgba[p + 2]!;
+    const luma = 0.299 * rgba[p]! + 0.587 * rgba[p + 1]! + 0.114 * rgba[p + 2]!;
     mask.data[i] = luma < threshold ? 1 : 0;
   }
   return mask;
@@ -34,7 +33,12 @@ export function inkMask(
  * Min (erode) or max (dilate) over a (2r+1)-wide window along one axis,
  * using van Herk/Gil-Werman blocks: O(1) per pixel regardless of r.
  */
-function filterAxis(src: Mask, r: number, horizontal: boolean, dilate: boolean) {
+function filterAxis(
+  src: Mask,
+  r: number,
+  horizontal: boolean,
+  dilate: boolean,
+) {
   const { width, height } = src;
   const out = createMask(width, height);
   if (r <= 0) {
@@ -102,15 +106,26 @@ export function axisWallBands(
   length: number,
 ) {
   const across = !horizontal;
-  let mask = filterAxis(filterAxis(ink, join, across, true), join, across, false);
+  let mask = filterAxis(
+    filterAxis(ink, join, across, true),
+    join,
+    across,
+    false,
+  );
   mask = filterAxis(filterAxis(mask, thin, across, false), thin, across, true);
-  return filterAxis(filterAxis(mask, length, horizontal, false), length, horizontal, true);
+  return filterAxis(
+    filterAxis(mask, length, horizontal, false),
+    length,
+    horizontal,
+    true,
+  );
 }
 
 /** Pixel-wise OR of two masks. */
 export function union(a: Mask, b: Mask): Mask {
   const out = createMask(a.width, a.height);
-  for (let i = 0; i < out.data.length; i += 1) out.data[i] = a.data[i]! | b.data[i]!;
+  for (let i = 0; i < out.data.length; i += 1)
+    out.data[i] = a.data[i]! | b.data[i]!;
   return out;
 }
 
@@ -211,7 +226,8 @@ export function freeComponents(walls: Mask) {
       size += 1;
       const x = p % width;
       const y = (p - x) / width;
-      if (x === 0 || y === 0 || x === width - 1 || y === height - 1) border = true;
+      if (x === 0 || y === 0 || x === width - 1 || y === height - 1)
+        border = true;
       const push = (q: number) => {
         if (!data[q] && !labels[q]) {
           labels[q] = next;
@@ -320,7 +336,11 @@ export function growThroughDoorways(
 }
 
 /** Centroid (px) of every component. */
-export function componentCentroids(labels: Int32Array, width: number, count: number) {
+export function componentCentroids(
+  labels: Int32Array,
+  width: number,
+  count: number,
+) {
   const sx = new Float64Array(count + 1);
   const sy = new Float64Array(count + 1);
   const n = new Float64Array(count + 1);
@@ -396,7 +416,8 @@ export function growByDistance(
   }
   for (const [component, room] of seedOwners) {
     for (const next of neighbours.get(component) ?? []) {
-      const a = centroids[component]!, b = centroids[next]!;
+      const a = centroids[component]!,
+        b = centroids[next]!;
       push([Math.hypot(a.x - b.x, a.y - b.y), next, room]);
     }
   }
@@ -409,7 +430,8 @@ export function growByDistance(
     roomSize.set(room, size);
     for (const next of neighbours.get(component) ?? []) {
       if (owner[next] !== 0) continue;
-      const a = centroids[component]!, b = centroids[next]!;
+      const a = centroids[component]!,
+        b = centroids[next]!;
       push([distance + Math.hypot(a.x - b.x, a.y - b.y), next, room]);
     }
   }
@@ -437,7 +459,8 @@ export function circulationComponents(
   for (let i = 0; i < labels.length; i += 1) {
     const c = labels[i]!;
     if (!c) continue;
-    const x = i % width, y = (i - x) / width;
+    const x = i % width,
+      y = (i - x) / width;
     if (x < minX[c]!) minX[c] = x;
     if (x > maxX[c]!) maxX[c] = x;
     if (y < minY[c]!) minY[c] = y;
@@ -448,7 +471,10 @@ export function circulationComponents(
   for (const [key, length] of contacts) {
     if (length < minContact) continue;
     const [a, b] = key.split(",").map(Number) as [number, number];
-    for (const [c, other] of [[a, b], [b, a]] as const) {
+    for (const [c, other] of [
+      [a, b],
+      [b, a],
+    ] as const) {
       const room = seedOwners.get(other);
       if (room === undefined) continue;
       const set = cores.get(c) ?? new Set<number>();
@@ -499,7 +525,6 @@ export function typicalDoorWidth(
   return best ? (best * binSize) / Math.SQRT2 : null;
 }
 
-
 /** Sets a (2r+1)-wide square brush along the segment. */
 export function stampLine(
   mask: Mask,
@@ -515,7 +540,8 @@ export function stampLine(
     const y = Math.round(y0 + ((y1 - y0) * s) / steps);
     for (let dy = -r; dy <= r; dy += 1) {
       for (let dx = -r; dx <= r; dx += 1) {
-        const xx = x + dx, yy = y + dy;
+        const xx = x + dx,
+          yy = y + dy;
         if (xx >= 0 && yy >= 0 && xx < mask.width && yy < mask.height) {
           mask.data[yy * mask.width + xx] = 1;
         }
@@ -528,7 +554,8 @@ function inkNear(mask: Mask, x: number, y: number, r: number) {
   let hits = 0;
   for (let dy = -r; dy <= r; dy += 1) {
     for (let dx = -r; dx <= r; dx += 1) {
-      const xx = Math.round(x + dx), yy = Math.round(y + dy);
+      const xx = Math.round(x + dx),
+        yy = Math.round(y + dy);
       if (xx >= 0 && yy >= 0 && xx < mask.width && yy < mask.height) {
         hits += mask.data[yy * mask.width + xx]!;
       }
@@ -556,13 +583,17 @@ export function doorSealsFromArcs(
   const { width, height } = walls;
   const seals: DoorSeal[] = [];
   for (const arc of arcs) {
-    const ax = arc.x1 * width, ay = arc.y1 * height;
-    const bx = arc.x2 * width, by = arc.y2 * height;
+    const ax = arc.x1 * width,
+      ay = arc.y1 * height;
+    const bx = arc.x2 * width,
+      by = arc.y2 * height;
     const chord = Math.hypot(bx - ax, by - ay);
     const leaf = chord / Math.SQRT2;
     if (leaf < doorPx * 0.55 || leaf > doorPx * 2.2) continue;
-    const mx = (ax + bx) / 2, my = (ay + by) / 2;
-    const nx = -(by - ay) / chord, ny = (bx - ax) / chord;
+    const mx = (ax + bx) / 2,
+      my = (ay + by) / 2;
+    const nx = -(by - ay) / chord,
+      ny = (bx - ax) / chord;
     const hinges = [
       { x: mx + (nx * chord) / 2, y: my + (ny * chord) / 2 },
       { x: mx - (nx * chord) / 2, y: my - (ny * chord) / 2 },
@@ -598,133 +629,3 @@ export type RasterCells = {
   /** Openings sealed from door-swing arcs (px). */
   doorSeals: DoorSeal[];
 };
-
-/**
- * Splits a rendered sheet (RGBA, text removed) into wall-bounded cells with
- * door-sized openings sealed and the doorways between cells recorded.
- */
-export function detectRasterCells(
-  rgba: Uint8ClampedArray | Uint8Array,
-  width: number,
-  height: number,
-  options: {
-    doorFraction?: number;
-    join?: number;
-    thin?: number;
-    ink?: number;
-    /** Door-swing chords (normalized) from the PDF vector layer. */
-    arcs?: Array<{ x1: number; y1: number; x2: number; y2: number }>;
-  } = {},
-): RasterCells {
-  const ink = inkMask(rgba, width, height, options.ink ?? 245);
-  const thin = options.thin ?? 3;
-  const join = options.join ?? 3;
-  const bandLength = Math.round(width / 600);
-  const walls = union(
-    axisWallBands(ink, true, join, thin, bandLength),
-    axisWallBands(ink, false, join, thin, bandLength),
-  );
-  const doorPx = (options.doorFraction ?? 0.0095) * Math.max(width, height);
-  const thickness = Math.max(3, Math.round(doorPx / 5));
-  const minRun = thickness * 2;
-  // Envelope pass: wide seals close windows; what still reaches the border is outdoors.
-  const wideGap = Math.round(doorPx * 3.5);
-  const envelope = freeComponents(
-    union(
-      sealAxisGaps(walls, wideGap, minRun, true),
-      sealAxisGaps(walls, wideGap, minRun, false),
-    ),
-  );
-  const closed = createMask(width, height);
-  closed.data.set(walls.data);
-  for (let i = 0; i < closed.data.length; i += 1) {
-    const c = envelope.labels[i]!;
-    if (c && envelope.touchesBorder[c]) closed.data[i] = 1;
-  }
-  const maxGap = Math.round(doorPx * 1.15);
-  const sealedH = sealAxisGaps(closed, maxGap, minRun, true);
-  const sealedV = sealAxisGaps(closed, maxGap, minRun, false);
-  // Doors drawn with a swing are sealed across their exact opening, which
-  // also catches doors that are not in line with a straight wall run.
-  const doorSeals = options.arcs
-    ? doorSealsFromArcs(options.arcs, closed, doorPx, Math.max(2, Math.round(thickness / 2)))
-    : [];
-  const brush = Math.max(1, Math.round(thickness / 3));
-  for (const seal of doorSeals) {
-    const horizontal = Math.abs(seal.x1 - seal.x0) >= Math.abs(seal.y1 - seal.y0);
-    stampLine(horizontal ? sealedH : sealedV, seal.x0, seal.y0, seal.x1, seal.y1, brush);
-  }
-  const sealed = union(sealedH, sealedV);
-  const comps = freeComponents(sealed);
-  const contacts = new Map<string, number>();
-  for (const [mask, horizontal] of [
-    [sealedH, true],
-    [sealedV, false],
-  ] as const) {
-    for (const [key, value] of doorwayContacts(
-      comps.labels,
-      closed,
-      mask,
-      horizontal,
-      thickness * 3,
-    )) {
-      contacts.set(key, (contacts.get(key) ?? 0) + value);
-    }
-  }
-  return {
-    width,
-    height,
-    walls,
-    sealed,
-    labels: comps.labels,
-    sizes: comps.sizes,
-    touchesBorder: comps.touchesBorder,
-    contacts,
-    doorPx,
-    doorSeals,
-  };
-}
-
-/**
- * Cells facing each other across a wall: scanning rows and columns, a free
- * run of cell A, then a wall run of at most `maxThickness`, then a free run
- * of cell B records one crossing. Returns per pair (key "a,b", a < b) the
- * number of crossings (≈ shared wall length in px) and the median thickness.
- */
-export function wallNeighbours(labels: Int32Array, walls: Mask, maxThickness: number) {
-  const { width, height } = walls;
-  const samples = new Map<string, number[]>();
-  const scan = (horizontal: boolean) => {
-    const lines = horizontal ? height : width;
-    const length = horizontal ? width : height;
-    for (let line = 0; line < lines; line += 1) {
-      const at = (i: number) => (horizontal ? line * width + i : i * width + line);
-      let lastCell = 0;
-      let wallRun = 0;
-      for (let i = 0; i < length; i += 1) {
-        const p = at(i);
-        if (walls.data[p]) {
-          wallRun += 1;
-          continue;
-        }
-        const cell = labels[p]!;
-        if (cell && lastCell && cell !== lastCell && wallRun > 0 && wallRun <= maxThickness) {
-          const key = lastCell < cell ? `${lastCell},${cell}` : `${cell},${lastCell}`;
-          const list = samples.get(key) ?? [];
-          if (list.length < 4000) list.push(wallRun);
-          samples.set(key, list);
-        }
-        if (cell) lastCell = cell;
-        wallRun = 0;
-      }
-    }
-  };
-  scan(true);
-  scan(false);
-  const out = new Map<string, { crossings: number; thickness: number }>();
-  for (const [key, list] of samples) {
-    list.sort((a, b) => a - b);
-    out.set(key, { crossings: list.length, thickness: list[Math.floor(list.length / 2)]! });
-  }
-  return out;
-}

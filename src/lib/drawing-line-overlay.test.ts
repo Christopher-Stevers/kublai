@@ -1,18 +1,23 @@
 import { describe, expect, it } from "vitest";
+import type { OverlayInkStyle } from "./drawing-line-overlay";
 import {
   boundedOverlayPatch,
-  compositeDrawingInk,
   drawingInk,
   MAX_OVERLAY_PIXELS,
   overlayBounds,
   overlaySourceRect,
   planOverlayPatch,
 } from "./drawing-line-overlay";
+import {
+  addStackInk,
+  compositeInkStack,
+  createInkStack,
+} from "./drawing-overlay-stack";
 
 describe("drawing line overlays", () => {
   it("uses white shared lines on inverted paper while retaining each drawing's chosen colour and opacity", () => {
     const pixels = new Uint8ClampedArray(12);
-    compositeDrawingInk(
+    renderTwoLayers(
       pixels,
       new Uint8Array([255, 255, 0]),
       new Uint8Array([255, 0, 255]),
@@ -40,7 +45,7 @@ describe("drawing line overlays", () => {
   });
   it("renders shared lines black with arbitrary hues and each distinct line in its chosen colour", () => {
     const pixels = new Uint8ClampedArray(16);
-    compositeDrawingInk(
+    renderTwoLayers(
       pixels,
       new Uint8Array([255, 255, 0, 0]),
       new Uint8Array([255, 0, 255, 0]),
@@ -55,7 +60,7 @@ describe("drawing line overlays", () => {
   });
   it("keeps antialiased and differently weighted common strokes neutral instead of purple", () => {
     const pixels = new Uint8ClampedArray(20);
-    compositeDrawingInk(
+    renderTwoLayers(
       pixels,
       new Uint8Array([128, 255, 180, 255, 0]),
       new Uint8Array([128, 180, 255, 0, 255]),
@@ -89,7 +94,7 @@ describe("drawing line overlays", () => {
   });
   it("keeps a soft neutral fringe on shared antialiased edges", () => {
     const pixels = new Uint8ClampedArray(4);
-    compositeDrawingInk(pixels, new Uint8Array([16]), new Uint8Array([16]), [
+    renderTwoLayers(pixels, new Uint8Array([16]), new Uint8Array([16]), [
       { color: "#ff0000", opacity: 1 },
       { color: "#0000ff", opacity: 1 },
     ]);
@@ -97,7 +102,7 @@ describe("drawing line overlays", () => {
   });
   it("does not classify a faint edge against a strong changed line as fully shared", () => {
     const pixels = new Uint8ClampedArray(4);
-    compositeDrawingInk(pixels, new Uint8Array([255]), new Uint8Array([40]), [
+    renderTwoLayers(pixels, new Uint8Array([255]), new Uint8Array([40]), [
       { color: "#ff0000", opacity: 1 },
       { color: "#0000ff", opacity: 1 },
     ]);
@@ -110,14 +115,14 @@ describe("drawing line overlays", () => {
     const pixels = new Uint8ClampedArray(12);
     const first = new Uint8Array([255, 255, 0]),
       second = new Uint8Array([255, 0, 255]);
-    compositeDrawingInk(pixels, first, second, [
+    renderTwoLayers(pixels, first, second, [
       { color: "#9333ea", opacity: 0.3 },
       { color: "#16a34a", opacity: 0.6 },
     ]);
     expect([...pixels]).toEqual([
       0, 0, 0, 153, 147, 51, 234, 76, 22, 163, 74, 153,
     ]);
-    compositeDrawingInk(pixels, first, second, [
+    renderTwoLayers(pixels, first, second, [
       { color: "#9333ea", opacity: 0 },
       { color: "#16a34a", opacity: 0.6 },
     ]);
@@ -127,7 +132,7 @@ describe("drawing line overlays", () => {
   });
   it("composites chunks without overwriting other rows", () => {
     const pixels = new Uint8ClampedArray(12).fill(19);
-    compositeDrawingInk(
+    renderTwoLayers(
       pixels,
       new Uint8Array([255, 255, 255]),
       new Uint8Array([255, 0, 255]),
@@ -209,3 +214,18 @@ describe("drawing line overlays", () => {
     );
   });
 });
+
+function renderTwoLayers(
+  output: Uint8ClampedArray,
+  first: Uint8Array,
+  second: Uint8Array,
+  styles: [OverlayInkStyle, OverlayInkStyle],
+  start = 0,
+  end = first.length,
+  common = "#000000",
+) {
+  const stack = createInkStack(first.length);
+  addStackInk(stack, first, 0, styles[0].opacity);
+  addStackInk(stack, second, 1, styles[1].opacity);
+  compositeInkStack(output, stack, styles, start, end, common);
+}

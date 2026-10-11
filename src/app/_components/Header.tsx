@@ -3,11 +3,38 @@
 import { AppDeviceReporter } from "~/components/app/AppDeviceReporter";
 import { InstallAppButton } from "~/components/app/InstallAppButton";
 
-import { useEffect, useState } from "react";
+import { useClerk, useUser } from "@clerk/nextjs";
+import {
+  ArrowLeftIcon,
+  BookOpenIcon,
+  BriefcaseIcon,
+  Building2Icon,
+  CameraIcon,
+  ChevronDownIcon,
+  ClockIcon,
+  FileTextIcon,
+  MenuIcon,
+  MessageSquareIcon,
+  ReceiptIcon,
+  SettingsIcon,
+  ShoppingCartIcon,
+  TruckIcon,
+  UserIcon,
+  WrenchIcon,
+  XIcon,
+  type LucideIcon,
+} from "lucide-react";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
-import { useUser, useClerk } from "@clerk/nextjs";
-import { api } from "~/trpc/react";
+import { useEffect, useState } from "react";
+import { useSnapshot } from "~/components/chat/SnapshotProvider";
+import { NotificationCenter } from "~/components/notifications/NotificationCenter";
+import {
+  EndSimulationButton,
+  useEmployeeSimulation,
+} from "~/components/simulation/SimulationProvider";
+import { useTutorialSandbox } from "~/components/tutorial/tutorial-sandbox-context";
+import { Button } from "~/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,30 +42,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu";
-import { Button } from "~/components/ui/button";
-import {
-  ArrowLeftIcon,
-  CameraIcon,
-  MessageSquareIcon,
-  BookOpenIcon,
-  BriefcaseIcon,
-  Building2Icon,
-  ChevronDownIcon,
-  FileTextIcon,
-  MenuIcon,
-  ReceiptIcon,
-  ShieldIcon,
-  ShoppingCartIcon,
-  TruckIcon,
-  WrenchIcon,
-  ClockIcon,
-  UserIcon,
-  SettingsIcon,
-  XIcon,
-  type LucideIcon,
-} from "lucide-react";
-import { useSnapshot } from "~/components/chat/SnapshotProvider";
-import { cn } from "~/lib/utils";
 import { APP_NAME } from "~/constants/app";
 import { useOnlineStatus } from "~/hooks/use-online-status";
 import {
@@ -47,12 +50,8 @@ import {
   runHeaderBackOverride,
   type HeaderBackStateDetail,
 } from "~/lib/header-back-events";
-import { useTutorialSandbox } from "~/components/tutorial/tutorial-sandbox-context";
-import {
-  EndSimulationButton,
-  useEmployeeSimulation,
-} from "~/components/simulation/SimulationProvider";
-import { NotificationCenter } from "~/components/notifications/NotificationCenter";
+import { cn } from "~/lib/utils";
+import { api } from "~/trpc/react";
 
 const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
 const hasUsableClerkKey =
@@ -68,7 +67,6 @@ function HeaderFrame({
   signOut,
   showAccount,
   tabAccess,
-  showAdmin,
   sessionKey,
 }: {
   pathname: string | null;
@@ -88,7 +86,6 @@ function HeaderFrame({
     timesheets: boolean;
     organization: boolean;
   };
-  showAdmin: boolean;
   sessionKey?: string;
 }) {
   const simulation = useEmployeeSimulation();
@@ -159,9 +156,6 @@ function HeaderFrame({
             icon: Building2Icon,
           },
         ]
-      : []),
-    ...(showAdmin
-      ? [{ href: "/admin", label: "Admin", icon: ShieldIcon }]
       : []),
   ];
   const isActive = (href: string) => {
@@ -542,7 +536,6 @@ function HeaderWithClerk() {
           organization: false,
         }
       }
-      showAdmin={userRole?.role === "admin"}
     />
   );
 }
@@ -569,7 +562,6 @@ function HeaderWithoutClerk() {
         timesheets: true,
         organization: false,
       }}
-      showAdmin={false}
     />
   );
 }
@@ -600,7 +592,6 @@ function HeaderForPractice() {
         timesheets: false,
         organization: false,
       }}
-      showAdmin={false}
     />
   );
 }

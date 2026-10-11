@@ -473,10 +473,6 @@ export function subscribeToMaterialListReplicacheSyncing(
   };
 }
 
-export function isMaterialListReplicacheSyncing() {
-  return materialListReplicacheIsSyncing;
-}
-
 function mergeSyncMode(
   current: "none" | "pull" | "push-pull",
   next: "pull" | "push-pull",

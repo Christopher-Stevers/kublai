@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { buildWallLinework } from "~/server/rooms/wall-lines";
 
 import { pointInPolygon, type RoomPolygonShape } from "~/lib/room-shape";
 import {
@@ -7,7 +8,7 @@ import {
   type WallSegment,
 } from "~/server/rooms/pdf-walls";
 import {
-  polygonizeWalls,
+  polygonizeLines,
   subtractRoomShapes,
   unionRoomFaces,
 } from "~/server/rooms/polygonize-walls";
@@ -27,7 +28,7 @@ function repeatWalls(walls: WallSegment[], count = 4) {
   return Array.from({ length: count }, () => walls).flat();
 }
 
-describe("polygonizeWalls", () => {
+describe("live wall polygonization", () => {
   it("nodes linework and deliberately bridges a doorway-sized gap", () => {
     const walls: WallSegment[] = [
       wall(0.1, 0.1, 0.4, 0.1),
@@ -43,7 +44,7 @@ describe("polygonizeWalls", () => {
       ),
     ];
 
-    const faces = polygonizeWalls(walls);
+    const faces = polygonizeLinework(walls);
     expect(faces.some((face) => pointInPolygon({ x: 0.2, y: 0.2 }, face))).toBe(
       true,
     );
@@ -81,7 +82,7 @@ describe("polygonizeWalls", () => {
       wall(0.4, 0.4, 0.1, 0.4),
       wall(0.1, 0.4, 0.1, 0.1),
     ]);
-    const faces = polygonizeWalls([
+    const faces = polygonizeLinework([
       ...outline,
       wall(0.25, 0.08, 0.25, 0.42, 1, true),
     ]);
@@ -108,7 +109,7 @@ describe("polygonizeWalls", () => {
       ];
     }).flat();
 
-    const faces = polygonizeWalls([...outline, ...grid]);
+    const faces = polygonizeLinework([...outline, ...grid]);
 
     expect(faces).toHaveLength(1);
     expect(pointInPolygon({ x: 0.35, y: 0.2 }, faces[0]!)).toBe(true);
@@ -134,7 +135,7 @@ describe("polygonizeWalls", () => {
       wall(d.x, d.y, a.x, a.y),
     ]);
 
-    const faces = polygonizeWalls(outline);
+    const faces = polygonizeLinework(outline);
     expect(faces.some((face) => pointInPolygon({ x: 0.5, y: 0.5 }, face))).toBe(
       true,
     );
@@ -206,3 +207,7 @@ describe("extractPdfRoomSeeds", () => {
     expect(extractPdfRoomSeeds(labels)).toHaveLength(60);
   });
 });
+
+function polygonizeLinework(walls: WallSegment[]) {
+  return polygonizeLines(buildWallLinework(walls, { mode: "all" }).lines);
+}

@@ -1,11 +1,11 @@
 import { TRPCError } from "@trpc/server";
-import Stripe from "stripe";
 import { eq } from "drizzle-orm";
+import Stripe from "stripe";
 
-import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { env } from "~/env";
-import { users } from "~/server/db/schema";
+import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { hasManagingSeat } from "~/server/auth/permissions";
+import { users } from "~/server/db/schema";
 
 function getStripeClient() {
   if (!env.STRIPE_SECRET_KEY) {
@@ -21,73 +21,6 @@ function getStripeClient() {
 }
 
 export const paymentRouter = createTRPCRouter({
-  /**
-   * Create a Stripe Setup Intent for saving payment methods
-   */
-  createSetupIntent: protectedProcedure.query(async ({ ctx }) => {
-    const stripe = getStripeClient();
-    const user = ctx.user;
-
-    if (!user) {
-      throw new TRPCError({
-        code: "UNAUTHORIZED",
-        message: "User not found",
-      });
-    }
-
-    // Ensure Stripe customer exists
-    let stripeCustomerId = user.stripeCustomerId;
-
-    if (!stripeCustomerId) {
-      try {
-        const customer = await stripe.customers.create({
-          metadata: { userId: user.id },
-          email: user.email ?? undefined,
-          name: user.name ?? undefined,
-        });
-
-        stripeCustomerId = customer.id;
-
-        // Update user with Stripe customer ID
-        await ctx.db
-          .update(users)
-          .set({ stripeCustomerId })
-          .where(eq(users.id, user.id));
-      } catch (error) {
-        console.error(error);
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: "Failed to create Stripe customer",
-          cause: error,
-        });
-      }
-    }
-
-    try {
-      // Create Setup Intent for saving payment methods
-      const setupIntent = await stripe.setupIntents.create({
-        customer: stripeCustomerId,
-        payment_method_types: ["card"],
-      });
-
-      if (!setupIntent.client_secret) {
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: "Failed to create setup intent",
-        });
-      }
-
-      return { clientSecret: setupIntent.client_secret };
-    } catch (error) {
-      console.error(error);
-      throw new TRPCError({
-        code: "INTERNAL_SERVER_ERROR",
-        message: "Failed to create setup intent",
-        cause: error,
-      });
-    }
-  }),
-
   /**
    * Create a Stripe Checkout Session for subscription
    */
@@ -208,7 +141,9 @@ export const paymentRouter = createTRPCRouter({
       hasAccess: true,
       hasManagingAccount,
       accountType: hasManagingAccount ? "managing" : "standard",
-      accountTypeLabel: hasManagingAccount ? "Executive Account" : "Standard Account",
+      accountTypeLabel: hasManagingAccount
+        ? "Executive Account"
+        : "Standard Account",
       hasActiveSubscription: hasActiveSubscription ?? false,
       hasOneTimeAccess: hasOneTimeAccess,
       subscriptionStatus: user.subscriptionStatus,

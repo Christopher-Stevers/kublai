@@ -1,7 +1,7 @@
 "use client";
 
-import { useId, useState, type PointerEvent, type ReactNode } from "react";
 import { CheckIcon, ChevronDownIcon, RulerIcon } from "lucide-react";
+import { useId, useState, type PointerEvent, type ReactNode } from "react";
 
 import { Button } from "~/components/ui/button";
 import {
@@ -113,9 +113,7 @@ export function SheetMeasureBar({
   );
   // With the drawing's main bar, its Measure button is the Done button.
   const measuringControls = hideIdle ? null : (
-    <div className="flex shrink-0 items-center gap-2">
-      {toggle}
-    </div>
+    <div className="flex shrink-0 items-center gap-2">{toggle}</div>
   );
   return (
     <section
@@ -289,7 +287,10 @@ function UnitToggle({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent side="top" align="end" className="min-w-28">
-        <DropdownMenuRadioGroup value={unit} onValueChange={(value) => onUnit(value as LengthUnit)}>
+        <DropdownMenuRadioGroup
+          value={unit}
+          onValueChange={(value) => onUnit(value as LengthUnit)}
+        >
           {LENGTH_UNITS.map(({ value, label }) => (
             <DropdownMenuRadioItem key={value} value={value}>
               {label}
@@ -307,7 +308,6 @@ function Tracing({
   unit,
   scaleSet,
   canSetScale,
-  snapping,
   reading,
   scaleLabel,
   readError,
@@ -346,11 +346,24 @@ function Tracing({
 }) {
   return (
     <>
-      <div className={`flex flex-wrap items-center gap-2 ${reading || (total && pointCount > 0) || scaleSet || controls ? "" : "hidden"}`}>
+      <div
+        className={`flex flex-wrap items-center gap-2 ${reading || (total && pointCount > 0) || scaleSet || controls ? "" : "hidden"}`}
+      >
         <div className="min-w-0 flex-1">
           {/* Just the total (or the scale being read): no instructions. */}
-          <p role="status" className={total && !reading ? "text-lg font-semibold tabular-nums" : "text-sm"}>
-            {reading ? "Reading the scale on this drawing." : total && pointCount > 0 ? total : null}
+          <p
+            role="status"
+            className={
+              total && !reading
+                ? "text-lg font-semibold tabular-nums"
+                : "text-sm"
+            }
+          >
+            {reading
+              ? "Reading the scale on this drawing."
+              : total && pointCount > 0
+                ? total
+                : null}
           </p>
         </div>
         {scaleSet && <UnitToggle unit={unit} onUnit={onUnit} />}

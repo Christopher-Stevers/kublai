@@ -82,13 +82,24 @@ development. No protected89/newonce20 files are inputs to this work.
   "version": 1,
   "split": "development",
   "targetPolicy": "physical-spaces",
-  "cases": [{
-    "siteId": "private-project-key",
-    "split": "development",
-    "source": {"pdfSha256": "<64 lowercase hex>", "originalPageOneBased": 18},
-    "reference": {"path": "floor.reference.json", "sha256": "<exact file SHA>"},
-    "prediction": {"path": "floor.prediction.json", "sha256": "<exact file SHA>"}
-  }]
+  "cases": [
+    {
+      "siteId": "private-project-key",
+      "split": "development",
+      "source": {
+        "pdfSha256": "<64 lowercase hex>",
+        "originalPageOneBased": 18
+      },
+      "reference": {
+        "path": "floor.reference.json",
+        "sha256": "<exact file SHA>"
+      },
+      "prediction": {
+        "path": "floor.prediction.json",
+        "sha256": "<exact file SHA>"
+      }
+    }
+  ]
 }
 ```
 
@@ -136,11 +147,20 @@ A saved prediction has matching `version`, `sheetId`, `source`,
 
 ```json
 {
-  "producer": {"name": "candidate-name", "sourceSha256": "<detector source SHA>",
-               "configSha256": "<fixed config SHA>"},
+  "producer": {
+    "name": "candidate-name",
+    "sourceSha256": "<detector source SHA>",
+    "configSha256": "<fixed config SHA>"
+  },
   "status": "completed",
-  "execution": {"elapsedMs": 1234, "peakRssBytes": 123456},
-  "rooms": [{"id": "proposal-1", "name": "Optional name", "shape": {"type": "polygon", "points": []}}]
+  "execution": { "elapsedMs": 1234, "peakRssBytes": 123456 },
+  "rooms": [
+    {
+      "id": "proposal-1",
+      "name": "Optional name",
+      "shape": { "type": "polygon", "points": [] }
+    }
+  ]
 }
 ```
 
@@ -156,7 +176,7 @@ not measurements of this scorer.
 The standard private feedback export is `scripts/rooms/export-feedback.ts`.
 Run it only with the authorized organization ID and a new private destination;
 it reads a repeatable-read snapshot and copies exact source PDFs. Do not run
-`check-review-db.ts` for an availability check; it performs database changes.
+the retired approval-flow database check for an availability check. Room corrections are now recorded automatically; historical approval feedback remains preserved.
 
 The adapter uses `sourceDrawing.pageNumber`, not the floor import slot. It
 checks optional event source pages, source verification and current approved

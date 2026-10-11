@@ -5,7 +5,6 @@ import {
   roomIoU,
   validReviewShape,
 } from "./review-memory";
-import { trainReviewRanker } from "./review-model";
 import { toPolygon, pointInPolygon, movePolygonPoint } from "~/lib/room-shape";
 const shape = toPolygon({ type: "bbox", x: 0.2, y: 0.2, w: 0.2, h: 0.2 });
 it("a rejection suppresses the same outline but not its neighbour", () => {
@@ -53,21 +52,6 @@ it("ring corridors preserve holes through picking, edits and overlap", () => {
   expect(roomIoU(ring, ring)).toBeCloseTo(1);
   expect(movePolygonPoint(ring, 0, { x: 0.19, y: 0.2 }).holes).toEqual([hole]);
 });
-it("feedback ranker requires multiple floors and never turns reviews into automatic approval", () => {
-  const events = Array.from({ length: 12 }, (_, i) => ({
-    roomId: String(i),
-    floorId: "one",
-    decision: "rejected",
-    proposalShape: shape,
-    detection: null,
-  }));
-  expect(trainReviewRanker(events)(shape, null)).toBeNull();
-  events.forEach((e, i) => (e.floorId = String(i % 3)));
-  const rank = trainReviewRanker(events)(shape, null)!;
-  expect(rank.examples).toBe(12);
-  expect(rank.priority).toBeGreaterThan(0.5);
-  expect(rank).not.toHaveProperty("approved");
-});
 it("malformed history cannot suppress rooms or make a review queue fail", () => {
   const broken = { type: "polygon", points: [null, null, null] };
   expect(validReviewShape(broken)).toBe(false);
@@ -77,17 +61,6 @@ it("malformed history cannot suppress rooms or make a review queue fail", () => 
   expect(
     rejectedByReview(shape, [{ decision: "rejected", proposalShape: broken }]),
   ).toBe(false);
-  expect(
-    trainReviewRanker(
-      Array.from({ length: 12 }, (_, i) => ({
-        roomId: String(i),
-        floorId: String(i % 3),
-        decision: "approved",
-        proposalShape: broken,
-        detection: null,
-      })),
-    )(shape, null),
-  ).toBeNull();
 });
 it("changed source bytes cannot inherit a rejection from the same URL", () => {
   const event = {
@@ -210,24 +183,4 @@ it("retains valid concave and reversed rooms and invalidates mutated cached shap
     mutable.points[1]!,
   ];
   expect(validReviewShape(mutable)).toBe(false);
-});
-it("prioritizes invalid boundaries independently of learned feedback counts", () => {
-  const rank = trainReviewRanker([]);
-  expect(rank(shape, { invalidGeometry: true })).toEqual({
-    priority: 1,
-    examples: 0,
-    floors: 0,
-    reason: "invalid-geometry",
-  });
-  const crossing = {
-    type: "polygon" as const,
-    points: [
-      { x: 0.2, y: 0.2 },
-      { x: 0.4, y: 0.4 },
-      { x: 0.2, y: 0.4 },
-      { x: 0.4, y: 0.2 },
-    ],
-  };
-  expect(rank(crossing, null)?.priority).toBe(1);
-  expect(rank(shape, { invalidGeometry: false })).toBeNull();
 });

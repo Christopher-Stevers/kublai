@@ -1,10 +1,11 @@
 "use client";
 
 import type { CSSProperties, ReactNode } from "react";
-import { Button } from "~/components/ui/button";
 import { Card, CardContent } from "~/components/ui/card";
-import { Input } from "~/components/ui/input";
-import { ListPagination, type UseClientPaginationResult } from "~/components/ui/list-pagination";
+import {
+  ListPagination,
+  type UseClientPaginationResult,
+} from "~/components/ui/list-pagination";
 
 // The cards gather as close to the middle as possible: the block is as
 // square as the count allows (4 cards → 2×2, 9 → 3×3), up to 3 columns on a
@@ -34,7 +35,8 @@ export function wizardOptionGridStyle(count: number): CSSProperties {
 }
 export const WIZARD_OPTION_CARD_CLASS = `${WIZARD_OPTION_ITEM_SIZE_CLASS} cursor-pointer justify-center gap-0 py-0 transition-all hover:shadow-md`;
 /** The one line on each card: its name, bold. */
-export const WIZARD_OPTION_LABEL_CLASS = "line-clamp-2 text-sm leading-snug font-bold break-words sm:text-base";
+export const WIZARD_OPTION_LABEL_CLASS =
+  "line-clamp-2 text-sm leading-snug font-bold break-words sm:text-base";
 export const WIZARD_OPTION_SELECTED_CLASS = "border-primary border-2 shadow-md";
 
 export function WizardOptionCard({
@@ -54,7 +56,10 @@ export function WizardOptionCard({
       role="button"
       tabIndex={0}
       onKeyDown={(event) => {
-        if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onClick(); }
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onClick();
+        }
       }}
       className={`${WIZARD_OPTION_CARD_CLASS} ${selected ? WIZARD_OPTION_SELECTED_CLASS : ""}`}
       onClick={onClick}
@@ -79,51 +84,6 @@ export function WizardAllOption({
     <WizardOptionCard selected={selected} onClick={onSelect}>
       <p className={WIZARD_OPTION_LABEL_CLASS}>{label}</p>
     </WizardOptionCard>
-  );
-}
-
-export function CustomOptionForm({
-  value,
-  placeholder,
-  buttonLabel,
-  pendingLabel = "Adding...",
-  isPending = false,
-  onChange,
-  onSubmit,
-}: {
-  value: string;
-  placeholder: string;
-  buttonLabel: string;
-  pendingLabel?: string;
-  isPending?: boolean;
-  onChange: (value: string) => void;
-  onSubmit: () => void;
-}) {
-  const disabled = !value.trim() || isPending;
-
-  return (
-    <div className="mt-3 flex flex-col gap-2 sm:mt-4 sm:flex-row">
-      <Input
-        placeholder={placeholder}
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        onKeyDown={(event) => {
-          if (event.key === "Enter" && !disabled) {
-            onSubmit();
-          }
-        }}
-        className="flex-1 text-sm sm:text-base"
-        autoFocus
-        disabled={isPending}
-      />
-      <Button
-        onClick={onSubmit}
-        disabled={disabled}
-        className="w-full text-xs sm:w-auto sm:text-sm"
-      >
-        {isPending ? pendingLabel : buttonLabel}
-      </Button>
-    </div>
   );
 }
 

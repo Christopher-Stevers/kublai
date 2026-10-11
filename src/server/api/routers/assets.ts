@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import { and, asc, desc, eq, gt, ilike, inArray, isNotNull, ne, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, ilike, inArray, ne, or, sql } from "drizzle-orm";
 import { z } from "zod";
 
 import {
@@ -667,41 +667,6 @@ export const assetsRouter = createTRPCRouter({
         const to: Holder = { type: "location", id: input.locationId };
         await assertHolder(tx, org, to);
         await moveStock(tx, { organizationId: org, userId: ctx.userId, partId: input.partId, from: null, to, quantity: input.quantity, kind: "receive", note: input.note });
-        return { ok: true };
-      });
-    }),
-
-  /** Sets a holder's quantity of a tool type to an exact number. */
-  adjustStock: toolRoomProcedure
-    .input(
-      z.object({
-        partId: z.string().uuid(),
-        holder: holderInput,
-        quantity: z.number().min(0).max(1_000_000),
-        note: z.string().trim().max(2000).optional(),
-      }),
-    )
-    .mutation(async ({ ctx, input }) => {
-      const org = ctx.organizationId;
-      return ctx.db.transaction(async (tx) => {
-        await assertHolder(tx, org, input.holder);
-        const [row] = await tx
-          .select({ quantity: assetStock.quantity })
-          .from(assetStock)
-          .where(and(eq(assetStock.organizationId, org), eq(assetStock.partDefinitionId, input.partId), eq(assetStock.holderType, input.holder.type), eq(assetStock.holderId, input.holder.id)))
-          .limit(1);
-        const delta = input.quantity - Number(row?.quantity ?? 0);
-        if (Math.abs(delta) < 1e-9) return { ok: true };
-        await moveStock(tx, {
-          organizationId: org,
-          userId: ctx.userId,
-          partId: input.partId,
-          from: delta < 0 ? input.holder : null,
-          to: delta > 0 ? input.holder : null,
-          quantity: Math.abs(delta),
-          kind: "adjust",
-          note: input.note ?? null,
-        });
         return { ok: true };
       });
     }),

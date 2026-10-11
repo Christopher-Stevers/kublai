@@ -36,9 +36,9 @@ export async function register() {
         if (running) return;
         running = true;
         try {
-          const { cleanupExpiredChatAttachments } =
-            await import("~/server/chat/attachments");
-          await cleanupExpiredChatAttachments();
+          const { cleanupChatAttachments } =
+            await import("~/server/chat/maintenance");
+          await cleanupChatAttachments();
         } catch {
           console.warn("Pending chat attachment cleanup will retry later.");
         } finally {

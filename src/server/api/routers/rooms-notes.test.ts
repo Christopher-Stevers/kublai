@@ -15,7 +15,9 @@ vi.mock("~/server/rooms/detect-job", () => ({
   getDetectJob: vi.fn(),
   growRoomOnFloor: vi.fn(),
 }));
-vi.mock("~/server/rooms/detect-worker-process", () => ({ startDetectWorker: vi.fn() }));
+vi.mock("~/server/rooms/detect-worker-process", () => ({
+  startDetectWorker: vi.fn(),
+}));
 vi.mock("~/server/rooms/drawing-hash", () => ({ sourceDrawingHash: vi.fn() }));
 
 import { roomsRouter } from "./rooms";
@@ -80,7 +82,9 @@ function setup(reads: Row[][] = [[{ floorId }], [floor], [room]]) {
   };
   const db = {
     ...tx,
-    transaction: vi.fn(async (fn: (transaction: typeof tx) => unknown) => fn(tx)),
+    transaction: vi.fn(async (fn: (transaction: typeof tx) => unknown) =>
+      fn(tx),
+    ),
   };
   return {
     caller: roomsRouter.createCaller({
@@ -96,9 +100,11 @@ function setup(reads: Row[][] = [[{ floorId }], [floor], [room]]) {
 
 beforeEach(() => {
   // Field staff can edit jobs and lists without being room reviewers.
-  vi.mocked(userCan).mockReset().mockImplementation(
-    (_user, key) => key === "jobs.edit" || key === "lists.edit",
-  );
+  vi.mocked(userCan)
+    .mockReset()
+    .mockImplementation(
+      (_user, key) => key === "jobs.edit" || key === "lists.edit",
+    );
 });
 
 const input = {
@@ -135,19 +141,26 @@ describe("shared room notes", () => {
 
   it("allows clearing notes and preserves whitespace as entered", async () => {
     const test = setup();
-    await expect(test.caller.updateNotes({ ...input, notes: "" })).resolves.toEqual({
+    await expect(
+      test.caller.updateNotes({ ...input, notes: "" }),
+    ).resolves.toEqual({
       notes: "",
       notesRevision: 5,
     });
     expect(test.writes[0]?.data.notes).toBe("");
     const whitespace = setup();
-    await whitespace.caller.updateNotes({ ...input, notes: "  measured\n  5 ft  " });
+    await whitespace.caller.updateNotes({
+      ...input,
+      notes: "  measured\n  5 ft  ",
+    });
     expect(whitespace.writes[0]?.data.notes).toBe("  measured\n  5 ft  ");
   });
 
   it("does not create a new revision for unchanged notes", async () => {
     const test = setup();
-    await expect(test.caller.updateNotes({ ...input, notes: room.notes })).resolves.toEqual({
+    await expect(
+      test.caller.updateNotes({ ...input, notes: room.notes }),
+    ).resolves.toEqual({
       notes: room.notes,
       notesRevision: 4,
     });
@@ -156,15 +169,18 @@ describe("shared room notes", () => {
 
   it("rejects a stale revision without overwriting a colleague's notes", async () => {
     const test = setup();
-    await expect(test.caller.updateNotes({ ...input, expectedNotesRevision: 3 }))
-      .rejects.toMatchObject({ code: "CONFLICT" });
+    await expect(
+      test.caller.updateNotes({ ...input, expectedNotesRevision: 3 }),
+    ).rejects.toMatchObject({ code: "CONFLICT" });
     expect(test.writes).toEqual([]);
   });
 
   it("requires jobs.edit before reading or writing notes", async () => {
     vi.mocked(userCan).mockReturnValue(false);
     const test = setup([]);
-    await expect(test.caller.updateNotes(input)).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(test.caller.updateNotes(input)).rejects.toMatchObject({
+      code: "FORBIDDEN",
+    });
     expect(test.db.transaction).not.toHaveBeenCalled();
     expect(test.db.select).not.toHaveBeenCalled();
     expect(test.writes).toEqual([]);
@@ -175,24 +191,48 @@ describe("shared room notes", () => {
     [[{ floorId }], []],
     [[{ floorId }], [{ ...floor, organizationId: otherOrganizationId }]],
     [[{ floorId }], [floor], []],
-    [[{ floorId }], [floor], [{ ...room, organizationId: otherOrganizationId }]],
-  ])("does not reveal or write a missing or foreign-organization room (%#)", async (...reads) => {
-    const test = setup(reads as Row[][]);
-    await expect(test.caller.updateNotes(input)).rejects.toMatchObject({ code: "NOT_FOUND" });
-    expect(test.writes).toEqual([]);
-  });
+    [
+      [{ floorId }],
+      [floor],
+      [{ ...room, organizationId: otherOrganizationId }],
+    ],
+  ])(
+    "does not reveal or write a missing or foreign-organization room (%#)",
+    async (...reads) => {
+      const test = setup(reads as Row[][]);
+      await expect(test.caller.updateNotes(input)).rejects.toMatchObject({
+        code: "NOT_FOUND",
+      });
+      expect(test.writes).toEqual([]);
+    },
+  );
 
   it.each([
-    { floor: { ...floor, status: "detected" }, room },
+    {
+      floor: { ...floor, status: "detected" },
+      room: { ...room, confirmed: false, reviewStatus: "pending" },
+    },
     { floor, room: { ...room, confirmed: false } },
-    { floor, room: { ...room, reviewStatus: "pending" } },
-    { floor, room: { ...room, reviewStatus: "rejected" } },
-  ])("hides unconfirmed floors and unapproved rooms from field staff (%#)", async (rows) => {
-    const test = setup([[{ floorId }], [rows.floor], [rows.room]]);
-    await expect(test.caller.updateNotes(input)).rejects.toMatchObject({ code: "NOT_FOUND" });
+  ])(
+    "allows field staff to write notes on active rooms without approval (%#)",
+    async (rows) => {
+      const test = setup([[{ floorId }], [rows.floor], [rows.room]]);
+      await expect(test.caller.updateNotes(input)).resolves.toMatchObject({
+        notesRevision: 5,
+      });
+    },
+  );
+  it("hides rejected rooms from field staff", async () => {
+    const test = setup([
+      [{ floorId }],
+      [floor],
+      [{ ...room, reviewStatus: "rejected" }],
+    ]);
+    await expect(test.caller.updateNotes(input)).rejects.toMatchObject({
+      code: "NOT_FOUND",
+    });
     expect(test.writes).toEqual([]);
   });
-
   it("lets reviewers add notes to visible draft rooms", async () => {
     vi.mocked(userCan).mockReturnValue(true);
     const test = setup([
@@ -200,36 +240,63 @@ describe("shared room notes", () => {
       [{ ...floor, status: "detected" }],
       [{ ...room, confirmed: false, reviewStatus: "pending" }],
     ]);
-    await expect(test.caller.updateNotes(input)).resolves.toMatchObject({ notesRevision: 5 });
+    await expect(test.caller.updateNotes(input)).resolves.toMatchObject({
+      notesRevision: 5,
+    });
   });
 
   it("keeps pending-review floors hidden even from reviewers", async () => {
     vi.mocked(userCan).mockReturnValue(true);
-    const test = setup([[{ floorId }], [{ ...floor, status: "pending_review" }], [room]]);
-    await expect(test.caller.updateNotes(input)).rejects.toMatchObject({ code: "NOT_FOUND" });
+    const test = setup([
+      [{ floorId }],
+      [{ ...floor, status: "pending_review" }],
+      [room],
+    ]);
+    await expect(test.caller.updateNotes(input)).rejects.toMatchObject({
+      code: "NOT_FOUND",
+    });
     expect(test.writes).toEqual([]);
   });
 
   it("rejects notes on superseded room proposals", async () => {
     vi.mocked(userCan).mockReturnValue(true);
-    const test = setup([[{ floorId }], [floor], [{ ...room, reviewStatus: "superseded" }]]);
-    await expect(test.caller.updateNotes(input)).rejects.toMatchObject({ code: "CONFLICT" });
+    const test = setup([
+      [{ floorId }],
+      [floor],
+      [{ ...room, reviewStatus: "superseded" }],
+    ]);
+    await expect(test.caller.updateNotes(input)).rejects.toMatchObject({
+      code: "CONFLICT",
+    });
     expect(test.writes).toEqual([]);
   });
 
   it.each([
     { ...input, notes: "a".repeat(10_001) },
     { ...input, expectedNotesRevision: -1 },
-  ])("validates text length and revision before accessing the database (%#)", async (value) => {
-    const test = setup([]);
-    await expect(test.caller.updateNotes(value)).rejects.toMatchObject({ code: "BAD_REQUEST" });
-    expect(test.db.transaction).not.toHaveBeenCalled();
-  });
+  ])(
+    "validates text length and revision before accessing the database (%#)",
+    async (value) => {
+      const test = setup([]);
+      await expect(test.caller.updateNotes(value)).rejects.toMatchObject({
+        code: "BAD_REQUEST",
+      });
+      expect(test.db.transaction).not.toHaveBeenCalled();
+    },
+  );
 
   it("returns persisted notes and independent action permissions with job rooms", async () => {
     const test = setup([
       [{ id: jobId, organizationId }],
-      [{ id: "plan", status: "ready", originalFilename: "floor.pdf", pageCount: 1, error: null }],
+      [
+        {
+          id: "plan",
+          status: "ready",
+          originalFilename: "floor.pdf",
+          pageCount: 1,
+          error: null,
+        },
+      ],
       [floor],
       [room],
     ]);
@@ -238,7 +305,9 @@ describe("shared room notes", () => {
       canManage: false,
       canEditNotes: true,
       canRequestMaterial: true,
-      floors: [{ rooms: [{ id: roomId, notes: room.notes, notesRevision: 4 }] }],
+      floors: [
+        { rooms: [{ id: roomId, notes: room.notes, notesRevision: 4 }] },
+      ],
     });
   });
 });

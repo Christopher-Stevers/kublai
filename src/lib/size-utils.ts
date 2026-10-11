@@ -24,31 +24,49 @@ const UNICODE_FRACTIONS: Record<string, string> = {
 };
 
 function normalizeUnicodeFractions(value: string): string {
-  return value.replace(/[½⅓⅔¼¾⅕⅖⅗⅘⅙⅚⅛⅜⅝⅞]/g, (match) => ` ${UNICODE_FRACTIONS[match] ?? match}`);
+  return value.replace(
+    /[½⅓⅔¼¾⅕⅖⅗⅘⅙⅚⅛⅜⅝⅞]/g,
+    (match) => ` ${UNICODE_FRACTIONS[match] ?? match}`,
+  );
 }
 
 function parseFraction(numerator: string, denominator: string): number | null {
   const numeratorValue = Number(numerator);
   const denominatorValue = Number(denominator);
-  if (!Number.isFinite(numeratorValue) || !Number.isFinite(denominatorValue) || denominatorValue === 0) {
+  if (
+    !Number.isFinite(numeratorValue) ||
+    !Number.isFinite(denominatorValue) ||
+    denominatorValue === 0
+  ) {
     return null;
   }
   return numeratorValue / denominatorValue;
 }
 
 function formatUnitForDimension(unit: string | null | undefined): string {
-  const normalized = String(unit ?? "").trim().toLowerCase();
+  const normalized = String(unit ?? "")
+    .trim()
+    .toLowerCase();
   if (!normalized) return "";
   if (INCH_UNITS.has(normalized)) return '"';
   return ` ${unit}`;
 }
 
-function stripUnitFromDimension(value: string, unit: string | null | undefined): string {
+function stripUnitFromDimension(
+  value: string,
+  unit: string | null | undefined,
+): string {
   const normalizedUnit = String(unit ?? "").trim();
   let result = value.trim().replace(/[”″"]/g, "");
 
   if (normalizedUnit) {
-    result = result.replace(new RegExp(`\\s*${normalizedUnit.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*$`, "i"), "");
+    result = result.replace(
+      new RegExp(
+        `\\s*${normalizedUnit.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*$`,
+        "i",
+      ),
+      "",
+    );
   }
 
   return result.replace(/\s*(inches|inch|in)\s*$/i, "").trim();
@@ -104,7 +122,10 @@ export function parsePrimarySizeInput(input: string): number | null {
  * Format size for display
  * Converts numeric values to readable format with fractions
  */
-export function formatSize(nominal: number | string | null, unit: string | null): string {
+export function formatSize(
+  nominal: number | string | null,
+  unit: string | null,
+): string {
   if (nominal === null || unit === null) return "";
 
   const num = typeof nominal === "string" ? parseFloat(nominal) : nominal;
@@ -224,38 +245,4 @@ export function decimalToFraction(num: number): string {
   result += `${numerator}/${denominator}`;
 
   return result;
-}
-
-/**
- * Format a size string to display in fractional format
- * Parses strings like "2.25 in" or "0.125" and converts to "2 1/4 in" or "1/8"
- * @param sizeString - The size string to format (e.g., "2.25 in", "0.125")
- * @returns The formatted size string with fractions, or the original string if it can't be parsed
- */
-export function formatSizeAsFraction(sizeString: string | null): string {
-  if (!sizeString) return "";
-
-  const trimmed = sizeString.trim();
-  if (trimmed.includes("/")) {
-    return trimmed;
-  }
-
-  const match = trimmed.match(/^(-?\d+\.?\d*)\s*(\S+)?$/);
-  if (!match) {
-    return trimmed;
-  }
-
-  const numericPart = match[1];
-  const unit = match[2] ?? null;
-
-  if (!numericPart) {
-    return trimmed;
-  }
-
-  const numericValue = parseFloat(numericPart);
-  if (isNaN(numericValue) || !isFinite(numericValue)) {
-    return trimmed;
-  }
-
-  return formatSize(numericValue, unit);
 }

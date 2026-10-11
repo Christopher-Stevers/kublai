@@ -341,13 +341,6 @@ function segmentLength(seg: WallSegment) {
   return Math.hypot(seg.x2 - seg.x1, seg.y2 - seg.y1);
 }
 
-export async function extractPdfWalls(
-  pdfBuffer: Buffer,
-  pageNumber: number,
-): Promise<WallSegment[]> {
-  return (await extractPdfLinework(pdfBuffer, pageNumber)).segments;
-}
-
 export async function extractPdfLinework(
   pdfBuffer: Buffer,
   pageNumber: number,

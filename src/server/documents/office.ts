@@ -34,22 +34,6 @@ function fileKind(name: string): OfficeFileKind | null {
     : null;
 }
 
-/** A display hint, not validation that a URL exists or grants Office editing access. */
-export function officeFileKind(nameOrUrl: string): OfficeFileKind | null {
-  try {
-    const url = new URL(nameOrUrl);
-    const type = sharePointFileLink.exec(url.pathname)?.[1]?.toLowerCase();
-    if (type === "w") return "word";
-    if (type === "x") return "excel";
-    if (type === "p") return "powerpoint";
-    return fileKind(
-      url.searchParams.get("file") ?? decodeURIComponent(url.pathname),
-    );
-  } catch {
-    return fileKind(nameOrUrl);
-  }
-}
-
 function decoded(value: string): string {
   try {
     const result = decodeURIComponent(value);

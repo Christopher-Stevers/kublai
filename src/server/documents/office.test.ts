@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { officeFileKind, validateOfficeUrl } from "./office";
+import { validateOfficeUrl } from "./office";
 
 const guid = "12345678-1234-1234-1234-123456789abc";
 const canonical = `https://builder.sharepoint.com/sites/Job/_layouts/15/Doc.aspx?sourcedoc=%7B${guid}%7D&file=Schedule.xlsx&action=edit`;
@@ -92,26 +92,5 @@ describe("validateOfficeUrl", () => {
     "https://onedrive.live.com/redir?resid=1234567890ABCDEF!123&authkey=secret",
   ])("requires a recognizable Office document target: %s", (url) => {
     expect(() => validateOfficeUrl(url)).toThrow();
-  });
-});
-
-describe("officeFileKind", () => {
-  it.each([
-    ["Scope.DOCX", "word"],
-    ["Costs.xlsx", "excel"],
-    ["Kickoff.pptx", "powerpoint"],
-    [canonical, "excel"],
-    ["https://builder.sharepoint.com/:w:/s/Job/EXAMPLE", "word"],
-    ["https://builder.sharepoint.com/:x:/s/Job/EXAMPLE", "excel"],
-    [
-      "https://builder.sharepoint.com/sites/Job/Shared%20Documents/Scope.docx",
-      "word",
-    ],
-    ["Plan.pdf", null],
-    ["Unknown", null],
-    ["file.constructor", null],
-    ["file.__proto__", null],
-  ])("identifies %s only as a display hint", (input, expected) => {
-    expect(officeFileKind(input)).toBe(expected);
   });
 });

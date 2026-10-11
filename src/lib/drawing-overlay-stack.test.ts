@@ -6,7 +6,6 @@ import {
   defaultOverlayInk,
   overlayLabel,
 } from "./drawing-overlay-stack";
-import { compositeDrawingInk } from "./drawing-line-overlay";
 
 function render(
   masks: number[][],
@@ -62,26 +61,6 @@ describe("streaming overlay stack", () => {
         "#ffffff",
       ).pixels,
     ).toEqual([255, 255, 255, 255, 255, 255, 255, 64]);
-  });
-  it("matches the two-layer compositor, allowing only 8-bit opacity rounding", () => {
-    const first = Array.from({ length: 256 }, (_, i) => i);
-    const second = first.map((i) => (i * 31) % 256);
-    for (const opacities of [
-      [1, 1],
-      [0.37, 0.6],
-      [0, 1],
-      [1, 0],
-    ]) {
-      const result = render([first, second], opacities);
-      const pair = new Uint8ClampedArray(1024);
-      compositeDrawingInk(pair, new Uint8Array(first), new Uint8Array(second), [
-        result.styles[0]!,
-        result.styles[1]!,
-      ]);
-      result.pixels.forEach((pixel, i) =>
-        expect(Math.abs(pixel - pair[i]!)).toBeLessThanOrEqual(1),
-      );
-    }
   });
   it("streams hundreds of layers with constant buffer sizes and retains colours beyond two layers", () => {
     const stack = createInkStack(256);

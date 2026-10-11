@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import { and, asc, desc, eq, inArray, or, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, or, sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { createTRPCRouter, hasDashboardAccess } from "~/server/api/trpc";
@@ -17,14 +17,17 @@ import {
   getDetectJob,
   growRoomOnFloor,
 } from "~/server/rooms/detect-job";
+import type { DetectionTx } from "~/server/rooms/detect-queue";
 import { dispatchDetectQueue } from "~/server/rooms/detect-worker-process";
-import { getSourcePageFromFloorImage, JOB_ROOM_FILE_PUBLIC_PREFIX } from "~/server/rooms/storage";
+import { roomEditFeedback } from "~/server/rooms/edit-feedback";
+import {
+  getSourcePageFromFloorImage,
+  JOB_ROOM_FILE_PUBLIC_PREFIX,
+} from "~/server/rooms/storage";
 
 import { sourceDrawingHash } from "~/server/rooms/drawing-hash";
 import { validReviewShape } from "~/server/rooms/review-memory";
-import { bindReviewSource, RoomReviewSourceError, type ReviewSource } from "~/server/rooms/review-source";
-import { trainReviewRanker } from "~/server/rooms/review-model";
-import type { RoomShape } from "~/lib/room-shape";
+import { RoomReviewSourceError } from "~/server/rooms/review-source";
 
 const roomPointSchema = z.object({
   x: z.number().min(0).max(1),
@@ -66,9 +69,54 @@ function requireRow<T extends { organizationId: string }>(
   return assertJobOrg(row, organizationId);
 }
 
-function reviewDetectionForSource(detection: unknown, source: ReviewSource) {
+async function lockRoomEditFloor(
+  tx: DetectionTx,
+  floorId: string,
+  organizationId: string,
+) {
+  // Match detection persistence order: queue lease → floor → individual rooms.
+  await tx.execute(sql`select pg_advisory_xact_lock(72491833)`);
+  const [run] = await tx
+    .select({ runId: roomDetectionJobs.runId })
+    .from(roomDetectionJobs)
+    .where(
+      and(
+        eq(roomDetectionJobs.floorId, floorId),
+        eq(roomDetectionJobs.organizationId, organizationId),
+      ),
+    )
+    .for("update");
+  const [floor] = await tx
+    .select()
+    .from(jobFloors)
+    .where(
+      and(
+        eq(jobFloors.id, floorId),
+        eq(jobFloors.organizationId, organizationId),
+      ),
+    )
+    .for("update");
+  if (!floor) throw new TRPCError({ code: "NOT_FOUND" });
+  if (floor.status === "pending_review" || floor.status === "pending_upload")
+    throw new TRPCError({
+      code: "CONFLICT",
+      message: "Confirm the drawing upload before editing rooms.",
+    });
+  return { floor, observedRunId: run?.runId ?? null };
+}
+
+function assertEditableRoom(room: { reviewStatus: string }) {
+  if (room.reviewStatus === "superseded" || room.reviewStatus === "rejected")
+    throw new TRPCError({
+      code: "CONFLICT",
+      message:
+        "This room is no longer active. Reload the drawing before editing.",
+    });
+}
+
+function editFeedback(input: Parameters<typeof roomEditFeedback>[0]) {
   try {
-    return bindReviewSource(detection, source);
+    return roomEditFeedback(input);
   } catch (error) {
     if (error instanceof RoomReviewSourceError)
       throw new TRPCError({ code: "CONFLICT", message: error.message });
@@ -82,7 +130,9 @@ export const roomsRouter = createTRPCRouter({
     .query(async ({ ctx, input }) => {
       const organizationId = (ctx.user as { organizationId: string })
         .organizationId;
-      const canManage = (userCan(ctx.user as never, "rooms.review") || userCan(ctx.user as never, "drawings.upload"));
+      const canManage =
+        userCan(ctx.user as never, "rooms.review") ||
+        userCan(ctx.user as never, "drawings.upload");
 
       const [job] = await ctx.db
         .select({ id: jobs.id, organizationId: jobs.organizationId })
@@ -120,9 +170,11 @@ export const roomsRouter = createTRPCRouter({
             .orderBy(asc(jobFloors.pageNumber))
         : [];
 
-      const visibleFloors = canManage
-        ? floors.filter((floor) => floor.status !== "pending_review")
-        : floors.filter((floor) => floor.status === "confirmed");
+      const visibleFloors = floors.filter(
+        (floor) =>
+          floor.status !== "pending_review" &&
+          floor.status !== "pending_upload",
+      );
 
       const rooms = visibleFloors.length
         ? await ctx.db
@@ -139,53 +191,50 @@ export const roomsRouter = createTRPCRouter({
 
       // One lightweight query for the whole overview; queued work keeps running
       // on the server even when no floor is open in the browser.
-      const detections = canManage && visibleFloors.length
-        ? await ctx.db
-            .select({
-              floorId: roomDetectionJobs.floorId,
-              status: roomDetectionJobs.status,
-              error: roomDetectionJobs.error,
-              queuePosition: sql<number | null>`case when ${roomDetectionJobs.status} = 'queued' then (
+      const detections =
+        canManage && visibleFloors.length
+          ? await ctx.db
+              .select({
+                floorId: roomDetectionJobs.floorId,
+                status: roomDetectionJobs.status,
+                error: roomDetectionJobs.error,
+                queuePosition: sql<
+                  number | null
+                >`case when ${roomDetectionJobs.status} = 'queued' then (
                 select count(*)::int from kublai_room_detection_job queued
                 where queued.status = 'queued' and
                   (queued."startedAt", queued."floorId") <=
                   (${roomDetectionJobs.startedAt}, ${roomDetectionJobs.floorId})
               ) else null end`,
-            })
-            .from(roomDetectionJobs)
-            .where(and(
-              eq(roomDetectionJobs.organizationId, organizationId),
-              inArray(roomDetectionJobs.floorId, visibleFloors.map((floor) => floor.id)),
-            ))
-        : [];
-      const detectionByFloor = new Map(detections.map((detection) => [
-        detection.floorId,
-        {
-          status: detection.status as "queued" | "running" | "done" | "error",
-          error: detection.error,
-          queuePosition: detection.queuePosition,
-        },
-      ]));
-
-      const feedback =
-        canManage && rooms.length
-          ? await ctx.db
-              .select({
-                roomId: roomDetectionFeedback.roomId,
-                floorId: roomDetectionFeedback.floorId,
-                decision: roomDetectionFeedback.decision,
-                proposalShape: roomDetectionFeedback.proposalShape,
-                detection: roomDetectionFeedback.detection,
               })
-              .from(roomDetectionFeedback)
-              .where(eq(roomDetectionFeedback.organizationId, organizationId))
-              .orderBy(desc(roomDetectionFeedback.createdAt))
-              .limit(2000)
+              .from(roomDetectionJobs)
+              .where(
+                and(
+                  eq(roomDetectionJobs.organizationId, organizationId),
+                  inArray(
+                    roomDetectionJobs.floorId,
+                    visibleFloors.map((floor) => floor.id),
+                  ),
+                ),
+              )
           : [];
-      const rankReview = trainReviewRanker(feedback);
+      const detectionByFloor = new Map(
+        detections.map((detection) => [
+          detection.floorId,
+          {
+            status: detection.status as "queued" | "running" | "done" | "error",
+            error: detection.error,
+            queuePosition: detection.queuePosition,
+          },
+        ]),
+      );
+
       const roomsByFloor = new Map<string, typeof rooms>();
       for (const room of rooms) {
-        if (!canManage && (!room.confirmed || room.reviewStatus !== "approved"))
+        if (
+          room.reviewStatus === "rejected" ||
+          room.reviewStatus === "superseded"
+        )
           continue;
         const list = roomsByFloor.get(room.floorId) ?? [];
         list.push(room);
@@ -210,10 +259,7 @@ export const roomsRouter = createTRPCRouter({
         floors: visibleFloors.map((floor) => ({
           ...floor,
           detection: detectionByFloor.get(floor.id) ?? null,
-          rooms: (roomsByFloor.get(floor.id) ?? []).map((room) => ({
-            ...room,
-            reviewPriority: rankReview(room.shape as RoomShape, room.detection),
-          })),
+          rooms: roomsByFloor.get(floor.id) ?? [],
         })),
       };
     }),
@@ -231,9 +277,6 @@ export const roomsRouter = createTRPCRouter({
         throw new TRPCError({ code: "FORBIDDEN" });
       const organizationId = (ctx.user as { organizationId: string })
         .organizationId;
-      const canManage =
-        userCan(ctx.user as never, "rooms.review") ||
-        userCan(ctx.user as never, "drawings.upload");
       return ctx.db.transaction(async (tx) => {
         const [target] = await tx
           .select({ floorId: jobRooms.floorId })
@@ -247,7 +290,7 @@ export const roomsRouter = createTRPCRouter({
           .limit(1);
         if (!target) throw new TRPCError({ code: "NOT_FOUND" });
         // All room editors lock the floor before its rooms. Keep that order,
-        // and prevent confirmation/visibility changes during this write.
+        // and prevent upload/visibility changes during this write.
         const [floor] = await tx
           .select()
           .from(jobFloors)
@@ -275,17 +318,11 @@ export const roomsRouter = createTRPCRouter({
           !floor ||
           !room ||
           floor.status === "pending_review" ||
-          (!canManage &&
-            (floor.status !== "confirmed" ||
-              !room.confirmed ||
-              room.reviewStatus !== "approved"))
+          floor.status === "pending_upload" ||
+          room.reviewStatus === "rejected"
         )
           throw new TRPCError({ code: "NOT_FOUND" });
-        if (room.reviewStatus === "superseded")
-          throw new TRPCError({
-            code: "CONFLICT",
-            message: "This room was replaced. Reload the floor before editing.",
-          });
+        assertEditableRoom(room);
         if (room.notesRevision !== input.expectedNotesRevision)
           throw new TRPCError({
             code: "CONFLICT",
@@ -314,128 +351,6 @@ export const roomsRouter = createTRPCRouter({
       });
     }),
 
-  reviewRoom: hasDashboardAccess
-    .input(
-      z.object({
-        roomId: z.string().uuid(),
-        decision: z.enum(["approved", "rejected", "pending"]),
-        expectedUpdatedAt: z.number().int(),
-        reason: z
-          .enum([
-            "not-space",
-            "boundary",
-            "merged",
-            "split",
-            "duplicate",
-            "unspecified",
-          ])
-          .default("unspecified"),
-      }),
-    )
-    .mutation(async ({ ctx, input }) => {
-      if (
-        !userCan(ctx.user as never, "rooms.review")
-      )
-        throw new TRPCError({ code: "FORBIDDEN" });
-      const organizationId = (ctx.user as { organizationId: string })
-        .organizationId;
-      return ctx.db.transaction(async (tx) => {
-        const [target] = await tx
-          .select({ floorId: jobRooms.floorId })
-          .from(jobRooms)
-          .where(
-            and(
-              eq(jobRooms.id, input.roomId),
-              eq(jobRooms.organizationId, organizationId),
-            ),
-          );
-        if (!target) throw new TRPCError({ code: "NOT_FOUND" });
-        const [floor] = await tx
-          .select()
-          .from(jobFloors)
-          .where(
-            and(
-              eq(jobFloors.id, target.floorId),
-              eq(jobFloors.organizationId, organizationId),
-            ),
-          )
-          .for("update");
-        if (!floor) throw new TRPCError({ code: "NOT_FOUND" });
-        const [room] = await tx
-          .select()
-          .from(jobRooms)
-          .where(
-            and(
-              eq(jobRooms.id, input.roomId),
-              eq(jobRooms.organizationId, organizationId),
-            ),
-          )
-          .for("update");
-        if (!room) throw new TRPCError({ code: "NOT_FOUND" });
-        if (room.reviewStatus === "superseded")
-          throw new TRPCError({
-            code: "CONFLICT",
-            message:
-              "This proposal was superseded. Reload the floor before reviewing.",
-          });
-        if (room.updatedAt.getTime() !== input.expectedUpdatedAt)
-          throw new TRPCError({
-            code: "CONFLICT",
-            message: "This outline changed. Reload it before reviewing.",
-          });
-        if (input.decision === "approved" && !validReviewShape(room.shape))
-          throw new TRPCError({
-            code: "BAD_REQUEST",
-            message:
-              "Fix this outline before approving it. Its boundaries are invalid.",
-          });
-        const drawingHash = await sourceDrawingHash(floor);
-        const detection = reviewDetectionForSource(room.detection, {
-          drawingHash,
-          sourcePageNumber: getSourcePageFromFloorImage(floor.imageUrl),
-        });
-        await tx.insert(roomDetectionFeedback).values({
-          organizationId,
-          jobId: room.jobId,
-          floorId: room.floorId,
-          roomId: room.id,
-          userId: (ctx.user as { id: string }).id,
-          decision: input.decision,
-          drawingKey: `${floor.imageUrl}:${floor.pageNumber}`,
-          name: room.name,
-          proposalShape: room.shape,
-          detection:
-            input.decision === "rejected"
-              ? {
-                  ...detection,
-                  reviewReason: input.reason,
-                }
-              : detection,
-        });
-        await tx
-          .update(jobRooms)
-          .set({
-            detection,
-            reviewStatus: input.decision,
-            confirmed: input.decision === "approved",
-            updatedAt: new Date(
-              Math.max(Date.now(), room.updatedAt.getTime() + 1),
-            ),
-          })
-          .where(eq(jobRooms.id, room.id));
-        await tx
-          .update(jobFloors)
-          .set({
-            status: "detected",
-            confirmedAt: null,
-            completenessReviewedAt: null,
-            updatedAt: new Date(),
-          })
-          .where(eq(jobFloors.id, floor.id));
-        return { ok: true };
-      });
-    }),
-
   renameFloor: hasDashboardAccess
     .input(
       z.object({
@@ -444,9 +359,7 @@ export const roomsRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      if (
-        !userCan(ctx.user as never, "drawings.upload")
-      ) {
+      if (!userCan(ctx.user as never, "drawings.upload")) {
         throw new TRPCError({ code: "FORBIDDEN" });
       }
       const organizationId = (ctx.user as { organizationId: string })
@@ -473,155 +386,10 @@ export const roomsRouter = createTRPCRouter({
       return { ok: true };
     }),
 
-  confirmFloor: hasDashboardAccess
-    .input(
-      z.object({
-        floorId: z.string().uuid(),
-        completenessChecked: z.boolean().default(false),
-      }),
-    )
-    .mutation(async ({ ctx, input }) => {
-      if (
-        !userCan(ctx.user as never, "rooms.review")
-      ) {
-        throw new TRPCError({ code: "FORBIDDEN" });
-      }
-      const organizationId = (ctx.user as { organizationId: string })
-        .organizationId;
-      if (!input.completenessChecked)
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message:
-            "Check the entire floor for missing rooms before confirming it.",
-        });
-      await ctx.db.transaction(async (tx) => {
-        // Use the admission lock and the worker's job→floor→room lock order.
-        await tx.execute(sql`select pg_advisory_xact_lock(72491833)`);
-        const [active] = await tx
-          .select()
-          .from(roomDetectionJobs)
-          .where(
-            and(
-              eq(roomDetectionJobs.floorId, input.floorId),
-              eq(roomDetectionJobs.organizationId, organizationId),
-            ),
-          )
-          .for("update");
-        if (active?.status === "running" || active?.status === "queued")
-          throw new TRPCError({
-            code: "CONFLICT",
-            message:
-              "Wait for room detection to finish before confirming this floor.",
-          });
-        const [floor] = await tx
-          .select()
-          .from(jobFloors)
-          .where(
-            and(
-              eq(jobFloors.id, input.floorId),
-              eq(jobFloors.organizationId, organizationId),
-            ),
-          )
-          .for("update");
-        if (!floor) throw new TRPCError({ code: "NOT_FOUND" });
-        const rooms = await tx
-          .select()
-          .from(jobRooms)
-          .where(
-            and(
-              eq(jobRooms.floorId, floor.id),
-              eq(jobRooms.organizationId, organizationId),
-            ),
-          )
-          .for("update");
-        if (rooms.some((room) => room.reviewStatus === "pending"))
-          throw new TRPCError({
-            code: "BAD_REQUEST",
-            message:
-              "Approve or disapprove each proposed room before confirming this floor.",
-          });
-        if (!rooms.some((room) => room.reviewStatus === "approved"))
-          throw new TRPCError({
-            code: "BAD_REQUEST",
-            message:
-              "Add and approve at least one room before confirming this floor.",
-          });
-        const approved = rooms.filter(
-          (room) => room.reviewStatus === "approved",
-        );
-        if (approved.some((room) => !validReviewShape(room.shape)))
-          throw new TRPCError({
-            code: "BAD_REQUEST",
-            message:
-              "Fix invalid room boundaries before confirming this floor.",
-          });
-        const drawingHash = await sourceDrawingHash(floor);
-        const source = {
-          drawingHash,
-          sourcePageNumber: getSourcePageFromFloorImage(floor.imageUrl),
-        };
-        // Validate every outline before recording any feedback or confirming
-        // the floor. A matching PDF hash alone cannot identify its page.
-        const reviewedDetections = approved.map((room) =>
-          reviewDetectionForSource(room.detection, source),
-        );
-        const sourceMetadata = reviewDetectionForSource(null, source);
-        await tx.insert(roomDetectionFeedback).values(
-          approved.map((room, index) => ({
-            organizationId,
-            jobId: room.jobId,
-            floorId: floor.id,
-            roomId: room.id,
-            userId: (ctx.user as { id: string }).id,
-            decision: "approved",
-            drawingKey: `${floor.imageUrl}:${floor.pageNumber}`,
-            name: room.name,
-            proposalShape: room.shape,
-            detection: {
-              ...reviewedDetections[index],
-              completenessAttested: true,
-            },
-          })),
-        );
-        const now = new Date(
-          Math.max(
-            Date.now(),
-            ...rooms.map((room) => room.updatedAt.getTime() + 1),
-          ),
-        );
-        await tx
-          .update(jobFloors)
-          .set({
-            status: "confirmed",
-            confirmedAt: now,
-            completenessReviewedAt: now,
-            updatedAt: now,
-          })
-          .where(eq(jobFloors.id, floor.id));
-        await tx
-          .update(jobRooms)
-          .set({
-            confirmed: true,
-            updatedAt: now,
-            detection: sql`COALESCE(${jobRooms.detection},'{}'::jsonb) || ${JSON.stringify({ ...sourceMetadata, completenessAttested: true })}::jsonb`,
-          })
-          .where(
-            and(
-              eq(jobRooms.floorId, floor.id),
-              eq(jobRooms.organizationId, organizationId),
-              eq(jobRooms.reviewStatus, "approved"),
-            ),
-          );
-      });
-      return { ok: true };
-    }),
-
   deleteFloor: hasDashboardAccess
     .input(z.object({ floorId: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
-      if (
-        !userCan(ctx.user as never, "drawings.delete")
-      ) {
+      if (!userCan(ctx.user as never, "drawings.delete")) {
         throw new TRPCError({ code: "FORBIDDEN" });
       }
       const organizationId = (ctx.user as { organizationId: string })
@@ -761,9 +529,7 @@ export const roomsRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      if (
-        !userCan(ctx.user as never, "rooms.review")
-      ) {
+      if (!userCan(ctx.user as never, "rooms.review")) {
         throw new TRPCError({ code: "FORBIDDEN" });
       }
       const organizationId = (ctx.user as { organizationId: string })
@@ -784,17 +550,11 @@ export const roomsRouter = createTRPCRouter({
         organizationId,
       );
       return ctx.db.transaction(async (tx) => {
-        const [lockedFloor] = await tx
-          .select()
-          .from(jobFloors)
-          .where(
-            and(
-              eq(jobFloors.id, floor.id),
-              eq(jobFloors.organizationId, organizationId),
-            ),
-          )
-          .for("update");
-        if (!lockedFloor) throw new TRPCError({ code: "NOT_FOUND" });
+        const { floor: lockedFloor, observedRunId } = await lockRoomEditFloor(
+          tx,
+          floor.id,
+          organizationId,
+        );
         if (!validReviewShape(input.shape))
           throw new TRPCError({
             code: "BAD_REQUEST",
@@ -802,6 +562,16 @@ export const roomsRouter = createTRPCRouter({
               "The outline crosses itself or has invalid boundaries. Adjust it before saving.",
           });
         const drawingHash = await sourceDrawingHash(lockedFloor);
+        const feedback = editFeedback({
+          before: null,
+          after: { name: input.name, shape: input.shape },
+          detection: { basis: "human-added-space", requiresReview: false },
+          source: {
+            drawingHash,
+            sourcePageNumber: getSourcePageFromFloorImage(lockedFloor.imageUrl),
+          },
+          observedRunId,
+        })!;
         const [room] = await tx
           .insert(jobRooms)
           .values({
@@ -810,20 +580,22 @@ export const roomsRouter = createTRPCRouter({
             floorId: floor.id,
             name: input.name,
             source: "manual",
-            detection: {
-              basis: "human-added-space",
-              requiresReview: true,
-              ...reviewDetectionForSource(null, {
-                drawingHash,
-                sourcePageNumber: getSourcePageFromFloorImage(lockedFloor.imageUrl),
-              }),
-            },
+            detection: feedback.detection,
             confirmed: false,
             reviewStatus: "pending",
             shape: input.shape,
             sortOrder: 999,
           })
           .returning();
+        await tx.insert(roomDetectionFeedback).values({
+          organizationId,
+          jobId: floor.jobId,
+          floorId: floor.id,
+          roomId: room!.id,
+          userId: (ctx.user as { id: string }).id,
+          drawingKey: `${lockedFloor.imageUrl}:${lockedFloor.pageNumber}`,
+          ...feedback,
+        });
         await tx
           .update(jobFloors)
           .set({
@@ -847,9 +619,7 @@ export const roomsRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      if (
-        !userCan(ctx.user as never, "rooms.review")
-      ) {
+      if (!userCan(ctx.user as never, "rooms.review")) {
         throw new TRPCError({ code: "FORBIDDEN" });
       }
       const organizationId = (ctx.user as { organizationId: string })
@@ -870,17 +640,11 @@ export const roomsRouter = createTRPCRouter({
         organizationId,
       );
       const updatedAt = await ctx.db.transaction(async (tx) => {
-        const [floor] = await tx
-          .select()
-          .from(jobFloors)
-          .where(
-            and(
-              eq(jobFloors.id, room.floorId),
-              eq(jobFloors.organizationId, organizationId),
-            ),
-          )
-          .for("update");
-        if (!floor) throw new TRPCError({ code: "NOT_FOUND" });
+        const { floor, observedRunId } = await lockRoomEditFloor(
+          tx,
+          room.floorId,
+          organizationId,
+        );
         const [locked] = await tx
           .select()
           .from(jobRooms)
@@ -892,12 +656,7 @@ export const roomsRouter = createTRPCRouter({
           )
           .for("update");
         if (!locked) throw new TRPCError({ code: "NOT_FOUND" });
-        if (locked.reviewStatus === "superseded")
-          throw new TRPCError({
-            code: "CONFLICT",
-            message:
-              "This proposal was superseded. Reload the floor before editing.",
-          });
+        assertEditableRoom(locked);
         if (
           input.expectedUpdatedAt !== undefined &&
           locked.updatedAt.getTime() !== input.expectedUpdatedAt
@@ -914,12 +673,25 @@ export const roomsRouter = createTRPCRouter({
           });
 
         const drawingHash = await sourceDrawingHash(floor);
-        const detection = {
-          ...reviewDetectionForSource(locked.detection, {
+        const feedback = editFeedback({
+          before: { name: locked.name, shape: locked.shape },
+          after: {
+            name: input.name ?? locked.name,
+            shape: input.shape ?? locked.shape,
+          },
+          detection: locked.detection,
+          source: {
             drawingHash,
             sourcePageNumber: getSourcePageFromFloorImage(floor.imageUrl),
-          }),
-          ...(input.shape ? { invalidGeometry: false } : {}),
+          },
+          observedRunId,
+        });
+        if (!feedback) return locked.updatedAt.getTime();
+        const detection = {
+          ...feedback.detection,
+          ...(feedback.decision === "corrected"
+            ? { invalidGeometry: false, requiresReview: false }
+            : {}),
         };
         await tx.insert(roomDetectionFeedback).values({
           organizationId,
@@ -927,11 +699,8 @@ export const roomsRouter = createTRPCRouter({
           floorId: room.floorId,
           roomId: room.id,
           userId: (ctx.user as { id: string }).id,
-          decision: "corrected",
           drawingKey: `${floor.imageUrl}:${floor.pageNumber}`,
-          name: locked.name,
-          proposalShape: locked.shape,
-          correctedShape: input.shape ?? locked.shape,
+          ...feedback,
           detection,
         });
         const updatedAt = new Date(
@@ -941,7 +710,9 @@ export const roomsRouter = createTRPCRouter({
           .update(jobRooms)
           .set({
             ...(input.name ? { name: input.name } : {}),
-            ...(input.shape ? { shape: input.shape, source: "manual" } : {}),
+            ...(feedback.decision === "corrected"
+              ? { shape: input.shape, source: "manual" }
+              : {}),
             detection,
             reviewStatus: "pending",
             confirmed: false,
@@ -963,11 +734,14 @@ export const roomsRouter = createTRPCRouter({
     }),
 
   deleteRoom: hasDashboardAccess
-    .input(z.object({ roomId: z.string().uuid() }))
+    .input(
+      z.object({
+        roomId: z.string().uuid(),
+        expectedUpdatedAt: z.number().int().optional(),
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
-      if (
-        !userCan(ctx.user as never, "rooms.review")
-      ) {
+      if (!userCan(ctx.user as never, "rooms.review")) {
         throw new TRPCError({ code: "FORBIDDEN" });
       }
       const organizationId = (ctx.user as { organizationId: string })
@@ -988,17 +762,11 @@ export const roomsRouter = createTRPCRouter({
         organizationId,
       );
       await ctx.db.transaction(async (tx) => {
-        const [floor] = await tx
-          .select()
-          .from(jobFloors)
-          .where(
-            and(
-              eq(jobFloors.id, room.floorId),
-              eq(jobFloors.organizationId, organizationId),
-            ),
-          )
-          .for("update");
-        if (!floor) throw new TRPCError({ code: "NOT_FOUND" });
+        const { floor, observedRunId } = await lockRoomEditFloor(
+          tx,
+          room.floorId,
+          organizationId,
+        );
         const [locked] = await tx
           .select()
           .from(jobRooms)
@@ -1006,19 +774,35 @@ export const roomsRouter = createTRPCRouter({
           .for("update");
         if (!locked) return;
 
-        if (locked.source === "auto")
-          await tx.insert(roomDetectionFeedback).values({
-            organizationId,
-            jobId: room.jobId,
-            floorId: room.floorId,
-            roomId: room.id,
-            userId: (ctx.user as { id: string }).id,
-            decision: "rejected",
-            drawingKey: `${floor.imageUrl}:${floor.pageNumber}`,
-            name: locked.name,
-            proposalShape: locked.shape,
-            detection: locked.detection,
+        assertEditableRoom(locked);
+        if (
+          input.expectedUpdatedAt !== undefined &&
+          locked.updatedAt.getTime() !== input.expectedUpdatedAt
+        )
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: "This room changed. Reload it before deleting.",
           });
+        const drawingHash = await sourceDrawingHash(floor);
+        const feedback = editFeedback({
+          before: { name: locked.name, shape: locked.shape },
+          after: null,
+          detection: locked.detection,
+          source: {
+            drawingHash,
+            sourcePageNumber: getSourcePageFromFloorImage(floor.imageUrl),
+          },
+          observedRunId,
+        })!;
+        await tx.insert(roomDetectionFeedback).values({
+          organizationId,
+          jobId: room.jobId,
+          floorId: room.floorId,
+          roomId: room.id,
+          userId: (ctx.user as { id: string }).id,
+          drawingKey: `${floor.imageUrl}:${floor.pageNumber}`,
+          ...feedback,
+        });
         await tx.delete(jobRooms).where(eq(jobRooms.id, room.id));
         await tx
           .update(jobFloors)
@@ -1036,9 +820,7 @@ export const roomsRouter = createTRPCRouter({
   deleteAllRooms: hasDashboardAccess
     .input(z.object({ floorId: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
-      if (
-        !userCan(ctx.user as never, "rooms.review")
-      ) {
+      if (!userCan(ctx.user as never, "rooms.review")) {
         throw new TRPCError({ code: "FORBIDDEN" });
       }
       const organizationId = (ctx.user as { organizationId: string })
@@ -1087,6 +869,51 @@ export const roomsRouter = createTRPCRouter({
           )
           .for("update");
         if (!locked) throw new TRPCError({ code: "NOT_FOUND" });
+        if (
+          locked.status === "pending_review" ||
+          locked.status === "pending_upload"
+        )
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: "Confirm the drawing upload before editing rooms.",
+          });
+        const rooms = await tx
+          .select()
+          .from(jobRooms)
+          .where(
+            and(
+              eq(jobRooms.floorId, floor.id),
+              eq(jobRooms.organizationId, organizationId),
+            ),
+          )
+          .for("update");
+        const drawingHash = await sourceDrawingHash(locked);
+        const activeRooms = rooms.filter(
+          (room) =>
+            room.reviewStatus !== "rejected" &&
+            room.reviewStatus !== "superseded",
+        );
+        const feedback = activeRooms.map((room) => ({
+          organizationId,
+          jobId: room.jobId,
+          floorId: room.floorId,
+          roomId: room.id,
+          userId: (ctx.user as { id: string }).id,
+          drawingKey: `${locked.imageUrl}:${locked.pageNumber}`,
+          ...editFeedback({
+            before: { name: room.name, shape: room.shape },
+            after: null,
+            detection: room.detection,
+            source: {
+              drawingHash,
+              sourcePageNumber: getSourcePageFromFloorImage(locked.imageUrl),
+            },
+            observedRunId: active?.runId ?? null,
+            clear: true,
+          })!,
+        }));
+        if (feedback.length)
+          await tx.insert(roomDetectionFeedback).values(feedback);
         await tx
           .delete(jobRooms)
           .where(
@@ -1118,9 +945,7 @@ export const roomsRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      if (
-        !userCan(ctx.user as never, "rooms.review")
-      ) {
+      if (!userCan(ctx.user as never, "rooms.review")) {
         throw new TRPCError({ code: "FORBIDDEN" });
       }
       const organizationId = (ctx.user as { organizationId: string })
@@ -1148,7 +973,10 @@ export const roomsRouter = createTRPCRouter({
             eq(jobRooms.floorId, floor.id),
             eq(jobRooms.organizationId, organizationId),
             inArray(jobRooms.reviewStatus, ["pending", "approved"]),
-            or(eq(jobRooms.source, "manual"), eq(jobRooms.reviewStatus, "approved")),
+            or(
+              eq(jobRooms.source, "manual"),
+              eq(jobRooms.reviewStatus, "approved"),
+            ),
           ),
         );
       const result = await growRoomOnFloor({
@@ -1180,9 +1008,7 @@ export const roomsRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      if (
-        !userCan(ctx.user as never, "drawings.upload")
-      ) {
+      if (!userCan(ctx.user as never, "drawings.upload")) {
         throw new TRPCError({ code: "FORBIDDEN" });
       }
       const organizationId = (ctx.user as { organizationId: string })
@@ -1193,23 +1019,30 @@ export const roomsRouter = createTRPCRouter({
         const [row] = await tx
           .select()
           .from(jobFloors)
-          .where(and(
-            eq(jobFloors.id, input.floorId),
-            eq(jobFloors.organizationId, organizationId),
-          ));
+          .where(
+            and(
+              eq(jobFloors.id, input.floorId),
+              eq(jobFloors.organizationId, organizationId),
+            ),
+          );
         const floor = requireRow(row, organizationId);
-        if (floor.status === "pending_review" ||
-            !floor.imageUrl.startsWith(`${JOB_ROOM_FILE_PUBLIC_PREFIX}/`)) {
+        if (
+          floor.status === "pending_review" ||
+          !floor.imageUrl.startsWith(`${JOB_ROOM_FILE_PUBLIC_PREFIX}/`)
+        ) {
           throw new TRPCError({
             code: "BAD_REQUEST",
-            message: "Confirm a sheet with a floor image before detecting rooms",
+            message:
+              "Confirm a sheet with a floor image before detecting rooms",
           });
         }
         await enqueueDetectJobs([floor.id], organizationId, tx);
       });
       // Dispatch is a best-effort nudge. Durable jobs are also picked up by the
       // startup/interval worker if this HTTP process or the connection ends.
-      void dispatchDetectQueue().catch((error) => console.error("[detect-queue]", error));
+      void dispatchDetectQueue().catch((error) =>
+        console.error("[detect-queue]", error),
+      );
       return { started: true as const };
     }),
 
@@ -1221,9 +1054,7 @@ export const roomsRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      if (
-        !userCan(ctx.user as never, "drawings.upload")
-      ) {
+      if (!userCan(ctx.user as never, "drawings.upload")) {
         throw new TRPCError({ code: "FORBIDDEN" });
       }
       const organizationId = (ctx.user as { organizationId: string })
@@ -1238,32 +1069,59 @@ export const roomsRouter = createTRPCRouter({
         const pending = await tx
           .select()
           .from(jobFloors)
-          .where(and(
-            eq(jobFloors.jobId, input.jobId),
-            eq(jobFloors.organizationId, organizationId),
-            eq(jobFloors.status, "pending_review"),
-          ))
+          .where(
+            and(
+              eq(jobFloors.jobId, input.jobId),
+              eq(jobFloors.organizationId, organizationId),
+              eq(jobFloors.status, "pending_review"),
+            ),
+          )
           .orderBy(asc(jobFloors.pageNumber));
         const keep = new Set(input.keepFloorIds);
         const kept = pending.filter((floor) => keep.has(floor.id));
         const discarded = pending.filter((floor) => !keep.has(floor.id));
-        if (kept.some((floor) => !floor.imageUrl.startsWith(`${JOB_ROOM_FILE_PUBLIC_PREFIX}/`))) {
-          throw new TRPCError({ code: "BAD_REQUEST", message: "Floor image is missing" });
+        if (
+          kept.some(
+            (floor) =>
+              !floor.imageUrl.startsWith(`${JOB_ROOM_FILE_PUBLIC_PREFIX}/`),
+          )
+        ) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Floor image is missing",
+          });
         }
         if (discarded.length > 0) {
-          await tx.delete(jobFloors).where(inArray(jobFloors.id, discarded.map((floor) => floor.id)));
+          await tx.delete(jobFloors).where(
+            inArray(
+              jobFloors.id,
+              discarded.map((floor) => floor.id),
+            ),
+          );
         }
         if (kept.length > 0) {
-          await tx.update(jobFloors)
+          await tx
+            .update(jobFloors)
             .set({ status: "detected", updatedAt: new Date() })
-            .where(inArray(jobFloors.id, kept.map((floor) => floor.id)));
+            .where(
+              inArray(
+                jobFloors.id,
+                kept.map((floor) => floor.id),
+              ),
+            );
           // Acceptance and queueing are one commit: closing the app cannot
           // leave the later sheets saved but never submitted for detection.
-          await enqueueDetectJobs(kept.map((floor) => floor.id), organizationId, tx);
+          await enqueueDetectJobs(
+            kept.map((floor) => floor.id),
+            organizationId,
+            tx,
+          );
         }
         return kept.map((floor) => floor.id);
       });
-      void dispatchDetectQueue().catch((error) => console.error("[detect-queue]", error));
+      void dispatchDetectQueue().catch((error) =>
+        console.error("[detect-queue]", error),
+      );
       return { keptFloorIds };
     }),
 
@@ -1271,7 +1129,10 @@ export const roomsRouter = createTRPCRouter({
     .input(z.object({ floorId: z.string().uuid() }))
     .query(async ({ ctx, input }) => {
       if (
-        !(userCan(ctx.user as never, "rooms.review") || userCan(ctx.user as never, "drawings.upload"))
+        !(
+          userCan(ctx.user as never, "rooms.review") ||
+          userCan(ctx.user as never, "drawings.upload")
+        )
       ) {
         throw new TRPCError({ code: "FORBIDDEN" });
       }

@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
+import { buildWallLinework } from "~/server/rooms/wall-lines";
 
 import { pointInPolygon } from "~/lib/room-shape";
 import { removeHatchSegments } from "~/server/rooms/hatch-filter";
 import type { WallSegment } from "~/server/rooms/pdf-walls";
-import { polygonizeWalls } from "~/server/rooms/polygonize-walls";
+import { polygonizeLines } from "~/server/rooms/polygonize-walls";
 
 function wall(
   x1: number,
@@ -94,7 +95,7 @@ describe("removeHatchSegments", () => {
 
   it("keeps the room face square once the hatch is gone", () => {
     const hatch = crossHatch(0.1, 0.1, 0.3, 0.3, 0.0055);
-    const faces = polygonizeWalls(
+    const faces = polygonizeLinework(
       removeHatchSegments([...ROOM, ...ROOM, ...ROOM, ...ROOM, ...hatch]),
     );
     const face = faces.find((candidate) =>
@@ -104,3 +105,7 @@ describe("removeHatchSegments", () => {
     expect(face!.points).toHaveLength(4);
   });
 });
+
+function polygonizeLinework(walls: WallSegment[]) {
+  return polygonizeLines(buildWallLinework(walls, { mode: "all" }).lines);
+}

@@ -1,7 +1,7 @@
 // @vitest-environment node
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import { PgDialect } from "drizzle-orm/pg-core";
 import type { SQL } from "drizzle-orm";
+import { PgDialect } from "drizzle-orm/pg-core";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Exercise the real mutation bodies, schemas, and geometry validation. The
 // caller is already authenticated; no test connects to the application DB.
@@ -22,11 +22,11 @@ vi.mock("~/server/rooms/detect-worker-process", () => ({
 }));
 vi.mock("~/server/rooms/drawing-hash", () => ({ sourceDrawingHash: vi.fn() }));
 
-import { roomsRouter } from "./rooms";
-import { sourceDrawingHash } from "~/server/rooms/drawing-hash";
-import { growRoomOnFloor } from "~/server/rooms/detect-job";
-import { jobFloors, jobRooms, roomDetectionFeedback } from "~/server/db/schema";
 import { userCan } from "~/server/auth/permissions";
+import { jobFloors, jobRooms, roomDetectionFeedback } from "~/server/db/schema";
+import { growRoomOnFloor } from "~/server/rooms/detect-job";
+import { sourceDrawingHash } from "~/server/rooms/drawing-hash";
+import { roomsRouter } from "./rooms";
 
 const roomId = "00000000-0000-4000-8000-000000000001";
 const floorId = "00000000-0000-4000-8000-000000000002";
@@ -149,19 +149,13 @@ function expectNoWrites(test: ReturnType<typeof setup>) {
   expect(test.tx.update).not.toHaveBeenCalled();
   expect(test.writes).toEqual([]);
 }
-const reviewInput = {
-  roomId,
-  decision: "approved" as const,
-  expectedUpdatedAt: updatedAt.getTime(),
-};
-const confirmInput = { floorId, completenessChecked: true };
 
 beforeEach(() => {
   vi.mocked(sourceDrawingHash).mockReset().mockResolvedValue(hash);
   vi.mocked(userCan).mockReset().mockReturnValue(true);
 });
 
-describe("source-bound room review mutations", () => {
+describe("source-bound room edit feedback", () => {
   it("only protects active manual or approved trace neighbors, excluding the edited room", async () => {
     const neighbor = { id: "00000000-0000-4000-8000-000000000005", shape };
     const approvedNeighbor = {
@@ -203,98 +197,23 @@ describe("source-bound room review mutations", () => {
     expectNoWrites(test);
   });
   it("binds new manual outlines to the original PDF page at creation", async () => {
-    const test = setup([[floor], [floor]]);
+    const test = setup([[floor], [], [floor]]);
     await test.caller.addRoom({ floorId, name: "Unlabeled hallway", shape });
-    expect(test.roomUpdate()).toMatchObject({
+    expect(
+      test.writes.find((write) => write.table === jobRooms)?.data,
+    ).toMatchObject({
       source: "manual",
       reviewStatus: "pending",
       confirmed: false,
       shape,
       detection: {
         basis: "human-added-space",
-        requiresReview: true,
+        requiresReview: false,
         drawingHash: hash,
         sourcePageNumber: 18,
         sourcePageIndex: 17,
       },
     });
-  });
-  it.each(["approved", "rejected", "pending"] as const)(
-    "refuses %s feedback for a replacement PDF without writing or rebinding geometry",
-    async (decision) => {
-      const old = { ...proposal, detection: { drawingHash: "b".repeat(64) } };
-      const test = setup([[{ floorId }], [floor], [old]]);
-      await expect(
-        test.caller.reviewRoom({ ...reviewInput, decision }),
-      ).rejects.toMatchObject({
-        code: "CONFLICT",
-        message: expect.stringMatching(
-          /source drawing or page changed/,
-        ) as unknown,
-      });
-      expectNoWrites(test);
-    },
-  );
-
-  it("rejects the wrong original page even when the PDF hash matches", async () => {
-    const old = {
-      ...proposal,
-      detection: { drawingHash: hash, sourcePageNumber: 19 },
-    };
-    const test = setup([[{ floorId }], [floor], [old]]);
-    await expect(test.caller.reviewRoom(reviewInput)).rejects.toMatchObject({
-      code: "CONFLICT",
-    });
-    expectNoWrites(test);
-  });
-
-  it("preserves original-page identity, detector version, and holes when approving", async () => {
-    const test = setup([[{ floorId }], [floor], [proposal]]);
-    await expect(test.caller.reviewRoom(reviewInput)).resolves.toEqual({
-      ok: true,
-    });
-    expect(test.feedback()).toMatchObject({
-      proposalShape: shape,
-      drawingKey: `${floor.imageUrl}:19`,
-      detection: proposal.detection,
-    });
-    expect(test.roomUpdate()).toMatchObject({
-      detection: proposal.detection,
-      reviewStatus: "approved",
-      confirmed: true,
-    });
-    expect(test.floorUpdate()).toMatchObject({ completenessReviewedAt: null });
-    expect(sourceDrawingHash).toHaveBeenCalledWith(floor);
-  });
-
-  it("does not erase a known source when the original PDF disappears", async () => {
-    vi.mocked(sourceDrawingHash).mockResolvedValue(null);
-    const test = setup([[{ floorId }], [floor], [proposal]]);
-    await expect(test.caller.reviewRoom(reviewInput)).rejects.toMatchObject({
-      code: "CONFLICT",
-      message: expect.stringMatching(/unavailable/) as unknown,
-    });
-    expectNoWrites(test);
-  });
-
-  it("retains support for legacy outlines without recorded provenance", async () => {
-    const legacy = { ...proposal, detection: null };
-    const test = setup([[{ floorId }], [floor], [legacy]]);
-    await test.caller.reviewRoom(reviewInput);
-    expect(test.roomUpdate().detection).toEqual({
-      drawingHash: hash,
-      sourcePageNumber: 18,
-      sourcePageIndex: 17,
-    });
-  });
-
-  it("still rejects stale review versions before hashing or writing", async () => {
-    const test = setup([[{ floorId }], [floor], [proposal]]);
-    await expect(
-      test.caller.reviewRoom({ ...reviewInput, expectedUpdatedAt: 0 }),
-    ).rejects.toMatchObject({ code: "CONFLICT" });
-    expect(sourceDrawingHash).not.toHaveBeenCalled();
-    expectNoWrites(test);
   });
 
   it.each([
@@ -302,131 +221,31 @@ describe("source-bound room review mutations", () => {
     { shape: { type: "bbox" as const, x: 0.1, y: 0.1, w: 0.4, h: 0.4 } },
   ])("does not rebind old geometry while editing %j", async (input) => {
     const old = { ...proposal, detection: { drawingHash: "b".repeat(64) } };
-    const test = setup([[old], [floor], [old]]);
+    const test = setup([[old], [], [floor], [old]]);
     await expect(
       test.caller.updateRoom({ roomId, ...input }),
     ).rejects.toMatchObject({ code: "CONFLICT" });
     expectNoWrites(test);
   });
 
-  it("records a same-source correction with the original hole geometry preserved", async () => {
-    const test = setup([[proposal], [floor], [proposal]]);
+  it("records a rename while preserving the original hole geometry", async () => {
+    const test = setup([[proposal], [], [floor], [proposal]]);
     await test.caller.updateRoom({
       roomId,
       name: "Hallway",
       expectedUpdatedAt: updatedAt.getTime(),
     });
     expect(test.feedback()).toMatchObject({
-      decision: "corrected",
+      decision: "renamed",
       proposalShape: shape,
-      correctedShape: shape,
-      detection: proposal.detection,
+      correctedShape: null,
+      detection: expect.objectContaining(proposal.detection),
     });
     expect(test.roomUpdate()).toMatchObject({
       name: "Hallway",
       reviewStatus: "pending",
       confirmed: false,
-      detection: proposal.detection,
+      detection: expect.objectContaining(proposal.detection),
     });
-  });
-
-  it("checks every approved outline before any whole-floor confirmation writes", async () => {
-    const approved = { ...proposal, reviewStatus: "approved" };
-    const wrongPage = {
-      ...approved,
-      id: "00000000-0000-4000-8000-000000000005",
-      detection: { drawingHash: hash, sourcePageIndex: 18 },
-    };
-    const test = setup([[], [floor], [approved, wrongPage]]);
-    await expect(test.caller.confirmFloor(confirmInput)).rejects.toMatchObject({
-      code: "CONFLICT",
-    });
-    expectNoWrites(test);
-  });
-
-  it("confirms matching outlines and stamps original-page provenance on legacy rows", async () => {
-    const approved = { ...proposal, reviewStatus: "approved" };
-    const legacy = {
-      ...approved,
-      id: "00000000-0000-4000-8000-000000000005",
-      detection: null,
-    };
-    const test = setup([[], [floor], [approved, legacy]]);
-    await expect(test.caller.confirmFloor(confirmInput)).resolves.toEqual({
-      ok: true,
-    });
-    expect(test.feedback()).toMatchObject([
-      {
-        detection: { ...proposal.detection, completenessAttested: true },
-        proposalShape: shape,
-      },
-      {
-        detection: {
-          drawingHash: hash,
-          sourcePageNumber: 18,
-          sourcePageIndex: 17,
-          completenessAttested: true,
-        },
-      },
-    ]);
-    const query = new PgDialect().sqlToQuery(
-      test.roomUpdate().detection as SQL,
-    );
-    expect(query.params).toContain(
-      JSON.stringify({
-        drawingHash: hash,
-        sourcePageNumber: 18,
-        sourcePageIndex: 17,
-        completenessAttested: true,
-      }),
-    );
-    expect(test.floorUpdate()).toMatchObject({ status: "confirmed" });
-  });
-
-  it.each([
-    {
-      active: [{ status: "running" }],
-      rooms: [{ ...proposal, reviewStatus: "approved" }],
-      code: "CONFLICT",
-    },
-    { active: [], rooms: [proposal], code: "BAD_REQUEST" },
-    {
-      active: [],
-      rooms: [
-        {
-          ...proposal,
-          reviewStatus: "approved",
-          shape: { type: "bbox", x: 0.9, y: 0.9, w: 0.5, h: 0.5 },
-        },
-      ],
-      code: "BAD_REQUEST",
-    },
-  ])(
-    "retains whole-floor running/pending/geometry safeguards: %j",
-    async ({ active, rooms, code }) => {
-      const test = setup([active, [floor], rooms]);
-      await expect(
-        test.caller.confirmFloor(confirmInput),
-      ).rejects.toMatchObject({ code });
-      expect(sourceDrawingHash).not.toHaveBeenCalled();
-      expectNoWrites(test);
-    },
-  );
-
-  it("still requires review permission before reading or writing", async () => {
-    vi.mocked(userCan).mockReturnValue(false);
-    const test = setup([]);
-    await expect(test.caller.reviewRoom(reviewInput)).rejects.toMatchObject({
-      code: "FORBIDDEN",
-    });
-    await expect(
-      test.caller.updateRoom({ roomId, name: "Rename" }),
-    ).rejects.toMatchObject({ code: "FORBIDDEN" });
-    await expect(test.caller.confirmFloor(confirmInput)).rejects.toMatchObject({
-      code: "FORBIDDEN",
-    });
-    expect(test.db.select).not.toHaveBeenCalled();
-    expect(test.db.transaction).not.toHaveBeenCalled();
-    expectNoWrites(test);
   });
 });

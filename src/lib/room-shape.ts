@@ -192,43 +192,6 @@ export function findRoomAtPoint<T extends { shape: RoomShape }>(
   );
 }
 
-export function insertPointOnNearestEdge(
-  polygon: RoomPolygonShape,
-  point: RoomPoint,
-  threshold = 0.04,
-): RoomPolygonShape {
-  let bestIndex = -1;
-  let bestDist = threshold;
-  let bestPoint = point;
-
-  for (let i = 0; i < polygon.points.length; i += 1) {
-    const a = polygon.points[i]!;
-    const b = polygon.points[(i + 1) % polygon.points.length]!;
-    const abx = b.x - a.x;
-    const aby = b.y - a.y;
-    const length2 = abx * abx + aby * aby || Number.EPSILON;
-    const t = Math.min(
-      1,
-      Math.max(0, ((point.x - a.x) * abx + (point.y - a.y) * aby) / length2),
-    );
-    const proj = { x: a.x + abx * t, y: a.y + aby * t };
-    const dist = Math.hypot(point.x - proj.x, point.y - proj.y);
-    if (dist < bestDist) {
-      bestDist = dist;
-      bestIndex = i + 1;
-      bestPoint = proj;
-    }
-  }
-
-  if (bestIndex < 0) return polygon;
-  const points = [...polygon.points];
-  points.splice(bestIndex, 0, {
-    x: clamp01(bestPoint.x),
-    y: clamp01(bestPoint.y),
-  });
-  return { ...polygon, type: "polygon", points };
-}
-
 export function insertPointAtClick(
   polygon: RoomPolygonShape,
   point: RoomPoint,
@@ -286,15 +249,6 @@ export function movePolygonPoint(
       i === index ? { x: clamp01(point.x), y: clamp01(point.y) } : existing,
     ),
   };
-}
-
-export function bboxToPolygonShape(
-  x: number,
-  y: number,
-  w: number,
-  h: number,
-): RoomPolygonShape {
-  return toPolygon({ type: "bbox", x, y, w, h });
 }
 
 export function shapeBBox(shape: RoomShape | null | undefined): {

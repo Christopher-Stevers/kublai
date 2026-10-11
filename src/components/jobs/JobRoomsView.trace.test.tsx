@@ -14,7 +14,12 @@ const harness = vi.hoisted(() => ({
   data: {} as Record<string, unknown>,
   detectStatus: undefined as Record<string, unknown> | undefined,
   uploadSheets: [] as Array<{ id: string; name: string; imageUrl: string }>,
-  queryOptions: {} as Record<string, { refetchInterval?: (query: { state: { data: unknown } }) => number | false }>,
+  queryOptions: {} as Record<
+    string,
+    {
+      refetchInterval?: (query: { state: { data: unknown } }) => number | false;
+    }
+  >,
   calls: [] as Array<{
     name: string;
     input: unknown;
@@ -25,7 +30,8 @@ const harness = vi.hoisted(() => ({
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
 vi.mock("~/components/tutorial/tutorial-sandbox-context", () => ({
-  useTutorialSandbox: () => harness.sandbox ? { userId: "practice-user", runId: "run-one" } : null,
+  useTutorialSandbox: () =>
+    harness.sandbox ? { userId: "practice-user", runId: "run-one" } : null,
 }));
 vi.mock("~/trpc/react", async () => {
   const { useState } = await import("react");
@@ -46,10 +52,14 @@ vi.mock("~/trpc/react", async () => {
         {},
         {
           get: (_target, name: string) => ({
-            useQuery: (_input: unknown, options?: typeof harness.queryOptions[string]) => {
+            useQuery: (
+              _input: unknown,
+              options?: (typeof harness.queryOptions)[string],
+            ) => {
               if (options) harness.queryOptions[name] = options;
               return {
-                data: name === "getJobRooms" ? harness.data : harness.detectStatus,
+                data:
+                  name === "getJobRooms" ? harness.data : harness.detectStatus,
                 isLoading: false,
               };
             },
@@ -108,7 +118,9 @@ vi.mock("~/components/jobs/FloorPlanCanvas", () => ({
     </div>
   ),
 }));
-vi.mock("~/lib/upload-drawings", () => ({ uploadDrawings: vi.fn(async () => harness.uploadSheets) }));
+vi.mock("~/lib/upload-drawings", () => ({
+  uploadDrawings: vi.fn(async () => harness.uploadSheets),
+}));
 vi.mock("~/components/ui/app-dialogs", () => ({ confirmAction: vi.fn() }));
 
 import { JobRoomsView } from "./JobRoomsView";
@@ -250,25 +262,41 @@ describe("floor plan bottom bar", () => {
   it("opens the real room controls in practice without upload or detection tools", () => {
     harness.sandbox = true;
     render(<JobRoomsView jobId="job-a" />);
-    expect(screen.queryByRole("button", { name: /Upload drawings/ })).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: /Upload drawings/ }),
+    ).toBeNull();
     expect(screen.queryByRole("button", { name: /Delete floor/ })).toBeNull();
     fireEvent.click(document.querySelector('[data-tutorial="floor-card"]')!);
-    expect(document.querySelector('[data-tutorial="drawing-viewer"]')).toBeInTheDocument();
+    expect(
+      document.querySelector('[data-tutorial="drawing-viewer"]'),
+    ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Edit" })).toBeDisabled();
-    fireEvent.click(document.querySelector('[data-tutorial="room-list-toggle"]')!);
-    fireEvent.click(document.querySelector('[data-tutorial="room-list-item"]')!);
-    expect(document.querySelector('[data-tutorial="room-details"]')).toBeInTheDocument();
-    expect(document.querySelector('[data-tutorial="room-notes"]')).toBeInTheDocument();
+    fireEvent.click(
+      document.querySelector('[data-tutorial="room-list-toggle"]')!,
+    );
+    fireEvent.click(
+      document.querySelector('[data-tutorial="room-list-item"]')!,
+    );
+    expect(
+      document.querySelector('[data-tutorial="room-details"]'),
+    ).toBeInTheDocument();
+    expect(
+      document.querySelector('[data-tutorial="room-notes"]'),
+    ).toBeInTheDocument();
     expect(harness.calls).toEqual([]);
   });
 
-  it("keeps review and confirm in the edit menu and pops up the room list", () => {
+  it("keeps room editing in the edit menu and pops up the room list", () => {
     render(<JobRoomsView jobId="job-a" />);
     fireEvent.click(screen.getByText("Floor A", { exact: true }));
 
     // Only the drawing and the bar until a menu is opened.
-    expect(screen.queryByRole("button", { name: /Review detections/ })).toBeNull();
-    expect(screen.queryByRole("button", { name: "Confirm reviewed floor" })).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: /Review detections/ }),
+    ).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: "Confirm reviewed floor" }),
+    ).toBeNull();
     expect(screen.queryByLabelText("Room list")).toBeNull();
 
     click("Rooms (1)");
@@ -277,19 +305,24 @@ describe("floor plan bottom bar", () => {
     fireEvent.click(screen.getByRole("button", { name: "Room A" }));
     expect(screen.getByText("Room notes")).toBeInTheDocument();
     leaveFloor();
-    expect(screen.getByRole("button", { name: "Rooms (1)" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Rooms (1)" }),
+    ).toBeInTheDocument();
     expect(screen.queryByLabelText("Room list")).toBeNull();
 
     click("Edit");
     const menu = screen.getByLabelText("Edit menu");
-    expect(menu).toContainElement(screen.getByRole("button", { name: /Review detections \(1\)/ }));
-    expect(menu).toContainElement(screen.getByRole("button", { name: "Confirm reviewed floor" }));
-
-    // Switching to review and back keeps the menu open; Done closes it.
-    click("Review detections (1)");
-    expect(screen.getByLabelText("Detection review")).toBeInTheDocument();
-    click("Review detections (1)");
-    expect(screen.getByLabelText("Edit menu")).toBeInTheDocument();
+    expect(menu).toContainElement(
+      screen.getByRole("button", { name: "Trace room" }),
+    );
+    expect(menu).toContainElement(
+      screen.getByRole("button", { name: "New room" }),
+    );
+    expect(
+      screen.queryByRole("button", {
+        name: /Review detections|Confirm reviewed floor/,
+      }),
+    ).toBeNull();
     click("Done");
     expect(screen.queryByLabelText("Edit menu")).toBeNull();
   });
@@ -299,9 +332,13 @@ describe("floor card menu", () => {
   it("replaces the trash can with a menu to copy or delete the floor", async () => {
     render(<JobRoomsView jobId="job-a" />);
     expect(screen.queryByRole("button", { name: /^Delete floor/ })).toBeNull();
-    const trigger = screen.getByRole("button", { name: "More actions for Floor A" });
+    const trigger = screen.getByRole("button", {
+      name: "More actions for Floor A",
+    });
     fireEvent.pointerDown(trigger, { button: 0, pointerType: "mouse" });
-    fireEvent.click(await screen.findByRole("menuitem", { name: "Copy floor" }));
+    fireEvent.click(
+      await screen.findByRole("menuitem", { name: "Copy floor" }),
+    );
     expect(harness.calls.at(-1)).toMatchObject({
       name: "copyFloor",
       input: { floorId: "floor-a" },
@@ -310,13 +347,16 @@ describe("floor card menu", () => {
     expect(screen.queryByRole("button", { name: /^Rooms \(/ })).toBeNull();
 
     fireEvent.pointerDown(trigger, { button: 0, pointerType: "mouse" });
-    fireEvent.click(await screen.findByRole("menuitem", { name: "Delete floor" }));
+    fireEvent.click(
+      await screen.findByRole("menuitem", { name: "Delete floor" }),
+    );
     expect(await screen.findByText("Delete floor?")).toBeInTheDocument();
   });
 });
 
 describe("floor name box", () => {
-  const renames = () => harness.calls.filter((call) => call.name === "renameFloor");
+  const renames = () =>
+    harness.calls.filter((call) => call.name === "renameFloor");
   function openNameBox() {
     render(<JobRoomsView jobId="job-a" />);
     fireEvent.click(screen.getByText("Floor A", { exact: true }));
@@ -343,7 +383,10 @@ describe("floor name box", () => {
     // Done also saves; the same name is only sent once.
     click("Done");
     expect(renames()).toHaveLength(1);
-    expect(renames()[0]!.input).toEqual({ floorId: "floor-a", name: "1st Floor" });
+    expect(renames()[0]!.input).toEqual({
+      floorId: "floor-a",
+      name: "1st Floor",
+    });
   });
 
   it("puts the name back when left blank, and Return finishes editing", () => {
@@ -357,30 +400,53 @@ describe("floor name box", () => {
     fireEvent.change(box, { target: { value: "Level 3" } });
     fireEvent.keyDown(box, { key: "Enter" });
     expect(document.activeElement).not.toBe(box);
-    expect(renames().at(-1)?.input).toEqual({ floorId: "floor-a", name: "Level 3" });
+    expect(renames().at(-1)?.input).toEqual({
+      floorId: "floor-a",
+      name: "Level 3",
+    });
   });
 });
 
 describe("server-managed sheet detection queue", () => {
-  function setFloorDetection(index: number, detection: Record<string, unknown>) {
+  function setFloorDetection(
+    index: number,
+    detection: Record<string, unknown>,
+  ) {
     const floors = harness.data.floors as Array<Record<string, unknown>>;
     floors[index]!.detection = detection;
   }
 
   it("confirms a multi-sheet upload once without launching detection from the browser", async () => {
-    harness.uploadSheets = ["a", "b"].map((id) => ({ id: `floor-${id}`, name: `Sheet ${id.toUpperCase()}`, imageUrl: `/floor-${id}.webp` }));
+    harness.uploadSheets = ["a", "b"].map((id) => ({
+      id: `floor-${id}`,
+      name: `Sheet ${id.toUpperCase()}`,
+      imageUrl: `/floor-${id}.webp`,
+    }));
     render(<JobRoomsView jobId="job-a" />);
     fireEvent.change(document.querySelector('input[type="file"]')!, {
-      target: { files: [new File(["pdf"], "drawings.pdf", { type: "application/pdf" })] },
+      target: {
+        files: [new File(["pdf"], "drawings.pdf", { type: "application/pdf" })],
+      },
     });
-    expect(await screen.findByText("Review uploaded drawings")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Review uploaded drawings"),
+    ).toBeInTheDocument();
     click("Confirm sheets");
-    const confirmation = harness.calls.find((call) => call.name === "confirmDrawingUpload")!;
-    expect(confirmation.input).toEqual({ jobId: "job-a", keepFloorIds: ["floor-a", "floor-b"] });
+    const confirmation = harness.calls.find(
+      (call) => call.name === "confirmDrawingUpload",
+    )!;
+    expect(confirmation.input).toEqual({
+      jobId: "job-a",
+      keepFloorIds: ["floor-a", "floor-b"],
+    });
     setFloorDetection(0, { status: "queued", queuePosition: 1 });
     setFloorDetection(1, { status: "queued", queuePosition: 2 });
-    await act(async () => { confirmation.resolve({ keptFloorIds: ["floor-a", "floor-b"] }); });
-    expect(harness.calls.filter((call) => call.name === "detectRooms")).toEqual([]);
+    await act(async () => {
+      confirmation.resolve({ keptFloorIds: ["floor-a", "floor-b"] });
+    });
+    expect(harness.calls.filter((call) => call.name === "detectRooms")).toEqual(
+      [],
+    );
     expect(screen.getByRole("button", { name: "Queued…" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "New room" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Trace room" })).toBeDisabled();
@@ -390,22 +456,35 @@ describe("server-managed sheet detection queue", () => {
     setFloorDetection(0, { status: "running" });
     setFloorDetection(1, { status: "queued", queuePosition: 3 });
     render(<JobRoomsView jobId="job-a" />);
-    expect(screen.getByRole("status", { name: "Room detection queue" })).toHaveTextContent("1 processing · 1 queued");
+    expect(
+      screen.getByRole("status", { name: "Room detection queue" }),
+    ).toHaveTextContent("1 processing · 1 queued");
     expect(screen.getByText("Queued · position 3")).toBeInTheDocument();
     expect(screen.getByText("Detecting rooms…")).toBeInTheDocument();
     const poll = harness.queryOptions.getJobRooms!.refetchInterval!;
     expect(poll({ state: { data: harness.data } })).toBe(5000);
-    expect(poll({ state: { data: { floors: [{ detection: { status: "done" } }] } } })).toBe(false);
+    expect(
+      poll({
+        state: { data: { floors: [{ detection: { status: "done" } }] } },
+      }),
+    ).toBe(false);
   });
 
   it("keeps a queued sheet busy even while the detail query contains an old completed run", () => {
     setFloorDetection(0, { status: "queued", queuePosition: 2 });
-    harness.detectStatus = { floorId: "floor-a", status: "done", startedAt: 1000, log: [{ at: 1000, message: "Old run complete" }] };
+    harness.detectStatus = {
+      floorId: "floor-a",
+      status: "done",
+      startedAt: 1000,
+      log: [{ at: 1000, message: "Old run complete" }],
+    };
     render(<JobRoomsView jobId="job-a" />);
     openFloor();
     expect(screen.getByRole("button", { name: "Queued…" })).toBeDisabled();
     expect(screen.queryByText("Old run complete")).not.toBeInTheDocument();
-    expect(screen.getByText(/Queued · position 2 · You can leave/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Queued · position 2 · You can leave/),
+    ).toBeInTheDocument();
     const poll = harness.queryOptions.detectRoomsStatus!.refetchInterval!;
     expect(poll({ state: { data: { status: "queued" } } })).toBe(1000);
   });
@@ -414,11 +493,25 @@ describe("server-managed sheet detection queue", () => {
     setFloorDetection(0, { status: "error", error: "Worker stopped" });
     setFloorDetection(1, { status: "done" });
     render(<JobRoomsView jobId="job-a" />);
-    expect(screen.getByRole("status", { name: "Room detection queue" })).toHaveTextContent("0 processing · 0 queued · 1 failed");
-    const failedCard = screen.getByText("Floor A").closest('[data-tutorial="floor-card"]')!;
-    expect(within(failedCard as HTMLElement).getByText("Detection failed: Worker stopped")).toBeInTheDocument();
+    expect(
+      screen.getByRole("status", { name: "Room detection queue" }),
+    ).toHaveTextContent("0 processing · 0 queued · 1 failed");
+    const failedCard = screen
+      .getByText("Floor A")
+      .closest('[data-tutorial="floor-card"]')!;
+    expect(
+      within(failedCard as HTMLElement).getByText(
+        "Detection failed: Worker stopped",
+      ),
+    ).toBeInTheDocument();
     openFloor();
     click("Detect rooms");
-    expect(harness.calls.filter((call) => call.name === "detectRooms")).toEqual([expect.objectContaining({ input: { floorId: "floor-a", method: "complete" } })]);
+    expect(harness.calls.filter((call) => call.name === "detectRooms")).toEqual(
+      [
+        expect.objectContaining({
+          input: { floorId: "floor-a", method: "complete" },
+        }),
+      ],
+    );
   });
 });

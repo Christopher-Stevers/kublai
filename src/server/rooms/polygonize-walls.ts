@@ -1,20 +1,19 @@
-import GeoJSONReader from "jsts/org/locationtech/jts/io/GeoJSONReader.js";
-import GeoJSONWriter from "jsts/org/locationtech/jts/io/GeoJSONWriter.js";
+import ArrayList from "jsts/java/util/ArrayList.js";
 import Coordinate from "jsts/org/locationtech/jts/geom/Coordinate.js";
 import GeometryFactory from "jsts/org/locationtech/jts/geom/GeometryFactory.js";
 import PrecisionModel from "jsts/org/locationtech/jts/geom/PrecisionModel.js";
+import GeoJSONReader from "jsts/org/locationtech/jts/io/GeoJSONReader.js";
+import GeoJSONWriter from "jsts/org/locationtech/jts/io/GeoJSONWriter.js";
 import GeometryNoder from "jsts/org/locationtech/jts/noding/snapround/GeometryNoder.js";
 import BufferOp from "jsts/org/locationtech/jts/operation/buffer/BufferOp.js";
 import BufferParameters from "jsts/org/locationtech/jts/operation/buffer/BufferParameters.js";
 import OverlayOp from "jsts/org/locationtech/jts/operation/overlay/OverlayOp.js";
 import Polygonizer from "jsts/org/locationtech/jts/operation/polygonize/Polygonizer.js";
 import UnaryUnionOp from "jsts/org/locationtech/jts/operation/union/UnaryUnionOp.js";
-import ArrayList from "jsts/java/util/ArrayList.js";
 
 import type { RoomPoint, RoomPolygonShape } from "~/lib/room-shape";
 import { pointInPolygon } from "~/lib/room-shape";
-import type { WallSegment } from "./pdf-walls";
-import { GRID, buildWallLinework, quantize } from "./wall-lines";
+import { GRID, quantize } from "./wall-lines";
 
 const MIN_FACE_AREA = 0.000025;
 const MAX_FACE_AREA = 0.18;
@@ -277,29 +276,6 @@ function repairInvalidRings(
   return repaired;
 }
 
-export function polygonizeWalls(walls: WallSegment[]): RoomPolygonShape[] {
-  if (walls.length < 16) return [];
-  try {
-    const lines = buildWallLinework(walls, { mode: "all" }).lines;
-    const rooms = polygonizeLines(lines);
-    console.log(
-      "[polygonize] walls",
-      walls.length,
-      "collapsed",
-      lines.length,
-      "faces",
-      rooms.length,
-    );
-    return rooms;
-  } catch (error) {
-    console.warn(
-      "[polygonize] topology failed",
-      error instanceof Error ? error.message : error,
-    );
-    return [];
-  }
-}
-
 function polygonToGeoJson(polygon: RoomPolygonShape): GeoJsonPolygon {
   const ring = polygon.points.map((point) => [point.x, point.y]);
   ring.push([...ring[0]!] as number[]);
@@ -399,11 +375,4 @@ export function unionRoomFaces(
     );
     return null;
   }
-}
-
-export function facesContainingPoint(
-  faces: RoomPolygonShape[],
-  point: RoomPoint,
-) {
-  return faces.filter((face) => pointInPolygon(point, face));
 }

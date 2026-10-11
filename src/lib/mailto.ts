@@ -96,15 +96,6 @@ export function buildEmailComposeUrl({
   return `mailto:${toValue}?${encodeQuery(params)}`;
 }
 
-export function buildMailtoUrl(args: {
-  to: string[];
-  cc?: string[];
-  subject: string;
-  body: string;
-}) {
-  return buildEmailComposeUrl(args);
-}
-
 /** Call directly from a tap, before awaiting a request: Safari expires popup activation. */
 export function openEmailCompose(
   args: Parameters<typeof buildEmailComposeUrl>[0],

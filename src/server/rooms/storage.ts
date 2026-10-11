@@ -1,7 +1,6 @@
-import { randomUUID } from "node:crypto";
-import { mkdir, open, readFile, rm, writeFile } from "node:fs/promises";
+import { open, readFile } from "node:fs/promises";
 import path from "node:path";
-import { MAX_DRAWING_UPLOAD_BYTES, MAX_DRAWING_UPLOAD_MB } from "../../lib/drawing-upload-limits";
+import { MAX_DRAWING_UPLOAD_BYTES } from "../../lib/drawing-upload-limits";
 
 export const JOB_ROOM_FILE_PUBLIC_PREFIX = "/api/job-rooms/files";
 export const MAX_JOB_FLOOR_PLAN_UPLOAD_BYTES = MAX_DRAWING_UPLOAD_BYTES;
@@ -15,27 +14,8 @@ function safeJobId(jobId: string) {
   return jobId;
 }
 
-function jobDir(jobId: string) {
-  return path.join(UPLOAD_ROOT, safeJobId(jobId));
-}
-
 export function getJobFloorPlanPdfKey(jobId: string) {
   return `${safeJobId(jobId)}/plan.pdf`;
-}
-
-export function getJobUploadPdfKey(jobId: string, uploadId: string) {
-  return `${safeJobId(jobId)}/${uploadId}/plan.pdf`;
-}
-
-export function getJobFloorImageKey(
-  jobId: string,
-  pageNumber: number,
-  uploadId?: string,
-) {
-  if (uploadId) {
-    return `${safeJobId(jobId)}/${uploadId}/floor-${pageNumber}.webp`;
-  }
-  return `${safeJobId(jobId)}/floor-${pageNumber}.webp`;
 }
 
 export function getPdfKeyForFloorImage(imageStorageKey: string, jobId: string) {
@@ -51,41 +31,8 @@ export function getSourcePageFromFloorImage(imageStorageKey: string) {
   return match ? Number(match[1]) : null;
 }
 
-export function getJobRoomFileUrl(storageKey: string) {
-  return `${JOB_ROOM_FILE_PUBLIC_PREFIX}/${storageKey}`;
-}
-
-export function validateJobFloorPlanPdf(file: File) {
-  const type = file.type.toLowerCase();
-  if (type && type !== "application/pdf") {
-    return "Uploaded file must be a PDF";
-  }
-  if (!file.name.toLowerCase().endsWith(".pdf") && type !== "application/pdf") {
-    return "Uploaded file must be a PDF";
-  }
-  if (file.size > MAX_JOB_FLOOR_PLAN_UPLOAD_BYTES) {
-    return `PDF must be at most ${MAX_DRAWING_UPLOAD_MB} MB`;
-  }
-  return null;
-}
-
-export async function writeJobRoomFile(storageKey: string, buffer: Buffer) {
-  const fullPath = path.join(UPLOAD_ROOT, storageKey);
-  await mkdir(path.dirname(fullPath), { recursive: true });
-  await writeFile(fullPath, buffer);
-}
-
 export async function readJobRoomFile(storageKey: string) {
   return readFile(path.join(UPLOAD_ROOT, storageKey));
-}
-
-export async function replaceJobFloorPlanFiles(jobId: string) {
-  await rm(jobDir(jobId), { recursive: true, force: true });
-  await mkdir(jobDir(jobId), { recursive: true });
-}
-
-export function makeManualRoomId() {
-  return randomUUID();
 }
 
 /** Open once, then stream only requested bytes. Closing/cancellation owns the fd. */

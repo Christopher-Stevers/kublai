@@ -7,7 +7,6 @@ import {
   Check,
   ChevronDown,
   ExternalLink,
-  Package,
   Search,
   Share2,
   Star,

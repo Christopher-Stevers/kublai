@@ -11,8 +11,8 @@ import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import { ZodError } from "zod";
 
-import { userCan } from "~/server/auth/permissions";
 import { redactFinancialValues } from "~/lib/financial-visibility";
+import { userCan } from "~/server/auth/permissions";
 import { db } from "~/server/db";
 import { withQueryStats } from "~/server/db/query-stats";
 
@@ -178,39 +178,6 @@ export const protectedProcedure = t.procedure
       throw new TRPCError({
         code: "UNAUTHORIZED",
         message: "User not found in database",
-      });
-    }
-    return next({
-      ctx: {
-        // infers the `userId` and `user` as non-nullable
-        userId: ctx.userId,
-        user: ctx.user,
-      },
-    });
-  });
-
-/**
- * Admin procedure
- *
- * If you want a query or mutation to ONLY be accessible to admin users, use this. It verifies
- * the user is authenticated and has the "admin" role.
- */
-export const adminProcedure = t.procedure
-  .use(timingMiddleware)
-  .use(({ ctx, next }) => {
-    if (!ctx.userId) {
-      throw new TRPCError({ code: "UNAUTHORIZED" });
-    }
-    if (!ctx.user) {
-      throw new TRPCError({
-        code: "UNAUTHORIZED",
-        message: "User not found in database",
-      });
-    }
-    if (ctx.user.role !== "admin") {
-      throw new TRPCError({
-        code: "FORBIDDEN",
-        message: "Admin access required",
       });
     }
     return next({

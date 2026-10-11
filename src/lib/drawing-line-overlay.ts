@@ -35,56 +35,6 @@ export function drawingInk(pixels: Uint8ClampedArray): Uint8Array {
   return ink;
 }
 
-/** Common ink is explicitly black, independent of the two chosen hues. */
-export function compositeDrawingInk(
-  output: Uint8ClampedArray,
-  first: Uint8Array,
-  second: Uint8Array,
-  styles: [OverlayInkStyle, OverlayInkStyle],
-  start = 0,
-  end = first.length,
-  commonColor = "#000000",
-) {
-  const a = overlayStyle(styles[0]),
-    b = overlayStyle(styles[1]);
-  const rgb = (color: string) =>
-    [1, 3, 5].map((at) => parseInt(color.slice(at, at + 2), 16));
-  const ac = rgb(a.color),
-    bc = rgb(b.color),
-    cc = rgb(overlayStyle({ color: commonColor, opacity: 1 }).color);
-  for (let i = start; i < end; i++) {
-    const ai = a.opacity === 0 ? 0 : first[i]! / 255;
-    const bi = b.opacity === 0 ? 0 : second[i]! / 255;
-    const shared = Math.min(ai, bi);
-    // The same stroke can have different coverage after PDF antialiasing or
-    // line-weight changes. Give predominantly shared ink a neutral colour
-    // rather than tinting its core with the stronger sheet's residual colour.
-    const stronger = Math.max(ai, bi);
-    if (stronger > 0 && shared >= stronger * (2 / 3)) {
-      const at = i * 4;
-      output[at] = cc[0]!;
-      output[at + 1] = cc[1]!;
-      output[at + 2] = cc[2]!;
-      // CAD backgrounds often draw unchanged walls in grey. Make their shared
-      // cores solid black while retaining a smooth, faint antialiased fringe
-      // and respecting the user's opacity controls.
-      output[at + 3] =
-        Math.min(1, stronger * 4) * Math.max(a.opacity, b.opacity) * 255;
-      continue;
-    }
-    const aw = (ai - shared) * a.opacity,
-      bw = (bi - shared) * b.opacity;
-    const black = shared * Math.max(a.opacity, b.opacity);
-    const alpha = aw + bw + black,
-      at = i * 4;
-    for (let channel = 0; channel < 3; channel++)
-      output[at + channel] = alpha
-        ? (ac[channel]! * aw + bc[channel]! * bw + cc[channel]! * black) / alpha
-        : 0;
-    output[at + 3] = alpha * 255;
-  }
-}
-
 /** Placement in the primary sheet's raster coordinates, including crop origin. */
 export function overlaySourceRect(
   patch: DrawingPatch,

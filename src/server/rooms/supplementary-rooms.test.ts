@@ -1,20 +1,17 @@
-import { describe, it, expect } from "vitest";
-import fixture from "../../../tests/fixtures/room-detection-a501-core.json";
-import { sourceRoomInterior } from "./source-room-interior";
+import { describe, expect, it } from "vitest";
 import { pointInPolygon, type RoomPolygonShape } from "~/lib/room-shape";
-import {
-  supplementaryRoomSeeds,
-  supportedRoomBoundary,
-  roomOverlap,
-  detectSupplementaryRooms,
-} from "./supplementary-rooms";
-import { planDetectedRoomReconciliation } from "./reconcile-detected-rooms";
+import fixture from "../../../tests/fixtures/room-detection-a501-core.json";
 import {
   supplementaryWallSegments,
   type PdfLabel,
   type WallSegment,
 } from "./pdf-walls";
-import type { FloorGraph } from "./floor-graph";
+import { sourceRoomInterior } from "./source-room-interior";
+import {
+  roomOverlap,
+  supplementaryRoomSeeds,
+  supportedRoomBoundary,
+} from "./supplementary-rooms";
 const label = (name: string, x: number, y: number): PdfLabel => ({
   name,
   x,
@@ -57,45 +54,6 @@ describe("conservative supplementary rooms", () => {
     expect(kept).not.toContain(dash);
     expect(kept).not.toContain(arc);
     expect(heavy).toHaveLength(8521);
-  });
-  it("freezes all 63 real saved shapes and idempotently appends the verified additions", () => {
-    const baseline = fixture.baseline;
-    const before = JSON.stringify(baseline);
-    const candidates = fixture.candidates as Array<{
-      name: string;
-      shape: RoomPolygonShape;
-    }>;
-    const plan = planDetectedRoomReconciliation(baseline, candidates, {
-      preserveExisting: true,
-    });
-    expect(baseline).toHaveLength(63);
-    expect(plan.updates).toEqual([]);
-    expect(plan.obsoleteAutoIds).toEqual([]);
-    expect(plan.inserts.map((r) => r.name)).toEqual([
-      "W/C 244",
-      "UNIVERSAL W/C 242",
-    ]);
-    const repeated = planDetectedRoomReconciliation(
-      [
-        ...baseline,
-        ...plan.inserts.map((r, i) => ({
-          ...r,
-          id: `added-${i}`,
-          source: "auto",
-        })),
-      ],
-      candidates,
-      { preserveExisting: true },
-    );
-    expect(repeated.inserts).toEqual([]);
-    expect(JSON.stringify(baseline)).toBe(before);
-    for (const room of candidates)
-      expect(
-        baseline.every(
-          (base) =>
-            roomOverlap(room.shape, base.shape as RoomPolygonShape) <= 1e-10,
-        ),
-      ).toBe(true);
   });
   it("contains independent source interiors and excludes the adjoining corridor", () => {
     const candidates = fixture.candidates as Array<{
@@ -177,58 +135,5 @@ describe("conservative supplementary rooms", () => {
     expect(supportedRoomBoundary(shape, strokes, [])).toBe(true);
     expect(supportedRoomBoundary(shape, strokes.slice(0, 3), [])).toBe(false);
     expect(roomOverlap(shape, shape)).toBeCloseTo(0.0004, 9);
-  });
-  it("keeps matched and absent automatic rooms byte-identical, protects manual geometry and reconciles additions repeatedly", () => {
-    const shifted = {
-      ...shape,
-      points: shape.points.map((p) => ({ x: p.x + 0.1, y: p.y })),
-    };
-    const existing = [
-      { id: "a", name: "Baseline", source: "auto", shape },
-      { id: "m", name: "Manual", source: "manual", shape: shifted },
-      { id: "s", name: "W/C 301", source: "auto", shape: shifted },
-    ];
-    const frozen = JSON.stringify(existing);
-    const next = {
-      ...shape,
-      points: shape.points.map((p) => ({ x: p.x + 0.2, y: p.y })),
-    };
-    const detected = [
-      { name: "Baseline", shape: next },
-      { name: "Intrusion", shape: shifted },
-      { name: "W/C 301", shape: next },
-      { name: "W/C 302", shape: next },
-    ];
-    const plan = planDetectedRoomReconciliation(existing, detected, {
-      preserveExisting: true,
-    });
-    expect(plan.updates).toEqual([]);
-    expect(plan.obsoleteAutoIds).toEqual([]);
-    expect(plan.inserts.map((r) => r.name)).toEqual(["W/C 302"]);
-    const repeat = planDetectedRoomReconciliation(
-      [
-        ...existing,
-        ...plan.inserts.map((r, i) => ({
-          ...r,
-          id: `new-${i}`,
-          source: "auto",
-        })),
-      ],
-      detected,
-      { preserveExisting: true },
-    );
-    expect(repeat.inserts).toEqual([]);
-    expect(JSON.stringify(existing)).toBe(frozen);
-  });
-  it("skips covered labels without touching the baseline or running a local graph", async () => {
-    const frozen = JSON.stringify(shape);
-    const result = await detectSupplementaryRooms(
-      { segments: [], arcs: [], layers: [], source: "pdf-vector" },
-      [label("W/C", 0.11, 0.11), label("301", 0.11, 0.116)],
-      [{ name: "original", shape }],
-      {} as FloorGraph,
-    );
-    expect(result.rooms).toEqual([]);
-    expect(JSON.stringify(shape)).toBe(frozen);
   });
 });

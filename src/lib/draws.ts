@@ -6,12 +6,6 @@
 
 export type DrawStatus = "draft" | "submitted" | "paid";
 
-export const drawStatuses: readonly DrawStatus[] = [
-  "draft",
-  "submitted",
-  "paid",
-];
-
 export type DrawLineInput = {
   id: string;
   scheduledValue: string | number | null;
