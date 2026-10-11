@@ -194,6 +194,9 @@ export default function JobOptionsPage({
             if (optionId === "chat") {
               router.push(`/dashboard/jobs/${job.id}/chat`);
             }
+            if (optionId === "models") {
+              router.push(`/dashboard/jobs/${job.id}/models`);
+            }
             if (optionId === "drawings") {
               router.push(`/dashboard/jobs/${job.id}/drawings`);
             }

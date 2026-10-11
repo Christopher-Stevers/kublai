@@ -1,3 +1,4 @@
+import { modelsRouter } from "~/server/api/routers/models";
 import { appDevicesRouter } from "~/server/api/routers/appDevices";
 import { assetsRouter } from "~/server/api/routers/assets";
 import { catalogueRouter } from "~/server/api/routers/catalogue";
@@ -28,6 +29,7 @@ import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
  * All routers added in /api/routers should be manually added here.
  */
 export const appRouter = createTRPCRouter({
+  models: modelsRouter,
   estimating: estimatingRouter,
   orderDelivery: orderDeliveryRouter,
   appDevices: appDevicesRouter,

@@ -293,6 +293,13 @@
       "when": 1791699072661,
       "tag": "0066_estimating",
       "breakpoints": false
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1791733226003,
+      "tag": "0067_bim_workspace",
+      "breakpoints": false
     }
   ]
 }

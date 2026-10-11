@@ -45,6 +45,7 @@ export const snapshotStateSchema = z.object({
         "material-lists",
         "rooms",
         "drawings",
+        "models",
         "documents",
         "chat",
       ]),

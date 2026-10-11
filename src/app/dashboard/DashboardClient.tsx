@@ -1,6 +1,7 @@
 "use client";
 import { usePageViewState } from "~/hooks/use-page-view-state";
 import { FinancialOnly } from "~/components/permissions/FinancialVisibility";
+import { DeferredJobModelsView } from "~/components/models/DeferredJobModelsView";
 import { AddPartDialog, QuotePreviewSheet, OrdersPreviewSheet, ExistingQuotesOrdersDialog, JobRoomsView, JobDrawingsView, JobDocumentsView, JobChatView } from "~/components/app/DeferredFeatures";
 
 import { MaterialListOrderPickerDialog } from "~/components/materialLists/VerifyOrderButton";
@@ -642,6 +643,8 @@ export function DashboardClient({
                 />
               ) : offlineJobView === "documents" ? (
                 <JobDocumentsView key={offlineJob.id} jobId={offlineJob.id} />
+              ) : offlineJobView === "models" ? (
+                <DeferredJobModelsView jobId={offlineJob.id} />
               ) : offlineJobView === "drawings" ? (
                 <JobDrawingsView jobId={offlineJob.id} />
               ) : offlineJobView === "rooms" ? (

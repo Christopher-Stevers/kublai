@@ -2522,3 +2522,5 @@ export const orderDeliveryPreferences = createTable("order_delivery_preferences"
   revision: d.integer().notNull().default(1),
   updatedAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
 }));
+
+export * from "./bim-schema";

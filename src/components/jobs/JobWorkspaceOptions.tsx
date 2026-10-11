@@ -1,7 +1,7 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
-import { DoorOpenIcon, FilesIcon, FolderOpenIcon, MessageCircleIcon, PackageIcon, WrenchIcon } from "lucide-react";
+import { BoxIcon, DoorOpenIcon, FilesIcon, FolderOpenIcon, MessageCircleIcon, PackageIcon, WrenchIcon } from "lucide-react";
 import { type JobWorkspaceOptionId } from "~/lib/job-workspace-last-option";
 import { useDrawingsAccess } from "~/components/permissions/DrawingsAccess";
 
@@ -102,6 +102,7 @@ export function JobWorkspaceOptions({
           </div>
         </CardContent>
       </Card>}
+      {canAccessDrawings && <Card role="button" tabIndex={0} aria-label="Models" className="cursor-pointer transition-shadow hover:shadow-md" onClick={()=>onSelect("models")} onKeyDown={event=>{if(event.key==="Enter"||event.key===" "){event.preventDefault();onSelect("models");}}}><CardHeader><CardTitle>Models</CardTitle></CardHeader><CardContent><div className="flex items-center gap-2 text-sm text-muted-foreground"><BoxIcon className="h-4 w-4"/><span>Revit &amp; IFC · 3D construction coordination</span></div></CardContent></Card>}
       <Card
         data-tutorial="documents"
         role="button"
