@@ -27,6 +27,17 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Part photos are shot on white. In dark mode, dim them and fade the edges
+   into the card so they don't glare. */
+.dark .part-photo {
+  filter: brightness(0.78) contrast(0.96);
+  mask-image:
+    linear-gradient(to right, transparent, #000 12%, #000 88%, transparent),
+    linear-gradient(to bottom, transparent, #000 12%, #000 88%, transparent);
+  mask-composite: intersect;
+  -webkit-mask-composite: source-in;
+}
+
 @theme {
   --font-sans:
     var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif,

@@ -322,7 +322,7 @@ function PartCard({
                 src={part.imageUrl}
                 alt={part.displayName}
                 fill
-                className="object-cover"
+                className="part-photo object-cover"
                 draggable={false}
               />
             ) : (
@@ -393,7 +393,7 @@ function PartListRow({
               alt={part.displayName}
               fill
               sizes="32px"
-              className="object-contain p-1"
+              className="part-photo object-contain p-1"
             />
           ) : (
             <div className="flex h-full items-center justify-center text-muted-foreground/70">

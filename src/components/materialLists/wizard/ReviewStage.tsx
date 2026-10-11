@@ -82,7 +82,7 @@ function PartImage({ part }: { part: PendingPart["partDefinition"] }) {
           src={part.imageUrl}
           alt={part.displayName}
           fill
-          className="object-cover"
+          className="part-photo object-cover"
         />
       ) : (
         <div className="flex h-full items-center justify-center text-muted-foreground/70">

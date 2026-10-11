@@ -702,7 +702,7 @@ function MaterialListItemComponent({
                 src={item.partDefinition.imageUrl}
                 alt={item.partDefinition.displayName}
                 fill
-                className="object-cover transition-transform duration-200 group-hover:scale-[1.03]"
+                className="part-photo object-cover transition-transform duration-200 group-hover:scale-[1.03]"
                 draggable={false}
                 onContextMenu={
                   verifyMode ? (event) => event.preventDefault() : undefined

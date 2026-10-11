@@ -105,7 +105,7 @@ function MaterialListTableRowComponent({
             alt={item.partDefinition.displayName}
             fill
             sizes="32px"
-            className="object-contain p-1"
+            className="part-photo object-contain p-1"
           />
         ) : (
           <div className="text-muted-foreground/70 flex h-full items-center justify-center">
