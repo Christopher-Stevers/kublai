@@ -76,7 +76,7 @@ export interface ReviewStageProps {
 
 function PartImage({ part }: { part: PendingPart["partDefinition"] }) {
   return (
-    <div className="relative h-full w-full overflow-hidden rounded-md bg-muted">
+    <div className="part-photo-frame relative h-full w-full overflow-hidden rounded-md bg-muted">
       {part.imageUrl ? (
         <Image
           src={part.imageUrl}

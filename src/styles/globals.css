@@ -27,31 +27,44 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Part photos are shot on white. In dark mode, dim them and fade the edges
-   into the card so they don't glare. */
+/* Part photos are shot on white. In dark mode, dim them and soften the
+   border: a narrow fade straddles the photo's edge, half inside and half
+   outside it. In a .part-photo-frame the photo is drawn 3% larger on each
+   side and the frame stops clipping, so the outer half shows past the edge. */
 .dark .part-photo {
   filter: brightness(0.78) contrast(0.96);
   mask-image:
     linear-gradient(
       to right,
-      rgb(0 0 0 / 0.15),
-      rgb(0 0 0 / 0.6) 7%,
-      #000 18%,
-      #000 82%,
-      rgb(0 0 0 / 0.6) 93%,
-      rgb(0 0 0 / 0.15)
+      transparent,
+      rgb(0 0 0 / 0.5) 2.83%,
+      #000 5.66%,
+      #000 94.34%,
+      rgb(0 0 0 / 0.5) 97.17%,
+      transparent
     ),
     linear-gradient(
       to bottom,
-      rgb(0 0 0 / 0.15),
-      rgb(0 0 0 / 0.6) 7%,
-      #000 18%,
-      #000 82%,
-      rgb(0 0 0 / 0.6) 93%,
-      rgb(0 0 0 / 0.15)
+      transparent,
+      rgb(0 0 0 / 0.5) 2.83%,
+      #000 5.66%,
+      #000 94.34%,
+      rgb(0 0 0 / 0.5) 97.17%,
+      transparent
     );
   mask-composite: intersect;
   -webkit-mask-composite: source-in;
+}
+.dark .part-photo-frame:has(> .part-photo) {
+  overflow: visible;
+  background: transparent;
+}
+/* next/image sets the fill position inline, so these need !important. */
+.dark .part-photo-frame > .part-photo {
+  inset: -3% !important;
+  width: 106% !important;
+  max-width: none;
+  height: 106% !important;
 }
 
 @theme {

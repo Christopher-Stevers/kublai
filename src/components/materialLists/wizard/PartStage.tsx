@@ -316,7 +316,7 @@ function PartCard({
     >
       <CardContent className="p-0">
         <div className="flex w-full flex-col p-3">
-          <div className="relative mb-3 aspect-square w-full overflow-hidden rounded-xl bg-muted">
+          <div className="part-photo-frame relative mb-3 aspect-square w-full overflow-hidden rounded-xl bg-muted">
             {part.imageUrl ? (
               <Image
                 src={part.imageUrl}

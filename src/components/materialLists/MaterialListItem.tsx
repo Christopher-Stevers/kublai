@@ -683,7 +683,7 @@ function MaterialListItemComponent({
             </DropdownMenu>
           )}
           <div
-            className="relative mb-3 aspect-square w-full overflow-hidden rounded-xl bg-muted"
+            className="part-photo-frame relative mb-3 aspect-square w-full overflow-hidden rounded-xl bg-muted"
             style={
               verifyMode
                 ? {
