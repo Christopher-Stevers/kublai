@@ -11,7 +11,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu";
@@ -33,7 +32,6 @@ import {
   WrenchIcon,
   ClockIcon,
   UserIcon,
-  UserCogIcon,
   SettingsIcon,
   XIcon,
   type LucideIcon,
@@ -65,7 +63,7 @@ function HeaderFrame({
   pathname,
   mobileMenuOpen,
   setMobileMenuOpen,
-  userEmail,
+  userName,
   signOut,
   showAccount,
   tabAccess,
@@ -75,7 +73,7 @@ function HeaderFrame({
   pathname: string | null;
   mobileMenuOpen: boolean;
   setMobileMenuOpen: (open: boolean) => void;
-  userEmail: string;
+  userName: string;
   signOut?: () => void | Promise<void>;
   showAccount: boolean;
   tabAccess: {
@@ -95,6 +93,14 @@ function HeaderFrame({
   const simulation = useEmployeeSimulation();
   const router = useRouter();
   const snapshot = useSnapshot();
+  const nameParts = userName.trim().split(/\s+/).filter(Boolean);
+  const initials =
+    (
+      (Array.from(nameParts[0] ?? "")[0] ?? "") +
+      (nameParts.length > 1
+        ? (Array.from(nameParts.at(-1) ?? "")[0] ?? "")
+        : "")
+    ).toLocaleUpperCase() || "?";
   const sandbox = useTutorialSandbox();
   const isOnline = useOnlineStatus();
   const [showRequestedBackButton, setShowRequestedBackButton] = useState(false);
@@ -312,38 +318,38 @@ function HeaderFrame({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuLabel>
-                <div className="flex items-center gap-3">
-                  <UserIcon className="text-muted-foreground h-5 w-5" />
-                  <span className="text-foreground/80 truncate text-sm">
-                    {userEmail}
-                  </span>
-                </div>
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              {showAccount ? (
-                <DropdownMenuItem
-                  onClick={() => navigate("/dashboard/account")}
-                >
-                  <UserCogIcon aria-hidden="true" className="mr-2 h-4 w-4 shrink-0" />
-                  Manage Account
-                </DropdownMenuItem>
-              ) : null}
               <DropdownMenuItem
                 onClick={() => navigate("/dashboard/account/settings")}
               >
                 <SettingsIcon className="mr-2 h-4 w-4" />
                 Settings
               </DropdownMenuItem>
-              {signOut ? (
-                <DropdownMenuItem
-                  onClick={() => {
-                    void handleSignOut();
-                  }}
-                >
-                  Sign out
-                </DropdownMenuItem>
-              ) : null}
+              <DropdownMenuSeparator />
+              <div className="flex items-center justify-between gap-3 px-2 py-1">
+                {signOut ? (
+                  <DropdownMenuItem
+                    className="flex-1"
+                    onClick={() => {
+                      void handleSignOut();
+                    }}
+                  >
+                    Sign out
+                  </DropdownMenuItem>
+                ) : (
+                  <span />
+                )}
+                {showAccount && (
+                  <button
+                    type="button"
+                    aria-label="Manage account"
+                    title="Manage account"
+                    className="bg-primary text-primary-foreground hover:bg-primary/90 focus-visible:ring-ring flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold focus-visible:ring-2 focus-visible:ring-offset-2"
+                    onClick={() => navigate("/dashboard/account")}
+                  >
+                    {initials}
+                  </button>
+                )}
+              </div>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -421,26 +427,7 @@ function HeaderFrame({
                 </div>
               </nav>
               <div className="border-t px-4 py-4">
-                <div className="mb-3 flex items-center gap-3 rounded-md px-3 py-2">
-                  <UserIcon className="text-muted-foreground h-5 w-5" />
-                  <span className="text-foreground/80 truncate text-sm">
-                    {userEmail}
-                  </span>
-                </div>
                 <div className="space-y-1">
-                  {showAccount ? (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setMobileMenuOpen(false);
-                        navigate("/dashboard/account");
-                      }}
-                      className="text-foreground/80 hover:bg-accent hover:text-foreground flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-base font-medium transition-colors"
-                    >
-                      <UserCogIcon aria-hidden="true" className="h-5 w-5 shrink-0" />
-                      Manage Account
-                    </button>
-                  ) : null}
                   <button
                     type="button"
                     onClick={() => {
@@ -449,19 +436,42 @@ function HeaderFrame({
                     }}
                     className="text-foreground/80 hover:bg-accent flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-base font-medium"
                   >
-                    <SettingsIcon aria-hidden="true" className="h-5 w-5 shrink-0" /> Settings
+                    <SettingsIcon
+                      aria-hidden="true"
+                      className="h-5 w-5 shrink-0"
+                    />{" "}
+                    Settings
                   </button>
-                  {signOut ? (
-                    <button
-                      onClick={() => {
-                        setMobileMenuOpen(false);
-                        void handleSignOut();
-                      }}
-                      className="text-foreground/80 hover:bg-accent hover:text-foreground block w-full rounded-md px-3 py-2 text-left text-base font-medium transition-colors"
-                    >
-                      Sign out
-                    </button>
-                  ) : null}
+                  <div className="flex items-center justify-between gap-3 px-3 py-2">
+                    {signOut ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMobileMenuOpen(false);
+                          void handleSignOut();
+                        }}
+                        className="text-foreground/80 hover:bg-accent hover:text-foreground flex-1 rounded-md py-2 text-left text-base font-medium transition-colors"
+                      >
+                        Sign out
+                      </button>
+                    ) : (
+                      <span />
+                    )}
+                    {showAccount && (
+                      <button
+                        type="button"
+                        aria-label="Manage account"
+                        title="Manage account"
+                        className="bg-primary text-primary-foreground hover:bg-primary/90 focus-visible:ring-ring flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold focus-visible:ring-2 focus-visible:ring-offset-2"
+                        onClick={() => {
+                          setMobileMenuOpen(false);
+                          navigate("/dashboard/account");
+                        }}
+                      >
+                        {initials}
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -491,11 +501,14 @@ function HeaderWithClerk() {
       pathname={pathname}
       mobileMenuOpen={mobileMenuOpen}
       setMobileMenuOpen={setMobileMenuOpen}
-      userEmail={
-        simulation?.employeeEmail ??
-        effectiveUser?.email ??
-        user?.primaryEmailAddress?.emailAddress ??
-        "Not signed in"
+      userName={
+        simulation?.employeeName ??
+        effectiveUser?.name ??
+        user?.fullName ??
+        (effectiveUser?.email ?? user?.primaryEmailAddress?.emailAddress ?? "")
+          .split("@")[0]
+          ?.replace(/[._-]+/g, " ") ??
+        ""
       }
       signOut={async () => {
         try {
@@ -535,7 +548,7 @@ function HeaderWithoutClerk() {
       pathname={pathname}
       mobileMenuOpen={mobileMenuOpen}
       setMobileMenuOpen={setMobileMenuOpen}
-      userEmail="Auth disabled"
+      userName="Auth disabled"
       showAccount={false}
       tabAccess={{
         dashboard: true,
@@ -566,7 +579,7 @@ function HeaderForPractice() {
       pathname="/dashboard"
       mobileMenuOpen={mobileMenuOpen}
       setMobileMenuOpen={setMobileMenuOpen}
-      userEmail="Practice workspace"
+      userName="Practice workspace"
       showAccount={true}
       tabAccess={{
         dashboard: true,
