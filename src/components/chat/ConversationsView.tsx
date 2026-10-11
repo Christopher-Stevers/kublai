@@ -359,6 +359,7 @@ function ChatWorkspace({ initialJobId }: { initialJobId?: string }) {
           </Button>
         </div>
       </header>
+      <AngleTrim edge="top" />
       {!online && (
         <p role="status" className="bg-muted shrink-0 px-4 py-2 text-sm">
           Reconnect to send messages. You can still view cached chats and keep

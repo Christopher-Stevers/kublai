@@ -1033,7 +1033,7 @@ function ChatLobby({
           </div>
         </header>
       )}
-      <AngleTrim edge="top" />
+      {!embedded && <AngleTrim edge="top" />}
       {restoring && (
         <p role="status" className="p-3 text-sm">
           Restoring your place…
