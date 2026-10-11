@@ -8,7 +8,6 @@ import { useOnlineStatus } from "~/hooks/use-online-status";
 
 function tabForPath(pathname: string | null) {
   if (!pathname) return "dashboard";
-  if (pathname.startsWith("/dashboard/assist")) return null; // Each assistance tool checks its own tab permission on the server.
   if (pathname.startsWith("/dashboard/catalogue")) return "catalogue";
   if (pathname.startsWith("/dashboard/suppliers")) return "suppliers";
   if (pathname.startsWith("/dashboard/quotes")) return "quotes";

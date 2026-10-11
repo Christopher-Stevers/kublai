@@ -4,7 +4,6 @@ import { pushRouter } from "~/server/api/routers/push";
 import { conversationsRouter } from "~/server/api/routers/conversations";
 import { chatRouter } from "~/server/api/routers/chat";
 import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
-import { assistRouter } from "~/server/api/routers/assist";
 import { adminRouter } from "~/server/api/routers/admin";
 import { assetsRouter } from "~/server/api/routers/assets";
 import { catalogueRouter } from "~/server/api/routers/catalogue";
@@ -32,7 +31,6 @@ export const appRouter = createTRPCRouter({
   chat: chatRouter,
   conversations: conversationsRouter,
   push: pushRouter,
-  assist: assistRouter,
   payment: paymentRouter,
   admin: adminRouter,
   user: userRouter,

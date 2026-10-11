@@ -1,7 +1,6 @@
 "use client";
 import { EditPartDialog, CreateCustomPartDialog, MaterialGroupsDialog, PhotoQueueDialog } from "~/components/app/DeferredFeatures";
 
-import { AssistanceLink } from "~/components/assist/AssistanceLink";
 
 import { useRef, useState } from "react";
 import { api } from "~/trpc/react";
@@ -272,7 +271,6 @@ export function CatalogueScreen({
             {catalogKind === "assets" ? "Tool Types" : "Parts Catalogue"}
           </h1>
           <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-            <AssistanceLink />
             {canEditParts && <Button variant="outline" disabled={!isCatalogueOnline} onClick={() => setIsMaterialGroupsOpen(true)}>Material groups</Button>}
             {canEditParts && (
               <Button

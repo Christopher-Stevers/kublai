@@ -1,9 +1,6 @@
-import { Suspense } from "react";
-import { AssistancePanel } from "~/components/assist/AssistancePanel";
+import { redirect } from "next/navigation";
+
+// Keep old bookmarks working after removing the assistance workspace.
 export default function AssistancePage() {
-  return (
-    <Suspense fallback={<p className="p-6">Loading AI assistance…</p>}>
-      <AssistancePanel />
-    </Suspense>
-  );
+  redirect("/dashboard");
 }

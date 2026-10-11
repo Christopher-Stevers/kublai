@@ -1,7 +1,6 @@
 "use client";
 import { JobRoomsView } from "~/components/app/DeferredFeatures";
 
-import { AssistanceLink } from "~/components/assist/AssistanceLink";
 
 import { use, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
@@ -100,7 +99,6 @@ export default function JobRoomsPage({
           </div>
         )}
 
-        <div className="mb-4 flex flex-wrap gap-2"><AssistanceLink mode="sheets">Classify drawings</AssistanceLink><AssistanceLink mode="rooms">Review outlines</AssistanceLink></div>
         <JobRoomsView jobId={job.id} />
       </div>
     </div>
