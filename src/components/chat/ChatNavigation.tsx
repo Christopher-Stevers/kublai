@@ -1,5 +1,6 @@
 "use client";
-import { useState } from "react";
+import { useRef } from "react";
+import { useChatScroll } from "~/hooks/use-chat-scroll";
 import { HardHatIcon, MessageSquareIcon, UsersIcon } from "lucide-react";
 import { Input } from "~/components/ui/input";
 
@@ -17,14 +18,21 @@ export function ChatNavigation({
   selected,
   onSelect,
   loading,
+  search,
+  onSearch,
+  memoryKey,
 }: {
   conversations: Conversation[];
   jobs: { id: string; name: string }[];
   selected: ChatDestination | null;
   onSelect: (chat: ChatDestination) => void;
   loading: boolean;
+  search: string;
+  onSearch: (value: string) => void;
+  memoryKey: string;
 }) {
-  const [search, setSearch] = useState("");
+  const list = useRef<HTMLElement>(null);
+  const rememberScroll = useChatScroll(memoryKey, list, !loading);
   const query = search.trim().toLocaleLowerCase();
   const groups = [
     {
@@ -76,10 +84,12 @@ export function ChatNavigation({
           aria-label="Search chats"
           placeholder="Search chats…"
           value={search}
-          onChange={(event) => setSearch(event.target.value)}
+          onChange={(event) => onSearch(event.target.value)}
         />
       </div>
       <nav
+        ref={list}
+        onScroll={rememberScroll}
         aria-label="Chats"
         className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-3"
       >

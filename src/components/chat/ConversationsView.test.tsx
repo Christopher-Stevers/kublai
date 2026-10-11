@@ -20,6 +20,9 @@ const mocks = vi.hoisted(() => ({
   image: false,
   params: "conversation=room",
   create: vi.fn(),
+  fetchOlder: vi.fn(),
+  sequence: 1,
+  next: null as number | null,
 }));
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: mocks.push }),
@@ -49,7 +52,7 @@ vi.mock("~/trpc/react", () => ({
     useUtils: () => ({
       conversations: {
         list: { invalidate: mocks.invalidate },
-        history: { invalidate: mocks.invalidate },
+        history: { invalidate: mocks.invalidate, fetch: mocks.fetchOlder },
       },
     }),
     conversations: {
@@ -93,7 +96,7 @@ vi.mock("~/trpc/react", () => ({
             messages: [
               {
                 id: "message",
-                sequence: 1,
+                sequence: mocks.sequence,
                 author: {
                   id: mocks.own ? "sender" : "recipient",
                   name: "Recipient",
@@ -114,7 +117,7 @@ vi.mock("~/trpc/react", () => ({
                 deletedAt: mocks.deleted ? new Date() : null,
               },
             ],
-            nextBeforeSequence: null,
+            nextBeforeSequence: mocks.next,
           },
           error: mocks.denied ? { data: { code: "FORBIDDEN" } } : null,
         }),
@@ -125,9 +128,13 @@ vi.mock("~/trpc/react", () => ({
     },
   },
 }));
+import { ChatViewProvider } from "./ChatViewProvider";
 import { ConversationsView } from "./ConversationsView";
 beforeEach(() => {
   vi.clearAllMocks();
+  sessionStorage.clear();
+  mocks.sequence = 1;
+  mocks.next = null;
   mocks.denied = false;
   mocks.deleted = false;
   mocks.source = null;
@@ -305,4 +312,119 @@ it("keeps separate drafts and retry identities when switching conversations", as
   expect(screen.getByRole("textbox", { name: "Message" })).toHaveValue(
     "Unsent direct message",
   );
+});
+
+it("returns to the selected conversation, draft, search and reading position after leaving Chat", () => {
+  const page = (visible: boolean) => (
+    <ChatViewProvider>
+      {visible ? <ConversationsView /> : <div>Other page</div>}
+    </ChatViewProvider>
+  );
+  const view = render(page(true));
+  fireEvent.change(screen.getByRole("textbox", { name: "Message" }), {
+    target: { value: "Keep this draft" },
+  });
+  fireEvent.change(screen.getByRole("searchbox", { name: "Search chats" }), {
+    target: { value: "Review" },
+  });
+  const timeline = screen.getByLabelText("Messages");
+  Object.defineProperties(timeline, {
+    scrollHeight: { value: 2000 },
+    clientHeight: { value: 400 },
+  });
+  timeline.scrollTop = 640;
+  fireEvent.scroll(timeline);
+  view.rerender(page(false));
+  mocks.params = "";
+  view.rerender(page(true));
+  expect(screen.getByText("Private review")).toBeVisible();
+  expect(screen.getByRole("textbox", { name: "Message" })).toHaveValue(
+    "Keep this draft",
+  );
+  expect(screen.getByRole("searchbox", { name: "Search chats" })).toHaveValue(
+    "Review",
+  );
+  expect(screen.getByLabelText("Messages").scrollTop).toBe(640);
+  mocks.params = "job=aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+  view.rerender(page(true));
+  expect(screen.getByTestId("job-thread")).toBeVisible();
+  view.rerender(page(false));
+  mocks.params = "";
+  view.rerender(page(true));
+  expect(screen.getByTestId("job-thread")).toBeVisible();
+});
+it("reloads older messages and restores the reading position after a full page navigation", async () => {
+  mocks.sequence = 10;
+  mocks.next = 10;
+  mocks.fetchOlder.mockResolvedValue({
+    messages: [
+      {
+        id: "earlier",
+        sequence: 2,
+        author: { id: "recipient", name: "Recipient" },
+        body: "Earlier review",
+        attachments: [],
+        source: null,
+        createdAt: new Date(),
+        deletedAt: null,
+      },
+    ],
+    nextBeforeSequence: null,
+  });
+  const view = render(
+    <ChatViewProvider scope="test-account">
+      <ConversationsView />
+    </ChatViewProvider>,
+  );
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Load earlier messages" }),
+  );
+  await screen.findByText("Earlier review");
+  const timeline = screen.getByLabelText("Messages");
+  Object.defineProperties(timeline, {
+    scrollHeight: { value: 2000 },
+    clientHeight: { value: 400 },
+  });
+  timeline.scrollTop = 420;
+  fireEvent.scroll(timeline);
+  view.unmount();
+  const saved = sessionStorage.getItem("foremanhq-chat-view:test-account");
+  expect(saved).not.toContain("Earlier review");
+  expect(saved).not.toContain("Private review");
+  mocks.params = "";
+  mocks.fetchOlder.mockClear();
+  render(
+    <ChatViewProvider scope="test-account">
+      <ConversationsView />
+    </ChatViewProvider>,
+  );
+  await screen.findByText("Earlier review");
+  expect(mocks.fetchOlder).toHaveBeenCalledWith({
+    conversationId: "room",
+    beforeSequence: 10,
+    limit: 50,
+  });
+  await waitFor(() =>
+    expect(screen.getByLabelText("Messages").scrollTop).toBe(420),
+  );
+});
+it("does not restore another account's private chat", async () => {
+  const view = render(
+    <ChatViewProvider key="one" scope="one">
+      <ConversationsView />
+    </ChatViewProvider>,
+  );
+  await screen.findByText("Private review");
+  mocks.params = "";
+  view.rerender(
+    <ChatViewProvider key="two" scope="two">
+      <ConversationsView />
+    </ChatViewProvider>,
+  );
+  await waitFor(() =>
+    expect(screen.queryByText("Private review")).not.toBeInTheDocument(),
+  );
+  expect(
+    screen.getByText("Choose a direct, group or job chat from the list."),
+  ).toBeVisible();
 });

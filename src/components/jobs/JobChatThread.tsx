@@ -1,5 +1,8 @@
 "use client";
 import { usePageViewState } from "~/hooks/use-page-view-state";
+import { useChatScroll } from "~/hooks/use-chat-scroll";
+import { useChatHistoryResume } from "~/hooks/use-chat-history-resume";
+import { useChatViewMemory } from "~/components/chat/ChatViewProvider";
 
 import { useEmployeeSimulation } from "~/components/simulation/SimulationProvider";
 import { useAuth } from "@clerk/nextjs";
@@ -60,6 +63,15 @@ function errorText(error: unknown) {
 }
 function nearBottom(element: HTMLElement) {
   return element.scrollHeight - element.scrollTop - element.clientHeight < 90;
+}
+function historyPages(messages: ChatMessage[]) {
+  const pages: Record<string, ChatMessage[]> = {};
+  for (let start = 0; start < messages.length; start += 50) {
+    const page = messages.slice(start, start + 50);
+    const last = page.at(-1);
+    if (last) pages[last.sequence + 1] = page;
+  }
+  return pages;
 }
 const LONG_PRESS_MS = 450;
 import {
@@ -143,6 +155,13 @@ export function JobChatThread({
   userId?: string;
 }) {
   const sandbox = useTutorialSandbox();
+  const memory = useChatViewMemory();
+  if (memory && !memory.ready)
+    return (
+      <p role="status" className="p-4">
+        Loading chat…
+      </p>
+    );
   return (
     <div
       data-tutorial="chat-view"
@@ -217,6 +236,11 @@ function ChatLobby({
   const inTutorial = Boolean(useTutorialSandbox());
   const browserOnline = useOnlineStatus();
   const online = inTutorial || browserOnline;
+  const memory = useChatViewMemory();
+  const viewKey = `job:${userId}:${jobId}:${inTutorial}`;
+  const [resume] = useState(() =>
+    memory?.get<{ messages: ChatMessage[]; cursor?: number | null }>(viewKey),
+  );
   const utils = api.useUtils();
   const [visible, setVisible] = useState(
     () =>
@@ -225,10 +249,17 @@ function ChatLobby({
   const [connected, setConnected] = useState(false);
   const [showMembers, setShowMembers] = usePageViewState(
     `chat:${jobId}:showMembers`,
-    false,
+    memory?.get<boolean>(`members:${viewKey}`) ?? false,
   );
-  const [older, setOlder] = useState<Record<string, ChatMessage[]>>({});
-  const [olderCursor, setOlderCursor] = useState<number | null | undefined>();
+  useEffect(() => {
+    memory?.set(`members:${viewKey}`, showMembers);
+  }, [memory, viewKey, showMembers]);
+  const [older, setOlder] = useState<Record<string, ChatMessage[]>>(
+    resume ? historyPages(resume.messages) : {},
+  );
+  const [olderCursor, setOlderCursor] = useState<number | null | undefined>(
+    resume?.cursor,
+  );
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [draft, setDraft] = useState<ChatDraft>(newChatDraft);
   const draftRef = useRef(draft);
@@ -294,6 +325,53 @@ function ChatLobby({
   const displayedSequence = messages.at(-1)?.sequence ?? 0;
   const nextBefore =
     olderCursor === undefined ? history.data?.nextBeforeSequence : olderCursor;
+  const restoring = useChatHistoryResume(
+    viewKey,
+    Boolean(resume),
+    history.data,
+    online && Boolean(overview.data?.joined),
+    (cursor) =>
+      utils.chat.history.fetch({ jobId, beforeSequence: cursor, limit: 50 }),
+    (messages, cursor) => {
+      setOlder(historyPages(messages.sort((a, b) => a.sequence - b.sequence)));
+      setOlderCursor(cursor);
+    },
+    (reason) => setError(errorText(reason)),
+  );
+  const rememberScroll = useChatScroll(
+    `scroll:${viewKey}`,
+    timeline,
+    Boolean(history.data && overview.data?.joined) && !restoring,
+    (bottom) => {
+      atBottomRef.current = bottom;
+      setAtBottom(bottom);
+    },
+  );
+  useEffect(() => {
+    if (
+      accessRevoked ||
+      ["FORBIDDEN", "UNAUTHORIZED", "NOT_FOUND"].includes(
+        history.error?.data?.code ?? "",
+      )
+    ) {
+      memory?.remove(viewKey);
+      memory?.remove(`range:${viewKey}`);
+      memory?.remove(`scroll:${viewKey}`);
+    } else if (history.data && overview.data?.joined && !restoring) {
+      memory?.set(viewKey, { messages, cursor: nextBefore });
+      if (messages[0]) memory?.set(`range:${viewKey}`, messages[0].sequence);
+    }
+  }, [
+    memory,
+    viewKey,
+    history.data,
+    history.error,
+    overview.data?.joined,
+    accessRevoked,
+    messages,
+    nextBefore,
+    restoring,
+  ]);
 
   useEffect(() => {
     const resize = () => {
@@ -443,15 +521,17 @@ function ChatLobby({
   ]);
 
   useEffect(() => {
-    if (!timeline.current || !atBottomRef.current) return;
+    if (restoring || !timeline.current || !atBottomRef.current) return;
     timeline.current.scrollTop = timeline.current.scrollHeight;
-  }, [messages]);
+  }, [messages, restoring]);
   useEffect(() => {
     if (
       !online ||
       accessRevoked ||
       !visible ||
       !atBottom ||
+      !atBottomRef.current ||
+      restoring ||
       !history.data ||
       displayedSequence <= lastRead.current ||
       Date.now() < readRetryAfter.current
@@ -470,6 +550,7 @@ function ChatLobby({
     online,
     visible,
     atBottom,
+    restoring,
     displayedSequence,
     history.data,
     accessRevoked,
@@ -926,6 +1007,11 @@ function ChatLobby({
         </header>
       )}
       <AngleTrim edge="top" />
+      {restoring && (
+        <p role="status" className="p-3 text-sm">
+          Restoring your place…
+        </p>
+      )}
       {!online && (
         <p className="flex shrink-0 items-center gap-2 bg-amber-50 px-3 py-2 text-sm text-amber-950">
           <WifiOffIcon className="h-4 w-4" />
@@ -943,9 +1029,13 @@ function ChatLobby({
         ref={timeline}
         data-tutorial="chat-timeline"
         className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-4 sm:px-4"
-        style={CHECKER_PLATE}
+        style={{
+          ...CHECKER_PLATE,
+          visibility: restoring ? "hidden" : undefined,
+        }}
         aria-label="Messages"
         onScroll={(event) => {
+          rememberScroll();
           const bottom = nearBottom(event.currentTarget);
           atBottomRef.current = bottom;
           setAtBottom(bottom);
@@ -1235,6 +1325,7 @@ function ChatBubble({
   });
   return (
     <article
+      data-chat-message-id={message.id}
       data-tutorial={tutorialOwnMessage ? "chat-own-message" : undefined}
       id={`chat-message-${message.id}`}
       className={`flex ${mine ? "justify-end" : "justify-start"} ${grouped ? "mt-1" : "mt-3"}`}

@@ -9,6 +9,7 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type * as DraftStorage from "~/lib/job-chat-drafts";
 import type { ChatMessage } from "~/server/chat/contracts";
+import { ChatViewProvider } from "~/components/chat/ChatViewProvider";
 import { JobChatThread as JobChatView } from "./JobChatThread";
 
 const mock = vi.hoisted(() => ({
@@ -595,4 +596,38 @@ describe("job chat delivery and scrolling", () => {
     expect(mock.send).toHaveBeenCalledTimes(1);
     expect(screen.getByText("site.png")).toBeInTheDocument();
   });
+});
+
+it("retains job chat's older messages and reading position when leaving and returning", async () => {
+  mock.history = {
+    ...mock.history,
+    messages: [message(10), message(11)],
+    nextBeforeSequence: 10,
+  };
+  mock.fetchOlder.mockResolvedValue({
+    messages: [message(2, "Earlier job message")],
+    nextBeforeSequence: null,
+  });
+  const page = (visible: boolean) => (
+    <ChatViewProvider>
+      {visible ? <JobChatView jobId="job-one" /> : <div>Other page</div>}
+    </ChatViewProvider>
+  );
+  const view = render(page(true));
+  fireEvent.click(await screen.findByRole("button", { name: /Load earlier/ }));
+  await screen.findByText("Earlier job message");
+  const timeline = screen.getByLabelText("Messages");
+  Object.defineProperties(timeline, {
+    scrollHeight: { value: 2000 },
+    clientHeight: { value: 400 },
+  });
+  timeline.scrollTop = 520;
+  fireEvent.scroll(timeline);
+  view.rerender(page(false));
+  mock.fetchOlder.mockClear();
+  view.rerender(page(true));
+  await screen.findByText("Earlier job message");
+  expect(screen.getByLabelText("Messages").scrollTop).toBe(520);
+  for (const [input] of mock.fetchOlder.mock.calls)
+    expect(Number.isFinite(input.beforeSequence)).toBe(true);
 });

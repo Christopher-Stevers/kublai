@@ -8,6 +8,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { HydrateClient } from "~/trpc/server";
 import { SnapshotProvider } from "~/components/chat/SnapshotProvider";
+import { ChatViewProvider } from "~/components/chat/ChatViewProvider";
 import { Header } from "../_components/Header";
 import { getRequestIdentity } from "~/server/utils/get-request-identity";
 import { waitForUser } from "~/server/utils/wait-for-user";
@@ -81,7 +82,11 @@ export default async function DashboardLayout({
                     />
                     <Header />
                     <TabAccessGate />
-                    <main className="flex-1">{children}</main>
+                    <main className="flex-1">
+                      <ChatViewProvider key={`${organizationId}:${effectiveUserId}:${identity.simulation?.id ?? ""}`} scope={`${organizationId}:${effectiveUserId}:${identity.simulation?.id ?? ""}`}>
+                        {children}
+                      </ChatViewProvider>
+                    </main>
                   </div>
                 </DrawingDestinationProvider>
               </SnapshotProvider>

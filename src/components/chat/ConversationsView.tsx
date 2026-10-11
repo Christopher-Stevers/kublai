@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import {
@@ -31,6 +31,9 @@ import {
 import type { ConversationMessage } from "~/server/conversations/contracts";
 import { safeSnapshotHref } from "~/lib/snapshot-source";
 import { useOnlineStatus } from "~/hooks/use-online-status";
+import { useChatScroll } from "~/hooks/use-chat-scroll";
+import { useChatHistoryResume } from "~/hooks/use-chat-history-resume";
+import { useChatViewMemory, useChatViewState } from "./ChatViewProvider";
 import { useReplicacheJobsList } from "~/hooks/use-replicache-jobs";
 import { ChatNavigation, type ChatDestination } from "./ChatNavigation";
 import {
@@ -63,13 +66,22 @@ type ConversationDraft = {
   attempt: { clientId: string; body: string; attachmentIds: string[] } | null;
 };
 export function ConversationsView({ initialJobId }: { initialJobId?: string }) {
+  const memory = useChatViewMemory();
+  return memory && !memory.ready ? (
+    <p role="status" className="p-4">
+      Loading chat…
+    </p>
+  ) : (
+    <ChatWorkspace initialJobId={initialJobId} />
+  );
+}
+function ChatWorkspace({ initialJobId }: { initialJobId?: string }) {
   const router = useRouter(),
     params = useSearchParams(),
     online = useOnlineStatus(),
     utils = api.useUtils();
   const jobs = useReplicacheJobsList();
   const [newOpen, setNewOpen] = useState(false),
-    [chatsOpen, setChatsOpen] = useState(false),
     [target, setTarget] = useState<ChatTarget>({
       mode: "direct",
       recipientIds: [],
@@ -79,7 +91,16 @@ export function ConversationsView({ initialJobId }: { initialJobId?: string }) {
   const panel = useRef<HTMLElement>(null);
   const [headerControlsTarget, setHeaderControlsTarget] =
     useState<HTMLDivElement | null>(null);
-  const drafts = useMemo(() => new Map<string, ConversationDraft>(), []);
+  const [drafts] = useChatViewState(
+    "drafts",
+    () => new Map<string, ConversationDraft>(),
+  );
+  const [chatsOpen, setChatsOpen] = useChatViewState("switcher", false);
+  const [search, setSearch] = useChatViewState("search", "");
+  const [remembered, setRemembered] = useChatViewState<ChatDestination | null>(
+    "destination",
+    null,
+  );
   const [height, setHeight] = useState<number>();
   useEffect(() => {
     const resize = () => {
@@ -105,8 +126,16 @@ export function ConversationsView({ initialJobId }: { initialJobId?: string }) {
       window.visualViewport?.removeEventListener("scroll", resize);
     };
   }, []);
-  const conversationId = params.get("conversation");
-  const jobId = conversationId ? null : (params.get("job") ?? initialJobId);
+  const explicit =
+    params.has("conversation") || params.has("job") || initialJobId;
+  const conversationId =
+    params.get("conversation") ??
+    (!explicit && remembered?.kind === "conversation" ? remembered.id : null);
+  const jobId = conversationId
+    ? null
+    : (params.get("job") ??
+      initialJobId ??
+      (!explicit && remembered?.kind === "job" ? remembered.id : null));
   const selected: ChatDestination | null = conversationId
     ? { kind: "conversation", id: conversationId }
     : jobId
@@ -116,6 +145,11 @@ export function ConversationsView({ initialJobId }: { initialJobId?: string }) {
     enabled: online,
     refetchInterval: online ? 5000 : false,
   });
+  useEffect(() => {
+    if (conversationId)
+      setRemembered({ kind: "conversation", id: conversationId });
+    else if (jobId) setRemembered({ kind: "job", id: jobId });
+  }, [conversationId, jobId, setRemembered]);
   const create = api.conversations.create.useMutation();
   const availableJobs: { id: string; name: string }[] = jobs
     .filter((item) =>
@@ -155,13 +189,16 @@ export function ConversationsView({ initialJobId }: { initialJobId?: string }) {
       setError(text(reason));
     }
   };
-  const navigation = (
+  const navigation = (memoryKey: string) => (
     <ChatNavigation
+      memoryKey={memoryKey}
       conversations={list.data?.conversations ?? []}
       jobs={availableJobs}
       selected={selected}
       onSelect={choose}
       loading={list.isLoading}
+      search={search}
+      onSearch={setSearch}
     />
   );
   return (
@@ -229,7 +266,7 @@ export function ConversationsView({ initialJobId }: { initialJobId?: string }) {
           aria-label="Chat list"
           className={`${selected ? "hidden md:flex" : "flex"} min-h-0 w-full shrink-0 flex-col border-r md:w-72`}
         >
-          {navigation}
+          {navigation("scroll:navigation:sidebar")}
         </aside>
         <main
           aria-label="Current chat"
@@ -279,7 +316,9 @@ export function ConversationsView({ initialJobId }: { initialJobId?: string }) {
           <DialogDescription className="px-1 text-sm">
             Choose a direct, group or job chat.
           </DialogDescription>
-          <div className="min-h-0 flex-1 overflow-hidden">{navigation}</div>
+          <div className="min-h-0 flex-1 overflow-hidden">
+            {navigation("scroll:navigation:switcher")}
+          </div>
         </DialogContent>
       </Dialog>
       <Dialog
@@ -328,6 +367,13 @@ function ConversationThread({
   drafts: Map<string, ConversationDraft>;
 }) {
   const draftKey = `${userId}:${id}`;
+  const memory = useChatViewMemory();
+  const viewKey = `conversation:${draftKey}`;
+  const [resume] = useState(() =>
+    memory?.get<{ messages: ConversationMessage[]; cursor?: number | null }>(
+      viewKey,
+    ),
+  );
   const cached = drafts.get(draftKey);
   const utils = api.useUtils(),
     [body, setBody] = useState(cached?.body ?? ""),
@@ -337,8 +383,8 @@ function ConversationThread({
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
     [locked, setLocked] = useState(Boolean(cached?.attempt)),
-    [older, setOlder] = useState<ConversationMessage[]>([]),
-    [cursor, setCursor] = useState<number | null | undefined>(),
+    [older, setOlder] = useState<ConversationMessage[]>(resume?.messages ?? []),
+    [cursor, setCursor] = useState<number | null | undefined>(resume?.cursor),
     [loadingOlder, setLoadingOlder] = useState(false);
   const history = api.conversations.history.useQuery(
     { conversationId: id, limit: 50 },
@@ -357,6 +403,31 @@ function ConversationThread({
     lastRead = useRef(0),
     tail = useRef(""),
     bottom = useRef(true);
+  const restoring = useChatHistoryResume(
+    viewKey,
+    Boolean(resume),
+    history.data,
+    online,
+    (cursor) =>
+      utils.conversations.history.fetch({
+        conversationId: id,
+        beforeSequence: cursor,
+        limit: 50,
+      }),
+    (messages, cursor) => {
+      setOlder(messages);
+      setCursor(cursor);
+    },
+    (reason) => setError(text(reason)),
+  );
+  const rememberScroll = useChatScroll(
+    `scroll:${viewKey}`,
+    timeline,
+    Boolean(history.data) && !restoring,
+    (value) => {
+      bottom.current = value;
+    },
+  );
   useEffect(() => {
     drafts.set(draftKey, { body, files, attempt: attempt.current });
   }, [drafts, draftKey, body, files, busy, locked]);
@@ -369,7 +440,23 @@ function ConversationThread({
     next = cursor === undefined ? history.data?.nextBeforeSequence : cursor;
   useEffect(() => {
     if (
+      history.error?.data?.code === "FORBIDDEN" ||
+      history.error?.data?.code === "NOT_FOUND" ||
+      history.error?.data?.code === "UNAUTHORIZED"
+    ) {
+      memory?.remove(viewKey);
+      memory?.remove(`range:${viewKey}`);
+      memory?.remove(`scroll:${viewKey}`);
+    } else if (history.data && !restoring) {
+      memory?.set(viewKey, { messages, cursor: next });
+      if (messages[0]) memory?.set(`range:${viewKey}`, messages[0].sequence);
+    }
+  }, [memory, viewKey, history.data, history.error, messages, next, restoring]);
+  useEffect(() => {
+    if (
       !online ||
+      restoring ||
+      !bottom.current ||
       !latest ||
       latest <= lastRead.current ||
       document.visibilityState === "hidden"
@@ -382,13 +469,18 @@ function ConversationThread({
       .catch(() => {
         lastRead.current = 0;
       });
-  }, [id, latest, online, read, utils]);
+  }, [id, latest, online, read, utils, restoring]);
   useEffect(() => {
     const last = messages.at(-1)?.id ?? "";
-    if (last !== tail.current && timeline.current && bottom.current)
+    if (
+      !restoring &&
+      last !== tail.current &&
+      timeline.current &&
+      bottom.current
+    )
       timeline.current.scrollTop = timeline.current.scrollHeight;
-    tail.current = last;
-  }, [messages]);
+    if (!restoring) tail.current = last;
+  }, [messages, restoring]);
   const submit = async () => {
     if (busy || !online || (!body.trim() && !files.length)) return;
     setBusy(true);
@@ -464,14 +556,23 @@ function ConversationThread({
   );
   return (
     <>
+      {restoring && !denied && (
+        <p role="status" className="p-3 text-sm">
+          Restoring your place…
+        </p>
+      )}
       <div
         ref={timeline}
         role="log"
         aria-label="Messages"
         aria-live="polite"
         className="min-h-0 flex-1 overflow-y-auto px-3 py-4 sm:px-4"
-        style={CHECKER_PLATE}
+        style={{
+          ...CHECKER_PLATE,
+          visibility: restoring && !denied ? "hidden" : undefined,
+        }}
         onScroll={() => {
+          rememberScroll();
           if (timeline.current)
             bottom.current =
               timeline.current.scrollHeight -
@@ -507,6 +608,7 @@ function ConversationThread({
             messages.map((m) => (
               <article
                 key={m.id}
+                data-chat-message-id={m.id}
                 aria-label={`Message from ${m.author.name}`}
                 className={`max-w-[85%] min-w-0 rounded-2xl p-3 shadow-sm sm:max-w-[70%] ${m.author.id === userId ? "bg-primary text-primary-foreground ml-auto rounded-br-md" : "bg-card text-card-foreground rounded-bl-md"}`}
               >
