@@ -126,14 +126,29 @@ it("opens a keyboard accessible window without marking anything read", () => {
   expect(screen.getByRole("dialog", { name: "Notifications" })).toBeVisible();
   expect(screen.getByText("Check equipment tag")).toBeVisible();
   expect(
+    screen.queryByRole("button", { name: "Turn push notifications on" }),
+  ).not.toBeInTheDocument();
+  fireEvent.click(
+    screen.getByRole("button", { name: "Notification settings" }),
+  );
+  expect(
     screen.getByRole("button", { name: "Turn push notifications on" }),
   ).toBeVisible();
   expect(
     screen.getByRole("button", { name: "Job chat notifications" }),
   ).toBeVisible();
+  fireEvent.click(
+    screen.getByRole("button", { name: "Back to notifications" }),
+  );
+  expect(screen.getByText("Check equipment tag")).toBeVisible();
   expect(mocks.read).not.toHaveBeenCalled();
-  fireEvent.click(screen.getByRole("button", { name: "Unread" }));
   expect(mocks.listInput.unreadOnly).toBe(true);
+  expect(screen.getByRole("button", { name: "Unread" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  fireEvent.click(screen.getByRole("button", { name: "All" }));
+  expect(mocks.listInput.unreadOnly).toBe(false);
 });
 it("marks a notification read and navigates to its destination", async () => {
   render(<NotificationCenter />);
@@ -230,7 +245,7 @@ it("shows the full accessible count, caps the badge and disables reads offline",
   fireEvent.click(
     screen.getByRole("button", { name: "Notifications, 125 unread" }),
   );
-  expect(screen.getByText("99+")).toBeInTheDocument();
+  expect(screen.getAllByText("99+")).toHaveLength(2);
   expect(screen.getByRole("button", { name: "Mark all read" })).toBeDisabled();
   expect(screen.getByText(/Connect to refresh/)).toBeInTheDocument();
 });
@@ -246,6 +261,8 @@ it("loads older notifications and shows an empty inbox", () => {
   mocks.count = 0;
   mocks.more = false;
   rerender(<NotificationCenter />);
+  expect(screen.getByText("No unread notifications.")).toBeVisible();
+  fireEvent.click(screen.getByRole("button", { name: "All" }));
   expect(screen.getByText("No notifications yet.")).toBeVisible();
   expect(screen.getByRole("button", { name: "Mark all read" })).toBeDisabled();
 });
