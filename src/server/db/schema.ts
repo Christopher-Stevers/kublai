@@ -4,6 +4,7 @@
 // The build succeeds correctly - these are only strict TypeScript checking issues.
 
 import { chatPushSubscriptions } from "./chat-push-schema";
+import type { DeliveryCalendar } from "~/lib/delivery-calendar";
 import { relations, sql } from "drizzle-orm";
 import type { DocumentState } from "~/server/documents/types";
 import {
@@ -2507,3 +2508,11 @@ export const materialPushOutbox = createTable("material_push_outbox", (d) => ({
 ]);
 
 export * from "./app-devices-schema";
+
+/** Each account's delivery calendar is shared across its devices. */
+export const orderDeliveryPreferences = createTable("order_delivery_preferences", (d) => ({
+  userId: d.varchar({ length: 255 }).primaryKey().references(() => users.id, { onDelete: "cascade" }),
+  calendar: jsonb().$type<DeliveryCalendar>().notNull(),
+  revision: d.integer().notNull().default(1),
+  updatedAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
+}));

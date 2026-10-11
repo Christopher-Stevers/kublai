@@ -32,6 +32,7 @@ import {
 import { openEmailCompose } from "~/lib/mailto";
 import type { RouterOutputs } from "~/trpc/react";
 import { ListPageSkeleton } from "~/components/ui/skeleton";
+import { DeliveryCalendarSettings } from "~/components/materialLists/DeliveryCalendarSettings";
 
 type EmailDraft = {
   subject: string;
@@ -349,6 +350,10 @@ export default function OrdersPage() {
           )}
         </div>
 
+        {canSendOrders && <DeliveryCalendarSettings online={isOnline} onSaved={() => {
+          setEmailDrafts(new Map());
+          setExpandedOrders(new Set());
+        }} />}
         {syncError && (
           <div className="mb-4 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
             {syncError}

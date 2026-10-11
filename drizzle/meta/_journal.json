@@ -272,6 +272,13 @@
       "when": 1791675000004,
       "tag": "0063_app_device_observations",
       "breakpoints": false
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1791687184904,
+      "tag": "0064_order_delivery_preferences",
+      "breakpoints": true
     }
   ]
 }

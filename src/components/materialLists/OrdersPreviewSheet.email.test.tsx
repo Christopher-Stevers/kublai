@@ -1,3 +1,4 @@
+vi.mock("~/components/materialLists/DeliveryCalendarSettings", () => ({ DeliveryCalendarSettings: () => null }));
 import {
   act,
   cleanup,

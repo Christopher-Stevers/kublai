@@ -1,3 +1,5 @@
+import { userDeliveryDate } from "~/server/orders/delivery-calendar";
+import { formatDeliveryDate } from "~/lib/delivery-calendar";
 import { enqueueMaterialNotification } from "~/server/notifications/materials";
 import { TRPCError } from "@trpc/server";
 import { eq, and, sql, desc, asc, inArray, gte } from "drizzle-orm";
@@ -11,14 +13,6 @@ import {
 
 import { resolveMaterialRoom } from "~/server/material-room";
 
-function getNextBusinessDay(from = new Date()) {
-  const next = new Date(from);
-  next.setHours(0, 0, 0, 0);
-  do {
-    next.setDate(next.getDate() + 1);
-  } while (next.getDay() === 0 || next.getDay() === 6);
-  return next;
-}
 
 function formatEmailItemLine(item: {
   quantity: string | null;
@@ -100,6 +94,7 @@ function buildOrderEmailContent({
   jobName,
   poNumber,
   deliveryAddress,
+  deliveryDate,
   supplierContactName,
   items,
   notes,
@@ -108,6 +103,7 @@ function buildOrderEmailContent({
   jobName: string;
   poNumber: string;
   deliveryAddress: string;
+  deliveryDate: string;
   supplierContactName: string;
   items: Array<{
     quantity: string | null;
@@ -124,12 +120,7 @@ function buildOrderEmailContent({
     `Job: ${jobName}`,
     `PO#: ${poNumber}`,
     `Address: ${deliveryAddress || ""}`,
-    `Delivery Date: ${getNextBusinessDay().toLocaleDateString("en-CA", {
-      weekday: "long",
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    })}`,
+    `Delivery Date: ${formatDeliveryDate(deliveryDate)}`,
     "",
     lineItems || "No items",
     ...(notes?.trim() ? ["", "Notes:", notes.trim()] : []),
@@ -1838,6 +1829,7 @@ ${foremanName}`;
         country: materialList.locationCountry,
       });
       const foremanName = ctx.user.name || "Foreman";
+      const deliveryDate = await userDeliveryDate(ctx.db, ctx.user.id);
 
       const possible = possibleSupplierIds.map((supplierId) => {
         const supplier = possibleSuppliersById.get(supplierId) ?? null;
@@ -1860,6 +1852,7 @@ ${foremanName}`;
           jobName,
           poNumber,
           deliveryAddress,
+          deliveryDate,
           supplierContactName,
           items,
           foremanName,
@@ -1928,6 +1921,7 @@ ${foremanName}`;
           jobName,
           poNumber,
           deliveryAddress,
+          deliveryDate,
           supplierContactName,
           items,
           notes: order.notes,
@@ -2206,13 +2200,8 @@ ${foremanName}`;
         order.job?.poNumber?.trim() ||
         order.orderNumber?.trim() ||
         `ORDER-${order.id.slice(0, 8)}`;
-      const deliveryDate = getNextBusinessDay();
-      const formattedDeliveryDate = deliveryDate.toLocaleDateString("en-CA", {
-        weekday: "long",
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      });
+      const deliveryDate = await userDeliveryDate(ctx.db, ctx.user.id);
+      const formattedDeliveryDate = formatDeliveryDate(deliveryDate);
       const deliveryAddress = formatOneLineAddress(order.location ?? {});
 
       const lineItems = items.map(formatEmailItemLine).join("\n");
