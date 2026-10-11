@@ -11,6 +11,11 @@ import { MembersSection } from "./MembersSection";
 const { mutate } = vi.hoisted(() => ({ mutate: vi.fn() }));
 vi.mock("~/trpc/react", () => ({
   api: {
+    appDevices: {
+      organization: {
+        useQuery: () => ({ data: [], isLoading: false, isError: false }),
+      },
+    },
     organization: {
       updateOrganizationMember: {
         useMutation: () => ({ mutate, isPending: false, error: null }),
@@ -32,6 +37,7 @@ function settingsFor(kind: "executive" | "admin" | "standard"): Settings {
     : { ...STANDARD_DEFAULTS };
   // Only the fields read by MembersSection are needed for the component fixture.
   return {
+    organization: { id: "organization" },
     viewer: { userId: "viewer", canManageMembers: true },
     members: [
       {

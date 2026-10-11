@@ -239,13 +239,13 @@ describe("source-bound room edit feedback", () => {
       decision: "renamed",
       proposalShape: shape,
       correctedShape: null,
-      detection: expect.objectContaining(proposal.detection),
+      detection: expect.objectContaining(proposal.detection) as unknown,
     });
     expect(test.roomUpdate()).toMatchObject({
       name: "Hallway",
       reviewStatus: "pending",
       confirmed: false,
-      detection: expect.objectContaining(proposal.detection),
+      detection: expect.objectContaining(proposal.detection) as unknown,
     });
   });
 });

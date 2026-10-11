@@ -311,3 +311,28 @@ describe("shared room notes", () => {
     });
   });
 });
+
+describe("room visibility without the retired approval workflow", () => {
+  it("shows active detected rooms to field staff and keeps unaccepted uploads and retired rooms hidden", async () => {
+    const active = { ...room, reviewStatus: "pending", confirmed: false };
+    const test = setup([
+      [{ id: jobId, organizationId }],
+      [{ id: "plan", status: "processed" }],
+      [
+        { ...floor, status: "detected" },
+        { ...floor, id: "pending", status: "pending_review" },
+        { ...floor, id: "upload", status: "pending_upload" },
+      ],
+      [
+        active,
+        { ...room, id: "rejected", reviewStatus: "rejected" },
+        { ...room, id: "old", reviewStatus: "superseded" },
+      ],
+    ]);
+    const result = await test.caller.getJobRooms({ jobId });
+    expect(result.canManage).toBe(false);
+    expect(result.floors.map((value) => value.id)).toEqual([floorId]);
+    expect(result.floors[0]?.rooms).toEqual([active]);
+    expect(test.writes).toEqual([]);
+  });
+});
