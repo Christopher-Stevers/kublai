@@ -288,7 +288,7 @@ it("keeps separate drafts and retry identities when switching conversations", as
       screen.getByRole("button", { name: "Retry message" }),
     ).not.toBeDisabled(),
   );
-  const original = mocks.send.mock.calls[0]?.[0];
+  const original: unknown = mocks.send.mock.calls[0]?.[0];
   mocks.params = "conversation=direct-other";
   view.rerender(<ConversationsView />);
   expect(screen.getByRole("textbox", { name: "Message" })).toHaveValue("");

@@ -132,7 +132,7 @@ function longPress(element: HTMLElement) {
       clientX: 5,
       clientY: 5,
     });
-    act(() => vi.advanceTimersByTime(500));
+    void act(() => vi.advanceTimersByTime(500));
     fireEvent.pointerUp(element);
   } finally {
     vi.useRealTimers();
@@ -629,5 +629,7 @@ it("retains job chat's older messages and reading position when leaving and retu
   await screen.findByText("Earlier job message");
   expect(screen.getByLabelText("Messages").scrollTop).toBe(520);
   for (const [input] of mock.fetchOlder.mock.calls)
-    expect(Number.isFinite(input.beforeSequence)).toBe(true);
+    expect(
+      Number.isFinite((input as { beforeSequence: number }).beforeSequence),
+    ).toBe(true);
 });
