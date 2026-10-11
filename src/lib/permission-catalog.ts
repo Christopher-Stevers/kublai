@@ -103,10 +103,10 @@ export const PERMISSION_GROUPS = [
   {
     id: "rooms",
     label: "Rooms",
-    description: "Room detection and review.",
+    description: "Room detection and editing.",
     icon: "map",
     permissions: [
-      { key: "rooms.review", label: "Review rooms", description: "Approve, reject, draw and edit rooms; confirm floors." },
+      { key: "rooms.review", label: "Edit rooms", description: "Run detection, draw and edit outlines, and remove rooms." },
     ],
   },
   {
