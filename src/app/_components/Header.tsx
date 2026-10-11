@@ -339,15 +339,19 @@ function HeaderFrame({
                   <span />
                 )}
                 {showAccount && (
-                  <button
-                    type="button"
-                    aria-label="Manage account"
-                    title="Manage account"
-                    className="bg-primary text-primary-foreground hover:bg-primary/90 focus-visible:ring-ring flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold focus-visible:ring-2 focus-visible:ring-offset-2"
-                    onClick={() => navigate("/dashboard/account")}
+                  <DropdownMenuItem
+                    asChild
+                    onSelect={() => navigate("/dashboard/account")}
                   >
-                    {initials}
-                  </button>
+                    <button
+                      type="button"
+                      aria-label="Manage account"
+                      title="Manage account"
+                      className="bg-primary text-primary-foreground hover:bg-primary/90 focus-visible:ring-ring flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold focus-visible:ring-2 focus-visible:ring-offset-2"
+                    >
+                      {initials}
+                    </button>
+                  </DropdownMenuItem>
                 )}
               </div>
             </DropdownMenuContent>
