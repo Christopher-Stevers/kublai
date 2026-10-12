@@ -9,7 +9,7 @@ import {
   vi,
 } from "vitest";
 import { readFile } from "node:fs/promises";
-import { eq, getTableColumns, getTableName } from "drizzle-orm";
+import { eq, getTableColumns, getTableName, sql } from "drizzle-orm";
 import type { PgTable } from "drizzle-orm/pg-core";
 import postgres from "postgres";
 import * as schema from "~/server/db/schema";
@@ -206,6 +206,64 @@ describe.skipIf(!socket)(
       const email = await material.getQuoteEmailContent({ quoteId: quote });
       expect(email.body).toContain("37 (50)");
       expect(email.body).toContain("$130.00");
+    });
+    it("keeps material lists and supplier orders out of quote history", async () => {
+      expect(await material.listQuotes()).toEqual([]);
+      expect(
+        await material.getQuotesForMaterialList({ materialListId: list }),
+      ).toEqual([]);
+      await material.previewOrders({ materialListId: list });
+      await material.sendGeneratedOrder({
+        materialListId: list,
+        supplierId: supplier,
+        sentTo: "supplier@example.test",
+      });
+      expect(await material.listQuotes()).toEqual([]);
+      expect(
+        await material.getQuotesForMaterialList({ materialListId: list }),
+      ).toEqual([]);
+      expect(
+        (await material.getMaterialList({ materialListId: list })).items,
+      ).toHaveLength(1);
+    });
+    it("preserves legacy history once and never restores cleared quotes on migration retry", async () => {
+      await conn.unsafe('ALTER TABLE "kublai_quote" DROP COLUMN "generatedAt"');
+      const migration = await readFile(
+        new URL(
+          "../../drizzle/0069_quote_document_history.sql",
+          import.meta.url,
+        ),
+        "utf8",
+      );
+      await conn.unsafe(migration);
+      expect(await material.listQuotes()).toMatchObject([{ id: quote }]);
+      await db
+        .update(schema.quotes)
+        .set({ generatedAt: null })
+        .where(sql`${schema.quotes}."id" = ${quote}`);
+      await conn.unsafe(migration);
+      expect(await material.listQuotes()).toEqual([]);
+    });
+    it("saves only explicitly generated quotes and allows clearing history without losing items", async () => {
+      await material.generateQuote({ materialListId: list, markupPercent: 30 });
+      expect(await material.listQuotes()).toMatchObject([{ id: quote }]);
+      expect(
+        await material.getQuotesForMaterialList({ materialListId: list }),
+      ).toMatchObject([{ id: quote }]);
+      await db
+        .update(schema.quotes)
+        .set({ generatedAt: null })
+        .where(sql`${schema.quotes}."id" = ${quote}`);
+      expect(await material.listQuotes()).toEqual([]);
+      expect(
+        (await material.getMaterialList({ materialListId: list })).items,
+      ).toHaveLength(1);
+      await material.generateQuote({
+        materialListId: list,
+        quoteId: quote,
+        markupPercent: 10,
+      });
+      expect(await material.listQuotes()).toMatchObject([{ id: quote }]);
     });
     it("uses 50 in the supplier email and persists both amounts on the sent order", async () => {
       const preview = await material.previewOrders({ materialListId: list });

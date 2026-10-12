@@ -670,11 +670,13 @@ export const materialListRouter = createTRPCRouter({
 
         // Update quote
         const updateData: {
+          generatedAt: Date;
           markupPercent: string;
           subtotalMaterials: string;
           total: string;
           notes?: string | null;
         } = {
+          generatedAt: new Date(),
           markupPercent: effectiveMarkup.toString(),
           subtotalMaterials: subtotalMaterials.toString(),
           total: total.toString(),
@@ -747,11 +749,13 @@ export const materialListRouter = createTRPCRouter({
 
       // Update quote
       const updateData: {
+        generatedAt: Date;
         markupPercent: string;
         subtotalMaterials: string;
         total: string;
         notes?: string | null;
       } = {
+        generatedAt: new Date(),
         markupPercent: effectiveMarkup.toString(),
         subtotalMaterials: subtotalMaterials.toString(),
         total: total.toString(),
@@ -1582,6 +1586,7 @@ ${foremanName}`;
           and(
             eq(quotes.materialListId, input.materialListId),
             eq(quotes.organizationId, ctx.user.organizationId),
+            sql<boolean>`${quotes}."generatedAt" is not null`,
           ),
         )
         .orderBy(desc(quotes.createdAt));
@@ -1726,7 +1731,10 @@ ${foremanName}`;
       .from(quotes)
       .leftJoin(materialLists, eq(quotes.materialListId, materialLists.id))
       .leftJoin(jobs, eq(quotes.jobId, jobs.id))
-      .where(eq(quotes.organizationId, ctx.user.organizationId))
+      .where(and(
+        eq(quotes.organizationId, ctx.user.organizationId),
+        sql<boolean>`${quotes}."generatedAt" is not null`,
+      ))
       .orderBy(desc(quotes.createdAt));
 
     return quotesList;

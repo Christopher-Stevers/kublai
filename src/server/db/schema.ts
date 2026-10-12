@@ -1527,6 +1527,9 @@ export const quotes = createTable(
     jobId: d.uuid().references(() => jobs.id, { onDelete: "cascade" }),
 
     quoteNumber: d.varchar({ length: 100 }),
+    // Material lists use quote rows internally; only explicit generation saves
+    // a document in quote history.
+    generatedAt: d.timestamp({ withTimezone: true }),
     createdByUserId: d.varchar({ length: 255 }).references(() => users.id, {
       onDelete: "set null",
     }),

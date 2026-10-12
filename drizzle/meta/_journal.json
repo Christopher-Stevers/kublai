@@ -307,6 +307,13 @@
       "when": 1791780000072,
       "tag": "0068_bim_design",
       "breakpoints": false
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1791843823303,
+      "tag": "0069_quote_document_history",
+      "breakpoints": false
     }
   ]
 }
