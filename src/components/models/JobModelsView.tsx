@@ -1527,8 +1527,11 @@ export function ModelWorkspace({
               <dd className="text-muted-foreground mt-1">
                 Drag to orbit. Pinch or scroll to zoom. Use two fingers or the
                 right mouse button to pan. Fit returns the whole model to view.
-                Walk uses arrows or W A S D; it is free movement without
-                collision detection.
+                W / S move forward and backward in the direction you are
+                looking, including up and down. A / D slide sideways. These keys
+                work with every tool; hold Shift to move faster. Click the model
+                to focus keyboard navigation. Walk adds drag-to-look and Q / E
+                elevation controls. Movement has no collision detection.
               </dd>
             </div>
             <div>

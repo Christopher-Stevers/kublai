@@ -1,3 +1,4 @@
+import { navigationDelta } from "./navigation";
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import {
@@ -141,6 +142,10 @@ export class ModelScene {
     canvas.addEventListener("keydown", this.keyDown, { signal });
     canvas.addEventListener("keyup", this.keyUp, { signal });
     canvas.addEventListener("blur", () => this.keys.clear(), { signal });
+    window.addEventListener("blur", () => this.keys.clear(), { signal });
+    document.addEventListener("visibilitychange", () => this.keys.clear(), {
+      signal,
+    });
     canvas.addEventListener(
       "webglcontextlost",
       (e) => {
@@ -184,27 +189,8 @@ export class ModelScene {
       this.controls.target.lerpVectors(a.targetFrom, a.targetTo, k);
       if (t === 1) this.animation = null;
     }
-    if (this.tool === "walk" && this.keys.size) {
-      const direction = new THREE.Vector3();
-      this.camera.getWorldDirection(direction);
-      direction.y = 0;
-      direction.normalize();
-      const right = new THREE.Vector3().crossVectors(
-        direction,
-        new THREE.Vector3(0, 1, 0),
-      );
-      const speed = dt * (this.keys.has("shift") ? 8 : 2.5);
-      const delta = new THREE.Vector3();
-      if (this.keys.has("w") || this.keys.has("arrowup"))
-        delta.addScaledVector(direction, speed);
-      if (this.keys.has("s") || this.keys.has("arrowdown"))
-        delta.addScaledVector(direction, -speed);
-      if (this.keys.has("a") || this.keys.has("arrowleft"))
-        delta.addScaledVector(right, -speed);
-      if (this.keys.has("d") || this.keys.has("arrowright"))
-        delta.addScaledVector(right, speed);
-      if (this.keys.has("q")) delta.y -= speed;
-      if (this.keys.has("e")) delta.y += speed;
+    if (this.keys.size) {
+      const delta = navigationDelta(this.camera.quaternion, this.keys, dt);
       this.camera.position.add(delta);
       this.controls.target.add(delta);
     }
@@ -479,16 +465,18 @@ export class ModelScene {
     if (tool === "walk") {
       this.setProjection("perspective");
       this.camera.up.set(0, 1, 0);
-      this.renderer.domElement.focus();
     }
+    this.renderer.domElement.focus({ preventScroll: true });
     this.renderer.domElement.style.cursor =
       tool === "pin" ? "crosshair" : tool === "inspect" ? "grab" : "crosshair";
     this.drawMeasurements();
     this.invalidate();
   }
   moveWalk(key: string, active: boolean) {
-    if (active) this.keys.add(key);
-    else this.keys.delete(key);
+    if (active) {
+      this.animation = null;
+      this.keys.add(key);
+    } else this.keys.delete(key);
     this.invalidate();
   }
   private keyDown = (event: KeyboardEvent) => {
@@ -498,6 +486,8 @@ export class ModelScene {
       )
     )
       return;
+    if (event.ctrlKey || event.metaKey || event.altKey || event.isComposing)
+      return;
     const key = event.key.toLowerCase();
     if (key === "escape") {
       this.draft = [];
@@ -506,22 +496,24 @@ export class ModelScene {
       return;
     }
     if (
-      this.tool === "walk" &&
-      [
-        "w",
-        "a",
-        "s",
-        "d",
-        "q",
-        "e",
-        "shift",
-        "arrowup",
-        "arrowdown",
-        "arrowleft",
-        "arrowright",
-      ].includes(key)
+      ["w", "a", "s", "d", "shift"].includes(key) ||
+      (this.tool === "walk" &&
+        [
+          "w",
+          "a",
+          "s",
+          "d",
+          "q",
+          "e",
+          "shift",
+          "arrowup",
+          "arrowdown",
+          "arrowleft",
+          "arrowright",
+        ].includes(key))
     ) {
       event.preventDefault();
+      this.animation = null;
       this.keys.add(key);
       this.invalidate();
     }
