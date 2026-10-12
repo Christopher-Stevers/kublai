@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { blankCadIfc } from "./blank-cad";
 import * as THREE from "three";
 import {
   constrainPoint,
@@ -169,6 +170,12 @@ describe("CAD precision across views", () => {
   });
 });
 describe("portable CAD documents", () => {
+  it("creates an empty IFC project with a valid compressed identifier", () => {
+    const id = /IFCPROJECT\('([^']+)'/.exec(blankCadIfc)?.[1];
+    expect(id).toMatch(/^[0-3][0-9A-Za-z_$]{21}$/);
+    expect(blankCadIfc).toContain("IFCSIUNIT(*,.LENGTHUNIT.,$,.METRE.)");
+  });
+
   it("round-trips all data and rejects applying source edits to another model", () => {
     const doc = {
       ...emptyDesign(),
