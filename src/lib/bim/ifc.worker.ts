@@ -56,6 +56,7 @@ async function load(
   loadId: number,
   url: string,
   flow: ModelLoadFlow,
+  installedApp: boolean,
 ) {
   const progress = (value: number, message: string) =>
     send({
@@ -80,8 +81,8 @@ async function load(
   }
   await initialization;
   flow.check();
-  progress(2, "Checking saved model");
-  const model = await downloadAndOpen(url, flow, progress);
+  progress(2, installedApp ? "Checking saved model" : "Downloading model");
+  const model = await downloadAndOpen(url, flow, progress, installedApp);
   models.set(modelId, model);
   await flow.yield();
   const floorMap = new Map<number, { key: string; name: string }>();
@@ -208,8 +209,9 @@ async function downloadAndOpen(
   url: string,
   flow: ModelLoadFlow,
   progress: (value: number, message: string) => void,
+  installedApp: boolean,
 ) {
-  const download = await deviceModelDownload(url, flow.signal);
+  const download = await deviceModelDownload(url, flow.signal, installedApp);
   const { response } = download;
   if (!response.ok)
     throw Error(
@@ -358,7 +360,13 @@ self.onmessage = (event: MessageEvent<IfcRequest>) => {
       const session = { loadId: request.loadId, flow };
       loading.set(request.modelId, session);
       try {
-        await load(request.modelId, request.loadId, request.url, flow);
+        await load(
+          request.modelId,
+          request.loadId,
+          request.url,
+          flow,
+          request.installedApp === true,
+        );
       } catch (error) {
         if (!flow.signal.aborted) {
           close(request.modelId);

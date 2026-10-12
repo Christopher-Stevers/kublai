@@ -15,7 +15,7 @@ const network = vi.fn((_url: string, init?: RequestInit) =>
   ),
 );
 const open = (url: string) =>
-  deviceModelDownload(url, new AbortController().signal);
+  deviceModelDownload(url, new AbortController().signal, true);
 beforeEach(() => {
   version = '"v1"';
   status = 200;
@@ -61,4 +61,30 @@ it("can still open a model when device storage is unavailable", async () => {
   const model = await open("/model/a");
   expect(model.response.ok).toBe(true);
   await expect(model.save(bytes)).resolves.toBeUndefined();
+});
+
+it("browser tabs always download and cannot overwrite the app cache", async () => {
+  await (await open("/model/a")).save(bytes);
+  network.mockClear();
+  for (let i = 0; i < 2; i++) {
+    const tab = await deviceModelDownload(
+      "/model/a",
+      new AbortController().signal,
+    );
+    expect(tab.cached).toBe(false);
+    await tab.save(bytes);
+  }
+  expect(network).toHaveBeenCalledTimes(2);
+  expect(
+    network.mock.calls.every(
+      ([, init]) => init?.method !== "HEAD" && init?.cache === "no-store",
+    ),
+  ).toBe(true);
+  const other = await deviceModelDownload(
+    "/model/b",
+    new AbortController().signal,
+    false,
+  );
+  await other.save(bytes);
+  expect((await open("/model/a")).cached).toBe(true);
 });

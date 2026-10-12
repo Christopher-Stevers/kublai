@@ -10,6 +10,7 @@ import type {
   Point3,
 } from "~/lib/bim/types";
 import type { IfcReply, IfcRequest } from "~/lib/bim/worker-protocol";
+import { installedModelStorage } from "~/lib/bim/installed-model-storage";
 import { modelFileUrl } from "~/lib/bim/client";
 export function useModelScene(
   host: RefObject<HTMLDivElement | null>,
@@ -106,6 +107,7 @@ export function useModelScene(
           modelId: next,
           loadId: loading.loadId,
           url: modelFileUrl(jobId, next),
+          installedApp: installedModelStorage(),
         });
         return;
       }

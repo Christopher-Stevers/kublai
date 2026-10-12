@@ -37,7 +37,24 @@ async function slot<T>(
   }
 }
 
-export async function deviceModelDownload(url: string, signal: AbortSignal) {
+export async function deviceModelDownload(
+  url: string,
+  signal: AbortSignal,
+  installedApp = false,
+) {
+  if (!installedApp) {
+    // Installed apps and browser tabs can share an origin's storage. Bypass it
+    // here without deleting the installed app's saved model.
+    return {
+      response: await fetch(url, {
+        credentials: "same-origin",
+        cache: "no-store",
+        signal,
+      }),
+      cached: false,
+      save: async (_bytes: Uint8Array<ArrayBuffer>) => undefined,
+    };
+  }
   // Authorize every reopen, but never transfer the model body on a cache hit.
   const metadata = await fetch(url, {
     method: "HEAD",

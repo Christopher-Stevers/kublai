@@ -9,7 +9,13 @@ export type IfcPart = {
   color: [number, number, number, number];
 };
 export type IfcRequest =
-  | { type: "load"; modelId: string; loadId: number; url: string }
+  | {
+      type: "load";
+      modelId: string;
+      loadId: number;
+      url: string;
+      installedApp?: boolean;
+    }
   | { type: "ack"; modelId: string; loadId: number; chunkId: number }
   | {
       type: "properties";
