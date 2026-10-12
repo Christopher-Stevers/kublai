@@ -205,7 +205,7 @@ describe("scene memory accounting", () => {
         [3, 3, 1],
       ],
     );
-    expect(batches[0]!.bytes).toBe((3 * 18 + 3 * 2) * 2 + 2 * 256);
+    expect(batches[0]!.bytes).toBe((3 * 18 + 3 * 2) * 2 + 2 * 512);
   });
   it("uses a lower geometry budget on constrained devices", () => {
     expect(modelMemoryBudget(2)).toBeLessThan(modelMemoryBudget(4, true));

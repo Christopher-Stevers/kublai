@@ -1,8 +1,12 @@
 "use client";
-import { EditPartDialog, CreateCustomPartDialog, MaterialGroupsDialog, PhotoQueueDialog } from "~/components/app/DeferredFeatures";
+import {
+  EditPartDialog,
+  CreateCustomPartDialog,
+  MaterialGroupsDialog,
+  PhotoQueueDialog,
+} from "~/components/app/DeferredFeatures";
 
-
-import { useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
 import {
@@ -50,6 +54,12 @@ export function CatalogueScreen({
   const [exportCatalogId, setExportCatalogId] = useState<string | null>(null);
   const [isImporting, setIsImporting] = useState(false);
   const [importProgress, setImportProgress] = useState<string | null>(null);
+  const [exportProgress, setExportProgress] = useState<string | null>(null);
+  const [isPreparingImport, setIsPreparingImport] = useState(false);
+  const workbookTask = useRef<{
+    kind: "import" | "export";
+    controller: AbortController;
+  } | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const isBrowserOnline = useOnlineStatus();
   const isCatalogueOnline =
@@ -57,6 +67,26 @@ export function CatalogueScreen({
   const utils = api.useUtils();
   const { data: roleData } = api.user.getMyRole.useQuery();
   const canEditParts = roleData?.permissions.canEditParts ?? false;
+
+  const cancelPreparation = useCallback(() => {
+    workbookTask.current?.controller.abort();
+    workbookTask.current = null;
+    setIsImporting(false);
+    setIsExporting(false);
+    setIsPreparingImport(false);
+    setImportProgress(null);
+    setExportProgress(null);
+  }, []);
+  useEffect(
+    () => () => {
+      workbookTask.current?.controller.abort();
+      workbookTask.current = null;
+    },
+    [],
+  );
+  useEffect(() => {
+    if (!canEditParts || !isCatalogueOnline) cancelPreparation();
+  }, [canEditParts, isCatalogueOnline, cancelPreparation]);
 
   const importCatalogueRows = api.catalogue.importCatalogueRows.useMutation();
 
@@ -117,11 +147,16 @@ export function CatalogueScreen({
   const isWizardSearchActive =
     wizardStage !== "review" && wizardSearchQuery.trim().length > 0;
   const handleExportClick = () => {
+    if (workbookTask.current || !canEditParts || !isCatalogueOnline) return;
     setExportCatalogId(null);
     setIsExportOptionsOpen(true);
   };
 
   const handleExport = async () => {
+    if (workbookTask.current || !canEditParts || !isCatalogueOnline) return;
+    const task = { kind: "export" as const, controller: new AbortController() };
+    workbookTask.current = task;
+    const signal = task.controller.signal;
     const selectedCatalog = catalogOptions.find(
       (catalog) => catalog.id === exportCatalogId,
     );
@@ -134,20 +169,46 @@ export function CatalogueScreen({
 
     try {
       setIsExporting(true);
+      setExportProgress("Loading catalogue rows…");
       const rows = await utils.catalogue.exportCatalogueRows.fetch({
         catalogId: exportCatalogId,
       });
+      signal.throwIfAborted();
+      setExportProgress("Preparing workbook…");
       await downloadCatalogueRowsAsXlsx(
         rows,
         `foremenhq-${filenameSuffix}.xlsx`,
+        {
+          signal,
+          onProgress: (completed, total) => {
+            if (!signal.aborted)
+              setExportProgress(
+                completed === total
+                  ? "Writing workbook…"
+                  : `Preparing ${completed} of ${total} rows…`,
+              );
+          },
+        },
       );
+      signal.throwIfAborted();
       setIsExportOptionsOpen(false);
+    } catch (error) {
+      if (
+        !signal.aborted &&
+        !(error instanceof DOMException && error.name === "AbortError")
+      )
+        notify("Catalogue export failed. Try again.", "error");
     } finally {
-      setIsExporting(false);
+      if (workbookTask.current === task) {
+        workbookTask.current = null;
+        setIsExporting(false);
+        setExportProgress(null);
+      }
     }
   };
 
   const handleImportClick = () => {
+    if (workbookTask.current || !canEditParts || !isCatalogueOnline) return;
     fileInputRef.current?.click();
   };
 
@@ -155,14 +216,29 @@ export function CatalogueScreen({
     const file = event.target.files?.[0];
     event.target.value = "";
     if (!file) return;
+    if (workbookTask.current || !canEditParts || !isCatalogueOnline) return;
+    const task = { kind: "import" as const, controller: new AbortController() };
+    workbookTask.current = task;
+    const signal = task.controller.signal;
 
     try {
       setIsImporting(true);
+      setIsPreparingImport(true);
       setImportProgress("Reading workbook...");
-      const rows = await readCatalogueImportWorkbook(file);
+      const rows = await readCatalogueImportWorkbook(file, {
+        signal,
+        onProgress: (completed, total) => {
+          if (!signal.aborted)
+            setImportProgress(`Reading ${completed} of ${total} rows…`);
+        },
+      });
+      signal.throwIfAborted();
 
       if (rows.length === 0) {
-        notify("No usable catalogue rows were found in that workbook.", "error");
+        notify(
+          "No usable catalogue rows were found in that workbook.",
+          "error",
+        );
         return;
       }
 
@@ -170,6 +246,7 @@ export function CatalogueScreen({
       const existingRows = await utils.catalogue.exportCatalogueRows.fetch({
         catalogId: null,
       });
+      signal.throwIfAborted();
       const existingPartIds = new Set(
         existingRows
           .map((row) => String(row.partId ?? "").trim())
@@ -191,6 +268,7 @@ export function CatalogueScreen({
           confirmLabel: "Back up and import",
           destructive: true,
         });
+        signal.throwIfAborted();
 
         if (!shouldContinue) {
           setImportProgress(null);
@@ -202,7 +280,22 @@ export function CatalogueScreen({
       await downloadCatalogueRowsAsXlsx(
         existingRows,
         `foremenhq-catalogue-backup-${timestamp}.xlsx`,
+        {
+          signal,
+          onProgress: (completed, total) => {
+            if (!signal.aborted)
+              setImportProgress(
+                completed === total
+                  ? "Writing local backup…"
+                  : `Backing up ${completed} of ${total} rows…`,
+              );
+          },
+        },
       );
+      signal.throwIfAborted();
+      // Cancellation is offered during preparation, before the first write.
+      // Leaving the screen or losing access also stops subsequent upload batches.
+      setIsPreparingImport(false);
 
       const batchSize = 50;
       let created = 0;
@@ -210,6 +303,7 @@ export function CatalogueScreen({
       let skipped = 0;
 
       for (let start = 0; start < rows.length; start += batchSize) {
+        signal.throwIfAborted();
         const batch = rows.slice(start, start + batchSize);
         const batchNumber = Math.floor(start / batchSize) + 1;
         const batchCount = Math.ceil(rows.length / batchSize);
@@ -218,6 +312,7 @@ export function CatalogueScreen({
         );
 
         const result = await importCatalogueRows.mutateAsync({ rows: batch });
+        signal.throwIfAborted();
         created += result.created;
         updated += result.updated;
         skipped += result.skipped;
@@ -230,31 +325,41 @@ export function CatalogueScreen({
         utils.catalogue.getCategoryTree.invalidate(),
         utils.catalogue.getMaterials.invalidate(),
       ]);
+      signal.throwIfAborted();
 
       notify(
         `Catalogue import done. Created ${created}, updated ${updated}, skipped ${skipped}.`,
         "success",
       );
     } catch (error) {
+      if (
+        signal.aborted ||
+        (error instanceof DOMException && error.name === "AbortError")
+      )
+        return;
       console.error("Catalogue import failed", error);
       notify(
         "Catalogue import failed. Check the workbook format and try again.",
         "error",
       );
     } finally {
-      setIsImporting(false);
-      setImportProgress(null);
+      if (workbookTask.current === task) {
+        workbookTask.current = null;
+        setIsImporting(false);
+        setIsPreparingImport(false);
+        setImportProgress(null);
+      }
     }
   };
 
   if (!isCatalogueOnline) {
     return (
-      <div className="flex h-[calc(100vh-4rem)] items-center justify-center bg-muted/50 p-6">
-        <div className="max-w-md rounded-2xl border bg-card p-6 text-center shadow-sm">
-          <h1 className="text-xl font-bold text-foreground">
+      <div className="bg-muted/50 flex h-[calc(100vh-4rem)] items-center justify-center p-6">
+        <div className="bg-card max-w-md rounded-2xl border p-6 text-center shadow-sm">
+          <h1 className="text-foreground text-xl font-bold">
             Parts Catalogue is online-only
           </h1>
-          <p className="mt-2 text-sm text-muted-foreground">
+          <p className="text-muted-foreground mt-2 text-sm">
             Catalogue browsing, imports, exports, and edits require a server
             connection. Material-list field work can continue from local data.
           </p>
@@ -265,13 +370,21 @@ export function CatalogueScreen({
 
   return (
     <div className="flex h-[calc(100vh-4rem)] flex-col overflow-hidden">
-      <div className="border-b bg-card p-4 sm:p-6">
+      <div className="bg-card border-b p-4 sm:p-6">
         <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <h1 className="text-xl font-bold text-foreground sm:text-2xl">
+          <h1 className="text-foreground text-xl font-bold sm:text-2xl">
             {catalogKind === "assets" ? "Tool Types" : "Parts Catalogue"}
           </h1>
           <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-            {canEditParts && <Button variant="outline" disabled={!isCatalogueOnline} onClick={() => setIsMaterialGroupsOpen(true)}>Material groups</Button>}
+            {canEditParts && (
+              <Button
+                variant="outline"
+                disabled={!isCatalogueOnline}
+                onClick={() => setIsMaterialGroupsOpen(true)}
+              >
+                Material groups
+              </Button>
+            )}
             {canEditParts && (
               <Button
                 variant="outline"
@@ -284,6 +397,7 @@ export function CatalogueScreen({
             <input
               ref={fileInputRef}
               type="file"
+              aria-label="Import catalogue workbook"
               accept=".xlsx,.xls"
               className="hidden"
               onChange={handleImportFile}
@@ -292,20 +406,28 @@ export function CatalogueScreen({
               <Button
                 variant="outline"
                 onClick={handleImportClick}
-                disabled={isImporting}
+                disabled={isImporting || isExporting}
               >
                 {isImporting ? "Importing..." : "Import XLSX"}
               </Button>
               {importProgress && (
-                <div className="text-xs font-medium text-slate-600">
+                <div
+                  role="status"
+                  className="text-muted-foreground text-xs font-medium"
+                >
                   {importProgress}
                 </div>
+              )}
+              {isImporting && isPreparingImport && (
+                <Button variant="ghost" size="sm" onClick={cancelPreparation}>
+                  Cancel preparation
+                </Button>
               )}
             </div>
             <Button
               variant="outline"
               onClick={handleExportClick}
-              disabled={isExporting}
+              disabled={isExporting || isImporting}
             >
               {isExporting ? "Exporting..." : "Export XLSX"}
             </Button>
@@ -326,7 +448,7 @@ export function CatalogueScreen({
         />
       </div>
 
-      <div className="flex-1 overflow-y-auto bg-muted/50 p-4 sm:p-6">
+      <div className="bg-muted/50 flex-1 overflow-y-auto p-4 sm:p-6">
         {isWizardSearchActive ? (
           <PartStage
             partsForSelection={filteredPartsForSelection}
@@ -335,10 +457,6 @@ export function CatalogueScreen({
             onPartQuantitySet={() => undefined}
             onQuantityPickerPreviewChange={() => undefined}
             onEditPart={setEditingPartId}
-
-
-
-
             actionMode="edit"
             title="Matching Parts"
             actionLabel="Edit"
@@ -431,10 +549,6 @@ export function CatalogueScreen({
               onPartQuantitySet={() => undefined}
               onQuantityPickerPreviewChange={() => undefined}
               onEditPart={setEditingPartId}
-
-
-
-
               actionMode="edit"
               title="Parts"
               actionLabel="Edit"
@@ -442,7 +556,14 @@ export function CatalogueScreen({
           )}
       </div>
 
-      <Dialog open={isExportOptionsOpen} onOpenChange={setIsExportOptionsOpen}>
+      <Dialog
+        open={isExportOptionsOpen}
+        onOpenChange={(open) => {
+          if (!open && workbookTask.current?.kind === "export")
+            cancelPreparation();
+          setIsExportOptionsOpen(open);
+        }}
+      >
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Export Catalogue</DialogTitle>
@@ -454,10 +575,11 @@ export function CatalogueScreen({
           <div className="space-y-2">
             <button
               type="button"
+              disabled={isExporting}
               onClick={() => setExportCatalogId(null)}
               className={`flex w-full items-center justify-between rounded-xl border px-4 py-3 text-left text-sm transition ${
                 exportCatalogId === null
-                  ? "border-gray-900 bg-muted/50 text-foreground"
+                  ? "bg-muted/50 text-foreground border-gray-900"
                   : "border-border bg-card text-foreground/80 hover:border-input"
               }`}
             >
@@ -472,10 +594,11 @@ export function CatalogueScreen({
                 <button
                   key={catalog.id}
                   type="button"
+                  disabled={isExporting}
                   onClick={() => setExportCatalogId(catalog.id)}
                   className={`flex w-full items-center justify-between rounded-xl border px-4 py-3 text-left text-sm transition ${
                     exportCatalogId === catalog.id
-                      ? "border-gray-900 bg-muted/50 text-foreground"
+                      ? "bg-muted/50 text-foreground border-gray-900"
                       : "border-border bg-card text-foreground/80 hover:border-input"
                   }`}
                 >
@@ -488,14 +611,22 @@ export function CatalogueScreen({
             </div>
           </div>
 
+          {exportProgress && (
+            <p role="status" className="text-muted-foreground text-sm">
+              {exportProgress}
+            </p>
+          )}
           <DialogFooter>
             <Button
               type="button"
               variant="outline"
-              onClick={() => setIsExportOptionsOpen(false)}
-              disabled={isExporting}
+              onClick={() => {
+                if (workbookTask.current?.kind === "export")
+                  cancelPreparation();
+                setIsExportOptionsOpen(false);
+              }}
             >
-              Cancel
+              {isExporting ? "Cancel export" : "Cancel"}
             </Button>
             <Button type="button" onClick={handleExport} disabled={isExporting}>
               {isExporting ? "Exporting..." : "Export XLSX"}
@@ -512,7 +643,10 @@ export function CatalogueScreen({
         }}
         partId={editingPartId}
       />
-      <MaterialGroupsDialog open={isMaterialGroupsOpen} onOpenChange={setIsMaterialGroupsOpen} />
+      <MaterialGroupsDialog
+        open={isMaterialGroupsOpen}
+        onOpenChange={setIsMaterialGroupsOpen}
+      />
       <PhotoQueueDialog
         open={isPhotoQueueOpen}
         onOpenChange={setIsPhotoQueueOpen}

@@ -90,8 +90,14 @@ export function estimateSourceKey(line: EstimateLine): string | null {
   return null;
 }
 
-function calculateRows(lines: EstimateLine[], settings: EstimatingSettings) {
+function calculateRows(
+  lines: EstimateLine[],
+  settings: EstimatingSettings,
+  prepared: Map<EstimateLine, WorkingLine>,
+) {
   const rows: WorkingLine[] = lines.map((line) => {
+    const cached = prepared.get(line);
+    if (cached) return { ...cached };
     const demand = multiply(decimal(line.quantity), decimal(line.multiplier));
     const required = multiply(
       demand,
@@ -109,7 +115,7 @@ function calculateRows(lines: EstimateLine[], settings: EstimatingSettings) {
         divide(decimal(settings.laborBurdenPercent), decimal(100)),
       ),
     );
-    return {
+    const initial: WorkingLine = {
       line,
       demand,
       required,
@@ -143,6 +149,10 @@ function calculateRows(lines: EstimateLine[], settings: EstimatingSettings) {
         ),
       ),
     };
+    // Purchase rounding is specific to the selected group. Reuse only the
+    // unallocated arithmetic, and give each option its own mutable row.
+    prepared.set(line, initial);
+    return { ...initial };
   });
   const groups = new Map<string, WorkingLine[]>();
   for (const row of rows) {
@@ -290,12 +300,20 @@ export function calculateEstimate(
   options: { now?: Date } = {},
 ) {
   const issues: EstimateWarning[] = [];
+  const warningsByLine = new Map<string, string[]>();
   const warn = (
     code: string,
     message: string,
     lineId?: string,
     severity: "warning" | "error" = "warning",
-  ) => issues.push({ code, message, lineId, severity });
+  ) => {
+    issues.push({ code, message, lineId, severity });
+    if (lineId !== undefined) {
+      const messages = warningsByLine.get(lineId) ?? [];
+      messages.push(message);
+      warningsByLine.set(lineId, messages);
+    }
+  };
   const now = options.now ?? new Date();
   const alternateMap = new Map(document.alternates.map((a) => [a.id, a]));
   const sourceKeys = new Set<string>();
@@ -461,19 +479,22 @@ export function calculateEstimate(
     (settings.profitMode === "margin" && settings.profitPercent >= 100)
   )
     throw new Error("Invalid estimating settings.");
-  const baseRows = calculateRows(
-    billable.filter((line) => !line.alternateId),
-    settings,
+  // This cache lasts one calculation, so even in-place input changes are fresh.
+  const prepared = new Map<EstimateLine, WorkingLine>();
+  const baseLines = billable.filter((line) => !line.alternateId);
+  const activeLines = billable.filter(
+    (line) => !line.alternateId || alternateMap.get(line.alternateId)?.included,
   );
-  const activeRows = calculateRows(
-    billable.filter(
-      (line) =>
-        !line.alternateId || alternateMap.get(line.alternateId)?.included,
-    ),
-    settings,
-  );
+  const baseRows = calculateRows(baseLines, settings, prepared);
+  const activeRows =
+    activeLines.length === baseLines.length
+      ? baseRows
+      : calculateRows(activeLines, settings, prepared);
   const base = totals(baseRows, settings),
-    selected = totals(activeRows, settings);
+    selected =
+      activeRows === baseRows
+        ? { ...base, cents: { ...base.cents } }
+        : totals(activeRows, settings);
   const purchaseSnapshots = new Map<string, WorkingLine[]>();
   for (const row of activeRows) {
     if (!row.demand.n) continue;
@@ -512,6 +533,7 @@ export function calculateEstimate(
     const own = calculateRows(
       billable.filter((line) => line.alternateId === alternate.id),
       settings,
+      prepared,
     );
     for (const row of own) optionalMap.set(row.line.id, row);
     const withAlternate = totals(
@@ -520,6 +542,7 @@ export function calculateEstimate(
           (line) => !line.alternateId || line.alternateId === alternate.id,
         ),
         settings,
+        prepared,
       ),
       settings,
     );
@@ -559,9 +582,7 @@ export function calculateEstimate(
           (safeRow?.otherCents ?? 0),
       ),
       included: Boolean(safeRow && activeMap.has(line.id)),
-      warnings: issues
-        .filter((issue) => issue.lineId === line.id)
-        .map((issue) => issue.message),
+      warnings: [...(warningsByLine.get(line.id) ?? [])],
     };
   });
   const grouped = (field: "trade" | "costCode" | "area") => {

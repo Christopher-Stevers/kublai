@@ -25,6 +25,7 @@ import type {
 import { elementKey } from "./types";
 import type { IfcPart } from "./worker-protocol";
 import { modelMemoryBudget, planModelBatches } from "./model-memory";
+import { SpatialModelPicker } from "./spatial-picker";
 import { formatModelMeasure, measureArea, measureDistance } from "./geometry";
 export type TouchJoystick = {
   side: ThumbSide;
@@ -68,6 +69,7 @@ export class ModelScene {
   );
   private batches: THREE.BatchedMesh[] = [];
   private batchKeys = new Map<THREE.BatchedMesh, Map<number, string>>();
+  private picker = new SpatialModelPicker();
   private selected: string | null = null;
   private hidden = new Set<string>();
   private isolated = new Set<string>();
@@ -408,6 +410,7 @@ export class ModelScene {
       }
       batch.computeBoundingBox();
       batch.computeBoundingSphere();
+      this.picker.add(batch, lookup.keys());
     }
     this.updateVisibility(changed);
     this.invalidate();
@@ -440,6 +443,7 @@ export class ModelScene {
     this.modelBytes.delete(modelId);
     const batches = this.models.get(modelId) ?? [];
     for (const batch of batches) {
+      this.picker.remove(batch);
       this.scene.remove(batch);
       batch.dispose();
       batch.material.dispose();
@@ -1000,11 +1004,11 @@ export class ModelScene {
       this.camera,
     );
     this.scene.updateMatrixWorld();
-    const hits = ray.intersectObjects(this.batches, false);
+    const hits = this.picker.intersect(ray);
     for (const hit of hits) {
       if (this.clipping.some((p) => p.distanceToPoint(hit.point) < 0)) continue;
-      const batch = hit.object as THREE.BatchedMesh;
-      const index = (hit as THREE.Intersection & { batchId: number }).batchId;
+      const batch = hit.object;
+      const index = hit.batchId;
       const key = this.batchKeys.get(batch)?.get(index);
       if (key && batch.getVisibleAt(index))
         return { ...hit, key, batch, index };
@@ -1385,6 +1389,7 @@ export class ModelScene {
     this.resize.disconnect();
     this.controls.dispose();
     for (const id of this.models.keys()) this.removeModel(id);
+    this.picker.clear();
     this.clearGroup(this.measureGroup);
     this.clearGroup(this.issueGroup);
     this.grid.geometry.dispose();

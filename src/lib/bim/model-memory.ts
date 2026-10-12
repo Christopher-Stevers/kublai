@@ -25,7 +25,8 @@ export function planModelBatches(parts: IfcPart[]) {
       const geometryBytes =
         vertices * 18 + indices * (vertices > 65535 ? 4 : 2);
       // Include matrix/colour/indirect textures and their CPU backing stores.
-      const bytes = geometryBytes * 2 + group.length * 256;
+      // Include the CPU spatial index as well as instance/rendering textures.
+      const bytes = geometryBytes * 2 + group.length * 512;
       return { group, transparent, vertices, indices, bytes };
     })
     .filter((batch) => batch.group.length);
