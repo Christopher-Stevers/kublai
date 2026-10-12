@@ -1,6 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
 import { matchEstimatePricing } from "./pricing";
+import { scanEstimatePricing } from "../../../scripts/benchmarks/scan-pricing";
 import {
   importPricingCsv,
   parseCsv,
@@ -30,6 +31,88 @@ const line = () =>
     unit: "ft",
   });
 describe("pricing identity", () => {
+  it("counts a row matching both description and SKU once and preserves duplicate-row order", () => {
+    const first = row({ id: "first", sku: " COPPER   PIPE " });
+    expect(matchEstimatePricing([line()], [first]).matched).toBe(1);
+    const repeated = row({
+      id: "first",
+      sku: "Copper pipe",
+      materialUnitCost: 9,
+    });
+    const last = row({ id: "last" });
+    expect(matchEstimatePricing([line()], [first, repeated, last])).toEqual(
+      scanEstimatePricing([line()], [first, repeated, last]),
+    );
+    expect(
+      matchEstimatePricing([line()], [first, repeated, last]).ambiguous[0]
+        ?.rowIds,
+    ).toEqual(["first", "first", "last"]);
+  });
+  it("rebuilds the index after in-place edits and never changes the inputs", () => {
+    const rows = [row()];
+    const lines = [line()];
+    const before = structuredClone({ rows, lines });
+    matchEstimatePricing(lines, rows);
+    expect({ rows, lines }).toEqual(before);
+    rows[0]!.materialUnitCost = 7;
+    rows[0]!.sku = "CU-EDIT";
+    expect(matchEstimatePricing(lines, rows).lines[0]?.materialUnitCost).toBe(
+      7,
+    );
+    expect(
+      matchEstimatePricing([{ ...lines[0]!, description: "CU-EDIT" }], rows)
+        .matched,
+    ).toBe(1);
+  });
+  it("matches the original scanner over mixed descriptions, units, currencies, suppliers and provenance", () => {
+    const descriptions = [
+      "Copper pipe",
+      " COPPER\tPIPE ",
+      "Valve",
+      "VALVE",
+      "Café fixture",
+      "__proto__",
+      "constructor",
+      "CU-1",
+      "Missing",
+    ];
+    const units = ["ft", "lf", "m", "EA", "each", "sq ft", "ft²"];
+    const currencies = [undefined, "CAD", "USD", "EUR"] as const;
+    const suppliers = ["", "North", " NORTH\t", "South"];
+    const provenance = [undefined, "simulated", "supplier", "manual"] as const;
+    let seed = 20261011;
+    const pick = <T>(values: readonly T[]) => {
+      seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+      return values[seed % values.length]!;
+    };
+    for (let trial = 0; trial < 32; trial++) {
+      const rows = Array.from({ length: 80 }, (_, i) =>
+        row({
+          id: `row-${i}`,
+          description: pick(descriptions),
+          sku: pick(descriptions),
+          unit: pick(units),
+          currency: pick(currencies),
+          supplierName: pick(suppliers),
+          priceSource: pick(provenance),
+          materialUnitCost: i % 5 ? i / 100 : null,
+        }),
+      );
+      const lines = Array.from({ length: 40 }, (_, i) => ({
+        ...line(),
+        id: `line-${i}`,
+        description: pick(descriptions),
+        unit: pick(units),
+        supplierName: pick(suppliers),
+        priceCurrency: pick(currencies),
+        reviewStatus: i % 7 ? ("unreviewed" as const) : ("excluded" as const),
+      }));
+      const options = { currency: pick(currencies) };
+      expect(matchEstimatePricing(lines, rows, options)).toEqual(
+        scanEstimatePricing(lines, rows, options),
+      );
+    }
+  });
   it("accepts exact normalized words and equivalent unit aliases", () => {
     const result = matchEstimatePricing(
       [line()],

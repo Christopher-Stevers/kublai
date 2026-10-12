@@ -1,18 +1,18 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { DownloadIcon, PlusIcon, Trash2Icon, UploadIcon } from "lucide-react";
 import { api } from "~/trpc/react";
 import {
   assemblySchema,
   exportPricingCsv,
-  importPricingCsv,
   pricingCsvTemplate,
   pricingRowSchema,
   type EstimateAssembly,
   type EstimateLine,
   type PricingRow,
 } from "~/lib/estimating";
+import { importPricingCsvInBackground } from "~/lib/estimating/import-client";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Textarea } from "~/components/ui/textarea";
@@ -56,6 +56,21 @@ export function PricebookDialog({
   const save = api.estimating.savePricing.useMutation();
   const [book, setBook] = useState<Pricebook | null>(null);
   const [expandedRates, setExpandedRates] = useState<string[]>([]);
+  const [rateSearch, setRateSearch] = useState("");
+  const [ratePage, setRatePage] = useState(0);
+  const filteredRates = useMemo(() => {
+    const search = rateSearch.trim().toLowerCase();
+    return (book?.rows ?? []).filter(
+      (row) =>
+        !search ||
+        `${row.description} ${row.sku} ${row.supplierName} ${row.trade} ${row.costCode} ${row.unit}`
+          .toLowerCase()
+          .includes(search),
+    );
+  }, [book?.rows, rateSearch]);
+  const pageCount = Math.max(1, Math.ceil(filteredRates.length / 50));
+  const page = Math.min(ratePage, pageCount - 1);
+  const visibleRates = filteredRates.slice(page * 50, (page + 1) * 50);
   const rateDetails = (id: string) =>
     expandedRates.includes(id)
       ? "min-w-0 lg:p-1"
@@ -67,11 +82,27 @@ export function PricebookDialog({
   const [errors, setErrors] = useState<string[]>([]);
   const [assemblyName, setAssemblyName] = useState("");
   const [message, setMessage] = useState("");
+  const [importing, setImporting] = useState(false);
+  const [readingCsv, setReadingCsv] = useState(false);
+  const importTask = useRef<AbortController | null>(null);
+  const fileGeneration = useRef({ value: 0 });
   const locked = useRef(false);
   const file = useRef<HTMLInputElement>(null);
   useEffect(() => {
-    if (query.data && !book) setBook(query.data);
-  }, [query.data, book]);
+    if (open && query.data && !book) setBook(query.data);
+  }, [open, query.data, book]);
+  useEffect(() => {
+    const reads = fileGeneration.current;
+    if (!open || !canEdit) {
+      importTask.current?.abort();
+      fileGeneration.current.value++;
+      setReadingCsv(false);
+    }
+    return () => {
+      importTask.current?.abort();
+      reads.value++;
+    };
+  }, [open, canEdit]);
   const change = (next: Pricebook) => {
     setBook(next);
     setDirty(true);
@@ -100,10 +131,16 @@ export function PricebookDialog({
     )
       return;
     if (!nextOpen) {
+      importTask.current?.abort();
+      fileGeneration.current.value++;
+      setReadingCsv(false);
       setBook(null);
       setDirty(false);
       setErrors([]);
       setCsv("");
+      setRateSearch("");
+      setRatePage(0);
+      setExpandedRates([]);
     }
     onOpenChange(nextOpen);
   };
@@ -143,6 +180,7 @@ export function PricebookDialog({
     }
   };
   const reload = async () => {
+    if (locked.current) return;
     if (
       dirty &&
       !(await confirmAction({
@@ -160,24 +198,51 @@ export function PricebookDialog({
       setErrors([]);
     }
   };
-  const importCsv = () => {
-    if (!book || !canEdit) return;
-    const result = importPricingCsv(csv);
-    setErrors(result.errors);
-    if (result.errors.length) return;
-    if (!result.rows.length) {
-      setErrors(["The CSV has no rate rows."]);
-      return;
+  const importCsv = async () => {
+    if (!book || !canEdit || locked.current || readingCsv) return;
+    const controller = new AbortController();
+    importTask.current = controller;
+    locked.current = true;
+    setImporting(true);
+    setErrors([]);
+    setMessage("");
+    try {
+      const result = await importPricingCsvInBackground(
+        csv,
+        controller.signal,
+        { newRowIds: true },
+      );
+      if (controller.signal.aborted) return;
+      setErrors(result.errors);
+      if (result.errors.length) return;
+      if (!result.rows.length) {
+        setErrors(["The CSV has no rate rows."]);
+        return;
+      }
+      if (result.rows.length + (replace ? 0 : book.rows.length) > 10_000) {
+        setErrors([
+          "The pricebook can hold up to 10,000 rates. Replace existing rates or reduce this import.",
+        ]);
+        return;
+      }
+      const rows = result.rows;
+      change({ ...book, rows: replace ? rows : [...book.rows, ...rows] });
+      setRateSearch("");
+      setRatePage(replace ? 0 : Math.floor(book.rows.length / 50));
+      setMessage(
+        `${rows.length} rates staged. Save the pricebook to apply them.`,
+      );
+      setTab("rates");
+    } catch (cause) {
+      if (!(cause instanceof DOMException && cause.name === "AbortError"))
+        setErrors([errorMessage(cause)]);
+    } finally {
+      if (importTask.current === controller) {
+        importTask.current = null;
+        locked.current = false;
+        setImporting(false);
+      }
     }
-    const rows = result.rows.map((row) => ({
-      ...row,
-      id: crypto.randomUUID(),
-    }));
-    change({ ...book, rows: replace ? rows : [...book.rows, ...rows] });
-    setMessage(
-      `${rows.length} rates staged. Save the pricebook to apply them.`,
-    );
-    setTab("rates");
   };
   const addAssembly = () => {
     if (!book || !assemblyName.trim() || !assemblyLines.length) return;
@@ -230,6 +295,7 @@ export function PricebookDialog({
                 className="h-auto min-h-11 min-w-0 px-1 whitespace-normal sm:min-h-9 sm:px-3"
                 size="sm"
                 variant={tab === value ? "secondary" : "ghost"}
+                disabled={importing}
                 onClick={() => setTab(value)}
               >
                 {value === "rates"
@@ -269,8 +335,10 @@ export function PricebookDialog({
                 <Button
                   size="sm"
                   variant="outline"
-                  disabled={save.isPending}
-                  onClick={() =>
+                  disabled={save.isPending || book.rows.length >= 10_000}
+                  onClick={() => {
+                    setRateSearch("");
+                    setRatePage(Math.floor(book.rows.length / 50));
                     change({
                       ...book,
                       rows: [
@@ -282,12 +350,54 @@ export function PricebookDialog({
                           updatedAt: new Date().toISOString(),
                         }),
                       ],
-                    })
-                  }
+                    });
+                  }}
                 >
                   <PlusIcon className="mr-1.5 h-3.5 w-3.5" />
                   Add rate
                 </Button>
+              )}
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <Input
+                aria-label="Search rates"
+                placeholder="Search description, SKU or supplier…"
+                value={rateSearch}
+                className="min-w-0 flex-1 sm:max-w-md"
+                onChange={(event) => {
+                  setRateSearch(event.target.value);
+                  setRatePage(0);
+                }}
+              />
+              <span role="status" className="text-muted-foreground text-xs">
+                {filteredRates.length ? page * 50 + 1 : 0}–
+                {Math.min((page + 1) * 50, filteredRates.length)} of{" "}
+                {filteredRates.length.toLocaleString()} matching rates
+              </span>
+              {pageCount > 1 && (
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    aria-label="Previous rates"
+                    disabled={page === 0}
+                    onClick={() => setRatePage(page - 1)}
+                  >
+                    Previous
+                  </Button>
+                  <span className="text-muted-foreground text-xs">
+                    Page {page + 1} of {pageCount}
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    aria-label="Next rates"
+                    disabled={page === pageCount - 1}
+                    onClick={() => setRatePage(page + 1)}
+                  >
+                    Next
+                  </Button>
+                </div>
               )}
             </div>
             <div className="rounded border lg:max-h-[45svh] lg:overflow-auto">
@@ -319,7 +429,7 @@ export function PricebookDialog({
                   </tr>
                 </thead>
                 <tbody className="block divide-y lg:table-row-group">
-                  {book.rows.map((row) => (
+                  {visibleRates.map((row) => (
                     <tr
                       key={row.id}
                       className="hover:bg-muted/30 grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-3 p-3 lg:table-row lg:p-0"
@@ -547,6 +657,11 @@ export function PricebookDialog({
                   No rates yet. Add a rate or import a CSV pricebook.
                 </p>
               )}
+              {!!book.rows.length && !filteredRates.length && (
+                <p className="text-muted-foreground p-10 text-center text-sm">
+                  No rates match this search.
+                </p>
+              )}
             </div>
           </>
         )}
@@ -584,6 +699,7 @@ export function PricebookDialog({
                   <Button
                     variant="outline"
                     size="sm"
+                    disabled={importing || readingCsv || save.isPending}
                     onClick={() => file.current?.click()}
                   >
                     <UploadIcon className="mr-2 h-4 w-4" />
@@ -591,22 +707,34 @@ export function PricebookDialog({
                   </Button>
                   <input
                     ref={file}
+                    aria-label="Choose pricing CSV"
                     type="file"
                     accept=".csv,text/csv"
                     className="hidden"
                     onChange={(event) => {
                       const selected = event.target.files?.[0];
                       if (selected) {
+                        const generation = ++fileGeneration.current.value;
                         if (selected.size > 5_000_000) {
+                          setReadingCsv(false);
                           setErrors(["CSV exceeds the 5 MB limit."]);
                           return;
                         }
+                        setReadingCsv(true);
                         void selected
                           .text()
-                          .then(setCsv)
-                          .catch((cause: unknown) =>
-                            setErrors([errorMessage(cause)]),
-                          );
+                          .then((text) => {
+                            if (fileGeneration.current.value === generation)
+                              setCsv(text);
+                          })
+                          .catch((cause: unknown) => {
+                            if (fileGeneration.current.value === generation)
+                              setErrors([errorMessage(cause)]);
+                          })
+                          .finally(() => {
+                            if (fileGeneration.current.value === generation)
+                              setReadingCsv(false);
+                          });
                       }
                       event.target.value = "";
                     }}
@@ -620,7 +748,7 @@ export function PricebookDialog({
             >
               <Textarea
                 value={csv}
-                disabled={!canEdit}
+                disabled={!canEdit || importing || readingCsv || save.isPending}
                 onChange={(event) => setCsv(event.target.value)}
                 rows={9}
                 className="font-mono text-xs"
@@ -632,17 +760,36 @@ export function PricebookDialog({
                 type="checkbox"
                 checked={replace}
                 onChange={(event) => setReplace(event.target.checked)}
-                disabled={!canEdit}
+                disabled={!canEdit || importing || save.isPending}
               />
               Replace all existing rates on import
             </label>
             <Button
               className={`${actionClass} justify-self-start`}
-              disabled={!canEdit || !csv.trim() || save.isPending}
-              onClick={importCsv}
+              disabled={
+                !canEdit ||
+                !csv.trim() ||
+                save.isPending ||
+                importing ||
+                readingCsv
+              }
+              onClick={() => void importCsv()}
             >
-              Validate & stage import
+              {readingCsv
+                ? "Reading CSV…"
+                : importing
+                  ? "Validating…"
+                  : "Validate & stage import"}
             </Button>
+            {importing && (
+              <Button
+                className="justify-self-start"
+                variant="outline"
+                onClick={() => importTask.current?.abort()}
+              >
+                Cancel validation
+              </Button>
+            )}
           </div>
         )}
         {book && tab === "assemblies" && (
@@ -803,7 +950,7 @@ export function PricebookDialog({
         <DialogFooter>
           <Button
             variant="outline"
-            disabled={save.isPending}
+            disabled={save.isPending || importing || readingCsv}
             onClick={() => void reload()}
           >
             Reload current
@@ -818,7 +965,7 @@ export function PricebookDialog({
           {canEdit && (
             <Button
               className={actionClass}
-              disabled={!dirty || save.isPending}
+              disabled={!dirty || save.isPending || importing || readingCsv}
               onClick={() => void saveBook()}
             >
               {save.isPending ? "Saving…" : "Save pricebook"}

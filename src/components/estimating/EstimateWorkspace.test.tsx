@@ -20,6 +20,7 @@ import { confirmAction } from "~/components/ui/app-dialogs";
 import { EstimateWorkspace } from "./EstimateWorkspace";
 import { EstimatingAccess } from "./EstimatingAccess";
 import { PricebookDialog } from "./PricebookDialog";
+import * as pricingImport from "~/lib/estimating/import-client";
 
 const fixtureState = vi.hoisted(() => ({
   record: null as EstimateRecord | null,
@@ -202,7 +203,10 @@ beforeEach(() => {
   );
   methods.invalidate.mockResolvedValue(undefined);
 });
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+});
 
 describe("estimating workspace integrity", () => {
   it("never mounts financial workspace content without both permissions and removes it on revocation", () => {
@@ -713,5 +717,242 @@ describe("estimating workspace integrity", () => {
         rows: [expect.objectContaining({ materialUnitCost: 9.5 })],
       }),
     );
+  });
+
+  it("pages and searches rates while saving edits across the entire pricebook", async () => {
+    fixtureState.pricing.rows = Array.from({ length: 64 }, (_, i) =>
+      pricingRowSchema.parse({
+        id: `rate-${i}`,
+        description: `Rate ${i + 1}`,
+        materialUnitCost: i,
+        sku: `SKU-${i + 1}`,
+        supplierName: i === 63 ? "North Supply" : "South Supply",
+      }),
+    );
+    methods.savePricing.mockImplementation(
+      async (input: typeof fixtureState.pricing) => ({ ...input, revision: 5 }),
+    );
+    render(<PricebookDialog open onOpenChange={vi.fn()} canEdit />);
+    expect(
+      screen.getByLabelText("materialUnitCost for Rate 1"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByLabelText("materialUnitCost for Rate 64"),
+    ).not.toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("materialUnitCost for Rate 1"), {
+      target: { value: "9" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Next rates" }));
+    fireEvent.change(screen.getByLabelText("materialUnitCost for Rate 64"), {
+      target: { value: "7" },
+    });
+    fireEvent.change(screen.getByLabelText("Search rates"), {
+      target: { value: "SKU-1" },
+    });
+    expect(screen.getByLabelText("materialUnitCost for Rate 1")).toHaveValue(9);
+    expect(
+      screen.queryByRole("button", { name: "Next rates" }),
+    ).not.toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Search rates"), {
+      target: { value: "north supply" },
+    });
+    expect(screen.getByLabelText("materialUnitCost for Rate 64")).toHaveValue(
+      7,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Save pricebook" }));
+    await waitFor(() => expect(methods.savePricing).toHaveBeenCalledOnce());
+    const saved = methods.savePricing.mock
+      .calls[0]?.[0] as typeof fixtureState.pricing;
+    expect(saved.rows).toHaveLength(64);
+    expect(saved.rows[0]?.materialUnitCost).toBe(9);
+    expect(saved.rows[63]?.materialUnitCost).toBe(7);
+  });
+
+  it("opens a newly added rate on its page even with a search applied", () => {
+    fixtureState.pricing.rows = Array.from({ length: 50 }, (_, i) =>
+      pricingRowSchema.parse({ id: `rate-${i}`, description: `Rate ${i}` }),
+    );
+    render(<PricebookDialog open onOpenChange={vi.fn()} canEdit />);
+    fireEvent.change(screen.getByLabelText("Search rates"), {
+      target: { value: "No match" },
+    });
+    expect(screen.getByText("No rates match this search.")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Add rate" }));
+    expect(screen.getByLabelText("Search rates")).toHaveValue("");
+    expect(screen.getByText("Page 2 of 2")).toBeInTheDocument();
+    expect(
+      screen.getByLabelText("description for New rate"),
+    ).toBeInTheDocument();
+  });
+
+  it("stages a CSV once, keeps existing rates, and waits for an explicit save", async () => {
+    render(<PricebookDialog open onOpenChange={vi.fn()} canEdit />);
+    fireEvent.click(screen.getByRole("button", { name: "CSV import" }));
+    fireEvent.change(screen.getByRole("textbox", { name: /Paste CSV/ }), {
+      target: {
+        value:
+          "description,unit,materialUnitCost,currency,priceSource\nValve,ea,4,CAD,simulated\n",
+      },
+    });
+    const importButton = screen.getByRole("button", {
+      name: "Validate & stage import",
+    });
+    fireEvent.click(importButton);
+    expect(screen.getByRole("button", { name: "Validating…" })).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Reload current" }),
+    ).toBeDisabled();
+    fireEvent.click(importButton);
+    await waitFor(() =>
+      expect(
+        screen.getByLabelText("materialUnitCost for Valve"),
+      ).toBeInTheDocument(),
+    );
+    expect(
+      screen.getByRole("button", { name: "Rates (2)" }),
+    ).toBeInTheDocument();
+    expect(methods.savePricing).not.toHaveBeenCalled();
+    methods.savePricing.mockImplementation(
+      async (input: typeof fixtureState.pricing) => ({ ...input, revision: 5 }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Save pricebook" }));
+    await waitFor(() => expect(methods.savePricing).toHaveBeenCalledOnce());
+    const saved = methods.savePricing.mock
+      .calls[0]?.[0] as typeof fixtureState.pricing;
+    expect(saved.rows.map((r) => r.description)).toEqual([
+      "Copper pipe",
+      "Valve",
+    ]);
+    expect(saved.rows[1]).toMatchObject({
+      priceSource: "simulated",
+      currency: "CAD",
+    });
+    expect(saved.rows[1]?.id).not.toBe("csv-2");
+  });
+
+  it("retains the current pricebook when CSV validation finds any invalid row", async () => {
+    render(<PricebookDialog open onOpenChange={vi.fn()} canEdit />);
+    fireEvent.click(screen.getByRole("button", { name: "CSV import" }));
+    fireEvent.change(screen.getByRole("textbox", { name: /Paste CSV/ }), {
+      target: {
+        value: "description,unit,materialUnitCost\nGood,ea,1\nBad,ea,-2\n",
+      },
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Validate & stage import" }),
+    );
+    await waitFor(() =>
+      expect(screen.getByRole("alert")).toHaveTextContent("Row 3"),
+    );
+    expect(
+      screen.getByRole("button", { name: "Rates (1)" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Save pricebook" }),
+    ).toBeDisabled();
+  });
+
+  it.each(["cancel", "permission", "close"])(
+    "discards a late import result after %s",
+    async (reason) => {
+      const pending =
+        deferred<
+          Awaited<ReturnType<typeof pricingImport.importPricingCsvInBackground>>
+        >();
+      const importer = vi
+        .spyOn(pricingImport, "importPricingCsvInBackground")
+        .mockReturnValue(pending.promise);
+      const onOpenChange = vi.fn();
+      const view = render(
+        <PricebookDialog open onOpenChange={onOpenChange} canEdit />,
+      );
+      fireEvent.click(screen.getByRole("button", { name: "CSV import" }));
+      fireEvent.change(screen.getByRole("textbox", { name: /Paste CSV/ }), {
+        target: { value: "description,unit,materialUnitCost\nLate,ea,1\n" },
+      });
+      fireEvent.click(
+        screen.getByRole("button", { name: "Validate & stage import" }),
+      );
+      const signal = importer.mock.calls[0]?.[1];
+      if (reason === "cancel")
+        fireEvent.click(
+          screen.getByRole("button", { name: "Cancel validation" }),
+        );
+      if (reason === "permission")
+        view.rerender(
+          <PricebookDialog open onOpenChange={onOpenChange} canEdit={false} />,
+        );
+      if (reason === "close")
+        fireEvent.click(
+          screen.getAllByRole("button", { name: "Close" }).at(-1)!,
+        );
+      expect(signal?.aborted).toBe(true);
+      await act(async () =>
+        pending.resolve({
+          rows: [pricingRowSchema.parse({ id: "late", description: "Late" })],
+          errors: [],
+        }),
+      );
+      expect(
+        screen.queryByLabelText("description for Late"),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Rates (1)" }),
+      ).toBeInTheDocument();
+      expect(methods.savePricing).not.toHaveBeenCalled();
+    },
+  );
+
+  it("rejects an appended import over the rate limit and allows an explicit replacement", async () => {
+    fixtureState.pricing.rows = Array.from({ length: 10_000 }, (_, i) =>
+      pricingRowSchema.parse({ id: `rate-${i}`, description: `Rate ${i}` }),
+    );
+    render(<PricebookDialog open onOpenChange={vi.fn()} canEdit />);
+    expect(screen.getByRole("button", { name: "Add rate" })).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "CSV import" }));
+    fireEvent.change(screen.getByRole("textbox", { name: /Paste CSV/ }), {
+      target: {
+        value: "description,unit,materialUnitCost\nReplacement,ea,1\n",
+      },
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Validate & stage import" }),
+    );
+    await waitFor(() =>
+      expect(screen.getByRole("alert")).toHaveTextContent("10,000 rates"),
+    );
+    expect(
+      screen.getByRole("button", { name: "Rates (10000)" }),
+    ).toBeInTheDocument();
+    fireEvent.click(
+      screen.getByLabelText("Replace all existing rates on import"),
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "Validate & stage import" }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByLabelText("description for Replacement"),
+      ).toBeInTheDocument(),
+    );
+    expect(
+      screen.getByRole("button", { name: "Rates (1)" }),
+    ).toBeInTheDocument();
+  });
+
+  it("ignores a CSV file read that completes after closing the dialog", async () => {
+    const read = deferred<string>();
+    render(<PricebookDialog open onOpenChange={vi.fn()} canEdit />);
+    fireEvent.click(screen.getByRole("button", { name: "CSV import" }));
+    fireEvent.change(screen.getByLabelText("Choose pricing CSV"), {
+      target: { files: [{ size: 100, text: () => read.promise }] },
+    });
+    expect(screen.getByRole("button", { name: "Reading CSV…" })).toBeDisabled();
+    fireEvent.click(screen.getAllByRole("button", { name: "Close" }).at(-1)!);
+    await act(async () =>
+      read.resolve("description,unit,materialUnitCost\nLate file,ea,1\n"),
+    );
+    expect(screen.getByRole("textbox", { name: /Paste CSV/ })).toHaveValue("");
+    expect(methods.savePricing).not.toHaveBeenCalled();
   });
 });

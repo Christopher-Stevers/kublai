@@ -7,6 +7,7 @@ import {
 } from "~/lib/drawing-offline";
 import { clearPdfDocuments } from "~/lib/pdf-client";
 import { clearDrawingTextIndexes } from "~/lib/drawing-text";
+import { clearPrivateBackgroundWork } from "~/lib/private-background-work";
 
 type DrawingAccount = {
   userId: string;
@@ -15,6 +16,7 @@ type DrawingAccount = {
 };
 const Context = createContext<DrawingAccount | null>(null);
 function clearPrivateMemory() {
+  clearPrivateBackgroundWork();
   clearPdfDocuments();
   clearDrawingTextIndexes();
 }

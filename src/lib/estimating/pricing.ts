@@ -11,24 +11,47 @@ export function matchEstimatePricing(
   const ambiguous: { lineId: string; rowIds: string[] }[] = [];
   let matched = 0,
     unmatched = 0;
+  // Index once per operation. Rebuilding here also keeps edits to the same
+  // pricebook array visible; an identity-only cache could apply stale prices.
+  const identities = new Map<
+    string,
+    { row: PricingRow; unit: string; supplier: string }[]
+  >();
+  if (lines.some((line) => line.reviewStatus !== "excluded")) {
+    for (const row of rows) {
+      const entry = {
+        row,
+        unit: normalizeUnit(row.unit),
+        supplier: normalizeDescription(row.supplierName),
+      };
+      const description = normalizeDescription(row.description);
+      const keys = [description];
+      if (row.sku) {
+        const sku = normalizeDescription(row.sku);
+        // A row matching both its description and SKU was only one candidate
+        // in the original scan. Distinct duplicate rows still stay ambiguous.
+        if (sku !== description) keys.push(sku);
+      }
+      for (const key of keys) {
+        const bucket = identities.get(key);
+        if (bucket) bucket.push(entry);
+        else identities.set(key, [entry]);
+      }
+    }
+  }
   const pricedLines = lines.map((line) => {
     if (line.reviewStatus === "excluded") return line;
     const description = normalizeDescription(line.description);
-    const identityMatches = rows.filter(
-      (row) =>
-        normalizeDescription(row.description) === description ||
-        (row.sku && normalizeDescription(row.sku) === description),
-    );
+    const identityMatches = identities.get(description) ?? [];
     const currency = options.currency ?? line.priceCurrency;
     const sameCurrency = identityMatches.filter(
-      (row) => !currency || !row.currency || row.currency === currency,
+      ({ row }) => !currency || !row.currency || row.currency === currency,
     );
+    const unit = normalizeUnit(line.unit);
+    const supplier = normalizeDescription(line.supplierName);
     const candidates = sameCurrency.filter(
-      (row) =>
-        normalizeUnit(row.unit) === normalizeUnit(line.unit) &&
-        (!line.supplierName.trim() ||
-          normalizeDescription(row.supplierName) ===
-            normalizeDescription(line.supplierName)),
+      (entry) =>
+        entry.unit === unit && (!supplier || entry.supplier === supplier),
     );
     if (!candidates.length) {
       unmatched++;
@@ -45,7 +68,7 @@ export function matchEstimatePricing(
     if (candidates.length > 1) {
       ambiguous.push({
         lineId: line.id,
-        rowIds: candidates.map((row) => row.id),
+        rowIds: candidates.map(({ row }) => row.id),
       });
       warnings.push(
         `${line.description}: ${candidates.length} exact price matches; choose a supplier/price row before applying pricing.`,
@@ -53,7 +76,7 @@ export function matchEstimatePricing(
       return line;
     }
     matched++;
-    const row = candidates[0]!;
+    const { row } = candidates[0]!;
     return {
       ...line,
       materialUnitCost: row.materialUnitCost,
