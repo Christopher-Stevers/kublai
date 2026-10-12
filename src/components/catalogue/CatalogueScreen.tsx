@@ -9,6 +9,14 @@ import {
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
+import { Input } from "~/components/ui/input";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "~/components/ui/dropdown-menu";
 import {
   Dialog,
   DialogContent,
@@ -33,7 +41,14 @@ import {
 } from "~/lib/catalogue-xlsx";
 import { useOnlineStatus } from "~/hooks/use-online-status";
 import { TEMPORARILY_DISCONNECT_BROWSER_FROM_SERVER } from "~/lib/server-connection-mode";
-import { Images } from "lucide-react";
+import {
+  Download,
+  Ellipsis,
+  Grid2X2,
+  Images,
+  Search,
+  Upload,
+} from "lucide-react";
 import { confirmAction, notify } from "~/components/ui/app-dialogs";
 
 /**
@@ -56,6 +71,8 @@ export function CatalogueScreen({
   const [importProgress, setImportProgress] = useState<string | null>(null);
   const [exportProgress, setExportProgress] = useState<string | null>(null);
   const [isPreparingImport, setIsPreparingImport] = useState(false);
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  const [panelHeight, setPanelHeight] = useState<number>();
   const workbookTask = useRef<{
     kind: "import" | "export";
     controller: AbortController;
@@ -67,6 +84,34 @@ export function CatalogueScreen({
   const utils = api.useUtils();
   const { data: roleData } = api.user.getMyRole.useQuery();
   const canEditParts = roleData?.permissions.canEditParts ?? false;
+
+  // Fit the workspace above the phone keyboard and below its surrounding
+  // navigation. Only the selection area scrolls; bottom controls stay reachable.
+  useEffect(() => {
+    if (!isCatalogueOnline) return;
+    const resize = () => {
+      if (!panelRef.current) return;
+      const viewport = window.visualViewport;
+      setPanelHeight(
+        Math.max(
+          0,
+          (viewport?.offsetTop ?? 0) +
+            (viewport?.height ?? window.innerHeight) -
+            panelRef.current.getBoundingClientRect().top,
+        ),
+      );
+    };
+    const frame = requestAnimationFrame(resize);
+    window.addEventListener("resize", resize);
+    window.visualViewport?.addEventListener("resize", resize);
+    window.visualViewport?.addEventListener("scroll", resize);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener("resize", resize);
+      window.visualViewport?.removeEventListener("resize", resize);
+      window.visualViewport?.removeEventListener("scroll", resize);
+    };
+  }, [isCatalogueOnline]);
 
   const cancelPreparation = useCallback(() => {
     workbookTask.current?.controller.abort();
@@ -140,12 +185,16 @@ export function CatalogueScreen({
     selectedSizeName,
     selectedCategoryName,
     filteredPartsForSelection,
-    wizardSearchPlaceholder,
   } = usePartWizard(true, undefined, undefined, catalogKind);
 
   const catalogOptions = catalogs ?? [];
   const isWizardSearchActive =
     wizardStage !== "review" && wizardSearchQuery.trim().length > 0;
+  const centerOptionCards =
+    !isWizardSearchActive &&
+    ["catalog", "material", "size", "category"].includes(wizardStage);
+  const barButton =
+    "h-9 min-h-9 w-full rounded-lg px-1.5 py-1 text-xs leading-tight whitespace-normal";
   const handleExportClick = () => {
     if (workbookTask.current || !canEditParts || !isCatalogueOnline) return;
     setExportCatalogId(null);
@@ -369,86 +418,33 @@ export function CatalogueScreen({
   }
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] flex-col overflow-hidden">
-      <div className="bg-card border-b p-4 sm:p-6">
-        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <h1 className="text-foreground text-xl font-bold sm:text-2xl">
-            {catalogKind === "assets" ? "Tool Types" : "Parts Catalogue"}
-          </h1>
-          <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-            {canEditParts && (
-              <Button
-                variant="outline"
-                disabled={!isCatalogueOnline}
-                onClick={() => setIsMaterialGroupsOpen(true)}
-              >
-                Material groups
-              </Button>
-            )}
-            {canEditParts && (
-              <Button
-                variant="outline"
-                onClick={() => setIsPhotoQueueOpen(true)}
-              >
-                <Images className="h-4 w-4" />
-                Photos
-              </Button>
-            )}
-            <input
-              ref={fileInputRef}
-              type="file"
-              aria-label="Import catalogue workbook"
-              accept=".xlsx,.xls"
-              className="hidden"
-              onChange={handleImportFile}
-            />
-            <div className="flex flex-col items-end gap-1">
-              <Button
-                variant="outline"
-                onClick={handleImportClick}
-                disabled={isImporting || isExporting}
-              >
-                {isImporting ? "Importing..." : "Import XLSX"}
-              </Button>
-              {importProgress && (
-                <div
-                  role="status"
-                  className="text-muted-foreground text-xs font-medium"
-                >
-                  {importProgress}
-                </div>
-              )}
-              {isImporting && isPreparingImport && (
-                <Button variant="ghost" size="sm" onClick={cancelPreparation}>
-                  Cancel preparation
-                </Button>
-              )}
-            </div>
-            <Button
-              variant="outline"
-              onClick={handleExportClick}
-              disabled={isExporting || isImporting}
-            >
-              {isExporting ? "Exporting..." : "Export XLSX"}
-            </Button>
-          </div>
+    <div
+      ref={panelRef}
+      role="region"
+      aria-label={catalogKind === "assets" ? "Tool Types" : "Parts Catalogue"}
+      className="bg-canvas flex h-[calc(100dvh-3.5rem)] min-h-0 flex-col overflow-hidden sm:h-[calc(100dvh-4rem)]"
+      style={panelHeight === undefined ? undefined : { height: panelHeight }}
+    >
+      <h1 className="sr-only">
+        {catalogKind === "assets" ? "Tool Types" : "Parts Catalogue"}
+      </h1>
+      <div className="bg-card relative z-10 shrink-0 shadow-[0_2px_3px_rgba(0,0,0,0.35),0_6px_16px_rgba(0,0,0,0.6)]">
+        <div className="mx-auto w-full max-w-6xl px-2 pt-1 pb-2 sm:px-4 sm:pb-3 md:px-6">
+          <WizardHeader
+            currentStage={wizardStage}
+            selectedCatalog={selectedCatalogName}
+            selectedMaterial={selectedMaterialName}
+            selectedSize={selectedSizeName}
+            selectedCategory={selectedCategoryName}
+            onStageClick={handleStageClick}
+            hideSearch
+          />
         </div>
-        <WizardHeader
-          currentStage={wizardStage}
-          selectedCatalog={selectedCatalogName}
-          selectedMaterial={selectedMaterialName}
-          selectedSize={selectedSizeName}
-          selectedCategory={selectedCategoryName}
-          onStageClick={handleStageClick}
-          searchQuery={wizardSearchQuery}
-          onSearchChange={setWizardSearchQuery}
-          searchPlaceholder={wizardSearchPlaceholder}
-          actionLabel="Create Part"
-          onActionClick={() => setIsCreatePartDialogOpen(true)}
-        />
       </div>
 
-      <div className="bg-muted/50 flex-1 overflow-y-auto p-4 sm:p-6">
+      <div
+        className={`@container mx-auto min-h-0 w-full max-w-6xl flex-1 space-y-2 overflow-y-auto overscroll-contain px-2 pt-2 pb-3 sm:space-y-4 sm:px-4 sm:pt-4 sm:pb-4 md:px-6 ${centerOptionCards ? "flex flex-col [&_.wizard-option-grid]:my-auto [&>*:last-child]:flex [&>*:last-child]:flex-1 [&>*:last-child]:flex-col" : ""}`}
+      >
         {isWizardSearchActive ? (
           <PartStage
             partsForSelection={filteredPartsForSelection}
@@ -554,6 +550,110 @@ export function CatalogueScreen({
               actionLabel="Edit"
             />
           )}
+      </div>
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        aria-label="Import catalogue workbook"
+        accept=".xlsx,.xls"
+        className="hidden"
+        onChange={handleImportFile}
+      />
+      <div className="bg-card shrink-0 border-t px-4 pt-1.5 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:px-6 sm:pt-2">
+        {importProgress && (
+          <div className="mb-1.5 flex items-center justify-between gap-2">
+            <p role="status" className="text-muted-foreground min-w-0 text-xs">
+              {importProgress}
+            </p>
+            {isImporting && isPreparingImport && (
+              <Button variant="ghost" size="sm" onClick={cancelPreparation}>
+                Cancel preparation
+              </Button>
+            )}
+          </div>
+        )}
+        <div className="grid grid-cols-3 gap-1.5">
+          <Button
+            type="button"
+            variant="outline"
+            className={barButton}
+            disabled={!canEditParts}
+            onClick={() => setIsCreatePartDialogOpen(true)}
+          >
+            Create Part
+          </Button>
+          <div className="relative min-w-0">
+            <Search className="text-muted-foreground/70 pointer-events-none absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2" />
+            <Input
+              type="search"
+              inputMode="search"
+              enterKeyHint="search"
+              name="catalogue-part-search"
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="off"
+              spellCheck={false}
+              value={wizardSearchQuery}
+              onChange={(event) => setWizardSearchQuery(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") event.currentTarget.blur();
+              }}
+              placeholder="Search"
+              aria-label="Search parts"
+              className="h-9 w-full rounded-lg pl-8 text-sm [&::-webkit-search-cancel-button]:appearance-none"
+            />
+          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                className={barButton}
+                disabled={!canEditParts}
+              >
+                <Ellipsis className="mr-1 h-4 w-4 shrink-0" />
+                More
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              side="top"
+              align="end"
+              sideOffset={8}
+              className="w-56"
+            >
+              <DropdownMenuItem
+                disabled={!canEditParts}
+                onSelect={() => setIsMaterialGroupsOpen(true)}
+              >
+                <Grid2X2 />
+                Material groups
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                disabled={!canEditParts}
+                onSelect={() => setIsPhotoQueueOpen(true)}
+              >
+                <Images />
+                Photos
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                disabled={!canEditParts || isImporting || isExporting}
+                onSelect={handleImportClick}
+              >
+                <Upload />
+                Import XLSX
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                disabled={!canEditParts || isImporting || isExporting}
+                onSelect={handleExportClick}
+              >
+                <Download />
+                Export XLSX
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
 
       <Dialog

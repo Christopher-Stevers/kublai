@@ -90,6 +90,10 @@ const upload = () =>
   fireEvent.change(screen.getByLabelText("Import catalogue workbook"), {
     target: { files: [new File(["fixture"], "parts.xlsx")] },
   });
+const openMore = () =>
+  fireEvent.keyDown(screen.getByRole("button", { name: "More" }), {
+    key: "Enter",
+  });
 beforeEach(() => {
   vi.clearAllMocks();
   state.canEdit = state.online = true;
@@ -113,7 +117,10 @@ describe("catalogue workbook controls", () => {
     upload();
     await waitFor(() => expect(state.download).toHaveBeenCalled());
     expect(state.mutate).not.toHaveBeenCalled();
-    expect(screen.getByRole("button", { name: "Export XLSX" })).toBeDisabled();
+    openMore();
+    expect(
+      screen.getByRole("menuitem", { name: "Export XLSX" }),
+    ).toHaveAttribute("aria-disabled", "true");
     await act(async () => {
       release();
     });
@@ -208,7 +215,8 @@ describe("catalogue workbook controls", () => {
         }),
     );
     render(<CatalogueScreen />);
-    fireEvent.click(screen.getByRole("button", { name: "Export XLSX" }));
+    openMore();
+    fireEvent.click(screen.getByRole("menuitem", { name: "Export XLSX" }));
     const dialog = screen.getByRole("dialog", { name: "Export Catalogue" });
     fireEvent.click(
       within(dialog).getByRole("button", { name: "Export XLSX" }),
