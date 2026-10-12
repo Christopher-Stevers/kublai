@@ -51,3 +51,30 @@ it("denies the version check when access has been revoked", async () => {
   expect(result.headers.get("etag")).toBeNull();
   expect(mocks.model).not.toHaveBeenCalled();
 });
+
+it("returns a partial response when If-Range matches the model version", async () => {
+  const req = new Request(
+    `https://app.test/api/models/files/${id}?jobId=${id}`,
+    {
+      method: "HEAD",
+      headers: { range: "bytes=40-", "if-range": '"content-hash"' },
+    },
+  );
+  const response = await HEAD(req, params);
+  expect(response.status).toBe(206);
+  expect(response.headers.get("content-range")).toBe("bytes 40-122/123");
+  expect(response.headers.get("content-length")).toBe("83");
+});
+it("ignores Range after the model version changes", async () => {
+  const req = new Request(
+    `https://app.test/api/models/files/${id}?jobId=${id}`,
+    {
+      method: "HEAD",
+      headers: { range: "bytes=40-", "if-range": '"old-hash"' },
+    },
+  );
+  const response = await HEAD(req, params);
+  expect(response.status).toBe(200);
+  expect(response.headers.get("content-range")).toBeNull();
+  expect(response.headers.get("content-length")).toBe("123");
+});

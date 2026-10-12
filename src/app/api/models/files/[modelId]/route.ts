@@ -34,10 +34,15 @@ export async function GET(
       });
     const file = modelBlobPath(a.job.organizationId, sha);
     const size = (await stat(file)).size;
-    const range = singleByteRange(request.headers.get("range"), size);
+    const etag = `"${sha}"`;
+    const ifRange = request.headers.get("if-range");
+    const range = singleByteRange(
+      !ifRange || ifRange === etag ? request.headers.get("range") : null,
+      size,
+    );
     const headers = {
       "Content-Type": "application/octet-stream",
-      ETag: `"${sha}"`,
+      ETag: etag,
       "Cache-Control": "private, no-store",
       "X-Content-Type-Options": "nosniff",
       "Cross-Origin-Resource-Policy": "same-origin",

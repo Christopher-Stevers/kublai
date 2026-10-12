@@ -239,7 +239,11 @@ async function downloadAndOpen(
       if (performance.now() - lastProgress > 100) {
         progress(
           Math.min(20, size ? (20 * total) / size : 10),
-          download.cached ? "Opening saved model" : "Downloading model",
+          download.cached
+            ? "Opening saved model"
+            : download.resumed
+              ? "Resuming model download"
+              : "Downloading model",
         );
         lastProgress = performance.now();
       }
