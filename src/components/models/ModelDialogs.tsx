@@ -106,7 +106,7 @@ export function UploadModelDialog({
           }}
         >
           <label className="flex cursor-pointer flex-col items-center gap-2 rounded-lg border border-dashed p-6 text-center">
-            <Upload className="size-7 text-blue-600" />
+            <Upload className="text-primary size-7" />
             <span className="text-sm font-medium">
               {file?.name ?? "Choose Revit or IFC file"}
             </span>
@@ -254,7 +254,7 @@ export function AutodeskDialog({
           <li>Copy its client ID and client secret into the fields below.</li>
         </ol>
         <a
-          className="inline-flex items-center gap-2 text-sm text-blue-600 underline"
+          className="text-primary inline-flex items-center gap-2 text-sm underline"
           href="https://aps.autodesk.com/myapps"
           target="_blank"
           rel="noreferrer"

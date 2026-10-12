@@ -30,6 +30,8 @@ import {
   ChevronUp,
   ChevronDown,
   Info,
+  MoreVertical,
+  Upload,
 } from "lucide-react";
 import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
@@ -40,6 +42,16 @@ import {
   DialogTitle,
   DialogDescription,
 } from "~/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "~/components/ui/dropdown-menu";
 import { useModelScene } from "./use-model-scene";
 import { IssueDialog, UploadModelDialog, inputClass } from "./ModelDialogs";
 import type { ModelTool } from "~/lib/bim/scene";
@@ -152,6 +164,7 @@ export function ModelWorkspace({
     [viewName, setViewName] = useState(""),
     [help, setHelp] = useState(false),
     [allRevisions, setAllRevisions] = useState(false),
+    [reportFor, setReportFor] = useState<string | null>(null),
     [section, setSection] = useState<BimViewState["section"]>(null);
   const viewport = useModelScene(host, w.job.id, ids, restore, reset, {
     select: (e) => {
@@ -337,7 +350,7 @@ export function ModelWorkspace({
       aria-pressed={panel === id}
       className={cn(
         "hover:bg-muted flex min-h-11 items-center gap-2 rounded-md px-3 text-sm",
-        panel === id && "bg-muted text-blue-600",
+        panel === id && "bg-muted text-primary",
       )}
       onClick={() => {
         setPanel((p) => (p === id ? null : id));
@@ -355,14 +368,16 @@ export function ModelWorkspace({
         "bg-background text-foreground flex min-h-[560px] flex-col overflow-hidden",
         expanded
           ? "fixed inset-0 z-40 h-dvh"
-          : "relative h-[calc(100dvh-155px)] border-y",
+          : "relative h-[calc(100dvh-3.5rem)] border-t sm:h-[calc(100dvh-4rem)]",
       )}
     >
       <header className="bg-background z-10 flex shrink-0 items-center justify-between gap-2 border-b px-3 py-2">
         <div className="flex min-w-0 items-center gap-2">
-          <Box className="size-6 shrink-0 text-blue-600" />
+          <span className="bg-primary/10 text-primary grid size-9 shrink-0 place-items-center rounded-lg">
+            <Box className="size-5" />
+          </span>
           <div className="min-w-0">
-            <h1 className="text-sm font-semibold">Models</h1>
+            <h1 className="text-base leading-tight font-semibold">Models</h1>
             <p className="text-muted-foreground truncate text-xs">
               {w.job.name}
             </p>
@@ -421,7 +436,7 @@ export function ModelWorkspace({
           />
           {!ids.length && (
             <div className="bg-background/80 absolute inset-0 flex flex-col items-center justify-center p-6 text-center">
-              <div className="mb-5 grid size-24 place-items-center rounded-3xl border border-blue-500/20 bg-blue-500/5 text-blue-600">
+              <div className="border-primary/20 bg-primary/5 text-primary mb-5 grid size-24 place-items-center rounded-3xl border">
                 <Box className="size-14 stroke-1" />
               </div>
               <h2 className="text-xl font-semibold tracking-tight">
@@ -500,7 +515,7 @@ export function ModelWorkspace({
                   title="X-ray"
                   className={cn(
                     "hover:bg-muted grid size-10 place-items-center rounded",
-                    xray && "text-blue-600",
+                    xray && "text-primary",
                   )}
                   onClick={() => {
                     scene?.setXray(!xray);
@@ -576,7 +591,7 @@ export function ModelWorkspace({
                       className={cn(
                         "flex min-h-12 min-w-14 flex-col items-center justify-center gap-1 rounded-lg px-2 text-[11px] disabled:opacity-40",
                         tool === id
-                          ? "bg-blue-600 text-white"
+                          ? "bg-primary text-primary-foreground"
                           : "hover:bg-muted",
                       )}
                       aria-pressed={tool === id}
@@ -593,7 +608,7 @@ export function ModelWorkspace({
                     className={cn(
                       "flex min-h-12 min-w-14 flex-col items-center justify-center gap-1 rounded-lg px-2 text-[11px]",
                       panel === "section"
-                        ? "bg-blue-600 text-white"
+                        ? "bg-primary text-primary-foreground"
                         : "hover:bg-muted",
                     )}
                     onClick={() =>
@@ -624,9 +639,9 @@ export function ModelWorkspace({
         {panel && (
           <aside
             aria-label={panelNames[panel]}
-            className="bg-background absolute inset-y-0 left-0 z-20 flex w-[min(88%,340px)] shrink-0 flex-col border-r shadow-xl md:static md:order-first md:w-80 md:shadow-none"
+            className="bg-canvas absolute inset-y-0 left-0 z-20 flex w-full shrink-0 flex-col border-r shadow-xl sm:w-[340px] md:static md:order-first md:w-80 md:shadow-none"
           >
-            <div className="flex min-h-14 shrink-0 items-center justify-between border-b px-4">
+            <div className="bg-background flex min-h-14 shrink-0 items-center justify-between border-b px-4">
               <h2 className="text-sm font-semibold">{panelNames[panel]}</h2>
               <button
                 aria-label="Close panel"
@@ -636,7 +651,7 @@ export function ModelWorkspace({
                 <PanelLeftClose className="size-4" />
               </button>
             </div>
-            <div className="flex-1 space-y-4 overflow-y-auto overscroll-contain p-4">
+            <div className="flex-1 space-y-3 overflow-y-auto overscroll-contain p-3">
               {panel === "models" && (
                 <>
                   <div className="flex items-center justify-between">
@@ -650,157 +665,244 @@ export function ModelWorkspace({
                         size="sm"
                         onClick={() => setUpload({ revision: null })}
                       >
-                        <Plus className="mr-1 size-4" />
-                        Add
+                        <Plus className="size-4" />
+                        Add model
                       </Button>
                     )}
                   </div>
-                  <input
-                    className={inputClass}
-                    aria-label="Search models"
-                    placeholder="Search models…"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                  />
-                  <label className="text-muted-foreground flex items-center gap-2 text-xs">
+                  <div className="relative">
+                    <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2" />
+                    <input
+                      className={cn(inputClass, "pl-9")}
+                      aria-label="Search models"
+                      placeholder="Search models…"
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                    />
+                  </div>
+                  <label className="text-muted-foreground flex cursor-pointer items-center gap-2 text-xs">
                     <input
                       type="checkbox"
+                      className="accent-primary size-4 dark:[color-scheme:dark]"
                       checked={allRevisions}
                       onChange={(e) => setAllRevisions(e.target.checked)}
                     />
                     Show earlier revisions
                   </label>
-                  <div className="divide-y">
-                    {modelRows.map((m) => (
-                      <article key={m.id} className="space-y-3 py-4 first:pt-0">
-                        <div className="flex items-start gap-2">
-                          <input
-                            type="checkbox"
-                            aria-label={`Open ${m.name} version ${m.version}`}
-                            className="mt-1 size-5 accent-blue-600"
-                            disabled={m.status !== "ready"}
-                            checked={ids.includes(m.id)}
-                            onChange={() => toggleModel(m)}
-                          />
-                          <div className="min-w-0 flex-1">
-                            <p className="text-sm font-medium break-words">
-                              {m.name}
-                            </p>
-                            <p className="text-muted-foreground mt-1 text-xs">
-                              {titleCase(m.discipline)} · v{m.version} ·{" "}
-                              {(m.size / 1024 / 1024).toFixed(1)} MB
-                            </p>
-                            <span
+                  <div className="space-y-2">
+                    {modelRows.map((m) => {
+                      const open = ids.includes(m.id);
+                      const isLatest = latest.get(m.seriesId)?.id === m.id;
+                      const preview = isNativeRevitPreview(m);
+                      return (
+                        <article
+                          key={m.id}
+                          className={cn(
+                            "bg-card rounded-xl border p-3 shadow-sm transition-colors",
+                            open && "border-primary/50 ring-primary/20 ring-1",
+                          )}
+                        >
+                          <div className="flex items-start gap-3">
+                            <label
                               className={cn(
-                                "mt-2 inline-block rounded px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase",
-                                m.publication === "construction"
-                                  ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
-                                  : "bg-muted text-muted-foreground",
+                                "relative grid size-10 shrink-0 place-items-center rounded-lg transition-colors",
+                                m.status !== "ready"
+                                  ? "bg-muted text-muted-foreground/50"
+                                  : open
+                                    ? "bg-primary text-primary-foreground cursor-pointer"
+                                    : "bg-primary/10 text-primary hover:bg-primary/15 cursor-pointer",
                               )}
+                              title={open ? "Hide in viewer" : "Show in viewer"}
                             >
-                              {m.publication === "construction"
-                                ? "For construction"
-                                : m.publication}
-                            </span>
-                            {latest.get(m.seriesId)?.id !== m.id && (
-                              <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">
-                                Earlier revision
+                              <input
+                                type="checkbox"
+                                aria-label={`Open ${m.name} version ${m.version}`}
+                                className="peer absolute inset-0 cursor-pointer opacity-0 disabled:cursor-default"
+                                disabled={m.status !== "ready"}
+                                checked={open}
+                                onChange={() => toggleModel(m)}
+                              />
+                              {open ? (
+                                <Eye className="size-5" />
+                              ) : (
+                                <Box className="size-5" />
+                              )}
+                            </label>
+                            <div className="min-w-0 flex-1">
+                              <p className="line-clamp-2 text-sm leading-snug font-semibold break-words">
+                                {m.name}
                               </p>
-                            )}
-                          </div>
-                        </div>
-                        {m.status !== "ready" && (
-                          <div className="bg-muted space-y-2 rounded p-2 text-xs">
-                            <p>
-                              {m.status === "awaiting_conversion"
-                                ? "Revit file uploaded · preparation required"
-                                : (m.conversionMessage ?? titleCase(m.status))}
-                            </p>
-                            {w.canUpload &&
-                              m.status !== "processing" &&
-                              (w.conversionAvailable ? (
-                                <>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    disabled={convert.isPending}
-                                    onClick={() =>
-                                      convert.mutate({
-                                        jobId: w.job.id,
-                                        id: m.id,
-                                      })
+                              <p className="text-muted-foreground mt-0.5 text-xs">
+                                {m.discipline !== "coordination" &&
+                                  `${titleCase(m.discipline)} · `}
+                                v{m.version} ·{" "}
+                                {(m.size / 1024 / 1024).toFixed(1)} MB
+                              </p>
+                              <div className="mt-2 flex flex-wrap gap-1.5">
+                                <span
+                                  className={cn(
+                                    "rounded-full px-2 py-0.5 text-[11px] font-medium",
+                                    m.publication === "construction"
+                                      ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
+                                      : m.publication === "archived"
+                                        ? "bg-muted text-muted-foreground"
+                                        : "bg-primary/10 text-primary",
+                                  )}
+                                >
+                                  {m.publication === "construction"
+                                    ? "For construction"
+                                    : titleCase(m.publication)}
+                                </span>
+                                {preview && (
+                                  <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:text-amber-300">
+                                    Experimental
+                                  </span>
+                                )}
+                                {!isLatest && (
+                                  <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:text-amber-300">
+                                    Earlier revision
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <button
+                                  type="button"
+                                  aria-label={`Actions for ${m.name} version ${m.version}`}
+                                  className="text-muted-foreground hover:bg-muted -mt-1 -mr-1 grid size-9 shrink-0 place-items-center rounded-lg"
+                                >
+                                  <MoreVertical className="size-4" />
+                                </button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="w-56">
+                                <DropdownMenuItem asChild>
+                                  <a
+                                    href={modelFileUrl(w.job.id, m.id, true)}
+                                    download
+                                  >
+                                    <Download className="size-4" />
+                                    Download source
+                                  </a>
+                                </DropdownMenuItem>
+                                {w.canUpload && isLatest && (
+                                  <DropdownMenuItem
+                                    onSelect={() => setUpload({ revision: m })}
+                                  >
+                                    <Upload className="size-4" />
+                                    New revision
+                                  </DropdownMenuItem>
+                                )}
+                                {m.nativeConversion && (
+                                  <DropdownMenuItem
+                                    onSelect={() =>
+                                      setReportFor((current) =>
+                                        current === m.id ? null : m.id,
+                                      )
                                     }
                                   >
-                                    Prepare local preview
-                                  </Button>
-                                  <p className="text-muted-foreground text-[10px]">
-                                    Runs on FormanHQ. No Autodesk account
-                                    required.
-                                  </p>
-                                </>
-                              ) : (
-                                <p>
-                                  The local converter is unavailable. Your
-                                  original file is stored safely.
-                                </p>
-                              ))}
+                                    <Info className="size-4" />
+                                    {reportFor === m.id
+                                      ? "Hide preview details"
+                                      : "Preview details"}
+                                  </DropdownMenuItem>
+                                )}
+                                {w.canUpload && (
+                                  <>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuLabel className="text-muted-foreground text-xs font-medium">
+                                      Status
+                                    </DropdownMenuLabel>
+                                    <DropdownMenuRadioGroup
+                                      value={m.publication}
+                                      onValueChange={(value) =>
+                                        publication.mutate({
+                                          jobId: w.job.id,
+                                          id: m.id,
+                                          publication:
+                                            value as BimModel["publication"],
+                                        })
+                                      }
+                                    >
+                                      <DropdownMenuRadioItem
+                                        value="coordination"
+                                        disabled={publication.isPending}
+                                      >
+                                        Coordination
+                                      </DropdownMenuRadioItem>
+                                      <DropdownMenuRadioItem
+                                        value="construction"
+                                        disabled={
+                                          publication.isPending ||
+                                          preview ||
+                                          m.status !== "ready"
+                                        }
+                                      >
+                                        For construction
+                                      </DropdownMenuRadioItem>
+                                      {(w.canDelete ||
+                                        m.publication === "archived") && (
+                                        <DropdownMenuRadioItem
+                                          value="archived"
+                                          disabled={publication.isPending}
+                                        >
+                                          Archived
+                                        </DropdownMenuRadioItem>
+                                      )}
+                                    </DropdownMenuRadioGroup>
+                                  </>
+                                )}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </div>
-                        )}
-                        {m.nativeConversion && (
-                          <NativeConversionReport report={m.nativeConversion} />
-                        )}
-                        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-xs">
-                          <a
-                            className="text-muted-foreground inline-flex min-h-8 items-center gap-1 hover:underline"
-                            href={modelFileUrl(w.job.id, m.id, true)}
-                            download
-                          >
-                            <Download className="size-3" />
-                            Source
-                          </a>
-                          {w.canUpload &&
-                            latest.get(m.seriesId)?.id === m.id && (
-                              <button
-                                className="min-h-8 text-blue-600"
-                                onClick={() => setUpload({ revision: m })}
-                              >
-                                New revision
-                              </button>
-                            )}
-                          {w.canUpload && (
-                            <select
-                              aria-label={`Publication status for ${m.name} version ${m.version}`}
-                              className="bg-background min-h-8 max-w-full rounded border text-xs"
-                              value={m.publication}
-                              disabled={publication.isPending}
-                              onChange={(e) =>
-                                publication.mutate({
-                                  jobId: w.job.id,
-                                  id: m.id,
-                                  publication: e.target
-                                    .value as BimModel["publication"],
-                                })
-                              }
-                            >
-                              <option value="coordination">Coordination</option>
-                              <option
-                                value="construction"
-                                disabled={
-                                  isNativeRevitPreview(m) ||
-                                  m.status !== "ready"
-                                }
-                              >
-                                For construction
-                              </option>
-                              {(w.canDelete ||
-                                m.publication === "archived") && (
-                                <option value="archived">Archived</option>
-                              )}
-                            </select>
+                          {m.status !== "ready" && (
+                            <div className="bg-muted/60 mt-3 space-y-2 rounded-lg p-3 text-xs">
+                              <p>
+                                {m.status === "awaiting_conversion"
+                                  ? "Revit file uploaded · preparation required"
+                                  : (m.conversionMessage ??
+                                    titleCase(m.status))}
+                              </p>
+                              {w.canUpload &&
+                                m.status !== "processing" &&
+                                (w.conversionAvailable ? (
+                                  <>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      disabled={convert.isPending}
+                                      onClick={() =>
+                                        convert.mutate({
+                                          jobId: w.job.id,
+                                          id: m.id,
+                                        })
+                                      }
+                                    >
+                                      Prepare local preview
+                                    </Button>
+                                    <p className="text-muted-foreground text-[11px]">
+                                      Runs on FormanHQ. No Autodesk account
+                                      required.
+                                    </p>
+                                  </>
+                                ) : (
+                                  <p>
+                                    The local converter is unavailable. Your
+                                    original file is stored safely.
+                                  </p>
+                                ))}
+                            </div>
                           )}
-                        </div>
-                      </article>
-                    ))}
+                          {m.nativeConversion && reportFor === m.id && (
+                            <div className="mt-3">
+                              <NativeConversionReport
+                                report={m.nativeConversion}
+                              />
+                            </div>
+                          )}
+                        </article>
+                      );
+                    })}
                   </div>
                   {!w.models.length && (
                     <p className="text-muted-foreground py-3 text-sm leading-relaxed">
@@ -808,7 +910,7 @@ export function ModelWorkspace({
                       viewer. Shared coordinates align separate trade models.
                     </p>
                   )}
-                  <p className="text-muted-foreground border-t pt-3 text-xs leading-relaxed">
+                  <p className="text-muted-foreground px-1 text-[11px] leading-relaxed">
                     Native Revit conversion runs locally. Version detection is
                     automatic. Experimental previews open one model at a time;
                     IFC supports construction coordination.
@@ -875,7 +977,7 @@ export function ModelWorkspace({
                       <button
                         className={cn(
                           "block w-full py-3 text-left",
-                          selected?.key === e.key && "text-blue-600",
+                          selected?.key === e.key && "text-primary",
                         )}
                         key={e.key}
                         onClick={() => {
@@ -1117,7 +1219,7 @@ export function ModelWorkspace({
                             </div>
                           </button>
                           <button
-                            className="min-h-9 text-xs font-medium text-blue-600"
+                            className="text-primary min-h-9 text-xs font-medium"
                             onClick={() => restoreView(i.view)}
                           >
                             Go to saved location
@@ -1174,7 +1276,7 @@ export function ModelWorkspace({
                   <label className="flex min-h-11 items-center gap-3 text-sm">
                     <input
                       type="checkbox"
-                      className="size-5 accent-blue-600"
+                      className="accent-primary size-5"
                       checked={!!section}
                       onChange={(e) => {
                         const s = e.target.checked
@@ -1223,7 +1325,7 @@ export function ModelWorkspace({
                         Cut position
                         <input
                           aria-label="Cut position"
-                          className="w-full accent-blue-600"
+                          className="accent-primary w-full"
                           type="range"
                           min={min}
                           max={max}
@@ -1322,7 +1424,7 @@ export function ModelWorkspace({
         <span className="truncate">
           {ids.length
             ? `${ids.length} model${ids.length === 1 ? "" : "s"} · ${elements.length.toLocaleString()} elements · ${units}`
-            : "Revit + IFC · Construction coordination"}
+            : "No model open · choose one from Models"}
           {ids.some((id) => {
             const m = w.models.find((m) => m.id === id);
             return (
