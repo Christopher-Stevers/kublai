@@ -439,6 +439,17 @@ describe("editing a part name", () => {
     finish();
     await waitFor(()=>expect(close).toHaveBeenCalledWith(false));
   });
+  it("loads and saves separate bulk and individual units", async () => {
+    Object.assign(editState.part!, {bulkUnit: "box", individualUnit: "pcs", piecesPerPack: 50});
+    editState.save.mockResolvedValue(undefined);
+    render(<PartDetailsDialog mode="edit" open partId="part-existing" onOpenChange={() => {}} />);
+    expect(screen.getByLabelText("Bulk unit")).toHaveValue("box");
+    expect(screen.getByLabelText("Individual unit")).toHaveValue("pcs");
+    fireEvent.change(screen.getByLabelText("Bulk unit"), {target:{value:"roll"}});
+    fireEvent.change(screen.getByLabelText("Individual unit"), {target:{value:"feet"}});
+    fireEvent.click(screen.getByRole("button", {name:"Save"}));
+    await waitFor(() => expect(editState.save).toHaveBeenCalledWith(expect.objectContaining({bulkUnit:"roll", individualUnit:"feet", piecesPerPack:50})));
+  });
   it("keeps the editor open and displays a save failure", async () => {
     editState.save.mockRejectedValue(new Error('Save failed'));
     const close = vi.fn();

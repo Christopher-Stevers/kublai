@@ -160,6 +160,8 @@ export const prefabsRouter = createTRPCRouter({
           id: partDefinitions.id,
           displayName: partDefinitions.displayName,
           piecesPerPack: partDefinitions.piecesPerPack,
+          bulkUnit: partDefinitions.bulkUnit,
+          individualUnit: partDefinitions.individualUnit,
           imageUrl: partDefinitions.imageUrl,
           sizeLabel: partDefinitions.sizeLabel,
         },

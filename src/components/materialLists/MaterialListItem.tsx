@@ -50,6 +50,8 @@ interface MaterialListItemProps {
       id: string;
       displayName: string;
       piecesPerPack?: number | null;
+      bulkUnit?: string | null;
+      individualUnit?: string | null;
       imageUrl: string | null;
       material: string | null;
     } | null;
@@ -796,7 +798,7 @@ function MaterialListItemComponent({
                   itemId={item.id}
                   quantity={quantity}
                   orderMultiple={isToolRequest ? null : item.supplierPart?.packSize}
-                  piecesPerPack={isToolRequest ? null : item.partDefinition?.piecesPerPack}
+                  piecesPerPack={isToolRequest ? null : item.partDefinition?.piecesPerPack} bulkUnit={item.partDefinition?.bulkUnit} individualUnit={item.partDefinition?.individualUnit}
                   materialListId={materialListId}
                   pendingSync={item.pendingSync}
                   compact

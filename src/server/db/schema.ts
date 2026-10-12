@@ -707,6 +707,8 @@ export const partDefinitions = createTable(
 
     displayName: d.varchar({ length: 255 }).notNull(),
     piecesPerPack: d.integer(),
+    bulkUnit: d.varchar({ length: 32 }),
+    individualUnit: d.varchar({ length: 32 }),
     description: d.text(),
     imageUrl: d.text(),
     imageAssetId: d

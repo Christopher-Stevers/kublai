@@ -31,6 +31,8 @@ export interface OfflineCataloguePart {
   id: string;
   displayName: string;
   piecesPerPack?: number | null;
+  bulkUnit?: string | null;
+  individualUnit?: string | null;
   description: string | null;
   imageUrl: string | null;
   material: string | null;

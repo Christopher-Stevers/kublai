@@ -199,6 +199,8 @@ async function loadOrderableQuoteItems(
       partDefinitionId: quoteItems.partDefinitionId,
       partDefinitionDisplayName: partDefinitions.displayName,
       partDefinitionPiecesPerPack: partDefinitions.piecesPerPack,
+      partDefinitionBulkUnit: partDefinitions.bulkUnit,
+      partDefinitionIndividualUnit: partDefinitions.individualUnit,
       quantity: quoteItems.quantity,
       uomId: quoteItems.uomId,
       unitCost: quoteItems.unitCost,
@@ -340,6 +342,8 @@ export const materialListRouter = createTRPCRouter({
             partDefinitionId: partDefinitions.id,
             partDefinitionDisplayName: partDefinitions.displayName,
             partDefinitionPiecesPerPack: partDefinitions.piecesPerPack,
+            partDefinitionBulkUnit: partDefinitions.bulkUnit,
+            partDefinitionIndividualUnit: partDefinitions.individualUnit,
             partDefinitionImageUrl: partDefinitions.imageUrl,
             partDefinitionMaterialId: partDefinitions.materialId,
             partDefinitionMaterialName: materials.name,
@@ -407,6 +411,8 @@ export const materialListRouter = createTRPCRouter({
               id: item.partDefinitionId,
               displayName: item.partDefinitionDisplayName,
               piecesPerPack: item.partDefinitionPiecesPerPack,
+              bulkUnit: item.partDefinitionBulkUnit,
+              individualUnit: item.partDefinitionIndividualUnit,
               imageUrl: item.partDefinitionImageUrl,
               material: item.partDefinitionMaterialName,
             }
@@ -839,6 +845,8 @@ export const materialListRouter = createTRPCRouter({
           descriptionSnapshot: quoteItems.descriptionSnapshot,
           partDefinitionDisplayName: partDefinitions.displayName,
           partDefinitionPiecesPerPack: partDefinitions.piecesPerPack,
+          partDefinitionBulkUnit: partDefinitions.bulkUnit,
+          partDefinitionIndividualUnit: partDefinitions.individualUnit,
           quantity: quoteItems.quantity,
           extendedPrice: quoteItems.extendedPrice,
           unitCost: quoteItems.unitCost,
@@ -1039,6 +1047,8 @@ ${foremanName}`;
               supplierSkuSnapshot: orderItems.supplierSkuSnapshot,
               partDefinitionDisplayName: partDefinitions.displayName,
               partDefinitionPiecesPerPack: partDefinitions.piecesPerPack,
+              partDefinitionBulkUnit: partDefinitions.bulkUnit,
+              partDefinitionIndividualUnit: partDefinitions.individualUnit,
             })
             .from(orderItems)
             .leftJoin(jobRooms, eq(orderItems.roomId, jobRooms.id))
@@ -1429,6 +1439,8 @@ ${foremanName}`;
           descriptionSnapshot: orderItems.descriptionSnapshot,
           partDefinitionDisplayName: partDefinitions.displayName,
           partDefinitionPiecesPerPack: partDefinitions.piecesPerPack,
+          partDefinitionBulkUnit: partDefinitions.bulkUnit,
+          partDefinitionIndividualUnit: partDefinitions.individualUnit,
           quantity: orderItems.quantity,
         })
         .from(orderItems)
@@ -1808,6 +1820,8 @@ ${foremanName}`;
           descriptionSnapshot: orderItems.descriptionSnapshot,
           partDefinitionDisplayName: partDefinitions.displayName,
           partDefinitionPiecesPerPack: partDefinitions.piecesPerPack,
+          partDefinitionBulkUnit: partDefinitions.bulkUnit,
+          partDefinitionIndividualUnit: partDefinitions.individualUnit,
           supplierSkuSnapshot: orderItems.supplierSkuSnapshot,
         })
         .from(orderItems)
@@ -2011,6 +2025,8 @@ ${foremanName}`;
             supplierSkuSnapshot: orderItems.supplierSkuSnapshot,
             partDefinitionDisplayName: partDefinitions.displayName,
             partDefinitionPiecesPerPack: partDefinitions.piecesPerPack,
+            partDefinitionBulkUnit: partDefinitions.bulkUnit,
+            partDefinitionIndividualUnit: partDefinitions.individualUnit,
           })
           .from(orderItems)
           .leftJoin(jobRooms, eq(orderItems.roomId, jobRooms.id))

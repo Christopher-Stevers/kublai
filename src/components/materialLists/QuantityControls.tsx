@@ -17,6 +17,8 @@ interface QuantityControlsProps {
   quantity: number;
   orderMultiple?: string | null;
   piecesPerPack?: number | null;
+  bulkUnit?: string | null;
+  individualUnit?: string | null;
   materialListId: string;
   pendingSync?: boolean;
   compact?: boolean;
@@ -28,6 +30,8 @@ export function QuantityControls({
   quantity,
   orderMultiple,
   piecesPerPack,
+  bulkUnit,
+  individualUnit,
   materialListId,
   pendingSync = false,
   compact = false,
@@ -150,7 +154,7 @@ export function QuantityControls({
 
   if (packContents(piecesPerPack) > 1) {
     return <div className="min-w-0 flex-1">
-      <PackQuantityControls orderMultiple={orderMultiple} quantity={displayedQuantity} piecesPerPack={piecesPerPack!} minimum={packsFromPieces(1, piecesPerPack)} onChange={setQuantityImmediately} />
+      <PackQuantityControls orderMultiple={orderMultiple} quantity={displayedQuantity} piecesPerPack={piecesPerPack!} bulkUnit={bulkUnit} individualUnit={individualUnit} minimum={packsFromPieces(1, piecesPerPack)} onChange={setQuantityImmediately} />
       {saveError && <Button variant="outline" size="sm" onClick={() => commitQuantity(displayedQuantityRef.current)}>Retry quantity save</Button>}
     </div>;
   }

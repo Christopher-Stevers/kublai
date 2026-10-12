@@ -118,6 +118,8 @@ function ReviewQuantityControls({
   quantity,
   orderMultiple,
   piecesPerPack,
+  bulkUnit,
+  individualUnit,
   onUpdateQuantity,
   onSetQuantity,
 }: {
@@ -125,10 +127,12 @@ function ReviewQuantityControls({
   quantity: number;
   orderMultiple?: string | null;
   piecesPerPack?: number | null;
+  bulkUnit?: string | null;
+  individualUnit?: string | null;
   onUpdateQuantity: (partId: string, delta: number) => void;
   onSetQuantity: (partId: string, quantity: number) => void;
 }) {
-  if (packContents(piecesPerPack) > 1) return <PackQuantityControls orderMultiple={orderMultiple} quantity={quantity} piecesPerPack={piecesPerPack!} onChange={value => onSetQuantity(partId, value)} />;
+  if (packContents(piecesPerPack) > 1) return <PackQuantityControls orderMultiple={orderMultiple} quantity={quantity} piecesPerPack={piecesPerPack!} bulkUnit={bulkUnit} individualUnit={individualUnit} onChange={value => onSetQuantity(partId, value)} />;
   return (
     <div
       data-tutorial="wizard-review-quantity"
@@ -503,7 +507,7 @@ export function ReviewStage({
                       <ReviewQuantityControls
                         partId={pendingPart.partId}
                         quantity={pendingPart.quantity}
-                        piecesPerPack={pendingPart.partDefinition.piecesPerPack}
+                        piecesPerPack={pendingPart.partDefinition.piecesPerPack} bulkUnit={pendingPart.partDefinition.bulkUnit} individualUnit={pendingPart.partDefinition.individualUnit}
                         orderMultiple={
                           isToolRequest
                             ? null
@@ -576,7 +580,7 @@ export function ReviewStage({
                     <ReviewQuantityControls
                       partId={pendingPart.partId}
                       quantity={pendingPart.quantity}
-                        piecesPerPack={pendingPart.partDefinition.piecesPerPack}
+                        piecesPerPack={pendingPart.partDefinition.piecesPerPack} bulkUnit={pendingPart.partDefinition.bulkUnit} individualUnit={pendingPart.partDefinition.individualUnit}
                       orderMultiple={
                         isToolRequest
                           ? null

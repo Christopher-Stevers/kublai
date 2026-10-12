@@ -262,6 +262,8 @@ export function PartDetailsDialog({
     );
   const [displayName, setDisplayName] = useState("");
   const [piecesPerPack, setPiecesPerPack] = useState("");
+  const [bulkUnit, setBulkUnit] = useState("");
+  const [individualUnit, setIndividualUnit] = useState("");
   const [hasManuallyEditedDisplayName, setHasManuallyEditedDisplayName] =
     useState(false);
   const [description, setDescription] = useState("");
@@ -372,6 +374,8 @@ export function PartDetailsDialog({
     if (isEditMode && part) {
       setDisplayName(part.displayName ?? "");
       setPiecesPerPack(part.piecesPerPack ? String(part.piecesPerPack) : "");
+      setBulkUnit(part.bulkUnit ?? "");
+      setIndividualUnit(part.individualUnit ?? "");
       setDescription(part.description ?? "");
       setImageUrl(part.imageUrl ?? "");
       setAliasesText(
@@ -403,6 +407,9 @@ export function PartDetailsDialog({
       }
 
       setDisplayName("");
+      setPiecesPerPack("");
+      setBulkUnit("");
+      setIndividualUnit("");
       setDescription("");
       setImageUrl("");
       setAliasesText("");
@@ -658,6 +665,8 @@ export function PartDetailsDialog({
         draft: {
           displayName: displayName.trim(),
       piecesPerPack: piecesPerPack.trim() ? Number(piecesPerPack) : null,
+      bulkUnit: bulkUnit.trim() || null,
+      individualUnit: individualUnit.trim() || null,
           description: description.trim() || null,
           categoryName: selectedCategory?.name ?? null,
           materialId,
@@ -1036,6 +1045,8 @@ export function PartDetailsDialog({
     const payload = {
       displayName: displayName.trim(),
       piecesPerPack: piecesPerPack.trim() ? Number(piecesPerPack) : null,
+      bulkUnit: bulkUnit.trim() || null,
+      individualUnit: individualUnit.trim() || null,
       description: description.trim() || null,
       imageUrl: imageUrlToSave,
       catalogId,
@@ -1188,9 +1199,13 @@ export function PartDetailsDialog({
                     disabled={isLoading}
                   />
                   {!isToolType && <div className="mt-3">
-                    <Label htmlFor="piecesPerPack">Pieces per pack</Label>
+                    <div className="grid grid-cols-2 gap-3 mb-3">
+                      <div><Label htmlFor="bulkUnit">Bulk unit</Label><Input id="bulkUnit" list="bulk-unit-options" maxLength={32} value={bulkUnit} onChange={e => setBulkUnit(e.target.value)} placeholder="box, roll, length, pack" disabled={isLoading} /><datalist id="bulk-unit-options">{["box", "roll", "length", "pack"].map(unit => <option key={unit} value={unit} />)}</datalist></div>
+                      <div><Label htmlFor="individualUnit">Individual unit</Label><Input id="individualUnit" list="individual-unit-options" maxLength={32} value={individualUnit} onChange={e => setIndividualUnit(e.target.value)} placeholder="pcs, feet, inch, mm" disabled={isLoading} /><datalist id="individual-unit-options">{["pcs", "feet", "inch", "mm", "m"].map(unit => <option key={unit} value={unit} />)}</datalist></div>
+                    </div>
+                    <Label htmlFor="piecesPerPack">Individual units per bulk unit</Label>
                     <Input id="piecesPerPack" type="number" min="2" max="999999" step="1" value={piecesPerPack} onChange={event => setPiecesPerPack(event.target.value)} placeholder="Leave blank for individual items" disabled={isLoading} />
-                    <p className="text-muted-foreground text-xs">Pack contents only. Price and quantity are per pack; minimum ordering multiples are separate.</p>
+                    <p className="text-muted-foreground text-xs">For example, 50 pcs per box or 100 feet per roll. Price is per bulk unit. Unit labels do not convert measurements.</p>
                   </div>}
                   {!isEditMode && (
                     <p className="text-muted-foreground mt-1 text-xs">

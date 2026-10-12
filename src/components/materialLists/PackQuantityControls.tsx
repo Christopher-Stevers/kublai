@@ -11,6 +11,8 @@ import { packContents, packsFromPieces, pieceCount } from "~/lib/pack-quantity";
 export function PackQuantityControls({
   quantity,
   piecesPerPack,
+  bulkUnit,
+  individualUnit,
   onChange,
   minimum = 0,
   disabled = false,
@@ -18,12 +20,16 @@ export function PackQuantityControls({
 }: {
   quantity: number;
   piecesPerPack: number;
+  bulkUnit?: string | null;
+  individualUnit?: string | null;
   onChange: (packs: number) => void;
   minimum?: number;
   disabled?: boolean;
   orderMultiple?: string | null;
 }) {
   const contents = packContents(piecesPerPack);
+  const bulkLabel = bulkUnit || "packs";
+  const individualLabel = individualUnit || "pieces";
   const ordered = purchaseQuantity(quantity, orderMultiple, contents);
   const [piecesMode, setPiecesMode] = useState(false);
   const [draft, setDraft] = useState<string | null>(null);
@@ -77,13 +83,13 @@ export function PackQuantityControls({
           {piecesMode ? (
             <span
               className="min-w-0 flex-1 px-1 text-center text-sm tabular-nums"
-              aria-label="Pack quantity"
+              aria-label={bulkUnit ? `${bulkUnit} quantity` : "Pack quantity"}
             >
               {ordered.toLocaleString("en-CA", { maximumFractionDigits: 6 })}
             </span>
           ) : (
             <Input
-              aria-label="Quantity in packs"
+              aria-label={`Quantity in ${bulkLabel}`}
               type="text"
               inputMode="numeric"
               disabled={disabled}
@@ -116,7 +122,7 @@ export function PackQuantityControls({
             className="shrink-0 px-1 text-sm tabular-nums"
             disabled={disabled}
             onClick={() => toggleMode()}
-            aria-label={`Edit pieces: ${pieceCount(quantity, contents)}`}
+            aria-label={`Edit ${individualLabel}: ${pieceCount(quantity, contents)}`}
           >
             (x{pieceCount(quantity, contents)})
           </button>
@@ -139,12 +145,12 @@ export function PackQuantityControls({
           className="underline underline-offset-2"
           onClick={() => toggleMode()}
         >
-          {piecesMode ? "Switch to packs" : `Packs · ${contents} pieces each`}
+          {piecesMode ? `Switch to ${bulkLabel}` : `${bulkUnit || "Packs"} · ${contents} ${individualLabel} each`}
         </button>
         {piecesMode && (
           <Input
             autoFocus
-            aria-label="Quantity in pieces"
+            aria-label={`Quantity in ${individualLabel}`}
             type="number"
             min="0"
             step="1"
@@ -158,7 +164,7 @@ export function PackQuantityControls({
             className="h-8 w-20 px-1 text-center"
           />
         )}
-        {piecesMode && <span>Pieces</span>}
+        {piecesMode && <span>{individualUnit || "Pieces"}</span>}
       </div>
     </div>
   );

@@ -14,6 +14,14 @@ function Example() {
   );
 }
 describe("pack and piece editing", () => {
+  it("uses recorded units without changing purchase rounding", () => {
+    render(<PackQuantityControls quantity={0.7} piecesPerPack={100} bulkUnit="roll" individualUnit="feet" onChange={() => {}} />);
+    expect(screen.getByLabelText("Quantity in roll")).toHaveValue("1");
+    expect(screen.getByText("roll · 100 feet each")).toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText("Edit feet: 70"));
+    expect(screen.getByLabelText("Quantity in feet")).toHaveValue(70);
+    expect(screen.getByLabelText("roll quantity")).toHaveTextContent("1");
+  });
   it("defaults to packs and preserves exact piece needs with whole-pack display", () => {
     render(<Example />);
     expect(screen.getByLabelText("Quantity in packs")).toHaveValue("2");

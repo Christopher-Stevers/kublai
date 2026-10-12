@@ -21,6 +21,8 @@ import { currentSnapshotState } from "~/lib/snapshot-source";
 
 type PreloadedPart = {
   piecesPerPack?: number | null;
+  bulkUnit?: string | null;
+  individualUnit?: string | null;
   id: string;
   displayName: string;
   description: string | null;

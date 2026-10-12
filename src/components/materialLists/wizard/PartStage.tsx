@@ -26,6 +26,8 @@ interface PartCardProps {
     id: string;
     displayName: string;
     piecesPerPack?: number | null;
+    bulkUnit?: string | null;
+    individualUnit?: string | null;
     description: string | null;
     imageUrl: string | null;
     imageApprovalStatus?: "approved" | "suggested" | "missing";
@@ -39,6 +41,8 @@ interface PartCardProps {
       id: string;
       displayName: string;
       piecesPerPack?: number | null;
+      bulkUnit?: string | null;
+      individualUnit?: string | null;
       description: string | null;
       imageUrl: string | null;
       imageApprovalStatus?: "approved" | "suggested" | "missing";
@@ -52,6 +56,8 @@ interface PartCardProps {
       id: string;
       displayName: string;
       piecesPerPack?: number | null;
+      bulkUnit?: string | null;
+      individualUnit?: string | null;
       description: string | null;
       imageUrl: string | null;
       imageApprovalStatus?: "approved" | "suggested" | "missing";
@@ -422,7 +428,7 @@ function PartListRow({
 
         <div className="flex items-center justify-center gap-1.5">
           {isPending && actionMode === "select" && packContents(part.piecesPerPack) > 1 ? (
-            <PackQuantityControls quantity={pendingQuantity} piecesPerPack={part.piecesPerPack!} onChange={value => onPartQuantitySet?.(part, value)} />
+            <PackQuantityControls quantity={pendingQuantity} piecesPerPack={part.piecesPerPack!} bulkUnit={part.bulkUnit} individualUnit={part.individualUnit} onChange={value => onPartQuantitySet?.(part, value)} />
           ) : isPending && actionMode === "select" ? (
             <div className="flex items-center gap-1">
               <Button
@@ -497,6 +503,8 @@ export interface PartStageProps {
     id: string;
     displayName: string;
     piecesPerPack?: number | null;
+    bulkUnit?: string | null;
+    individualUnit?: string | null;
     description: string | null;
     imageUrl: string | null;
     imageApprovalStatus?: "approved" | "suggested" | "missing";
@@ -509,6 +517,8 @@ export interface PartStageProps {
       id: string;
       displayName: string;
       piecesPerPack?: number | null;
+      bulkUnit?: string | null;
+      individualUnit?: string | null;
       description: string | null;
       imageUrl: string | null;
       imageApprovalStatus?: "approved" | "suggested" | "missing";
@@ -522,6 +532,8 @@ export interface PartStageProps {
       id: string;
       displayName: string;
       piecesPerPack?: number | null;
+      bulkUnit?: string | null;
+      individualUnit?: string | null;
       description: string | null;
       imageUrl: string | null;
       imageApprovalStatus?: "approved" | "suggested" | "missing";

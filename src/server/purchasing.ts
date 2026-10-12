@@ -45,6 +45,8 @@ export async function recalculatePurchaseTotals(
       extendedPrice: quoteItems.extendedPrice,
       packSize: supplierParts.packSize,
       piecesPerPack: partDefinitions.piecesPerPack,
+      bulkUnit: partDefinitions.bulkUnit,
+      individualUnit: partDefinitions.individualUnit,
     })
     .from(quoteItems)
     .leftJoin(partDefinitions, eq(quoteItems.partDefinitionId, partDefinitions.id))

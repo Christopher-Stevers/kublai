@@ -86,6 +86,8 @@ export function PrefabsPanel({
           ...item,
           partDefinitionId: item.partDefinition.id,
           piecesPerPack: item.partDefinition.piecesPerPack,
+          bulkUnit: item.partDefinition.bulkUnit,
+          individualUnit: item.partDefinition.individualUnit,
           supplierPartId: item.supplierPartId,
         })),
         listItems,
@@ -111,6 +113,8 @@ export function PrefabsPanel({
               id: line.partDefinition.id,
               displayName: line.partDefinition.displayName,
               piecesPerPack: line.partDefinition.piecesPerPack,
+              bulkUnit: line.partDefinition.bulkUnit,
+              individualUnit: line.partDefinition.individualUnit,
               imageUrl: line.partDefinition.imageUrl,
               material: null,
             },
@@ -228,7 +232,7 @@ export function PrefabsPanel({
                     {canEdit ? (
                       <>
                         <PrefabQuantity
-                          piecesPerPack={item.partDefinition.piecesPerPack}
+                          piecesPerPack={item.partDefinition.piecesPerPack} bulkUnit={item.partDefinition.bulkUnit} individualUnit={item.partDefinition.individualUnit}
                           quantity={item.quantity}
                           onChange={(quantity) =>
                             setQuantity.mutate({ prefabId: prefab.id, itemId: item.id, quantity })
@@ -471,18 +475,22 @@ function PrefabQuantity({
   onChange,
   live = false,
   piecesPerPack,
+  bulkUnit,
+  individualUnit,
 }: {
   quantity: number;
   onChange: (quantity: number) => void;
   live?: boolean;
   piecesPerPack?: number | null;
+  bulkUnit?: string | null;
+  individualUnit?: string | null;
 }) {
   const [draft, setDraft] = useState<string | null>(null);
   const commit = (value: number) => {
     setDraft(null);
     if (Number.isFinite(value) && value > 0 && value !== quantity) onChange(value);
   };
-  if (packContents(piecesPerPack) > 1) return <PackQuantityControls quantity={quantity} piecesPerPack={piecesPerPack!} minimum={packsFromPieces(1, piecesPerPack)} onChange={onChange} />;
+  if (packContents(piecesPerPack) > 1) return <PackQuantityControls quantity={quantity} piecesPerPack={piecesPerPack!} bulkUnit={bulkUnit} individualUnit={individualUnit} minimum={packsFromPieces(1, piecesPerPack)} onChange={onChange} />;
   const step = (delta: number) => commit(Math.max(1, Math.floor(quantity) + delta));
   return (
     <div className="flex shrink-0 items-center gap-1">

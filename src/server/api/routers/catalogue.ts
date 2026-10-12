@@ -966,6 +966,8 @@ export const catalogueRouter = createTRPCRouter({
           id: partDefinitions.id,
           displayName: partDefinitions.displayName,
           piecesPerPack: partDefinitions.piecesPerPack,
+          bulkUnit: partDefinitions.bulkUnit,
+          individualUnit: partDefinitions.individualUnit,
           description: partDefinitions.description,
           imageUrl: partDefinitions.imageUrl,
           sizeLabel: partDefinitions.sizeLabel,
@@ -1016,6 +1018,8 @@ export const catalogueRouter = createTRPCRouter({
         id: part.id,
         displayName: part.displayName,
         piecesPerPack: part.piecesPerPack,
+        bulkUnit: part.bulkUnit,
+        individualUnit: part.individualUnit,
         description: part.description,
         imageUrl: part.imageUrl,
         approvedImageUrl: part.imageUrl,
@@ -1439,6 +1443,8 @@ export const catalogueRouter = createTRPCRouter({
             id: partDefinitions.id,
             displayName: partDefinitions.displayName,
             piecesPerPack: partDefinitions.piecesPerPack,
+            bulkUnit: partDefinitions.bulkUnit,
+            individualUnit: partDefinitions.individualUnit,
             description: partDefinitions.description,
             imageUrl: partDefinitions.imageUrl,
             sizeLabel: partDefinitions.sizeLabel,
@@ -1483,6 +1489,8 @@ export const catalogueRouter = createTRPCRouter({
         id: part.id,
         displayName: part.displayName,
         piecesPerPack: part.piecesPerPack,
+        bulkUnit: part.bulkUnit,
+        individualUnit: part.individualUnit,
         description: part.description,
         imageUrl: part.imageUrl,
         approvedImageUrl: part.imageUrl,
@@ -2182,6 +2190,8 @@ export const catalogueRouter = createTRPCRouter({
         partId: z.string().uuid(),
         displayName: z.string().min(1).max(255).optional(),
         piecesPerPack: z.number().int().min(2).max(999999).nullable().optional(),
+        bulkUnit: z.string().trim().min(1).max(32).toLowerCase().nullable().optional(),
+        individualUnit: z.string().trim().min(1).max(32).toLowerCase().nullable().optional(),
         description: z.string().optional().nullable(),
         imageUrl: partImageUrlInput,
         catalogId: z.string().uuid().optional(),
@@ -2304,6 +2314,8 @@ export const catalogueRouter = createTRPCRouter({
             categoryId: finalCategoryId,
             displayName: input.displayName ?? originalPart.displayName,
             piecesPerPack: input.piecesPerPack !== undefined ? input.piecesPerPack : originalPart.piecesPerPack,
+            bulkUnit: input.bulkUnit !== undefined ? input.bulkUnit : originalPart.bulkUnit,
+            individualUnit: input.individualUnit !== undefined ? input.individualUnit : originalPart.individualUnit,
             description:
               input.description !== undefined
                 ? input.description
@@ -2362,6 +2374,8 @@ export const catalogueRouter = createTRPCRouter({
         updateData.materialId = input.materialId;
       if (sizeTouched) updateData.sizeId = sizeId;
       if (input.piecesPerPack !== undefined) updateData.piecesPerPack = input.piecesPerPack;
+      if (input.bulkUnit !== undefined) updateData.bulkUnit = input.bulkUnit;
+      if (input.individualUnit !== undefined) updateData.individualUnit = input.individualUnit;
       if (input.isActive !== undefined) updateData.isActive = input.isActive;
 
       const [updated] = await ctx.db
@@ -2552,6 +2566,8 @@ export const catalogueRouter = createTRPCRouter({
           materialName: materials.name,
           displayName: partDefinitions.displayName,
           piecesPerPack: partDefinitions.piecesPerPack,
+          bulkUnit: partDefinitions.bulkUnit,
+          individualUnit: partDefinitions.individualUnit,
           description: partDefinitions.description,
           sizeNominal: sizes.nominal,
           sizeLabel: partDefinitions.sizeLabel,
@@ -2857,6 +2873,8 @@ export const catalogueRouter = createTRPCRouter({
       z.object({
         displayName: z.string().min(1).max(255),
         piecesPerPack: z.number().int().min(2).max(999999).nullable().optional(),
+        bulkUnit: z.string().trim().min(1).max(32).toLowerCase().nullable().optional(),
+        individualUnit: z.string().trim().min(1).max(32).toLowerCase().nullable().optional(),
         description: z.string().optional().nullable(),
         imageUrl: partImageUrlInput,
         catalogId: z.string().uuid(),
@@ -2951,6 +2969,8 @@ export const catalogueRouter = createTRPCRouter({
               : null,
           displayName: input.displayName,
           piecesPerPack: input.piecesPerPack,
+          bulkUnit: input.bulkUnit,
+          individualUnit: input.individualUnit,
           description: input.description ?? null,
           imageUrl:
             input.imageUrl && input.imageUrl.trim() !== ""
@@ -3018,6 +3038,8 @@ export const catalogueRouter = createTRPCRouter({
           id: partDefinitions.id,
           displayName: partDefinitions.displayName,
           piecesPerPack: partDefinitions.piecesPerPack,
+          bulkUnit: partDefinitions.bulkUnit,
+          individualUnit: partDefinitions.individualUnit,
           description: partDefinitions.description,
           imageUrl: partDefinitions.imageUrl,
           sizeLabel: partDefinitions.sizeLabel,
@@ -3048,6 +3070,8 @@ export const catalogueRouter = createTRPCRouter({
         id: part.id,
         displayName: part.displayName,
         piecesPerPack: part.piecesPerPack,
+        bulkUnit: part.bulkUnit,
+        individualUnit: part.individualUnit,
         description: part.description,
         imageUrl: part.imageUrl,
         catalogId: part.catalogId,

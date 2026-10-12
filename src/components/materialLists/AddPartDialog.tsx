@@ -320,6 +320,8 @@ export function AddPartDialog({
       id: string;
       displayName: string;
       piecesPerPack?: number | null;
+      bulkUnit?: string | null;
+      individualUnit?: string | null;
       description: string | null;
       imageUrl: string | null;
       material: string | null;
@@ -335,6 +337,8 @@ export function AddPartDialog({
       id: string;
       displayName: string;
       piecesPerPack?: number | null;
+      bulkUnit?: string | null;
+      individualUnit?: string | null;
       description: string | null;
       imageUrl: string | null;
       material: string | null;
@@ -367,6 +371,8 @@ export function AddPartDialog({
             id: part.id,
             displayName: part.displayName,
             piecesPerPack: part.piecesPerPack,
+            bulkUnit: part.bulkUnit,
+            individualUnit: part.individualUnit,
             imageUrl: part.imageUrl,
             material: part.material,
             size: part.size,
@@ -468,6 +474,8 @@ export function AddPartDialog({
       id: string;
       displayName: string;
       piecesPerPack?: number | null;
+      bulkUnit?: string | null;
+      individualUnit?: string | null;
       description: string | null;
       imageUrl: string | null;
       material: string | null;
@@ -488,6 +496,8 @@ export function AddPartDialog({
           id: part.id,
           displayName: part.displayName,
           piecesPerPack: part.piecesPerPack,
+          bulkUnit: part.bulkUnit,
+          individualUnit: part.individualUnit,
           imageUrl: part.imageUrl,
           material: part.material,
           size: part.size,
@@ -502,6 +512,8 @@ export function AddPartDialog({
     id: string;
     displayName: string;
     piecesPerPack?: number | null;
+    bulkUnit?: string | null;
+    individualUnit?: string | null;
     imageUrl: string | null;
     material: string | null;
     size: string | null;
@@ -731,6 +743,8 @@ export function AddPartDialog({
           id: pendingPart.partDefinition.id,
           displayName: pendingPart.partDefinition.displayName,
           piecesPerPack: pendingPart.partDefinition.piecesPerPack,
+          bulkUnit: pendingPart.partDefinition.bulkUnit,
+          individualUnit: pendingPart.partDefinition.individualUnit,
           imageUrl: pendingPart.partDefinition.imageUrl,
           material: pendingPart.partDefinition.material,
         };
@@ -1342,7 +1356,7 @@ export function AddPartDialog({
                             {pendingPart.partDefinition.displayName}
                           </div>
                           {packContents(pendingPart.partDefinition.piecesPerPack) > 1 ? (
-                            <PackQuantityControls quantity={pendingPart.quantity} piecesPerPack={pendingPart.partDefinition.piecesPerPack!} minimum={packsFromPieces(1, pendingPart.partDefinition.piecesPerPack)} onChange={value => handleSetQuantity(pendingPart.partId, value)} />
+                            <PackQuantityControls quantity={pendingPart.quantity} piecesPerPack={pendingPart.partDefinition.piecesPerPack!} bulkUnit={pendingPart.partDefinition.bulkUnit} individualUnit={pendingPart.partDefinition.individualUnit} minimum={packsFromPieces(1, pendingPart.partDefinition.piecesPerPack)} onChange={value => handleSetQuantity(pendingPart.partId, value)} />
                           ) : (
                           <div className="flex shrink-0 items-center gap-1">
                             <Button

@@ -9,6 +9,8 @@ export type PrefabLine = {
   supplierPartId: string | null;
   quantity: number;
   piecesPerPack?: number | null;
+  bulkUnit?: string | null;
+  individualUnit?: string | null;
 };
 export type ListLine = {
   id: string;
