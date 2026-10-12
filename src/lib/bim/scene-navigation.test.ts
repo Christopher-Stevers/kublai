@@ -339,4 +339,54 @@ describe("WASD with model tools", () => {
     );
     expect(preset).toHaveBeenCalledWith("top");
   });
+  it("steers and flies with independent thumbs, then stops on release and interruption", () => {
+    const engine = setup("distance");
+    const frame = engine as unknown as {
+      render: (time: number) => void;
+      draft: unknown[];
+    };
+    const before = engine.camera.position.clone();
+    const orientation = engine.camera.quaternion.clone();
+    engine.setThumb("left", 0.6, -0.3);
+    engine.setThumb("right", 0, -0.8);
+    frame.render(16);
+    expect(engine.camera.position.distanceTo(before)).toBeGreaterThan(0);
+    expect(engine.camera.quaternion.angleTo(orientation)).toBeGreaterThan(0);
+    expect(frame.draft).toHaveLength(0);
+    engine.setThumb("left", 0, 0);
+    engine.setThumb("right", 0, 0);
+    const stopped = engine.camera.position.clone();
+    frame.render(32);
+    expect(engine.camera.position.distanceTo(stopped)).toBeLessThan(1e-8);
+    engine.setThumb("right", 0, -1);
+    window.dispatchEvent(new Event("blur"));
+    frame.render(48);
+    expect(engine.camera.position.distanceTo(stopped)).toBeLessThan(1e-8);
+    engine.setThumb("right", 0, -1);
+    engine.setNavigationPaused(true);
+    frame.render(64);
+    expect(engine.camera.position.distanceTo(stopped)).toBeLessThan(1e-8);
+  });
+  it("preserves proportional thumb speed and supports orbit without moving the target", () => {
+    const engine = setup("inspect");
+    const frame = engine as unknown as { applyThumbs: (dt: number) => void };
+    let initial = engine.camera.position.clone();
+    engine.setThumb("right", 0, -0.5);
+    frame.applyThumbs(0.02);
+    const half = engine.camera.position.distanceTo(initial);
+    initial = engine.camera.position.clone();
+    engine.setThumb("right", 0, -1);
+    frame.applyThumbs(0.02);
+    expect(engine.camera.position.distanceTo(initial)).toBeCloseTo(half * 2);
+    engine.setNavigationSettings({
+      ...structuredClone(DEFAULT_NAVIGATION),
+      touch: { ...DEFAULT_NAVIGATION.touch, left: "orbit", right: "none" },
+    });
+    const target = engine.controls.target.clone();
+    initial = engine.camera.position.clone();
+    engine.setThumb("left", 0.5, 0.5);
+    frame.applyThumbs(0.02);
+    expect(engine.controls.target.distanceTo(target)).toBeLessThan(1e-8);
+    expect(engine.camera.position.distanceTo(initial)).toBeGreaterThan(0);
+  });
 });

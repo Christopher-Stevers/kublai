@@ -1,6 +1,13 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Check, Keyboard, Mouse, RotateCcw, Settings2 } from "lucide-react";
+import {
+  Check,
+  Keyboard,
+  Mouse,
+  Smartphone,
+  RotateCcw,
+  Settings2,
+} from "lucide-react";
 import { Button } from "~/components/ui/button";
 import {
   Dialog,
@@ -12,6 +19,9 @@ import {
 import { cn } from "~/lib/utils";
 import {
   DEFAULT_NAVIGATION,
+  thumbActions,
+  touchPresets,
+  type ThumbAction,
   bindingConflict,
   isNavigationKey,
   keyLabel,
@@ -38,7 +48,9 @@ export function NavigationSettingsDialog({
   onChange: (settings: NavigationSettings) => boolean;
   onClose: () => void;
 }) {
-  const [tab, setTab] = useState<"presets" | "keyboard" | "mouse">("presets");
+  const [tab, setTab] = useState<"presets" | "keyboard" | "mouse" | "touch">(
+    "presets",
+  );
   const [capture, setCapture] = useState<{
     action: NavigationAction;
     slot: 0 | 1;
@@ -170,6 +182,7 @@ export function NavigationSettingsDialog({
               ["presets", Settings2, "Presets"],
               ["keyboard", Keyboard, "Keyboard"],
               ["mouse", Mouse, "Mouse"],
+              ["touch", Smartphone, "Touch"],
             ] as const
           ).map(([id, Icon, label]) => (
             <Button
@@ -182,9 +195,9 @@ export function NavigationSettingsDialog({
                 setCapture(null);
                 setError("");
               }}
-              className="min-h-10 flex-1 gap-2"
+              className="min-h-10 min-w-0 flex-1 gap-1 px-1 text-xs sm:gap-2 sm:text-sm"
             >
-              <Icon className="size-4" />
+              <Icon className="hidden size-4 sm:block" />
               {label}
             </Button>
           ))}
@@ -329,6 +342,152 @@ export function NavigationSettingsDialog({
                 and browser shortcuts remain available. On-screen movement
                 buttons keep their direction regardless of key bindings.
               </p>
+            </>
+          )}
+          {tab === "touch" && (
+            <>
+              <p className="text-muted-foreground text-sm">
+                Use both thumb pads at once. Push away from the center to move;
+                release to stop. Fly follows where you look, including up and
+                down. Tap elsewhere on the model to select; pinch and two-finger
+                pan still work outside the pads.
+              </p>
+              <label className="grid gap-2 text-sm">
+                Show thumb pads
+                <select
+                  aria-label="Show thumb pads"
+                  className="bg-background min-h-11 min-w-0 rounded-md border px-2"
+                  value={settings.touch.display}
+                  onChange={(e) =>
+                    change({
+                      ...settings,
+                      touch: {
+                        ...settings.touch,
+                        display: e.target
+                          .value as NavigationSettings["touch"]["display"],
+                      },
+                    })
+                  }
+                >
+                  <option value="auto">Touch screens & Walk</option>
+                  <option value="always">Always</option>
+                  <option value="off">Off</option>
+                </select>
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                {touchPresets.map((preset) => (
+                  <Button
+                    key={preset.name}
+                    className="h-auto min-h-11 text-xs whitespace-normal"
+                    variant={
+                      settings.touch.left === preset.left &&
+                      settings.touch.right === preset.right
+                        ? "default"
+                        : "outline"
+                    }
+                    onClick={() =>
+                      change({
+                        ...settings,
+                        touch: {
+                          ...settings.touch,
+                          left: preset.left,
+                          right: preset.right,
+                          display:
+                            settings.touch.display === "off"
+                              ? "auto"
+                              : settings.touch.display,
+                        },
+                      })
+                    }
+                  >
+                    {preset.name}
+                  </Button>
+                ))}
+              </div>
+              {(["left", "right"] as const).map((side) => (
+                <label key={side} className="grid gap-2 text-sm">
+                  <span>{side === "left" ? "Left thumb" : "Right thumb"}</span>
+                  <select
+                    aria-label={`${side === "left" ? "Left" : "Right"} thumb`}
+                    className="bg-background min-h-11 min-w-0 rounded-md border px-2"
+                    value={settings.touch[side]}
+                    onChange={(e) =>
+                      change({
+                        ...settings,
+                        touch: {
+                          ...settings.touch,
+                          [side]: e.target.value as ThumbAction,
+                        },
+                      })
+                    }
+                  >
+                    {(Object.keys(thumbActions) as ThumbAction[]).map(
+                      (action) => (
+                        <option key={action} value={action}>
+                          {thumbActions[action]}
+                        </option>
+                      ),
+                    )}
+                  </select>
+                </label>
+              ))}
+              {range("moveSpeed", "Movement speed", 0.1, 25, 0.1, " m/s")}
+              <label className="block space-y-2 text-sm">
+                Touch steering sensitivity · {settings.touch.sensitivity}×
+                <input
+                  aria-label="Touch steering sensitivity"
+                  type="range"
+                  className="accent-primary h-8 w-full"
+                  min="0.25"
+                  max="3"
+                  step="0.05"
+                  value={settings.touch.sensitivity}
+                  onChange={(e) =>
+                    change({
+                      ...settings,
+                      touch: {
+                        ...settings.touch,
+                        sensitivity: Number(e.target.value),
+                      },
+                    })
+                  }
+                />
+              </label>
+              <label className="block space-y-2 text-sm">
+                Thumb pad size · {settings.touch.size}px
+                <input
+                  aria-label="Thumb pad size"
+                  type="range"
+                  className="accent-primary h-8 w-full"
+                  min="80"
+                  max="144"
+                  step="4"
+                  value={settings.touch.size}
+                  onChange={(e) =>
+                    change({
+                      ...settings,
+                      touch: {
+                        ...settings.touch,
+                        size: Number(e.target.value),
+                      },
+                    })
+                  }
+                />
+              </label>
+              <label className="flex min-h-11 items-center gap-3 text-sm">
+                <input
+                  type="checkbox"
+                  className="accent-primary size-4"
+                  checked={settings.touch.invertY}
+                  onChange={(e) =>
+                    change({
+                      ...settings,
+                      touch: { ...settings.touch, invertY: e.target.checked },
+                    })
+                  }
+                />
+                Invert vertical thumb steering
+              </label>
             </>
           )}
           {tab === "mouse" && (

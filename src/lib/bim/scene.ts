@@ -7,6 +7,7 @@ import {
   type NavigationAction,
   type NavigationSettings,
   type MouseAction,
+  type ThumbSide,
 } from "./navigation-settings";
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
@@ -82,7 +83,7 @@ export class ModelScene {
   private height = 1;
   private keys = new Set<NavigationAction>();
   private pressedCodes = new Set<string>();
-  private touchMovement = new Set<NavigationAction>();
+  private thumbs = { left: { x: 0, y: 0 }, right: { x: 0, y: 0 } };
   private navigation = DEFAULT_NAVIGATION;
   private navigationPaused = false;
   private lastTime = 0;
@@ -224,6 +225,7 @@ export class ModelScene {
       this.controls.target.lerpVectors(a.targetFrom, a.targetTo, k);
       if (t === 1) this.animation = null;
     }
+    const thumbsActive = this.applyThumbs(dt);
     if (this.keys.size) {
       const delta = navigationDelta(
         this.camera.quaternion,
@@ -238,7 +240,8 @@ export class ModelScene {
     this.camera.updateMatrixWorld();
     this.renderer.render(this.scene, this.camera);
     this.labels.render(this.scene, this.camera);
-    if (moved || this.animation || this.keys.size) this.invalidate();
+    if (moved || this.animation || this.keys.size || thumbsActive)
+      this.invalidate();
   };
   setDark(dark: boolean) {
     this.scene.background = new THREE.Color(dark ? "#151c26" : "#edf1f5");
@@ -530,31 +533,112 @@ export class ModelScene {
   private clearNavigationInput = () => {
     this.keys.clear();
     this.pressedCodes.clear();
-    this.touchMovement.clear();
+    this.thumbs = { left: { x: 0, y: 0 }, right: { x: 0, y: 0 } };
     this.start = null;
     this.pointers.clear();
   };
   private updateNavigationKeys() {
     this.keys = boundActions(this.navigation, this.pressedCodes);
-    for (const action of this.touchMovement) this.keys.add(action);
     this.invalidate();
   }
-  moveWalk(key: string, active: boolean) {
-    const directions: Record<string, NavigationAction> = {
-      w: "forward",
-      s: "backward",
-      a: "left",
-      d: "right",
-      q: "down",
-      e: "up",
-    };
-    const action = directions[key];
-    if (!action || this.navigationPaused) return;
-    if (active) {
-      this.animation = null;
-      this.touchMovement.add(action);
-    } else this.touchMovement.delete(action);
-    this.updateNavigationKeys();
+  setThumb(side: ThumbSide, x: number, y: number) {
+    if (this.navigationPaused || this.navigation.touch.display === "off")
+      return;
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+    const length = Math.max(1, Math.hypot(x, y));
+    this.thumbs[side] = { x: x / length, y: y / length };
+    this.animation = null;
+    this.invalidate();
+  }
+  private applyThumbs(seconds: number) {
+    if (this.navigationPaused) return false;
+    const dt = Math.min(0.05, Math.max(0, seconds));
+    let active = false;
+    const delta = new THREE.Vector3();
+    for (const side of ["left", "right"] as const) {
+      const { x, y } = this.thumbs[side];
+      const action = this.navigation.touch[side];
+      if ((!x && !y) || action === "none") continue;
+      active = true;
+      const horizontal = x * dt * 1.8 * this.navigation.touch.sensitivity;
+      const vertical =
+        y *
+        dt *
+        1.8 *
+        this.navigation.touch.sensitivity *
+        (this.navigation.touch.invertY ? -1 : 1);
+      if (action === "look") {
+        const rotation = new THREE.Euler().setFromQuaternion(
+          this.camera.quaternion,
+          "YXZ",
+        );
+        rotation.y -= horizontal;
+        rotation.x = THREE.MathUtils.clamp(
+          rotation.x - vertical,
+          -Math.PI * 0.48,
+          Math.PI * 0.48,
+        );
+        const distance = Math.max(
+          0.01,
+          this.camera.position.distanceTo(this.controls.target),
+        );
+        this.camera.quaternion.setFromEuler(rotation);
+        this.controls.target
+          .copy(this.camera.position)
+          .addScaledVector(
+            new THREE.Vector3(0, 0, -1).applyQuaternion(this.camera.quaternion),
+            distance,
+          );
+      } else if (action === "orbit") {
+        const spherical = new THREE.Spherical().setFromVector3(
+          this.camera.position.clone().sub(this.controls.target),
+        );
+        spherical.theta -= horizontal;
+        spherical.phi -= vertical;
+        spherical.makeSafe();
+        this.camera.position
+          .copy(this.controls.target)
+          .add(new THREE.Vector3().setFromSpherical(spherical));
+        this.camera.lookAt(this.controls.target);
+      } else if (action === "zoom") {
+        this.zoomBy(Math.exp(y * dt * 2 * this.navigation.touch.sensitivity));
+      }
+    }
+    if (!active) return false;
+    // Translate after steering so both thumbs work together in either handedness.
+    for (const side of ["left", "right"] as const) {
+      const { x, y } = this.thumbs[side];
+      const action = this.navigation.touch[side];
+      const right = new THREE.Vector3(1, 0, 0).applyQuaternion(
+        this.camera.quaternion,
+      );
+      const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(
+        this.camera.quaternion,
+      );
+      if (action === "move" && this.navigation.movement === "ground") {
+        right.y = 0;
+        right.normalize();
+        forward.crossVectors(new THREE.Vector3(0, 1, 0), right);
+      }
+      if (action === "move" || action === "fly") {
+        delta.addScaledVector(forward, -y);
+        if (action === "move") delta.addScaledVector(right, x);
+      } else if (action === "elevation") {
+        delta.addScaledVector(right, x);
+        delta.y -= y;
+      } else if (action === "pan") {
+        delta
+          .addScaledVector(right, x)
+          .addScaledVector(
+            new THREE.Vector3(0, 1, 0).applyQuaternion(this.camera.quaternion),
+            -y,
+          );
+      }
+    }
+    delta.clampLength(0, 1).multiplyScalar(dt * this.navigation.moveSpeed);
+    this.camera.position.add(delta);
+    this.controls.target.add(delta);
+    return active;
   }
   private keyDown = (event: KeyboardEvent) => {
     if (

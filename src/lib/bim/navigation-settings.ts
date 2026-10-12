@@ -40,9 +40,46 @@ export function isNavigationKey(code: string) {
     code,
   );
 }
+export const thumbActions = {
+  look: "Steer / look around",
+  fly: "Fly forward / backward",
+  move: "Forward / backward + strafe",
+  elevation: "Up / down + strafe",
+  orbit: "Orbit model",
+  pan: "Pan across view",
+  zoom: "Zoom in / out",
+  none: "Disabled",
+} as const;
+export type ThumbAction = keyof typeof thumbActions;
+export type ThumbSide = "left" | "right";
+const defaultTouch = {
+  display: "auto" as const,
+  left: "look" as ThumbAction,
+  right: "fly" as ThumbAction,
+  sensitivity: 1,
+  size: 112,
+  invertY: false,
+};
+const touchSchema = z.object({
+  display: z.enum(["auto", "always", "off"]),
+  left: z.enum(Object.keys(thumbActions) as ThumbAction[]),
+  right: z.enum(Object.keys(thumbActions) as ThumbAction[]),
+  sensitivity: z.number().min(0.25).max(3),
+  size: z.number().min(80).max(144),
+  invertY: z.boolean(),
+});
+export const touchPresets = [
+  { name: "Steer & fly", left: "look", right: "fly" },
+  { name: "Game controller", left: "move", right: "look" },
+  { name: "Left-handed flight", left: "fly", right: "look" },
+  { name: "Orbit & pan", left: "pan", right: "orbit" },
+  { name: "Orbit & zoom", left: "orbit", right: "zoom" },
+  { name: "Elevation & steering", left: "elevation", right: "look" },
+] as const;
 const binding = z.string().refine(isNavigationKey).nullable();
 export const navigationSettingsSchema = z.object({
   version: z.literal(1),
+  touch: touchSchema.default(defaultTouch),
   keys: z.record(z.enum(actions), z.tuple([binding, binding])),
   mouse: z.record(
     z.enum(Object.keys(mouseBindings) as MouseBinding[]),
@@ -64,6 +101,7 @@ export const navigationSettingsSchema = z.object({
 export type NavigationSettings = z.infer<typeof navigationSettingsSchema>;
 export const DEFAULT_NAVIGATION: NavigationSettings = {
   version: 1,
+  touch: { ...defaultTouch },
   keys: {
     forward: ["KeyW", "ArrowUp"],
     backward: ["KeyS", "ArrowDown"],

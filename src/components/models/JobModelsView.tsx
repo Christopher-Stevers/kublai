@@ -23,18 +23,13 @@ import {
   X,
   RotateCcw,
   LoaderCircle,
-  ArrowUp,
-  ArrowDown,
-  ArrowLeft,
-  ArrowRight,
-  ChevronUp,
-  ChevronDown,
   Info,
   MoreVertical,
   Upload,
   Trash2,
   Settings2,
 } from "lucide-react";
+import { TouchNavigation } from "./TouchNavigation";
 import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
 import { confirmAction, notify } from "~/components/ui/app-dialogs";
@@ -101,7 +96,7 @@ const toolInfo: Record<ModelTool, string> = {
   distance: "Pick two points on the model. Corners snap within 12 pixels.",
   area: "Pick points around a flat surface, then choose Finish area.",
   pin: "Tap the location of the issue on the model.",
-  walk: "Drag to look · use movement buttons or your keyboard · customize navigation in Controls",
+  walk: "Use both thumb pads to steer and travel · customize each thumb in Controls → Touch",
 };
 export function JobModelsView({ jobId }: { jobId: string }) {
   const query = api.models.workspace.useQuery(
@@ -566,39 +561,13 @@ export function ModelWorkspace({
                   <Eye className="size-5" />
                 </button>
               </div>
-              {tool === "walk" && (
-                <div className="bg-background/95 absolute right-4 bottom-24 grid grid-cols-3 gap-1 rounded-xl border p-2">
-                  {[
-                    ["q", ChevronDown, "Move down"],
-                    ["w", ArrowUp, "Move forward"],
-                    ["e", ChevronUp, "Move up"],
-                    ["a", ArrowLeft, "Move left"],
-                    ["s", ArrowDown, "Move back"],
-                    ["d", ArrowRight, "Move right"],
-                  ].map(([key, Icon, label]) => {
-                    const Symbol = Icon as typeof ArrowUp;
-                    return (
-                      <button
-                        key={String(key)}
-                        aria-label={String(label)}
-                        className="bg-muted grid size-12 touch-none place-items-center rounded-lg"
-                        onPointerDown={(e) => {
-                          e.currentTarget.setPointerCapture(e.pointerId);
-                          scene?.moveWalk(String(key), true);
-                        }}
-                        onPointerUp={() => scene?.moveWalk(String(key), false)}
-                        onPointerCancel={() =>
-                          scene?.moveWalk(String(key), false)
-                        }
-                        onLostPointerCapture={() =>
-                          scene?.moveWalk(String(key), false)
-                        }
-                      >
-                        <Symbol className="size-5" />
-                      </button>
-                    );
-                  })}
-                </div>
+              {!navigationOpen && (
+                <TouchNavigation
+                  key={tool}
+                  settings={navigation.settings.touch}
+                  scene={scene}
+                  walking={tool === "walk"}
+                />
               )}
               <div className="absolute right-3 bottom-3 left-3 flex flex-col items-center gap-2">
                 <p className="bg-background/85 text-muted-foreground max-w-lg rounded px-3 py-1 text-center text-[11px]">
