@@ -2,6 +2,7 @@ import type * as ThreeModule from "three";
 import { Vector3 as ThreeVector3 } from "three";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ModelScene, type ModelTool } from "./scene";
+import { DEFAULT_NAVIGATION, navigationPreset } from "./navigation-settings";
 
 vi.mock("three", async (original) => {
   const actual = await original<typeof ThreeModule>();
@@ -109,7 +110,7 @@ describe("WASD with model tools", () => {
     );
     expect(state.keys.size).toBe(0);
     canvas.dispatchEvent(new KeyboardEvent("keydown", { key: "w" }));
-    expect(state.keys.has("w")).toBe(true);
+    expect(state.keys.has("forward")).toBe(true);
     window.dispatchEvent(new Event("blur"));
     expect(state.keys.size).toBe(0);
   });
@@ -227,5 +228,115 @@ describe("WASD with model tools", () => {
       (100 * (camera.top - camera.bottom)) / 2 / 600,
     );
     expect(delta.dot(direction)).toBeCloseTo(0);
+  });
+  it("rebinds movement, keeps an alternate held, and pauses while controls are open", () => {
+    const engine = setup("area");
+    const settings = navigationPreset("left-handed");
+    engine.setNavigationSettings(settings);
+    const canvas = engine.renderer.domElement;
+    const state = engine as unknown as { keys: Set<string> };
+    canvas.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "w", code: "KeyW" }),
+    );
+    expect(state.keys.size).toBe(0);
+    canvas.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "i", code: "KeyI" }),
+    );
+    canvas.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "ArrowUp", code: "ArrowUp" }),
+    );
+    canvas.dispatchEvent(
+      new KeyboardEvent("keyup", { key: "i", code: "KeyI" }),
+    );
+    expect(state.keys.has("forward")).toBe(true);
+    engine.setNavigationPaused(true);
+    canvas.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "i", code: "KeyI" }),
+    );
+    expect(state.keys.size).toBe(0);
+    expect(engine.controls.enabled).toBe(false);
+    engine.setNavigationPaused(false);
+    expect(state.keys.size).toBe(0);
+    expect(engine.controls.enabled).toBe(true);
+  });
+  it("orbits around the target with the CAD preset and does not place points", () => {
+    const engine = setup("distance");
+    engine.setNavigationSettings(navigationPreset("cad"));
+    const position = engine.camera.position.clone();
+    const target = engine.controls.target.clone();
+    const distance = position.distanceTo(target);
+    const pick = vi.spyOn(
+      engine as unknown as { pick(x: number, y: number): unknown },
+      "pick",
+    );
+    pointer(engine, "pointerdown", 100, 100);
+    pointer(engine, "pointermove", 180, 140);
+    pointer(engine, "pointerup", 180, 140);
+    expect(engine.camera.position.distanceTo(position)).toBeGreaterThan(1);
+    expect(engine.controls.target.distanceTo(target)).toBeLessThan(1e-8);
+    expect(engine.camera.position.distanceTo(target)).toBeCloseTo(distance);
+    expect(pick).not.toHaveBeenCalled();
+  });
+  it("uses configured shift-drag and right-drag actions", () => {
+    const engine = setup("pin");
+    engine.setNavigationSettings({
+      ...DEFAULT_NAVIGATION,
+      mouse: { ...DEFAULT_NAVIGATION.mouse, shiftLeft: "pan", right: "look" },
+    });
+    const rotation = engine.camera.quaternion.clone();
+    const position = engine.camera.position.clone();
+    pointer(engine, "pointerdown", 100, 100, 0, "mouse", { shiftKey: true });
+    pointer(engine, "pointermove", 180, 140, 0, "mouse", { shiftKey: true });
+    pointer(engine, "pointerup", 180, 140, 0);
+    expect(engine.camera.position.distanceTo(position)).toBeGreaterThan(0);
+    expect(engine.camera.quaternion.angleTo(rotation)).toBeLessThan(1e-7);
+    const panned = engine.camera.position.clone();
+    pointer(engine, "pointerdown", 100, 100, 2);
+    pointer(engine, "pointermove", 180, 140, 2);
+    pointer(engine, "pointerup", 180, 140, 2);
+    expect(engine.camera.position.distanceTo(panned)).toBeLessThan(1e-8);
+    expect(engine.camera.quaternion.angleTo(rotation)).toBeGreaterThan(0.1);
+  });
+  it("supports reversed scroll in both projections and leaves measurement active", () => {
+    const engine = setup("distance");
+    engine.setNavigationSettings({
+      ...DEFAULT_NAVIGATION,
+      reverseScroll: true,
+    });
+    const distance = engine.camera.position.distanceTo(engine.controls.target);
+    engine.renderer.domElement.dispatchEvent(
+      new WheelEvent("wheel", { deltaY: 100, cancelable: true }),
+    );
+    expect(
+      engine.camera.position.distanceTo(engine.controls.target),
+    ).toBeLessThan(distance);
+    engine.setProjection("orthographic");
+    const zoom = engine.camera.zoom;
+    engine.renderer.domElement.dispatchEvent(
+      new WheelEvent("wheel", { deltaY: 100, cancelable: true }),
+    );
+    expect(engine.camera.zoom).toBeGreaterThan(zoom);
+    expect((engine as unknown as { tool: ModelTool }).tool).toBe("distance");
+  });
+  it("invokes fit and camera shortcuts once per press, without intercepting browser shortcuts", () => {
+    const engine = setup("inspect");
+    const fit = vi.spyOn(engine, "fit");
+    const preset = vi.spyOn(engine, "preset");
+    const canvas = engine.renderer.domElement;
+    canvas.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "f", code: "KeyF", ctrlKey: true }),
+    );
+    expect(fit).not.toHaveBeenCalled();
+    canvas.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "f", code: "KeyF" }),
+    );
+    canvas.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "f", code: "KeyF", repeat: true }),
+    );
+    expect(fit).toHaveBeenCalledOnce();
+    canvas.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "7", code: "Digit7" }),
+    );
+    expect(preset).toHaveBeenCalledWith("top");
   });
 });

@@ -1,4 +1,13 @@
 import { navigationDelta } from "./navigation";
+import {
+  DEFAULT_NAVIGATION,
+  boundActions,
+  mouseAction,
+  navigationKey,
+  type NavigationAction,
+  type NavigationSettings,
+  type MouseAction,
+} from "./navigation-settings";
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import {
@@ -71,14 +80,18 @@ export class ModelScene {
   private destroyed = false;
   private width = 1;
   private height = 1;
-  private keys = new Set<string>();
+  private keys = new Set<NavigationAction>();
+  private pressedCodes = new Set<string>();
+  private touchMovement = new Set<NavigationAction>();
+  private navigation = DEFAULT_NAVIGATION;
+  private navigationPaused = false;
   private lastTime = 0;
   private start: {
     x: number;
     y: number;
     id: number;
-    look: boolean;
-    pan: boolean;
+    action: MouseAction;
+    canSelect: boolean;
   } | null = null;
   private pointers = new Set<number>();
   private gestureMoved = false;
@@ -139,14 +152,22 @@ export class ModelScene {
     this.controls.enableDamping = true;
     this.controls.dampingFactor = 0.15;
     this.controls.screenSpacePanning = true;
-    // Desktop look pivots at the camera; OrbitControls still handles zoom,
-    // right-button panning and touch navigation.
+    // Desktop navigation uses configurable gestures; OrbitControls handles touch.
     this.controls.mouseButtons.LEFT = null;
     this.controls.mouseButtons.MIDDLE = null;
+    this.controls.mouseButtons.RIGHT = null;
     this.controls.addEventListener("change", this.invalidate);
     const signal = this.abort.signal;
     const canvas = this.renderer.domElement;
-    canvas.addEventListener("pointerdown", this.pointerDown, { signal });
+    canvas.addEventListener("pointerdown", this.pointerDown, {
+      signal,
+      capture: true,
+    });
+    canvas.addEventListener("wheel", this.wheel, {
+      signal,
+      capture: true,
+      passive: false,
+    });
     canvas.addEventListener("pointermove", this.pointerMove, { signal });
     canvas.addEventListener("pointerup", this.pointerUp, { signal });
     canvas.addEventListener("pointercancel", this.pointerCancel, { signal });
@@ -155,9 +176,9 @@ export class ModelScene {
     });
     canvas.addEventListener("keydown", this.keyDown, { signal });
     canvas.addEventListener("keyup", this.keyUp, { signal });
-    canvas.addEventListener("blur", () => this.keys.clear(), { signal });
-    window.addEventListener("blur", () => this.keys.clear(), { signal });
-    document.addEventListener("visibilitychange", () => this.keys.clear(), {
+    canvas.addEventListener("blur", this.clearNavigationInput, { signal });
+    window.addEventListener("blur", this.clearNavigationInput, { signal });
+    document.addEventListener("visibilitychange", this.clearNavigationInput, {
       signal,
     });
     canvas.addEventListener(
@@ -204,7 +225,12 @@ export class ModelScene {
       if (t === 1) this.animation = null;
     }
     if (this.keys.size) {
-      const delta = navigationDelta(this.camera.quaternion, this.keys, dt);
+      const delta = navigationDelta(
+        this.camera.quaternion,
+        this.keys,
+        dt,
+        this.navigation,
+      );
       this.camera.position.add(delta);
       this.controls.target.add(delta);
     }
@@ -474,8 +500,9 @@ export class ModelScene {
     this.tool = tool;
     this.start = null;
     this.draft = [];
-    this.keys.clear();
-    this.controls.enabled = tool !== "walk";
+    this.clearNavigationInput();
+    this.controls.enabled = !this.navigationPaused;
+    this.controls.enableRotate = tool !== "walk";
     if (tool === "walk") {
       this.setProjection("perspective");
       this.camera.up.set(0, 1, 0);
@@ -486,56 +513,139 @@ export class ModelScene {
     this.drawMeasurements();
     this.invalidate();
   }
+  setNavigationSettings(settings: NavigationSettings) {
+    this.clearNavigationInput();
+    this.navigation = settings;
+    this.controls.enableDamping = settings.smoothing;
+    this.controls.rotateSpeed = settings.lookSensitivity;
+    this.controls.panSpeed = settings.panSensitivity;
+    this.controls.zoomSpeed = settings.zoomSensitivity;
+    this.invalidate();
+  }
+  setNavigationPaused(paused: boolean) {
+    this.navigationPaused = paused;
+    this.clearNavigationInput();
+    this.controls.enabled = !paused;
+  }
+  private clearNavigationInput = () => {
+    this.keys.clear();
+    this.pressedCodes.clear();
+    this.touchMovement.clear();
+    this.start = null;
+    this.pointers.clear();
+  };
+  private updateNavigationKeys() {
+    this.keys = boundActions(this.navigation, this.pressedCodes);
+    for (const action of this.touchMovement) this.keys.add(action);
+    this.invalidate();
+  }
   moveWalk(key: string, active: boolean) {
+    const directions: Record<string, NavigationAction> = {
+      w: "forward",
+      s: "backward",
+      a: "left",
+      d: "right",
+      q: "down",
+      e: "up",
+    };
+    const action = directions[key];
+    if (!action || this.navigationPaused) return;
     if (active) {
       this.animation = null;
-      this.keys.add(key);
-    } else this.keys.delete(key);
-    this.invalidate();
+      this.touchMovement.add(action);
+    } else this.touchMovement.delete(action);
+    this.updateNavigationKeys();
   }
   private keyDown = (event: KeyboardEvent) => {
     if (
-      ["INPUT", "TEXTAREA", "SELECT"].includes(
-        (event.target as HTMLElement).tagName,
+      this.navigationPaused ||
+      event.isComposing ||
+      (event.target as HTMLElement).closest(
+        "input,textarea,select,[contenteditable='true']",
       )
     )
       return;
-    if (event.ctrlKey || event.metaKey || event.altKey || event.isComposing)
-      return;
-    const key = event.key.toLowerCase();
-    if (key === "escape") {
+    if (event.ctrlKey || event.metaKey || event.altKey) {
+      this.clearNavigationInput();
+      return; // Browser/OS shortcuts always retain their meaning.
+    }
+    if (event.key === "Escape") {
+      this.clearNavigationInput();
       this.draft = [];
       this.drawMeasurements();
       this.select(null);
       return;
     }
-    if (
-      ["w", "a", "s", "d", "shift"].includes(key) ||
-      (this.tool === "walk" &&
-        [
-          "w",
-          "a",
-          "s",
-          "d",
-          "q",
-          "e",
-          "shift",
-          "arrowup",
-          "arrowdown",
-          "arrowleft",
-          "arrowright",
-        ].includes(key))
-    ) {
-      event.preventDefault();
-      this.animation = null;
-      this.keys.add(key);
-      this.invalidate();
+    const code = navigationKey(event);
+    const actions = boundActions(this.navigation, new Set([code]));
+    if (!actions.size) return;
+    event.preventDefault();
+    for (const action of actions) {
+      if (
+        ["fit", "focus", "iso", "top", "front", "rightView"].includes(action)
+      ) {
+        if (!event.repeat) {
+          if (action === "fit") this.fit();
+          else if (action === "focus") {
+            if (this.selected) this.fit([this.selected]);
+          } else
+            this.preset(
+              action === "rightView"
+                ? "right"
+                : (action as "iso" | "top" | "front"),
+            );
+        }
+      } else {
+        this.animation = null;
+        this.pressedCodes.add(code);
+        this.updateNavigationKeys();
+      }
     }
   };
-  private keyUp = (e: KeyboardEvent) => {
-    this.keys.delete(e.key.toLowerCase());
+  private keyUp = (event: KeyboardEvent) => {
+    this.pressedCodes.delete(navigationKey(event));
+    this.updateNavigationKeys();
+  };
+  private zoomBy(factor: number) {
+    const distance = this.camera.position.distanceTo(this.controls.target);
+    if (this.camera instanceof THREE.PerspectiveCamera) {
+      const offset = this.camera.position.clone().sub(this.controls.target);
+      if (distance < 0.00001)
+        offset.set(0, 0, 1).applyQuaternion(this.camera.quaternion);
+      offset.setLength(
+        THREE.MathUtils.clamp(Math.max(0.01, distance) * factor, 0.01, 1e7),
+      );
+      this.camera.position.copy(this.controls.target).add(offset);
+    } else {
+      this.camera.zoom = THREE.MathUtils.clamp(
+        this.camera.zoom / factor,
+        0.001,
+        10000,
+      );
+      this.camera.updateProjectionMatrix();
+    }
+    this.invalidate();
+  }
+  private wheel = (event: WheelEvent) => {
+    // Capture before OrbitControls so scroll direction and speed apply exactly once.
+    if (this.navigationPaused) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    this.animation = null;
+    const units =
+      event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? this.height : 1;
+    const change =
+      event.deltaY *
+      units *
+      0.001 *
+      this.navigation.zoomSensitivity *
+      (this.navigation.reverseScroll ? -1 : 1);
+    this.zoomBy(Math.exp(THREE.MathUtils.clamp(change, -2, 2)));
   };
   private pointerDown = (event: PointerEvent) => {
+    if (this.navigationPaused || event.ctrlKey || event.metaKey || event.altKey)
+      return;
+    if (event.pointerType !== "touch") event.stopImmediatePropagation();
     this.renderer.domElement.focus({ preventScroll: true });
     this.pointers.add(event.pointerId);
     if (this.pointers.size === 1) {
@@ -543,14 +653,17 @@ export class ModelScene {
         x: event.clientX,
         y: event.clientY,
         id: event.pointerId,
-        look:
-          event.button === 0 &&
-          (event.pointerType === "mouse" || this.tool === "walk"),
-        pan: event.button === 1 && event.pointerType !== "touch",
+        action:
+          event.pointerType === "touch"
+            ? this.tool === "walk"
+              ? "look"
+              : "none"
+            : mouseAction(this.navigation, event.button, event.shiftKey),
+        canSelect: event.button === 0 && !event.shiftKey,
       };
       this.gestureMoved = false;
       this.gestureDistance = 0;
-      if (this.start.look || this.start.pan) {
+      if (event.pointerType !== "touch" || this.start.action !== "none") {
         event.preventDefault();
         this.renderer.domElement.setPointerCapture(event.pointerId);
       }
@@ -564,7 +677,7 @@ export class ModelScene {
       dy = event.clientY - this.start.y;
     this.gestureDistance += Math.hypot(dx, dy);
     if (this.gestureDistance > 5) this.gestureMoved = true;
-    if (this.start.pan && this.pointers.size === 1) {
+    if (this.start.action === "pan" && this.pointers.size === 1) {
       // Camera right/up span the plane perpendicular to its viewing direction.
       const scale =
         this.camera instanceof THREE.PerspectiveCamera
@@ -581,21 +694,55 @@ export class ModelScene {
         dy * scale,
         0,
       ).applyQuaternion(this.camera.quaternion);
+      delta.multiplyScalar(
+        this.navigation.panSensitivity * (this.navigation.reversePan ? -1 : 1),
+      );
       this.camera.position.add(delta);
       this.controls.target.add(delta);
       this.start = { ...this.start, x: event.clientX, y: event.clientY };
       this.invalidate();
       return;
     }
-    if (this.start.look && this.pointers.size === 1) {
+    if (this.start.action === "zoom" && this.pointers.size === 1) {
+      this.zoomBy(
+        Math.exp(
+          THREE.MathUtils.clamp(
+            dy * 0.01 * this.navigation.zoomSensitivity,
+            -2,
+            2,
+          ),
+        ),
+      );
+      this.start = { ...this.start, x: event.clientX, y: event.clientY };
+      return;
+    }
+    const sensitivity = 0.003 * this.navigation.lookSensitivity;
+    const horizontal = dx * sensitivity * (this.navigation.invertX ? -1 : 1);
+    const vertical = dy * sensitivity * (this.navigation.invertY ? -1 : 1);
+    if (this.start.action === "orbit" && this.pointers.size === 1) {
+      const offset = this.camera.position.clone().sub(this.controls.target);
+      const spherical = new THREE.Spherical().setFromVector3(offset);
+      spherical.radius = Math.max(0.01, spherical.radius);
+      spherical.theta -= horizontal;
+      spherical.phi -= vertical;
+      spherical.makeSafe();
+      this.camera.position
+        .copy(this.controls.target)
+        .add(offset.setFromSpherical(spherical));
+      this.camera.lookAt(this.controls.target);
+      this.start = { ...this.start, x: event.clientX, y: event.clientY };
+      this.invalidate();
+      return;
+    }
+    if (this.start.action === "look" && this.pointers.size === 1) {
       const rotation = new THREE.Euler().setFromQuaternion(
         this.camera.quaternion,
         "YXZ",
       );
-      rotation.y -= dx * 0.003;
+      rotation.y -= horizontal;
       rotation.x = Math.min(
         Math.PI * 0.48,
-        Math.max(-Math.PI * 0.48, rotation.x - dy * 0.003),
+        Math.max(-Math.PI * 0.48, rotation.x - vertical),
       );
       this.camera.quaternion.setFromEuler(rotation);
       const direction = new THREE.Vector3(0, 0, -1).applyQuaternion(
@@ -621,6 +768,7 @@ export class ModelScene {
     this.pointers.delete(event.pointerId);
     if (
       !this.start ||
+      !this.start.canSelect ||
       this.gestureMoved ||
       this.pointers.size ||
       event.button !== 0 ||

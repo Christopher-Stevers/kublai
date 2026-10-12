@@ -4,6 +4,8 @@ Open a job, then **Models**. This workspace uses the existing drawing view/uploa
 
 ## Shipped workflow
 
+**Controls** in the viewer footer opens navigation settings. First-person, Orbit/CAD, trackpad and left-handed presets can be customized with primary/alternate keys, six mouse/Shift-drag assignments, horizontal or camera-directed travel, speed multipliers, sensitivity and direction inversion. Settings apply to every model tool and are stored per account on the current device; disabled browser storage falls back to session-only settings. Keyboard navigation requires canvas focus, stops on blur or opening Controls, and leaves browser shortcuts alone. Touch retains pinch zoom and two-finger pan. Reset defaults restores the original first-person bindings.
+
 - Revit (.rvt) source registration and immutable revisions, with local conversion and automatic version detection. No Autodesk account is needed. Native geometry is an experimental preview; IFC retains the construction workflow.
 - Direct IFC import through a web-ifc worker; Three.js batched rendering. Shared coordinates are preserved across trade models. Geometry is normalized to metres and rebased near the camera for precision.
 - Orbit/pan/zoom, orientation presets, orthographic top view, free navigation, element selection/properties, category/level filters, hide/isolate, x-ray, section planes and selection boxes.

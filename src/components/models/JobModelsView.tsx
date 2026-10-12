@@ -33,6 +33,7 @@ import {
   MoreVertical,
   Upload,
   Trash2,
+  Settings2,
 } from "lucide-react";
 import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
@@ -78,6 +79,8 @@ import {
 } from "~/lib/bim/native-conversion";
 import { NativeConversionReport } from "./NativeConversionReport";
 import { cn } from "~/lib/utils";
+import { NavigationSettingsDialog } from "./NavigationSettingsDialog";
+import { useNavigationSettings } from "./use-navigation-settings";
 type Panel =
   | "models"
   | "elements"
@@ -94,11 +97,11 @@ const titleCase = (s: string) =>
     .replace(/^./, (c) => c.toUpperCase());
 const toolInfo: Record<ModelTool, string> = {
   inspect:
-    "Drag to look · middle mouse to pan · pinch to zoom · two fingers to pan · tap an element to inspect",
+    "Click to inspect · pinch to zoom · two fingers to pan · customize navigation in Controls",
   distance: "Pick two points on the model. Corners snap within 12 pixels.",
   area: "Pick points around a flat surface, then choose Finish area.",
   pin: "Tap the location of the issue on the model.",
-  walk: "Drag to look · middle mouse to pan · use arrows to move · W A S D on a keyboard · Q / E to change elevation",
+  walk: "Drag to look · use movement buttons or your keyboard · customize navigation in Controls",
 };
 export function JobModelsView({ jobId }: { jobId: string }) {
   const query = api.models.workspace.useQuery(
@@ -143,6 +146,8 @@ export function ModelWorkspace({
   workspace: BimWorkspace;
   refresh: () => void;
 }) {
+  const navigation = useNavigationSettings(w.userId);
+  const [navigationOpen, setNavigationOpen] = useState(false);
   const host = useRef<HTMLDivElement>(null),
     [requestedIds, setIds] = useState<string[]>([]),
     [panel, setPanel] = useState<Panel>("models"),
@@ -188,6 +193,12 @@ export function ModelWorkspace({
     error: setError,
   });
   const { scene, elements, progress, properties, measures, ready } = viewport;
+  useEffect(() => {
+    scene?.setNavigationSettings(navigation.settings);
+  }, [scene, navigation.settings]);
+  useEffect(() => {
+    scene?.setNavigationPaused(navigationOpen);
+  }, [scene, navigationOpen]);
   const nativePreview = w.models.some(
     (m) => ids.includes(m.id) && isNativeRevitPreview(m),
   );
@@ -1491,14 +1502,33 @@ export function ModelWorkspace({
             );
           }) && " · Check revision status"}
         </span>
-        <button
-          aria-label="Viewer help"
-          className="grid size-8 shrink-0 place-items-center"
-          onClick={() => setHelp(true)}
-        >
-          <Info className="size-4" />
-        </button>
+        <div className="flex shrink-0 items-center gap-1">
+          <button
+            type="button"
+            aria-label="Navigation settings"
+            className="hover:bg-muted flex min-h-10 items-center gap-1.5 rounded px-2 text-xs"
+            onClick={() => setNavigationOpen(true)}
+          >
+            <Settings2 className="size-4" />
+            Controls
+          </button>
+          <button
+            aria-label="Viewer help"
+            className="grid size-8 shrink-0 place-items-center"
+            onClick={() => setHelp(true)}
+          >
+            <Info className="size-4" />
+          </button>
+        </div>
       </footer>
+      {navigationOpen && (
+        <NavigationSettingsDialog
+          settings={navigation.settings}
+          persistent={navigation.persistent}
+          onChange={navigation.update}
+          onClose={() => setNavigationOpen(false)}
+        />
+      )}
       {upload && (
         <UploadModelDialog
           workspace={w}
@@ -1582,13 +1612,11 @@ export function ModelWorkspace({
             <div>
               <dt className="font-semibold">Navigation</dt>
               <dd className="text-muted-foreground mt-1">
-                Drag to orbit. Pinch or scroll to zoom. Use two fingers or the
-                right mouse button to pan. Fit returns the whole model to view.
-                W / S move forward and backward in the direction you are
-                looking, including up and down. A / D slide sideways. These keys
-                work with every tool; hold Shift to move faster. Click the model
-                to focus keyboard navigation. Walk adds drag-to-look and Q / E
-                elevation controls. Movement has no collision detection.
+                Open Controls in the bottom bar for navigation presets, keyboard
+                bindings, mouse actions, speed and sensitivity. Click the model
+                to focus keyboard navigation. Controls work with every tool.
+                Pinch to zoom and use two fingers to pan on touch screens.
+                Movement has no collision detection.
               </dd>
             </div>
             <div>
