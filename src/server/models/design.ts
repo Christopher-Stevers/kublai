@@ -16,6 +16,15 @@ const scope = (a: ModelAccess, modelId: string) =>
     eq(bimDesigns.jobId, a.job.id),
     eq(bimDesigns.organizationId, a.job.organizationId),
   );
+/** Poll metadata without reading or serializing the geometry JSON. */
+export async function readDesignStatus(a: ModelAccess, modelId: string) {
+  await readModel(a, modelId);
+  const [row] = await db
+    .select({ revision: bimDesigns.revision })
+    .from(bimDesigns)
+    .where(scope(a, modelId));
+  return { revision: row?.revision ?? 0 };
+}
 export async function readDesign(
   a: ModelAccess,
   modelId: string,

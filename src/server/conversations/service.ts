@@ -32,6 +32,7 @@ import type {
   sendConversationInput,
 } from "./contracts";
 import { enqueueConversationPush } from "./push";
+import { publishConversationEvent } from "./events";
 
 export function checkConversationUser(user: RequestUser | null) {
   if (!user) throw new TRPCError({ code: "UNAUTHORIZED" });
@@ -147,7 +148,7 @@ export async function createConversation(
     input.kind === "direct"
       ? createHash("sha256").update(JSON.stringify(ids)).digest("hex")
       : null;
-  return db.transaction(async (tx) => {
+  const result = await db.transaction(async (tx) => {
     // A stable lock makes simultaneous starts/retries reuse a direct conversation.
     await lockConversation(tx, directKey ?? user.id);
     if (directKey) {
@@ -179,6 +180,8 @@ export async function createConversation(
       .values(ids.map((id) => ({ conversationId: created.id, userId: id })));
     return { id: created.id };
   });
+  publishConversationEvent({ conversationId: result.id, recipients: ids });
+  return result;
 }
 export async function listConversations(userId: string) {
   const user = await conversationUser(userId);
@@ -256,7 +259,7 @@ export async function listConversations(userId: string) {
 }
 export async function conversationHistory(
   access: ConversationAccess,
-  input: { beforeSequence?: number; limit: number },
+  input: { beforeSequence?: number; limit: number; messageIds?: string[] },
 ) {
   const rows = await db
     .select({ message: conversationMessages, name: users.name })
@@ -265,6 +268,9 @@ export async function conversationHistory(
     .where(
       and(
         eq(conversationMessages.conversationId, access.conversation.id),
+        input.messageIds
+          ? inArray(conversationMessages.id, input.messageIds)
+          : undefined,
         input.beforeSequence === undefined
           ? undefined
           : lt(conversationMessages.sequence, input.beforeSequence),
@@ -410,6 +416,10 @@ export async function sendConversationMessage(
       sequence: message.sequence,
     });
     return message.id;
+  });
+  publishConversationEvent({
+    conversationId: access.conversation.id,
+    messageIds: [id],
   });
   return { id };
 }
@@ -683,6 +693,14 @@ export async function replaceConversationSnapshot(
     });
     return { id: message.id, removed: originals.map((file) => file.id) };
   });
+  publishConversationEvent({
+    conversationId: access.conversation.id,
+    messageIds: [input.messageId],
+  });
+  publishConversationEvent({
+    conversationId: target.conversation.id,
+    messageIds: [result.id],
+  });
   if (result.removed.length) {
     const { removeReplacedConversationFile } = await import("./attachments");
     await Promise.all(
@@ -712,27 +730,43 @@ export async function markConversationRead(
         eq(conversationMembers.userId, access.user.id),
       ),
     );
+  publishConversationEvent({
+    conversationId: access.conversation.id,
+    recipients: [access.user.id],
+    readOnly: true,
+  });
   return { success: true };
 }
 export async function removeConversationMessage(
   access: ConversationAccess,
   messageId: string,
 ) {
-  const [row] = await db
-    .update(conversationMessages)
-    .set({ deletedAt: sql`now()`, body: "" })
-    .where(
-      and(
-        eq(conversationMessages.id, messageId),
-        eq(conversationMessages.conversationId, access.conversation.id),
-        eq(conversationMessages.authorId, access.user.id),
-      ),
-    )
-    .returning({ id: conversationMessages.id });
-  if (!row)
-    throw new TRPCError({
-      code: "NOT_FOUND",
-      message: "You can only delete your own messages.",
-    });
+  await db.transaction(async (tx) => {
+    await lockConversation(tx, access.conversation.id);
+    const [row] = await tx
+      .update(conversationMessages)
+      .set({ deletedAt: sql`now()`, body: "" })
+      .where(
+        and(
+          eq(conversationMessages.id, messageId),
+          eq(conversationMessages.conversationId, access.conversation.id),
+          eq(conversationMessages.authorId, access.user.id),
+        ),
+      )
+      .returning({ id: conversationMessages.id });
+    if (!row)
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: "You can only delete your own messages.",
+      });
+    await tx
+      .update(conversations)
+      .set({ updatedAt: sql`clock_timestamp()` })
+      .where(eq(conversations.id, access.conversation.id));
+  });
+  publishConversationEvent({
+    conversationId: access.conversation.id,
+    messageIds: [messageId],
+  });
   return { success: true };
 }

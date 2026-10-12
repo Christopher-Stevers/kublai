@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import {
@@ -32,7 +32,13 @@ import {
 } from "~/lib/conversation-upload";
 import type { ConversationMessage } from "~/server/conversations/contracts";
 import { safeSnapshotHref } from "~/lib/snapshot-source";
+import { useTutorialSandbox } from "~/components/tutorial/tutorial-sandbox-context";
 import { useOnlineStatus } from "~/hooks/use-online-status";
+import {
+  useConversationEvents,
+  type ConversationUpdate,
+} from "~/hooks/use-conversation-events";
+import { VirtualChatMessages } from "./VirtualChatMessages";
 import { useChatScroll } from "~/hooks/use-chat-scroll";
 import { useReplyFocus } from "~/hooks/use-reply-focus";
 import { useChatHistoryResume } from "~/hooks/use-chat-history-resume";
@@ -85,6 +91,7 @@ function ChatWorkspace({ initialJobId }: { initialJobId?: string }) {
     online = useOnlineStatus(),
     utils = api.useUtils();
   const jobs = useReplicacheJobsList();
+  const inTutorial = Boolean(useTutorialSandbox());
   const [unavailableJob, setUnavailableJob] = useState<string | null>(null);
   const [newOpen, setNewOpen] = useState(false),
     [target, setTarget] = useState<ChatTarget>({
@@ -189,9 +196,27 @@ function ChatWorkspace({ initialJobId }: { initialJobId?: string }) {
     : jobId
       ? { kind: "job", id: jobId }
       : null;
+  const [eventUpdate, setEventUpdate] = useState<{
+    update: ConversationUpdate;
+  }>();
+  const stream = useConversationEvents(online && !inTutorial, (update) => {
+    void utils.conversations.list.invalidate();
+    if (!update) void utils.conversations.history.invalidate();
+    else
+      for (const change of update.changes) {
+        if (change.messageIds === null || change.messageIds.length)
+          void utils.conversations.history.invalidate({
+            conversationId: change.conversationId,
+          });
+      }
+    for (const id of update?.removed ?? [])
+      void utils.conversations.history.invalidate({ conversationId: id });
+    setEventUpdate({ update });
+  });
   const list = api.conversations.list.useQuery(undefined, {
-    enabled: online,
-    refetchInterval: online ? 5000 : false,
+    enabled: online && stream.visible,
+    refetchInterval:
+      online && stream.visible && !stream.connected ? 15000 : false,
   });
   useEffect(() => {
     if (conversationId)
@@ -420,6 +445,9 @@ function ChatWorkspace({ initialJobId }: { initialJobId?: string }) {
                       id={conversationId}
                       userId={list.data?.userId}
                       online={online}
+                      connected={stream.connected}
+                      visible={stream.visible}
+                      eventUpdate={eventUpdate}
                       drafts={drafts}
                     />
                   )
@@ -559,11 +587,17 @@ function ConversationThread({
   id,
   userId,
   online,
+  connected,
+  visible,
+  eventUpdate,
   drafts,
 }: {
   id: string;
   userId?: string;
   online: boolean;
+  connected: boolean;
+  visible: boolean;
+  eventUpdate?: { update: ConversationUpdate };
   drafts: Map<string, ConversationDraft>;
 }) {
   const draftKey = `${userId}:${id}`;
@@ -588,7 +622,11 @@ function ConversationThread({
     [loadingOlder, setLoadingOlder] = useState(false);
   const history = api.conversations.history.useQuery(
     { conversationId: id, limit: 50 },
-    { enabled: online, refetchInterval: online ? 3000 : false, retry: 1 },
+    {
+      enabled: online && visible,
+      refetchInterval: online && visible && !connected ? 15000 : false,
+      retry: 1,
+    },
   );
   const send = api.conversations.send.useMutation(),
     remove = api.conversations.remove.useMutation(),
@@ -632,11 +670,54 @@ function ConversationThread({
   useEffect(() => {
     drafts.set(draftKey, { body, files, attempt: attempt.current });
   }, [drafts, draftKey, body, files, busy, locked]);
-  const messages = [
-    ...new Map(
-      [...older, ...(history.data?.messages ?? [])].map((m) => [m.id, m]),
-    ).values(),
-  ].sort((a, b) => a.sequence - b.sequence);
+  const messages = useMemo(
+    () =>
+      [
+        ...new Map(
+          [...older, ...(history.data?.messages ?? [])].map((m) => [m.id, m]),
+        ).values(),
+      ].sort((a, b) => a.sequence - b.sequence),
+    [older, history.data?.messages],
+  );
+  const olderRef = useRef(older);
+  const fallbackUpdatedAt = connected ? 0 : history.dataUpdatedAt;
+  useEffect(() => {
+    olderRef.current = older;
+  }, [older]);
+  useEffect(() => {
+    if (!online || !visible || !olderRef.current.length) return;
+    const change = eventUpdate?.update?.changes.find(
+      (change) => change.conversationId === id,
+    );
+    // Reconnect/fallback refreshes every loaded older page. Live hints only touch changed messages.
+    if (connected && eventUpdate?.update && !change) return;
+    const ids = olderRef.current
+      .filter(
+        (m) =>
+          !connected || !change?.messageIds || change.messageIds.includes(m.id),
+      )
+      .map((m) => m.id);
+    if (!ids.length) return;
+    let active = true;
+    void (async () => {
+      const refreshed = new Map<string, ConversationMessage>();
+      for (let i = 0; i < ids.length; i += 100) {
+        if (!active) return;
+        const page = await utils.conversations.messages.fetch({
+          conversationId: id,
+          messageIds: ids.slice(i, i + 100),
+        });
+        for (const message of page.messages) refreshed.set(message.id, message);
+      }
+      if (active)
+        setOlder((current) => current.map((m) => refreshed.get(m.id) ?? m));
+    })().catch(() => {
+      /* The next reconnect/poll retries without hiding the cached history. */
+    });
+    return () => {
+      active = false;
+    };
+  }, [id, online, visible, connected, eventUpdate, fallbackUpdatedAt, utils]);
   const latest = messages.at(-1)?.sequence ?? 0,
     next = cursor === undefined ? history.data?.nextBeforeSequence : cursor;
   useEffect(() => {
@@ -731,8 +812,6 @@ function ConversationThread({
   const loadOlder = async () => {
     if (!next || loadingOlder) return;
     setLoadingOlder(true);
-    const top = timeline.current?.scrollTop ?? 0,
-      height = timeline.current?.scrollHeight ?? 0;
     try {
       const page = await utils.conversations.history.fetch({
         conversationId: id,
@@ -741,11 +820,6 @@ function ConversationThread({
       });
       setOlder((current) => [...page.messages, ...current]);
       setCursor(page.nextBeforeSequence);
-      requestAnimationFrame(() => {
-        if (timeline.current)
-          timeline.current.scrollTop =
-            top + timeline.current.scrollHeight - height;
-      });
     } catch (reason) {
       setError(text(reason));
     } finally {
@@ -806,111 +880,121 @@ function ConversationThread({
                 : "Could not load messages. Check your connection."}
             </p>
           )}
-          {!denied &&
-            messages.map((m) => (
-              <article
-                key={m.id}
-                data-chat-message-id={m.id}
-                aria-label={`Message from ${m.author.name}`}
-                className={`max-w-[85%] min-w-0 rounded-2xl p-3 shadow-sm sm:max-w-[70%] ${m.author.id === userId ? "bg-primary text-primary-foreground ml-auto rounded-br-md" : "bg-card text-card-foreground rounded-bl-md"}`}
-              >
-                <div className="mb-1 flex items-center justify-between gap-3">
-                  <span className="text-sm font-medium">{m.author.name}</span>
-                  <span className="text-xs opacity-70">
-                    {new Date(m.createdAt).toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </span>
-                </div>
-                {m.deletedAt ? (
-                  <p className="text-muted-foreground text-sm italic">
-                    Message deleted
-                  </p>
-                ) : (
-                  <>
-                    <p className="text-sm break-words whitespace-pre-wrap">
-                      {m.body}
+          {!denied && (
+            <VirtualChatMessages
+              items={messages}
+              scrollRef={timeline}
+              memoryKey={viewKey}
+              gap={12}
+            >
+              {(m) => (
+                <article
+                  key={m.id}
+                  data-chat-message-id={m.id}
+                  aria-label={`Message from ${m.author.name}`}
+                  className={`max-w-[85%] min-w-0 rounded-2xl p-3 shadow-sm sm:max-w-[70%] ${m.author.id === userId ? "bg-primary text-primary-foreground ml-auto rounded-br-md" : "bg-card text-card-foreground rounded-bl-md"}`}
+                >
+                  <div className="mb-1 flex items-center justify-between gap-3">
+                    <span className="text-sm font-medium">{m.author.name}</span>
+                    <span className="text-xs opacity-70">
+                      {new Date(m.createdAt).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </span>
+                  </div>
+                  {m.deletedAt ? (
+                    <p className="text-muted-foreground text-sm italic">
+                      Message deleted
                     </p>
-                    {m.editedAt && (
-                      <span className="text-muted-foreground text-xs">
-                        Edited
-                      </span>
-                    )}
-                    {m.attachments.map((file) => (
-                      <a
-                        key={file.id}
-                        href={file.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="mt-2 block min-w-0"
-                      >
-                        <span className="text-primary block truncate text-xs underline">
-                          {file.name}
+                  ) : (
+                    <>
+                      <p className="text-sm break-words whitespace-pre-wrap">
+                        {m.body}
+                      </p>
+                      {m.editedAt && (
+                        <span className="text-muted-foreground text-xs">
+                          Edited
                         </span>
-                        {file.mimeType.startsWith("image/") && (
-                          <img
-                            src={file.url}
-                            alt={file.name}
-                            className="mt-1 max-h-80 max-w-full rounded border object-contain"
-                          />
-                        )}
-                      </a>
-                    ))}
-                    {m.source && safeSnapshotHref(m.source.href) && (
-                      <a
-                        href={m.source.href}
-                        title={m.source.title}
-                        className="text-primary mt-3 inline-flex items-center gap-1.5 text-sm font-medium underline underline-offset-4"
-                      >
-                        <ExternalLinkIcon className="size-4" />
-                        Open snapshot source
-                      </a>
-                    )}
-                    {m.author.id === userId &&
-                      !m.source &&
-                      !m.attachments.some((file) =>
-                        file.mimeType.startsWith("image/"),
-                      ) && (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="mt-1 h-7 px-1 text-xs"
-                          aria-label={`Delete message from ${m.author.name}`}
-                          onClick={() =>
-                            void remove
-                              .mutateAsync({
-                                conversationId: id,
-                                messageId: m.id,
-                              })
-                              .then(() => {
-                                setOlder((current) =>
-                                  current.map((message) =>
-                                    message.id === m.id
-                                      ? {
-                                          ...message,
-                                          body: "",
-                                          attachments: [],
-                                          deletedAt: new Date(),
-                                        }
-                                      : message,
-                                  ),
-                                );
-                                return utils.conversations.history.invalidate({
-                                  conversationId: id,
-                                });
-                              })
-                              .catch((reason) => setError(text(reason)))
-                          }
-                        >
-                          <Trash2Icon className="size-3" />
-                          Delete
-                        </Button>
                       )}
-                  </>
-                )}
-              </article>
-            ))}
+                      {m.attachments.map((file) => (
+                        <a
+                          key={file.id}
+                          href={file.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="mt-2 block min-w-0"
+                        >
+                          <span className="text-primary block truncate text-xs underline">
+                            {file.name}
+                          </span>
+                          {file.mimeType.startsWith("image/") && (
+                            <img
+                              src={file.url}
+                              alt={file.name}
+                              className="mt-1 max-h-80 max-w-full rounded border object-contain"
+                            />
+                          )}
+                        </a>
+                      ))}
+                      {m.source && safeSnapshotHref(m.source.href) && (
+                        <a
+                          href={m.source.href}
+                          title={m.source.title}
+                          className="text-primary mt-3 inline-flex items-center gap-1.5 text-sm font-medium underline underline-offset-4"
+                        >
+                          <ExternalLinkIcon className="size-4" />
+                          Open snapshot source
+                        </a>
+                      )}
+                      {m.author.id === userId &&
+                        !m.source &&
+                        !m.attachments.some((file) =>
+                          file.mimeType.startsWith("image/"),
+                        ) && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="mt-1 h-7 px-1 text-xs"
+                            aria-label={`Delete message from ${m.author.name}`}
+                            onClick={() =>
+                              void remove
+                                .mutateAsync({
+                                  conversationId: id,
+                                  messageId: m.id,
+                                })
+                                .then(() => {
+                                  setOlder((current) =>
+                                    current.map((message) =>
+                                      message.id === m.id
+                                        ? {
+                                            ...message,
+                                            body: "",
+                                            attachments: [],
+                                            deletedAt: new Date(),
+                                          }
+                                        : message,
+                                    ),
+                                  );
+                                  return utils.conversations.history.invalidate(
+                                    {
+                                      conversationId: id,
+                                    },
+                                  );
+                                })
+                                .catch((reason) => setError(text(reason)))
+                            }
+                          >
+                            <Trash2Icon className="size-3" />
+                            Delete
+                          </Button>
+                        )}
+                    </>
+                  )}
+                </article>
+              )}
+            </VirtualChatMessages>
+          )}
           {!history.isLoading && !history.error && !messages.length && (
             <p className="bg-card text-card-foreground rounded-xl px-4 py-3 text-sm shadow-sm">
               Send a message or share a snapshot to start the conversation.

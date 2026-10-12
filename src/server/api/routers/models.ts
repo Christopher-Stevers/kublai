@@ -1,4 +1,9 @@
-import { readDesign, saveDesign, createCadModel } from "~/server/models/design";
+import {
+  readDesign,
+  readDesignStatus,
+  saveDesign,
+  createCadModel,
+} from "~/server/models/design";
 import { designSchema } from "~/lib/bim/design";
 import {
   apsCredentialsSchema,
@@ -43,6 +48,11 @@ export const modelsRouter = createTRPCRouter({
     .input(entity)
     .query(async ({ ctx, input }) =>
       readDesign(await modelAccess(ctx.user.id, input.jobId), input.id),
+    ),
+  designStatus: hasDashboardAccess
+    .input(entity)
+    .query(async ({ ctx, input }) =>
+      readDesignStatus(await modelAccess(ctx.user.id, input.jobId), input.id),
     ),
   saveDesign: hasDashboardAccess
     .input(

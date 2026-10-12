@@ -1,5 +1,5 @@
 import { and, eq, sql } from "drizzle-orm";
-import type { PatchOperation, PullRequestV1, PullResponseV1 } from "replicache";
+import type { PatchOperation, PullRequest as PullRequestV1, PullResponse as PullResponseV1 } from "replicache";
 import { db } from "~/server/db";
 import { replicacheClientGroups, replicacheClients } from "~/server/db/schema";
 import { userCan } from "~/server/auth/permissions";

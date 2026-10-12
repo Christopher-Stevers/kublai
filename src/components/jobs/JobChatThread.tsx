@@ -1,4 +1,5 @@
 "use client";
+import { VirtualChatMessages } from "~/components/chat/VirtualChatMessages";
 import { usePageViewState } from "~/hooks/use-page-view-state";
 import { useReplyFocus } from "~/hooks/use-reply-focus";
 import { useChatScroll } from "~/hooks/use-chat-scroll";
@@ -678,9 +679,6 @@ function ChatLobby({
     if (loadingOlder || !nextBefore || !online) return;
     setLoadingOlder(true);
     setError("");
-    const element = timeline.current;
-    const priorHeight = element?.scrollHeight ?? 0;
-    const priorTop = element?.scrollTop ?? 0;
     atBottomRef.current = false;
     setAtBottom(false);
     try {
@@ -691,10 +689,6 @@ function ChatLobby({
       });
       setOlder((pages) => ({ ...pages, [nextBefore]: page.messages }));
       setOlderCursor(page.nextBeforeSequence);
-      requestAnimationFrame(() => {
-        if (element)
-          element.scrollTop = priorTop + element.scrollHeight - priorHeight;
-      });
     } catch (reason) {
       setError(errorText(reason));
     } finally {
@@ -1096,51 +1090,57 @@ function ChatLobby({
               </p>
             </div>
           )}
-          {messages.map((message, index) => {
-            const createdAt = new Date(message.createdAt);
-            const previous = messages[index - 1];
-            const showTimestamp =
-              !previous ||
-              createdAt.getTime() - new Date(previous.createdAt).getTime() >=
-                10 * 60 * 1000;
-            const mine = message.author.id === userId;
-            // Consecutive messages from one person read as a single group.
-            const grouped =
-              !showTimestamp && previous?.author.id === message.author.id;
-            return (
-              <Fragment key={message.id}>
-                {showTimestamp && (
-                  <div className="my-3 text-center first:mt-0">
-                    <time
-                      dateTime={createdAt.toISOString()}
-                      title={createdAt.toLocaleString()}
-                      className="rounded-full bg-black/35 px-2.5 py-0.5 text-[11px] font-medium text-white"
-                    >
-                      {createdAt.toLocaleString(undefined, {
-                        month: "short",
-                        day: "numeric",
-                        hour: "numeric",
-                        minute: "2-digit",
-                      })}
-                    </time>
-                  </div>
-                )}
-                <ChatBubble
-                  allowAttachments={!inTutorial}
-                  tutorialOwnMessage={inTutorial && mine}
-                  message={message}
-                  mine={mine}
-                  grouped={grouped}
-                  replied={
-                    message.replyToId
-                      ? messages.find((item) => item.id === message.replyToId)
-                      : undefined
-                  }
-                  onActions={() => setActionsFor(message)}
-                />
-              </Fragment>
-            );
-          })}
+          <VirtualChatMessages
+            items={messages}
+            scrollRef={timeline}
+            memoryKey={viewKey}
+          >
+            {(message, index) => {
+              const createdAt = new Date(message.createdAt);
+              const previous = messages[index - 1];
+              const showTimestamp =
+                !previous ||
+                createdAt.getTime() - new Date(previous.createdAt).getTime() >=
+                  10 * 60 * 1000;
+              const mine = message.author.id === userId;
+              // Consecutive messages from one person read as a single group.
+              const grouped =
+                !showTimestamp && previous?.author.id === message.author.id;
+              return (
+                <Fragment key={message.id}>
+                  {showTimestamp && (
+                    <div className="my-3 text-center first:mt-0">
+                      <time
+                        dateTime={createdAt.toISOString()}
+                        title={createdAt.toLocaleString()}
+                        className="rounded-full bg-black/35 px-2.5 py-0.5 text-[11px] font-medium text-white"
+                      >
+                        {createdAt.toLocaleString(undefined, {
+                          month: "short",
+                          day: "numeric",
+                          hour: "numeric",
+                          minute: "2-digit",
+                        })}
+                      </time>
+                    </div>
+                  )}
+                  <ChatBubble
+                    allowAttachments={!inTutorial}
+                    tutorialOwnMessage={inTutorial && mine}
+                    message={message}
+                    mine={mine}
+                    grouped={grouped}
+                    replied={
+                      message.replyToId
+                        ? messages.find((item) => item.id === message.replyToId)
+                        : undefined
+                    }
+                    onActions={() => setActionsFor(message)}
+                  />
+                </Fragment>
+              );
+            }}
+          </VirtualChatMessages>
         </div>
       </div>
       {actionsFor && (

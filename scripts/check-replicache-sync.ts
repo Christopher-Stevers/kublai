@@ -4,7 +4,7 @@
 import assert from "node:assert/strict";
 import { mkdir, writeFile } from "node:fs/promises";
 import { eq } from "drizzle-orm";
-import type { PullRequestV1, PullResponseV1, PushRequestV1 } from "replicache";
+import type { PullRequest as PullRequestV1, PullResponse as PullResponseV1, PushRequest as PushRequestV1 } from "replicache";
 import { db } from "../src/server/db";
 import {
   organizations,

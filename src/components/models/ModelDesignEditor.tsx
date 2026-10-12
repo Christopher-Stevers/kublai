@@ -148,11 +148,32 @@ export function ModelDesignEditor({
   active: boolean;
   onClose: () => void;
 }) {
+  const utils = api.useUtils();
   const query = api.models.design.useQuery(
       { jobId: w.job.id, id: modelId },
-      { enabled: ready, refetchInterval: 15000 },
+      { enabled: ready, staleTime: Infinity, refetchOnWindowFocus: false },
     ),
     save = api.models.saveDesign.useMutation();
+  const revisionStatus = api.models.designStatus.useQuery(
+    { jobId: w.job.id, id: modelId },
+    { enabled: ready, refetchInterval: 15000, staleTime: 0 },
+  );
+  const loadedRevision = query.data?.revision;
+  const remoteRevision = revisionStatus.data?.revision;
+  const refetchDesign = query.refetch;
+  useEffect(() => {
+    if (
+      loadedRevision !== undefined &&
+      remoteRevision !== undefined &&
+      remoteRevision > loadedRevision
+    )
+      void refetchDesign();
+  }, [
+    loadedRevision,
+    remoteRevision,
+    revisionStatus.dataUpdatedAt,
+    refetchDesign,
+  ]);
   const [design, setDesign] = useState<ModelDesign>(emptyDesign),
     [revision, setRevision] = useState(0),
     [loaded, setLoaded] = useState(false),
@@ -320,7 +341,11 @@ export function ModelDesignEditor({
           setRevision(result.revision);
           if (current.current.design === snapshot) setDirty(false);
           setError("");
-          void query.refetch();
+          utils.models.design.setData({ jobId: w.job.id, id: modelId }, result);
+          utils.models.designStatus.setData(
+            { jobId: w.job.id, id: modelId },
+            { revision: result.revision },
+          );
         },
       },
     );

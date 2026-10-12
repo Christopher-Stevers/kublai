@@ -2,9 +2,13 @@ import { act, cleanup, render } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { loadPdfDocument } from "~/lib/pdf-client";
 import { MAX_DRAWING_PATCH_PIXELS } from "~/lib/drawing-viewport";
+import { recordDrawingPerformance } from "~/lib/drawing-performance";
 import { DrawingPdfLayer } from "./DrawingPdfLayer";
 
 vi.mock("~/lib/pdf-client", () => ({ loadPdfDocument: vi.fn() }));
+vi.mock("~/lib/drawing-performance", () => ({
+  recordDrawingPerformance: vi.fn(),
+}));
 type Pending = {
   resolve: () => void;
   reject: (reason: Error) => void;
@@ -179,9 +183,21 @@ describe("persistent PDF detail during gestures", () => {
     expect(pending).toHaveLength(1);
     expect(pending[0]!.cancel).not.toHaveBeenCalled();
     await finish(0); // Outdated offscreen work is skipped, latest view rendered next.
+    expect(recordDrawingPerformance).toHaveBeenLastCalledWith(
+      expect.objectContaining({ outcome: "partial", viewToSharpMs: null }),
+    );
     expect(pending).toHaveLength(2);
     await finish(1);
     expect(visibleCanvases(view.container)).toHaveLength(1);
+    expect(recordDrawingPerformance).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        outcome: "sharp",
+      }),
+    );
+    expect(
+      typeof vi.mocked(recordDrawingPerformance).mock.calls.at(-1)?.[0]
+        .viewToSharpMs,
+    ).toBe("number");
   });
 
   it("never publishes another sheet's late render and cancels on unmount", async () => {
@@ -194,6 +210,7 @@ describe("persistent PDF detail during gestures", () => {
     expect(pending[0]!.cancel).toHaveBeenCalledOnce();
     await finish(0);
     expect(visibleCanvases(view.container)).toHaveLength(0);
+    expect(recordDrawingPerformance).not.toHaveBeenCalled();
     await finish(1);
     expect(visibleCanvases(view.container)).toHaveLength(1);
     view.rerender(

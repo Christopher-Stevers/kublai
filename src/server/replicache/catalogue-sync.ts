@@ -1,8 +1,8 @@
 import { and, asc, eq } from "drizzle-orm";
 import type {
   PatchOperation,
-  PullRequestV1,
-  PullResponseV1,
+  PullRequest as PullRequestV1,
+  PullResponse as PullResponseV1,
 } from "replicache";
 
 import { CATALOGUE_REPLICACHE_SCHEMA_VERSION } from "~/lib/replicache-schema";

@@ -55,6 +55,14 @@ export const conversationsRouter = createTRPCRouter({
       }),
     )
     .query(({ ctx, input }) => conversationHistory(ctx.conversation, input)),
+  messages: memberProcedure
+    .input(z.object({ messageIds: z.array(z.uuid()).min(1).max(100) }))
+    .query(({ ctx, input }) =>
+      conversationHistory(ctx.conversation, {
+        messageIds: input.messageIds,
+        limit: 100,
+      }),
+    ),
   send: memberProcedure
     .input(sendConversationInput)
     .mutation(({ ctx, input }) =>

@@ -26,6 +26,10 @@ import {
   readConversationAttachment,
   uploadConversationAttachment,
 } from "./attachments";
+import {
+  conversationEventSnapshot,
+  subscribeConversationEvents,
+} from "./events";
 import { createConversationInput, sendConversationInput } from "./contracts";
 import { drainConversationPush, enqueueConversationPush } from "./push";
 import {
@@ -271,6 +275,59 @@ describe.skipIf(!enabled)("private chat against isolated PostgreSQL", () => {
     const snapshot = await savedConversationSnapshot(author, sent.id);
     return { id, author, original, snapshot };
   };
+  it("publishes committed changes, scopes event snapshots and refreshes deleted older messages", async () => {
+    const events: { conversationId: string }[] = [];
+    const unsubscribe = subscribeConversationEvents((event) =>
+      events.push(event),
+    );
+    try {
+      const created = await createConversation("author", {
+        kind: "direct",
+        recipientIds: ["recipient"],
+        name: "",
+      });
+      const access = await conversationAccess("author", created.id);
+      const first = await conversationEventSnapshot("recipient");
+      expect(first.has(created.id)).toBe(true);
+      expect((await conversationEventSnapshot("third")).has(created.id)).toBe(
+        false,
+      );
+      const message = await sendConversationMessage(access, {
+        conversationId: created.id,
+        clientId: randomUUID(),
+        body: "Update",
+        attachmentIds: [],
+      });
+      const second = await conversationEventSnapshot("recipient");
+      expect(second.get(created.id)).not.toBe(first.get(created.id));
+      expect(events.at(-1)?.conversationId).toBe(created.id);
+      await removeConversationMessage(access, message.id);
+      const third = await conversationEventSnapshot("recipient");
+      expect(third.get(created.id)).not.toBe(second.get(created.id));
+      const refresh = await conversationHistory(access, {
+        limit: 100,
+        messageIds: [message.id],
+      });
+      expect(refresh.messages[0]?.deletedAt).not.toBeNull();
+      expect(refresh.messages[0]?.body).toBe("");
+      const noCrossChat = await createConversation("author", {
+        kind: "direct",
+        recipientIds: ["third"],
+        name: "",
+      });
+      const other = await conversationAccess("third", noCrossChat.id);
+      expect(
+        (
+          await conversationHistory(other, {
+            limit: 100,
+            messageIds: [message.id],
+          })
+        ).messages,
+      ).toEqual([]);
+    } finally {
+      unsubscribe();
+    }
+  });
   it("deletes the old snapshot and remakes it as a fresh post exactly once", async () => {
     const { id, author, snapshot, original } = await snapshotFixture();
     await devices(["recipient"]);

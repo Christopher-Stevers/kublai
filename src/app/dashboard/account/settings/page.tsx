@@ -367,6 +367,9 @@ export default function SettingsPage() {
         </Link>
         .
       </p>
+      <Link href="/licenses" className="text-muted-foreground text-sm underline underline-offset-4">
+        Open-source notices
+      </Link>
     </div>
   );
 }

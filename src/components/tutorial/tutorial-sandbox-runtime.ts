@@ -1,4 +1,4 @@
-import { Replicache, dropDatabase, type ReadonlyJSONValue, type PullerResultV1 } from "replicache";
+import { Replicache, dropDatabase, type ReadonlyJSONValue, type PullerResult as PullerResultV1 } from "replicache";
 import { z } from "zod";
 import { STANDARD_DEFAULTS } from "~/lib/permission-catalog";
 import { makeMaterialListMutators, MATERIAL_LIST_INDEXES, type MaterialListReplicacheMutators } from "~/lib/replicache-material-list";

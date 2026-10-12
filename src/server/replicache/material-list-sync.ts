@@ -7,9 +7,9 @@ import { resolvePermissions, type PermissionKey } from "~/server/auth/permission
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import type {
   PatchOperation,
-  PullRequestV1,
-  PullResponseV1,
-  PushRequestV1,
+  PullRequest as PullRequestV1,
+  PullResponse as PullResponseV1,
+  PushRequest as PushRequestV1,
 } from "replicache";
 import { z } from "zod";
 

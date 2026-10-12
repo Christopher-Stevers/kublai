@@ -45,7 +45,7 @@ vi.mock("./storage", () => ({
 vi.mock("~/server/utils/get-request-identity", () => ({
   getRequestIdentity: vi.fn(async () => ({ userId: "owner" })),
 }));
-import { readDesign, saveDesign, createCadModel } from "./design";
+import { readDesign, readDesignStatus, saveDesign, createCadModel } from "./design";
 import { createSketch } from "~/lib/bim/cad-geometry";
 import { makeComponent } from "~/lib/bim/cad-components";
 import { bindDimension } from "~/lib/bim/cad-dimensions";
@@ -179,12 +179,15 @@ describe.skipIf(!process.env.MODELS_TEST_SOCKET)(
       const a = await modelAccess(user.id, jobId),
         model = await registerModel(a, randomUUID(), input());
       expect((await readDesign(a, model.id)).revision).toBe(0);
+      expect(await readDesignStatus(a, model.id)).toEqual({ revision: 0 });
       const design = {
         ...emptyDesign(),
         elements: [newDesignElement("pipe", [1, 2, 3])],
       };
       const saved = await saveDesign(a, model.id, 0, design);
       expect(saved.revision).toBe(1);
+      expect(await readDesignStatus(a, model.id)).toEqual({ revision: 1 });
+      await expect(readDesignStatus({ ...a, job: { ...a.job, id: otherJob } }, model.id)).rejects.toMatchObject({ code: "NOT_FOUND" });
       expect(
         (await readDesign(a, model.id)).design.elements[0]?.position,
       ).toEqual([1, 2, 3]);

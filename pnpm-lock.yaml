@@ -32,6 +32,9 @@ importers:
       '@tanstack/react-query':
         specifier: ^5.90.16
         version: 5.90.16(react@19.2.3)
+      '@tanstack/react-virtual':
+        specifier: 3.14.17
+        version: 3.14.17(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@trpc/client':
         specifier: ^11.8.1
         version: 11.8.1(@trpc/server@11.8.1(typescript@5.9.3))(typescript@5.9.3)
@@ -96,8 +99,8 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       replicache:
-        specifier: ^15.3.0
-        version: 15.3.0
+        specifier: file:vendor/replicache/replicache-15.2.1-foremanhq.apache.20250702.tgz
+        version: file:vendor/replicache/replicache-15.2.1-foremanhq.apache.20250702.tgz
       server-only:
         specifier: ^0.0.1
         version: 0.0.1
@@ -575,8 +578,8 @@ packages:
     resolution: {integrity: sha512-qQ5m48eI/MFLQ5PxQj4PFaprjyCTLI37ElWMmNs0K8Lk3dVeOdNpB3ks8jc7yM5CDmVC73eMVk/trk3fgmrUpA==}
     engines: {node: '>=6.9.0'}
 
-  '@badrap/valita@0.3.16':
-    resolution: {integrity: sha512-slP2blSd6A+xUBgGf+wW6adGd72ojBLxemU0jXQ0fXQcsZWYQ70wTLTJggs6+oxcAqN/bvYA3Ops8SqR2Imyaw==}
+  '@badrap/valita@0.3.11':
+    resolution: {integrity: sha512-oak0W8bycFjnrLeVCVvZqkOWTGh74wCPKUxGLJyhRukRs+V/hQdfZp1eDcQE4Gf3UrtJWfR/Ou4Xe0DZqJZ2FA==}
     engines: {node: '>= 16'}
 
   '@bramus/specificity@2.4.2':
@@ -2408,6 +2411,7 @@ packages:
   '@rocicorp/resolver@1.0.2':
     resolution: {integrity: sha512-TfjMTQp9cNNqNtHFfa+XHEGdA7NnmDRu+ZJH4YF3dso0Xk/b9DMhg/sl+b6CR4ThFZArXXDsG1j8Mwl34wcOZQ==}
     engines: {node: ^12.20.0 || ^14.13.1 || >=16.0.0}
+    deprecated: Use Promise.withResolvers instead
 
   '@rolldown/binding-android-arm64@1.0.0-rc.15':
     resolution: {integrity: sha512-YYe6aWruPZDtHNpwu7+qAHEMbQ/yRl6atqb/AhznLTnD3UY99Q1jE7ihLSahNWkF4EqRPVC4SiR4O0UkLK02tA==}
@@ -2889,6 +2893,15 @@ packages:
     resolution: {integrity: sha512-bpMGOmV4OPmif7TNMteU/Ehf/hoC0Kf98PDc0F4BZkFrEapRMEqI/V6YS0lyzwSV6PQpY1y4xxArUIfBW5LVxQ==}
     peerDependencies:
       react: ^18 || ^19
+
+  '@tanstack/react-virtual@3.14.17':
+    resolution: {integrity: sha512-b7b5LwydgQAWcsAWEZyd3iZkN5/QcC6S0K5E1zNheyFoSZl7E78foepGeDHlX2+JuXilA+VIGGFsUYPFddOrig==}
+    peerDependencies:
+      react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+      react-dom: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+
+  '@tanstack/virtual-core@3.19.2':
+    resolution: {integrity: sha512-Ch+e8t097FdTfuihfRwBMqz/OfRZKHOH/C213dbM1lXDZ8bv6r330Bcc9k9XCrP6NkoMYy0/ZCHcddOAPihW4w==}
 
   '@testing-library/dom@10.4.1':
     resolution: {integrity: sha512-o4PXJQidqJl82ckFaXUeoAW+XysPLauYI43Abki5hABd853iMhitooc6znOnczgbTYmEP6U6/y1ZyKAIsvMKGg==}
@@ -5295,10 +5308,9 @@ packages:
     resolution: {integrity: sha512-dYqgNSZbDwkaJ2ceRd9ojCGjBq+mOm9LmtXnAnEGyHhN/5R7iDW2TRw3h+o/jCFxus3P2LfWIIiwowAjANm7IA==}
     engines: {node: '>= 0.4'}
 
-  replicache@15.3.0:
-    resolution: {integrity: sha512-XE9NbpG5bVuJNcj61vzbZBwesNx9q51l6/o0J8wT4v1YZhKoqj9GExwc3pLUYSi/AyrQtkX44wOyrSMLHzFIaA==}
-    engines: {node: '>=14.8.0'}
-    hasBin: true
+  replicache@file:vendor/replicache/replicache-15.2.1-foremanhq.apache.20250702.tgz:
+    resolution: {integrity: sha512-/Zj1+kO16VTFEptOQ5wd+R/x5fBCLuK05FTJQOOZa168XadhQ6mVjTDzvDi/vfq+c2275n2TpYZUU8VMQlNkVA==, tarball: file:vendor/replicache/replicache-15.2.1-foremanhq.apache.20250702.tgz}
+    version: 15.2.1-foremanhq.apache.20250702
 
   require-directory@2.1.1:
     resolution: {integrity: sha512-fGxEI7+wsG9xrvdjsrlmL22OMTTiHRwAMroiEeMgq8gzoLC/PQr7RsRDSTLUg/bZAZtF+TVIkHc6/4RIKrui+Q==}
@@ -6907,7 +6919,7 @@ snapshots:
       '@babel/helper-string-parser': 7.27.1
       '@babel/helper-validator-identifier': 7.28.5
 
-  '@badrap/valita@0.3.16': {}
+  '@badrap/valita@0.3.11': {}
 
   '@bramus/specificity@2.4.2':
     dependencies:
@@ -8784,6 +8796,14 @@ snapshots:
     dependencies:
       '@tanstack/query-core': 5.90.16
       react: 19.2.3
+
+  '@tanstack/react-virtual@3.14.17(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
+    dependencies:
+      '@tanstack/virtual-core': 3.19.2
+      react: 19.2.3
+      react-dom: 19.2.3(react@19.2.3)
+
+  '@tanstack/virtual-core@3.19.2': {}
 
   '@testing-library/dom@10.4.1':
     dependencies:
@@ -11290,9 +11310,9 @@ snapshots:
       gopd: 1.2.0
       set-function-name: 2.0.2
 
-  replicache@15.3.0:
+  replicache@file:vendor/replicache/replicache-15.2.1-foremanhq.apache.20250702.tgz:
     dependencies:
-      '@badrap/valita': 0.3.16
+      '@badrap/valita': 0.3.11
       '@rocicorp/lock': 1.0.4
       '@rocicorp/logger': 5.4.0
       '@rocicorp/resolver': 1.0.2

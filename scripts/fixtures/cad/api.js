@@ -9,6 +9,7 @@ const blank = {
 };
 window.designSaved = blank;
 export const api = {
+  useUtils: () => ({ models: { design: { setData: (_key, data) => { window.designSaved = data; } }, designStatus: { setData() {} } } }),
   models: {
     createCad: {
       useMutation: (options) => ({
@@ -44,6 +45,7 @@ export const api = {
         };
       },
     },
+    designStatus: { useQuery: () => ({ data: { revision: window.designSaved.revision }, dataUpdatedAt: 0 }) },
     saveDesign: {
       useMutation: () => ({
         isPending: false,

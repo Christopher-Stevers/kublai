@@ -1,7 +1,15 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
-import { BoxIcon, DoorOpenIcon, FilesIcon, FolderOpenIcon, MessageCircleIcon, PackageIcon, WrenchIcon } from "lucide-react";
+import {
+  BoxIcon,
+  DoorOpenIcon,
+  FilesIcon,
+  FolderOpenIcon,
+  MessageCircleIcon,
+  PackageIcon,
+  WrenchIcon,
+} from "lucide-react";
 import { type JobWorkspaceOptionId } from "~/lib/job-workspace-last-option";
 import { useDrawingsAccess } from "~/components/permissions/DrawingsAccess";
 
@@ -31,7 +39,10 @@ export function JobWorkspaceOptions({
         role="button"
         tabIndex={0}
         onKeyDown={(event) => {
-          if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onSelect("material-lists"); }
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            onSelect("material-lists");
+          }
         }}
         className="cursor-pointer transition-shadow hover:shadow-md"
         onClick={() => onSelect("material-lists")}
@@ -42,7 +53,7 @@ export function JobWorkspaceOptions({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-2 text-sm text-muted-foreground">
+          <div className="text-muted-foreground space-y-2 text-sm">
             <div className="flex items-center gap-2">
               <PackageIcon className="h-4 w-4" />
               <span>
@@ -57,7 +68,10 @@ export function JobWorkspaceOptions({
         role="button"
         tabIndex={0}
         onKeyDown={(event) => {
-          if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onSelect("rooms"); }
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            onSelect("rooms");
+          }
         }}
         className="cursor-pointer transition-shadow hover:shadow-md"
         onClick={() => onSelect("rooms")}
@@ -68,41 +82,77 @@ export function JobWorkspaceOptions({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-2 text-sm text-muted-foreground">
+          <div className="text-muted-foreground space-y-2 text-sm">
             <div className="flex items-center gap-2">
               <DoorOpenIcon className="h-4 w-4" />
               <span>
                 {roomCount === undefined
-                  ? roomCountLoading ? "Loading rooms…" : "Room count unavailable"
+                  ? roomCountLoading
+                    ? "Loading rooms…"
+                    : "Room count unavailable"
                   : `${roomCount} ${roomCount === 1 ? "room" : "rooms"}`}
               </span>
             </div>
           </div>
         </CardContent>
       </Card>
-      {canAccessDrawings && <Card
-        data-tutorial="drawings"
-        role="button"
-        tabIndex={0}
-        onKeyDown={(event) => {
-          if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onSelect("drawings"); }
-        }}
-        className="cursor-pointer transition-shadow hover:shadow-md"
-        onClick={() => onSelect("drawings")}
-      >
-        <CardHeader>
-          <CardTitle className="line-clamp-2 min-w-0 leading-tight break-words">
-            Drawings
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <FolderOpenIcon className="h-4 w-4" />
-            <span>Drawing sets to view on site</span>
-          </div>
-        </CardContent>
-      </Card>}
-      {canAccessDrawings && <Card role="button" tabIndex={0} aria-label="Models" className="cursor-pointer transition-shadow hover:shadow-md" onClick={()=>onSelect("models")} onKeyDown={event=>{if(event.key==="Enter"||event.key===" "){event.preventDefault();onSelect("models");}}}><CardHeader><CardTitle>Models</CardTitle></CardHeader><CardContent><div className="flex items-center gap-2 text-sm text-muted-foreground"><BoxIcon className="h-4 w-4"/><span>Revit &amp; IFC · 3D construction coordination</span></div></CardContent></Card>}
+      {canAccessDrawings && (
+        <Card
+          data-tutorial="drawings"
+          role="button"
+          tabIndex={0}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              onSelect("drawings");
+            }
+          }}
+          className="cursor-pointer transition-shadow hover:shadow-md"
+          onClick={() => onSelect("drawings")}
+        >
+          <CardHeader>
+            <CardTitle className="line-clamp-2 min-w-0 leading-tight break-words">
+              Drawings
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-muted-foreground flex items-center gap-2 text-sm">
+              <FolderOpenIcon className="h-4 w-4" />
+              <span>Drawing sets to view on site</span>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+      {canAccessDrawings && (
+        <Card
+          role="button"
+          tabIndex={0}
+          aria-label="Models, experimental"
+          className="cursor-pointer transition-shadow hover:shadow-md"
+          onClick={() => onSelect("models")}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              onSelect("models");
+            }
+          }}
+        >
+          <CardHeader>
+            <CardTitle className="flex flex-wrap items-center gap-2">
+              <span>Models</span>
+              <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-400">
+                Experimental
+              </span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-muted-foreground flex items-center gap-2 text-sm">
+              <BoxIcon className="h-4 w-4" />
+              <span>Revit &amp; IFC · 3D construction coordination</span>
+            </div>
+          </CardContent>
+        </Card>
+      )}
       <Card
         data-tutorial="documents"
         role="button"
@@ -131,21 +181,32 @@ export function JobWorkspaceOptions({
         role="button"
         data-tutorial="chat"
         tabIndex={0}
-        aria-label={chatUnreadCount > 0 ? `Chat, ${chatUnreadCount} unread messages` : "Chat"}
-        className="cursor-pointer transition-shadow hover:shadow-md focus-visible:ring-2 focus-visible:ring-ring"
+        aria-label={
+          chatUnreadCount > 0
+            ? `Chat, ${chatUnreadCount} unread messages`
+            : "Chat"
+        }
+        className="focus-visible:ring-ring cursor-pointer transition-shadow hover:shadow-md focus-visible:ring-2"
         onClick={() => onSelect("chat")}
         onKeyDown={(event) => {
-          if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onSelect("chat"); }
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            onSelect("chat");
+          }
         }}
       >
         <CardHeader>
           <CardTitle className="flex items-center justify-between gap-2">
             Chat
-            {chatUnreadCount > 0 && <span className="rounded-full bg-primary px-2 py-0.5 text-xs text-primary-foreground">{chatUnreadCount > 99 ? "99+" : chatUnreadCount}</span>}
+            {chatUnreadCount > 0 && (
+              <span className="bg-primary text-primary-foreground rounded-full px-2 py-0.5 text-xs">
+                {chatUnreadCount > 99 ? "99+" : chatUnreadCount}
+              </span>
+            )}
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <div className="text-muted-foreground flex items-center gap-2 text-sm">
             <MessageCircleIcon className="h-4 w-4" />
             <span>Messages, photos &amp; files for this job</span>
           </div>
@@ -162,7 +223,7 @@ export function JobWorkspaceOptions({
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2 text-sm text-muted-foreground">
+            <div className="text-muted-foreground space-y-2 text-sm">
               <div className="flex items-center gap-2">
                 <WrenchIcon className="h-4 w-4" />
                 <span>Checked out, requests &amp; returns</span>

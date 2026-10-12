@@ -8,6 +8,7 @@ import {
   type PdfOperationBounds,
 } from "~/lib/drawing-pdf-operations";
 import { loadPdfDocument } from "~/lib/pdf-client";
+import { recordDrawingPerformance } from "~/lib/drawing-performance";
 import {
   patchCoversView,
   patchScreenCoverage,
@@ -51,6 +52,8 @@ export function DrawingPdfLayer(props: Props) {
     let nextTimer: ReturnType<typeof setTimeout> | null = null;
     let retryAfter = 0;
     let failures = 0;
+    let viewRequestedAt = performance.now();
+    let requestedView = "";
     const source = { ...props.pdf };
     for (const canvas of buffers)
       if (canvas) canvas.style.visibility = "hidden";
@@ -100,6 +103,9 @@ export function DrawingPdfLayer(props: Props) {
       const canvas = buffers[index];
       if (!canvas) return;
       rendering = true;
+      const loadingAt = performance.now();
+      let renderingAt = loadingAt;
+      let pixels = 0;
       try {
         const document = await loadPdfDocument(source.url);
         const page = await document.getPage(source.page);
@@ -122,6 +128,8 @@ export function DrawingPdfLayer(props: Props) {
         canvas.style.visibility = "hidden";
         canvas.width = patch.pixelWidth;
         canvas.height = patch.pixelHeight;
+        pixels = canvas.width * canvas.height;
+        renderingAt = performance.now();
         const bounds = completedPageBounds.get(page);
         const recordFullPage = !bounds && isFullDrawingPatch(patch);
         if (recordFullPage) page.recordedBBoxes = null;
@@ -178,9 +186,27 @@ export function DrawingPdfLayer(props: Props) {
           }
           current = { index, patch };
         }
+        const sharp =
+          current?.index === index &&
+          patchCoversView(patch, now.fit, now.frameSize, now.view, now.dpr);
+        recordDrawingPerformance({
+          loadMs: renderingAt - loadingAt,
+          renderMs: performance.now() - renderingAt,
+          viewToSharpMs: sharp ? performance.now() - viewRequestedAt : null,
+          pixels,
+          outcome: sharp ? "sharp" : "partial",
+        });
         retryAfter = 0;
         failures = 0;
       } catch {
+        if (!disposed)
+          recordDrawingPerformance({
+            loadMs: renderingAt - loadingAt,
+            renderMs: performance.now() - renderingAt,
+            viewToSharpMs: null,
+            pixels,
+            outcome: "failed",
+          });
         // Preserve the existing sharp patch/tiles through transient failures.
         retryAfter = Date.now() + 3000 * ++failures;
       } finally {
@@ -189,7 +215,15 @@ export function DrawingPdfLayer(props: Props) {
         if (!disposed) schedule(Math.max(0, retryAfter - Date.now()));
       }
     };
-    request.current = () => schedule(Math.max(0, retryAfter - Date.now()));
+    request.current = () => {
+      const p = latest.current;
+      const key = `${p.view.scale}:${p.view.x}:${p.view.y}:${p.frameSize.width}:${p.frameSize.height}:${p.fit.width}:${p.fit.height}:${p.dpr}:${p.moving}`;
+      if (key !== requestedView) {
+        requestedView = key;
+        viewRequestedAt = performance.now();
+      }
+      schedule(Math.max(0, retryAfter - Date.now()));
+    };
     schedule();
     return () => {
       disposed = true;
@@ -212,7 +246,14 @@ export function DrawingPdfLayer(props: Props) {
 
   useEffect(() => {
     request.current();
-  }, [props.view, props.fit, props.frameSize, props.dpr, props.enabled]);
+  }, [
+    props.view,
+    props.fit,
+    props.frameSize,
+    props.dpr,
+    props.enabled,
+    props.moving,
+  ]);
   const bind =
     (index: number): RefCallback<HTMLCanvasElement> =>
     (canvas) => {
