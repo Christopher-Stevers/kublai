@@ -228,7 +228,7 @@ export function EstimateLines({
       </div>
 
       {selected.length > 0 && (
-        <div className="flex flex-wrap items-center gap-2 border-y bg-blue-500/5 px-4 py-2 text-xs">
+        <div className="bg-primary/5 flex flex-wrap items-center gap-2 border-y px-4 py-2 text-xs">
           <span className="mr-auto font-medium">
             {selected.length} selected
           </span>
@@ -374,7 +374,7 @@ export function EstimateLines({
             {visible.map((line) => (
               <tr
                 key={line.id}
-                className={`group relative grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-x-3 gap-y-3 p-4 transition-colors lg:table-row lg:p-0 ${selected.includes(line.id) ? "bg-blue-500/5" : "hover:bg-muted/30"} ${line.reviewStatus === "excluded" ? "opacity-50" : ""}`}
+                className={`group relative grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-x-3 gap-y-3 p-4 transition-colors lg:table-row lg:p-0 ${selected.includes(line.id) ? "bg-primary/5" : "hover:bg-muted/30"} ${line.reviewStatus === "excluded" ? "opacity-50" : ""}`}
               >
                 <td className="absolute top-2 right-2 p-3 lg:static lg:px-3">
                   <input
@@ -403,7 +403,7 @@ export function EstimateLines({
                   />
                   <button
                     onClick={() => setInspectId(line.id)}
-                    className="text-muted-foreground flex min-h-9 w-full min-w-0 items-center gap-1 text-left text-xs break-words hover:text-blue-600 lg:max-w-64 lg:px-1 lg:text-[10px]"
+                    className="text-muted-foreground hover:text-primary flex min-h-9 w-full min-w-0 items-center gap-1 text-left text-xs break-words lg:max-w-64 lg:px-1 lg:text-[10px]"
                   >
                     <InfoIcon className="h-3 w-3 shrink-0" />
                     {line.warnings.length
@@ -745,35 +745,37 @@ export function EstimateLines({
           </div>
         )}
       </div>
-      <div className="text-muted-foreground flex flex-wrap items-center justify-between gap-3 border-t px-4 py-3 text-xs">
-        <span>
-          {filtered.length
-            ? `${page * 50 + 1}–${Math.min((page + 1) * 50, filtered.length)} of ${filtered.length} matching rows`
-            : "0 matching rows"}{" "}
-          · Totals include the entire estimate
-        </span>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={page === 0}
-            onClick={() => setRowPage(page - 1)}
-          >
-            Previous rows
-          </Button>
+      {filtered.length > 0 && (
+        <div className="text-muted-foreground flex flex-wrap items-center justify-between gap-3 border-t px-4 py-3 text-xs">
           <span>
-            Page {page + 1} / {pageCount}
+            {`${page * 50 + 1}–${Math.min((page + 1) * 50, filtered.length)} of ${filtered.length} matching rows`}{" "}
+            · Totals include the entire estimate
           </span>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={page + 1 >= pageCount}
-            onClick={() => setRowPage(page + 1)}
-          >
-            Next rows
-          </Button>
+          {pageCount > 1 && (
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page === 0}
+                onClick={() => setRowPage(page - 1)}
+              >
+                Previous rows
+              </Button>
+              <span>
+                Page {page + 1} / {pageCount}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page + 1 >= pageCount}
+                onClick={() => setRowPage(page + 1)}
+              >
+                Next rows
+              </Button>
+            </div>
+          )}
         </div>
-      </div>
+      )}
       <Dialog
         open={Boolean(inspect)}
         onOpenChange={(open) => {

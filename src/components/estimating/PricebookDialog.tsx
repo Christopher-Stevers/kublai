@@ -796,7 +796,7 @@ export function PricebookDialog({
           </div>
         )}
         {message && (
-          <p role="status" className="text-sm text-blue-700 dark:text-blue-400">
+          <p role="status" className="text-primary text-sm">
             {message}
           </p>
         )}

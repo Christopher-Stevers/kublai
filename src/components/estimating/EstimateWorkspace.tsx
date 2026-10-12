@@ -9,6 +9,7 @@ import {
   CopyIcon,
   DownloadIcon,
   HistoryIcon,
+  MoreVerticalIcon,
   PlusIcon,
   RefreshCwIcon,
   SaveIcon,
@@ -35,6 +36,13 @@ import {
   DialogTitle,
 } from "~/components/ui/dialog";
 import { confirmAction, notify } from "~/components/ui/app-dialogs";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "~/components/ui/dropdown-menu";
+import { cn } from "~/lib/utils";
 import { useEstimatingPermissions } from "./EstimatingAccess";
 import { EstimateLines, isDrawingSourceStale } from "./EstimateLines";
 import {
@@ -516,100 +524,148 @@ export function EstimateWorkspace({ id }: { id: string }) {
   ];
   return (
     <div className="mx-auto w-full max-w-[1920px] min-w-0 px-3 py-5 sm:px-6 lg:px-8">
-      <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
-        <div className="min-w-0 flex-1">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-muted-foreground mb-2 -ml-2"
-            disabled={Boolean(busy)}
-            onClick={async () => {
-              if (
-                !dirty ||
-                (await confirmAction({
-                  title: "Leave unsaved estimate?",
-                  description:
-                    "Save your changes or download a working copy before leaving.",
-                  confirmLabel: "Leave",
-                  destructive: true,
-                }))
-              )
-                router.push("/dashboard/estimating");
-            }}
-          >
-            <ArrowLeftIcon className="mr-1.5 h-4 w-4" />
-            Estimating register
-          </Button>
-          <div className="flex flex-wrap items-center gap-3">
+      <div className="mb-5">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="text-muted-foreground mb-3 -ml-2 h-9"
+          disabled={Boolean(busy)}
+          onClick={async () => {
+            if (
+              !dirty ||
+              (await confirmAction({
+                title: "Leave unsaved estimate?",
+                description:
+                  "Save your changes or download a working copy before leaving.",
+                confirmLabel: "Leave",
+                destructive: true,
+              }))
+            )
+              router.push("/dashboard/estimating");
+          }}
+        >
+          <ArrowLeftIcon className="h-4 w-4" />
+          Estimates
+        </Button>
+        <div className="flex items-start gap-2">
+          <div className="min-w-0 flex-1">
             <Input
               aria-label="Estimate name"
               value={name}
               disabled={disabled}
               onChange={(event) => updateName(event.target.value)}
               maxLength={255}
-              className="hover:border-border focus:bg-background h-auto w-full min-w-0 flex-1 border-transparent bg-transparent px-0 py-1 text-xl font-semibold tracking-tight shadow-none sm:text-2xl md:text-2xl"
+              className="hover:border-border focus:bg-background h-auto w-full min-w-0 border-transparent bg-transparent px-0 py-0.5 text-2xl font-bold shadow-none sm:text-3xl md:text-3xl dark:bg-transparent"
             />
-            <StatusBadge status={record.status} />
+            <div className="text-muted-foreground mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1.5 text-xs">
+              <StatusBadge status={record.status} />
+              <span>
+                {record.jobName} · Revision {record.revision} · Updated{" "}
+                {shortDate(record.updatedAt)}
+                {record.createdByName ? ` · ${record.createdByName}` : ""}
+              </span>
+              <span
+                role="status"
+                className={cn(
+                  "inline-flex items-center gap-1",
+                  dirty && !busy && "text-amber-700 dark:text-amber-300",
+                )}
+              >
+                {busy ? (
+                  <RefreshCwIcon className="h-3 w-3 animate-spin" />
+                ) : dirty ? (
+                  <span className="h-1.5 w-1.5 rounded-full bg-current" />
+                ) : (
+                  <CheckCircle2Icon className="h-3 w-3" />
+                )}
+                {busy
+                  ? `${busy}…`
+                  : dirty
+                    ? "Unsaved changes"
+                    : "All changes saved"}
+              </span>
+            </div>
           </div>
-          <p className="text-muted-foreground mt-1 text-xs">
-            {record.jobName} · Revision {record.revision} · Updated{" "}
-            {shortDate(record.updatedAt)}
-            {record.createdByName ? ` · ${record.createdByName}` : ""}
-          </p>
-        </div>
-        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:self-end">
-          <span
-            role="status"
-            className="text-muted-foreground w-full text-xs sm:mr-1 sm:w-auto"
-          >
-            {busy
-              ? `${busy}…`
-              : dirty
-                ? "Unsaved changes"
-                : "All changes saved"}
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-11 flex-1 sm:h-9 sm:flex-none"
-            disabled={Boolean(busy)}
-            onClick={() => {
-              setHistoryBefore(undefined);
-              setEarlierHistory([]);
-              setHistoryOpen(true);
-            }}
-          >
-            <HistoryIcon className="mr-1.5 h-4 w-4" />
-            History
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-11 flex-1 sm:h-9 sm:flex-none"
-            disabled={!permissions.edit || Boolean(busy)}
-            onClick={() =>
-              void run("Duplicating", async (latest) => {
-                const copy = await duplicate.mutateAsync({ id: latest.id });
-                router.push(`/dashboard/estimating/${copy.id}`);
-              })
-            }
-          >
-            <CopyIcon className="mr-1.5 h-4 w-4" />
-            Duplicate
-          </Button>
-          {writable && (
+          <div className="flex shrink-0 items-center gap-2">
             <Button
-              size="sm"
-              className={`${actionClass} h-11 flex-1 sm:h-9 sm:flex-none`}
-              aria-label="Save changes"
-              disabled={!dirty || Boolean(busy)}
-              onClick={() => void run("Saving")}
+              variant="outline"
+              className="hidden sm:inline-flex"
+              disabled={Boolean(busy)}
+              onClick={() => {
+                setHistoryBefore(undefined);
+                setEarlierHistory([]);
+                setHistoryOpen(true);
+              }}
             >
-              <SaveIcon className="mr-1.5 h-4 w-4" />
-              <span className="sm:hidden">Save</span>
-              <span className="hidden sm:inline">Save changes</span>
+              <HistoryIcon className="h-4 w-4" />
+              History
             </Button>
-          )}
+            <Button
+              variant="outline"
+              className="hidden sm:inline-flex"
+              disabled={!permissions.edit || Boolean(busy)}
+              onClick={() =>
+                void run("Duplicating", async (latest) => {
+                  const copy = await duplicate.mutateAsync({ id: latest.id });
+                  router.push(`/dashboard/estimating/${copy.id}`);
+                })
+              }
+            >
+              <CopyIcon className="h-4 w-4" />
+              Duplicate
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-11 w-11 sm:hidden"
+                  aria-label="More estimate actions"
+                  disabled={Boolean(busy)}
+                >
+                  <MoreVerticalIcon className="h-5 w-5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onSelect={() => {
+                    setHistoryBefore(undefined);
+                    setEarlierHistory([]);
+                    setHistoryOpen(true);
+                  }}
+                >
+                  <HistoryIcon className="h-4 w-4" />
+                  History
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  disabled={!permissions.edit}
+                  onSelect={() =>
+                    void run("Duplicating", async (latest) => {
+                      const copy = await duplicate.mutateAsync({
+                        id: latest.id,
+                      });
+                      router.push(`/dashboard/estimating/${copy.id}`);
+                    })
+                  }
+                >
+                  <CopyIcon className="h-4 w-4" />
+                  Duplicate
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            {writable && (
+              <Button
+                className={`${actionClass} h-11 sm:h-9`}
+                aria-label="Save changes"
+                disabled={!dirty || Boolean(busy)}
+                onClick={() => void run("Saving")}
+              >
+                <SaveIcon className="h-4 w-4" />
+                <span className="sm:hidden">Save</span>
+                <span className="hidden sm:inline">Save changes</span>
+              </Button>
+            )}
+          </div>
         </div>
       </div>
       {error && (
@@ -676,13 +732,13 @@ export function EstimateWorkspace({ id }: { id: string }) {
       )}
       <section
         aria-label="Estimate total"
-        className="mb-4 flex min-w-0 items-center justify-between gap-3 border-y py-3 xl:hidden"
+        className="bg-card mb-4 flex min-w-0 items-center justify-between gap-3 rounded-xl border p-4 shadow-sm xl:hidden"
       >
         <div className="min-w-0">
           <p className="text-muted-foreground text-xs">
             Selling price · {currency}
           </p>
-          <p className="text-xl font-semibold break-words tabular-nums">
+          <p className="text-2xl font-bold break-words tabular-nums">
             {displayMoney(total.total)}
           </p>
         </div>
@@ -698,40 +754,39 @@ export function EstimateWorkspace({ id }: { id: string }) {
         </Button>
       </section>
       <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_300px]">
-        <main className="bg-background min-w-0 overflow-hidden rounded-lg border">
+        <main className="bg-card min-w-0 overflow-hidden rounded-xl border shadow-sm">
           <div className="flex min-w-0 flex-wrap items-center justify-between gap-2 border-b px-3 pt-3">
-            <select
+            <div
+              role="tablist"
               aria-label="Estimate section"
-              className={`${selectClass} mb-1 w-full sm:hidden`}
-              value={tab}
-              onChange={(event) => setTab(event.target.value as Tab)}
+              className="-mx-3 flex w-[calc(100%+1.5rem)] gap-1 overflow-x-auto px-3 pb-3 [scrollbar-width:none] sm:mx-0 sm:w-auto sm:px-0"
             >
-              {tabs.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.label}
-                  {item.id === "review" && issueCount > 0
-                    ? ` (${issueCount})`
-                    : ""}
-                </option>
-              ))}
-            </select>
-            <div className="hidden max-w-full flex-wrap gap-1 sm:flex">
               {tabs.map((item) => (
                 <button
                   key={item.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={tab === item.id}
                   onClick={() => setTab(item.id)}
-                  className={`border-b-2 px-3 pb-3 text-xs font-medium whitespace-nowrap transition-colors ${tab === item.id ? "border-blue-600 text-blue-700 dark:text-blue-400" : "text-muted-foreground hover:text-foreground border-transparent"}`}
+                  className={cn(
+                    "focus-visible:ring-ring inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-sm font-medium whitespace-nowrap transition-colors focus-visible:ring-2 focus-visible:outline-none",
+                    tab === item.id
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                  )}
                 >
                   {item.label}
-                  {item.id === "review" && issueCount > 0
-                    ? ` (${issueCount})`
-                    : ""}
+                  {item.id === "review" && issueCount > 0 && (
+                    <span className="min-w-5 rounded-full bg-amber-500 px-1.5 text-center text-[11px] leading-5 font-bold text-white">
+                      {issueCount}
+                    </span>
+                  )}
                 </button>
               ))}
             </div>
-            <div className="mb-3 flex w-full gap-1 sm:w-auto">
+            <div className="mb-3 flex w-full gap-2 sm:w-auto">
               <Button
-                variant="ghost"
+                variant="outline"
                 size="sm"
                 className="h-11 flex-1 sm:h-9 sm:flex-none"
                 disabled={disabled}
@@ -740,11 +795,11 @@ export function EstimateWorkspace({ id }: { id: string }) {
                   setSourcesOpen(true);
                 }}
               >
-                <PlusIcon className="mr-1.5 h-3.5 w-3.5" />
+                <PlusIcon className="h-4 w-4" />
                 Add takeoff
               </Button>
               <Button
-                variant="ghost"
+                variant="outline"
                 size="icon"
                 aria-label="Organization pricebook"
                 className="h-11 w-11 sm:h-9 sm:w-9"
@@ -837,7 +892,7 @@ export function EstimateWorkspace({ id }: { id: string }) {
                   {calculation.issues.map((issue, index) => (
                     <button
                       key={index}
-                      className="flex w-full items-start gap-3 py-3 text-left text-sm hover:text-blue-600"
+                      className="hover:text-primary flex w-full items-start gap-3 py-3 text-left text-sm"
                       onClick={() => {
                         if (issue.lineId) setSelected([issue.lineId]);
                         setTab("costs");
@@ -850,7 +905,7 @@ export function EstimateWorkspace({ id }: { id: string }) {
                   {drawingChanges.map((line) => (
                     <button
                       key={line.id}
-                      className="flex w-full items-start gap-3 py-3 text-left text-sm hover:text-blue-600"
+                      className="hover:text-primary flex w-full items-start gap-3 py-3 text-left text-sm"
                       onClick={() => {
                         setSelected([line.id]);
                         setTab("costs");
@@ -866,7 +921,7 @@ export function EstimateWorkspace({ id }: { id: string }) {
                   {otherUnreviewed.map((line) => (
                     <button
                       key={`review-${line.id}`}
-                      className="flex w-full items-start gap-3 py-3 text-left text-sm hover:text-blue-600"
+                      className="hover:text-primary flex w-full items-start gap-3 py-3 text-left text-sm"
                       onClick={() => {
                         setSelected([line.id]);
                         setTab("costs");
@@ -930,7 +985,7 @@ export function EstimateWorkspace({ id }: { id: string }) {
           id="estimate-summary"
           className={`${showSummary ? "block" : "hidden"} order-first min-w-0 space-y-4 xl:sticky xl:top-20 xl:order-last xl:block xl:self-start`}
         >
-          <section className="bg-background overflow-hidden rounded-lg border">
+          <section className="bg-card overflow-hidden rounded-xl border shadow-sm">
             <div className="bg-muted/30 border-b p-5">
               <p className="text-muted-foreground text-xs font-medium">
                 Selling price · {currency}
@@ -1027,8 +1082,8 @@ export function EstimateWorkspace({ id }: { id: string }) {
           {permissions.edit &&
             permissions.listsEdit &&
             (record.status === "approved" || record.status === "won") && (
-              <section className="border-b pb-4">
-                <h3 className="mb-2 text-xs font-semibold">
+              <section className="bg-card rounded-xl border p-4 shadow-sm">
+                <h3 className="mb-2 text-sm font-semibold">
                   Material planning
                 </h3>
                 <p className="text-muted-foreground mb-3 text-xs">
@@ -1058,7 +1113,7 @@ export function EstimateWorkspace({ id }: { id: string }) {
                 </Button>
                 {materialsId && (
                   <a
-                    className="mt-2 block text-xs text-blue-700 underline dark:text-blue-400"
+                    className="text-primary mt-2 block text-xs underline"
                     href={`/dashboard/material-lists/${materialsId}`}
                   >
                     View material list
@@ -1072,8 +1127,8 @@ export function EstimateWorkspace({ id }: { id: string }) {
               </section>
             )}
           {statusOptions.length > 0 && (
-            <section className="border-b pb-4">
-              <h3 className="mb-2 text-xs font-semibold">Workflow status</h3>
+            <section className="bg-card rounded-xl border p-4 shadow-sm">
+              <h3 className="mb-2 text-sm font-semibold">Workflow status</h3>
               <div className="flex gap-2">
                 <select
                   className={`${selectClass} min-w-0 flex-1`}
@@ -1124,8 +1179,8 @@ export function EstimateWorkspace({ id }: { id: string }) {
               </div>
             </section>
           )}
-          <section>
-            <h3 className="mb-3 text-xs font-semibold">Reports & proposal</h3>
+          <section className="bg-card rounded-xl border p-4 shadow-sm">
+            <h3 className="mb-3 text-sm font-semibold">Reports & proposal</h3>
             {dirty && (
               <p className="text-muted-foreground mb-3 text-xs">
                 Save changes to export the current working estimate.

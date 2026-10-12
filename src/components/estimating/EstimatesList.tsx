@@ -4,7 +4,11 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  ArrowUpRightIcon,
+  CalculatorIcon,
+  CheckCircle2Icon,
+  ChevronRightIcon,
+  CircleDashedIcon,
+  Loader2Icon,
   PlusIcon,
   SearchIcon,
   SlidersHorizontalIcon,
@@ -92,43 +96,38 @@ export function EstimatesList() {
       setError(errorMessage(cause));
     }
   };
+  const filtered = Boolean(search || status || jobId);
+  const openCreate = () => {
+    setCreateOpen(true);
+    setError("");
+  };
   return (
-    <div className="mx-auto w-full max-w-[1600px] min-w-0 px-4 py-6 sm:px-6 lg:px-8">
-      <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <p className="text-muted-foreground mb-1 text-xs font-semibold tracking-[0.14em] uppercase">
-            Commercial workspace
-          </p>
-          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+    <div className="mx-auto w-full max-w-5xl min-w-0 px-4 pt-6 pb-28 sm:px-6 sm:pb-10 lg:px-8">
+      <div className="mb-6 flex items-end justify-between gap-4">
+        <div className="min-w-0">
+          <h1 className="text-foreground text-2xl font-bold sm:text-3xl">
             Estimating
           </h1>
-          <p className="text-muted-foreground mt-2 text-sm">
-            Build job costs, review drawing evidence, and prepare a customer
-            proposal.
+          <p className="text-muted-foreground mt-1 text-sm">
+            Job costs, takeoffs and customer proposals
           </p>
         </div>
-        <div className="flex w-full flex-wrap gap-2 sm:w-auto">
+        <div className="hidden shrink-0 gap-2 sm:flex">
           <Button variant="outline" onClick={() => setPricingOpen(true)}>
-            <SlidersHorizontalIcon className="mr-2 h-4 w-4" />
+            <SlidersHorizontalIcon className="h-4 w-4" />
             Pricebook & assemblies
           </Button>
           {permissions.edit && (
-            <Button
-              className={actionClass}
-              onClick={() => {
-                setCreateOpen(true);
-                setError("");
-              }}
-            >
-              <PlusIcon className="mr-2 h-4 w-4" />
+            <Button className={actionClass} onClick={openCreate}>
+              <PlusIcon className="h-4 w-4" />
               New estimate
             </Button>
           )}
         </div>
       </div>
-      <div className="mb-4 flex flex-wrap gap-3 border-y py-3">
-        <div className="relative min-w-0 flex-1 basis-full sm:basis-56">
-          <SearchIcon className="text-muted-foreground absolute top-2.5 left-3 h-4 w-4" />
+      <div className="mb-5 grid grid-cols-2 gap-2 sm:flex sm:items-center">
+        <div className="relative col-span-2 min-w-0 sm:flex-1">
+          <SearchIcon className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
           <Input
             aria-label="Search estimates"
             placeholder="Search estimate or job…"
@@ -137,7 +136,7 @@ export function EstimatesList() {
               resetPages();
               setSearch(event.target.value);
             }}
-            className="pl-9"
+            className="bg-card h-11 rounded-lg pl-9 sm:h-9"
           />
         </div>
         <select
@@ -147,7 +146,7 @@ export function EstimatesList() {
             resetPages();
             setJobId(event.target.value);
           }}
-          className={`${selectClass} w-full sm:w-56`}
+          className={`${selectClass} bg-card w-full sm:w-52`}
         >
           <option value="">All jobs</option>
           {jobs.data?.map((job) => (
@@ -163,7 +162,7 @@ export function EstimatesList() {
             resetPages();
             setStatus(event.target.value as EstimateStatus | "");
           }}
-          className={`${selectClass} w-full sm:w-40`}
+          className={`${selectClass} bg-card w-full sm:w-40`}
         >
           <option value="">All statuses</option>
           {estimateStatusSchema.options.map((value) => (
@@ -174,124 +173,131 @@ export function EstimatesList() {
         </select>
       </div>
       {estimates.error && (
-        <p role="alert" className="text-destructive my-4 text-sm">
+        <p
+          role="alert"
+          className="border-destructive/30 bg-destructive/5 text-destructive mb-4 rounded-lg border px-4 py-3 text-sm"
+        >
           {estimates.error.message}
           <Button variant="link" onClick={() => void estimates.refetch()}>
             Retry
           </Button>
         </p>
       )}
-      <div className="bg-background min-w-0 rounded-lg border lg:overflow-x-auto">
-        <table className="block w-full text-left text-sm lg:table lg:min-w-[700px]">
-          <thead className="bg-muted/40 text-muted-foreground hidden text-xs lg:table-header-group">
-            <tr>
-              <th className="p-4 font-medium">Estimate / job</th>
-              <th className="p-4 font-medium">Status</th>
-              <th className="p-4 text-right font-medium">Selling price</th>
-              <th className="p-4 font-medium">Review</th>
-              <th className="p-4 font-medium">Updated</th>
-              <th className="w-12 p-4">
-                <span className="sr-only">Open</span>
-              </th>
-            </tr>
-          </thead>
-          <tbody className="block divide-y lg:table-row-group">
-            {items.map((estimate) => {
-              return (
-                <tr
-                  key={estimate.id}
-                  className="hover:bg-muted/30 relative grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-3 p-4 transition-colors lg:table-row lg:p-0"
-                >
-                  <td className="col-span-2 min-w-0 pr-10 break-words lg:p-4">
-                    <Link
-                      href={`/dashboard/estimating/${estimate.id}`}
-                      className="block font-medium hover:text-blue-600"
-                    >
-                      {estimate.name}
-                    </Link>
-                    <span className="text-muted-foreground mt-1 block text-xs">
-                      {estimate.jobName} · Revision {estimate.revision}
-                    </span>
-                  </td>
-                  <td className="min-w-0 lg:p-4">
-                    <StatusBadge status={estimate.status} />
-                  </td>
-                  <td className="min-w-0 text-right font-semibold break-words tabular-nums lg:p-4">
-                    {money(estimate.summary.total, estimate.summary.currency)}
-                  </td>
-                  <td className="text-muted-foreground min-w-0 text-xs lg:p-4">
-                    {estimate.summary.readiness.ready
-                      ? "Ready"
-                      : "Needs review"}
-                  </td>
-                  <td className="text-muted-foreground min-w-0 text-right text-xs lg:p-4 lg:text-left">
-                    {shortDate(estimate.updatedAt)}
-                  </td>
-                  <td className="absolute top-2 right-2 lg:static lg:p-4">
-                    <Link
-                      href={`/dashboard/estimating/${estimate.id}`}
-                      aria-label={`Open ${estimate.name}`}
-                      className="hover:bg-muted inline-flex h-11 w-11 items-center justify-center rounded lg:h-8 lg:w-8"
-                    >
-                      <ArrowUpRightIcon className="h-4 w-4" />
-                    </Link>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-        {estimates.isLoading && (
-          <p
-            role="status"
-            className="text-muted-foreground px-4 py-12 text-center text-sm"
-          >
-            Loading estimates…
+      {estimates.isLoading ? (
+        <p
+          role="status"
+          className="text-muted-foreground flex items-center justify-center gap-2 py-16 text-sm"
+        >
+          <Loader2Icon className="h-4 w-4 animate-spin" />
+          Loading estimates…
+        </p>
+      ) : !estimates.error && items.length === 0 ? (
+        <div className="bg-card flex flex-col items-center rounded-xl border px-6 py-14 text-center">
+          <span className="bg-primary/10 text-primary mb-4 flex h-14 w-14 items-center justify-center rounded-full">
+            <CalculatorIcon className="h-7 w-7" />
+          </span>
+          <h2 className="text-lg font-semibold">
+            {filtered ? "No matching estimates" : "No estimates yet"}
+          </h2>
+          <p className="text-muted-foreground mt-1 max-w-sm text-sm">
+            {filtered
+              ? "Adjust the search or filters to find an estimate."
+              : "Start with a job, add quantities and rates, then review the scope before approval."}
           </p>
-        )}
-        {!estimates.isLoading && !estimates.error && items.length === 0 && (
-          <div className="px-6 py-16 text-center">
-            <h2 className="text-lg font-semibold">
-              {search || status || jobId
-                ? "No matching estimates"
-                : "Your estimating register is ready"}
-            </h2>
-            <p className="text-muted-foreground mx-auto mt-2 max-w-md text-sm">
-              {search || status || jobId
-                ? "Adjust the search or filters to find an estimate."
-                : "Start with a job, add quantities and rates, then review the scope before approval."}
-            </p>
-            {permissions.edit && !search && !status && !jobId && (
-              <Button
-                onClick={() => setCreateOpen(true)}
-                className={`mt-5 ${actionClass}`}
-              >
-                Create an estimate
-              </Button>
-            )}
-          </div>
-        )}
-      </div>
-      {items.length > 0 && (
-        <div className="text-muted-foreground mt-3 flex items-center justify-between gap-3 text-xs">
-          <span>{items.length} estimates loaded</span>
-          {estimates.data?.nextCursor && (
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={estimates.isFetching}
-              onClick={() => {
-                if (estimates.data?.nextCursor) {
-                  setEarlierItems(items);
-                  setCursor(estimates.data.nextCursor);
-                }
-              }}
-            >
-              {estimates.isFetching ? "Loading…" : "Load more estimates"}
+          {permissions.edit && !filtered && (
+            <Button onClick={openCreate} className={`mt-5 ${actionClass}`}>
+              <PlusIcon className="h-4 w-4" />
+              Create an estimate
             </Button>
           )}
         </div>
+      ) : (
+        <ul className="space-y-3">
+          {items.map((estimate) => (
+            <li key={estimate.id}>
+              <Link
+                href={`/dashboard/estimating/${estimate.id}`}
+                aria-label={`Open ${estimate.name}`}
+                className="bg-card hover:border-primary/40 focus-visible:ring-ring flex min-w-0 items-center gap-3 rounded-xl border p-4 shadow-sm transition-[border-color,box-shadow] hover:shadow-md focus-visible:ring-2 focus-visible:outline-none sm:gap-4"
+              >
+                <span className="bg-primary/10 text-primary hidden h-11 w-11 shrink-0 items-center justify-center rounded-xl sm:flex">
+                  <CalculatorIcon className="h-5 w-5" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate font-semibold">
+                    {estimate.name}
+                  </span>
+                  <span className="text-muted-foreground mt-0.5 block truncate text-xs">
+                    {estimate.jobName} · Revision {estimate.revision} ·{" "}
+                    {shortDate(estimate.updatedAt)}
+                  </span>
+                  <span className="mt-2 flex flex-wrap items-center gap-2">
+                    <StatusBadge status={estimate.status} />
+                    <span
+                      className={`inline-flex items-center gap-1 text-xs ${estimate.summary.readiness.ready ? "text-emerald-700 dark:text-emerald-400" : "text-muted-foreground"}`}
+                    >
+                      {estimate.summary.readiness.ready ? (
+                        <CheckCircle2Icon className="h-3.5 w-3.5" />
+                      ) : (
+                        <CircleDashedIcon className="h-3.5 w-3.5" />
+                      )}
+                      {estimate.summary.readiness.ready
+                        ? "Ready"
+                        : "Needs review"}
+                    </span>
+                  </span>
+                </span>
+                <span className="shrink-0 text-right">
+                  <span className="block text-base font-semibold tabular-nums sm:text-lg">
+                    {money(estimate.summary.total, estimate.summary.currency)}
+                  </span>
+                  <span className="text-muted-foreground text-xs">
+                    Selling price
+                  </span>
+                </span>
+                <ChevronRightIcon className="text-muted-foreground hidden h-5 w-5 shrink-0 sm:block" />
+              </Link>
+            </li>
+          ))}
+        </ul>
       )}
+      {estimates.data?.nextCursor && (
+        <div className="mt-4 text-center">
+          <Button
+            variant="outline"
+            disabled={estimates.isFetching}
+            onClick={() => {
+              if (estimates.data?.nextCursor) {
+                setEarlierItems(items);
+                setCursor(estimates.data.nextCursor);
+              }
+            }}
+          >
+            {estimates.isFetching ? "Loading…" : "Load more estimates"}
+          </Button>
+        </div>
+      )}
+      <div className="bg-background fixed inset-x-0 bottom-0 z-40 flex gap-2 border-t px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:hidden">
+        <Button
+          variant="outline"
+          size="lg"
+          className="h-12 flex-1"
+          onClick={() => setPricingOpen(true)}
+        >
+          <SlidersHorizontalIcon className="h-5 w-5" />
+          Pricebook
+        </Button>
+        {permissions.edit && (
+          <Button
+            size="lg"
+            className={`h-12 flex-1 ${actionClass}`}
+            onClick={openCreate}
+          >
+            <PlusIcon className="h-5 w-5" />
+            New estimate
+          </Button>
+        )}
+      </div>
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent>
           <DialogHeader>

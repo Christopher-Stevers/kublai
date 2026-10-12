@@ -281,7 +281,7 @@ export function TakeoffSources({
                 <progress
                   value={progress.completed}
                   max={progress.total || 1}
-                  className="h-2 w-full accent-blue-600"
+                  className="accent-primary h-2 w-full"
                 />
                 <p className="text-muted-foreground text-xs">
                   {progress.completed} / {progress.total} sheets imported.

@@ -5,8 +5,9 @@ import type { EstimateStatus } from "~/lib/estimating/types";
 import { cn } from "~/lib/utils";
 
 export const selectClass =
-  "h-11 min-w-0 max-w-full rounded-md border bg-background px-2 text-base sm:h-9 sm:text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:opacity-60";
-export const actionClass = "bg-blue-600 text-white hover:bg-blue-700";
+  "h-11 min-w-0 max-w-full rounded-lg border bg-background px-3 text-base sm:h-9 sm:text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/30 disabled:opacity-60";
+export const actionClass =
+  "bg-primary text-primary-foreground hover:bg-primary/90";
 export const statusLabels: Record<EstimateStatus, string> = {
   draft: "Draft",
   in_review: "In review",
@@ -40,9 +41,13 @@ export function StatusBadge({ status }: { status: EstimateStatus }) {
         "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium",
         status === "approved" || status === "won"
           ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
-          : status === "in_review" || status === "sent"
-            ? "bg-blue-500/10 text-blue-700 dark:text-blue-400"
-            : "bg-muted text-muted-foreground",
+          : status === "in_review"
+            ? "bg-amber-500/15 text-amber-700 dark:text-amber-300"
+            : status === "sent"
+              ? "bg-primary/10 text-primary"
+              : status === "lost"
+                ? "bg-destructive/10 text-destructive"
+                : "bg-muted text-muted-foreground",
       )}
     >
       <span className="h-1.5 w-1.5 rounded-full bg-current" />
@@ -106,7 +111,7 @@ export function NumberInput({
         else if (Number.isFinite(parsed) && parsed >= 0) onChange(parsed);
       }}
       className={cn(
-        "hover:border-border focus:bg-background h-11 w-full min-w-0 rounded border bg-transparent px-2 text-right text-base tabular-nums outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 disabled:opacity-70 sm:text-sm lg:h-8 lg:min-w-16 lg:border-transparent",
+        "hover:border-border focus:bg-background focus:border-ring focus:ring-ring/30 h-11 w-full min-w-0 rounded border bg-transparent px-2 text-right text-base tabular-nums outline-none focus:ring-2 disabled:opacity-70 sm:text-sm lg:h-8 lg:min-w-16 lg:border-transparent",
         props.className,
       )}
     />

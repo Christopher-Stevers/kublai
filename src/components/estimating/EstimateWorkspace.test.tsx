@@ -4,6 +4,7 @@ import {
   fireEvent,
   render,
   screen,
+  within,
   waitFor,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -462,15 +463,19 @@ describe("estimating workspace integrity", () => {
     });
   });
 
-  it("switches every section using the phone selector and toggles totals/actions", () => {
+  it("switches every section using the section tabs and toggles totals/actions", () => {
     render(<EstimateWorkspace id={estimateId} />);
-    fireEvent.change(screen.getByLabelText("Estimate section"), {
-      target: { value: "settings" },
-    });
+    const sections = screen.getByRole("tablist", { name: "Estimate section" });
+    fireEvent.click(
+      within(sections).getByRole("tab", { name: "Pricing settings" }),
+    );
+    expect(
+      within(sections).getByRole("tab", { name: "Pricing settings" }),
+    ).toHaveAttribute("aria-selected", "true");
     expect(screen.getByLabelText("Estimate currency")).toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText("Estimate section"), {
-      target: { value: "costs" },
-    });
+    fireEvent.click(
+      within(sections).getByRole("tab", { name: "Takeoff & costs" }),
+    );
     expect(
       screen.getByLabelText("Quantity for Copper pipe"),
     ).toBeInTheDocument();
@@ -550,10 +555,13 @@ describe("estimating workspace integrity", () => {
     expect(
       screen.getByLabelText("Quantity for Cost row 1"),
     ).toBeInTheDocument();
+    // One page of results needs no paging controls.
     expect(
-      screen.getByRole("button", { name: "Previous rows" }),
-    ).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Next rows" })).toBeDisabled();
+      screen.queryByRole("button", { name: "Previous rows" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Next rows" }),
+    ).not.toBeInTheDocument();
   });
 
   it("retains the first completed drawing batch if a later batch fails", async () => {
