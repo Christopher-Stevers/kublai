@@ -1,4 +1,4 @@
-import { readDesign, saveDesign } from "~/server/models/design";
+import { readDesign, saveDesign, createCadModel } from "~/server/models/design";
 import { designSchema } from "~/lib/bim/design";
 import {
   apsCredentialsSchema,
@@ -30,6 +30,15 @@ import { viewStateSchema, issueSchema } from "~/lib/bim/types";
 const job = z.object({ jobId: z.string().uuid() });
 const entity = job.extend({ id: z.string().uuid() });
 export const modelsRouter = createTRPCRouter({
+  createCad: hasDashboardAccess
+    .input(entity.extend({ name: z.string().trim().min(1).max(160) }))
+    .mutation(async ({ ctx, input }) =>
+      createCadModel(
+        await modelAccess(ctx.user.id, input.jobId),
+        input.id,
+        input.name,
+      ),
+    ),
   design: hasDashboardAccess
     .input(entity)
     .query(async ({ ctx, input }) =>

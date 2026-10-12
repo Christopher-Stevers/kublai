@@ -30,6 +30,7 @@ import {
   Settings2,
   Pencil,
 } from "lucide-react";
+import { NewCadDialog } from "./NewCadDialog";
 import { ModelDesignEditor } from "./ModelDesignEditor";
 import { TouchNavigation } from "./TouchNavigation";
 import { api } from "~/trpc/react";
@@ -144,6 +145,7 @@ export function ModelWorkspace({
 }) {
   const navigation = useNavigationSettings(w.userId);
   const [navigationOpen, setNavigationOpen] = useState(false);
+  const [newCad, setNewCad] = useState(false);
   const [editingModel, setEditingModel] = useState<string | null>(null);
   const host = useRef<HTMLDivElement>(null),
     [requestedIds, setIds] = useState<string[]>([]),
@@ -416,17 +418,19 @@ export function ModelWorkspace({
             <Box className="size-5" />
           </span>
           <div className="min-w-0">
-            <h1 className="text-base leading-tight font-semibold">Models</h1>
+            <h1 className="text-base leading-tight font-semibold">
+              {isEditing ? "CAD workspace" : "Models"}
+            </h1>
             <p className="text-muted-foreground truncate text-xs">
               {w.job.name}
             </p>
           </div>
         </div>
         <nav className="flex items-center gap-0.5" aria-label="Model panels">
-          {panelButton("models", Layers3, "Models")}
-          {panelButton("elements", Search, "Elements")}
-          {panelButton("views", Bookmark, "Views")}
-          {panelButton("issues", MapPin, "Issues")}
+          {!isEditing && panelButton("models", Layers3, "Models")}
+          {!isEditing && panelButton("elements", Search, "Elements")}
+          {!isEditing && panelButton("views", Bookmark, "Views")}
+          {!isEditing && panelButton("issues", MapPin, "Issues")}
           <button
             aria-label={expanded ? "Exit full screen" : "Full screen"}
             title="Full screen"
@@ -488,6 +492,11 @@ export function ModelWorkspace({
               </p>
               <div className="mt-6 flex flex-wrap justify-center gap-2">
                 {w.canUpload && (
+                  <Button variant="outline" onClick={() => setNewCad(true)}>
+                    New CAD design
+                  </Button>
+                )}
+                {w.canUpload && (
                   <Button onClick={() => setUpload({ revision: null })}>
                     <Plus className="mr-2 size-4" />
                     Add a model
@@ -518,7 +527,12 @@ export function ModelWorkspace({
           )}
           {ids.length > 0 && (
             <>
-              <div className="bg-background/95 absolute top-3 right-3 flex flex-col gap-1 rounded-lg border p-1 shadow-sm">
+              <div
+                className={cn(
+                  "bg-background/95 absolute top-3 right-3 flex flex-col gap-1 rounded-lg border p-1 shadow-sm",
+                  isEditing && "hidden",
+                )}
+              >
                 <button
                   aria-label="Fit model"
                   title="Fit model"
@@ -700,6 +714,15 @@ export function ModelWorkspace({
                       </Button>
                     )}
                   </div>
+                  {w.canUpload && (
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                      onClick={() => setNewCad(true)}
+                    >
+                      New CAD design
+                    </Button>
+                  )}
                   <div className="relative">
                     <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2" />
                     <input
@@ -1496,7 +1519,12 @@ export function ModelWorkspace({
           </aside>
         )}
       </div>
-      <footer className="bg-background text-muted-foreground z-10 flex min-h-8 shrink-0 items-center justify-between gap-3 border-t px-3 text-[10px]">
+      <footer
+        className={cn(
+          "bg-background text-muted-foreground z-10 flex min-h-8 shrink-0 items-center justify-between gap-3 border-t px-3 text-[10px]",
+          isEditing && "hidden",
+        )}
+      >
         <span className="truncate">
           {ids.length
             ? `${ids.length} model${ids.length === 1 ? "" : "s"} · ${elements.length.toLocaleString()} elements · ${units}`
@@ -1511,7 +1539,7 @@ export function ModelWorkspace({
           }) && " · Check revision status"}
         </span>
         <div className="flex shrink-0 items-center gap-1">
-          {w.canUpload && ids.length > 0 && !nativePreview && (
+          {w.canUpload && ids.length > 0 && !nativePreview && !isEditing && (
             <button
               className="flex min-h-8 shrink-0 items-center gap-1 px-2 text-xs"
               aria-label="Edit model"
@@ -1543,6 +1571,20 @@ export function ModelWorkspace({
           </button>
         </div>
       </footer>
+      {newCad && (
+        <NewCadDialog
+          jobId={w.job.id}
+          onClose={() => setNewCad(false)}
+          onCreated={(id) => {
+            setNewCad(false);
+            setPanel(null);
+            setTool("inspect");
+            setIds([id]);
+            setEditingModel(id);
+            refresh();
+          }}
+        />
+      )}
       {navigationOpen && (
         <NavigationSettingsDialog
           settings={navigation.settings}

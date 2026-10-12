@@ -17,9 +17,10 @@ describe("editable model geometry", () => {
       const box = new THREE.Box3().setFromObject(object),
         size = box.getSize(new THREE.Vector3());
       expect(box.isEmpty()).toBe(false);
-      expect(size.toArray().every((n) => Number.isFinite(n) && n > 0)).toBe(
+      expect(size.toArray().every((n) => Number.isFinite(n) && n >= 0)).toBe(
         true,
       );
+      expect(size.length()).toBeGreaterThan(0);
       expect(object.userData.designId).toBe(element.id);
       disposeDesignObject(object);
     },

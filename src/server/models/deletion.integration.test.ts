@@ -45,7 +45,7 @@ vi.mock("./storage", () => ({
 vi.mock("~/server/utils/get-request-identity", () => ({
   getRequestIdentity: vi.fn(async () => ({ userId: "owner" })),
 }));
-import { readDesign, saveDesign } from "./design";
+import { readDesign, saveDesign, createCadModel } from "./design";
 import { emptyDesign, newDesignElement } from "~/lib/bim/design";
 import { db } from "~/server/db";
 import { modelsRouter } from "~/server/api/routers/models";
@@ -147,6 +147,30 @@ describe.skipIf(!process.env.MODELS_TEST_SOCKET)(
       await conn`INSERT INTO kublai_organization (id,name) VALUES (${org},'Test'),(${foreignOrg},'Foreign')`;
       await conn`INSERT INTO kublai_job (id,"organizationId",name) VALUES (${jobId},${org},'A'),(${otherJob},${org},'B'),(${foreignJob},${foreignOrg},'Foreign')`;
       await conn`INSERT INTO kublai_user (id,name,email,role,"organizationId","organizationAccessStatus","permissionConfig") VALUES (${user.id},${user.name},${user.email},${user.role},${org},'approved',${JSON.stringify(permissions(true))})`;
+    });
+    it("creates blank CAD projects idempotently and enforces model upload access", async () => {
+      const a = await modelAccess(user.id, jobId),
+        id = randomUUID();
+      vi.mocked(storeConvertedModel).mockResolvedValue("d".repeat(64));
+      await expect(
+        createCadModel({ ...a, canUpload: false }, id, "Plant room"),
+      ).rejects.toMatchObject({ code: "FORBIDDEN" });
+      expect(storeConvertedModel).not.toHaveBeenCalled();
+      const created = await caller().createCad({
+        jobId,
+        id,
+        name: "Plant room",
+      });
+      expect(created.status).toBe("ready");
+      expect((await createCadModel(a, id, "Retry")).id).toBe(id);
+      expect((await modelWorkspace(a)).models).toHaveLength(1);
+      const design = {
+        ...emptyDesign(),
+        elements: [newDesignElement("rectangle", [0, 0, 0])],
+        layers: [{ name: "Design", visible: true, locked: false }],
+      };
+      await saveDesign(a, id, 0, design);
+      expect((await readDesign(a, id)).design).toEqual(design);
     });
     it("saves model edits atomically with revision conflicts, scoping and permissions", async () => {
       const a = await modelAccess(user.id, jobId),

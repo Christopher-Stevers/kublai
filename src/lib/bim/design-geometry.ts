@@ -21,6 +21,34 @@ export function designObject(element: DesignElement): THREE.Group {
   const [w, h, d] = element.size,
     r = element.diameter / 2;
   switch (element.kind) {
+    case "line":
+    case "polyline":
+    case "rectangle":
+    case "circle": {
+      material.dispose();
+      group.add(
+        new THREE.Line(
+          new THREE.BufferGeometry().setFromPoints(
+            (element.points ?? []).map((p) => new THREE.Vector3(...p)),
+          ),
+          new THREE.LineBasicMaterial({ color: element.color }),
+        ),
+      );
+      break;
+    }
+    case "profile": {
+      const shape = new THREE.Shape(
+        (element.points ?? []).map((p) => new THREE.Vector2(p[0], p[1])),
+      );
+      add(
+        new THREE.ExtrudeGeometry(shape, {
+          depth: h,
+          bevelEnabled: false,
+          steps: 1,
+        }),
+      );
+      break;
+    }
     case "pipe":
       add(new THREE.CylinderGeometry(r, r, h, 24));
       break;
@@ -85,7 +113,11 @@ export function designObject(element: DesignElement): THREE.Group {
 export function disposeDesignObject(object: THREE.Object3D) {
   const materials = new Set<THREE.Material>();
   object.traverse((o) => {
-    if (o instanceof THREE.Mesh) {
+    if (
+      o instanceof THREE.Mesh ||
+      o instanceof THREE.Line ||
+      o instanceof THREE.Sprite
+    ) {
       const mesh = o as THREE.Mesh<
         THREE.BufferGeometry,
         THREE.Material | THREE.Material[]

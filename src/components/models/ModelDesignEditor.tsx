@@ -2,22 +2,41 @@
 import { Vector3, Quaternion, Euler, MathUtils } from "three";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
-  Pencil,
-  Plus,
   Save,
   Undo2,
   Redo2,
-  Trash2,
-  Copy,
   X,
   Focus,
-  ChevronDown,
-  ChevronUp,
+  SlidersHorizontal,
+  LayoutGrid,
+  MousePointer2,
+  Move,
+  RotateCw,
 } from "lucide-react";
 import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
 import { confirmAction } from "~/components/ui/app-dialogs";
+import { cn } from "~/lib/utils";
 import { DesignLayer } from "~/lib/bim/design-layer";
+import { CadViews } from "~/lib/bim/cad-views";
+import {
+  cadViews,
+  createSketch,
+  designLayers,
+  duplicateElements,
+  isEditable,
+  planeAxes,
+  sketchKinds,
+  transformElements,
+  type CadPlane,
+  type CadView,
+} from "~/lib/bim/cad-geometry";
+import {
+  designDxf,
+  downloadCadFile,
+  parseCad,
+  serializeCad,
+} from "~/lib/bim/cad-export";
 import {
   designKinds,
   designSchema,
@@ -29,8 +48,86 @@ import {
   type DesignOverride,
 } from "~/lib/bim/design";
 import type { ModelScene } from "~/lib/bim/scene";
-import type { BimWorkspace } from "~/lib/bim/types";
-
+import type { BimWorkspace, Point3 } from "~/lib/bim/types";
+const inputClass =
+  "bg-background w-full min-w-0 rounded border px-2 py-2 text-sm";
+const units = { m: 1, mm: 1000, ft: 1 / 0.3048, in: 1 / 0.0254 };
+type Unit = keyof typeof units;
+function NumberField({
+  label,
+  value,
+  onChange,
+  step = 0.01,
+  min,
+  max,
+}: {
+  label: string;
+  value: number;
+  onChange: (n: number) => void;
+  step?: number;
+  min?: number;
+  max?: number;
+}) {
+  return (
+    <label className="text-muted-foreground block space-y-1 text-xs">
+      {label}
+      <input
+        key={value}
+        aria-label={label}
+        type="number"
+        defaultValue={Number(value.toFixed(5))}
+        step={step}
+        min={min}
+        max={max}
+        className={inputClass}
+        onBlur={(e) => {
+          const n = e.target.valueAsNumber;
+          if (
+            Number.isFinite(n) &&
+            (min === undefined || n >= min) &&
+            (max === undefined || n <= max)
+          )
+            onChange(n);
+          else e.target.value = String(value);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") e.currentTarget.blur();
+        }}
+      />
+    </label>
+  );
+}
+function VectorFields({
+  label,
+  value,
+  change,
+  factor = 1,
+}: {
+  label: string;
+  value: Point3;
+  change: (p: Point3) => void;
+  factor?: number;
+}) {
+  return (
+    <fieldset className="space-y-1">
+      <legend className="text-xs font-medium">{label}</legend>
+      <div className="grid grid-cols-3 gap-2">
+        {value.map((v, i) => (
+          <NumberField
+            key={i}
+            label={`${label} ${["X", "Y", "Z"][i]}`}
+            value={v * factor}
+            onChange={(n) => {
+              const next = [...value] as Point3;
+              next[i] = n / factor;
+              change(next);
+            }}
+          />
+        ))}
+      </div>
+    </fieldset>
+  );
+}
 export function ModelDesignEditor({
   workspace: w,
   modelId,
@@ -47,114 +144,354 @@ export function ModelDesignEditor({
   onClose: () => void;
 }) {
   const query = api.models.design.useQuery(
-    { jobId: w.job.id, id: modelId },
-    { enabled: ready, refetchInterval: 15000 },
-  );
-  const save = api.models.saveDesign.useMutation();
+      { jobId: w.job.id, id: modelId },
+      { enabled: ready, refetchInterval: 15000 },
+    ),
+    save = api.models.saveDesign.useMutation();
   const [design, setDesign] = useState<ModelDesign>(emptyDesign),
     [revision, setRevision] = useState(0),
     [loaded, setLoaded] = useState(false),
     [dirty, setDirty] = useState(false),
-    [selected, setSelected] = useState<string | null>(null),
+    [error, setError] = useState("");
+  const [selection, setSelection] = useState<string[]>([]),
     [placing, setPlacing] = useState<DesignKind | null>(null),
-    [collapsed, setCollapsed] = useState(false),
-    [error, setError] = useState(""),
-    [mode, setMode] = useState<"translate" | "rotate">("translate"),
-    [snap, setSnap] = useState(0.05),
-    [elevation, setElevation] = useState(0),
     [history, setHistory] = useState<ModelDesign[]>([]),
     [future, setFuture] = useState<ModelDesign[]>([]);
+  const [view, setView] = useState<CadView>("3d"),
+    [quad, setQuad] = useState(
+      () => typeof window !== "undefined" && window.innerWidth >= 1024,
+    ),
+    [inspector, setInspector] = useState(
+      () => typeof window !== "undefined" && window.innerWidth >= 1024,
+    ),
+    [tab, setTab] = useState<"properties" | "objects" | "layers" | "file">(
+      "properties",
+    );
+  const [mode, setMode] = useState<"translate" | "rotate">("translate"),
+    [snap, setSnap] = useState(0.05),
+    [angle, setAngle] = useState<0 | 45 | 90>(0),
+    [objectSnap, setObjectSnap] = useState(true),
+    [surface, setSurface] = useState(false),
+    [chain, setChain] = useState(false),
+    [exactLength, setExactLength] = useState(0),
+    [unit, setUnit] = useState<Unit>("m");
+  const [plane, setPlane] = useState<CadPlane>("top"),
+    [offsets, setOffsets] = useState<Point3>([0, 0, 0]),
+    [activeLayer, setActiveLayer] = useState("Design"),
+    [newLayer, setNewLayer] = useState(""),
+    [status, setStatus] = useState("Select an object or choose a drawing tool"),
+    [search, setSearch] = useState("");
+  const [point, setPoint] = useState<Point3>([0, 0, 0]),
+    [arrayOffset, setArrayOffset] = useState<Point3>([1, 0, 0]),
+    [copies, setCopies] = useState(1),
+    [multi, setMulti] = useState(false);
+  const [showGrid, setShowGrid] = useState(true);
   const layer = useRef<DesignLayer | null>(null),
-    current = useRef({ design, revision, dirty, loaded });
+    views = useRef<CadViews | null>(null),
+    viewHost = useRef<HTMLDivElement>(null),
+    current = useRef({
+      design,
+      revision,
+      dirty,
+      loaded,
+      selection,
+      activeLayer,
+      chain,
+    });
   useLayoutEffect(() => {
-    current.current = { design, revision, dirty, loaded };
+    current.current = {
+      design,
+      revision,
+      dirty,
+      loaded,
+      selection,
+      activeLayer,
+      chain,
+    };
   });
-  const key = `foremanhq:model-design:${w.userId}:${w.job.id}:${modelId}`;
+  const key = `foremanhq:model-design:${w.userId}:${w.job.id}:${modelId}`,
+    factor = units[unit],
+    layers = designLayers(design);
+  const selected = selection.length === 1 ? selection[0] : null,
+    element = design.elements.find((e) => e.id === selected),
+    sourceId = selected?.startsWith("source:")
+      ? Number(selected.slice(7))
+      : null;
+  const source = sourceId
+    ? scene.elements.get(`${modelId}:${sourceId}`)?.info
+    : null;
+  const override: DesignOverride | null = sourceId
+    ? (design.overrides.find((o) => o.expressId === sourceId) ?? {
+        expressId: sourceId,
+        name: source?.name ?? "Element",
+        translation: [0, 0, 0],
+        rotation: [0, 0, 0],
+        deleted: false,
+      })
+    : null;
+  const editable = element ? isEditable(design, element) : true;
   const commit = (next: ModelDesign) => {
     if (!w.canUpload) return;
     const parsed = designSchema.safeParse(next);
     if (!parsed.success) {
-      setError(parsed.error.issues[0]?.message ?? "Check the values.");
+      setError(parsed.error.issues[0]?.message ?? "Check the drawing values.");
       return;
     }
-    setHistory((h) => [...h.slice(-49), design]);
+    setHistory((h) => [...h.slice(-49), current.current.design]);
     setFuture([]);
     setDesign(parsed.data);
     setDirty(true);
     setError("");
   };
-  const callbacks = useRef({ commit });
+  const select = (id: string | null, extend = false) =>
+    setSelection((old) =>
+      !id
+        ? []
+        : extend || multi
+          ? old.includes(id)
+            ? old.filter((k) => k !== id)
+            : [...old, id]
+          : [id],
+    );
+  const update = (patch: Partial<DesignElement>) =>
+    element &&
+    editable &&
+    commit({
+      ...design,
+      elements: design.elements.map((e) =>
+        e.id === element.id ? { ...e, ...patch } : e,
+      ),
+    });
+  const updateSource = (patch: Partial<DesignOverride>) =>
+    override &&
+    commit({
+      ...design,
+      overrides: [
+        ...design.overrides.filter((o) => o.expressId !== sourceId),
+        { ...override, ...patch },
+      ],
+    });
+  const undo = () => {
+    const last = history.at(-1);
+    if (!last || save.isPending) return;
+    setHistory((h) => h.slice(0, -1));
+    setFuture((f) => [design, ...f]);
+    setDesign(last);
+    setDirty(true);
+    layer.current?.cancelDraft();
+  };
+  const redo = () => {
+    if (!future.length || save.isPending) return;
+    setHistory((h) => [...h, design]);
+    setDesign(future[0]!);
+    setFuture((f) => f.slice(1));
+    setDirty(true);
+  };
+  const saveNow = () => {
+    if (!loaded || !dirty || save.isPending) return;
+    const snapshot = design;
+    save.mutate(
+      {
+        jobId: w.job.id,
+        id: modelId,
+        expectedRevision: revision,
+        design: snapshot,
+      },
+      {
+        onSuccess: (result) => {
+          setRevision(result.revision);
+          if (current.current.design === snapshot) setDirty(false);
+          setError("");
+          void query.refetch();
+        },
+      },
+    );
+  };
+  const duplicate = (count = 1) => {
+    const objects = design.elements.filter(
+      (e) => selection.includes(e.id) && isEditable(design, e),
+    );
+    if (!objects.length) return;
+    const additions = duplicateElements(objects, arrayOffset, count);
+    commit({ ...design, elements: [...design.elements, ...additions] });
+    setSelection(additions.map((e) => e.id));
+  };
+  const remove = () => {
+    if (!w.canDelete) return;
+    const next = {
+      ...design,
+      elements: design.elements.filter(
+        (e) => !selection.includes(e.id) || !isEditable(design, e),
+      ),
+      overrides: [...design.overrides],
+    };
+    for (const id of selection.filter((id) => id.startsWith("source:"))) {
+      const expressId = Number(id.slice(7)),
+        old = next.overrides.find((o) => o.expressId === expressId);
+      next.overrides = next.overrides.filter((o) => o.expressId !== expressId);
+      next.overrides.push(
+        old
+          ? { ...old, deleted: true }
+          : {
+              expressId,
+              name: "",
+              translation: [0, 0, 0],
+              rotation: [0, 0, 0],
+              deleted: true,
+            },
+      );
+    }
+    commit(next);
+    setSelection([]);
+  };
+  const add = (object: DesignElement) => {
+    const doc = current.current.design,
+      l = designLayers(doc).find((l) => l.name === current.current.activeLayer);
+    if (!l || l.locked || !l.visible) {
+      setError("Choose an unlocked, visible layer before drawing.");
+      return;
+    }
+    object.layer = l.name;
+    commit({ ...doc, elements: [...doc.elements, object] });
+    setSelection([object.id]);
+    if (!current.current.chain) setPlacing(null);
+  };
+  const keyboard = (event: KeyboardEvent) => {
+    if (
+      (event.target as HTMLElement).closest(
+        "input,textarea,select,[contenteditable='true']",
+      )
+    )
+      return;
+    const modifier = event.ctrlKey || event.metaKey,
+      k = event.key.toLowerCase();
+    if (modifier && k === "s") {
+      event.preventDefault();
+      saveNow();
+    } else if (modifier && k === "z") {
+      event.preventDefault();
+      if (event.shiftKey) redo();
+      else undo();
+    } else if (modifier && k === "y") {
+      event.preventDefault();
+      redo();
+    } else if (modifier && k === "d") {
+      event.preventDefault();
+      duplicate();
+    } else if (k === "escape") {
+      layer.current?.cancelDraft();
+      setPlacing(null);
+      setSelection([]);
+    } else if (k === "enter") {
+      event.preventDefault();
+      layer.current?.finishDraft();
+    } else if (k === "delete" || k === "backspace") {
+      event.preventDefault();
+      remove();
+    } else if (!modifier && !event.altKey) {
+      const tool: Record<string, DesignKind> = {
+        p: "pipe",
+        l: "line",
+        r: "rectangle",
+        c: "circle",
+      };
+      if (tool[k]) {
+        setPlacing(tool[k]);
+        setSelection([]);
+      } else if (k === "v") {
+        setPlacing(null);
+        setMode("translate");
+      } else if (k === "f") views.current?.fit();
+      else if (k === "f8") {
+        event.preventDefault();
+        setAngle((a) => (a === 90 ? 0 : 90));
+      } else if (k === "f3") {
+        event.preventDefault();
+        setObjectSnap((s) => !s);
+      } else if (["1", "2", "3", "4"].includes(k))
+        views.current?.setView(
+          (["3d", "top", "front", "right"] as CadView[])[Number(k) - 1]!,
+        );
+    }
+  };
+  const actions = useRef({ commit, add, select, keyboard });
   useLayoutEffect(() => {
-    callbacks.current = { commit };
+    actions.current = { commit, add, select, keyboard };
   });
   useEffect(() => {
     const next = new DesignLayer(scene, modelId, {
-      select: setSelected,
-      place: (kind, point, end) => {
-        const object = newDesignElement(kind, point);
+      select: (id, extend) => actions.current.select(id, extend),
+      status: setStatus,
+      place: (kind, start, end) => {
+        const object = newDesignElement(kind, start);
         if (end) {
-          const start = new Vector3(...point),
-            finish = new Vector3(...end),
-            direction = finish.clone().sub(start);
-          object.position = start.add(finish).multiplyScalar(0.5).toArray() as [
-            number,
-            number,
-            number,
-          ];
-          object.size[1] = direction.length();
-          const rotation = new Euler().setFromQuaternion(
+          const a = new Vector3(...start),
+            b = new Vector3(...end),
+            direction = b.clone().sub(a);
+          object.position = a.add(b).multiplyScalar(0.5).toArray() as Point3;
+          if (kind === "wall") {
+            object.size[0] = direction.length();
+            object.position[1] += object.size[1] / 2;
+          } else object.size[1] = direction.length();
+          const euler = new Euler().setFromQuaternion(
             new Quaternion().setFromUnitVectors(
-              new Vector3(0, 1, 0),
+              kind === "wall" ? new Vector3(1, 0, 0) : new Vector3(0, 1, 0),
               direction.normalize(),
             ),
           );
-          object.rotation = [rotation.x, rotation.y, rotation.z].map(
+          object.rotation = [euler.x, euler.y, euler.z].map(
             MathUtils.radToDeg,
-          ) as [number, number, number];
+          ) as Point3;
         }
-        callbacks.current.commit({
-          ...current.current.design,
-          elements: [...current.current.design.elements, object],
-        });
-        setSelected(object.id);
-        setPlacing(null);
+        actions.current.add(object);
       },
+      sketch: (kind, points, plane) =>
+        actions.current.add(createSketch(kind, points, plane)),
       transform: (id, position, rotation) => {
         const doc = current.current.design;
         if (id.startsWith("source:")) {
           const expressId = Number(id.slice(7)),
-            existing = doc.overrides.find((o) => o.expressId === expressId);
-          const center = next.sourceCenter(expressId);
+            old = doc.overrides.find((o) => o.expressId === expressId) ?? {
+              expressId,
+              name: "",
+              translation: [0, 0, 0] as Point3,
+              rotation: [0, 0, 0] as Point3,
+              deleted: false,
+            },
+            center = next.sourceCenter(expressId);
           if (!center) return;
-          const override: DesignOverride = existing ?? {
-            expressId,
-            name: "",
-            translation: [0, 0, 0],
-            rotation: [0, 0, 0],
-            deleted: false,
-          };
-          const translation = position.map(
-            (v, i) => v - center[i]! + override.translation[i]!,
-          ) as [number, number, number];
-          callbacks.current.commit({
+          actions.current.commit({
             ...doc,
             overrides: [
               ...doc.overrides.filter((o) => o.expressId !== expressId),
               {
-                ...override,
-                translation,
+                ...old,
+                translation: position.map(
+                  (n, i) => n - center[i]! + old.translation[i]!,
+                ) as Point3,
                 rotation,
               },
             ],
           });
         } else
-          callbacks.current.commit({
+          actions.current.commit({
             ...doc,
             elements: doc.elements.map((e) =>
               e.id === id ? { ...e, position, rotation } : e,
             ),
           });
       },
+      transformMany: (ids, delta, rotation, pivot) =>
+        actions.current.commit(
+          transformElements(
+            current.current.design,
+            ids,
+            delta,
+            rotation,
+            pivot,
+            (id) => next.sourceCenter(id),
+          ),
+        ),
     });
     layer.current = next;
     return () => {
@@ -173,41 +510,98 @@ export function ModelDesignEditor({
         if (raw && Number.isInteger(raw.revision) && w.canUpload) {
           const parsed = designSchema.safeParse(raw.design);
           if (parsed.success) {
-            // eslint-disable-next-line react-hooks/set-state-in-effect -- Hydrate an external persisted draft once.
+            // eslint-disable-next-line react-hooks/set-state-in-effect -- Hydrate the durable local draft once.
             setDesign(parsed.data);
             setRevision(raw.revision);
             setDirty(true);
             setLoaded(true);
-            setError("Recovered your unsaved model draft.");
+            setError("Recovered your unsaved design.");
             return;
           }
         }
       } catch {
-        /* No local draft. */
+        /* No recoverable draft. */
       }
     }
-    setDesign(query.data.design);
+    setDesign(designSchema.parse(query.data.design));
     setRevision(query.data.revision);
     setLoaded(true);
   }, [query.data, key, w.canUpload]);
   useEffect(() => {
     if (loaded) layer.current?.setDesign(design);
   }, [design, loaded, scene, ready]);
+  const planesInitialized = useRef(false);
+  useEffect(() => {
+    if (!active || !loaded || planesInitialized.current) return;
+    const bounds = scene.bounds();
+    if (bounds.isEmpty()) return;
+    const center = bounds.getCenter(new Vector3()).add(scene.origin);
+    planesInitialized.current = true;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Initialize workplanes from the loaded IFC's world coordinates once.
+    setOffsets([center.x, bounds.min.y + scene.origin.y, center.z]);
+    setPoint(center.toArray() as Point3);
+  }, [active, loaded, scene]);
   useEffect(() => {
     layer.current?.setActive(active && loaded && w.canUpload);
     return () => layer.current?.setActive(false);
   }, [active, loaded, w.canUpload, scene]);
   useEffect(() => {
-    layer.current?.select(selected);
-  }, [selected, design]);
+    layer.current?.selectMany(selection);
+  }, [selection, design]);
   useEffect(() => {
-    if (layer.current) {
-      layer.current.placing = placing;
-      layer.current.snap = snap;
-      layer.current.elevation = elevation;
-      layer.current.setMode(mode);
+    if (!active || !loaded || !viewHost.current) return;
+    const controller = new CadViews(scene, viewHost.current, {
+      view: (v) => {
+        setView(v);
+        layer.current?.syncCamera();
+      },
+      hover: (x, y) => layer.current?.hover(x, y),
+      tap: (x, y, extend) => layer.current?.tapAt(x, y, extend),
+      key: (e) => actions.current.keyboard(e),
+    });
+    views.current = controller;
+    return () => {
+      controller.dispose();
+      views.current = null;
+    };
+  }, [active, loaded, scene]);
+  useEffect(() => {
+    views.current?.setLayout(quad ? "quad" : "single");
+  }, [quad, active, loaded]);
+  useEffect(() => {
+    if (views.current) {
+      views.current.workplanes = { plane, offsets, grid: showGrid };
+      scene.invalidate();
     }
-  }, [placing, snap, elevation, mode]);
+  }, [plane, offsets, showGrid, active, loaded, scene]);
+  useEffect(() => {
+    const l = layer.current;
+    if (!l) return;
+    l.plane = view === "3d" ? plane : view;
+    l.elevation = offsets[planeAxes(l.plane).axis]!;
+    l.placing = placing;
+    l.snap = snap;
+    l.angle = angle;
+    l.objectSnap = objectSnap;
+    l.surface = surface && view === "3d";
+    l.exactLength = exactLength;
+    l.chain = chain;
+    l.setMode(mode);
+  }, [
+    view,
+    plane,
+    offsets,
+    placing,
+    snap,
+    angle,
+    objectSnap,
+    surface,
+    exactLength,
+    chain,
+    mode,
+    active,
+    loaded,
+  ]);
   useEffect(() => {
     const persist = () => {
       const c = current.current;
@@ -220,17 +614,17 @@ export function ModelDesignEditor({
           );
         else localStorage.removeItem(key);
       } catch {
-        /* Server save remains available. */
+        /* The server save is still available. */
       }
     };
-    const timer = setTimeout(persist, 200);
-    const warn = (e: BeforeUnloadEvent) => {
-      if (current.current.dirty) {
-        persist();
-        e.preventDefault();
-        e.returnValue = "";
-      }
-    };
+    const timer = setTimeout(persist, 200),
+      warn = (event: BeforeUnloadEvent) => {
+        if (current.current.dirty) {
+          persist();
+          event.preventDefault();
+          event.returnValue = "";
+        }
+      };
     window.addEventListener("beforeunload", warn);
     return () => {
       clearTimeout(timer);
@@ -238,92 +632,6 @@ export function ModelDesignEditor({
       window.removeEventListener("beforeunload", warn);
     };
   }, [design, dirty, revision, key]);
-  if (!active) {
-    if (query.error && !loaded)
-      return (
-        <div
-          role="alert"
-          className="bg-background text-destructive absolute top-3 left-3 max-w-56 rounded border p-2 text-xs"
-        >
-          Saved model edits could not load.{" "}
-          <button className="underline" onClick={() => void query.refetch()}>
-            Retry
-          </button>
-        </div>
-      );
-    if (dirty)
-      return (
-        <div
-          role="status"
-          className="bg-background text-primary absolute top-3 left-3 max-w-56 rounded border p-2 text-xs"
-        >
-          Unsaved local design · {w.models.find((m) => m.id === modelId)?.name}
-        </div>
-      );
-    return null;
-  }
-  const element = design.elements.find((e) => e.id === selected);
-  const sourceId = selected?.startsWith("source:")
-    ? Number(selected.slice(7))
-    : null;
-  const imported = sourceId
-    ? scene.elements.get(`${modelId}:${sourceId}`)?.info
-    : null;
-  const override = sourceId
-    ? (design.overrides.find((o) => o.expressId === sourceId) ?? {
-        expressId: sourceId,
-        name: imported?.name ?? "Element",
-        translation: [0, 0, 0] as [number, number, number],
-        rotation: [0, 0, 0] as [number, number, number],
-        deleted: false,
-      })
-    : null;
-  const update = (patch: Partial<DesignElement>) =>
-    element &&
-    commit({
-      ...design,
-      elements: design.elements.map((e) =>
-        e.id === element.id ? { ...e, ...patch } : e,
-      ),
-    });
-  const updateSource = (patch: Partial<DesignOverride>) =>
-    override &&
-    commit({
-      ...design,
-      overrides: [
-        ...design.overrides.filter((o) => o.expressId !== sourceId),
-        { ...override, ...patch },
-      ],
-    });
-  const axisFields = (
-    label: string,
-    values: [number, number, number],
-    change: (v: [number, number, number]) => void,
-  ) => (
-    <fieldset className="space-y-1">
-      <legend className="text-muted-foreground text-xs">{label}</legend>
-      <div className="grid grid-cols-3 gap-2">
-        {values.map((v, i) => (
-          <label key={i} className="text-xs">
-            {["X", "Y (height)", "Z"][i]}
-            <input
-              aria-label={`${label} ${["X", "Y", "Z"][i]}`}
-              type="number"
-              step={label.includes("rotation") ? 15 : 0.01}
-              className="bg-background w-full min-w-0 rounded border p-2"
-              value={Number(v.toFixed(5))}
-              onChange={(e) => {
-                if (!Number.isFinite(e.target.valueAsNumber)) return;
-                const next = [...values] as [number, number, number];
-                next[i] = e.target.valueAsNumber;
-                change(next);
-              }}
-            />
-          </label>
-        ))}
-      </div>
-    </fieldset>
-  );
   const close = async () => {
     let retained = true;
     if (dirty)
@@ -332,14 +640,13 @@ export function ModelDesignEditor({
       } catch {
         retained = false;
       }
-
     if (
       dirty &&
       !(await confirmAction({
-        title: "Leave model editing?",
+        title: "Leave CAD editing?",
         description: retained
-          ? "Your unsaved draft will remain on this device. Other team members only see saved changes."
-          : "Local draft storage is unavailable. Save your design before leaving or these edits could be lost.",
+          ? "Your draft remains on this device. Save it to share with your team."
+          : "Draft storage is unavailable. Save before leaving to avoid losing your edits.",
         confirmLabel: "Leave editor",
       }))
     )
@@ -347,428 +654,1033 @@ export function ModelDesignEditor({
     setPlacing(null);
     onClose();
   };
+  if (!active) {
+    if (query.error && !loaded)
+      return (
+        <div
+          role="alert"
+          className="bg-background text-destructive absolute top-3 left-3 rounded border p-2 text-xs"
+        >
+          Saved design could not load.{" "}
+          <button className="underline" onClick={() => void query.refetch()}>
+            Retry
+          </button>
+        </div>
+      );
+    return dirty ? (
+      <p className="bg-background absolute top-3 left-3 p-2 text-xs">
+        Unsaved local design · {w.models.find((m) => m.id === modelId)?.name}
+      </p>
+    ) : null;
+  }
+  const workingPlane = view === "3d" ? plane : view,
+    axis = planeAxes(workingPlane).axis;
+  const startTool = (kind: DesignKind | null) => {
+    setPlacing(kind);
+    setSelection([]);
+  };
+  const buttonClass =
+    "grid h-10 min-w-10 shrink-0 place-items-center rounded px-2 text-xs hover:bg-muted disabled:opacity-40";
   return (
     <section
       aria-label="Model editor"
-      className="bg-background/95 absolute right-2 bottom-2 left-2 z-30 rounded-xl border shadow-xl sm:left-auto sm:w-[380px]"
+      className="pointer-events-none absolute inset-0 z-20"
     >
-      <header className="flex items-center gap-2 border-b p-2">
-        <Pencil className="size-4" />
-        <strong className="flex-1 text-sm">
-          Model editor {dirty ? "· Unsaved" : ""}
-        </strong>
-        <button
-          aria-label={collapsed ? "Expand editor" : "Collapse editor"}
-          className="p-2"
-          onClick={() => setCollapsed(!collapsed)}
+      <header className="bg-background pointer-events-auto absolute inset-x-0 top-0 z-20 border-b">
+        <div
+          className="flex h-12 min-w-0 items-center gap-1 px-2"
+          role="toolbar"
+          aria-label="CAD commands"
         >
-          {collapsed ? <ChevronUp /> : <ChevronDown />}
-        </button>
-        <button
-          aria-label="Close editor"
-          className="p-2"
-          onClick={() => void close()}
-        >
-          <X />
-        </button>
-      </header>
-      {!collapsed && (
-        <div className="max-h-[48dvh] space-y-3 overflow-y-auto p-3 text-sm">
-          {!loaded ? (
-            <p>{query.error?.message ?? "Loading saved design…"}</p>
-          ) : (
-            <>
-              <p className="text-muted-foreground text-xs">
-                Saved design layer · dimensions in metres · rotations in
-                degrees. Select an element or add one, then drag its handles or
-                enter exact values.
-              </p>
-              <div className="flex gap-2">
-                <select
-                  aria-label="Add model element"
-                  className="bg-background min-h-10 min-w-0 flex-1 rounded border px-2"
-                  value={placing ?? ""}
-                  onChange={(e) => {
-                    setPlacing((e.target.value as DesignKind) || null);
-                    setSelected(null);
-                  }}
-                >
-                  <option value="">Add element…</option>
-                  {Object.entries(designKinds).map(([id, label]) => (
-                    <option key={id} value={id}>
-                      {label}
-                    </option>
-                  ))}
-                </select>
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    const object = newDesignElement(
-                      placing ?? "equipment",
-                      scene.controls.target
-                        .clone()
-                        .add(scene.origin)
-                        .toArray() as [number, number, number],
-                    );
-                    commit({
-                      ...design,
-                      elements: [...design.elements, object],
-                    });
-                    setSelected(object.id);
-                    setPlacing(null);
-                  }}
-                >
-                  <Plus className="mr-1 size-4" />
-                  At view
-                </Button>
-              </div>
-              {placing && (
-                <p role="status" className="text-primary">
-                  {placing === "pipe" || placing === "duct"
-                    ? "Tap start and end points on the model or working plane for"
-                    : "Tap the model surface or working plane to place"}{" "}
-                  {designKinds[placing].toLowerCase()}.{" "}
-                  <button
-                    className="underline"
-                    onClick={() => setPlacing(null)}
-                  >
-                    Cancel
-                  </button>
-                </p>
+          <strong className="mr-2 text-sm whitespace-nowrap">
+            CAD{" "}
+            <span className="text-muted-foreground text-xs font-normal">
+              {dirty ? "· Unsaved" : ""}
+            </span>
+          </strong>
+          <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto">
+            <button
+              aria-label="Select objects"
+              title="Select (V)"
+              className={cn(
+                buttonClass,
+                !placing && "bg-primary/15 text-primary",
               )}
-              <div className="grid grid-cols-2 gap-2">
-                <label className="text-xs">
-                  Grid snap (m)
+              onClick={() => startTool(null)}
+            >
+              <MousePointer2 className="size-4" />
+            </button>
+            <select
+              aria-label="Add model element"
+              className="bg-background h-10 max-w-40 shrink-0 rounded border px-2 text-sm"
+              value={placing ?? ""}
+              onChange={(e) =>
+                startTool((e.target.value as DesignKind) || null)
+              }
+            >
+              <option value="">Draw / add…</option>
+              {Object.entries(designKinds)
+                .filter(([id]) => id !== "profile")
+                .map(([id, name]) => (
+                  <option key={id} value={id}>
+                    {name}
+                  </option>
+                ))}
+            </select>
+            <button
+              aria-label="Move selected objects"
+              title="Move"
+              className={cn(
+                buttonClass,
+                mode === "translate" && !placing && "text-primary",
+              )}
+              onClick={() => {
+                setMode("translate");
+                setPlacing(null);
+              }}
+            >
+              <Move className="size-4" />
+            </button>
+            <button
+              aria-label="Rotate selected objects"
+              title="Rotate"
+              className={cn(
+                buttonClass,
+                mode === "rotate" && !placing && "text-primary",
+              )}
+              onClick={() => {
+                setMode("rotate");
+                setPlacing(null);
+              }}
+            >
+              <RotateCw className="size-4" />
+            </button>
+            <button
+              aria-label="Undo model edit"
+              title="Undo (Ctrl Z)"
+              disabled={!history.length || save.isPending}
+              className={buttonClass}
+              onClick={undo}
+            >
+              <Undo2 className="size-4" />
+            </button>
+            <button
+              aria-label="Redo model edit"
+              title="Redo (Ctrl Shift Z)"
+              disabled={!future.length || save.isPending}
+              className={buttonClass}
+              onClick={redo}
+            >
+              <Redo2 className="size-4" />
+            </button>
+          </div>
+          <button
+            aria-label="Toggle CAD inspector"
+            title="Properties, layers and files"
+            aria-pressed={inspector}
+            className={cn(
+              buttonClass,
+              inspector && "bg-primary/15 text-primary",
+            )}
+            onClick={() => setInspector(!inspector)}
+          >
+            <SlidersHorizontal className="size-4" />
+          </button>
+          <button
+            aria-label="Save design"
+            title="Save (Ctrl S)"
+            disabled={!loaded || !dirty || save.isPending}
+            className={cn(
+              buttonClass,
+              "bg-primary text-primary-foreground ml-auto",
+            )}
+            onClick={saveNow}
+          >
+            <Save className="size-4" />
+          </button>
+          <button
+            aria-label="Close editor"
+            className={buttonClass}
+            onClick={() => void close()}
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+        <div
+          className="flex h-11 items-center gap-1 overflow-x-auto border-t px-2"
+          role="toolbar"
+          aria-label="CAD views"
+        >
+          {(Object.keys(cadViews) as CadView[]).map((v) => (
+            <button
+              key={v}
+              aria-label={`${cadViews[v]} view`}
+              aria-pressed={view === v}
+              className={cn(
+                buttonClass,
+                view === v && "bg-primary/15 text-primary",
+              )}
+              onClick={() => views.current?.setView(v)}
+            >
+              {cadViews[v]}
+            </button>
+          ))}
+          <button
+            aria-label="Four views"
+            aria-pressed={quad}
+            className={cn(buttonClass, quad && "text-primary")}
+            onClick={() => setQuad(!quad)}
+          >
+            <LayoutGrid className="size-4" />
+          </button>
+          <button
+            aria-label="Fit all CAD views"
+            className={buttonClass}
+            onClick={() => views.current?.fit()}
+          >
+            <Focus className="size-4" />
+          </button>
+          <button
+            aria-label="Object snapping"
+            aria-pressed={objectSnap}
+            className={cn(buttonClass, objectSnap && "text-primary")}
+            onClick={() => setObjectSnap(!objectSnap)}
+          >
+            Snap
+          </button>
+          <select
+            aria-label="Angle constraint"
+            className="bg-background h-9 rounded border px-1 text-xs"
+            value={angle}
+            onChange={(e) => setAngle(Number(e.target.value) as 0 | 45 | 90)}
+          >
+            <option value={0}>Free angle</option>
+            <option value={90}>Ortho 90°</option>
+            <option value={45}>45°</option>
+          </select>
+          <select
+            aria-label="CAD units"
+            className="bg-background h-9 rounded border px-1 text-xs"
+            value={unit}
+            onChange={(e) => setUnit(e.target.value as Unit)}
+          >
+            {Object.keys(units).map((u) => (
+              <option key={u}>{u}</option>
+            ))}
+          </select>
+        </div>
+      </header>
+      <div
+        ref={viewHost}
+        data-testid="cad-viewports"
+        className={cn(
+          "pointer-events-auto absolute inset-x-0 top-[92px] bottom-9",
+          inspector && "bottom-[43dvh] md:right-[336px] md:bottom-9",
+        )}
+      />
+      {!loaded && (
+        <p
+          role="status"
+          className="bg-background pointer-events-auto absolute top-28 left-3 p-3"
+        >
+          {query.error?.message ?? "Loading your design…"}
+        </p>
+      )}
+      {placing && (
+        <div
+          className={cn(
+            "bg-background/95 pointer-events-auto absolute bottom-10 left-2 z-10 flex max-w-[calc(100%-1rem)] flex-wrap items-center gap-2 rounded border px-3 py-2 text-xs",
+            inspector &&
+              "bottom-[calc(43dvh+4px)] md:bottom-10 md:max-w-[calc(100%-352px)]",
+          )}
+        >
+          <span>
+            {designKinds[placing]} ·{" "}
+            {placing === "polyline"
+              ? "Tap points, then Finish"
+              : sketchKinds.has(placing) ||
+                  ["pipe", "duct", "wall"].includes(placing)
+                ? "Choose two points"
+                : "Tap to place"}
+          </span>
+          {placing === "polyline" && (
+            <>
+              <button
+                className="text-primary underline"
+                onClick={() => layer.current?.finishDraft()}
+              >
+                Finish
+              </button>
+              <button
+                className="text-primary underline"
+                onClick={() => layer.current?.finishDraft(true)}
+              >
+                Close shape
+              </button>
+            </>
+          )}
+          <button className="underline" onClick={() => startTool(null)}>
+            Cancel
+          </button>
+        </div>
+      )}
+      {inspector && (
+        <aside
+          aria-label="CAD inspector"
+          className="bg-background pointer-events-auto absolute inset-x-0 bottom-9 z-20 flex h-[calc(43dvh-36px)] flex-col border-t md:top-[92px] md:right-0 md:left-auto md:h-auto md:w-[336px] md:border-t-0 md:border-l"
+        >
+          <nav
+            className="flex shrink-0 border-b"
+            aria-label="CAD inspector tabs"
+          >
+            {(["properties", "objects", "layers", "file"] as const).map((t) => (
+              <button
+                key={t}
+                aria-pressed={tab === t}
+                className={cn(
+                  "h-11 min-w-0 flex-1 text-xs capitalize",
+                  tab === t && "text-primary border-primary border-b-2",
+                )}
+                onClick={() => setTab(t)}
+              >
+                {t}
+              </button>
+            ))}
+          </nav>
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-3 text-sm">
+            {tab === "properties" && (
+              <>
+                <label className="flex gap-2 text-xs">
                   <input
-                    aria-label="Grid snap"
-                    type="number"
-                    min="0"
-                    max="10"
-                    step="0.01"
-                    value={snap}
-                    className="bg-background mt-1 w-full rounded border p-2"
-                    onChange={(e) =>
-                      setSnap(
-                        Math.max(0, Math.min(10, e.target.valueAsNumber || 0)),
+                    type="checkbox"
+                    checked={showGrid}
+                    onChange={(e) => setShowGrid(e.target.checked)}
+                  />
+                  Show workplane grid
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <NumberField
+                    label={`Grid snap (${unit})`}
+                    value={snap * factor}
+                    min={0}
+                    onChange={(n) => setSnap(n / factor)}
+                  />
+                  <NumberField
+                    label={`Plane ${["X", "Y", "Z"][axis]} (${unit})`}
+                    value={offsets[axis]! * factor}
+                    onChange={(n) =>
+                      setOffsets(
+                        (o) =>
+                          o.map((v, i) =>
+                            i === axis ? n / factor : v,
+                          ) as Point3,
                       )
                     }
                   />
-                </label>
-                <label className="text-xs">
-                  Working plane height (m)
-                  <input
-                    aria-label="Working plane height"
-                    type="number"
-                    step=".1"
-                    value={elevation}
-                    className="bg-background mt-1 w-full rounded border p-2"
-                    onChange={(e) => setElevation(e.target.valueAsNumber || 0)}
-                  />
-                </label>
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  variant={mode === "translate" ? "default" : "outline"}
-                  onClick={() => setMode("translate")}
-                >
-                  Move
-                </Button>
-                <Button
-                  variant={mode === "rotate" ? "default" : "outline"}
-                  onClick={() => setMode("rotate")}
-                >
-                  Rotate
-                </Button>
-                {selected && (
-                  <Button
-                    variant="outline"
-                    aria-label="Focus edited element"
-                    onClick={() => layer.current?.focus(selected)}
-                  >
-                    <Focus className="size-4" />
-                  </Button>
+                </div>
+                {view === "3d" && (
+                  <div className="flex items-center gap-2">
+                    <select
+                      aria-label="3D working plane"
+                      className={inputClass}
+                      value={plane}
+                      onChange={(e) => setPlane(e.target.value as CadPlane)}
+                    >
+                      <option value="top">Horizontal (XZ)</option>
+                      <option value="front">Front (XY)</option>
+                      <option value="right">Right (YZ)</option>
+                    </select>
+                    <label className="flex items-center gap-1 text-xs">
+                      <input
+                        type="checkbox"
+                        checked={surface}
+                        onChange={(e) => setSurface(e.target.checked)}
+                      />
+                      Surface
+                    </label>
+                  </div>
                 )}
-              </div>
-              <select
-                aria-label="Select design element"
-                className="bg-background min-h-10 w-full rounded border px-2"
-                value={selected ?? ""}
-                onChange={(e) => setSelected(e.target.value || null)}
-              >
-                <option value="">Select in model or list…</option>
-                {design.elements.map((e) => (
-                  <option key={e.id} value={e.id}>
-                    {e.name}
-                  </option>
-                ))}
-                {design.overrides.map((o) => (
-                  <option key={o.expressId} value={`source:${o.expressId}`}>
-                    {o.deleted ? "Removed · " : ""}
-                    {o.name ? o.name : `Original #${o.expressId}`}
-                  </option>
-                ))}
-                {sourceId &&
-                  !design.overrides.some((o) => o.expressId === sourceId) && (
-                    <option value={selected!}>
-                      {imported?.name ?? `Original #${sourceId}`}
-                    </option>
-                  )}
-              </select>
-              {(element ?? override) && (
-                <>
-                  <label className="block text-xs">
-                    Name
-                    <input
-                      aria-label="Element name"
-                      className="bg-background mt-1 w-full rounded border p-2"
-                      value={element?.name ?? override?.name ?? ""}
-                      onChange={(e) =>
-                        element
-                          ? update({ name: e.target.value })
-                          : updateSource({ name: e.target.value })
-                      }
+                {placing && (
+                  <>
+                    <NumberField
+                      label={`Exact segment length (${unit}, 0 = free)`}
+                      value={exactLength * factor}
+                      min={0}
+                      max={1000 * factor}
+                      onChange={(n) => setExactLength(n / factor)}
                     />
-                  </label>
-                  {element ? (
-                    <>
-                      {axisFields("Position (m)", element.position, (v) =>
-                        update({ position: v }),
+                    <label className="flex gap-2 text-xs">
+                      <input
+                        type="checkbox"
+                        checked={chain}
+                        onChange={(e) => setChain(e.target.checked)}
+                      />
+                      Continue drawing after each object
+                    </label>
+                    <details>
+                      <summary className="cursor-pointer text-xs font-medium">
+                        Enter a precise point
+                      </summary>
+                      <div className="mt-2 space-y-2">
+                        <VectorFields
+                          label={`Point (${unit})`}
+                          value={point}
+                          factor={factor}
+                          change={setPoint}
+                        />
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => layer.current?.addPoint(point)}
+                        >
+                          Add point
+                        </Button>
+                      </div>
+                    </details>
+                    {!sketchKinds.has(placing) && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() =>
+                          add(
+                            newDesignElement(
+                              placing,
+                              scene.controls.target
+                                .clone()
+                                .add(scene.origin)
+                                .toArray() as Point3,
+                            ),
+                          )
+                        }
+                      >
+                        At view
+                      </Button>
+                    )}
+                  </>
+                )}
+                <div className="border-t pt-3">
+                  <strong className="text-xs">
+                    {selection.length > 1
+                      ? `${selection.length} selected`
+                      : (element?.name ?? source?.name ?? "Selection")}
+                  </strong>
+                  <p className="text-muted-foreground mt-1 text-xs">
+                    {selection.length
+                      ? "Drag the handles or enter dimensions below."
+                      : "Tap an object to edit. Shift-click adds to the selection."}
+                  </p>
+                </div>
+                <label className="flex gap-2 text-xs">
+                  <input
+                    type="checkbox"
+                    checked={multi}
+                    onChange={(e) => setMulti(e.target.checked)}
+                  />
+                  Select multiple objects
+                </label>
+                {(element ?? override) && (
+                  <>
+                    {!editable && (
+                      <p className="text-muted-foreground text-xs">
+                        Unlock and show this layer to edit its objects.
+                      </p>
+                    )}
+                    <fieldset disabled={!editable} className="space-y-3">
+                      <label className="block space-y-1 text-xs">
+                        Name
+                        <input
+                          aria-label="Element name"
+                          className={inputClass}
+                          value={element?.name ?? override?.name ?? ""}
+                          onChange={(e) =>
+                            element
+                              ? update({ name: e.target.value })
+                              : updateSource({ name: e.target.value })
+                          }
+                        />
+                      </label>
+                      {element ? (
+                        <>
+                          <VectorFields
+                            label={`Position (${unit})`}
+                            value={element.position}
+                            change={(v) => update({ position: v })}
+                            factor={factor}
+                          />
+                          <VectorFields
+                            label="Rotation (°)"
+                            value={element.rotation}
+                            change={(v) => update({ rotation: v })}
+                          />
+                          {!sketchKinds.has(element.kind) &&
+                            (["pipe", "elbow", "tee", "valve"].includes(
+                              element.kind,
+                            ) ? (
+                              <>
+                                <NumberField
+                                  label={`Element length (${unit})`}
+                                  value={element.size[1] * factor}
+                                  min={0.001 * factor}
+                                  max={1000 * factor}
+                                  onChange={(n) =>
+                                    update({
+                                      size: [
+                                        element.size[0],
+                                        n / factor,
+                                        element.size[2],
+                                      ],
+                                    })
+                                  }
+                                />
+                                <NumberField
+                                  label={`Pipe diameter (${unit})`}
+                                  value={element.diameter * factor}
+                                  min={0.001 * factor}
+                                  max={1000 * factor}
+                                  onChange={(n) =>
+                                    update({ diameter: n / factor })
+                                  }
+                                />
+                              </>
+                            ) : (
+                              <VectorFields
+                                label={`Size (${unit})`}
+                                value={element.size}
+                                factor={factor}
+                                change={(v) => update({ size: v })}
+                              />
+                            ))}
+                          {element.kind === "profile" && (
+                            <NumberField
+                              label={`Extrusion depth (${unit})`}
+                              value={element.size[1] * factor}
+                              min={0.001 * factor}
+                              onChange={(n) =>
+                                update({
+                                  size: [
+                                    element.size[0],
+                                    n / factor,
+                                    element.size[2],
+                                  ],
+                                })
+                              }
+                            />
+                          )}
+                          <div className="flex items-center gap-3">
+                            <label className="flex items-center gap-2 text-xs">
+                              Colour
+                              <input
+                                aria-label="Element colour"
+                                type="color"
+                                value={element.color}
+                                onChange={(e) =>
+                                  update({ color: e.target.value })
+                                }
+                              />
+                            </label>
+                            <select
+                              aria-label="Element layer"
+                              className={inputClass}
+                              value={element.layer ?? "Design"}
+                              onChange={(e) =>
+                                update({ layer: e.target.value })
+                              }
+                            >
+                              {layers.map((l) => (
+                                <option key={l.name}>{l.name}</option>
+                              ))}
+                            </select>
+                          </div>
+                          {element.points && (
+                            <details>
+                              <summary className="cursor-pointer text-xs">
+                                Edit vertices ({element.points.length})
+                              </summary>
+                              <p className="text-muted-foreground my-2 text-xs">
+                                Local coordinates, relative to the object’s
+                                position and rotation.
+                              </p>
+                              {element.points.map((p, i) => (
+                                <VectorFields
+                                  key={i}
+                                  label={`Vertex ${i + 1} (${unit})`}
+                                  value={p}
+                                  factor={factor}
+                                  change={(next) =>
+                                    update({
+                                      points: element.points!.map((p, j) =>
+                                        j === i ? next : p,
+                                      ),
+                                    })
+                                  }
+                                />
+                              ))}
+                            </details>
+                          )}
+                          {element.points &&
+                            element.points.length >= 3 &&
+                            element.kind !== "profile" && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() =>
+                                  update({
+                                    kind: "profile",
+                                    size: [
+                                      element.size[0],
+                                      0.3,
+                                      element.size[2],
+                                    ],
+                                    name: `${element.name.slice(0, 140)} extrusion`,
+                                  })
+                                }
+                              >
+                                Extrude shape
+                              </Button>
+                            )}
+                          <details>
+                            <summary className="cursor-pointer text-xs">
+                              System, material and notes
+                            </summary>
+                            <div className="mt-2 space-y-2">
+                              {(["system", "material", "notes"] as const).map(
+                                (k) => (
+                                  <label
+                                    key={k}
+                                    className="block text-xs capitalize"
+                                  >
+                                    {k}
+                                    <input
+                                      aria-label={`Element ${k}`}
+                                      className={inputClass}
+                                      value={element[k]}
+                                      onChange={(e) =>
+                                        update({ [k]: e.target.value })
+                                      }
+                                    />
+                                  </label>
+                                ),
+                              )}
+                            </div>
+                          </details>
+                        </>
+                      ) : (
+                        override && (
+                          <>
+                            <VectorFields
+                              label={`Offset (${unit})`}
+                              value={override.translation}
+                              factor={factor}
+                              change={(v) => updateSource({ translation: v })}
+                            />
+                            <VectorFields
+                              label="Rotation (°)"
+                              value={override.rotation}
+                              change={(v) => updateSource({ rotation: v })}
+                            />
+                            <p className="text-muted-foreground text-xs">
+                              Imported element: move or rotate the original
+                              geometry as a unit.
+                            </p>
+                          </>
+                        )
                       )}
-                      {["pipe", "elbow", "tee", "valve"].includes(
-                        element.kind,
-                      ) ? (
-                        <label className="block text-xs">
-                          {element.kind === "elbow"
-                            ? "Bend size (m)"
-                            : "Length (m)"}
+                    </fieldset>
+                  </>
+                )}
+                {selection.length > 1 && (
+                  <VectorFields
+                    label={`Move selection (${unit})`}
+                    value={[0, 0, 0]}
+                    factor={factor}
+                    change={(delta) =>
+                      commit(
+                        transformElements(
+                          design,
+                          selection,
+                          delta,
+                          [0, 0, 0],
+                          [0, 0, 0],
+                          (id) => layer.current?.sourceCenter(id),
+                        ),
+                      )
+                    }
+                  />
+                )}
+                {selection.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        const e = element
+                          ? new Vector3(...element.position).sub(scene.origin)
+                          : sourceId
+                            ? scene.elements
+                                .get(`${modelId}:${sourceId}`)
+                                ?.bounds.getCenter(new Vector3())
+                            : undefined;
+                        views.current?.fit(e);
+                      }}
+                    >
+                      Focus
+                    </Button>
+                    {selection.some((id) => !id.startsWith("source:")) && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => duplicate()}
+                      >
+                        Duplicate
+                      </Button>
+                    )}
+                    {w.canDelete && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-destructive"
+                        onClick={() =>
+                          override?.deleted
+                            ? updateSource({ deleted: false })
+                            : remove()
+                        }
+                      >
+                        {override?.deleted
+                          ? "Restore element"
+                          : "Remove selection"}
+                      </Button>
+                    )}
+                  </div>
+                )}
+                {selection.some((id) => !id.startsWith("source:")) && (
+                  <details>
+                    <summary className="cursor-pointer text-xs font-medium">
+                      Repeat / array
+                    </summary>
+                    <div className="mt-2 space-y-2">
+                      <VectorFields
+                        label={`Copy spacing (${unit})`}
+                        value={arrayOffset}
+                        factor={factor}
+                        change={setArrayOffset}
+                      />
+                      <NumberField
+                        label="Number of copies"
+                        value={copies}
+                        min={1}
+                        max={100}
+                        step={1}
+                        onChange={(n) => setCopies(Math.floor(n))}
+                      />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => duplicate(copies)}
+                      >
+                        Create array
+                      </Button>
+                    </div>
+                  </details>
+                )}
+              </>
+            )}
+            {tab === "objects" && (
+              <>
+                <input
+                  aria-label="Find design object"
+                  placeholder="Find an object…"
+                  className={inputClass}
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() =>
+                      setSelection(
+                        design.elements
+                          .filter((e) => isEditable(design, e))
+                          .map((e) => e.id),
+                      )
+                    }
+                  >
+                    Select all
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setSelection([])}
+                  >
+                    Clear
+                  </Button>
+                </div>
+                <div className="divide-y">
+                  {design.elements
+                    .filter((e) =>
+                      `${e.name} ${e.layer ?? "Design"}`
+                        .toLowerCase()
+                        .includes(search.toLowerCase()),
+                    )
+                    .map((e) => (
+                      <button
+                        key={e.id}
+                        className={cn(
+                          "block w-full px-2 py-3 text-left text-xs",
+                          selection.includes(e.id) &&
+                            "bg-primary/15 text-primary",
+                        )}
+                        onClick={(event) => select(e.id, event.shiftKey)}
+                      >
+                        <strong className="block">{e.name}</strong>
+                        <span className="text-muted-foreground">
+                          {designKinds[e.kind]} · {e.layer ?? "Design"}
+                        </span>
+                      </button>
+                    ))}
+                  {design.overrides.map((o) => (
+                    <button
+                      key={o.expressId}
+                      className="block w-full px-2 py-3 text-left text-xs"
+                      onClick={() => select(`source:${o.expressId}`)}
+                    >
+                      {o.deleted ? "Removed · " : "Original · "}
+                      {o.name || `#${o.expressId}`}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-muted-foreground text-xs">
+                  {design.elements.length} design objects. Select imported
+                  objects directly in a view.
+                </p>
+              </>
+            )}
+            {tab === "layers" && (
+              <>
+                <p className="text-muted-foreground text-xs">
+                  Choose the layer for new objects. Hidden or locked layers
+                  cannot be selected in a view.
+                </p>
+                {layers.map((l, i) => (
+                  <div key={l.name} className="space-y-2 border-b py-2">
+                    <label className="flex items-center gap-2 text-sm">
+                      <input
+                        type="radio"
+                        name="cad-layer"
+                        checked={activeLayer === l.name}
+                        onChange={() => setActiveLayer(l.name)}
+                      />
+                      {l.name}
+                    </label>
+                    <div className="flex gap-4 text-xs">
+                      {(["visible", "locked"] as const).map((k) => (
+                        <label
+                          key={k}
+                          className="flex items-center gap-2 capitalize"
+                        >
                           <input
-                            aria-label="Element length"
-                            className="bg-background mt-1 w-full rounded border p-2"
-                            type="number"
-                            min=".001"
-                            max="1000"
-                            step=".01"
-                            value={element.size[1]}
+                            type="checkbox"
+                            aria-label={`${l.name} ${k}`}
+                            checked={l[k]}
                             onChange={(e) =>
-                              Number.isFinite(e.target.valueAsNumber) &&
-                              update({
-                                size: [
-                                  element.size[0],
-                                  e.target.valueAsNumber,
-                                  element.size[2],
-                                ],
+                              commit({
+                                ...design,
+                                layers: layers.map((l, j) =>
+                                  j === i ? { ...l, [k]: e.target.checked } : l,
+                                ),
                               })
                             }
                           />
-                        </label>
-                      ) : (
-                        axisFields("Size (m)", element.size, (v) =>
-                          update({ size: v }),
-                        )
-                      )}
-                      {axisFields(
-                        "Element rotation (degrees)",
-                        element.rotation,
-                        (v) => update({ rotation: v }),
-                      )}
-                      {["pipe", "elbow", "tee", "valve"].includes(
-                        element.kind,
-                      ) && (
-                        <label className="block text-xs">
-                          Pipe diameter (m)
-                          <input
-                            aria-label="Pipe diameter"
-                            className="bg-background mt-1 w-full rounded border p-2"
-                            type="number"
-                            min=".001"
-                            max="1000"
-                            step=".001"
-                            value={element.diameter}
-                            onChange={(e) =>
-                              Number.isFinite(e.target.valueAsNumber) &&
-                              update({ diameter: e.target.valueAsNumber })
-                            }
-                          />
-                        </label>
-                      )}
-                      <div className="flex items-center gap-2">
-                        <label>
-                          Colour{" "}
-                          <input
-                            aria-label="Element colour"
-                            type="color"
-                            value={element.color}
-                            onChange={(e) => update({ color: e.target.value })}
-                          />
-                        </label>
-                        <Button
-                          variant="outline"
-                          onClick={() => {
-                            const copy = {
-                              ...element,
-                              id: crypto.randomUUID(),
-                              name: `${element.name} copy`,
-                              position: [
-                                element.position[0] + 0.5,
-                                element.position[1],
-                                element.position[2],
-                              ] as [number, number, number],
-                            };
-                            commit({
-                              ...design,
-                              elements: [...design.elements, copy],
-                            });
-                            setSelected(copy.id);
-                          }}
-                        >
-                          <Copy className="mr-1 size-4" />
-                          Duplicate
-                        </Button>
-                      </div>
-                      {(["system", "material", "notes"] as const).map((k) => (
-                        <label key={k} className="block text-xs capitalize">
                           {k}
-                          <input
-                            aria-label={`Element ${k}`}
-                            className="bg-background mt-1 w-full rounded border p-2"
-                            value={element[k]}
-                            onChange={(e) => update({ [k]: e.target.value })}
-                          />
                         </label>
                       ))}
-                    </>
-                  ) : (
-                    override && (
-                      <>
-                        {axisFields("Offset (m)", override.translation, (v) =>
-                          updateSource({ translation: v }),
-                        )}
-                        {axisFields(
-                          "Element rotation (degrees)",
-                          override.rotation,
-                          (v) => updateSource({ rotation: v }),
-                        )}
-                        <p className="text-muted-foreground text-xs">
-                          Original geometry is retained. Offsets and rotations
-                          apply to this entire element.
-                        </p>
-                      </>
+                    </div>
+                  </div>
+                ))}
+                <form
+                  className="flex gap-2"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    const name = newLayer.trim();
+                    if (!name || layers.some((l) => l.name === name)) return;
+                    commit({
+                      ...design,
+                      layers: [
+                        ...layers,
+                        { name, visible: true, locked: false },
+                      ],
+                    });
+                    setActiveLayer(name);
+                    setNewLayer("");
+                  }}
+                >
+                  <input
+                    aria-label="New layer name"
+                    placeholder="New layer"
+                    maxLength={80}
+                    className={inputClass}
+                    value={newLayer}
+                    onChange={(e) => setNewLayer(e.target.value)}
+                  />
+                  <Button type="submit" variant="outline" size="sm">
+                    Add
+                  </Button>
+                </form>
+              </>
+            )}
+            {tab === "file" && (
+              <>
+                <strong className="block text-sm">Drawing files</strong>
+                <p className="text-muted-foreground text-xs">
+                  CAD files preserve editable objects, layers and source-model
+                  placements.
+                </p>
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() =>
+                    downloadCadFile(
+                      serializeCad(design, modelId),
+                      `design-${modelId}.fhcad.json`,
                     )
-                  )}
-                  {w.canDelete && (
-                    <Button
-                      variant="outline"
-                      className="text-destructive"
-                      onClick={() => {
-                        if (element) {
-                          commit({
-                            ...design,
-                            elements: design.elements.filter(
-                              (e) => e.id !== element.id,
-                            ),
-                          });
-                          setSelected(null);
-                        } else updateSource({ deleted: !override!.deleted });
-                      }}
-                    >
-                      <Trash2 className="mr-1 size-4" />
-                      {override?.deleted ? "Restore element" : "Remove element"}
-                    </Button>
-                  )}
-                </>
-              )}
-            </>
+                  }
+                >
+                  Download CAD file
+                </Button>
+                <label className="block space-y-2 text-xs">
+                  Import a CAD file
+                  <input
+                    aria-label="Import CAD file"
+                    className="w-full text-xs"
+                    type="file"
+                    accept=".json"
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      event.target.value = "";
+                      if (!file) return;
+                      if (file.size > 8_000_000) {
+                        setError("Choose a CAD file smaller than 8 MB.");
+                        return;
+                      }
+                      void file.text().then(async (text) => {
+                        try {
+                          const next = parseCad(text, modelId);
+                          if (
+                            await confirmAction({
+                              title: "Replace this design?",
+                              description:
+                                "Your current design will be replaced. You can undo before saving.",
+                              confirmLabel: "Import design",
+                            })
+                          ) {
+                            commit(next);
+                            setSelection([]);
+                            setActiveLayer(
+                              designLayers(next)[0]?.name ?? "Design",
+                            );
+                          }
+                        } catch (e) {
+                          setError(
+                            e instanceof Error
+                              ? e.message
+                              : "Unable to import the drawing.",
+                          );
+                        }
+                      });
+                    }}
+                  />
+                </label>
+                <div className="space-y-2 border-t pt-3">
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() =>
+                      downloadCadFile(
+                        designDxf(design),
+                        `design-${modelId}.dxf`,
+                        "application/dxf",
+                      )
+                    }
+                  >
+                    Export DXF linework
+                  </Button>
+                  <p className="text-muted-foreground text-xs">
+                    Exports sketch outlines and pipe / duct centrelines in
+                    metres, with elevation. Solid bodies and the imported IFC
+                    stay in the model and CAD file.
+                  </p>
+                </div>
+                <details>
+                  <summary className="cursor-pointer text-xs font-medium">
+                    Keyboard & touch guide
+                  </summary>
+                  <p className="text-muted-foreground mt-2 text-xs leading-6">
+                    V select · P pipe · L line · R rectangle · C circle · F fit
+                    · 1–4 change view · Enter finish · Escape cancel · Delete
+                    remove · Ctrl D duplicate · Ctrl Z undo · Ctrl Shift Z redo
+                    · Ctrl S save. Shift-click or Select multiple adds objects.
+                    Middle mouse pans in every tool. Drag to pan in an elevation
+                    or orbit in 3D. On touch, pinch to zoom and use two fingers
+                    to pan.
+                  </p>
+                </details>
+              </>
+            )}
+          </div>
+        </aside>
+      )}
+      {(error || save.error) && (
+        <div
+          role="alert"
+          className="bg-background text-destructive pointer-events-auto absolute inset-x-2 bottom-10 z-30 rounded border p-3 text-xs"
+        >
+          {error || save.error?.message}
+          <button
+            aria-label="Dismiss CAD error"
+            className="float-right ml-3"
+            onClick={() => {
+              setError("");
+              save.reset();
+            }}
+          >
+            ×
+          </button>
+          {save.error?.data?.code === "CONFLICT" && (
+            <button
+              className="ml-2 underline"
+              onClick={() =>
+                void (async () => {
+                  if (
+                    await confirmAction({
+                      title: "Reload saved design?",
+                      description:
+                        "This replaces your local draft with the latest saved design.",
+                      confirmLabel: "Reload",
+                    })
+                  ) {
+                    const result = await query.refetch();
+                    if (result.data) {
+                      setDesign(result.data.design);
+                      setRevision(result.data.revision);
+                      setDirty(false);
+                      setHistory([]);
+                      setFuture([]);
+                      save.reset();
+                    }
+                  }
+                })()
+              }
+            >
+              Reload saved
+            </button>
           )}
         </div>
       )}
-      {(error || save.error) && (
-        <p role="alert" className="text-destructive px-3 py-2 text-xs">
-          {error || save.error?.message}
-        </p>
-      )}
-      <footer className="flex flex-wrap items-center gap-2 border-t p-2">
-        <Button
-          aria-label="Undo model edit"
-          variant="outline"
-          disabled={!history.length || save.isPending}
-          onClick={() => {
-            const last = history.at(-1)!;
-            setHistory((h) => h.slice(0, -1));
-            setFuture((f) => [design, ...f]);
-            setDesign(last);
-            setDirty(true);
-          }}
-        >
-          <Undo2 className="size-4" />
-        </Button>
-        <Button
-          aria-label="Redo model edit"
-          variant="outline"
-          disabled={!future.length || save.isPending}
-          onClick={() => {
-            setHistory((h) => [...h, design]);
-            setDesign(future[0]!);
-            setFuture((f) => f.slice(1));
-            setDirty(true);
-          }}
-        >
-          <Redo2 className="size-4" />
-        </Button>
-        <Button
-          className="flex-1"
-          disabled={!loaded || !dirty || save.isPending}
-          onClick={() => {
-            const snapshot = design;
-            save.mutate(
-              {
-                jobId: w.job.id,
-                id: modelId,
-                expectedRevision: revision,
-                design: snapshot,
-              },
-              {
-                onSuccess: (result) => {
-                  setRevision(result.revision);
-                  if (current.current.design === snapshot) setDirty(false);
-                  setError("");
-                  void query.refetch();
-                },
-              },
-            );
-          }}
-        >
-          <Save className="mr-1 size-4" />
-          {save.isPending ? "Saving…" : "Save design"}
-        </Button>
-        {save.error?.data?.code === "CONFLICT" && (
-          <Button
-            variant="outline"
-            onClick={() =>
-              void (async () => {
-                if (
-                  await confirmAction({
-                    title: "Reload saved design?",
-                    description:
-                      "This replaces your local draft with the latest saved design.",
-                    confirmLabel: "Reload",
-                  })
-                ) {
-                  const result = await query.refetch();
-                  if (result.data) {
-                    setDesign(result.data.design);
-                    setRevision(result.data.revision);
-                    setDirty(false);
-                    setHistory([]);
-                    setFuture([]);
-                    save.reset();
-                  }
-                }
-              })()
-            }
-          >
-            Reload saved
-          </Button>
-        )}
+      <footer className="bg-background pointer-events-auto absolute inset-x-0 bottom-0 flex h-9 items-center gap-2 border-t px-3 text-[11px]">
+        <span className="min-w-0 flex-1 truncate">{status}</span>
+        <span className="text-muted-foreground shrink-0">
+          {workingPlane} · {unit}
+        </span>
       </footer>
     </section>
   );

@@ -3,6 +3,7 @@ import { deviceModelDownload } from "./device-model-cache";
 import {
   IfcAPI,
   IFCBUILDINGSTOREY,
+  IFCPROJECT,
   IFCRELCONTAINEDINSPATIALSTRUCTURE,
   LogLevel,
 } from "web-ifc";
@@ -194,7 +195,18 @@ async function load(
     }
   }
   await flush();
-  if (!elements.length) throw Error("This IFC has no viewable 3D elements.");
+  // Empty IFC projects are valid starting points for the CAD editor.
+  if (!elements.length) {
+    const projects = api.GetLineIDsWithType(model, IFCPROJECT);
+    try {
+      if (!projects.size())
+        throw Error(
+          "This IFC contains neither a project nor viewable geometry.",
+        );
+    } finally {
+      releaseVector(projects);
+    }
+  }
   send({
     type: "ready",
     modelId,

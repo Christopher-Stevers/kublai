@@ -79,8 +79,16 @@ export class ModelScene {
   >();
   editorTap: ((x: number, y: number) => void) | null = null;
   editorPointer: ((event: PointerEvent) => boolean) | null = null;
+  // CAD uses one renderer and one shared scene, with independent camera views.
+  editorInput: HTMLElement | null = null;
+  renderViews: (() => void) | null = null;
+  inputRect() {
+    return (
+      this.editorInput ?? this.renderer.domElement
+    ).getBoundingClientRect();
+  }
   editorRay(x: number, y: number) {
-    const rect = this.renderer.domElement.getBoundingClientRect();
+    const rect = this.inputRect();
     const ray = new THREE.Raycaster();
     ray.setFromCamera(
       new THREE.Vector2(
@@ -99,6 +107,17 @@ export class ModelScene {
           point: hit.point.clone().add(this.origin),
         }
       : null;
+  }
+  editorAnchor(x: number, y: number) {
+    const hit = this.pick(x, y);
+    if (!hit) return null;
+    const point = this.snapVertex(hit, x, y);
+    return point === hit.point
+      ? null
+      : {
+          point: point.clone().add(this.origin),
+          kind: "Model vertex",
+        };
   }
   applyDesignOverrides(modelId: string, overrides: DesignOverride[]) {
     const changed = new Set<THREE.BatchedMesh>();
@@ -371,8 +390,11 @@ export class ModelScene {
     }
     const moved = this.controls.enabled && this.controls.update();
     this.camera.updateMatrixWorld();
-    this.renderer.render(this.scene, this.camera);
-    this.labels.render(this.scene, this.camera);
+    if (this.renderViews) this.renderViews();
+    else {
+      this.renderer.render(this.scene, this.camera);
+      this.labels.render(this.scene, this.camera);
+    }
     if (moved || this.animation || this.keys.size || thumbsActive)
       this.invalidate();
   };
@@ -1105,15 +1127,7 @@ export class ModelScene {
     this.invalidate();
   }
   private pick(x: number, y: number) {
-    const rect = this.renderer.domElement.getBoundingClientRect();
-    const ray = new THREE.Raycaster();
-    ray.setFromCamera(
-      new THREE.Vector2(
-        ((x - rect.left) / rect.width) * 2 - 1,
-        (-(y - rect.top) / rect.height) * 2 + 1,
-      ),
-      this.camera,
-    );
+    const ray = this.editorRay(x, y);
     this.scene.updateMatrixWorld();
     const hits = this.picker.intersect(ray);
     for (const hit of hits) {
@@ -1136,7 +1150,7 @@ export class ModelScene {
     const position = geometry.getAttribute("position");
     const matrix = new THREE.Matrix4();
     hit.batch.getMatrixAt(hit.index, matrix);
-    const rect = this.renderer.domElement.getBoundingClientRect();
+    const rect = this.inputRect();
     let best = hit.point,
       distance = 12;
     for (const index of [hit.face.a, hit.face.b, hit.face.c]) {

@@ -114,3 +114,27 @@ export async function saveDesign(
     };
   });
 }
+
+/** A client-generated request ID makes retries safe after an interrupted reply. */
+export async function createCadModel(a: ModelAccess, id: string, name: string) {
+  requireModelUpload(a);
+  const [{ blankCadIfc }, { storeConvertedModel }, { registerModel }] =
+    await Promise.all([
+      import("~/lib/bim/blank-cad"),
+      import("./storage"),
+      import("./service"),
+    ]);
+  const bytes = new TextEncoder().encode(blankCadIfc);
+  const sha = await storeConvertedModel(a.job.organizationId, bytes);
+  return registerModel(a, id, {
+    sha,
+    format: "ifc",
+    metadata: {
+      jobId: a.job.id,
+      name,
+      filename: "design.ifc",
+      size: bytes.length,
+      discipline: "coordination",
+    },
+  });
+}
