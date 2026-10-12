@@ -13,6 +13,7 @@ import type {
 } from "./types";
 import { elementKey } from "./types";
 import type { IfcPart } from "./worker-protocol";
+import { modelMemoryBudget, planModelBatches } from "./model-memory";
 import { formatModelMeasure, measureArea, measureDistance } from "./geometry";
 export type ModelTool = "inspect" | "distance" | "area" | "pin" | "walk";
 type PartRef = {
@@ -41,6 +42,12 @@ export class ModelScene {
   readonly models = new Map<string, THREE.BatchedMesh[]>();
   readonly origin = new THREE.Vector3();
   private originSet = false;
+  private modelBytes = new Map<string, number>();
+  private geometryBytes = 0;
+  private readonly memoryBudget = modelMemoryBudget(
+    (navigator as Navigator & { deviceMemory?: number }).deviceMemory,
+    window.matchMedia("(pointer: coarse)").matches,
+  );
   private batches: THREE.BatchedMesh[] = [];
   private batchKeys = new Map<THREE.BatchedMesh, Map<number, string>>();
   private selected: string | null = null;
@@ -224,12 +231,17 @@ export class ModelScene {
     this.originSet = true;
   }
   addParts(modelId: string, parts: IfcPart[], elements: BimElement[]) {
-    const total =
-      this.batches.reduce(
-        (sum, b) => sum + b.geometry.getAttribute("position").count,
-        0,
-      ) + parts.reduce((sum, p) => sum + p.vertices.length / 6, 0);
-    if (total > 12_000_000) throw Error("Too many models for this view.");
+    const groups = planModelBatches(parts);
+    const addedBytes = groups.reduce((sum, group) => sum + group.bytes, 0);
+    if (this.geometryBytes + addedBytes > this.memoryBudget)
+      throw Error(
+        "The open models exceed this device's geometry memory budget. Close another model or use a floor or trade export.",
+      );
+    this.geometryBytes += addedBytes;
+    this.modelBytes.set(
+      modelId,
+      (this.modelBytes.get(modelId) ?? 0) + addedBytes,
+    );
     for (const info of elements) {
       const existing = this.elements.get(info.key);
       if (existing) existing.info = info;
@@ -240,14 +252,8 @@ export class ModelScene {
           bounds: new THREE.Box3(),
         });
     }
-    for (const transparent of [false, true]) {
-      const group = parts.filter(
-        (p) =>
-          p.color[3] < 0.99 === transparent &&
-          p.vertices.length &&
-          p.indices.length,
-      );
-      if (!group.length) continue;
+    const changed = new Set<string>();
+    for (const { group, transparent, vertices, indices } of groups) {
       const material = new THREE.MeshStandardMaterial({
         roughness: 0.8,
         metalness: 0,
@@ -259,26 +265,40 @@ export class ModelScene {
       });
       const batch = new THREE.BatchedMesh(
         group.length,
-        group.reduce((n, p) => n + p.vertices.length / 6, 0),
-        group.reduce((n, p) => n + p.indices.length, 0),
+        vertices,
+        indices,
         material,
       );
       const lookup = new Map<number, string>();
+      const geometries = new Map<number, { id: number; bounds: THREE.Box3 }>();
+      // Register ownership before filling: removeModel also cleans up a failed chunk.
+      this.scene.add(batch);
+      this.batches.push(batch);
+      this.batchKeys.set(batch, lookup);
+      this.models.set(modelId, [...(this.models.get(modelId) ?? []), batch]);
       for (const part of group) {
-        const buffer = new THREE.InterleavedBuffer(part.vertices, 6);
-        const geometry = new THREE.BufferGeometry();
-        geometry.setAttribute(
-          "position",
-          new THREE.InterleavedBufferAttribute(buffer, 3, 0),
-        );
-        geometry.setAttribute(
-          "normal",
-          new THREE.InterleavedBufferAttribute(buffer, 3, 3),
-        );
-        geometry.setIndex(new THREE.BufferAttribute(part.indices, 1));
-        geometry.computeBoundingBox();
+        let geometry = geometries.get(part.geometryId);
+        if (!geometry) {
+          const buffer = new THREE.BufferGeometry();
+          buffer.setAttribute(
+            "position",
+            new THREE.BufferAttribute(part.positions, 3),
+          );
+          buffer.setAttribute(
+            "normal",
+            new THREE.BufferAttribute(part.normals, 3, true),
+          );
+          buffer.setIndex(new THREE.BufferAttribute(part.indices, 1));
+          buffer.computeBoundingBox();
+          geometry = {
+            id: batch.addGeometry(buffer),
+            bounds: buffer.boundingBox!.clone(),
+          };
+          geometries.set(part.geometryId, geometry);
+          buffer.dispose();
+        }
         const matrix = new THREE.Matrix4().fromArray(part.matrix);
-        const world = geometry.boundingBox!.clone().applyMatrix4(matrix);
+        const world = geometry.bounds.clone().applyMatrix4(matrix);
         if (!this.originSet) {
           const center = world.getCenter(new THREE.Vector3());
           this.origin.set(
@@ -291,14 +311,13 @@ export class ModelScene {
         matrix.elements[12] -= this.origin.x;
         matrix.elements[13] -= this.origin.y;
         matrix.elements[14] -= this.origin.z;
-        const geometryId = batch.addGeometry(geometry),
-          instance = batch.addInstance(geometryId);
+        const instance = batch.addInstance(geometry.id);
         batch.setMatrixAt(instance, matrix);
         const color = new THREE.Vector4(...part.color);
         batch.setColorAt(instance, color);
-        geometry.dispose();
         const key = elementKey(modelId, part.expressId);
         lookup.set(instance, key);
+        changed.add(key);
         let element = this.elements.get(key);
         if (!element) {
           element = {
@@ -324,12 +343,8 @@ export class ModelScene {
       }
       batch.computeBoundingBox();
       batch.computeBoundingSphere();
-      this.scene.add(batch);
-      this.batches.push(batch);
-      this.batchKeys.set(batch, lookup);
-      this.models.set(modelId, [...(this.models.get(modelId) ?? []), batch]);
     }
-    this.updateVisibility();
+    this.updateVisibility(changed);
     this.invalidate();
   }
   finishModel(modelId: string, elements: BimElement[]) {
@@ -356,6 +371,8 @@ export class ModelScene {
     this.invalidate();
   }
   removeModel(modelId: string) {
+    this.geometryBytes -= this.modelBytes.get(modelId) ?? 0;
+    this.modelBytes.delete(modelId);
     const batches = this.models.get(modelId) ?? [];
     for (const batch of batches) {
       this.scene.remove(batch);
@@ -669,8 +686,10 @@ export class ModelScene {
     this.levels = new Set(levels);
     this.updateVisibility();
   }
-  private updateVisibility() {
-    for (const [key, entry] of this.elements) {
+  private updateVisibility(keys: Iterable<string> = this.elements.keys()) {
+    for (const key of keys) {
+      const entry = this.elements.get(key);
+      if (!entry) continue;
       const visible =
         !this.hidden.has(key) &&
         (!this.isolated.size || this.isolated.has(key)) &&

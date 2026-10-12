@@ -44,13 +44,39 @@ export function useModelScene(
     let disposed = false,
       engine: ModelScene | null = null,
       worker: Worker | null = null,
-      loading: string | null = null,
+      loading: { modelId: string; loadId: number } | null = null,
+      loadRequest = 0,
+      ackFrame = 0,
+      ackTimer: ReturnType<typeof setTimeout> | undefined,
       request = 0,
       lastRequest = 0,
       restored = false;
     const loaded = new Set<string>(),
       failed = new Set<string>();
     const send = (m: IfcRequest) => worker?.postMessage(m);
+    const cancelAck = () => {
+      cancelAnimationFrame(ackFrame);
+      clearTimeout(ackTimer);
+    };
+    const acknowledgeAfterFrame = (
+      m: Extract<IfcReply, { type: "geometry" }>,
+    ) => {
+      cancelAck();
+      const acknowledge = () => {
+        cancelAck();
+        if (!disposed)
+          send({
+            type: "ack",
+            modelId: m.modelId,
+            loadId: m.loadId,
+            chunkId: m.chunkId,
+          });
+      };
+      // addParts schedules the render first. Do not queue the next chunk until
+      // this frame has run; hidden tabs need a timer fallback to keep loading.
+      ackFrame = requestAnimationFrame(acknowledge);
+      ackTimer = setTimeout(acknowledge, 100);
+    };
     const sync = () => {
       if (!engine || !worker || disposed) return;
       for (const id of loaded)
@@ -61,15 +87,26 @@ export function useModelScene(
         }
       for (const id of failed)
         if (!desired.current.includes(id)) failed.delete(id);
+      if (loading && !desired.current.includes(loading.modelId)) {
+        cancelAck();
+        engine.removeModel(loading.modelId);
+        send({ type: "close", modelId: loading.modelId });
+        loading = null;
+      }
       if (loading) return;
       const next = desired.current.find(
         (id) => !loaded.has(id) && !failed.has(id),
       );
       if (next) {
-        loading = next;
+        loading = { modelId: next, loadId: ++loadRequest };
         setReady(false);
         setProgress("Opening model…");
-        send({ type: "load", modelId: next, url: modelFileUrl(jobId, next) });
+        send({
+          type: "load",
+          modelId: next,
+          loadId: loading.loadId,
+          url: modelFileUrl(jobId, next),
+        });
         return;
       }
       setProgress("");
@@ -139,26 +176,32 @@ export function useModelScene(
             }
             return;
           }
+          if (m.modelId !== loading?.modelId || m.loadId !== loading.loadId)
+            return;
           if (!desired.current.includes(m.modelId)) {
-            if (m.type === "ready" || m.type === "error") {
-              engine.removeModel(m.modelId);
-              send({ type: "close", modelId: m.modelId });
-              loading = null;
-              sync();
-            }
+            sync();
             return;
           }
           if (m.type === "progress")
             setProgress(`${m.message} · ${Math.round(m.progress)}%`);
-          if (m.type === "geometry" && !failed.has(m.modelId)) {
+          if (m.type === "geometry") {
             try {
+              const first = engine.elements.size === 0;
               engine.addParts(m.modelId, m.parts, m.elements);
-            } catch {
+              if (first && !rest.current) engine.fit(undefined, false);
+              acknowledgeAfterFrame(m);
+            } catch (error) {
+              cancelAck();
               failed.add(m.modelId);
               engine.removeModel(m.modelId);
+              send({ type: "close", modelId: m.modelId });
+              loading = null;
               cb.current.error(
-                "This device could not render the model. Try a smaller floor or trade export.",
+                error instanceof Error
+                  ? error.message
+                  : "This device could not render the model. Close other models and try again.",
               );
+              sync();
             }
           }
           if (m.type === "ready") {
@@ -202,6 +245,7 @@ export function useModelScene(
     return () => {
       disposed = true;
       controller.current = null;
+      cancelAck();
       worker?.terminate();
       engine?.dispose();
     };

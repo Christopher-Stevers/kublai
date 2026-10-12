@@ -12,8 +12,22 @@ import {
   type BimProperties,
 } from "./types";
 import type { IfcPart, IfcReply, IfcRequest } from "./worker-protocol";
+import {
+  readMeshParts,
+  releaseVector,
+  viewableElementIds,
+} from "./ifc-geometry";
+import { ModelLoadFlow } from "./model-load-flow";
 const api = new IfcAPI();
 const models = new Map<string, number>();
+const loading = new Map<string, { loadId: number; flow: ModelLoadFlow }>();
+function close(modelId: string) {
+  loading.get(modelId)?.flow.cancel();
+  loading.delete(modelId);
+  const model = models.get(modelId);
+  if (model !== undefined) api.CloseModel(model);
+  models.delete(modelId);
+}
 let initialization: Promise<void> | undefined;
 const send = (reply: IfcReply, transfers: Transferable[] = []) =>
   self.postMessage(reply, transfers);
@@ -36,7 +50,20 @@ function scalar(value: unknown): string {
 function line(model: number, id: number) {
   return record(api.GetLine(model, id));
 }
-async function load(modelId: string, url: string) {
+async function load(
+  modelId: string,
+  loadId: number,
+  url: string,
+  flow: ModelLoadFlow,
+) {
+  const progress = (value: number, message: string) =>
+    send({
+      type: "progress",
+      modelId,
+      loadId,
+      progress: value,
+      message,
+    });
   if (!initialization) {
     api.SetWasmPath(
       new URL("/api/models/wasm/", self.location.origin).href,
@@ -44,17 +71,147 @@ async function load(modelId: string, url: string) {
     );
     initialization = api
       .Init(undefined, true)
-      .then(() => api.SetLogLevel(LogLevel.LOG_LEVEL_ERROR));
+      .then(() => api.SetLogLevel(LogLevel.LOG_LEVEL_ERROR))
+      .catch((error: unknown) => {
+        initialization = undefined;
+        throw error;
+      });
   }
   await initialization;
-  if (models.has(modelId)) api.CloseModel(models.get(modelId)!);
+  flow.check();
+  progress(2, "Downloading model");
+  const model = await downloadAndOpen(url, flow, progress);
+  models.set(modelId, model);
+  await flow.yield();
+  const floorMap = new Map<number, { key: string; name: string }>();
+  const storeys = api.GetLineIDsWithType(model, IFCBUILDINGSTOREY);
+  const names = new Map<number, string>();
+  try {
+    for (let i = 0; i < storeys.size(); i++) {
+      const id = storeys.get(i);
+      names.set(id, scalar(line(model, id).Name) || `Level ${i + 1}`);
+    }
+  } finally {
+    releaseVector(storeys);
+  }
+  const relationships = api.GetLineIDsWithType(
+    model,
+    IFCRELCONTAINEDINSPATIALSTRUCTURE,
+  );
+  try {
+    for (let i = 0; i < relationships.size(); i++) {
+      const rel = line(model, relationships.get(i));
+      const id = Number(record(rel.RelatingStructure).value);
+      const name = names.get(id);
+      if (!name) continue;
+      for (const ref of Array.isArray(rel.RelatedElements)
+        ? rel.RelatedElements
+        : []) {
+        floorMap.set(Number(record(ref).value), {
+          key: elementKey(modelId, id),
+          name,
+        });
+      }
+    }
+  } finally {
+    releaseVector(relationships);
+  }
+  const ids = viewableElementIds(api, model);
+  const cache: Parameters<typeof readMeshParts>[3] = new Map();
+  let parts: IfcPart[] = [],
+    pending: BimElement[] = [];
+  const elements: BimElement[] = [];
+  const transfers = new Set<ArrayBuffer>();
+  let bytes = 0,
+    chunkId = 0,
+    lastYield = performance.now();
+  const flush = async () => {
+    if (!parts.length) {
+      await flow.yield();
+      return;
+    }
+    const accepted = flow.waitForChunk(++chunkId);
+    send(
+      { type: "geometry", modelId, loadId, chunkId, parts, elements: pending },
+      [...transfers],
+    );
+    parts = [];
+    pending = [];
+    cache.clear();
+    transfers.clear();
+    bytes = 0;
+    await accepted;
+    flow.check();
+  };
+  for (let index = 0; index < ids.length; index++) {
+    flow.check();
+    const expressId = ids[index]!;
+    const incoming = readMeshParts(api, model, expressId, cache);
+    if (incoming.length) {
+      const props = line(model, expressId);
+      const level = floorMap.get(expressId);
+      const element: BimElement = {
+        key: elementKey(modelId, expressId),
+        modelId,
+        expressId,
+        guid: scalar(props.GlobalId),
+        name: scalar(props.Name) || `Element ${expressId}`,
+        type: api.GetNameFromTypeCode(
+          Number(api.GetLineType(model, expressId)),
+        ),
+        level: level?.key ?? "",
+        levelName: level?.name ?? "Unassigned",
+      };
+      elements.push(element);
+      pending.push(element);
+      for (const part of incoming) {
+        parts.push(part);
+        for (const buffer of [
+          part.positions.buffer,
+          part.normals.buffer,
+          part.indices.buffer,
+        ] as ArrayBuffer[]) {
+          if (!transfers.has(buffer)) {
+            transfers.add(buffer);
+            bytes += buffer.byteLength;
+          }
+        }
+      }
+    }
+    if (
+      parts.length >= 96 ||
+      bytes >= 2 * 1024 * 1024 ||
+      performance.now() - lastYield >= 40
+    ) {
+      progress(
+        20 + (75 * (index + 1)) / Math.max(1, ids.length),
+        "Building model geometry",
+      );
+      await flush();
+      lastYield = performance.now();
+    }
+  }
+  await flush();
+  if (!elements.length) throw Error("This IFC has no viewable 3D elements.");
   send({
-    type: "progress",
+    type: "ready",
     modelId,
-    progress: 2,
-    message: "Downloading model",
+    loadId,
+    elements,
+    schema: api.GetModelSchema(model),
   });
-  const response = await fetch(url, { credentials: "same-origin" });
+}
+
+// Separate scope releases the source bytes before streamed geometry processing.
+async function downloadAndOpen(
+  url: string,
+  flow: ModelLoadFlow,
+  progress: (value: number, message: string) => void,
+) {
+  const response = await fetch(url, {
+    credentials: "same-origin",
+    signal: flow.signal,
+  });
   if (!response.ok)
     throw Error(
       response.status === 401
@@ -65,23 +222,31 @@ async function load(modelId: string, url: string) {
   if (!reader) throw Error("The model file is empty.");
   const size = Number(response.headers.get("content-length")) || 0;
   const chunks: Uint8Array[] = [];
-  let total = 0;
-  while (true) {
-    const next = await reader.read();
-    if (next.done) break;
-    total += next.value.byteLength;
-    if (total > MAX_MODEL_BYTES) {
-      await reader.cancel();
-      throw Error("This model exceeds the 250 MB viewing limit.");
+  let total = 0,
+    lastProgress = 0;
+  try {
+    while (true) {
+      const next = await reader.read();
+      if (next.done) break;
+      flow.check();
+      total += next.value.byteLength;
+      if (total > MAX_MODEL_BYTES) {
+        await reader.cancel();
+        throw Error("This model exceeds the 250 MB viewing limit.");
+      }
+      chunks.push(next.value);
+      if (performance.now() - lastProgress > 100) {
+        progress(
+          Math.min(20, size ? (20 * total) / size : 10),
+          "Downloading model",
+        );
+        lastProgress = performance.now();
+      }
     }
-    chunks.push(next.value);
-    send({
-      type: "progress",
-      modelId,
-      progress: Math.min(20, size ? (20 * total) / size : 10),
-      message: "Downloading model",
-    });
+  } finally {
+    reader.releaseLock();
   }
+  flow.check();
   const data = new Uint8Array(total);
   let offset = 0;
   for (const chunk of chunks) {
@@ -89,6 +254,8 @@ async function load(modelId: string, url: string) {
     offset += chunk.length;
   }
   chunks.length = 0;
+  progress(20, "Reading model structure");
+  await flow.yield();
   const model = api.OpenModel(data, {
     COORDINATE_TO_ORIGIN: false,
     CIRCLE_SEGMENTS: 24,
@@ -99,111 +266,7 @@ async function load(modelId: string, url: string) {
     throw Error(
       "The IFC model could not be read. Export IFC2x3, IFC4, or IFC4.3 from the authoring program.",
     );
-  models.set(modelId, model);
-  const floorMap = new Map<number, { key: string; name: string }>();
-  const storeys = api.GetLineIDsWithType(model, IFCBUILDINGSTOREY);
-  const names = new Map<number, string>();
-  for (let i = 0; i < storeys.size(); i++) {
-    const id = storeys.get(i);
-    names.set(id, scalar(line(model, id).Name) || `Level ${i + 1}`);
-  }
-  const relationships = api.GetLineIDsWithType(
-    model,
-    IFCRELCONTAINEDINSPATIALSTRUCTURE,
-  );
-  for (let i = 0; i < relationships.size(); i++) {
-    const rel = line(model, relationships.get(i));
-    const id = Number(record(rel.RelatingStructure).value);
-    const name = names.get(id);
-    if (!name) continue;
-    for (const ref of Array.isArray(rel.RelatedElements)
-      ? rel.RelatedElements
-      : []) {
-      floorMap.set(Number(record(ref).value), {
-        key: elementKey(modelId, id),
-        name,
-      });
-    }
-  }
-  let parts: IfcPart[] = [];
-  let pending: BimElement[] = [];
-  const elements: BimElement[] = [];
-  let vertexCount = 0;
-  let bytes = 0;
-  const flush = () => {
-    if (!parts.length) return;
-    send(
-      { type: "geometry", modelId, parts, elements: pending },
-      parts.flatMap(
-        (p) => [p.vertices.buffer, p.indices.buffer] as ArrayBuffer[],
-      ),
-    );
-    parts = [];
-    pending = [];
-    bytes = 0;
-  };
-  api.StreamAllMeshes(model, (mesh, index, count) => {
-    const props = line(model, mesh.expressID);
-    const level = floorMap.get(mesh.expressID);
-    const element: BimElement = {
-      key: elementKey(modelId, mesh.expressID),
-      modelId,
-      expressId: mesh.expressID,
-      guid: scalar(props.GlobalId),
-      name: scalar(props.Name) || `Element ${mesh.expressID}`,
-      type: api.GetNameFromTypeCode(Number(api.GetLineType(model, mesh.expressID))),
-      level: level?.key ?? "",
-      levelName: level?.name ?? "Unassigned",
-    };
-    elements.push(element);
-    pending.push(element);
-    for (let i = 0; i < mesh.geometries.size(); i++) {
-      const placed = mesh.geometries.get(i);
-      const geometry = api.GetGeometry(model, placed.geometryExpressID);
-      try {
-        const vertices = api
-          .GetVertexArray(
-            geometry.GetVertexData(),
-            geometry.GetVertexDataSize(),
-          )
-          .slice();
-        const indices = api
-          .GetIndexArray(geometry.GetIndexData(), geometry.GetIndexDataSize())
-          .slice();
-        vertexCount += vertices.length / 6;
-        if (vertexCount > 6_000_000)
-          throw Error(
-            "This model is too detailed for this device viewer. Export a smaller discipline or floor model.",
-          );
-        bytes += vertices.byteLength + indices.byteLength;
-        parts.push({
-          expressId: mesh.expressID,
-          vertices,
-          indices,
-          matrix: placed.flatTransformation,
-          color: [
-            placed.color.x,
-            placed.color.y,
-            placed.color.z,
-            placed.color.w,
-          ],
-        });
-        if (parts.length >= 96 || bytes > 4 * 1024 * 1024) flush();
-      } finally {
-        geometry.delete();
-      }
-    }
-    if (index % 50 === 0)
-      send({
-        type: "progress",
-        modelId,
-        progress: 20 + (75 * (index + 1)) / Math.max(1, count),
-        message: "Building model geometry",
-      });
-  });
-  flush();
-  if (!elements.length) throw Error("This IFC has no viewable 3D elements.");
-  send({ type: "ready", modelId, elements, schema: api.GetModelSchema(model) });
+  return model;
 }
 function flatten(
   value: unknown,
@@ -282,14 +345,41 @@ function flatten(
 self.onmessage = (event: MessageEvent<IfcRequest>) => {
   const request = event.data;
   void (async () => {
-    if (request.type === "load") return load(request.modelId, request.url);
-    const model = models.get(request.modelId);
-    if (model === undefined) throw Error("Open the model first.");
-    if (request.type === "close") {
-      api.CloseModel(model);
-      models.delete(request.modelId);
+    if (request.type === "close") return close(request.modelId);
+    if (request.type === "ack") {
+      const session = loading.get(request.modelId);
+      if (session?.loadId === request.loadId)
+        session.flow.acknowledge(request.chunkId);
       return;
     }
+    if (request.type === "load") {
+      close(request.modelId);
+      const flow = new ModelLoadFlow();
+      const session = { loadId: request.loadId, flow };
+      loading.set(request.modelId, session);
+      try {
+        await load(request.modelId, request.loadId, request.url, flow);
+      } catch (error) {
+        if (!flow.signal.aborted) {
+          close(request.modelId);
+          send({
+            type: "error",
+            modelId: request.modelId,
+            loadId: request.loadId,
+            message:
+              error instanceof Error
+                ? error.message
+                : "The model could not be read.",
+          });
+        }
+      } finally {
+        if (loading.get(request.modelId) === session)
+          loading.delete(request.modelId);
+      }
+      return;
+    }
+    const model = models.get(request.modelId);
+    if (model === undefined) throw Error("Open the model first.");
     const rows: BimProperties = [];
     flatten(api.GetLine(model, request.expressId), "Element", "", rows);
     for (const [name, read] of [
@@ -317,13 +407,6 @@ self.onmessage = (event: MessageEvent<IfcRequest>) => {
       properties: rows,
     });
   })().catch((error: unknown) => {
-    if (request.type === "load") {
-      const model = models.get(request.modelId);
-      if (model !== undefined) {
-        api.CloseModel(model);
-        models.delete(request.modelId);
-      }
-    }
     send({
       type: "error",
       modelId: request.modelId,

@@ -42,7 +42,20 @@ Models, upload chunks and encrypted per-company Autodesk connections are under `
 
 Legacy Autodesk connection code and existing encrypted credentials are retained for compatibility; the local conversion worker does not use or transmit them. The former APS integration accepted: `APS_ORGANIZATION_ID`, `APS_CLIENT_ID`, and `APS_CLIENT_SECRET`. Do not delete existing credentials from backups during this transition.
 
-Uploads use 8 MB chunks, maximum 250 MB per source/derivative. Unfinished upload sessions expire after 24 hours; expired sessions are removed when another upload starts for that company. Eight unfinished sessions per uploader are allowed. Worker geometry limits are 6 million vertices per model and 12 million per open scene. Large Revit/IFC projects should be split by trade or floor, especially for phones.
+Uploads use 8 MB chunks, maximum 250 MB per source/derivative. Unfinished upload sessions expire after 24 hours; expired sessions are removed when another upload starts for that company. Eight unfinished sessions per uploader are allowed. The viewer no longer rejects models at 6 million vertices or federated scenes at 12 million vertices. It indexes repeated position/normal pairs, keeps exact Float32 triangle positions, packs unit normals into normalized Int16 attributes, and reuses geometry for repeated placements within a render batch. This changes shading-normal precision by less than 0.003 degrees; measurement coordinates and triangle winding are unchanged.
+
+The worker reads one IFC element at a time and transfers chunks after about 2 MiB, 96 placements, or 40 ms of processing (a single component can exceed the chunk target). It waits for the viewer to consume each chunk before continuing. Geometry renders progressively, and removing a loading model cancels its download or the next geometry step and frees its resources. The initial synchronous IFC parse and individual tessellations cannot be interrupted mid-call. The browser's `GetFlatMesh` API is used because web-ifc 0.0.78's `StreamMeshes` wrapper and browser WASM disagree on the argument count.
+
+Device memory remains finite. The scene budgets estimated CPU and GPU geometry storage together: 256 MiB on devices reporting at most 2 GiB RAM, 384 MiB on touch devices or those reporting at most 4 GiB, and 768 MiB otherwise. These estimates are not measurements of free RAM and exclude parser/browser overhead. If the budget is exhausted, the viewer explains that other models must be closed or a smaller export used; it does not silently drop elements.
+
+To compare a real IFC against the original reader without uploading or changing app data:
+
+```sh
+pnpm exec tsx scripts/ops/check-model-streaming.ts path/to/model.ifc report.json
+pnpm exec vitest run src/lib/bim/streaming.test.ts src/lib/bim/geometry.test.ts
+```
+
+Validation on 2026-10-11 used the 112,450,900-byte converted Snowdon IFC (SHA-256 `a542b0a6c7cd6dbcfbd4aa7b9a455d8e2ceb00310b2e7621854e971671cf5531`). All 5,238 visible elements and 2,511,042 triangles match the original reader, including exact triangle positions and placement transforms. Geometry payloads decreased from 209,853,912 to 122,305,266 bytes (41.72%). Chromium checks at 390- and 1440-pixel viewport widths also cover orbiting, selection/properties, filtering, measurement, restoring a view, canceling a partial load and replacing it, and a failed download. These are desktop browser checks, not tests on a physical phone. This verifies the viewer, not the completeness of the experimental RVT conversion.
 
 ## Boundaries
 
