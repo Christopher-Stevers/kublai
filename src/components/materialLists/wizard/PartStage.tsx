@@ -1,4 +1,4 @@
-import { packContents, pickerIndex, pickerQuantity, formatPackQuantity } from "~/lib/pack-quantity";
+import { packContents, formatPackQuantity } from "~/lib/pack-quantity";
 import { PackQuantityControls } from "../PackQuantityControls";
 import {
   useState,
@@ -70,6 +70,7 @@ interface PartCardProps {
     preview: {
       partId: string;
       partName: string;
+      mode?: "individual";
       quantity: number;
     } | null,
   ) => void;
@@ -105,7 +106,7 @@ function PartCard({
     }
   };
 
-  const clampQuantity = (quantity: number) => packContents(part.piecesPerPack) > 1 ? quantity : Math.max(0, quantity);
+  const clampQuantity = (quantity: number) => Math.max(packContents(part.piecesPerPack) > 1 ? -1 : 0, quantity);
 
   const clearPickerPreview = () => {
     onQuantityPickerPreviewChange?.(null);
@@ -133,8 +134,12 @@ function PartCard({
   };
 
   const finishLongPressSelection = () => {
-    onPartQuantitySet?.(part, pickerQuantity(dragQuantityRef.current, part.piecesPerPack));
-    clearPickerPreview();
+    if (dragQuantityRef.current === -1 && packContents(part.piecesPerPack) > 1) {
+      onQuantityPickerPreviewChange?.({partId: part.id, partName: part.displayName, quantity: 1, mode: "individual"});
+    } else {
+      onPartQuantitySet?.(part, dragQuantityRef.current);
+      clearPickerPreview();
+    }
     longPressTriggeredRef.current = false;
     pointerStartYRef.current = null;
     activePointerIdRef.current = null;
@@ -207,7 +212,7 @@ function PartCard({
     activePointerTypeRef.current = event.pointerType;
     pointerElementRef.current = event.currentTarget;
     pointerStartYRef.current = event.clientY;
-    baseQuantityRef.current = pendingQuantity > 0 ? pickerIndex(pendingQuantity, part.piecesPerPack) : 1;
+    baseQuantityRef.current = pendingQuantity > 0 ? Math.ceil(pendingQuantity) : 1;
     dragQuantityRef.current = baseQuantityRef.current;
     event.currentTarget.setPointerCapture(event.pointerId);
 
@@ -546,6 +551,7 @@ export interface PartStageProps {
     preview: {
       partId: string;
       partName: string;
+      mode?: "individual";
       quantity: number;
     } | null,
   ) => void;

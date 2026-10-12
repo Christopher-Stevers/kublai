@@ -2,7 +2,7 @@ import {act,render,fireEvent,screen,cleanup} from '@testing-library/react';
 import {afterEach,it,expect,vi} from 'vitest';
 import {PartStage} from './PartStage';
 afterEach(()=>{cleanup();vi.useRealTimers();vi.unstubAllGlobals();});
-it('dragging upward through zero selects individual pieces rather than clamping at zero',()=>{
+it('dragging above zero selects the unit menu before opening individual quantities',()=>{
  vi.useFakeTimers();
  class TestPointerEvent extends MouseEvent {pointerId=1;pointerType='mouse';}
  vi.stubGlobal('PointerEvent',TestPointerEvent);
@@ -14,7 +14,8 @@ it('dragging upward through zero selects individual pieces rather than clamping 
  fireEvent.pointerDown(card,{clientY:300,button:0});
  act(()=>vi.advanceTimersByTime(120));
  fireEvent.pointerMove(window,{clientY:102});
- expect(preview).toHaveBeenLastCalledWith({partId:'clips',partName:'Clip box',quantity:-10});
+ expect(preview).toHaveBeenLastCalledWith({partId:'clips',partName:'Clip box',quantity:-1});
  fireEvent.pointerUp(window);
- expect(select).toHaveBeenCalledWith(part,.2);
+ expect(select).not.toHaveBeenCalled();
+ expect(preview).toHaveBeenLastCalledWith({partId:'clips',partName:'Clip box',quantity:1,mode:'individual'});
 });

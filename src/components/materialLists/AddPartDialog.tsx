@@ -1,6 +1,7 @@
 "use client";
+import { IndividualQuantityPicker, individualUnitLabel } from "./wizard/IndividualQuantityPicker";
 import { PackQuantityControls } from "./PackQuantityControls";
-import { packContents, packsFromPieces, pickerQuantity, formatPackQuantity } from "~/lib/pack-quantity";
+import { packContents, packsFromPieces, formatPackQuantity } from "~/lib/pack-quantity";
 
 import { purchaseLineTotal } from "~/lib/purchase-quantity";
 import { FinancialOnly } from "~/components/permissions/FinancialVisibility";
@@ -69,6 +70,7 @@ export function AddPartDialog({
   const [quantityPickerPreview, setQuantityPickerPreview] = useState<{
     partId: string;
     partName: string;
+    mode?: "individual";
     quantity: number;
   } | null>(null);
   const stageBeforeReviewRef = useRef<WizardStage>("catalog");
@@ -390,7 +392,7 @@ export function AddPartDialog({
   };
 
   useEffect(() => {
-    if (!quantityPickerPreview) {
+    if (!quantityPickerPreview || quantityPickerPreview.mode === "individual") {
       pickerTouchYRef.current = null;
       pickerTouchAccumulatorRef.current = 0;
       return;
@@ -436,7 +438,7 @@ export function AddPartDialog({
 
         return {
           ...prev,
-          quantity: packContents(filteredPartsForSelection.find(part => part.id === prev.partId)?.piecesPerPack) > 1 ? prev.quantity + stepDelta : clampQuantity(prev.quantity + stepDelta),
+          quantity: packContents(filteredPartsForSelection.find(part => part.id === prev.partId)?.piecesPerPack) > 1 ? Math.max(-1, prev.quantity + stepDelta) : clampQuantity(prev.quantity + stepDelta),
         };
       });
     };
@@ -449,7 +451,13 @@ export function AddPartDialog({
       );
 
       if (matchingPart) {
-        handlePartQuantitySet(matchingPart, pickerQuantity(quantityPickerPreview.quantity, matchingPart.piecesPerPack));
+        if (quantityPickerPreview.quantity === -1 && packContents(matchingPart.piecesPerPack) > 1) {
+          pickerTouchYRef.current = null;
+          pickerTouchAccumulatorRef.current = 0;
+          setQuantityPickerPreview({...quantityPickerPreview, quantity: 1, mode: "individual"});
+          return;
+        }
+        handlePartQuantitySet(matchingPart, quantityPickerPreview.quantity);
       }
 
       pickerTouchYRef.current = null;
@@ -459,12 +467,13 @@ export function AddPartDialog({
 
     window.addEventListener("touchmove", handleTouchMove, { passive: false });
     window.addEventListener("touchend", handleTouchEnd, { passive: false });
-    window.addEventListener("touchcancel", handleTouchEnd, { passive: false });
+    const handleTouchCancel = () => setQuantityPickerPreview(null);
+    window.addEventListener("touchcancel", handleTouchCancel, { passive: false });
 
     return () => {
       window.removeEventListener("touchmove", handleTouchMove);
       window.removeEventListener("touchend", handleTouchEnd);
-      window.removeEventListener("touchcancel", handleTouchEnd);
+      window.removeEventListener("touchcancel", handleTouchCancel);
     };
   }, [filteredPartsForSelection, quantityPickerPreview]);
 
@@ -1516,16 +1525,28 @@ export function AddPartDialog({
             </div>
           </div>
 
-          {quantityPickerPreview && (
-            <VerticalPickerOverlay
+          {quantityPickerPreview?.mode === "individual" ? (
+            <IndividualQuantityPicker
+              partName={quantityPickerPreview.partName}
+              unit={filteredPartsForSelection.find(part => part.id === quantityPickerPreview.partId)?.individualUnit}
+              onCancel={() => setQuantityPickerPreview(null)}
+              onSelect={value => {
+                const part = filteredPartsForSelection.find(part => part.id === quantityPickerPreview.partId);
+                if (part) handlePartQuantitySet(part, packsFromPieces(value, part.piecesPerPack));
+                setQuantityPickerPreview(null);
+              }}
+            />
+          ) : quantityPickerPreview && (
+            <VerticalPickerOverlay<number>
               className="absolute"
-              title={packContents(filteredPartsForSelection.find(part => part.id === quantityPickerPreview.partId)?.piecesPerPack) > 1 ? (quantityPickerPreview.quantity < 0 ? "Pieces" : "Packs · scroll above 0 for pieces") : "Quantity"}
+              title={packContents(filteredPartsForSelection.find(part => part.id === quantityPickerPreview.partId)?.piecesPerPack) > 1 ? "Scroll above 0 to choose individual units" : "Quantity"}
               subtitle={quantityPickerPreview.partName}
               centerIndex={quantityPickerPreview.quantity}
-              getItem={(value) => (value < 0 && packContents(filteredPartsForSelection.find(part => part.id === quantityPickerPreview.partId)?.piecesPerPack) === 1 ? null : value)}
+              getItemFontSize={value => value === -1 ? "2rem" : undefined}
+              getItem={(value) => (value < (packContents(filteredPartsForSelection.find(part => part.id === quantityPickerPreview.partId)?.piecesPerPack) > 1 ? -1 : 0) ? null : value)}
               renderItem={(value) => {
                 const contents = filteredPartsForSelection.find(part => part.id === quantityPickerPreview.partId)?.piecesPerPack;
-                return value < 0 ? `${-value} pieces` : formatPackQuantity(value, contents);
+                return value === -1 ? `Per ${individualUnitLabel(filteredPartsForSelection.find(part => part.id === quantityPickerPreview.partId)?.individualUnit)}` : formatPackQuantity(value, contents);
               }}
             />
           )}
