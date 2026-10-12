@@ -1,3 +1,5 @@
+import { readDesign, saveDesign } from "~/server/models/design";
+import { designSchema } from "~/lib/bim/design";
 import {
   apsCredentialsSchema,
   storeApsCredentials,
@@ -28,6 +30,27 @@ import { viewStateSchema, issueSchema } from "~/lib/bim/types";
 const job = z.object({ jobId: z.string().uuid() });
 const entity = job.extend({ id: z.string().uuid() });
 export const modelsRouter = createTRPCRouter({
+  design: hasDashboardAccess
+    .input(entity)
+    .query(async ({ ctx, input }) =>
+      readDesign(await modelAccess(ctx.user.id, input.jobId), input.id),
+    ),
+  saveDesign: hasDashboardAccess
+    .input(
+      entity.extend({
+        expectedRevision: z.number().int().min(0),
+        design: designSchema,
+      }),
+    )
+    .mutation(async ({ ctx, input }) =>
+      saveDesign(
+        await modelAccess(ctx.user.id, input.jobId),
+        input.id,
+        input.expectedRevision,
+        input.design,
+      ),
+    ),
+
   connectAutodesk: hasDashboardAccess
     .input(job.extend({ credentials: apsCredentialsSchema }))
     .mutation(async ({ ctx, input }) => {

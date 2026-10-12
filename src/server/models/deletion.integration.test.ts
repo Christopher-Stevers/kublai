@@ -45,6 +45,8 @@ vi.mock("./storage", () => ({
 vi.mock("~/server/utils/get-request-identity", () => ({
   getRequestIdentity: vi.fn(async () => ({ userId: "owner" })),
 }));
+import { readDesign, saveDesign } from "./design";
+import { emptyDesign, newDesignElement } from "~/lib/bim/design";
 import { db } from "~/server/db";
 import { modelsRouter } from "~/server/api/routers/models";
 import { GET } from "~/app/api/models/files/[modelId]/route";
@@ -131,6 +133,7 @@ describe.skipIf(!process.env.MODELS_TEST_SOCKET)(
       await conn.unsafe(
         await readFile("drizzle/0067_bim_workspace.sql", "utf8"),
       );
+      await conn.unsafe(await readFile("drizzle/0068_bim_design.sql", "utf8"));
     });
     afterAll(async () => {
       await conn?.end();
@@ -144,6 +147,43 @@ describe.skipIf(!process.env.MODELS_TEST_SOCKET)(
       await conn`INSERT INTO kublai_organization (id,name) VALUES (${org},'Test'),(${foreignOrg},'Foreign')`;
       await conn`INSERT INTO kublai_job (id,"organizationId",name) VALUES (${jobId},${org},'A'),(${otherJob},${org},'B'),(${foreignJob},${foreignOrg},'Foreign')`;
       await conn`INSERT INTO kublai_user (id,name,email,role,"organizationId","organizationAccessStatus","permissionConfig") VALUES (${user.id},${user.name},${user.email},${user.role},${org},'approved',${JSON.stringify(permissions(true))})`;
+    });
+    it("saves model edits atomically with revision conflicts, scoping and permissions", async () => {
+      const a = await modelAccess(user.id, jobId),
+        model = await registerModel(a, randomUUID(), input());
+      expect((await readDesign(a, model.id)).revision).toBe(0);
+      const design = {
+        ...emptyDesign(),
+        elements: [newDesignElement("pipe", [1, 2, 3])],
+      };
+      const saved = await saveDesign(a, model.id, 0, design);
+      expect(saved.revision).toBe(1);
+      expect(
+        (await readDesign(a, model.id)).design.elements[0]?.position,
+      ).toEqual([1, 2, 3]);
+      await expect(
+        saveDesign(a, model.id, 0, emptyDesign()),
+      ).rejects.toMatchObject({ code: "CONFLICT" });
+      await expect(
+        saveDesign({ ...a, canUpload: false }, model.id, 1, design),
+      ).rejects.toMatchObject({ code: "FORBIDDEN" });
+      await expect(
+        saveDesign({ ...a, canDelete: false }, model.id, 1, emptyDesign()),
+      ).rejects.toMatchObject({ code: "FORBIDDEN" });
+      await expect(
+        readDesign({ ...a, job: { ...a.job, id: otherJob } }, model.id),
+      ).rejects.toMatchObject({ code: "NOT_FOUND" });
+      const records = await db
+        .select()
+        .from(bimActivity)
+        .where(eq(bimActivity.entityId, model.id));
+      expect(records.filter((r) => r.action === "design.saved")).toHaveLength(
+        1,
+      );
+      await removeModel(a, model.id);
+      await expect(saveDesign(a, model.id, 1, design)).rejects.toMatchObject({
+        code: "NOT_FOUND",
+      });
     });
     it("deletes the selected revision, blocks downloads, and preserves related history and other models", async () => {
       const a = await modelAccess(user.id, jobId);

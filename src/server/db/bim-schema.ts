@@ -1,3 +1,4 @@
+import type { ModelDesign } from "~/lib/bim/design";
 import {
   pgTableCreator,
   uniqueIndex,
@@ -120,6 +121,33 @@ export const bimActivity = table(
       columns: [t.jobId, t.organizationId],
       foreignColumns: [jobColumn("id"), jobColumn("organizationId")],
       name: "bim_activity_job_org_fk",
+    }).onDelete("cascade"),
+  ],
+);
+
+export const bimDesigns = table(
+  "bim_design",
+  (d) => ({
+    modelId: d
+      .uuid()
+      .primaryKey()
+      .references(() => bimModels.id, { onDelete: "cascade" }),
+    organizationId: d
+      .uuid()
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    jobId: d.uuid().notNull(),
+    revision: d.integer().notNull(),
+    data: d.jsonb().$type<ModelDesign>().notNull(),
+    updatedBy: d.varchar({ length: 255 }).notNull(),
+    updatedAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
+  }),
+  (t) => [
+    index("bim_design_job_idx").on(t.organizationId, t.jobId),
+    foreignKey({
+      columns: [t.jobId, t.organizationId],
+      foreignColumns: [jobColumn("id"), jobColumn("organizationId")],
+      name: "bim_design_job_org_fk",
     }).onDelete("cascade"),
   ],
 );

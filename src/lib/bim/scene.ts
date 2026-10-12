@@ -1,3 +1,4 @@
+import type { DesignOverride } from "./design";
 import { navigationDelta } from "./navigation";
 import {
   DEFAULT_NAVIGATION,
@@ -70,6 +71,100 @@ export class ModelScene {
   private batches: THREE.BatchedMesh[] = [];
   private batchKeys = new Map<THREE.BatchedMesh, Map<number, string>>();
   private picker = new SpatialModelPicker();
+  readonly designBounds = new Map<string, THREE.Box3>();
+  private designDeleted = new Set<string>();
+  private designOriginals = new Map<
+    string,
+    { matrices: THREE.Matrix4[]; bounds: THREE.Box3; name: string }
+  >();
+  editorTap: ((x: number, y: number) => void) | null = null;
+  editorPointer: ((event: PointerEvent) => boolean) | null = null;
+  editorRay(x: number, y: number) {
+    const rect = this.renderer.domElement.getBoundingClientRect();
+    const ray = new THREE.Raycaster();
+    ray.setFromCamera(
+      new THREE.Vector2(
+        ((x - rect.left) / rect.width) * 2 - 1,
+        (-(y - rect.top) / rect.height) * 2 + 1,
+      ),
+      this.camera,
+    );
+    return ray;
+  }
+  editorHit(x: number, y: number) {
+    const hit = this.pick(x, y);
+    return hit
+      ? {
+          element: this.elements.get(hit.key)!.info,
+          point: hit.point.clone().add(this.origin),
+        }
+      : null;
+  }
+  applyDesignOverrides(modelId: string, overrides: DesignOverride[]) {
+    const changed = new Set<THREE.BatchedMesh>();
+    for (const [key, original] of this.designOriginals) {
+      if (!key.startsWith(modelId + ":")) continue;
+      const entry = this.elements.get(key);
+      if (!entry) continue;
+      entry.parts.forEach((part, i) => {
+        part.batch.setMatrixAt(part.index, original.matrices[i]!);
+        changed.add(part.batch);
+      });
+      entry.bounds.copy(original.bounds);
+      entry.info.name = original.name;
+      this.designDeleted.delete(key);
+    }
+    for (const override of overrides) {
+      const key = elementKey(modelId, override.expressId),
+        entry = this.elements.get(key);
+      if (!entry) continue;
+      if (!this.designOriginals.has(key))
+        this.designOriginals.set(key, {
+          matrices: entry.parts.map((p) =>
+            p.batch.getMatrixAt(p.index, new THREE.Matrix4()),
+          ),
+          bounds: entry.bounds.clone(),
+          name: entry.info.name,
+        });
+      const original = this.designOriginals.get(key)!;
+      const center = original.bounds.getCenter(new THREE.Vector3());
+      const transform = new THREE.Matrix4()
+        .makeTranslation(...override.translation)
+        .multiply(
+          new THREE.Matrix4().makeTranslation(center.x, center.y, center.z),
+        )
+        .multiply(
+          new THREE.Matrix4().makeRotationFromEuler(
+            new THREE.Euler(
+              ...(override.rotation.map(THREE.MathUtils.degToRad) as [
+                number,
+                number,
+                number,
+              ]),
+            ),
+          ),
+        )
+        .multiply(
+          new THREE.Matrix4().makeTranslation(-center.x, -center.y, -center.z),
+        );
+      entry.parts.forEach((part, i) => {
+        part.batch.setMatrixAt(
+          part.index,
+          transform.clone().multiply(original.matrices[i]!),
+        );
+        changed.add(part.batch);
+      });
+      entry.bounds.copy(original.bounds).applyMatrix4(transform);
+      if (override.name) entry.info.name = override.name;
+      if (override.deleted) this.designDeleted.add(key);
+    }
+    for (const batch of changed) {
+      batch.computeBoundingBox();
+      batch.computeBoundingSphere();
+      this.picker.add(batch, this.batchKeys.get(batch)!.keys());
+    }
+    this.updateVisibility();
+  }
   private selected: string | null = null;
   private hidden = new Set<string>();
   private isolated = new Set<string>();
@@ -439,6 +534,7 @@ export class ModelScene {
     this.invalidate();
   }
   removeModel(modelId: string) {
+    this.designBounds.delete(modelId);
     this.geometryBytes -= this.modelBytes.get(modelId) ?? 0;
     this.modelBytes.delete(modelId);
     const batches = this.models.get(modelId) ?? [];
@@ -452,6 +548,10 @@ export class ModelScene {
     this.batches = this.batches.filter((b) => !batches.includes(b));
     this.models.delete(modelId);
     const prefix = modelId + ":";
+    for (const key of this.designOriginals.keys())
+      if (key.startsWith(prefix)) this.designOriginals.delete(key);
+    for (const key of this.designDeleted)
+      if (key.startsWith(prefix)) this.designDeleted.delete(key);
     for (const set of [this.hidden, this.isolated, this.levels])
       for (const key of set) if (key.startsWith(prefix)) set.delete(key);
     for (const [key, entry] of this.elements)
@@ -466,6 +566,8 @@ export class ModelScene {
       const e = this.elements.get(key);
       if (e) box.union(e.bounds);
     }
+    if (!keys)
+      for (const bounds of this.designBounds.values()) box.union(bounds);
     return box;
   }
   fit(keys?: Iterable<string>, animate = true) {
@@ -771,7 +873,12 @@ export class ModelScene {
   private pointerDown = (event: PointerEvent) => {
     if (this.navigationPaused || event.ctrlKey || event.metaKey || event.altKey)
       return;
-    if (event.pointerType === "touch" && this.floatingTouchEnabled()) {
+    if (this.editorPointer?.(event)) return;
+    if (
+      event.pointerType === "touch" &&
+      !this.editorTap &&
+      this.floatingTouchEnabled()
+    ) {
       event.preventDefault();
       event.stopImmediatePropagation();
       const rect = this.renderer.domElement.getBoundingClientRect();
@@ -975,6 +1082,10 @@ export class ModelScene {
     this.activateAt(event.clientX, event.clientY);
   };
   private activateAt(x: number, y: number) {
+    if (this.editorTap) {
+      this.editorTap(x, y);
+      return;
+    }
     const hit = this.pick(x, y);
     if (!hit) {
       if (this.tool === "inspect") this.select(null);
@@ -1085,6 +1196,7 @@ export class ModelScene {
       const entry = this.elements.get(key);
       if (!entry) continue;
       const visible =
+        !this.designDeleted.has(key) &&
         !this.hidden.has(key) &&
         (!this.isolated.size || this.isolated.has(key)) &&
         (!this.categories.size || this.categories.has(entry.info.type)) &&
@@ -1389,6 +1501,8 @@ export class ModelScene {
     this.resize.disconnect();
     this.controls.dispose();
     for (const id of this.models.keys()) this.removeModel(id);
+    this.designOriginals.clear();
+    this.designDeleted.clear();
     this.picker.clear();
     this.clearGroup(this.measureGroup);
     this.clearGroup(this.issueGroup);

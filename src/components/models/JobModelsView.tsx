@@ -28,7 +28,9 @@ import {
   Upload,
   Trash2,
   Settings2,
+  Pencil,
 } from "lucide-react";
+import { ModelDesignEditor } from "./ModelDesignEditor";
 import { TouchNavigation } from "./TouchNavigation";
 import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
@@ -142,6 +144,7 @@ export function ModelWorkspace({
 }) {
   const navigation = useNavigationSettings(w.userId);
   const [navigationOpen, setNavigationOpen] = useState(false);
+  const [editingModel, setEditingModel] = useState<string | null>(null);
   const host = useRef<HTMLDivElement>(null),
     [requestedIds, setIds] = useState<string[]>([]),
     [panel, setPanel] = useState<Panel>("models"),
@@ -172,6 +175,7 @@ export function ModelWorkspace({
     () => requestedIds.filter((id) => w.models.some((m) => m.id === id)),
     [requestedIds, w.models],
   );
+  const isEditing = editingModel !== null && ids.includes(editingModel);
   const availableRestore = restore?.modelIds.every((id) =>
     w.models.some((m) => m.id === id),
   )
@@ -560,7 +564,7 @@ export function ModelWorkspace({
                   <Eye className="size-5" />
                 </button>
               </div>
-              {!navigationOpen && (
+              {!navigationOpen && !isEditing && (
                 <TouchNavigation
                   key={tool}
                   settings={navigation.settings.touch}
@@ -568,7 +572,24 @@ export function ModelWorkspace({
                   walking={tool === "walk"}
                 />
               )}
-              <div className="absolute right-3 bottom-3 left-3 flex flex-col items-center gap-2">
+              {scene &&
+                ids.map((id) => (
+                  <ModelDesignEditor
+                    key={id}
+                    workspace={w}
+                    modelId={id}
+                    scene={scene}
+                    ready={ready}
+                    active={editingModel === id}
+                    onClose={() => setEditingModel(null)}
+                  />
+                ))}
+              <div
+                className={cn(
+                  "absolute right-3 bottom-3 left-3 flex flex-col items-center gap-2",
+                  isEditing && "hidden",
+                )}
+              >
                 <p className="bg-background/85 text-muted-foreground max-w-lg rounded px-3 py-1 text-center text-[11px]">
                   {toolInfo[tool]}
                 </p>
@@ -816,6 +837,25 @@ export function ModelWorkspace({
                                       : "Preview details"}
                                   </DropdownMenuItem>
                                 )}
+                                {w.canUpload &&
+                                  m.status === "ready" &&
+                                  !preview && (
+                                    <DropdownMenuItem
+                                      onSelect={() => {
+                                        setIds((old) =>
+                                          old.includes(m.id)
+                                            ? old
+                                            : [...old, m.id],
+                                        );
+                                        setEditingModel(m.id);
+                                        setTool("inspect");
+                                        setPanel(null);
+                                      }}
+                                    >
+                                      <Pencil className="size-4" />
+                                      Edit model
+                                    </DropdownMenuItem>
+                                  )}
                                 {w.canUpload && (
                                   <>
                                     <DropdownMenuSeparator />
@@ -1471,6 +1511,20 @@ export function ModelWorkspace({
           }) && " · Check revision status"}
         </span>
         <div className="flex shrink-0 items-center gap-1">
+          {w.canUpload && ids.length > 0 && !nativePreview && (
+            <button
+              className="flex min-h-8 shrink-0 items-center gap-1 px-2 text-xs"
+              aria-label="Edit model"
+              onClick={() => {
+                setPanel(null);
+                setTool("inspect");
+                setEditingModel(ids[0]!);
+              }}
+            >
+              <Pencil className="size-4" />
+              Edit
+            </button>
+          )}
           <button
             type="button"
             aria-label="Navigation settings"

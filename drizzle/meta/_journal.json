@@ -300,6 +300,13 @@
       "when": 1791733226003,
       "tag": "0067_bim_workspace",
       "breakpoints": false
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1791780000072,
+      "tag": "0068_bim_design",
+      "breakpoints": false
     }
   ]
 }
