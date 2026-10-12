@@ -12,6 +12,7 @@ const SUBTITLE_TEXT_SHADOW =
 export function VerticalPickerOverlay<T>({
   title,
   subtitle,
+  description,
   centerIndex,
   getItem,
   renderItem,
@@ -23,6 +24,7 @@ export function VerticalPickerOverlay<T>({
 }: {
   title: string;
   subtitle?: ReactNode;
+  description?: string;
   centerIndex: number;
   getItem: (index: number) => T | null;
   renderItem: (item: T) => ReactNode;
@@ -46,6 +48,7 @@ export function VerticalPickerOverlay<T>({
             <div className="text-base font-medium uppercase tracking-[0.22em] text-slate-900/80 dark:text-slate-200/80 sm:text-lg">
               {title}
             </div>
+            {description && <div className="mt-2 text-lg font-bold sm:text-xl">{description}</div>}
             {subtitle && (
               <div
                 className="mt-2 line-clamp-2 text-base font-semibold text-slate-950 dark:text-slate-50 sm:text-xl"

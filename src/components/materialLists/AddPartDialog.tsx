@@ -1,7 +1,7 @@
 "use client";
 import { IndividualQuantityPicker, individualUnitLabel } from "./wizard/IndividualQuantityPicker";
 import { PackQuantityControls } from "./PackQuantityControls";
-import { packContents, packsFromPieces, formatPackQuantity } from "~/lib/pack-quantity";
+import { packContents, packsFromPieces } from "~/lib/pack-quantity";
 
 import { purchaseLineTotal } from "~/lib/purchase-quantity";
 import { FinancialOnly } from "~/components/permissions/FinancialVisibility";
@@ -1092,6 +1092,11 @@ export function AddPartDialog({
     return () => window.removeEventListener("keydown", onKeyDown);
   });
 
+  const pickerPart = filteredPartsForSelection.find(part => part.id === quantityPickerPreview?.partId);
+  const bulkUnit = pickerPart?.bulkUnit || "pack";
+  const bulkPlural = ({box: "boxes", pack: "packs", roll: "rolls", length: "lengths"} as Record<string, string>)[bulkUnit] || bulkUnit;
+  const pickerContents = packContents(pickerPart?.piecesPerPack);
+
   return (
     <>
       {open && (
@@ -1541,12 +1546,13 @@ export function AddPartDialog({
               className="absolute"
               title={packContents(filteredPartsForSelection.find(part => part.id === quantityPickerPreview.partId)?.piecesPerPack) > 1 ? "Scroll above 0 to choose individual units" : "Quantity"}
               subtitle={quantityPickerPreview.partName}
+              description={pickerContents > 1 ? `${pickerContents.toLocaleString("en-CA")} ${pickerPart?.individualUnit || "pcs"} per ${bulkUnit}` : undefined}
               centerIndex={quantityPickerPreview.quantity}
               getItemFontSize={value => value === -1 ? "2rem" : undefined}
               getItem={(value) => (value < (packContents(filteredPartsForSelection.find(part => part.id === quantityPickerPreview.partId)?.piecesPerPack) > 1 ? -1 : 0) ? null : value)}
               renderItem={(value) => {
-                const contents = filteredPartsForSelection.find(part => part.id === quantityPickerPreview.partId)?.piecesPerPack;
-                return value === -1 ? `Per ${individualUnitLabel(filteredPartsForSelection.find(part => part.id === quantityPickerPreview.partId)?.individualUnit)}` : formatPackQuantity(value, contents);
+                if (value === -1) return `Per ${individualUnitLabel(pickerPart?.individualUnit)}`;
+                return pickerContents > 1 ? `${value.toLocaleString("en-CA")} ${value === 1 ? bulkUnit : bulkPlural}` : value.toLocaleString("en-CA");
               }}
             />
           )}
