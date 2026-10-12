@@ -678,7 +678,7 @@ export function JobRoomsView({
   return (
     <>
       {!selectedFloor ? (
-        <>
+        <div className={canUpload ? "sm:pb-20" : undefined}>
           <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <h2
               data-tutorial="rooms-root"
@@ -699,26 +699,18 @@ export function JobRoomsView({
                     if (file) void handleUpload(file);
                   }}
                 />
-                {/* Inline on wider screens; phones get the bottom bar below. */}
-                <Button
-                  onClick={() => fileRef.current?.click()}
-                  disabled={uploading}
-                  size="lg"
-                  className="hidden h-11 sm:inline-flex sm:w-auto"
-                >
-                  <UploadIcon className="mr-2 h-5 w-5" />
-                  {uploadLabel}
-                </Button>
-                <div className="bg-background fixed inset-x-0 bottom-0 z-40 border-t px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:hidden">
-                  <Button
-                    onClick={() => fileRef.current?.click()}
-                    disabled={uploading}
-                    size="lg"
-                    className="h-12 w-full"
-                  >
-                    <UploadIcon className="mr-2 h-5 w-5" />
-                    {uploadLabel}
-                  </Button>
+                <div className="bg-background fixed inset-x-0 bottom-0 z-40 border-t px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:px-6">
+                  <div className="mx-auto max-w-6xl">
+                    <Button
+                      onClick={() => fileRef.current?.click()}
+                      disabled={uploading}
+                      size="lg"
+                      className="h-12 w-full"
+                    >
+                      <UploadIcon className="mr-2 h-5 w-5" />
+                      {uploadLabel}
+                    </Button>
+                  </div>
                 </div>
               </>
             ) : null}
@@ -933,7 +925,7 @@ export function JobRoomsView({
               ))}
             </div>
           )}
-        </>
+        </div>
       ) : null}
 
       {selectedFloor ? (
