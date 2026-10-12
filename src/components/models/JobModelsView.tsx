@@ -91,12 +91,11 @@ const titleCase = (s: string) =>
     .toLowerCase()
     .replace(/^./, (c) => c.toUpperCase());
 const toolInfo: Record<ModelTool, string> = {
-  inspect:
-    "Click to inspect · pinch to zoom · two fingers to pan · customize navigation in Controls",
+  inspect: "Tap or click to inspect · customize navigation in Controls",
   distance: "Pick two points on the model. Corners snap within 12 pixels.",
   area: "Pick points around a flat surface, then choose Finish area.",
   pin: "Tap the location of the issue on the model.",
-  walk: "Use both thumb pads to steer and travel · customize each thumb in Controls → Touch",
+  walk: "Touch either half to steer and travel · customize each thumb in Controls → Touch",
 };
 export function JobModelsView({ jobId }: { jobId: string }) {
   const query = api.models.workspace.useQuery(
@@ -1583,9 +1582,10 @@ export function ModelWorkspace({
               <dd className="text-muted-foreground mt-1">
                 Open Controls in the bottom bar for navigation presets, keyboard
                 bindings, mouse actions, speed and sensitivity. Click the model
-                to focus keyboard navigation. Controls work with every tool.
-                Pinch to zoom and use two fingers to pan on touch screens.
-                Movement has no collision detection.
+                to focus keyboard navigation. Controls work with every tool. Use
+                Controls → Touch for floating joysticks. Turn touch controls off
+                for pinch zoom and two-finger pan. Movement has no collision
+                detection.
               </dd>
             </div>
             <div>

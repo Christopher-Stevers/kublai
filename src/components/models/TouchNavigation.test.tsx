@@ -1,11 +1,11 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
-import { TouchNavigation, thumbPosition } from "./TouchNavigation";
+import { TouchNavigation } from "./TouchNavigation";
 import {
   DEFAULT_NAVIGATION,
   navigationSettingsSchema,
 } from "~/lib/bim/navigation-settings";
-import type { ModelScene } from "~/lib/bim/scene";
+import type { ModelScene, TouchJoystick } from "~/lib/bim/scene";
 afterEach(cleanup);
 it("adds touch defaults without resetting existing keyboard preferences", () => {
   const old = structuredClone(DEFAULT_NAVIGATION) as Partial<
@@ -17,39 +17,28 @@ it("adds touch defaults without resetting existing keyboard preferences", () => 
   expect(migrated.keys.forward[0]).toBe("KeyT");
   expect(migrated.touch).toEqual(DEFAULT_NAVIGATION.touch);
 });
-it("uses a dead zone and clamps diagonal thumb travel", () => {
-  expect(thumbPosition(2, 2, 50)).toEqual({ x: 0, y: 0 });
-  const p = thumbPosition(100, -100, 50);
-  expect(Math.hypot(p.x, p.y)).toBeCloseTo(1);
-  expect(p.y).toBeLessThan(0);
-  expect(thumbPosition(25, 0, 50).x).toBeGreaterThan(0);
-  expect(thumbPosition(25, 0, 50).x).toBeLessThan(1);
-});
-it("clears both thumb inputs when hidden or interrupted", () => {
-  const setThumb = vi.fn();
-  const scene = { setThumb } as unknown as ModelScene;
-  const { rerender } = render(
-    <TouchNavigation
-      scene={scene}
-      settings={DEFAULT_NAVIGATION.touch}
-      walking
-    />,
+it("hides graphics without disabling input or unsubscribing from positions", () => {
+  const unsubscribe = vi.fn();
+  const subscribeTouchJoysticks = vi.fn(
+    (fn: (sticks: TouchJoystick[]) => void) => {
+      fn([{ side: "left", x: 80, y: 120, dx: 0.4, dy: 0 }]);
+      return unsubscribe;
+    },
   );
-  expect(screen.getByRole("group", { name: /Left thumb/ })).toBeTruthy();
-  expect(screen.getByRole("group", { name: /Right thumb/ })).toBeTruthy();
-  setThumb.mockClear();
-  fireEvent(window, new Event("blur"));
-  expect(setThumb).toHaveBeenCalledWith("left", 0, 0);
-  expect(setThumb).toHaveBeenCalledWith("right", 0, 0);
-  setThumb.mockClear();
+  const scene = { subscribeTouchJoysticks } as unknown as ModelScene;
+  const { rerender, unmount } = render(
+    <TouchNavigation scene={scene} settings={DEFAULT_NAVIGATION.touch} />,
+  );
+  expect(screen.getByTestId("joystick-left")).toBeTruthy();
   rerender(
     <TouchNavigation
       scene={scene}
-      settings={{ ...DEFAULT_NAVIGATION.touch, display: "off" }}
-      walking
+      settings={{ ...DEFAULT_NAVIGATION.touch, showJoysticks: false }}
     />,
   );
-  expect(screen.queryByRole("group")).toBeNull();
-  expect(setThumb).toHaveBeenCalledWith("left", 0, 0);
-  expect(setThumb).toHaveBeenCalledWith("right", 0, 0);
+  expect(screen.queryByTestId("joystick-left")).toBeNull();
+  expect(unsubscribe).not.toHaveBeenCalled();
+  expect(subscribeTouchJoysticks).toHaveBeenCalledOnce();
+  unmount();
+  expect(unsubscribe).toHaveBeenCalledOnce();
 });

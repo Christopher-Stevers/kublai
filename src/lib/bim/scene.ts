@@ -26,6 +26,13 @@ import { elementKey } from "./types";
 import type { IfcPart } from "./worker-protocol";
 import { modelMemoryBudget, planModelBatches } from "./model-memory";
 import { formatModelMeasure, measureArea, measureDistance } from "./geometry";
+export type TouchJoystick = {
+  side: ThumbSide;
+  x: number;
+  y: number;
+  dx: number;
+  dy: number;
+};
 export type ModelTool = "inspect" | "distance" | "area" | "pin" | "walk";
 type PartRef = {
   batch: THREE.BatchedMesh;
@@ -83,6 +90,35 @@ export class ModelScene {
   private height = 1;
   private keys = new Set<NavigationAction>();
   private pressedCodes = new Set<string>();
+  private touchSticks = new Map<
+    number,
+    TouchJoystick & {
+      clientX: number;
+      clientY: number;
+      moved: boolean;
+      started: number;
+    }
+  >();
+  private touchListeners = new Set<(sticks: TouchJoystick[]) => void>();
+  subscribeTouchJoysticks(listener: (sticks: TouchJoystick[]) => void) {
+    this.touchListeners.add(listener);
+    listener([...this.touchSticks.values()]);
+    return () => {
+      this.touchListeners.delete(listener);
+    };
+  }
+  private publishTouchSticks() {
+    const sticks = [...this.touchSticks.values()];
+    for (const listener of this.touchListeners) listener(sticks);
+  }
+  private floatingTouchEnabled() {
+    return (
+      this.navigation.touch.display !== "off" &&
+      (this.navigation.touch.display === "always" ||
+        this.tool === "walk" ||
+        matchMedia("(pointer: coarse)").matches)
+    );
+  }
   private thumbs = { left: { x: 0, y: 0 }, right: { x: 0, y: 0 } };
   private navigation = DEFAULT_NAVIGATION;
   private navigationPaused = false;
@@ -531,6 +567,8 @@ export class ModelScene {
     this.controls.enabled = !paused;
   }
   private clearNavigationInput = () => {
+    this.touchSticks.clear();
+    this.publishTouchSticks();
     this.keys.clear();
     this.pressedCodes.clear();
     this.thumbs = { left: { x: 0, y: 0 }, right: { x: 0, y: 0 } };
@@ -729,6 +767,31 @@ export class ModelScene {
   private pointerDown = (event: PointerEvent) => {
     if (this.navigationPaused || event.ctrlKey || event.metaKey || event.altKey)
       return;
+    if (event.pointerType === "touch" && this.floatingTouchEnabled()) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      const rect = this.renderer.domElement.getBoundingClientRect();
+      const side =
+        event.clientX < rect.left + rect.width / 2 ? "left" : "right";
+      if ([...this.touchSticks.values()].some((stick) => stick.side === side))
+        return;
+      const multiple = this.touchSticks.size > 0;
+      for (const stick of this.touchSticks.values()) stick.moved = true;
+      this.touchSticks.set(event.pointerId, {
+        side,
+        x: event.clientX - rect.left,
+        y: event.clientY - rect.top,
+        dx: 0,
+        dy: 0,
+        clientX: event.clientX,
+        clientY: event.clientY,
+        moved: multiple,
+        started: performance.now(),
+      });
+      this.renderer.domElement.setPointerCapture(event.pointerId);
+      this.publishTouchSticks();
+      return;
+    }
     if (event.pointerType !== "touch") event.stopImmediatePropagation();
     this.renderer.domElement.focus({ preventScroll: true });
     this.pointers.add(event.pointerId);
@@ -756,6 +819,26 @@ export class ModelScene {
     this.invalidate();
   };
   private pointerMove = (event: PointerEvent) => {
+    const stick = this.touchSticks.get(event.pointerId);
+    if (stick) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      const dx = event.clientX - stick.clientX,
+        dy = event.clientY - stick.clientY;
+      const distance = Math.hypot(dx, dy);
+      const radius = this.navigation.touch.size * 0.36;
+      const magnitude = Math.min(
+        1,
+        Math.max(0, (distance / radius - 0.12) / 0.88),
+      );
+      stick.dx = distance ? (dx / distance) * magnitude : 0;
+      stick.dy = distance ? (dy / distance) * magnitude : 0;
+      if (distance > 6) stick.moved = true;
+      this.setThumb(stick.side, stick.dx, stick.dy);
+      this.publishTouchSticks();
+      return;
+    }
+
     if (this.start?.id !== event.pointerId) return;
     const dx = event.clientX - this.start.x,
       dy = event.clientY - this.start.y;
@@ -844,11 +927,34 @@ export class ModelScene {
     }
   };
   private pointerCancel = (e: PointerEvent) => {
+    const stick = this.touchSticks.get(e.pointerId);
+    if (stick) {
+      this.setThumb(stick.side, 0, 0);
+      this.touchSticks.delete(e.pointerId);
+      this.publishTouchSticks();
+    }
+
     this.pointers.delete(e.pointerId);
     this.start = null;
     this.gestureMoved = true;
   };
   private pointerUp = (event: PointerEvent) => {
+    const stick = this.touchSticks.get(event.pointerId);
+    if (stick) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      this.setThumb(stick.side, 0, 0);
+      this.touchSticks.delete(event.pointerId);
+      this.publishTouchSticks();
+      if (
+        !stick.moved &&
+        performance.now() - stick.started < 350 &&
+        this.tool !== "walk"
+      )
+        this.activateAt(event.clientX, event.clientY);
+      return;
+    }
+
     this.pointers.delete(event.pointerId);
     if (
       !this.start ||
@@ -862,7 +968,10 @@ export class ModelScene {
       return;
     }
     this.start = null;
-    const hit = this.pick(event.clientX, event.clientY);
+    this.activateAt(event.clientX, event.clientY);
+  };
+  private activateAt(x: number, y: number) {
+    const hit = this.pick(x, y);
     if (!hit) {
       if (this.tool === "inspect") this.select(null);
       return;
@@ -873,13 +982,13 @@ export class ModelScene {
     } else if (this.tool === "pin") {
       this.callbacks.pin(this.elements.get(hit.key)!.info, tuple(hit.point));
     } else {
-      this.draft.push(this.snapVertex(hit, event.clientX, event.clientY));
+      this.draft.push(this.snapVertex(hit, x, y));
       if (this.tool === "distance" && this.draft.length === 2)
         this.finishMeasurement();
       else this.drawMeasurements();
     }
     this.invalidate();
-  };
+  }
   private pick(x: number, y: number) {
     const rect = this.renderer.domElement.getBoundingClientRect();
     const ray = new THREE.Raycaster();

@@ -389,4 +389,49 @@ describe("WASD with model tools", () => {
     expect(engine.controls.target.distanceTo(target)).toBeLessThan(1e-8);
     expect(engine.camera.position.distanceTo(initial)).toBeGreaterThan(0);
   });
+  it("anchors floating joysticks at each touch and releases them independently", () => {
+    const engine = setup("inspect");
+    engine.setNavigationSettings({
+      ...structuredClone(DEFAULT_NAVIGATION),
+      touch: { ...DEFAULT_NAVIGATION.touch, display: "always" },
+    });
+    const canvas = engine.renderer.domElement;
+    canvas.getBoundingClientRect = () =>
+      ({ left: 0, top: 0, width: 800, height: 600 }) as DOMRect;
+    const state = engine as unknown as {
+      thumbs: Record<string, { x: number; y: number }>;
+      pointerDown: (e: PointerEvent) => void;
+      pointerMove: (e: PointerEvent) => void;
+      pointerUp: (e: PointerEvent) => void;
+      pointerCancel: (e: PointerEvent) => void;
+      activateAt: (x: number, y: number) => void;
+    };
+    const event = (id: number, x: number, y: number) =>
+      ({
+        pointerId: id,
+        pointerType: "touch",
+        clientX: x,
+        clientY: y,
+        preventDefault: vi.fn(),
+        stopImmediatePropagation: vi.fn(),
+      }) as unknown as PointerEvent;
+    state.pointerDown(event(1, 120, 200));
+    state.pointerDown(event(2, 600, 300));
+    expect(state.thumbs.left).toEqual({ x: 0, y: 0 });
+    state.pointerMove(event(1, 150, 200));
+    state.pointerMove(event(2, 600, 270));
+    expect(state.thumbs.left!.x).toBeGreaterThan(0);
+    expect(state.thumbs.right!.y).toBeLessThan(0);
+    state.pointerUp(event(1, 150, 200));
+    expect(state.thumbs.left).toEqual({ x: 0, y: 0 });
+    expect(state.thumbs.right!.y).toBeLessThan(0);
+    state.pointerCancel(event(2, 600, 270));
+    expect(state.thumbs.right).toEqual({ x: 0, y: 0 });
+    const tap = vi
+      .spyOn(state, "activateAt")
+      .mockImplementation(() => undefined);
+    state.pointerDown(event(3, 200, 150));
+    state.pointerUp(event(3, 200, 150));
+    expect(tap).toHaveBeenCalledWith(200, 150);
+  });
 });

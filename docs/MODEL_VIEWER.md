@@ -70,3 +70,5 @@ The synthetic `src/lib/bim/fixtures/construction.ifc` is a test fixture, not pro
 ### Two-thumb navigation
 
 Controls → Touch assigns each thumb independently: steer/look, fly forward/backward, travel with strafe, elevation with strafe, orbit, screen-plane pan, zoom, or disabled. Six presets include Steer & fly, Game controller, and left-handed flight. Pads appear on touch devices and in Walk by default, with Always/Off options. Pad size, touch steering sensitivity, vertical inversion, and movement speed are adjustable. Pads have an analog dead zone; both thumbs can operate simultaneously, and releasing/canceling a pointer, losing focus, hiding the page, changing tools, or opening navigation settings stops input. Existing saved keyboard/mouse configurations migrate with touch defaults.
+
+Floating joysticks use each touch-down location as the neutral center on its half of the canvas. Show joystick graphics only affects rendering, never input; both controls can operate invisibly. Graphics exist only while touching. A short stationary single touch retains selection/measurement placement. With touch controls off, native pinch/pan gestures remain available.

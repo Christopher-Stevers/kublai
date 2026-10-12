@@ -347,15 +347,33 @@ export function NavigationSettingsDialog({
           {tab === "touch" && (
             <>
               <p className="text-muted-foreground text-sm">
-                Use both thumb pads at once. Push away from the center to move;
-                release to stop. Fly follows where you look, including up and
-                down. Tap elsewhere on the model to select; pinch and two-finger
-                pan still work outside the pads.
+                Touch anywhere on each half of the model. That touch becomes the
+                joystick center; slide your thumb to move and release to stop.
+                Both thumbs work together. A quick tap still selects or places a
+                point. Turn touch controls off to use pinch and two-finger pan
+                instead.
               </p>
+              <label className="flex min-h-11 items-center gap-3 text-sm">
+                <input
+                  type="checkbox"
+                  className="accent-primary size-4"
+                  checked={settings.touch.showJoysticks}
+                  onChange={(e) =>
+                    change({
+                      ...settings,
+                      touch: {
+                        ...settings.touch,
+                        showJoysticks: e.target.checked,
+                      },
+                    })
+                  }
+                />
+                Show joystick graphics
+              </label>
               <label className="grid gap-2 text-sm">
-                Show thumb pads
+                Touch controls
                 <select
-                  aria-label="Show thumb pads"
+                  aria-label="Touch controls"
                   className="bg-background min-h-11 min-w-0 rounded-md border px-2"
                   value={settings.touch.display}
                   onChange={(e) =>
@@ -454,9 +472,9 @@ export function NavigationSettingsDialog({
                 />
               </label>
               <label className="block space-y-2 text-sm">
-                Thumb pad size · {settings.touch.size}px
+                Joystick size · {settings.touch.size}px
                 <input
-                  aria-label="Thumb pad size"
+                  aria-label="Joystick size"
                   type="range"
                   className="accent-primary h-8 w-full"
                   min="80"
@@ -566,9 +584,9 @@ export function NavigationSettingsDialog({
                 ))}
               </div>
               <p className="text-muted-foreground text-xs">
-                Touch: pinch to zoom and use two fingers to pan. One finger
-                orbits the model; in Walk it looks around. Direction inversion
-                applies to mouse dragging and Walk look.
+                Use the Touch tab to configure floating thumb controls. With
+                those controls off, pinch zoom and two-finger pan are available
+                on the canvas.
               </p>
             </>
           )}

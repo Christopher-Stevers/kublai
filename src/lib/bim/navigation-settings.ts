@@ -59,8 +59,10 @@ const defaultTouch = {
   sensitivity: 1,
   size: 112,
   invertY: false,
+  showJoysticks: true,
 };
 const touchSchema = z.object({
+  showJoysticks: z.boolean().default(true),
   display: z.enum(["auto", "always", "off"]),
   left: z.enum(Object.keys(thumbActions) as ThumbAction[]),
   right: z.enum(Object.keys(thumbActions) as ThumbAction[]),
