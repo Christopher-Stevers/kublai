@@ -1255,6 +1255,8 @@ export async function handoffEstimateMaterialList(
           )})`,
         )
       : [];
+    const packParts = await tx.execute<{id: string; piecesPerPack: number | null}>(sql`select id, "piecesPerPack" from kublai_part_definition where "organizationId"=${org}::uuid and "piecesPerPack" is not null`);
+    const packContentsByPart = new Map(packParts.map(part => [part.id, part.piecesPerPack]));
     const warnings: string[] = [];
     type MaterialDemand = {
       partDefinitionId: string;
@@ -1351,7 +1353,7 @@ export async function handoffEstimateMaterialList(
         );
       row.quantity = quantity;
       row.unitCost = cost;
-      subtotal += purchaseLineTotal(quantity, cost, row.orderMultiple);
+      subtotal += purchaseLineTotal(quantity, cost, row.orderMultiple, packContentsByPart.get(row.partDefinitionId));
     }
     if (!Number.isFinite(subtotal) || subtotal > 999_999_999_999.99)
       throw new TRPCError({
@@ -1367,7 +1369,7 @@ export async function handoffEstimateMaterialList(
       values (${quoteId}::uuid,${org}::uuid,${materialListId}::uuid,${estimate.jobId}::uuid,${ctx.userId},0,0,0,${`Material planning snapshot from estimate ${estimate.id}, revision ${estimate.revision}. Pricing is in ${estimate.document.settings.currency}. No orders have been sent.`},${subtotal.toFixed(2)},${subtotal.toFixed(2)},now())`);
     const itemValues = rows.map(
       (row) =>
-        sql`(${randomUUID()}::uuid,${quoteId}::uuid,${row.partDefinitionId}::uuid,${row.supplierPartId}::uuid,${row.quantity.toFixed(6)},${row.uomId}::uuid,${row.unitCost.toFixed(4)},0,${row.unitCost.toFixed(4)},${purchaseLineTotal(row.quantity, row.unitCost, row.orderMultiple).toFixed(2)},${row.description},${row.notes},${ctx.userId},now(),now())`,
+        sql`(${randomUUID()}::uuid,${quoteId}::uuid,${row.partDefinitionId}::uuid,${row.supplierPartId}::uuid,${row.quantity.toFixed(6)},${row.uomId}::uuid,${row.unitCost.toFixed(4)},0,${row.unitCost.toFixed(4)},${purchaseLineTotal(row.quantity, row.unitCost, row.orderMultiple, packContentsByPart.get(row.partDefinitionId)).toFixed(2)},${row.description},${row.notes},${ctx.userId},now(),now())`,
     );
     await tx.execute(
       sql`insert into kublai_quote_item (id,"quoteId","partDefinitionId","supplierPartId",quantity,"uomId","unitCost","markupPercent","unitPrice","extendedPrice","descriptionSnapshot",notes,"addedByUserId","createdAt","updatedAt") values ${sql.join(itemValues, sql`,`)}`,

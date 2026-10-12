@@ -173,3 +173,16 @@ it("keeps offline demand separate and replaces supplier rounding when switching 
     supplierPart: { packSize: "10" },
   });
 });
+
+
+it("retains pack contents offline and charges only whole packs on edits", async () => {
+  await mutators().addItem(tx, {
+    ...addArgs, quantity: .2, unitCost: 25,
+    partDefinitionSnapshot: { id: "part", displayName: "Clips box", imageUrl: null, material: null, piecesPerPack: 50 },
+  });
+  expect(rows.get("materialListItem/item")).toMatchObject({quantity: "0.2", extendedPrice: "25", partDefinition: {piecesPerPack: 50}});
+  await mutators().updateItemQuantity(tx, {materialListId: "list", itemId: "item", quantity: 1.4});
+  expect(rows.get("materialListItem/item")).toMatchObject({quantity: "1.4", extendedPrice: "50"});
+  await mutators().updateItemSupplierPart(tx, {materialListId: "list", itemId: "item", supplierPartId: "new", supplierId: "new-supplier", unitCost: 30});
+  expect(rows.get("materialListItem/item")).toMatchObject({quantity: "1.4", extendedPrice: "60"});
+});

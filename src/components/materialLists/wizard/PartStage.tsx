@@ -1,3 +1,5 @@
+import { packContents, pickerIndex, pickerQuantity, formatPackQuantity } from "~/lib/pack-quantity";
+import { PackQuantityControls } from "../PackQuantityControls";
 import {
   useState,
   useEffect,
@@ -23,6 +25,7 @@ interface PartCardProps {
   part: {
     id: string;
     displayName: string;
+    piecesPerPack?: number | null;
     description: string | null;
     imageUrl: string | null;
     imageApprovalStatus?: "approved" | "suggested" | "missing";
@@ -35,6 +38,7 @@ interface PartCardProps {
     part: {
       id: string;
       displayName: string;
+      piecesPerPack?: number | null;
       description: string | null;
       imageUrl: string | null;
       imageApprovalStatus?: "approved" | "suggested" | "missing";
@@ -47,6 +51,7 @@ interface PartCardProps {
     part: {
       id: string;
       displayName: string;
+      piecesPerPack?: number | null;
       description: string | null;
       imageUrl: string | null;
       imageApprovalStatus?: "approved" | "suggested" | "missing";
@@ -94,7 +99,7 @@ function PartCard({
     }
   };
 
-  const clampQuantity = (quantity: number) => Math.max(0, quantity);
+  const clampQuantity = (quantity: number) => packContents(part.piecesPerPack) > 1 ? quantity : Math.max(0, quantity);
 
   const clearPickerPreview = () => {
     onQuantityPickerPreviewChange?.(null);
@@ -122,7 +127,7 @@ function PartCard({
   };
 
   const finishLongPressSelection = () => {
-    onPartQuantitySet?.(part, dragQuantityRef.current);
+    onPartQuantitySet?.(part, pickerQuantity(dragQuantityRef.current, part.piecesPerPack));
     clearPickerPreview();
     longPressTriggeredRef.current = false;
     pointerStartYRef.current = null;
@@ -196,8 +201,8 @@ function PartCard({
     activePointerTypeRef.current = event.pointerType;
     pointerElementRef.current = event.currentTarget;
     pointerStartYRef.current = event.clientY;
-    baseQuantityRef.current = Math.max(pendingQuantity, 1);
-    dragQuantityRef.current = Math.max(pendingQuantity, 1);
+    baseQuantityRef.current = pendingQuantity > 0 ? pickerIndex(pendingQuantity, part.piecesPerPack) : 1;
+    dragQuantityRef.current = baseQuantityRef.current;
     event.currentTarget.setPointerCapture(event.pointerId);
 
     longPressTimerRef.current = setTimeout(() => {
@@ -334,7 +339,7 @@ function PartCard({
             <div className="absolute top-2 right-2 flex justify-end">
               {pendingQuantity > 0 && (
                 <div className="flex h-6 min-w-6 items-center justify-center rounded-full bg-primary px-1.5 text-xs font-semibold text-primary-foreground shadow-sm sm:h-7 sm:min-w-7 sm:text-sm">
-                  {pendingQuantity}
+                  {formatPackQuantity(pendingQuantity, part.piecesPerPack)}
                 </div>
               )}
             </div>
@@ -416,7 +421,9 @@ function PartListRow({
         </div>
 
         <div className="flex items-center justify-center gap-1.5">
-          {isPending && actionMode === "select" ? (
+          {isPending && actionMode === "select" && packContents(part.piecesPerPack) > 1 ? (
+            <PackQuantityControls quantity={pendingQuantity} piecesPerPack={part.piecesPerPack!} onChange={value => onPartQuantitySet?.(part, value)} />
+          ) : isPending && actionMode === "select" ? (
             <div className="flex items-center gap-1">
               <Button
                 variant="outline"
@@ -489,6 +496,7 @@ export interface PartStageProps {
   partsForSelection: Array<{
     id: string;
     displayName: string;
+    piecesPerPack?: number | null;
     description: string | null;
     imageUrl: string | null;
     imageApprovalStatus?: "approved" | "suggested" | "missing";
@@ -500,6 +508,7 @@ export interface PartStageProps {
     part: {
       id: string;
       displayName: string;
+      piecesPerPack?: number | null;
       description: string | null;
       imageUrl: string | null;
       imageApprovalStatus?: "approved" | "suggested" | "missing";
@@ -512,6 +521,7 @@ export interface PartStageProps {
     part: {
       id: string;
       displayName: string;
+      piecesPerPack?: number | null;
       description: string | null;
       imageUrl: string | null;
       imageApprovalStatus?: "approved" | "suggested" | "missing";

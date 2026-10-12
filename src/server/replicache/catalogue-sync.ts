@@ -85,6 +85,7 @@ export async function handleCatalogueReplicachePull(
             .select({
               id: partDefinitions.id,
               displayName: partDefinitions.displayName,
+              piecesPerPack: partDefinitions.piecesPerPack,
               description: partDefinitions.description,
               imageUrl: partDefinitions.imageUrl,
               sizeLabel: partDefinitions.sizeLabel,
@@ -155,6 +156,7 @@ export async function handleCatalogueReplicachePull(
           value: {
             id: part.id,
             displayName: part.displayName,
+            piecesPerPack: part.piecesPerPack,
             description: part.description,
             imageUrl: part.imageUrl,
             material: part.materialName,

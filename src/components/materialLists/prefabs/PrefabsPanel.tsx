@@ -1,4 +1,6 @@
 "use client";
+import { PackQuantityControls } from "../PackQuantityControls";
+import { packContents, packsFromPieces, formatPackQuantity } from "~/lib/pack-quantity";
 
 import { useState } from "react";
 import {
@@ -83,6 +85,7 @@ export function PrefabsPanel({
         prefab.items.map((item) => ({
           ...item,
           partDefinitionId: item.partDefinition.id,
+          piecesPerPack: item.partDefinition.piecesPerPack,
           supplierPartId: item.supplierPartId,
         })),
         listItems,
@@ -107,6 +110,7 @@ export function PrefabsPanel({
             partDefinitionSnapshot: {
               id: line.partDefinition.id,
               displayName: line.partDefinition.displayName,
+              piecesPerPack: line.partDefinition.piecesPerPack,
               imageUrl: line.partDefinition.imageUrl,
               material: null,
             },
@@ -224,6 +228,7 @@ export function PrefabsPanel({
                     {canEdit ? (
                       <>
                         <PrefabQuantity
+                          piecesPerPack={item.partDefinition.piecesPerPack}
                           quantity={item.quantity}
                           onChange={(quantity) =>
                             setQuantity.mutate({ prefabId: prefab.id, itemId: item.id, quantity })
@@ -240,7 +245,7 @@ export function PrefabsPanel({
                         </Button>
                       </>
                     ) : (
-                      <span className="text-sm font-semibold tabular-nums">×{item.quantity}</span>
+                      <span className="text-sm font-semibold tabular-nums">{formatPackQuantity(item.quantity, item.partDefinition.piecesPerPack)}</span>
                     )}
                   </li>
                 ))}
@@ -465,16 +470,19 @@ function PrefabQuantity({
   quantity,
   onChange,
   live = false,
+  piecesPerPack,
 }: {
   quantity: number;
   onChange: (quantity: number) => void;
   live?: boolean;
+  piecesPerPack?: number | null;
 }) {
   const [draft, setDraft] = useState<string | null>(null);
   const commit = (value: number) => {
     setDraft(null);
     if (Number.isFinite(value) && value > 0 && value !== quantity) onChange(value);
   };
+  if (packContents(piecesPerPack) > 1) return <PackQuantityControls quantity={quantity} piecesPerPack={piecesPerPack!} minimum={packsFromPieces(1, piecesPerPack)} onChange={onChange} />;
   const step = (delta: number) => commit(Math.max(1, Math.floor(quantity) + delta));
   return (
     <div className="flex shrink-0 items-center gap-1">

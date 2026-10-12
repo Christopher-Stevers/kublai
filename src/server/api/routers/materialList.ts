@@ -1,3 +1,4 @@
+import { packContents, formatPackQuantity } from "~/lib/pack-quantity";
 import { purchaseQuantity, purchaseLineTotal, formatPurchaseQuantity } from "~/lib/purchase-quantity";
 import { recalculatePurchaseTotals } from "~/server/purchasing";
 import { TRPCError } from "@trpc/server";
@@ -73,6 +74,7 @@ type OrderableQuoteItem = {
   supplierPartSupplierId: string | null;
   supplierSku: string | null;
   packSize?: string | null;
+  partDefinitionPiecesPerPack?: number | null;
   requestedQuantity?: string;
   orderMultipleSnapshot?: string | null;
   roomId: string | null;
@@ -85,7 +87,7 @@ function groupOrderableItemsBySupplier(items: OrderableQuoteItem[]) {
     const supplierId = item.selectedSupplierId ?? item.supplierPartSupplierId;
     if (!supplierId || !item.partDefinitionId) continue;
     const bucket = itemsBySupplier.get(supplierId) ?? [];
-    bucket.push({ ...item, requestedQuantity: item.quantity, quantity: String(purchaseQuantity(item.quantity, item.packSize)), orderMultipleSnapshot: item.packSize ?? null });
+    bucket.push({ ...item, requestedQuantity: item.quantity, quantity: String(purchaseQuantity(item.quantity, item.packSize, item.partDefinitionPiecesPerPack)), orderMultipleSnapshot: item.packSize ?? null });
     itemsBySupplier.set(supplierId, bucket);
   }
   return itemsBySupplier;
@@ -196,6 +198,7 @@ async function loadOrderableQuoteItems(
       selectedSupplierId: quoteItems.supplierId,
       partDefinitionId: quoteItems.partDefinitionId,
       partDefinitionDisplayName: partDefinitions.displayName,
+      partDefinitionPiecesPerPack: partDefinitions.piecesPerPack,
       quantity: quoteItems.quantity,
       uomId: quoteItems.uomId,
       unitCost: quoteItems.unitCost,
@@ -336,6 +339,7 @@ export const materialListRouter = createTRPCRouter({
             updatedAt: quoteItems.updatedAt,
             partDefinitionId: partDefinitions.id,
             partDefinitionDisplayName: partDefinitions.displayName,
+            partDefinitionPiecesPerPack: partDefinitions.piecesPerPack,
             partDefinitionImageUrl: partDefinitions.imageUrl,
             partDefinitionMaterialId: partDefinitions.materialId,
             partDefinitionMaterialName: materials.name,
@@ -393,7 +397,7 @@ export const materialListRouter = createTRPCRouter({
         roomName: item.roomName,
         quantity: item.quantity,
         unitCost: item.unitCost,
-        extendedPrice: String(purchaseLineTotal(item.quantity, item.unitCost, item.supplierPartPackSize)),
+        extendedPrice: String(purchaseLineTotal(item.quantity, item.unitCost, item.supplierPartPackSize, item.partDefinitionPiecesPerPack)),
         descriptionSnapshot: item.descriptionSnapshot,
         createdAt: item.createdAt,
         updatedAt: item.updatedAt,
@@ -402,6 +406,7 @@ export const materialListRouter = createTRPCRouter({
           ? {
               id: item.partDefinitionId,
               displayName: item.partDefinitionDisplayName,
+              piecesPerPack: item.partDefinitionPiecesPerPack,
               imageUrl: item.partDefinitionImageUrl,
               material: item.partDefinitionMaterialName,
             }
@@ -833,6 +838,7 @@ export const materialListRouter = createTRPCRouter({
         .select({
           descriptionSnapshot: quoteItems.descriptionSnapshot,
           partDefinitionDisplayName: partDefinitions.displayName,
+          partDefinitionPiecesPerPack: partDefinitions.piecesPerPack,
           quantity: quoteItems.quantity,
           extendedPrice: quoteItems.extendedPrice,
           unitCost: quoteItems.unitCost,
@@ -858,9 +864,9 @@ export const materialListRouter = createTRPCRouter({
       let adjustedTotal = 0;
       const lineItems = items
         .map((item) => {
-          const ordered = purchaseQuantity(item.quantity, item.packSize);
-          const qty = formatPurchaseQuantity(item.quantity, ordered);
-          const basePrice = purchaseLineTotal(item.quantity, item.unitCost, item.packSize);
+          const ordered = purchaseQuantity(item.quantity, item.packSize, item.partDefinitionPiecesPerPack);
+          const qty = packContents(item.partDefinitionPiecesPerPack) > 1 ? formatPackQuantity(Number(item.quantity), item.partDefinitionPiecesPerPack, ordered) : formatPurchaseQuantity(item.quantity, ordered);
+          const basePrice = purchaseLineTotal(item.quantity, item.unitCost, item.packSize, item.partDefinitionPiecesPerPack);
           // Apply markup to get the customer-facing price
           const adjustedPrice = basePrice * markupMultiplier;
           adjustedTotal += adjustedPrice;
@@ -1032,6 +1038,7 @@ ${foremanName}`;
               descriptionSnapshot: orderItems.descriptionSnapshot,
               supplierSkuSnapshot: orderItems.supplierSkuSnapshot,
               partDefinitionDisplayName: partDefinitions.displayName,
+              partDefinitionPiecesPerPack: partDefinitions.piecesPerPack,
             })
             .from(orderItems)
             .leftJoin(jobRooms, eq(orderItems.roomId, jobRooms.id))
@@ -1421,6 +1428,7 @@ ${foremanName}`;
         .select({
           descriptionSnapshot: orderItems.descriptionSnapshot,
           partDefinitionDisplayName: partDefinitions.displayName,
+          partDefinitionPiecesPerPack: partDefinitions.piecesPerPack,
           quantity: orderItems.quantity,
         })
         .from(orderItems)
@@ -1799,6 +1807,7 @@ ${foremanName}`;
           verificationStatus: orderItems.verificationStatus,
           descriptionSnapshot: orderItems.descriptionSnapshot,
           partDefinitionDisplayName: partDefinitions.displayName,
+          partDefinitionPiecesPerPack: partDefinitions.piecesPerPack,
           supplierSkuSnapshot: orderItems.supplierSkuSnapshot,
         })
         .from(orderItems)
@@ -2001,6 +2010,7 @@ ${foremanName}`;
             descriptionSnapshot: orderItems.descriptionSnapshot,
             supplierSkuSnapshot: orderItems.supplierSkuSnapshot,
             partDefinitionDisplayName: partDefinitions.displayName,
+            partDefinitionPiecesPerPack: partDefinitions.piecesPerPack,
           })
           .from(orderItems)
           .leftJoin(jobRooms, eq(orderItems.roomId, jobRooms.id))

@@ -1,4 +1,6 @@
 "use client";
+import { PackQuantityControls } from "./PackQuantityControls";
+import { packContents, packsFromPieces, pickerQuantity, formatPackQuantity } from "~/lib/pack-quantity";
 
 import { purchaseLineTotal } from "~/lib/purchase-quantity";
 import { FinancialOnly } from "~/components/permissions/FinancialVisibility";
@@ -317,6 +319,7 @@ export function AddPartDialog({
     part: {
       id: string;
       displayName: string;
+      piecesPerPack?: number | null;
       description: string | null;
       imageUrl: string | null;
       material: string | null;
@@ -331,6 +334,7 @@ export function AddPartDialog({
     part: {
       id: string;
       displayName: string;
+      piecesPerPack?: number | null;
       description: string | null;
       imageUrl: string | null;
       material: string | null;
@@ -362,6 +366,7 @@ export function AddPartDialog({
           partDefinition: {
             id: part.id,
             displayName: part.displayName,
+            piecesPerPack: part.piecesPerPack,
             imageUrl: part.imageUrl,
             material: part.material,
             size: part.size,
@@ -425,7 +430,7 @@ export function AddPartDialog({
 
         return {
           ...prev,
-          quantity: clampQuantity(prev.quantity + stepDelta),
+          quantity: packContents(filteredPartsForSelection.find(part => part.id === prev.partId)?.piecesPerPack) > 1 ? prev.quantity + stepDelta : clampQuantity(prev.quantity + stepDelta),
         };
       });
     };
@@ -438,7 +443,7 @@ export function AddPartDialog({
       );
 
       if (matchingPart) {
-        handlePartQuantitySet(matchingPart, quantityPickerPreview.quantity);
+        handlePartQuantitySet(matchingPart, pickerQuantity(quantityPickerPreview.quantity, matchingPart.piecesPerPack));
       }
 
       pickerTouchYRef.current = null;
@@ -462,6 +467,7 @@ export function AddPartDialog({
     part: {
       id: string;
       displayName: string;
+      piecesPerPack?: number | null;
       description: string | null;
       imageUrl: string | null;
       material: string | null;
@@ -481,6 +487,7 @@ export function AddPartDialog({
         partDefinition: {
           id: part.id,
           displayName: part.displayName,
+          piecesPerPack: part.piecesPerPack,
           imageUrl: part.imageUrl,
           material: part.material,
           size: part.size,
@@ -494,6 +501,7 @@ export function AddPartDialog({
   const handleCustomPartCreated = (part: {
     id: string;
     displayName: string;
+    piecesPerPack?: number | null;
     imageUrl: string | null;
     material: string | null;
     size: string | null;
@@ -540,7 +548,7 @@ export function AddPartDialog({
     setPendingParts((prev) =>
       prev.map((p) => {
         if (p.partId === partId) {
-          const newQuantity = Math.max(1, p.quantity + delta);
+          const newQuantity = Math.max(packsFromPieces(1, p.partDefinition.piecesPerPack), p.quantity + delta);
           return { ...p, quantity: newQuantity };
         }
         return p;
@@ -552,7 +560,7 @@ export function AddPartDialog({
     setPendingParts((prev) =>
       prev.map((p) => {
         if (p.partId === partId) {
-          return { ...p, quantity: Math.max(1, quantity) };
+          return { ...p, quantity: Math.max(packsFromPieces(1, p.partDefinition.piecesPerPack), quantity) };
         }
         return p;
       }),
@@ -722,6 +730,7 @@ export function AddPartDialog({
         const partDefinitionSnapshot = {
           id: pendingPart.partDefinition.id,
           displayName: pendingPart.partDefinition.displayName,
+          piecesPerPack: pendingPart.partDefinition.piecesPerPack,
           imageUrl: pendingPart.partDefinition.imageUrl,
           material: pendingPart.partDefinition.material,
         };
@@ -810,7 +819,7 @@ export function AddPartDialog({
         ? parseFloat(selectedSupplierPart.lastKnownUnitCost)
         : 0;
 
-      return sum + purchaseLineTotal(pendingPart.quantity, unitCost, selectedSupplierPart?.packSize);
+      return sum + purchaseLineTotal(pendingPart.quantity, unitCost, selectedSupplierPart?.packSize, pendingPart.partDefinition.piecesPerPack);
     }, 0);
   }, [pendingParts, supplierPartsData]);
 
@@ -1332,6 +1341,9 @@ export function AddPartDialog({
                           <div className="min-w-0 flex-1 truncate">
                             {pendingPart.partDefinition.displayName}
                           </div>
+                          {packContents(pendingPart.partDefinition.piecesPerPack) > 1 ? (
+                            <PackQuantityControls quantity={pendingPart.quantity} piecesPerPack={pendingPart.partDefinition.piecesPerPack!} minimum={packsFromPieces(1, pendingPart.partDefinition.piecesPerPack)} onChange={value => handleSetQuantity(pendingPart.partId, value)} />
+                          ) : (
                           <div className="flex shrink-0 items-center gap-1">
                             <Button
                               variant="outline"
@@ -1365,7 +1377,8 @@ export function AddPartDialog({
                             >
                               <Plus className="h-3 w-3" />
                             </Button>
-                          </div>
+                          </div>                          )}
+
                         </div>
                       ))}
                     </div>
@@ -1492,11 +1505,14 @@ export function AddPartDialog({
           {quantityPickerPreview && (
             <VerticalPickerOverlay
               className="absolute"
-              title="Quantity"
+              title={packContents(filteredPartsForSelection.find(part => part.id === quantityPickerPreview.partId)?.piecesPerPack) > 1 ? (quantityPickerPreview.quantity < 0 ? "Pieces" : "Packs · scroll above 0 for pieces") : "Quantity"}
               subtitle={quantityPickerPreview.partName}
               centerIndex={quantityPickerPreview.quantity}
-              getItem={(value) => (value < 0 ? null : value)}
-              renderItem={(value) => value}
+              getItem={(value) => (value < 0 && packContents(filteredPartsForSelection.find(part => part.id === quantityPickerPreview.partId)?.piecesPerPack) === 1 ? null : value)}
+              renderItem={(value) => {
+                const contents = filteredPartsForSelection.find(part => part.id === quantityPickerPreview.partId)?.piecesPerPack;
+                return value < 0 ? `${-value} pieces` : formatPackQuantity(value, contents);
+              }}
             />
           )}
           </div>

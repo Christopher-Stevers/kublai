@@ -1,3 +1,4 @@
+import { packContents, pieceCount, packsFromPieces } from "./pack-quantity";
 /**
  * Adding a prefab to a material list: each prefab part times the multiplier.
  * A part already on the list gets the quantity added to that line (preferring
@@ -7,6 +8,7 @@ export type PrefabLine = {
   partDefinitionId: string;
   supplierPartId: string | null;
   quantity: number;
+  piecesPerPack?: number | null;
 };
 export type ListLine = {
   id: string;
@@ -25,7 +27,14 @@ export function planPrefabAdd<P extends PrefabLine>(
   const quantityOf = (line: ListLine) =>
     updates.get(line.id) ?? (Number(line.quantity) || 0);
   for (const prefabLine of prefabLines) {
-    const quantity = roundQuantity(prefabLine.quantity * multiplier);
+    const contents = prefabLine.piecesPerPack;
+    const quantity =
+      packContents(contents) > 1
+        ? packsFromPieces(
+            pieceCount(prefabLine.quantity, contents) * multiplier,
+            contents,
+          )
+        : roundQuantity(prefabLine.quantity * multiplier);
     if (!(quantity > 0)) continue;
     const samePart = listLines.filter(
       (line) => line.partDefinitionId === prefabLine.partDefinitionId,
@@ -33,9 +42,20 @@ export function planPrefabAdd<P extends PrefabLine>(
     const target =
       samePart.find(
         (line) =>
-          prefabLine.supplierPartId && line.supplierPartId === prefabLine.supplierPartId,
+          prefabLine.supplierPartId &&
+          line.supplierPartId === prefabLine.supplierPartId,
       ) ?? samePart[0];
-    if (target) updates.set(target.id, roundQuantity(quantityOf(target) + quantity));
+    if (target)
+      updates.set(
+        target.id,
+        packContents(contents) > 1
+          ? packsFromPieces(
+              pieceCount(quantityOf(target), contents) +
+                pieceCount(quantity, contents),
+              contents,
+            )
+          : roundQuantity(quantityOf(target) + quantity),
+      );
     else adds.push({ ...prefabLine, quantity });
   }
   return {

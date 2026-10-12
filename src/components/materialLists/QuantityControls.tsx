@@ -1,5 +1,8 @@
 "use client";
 
+import { PackQuantityControls } from "./PackQuantityControls";
+import { packContents, packsFromPieces } from "~/lib/pack-quantity";
+
 import { purchaseQuantity } from "~/lib/purchase-quantity";
 
 import { useEffect, useRef, useState } from "react";
@@ -13,6 +16,7 @@ interface QuantityControlsProps {
   itemId: string;
   quantity: number;
   orderMultiple?: string | null;
+  piecesPerPack?: number | null;
   materialListId: string;
   pendingSync?: boolean;
   compact?: boolean;
@@ -23,6 +27,7 @@ export function QuantityControls({
   itemId,
   quantity,
   orderMultiple,
+  piecesPerPack,
   materialListId,
   pendingSync = false,
   compact = false,
@@ -95,7 +100,7 @@ export function QuantityControls({
   };
 
   const setQuantityImmediately = (nextQuantity: number) => {
-    if (nextQuantity < 1) return;
+    if (nextQuantity < packsFromPieces(1, piecesPerPack)) return;
     markUserAction("quantity-change", {
       itemId,
       materialListId,
@@ -142,6 +147,13 @@ export function QuantityControls({
         )
       </span>
     ) : null;
+
+  if (packContents(piecesPerPack) > 1) {
+    return <div className="min-w-0 flex-1">
+      <PackQuantityControls orderMultiple={orderMultiple} quantity={displayedQuantity} piecesPerPack={piecesPerPack!} minimum={packsFromPieces(1, piecesPerPack)} onChange={setQuantityImmediately} />
+      {saveError && <Button variant="outline" size="sm" onClick={() => commitQuantity(displayedQuantityRef.current)}>Retry quantity save</Button>}
+    </div>;
+  }
 
   // Wider than tall so +/- are easy to hit with a thumb.
   const buttonClassName = compact

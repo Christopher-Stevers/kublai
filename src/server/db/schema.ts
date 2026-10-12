@@ -706,6 +706,7 @@ export const partDefinitions = createTable(
       .references(() => categories.id, { onDelete: "set null" }),
 
     displayName: d.varchar({ length: 255 }).notNull(),
+    piecesPerPack: d.integer(),
     description: d.text(),
     imageUrl: d.text(),
     imageAssetId: d

@@ -5,6 +5,7 @@ import {
   quoteItems,
   quotes as quoteSchema,
   supplierParts,
+  partDefinitions,
 } from "~/server/db/schema";
 import {
   purchaseLineTotal,
@@ -43,8 +44,10 @@ export async function recalculatePurchaseTotals(
       unitCost: quoteItems.unitCost,
       extendedPrice: quoteItems.extendedPrice,
       packSize: supplierParts.packSize,
+      piecesPerPack: partDefinitions.piecesPerPack,
     })
     .from(quoteItems)
+    .leftJoin(partDefinitions, eq(quoteItems.partDefinitionId, partDefinitions.id))
     .leftJoin(supplierParts, eq(quoteItems.supplierPartId, supplierParts.id))
     .where(eq(quoteItems.quoteId, quoteId));
   let subtotal = 0;
@@ -53,6 +56,7 @@ export async function recalculatePurchaseTotals(
       item.quantity,
       item.unitCost,
       item.packSize,
+      item.piecesPerPack,
     );
     subtotal += price;
     if (Number(item.extendedPrice ?? 0) !== price)

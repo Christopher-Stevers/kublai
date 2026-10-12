@@ -53,6 +53,7 @@ export interface ReplicacheMaterialListItem {
   partDefinition?: {
     id: string;
     displayName: string;
+    piecesPerPack?: number | null;
     imageUrl: string | null;
     material: string | null;
   } | null;
@@ -125,13 +126,14 @@ export function useReplicacheMaterialList(materialListId: string) {
         const pricedItems = items.map((item) => ({
           ...item,
           orderQuantity: String(
-            purchaseQuantity(item.quantity, item.supplierPart?.packSize),
+            purchaseQuantity(item.quantity, item.supplierPart?.packSize, item.partDefinition?.piecesPerPack),
           ),
           extendedPrice: String(
             purchaseLineTotal(
               item.quantity,
               item.unitCost,
               item.supplierPart?.packSize,
+              item.partDefinition?.piecesPerPack,
             ),
           ),
         }));

@@ -30,6 +30,7 @@ export interface OfflineCatalogueUnit {
 export interface OfflineCataloguePart {
   id: string;
   displayName: string;
+  piecesPerPack?: number | null;
   description: string | null;
   imageUrl: string | null;
   material: string | null;

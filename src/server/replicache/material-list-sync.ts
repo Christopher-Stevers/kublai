@@ -1194,6 +1194,7 @@ export async function handleMaterialListReplicachePull(
           descriptionSnapshot: quoteItems.descriptionSnapshot,
           partDefinitionId: quoteItems.partDefinitionId,
           partDefinitionDisplayName: partDefinitions.displayName,
+          partDefinitionPiecesPerPack: partDefinitions.piecesPerPack,
           partDefinitionImageUrl: partDefinitions.imageUrl,
           partDefinitionMaterial: materials.name,
           supplierPartId: quoteItems.supplierPartId,
@@ -1424,7 +1425,7 @@ export async function handleMaterialListReplicachePull(
             materialListId: item.materialListId,
             quantity: item.quantity,
             unitCost: item.unitCost,
-            extendedPrice: String(purchaseLineTotal(item.quantity, item.unitCost, item.supplierPartPackSize)),
+            extendedPrice: String(purchaseLineTotal(item.quantity, item.unitCost, item.supplierPartPackSize, item.partDefinitionPiecesPerPack)),
             descriptionSnapshot: item.descriptionSnapshot,
             partDefinitionId: item.partDefinitionId,
             supplierPartId: item.supplierPartId,
@@ -1437,6 +1438,7 @@ export async function handleMaterialListReplicachePull(
                     item.partDefinitionDisplayName ??
                     item.descriptionSnapshot ??
                     "Unknown Part",
+                  piecesPerPack: item.partDefinitionPiecesPerPack,
                   imageUrl: item.partDefinitionImageUrl ?? null,
                   material: item.partDefinitionMaterial ?? null,
                 }

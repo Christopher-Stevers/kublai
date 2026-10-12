@@ -1,3 +1,4 @@
+import {packContents, pieceCount, packsFromPieces} from "~/lib/pack-quantity";
 import { TRPCError } from "@trpc/server";
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
@@ -68,7 +69,7 @@ async function addItems(
   if (items.length === 0) return;
   const partIds = [...new Set(items.map((item) => item.partDefinitionId))];
   const parts = await db
-    .select({ id: partDefinitions.id })
+    .select({ id: partDefinitions.id, piecesPerPack: partDefinitions.piecesPerPack })
     .from(partDefinitions)
     .where(
       and(
@@ -103,9 +104,12 @@ async function addItems(
         ? item.supplierPartId
         : null;
     const existing = merged.get(item.partDefinitionId);
+    const contents = parts.find(p => p.id === item.partDefinitionId)?.piecesPerPack;
     merged.set(item.partDefinitionId, {
       supplierPartId: supplierPartId ?? existing?.supplierPartId ?? null,
-      quantity: (existing?.quantity ?? 0) + item.quantity,
+      quantity: packContents(contents) > 1
+        ? packsFromPieces(pieceCount(existing?.quantity ?? 0, contents) + pieceCount(item.quantity, contents), contents)
+        : (existing?.quantity ?? 0) + item.quantity,
     });
   }
   await db
@@ -121,7 +125,10 @@ async function addItems(
     .onConflictDoUpdate({
       target: [materialPrefabItems.prefabId, materialPrefabItems.partDefinitionId],
       set: {
-        quantity: sql`${materialPrefabItems.quantity} + excluded."quantity"`,
+        quantity: sql`(select case when p."piecesPerPack" > 1
+          then (round(${materialPrefabItems.quantity} * p."piecesPerPack") + round(excluded."quantity" * p."piecesPerPack")) / p."piecesPerPack"
+          else ${materialPrefabItems.quantity} + excluded."quantity" end
+          from kublai_part_definition p where p.id = excluded."partDefinitionId")`,
         supplierPartId: sql`coalesce(excluded."supplierPartId", ${materialPrefabItems.supplierPartId})`,
       },
     });
@@ -152,6 +159,7 @@ export const prefabsRouter = createTRPCRouter({
         partDefinition: {
           id: partDefinitions.id,
           displayName: partDefinitions.displayName,
+          piecesPerPack: partDefinitions.piecesPerPack,
           imageUrl: partDefinitions.imageUrl,
           sizeLabel: partDefinitions.sizeLabel,
         },

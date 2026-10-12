@@ -23,6 +23,7 @@ export interface PendingPart {
   partDefinition: {
     id: string;
     displayName: string;
+    piecesPerPack?: number | null;
     imageUrl: string | null;
     material: string | null;
     size: string | null;

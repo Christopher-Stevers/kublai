@@ -44,6 +44,7 @@ export type MaterialListReplicacheMutators = {
       partDefinitionSnapshot?: {
         id: string;
         displayName: string;
+        piecesPerPack?: number | null;
         imageUrl: string | null;
         material: string | null;
       } | null;
@@ -189,7 +190,7 @@ export function makeMaterialListMutators(): MaterialListReplicacheMutators {
           return;
         const unitCost = Number("unitCost" in existing ? existing.unitCost : 0);
         const supplierPart = ("supplierPart" in existing ? existing.supplierPart : null) as { packSize?: string | null } | null | undefined;
-        const extendedPrice = purchaseLineTotal(args.quantity, unitCost, supplierPart?.packSize);
+        const extendedPrice = purchaseLineTotal(args.quantity, unitCost, supplierPart?.packSize, (("partDefinition" in existing ? existing.partDefinition : null) as { piecesPerPack?: number | null } | undefined)?.piecesPerPack);
         await tx.put(`materialListItem/${args.itemId}`, {
           ...existing,
           materialListId: args.materialListId,
@@ -222,7 +223,7 @@ export function makeMaterialListMutators(): MaterialListReplicacheMutators {
           ? (args.roomName ?? (roomId === listRoomId ? listRoomName : null))
           : null;
         const unitCost = args.unitCost ?? 0;
-        const extendedPrice = purchaseLineTotal(args.quantity, unitCost, args.supplierPartSnapshot?.packSize);
+        const extendedPrice = purchaseLineTotal(args.quantity, unitCost, args.supplierPartSnapshot?.packSize, args.partDefinitionSnapshot?.piecesPerPack);
         await tx.put(`materialListItem/${args.itemId}`, {
           id: args.itemId,
           materialListId: args.materialListId,
@@ -256,7 +257,7 @@ export function makeMaterialListMutators(): MaterialListReplicacheMutators {
           return;
         const quantity = Number("quantity" in existing ? existing.quantity : 0);
         const unitCost = args.unitCost ?? 0;
-        const extendedPrice = purchaseLineTotal(quantity, unitCost, args.supplierPartSnapshot?.packSize);
+        const extendedPrice = purchaseLineTotal(quantity, unitCost, args.supplierPartSnapshot?.packSize, (("partDefinition" in existing ? existing.partDefinition : null) as { piecesPerPack?: number | null } | undefined)?.piecesPerPack);
         await tx.put(`materialListItem/${args.itemId}`, {
           ...existing,
           supplierPartId: args.supplierPartId,

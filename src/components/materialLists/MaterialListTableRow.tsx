@@ -26,11 +26,13 @@ export interface MaterialListTableRowProps {
     partDefinition?: {
       id: string;
       displayName: string;
+      piecesPerPack?: number | null;
       imageUrl: string | null;
       material: string | null;
     } | null;
     oneOff?: {
       displayName: string;
+      piecesPerPack?: number | null;
       description: string | null;
       material: string | null;
       sizeNominal: string | null;
@@ -93,7 +95,7 @@ function MaterialListTableRowComponent({
 
   const quantity = parseFloat(item.quantity);
   const unitCost = item.unitCost ? parseFloat(item.unitCost) : 0;
-  const lineTotal = purchaseLineTotal(quantity, unitCost, isToolRequest ? null : item.supplierPart?.packSize);
+  const lineTotal = purchaseLineTotal(quantity, unitCost, isToolRequest ? null : item.supplierPart?.packSize, isToolRequest ? null : item.partDefinition?.piecesPerPack);
 
   return (
     <tr
@@ -140,6 +142,7 @@ function MaterialListTableRowComponent({
           itemId={item.id}
           quantity={quantity}
                   orderMultiple={isToolRequest ? null : item.supplierPart?.packSize}
+                  piecesPerPack={isToolRequest ? null : item.partDefinition?.piecesPerPack}
           materialListId={materialListId}
           pendingSync={item.pendingSync}
           compact

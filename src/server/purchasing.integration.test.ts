@@ -43,6 +43,7 @@ vi.mock("~/server/orders/delivery-calendar", () => ({
   userDeliveryDate: async () => "2026-10-12",
 }));
 import { db } from "~/server/db";
+import { prefabsRouter } from "~/server/api/routers/prefabs";
 import { materialListRouter } from "~/server/api/routers/materialList";
 import { supplierRouter } from "~/server/api/routers/supplier";
 import { recalculatePurchaseTotals, orderMultipleInput } from "./purchasing";
@@ -87,6 +88,8 @@ const tables = [
   schema.orders,
   schema.orderItems,
   schema.jobRooms,
+  schema.materialPrefabs,
+  schema.materialPrefabItems,
 ];
 
 describe.skipIf(!socket)(
@@ -108,6 +111,7 @@ describe.skipIf(!socket)(
           `CREATE TABLE IF NOT EXISTS "${getTableName(table)}" (${columns.join(",")}, PRIMARY KEY ("id"))`,
         );
       }
+      await conn`CREATE UNIQUE INDEX IF NOT EXISTS prefab_item_unique ON kublai_material_prefab_item ("prefabId", "partDefinitionId")`;
       const migration = await readFile(
         new URL(
           "../../drizzle/0065_order_requested_quantity.sql",
@@ -323,6 +327,30 @@ describe.skipIf(!socket)(
         (await material.previewOrders({ materialListId: list })).possible[0]
           ?.items[0]?.quantity,
       ).toBe("40");
+    });
+    it("orders whole packs at pack prices while retaining the exact piece requirement", async () => {
+      await db.update(schema.partDefinitions).set({ piecesPerPack: 50 }).where(eq(schema.partDefinitions.id, part));
+      await db.update(schema.supplierParts).set({ packSize: null, lastKnownUnitCost: "25" }).where(eq(schema.supplierParts.id, sp));
+      await db.update(schema.quoteItems).set({ quantity: "1.4", unitCost: "25" }).where(eq(schema.quoteItems.id, item));
+      await recalculatePurchaseTotals(db, quote);
+      const detail = await material.getMaterialList({ materialListId: list });
+      expect(detail.items[0]).toMatchObject({quantity: "1.400000", extendedPrice: "50", partDefinition: { piecesPerPack: 50 }});
+      const preview = await material.previewOrders({materialListId: list});
+      expect(preview.possible[0]?.items[0]).toMatchObject({quantity:"2",requestedQuantity:"1.400000"});
+      const sent = await material.sendGeneratedOrder({materialListId:list,supplierId:supplier,sentTo:"supplier@example.test"});
+      const [line] = await db.select().from(schema.orderItems).where(eq(schema.orderItems.orderId,sent.id));
+      expect(Number(line!.quantity)).toBe(2);
+      expect(Number(line!.requestedQuantity)).toBe(1.4);
+      expect(Number(line!.unitCostAtOrderTime)).toBe(25);
+      expect((await material.getQuoteEmailContent({quoteId:quote})).body).toContain("2 (x70)");
+    });
+    it("preserves single-piece requirements when merging saved prefabs", async () => {
+      await db.update(schema.partDefinitions).set({piecesPerPack: 3000}).where(eq(schema.partDefinitions.id, part));
+      const caller = prefabsRouter.createCaller(context as never);
+      const prefab = await caller.create({name: "Test", items: [{partDefinitionId:part,quantity: .000333}]});
+      await caller.addItems({prefabId:prefab.id,items:[{partDefinitionId:part,quantity:.000333}]});
+      const [line] = await db.select().from(schema.materialPrefabItems).where(eq(schema.materialPrefabItems.prefabId,prefab.id));
+      expect(Number(line!.quantity)).toBe(.000667);
     });
     it("rejects zero, negatives, malformed and excessive precision rules", () => {
       for (const value of ["0", "-25", "25abc", "NaN", "1000000", "0.0000001"])

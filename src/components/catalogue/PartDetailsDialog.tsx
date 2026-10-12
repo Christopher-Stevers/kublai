@@ -1,4 +1,5 @@
 "use client";
+import { notify } from "~/components/ui/app-dialogs";
 import {
   FinancialOnly,
   useFinancialVisibility,
@@ -260,6 +261,7 @@ export function PartDetailsDialog({
       { enabled: isOnline && open && isEditMode && !!partId },
     );
   const [displayName, setDisplayName] = useState("");
+  const [piecesPerPack, setPiecesPerPack] = useState("");
   const [hasManuallyEditedDisplayName, setHasManuallyEditedDisplayName] =
     useState(false);
   const [description, setDescription] = useState("");
@@ -369,6 +371,7 @@ export function PartDetailsDialog({
 
     if (isEditMode && part) {
       setDisplayName(part.displayName ?? "");
+      setPiecesPerPack(part.piecesPerPack ? String(part.piecesPerPack) : "");
       setDescription(part.description ?? "");
       setImageUrl(part.imageUrl ?? "");
       setAliasesText(
@@ -654,6 +657,7 @@ export function PartDetailsDialog({
         mode: familyImageMode,
         draft: {
           displayName: displayName.trim(),
+      piecesPerPack: piecesPerPack.trim() ? Number(piecesPerPack) : null,
           description: description.trim() || null,
           categoryName: selectedCategory?.name ?? null,
           materialId,
@@ -1022,11 +1026,16 @@ export function PartDetailsDialog({
       return;
     }
 
+    if (piecesPerPack.trim() && (!Number.isInteger(Number(piecesPerPack)) || Number(piecesPerPack) < 2 || Number(piecesPerPack) > 999999)) {
+      notify("Pieces per pack must be a whole number between 2 and 999999.", "error");
+      return;
+    }
     const normalizedImageUrl = normalizePartImageUrlInput(imageUrl) || null;
     const imageUrlToSave = normalizedImageUrl;
 
     const payload = {
       displayName: displayName.trim(),
+      piecesPerPack: piecesPerPack.trim() ? Number(piecesPerPack) : null,
       description: description.trim() || null,
       imageUrl: imageUrlToSave,
       catalogId,
@@ -1178,6 +1187,11 @@ export function PartDetailsDialog({
                     className="mt-1 h-10 text-base font-medium"
                     disabled={isLoading}
                   />
+                  {!isToolType && <div className="mt-3">
+                    <Label htmlFor="piecesPerPack">Pieces per pack</Label>
+                    <Input id="piecesPerPack" type="number" min="2" max="999999" step="1" value={piecesPerPack} onChange={event => setPiecesPerPack(event.target.value)} placeholder="Leave blank for individual items" disabled={isLoading} />
+                    <p className="text-muted-foreground text-xs">Pack contents only. Price and quantity are per pack; minimum ordering multiples are separate.</p>
+                  </div>}
                   {!isEditMode && (
                     <p className="text-muted-foreground mt-1 text-xs">
                       Fills in from size, material and description.

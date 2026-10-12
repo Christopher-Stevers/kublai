@@ -1,3 +1,5 @@
+import { PackQuantityControls } from "../PackQuantityControls";
+import { packContents } from "~/lib/pack-quantity";
 import { purchaseLineTotal, purchaseQuantity } from "~/lib/purchase-quantity";
 import { FinancialOnly } from "~/components/permissions/FinancialVisibility";
 import { useState, useEffect } from "react";
@@ -115,15 +117,18 @@ function ReviewQuantityControls({
   partId,
   quantity,
   orderMultiple,
+  piecesPerPack,
   onUpdateQuantity,
   onSetQuantity,
 }: {
   partId: string;
   quantity: number;
   orderMultiple?: string | null;
+  piecesPerPack?: number | null;
   onUpdateQuantity: (partId: string, delta: number) => void;
   onSetQuantity: (partId: string, quantity: number) => void;
 }) {
+  if (packContents(piecesPerPack) > 1) return <PackQuantityControls orderMultiple={orderMultiple} quantity={quantity} piecesPerPack={piecesPerPack!} onChange={value => onSetQuantity(partId, value)} />;
   return (
     <div
       data-tutorial="wizard-review-quantity"
@@ -447,6 +452,7 @@ export function ReviewStage({
               pendingPart.quantity,
               unitCost,
               supplierSelection.selectedSupplierPart?.packSize,
+              pendingPart.partDefinition.piecesPerPack,
             );
             const isMissingSupplier =
               !isToolRequest && !supplierSelection.hasSupplier;
@@ -497,6 +503,7 @@ export function ReviewStage({
                       <ReviewQuantityControls
                         partId={pendingPart.partId}
                         quantity={pendingPart.quantity}
+                        piecesPerPack={pendingPart.partDefinition.piecesPerPack}
                         orderMultiple={
                           isToolRequest
                             ? null
@@ -549,6 +556,7 @@ export function ReviewStage({
                 pendingPart.quantity,
                 unitCost,
                 supplierSelection.selectedSupplierPart?.packSize,
+              pendingPart.partDefinition.piecesPerPack,
               );
               const isMissingSupplier =
                 !isToolRequest && !supplierSelection.hasSupplier;
@@ -568,6 +576,7 @@ export function ReviewStage({
                     <ReviewQuantityControls
                       partId={pendingPart.partId}
                       quantity={pendingPart.quantity}
+                        piecesPerPack={pendingPart.partDefinition.piecesPerPack}
                       orderMultiple={
                         isToolRequest
                           ? null

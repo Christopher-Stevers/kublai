@@ -965,6 +965,7 @@ export const catalogueRouter = createTRPCRouter({
         .select({
           id: partDefinitions.id,
           displayName: partDefinitions.displayName,
+          piecesPerPack: partDefinitions.piecesPerPack,
           description: partDefinitions.description,
           imageUrl: partDefinitions.imageUrl,
           sizeLabel: partDefinitions.sizeLabel,
@@ -1014,6 +1015,7 @@ export const catalogueRouter = createTRPCRouter({
       return allParts.map((part) => ({
         id: part.id,
         displayName: part.displayName,
+        piecesPerPack: part.piecesPerPack,
         description: part.description,
         imageUrl: part.imageUrl,
         approvedImageUrl: part.imageUrl,
@@ -1436,6 +1438,7 @@ export const catalogueRouter = createTRPCRouter({
           .select({
             id: partDefinitions.id,
             displayName: partDefinitions.displayName,
+            piecesPerPack: partDefinitions.piecesPerPack,
             description: partDefinitions.description,
             imageUrl: partDefinitions.imageUrl,
             sizeLabel: partDefinitions.sizeLabel,
@@ -1479,6 +1482,7 @@ export const catalogueRouter = createTRPCRouter({
         assetTracking: part.assetTracking,
         id: part.id,
         displayName: part.displayName,
+        piecesPerPack: part.piecesPerPack,
         description: part.description,
         imageUrl: part.imageUrl,
         approvedImageUrl: part.imageUrl,
@@ -2177,6 +2181,7 @@ export const catalogueRouter = createTRPCRouter({
       z.object({
         partId: z.string().uuid(),
         displayName: z.string().min(1).max(255).optional(),
+        piecesPerPack: z.number().int().min(2).max(999999).nullable().optional(),
         description: z.string().optional().nullable(),
         imageUrl: partImageUrlInput,
         catalogId: z.string().uuid().optional(),
@@ -2298,6 +2303,7 @@ export const catalogueRouter = createTRPCRouter({
             catalogId: finalCatalogId,
             categoryId: finalCategoryId,
             displayName: input.displayName ?? originalPart.displayName,
+            piecesPerPack: input.piecesPerPack !== undefined ? input.piecesPerPack : originalPart.piecesPerPack,
             description:
               input.description !== undefined
                 ? input.description
@@ -2355,6 +2361,7 @@ export const catalogueRouter = createTRPCRouter({
       if (input.materialId !== undefined)
         updateData.materialId = input.materialId;
       if (sizeTouched) updateData.sizeId = sizeId;
+      if (input.piecesPerPack !== undefined) updateData.piecesPerPack = input.piecesPerPack;
       if (input.isActive !== undefined) updateData.isActive = input.isActive;
 
       const [updated] = await ctx.db
@@ -2367,6 +2374,10 @@ export const catalogueRouter = createTRPCRouter({
         throw new Error("Failed to update part");
       }
 
+      if (input.piecesPerPack !== undefined) {
+        const listings = await ctx.db.select({ id: supplierParts.id }).from(supplierParts).where(and(eq(supplierParts.partDefinitionId, updated.id), eq(supplierParts.organizationId, organizationId)));
+        await refreshSupplierPurchaseTotals(ctx.db, listings.map(listing => listing.id), organizationId);
+      }
       const syncAliases = async () => {
         if (input.aliases !== undefined) {
           await syncPartAliases(ctx.db, updated.id, input.aliases);
@@ -2540,6 +2551,7 @@ export const catalogueRouter = createTRPCRouter({
           categoryName: categories.name,
           materialName: materials.name,
           displayName: partDefinitions.displayName,
+          piecesPerPack: partDefinitions.piecesPerPack,
           description: partDefinitions.description,
           sizeNominal: sizes.nominal,
           sizeLabel: partDefinitions.sizeLabel,
@@ -2844,6 +2856,7 @@ export const catalogueRouter = createTRPCRouter({
     .input(
       z.object({
         displayName: z.string().min(1).max(255),
+        piecesPerPack: z.number().int().min(2).max(999999).nullable().optional(),
         description: z.string().optional().nullable(),
         imageUrl: partImageUrlInput,
         catalogId: z.string().uuid(),
@@ -2937,6 +2950,7 @@ export const catalogueRouter = createTRPCRouter({
               ? (input.assetTracking ?? "serialized")
               : null,
           displayName: input.displayName,
+          piecesPerPack: input.piecesPerPack,
           description: input.description ?? null,
           imageUrl:
             input.imageUrl && input.imageUrl.trim() !== ""
@@ -3003,6 +3017,7 @@ export const catalogueRouter = createTRPCRouter({
         .select({
           id: partDefinitions.id,
           displayName: partDefinitions.displayName,
+          piecesPerPack: partDefinitions.piecesPerPack,
           description: partDefinitions.description,
           imageUrl: partDefinitions.imageUrl,
           sizeLabel: partDefinitions.sizeLabel,
@@ -3032,6 +3047,7 @@ export const catalogueRouter = createTRPCRouter({
       return {
         id: part.id,
         displayName: part.displayName,
+        piecesPerPack: part.piecesPerPack,
         description: part.description,
         imageUrl: part.imageUrl,
         catalogId: part.catalogId,

@@ -20,6 +20,7 @@ import { useSnapshotSource } from "~/components/chat/SnapshotSourceContext";
 import { currentSnapshotState } from "~/lib/snapshot-source";
 
 type PreloadedPart = {
+  piecesPerPack?: number | null;
   id: string;
   displayName: string;
   description: string | null;
