@@ -37,6 +37,7 @@ export async function GET(
     const range = singleByteRange(request.headers.get("range"), size);
     const headers = {
       "Content-Type": "application/octet-stream",
+      ETag: `"${sha}"`,
       "Cache-Control": "private, no-store",
       "X-Content-Type-Options": "nosniff",
       "Cross-Origin-Resource-Policy": "same-origin",
@@ -49,9 +50,11 @@ export async function GET(
         headers: { ...headers, "Content-Range": `bytes */${size}` },
       });
     return new Response(
-      Readable.toWeb(
-        createReadStream(file, range ?? undefined),
-      ) as ReadableStream,
+      request.method === "HEAD"
+        ? null
+        : (Readable.toWeb(
+            createReadStream(file, range ?? undefined),
+          ) as ReadableStream),
       {
         status: range ? 206 : 200,
         headers: {
@@ -67,3 +70,5 @@ export async function GET(
     return modelHttpError(error);
   }
 }
+
+export const HEAD = GET;

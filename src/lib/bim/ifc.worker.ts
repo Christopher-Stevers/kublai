@@ -1,4 +1,5 @@
 /// <reference lib="webworker" />
+import { deviceModelDownload } from "./device-model-cache";
 import {
   IfcAPI,
   IFCBUILDINGSTOREY,
@@ -79,7 +80,7 @@ async function load(
   }
   await initialization;
   flow.check();
-  progress(2, "Downloading model");
+  progress(2, "Checking saved model");
   const model = await downloadAndOpen(url, flow, progress);
   models.set(modelId, model);
   await flow.yield();
@@ -208,10 +209,8 @@ async function downloadAndOpen(
   flow: ModelLoadFlow,
   progress: (value: number, message: string) => void,
 ) {
-  const response = await fetch(url, {
-    credentials: "same-origin",
-    signal: flow.signal,
-  });
+  const download = await deviceModelDownload(url, flow.signal);
+  const { response } = download;
   if (!response.ok)
     throw Error(
       response.status === 401
@@ -238,7 +237,7 @@ async function downloadAndOpen(
       if (performance.now() - lastProgress > 100) {
         progress(
           Math.min(20, size ? (20 * total) / size : 10),
-          "Downloading model",
+          download.cached ? "Opening saved model" : "Downloading model",
         );
         lastProgress = performance.now();
       }
@@ -266,6 +265,7 @@ async function downloadAndOpen(
     throw Error(
       "The IFC model could not be read. Export IFC2x3, IFC4, or IFC4.3 from the authoring program.",
     );
+  await download.save(data);
   return model;
 }
 function flatten(
