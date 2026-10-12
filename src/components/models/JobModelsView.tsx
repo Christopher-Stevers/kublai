@@ -32,9 +32,11 @@ import {
   Info,
   MoreVertical,
   Upload,
+  Trash2,
 } from "lucide-react";
 import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
+import { confirmAction, notify } from "~/components/ui/app-dialogs";
 import {
   Dialog,
   DialogContent,
@@ -142,7 +144,7 @@ export function ModelWorkspace({
   refresh: () => void;
 }) {
   const host = useRef<HTMLDivElement>(null),
-    [ids, setIds] = useState<string[]>([]),
+    [requestedIds, setIds] = useState<string[]>([]),
     [panel, setPanel] = useState<Panel>("models"),
     [selected, setSelected] = useState<BimElement | null>(null),
     [tool, setTool] = useState<ModelTool>("inspect"),
@@ -166,7 +168,17 @@ export function ModelWorkspace({
     [allRevisions, setAllRevisions] = useState(false),
     [reportFor, setReportFor] = useState<string | null>(null),
     [section, setSection] = useState<BimViewState["section"]>(null);
-  const viewport = useModelScene(host, w.job.id, ids, restore, reset, {
+  // Polling also unloads revisions deleted by another team member.
+  const ids = useMemo(
+    () => requestedIds.filter((id) => w.models.some((m) => m.id === id)),
+    [requestedIds, w.models],
+  );
+  const availableRestore = restore?.modelIds.every((id) =>
+    w.models.some((m) => m.id === id),
+  )
+    ? restore
+    : null;
+  const viewport = useModelScene(host, w.job.id, ids, availableRestore, reset, {
     select: (e) => {
       setSelected(e);
       if (e) setPanel("properties");
@@ -194,7 +206,19 @@ export function ModelWorkspace({
         setPanel("views");
       },
     }),
-    removeView = api.models.removeView.useMutation(mutationOptions);
+    removeView = api.models.removeView.useMutation(mutationOptions),
+    remove = api.models.remove.useMutation({
+      ...mutationOptions,
+      onSuccess: (_result, { id }) => {
+        setIds((old) => old.filter((openId) => openId !== id));
+        setSelected((old) => (old?.modelId === id ? null : old));
+        setRestore(null);
+        setReportFor((old) => (old === id ? null : old));
+        setError("");
+        refresh();
+        notify("Model deleted.", "success");
+      },
+    });
   const latest = useMemo(() => {
     const map = new Map<string, BimModel>();
     for (const m of w.models) {
@@ -252,6 +276,12 @@ export function ModelWorkspace({
     if (window.matchMedia("(max-width: 767px)").matches) setPanel(null);
   };
   function restoreView(v: BimViewState) {
+    if (v.modelIds.some((id) => !w.models.some((m) => m.id === id))) {
+      setError(
+        "This saved location uses a deleted model and can no longer be opened.",
+      );
+      return;
+    }
     const restriction = nativeViewRestriction(
       w.models.filter((m) => v.modelIds.includes(m.id)),
       v,
@@ -850,6 +880,33 @@ export function ModelWorkspace({
                                         </DropdownMenuRadioItem>
                                       )}
                                     </DropdownMenuRadioGroup>
+                                  </>
+                                )}
+                                {w.canDelete && (
+                                  <>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem
+                                      variant="destructive"
+                                      disabled={remove.isPending}
+                                      onSelect={() => {
+                                        void confirmAction({
+                                          title: `Delete ${m.name} (v${m.version})?`,
+                                          description:
+                                            "This revision will be removed from the job. Other revisions and issue history are kept. Saved views using this revision will no longer open.",
+                                          confirmLabel: "Delete model",
+                                          destructive: true,
+                                        }).then((confirmed) => {
+                                          if (confirmed)
+                                            remove.mutate({
+                                              jobId: w.job.id,
+                                              id: m.id,
+                                            });
+                                        });
+                                      }}
+                                    >
+                                      <Trash2 className="size-4" />
+                                      Delete model
+                                    </DropdownMenuItem>
                                   </>
                                 )}
                               </DropdownMenuContent>

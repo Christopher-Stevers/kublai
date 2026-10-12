@@ -3,7 +3,7 @@ import { and, eq, sql } from "drizzle-orm";
 import { db } from "~/server/db";
 import { bimModels, bimActivity } from "~/server/db/bim-schema";
 import { modelAccess, requireModelUpload, type ModelAccess } from "./access";
-import { modelScope, readModel } from "./service";
+import { modelIsActive, modelScope, readModel } from "./service";
 import {
   nativeConversionAvailable,
   convertNativeRevit,
@@ -37,7 +37,7 @@ export async function convertRevitModel(a: ModelAccess, id: string) {
         m.data.publication === "archived" ? "archived" : "coordination",
       nativeConversion: undefined,
     };
-    await tx
+    const [queued] = await tx
       .update(bimModels)
       .set({
         data,
@@ -46,7 +46,10 @@ export async function convertRevitModel(a: ModelAccess, id: string) {
         conversionLease: null,
         conversionUrn: null,
       })
-      .where(and(modelScope(a), eq(bimModels.id, id)));
+      .where(and(modelScope(a), eq(bimModels.id, id)))
+      .returning({ id: bimModels.id });
+    if (!queued)
+      throw new TRPCError({ code: "NOT_FOUND", message: "Model was deleted." });
     await tx.insert(bimActivity).values({
       organizationId: a.job.organizationId,
       jobId: a.job.id,
@@ -72,7 +75,10 @@ export async function dispatchModelConversions() {
         .select()
         .from(bimModels)
         .where(
-          sql`${bimModels.data}->>'status' = 'processing' and ${bimModels.conversionRequestedBy} is not null and (${bimModels.conversionLease} is null or ${bimModels.conversionLease} < now()) and (${bimModels.conversionCheckedAt} is null or ${bimModels.conversionCheckedAt} < now() - interval '25 seconds')`,
+          and(
+            modelIsActive,
+            sql`${bimModels.data}->>'status' = 'processing' and ${bimModels.conversionRequestedBy} is not null and (${bimModels.conversionLease} is null or ${bimModels.conversionLease} < now()) and (${bimModels.conversionCheckedAt} is null or ${bimModels.conversionCheckedAt} < now() - interval '25 seconds')`,
+          ),
         )
         .limit(1)
         .for("update", { skipLocked: true });
@@ -93,17 +99,20 @@ export async function dispatchModelConversions() {
       requireModelUpload(a);
       if (a.job.organizationId !== leased.organizationId)
         throw Error("Model access changed.");
-      await db
+      const [started] = await db
         .update(bimModels)
         .set({
           data: sql`${bimModels.data} || ${JSON.stringify({ conversionEngine: "native", conversionMessage: "Reading Revit geometry locally" })}::jsonb`,
         })
-        .where(eq(bimModels.id, leased.id));
+        .where(and(modelScope(a), eq(bimModels.id, leased.id)))
+        .returning({ id: bimModels.id });
+      if (!started) return;
       const result = await convertNativeRevit(
         modelBlobPath(a.job.organizationId, leased.sourceSha),
       );
       const fresh = await modelAccess(a.user.id, a.job.id);
       requireModelUpload(fresh);
+      await readModel(fresh, leased.id);
       const sha =
         result.status === "ready"
           ? await storeConvertedModel(a.job.organizationId, result.bytes)
@@ -119,7 +128,7 @@ export async function dispatchModelConversions() {
               "This Revit file is not supported yet."),
       };
       await db.transaction(async (tx) => {
-        await tx
+        const [updated] = await tx
           .update(bimModels)
           .set({
             data: sql`${bimModels.data} || ${JSON.stringify(change)}::jsonb`,
@@ -127,7 +136,9 @@ export async function dispatchModelConversions() {
             conversionLease: null,
             conversionCheckedAt: new Date(),
           })
-          .where(and(modelScope(fresh), eq(bimModels.id, leased.id)));
+          .where(and(modelScope(fresh), eq(bimModels.id, leased.id)))
+          .returning({ id: bimModels.id });
+        if (!updated) return;
         await tx.insert(bimActivity).values({
           organizationId: a.job.organizationId,
           jobId: a.job.id,
@@ -148,7 +159,7 @@ export async function dispatchModelConversions() {
           conversionLease: null,
           data: sql`${bimModels.data} || ${JSON.stringify({ status: "failed", conversionMessage: message })}::jsonb`,
         })
-        .where(eq(bimModels.id, leased.id));
+        .where(and(modelIsActive, eq(bimModels.id, leased.id)));
     }
   } finally {
     running = false;

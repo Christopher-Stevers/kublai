@@ -21,18 +21,25 @@ import type {
   BimWorkspace,
   ModelUploadMetadata,
 } from "~/lib/bim/types";
-import { requireModelUpload, type ModelAccess } from "./access";
+import {
+  requireModelDelete,
+  requireModelUpload,
+  type ModelAccess,
+} from "./access";
 import { canConfigureAutodesk } from "./connection";
 import { nativeConversionAvailable } from "./native-conversion";
 import {
   isNativeRevitPreview,
   nativeViewRestriction,
 } from "~/lib/bim/native-conversion";
-export const modelScope = (a: ModelAccess) =>
+const modelJobScope = (a: ModelAccess) =>
   and(
     eq(bimModels.organizationId, a.job.organizationId),
     eq(bimModels.jobId, a.job.id),
   );
+export const modelIsActive = sql`${bimModels.data}->>'deletedAt' is null`;
+export const modelScope = (a: ModelAccess) =>
+  and(modelJobScope(a), modelIsActive);
 type Writer = Parameters<Parameters<typeof db.transaction>[0]>[0];
 async function audit(
   tx: Writer,
@@ -136,18 +143,20 @@ export async function registerModel(
     const [replay] = await tx
       .select()
       .from(bimModels)
-      .where(and(modelScope(a), eq(bimModels.id, id)));
+      .where(and(modelJobScope(a), eq(bimModels.id, id)));
+    if (replay?.data.deletedAt)
+      throw new TRPCError({ code: "NOT_FOUND", message: "Model was deleted." });
     if (replay) return replay.data;
     const { metadata, sha, format } = input;
     let version = 1;
     const seriesId = metadata.seriesId ?? randomUUID();
     if (metadata.seriesId) {
-      const [last] = await tx
+      const revisions = await tx
         .select()
         .from(bimModels)
-        .where(and(modelScope(a), eq(bimModels.seriesId, seriesId)))
-        .orderBy(desc(bimModels.version))
-        .limit(1);
+        .where(and(modelJobScope(a), eq(bimModels.seriesId, seriesId)))
+        .orderBy(desc(bimModels.version));
+      const last = revisions.find((r) => !r.data.deletedAt);
       if (!last)
         throw new TRPCError({
           code: "NOT_FOUND",
@@ -159,7 +168,8 @@ export async function registerModel(
           message:
             "A newer revision was uploaded. Refresh before uploading this revision.",
         });
-      version = last.version + 1;
+      // Never reuse a deleted revision number.
+      version = revisions[0]!.version + 1;
     }
     const model: BimModel = {
       id,
@@ -188,6 +198,38 @@ export async function registerModel(
     });
     await audit(tx, a, id, "model.uploaded", { model, sha });
     return model;
+  });
+}
+export async function removeModel(a: ModelAccess, id: string) {
+  requireModelDelete(a);
+  return db.transaction(async (tx) => {
+    await lock(tx, a);
+    const [model] = await tx
+      .select()
+      .from(bimModels)
+      .where(and(modelJobScope(a), eq(bimModels.id, id)))
+      .for("update");
+    if (!model)
+      throw new TRPCError({ code: "NOT_FOUND", message: "Model not found." });
+    if (model.data.deletedAt) return { ok: true };
+    const deletedAt = new Date().toISOString();
+    await tx
+      .update(bimModels)
+      .set({
+        data: sql`${bimModels.data} || ${JSON.stringify({ deletedAt })}::jsonb`,
+        conversionRequestedBy: null,
+        conversionLease: null,
+      })
+      .where(and(modelScope(a), eq(bimModels.id, id)));
+    await audit(tx, a, id, "model.deleted", {
+      name: model.data.name,
+      seriesId: model.seriesId,
+      version: model.version,
+      deletedAt,
+    });
+    // Blobs are content-addressed and may be shared by other models. Keep
+    // issue/view history, but readModel prevents downloading deleted revisions.
+    return { ok: true };
   });
 }
 export async function setModelPublication(

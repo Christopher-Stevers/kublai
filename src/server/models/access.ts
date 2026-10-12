@@ -37,3 +37,10 @@ export function requireModelUpload(access: ModelAccess) {
       message: "Drawing upload permission is required to manage models.",
     });
 }
+export function requireModelDelete(access: ModelAccess) {
+  if (!access.canDelete)
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Drawing delete permission is required to delete models.",
+    });
+}

@@ -28,7 +28,9 @@ export const bimModels = table(
       .references(() => jobColumn("id"), { onDelete: "cascade" }),
     seriesId: d.uuid().notNull(),
     version: d.integer().notNull(),
-    data: d.jsonb().$type<BimModel>().notNull(),
+    // Retain revision identity and audit references after deletion. Deleted
+    // revisions must never be served or resumed by the conversion queue.
+    data: d.jsonb().$type<BimModel & { deletedAt?: string }>().notNull(),
     sourceSha: d.varchar({ length: 64 }).notNull(),
     viewSha: d.varchar({ length: 64 }),
     conversionRequestedBy: d.varchar({ length: 255 }),

@@ -18,6 +18,7 @@ import {
   saveModelIssue,
   commentModelIssue,
   setModelPublication,
+  removeModel,
 } from "~/server/models/service";
 import {
   convertRevitModel,
@@ -52,6 +53,11 @@ export const modelsRouter = createTRPCRouter({
     .input(job)
     .query(async ({ ctx, input }) =>
       modelWorkspace(await modelAccess(ctx.user.id, input.jobId)),
+    ),
+  remove: hasDashboardAccess
+    .input(entity)
+    .mutation(async ({ ctx, input }) =>
+      removeModel(await modelAccess(ctx.user.id, input.jobId), input.id),
     ),
   saveView: hasDashboardAccess
     .input(
