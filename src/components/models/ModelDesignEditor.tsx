@@ -17,6 +17,11 @@ import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
 import { confirmAction } from "~/components/ui/app-dialogs";
 import { cn } from "~/lib/utils";
+import { CadModifyPanel } from "./CadModifyPanel";
+import { CadIfcExport } from "./CadIfcExport";
+import { CadComponentsPanel } from "./CadComponentsPanel";
+import { CadDxfImport } from "./CadDxfImport";
+import { bindDimension, reconcileDimensions } from "~/lib/bim/cad-dimensions";
 import { DesignLayer } from "~/lib/bim/design-layer";
 import { CadViews } from "~/lib/bim/cad-views";
 import {
@@ -164,9 +169,9 @@ export function ModelDesignEditor({
     [inspector, setInspector] = useState(
       () => typeof window !== "undefined" && window.innerWidth >= 1024,
     ),
-    [tab, setTab] = useState<"properties" | "objects" | "layers" | "file">(
-      "properties",
-    );
+    [tab, setTab] = useState<
+      "properties" | "modify" | "objects" | "layers" | "library" | "file"
+    >("properties");
   const [mode, setMode] = useState<"translate" | "rotate">("translate"),
     [snap, setSnap] = useState(0.05),
     [angle, setAngle] = useState<0 | 45 | 90>(0),
@@ -186,6 +191,7 @@ export function ModelDesignEditor({
     [copies, setCopies] = useState(1),
     [multi, setMulti] = useState(false);
   const [showGrid, setShowGrid] = useState(true);
+  const [vertexEditing, setVertexEditing] = useState(false);
   const layer = useRef<DesignLayer | null>(null),
     views = useRef<CadViews | null>(null),
     viewHost = useRef<HTMLDivElement>(null),
@@ -231,17 +237,29 @@ export function ModelDesignEditor({
     : null;
   const editable = element ? isEditable(design, element) : true;
   const commit = (next: ModelDesign) => {
-    if (!w.canUpload) return;
+    if (!w.canUpload) return false;
+    next = reconcileDimensions(next, current.current.design);
     const parsed = designSchema.safeParse(next);
     if (!parsed.success) {
       setError(parsed.error.issues[0]?.message ?? "Check the drawing values.");
-      return;
+      return false;
     }
     setHistory((h) => [...h.slice(-49), current.current.design]);
     setFuture([]);
-    setDesign(parsed.data);
+    // Geometry arrays are immutable. Retain their identities across property edits
+    // instead of holding 50 deep mesh copies in undo history.
+    setDesign({
+      ...parsed.data,
+      elements: parsed.data.elements.map((e, i) => ({
+        ...e,
+        mesh: next.elements[i]?.mesh,
+        points: next.elements[i]?.points,
+      })),
+      components: next.components,
+    });
     setDirty(true);
     setError("");
+    return true;
   };
   const select = (id: string | null, extend = false) =>
     setSelection((old) =>
@@ -313,7 +331,8 @@ export function ModelDesignEditor({
     );
     if (!objects.length) return;
     const additions = duplicateElements(objects, arrayOffset, count);
-    commit({ ...design, elements: [...design.elements, ...additions] });
+    if (!commit({ ...design, elements: [...design.elements, ...additions] }))
+      return;
     setSelection(additions.map((e) => e.id));
   };
   const remove = () => {
@@ -341,8 +360,7 @@ export function ModelDesignEditor({
             },
       );
     }
-    commit(next);
-    setSelection([]);
+    if (commit(next)) setSelection([]);
   };
   const add = (object: DesignElement) => {
     const doc = current.current.design,
@@ -352,7 +370,15 @@ export function ModelDesignEditor({
       return;
     }
     object.layer = l.name;
-    commit({ ...doc, elements: [...doc.elements, object] });
+    if (object.kind === "dimension")
+      object = bindDimension(
+        {
+          ...object,
+          dimension: { offset: 0.2, unit, precision: unit === "mm" ? 0 : 2 },
+        },
+        doc,
+      );
+    if (!commit({ ...doc, elements: [...doc.elements, object] })) return;
     setSelection([object.id]);
     if (!current.current.chain) setPlacing(null);
   };
@@ -394,9 +420,11 @@ export function ModelDesignEditor({
         l: "line",
         r: "rectangle",
         c: "circle",
+        d: "dimension",
       };
       if (tool[k]) {
         setPlacing(tool[k]);
+        setTab("properties");
         setSelection([]);
       } else if (k === "v") {
         setPlacing(null);
@@ -447,6 +475,34 @@ export function ModelDesignEditor({
       },
       sketch: (kind, points, plane) =>
         actions.current.add(createSketch(kind, points, plane)),
+      vertex: (id, index, point) => {
+        const doc = current.current.design,
+          e = doc.elements.find((e) => e.id === id);
+        if (!e?.points) return;
+        const closed =
+          new Vector3(...e.points[0]!).distanceTo(
+            new Vector3(...e.points.at(-1)!),
+          ) < 1e-8;
+        if (
+          !actions.current.commit({
+            ...doc,
+            elements: doc.elements.map((object) =>
+              object.id === id
+                ? {
+                    ...object,
+                    points: object.points!.map((p, i) =>
+                      i === index ||
+                      (closed && index === 0 && i === object.points!.length - 1)
+                        ? point
+                        : p,
+                    ),
+                  }
+                : object,
+            ),
+          })
+        )
+          layer.current?.selectMany(current.current.selection);
+      },
       transform: (id, position, rotation) => {
         const doc = current.current.design;
         if (id.startsWith("source:")) {
@@ -586,6 +642,7 @@ export function ModelDesignEditor({
     l.surface = surface && view === "3d";
     l.exactLength = exactLength;
     l.chain = chain;
+    l.vertexMode = vertexEditing;
     l.setMode(mode);
   }, [
     view,
@@ -598,6 +655,7 @@ export function ModelDesignEditor({
     surface,
     exactLength,
     chain,
+    vertexEditing,
     mode,
     active,
     loaded,
@@ -677,6 +735,7 @@ export function ModelDesignEditor({
     axis = planeAxes(workingPlane).axis;
   const startTool = (kind: DesignKind | null) => {
     setPlacing(kind);
+    if (kind) setTab("properties");
     setSelection([]);
   };
   const buttonClass =
@@ -720,7 +779,7 @@ export function ModelDesignEditor({
             >
               <option value="">Draw / add…</option>
               {Object.entries(designKinds)
-                .filter(([id]) => id !== "profile")
+                .filter(([id]) => id !== "profile" && id !== "solid")
                 .map(([id, name]) => (
                   <option key={id} value={id}>
                     {name}
@@ -875,7 +934,7 @@ export function ModelDesignEditor({
         data-testid="cad-viewports"
         className={cn(
           "pointer-events-auto absolute inset-x-0 top-[92px] bottom-9",
-          inspector && "bottom-[43dvh] md:right-[336px] md:bottom-9",
+          inspector && "bottom-[43dvh] md:right-[384px] md:bottom-9",
         )}
       />
       {!loaded && (
@@ -891,7 +950,7 @@ export function ModelDesignEditor({
           className={cn(
             "bg-background/95 pointer-events-auto absolute bottom-10 left-2 z-10 flex max-w-[calc(100%-1rem)] flex-wrap items-center gap-2 rounded border px-3 py-2 text-xs",
             inspector &&
-              "bottom-[calc(43dvh+4px)] md:bottom-10 md:max-w-[calc(100%-352px)]",
+              "bottom-[calc(43dvh+4px)] md:bottom-10 md:max-w-[calc(100%-400px)]",
           )}
         >
           <span>
@@ -927,18 +986,27 @@ export function ModelDesignEditor({
       {inspector && (
         <aside
           aria-label="CAD inspector"
-          className="bg-background pointer-events-auto absolute inset-x-0 bottom-9 z-20 flex h-[calc(43dvh-36px)] flex-col border-t md:top-[92px] md:right-0 md:left-auto md:h-auto md:w-[336px] md:border-t-0 md:border-l"
+          className="bg-background pointer-events-auto absolute inset-x-0 bottom-9 z-20 flex h-[calc(43dvh-36px)] flex-col border-t md:top-[92px] md:right-0 md:left-auto md:h-auto md:w-[384px] md:border-t-0 md:border-l"
         >
           <nav
-            className="flex shrink-0 border-b"
+            className="flex shrink-0 overflow-x-auto border-b"
             aria-label="CAD inspector tabs"
           >
-            {(["properties", "objects", "layers", "file"] as const).map((t) => (
+            {(
+              [
+                "properties",
+                "modify",
+                "objects",
+                "layers",
+                "library",
+                "file",
+              ] as const
+            ).map((t) => (
               <button
                 key={t}
                 aria-pressed={tab === t}
                 className={cn(
-                  "h-11 min-w-0 flex-1 text-xs capitalize",
+                  "h-11 flex-1 shrink-0 px-2 text-xs capitalize",
                   tab === t && "text-primary border-primary border-b-2",
                 )}
                 onClick={() => setTab(t)}
@@ -948,6 +1016,37 @@ export function ModelDesignEditor({
             ))}
           </nav>
           <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-3 text-sm">
+            {tab === "modify" && (
+              <CadModifyPanel
+                design={design}
+                selection={selection}
+                scene={scene}
+                modelId={modelId}
+                canDelete={w.canDelete}
+                unit={unit}
+                factor={factor}
+                onChange={(next, ids) => {
+                  if (!commit(next)) return false;
+                  setSelection(ids);
+                  return true;
+                }}
+                onError={setError}
+              />
+            )}
+            {tab === "library" && (
+              <CadComponentsPanel
+                design={design}
+                selection={selection}
+                activeLayer={activeLayer}
+                scene={scene}
+                onChange={(next, ids) => {
+                  if (!commit(next)) return false;
+                  setSelection(ids);
+                  return true;
+                }}
+                onError={setError}
+              />
+            )}
             {tab === "properties" && (
               <>
                 <label className="flex gap-2 text-xs">
@@ -1112,7 +1211,8 @@ export function ModelDesignEditor({
                             value={element.rotation}
                             change={(v) => update({ rotation: v })}
                           />
-                          {!sketchKinds.has(element.kind) &&
+                          {element.kind !== "solid" &&
+                            !sketchKinds.has(element.kind) &&
                             (["pipe", "elbow", "tee", "valve"].includes(
                               element.kind,
                             ) ? (
@@ -1166,6 +1266,104 @@ export function ModelDesignEditor({
                               }
                             />
                           )}
+                          <VectorFields
+                            label="Scale"
+                            value={element.scale ?? [1, 1, 1]}
+                            change={(scale) => update({ scale })}
+                          />
+                          {element.kind === "dimension" && (
+                            <div className="space-y-3">
+                              <NumberField
+                                label={`Dimension offset (${unit})`}
+                                value={
+                                  (element.dimension?.offset ?? 0.2) * factor
+                                }
+                                onChange={(offset) =>
+                                  update({
+                                    dimension: {
+                                      offset: offset / factor,
+                                      unit: element.dimension?.unit ?? "m",
+                                      precision:
+                                        element.dimension?.precision ?? 2,
+                                      anchors: element.dimension?.anchors,
+                                    },
+                                  })
+                                }
+                              />
+                              <label className="block space-y-1 text-xs">
+                                Dimension units
+                                <select
+                                  aria-label="Dimension units"
+                                  className={inputClass}
+                                  value={element.dimension?.unit ?? "m"}
+                                  onChange={(event) =>
+                                    update({
+                                      dimension: {
+                                        offset:
+                                          element.dimension?.offset ?? 0.2,
+                                        precision:
+                                          element.dimension?.precision ?? 2,
+                                        anchors: element.dimension?.anchors,
+                                        unit: event.target.value as Unit,
+                                      },
+                                    })
+                                  }
+                                >
+                                  {Object.keys(units).map((u) => (
+                                    <option key={u}>{u}</option>
+                                  ))}
+                                </select>
+                              </label>
+                              <NumberField
+                                label="Dimension decimal places"
+                                value={element.dimension?.precision ?? 2}
+                                min={0}
+                                max={4}
+                                step={1}
+                                onChange={(precision) =>
+                                  update({
+                                    dimension: {
+                                      offset: element.dimension?.offset ?? 0.2,
+                                      unit: element.dimension?.unit ?? "m",
+                                      anchors: element.dimension?.anchors,
+                                      precision: Math.floor(precision),
+                                    },
+                                  })
+                                }
+                              />
+                              {element.dimension?.anchors?.some(Boolean) && (
+                                <>
+                                  <p className="text-muted-foreground text-xs">
+                                    Attached to object snap points. The
+                                    dimension follows changes to those objects.
+                                  </p>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() =>
+                                      update({
+                                        dimension: {
+                                          ...element.dimension!,
+                                          anchors: [null, null],
+                                        },
+                                      })
+                                    }
+                                  >
+                                    Detach dimension
+                                  </Button>
+                                </>
+                              )}
+                            </div>
+                          )}
+                          {element.kind === "solid" && (
+                            <p className="text-muted-foreground text-xs">
+                              {(
+                                (element.mesh?.indices.length ?? 0) / 3
+                              ).toLocaleString()}{" "}
+                              triangles · Use Scale to resize this solid, or
+                              Modify to cut and combine it.
+                            </p>
+                          )}
                           <div className="flex items-center gap-3">
                             <label className="flex items-center gap-2 text-xs">
                               Colour
@@ -1192,30 +1390,44 @@ export function ModelDesignEditor({
                             </select>
                           </div>
                           {element.points && (
-                            <details>
-                              <summary className="cursor-pointer text-xs">
-                                Edit vertices ({element.points.length})
-                              </summary>
-                              <p className="text-muted-foreground my-2 text-xs">
-                                Local coordinates, relative to the object’s
-                                position and rotation.
-                              </p>
-                              {element.points.map((p, i) => (
-                                <VectorFields
-                                  key={i}
-                                  label={`Vertex ${i + 1} (${unit})`}
-                                  value={p}
-                                  factor={factor}
-                                  change={(next) =>
-                                    update({
-                                      points: element.points!.map((p, j) =>
-                                        j === i ? next : p,
-                                      ),
-                                    })
-                                  }
-                                />
-                              ))}
-                            </details>
+                            <>
+                              {element.kind !== "dimension" && (
+                                <label className="flex gap-2 text-xs">
+                                  <input
+                                    type="checkbox"
+                                    checked={vertexEditing}
+                                    onChange={(e) =>
+                                      setVertexEditing(e.target.checked)
+                                    }
+                                  />
+                                  Edit vertices on drawing
+                                </label>
+                              )}
+                              <details>
+                                <summary className="cursor-pointer text-xs">
+                                  Edit vertices ({element.points.length})
+                                </summary>
+                                <p className="text-muted-foreground my-2 text-xs">
+                                  Local coordinates, relative to the object’s
+                                  position and rotation.
+                                </p>
+                                {element.points.map((p, i) => (
+                                  <VectorFields
+                                    key={i}
+                                    label={`Vertex ${i + 1} (${unit})`}
+                                    value={p}
+                                    factor={factor}
+                                    change={(next) =>
+                                      update({
+                                        points: element.points!.map((p, j) =>
+                                          j === i ? next : p,
+                                        ),
+                                      })
+                                    }
+                                  />
+                                ))}
+                              </details>
+                            </>
                           )}
                           {element.points &&
                             element.points.length >= 3 &&
@@ -1313,14 +1525,13 @@ export function ModelDesignEditor({
                       size="sm"
                       variant="outline"
                       onClick={() => {
-                        const e = element
-                          ? new Vector3(...element.position).sub(scene.origin)
-                          : sourceId
-                            ? scene.elements
-                                .get(`${modelId}:${sourceId}`)
-                                ?.bounds.getCenter(new Vector3())
-                            : undefined;
-                        views.current?.fit(e);
+                        const bounds =
+                          layer.current?.selectionBounds(selection);
+                        if (bounds)
+                          views.current?.fit(
+                            bounds.getCenter(new Vector3()),
+                            bounds,
+                          );
                       }}
                     >
                       Focus
@@ -1530,6 +1741,40 @@ export function ModelDesignEditor({
             )}
             {tab === "file" && (
               <>
+                <CadIfcExport
+                  design={design}
+                  scene={scene}
+                  modelId={modelId}
+                  title={
+                    w.models.find((m) => m.id === modelId)?.name ?? "Design"
+                  }
+                  onError={setError}
+                />
+                <CadDxfImport
+                  design={design}
+                  onChange={(next) => {
+                    if (!commit(next)) return false;
+                    const ids = next.elements
+                      .filter(
+                        (e) => !design.elements.some((old) => old.id === e.id),
+                      )
+                      .map((e) => e.id);
+                    setSelection(ids);
+                    setTab("properties");
+                    requestAnimationFrame(() =>
+                      requestAnimationFrame(() => {
+                        const bounds = layer.current?.selectionBounds(ids);
+                        if (bounds)
+                          views.current?.fit(
+                            bounds.getCenter(new Vector3()),
+                            bounds,
+                          );
+                      }),
+                    );
+                    return true;
+                  }}
+                  onError={setError}
+                />
                 <strong className="block text-sm">Drawing files</strong>
                 <p className="text-muted-foreground text-xs">
                   CAD files preserve editable objects, layers and source-model
@@ -1605,9 +1850,9 @@ export function ModelDesignEditor({
                     Export DXF linework
                   </Button>
                   <p className="text-muted-foreground text-xs">
-                    Exports sketch outlines and pipe / duct centrelines in
-                    metres, with elevation. Solid bodies and the imported IFC
-                    stay in the model and CAD file.
+                    Exports sketch outlines, dimensions and pipe / duct
+                    centrelines in metres, with elevation. Solid bodies and the
+                    imported IFC stay in the model and CAD file.
                   </p>
                 </div>
                 <details>
@@ -1615,13 +1860,13 @@ export function ModelDesignEditor({
                     Keyboard & touch guide
                   </summary>
                   <p className="text-muted-foreground mt-2 text-xs leading-6">
-                    V select · P pipe · L line · R rectangle · C circle · F fit
-                    · 1–4 change view · Enter finish · Escape cancel · Delete
-                    remove · Ctrl D duplicate · Ctrl Z undo · Ctrl Shift Z redo
-                    · Ctrl S save. Shift-click or Select multiple adds objects.
-                    Middle mouse pans in every tool. Drag to pan in an elevation
-                    or orbit in 3D. On touch, pinch to zoom and use two fingers
-                    to pan.
+                    V select · P pipe · L line · R rectangle · C circle · D
+                    dimension · F fit · 1–4 change view · Enter finish · Escape
+                    cancel · Delete remove · Ctrl D duplicate · Ctrl Z undo ·
+                    Ctrl Shift Z redo · Ctrl S save. Shift-click or Select
+                    multiple adds objects. Middle mouse pans in every tool. Drag
+                    to pan in an elevation or orbit in 3D. On touch, pinch to
+                    zoom and use two fingers to pan.
                   </p>
                 </details>
               </>

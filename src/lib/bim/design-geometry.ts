@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import type { DesignElement } from "./design";
+import { dimensionGraphic } from "./cad-dimensions";
 export function designObject(element: DesignElement): THREE.Group {
   const group = new THREE.Group();
   group.userData.designId = element.id;
@@ -7,6 +8,7 @@ export function designObject(element: DesignElement): THREE.Group {
     color: element.color,
     roughness: 0.5,
     metalness: 0.25,
+    flatShading: element.kind === "solid",
   });
   const add = (
     geometry: THREE.BufferGeometry,
@@ -21,6 +23,21 @@ export function designObject(element: DesignElement): THREE.Group {
   const [w, h, d] = element.size,
     r = element.diameter / 2;
   switch (element.kind) {
+    case "dimension":
+      material.dispose();
+      group.add(dimensionGraphic(element));
+      break;
+    case "solid": {
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute(
+        "position",
+        new THREE.Float32BufferAttribute(element.mesh?.positions ?? [], 3),
+      );
+      geometry.setIndex(element.mesh?.indices ?? []);
+      geometry.computeVertexNormals();
+      add(geometry);
+      break;
+    }
     case "line":
     case "polyline":
     case "rectangle":
@@ -64,7 +81,36 @@ export function designObject(element: DesignElement): THREE.Group {
           );
         }),
       );
-      add(new THREE.TubeGeometry(curve, 32, r, 16, false));
+      const tube = new THREE.TubeGeometry(curve, 32, r, 16, false);
+      const positions = Array.from(tube.getAttribute("position").array),
+        indices = Array.from(tube.index!.array);
+      for (const end of [0, 1]) {
+        const centre = curve.getPointAt(end),
+          normal = curve.getTangentAt(end).multiplyScalar(end ? 1 : -1),
+          middle = positions.length / 3,
+          ring = end * 32 * 17;
+        positions.push(centre.x, centre.y, centre.z);
+        for (let i = 0; i < 16; i++) {
+          const a = new THREE.Vector3()
+              .fromArray(positions, (ring + i) * 3)
+              .sub(centre),
+            b = new THREE.Vector3()
+              .fromArray(positions, (ring + i + 1) * 3)
+              .sub(centre);
+          if (a.cross(b).dot(normal) > 0)
+            indices.push(middle, ring + i, ring + i + 1);
+          else indices.push(middle, ring + i + 1, ring + i);
+        }
+      }
+      tube.setAttribute(
+        "position",
+        new THREE.Float32BufferAttribute(positions, 3),
+      );
+      tube.deleteAttribute("normal");
+      tube.deleteAttribute("uv");
+      tube.setIndex(indices);
+      tube.computeVertexNormals();
+      add(tube);
       break;
     }
     case "tee":
@@ -108,6 +154,7 @@ export function designObject(element: DesignElement): THREE.Group {
       number,
     ]),
   );
+  if (element.scale) group.scale.fromArray(element.scale);
   return group;
 }
 export function disposeDesignObject(object: THREE.Object3D) {
@@ -129,5 +176,9 @@ export function disposeDesignObject(object: THREE.Object3D) {
         materials.add(m);
     }
   });
-  materials.forEach((m) => m.dispose());
+  materials.forEach((m) => {
+    const map = (m as THREE.SpriteMaterial).map;
+    map?.dispose();
+    m.dispose();
+  });
 }

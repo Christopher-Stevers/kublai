@@ -46,6 +46,9 @@ vi.mock("~/server/utils/get-request-identity", () => ({
   getRequestIdentity: vi.fn(async () => ({ userId: "owner" })),
 }));
 import { readDesign, saveDesign, createCadModel } from "./design";
+import { createSketch } from "~/lib/bim/cad-geometry";
+import { makeComponent } from "~/lib/bim/cad-components";
+import { bindDimension } from "~/lib/bim/cad-dimensions";
 import { emptyDesign, newDesignElement } from "~/lib/bim/design";
 import { db } from "~/server/db";
 import { modelsRouter } from "~/server/api/routers/models";
@@ -208,6 +211,52 @@ describe.skipIf(!process.env.MODELS_TEST_SOCKET)(
       await expect(saveDesign(a, model.id, 1, design)).rejects.toMatchObject({
         code: "NOT_FOUND",
       });
+    });
+    it("round-trips solid geometry, dimensions and a component library with an audit trail", async () => {
+      const access = await modelAccess(user.id, jobId),
+        model = await registerModel(access, randomUUID(), input());
+      const solid = newDesignElement("solid", [4, 5, 6]);
+      solid.scale = [-2, 1, 3];
+      const line = createSketch(
+        "line",
+        [
+          [0, 0, 0],
+          [2, 0, 0],
+        ],
+        "front",
+      );
+      const dimension = bindDimension(
+        createSketch(
+          "dimension",
+          [
+            [0, 0, 0],
+            [2, 0, 0],
+          ],
+          "front",
+        ),
+        { elements: [line], overrides: [] },
+      );
+      const design = {
+        elements: [solid, line, dimension],
+        overrides: [],
+        components: [makeComponent("Measured assembly", [line, dimension])],
+      };
+      await saveDesign(access, model.id, 0, design);
+      expect((await readDesign(access, model.id)).design).toEqual(design);
+      const rows = await db
+        .select()
+        .from(bimActivity)
+        .where(eq(bimActivity.entityId, model.id));
+      expect(rows.filter((r) => r.action === "design.saved")).toHaveLength(1);
+      await expect(
+        saveDesign({ ...access, canDelete: false }, model.id, 1, {
+          ...design,
+          elements: [dimension],
+        }),
+      ).rejects.toMatchObject({ code: "FORBIDDEN" });
+      await expect(
+        saveDesign({ ...access, canUpload: false }, model.id, 1, design),
+      ).rejects.toMatchObject({ code: "FORBIDDEN" });
     });
     it("deletes the selected revision, blocks downloads, and preserves related history and other models", async () => {
       const a = await modelAccess(user.id, jobId);

@@ -1,6 +1,7 @@
 import { designSchema, type ModelDesign } from "./design";
 import { designLayers, objectMatrix } from "./cad-geometry";
 import * as THREE from "three";
+import { dimensionGeometry } from "./cad-dimensions";
 export const CAD_FORMAT = "foremanhq-cad";
 export function serializeCad(design: ModelDesign, modelId: string) {
   return JSON.stringify(
@@ -46,7 +47,7 @@ export function designDxf(design: ModelDesign) {
   pair(0, "SECTION");
   pair(2, "HEADER");
   pair(9, "$ACADVER");
-  pair(1, "AC1015");
+  pair(1, "AC1027");
   pair(9, "$INSUNITS");
   pair(70, 6);
   pair(0, "ENDSEC");
@@ -73,6 +74,40 @@ export function designDxf(design: ModelDesign) {
   for (const e of design.elements) {
     const layer = (e.layer ?? "Design").replace(/[<>/\\":;?*|=\r\n]/g, "_");
     const matrix = objectMatrix(e);
+    if (e.kind === "dimension") {
+      const annotation = dimensionGeometry(e);
+      const xyz = (code: number, p: THREE.Vector3) => {
+        pair(code, p.x);
+        pair(code + 10, -p.z);
+        pair(code + 20, p.y);
+      };
+      for (let i = 0; i < annotation.lines.length; i += 2) {
+        pair(0, "LINE");
+        pair(100, "AcDbEntity");
+        pair(8, layer);
+        pair(420, parseInt(e.color.slice(1), 16));
+        pair(100, "AcDbLine");
+        xyz(10, annotation.lines[i]!.clone().applyMatrix4(matrix));
+        xyz(11, annotation.lines[i + 1]!.clone().applyMatrix4(matrix));
+      }
+      const x = annotation.direction.clone().transformDirection(matrix),
+        up = annotation.normal.clone().transformDirection(matrix),
+        normal = x.clone().cross(up).normalize();
+      pair(0, "MTEXT");
+      pair(100, "AcDbEntity");
+      pair(8, layer);
+      pair(420, parseInt(e.color.slice(1), 16));
+      pair(100, "AcDbMText");
+      xyz(10, annotation.labelPoint.applyMatrix4(matrix));
+      pair(40, annotation.height);
+      pair(41, annotation.height * annotation.label.length);
+      pair(71, 5);
+      pair(72, 1);
+      pair(1, annotation.label);
+      xyz(210, normal);
+      xyz(11, x);
+      continue;
+    }
     let points = e.points?.map((p) => new THREE.Vector3(...p));
     if (!points && ["pipe", "duct"].includes(e.kind))
       points = [

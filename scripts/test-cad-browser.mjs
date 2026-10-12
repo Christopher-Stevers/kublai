@@ -45,11 +45,30 @@ await esbuild.build({
   format: "iife",
   platform: "browser",
 });
+for (const name of ["solid", "cad-export", "cad-dxf"])
+  await esbuild.build({
+    entryPoints: [`src/lib/bim/${name}.worker.ts`],
+    outfile: path.join(temp, `${name}.worker.js`),
+    bundle: true,
+    format: "iife",
+    platform: "browser",
+  });
 const css = await postcss([tailwind()]).process(
   fs.readFileSync("src/styles/globals.css", "utf8"),
   { from: "src/styles/globals.css" },
 );
 const routes = {
+  "/solid.worker.ts": path.join(temp, "solid.worker.js"),
+  "/lib/bim/cad-export.worker.ts": path.join(temp, "cad-export.worker.js"),
+  "/lib/bim/cad-dxf.worker.ts": path.join(temp, "cad-dxf.worker.js"),
+  "/api/models/kernel/manifold-3.5.4.js": path.join(
+    path.dirname(require.resolve("manifold-3d/manifold.js")),
+    "manifold.js",
+  ),
+  "/api/models/wasm/manifold-3.5.4.wasm": path.join(
+    path.dirname(require.resolve("manifold-3d/manifold.js")),
+    "manifold.wasm",
+  ),
   "/app.js": path.join(temp, "app.js"),
   "/lib/bim/ifc.worker.ts": path.join(temp, "worker.js"),
   "/api/models/wasm/web-ifc.wasm": path.join(
@@ -59,9 +78,36 @@ const routes = {
   "/api/models/files/10000000-0000-4000-8000-000000000001":
     "src/lib/bim/fixtures/construction.ifc",
 };
+// Optionally validate the actual Next/webpack worker output before deployment.
+const productionBuild =
+  process.env.CAD_BUILD_DIR && path.resolve(process.env.CAD_BUILD_DIR);
+if (productionBuild) {
+  const chunks = path.join(productionBuild, "static/chunks"),
+    files = fs.readdirSync(chunks).filter((file) => file.endsWith(".js"));
+  for (const [route, marker] of [
+    ["/solid.worker.ts", "manifold-3.5.4.js"],
+    ["/lib/bim/cad-export.worker.ts", "IFCTRIANGULATEDFACESET"],
+    [
+      "/lib/bim/cad-dxf.worker.ts",
+      "The DXF contains an invalid circle radius.",
+    ],
+  ]) {
+    const matches = files.filter((file) =>
+      fs.readFileSync(path.join(chunks, file), "utf8").includes(marker),
+    );
+    if (matches.length !== 1)
+      throw Error(
+        `Expected one compiled worker for ${route}, found ${matches.length}`,
+      );
+    routes[route] = path.join(chunks, matches[0]);
+  }
+}
 const server = http.createServer((req, res) => {
   const u = new URL(req.url, "http://localhost"),
-    file = routes[u.pathname];
+    file =
+      productionBuild && /^\/_next\/static\/[a-zA-Z0-9_./-]+$/.test(u.pathname)
+        ? path.join(productionBuild, u.pathname.slice("/_next/".length))
+        : routes[u.pathname];
   if (file) {
     res.setHeader(
       "Content-Type",
@@ -249,6 +295,224 @@ try {
   expect(
     await page.evaluate(() => window.designSaved.design.elements[0].kind),
   ).toBe("pump");
+  // Fresh workspace, actual solid worker, library and IFC export.
+  const advanced = await browser.newPage({
+    viewport: { width: 1440, height: 1000 },
+  });
+  advanced.on("pageerror", (e) => errors.push(e.message));
+  await open(advanced);
+  for (const name of ["Body", "Cutter"]) {
+    await advanced.getByLabel("Add model element").selectOption("box");
+    await advanced
+      .getByRole("button", { name: "At view", exact: true })
+      .click();
+    await advanced.getByLabel("Element name", { exact: true }).fill(name);
+    if (name === "Cutter") {
+      const input = advanced.getByLabel("Position (m) X", { exact: true });
+      const before = Number(await input.inputValue());
+      await input.fill(String(before + 0.5));
+      await input.press("Enter");
+    }
+    await save(advanced);
+  }
+  await advanced.getByRole("button", { name: "objects", exact: true }).click();
+  await advanced
+    .getByRole("button", { name: "Select all", exact: true })
+    .click();
+  await advanced.getByRole("button", { name: "modify", exact: true }).click();
+  await advanced.getByRole("button", { name: "Subtract", exact: true }).click();
+  await expect(advanced.getByText(/Last solid:/)).toBeVisible({
+    timeout: 30000,
+  });
+  await save(advanced);
+  expect(
+    await advanced.evaluate(() => window.designSaved.design.elements.length),
+  ).toBe(1);
+  expect(
+    await advanced.evaluate(() => window.designSaved.design.elements[0].kind),
+  ).toBe("solid");
+  await advanced
+    .getByRole("button", { name: "Undo model edit", exact: true })
+    .click();
+  await save(advanced);
+  expect(
+    await advanced.evaluate(() => window.designSaved.design.elements.length),
+  ).toBe(2);
+  await advanced
+    .getByRole("button", { name: "Redo model edit", exact: true })
+    .click();
+  await save(advanced);
+  await advanced.getByRole("button", { name: "library", exact: true }).click();
+  await advanced
+    .getByLabel("Component name", { exact: true })
+    .fill("Valve block");
+  await advanced
+    .getByRole("button", { name: "Save selection as component", exact: true })
+    .click();
+  await advanced
+    .getByRole("button", { name: "Insert Valve block", exact: true })
+    .click();
+  await save(advanced);
+  expect(
+    await advanced.evaluate(() => window.designSaved.design.components.length),
+  ).toBe(1);
+  expect(
+    await advanced.evaluate(() => window.designSaved.design.elements.length),
+  ).toBe(2);
+  await advanced.getByRole("button", { name: "file", exact: true }).click();
+  const ifcDownload = advanced.waitForEvent("download");
+  await advanced
+    .getByRole("button", { name: "Export entire edited model", exact: true })
+    .click();
+  const ifcFile = await ifcDownload;
+  const ifcText = fs.readFileSync(await ifcFile.path(), "utf8");
+  expect(ifcText).toContain("IFCTRIANGULATEDFACESET");
+  fs.writeFileSync(path.join(screenshots, "edited-model.ifc"), ifcText);
+  await advanced
+    .getByRole("button", { name: "properties", exact: true })
+    .click();
+  await advanced.getByRole("button", { name: "Focus", exact: true }).click();
+  await advanced.screenshot({ path: path.join(screenshots, "solids.png") });
+  await advanced.close();
+  // Associative dimension, draggable sketch vertices and a real DXF import worker.
+  const precision = await browser.newPage({
+    viewport: { width: 1440, height: 1000 },
+  });
+  precision.on("pageerror", (e) => errors.push(e.message));
+  await open(precision);
+  await precision
+    .getByRole("button", { name: "Front view", exact: true })
+    .click();
+  await precision.getByLabel("Add model element").selectOption("line");
+  const drawing = await precision
+    .locator("[data-cad-view=front]")
+    .boundingBox();
+  await precision.mouse.click(
+    drawing.x + drawing.width * 0.25,
+    drawing.y + drawing.height * 0.4,
+  );
+  await precision.mouse.click(
+    drawing.x + drawing.width * 0.6,
+    drawing.y + drawing.height * 0.4,
+  );
+  await precision
+    .getByLabel("Element name", { exact: true })
+    .fill("Reference edge");
+  await save(precision);
+  await precision.getByRole("button", { name: "Focus", exact: true }).click();
+  await precision.waitForTimeout(150);
+  const endpoints = await precision.evaluate(() => {
+    const engine = window.test.scene,
+      element = window.designSaved.design.elements[0],
+      r = engine.inputRect();
+    let object;
+    engine.scene.traverse((o) => {
+      if (o.userData.designId === element.id) object = o;
+    });
+    return element.points.map((point) => {
+      const p = object
+        .localToWorld(object.position.clone().set(...point))
+        .project(engine.camera);
+      return {
+        x: r.left + ((p.x + 1) * r.width) / 2,
+        y: r.top + ((1 - p.y) * r.height) / 2,
+      };
+    });
+  });
+  await precision.getByLabel("Add model element").selectOption("dimension");
+  for (const p of endpoints) await precision.mouse.click(p.x, p.y);
+  await save(precision);
+  const dimensionBefore = await precision.evaluate(
+    () => window.designSaved.design.elements[1],
+  );
+  expect(dimensionBefore.kind).toBe("dimension");
+  expect(dimensionBefore.dimension.anchors.every(Boolean)).toBe(true);
+  await precision.getByRole("button", { name: "objects", exact: true }).click();
+  await precision.getByRole("button", { name: /^Reference edge/ }).click();
+  await precision
+    .getByRole("button", { name: "properties", exact: true })
+    .click();
+  await precision
+    .getByLabel("Edit vertices on drawing", { exact: true })
+    .check();
+  await precision.waitForTimeout(100);
+  const vertexHandle = await precision.evaluate(() => {
+    const engine = window.test.scene,
+      controls = engine.scene.children.find(
+        (o) => o.controls?.getHelper,
+      ).controls,
+      r = engine.inputRect();
+    for (let y = r.top + 30; y < r.bottom - 20; y += 4)
+      for (let x = r.left + 15; x < r.right - 15; x += 4) {
+        controls.pointerHover({
+          x: ((x - r.left) / r.width) * 2 - 1,
+          y: -((y - r.top) / r.height) * 2 + 1,
+        });
+        if (controls.axis === "X") return { x, y };
+      }
+    return null;
+  });
+  expect(vertexHandle).not.toBeNull();
+  await precision.mouse.move(vertexHandle.x, vertexHandle.y);
+  await precision.mouse.down();
+  await precision.mouse.move(vertexHandle.x + 24, vertexHandle.y, { steps: 8 });
+  await precision.mouse.up();
+  await save(precision);
+  const dimensionAfter = await precision.evaluate(
+    () => window.designSaved.design.elements[1],
+  );
+  expect(dimensionAfter.points[0]).not.toEqual(dimensionBefore.points[0]);
+  expect(dimensionAfter.dimension.anchors).toEqual(
+    dimensionBefore.dimension.anchors,
+  );
+  await precision.screenshot({
+    path: path.join(screenshots, "dimensions.png"),
+  });
+  await precision.getByRole("button", { name: "file", exact: true }).click();
+  await precision
+    .getByLabel("Import DXF", { exact: true })
+    .setInputFiles("src/lib/bim/fixtures/cad-import.dxf");
+  await expect(
+    precision.getByRole("button", { name: "Add DXF to design", exact: true }),
+  ).toBeVisible();
+  await expect(precision.getByText(/source units: mm/)).toBeVisible();
+  await precision
+    .getByRole("button", { name: "Add DXF to design", exact: true })
+    .click();
+  await save(precision);
+  expect(
+    await precision.evaluate(() => window.designSaved.design.elements.length),
+  ).toBe(7);
+  await precision
+    .getByRole("button", { name: "Undo model edit", exact: true })
+    .click();
+  await save(precision);
+  expect(
+    await precision.evaluate(() => window.designSaved.design.elements.length),
+  ).toBe(2);
+  await precision
+    .getByRole("button", { name: "Redo model edit", exact: true })
+    .click();
+  await save(precision);
+  await precision.getByRole("button", { name: "file", exact: true }).click();
+  const dimensionsIfc = precision.waitForEvent("download");
+  await precision
+    .getByRole("button", { name: "Export design as IFC", exact: true })
+    .click();
+  fs.copyFileSync(
+    await (await dimensionsIfc).path(),
+    path.join(screenshots, "dimensions.ifc"),
+  );
+  const dimensionsDxf = precision.waitForEvent("download");
+  await precision
+    .getByRole("button", { name: "Export DXF linework", exact: true })
+    .click();
+  fs.copyFileSync(
+    await (await dimensionsDxf).path(),
+    path.join(screenshots, "dimensions.dxf"),
+  );
+  await precision.close();
+
   await page.close();
   const phone = await browser.newPage({
     viewport: { width: 393, height: 851 },
@@ -279,6 +543,21 @@ try {
   expect(
     await phone.evaluate(() => window.designSaved.design.elements[0].diameter),
   ).toBe(0.15);
+  await phone.getByRole("button", { name: "modify", exact: true }).tap();
+  await phone
+    .getByRole("button", { name: "Make editable solid", exact: true })
+    .tap();
+  await expect(phone.getByText(/Last solid:/)).toBeVisible({ timeout: 30000 });
+  await save(phone);
+  expect(
+    await phone.evaluate(() => window.designSaved.design.elements[0].kind),
+  ).toBe("solid");
+  await phone
+    .getByRole("button", { name: "Undo model edit", exact: true })
+    .tap();
+  await save(phone);
+  await phone.getByRole("button", { name: "objects", exact: true }).tap();
+  await phone.getByRole("button", { name: /^Pipe Pipe/ }).tap();
   await phone.getByRole("button", { name: "layers", exact: true }).tap();
   await phone.getByLabel("New layer name").fill("Mechanical");
   await phone.getByRole("button", { name: "Add", exact: true }).tap();
@@ -300,7 +579,8 @@ try {
   );
   expect(errors).toEqual([]);
   console.log(
-    "PASS: CAD desktop/mobile, all four views, drawing, extrusion, gizmos, pan, undo/redo, layers, file export, blank IFC creation and save/reopen.",
+    (productionBuild ? "Production workers: " : "") +
+      "PASS: CAD desktop/mobile, all four views, drawing, extrusion, gizmos, pan, undo/redo, layers, file export, blank IFC creation, Manifold solid cuts, components, dimensions, vertex grips, DXF import and IFC/DXF export, and save/reopen.",
   );
 } finally {
   await browser.close();

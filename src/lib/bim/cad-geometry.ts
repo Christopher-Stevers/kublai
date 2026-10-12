@@ -20,6 +20,7 @@ export const sketchKinds = new Set<DesignKind>([
   "rectangle",
   "circle",
   "profile",
+  "dimension",
 ]);
 export const planeAxes = (plane: CadPlane) =>
   plane === "top"
@@ -141,7 +142,7 @@ export function objectMatrix(element: DesignElement) {
         ...(element.rotation.map(THREE.MathUtils.degToRad) as Point3),
       ),
     ),
-    new THREE.Vector3(1, 1, 1),
+    new THREE.Vector3(...(element.scale ?? [1, 1, 1])),
   );
 }
 export function elementSnapPoints(
@@ -162,6 +163,16 @@ export function elementSnapPoints(
           "Midpoint",
         );
     }
+  } else if (e.mesh) {
+    // Bound the snap index while retaining exact corners for ordinary solids.
+    const stride = Math.max(1, Math.ceil(e.mesh.positions.length / 3 / 2000));
+    for (let i = 0; i < e.mesh.positions.length; i += 3 * stride)
+      add(
+        new THREE.Vector3(
+          ...(e.mesh.positions.slice(i, i + 3) as [number, number, number]),
+        ),
+        "Vertex",
+      );
   } else if (["pipe", "duct", "tee"].includes(e.kind)) {
     add(new THREE.Vector3(0, -e.size[1] / 2, 0), "Endpoint");
     add(new THREE.Vector3(0, e.size[1] / 2, 0), "Endpoint");
@@ -198,14 +209,26 @@ export function duplicateElements(
   offset: Point3,
   copies = 1,
 ) {
-  return Array.from({ length: Math.max(1, Math.min(100, copies)) }, (_, i) =>
-    elements.map((e) => ({
+  return Array.from({ length: Math.max(1, Math.min(100, copies)) }, (_, i) => {
+    const ids = new Map(elements.map((e) => [e.id, crypto.randomUUID()]));
+    return elements.map((e) => ({
       ...e,
-      id: crypto.randomUUID(),
+      id: ids.get(e.id)!,
+      dimension: remapDimension(e, ids),
       name: `${e.name.slice(0, 145)} copy ${i + 1}`,
       position: e.position.map((n, a) => n + offset[a]! * (i + 1)) as Point3,
-    })),
-  ).flat();
+    }));
+  }).flat();
+}
+export function remapDimension(e: DesignElement, ids: Map<string, string>) {
+  return e.dimension
+    ? {
+        ...e.dimension,
+        anchors: e.dimension.anchors?.map((ref) =>
+          ref && ids.has(ref.id) ? { ...ref, id: ids.get(ref.id)! } : null,
+        ),
+      }
+    : undefined;
 }
 export function transformElements(
   doc: ModelDesign,

@@ -1,7 +1,12 @@
 import * as THREE from "three";
 import { TransformControls } from "three/addons/controls/TransformControls.js";
 import type { ModelScene } from "./scene";
-import { emptyDesign, type ModelDesign, type DesignKind } from "./design";
+import {
+  emptyDesign,
+  type ModelDesign,
+  type DesignKind,
+  type CadMesh,
+} from "./design";
 import { designObject, disposeDesignObject } from "./design-geometry";
 import {
   constrainPoint,
@@ -11,15 +16,35 @@ import {
   planeAxes,
   sketchKinds,
   sketchVertices,
+  objectMatrix,
   type CadPlane,
 } from "./cad-geometry";
 import type { Point3 } from "./types";
 export class DesignLayer {
   readonly group = new THREE.Group();
   private objects = new Map<string, THREE.Group>();
-  private fingerprints = new Map<string, string>();
+  private fingerprints = new Map<
+    string,
+    { properties: string; mesh?: CadMesh; points?: Point3[] }
+  >();
   private design: ModelDesign = emptyDesign();
   private selection: string[] = [];
+  private editVertices = false;
+  private vertexIndex: number | null = null;
+  private vertexHandles = new THREE.InstancedMesh(
+    new THREE.SphereGeometry(1, 10, 6),
+    new THREE.MeshBasicMaterial({ color: 0xffffff, depthTest: false }),
+    512,
+  );
+  get vertexMode() {
+    return this.editVertices;
+  }
+  set vertexMode(value: boolean) {
+    if (value === this.editVertices) return;
+    this.editVertices = value;
+    this.vertexIndex = value ? 0 : null;
+    this.selectMany(this.selection);
+  }
   private controls: TransformControls;
   private proxy = new THREE.Object3D();
   private box = new THREE.Box3Helper(new THREE.Box3(), 0x38bdf8);
@@ -136,6 +161,7 @@ export class DesignLayer {
         pivot: Point3,
       ) => void;
       status?: (text: string) => void;
+      vertex?: (id: string, index: number, point: Point3) => void;
     },
   ) {
     engine.scene.add(
@@ -144,9 +170,14 @@ export class DesignLayer {
       this.box,
       this.preview,
       this.marker,
+      this.vertexHandles,
     );
     this.box.visible = this.preview.visible = this.marker.visible = false;
     this.preview.renderOrder = this.marker.renderOrder = 2000;
+    this.vertexHandles.count = 0;
+    this.vertexHandles.userData.cadActiveOnly = true;
+    this.vertexHandles.renderOrder = 2100;
+    this.vertexHandles.onBeforeRender = () => this.refreshVertexHandles();
     this.controls = new TransformControls(
       engine.camera,
       engine.renderer.domElement,
@@ -165,6 +196,23 @@ export class DesignLayer {
         return;
       }
       if (!this.selection.length) return;
+      if (this.vertexIndex !== null) {
+        this.preview.visible = false;
+        const element = this.design.elements.find(
+          (e) => e.id === this.selection[0],
+        );
+        if (element)
+          this.callbacks.vertex?.(
+            element.id,
+            this.vertexIndex,
+            this.proxy.position
+              .clone()
+              .add(engine.origin)
+              .applyMatrix4(objectMatrix(element).invert())
+              .toArray() as Point3,
+          );
+        return;
+      }
       const rotation = [
         this.proxy.rotation.x,
         this.proxy.rotation.y,
@@ -185,6 +233,30 @@ export class DesignLayer {
         );
     });
     this.controls.addEventListener("objectChange", () => {
+      if (this.vertexIndex !== null) {
+        const e = this.design.elements.find((e) => e.id === this.selection[0]);
+        if (e?.points) {
+          const closed =
+            new THREE.Vector3(...e.points[0]!).distanceTo(
+              new THREE.Vector3(...e.points.at(-1)!),
+            ) < 1e-8;
+          const points = e.points.map((p, i) =>
+            i === this.vertexIndex ||
+            (closed && this.vertexIndex === 0 && i === e.points!.length - 1)
+              ? this.proxy.position.clone()
+              : new THREE.Vector3(...p)
+                  .applyMatrix4(objectMatrix(e))
+                  .sub(engine.origin),
+          );
+          this.preview.geometry.dispose();
+          this.preview.geometry = new THREE.BufferGeometry().setFromPoints(
+            points,
+          );
+          this.preview.visible = true;
+        }
+        engine.invalidate();
+        return;
+      }
       if (this.selection.length === 1) {
         const object = this.objects.get(this.selection[0]!);
         if (object) {
@@ -210,9 +282,24 @@ export class DesignLayer {
       }
     for (const element of design.elements) {
       // Property changes rebuild only the changed object, never the entire model.
-      const fingerprint = JSON.stringify(element);
+      // Meshes/vertices are immutable. Compare their identities instead of
+      // serializing every triangle whenever a name or another object changes.
+      const fingerprint = {
+        properties: JSON.stringify({
+          ...element,
+          mesh: undefined,
+          points: undefined,
+        }),
+        mesh: element.mesh,
+        points: element.points,
+      };
+      const before = this.fingerprints.get(element.id);
       let object = this.objects.get(element.id);
-      if (this.fingerprints.get(element.id) !== fingerprint) {
+      if (
+        before?.properties !== fingerprint.properties ||
+        before.mesh !== fingerprint.mesh ||
+        before.points !== fingerprint.points
+      ) {
         if (object) {
           this.group.remove(object);
           disposeDesignObject(object);
@@ -256,7 +343,7 @@ export class DesignLayer {
   }
   setMode(mode: "translate" | "rotate") {
     this.mode = mode;
-    this.controls.setMode(mode);
+    this.controls.setMode(this.vertexIndex !== null ? "translate" : mode);
     this.controls.setTranslationSnap(this.snap || null);
     this.controls.setRotationSnap(THREE.MathUtils.degToRad(this.angle || 15));
     this.engine.invalidate();
@@ -383,6 +470,18 @@ export class DesignLayer {
       return;
     }
     const ray = this.engine.editorRay(x, y);
+    this.refreshVertexHandles();
+    if (this.vertexHandles.count) {
+      const vertex = ray.intersectObject(this.vertexHandles)[0];
+      if (vertex?.instanceId !== undefined) {
+        this.vertexIndex = vertex.instanceId;
+        this.selectMany(this.selection);
+        this.callbacks.status?.(
+          `Vertex ${this.vertexIndex + 1} · drag a handle to move it`,
+        );
+        return;
+      }
+    }
     ray.params.Line.threshold = this.worldPixel() * 8;
     this.group.updateMatrixWorld(true);
     const hits = ray.intersectObjects(
@@ -463,6 +562,8 @@ export class DesignLayer {
     this.selectMany(id ? [id] : []);
   }
   selectMany(ids: string[]) {
+    if (ids.length !== 1 || ids[0] !== this.selection[0] || !this.editVertices)
+      this.vertexIndex = null;
     this.selection = ids.filter(
       (id) =>
         id.startsWith("source:") ||
@@ -471,6 +572,7 @@ export class DesignLayer {
         ),
     );
     this.controls.detach();
+    this.vertexHandles.count = 0;
     this.box.visible = false;
     if (!this.selection.length || !this.active || this.placing) return;
     const bounds = new THREE.Box3();
@@ -505,6 +607,32 @@ export class DesignLayer {
       }
     }
     this.syncCamera();
+    const element = this.design.elements.find(
+      (e) => e.id === this.selection[0],
+    );
+    if (
+      this.editVertices &&
+      this.selection.length === 1 &&
+      element?.points &&
+      element.kind !== "dimension"
+    ) {
+      this.refreshVertexHandles();
+      if (this.vertexIndex !== null && element.points[this.vertexIndex]) {
+        this.proxy.position.copy(
+          new THREE.Vector3(...element.points[this.vertexIndex]!)
+            .applyMatrix4(objectMatrix(element))
+            .sub(this.engine.origin),
+        );
+        this.proxy.rotation.set(
+          ...(element.rotation.map(THREE.MathUtils.degToRad) as Point3),
+        );
+        this.controls.setMode("translate");
+      }
+    } else this.vertexIndex = null;
+    this.controls.setSpace(this.vertexIndex !== null ? "local" : "world");
+    this.controls.showZ = !(
+      this.vertexIndex !== null && element?.kind === "profile"
+    );
     this.controls.attach(this.proxy);
     this.engine.invalidate();
   }
@@ -530,6 +658,60 @@ export class DesignLayer {
       .add(this.engine.origin)
       .toArray() as Point3 | undefined;
   }
+  private refreshVertexHandles() {
+    const e = this.design.elements.find((e) => e.id === this.selection[0]);
+    if (
+      !this.active ||
+      !this.editVertices ||
+      this.placing ||
+      this.selection.length !== 1 ||
+      !e?.points ||
+      e.kind === "dimension"
+    ) {
+      this.vertexHandles.count = 0;
+      return;
+    }
+    const closed =
+      new THREE.Vector3(...e.points[0]!).distanceTo(
+        new THREE.Vector3(...e.points.at(-1)!),
+      ) < 1e-8;
+    this.vertexHandles.count = e.points.length - (closed ? 1 : 0);
+    const world = objectMatrix(e),
+      r = this.worldPixel() * 6,
+      scale = new THREE.Vector3(r, r, r),
+      q = new THREE.Quaternion();
+    for (let i = 0; i < this.vertexHandles.count; i++) {
+      const point = new THREE.Vector3(...e.points[i]!)
+        .applyMatrix4(world)
+        .sub(this.engine.origin);
+      this.vertexHandles.setMatrixAt(
+        i,
+        new THREE.Matrix4().compose(point, q, scale),
+      );
+      this.vertexHandles.setColorAt(
+        i,
+        new THREE.Color(i === this.vertexIndex ? "#38bdf8" : "#ffffff"),
+      );
+    }
+    this.vertexHandles.instanceMatrix.needsUpdate = true;
+    if (this.vertexHandles.instanceColor)
+      this.vertexHandles.instanceColor.needsUpdate = true;
+    this.vertexHandles.computeBoundingSphere();
+  }
+  selectionBounds(ids: string[]) {
+    const bounds = new THREE.Box3();
+    for (const id of ids) {
+      const object = this.objects.get(id);
+      if (object) bounds.union(new THREE.Box3().setFromObject(object));
+      else {
+        const entry = this.engine.elements.get(
+          `${this.modelId}:${id.slice(7)}`,
+        );
+        if (entry) bounds.union(entry.bounds);
+      }
+    }
+    return bounds.isEmpty() ? undefined : bounds;
+  }
   dispose() {
     this.setActive(false);
     this.engine.designBounds.delete(this.modelId);
@@ -542,6 +724,7 @@ export class DesignLayer {
       this.box,
       this.preview,
       this.marker,
+      this.vertexHandles,
     );
     this.box.geometry.dispose();
     (this.box.material as THREE.Material).dispose();
@@ -549,6 +732,8 @@ export class DesignLayer {
     this.preview.material.dispose();
     this.marker.geometry.dispose();
     this.marker.material.dispose();
+    this.vertexHandles.geometry.dispose();
+    this.vertexHandles.material.dispose();
     for (const object of this.objects.values()) disposeDesignObject(object);
     this.engine.invalidate();
   }

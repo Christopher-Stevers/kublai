@@ -1,4 +1,4 @@
-import type { DesignOverride } from "./design";
+import type { CadMesh, DesignOverride } from "./design";
 import { navigationDelta } from "./navigation";
 import {
   DEFAULT_NAVIGATION,
@@ -118,6 +118,48 @@ export class ModelScene {
           point: point.clone().add(this.origin),
           kind: "Model vertex",
         };
+  }
+  /** Snapshot an edited IFC element in world metres, without exposing GPU buffers. */
+  editorGeometry(
+    modelId: string,
+    expressId: number,
+    origin: Point3 = [0, 0, 0],
+  ): CadMesh[] {
+    const key = elementKey(modelId, expressId),
+      entry = this.elements.get(key);
+    if (!entry || this.designDeleted.has(key)) return [];
+    return entry.parts.map(({ batch, index }) => {
+      const range = batch.getGeometryRangeAt(batch.getGeometryIdAt(index));
+      if (!range)
+        throw Error("Model geometry is no longer available. Reload the model.");
+      const geometry = batch.geometry,
+        attribute = geometry.getAttribute("position"),
+        matrix = batch
+          .getMatrixAt(index, new THREE.Matrix4())
+          .premultiply(batch.matrixWorld),
+        positions: number[] = [],
+        indices: number[] = [],
+        point = new THREE.Vector3(),
+        shift = this.origin.clone().sub(new THREE.Vector3(...origin));
+      for (
+        let i = range.vertexStart;
+        i < range.vertexStart + range.vertexCount;
+        i++
+      ) {
+        point.fromBufferAttribute(attribute, i).applyMatrix4(matrix).add(shift);
+        positions.push(point.x, point.y, point.z);
+      }
+      for (
+        let i = range.indexStart;
+        i < range.indexStart + range.indexCount;
+        i++
+      )
+        indices.push(geometry.index!.getX(i) - range.vertexStart);
+      if (matrix.determinant() < 0)
+        for (let i = 0; i < indices.length; i += 3)
+          [indices[i + 1], indices[i + 2]] = [indices[i + 2]!, indices[i + 1]!];
+      return { positions, indices };
+    });
   }
   applyDesignOverrides(modelId: string, overrides: DesignOverride[]) {
     const changed = new Set<THREE.BatchedMesh>();

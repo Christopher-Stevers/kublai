@@ -223,8 +223,8 @@ export class CadViews {
         this.layout === "quad" || pane === this.active ? "block" : "none";
     this.resize();
   }
-  private reset(pane: Pane, target: THREE.Vector3) {
-    const box = this.engine.bounds(),
+  private reset(pane: Pane, target: THREE.Vector3, extent?: THREE.Box3) {
+    const box = extent ?? this.engine.bounds(),
       radius = box.isEmpty()
         ? 5
         : Math.max(0.2, box.getSize(new THREE.Vector3()).length() / 2);
@@ -257,9 +257,9 @@ export class CadViews {
     }
     pane.camera.updateProjectionMatrix();
   }
-  fit(point?: THREE.Vector3) {
+  fit(point?: THREE.Vector3, extent?: THREE.Box3) {
     const target = point ?? this.engine.bounds().getCenter(new THREE.Vector3());
-    for (const pane of this.panes) this.reset(pane, target);
+    for (const pane of this.panes) this.reset(pane, target, extent);
     this.engine.controls.target.copy(target);
     this.engine.controls.update();
     this.resize();
