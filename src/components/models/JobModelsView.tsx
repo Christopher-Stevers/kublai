@@ -94,11 +94,11 @@ const titleCase = (s: string) =>
     .replace(/^./, (c) => c.toUpperCase());
 const toolInfo: Record<ModelTool, string> = {
   inspect:
-    "Drag to orbit · pinch to zoom · two fingers to pan · tap an element to inspect",
+    "Drag to look · middle mouse to pan · pinch to zoom · two fingers to pan · tap an element to inspect",
   distance: "Pick two points on the model. Corners snap within 12 pixels.",
   area: "Pick points around a flat surface, then choose Finish area.",
   pin: "Tap the location of the issue on the model.",
-  walk: "Drag to look · use arrows to move · W A S D on a keyboard · Q / E to change elevation",
+  walk: "Drag to look · middle mouse to pan · use arrows to move · W A S D on a keyboard · Q / E to change elevation",
 };
 export function JobModelsView({ jobId }: { jobId: string }) {
   const query = api.models.workspace.useQuery(

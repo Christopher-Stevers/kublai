@@ -73,9 +73,16 @@ export class ModelScene {
   private height = 1;
   private keys = new Set<string>();
   private lastTime = 0;
-  private start: { x: number; y: number; id: number } | null = null;
+  private start: {
+    x: number;
+    y: number;
+    id: number;
+    look: boolean;
+    pan: boolean;
+  } | null = null;
   private pointers = new Set<number>();
   private gestureMoved = false;
+  private gestureDistance = 0;
   private animation: {
     start: number;
     from: THREE.Vector3;
@@ -132,6 +139,10 @@ export class ModelScene {
     this.controls.enableDamping = true;
     this.controls.dampingFactor = 0.15;
     this.controls.screenSpacePanning = true;
+    // Desktop look pivots at the camera; OrbitControls still handles zoom,
+    // right-button panning and touch navigation.
+    this.controls.mouseButtons.LEFT = null;
+    this.controls.mouseButtons.MIDDLE = null;
     this.controls.addEventListener("change", this.invalidate);
     const signal = this.abort.signal;
     const canvas = this.renderer.domElement;
@@ -139,6 +150,9 @@ export class ModelScene {
     canvas.addEventListener("pointermove", this.pointerMove, { signal });
     canvas.addEventListener("pointerup", this.pointerUp, { signal });
     canvas.addEventListener("pointercancel", this.pointerCancel, { signal });
+    canvas.addEventListener("lostpointercapture", this.pointerCancel, {
+      signal,
+    });
     canvas.addEventListener("keydown", this.keyDown, { signal });
     canvas.addEventListener("keyup", this.keyUp, { signal });
     canvas.addEventListener("blur", () => this.keys.clear(), { signal });
@@ -525,18 +539,55 @@ export class ModelScene {
     this.renderer.domElement.focus({ preventScroll: true });
     this.pointers.add(event.pointerId);
     if (this.pointers.size === 1) {
-      this.start = { x: event.clientX, y: event.clientY, id: event.pointerId };
+      this.start = {
+        x: event.clientX,
+        y: event.clientY,
+        id: event.pointerId,
+        look:
+          event.button === 0 &&
+          (event.pointerType === "mouse" || this.tool === "walk"),
+        pan: event.button === 1 && event.pointerType !== "touch",
+      };
       this.gestureMoved = false;
+      this.gestureDistance = 0;
+      if (this.start.look || this.start.pan) {
+        event.preventDefault();
+        this.renderer.domElement.setPointerCapture(event.pointerId);
+      }
     } else this.gestureMoved = true;
     this.animation = null;
     this.invalidate();
   };
   private pointerMove = (event: PointerEvent) => {
-    if (!this.start) return;
+    if (this.start?.id !== event.pointerId) return;
     const dx = event.clientX - this.start.x,
       dy = event.clientY - this.start.y;
-    if (Math.hypot(dx, dy) > 5) this.gestureMoved = true;
-    if (this.tool === "walk" && this.pointers.size === 1) {
+    this.gestureDistance += Math.hypot(dx, dy);
+    if (this.gestureDistance > 5) this.gestureMoved = true;
+    if (this.start.pan && this.pointers.size === 1) {
+      // Camera right/up span the plane perpendicular to its viewing direction.
+      const scale =
+        this.camera instanceof THREE.PerspectiveCamera
+          ? (2 *
+              this.camera.position.distanceTo(this.controls.target) *
+              Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2))) /
+            this.camera.zoom /
+            this.height
+          : (this.camera.top - this.camera.bottom) /
+            this.camera.zoom /
+            this.height;
+      const delta = new THREE.Vector3(
+        -dx * scale,
+        dy * scale,
+        0,
+      ).applyQuaternion(this.camera.quaternion);
+      this.camera.position.add(delta);
+      this.controls.target.add(delta);
+      this.start = { ...this.start, x: event.clientX, y: event.clientY };
+      this.invalidate();
+      return;
+    }
+    if (this.start.look && this.pointers.size === 1) {
       const rotation = new THREE.Euler().setFromQuaternion(
         this.camera.quaternion,
         "YXZ",
@@ -550,8 +601,14 @@ export class ModelScene {
       const direction = new THREE.Vector3(0, 0, -1).applyQuaternion(
         this.camera.quaternion,
       );
-      this.controls.target.copy(this.camera.position).add(direction);
-      this.start = { x: event.clientX, y: event.clientY, id: event.pointerId };
+      const distance = Math.max(
+        0.01,
+        this.camera.position.distanceTo(this.controls.target),
+      );
+      this.controls.target
+        .copy(this.camera.position)
+        .addScaledVector(direction, distance);
+      this.start = { ...this.start, x: event.clientX, y: event.clientY };
       this.invalidate();
     }
   };
