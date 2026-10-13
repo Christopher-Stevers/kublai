@@ -101,6 +101,7 @@ function PartCard({
   const activePointerTypeRef = useRef<string | null>(null);
   const dwellTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const individualModeRef = useRef(false);
+  const switchLatchedRef = useRef(false);
   const latestYRef = useRef(0);
   const clearDwell = () => { if (dwellTimerRef.current) clearTimeout(dwellTimerRef.current); dwellTimerRef.current = null; };
   const pointerElementRef = useRef<HTMLDivElement | null>(null);
@@ -135,15 +136,16 @@ function PartCard({
       mode: individualModeRef.current ? "individual" : undefined,
     });
     if (nextQuantity === -1) {
-      if (!dwellTimerRef.current) dwellTimerRef.current = setTimeout(() => {
+      if (!dwellTimerRef.current && !switchLatchedRef.current) dwellTimerRef.current = setTimeout(() => {
         dwellTimerRef.current = null;
+        switchLatchedRef.current = true;
         individualModeRef.current = !individualModeRef.current;
         pointerStartYRef.current = latestYRef.current;
-        baseQuantityRef.current = 1;
-        dragQuantityRef.current = 1;
-        onQuantityPickerPreviewChange?.({partId:part.id, partName:part.displayName, quantity:1, mode:individualModeRef.current ? "individual" : undefined});
+        baseQuantityRef.current = -1;
+        dragQuantityRef.current = -1;
+        onQuantityPickerPreviewChange?.({partId:part.id, partName:part.displayName, quantity:-1, mode:individualModeRef.current ? "individual" : undefined});
       }, 1000);
-    } else clearDwell();
+    } else { clearDwell(); switchLatchedRef.current = false; }
   };
 
   const teardownWindowListeners = () => {
@@ -226,6 +228,7 @@ function PartCard({
 
     clearDwell();
     individualModeRef.current = false;
+    switchLatchedRef.current = false;
     longPressTriggeredRef.current = false;
     activePointerIdRef.current = event.pointerId;
     activePointerTypeRef.current = event.pointerType;

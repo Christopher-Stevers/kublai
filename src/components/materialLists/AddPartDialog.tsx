@@ -76,6 +76,7 @@ export function AddPartDialog({
   } | null>(null);
   const stageBeforeReviewRef = useRef<WizardStage>("catalog");
   const [isAddingParts, setIsAddingParts] = useState(false);
+  const pickerSwitchLatchedRef = useRef(false);
   const pickerTouchYRef = useRef<number | null>(null);
   const pickerTouchAccumulatorRef = useRef(0);
   const [customPartContext, setCustomPartContext] = useState<{
@@ -474,10 +475,12 @@ export function AddPartDialog({
   }, [filteredPartsForSelection, quantityPickerPreview]);
 
   useEffect(() => {
-    if (quantityPickerPreview?.inputType !== "touch" || quantityPickerPreview.quantity !== -1) return;
+    if (quantityPickerPreview?.quantity !== -1) pickerSwitchLatchedRef.current = false;
+    if (quantityPickerPreview?.inputType !== "touch" || quantityPickerPreview.quantity !== -1 || pickerSwitchLatchedRef.current) return;
     const timer = setTimeout(() => {
+      pickerSwitchLatchedRef.current = true;
       pickerTouchAccumulatorRef.current = 0;
-      setQuantityPickerPreview(prev => prev?.quantity === -1 ? {...prev, quantity:1, mode:prev.mode === "individual" ? undefined : "individual"} : prev);
+      setQuantityPickerPreview(prev => prev?.quantity === -1 ? {...prev, quantity:-1, mode:prev.mode === "individual" ? undefined : "individual"} : prev);
     }, 1000);
     return () => clearTimeout(timer);
   }, [quantityPickerPreview?.partId, quantityPickerPreview?.quantity, quantityPickerPreview?.mode, quantityPickerPreview?.inputType]);
