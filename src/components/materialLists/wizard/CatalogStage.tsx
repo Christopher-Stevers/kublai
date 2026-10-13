@@ -43,7 +43,7 @@ export function CatalogStage({
   onPrefabsSelect,
 }: CatalogStageProps) {
   const pagination = useClientPagination(catalogs);
-  useQuickWheelOptions("Select Catalog", [
+  const choose = useQuickWheelOptions("Select Catalog", [
     { label: "All", select: () => onCatalogSelect(null) },
     ...(onPrefabsSelect ? [{ label: "Prefabs", select: onPrefabsSelect }] : []),
     ...catalogs.map(catalog => ({ label: catalog.name, select: () => onCatalogSelect(catalog.id) })),
@@ -64,9 +64,9 @@ export function CatalogStage({
           1 + (onPrefabsSelect ? 1 : 0) + pagination.paginatedItems.length,
         )}
       >
-        <WizardAllOption selected={allSelected} onSelect={() => onCatalogSelect(null)} />
+        <WizardAllOption selected={allSelected} onSelect={() => choose("All")} />
         {onPrefabsSelect && (
-          <WizardOptionCard tutorialChoice="Prefabs" onClick={onPrefabsSelect}>
+          <WizardOptionCard tutorialChoice="Prefabs" onClick={() => choose("Prefabs")}>
             <p className={WIZARD_OPTION_LABEL_CLASS}>Prefabs</p>
           </WizardOptionCard>
         )}
@@ -75,7 +75,7 @@ export function CatalogStage({
             key={catalog.id}
             tutorialChoice={catalog.name}
             selected={selectedCatalogId === catalog.id}
-            onClick={() => onCatalogSelect(catalog.id)}
+            onClick={() => choose(catalog.name)}
           >
             <p className={WIZARD_OPTION_LABEL_CLASS}>{catalog.name}</p>
           </WizardOptionCard>

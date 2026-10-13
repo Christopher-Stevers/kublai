@@ -260,7 +260,7 @@ export function SizeStage({
   availableSizes,
   selectedSize,
   allSelected = false,
-  onSizeSelect,
+  onSizeSelect: commitSize,
   showCustomSize,
   onShowCustomSize,
   customSizeInput,
@@ -272,13 +272,19 @@ export function SizeStage({
   isOnline = true,
 }: SizeStageProps) {
   const pagination = useClientPagination(availableSizes ?? []);
-  useQuickWheelOptions("Select Size", [
-    { label: "All", select: () => onSizeSelect(null) },
+  const choose = useQuickWheelOptions("Select Size", [
+    { label: "All", select: () => commitSize(null) },
     ...(availableSizes ?? []).flatMap(size => [
-      { label: formatSize(size.nominal, size.unit), select: () => onSizeSelect(size) },
-      ...(size.subSizes ?? []).map(sub => ({ label: formatSizeDimensions(sub.label, size.unit), select: () => onSizeSelect({ nominal: size.nominal, unit: size.unit, sizeLabel: sub.label }) })),
+      { label: formatSize(size.nominal, size.unit), select: () => commitSize(size) },
+      ...(size.subSizes ?? []).map(sub => ({ label: formatSizeDimensions(sub.label, size.unit), select: () => commitSize({ nominal: size.nominal, unit: size.unit, sizeLabel: sub.label }) })),
     ]),
   ]);
+  const onSizeSelect = (size: SizeSelection | null) => choose(
+    !size ? "All" : size.sizeLabel
+      ? formatSizeDimensions(size.sizeLabel, size.unit)
+      : formatSize(size.nominal, size.unit),
+    () => commitSize(size),
+  );
   const [subSizePreview, setSubSizePreview] = useState<SubSizePreview | null>(null);
   const subSizePreviewRef = useRef<SubSizePreview | null>(null);
   const pickerTouchYRef = useRef<number | null>(null);

@@ -45,6 +45,14 @@ export function useQuickWheelOptions(title: string, options: Choice[]) {
       if (registry.current === value) registry.current = null;
     };
   }, [registry, title, options]);
+  // Cards, keyboard activation and touch pickers use the same committed action.
+  // Counting DOM clicks misses controls that select on pointer/touch release.
+  return (label: string, commit?: () => void) => {
+    const choice = options.find((option) => option.label === label);
+    if (!choice) return;
+    recordWheelChoice(title, choice.label);
+    (commit ?? choice.select)();
+  };
 }
 
 type Wheel = Choices & {
@@ -340,6 +348,7 @@ export function QuickWheelSurface({
                 : registry.current?.options[entry.sourceIndex];
             if (choice) {
               recordWheelChoice(current.title, choice.label);
+              update({ ...active.current!, usage: readWheelUsage() });
               choice.select();
             }
           }
@@ -371,19 +380,7 @@ export function QuickWheelSurface({
       if (active.current) event.preventDefault();
     }
     function click(event: MouseEvent) {
-      if (!suppressClick.current) {
-        const card =
-          event.target instanceof Element
-            ? event.target.closest<HTMLElement>(
-                ".wizard-option-grid [role=button], .wizard-option-grid button",
-              )
-            : null;
-        const label = card?.dataset.tutorialChoice ?? card?.textContent?.trim();
-        const choices = registry.current;
-        if (choices && choices.options.some((choice) => choice.label === label))
-          recordWheelChoice(choices.title, label!);
-        return;
-      }
+      if (!suppressClick.current) return;
       suppressClick.current = false;
       event.preventDefault();
       event.stopPropagation();

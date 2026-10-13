@@ -43,7 +43,7 @@ export function CategoryStage({
   isOnline = true,
 }: CategoryStageProps) {
   const pagination = useClientPagination(categories);
-  useQuickWheelOptions("Select Category", [
+  const choose = useQuickWheelOptions("Select Category", [
     { label: "All", select: () => onCategorySelect({ categoryId: null, name: "All Categories" }) },
     ...categories.map(category => ({ label: category.name, select: () => onCategorySelect(category) })),
   ]);
@@ -63,14 +63,14 @@ export function CategoryStage({
       >
         <WizardAllOption
           selected={allSelected}
-          onSelect={() => onCategorySelect({ categoryId: null, name: "All Categories" })}
+          onSelect={() => choose("All")}
         />
         {pagination.paginatedItems.map((category) => (
           <WizardOptionCard
             key={category.categoryId}
             tutorialChoice={category.name}
             selected={selectedCategory?.categoryId === category.categoryId}
-            onClick={() => onCategorySelect({ categoryId: category.categoryId, name: category.name })}
+            onClick={() => choose(category.name)}
           >
             <p className={WIZARD_OPTION_LABEL_CLASS}>{category.name}</p>
           </WizardOptionCard>

@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { SizeStage, type SizeStageProps } from "./SizeStage";
+import { formatSize } from "~/lib/size-utils";
 import {
   act,
   cleanup,
@@ -330,13 +332,59 @@ describe("wizard quick wheel", () => {
     more();
     expect(choices()).toEqual(["Choice 0", "Choice 1", "Choice 2"]);
   });
+  it.each(["touch", "keyboard"])(
+    "records real size-card %s selection without relying on click",
+    (mode) => {
+      const select = vi.fn();
+      const noop = () => undefined;
+      const props: SizeStageProps = {
+        availableSizes: [{ nominal: 2, unit: "in", count: 1 }],
+        selectedSize: null,
+        onSizeSelect: select,
+        showCustomSize: false,
+        onShowCustomSize: noop,
+        customSizeInput: "",
+        onCustomSizeInputChange: noop,
+        customSizeUnitId: null,
+        onCustomSizeUnitIdChange: noop,
+        allUnits: [],
+        onCreateSize: { mutate: noop, isPending: false },
+      };
+      render(
+        <QuickWheelSurface>
+          <SizeStage {...props} />
+        </QuickWheelSurface>,
+      );
+      const label = formatSize(2, "in");
+      const card = screen.getByRole("button", { name: '2"' });
+      Object.assign(card, { setPointerCapture: vi.fn() });
+      if (mode === "touch") {
+        fireEvent.pointerDown(card, { ...pointer, pointerType: "touch" });
+        fireEvent.pointerUp(card, { ...pointer, pointerType: "touch" });
+      } else fireEvent.keyDown(card, { key: "Enter" });
+      expect(select).toHaveBeenCalledWith({
+        nominal: 2,
+        unit: "in",
+        sizeLabel: null,
+      });
+      expect(readWheelUsage()[wheelUsageId("Select Size", label)]).toBe(1);
+      // A compatibility click must not count the same gesture a second time.
+      fireEvent.click(card);
+      expect(readWheelUsage()[wheelUsageId("Select Size", label)]).toBe(1);
+      fireEvent.pointerDown(screen.getByText("Select Size"), pointer);
+      const labels = Array.from(wheel()!.querySelectorAll("foreignObject"));
+      expect(labels[1]).toHaveTextContent(label);
+    },
+  );
   it("learns from ordinary wizard card taps too", () => {
     const select = vi.fn();
     function Cards() {
-      useQuickWheelOptions("Material", [{ label: "Copper", select }]);
+      const choose = useQuickWheelOptions("Material", [
+        { label: "Copper", select },
+      ]);
       return (
         <div className="wizard-option-grid">
-          <button onClick={select}>Copper</button>
+          <button onClick={() => choose("Copper")}>Copper</button>
         </div>
       );
     }
