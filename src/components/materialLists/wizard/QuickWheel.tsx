@@ -110,6 +110,12 @@ export function QuickWheelSurface({
     timer.current = null;
   };
   const close = () => {
+    const pointerId = active.current?.pointerId;
+    if (
+      pointerId !== undefined &&
+      surface.current?.hasPointerCapture?.(pointerId)
+    )
+      surface.current.releasePointerCapture(pointerId);
     clearTimer();
     pageLatch.current = null;
     update(null);
@@ -174,6 +180,9 @@ export function QuickWheelSurface({
       const radius = Math.min(170, (right - left) / 2, (bottom - top) / 2);
       if (radius < 95) return;
       event.preventDefault();
+      // Stage cards/headings are replaced when entering Parts. Keep the
+      // gesture owned by this stable surface, not the removed touch target.
+      element!.setPointerCapture?.(event.pointerId);
       suppressClick.current = true;
       pointerPosition.current = { x: event.clientX, y: event.clientY };
       pageLatch.current = null;
@@ -320,6 +329,9 @@ export function QuickWheelSurface({
     element.addEventListener("contextmenu", context);
     return () => {
       clearTimer();
+      const pointerId = active.current?.pointerId;
+      if (pointerId !== undefined && element.hasPointerCapture?.(pointerId))
+        element.releasePointerCapture(pointerId);
       active.current = null;
       element.removeEventListener("pointerdown", start);
       window.removeEventListener("pointerdown", resetClick, true);

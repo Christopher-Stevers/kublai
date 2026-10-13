@@ -165,6 +165,55 @@ describe("wizard quick wheel", () => {
     expect(select).toHaveBeenCalledTimes(1);
     fireEvent.pointerUp(window, pointer);
   });
+  it("captures the stable surface and keeps selecting when the part stage replaces the starting target", () => {
+    const capture = vi.fn(),
+      release = vi.fn();
+    const select = vi.fn();
+    function Flow() {
+      const [parts, setParts] = useState(false);
+      return (
+        <QuickWheelSurface data-testid="surface">
+          {parts ? (
+            <div key="parts">
+              <Stage title="Add Part" select={select} />
+            </div>
+          ) : (
+            <div key="categories">
+              <Stage title="Category" select={() => setParts(true)} />
+            </div>
+          )}
+        </QuickWheelSurface>
+      );
+    }
+    render(<Flow />);
+    const surface = screen.getByTestId("surface");
+    Object.assign(surface, {
+      setPointerCapture: capture,
+      hasPointerCapture: () => true,
+      releasePointerCapture: release,
+    });
+    const initial = screen.getByTestId("blank");
+    down();
+    expect(capture).toHaveBeenCalledWith(1);
+    aim();
+    dwell();
+    expect(initial.isConnected).toBe(false);
+    expect(wheel()).toHaveAttribute("aria-label", "Add Part quick wheel");
+    const choose = () => {
+      const choice = document.querySelector('[data-wheel-choice="0"]')!;
+      aim(
+        Number(choice.getAttribute("x")) + 27,
+        Number(choice.getAttribute("y")) + 22,
+      );
+      dwell();
+    };
+    choose();
+    expect(select).toHaveBeenCalledTimes(1);
+    expect(wheel()).toBeInTheDocument();
+    fireEvent.pointerUp(window, pointer);
+    expect(release).toHaveBeenCalledWith(1);
+    expect(wheel()).toBeNull();
+  });
   it("cancels an early release or leaving the highlight without selecting", () => {
     const select = vi.fn();
     render(
