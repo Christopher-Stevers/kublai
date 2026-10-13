@@ -9,8 +9,8 @@ function Example() {
 }
 it("shows bulk units above plain individual quantities", () => {
   render(<Example />);
-  expect(screen.getByLabelText("Quantity in box")).toHaveValue("2");
-  expect(screen.getByText("boxes")).toBeInTheDocument();
+  expect(screen.getByLabelText("Quantity in box")).toHaveValue("2 boxes");
+  expect(screen.getByText("Quantity")).toBeInTheDocument();
   expect(screen.getByText("4000 pcs")).toBeInTheDocument();
   expect(screen.queryByText(/\(x/)).not.toBeInTheDocument();
 });
@@ -18,7 +18,7 @@ it("edits individual demand and returns to the normal layout on blur", () => {
   render(<Example />);
   fireEvent.click(screen.getByLabelText("Edit pcs: 4000"));
   fireEvent.change(screen.getByLabelText("Quantity in pcs"), {target:{value:"4007"}});
-  expect(screen.getByLabelText("Quantity in box")).toHaveValue("3");
+  expect(screen.getByLabelText("Quantity in box")).toHaveValue("3 boxes");
   expect(screen.getByLabelText("Quantity in box")).toHaveClass("h-9");
   fireEvent.blur(screen.getByLabelText("Quantity in pcs"));
   expect(screen.queryByLabelText("Quantity in pcs")).not.toBeInTheDocument();

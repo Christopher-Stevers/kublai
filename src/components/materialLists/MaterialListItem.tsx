@@ -1,4 +1,5 @@
 "use client";
+import { packContents } from "~/lib/pack-quantity";
 
 import { memo, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -791,9 +792,9 @@ function MaterialListItemComponent({
             <div className="mt-auto flex flex-col gap-2 pt-2">
               {/* Each label sits just above its control. */}
               <div className="flex flex-col gap-0.5">
-                <span className="px-0.5 text-[10px] font-medium tracking-wide text-muted-foreground/80 uppercase">
+                {(isToolRequest || packContents(item.partDefinition?.piecesPerPack) === 1) && <span className="px-0.5 text-[10px] font-medium tracking-wide text-muted-foreground/80 uppercase">
                   Quantity
-                </span>
+                </span>}
                 <QuantityControls
                   itemId={item.id}
                   quantity={quantity}
