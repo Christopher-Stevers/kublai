@@ -1179,7 +1179,7 @@ export function AddPartDialog({
           )}
 
 
-          <QuickWheelSurface enabled={!prefabView && wizardStage !== "review" && !quantityPickerPreview}
+          <QuickWheelSurface enabled={!prefabView && !isWizardSearchActive && ["catalog", "material", "size", "category"].includes(wizardStage) && !quantityPickerPreview}
             data-tutorial={`wizard-${isWizardSearchActive ? "part" : wizardStage}`}
             className={`flex-1 space-y-2 overflow-y-auto overscroll-contain pt-2 pb-3 sm:space-y-4 sm:pt-4 sm:pb-4 ${wizardStage === "review" ? "px-4 sm:px-6" : "px-2 sm:px-4 md:px-6"} ${quantityPickerPreview ? "touch-none overflow-hidden" : ""} @container ${centerOptionCards ? "flex flex-col [&_.wizard-option-grid]:my-auto [&>*:last-child]:flex [&>*:last-child]:flex-1 [&>*:last-child]:flex-col" : ""}`}
           >

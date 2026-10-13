@@ -214,6 +214,39 @@ describe("wizard quick wheel", () => {
     expect(release).toHaveBeenCalledWith(1);
     expect(wheel()).toBeNull();
   });
+  it("ends immediately after choosing a category and does not open on later cards", () => {
+    const select = vi.fn();
+    function Flow() {
+      const [stage, setStage] = useState("category");
+      return (
+        <QuickWheelSurface
+          enabled={["catalog", "material", "size", "category"].includes(stage)}
+        >
+          <Stage
+            title={stage}
+            select={() => {
+              select();
+              setStage("part");
+            }}
+          />
+        </QuickWheelSurface>
+      );
+    }
+    render(<Flow />);
+    down();
+    aim();
+    dwell();
+    expect(select).toHaveBeenCalledTimes(1);
+    expect(wheel()).toBeNull();
+    aim();
+    dwell();
+    expect(select).toHaveBeenCalledTimes(1);
+    fireEvent.pointerUp(window, pointer);
+    down();
+    expect(wheel()).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Normal card" }));
+    expect(select).toHaveBeenCalledTimes(2);
+  });
   it("cancels an early release or leaving the highlight without selecting", () => {
     const select = vi.fn();
     render(
