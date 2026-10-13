@@ -1538,8 +1538,7 @@ export function AddPartDialog({
           {quantityPickerPreview && (
             <VerticalPickerOverlay<number>
               className="absolute"
-              title={quantityPickerPreview.mode === "individual" ? `Per ${individualUnitLabel(pickerPart?.individualUnit)}` : pickerContents > 1 ? "Hold the switch for 1 second for individual units" : "Quantity"}
-              subtitle={quantityPickerPreview.partName}
+              title="Quantity"
               description={pickerContents > 1 ? `${pickerContents.toLocaleString("en-CA")} ${pickerPart?.individualUnit || "pcs"} per ${bulkUnit}` : undefined}
               centerIndex={quantityPickerPreview.quantity}
               getItemFontSize={value => value === -1 ? "2rem" : undefined}
