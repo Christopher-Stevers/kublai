@@ -1,48 +1,34 @@
 import { render, screen, fireEvent, cleanup } from "@testing-library/react";
 import { useState } from "react";
-import { afterEach, describe, it, expect } from "vitest";
+import { afterEach, it, expect } from "vitest";
 import { PackQuantityControls } from "./PackQuantityControls";
 afterEach(cleanup);
 function Example() {
   const [quantity, setQuantity] = useState(2);
-  return (
-    <PackQuantityControls
-      quantity={quantity}
-      piecesPerPack={50}
-      onChange={setQuantity}
-    />
-  );
+  return <PackQuantityControls quantity={quantity} piecesPerPack={2000} bulkUnit="box" individualUnit="pcs" onChange={setQuantity} />;
 }
-describe("pack and piece editing", () => {
-  it("uses recorded units without changing purchase rounding", () => {
-    render(<PackQuantityControls quantity={0.7} piecesPerPack={100} bulkUnit="roll" individualUnit="feet" onChange={() => {}} />);
-    expect(screen.getByLabelText("Quantity in roll")).toHaveValue("1");
-    expect(screen.getByText("roll · 100 feet each")).toBeInTheDocument();
-    fireEvent.click(screen.getByLabelText("Edit feet: 70"));
-    expect(screen.getByLabelText("Quantity in feet")).toHaveValue(70);
-    expect(screen.getByLabelText("roll quantity")).toHaveTextContent("1");
-  });
-  it("defaults to packs and preserves exact piece needs with whole-pack display", () => {
-    render(<Example />);
-    expect(screen.getByLabelText("Quantity in packs")).toHaveValue("2");
-    expect(screen.getByText("(x100)")).toBeInTheDocument();
-    fireEvent.click(screen.getByLabelText("Edit pieces: 100"));
-    fireEvent.change(screen.getByLabelText("Quantity in pieces"), {
-      target: { value: "70" },
-    });
-    expect(screen.getByLabelText("Pack quantity")).toHaveTextContent("2");
-    expect(screen.getByText("(x70)")).toBeInTheDocument();
-    fireEvent.click(screen.getByText("Switch to packs"));
-    expect(screen.getByLabelText("Quantity in packs")).toHaveValue("2");
-    fireEvent.change(screen.getByLabelText("Quantity in packs"), {
-      target: { value: "3" },
-    });
-    expect(screen.getByText("(x150)")).toBeInTheDocument();
-  });
-  it("switches to pieces when decreasing beyond the pack list", () => {
-    render(<Example />);
-    fireEvent.click(screen.getByLabelText("Decrease quantity"));
-    fireEvent.click(screen.getByLabelText("Decrease quantity"));
-    expect(screen.getByLabelText("Quantity in pieces")).toBeInTheDocument();
-  });
+it("shows bulk units above plain individual quantities", () => {
+  render(<Example />);
+  expect(screen.getByLabelText("Quantity in box")).toHaveValue("2");
+  expect(screen.getByText("boxes")).toBeInTheDocument();
+  expect(screen.getByText("4000 pcs")).toBeInTheDocument();
+  expect(screen.queryByText(/\(x/)).not.toBeInTheDocument();
+});
+it("edits individual demand and returns to the normal layout on blur", () => {
+  render(<Example />);
+  fireEvent.click(screen.getByLabelText("Edit pcs: 4000"));
+  fireEvent.change(screen.getByLabelText("Quantity in pcs"), {target:{value:"4007"}});
+  expect(screen.getByLabelText("Quantity in box")).toHaveValue("3");
+  expect(screen.getByLabelText("Quantity in box")).toHaveClass("h-9");
+  fireEvent.blur(screen.getByLabelText("Quantity in pcs"));
+  expect(screen.queryByLabelText("Quantity in pcs")).not.toBeInTheDocument();
+  expect(screen.getByText("4007 pcs")).toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText("Quantity in box"), {target:{value:"4"}});
+  expect(screen.getByText("8000 pcs")).toBeInTheDocument();
+});
+it("finishes individual editing with Enter", () => {
+  render(<Example />);
+  fireEvent.click(screen.getByLabelText("Edit pcs: 4000"));
+  fireEvent.keyDown(screen.getByLabelText("Quantity in pcs"), {key:"Enter"});
+  expect(screen.getByText("4000 pcs")).toBeInTheDocument();
 });
