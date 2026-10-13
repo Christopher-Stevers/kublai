@@ -64,6 +64,19 @@ describe("edge-aware wheel layout", () => {
             }
           });
           expect(curvedChoiceAt(layout, x, y, x, y)).toBeNull();
+          // Every direction inside the visible hub must remain non-selectable,
+          // including areas that used to belong to the narrow wedge tips.
+          for (let angle = 0; angle < Math.PI * 2; angle += Math.PI / 16) {
+            expect(
+              curvedChoiceAt(
+                layout,
+                x + Math.cos(angle) * (layout.deadZoneRadius - 1),
+                y + Math.sin(angle) * (layout.deadZoneRadius - 1),
+                x,
+                y,
+              ),
+            ).toBeNull();
+          }
         }
       });
     }

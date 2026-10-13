@@ -135,6 +135,36 @@ describe("wizard quick wheel", () => {
     fireEvent.pointerUp(window, pointer);
     expect(wheel()).toBeNull();
   });
+  it("shows the curved dead zone and cancels a pending selection when returning to it", () => {
+    const select = vi.fn();
+    render(
+      <QuickWheelSurface>
+        <Stage select={select} />
+      </QuickWheelSurface>,
+    );
+    fireEvent.pointerDown(screen.getByTestId("blank"), {
+      ...pointer,
+      clientX: 20,
+      clientY: 300,
+    });
+    expect(document.querySelector("[data-wheel-dead-zone]")).toHaveAttribute(
+      "r",
+      "64",
+    );
+    const choice = document.querySelector('[data-wheel-choice="0"]')!;
+    const x = Number(choice.getAttribute("x")) + 27,
+      y = Number(choice.getAttribute("y")) + 22;
+    aim(x, y);
+    dwell(300);
+    const length = Math.hypot(x - 20, y - 300);
+    aim(20 + ((x - 20) * 50) / length, 300 + ((y - 300) * 50) / length);
+    dwell(1000);
+    expect(select).not.toHaveBeenCalled();
+    aim(x, y);
+    dwell();
+    expect(select).toHaveBeenCalledTimes(1);
+    fireEvent.pointerUp(window, pointer);
+  });
   it("cancels an early release or leaving the highlight without selecting", () => {
     const select = vi.fn();
     render(

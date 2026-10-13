@@ -8,7 +8,9 @@ type Point = { x: number; y: number };
 export type CurvedChoice = { path: string; polygon: Point[]; label: Point };
 export type WheelLayout =
   | { kind: "circle" }
-  | { kind: "curved"; choices: CurvedChoice[] };
+  | { kind: "curved"; choices: CurvedChoice[]; deadZoneRadius: number };
+export const wheelDeadZoneRadius = (radius: number) => (radius * 64) / 170;
+
 const clamp = (n: number, min: number, max: number) =>
   Math.max(min, Math.min(max, n));
 
@@ -76,16 +78,18 @@ export function quickWheelLayout(
       (target - lengths[index - 1]!) / (lengths[index]! - lengths[index - 1]!);
     return start + (span * (index - 1 + t)) / 400;
   };
+  const deadZoneRadius = wheelDeadZoneRadius(radius);
   const inner = (point: Point): Point => {
     const length = Math.hypot(point.x - x, point.y - y);
     return {
-      x: x + ((point.x - x) * 18) / length,
-      y: y + ((point.y - y) * 18) / length,
+      x: x + ((point.x - x) * deadZoneRadius) / length,
+      y: y + ((point.y - y) * deadZoneRadius) / length,
     };
   };
   const coords = (point: Point) => `${point.x},${point.y}`;
   return {
     kind: "curved",
+    deadZoneRadius,
     choices: Array.from({ length: count }, (_, index) => {
       const a = angleAt(index / count) + 0.012;
       const b = angleAt((index + 1) / count) - 0.012;
@@ -115,7 +119,8 @@ export function curvedChoiceAt(
   originX: number,
   originY: number,
 ) {
-  if (Math.hypot(x - originX, y - originY) < 24) return null;
+  if (Math.hypot(x - originX, y - originY) <= layout.deadZoneRadius)
+    return null;
   // Labels are part of their wedge, including the small rim overhang.
   const label = layout.choices.findIndex(
     (choice) =>

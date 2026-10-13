@@ -13,6 +13,7 @@ import {
 import {
   quickWheelLayout,
   curvedChoiceAt,
+  wheelDeadZoneRadius,
   type WheelBounds,
 } from "./quick-wheel-layout";
 
@@ -71,7 +72,11 @@ export function wheelSector(
   radius: number,
 ) {
   const distance = Math.hypot(dx, dy);
-  if (!count || distance < radius * 0.31 || distance > radius * 1.65)
+  if (
+    !count ||
+    distance <= wheelDeadZoneRadius(radius) ||
+    distance > radius * 1.65
+  )
     return null;
   const angle =
     (Math.atan2(dy, dx) + Math.PI / 2 + Math.PI * 2) % (Math.PI * 2);
@@ -394,7 +399,16 @@ function WheelDisplay({ wheel }: { wheel: Wheel }) {
               </foreignObject>
             </g>
           ))}
-          <circle cx={wheel.x} cy={wheel.y} r="6" fill="#8ab5df" />
+          <circle
+            data-wheel-dead-zone=""
+            cx={wheel.x}
+            cy={wheel.y}
+            r={layout.deadZoneRadius}
+            fill="#111923"
+            stroke="#738296"
+            strokeWidth="1"
+          />
+          <circle cx={wheel.x} cy={wheel.y} r="3" fill="#8ab5df" />
         </svg>
       ) : (
         <div
