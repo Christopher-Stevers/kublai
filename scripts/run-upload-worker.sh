@@ -22,6 +22,10 @@ if [ -z "$node_binary" ] || [ ! -x "$node_binary" ]; then
 fi
 export NODE_ENV=production
 export UV_THREADPOOL_SIZE=2
+# Native image/OCR pools share the worker's task budget with Node, tsx and
+# the per-page renderer. Limit their parallelism before native libraries load.
+export VIPS_CONCURRENCY=1
+export OMP_THREAD_LIMIT=1
 export DOTENV_CONFIG_PATH="$repo_root/.env"
 current_cgroup=
 while IFS=: read -r hierarchy _ cgroup_path; do
@@ -44,7 +48,11 @@ mkdir -p "$cgroup_dir"
 # while preventing allocations from accumulating across the drawing set.
 printf '%s\n' 2147483648 > "$cgroup_dir/memory.max"
 printf '%s\n' 0 > "$cgroup_dir/memory.swap.max"
-printf '%s\n' 64 > "$cgroup_dir/pids.max"
+# Linux counts threads here, not just processes. On the 28-core host the
+# canvas renderer alone starts ~40 threads; 64 leaves too little headroom
+# for the coordinator, tsx/esbuild and image encoding/OCR. Keep a bounded
+# budget for that whole process tree while pages remain strictly sequential.
+printf '%s\n' 128 > "$cgroup_dir/pids.max"
 printf '%s\n' 1 > "$cgroup_dir/memory.oom.group"
 
 cleanup() {
