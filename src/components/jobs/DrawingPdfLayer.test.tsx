@@ -78,6 +78,26 @@ function visibleCanvases(container: HTMLElement) {
 }
 
 describe("persistent PDF detail during gestures", () => {
+  it("positions sharp detail in screen pixels and follows live gestures without a CSS scale", async () => {
+    const paintRef = { current: null as ((view: typeof props.view) => void) | null };
+    const view = render(<DrawingPdfLayer {...props} screenSpace paintRef={paintRef} />);
+    await tick();
+    await finish(0);
+    const canvas = visibleCanvases(view.container)[0]!;
+    const left = parseFloat(canvas.style.left);
+    const width = parseFloat(canvas.style.width);
+    expect(canvas.style.width.endsWith("px")).toBe(true);
+    expect(canvas.width / width).toBeGreaterThan(3);
+    act(() => paintRef.current!({ ...props.view, x: 50 }));
+    expect(parseFloat(canvas.style.left)).toBeCloseTo(left + 50);
+    act(() => paintRef.current!({ ...props.view, scale: 20 }));
+    expect(parseFloat(canvas.style.width)).toBeCloseTo(width * 2);
+    expect(canvas.style.transform).toBe("");
+    expect(pending).toHaveLength(1);
+    view.unmount();
+    expect(paintRef.current).toBeNull();
+  });
+
   it("sleeps while the sheet is offscreen and resumes when a view is available", async () => {
     const view = render(
       <DrawingPdfLayer {...props} view={{ ...props.view, x: 20_000 }} />,

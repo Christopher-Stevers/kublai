@@ -142,6 +142,7 @@ export function DrawingSheetViewer({
   const appearanceFilter = appearanceMatrix ? `url(#${appearanceId})` : undefined;
   const frame = useRef<HTMLDivElement>(null);
   const layer = useRef<HTMLDivElement>(null);
+  const pdfPaint = useRef<((view: View) => void) | null>(null);
   const annotationViewport = useRef<SVGSVGElement>(null);
   const pipeViewport = useRef<SVGSVGElement>(null);
   const marks = useRef<SVGSVGElement>(null);
@@ -768,6 +769,7 @@ export function DrawingSheetViewer({
     const { x, y, scale } = live.current;
     const transform = `translate(-50%, -50%) translate3d(${x}px, ${y}px, 0) scale(${scale})`;
     if (layer.current) layer.current.style.transform = transform;
+    pdfPaint.current?.(live.current);
     if (fit && frame.current) {
       const size = { width: frame.current.clientWidth, height: frame.current.clientHeight };
       const camera = drawingVectorViewBox(fit, size, live.current);
@@ -1606,7 +1608,7 @@ export function DrawingSheetViewer({
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img ref={image} src={src} alt={alt} draggable={false} className="absolute inset-0 h-full w-full" style={{ opacity: usesInkComparison ? 0 : undefined }} />
         <DrawingTileLayer key={tiles ?? src} requests={usesInkComparison ? [] : tileRequests} resolveAssetUrl={resolveAssetUrl} />
-        {pdf && fit && (
+        {pdf && fit && comparison && (
           <DrawingPdfLayer
             pdf={pdf}
             fit={fit}
@@ -1632,6 +1634,20 @@ export function DrawingSheetViewer({
         )}
         {fit && pdfLinksEnabled && <DrawingPdfLinkLayer links={importedLinks} aspect={fit.aspect} onActivate={link => onPdfLink?.(link)} />}
       </div>
+      {pdf && fit && !comparison && (
+        <DrawingPdfLayer
+          pdf={pdf}
+          fit={fit}
+          frameSize={frameSize}
+          view={view}
+          dpr={dpr}
+          enabled={needsPdf}
+          moving={moving}
+          screenSpace
+          paintRef={pdfPaint}
+          appearanceFilter={appearanceFilter}
+        />
+      )}
       {/* Vector overlays fill the viewport rather than the CSS-scaled sheet.
           Their camera follows every gesture frame without rebuilding ink. */}
         {fit && (

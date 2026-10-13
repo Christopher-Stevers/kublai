@@ -81,7 +81,8 @@ describe("drawing detail scheduling", () => {
     expect(capture.requests.length).toBeGreaterThan(0);
     expect(screen.getByTestId("pdf").dataset.moving).toBe("true");
     expect(image.closest<HTMLElement>('[data-drawing-sheet-layer]')!.style.transform).toContain("scale(");
-    expect(screen.getByTestId("pdf").parentElement).toBe(image.parentElement);
+    expect(screen.getByTestId("pdf").closest("[data-drawing-sheet-layer]")).toBeNull();
+    expect(screen.getByTestId("pdf").parentElement).toBe(image.closest("[data-drawing-sheet-layer]")!.parentElement);
   });
 
   it("discovers tiles completed after the drawing opened and cancels retries on unmount", async () => {

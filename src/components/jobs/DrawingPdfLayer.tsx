@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, type RefCallback } from "react";
+import { useEffect, useLayoutEffect, useRef, type RefCallback, type RefObject } from "react";
 import type { RenderTask } from "pdfjs-dist/legacy/build/pdf.mjs";
 import {
   drawingPdfOperationsFilter,
@@ -26,6 +26,10 @@ type Props = {
   dpr: number;
   enabled: boolean;
   moving: boolean;
+  /** Render outside the CSS-scaled sheet to preserve canvas pixels on Safari. */
+  screenSpace?: boolean;
+  appearanceFilter?: string;
+  paintRef?: RefObject<((view: DrawingView) => void) | null>;
 };
 type Snapshot = { index: number; patch: DrawingPatch };
 // Only successful full-page renders are safe to reuse. PDF.js can expose
@@ -33,8 +37,9 @@ type Snapshot = { index: number; patch: DrawingPatch };
 const completedPageBounds = new WeakMap<object, PdfOperationBounds>();
 
 /**
- * Double-buffered, overscanned PDF detail inside the transformed sheet layer.
- * The front buffer follows the exact same compositor transform as the tiles.
+ * Double-buffered, overscanned PDF detail. Primary drawings use screen-space
+ * placement so a CSS-scaled ancestor cannot flatten their high-resolution ink.
+ * Comparison callers can still use sheet-relative placement.
  * Motion never erases it or cancels useful work; only changing sheets does.
  */
 export function DrawingPdfLayer(props: Props) {
@@ -42,6 +47,35 @@ export function DrawingPdfLayer(props: Props) {
   const latest = useRef(props);
   latest.current = props;
   const request = useRef<() => void>(() => undefined);
+  const patches = useRef<Array<DrawingPatch | null>>([null, null]);
+  const camera = useRef(props.view);
+  const position = (index: number, view: DrawingView) => {
+    const canvas = canvases.current[index];
+    const patch = patches.current[index];
+    if (!canvas || !patch) return;
+    const p = latest.current;
+    const width = p.fit.width * view.scale;
+    const height = p.fit.height * view.scale;
+    Object.assign(canvas.style, p.screenSpace ? {
+      left: `${(p.frameSize.width - width) / 2 + view.x + patch.left * width}px`,
+      top: `${(p.frameSize.height - height) / 2 + view.y + patch.top * height}px`,
+      width: `${patch.width * width}px`,
+      height: `${patch.height * height}px`,
+    } : {
+      left: `${patch.left * 100}%`, top: `${patch.top * 100}%`,
+      width: `${patch.width * 100}%`, height: `${patch.height * 100}%`,
+    });
+  };
+  useLayoutEffect(() => {
+    const paint = (view: DrawingView) => {
+      camera.current = view;
+      position(0, view);
+      position(1, view);
+    };
+    paint(props.view);
+    if (props.paintRef) props.paintRef.current = paint;
+    return () => { if (props.paintRef) props.paintRef.current = null; };
+  });
 
   useEffect(() => {
     const buffers = [...canvases.current];
@@ -173,13 +207,9 @@ export function DrawingPdfLayer(props: Props) {
         // A render can finish after a fast fling. Do not replace good detail
         // with an obsolete patch covering less of the view; refill the latest.
         if (coverage > 0 && (coverage + 0.001 >= oldCoverage || !current)) {
-          Object.assign(canvas.style, {
-            left: `${patch.left * 100}%`,
-            top: `${patch.top * 100}%`,
-            width: `${patch.width * 100}%`,
-            height: `${patch.height * 100}%`,
-            visibility: "visible",
-          });
+          patches.current[index] = patch;
+          position(index, camera.current);
+          canvas.style.visibility = "visible";
           if (current) {
             const previous = buffers[current.index];
             if (previous) previous.style.visibility = "hidden";
@@ -263,7 +293,7 @@ export function DrawingPdfLayer(props: Props) {
     <div
       aria-hidden="true"
       className="pointer-events-none absolute inset-0"
-      style={{ display: props.enabled ? undefined : "none", zIndex: 1 }}
+      style={{ display: props.enabled ? undefined : "none", zIndex: 1, filter: props.appearanceFilter, overflow: props.screenSpace ? "hidden" : undefined }}
     >
       {[0, 1].map((index) => (
         <canvas
