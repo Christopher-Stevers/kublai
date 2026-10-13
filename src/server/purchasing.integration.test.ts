@@ -329,7 +329,7 @@ describe.skipIf(!socket)(
       ).toBe("40");
     });
     it("orders whole packs at pack prices while retaining the exact piece requirement", async () => {
-      await db.update(schema.partDefinitions).set({ piecesPerPack: 50 }).where(eq(schema.partDefinitions.id, part));
+      await db.update(schema.partDefinitions).set({ piecesPerPack: 50, bulkUnit:"box", individualUnit:"pcs" }).where(eq(schema.partDefinitions.id, part));
       await db.update(schema.supplierParts).set({ packSize: null, lastKnownUnitCost: "25" }).where(eq(schema.supplierParts.id, sp));
       await db.update(schema.quoteItems).set({ quantity: "1.4", unitCost: "25" }).where(eq(schema.quoteItems.id, item));
       await recalculatePurchaseTotals(db, quote);
@@ -337,12 +337,14 @@ describe.skipIf(!socket)(
       expect(detail.items[0]).toMatchObject({quantity: "1.400000", extendedPrice: "50", partDefinition: { piecesPerPack: 50 }});
       const preview = await material.previewOrders({materialListId: list});
       expect(preview.possible[0]?.items[0]).toMatchObject({quantity:"2",requestedQuantity:"1.400000"});
+      expect(preview.possible[0]?.email.body).toContain("2 boxes (100 pcs)");
       const sent = await material.sendGeneratedOrder({materialListId:list,supplierId:supplier,sentTo:"supplier@example.test"});
       const [line] = await db.select().from(schema.orderItems).where(eq(schema.orderItems.orderId,sent.id));
       expect(Number(line!.quantity)).toBe(2);
       expect(Number(line!.requestedQuantity)).toBe(1.4);
       expect(Number(line!.unitCostAtOrderTime)).toBe(25);
-      expect((await material.getQuoteEmailContent({quoteId:quote})).body).toContain("2 (x70)");
+      expect((await material.getOrderEmailContent({orderId:sent.id})).body).toContain("2 boxes (100 pcs)");
+      expect((await material.getQuoteEmailContent({quoteId:quote})).body).toContain("2 boxes (100 pcs)");
     });
     it("preserves single-piece requirements when merging saved prefabs", async () => {
       await db.update(schema.partDefinitions).set({piecesPerPack: 3000}).where(eq(schema.partDefinitions.id, part));

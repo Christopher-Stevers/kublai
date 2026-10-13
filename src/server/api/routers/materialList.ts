@@ -1,4 +1,4 @@
-import { packContents, formatPackQuantity } from "~/lib/pack-quantity";
+import { packContents, formatOrderedBulkQuantity } from "~/lib/pack-quantity";
 import { purchaseQuantity, purchaseLineTotal, formatPurchaseQuantity } from "~/lib/purchase-quantity";
 import { recalculatePurchaseTotals } from "~/server/purchasing";
 import { TRPCError } from "@trpc/server";
@@ -18,10 +18,15 @@ function formatEmailItemLine(item: {
   quantity: string | null;
   descriptionSnapshot: string | null;
   partDefinitionDisplayName?: string | null;
+  partDefinitionPiecesPerPack?: number | null;
+  partDefinitionBulkUnit?: string | null;
+  partDefinitionIndividualUnit?: string | null;
 }) {
   const rawQty = item.quantity ? item.quantity.toString().trim() : "0";
   const parsedQty = Number(rawQty);
-  const qty = Number.isFinite(parsedQty)
+  const qty = Number.isFinite(parsedQty) && packContents(item.partDefinitionPiecesPerPack) > 1
+    ? formatOrderedBulkQuantity(parsedQty, item.partDefinitionPiecesPerPack, item.partDefinitionBulkUnit, item.partDefinitionIndividualUnit)
+    : Number.isFinite(parsedQty)
     ? parsedQty.toLocaleString("en-CA", {
         minimumFractionDigits: 0,
         maximumFractionDigits: 6,
@@ -75,6 +80,8 @@ type OrderableQuoteItem = {
   supplierSku: string | null;
   packSize?: string | null;
   partDefinitionPiecesPerPack?: number | null;
+  partDefinitionBulkUnit?: string | null;
+  partDefinitionIndividualUnit?: string | null;
   requestedQuantity?: string;
   orderMultipleSnapshot?: string | null;
   roomId: string | null;
@@ -112,6 +119,9 @@ function buildOrderEmailContent({
     quantity: string | null;
     descriptionSnapshot: string | null;
     partDefinitionDisplayName?: string | null;
+  partDefinitionPiecesPerPack?: number | null;
+  partDefinitionBulkUnit?: string | null;
+  partDefinitionIndividualUnit?: string | null;
   }>;
   notes?: string | null;
   foremanName: string;
@@ -873,7 +883,7 @@ export const materialListRouter = createTRPCRouter({
       const lineItems = items
         .map((item) => {
           const ordered = purchaseQuantity(item.quantity, item.packSize, item.partDefinitionPiecesPerPack);
-          const qty = packContents(item.partDefinitionPiecesPerPack) > 1 ? formatPackQuantity(Number(item.quantity), item.partDefinitionPiecesPerPack, ordered) : formatPurchaseQuantity(item.quantity, ordered);
+          const qty = packContents(item.partDefinitionPiecesPerPack) > 1 ? formatOrderedBulkQuantity(ordered, item.partDefinitionPiecesPerPack, item.partDefinitionBulkUnit, item.partDefinitionIndividualUnit) : formatPurchaseQuantity(item.quantity, ordered);
           const basePrice = purchaseLineTotal(item.quantity, item.unitCost, item.packSize, item.partDefinitionPiecesPerPack);
           // Apply markup to get the customer-facing price
           const adjustedPrice = basePrice * markupMultiplier;

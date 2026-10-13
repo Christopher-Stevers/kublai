@@ -48,3 +48,10 @@ export function appendQuantityDescription(description: string, count?: number | 
   const base = description.trim().replace(/\s*\(\d[\d,]*\s+[^()]+\s+per\s+[^()]+\)\s*$/i, "");
   return `${base} (${count} ${individualUnit.trim()} per ${bulkUnit.trim()})`.trim();
 }
+
+/** Email quantities describe the contents purchased, rather than the smaller demand. */
+export function formatOrderedBulkQuantity(ordered: number, contents?: number | null, bulkUnit?: string | null, individualUnit?: string | null): string {
+  const unit = bulkUnit || "pack";
+  const plural = ({box:"boxes", pack:"packs", coil:"coils", roll:"rolls", length:"lengths"} as Record<string,string>)[unit] || unit;
+  return `${ordered.toLocaleString("en-CA", {maximumFractionDigits:6})} ${ordered === 1 ? unit : plural} (${pieceCount(ordered, contents)} ${individualUnit || "pcs"})`;
+}

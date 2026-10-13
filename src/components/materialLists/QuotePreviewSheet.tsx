@@ -1,6 +1,6 @@
 "use client";
 
-import { formatPackQuantity, packContents } from "~/lib/pack-quantity";
+import { formatOrderedBulkQuantity, packContents } from "~/lib/pack-quantity";
 import {
   formatPurchaseQuantity,
   purchaseQuantity,
@@ -210,7 +210,7 @@ export function QuotePreviewSheet({
               <h3 className="mb-2 font-semibold">Materials:</h3>
               <div className="space-y-2">
                 {displayMaterialList.items.map((item) => {
-                  const qty = packContents(item.partDefinition?.piecesPerPack) > 1 ? formatPackQuantity(Number(item.quantity), item.partDefinition?.piecesPerPack, purchaseQuantity(item.quantity, item.supplierPart?.packSize, item.partDefinition?.piecesPerPack)) : formatPurchaseQuantity(
+                  const qty = packContents(item.partDefinition?.piecesPerPack) > 1 ? formatOrderedBulkQuantity(purchaseQuantity(item.quantity, item.supplierPart?.packSize, item.partDefinition?.piecesPerPack), item.partDefinition?.piecesPerPack, item.partDefinition?.bulkUnit, item.partDefinition?.individualUnit) : formatPurchaseQuantity(
                     item.quantity,
                     purchaseQuantity(
                       item.quantity,

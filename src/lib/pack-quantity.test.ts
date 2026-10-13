@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   formatPackQuantity,
+  formatOrderedBulkQuantity,
   appendQuantityDescription,
   pickerQuantity,
   pickerIndex,
@@ -78,4 +79,9 @@ it("appends contents once and replaces a prior generated suffix", () => {
   expect(appendQuantityDescription("Blue PEX (100 ft per coil)", 300, "ft", "coil")).toBe("Blue PEX (300 ft per coil)");
   expect(appendQuantityDescription("Blue PEX (300 ft per coil)", 300, "ft", "coil")).toBe("Blue PEX (300 ft per coil)");
   expect(appendQuantityDescription("Blue PEX", 100, "", "coil")).toBe("Blue PEX");
+});
+
+it("formats purchased contents using the ordered bulk quantity", () => {
+  expect(formatOrderedBulkQuantity(3, 2000, "box", "pcs")).toBe("3 boxes (6000 pcs)");
+  expect(formatOrderedBulkQuantity(1, 100, "coil", "ft")).toBe("1 coil (100 ft)");
 });
