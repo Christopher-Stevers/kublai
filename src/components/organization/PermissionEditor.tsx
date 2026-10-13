@@ -56,7 +56,7 @@ export function Switch({
       disabled={disabled}
       onClick={() => onChange(!checked)}
       className={cn(
-        "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus-visible:ring-ring/50 outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50",
+        "focus-visible:ring-ring/50 relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50",
         checked ? "bg-primary" : "bg-muted-foreground/25",
       )}
     >
@@ -71,7 +71,9 @@ export function Switch({
 }
 
 export function countAllowed(map: PermissionMap) {
-  const keys = PERMISSION_GROUPS.flatMap((g) => g.permissions.map((p) => p.key));
+  const keys = PERMISSION_GROUPS.flatMap((g) =>
+    g.permissions.map((p) => p.key),
+  );
   return { allowed: keys.filter((k) => map[k]).length, total: keys.length };
 }
 
@@ -110,39 +112,34 @@ export function PermissionEditor({
     <div className="space-y-5">
       {showPresets && (
         <>
-      <div>
-        <p className="mb-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-          Starting template
-        </p>
-        <div className="flex flex-wrap gap-2">
-          {PERMISSION_PRESETS.map((p) => (
-            <button
-              key={p.id}
-              type="button"
-              disabled={disabled}
-              onClick={() => applyPreset(p.permissions)}
-              title={p.description}
-              className={cn(
-                "rounded-full border px-3 py-1.5 text-sm font-medium transition-colors disabled:opacity-50",
-                preset?.id === p.id
-                  ? "border-primary bg-primary text-primary-foreground"
-                  : "border-border bg-card hover:border-primary/50 hover:bg-accent",
+          <div>
+            <p className="text-muted-foreground mb-2 text-xs font-semibold tracking-wide uppercase">
+              Starting template
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {PERMISSION_PRESETS.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  disabled={disabled}
+                  onClick={() => applyPreset(p.permissions)}
+                  className={cn(
+                    "rounded-full border px-3 py-1.5 text-sm font-medium transition-colors disabled:opacity-50",
+                    preset?.id === p.id
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-border bg-card hover:border-primary/50 hover:bg-accent",
+                  )}
+                >
+                  {p.label}
+                </button>
+              ))}
+              {!preset && (
+                <span className="border-border text-muted-foreground rounded-full border border-dashed px-3 py-1.5 text-sm">
+                  Custom
+                </span>
               )}
-            >
-              {p.label}
-            </button>
-          ))}
-          {!preset && (
-            <span className="rounded-full border border-dashed border-border px-3 py-1.5 text-sm text-muted-foreground">
-              Custom
-            </span>
-          )}
-        </div>
-        {preset && (
-          <p className="mt-2 text-xs text-muted-foreground">{preset.description}</p>
-        )}
-      </div>
-
+            </div>
+          </div>
         </>
       )}
 
@@ -156,27 +153,27 @@ export function PermissionEditor({
             <section
               key={group.id}
               className={cn(
-                "rounded-xl border bg-card p-4 shadow-xs",
+                "bg-card rounded-xl border p-4 shadow-xs",
                 group.id === "pages" && "lg:col-span-2",
               )}
             >
               <header className="mb-3 flex items-start gap-3">
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <span className="bg-primary/10 text-primary flex h-9 w-9 shrink-0 items-center justify-center rounded-lg">
                   <Icon className="h-4.5 w-4.5" />
                 </span>
                 <div className="min-w-0 flex-1">
                   <h3 className="text-sm font-semibold">{group.label}</h3>
-                  <p className="text-xs text-muted-foreground">{group.description}</p>
                 </div>
                 <button
                   type="button"
                   disabled={disabled}
                   onClick={() => {
                     const next = { ...value };
-                    for (const k of keys) if (!lockedKeys.includes(k)) next[k] = !allOn;
+                    for (const k of keys)
+                      if (!lockedKeys.includes(k)) next[k] = !allOn;
                     onChange(next);
                   }}
-                  className="shrink-0 rounded-md px-2 py-1 text-xs font-medium text-primary hover:bg-primary/10 disabled:opacity-50"
+                  className="text-primary hover:bg-primary/10 shrink-0 rounded-md px-2 py-1 text-xs font-medium disabled:opacity-50"
                 >
                   {on}/{keys.length} · {allOn ? "None" : "All"}
                 </button>
@@ -184,7 +181,8 @@ export function PermissionEditor({
               <ul
                 className={cn(
                   "divide-y",
-                  group.id === "pages" && "grid gap-x-6 divide-y-0 sm:grid-cols-2",
+                  group.id === "pages" &&
+                    "grid gap-x-6 divide-y-0 sm:grid-cols-2",
                 )}
               >
                 {group.permissions.map((p) => {
@@ -194,14 +192,12 @@ export function PermissionEditor({
                       key={p.key}
                       className={cn(
                         "flex items-center gap-3 py-2.5",
-                        group.id === "pages" && "border-b last:border-b-0 sm:[&:nth-last-child(2)]:border-b-0",
+                        group.id === "pages" &&
+                          "border-b last:border-b-0 sm:[&:nth-last-child(2)]:border-b-0",
                       )}
                     >
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-medium">{p.label}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {locked ? "You can't remove this from yourself." : p.description}
-                        </p>
                       </div>
                       <Switch
                         checked={value[p.key]}
@@ -232,7 +228,13 @@ const AVATAR_COLOURS = [
   "bg-indigo-100 text-indigo-800",
 ];
 
-export function Avatar({ name, size = "md" }: { name: string; size?: "md" | "lg" }) {
+export function Avatar({
+  name,
+  size = "md",
+}: {
+  name: string;
+  size?: "md" | "lg";
+}) {
   const initials =
     name
       .split(/[\s@._-]+/)

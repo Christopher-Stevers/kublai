@@ -1,6 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { applyDocumentTheme, THEME_BOOT_SCRIPT } from "./theme-document";
-import { THEME_STORAGE_KEY } from "./theme";
+import {
+  THEME_STORAGE_KEY,
+  THEME_SYSTEM_RESET_KEY,
+  readThemePreference,
+} from "./theme";
 
 const originalHead = document.head.innerHTML;
 const meta = (name: string) =>
@@ -11,12 +15,14 @@ beforeEach(() => {
     getItem: vi.fn((key: string) => values.get(key) ?? null),
     setItem: (key: string, value: string) => values.set(key, value),
     clear: () => values.clear(),
+    removeItem: (key: string) => values.delete(key),
   });
   document.head.innerHTML =
     '<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5"><meta name="theme-color" content="#111827">';
   document.documentElement.classList.remove("dark");
   document.documentElement.removeAttribute("style");
   localStorage.clear();
+  localStorage.setItem(THEME_SYSTEM_RESET_KEY, "done");
   vi.spyOn(navigator, "userAgent", "get").mockReturnValue(
     "Mozilla/5.0 (Linux; Android 15) Chrome/146.0",
   );
@@ -32,6 +38,32 @@ afterEach(() => {
 });
 
 describe("Android browser theme", () => {
+  it.each(["dark", "light", "system"])(
+    "resets a previous %s preference to system once before painting",
+    (previous) => {
+      localStorage.removeItem(THEME_SYSTEM_RESET_KEY);
+      localStorage.setItem(THEME_STORAGE_KEY, previous);
+      vi.stubGlobal("matchMedia", () => ({ matches: true }));
+      window.eval(THEME_BOOT_SCRIPT);
+      expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe("system");
+      expect(localStorage.getItem(THEME_SYSTEM_RESET_KEY)).toBe("done");
+      expect(document.documentElement).toHaveClass("dark");
+      // React must see the same preference after the early script migrates it.
+      expect(readThemePreference()).toBe("system");
+      localStorage.setItem(THEME_STORAGE_KEY, "light");
+      window.eval(THEME_BOOT_SCRIPT);
+      expect(readThemePreference()).toBe("light");
+      expect(document.documentElement).not.toHaveClass("dark");
+    },
+  );
+
+  it("starts an unconfigured browser in system mode and follows a light system", () => {
+    localStorage.clear();
+    window.eval(THEME_BOOT_SCRIPT);
+    expect(readThemePreference()).toBe("system");
+    expect(meta("color-scheme").content).toBe("light");
+  });
+
   it("paints a saved dark theme before hydration even when Android prefers light", () => {
     localStorage.setItem(THEME_STORAGE_KEY, "dark");
     window.eval(THEME_BOOT_SCRIPT);

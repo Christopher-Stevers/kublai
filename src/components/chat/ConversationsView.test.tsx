@@ -94,7 +94,10 @@ vi.mock("~/trpc/react", () => ({
       },
       people: {
         useQuery: () => ({
-          data: [{ id: "alex", name: "Alex", email: "alex@example.test" }],
+          data: [
+            { id: "alex", name: "Alex", email: "alex@example.test" },
+            { id: "sam", name: "Sam", email: "sam@example.test" },
+          ],
         }),
       },
       create: {
@@ -535,4 +538,55 @@ it("leaves a deleted job, removes its navigation entry and forgets it on returni
   mocks.params = "";
   view.rerender(page(true));
   expect(screen.queryByTestId("job-thread")).not.toBeInTheDocument();
+});
+
+it("automatically starts a group when several people are selected", async () => {
+  render(<ConversationsView />);
+  fireEvent.click(
+    screen.getByRole("button", { name: "New chat" }),
+  );
+  fireEvent.click(screen.getByRole("checkbox", { name: "Alex" }));
+  expect(
+    screen.queryByRole("textbox", { name: "Group name" }),
+  ).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole("checkbox", { name: "Sam" }));
+  expect(screen.getByRole("textbox", { name: "Group name" })).toHaveValue(
+    "Alex, Sam",
+  );
+  expect(screen.getByRole("checkbox", { name: "Alex" })).toBeChecked();
+  expect(screen.getByRole("checkbox", { name: "Sam" })).toBeChecked();
+  fireEvent.change(screen.getByRole("textbox", { name: "Group name" }), {
+    target: { value: "Site crew" },
+  });
+  fireEvent.click(
+    screen.getByRole("button", { name: "Start chat" }),
+  );
+  await waitFor(() =>
+    expect(mocks.create).toHaveBeenCalledWith({
+      kind: "group",
+      name: "Site crew",
+      recipientIds: ["alex", "sam"],
+    }),
+  );
+});
+it("returns to a direct chat when only one selected person remains", async () => {
+  render(<ConversationsView />);
+  fireEvent.click(
+    screen.getByRole("button", { name: "New chat" }),
+  );
+  fireEvent.click(screen.getByRole("checkbox", { name: "Alex" }));
+  fireEvent.click(screen.getByRole("checkbox", { name: "Sam" }));
+  fireEvent.click(screen.getByRole("checkbox", { name: "Sam" }));
+  expect(
+    screen.queryByRole("textbox", { name: "Group name" }),
+  ).not.toBeInTheDocument();
+  expect(screen.getByRole("checkbox", { name: "Alex" })).toBeChecked();
+  fireEvent.click(
+    screen.getByRole("button", { name: "Start chat" }),
+  );
+  await waitFor(() =>
+    expect(mocks.create).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: "direct", recipientIds: ["alex"] }),
+    ),
+  );
 });

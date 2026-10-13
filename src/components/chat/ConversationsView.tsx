@@ -558,8 +558,8 @@ function ChatWorkspace({ initialJobId }: { initialJobId?: string }) {
         <DialogContent className="max-h-[90dvh] overflow-y-auto">
           <DialogTitle>New chat</DialogTitle>
           <DialogDescription>
-            Choose a person or name a group. Only the selected people can access
-            the conversation.
+            Select one person for a direct chat or several for a group. Only the
+            selected people can access the conversation.
           </DialogDescription>
           <RecipientChooser
             value={target}

@@ -113,9 +113,12 @@ const timingMiddleware = t.middleware(async ({ next, path, type, ctx }) => {
     ctx.simulation &&
     ((path.startsWith("payment.") &&
       path !== "payment.getSubscriptionStatus") ||
-      ["push.subscribe", "push.unsubscribe", "push.revokeDevice"].includes(
-        path,
-      ))
+      [
+        "push.subscribe",
+        "push.unsubscribe",
+        "push.revokeDevice",
+        "push.reportDevice",
+      ].includes(path))
   ) {
     if (audit)
       await (

@@ -25,6 +25,7 @@ const mocks = vi.hoisted(() => ({
     refetch: vi.fn(),
   },
   subscribe: vi.fn(),
+  reportDevice: vi.fn().mockResolvedValue({ updated: true }),
   device: vi.fn(),
   freshIdentity: vi.fn(),
   getSubscription: vi.fn(),
@@ -48,6 +49,9 @@ vi.mock("~/trpc/react", () => ({
   api: {
     push: {
       identity: { useQuery: () => mocks.identity },
+      reportDevice: {
+        useMutation: () => ({ mutateAsync: mocks.reportDevice }),
+      },
       subscribe: { useMutation: () => ({ mutateAsync: mocks.subscribe }) },
     },
     useUtils: () => utils,
@@ -159,6 +163,27 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 describe("device notification opt-in", () => {
+  it("reports a phone type only for the currently opted-in account", async () => {
+    localStorage.setItem(storageKey, JSON.stringify(stored));
+    Object.defineProperty(Notification, "permission", {
+      value: "granted",
+      configurable: true,
+    });
+    vi.spyOn(navigator, "userAgent", "get").mockReturnValue(
+      "Mozilla Android Mobile",
+    );
+    render(<PushAccountBinding />);
+    await waitFor(() =>
+      expect(mocks.reportDevice).toHaveBeenCalledWith({
+        endpoint: stored.endpoint,
+        revokeToken: stored.revokeToken,
+        deviceType: "phone",
+      }),
+    );
+    expect(mocks.subscribe).not.toHaveBeenCalled();
+    vi.restoreAllMocks();
+  });
+
   it("never prompts on mount; only an explicit click requests permission and saves a device", async () => {
     render(<PushNotifications />);
     const button = await screen.findByRole("button", {
@@ -339,6 +364,7 @@ describe("device notification opt-in", () => {
     );
     expect(mocks.fetch).not.toHaveBeenCalled();
     expect(readStored()).toMatchObject(replacement);
+    expect(mocks.reportDevice).not.toHaveBeenCalled();
   });
   it("a late revoke completion does not erase a replacement device", async () => {
     localStorage.setItem(storageKey, JSON.stringify(stored));

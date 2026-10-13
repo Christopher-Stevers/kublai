@@ -15,6 +15,8 @@ import {
   MemberAppDevices,
   type MemberAppDeviceState,
 } from "./MemberAppDevices";
+import { MemberPushBadge, MemberNotifications } from "./MemberNotifications";
+
 import { EmployeeSimulationControl } from "~/components/simulation/EmployeeSimulationControl";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
@@ -231,6 +233,7 @@ export function MembersSection({
                     {settings.viewer.canManageMembers && (
                       <MemberAppBadge {...appState(m.id)} />
                     )}
+                    <MemberPushBadge status={m.notificationStatus} />
                   </div>
                   <span
                     className="text-muted-foreground shrink-0 text-xs tabular-nums"
@@ -478,12 +481,8 @@ function MemberDetail({
 
       <div className="flex-1 space-y-4 p-5">
         {canManage && <MemberAppDevices {...appDevices} />}
-        {selectedPreset?.memberDetails && (
-          <p className="text-muted-foreground text-sm">
-            Department and Reports to are managed by {selectedPreset.name}.
-            Change them in Presets or choose Individual permissions.
-          </p>
-        )}
+        <MemberNotifications status={member.notificationStatus} />
+
         <section
           aria-label="Department and reporting"
           className="space-y-4 rounded-xl border p-4"
@@ -513,10 +512,7 @@ function MemberDetail({
                 <option key={name} value={name} />
               ))}
             </datalist>
-            <p className="text-muted-foreground text-xs">
-              Choose an existing department or enter a new one. Leave blank for
-              no department.
-            </p>
+            
           </div>
           <fieldset
             disabled={
@@ -525,10 +521,7 @@ function MemberDetail({
             className="space-y-2"
           >
             <legend className="text-sm font-semibold">Reports to</legend>
-            <p className="text-muted-foreground text-xs">
-              Select one or more people. Leave everyone unchecked if this person
-              does not report to anyone.
-            </p>
+            
             <p className="text-sm" aria-live="polite">
               {reportsToIds.length
                 ? reportingCandidates
@@ -638,11 +631,7 @@ function MemberDetail({
                 </option>
               ))}
             </select>
-            <p className="text-muted-foreground text-xs">
-              {selectedPreset
-                ? `Changes saved to ${selectedPreset.name} apply automatically to this member. Edit it in Presets, or choose Individual permissions to customize this person.`
-                : "Choose a live preset to keep this member’s permissions linked. Create and edit them in Presets."}
-            </p>
+            
           </div>
         )}
         <PermissionEditor

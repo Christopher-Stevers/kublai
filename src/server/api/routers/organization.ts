@@ -38,6 +38,10 @@ import {
 } from "~/server/db/schema";
 import { seedOrganization } from "~/server/utils/seed-organization";
 import { reportingWouldCycle } from "~/lib/organization-reporting";
+import {
+  memberNotificationCounts,
+  memberNotificationStatus,
+} from "~/server/notifications/member-status";
 
 const presetMemberDetailsSchema = z
   .object({
@@ -261,6 +265,12 @@ export const organizationRouter = createTRPCRouter({
     ]);
 
     const viewer = resolvePermissions(ctx.user);
+    const pushCounts = viewer["org.members"]
+      ? await memberNotificationCounts(ctx.db, ctx.user.organizationId)
+      : null;
+    const pushConfigured =
+      pushCounts !== null &&
+      Boolean((await import("~/server/chat/push")).getPushConfiguration());
     return {
       organization,
       departments: departmentList.map((department) => ({
@@ -330,6 +340,15 @@ export const organizationRouter = createTRPCRouter({
           .sort(),
         organizationAccessStatus: member.organizationAccessStatus ?? "approved",
         permissions: getUserPermissions(member),
+        notificationStatus:
+          pushCounts === null
+            ? null
+            : memberNotificationStatus(
+                pushCounts.get(member.id),
+                member.organizationAccessStatus === "approved" &&
+                  getUserPermissions(member).can["tab.dashboard"],
+                pushConfigured,
+              ),
       })),
     };
   }),

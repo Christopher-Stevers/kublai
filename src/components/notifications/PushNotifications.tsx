@@ -1,12 +1,13 @@
 "use client";
 
 import { useEmployeeSimulation } from "~/components/simulation/SimulationProvider";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Bell, BellOff } from "lucide-react";
 import { api } from "~/trpc/react";
 import { useOnlineStatus } from "~/hooks/use-online-status";
 import { SwitchTrack } from "~/components/ui/switch";
+import { pushDeviceType } from "~/lib/member-notifications";
 
 const STORAGE_KEY = "foremanhq-chat-push-device-v1";
 const DEVICE_EVENT = "foremanhq-chat-push-device-change";
@@ -205,6 +206,8 @@ async function disconnectDevice() {
 }
 
 export function PushAccountBinding() {
+  const report = api.push.reportDevice.useMutation();
+  const reportedDevice = useRef<string | null>(null);
   const pathname = usePathname();
   const identity = api.push.identity.useQuery(undefined, {
     staleTime: 0,
@@ -213,6 +216,29 @@ export function PushAccountBinding() {
     retry: false,
   });
   const [revision, setRevision] = useState(0);
+  const reportDevice = report.mutateAsync;
+  useEffect(() => {
+    const device = readDevice();
+    if (
+      !device ||
+      device.revoked ||
+      !identity.data?.eligible ||
+      device.userId !== identity.data.userId ||
+      !("Notification" in window) ||
+      Notification.permission !== "granted" ||
+      reportedDevice.current === device.revokeToken
+    )
+      return;
+    reportedDevice.current = device.revokeToken;
+    void reportDevice({
+      endpoint: device.endpoint,
+      revokeToken: device.revokeToken,
+      deviceType: pushDeviceType(navigator.userAgent, navigator.maxTouchPoints),
+    }).catch(() => {
+      if (reportedDevice.current === device.revokeToken)
+        reportedDevice.current = null;
+    });
+  }, [identity.data, revision, reportDevice]);
   const { refetch } = identity;
   useEffect(() => {
     const changed = () => {
@@ -396,6 +422,10 @@ export function PushNotifications() {
         throw new Error("The browser did not provide notification keys.");
       const result = await subscribe.mutateAsync({
         endpoint: browserSubscription.endpoint,
+        deviceType: pushDeviceType(
+          navigator.userAgent,
+          navigator.maxTouchPoints,
+        ),
         keys: { p256dh: json.keys.p256dh, auth: json.keys.auth },
       });
       device = { ...result, endpoint: browserSubscription.endpoint };

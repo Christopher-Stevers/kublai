@@ -5,6 +5,7 @@ import {
   uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { jobs, jobChatMessages, organizations, users } from "./schema";
+import type { PushDeviceType } from "~/lib/member-notifications";
 
 const table = pgTableCreator((name) => `kublai_${name}`);
 
@@ -23,6 +24,11 @@ export const chatPushSubscriptions = table(
     p256dh: d.text().notNull(),
     auth: d.text().notNull(),
     revokeTokenHash: d.varchar({ length: 64 }).notNull(),
+    deviceType: d
+      .varchar({ length: 16 })
+      .$type<PushDeviceType>()
+      .notNull()
+      .default("unknown"),
     createdAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
     updatedAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
   }),

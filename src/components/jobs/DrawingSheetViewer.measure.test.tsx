@@ -487,9 +487,7 @@ describe("drawing measure", () => {
       button: 0,
       pointerId: 1,
     });
-    expect(screen.getByRole("status").textContent).toBe(
-      "Set Scale: tap one end of a length you know.",
-    );
+    expect(screen.queryByText(/Set Scale: tap one end/)).toBeNull();
     expect(frame.querySelectorAll("circle")).toHaveLength(0);
 
     // The full sheet width is 100 feet. The sheet runs from x=0 to x=800.
@@ -563,9 +561,7 @@ describe("drawing measure", () => {
       expect(document.querySelector('[data-snapping="ready"]')).toBeTruthy();
     });
     fireEvent.click(screen.getByRole("button", { name: "Set Scale" }));
-    expect(screen.getByRole("status").textContent).toBe(
-      "Set Scale: tap one end of a length you know. It snaps onto a line.",
-    );
+    expect(screen.queryByText(/Set Scale: tap one end/)).toBeNull();
     fireEvent.pointerMove(frame, { clientX: 400, clientY: 312, buttons: 0 });
     expect(frame.querySelector('line[stroke="#22d3ee"]')).toBeTruthy();
 
@@ -717,22 +713,16 @@ describe("drawing measure", () => {
     expect(frame.querySelector('polyline[data-measure-path]')?.getAttribute("points")).toBe("400,200 600,210");
   });
 
-  it("reads the printed scale and measures with it", async () => {
-    vi.mocked(readPdfSheetScale).mockResolvedValue({
-      ok: true,
-      scale: { unit: "ft", unitsPerSheetWidth: 100, label: '1/4" = 1\'-0"' },
-    });
+  it("hides scale guidance and the printed-scale link while calibrating", () => {
     const { frame } = openSheet("sheet-read", { url: "/plan.pdf", page: 1 });
     fireEvent.click(screen.getByRole("button", { name: "Measure" }));
     fireEvent.click(screen.getByRole("button", { name: "Set Scale" }));
-    fireEvent.click(screen.getByRole("button", { name: "Read the scale printed on this drawing instead" }));
-    await waitFor(() => {
-      expect(screen.getByText('1/4" = 1\'-0"')).toBeInTheDocument();
-    });
+    expect(screen.queryByText(/Set Scale: tap one end/)).toBeNull();
+    expect(screen.queryByRole("button", { name: "Read the scale printed on this drawing instead" })).toBeNull();
     tap(frame, 0, 300);
-    tap(frame, 800, 300);
-    expect(screen.getByRole("status").textContent).toBe("100'-0\"");
-    expect(screen.getByText('1/4" = 1\'-0"')).toBeInTheDocument();
+    expect(screen.queryByText(/Tap the other end/)).toBeNull();
+    expect(readPdfSheetScale).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Cancel" })).toBeEnabled();
   });
 });
 

@@ -29,7 +29,6 @@ import {
   DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu";
 import {
-  ChevronUpIcon,
   MoreHorizontalIcon,
   PenLineIcon,
   RulerIcon,
@@ -2621,11 +2620,6 @@ export function DrawingWorkspace({
               {markupOpen || (!OTHER_TOOLS.has(tool) && !bottomMode.measuring)
                 ? "Done"
                 : "Markup"}
-              {OTHER_TOOLS.has(tool) && !markupOpen && (
-                <ChevronUpIcon
-                  className={`h-3.5 w-3.5 transition-transform ${markupOpen ? "rotate-180" : ""}`}
-                />
-              )}
             </span>
           </Button>
           <Button

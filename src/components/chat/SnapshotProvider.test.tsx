@@ -183,7 +183,7 @@ it("opens the normal capture flow automatically and remakes a snapshot with fres
   expect(await screen.findByLabelText("Snapshot message")).toHaveValue("");
   expect(screen.queryByText("Keep image")).not.toBeInTheDocument();
   expect(screen.getByText("Send snapshot")).toBeDisabled();
-  fireEvent.click(screen.getByRole("radio", { name: "Test recipient" }));
+  fireEvent.click(screen.getByRole("checkbox", { name: "Test recipient" }));
   fireEvent.change(screen.getByLabelText("Snapshot message"), {
     target: { value: "Corrected run" },
   });
@@ -297,7 +297,7 @@ it("retries the same snapshot, upload and message identity after an uncertain se
   await screen.findByAltText("Page ready for snapshot selection");
   fireEvent.click(screen.getByRole("button", { name: "Full screen snapshot" }));
   await screen.findByAltText("Snapshot preview");
-  fireEvent.click(screen.getByRole("radio", { name: "Test recipient" }));
+  fireEvent.click(screen.getByRole("checkbox", { name: "Test recipient" }));
   fireEvent.change(screen.getByLabelText("Snapshot message"), {
     target: { value: "Review this branch" },
   });

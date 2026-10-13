@@ -39,7 +39,6 @@ export function SheetMeasureBar({
   onUndo,
   onClear,
   onStartScale,
-  onReadPrinted,
   onCancelScale,
   onDraft,
   onUnit,
@@ -132,7 +131,6 @@ export function SheetMeasureBar({
             <Calibration
               count={calibrationCount}
               unit={unit}
-              snapping={snapping}
               draft={draft}
               error={error}
               reading={reading}
@@ -143,7 +141,6 @@ export function SheetMeasureBar({
               onDraft={onDraft}
               onUnit={onUnit}
               onApply={onApply}
-              onReadPrinted={onReadPrinted}
               controls={measuringControls}
               color={color}
               onColor={onColor}
@@ -427,7 +424,6 @@ function Tracing({
 function Calibration({
   count,
   unit,
-  snapping,
   draft,
   error,
   reading,
@@ -438,14 +434,12 @@ function Calibration({
   onDraft,
   onUnit,
   onApply,
-  onReadPrinted,
   controls,
   color,
   onColor,
 }: {
   count: number;
   unit: LengthUnit;
-  snapping?: boolean;
   draft: string;
   error: string | null;
   reading?: boolean;
@@ -456,29 +450,26 @@ function Calibration({
   onDraft: (value: string) => void;
   onUnit: (unit: LengthUnit) => void;
   onApply: () => void;
-  onReadPrinted?: () => void;
   controls: ReactNode;
   color: string;
   onColor: (color: string) => void;
 }) {
   return (
     <>
-      <div className="flex items-center gap-2">
-        <p role="status" className="min-w-0 flex-1 text-sm">
-          {saving
-            ? "Saving scale…"
-            : reading
-              ? "Reading the scale on this drawing."
-              : count === 0
-                ? snapping
-                  ? "Set Scale: tap one end of a length you know. It snaps onto a line."
-                  : "Set Scale: tap one end of a length you know."
-                : count === 1
-                  ? "Tap the other end. It snaps to lines, and locks square or at 45° when close."
-                  : "How long is this line?"}
-        </p>
-        {controls}
-      </div>
+      {(saving || reading || count >= 2 || controls) && (
+        <div className="flex items-center gap-2">
+          <p role="status" className="min-w-0 flex-1 text-sm">
+            {saving
+              ? "Saving scale…"
+              : reading
+                ? "Reading the scale on this drawing."
+                : count >= 2
+                  ? "How long is this line?"
+                  : null}
+          </p>
+          {controls}
+        </div>
+      )}
       {count >= 2 && (
         <div className="flex flex-wrap items-center gap-2">
           <Input
@@ -546,16 +537,6 @@ function Calibration({
         </Button>
         <MeasureColorPicker color={color} onColor={onColor} />
       </div>
-      {onReadPrinted && count === 0 && (
-        <button
-          type="button"
-          className="text-primary text-left text-xs font-medium underline-offset-2 hover:underline disabled:opacity-50"
-          disabled={(reading ?? false) || saving}
-          onClick={onReadPrinted}
-        >
-          Read the scale printed on this drawing instead
-        </button>
-      )}
     </>
   );
 }

@@ -12,6 +12,7 @@ import { assertCanAccessTab, userCan } from "~/server/auth/permissions";
 import { chatPushSubscriptions } from "~/server/db/chat-push-schema";
 import { getPushConfiguration } from "~/server/chat/push";
 import { isAllowedPushEndpoint } from "~/server/chat/push-policy";
+import { PUSH_DEVICE_TYPES } from "~/lib/member-notifications";
 
 function validKey(value: string, length: number) {
   if (!/^[A-Za-z0-9_-]+={0,2}$/.test(value)) return false;
@@ -70,6 +71,7 @@ export const pushRouter = createTRPCRouter({
     .input(
       z.object({
         endpoint,
+        deviceType: z.enum(PUSH_DEVICE_TYPES).default("unknown"),
         keys: z.object({
           p256dh: z
             .string()
@@ -129,6 +131,7 @@ export const pushRouter = createTRPCRouter({
             p256dh: input.keys.p256dh,
             auth: input.keys.auth,
             revokeTokenHash: tokenHash(revokeToken),
+            deviceType: input.deviceType,
           })
           .onConflictDoUpdate({
             target: chatPushSubscriptions.endpoint,
@@ -137,6 +140,7 @@ export const pushRouter = createTRPCRouter({
               p256dh: input.keys.p256dh,
               auth: input.keys.auth,
               revokeTokenHash: tokenHash(revokeToken),
+              deviceType: input.deviceType,
               updatedAt: new Date(),
             },
           });
@@ -146,6 +150,34 @@ export const pushRouter = createTRPCRouter({
         account: tokenHash(ctx.userId),
         userId: ctx.userId,
       };
+    }),
+  // Update only an existing opt-in owned by this account. No new subscription
+  // or account reassignment can be performed through device reporting.
+  reportDevice: hasDashboardAccess
+    .input(
+      z.object({
+        endpoint,
+        revokeToken: z.string().regex(/^[A-Za-z0-9_-]{43}$/),
+        deviceType: z.enum(PUSH_DEVICE_TYPES),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      assertCanAccessTab(ctx.user, "dashboard");
+      const rows = await ctx.db
+        .update(chatPushSubscriptions)
+        .set({ deviceType: input.deviceType })
+        .where(
+          and(
+            eq(chatPushSubscriptions.endpoint, input.endpoint),
+            eq(chatPushSubscriptions.userId, ctx.userId),
+            eq(
+              chatPushSubscriptions.revokeTokenHash,
+              tokenHash(input.revokeToken),
+            ),
+          ),
+        )
+        .returning({ id: chatPushSubscriptions.id });
+      return { updated: rows.length > 0 };
     }),
   unsubscribe: protectedProcedure
     .input(z.object({ endpoint }))

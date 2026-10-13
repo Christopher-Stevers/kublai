@@ -246,6 +246,13 @@
       "breakpoints": false
     },
     {
+      "idx": 35,
+      "version": "7",
+      "when": 1791675000001,
+      "tag": "0059_push_device_type",
+      "breakpoints": false
+    },
+    {
       "idx": 36,
       "version": "7",
       "when": 1791672485736,

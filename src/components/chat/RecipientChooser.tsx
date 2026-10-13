@@ -30,28 +30,29 @@ export function RecipientChooser({
         role="group"
         aria-label="Conversation type"
       >
-        {(["direct", "group", "existing"] as const).map((mode) => (
-          <Button
-            key={mode}
-            size="sm"
-            type="button"
-            variant={value.mode === mode ? "default" : "outline"}
-            aria-pressed={value.mode === mode}
-            onClick={() =>
-              onChange(
-                mode === "existing"
-                  ? { mode, conversationId: "" }
-                  : { mode, recipientIds: [], name: "" },
-              )
-            }
-          >
-            {mode === "direct"
-              ? "Person"
-              : mode === "group"
-                ? "Group"
-                : "Existing chat"}
-          </Button>
-        ))}
+        {(["people", "existing"] as const).map((destination) => {
+          const selected =
+            destination === "existing"
+              ? value.mode === "existing"
+              : value.mode !== "existing";
+          return (
+            <Button
+              key={destination}
+              size="sm"
+              type="button"
+              variant={selected ? "default" : "outline"}
+              aria-pressed={selected}
+              onClick={() => {
+                if (destination === "existing")
+                  onChange({ mode: "existing", conversationId: "" });
+                else if (value.mode === "existing")
+                  onChange({ mode: "direct", recipientIds: [], name: "" });
+              }}
+            >
+              {destination === "people" ? "People" : "Existing chat"}
+            </Button>
+          );
+        })}
       </div>
       {value.mode === "existing" ? (
         <label className="block space-y-1 text-sm">
@@ -104,23 +105,28 @@ export function RecipientChooser({
                 className="hover:bg-accent flex cursor-pointer items-center gap-3 rounded p-2 text-sm"
               >
                 <input
-                  type={value.mode === "direct" ? "radio" : "checkbox"}
+                  type="checkbox"
                   name="chat-recipient"
                   aria-label={person.name}
                   checked={value.recipientIds.includes(person.id)}
-                  onChange={(e) =>
-                    onChange({
-                      ...value,
-                      recipientIds:
-                        value.mode === "direct"
-                          ? [person.id]
-                          : e.target.checked
-                            ? [...value.recipientIds, person.id]
-                            : value.recipientIds.filter(
-                                (id) => id !== person.id,
-                              ),
-                    })
-                  }
+                  onChange={(e) => {
+                    const recipientIds = e.target.checked
+                      ? [...value.recipientIds, person.id]
+                      : value.recipientIds.filter((id) => id !== person.id);
+                    const mode = recipientIds.length > 1 ? "group" : "direct";
+                    const name =
+                      mode === "group" && !value.name.trim()
+                        ? recipientIds
+                            .map(
+                              (id) =>
+                                people.data?.find((p) => p.id === id)?.name ??
+                                "Member",
+                            )
+                            .join(", ")
+                            .slice(0, 120)
+                        : value.name;
+                    onChange({ mode, recipientIds, name });
+                  }}
                 />
                 <span className="min-w-0">
                   <span className="block truncate font-medium">
@@ -145,7 +151,11 @@ export function RecipientChooser({
           </div>
           <p className="text-muted-foreground text-xs">
             {value.recipientIds.length} selected
-            {value.mode === "group" ? " · You are included in the group." : ""}
+            {value.mode === "group"
+              ? " · Group chat. You are included."
+              : value.recipientIds.length === 1
+                ? " · Direct chat"
+                : " · Select one person for a direct chat, or several for a group."}
           </p>
         </>
       )}
@@ -162,5 +172,6 @@ export function validChatTarget(target: ChatTarget) {
     ? Boolean(target.conversationId)
     : target.recipientIds.length > 0 &&
         target.recipientIds.length <= 49 &&
+        (target.mode !== "direct" || target.recipientIds.length === 1) &&
         (target.mode !== "group" || Boolean(target.name.trim()));
 }

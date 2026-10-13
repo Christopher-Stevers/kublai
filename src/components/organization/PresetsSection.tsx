@@ -42,10 +42,6 @@ export function PresetsSection({
 
   return (
     <div className="space-y-4">
-      <p className="text-muted-foreground text-sm">
-        Create a preset such as Journeyman, then assign it in Members. Every
-        saved change applies to everyone using that preset.
-      </p>
       <div className="bg-card grid rounded-2xl border shadow-sm lg:grid-cols-[20rem_minmax(0,1fr)]">
         <aside
           className={cn(
@@ -296,8 +292,8 @@ function PresetDetail({
             disabled={readOnly}
           />
         </div>
-        <div className="border-primary/20 bg-primary/5 rounded-lg border p-3 text-sm">
-          {assigned.length ? (
+        {assigned.length > 0 && (
+          <div className="border-primary/20 bg-primary/5 rounded-lg border p-3 text-sm">
             <>
               <strong>
                 {assigned.length} member{assigned.length === 1 ? "" : "s"} will
@@ -311,10 +307,8 @@ function PresetDetail({
                   .join(", ")}
               </p>
             </>
-          ) : (
-            "Choose permissions below. After saving, assign this live preset to people in Members."
-          )}
-        </div>
+          </div>
+        )}
       </header>
       <div className="space-y-4 p-5">
         <section
@@ -402,17 +396,6 @@ function PresetDetail({
                 ))}
             </div>
           </fieldset>
-          <p className="text-muted-foreground text-xs">
-            These choices apply to everyone using this preset. A blank
-            department means no department; no checked people means no reporting
-            manager.
-          </p>
-          {preset && !preset.memberDetails && (
-            <p className="text-muted-foreground text-xs">
-              Existing member assignments stay unchanged until you include
-              department and reporting in this preset.
-            </p>
-          )}
         </section>
         <PermissionEditor
           value={permissions}

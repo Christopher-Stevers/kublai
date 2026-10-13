@@ -12,7 +12,7 @@ import {
 import {
   DEFAULT_THEME,
   THEME_STORAGE_KEY,
-  isThemePreference,
+  readThemePreference,
   type ThemePreference,
 } from "~/lib/theme";
 import { applyDocumentTheme } from "~/lib/theme-document";
@@ -26,12 +26,7 @@ const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 function getStoredTheme(): ThemePreference {
   if (typeof window === "undefined") return DEFAULT_THEME;
-  try {
-    const storedTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
-    return isThemePreference(storedTheme) ? storedTheme : DEFAULT_THEME;
-  } catch {
-    return DEFAULT_THEME;
-  }
+  return readThemePreference();
 }
 
 function getSystemPrefersDark() {

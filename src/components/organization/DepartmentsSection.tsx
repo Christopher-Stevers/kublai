@@ -39,10 +39,6 @@ export function DepartmentsSection({
   );
   return (
     <div className="space-y-4">
-      <p className="text-muted-foreground text-sm">
-        Organize your company into departments and choose the people who lead
-        each one. Assign members through Members or Presets.
-      </p>
       <div className="bg-card grid rounded-2xl border shadow-sm lg:grid-cols-[20rem_minmax(0,1fr)]">
         <aside
           className={cn(
@@ -253,10 +249,7 @@ function DepartmentDetail({
       <div className="space-y-5 p-5">
         <fieldset className="space-y-3" disabled={readOnly}>
           <legend className="text-sm font-semibold">Department leads</legend>
-          <p className="text-muted-foreground text-xs">
-            Choose one or more people from your organization. Leads keep their
-            existing account permissions and reporting assignments.
-          </p>
+
           <Input
             aria-label="Search department leads"
             placeholder="Search people…"
@@ -317,7 +310,7 @@ function DepartmentDetail({
             <p className="text-muted-foreground mt-2 text-sm break-words">
               {members.length
                 ? members.map(personName).join(", ")
-                : "No members assigned yet. Choose this department in Members or Presets."}
+                : "No members assigned yet."}
             </p>
           </section>
         )}

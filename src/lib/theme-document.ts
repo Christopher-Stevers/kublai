@@ -1,4 +1,9 @@
-import { DEFAULT_THEME, THEME_STORAGE_KEY } from "./theme";
+import {
+  DEFAULT_THEME,
+  THEME_STORAGE_KEY,
+  THEME_SYSTEM_RESET_KEY,
+  readThemePreference,
+} from "./theme";
 
 /** Keep page colours and browser chrome in sync, including before React loads. */
 export function applyDocumentTheme(dark: boolean) {
@@ -44,11 +49,11 @@ export function applyDocumentTheme(dark: boolean) {
 // browser settings. Storage failures must not prevent painting the page.
 export const THEME_BOOT_SCRIPT = `
 (() => {
-  let theme = ${JSON.stringify(DEFAULT_THEME)};
-  try {
-    const stored = localStorage.getItem(${JSON.stringify(THEME_STORAGE_KEY)});
-    if (stored === "dark" || stored === "light" || stored === "system") theme = stored;
-  } catch {}
+  const theme = (${readThemePreference.toString()})(
+    ${JSON.stringify(THEME_STORAGE_KEY)},
+    ${JSON.stringify(THEME_SYSTEM_RESET_KEY)},
+    ${JSON.stringify(DEFAULT_THEME)}
+  );
   const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
   (${applyDocumentTheme.toString()})(theme === "dark" || (theme === "system" && prefersDark));
 })();
