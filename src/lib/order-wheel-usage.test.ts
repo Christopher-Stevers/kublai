@@ -14,14 +14,14 @@ const part: OrderedFacet = {
   sizeLabel: null,
   frequency: 3,
 };
-it("propagates ordered-part frequency into all wheel stages and material groups", () => {
+it("propagates ordered-part frequency into all wheel stages with flat material choices", () => {
   const usage = orderWheelUsage([
     part,
     { ...part, material: "Copper", groupPath: [], frequency: 2 },
   ]);
   expect(usage[wheelUsageId("Select Catalog", "Plumbing")]).toBe(5);
-  expect(usage[wheelUsageId("Select Material", "PVC")]).toBe(3);
-  expect(usage[wheelUsageId("Select PVC type", "XFR")]).toBe(3);
+  expect(usage[wheelUsageId("Select Material", "PVC")]).toBeUndefined();
+  expect(usage[wheelUsageId("Select Material", "XFR")]).toBe(3);
   expect(usage[wheelUsageId("Select Material", "Copper")]).toBe(2);
   expect(usage[wheelUsageId("Select Size", "2 in")]).toBe(5);
   expect(usage[wheelUsageId("Select Category", "Elbows")]).toBe(5);

@@ -20,15 +20,7 @@ export function orderWheelUsage(rows: OrderedFacet[]): WheelUsage {
     const add = (title: string, label: string) =>
       keys.add(wheelUsageId(title, label));
     add("Select Catalog", row.catalog);
-    const path = row.groupPath ?? [];
-    path.forEach((group, i) =>
-      add(i ? `Select ${path[i - 1]} type` : "Select Material", group),
-    );
-    if (row.material)
-      add(
-        path.length ? `Select ${path.at(-1)} type` : "Select Material",
-        row.material,
-      );
+    if (row.material) add("Select Material", row.material);
     if (row.category) add("Select Category", row.category);
     if (row.nominal !== null && row.unit) {
       add("Select Size", formatSize(Number(row.nominal), row.unit));

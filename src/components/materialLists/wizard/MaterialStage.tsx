@@ -58,9 +58,9 @@ export function MaterialStage({
     setBrowsingPath(next);
     pagination.setPage(1);
   }
-  const choose = useQuickWheelOptions(path.length ? `Select ${path.at(-1)} type` : "Select Material", [
-    ...(path.length ? [{ label: "Back", select: () => browse(path.slice(0, -1)) }] : [{ label: "All", select: () => onMaterialSelect(null) }]),
-    ...entries.map(entry => ({ label: entry.name, select: () => entry.kind === "group" ? browse(entry.path) : onMaterialSelect(entry.material.id) })),
+  useQuickWheelOptions("Select Material", [
+    { label: "All", select: () => onMaterialSelect(null) },
+    ...materials.map(material => ({ label: material.name, select: () => onMaterialSelect(material.id) })),
   ]);
   return (
     <div className="space-y-3 sm:space-y-4">
@@ -105,7 +105,7 @@ export function MaterialStage({
         {path.length === 0 && (
           <WizardAllOption
             selected={allSelected}
-            onSelect={() => choose("All")}
+            onSelect={() => onMaterialSelect(null)}
           />
         )}
         {pagination.paginatedItems.map((entry) => (
@@ -114,7 +114,7 @@ export function MaterialStage({
             key={entry.key}
             data-tutorial-choice={entry.name}
             className={`flex ${WIZARD_OPTION_ITEM_SIZE_CLASS} cursor-pointer items-center justify-center rounded-xl border bg-card p-2 text-center shadow-[0_1px_2px_rgba(0,0,0,0.08),0_2px_8px_rgba(0,0,0,0.06)] transition hover:shadow-md focus-visible:outline-2 focus-visible:outline-blue-600 sm:p-4 ${entry.kind === "material" && selectedMaterialId === entry.material.id ? "border-primary border-2" : ""}`}
-            onClick={() => choose(entry.name)}
+            onClick={() => entry.kind === "group" ? browse(entry.path) : onMaterialSelect(entry.material.id)}
           >
             <p className={WIZARD_OPTION_LABEL_CLASS}>{entry.name}</p>
           </button>
