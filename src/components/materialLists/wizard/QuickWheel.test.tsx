@@ -281,6 +281,55 @@ describe("wizard quick wheel", () => {
     expect(select).toHaveBeenCalledWith(2);
     expect(readWheelUsage()[wheelUsageId("Catalog", "Choice 2")]).toBe(13);
   });
+  it("puts frequent choices on the first page and progressively less used choices behind More", () => {
+    localStorage.setItem(
+      WHEEL_USAGE_KEY,
+      JSON.stringify(
+        Object.fromEntries(
+          Array.from({ length: 15 }, (_, index) => [
+            wheelUsageId("Catalog", `Choice ${index}`),
+            index + 1,
+          ]),
+        ),
+      ),
+    );
+    render(
+      <QuickWheelSurface>
+        <Stage count={15} select={vi.fn()} />
+      </QuickWheelSurface>,
+    );
+    down();
+    const choices = () =>
+      Array.from(wheel()!.querySelectorAll("foreignObject"))
+        .map((label) => label.textContent)
+        .filter((label) => label?.startsWith("Choice "))
+        .sort();
+    const more = () => {
+      const root = wheel()!;
+      const label = Array.from(root.querySelectorAll("foreignObject")).find(
+        (entry) => entry.textContent?.startsWith("More"),
+      )!;
+      const circle = root.getAttribute("data-layout") === "circle";
+      aim(
+        Number(label.getAttribute("x")) +
+          Number(label.getAttribute("width")) / 2 +
+          (circle ? Number(root.getAttribute("data-origin-x")) - 170 : 0),
+        Number(label.getAttribute("y")) +
+          Number(label.getAttribute("height")) / 2 +
+          (circle ? Number(root.getAttribute("data-origin-y")) - 170 : 0),
+      );
+      dwell();
+    };
+    expect(choices()).toEqual(
+      [9, 10, 11, 12, 13, 14].map((n) => `Choice ${n}`).sort(),
+    );
+    more();
+    expect(choices()).toEqual(
+      [3, 4, 5, 6, 7, 8].map((n) => `Choice ${n}`).sort(),
+    );
+    more();
+    expect(choices()).toEqual(["Choice 0", "Choice 1", "Choice 2"]);
+  });
   it("learns from ordinary wizard card taps too", () => {
     const select = vi.fn();
     function Cards() {
