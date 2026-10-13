@@ -440,7 +440,7 @@ export function AddPartDialog({
 
         return {
           ...prev,
-          quantity: prev.mode !== "individual" && packContents(filteredPartsForSelection.find(part => part.id === prev.partId)?.piecesPerPack) > 1 ? Math.max(-1, prev.quantity + stepDelta) : clampQuantity(prev.quantity + stepDelta),
+          quantity: packContents(filteredPartsForSelection.find(part => part.id === prev.partId)?.piecesPerPack) > 1 ? Math.max(-1, prev.quantity + stepDelta) : clampQuantity(prev.quantity + stepDelta),
         };
       });
     };
@@ -474,10 +474,10 @@ export function AddPartDialog({
   }, [filteredPartsForSelection, quantityPickerPreview]);
 
   useEffect(() => {
-    if (quantityPickerPreview?.inputType !== "touch" || quantityPickerPreview.quantity !== -1 || quantityPickerPreview.mode === "individual") return;
+    if (quantityPickerPreview?.inputType !== "touch" || quantityPickerPreview.quantity !== -1) return;
     const timer = setTimeout(() => {
       pickerTouchAccumulatorRef.current = 0;
-      setQuantityPickerPreview(prev => prev?.quantity === -1 ? {...prev, quantity:1, mode:"individual"} : prev);
+      setQuantityPickerPreview(prev => prev?.quantity === -1 ? {...prev, quantity:1, mode:prev.mode === "individual" ? undefined : "individual"} : prev);
     }, 1000);
     return () => clearTimeout(timer);
   }, [quantityPickerPreview?.partId, quantityPickerPreview?.quantity, quantityPickerPreview?.mode, quantityPickerPreview?.inputType]);
@@ -1543,9 +1543,9 @@ export function AddPartDialog({
               description={pickerContents > 1 ? `${pickerContents.toLocaleString("en-CA")} ${pickerPart?.individualUnit || "pcs"} per ${bulkUnit}` : undefined}
               centerIndex={quantityPickerPreview.quantity}
               getItemFontSize={value => value === -1 ? "2rem" : undefined}
-              getItem={(value) => (value < (quantityPickerPreview.mode !== "individual" && pickerContents > 1 ? -1 : 0) ? null : value)}
+              getItem={(value) => (value < (pickerContents > 1 ? -1 : 0) ? null : value)}
               renderItem={(value) => {
-                if (value === -1) return <ArrowLeftRight className="h-12 w-12" aria-label={`Switch to ${individualUnitLabel(pickerPart?.individualUnit)}`} />;
+                if (value === -1) return <ArrowLeftRight className="h-12 w-12" aria-label={`Switch to ${quantityPickerPreview.mode === "individual" ? bulkUnit : individualUnitLabel(pickerPart?.individualUnit)}`} />;
                 if (quantityPickerPreview.mode === "individual") return `${value.toLocaleString("en-CA")} ${pickerPart?.individualUnit || "pcs"}`;
                 return pickerContents > 1 ? `${value.toLocaleString("en-CA")} ${value === 1 ? bulkUnit : bulkPlural}` : value.toLocaleString("en-CA");
               }}

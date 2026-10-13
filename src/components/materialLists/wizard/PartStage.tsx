@@ -112,7 +112,7 @@ function PartCard({
     }
   };
 
-  const clampQuantity = (quantity: number) => Math.max(!individualModeRef.current && packContents(part.piecesPerPack) > 1 ? -1 : 0, quantity);
+  const clampQuantity = (quantity: number) => Math.max(packContents(part.piecesPerPack) > 1 ? -1 : 0, quantity);
 
   const clearPickerPreview = () => {
     onQuantityPickerPreviewChange?.(null);
@@ -134,14 +134,14 @@ function PartCard({
       quantity: nextQuantity,
       mode: individualModeRef.current ? "individual" : undefined,
     });
-    if (nextQuantity === -1 && !individualModeRef.current) {
+    if (nextQuantity === -1) {
       if (!dwellTimerRef.current) dwellTimerRef.current = setTimeout(() => {
         dwellTimerRef.current = null;
-        individualModeRef.current = true;
+        individualModeRef.current = !individualModeRef.current;
         pointerStartYRef.current = latestYRef.current;
         baseQuantityRef.current = 1;
         dragQuantityRef.current = 1;
-        onQuantityPickerPreviewChange?.({partId:part.id, partName:part.displayName, quantity:1, mode:"individual"});
+        onQuantityPickerPreviewChange?.({partId:part.id, partName:part.displayName, quantity:1, mode:individualModeRef.current ? "individual" : undefined});
       }, 1000);
     } else clearDwell();
   };
