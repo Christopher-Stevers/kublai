@@ -42,23 +42,25 @@ import { PrefabsPanel, type PrefabView } from "./prefabs/PrefabsPanel";
 interface AddPartDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  materialListId: string;
+  materialListId?: string;
+  managePrefabs?: boolean;
 }
 
 export function AddPartDialog({
   open,
   onOpenChange,
-  materialListId,
+  materialListId = "",
+  managePrefabs = false,
 }: AddPartDialogProps) {
   const sandbox = useTutorialSandbox();
   const { getReplicache: getMaterialListReplicache, requestSync: requestMaterialListReplicacheSync } = useWorkspaceMutations();
   // Tool request lists pick from tool catalogs; material lists never do.
   const { materialList: listHeader, items: listItems } =
-    useReplicacheMaterialList(materialListId);
+    useReplicacheMaterialList(materialListId || "catalogue-prefab-manager");
   const isToolRequest = listHeader?.kind === "tools";
   // Prefabs: the panel replaces the wizard while open; with a target set, the
   // wizard picks parts for that prefab instead of this list.
-  const [prefabView, setPrefabView] = useState<PrefabView | null>(null);
+  const [prefabView, setPrefabView] = useState<PrefabView | null>(managePrefabs ? {kind:"list"} : null);
   const [prefabTarget, setPrefabTarget] = useState<{ id: string; name: string } | null>(null);
   // Wizard state
   const [pendingParts, setPendingParts] = useState<PendingPart[]>([]);
@@ -746,6 +748,8 @@ export function AddPartDialog({
         return;
       }
 
+      if (managePrefabs) throw new Error("Select a prefab before adding parts.");
+
       const localItems = partsReadyToAdd.map((pendingPart) => {
         const selectedSupplierPart =
           pendingPart.supplierPartSnapshot ??
@@ -976,6 +980,7 @@ export function AddPartDialog({
       return true;
     }
     if (prefabView) {
+      if (managePrefabs && prefabView.kind === "list") {closeDialogAndCleanHistory(); return true;}
       setPrefabView(prefabView.kind === "edit" ? { kind: "list" } : null);
       return true;
     }
@@ -1194,9 +1199,10 @@ export function AddPartDialog({
             {prefabView ? (
               <PrefabsPanel
                 materialListId={materialListId}
-                listItems={listItems}
+                listItems={managePrefabs ? [] : listItems}
                 view={prefabView}
-                onViewChange={setPrefabView}
+                managementOnly={managePrefabs}
+                onViewChange={view => {if (!view && managePrefabs) closeDialogAndCleanHistory(); else setPrefabView(view);}}
                 onAddParts={(prefab) => {
                   setPendingParts([]);
                   resetWizard();

@@ -4,6 +4,7 @@ import {
   CreateCustomPartDialog,
   MaterialGroupsDialog,
   PhotoQueueDialog,
+  AddPartDialog,
 } from "~/components/app/DeferredFeatures";
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -62,6 +63,7 @@ export function CatalogueScreen({
 }) {
   const [editingPartId, setEditingPartId] = useState<string | null>(null);
   const [isCreatePartDialogOpen, setIsCreatePartDialogOpen] = useState(false);
+  const [isPrefabsOpen, setIsPrefabsOpen] = useState(false);
   const [isPhotoQueueOpen, setIsPhotoQueueOpen] = useState(false);
   const [isMaterialGroupsOpen, setIsMaterialGroupsOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
@@ -636,6 +638,10 @@ export function CatalogueScreen({
                 <Images />
                 Photos
               </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setIsPrefabsOpen(true)}>
+                <Grid2X2 />
+                Prefabs
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 disabled={!canEditParts || isImporting || isExporting}
@@ -747,6 +753,7 @@ export function CatalogueScreen({
         open={isMaterialGroupsOpen}
         onOpenChange={setIsMaterialGroupsOpen}
       />
+      {isPrefabsOpen && <AddPartDialog open managePrefabs onOpenChange={setIsPrefabsOpen} />}
       <PhotoQueueDialog
         open={isPhotoQueueOpen}
         onOpenChange={setIsPhotoQueueOpen}

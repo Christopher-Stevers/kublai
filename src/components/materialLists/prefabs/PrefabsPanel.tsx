@@ -41,6 +41,7 @@ function partCount(prefab: Prefab) {
  */
 export function PrefabsPanel({
   materialListId,
+  managementOnly = false,
   listItems,
   view,
   onViewChange,
@@ -50,6 +51,7 @@ export function PrefabsPanel({
   addedBy,
 }: {
   materialListId: string;
+  managementOnly?: boolean;
   listItems: ReplicacheMaterialListItem[];
   view: PrefabView;
   onViewChange: (view: PrefabView | null) => void;
@@ -79,6 +81,7 @@ export function PrefabsPanel({
   const [naming, setNaming] = useState<"new" | "save" | null>(null);
 
   const addToList = async (prefab: Prefab, multiplier: number) => {
+    if (managementOnly) return;
     setIsAdding(true);
     try {
       const plan = planPrefabAdd(
@@ -256,7 +259,7 @@ export function PrefabsPanel({
               </ul>
             )}
             <div className="sticky bottom-0 -mx-1 space-y-2 bg-canvas px-1 pt-1 pb-1">
-            <div className="grid grid-cols-2 gap-2">
+            <div className={`grid ${managementOnly ? "grid-cols-1" : "grid-cols-2"} gap-2`}>
               {canEdit && prefab.items.length > 0 && (
                 <Button
                   variant="outline"
@@ -266,7 +269,7 @@ export function PrefabsPanel({
                   Add Parts
                 </Button>
               )}
-              {prefab.items.length > 0 && (
+              {!managementOnly && prefab.items.length > 0 && (
                 <Button
                   className={canEdit ? "" : "col-span-2"}
                   onClick={() => setAdding({ prefabId: prefab.id, multiplier: 1 })}
@@ -296,7 +299,7 @@ export function PrefabsPanel({
     <div className="mx-auto w-full max-w-3xl space-y-3">
       <Button variant="ghost" size="sm" className="-ml-2 h-9" onClick={() => onViewChange(null)}>
         <ArrowLeftIcon className="mr-1.5 h-4 w-4" />
-        Catalogs
+        {managementOnly ? "Catalogue" : "Catalogs"}
       </Button>
 
       {isLoading ? (
@@ -322,7 +325,7 @@ export function PrefabsPanel({
                   <p className="truncate font-medium">{prefab.name}</p>
                   <p className="text-muted-foreground text-xs">{partCount(prefab)}</p>
                 </button>
-                <Button
+                {!managementOnly && <Button
                   size="sm"
                   disabled={prefab.items.length === 0}
                   onClick={() =>
@@ -335,7 +338,7 @@ export function PrefabsPanel({
                 >
                   <PlusIcon className="mr-1 h-4 w-4" />
                   Add
-                </Button>
+                </Button>}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button
@@ -411,19 +414,19 @@ export function PrefabsPanel({
             </Button>
           </form>
         ) : (
-          <div className="grid grid-cols-2 gap-2">
+          <div className={`grid ${managementOnly ? "grid-cols-1" : "grid-cols-2"} gap-2`}>
             <Button variant="outline" onClick={() => setNaming("new")}>
               <PlusIcon className="mr-2 h-4 w-4" />
               New Prefab
             </Button>
-            <Button
+            {!managementOnly && <Button
               variant="outline"
               disabled={!listItems.some((item) => item.partDefinitionId)}
               onClick={() => setNaming("save")}
             >
               <SaveIcon className="mr-2 h-4 w-4" />
               Save List as Prefab
-            </Button>
+            </Button>}
           </div>
         ))}
       {!isOnline && (

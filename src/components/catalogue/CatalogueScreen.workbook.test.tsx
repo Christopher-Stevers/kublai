@@ -72,6 +72,7 @@ vi.mock("~/components/materialLists/WizardHeader", () => ({
   WizardHeader: () => null,
 }));
 vi.mock("~/components/app/DeferredFeatures", () => ({
+  AddPartDialog: ({ managePrefabs, onOpenChange }: { managePrefabs?: boolean; onOpenChange: (open: boolean) => void }) => managePrefabs ? <div role="dialog" aria-label="Manage prefabs"><button onClick={() => onOpenChange(false)}>Close prefabs</button></div> : null,
   EditPartDialog: () => null,
   CreateCustomPartDialog: () => null,
   MaterialGroupsDialog: () => null,
@@ -105,6 +106,14 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 describe("catalogue workbook controls", () => {
+  it("opens prefab management from More and closes it", () => {
+    render(<CatalogueScreen />);
+    openMore();
+    fireEvent.click(screen.getByRole("menuitem", { name: "Prefabs" }));
+    expect(screen.getByRole("dialog", { name: "Manage prefabs" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Close prefabs" }));
+    expect(screen.queryByRole("dialog", { name: "Manage prefabs" })).not.toBeInTheDocument();
+  });
   it("backs up before uploading unchanged rows and prevents competing operations", async () => {
     let release!: () => void;
     state.download.mockImplementation(
