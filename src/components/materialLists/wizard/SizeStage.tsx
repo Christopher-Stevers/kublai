@@ -272,19 +272,19 @@ export function SizeStage({
   isOnline = true,
 }: SizeStageProps) {
   const pagination = useClientPagination(availableSizes ?? []);
-  const choose = useQuickWheelOptions("Select Size", [
+  useQuickWheelOptions("Select Size", [
     { label: "All", select: () => commitSize(null) },
-    ...(availableSizes ?? []).flatMap(size => [
-      { label: formatSize(size.nominal, size.unit), select: () => commitSize(size) },
-      ...(size.subSizes ?? []).map(sub => ({ label: formatSizeDimensions(sub.label, size.unit), select: () => commitSize({ nominal: size.nominal, unit: size.unit, sizeLabel: sub.label }) })),
-    ]),
+    ...(availableSizes ?? []).flatMap(size =>
+      size.subSizes?.length
+        ? size.subSizes.map(sub => ({
+            label: formatSizeDimensions(sub.label, size.unit),
+            select: () => commitSize({ nominal: size.nominal, unit: size.unit, sizeLabel: sub.label }),
+          }))
+        : [{ label: formatSizeDimensions(size.nominal, size.unit), select: () => commitSize(size) }],
+    ),
   ]);
-  const onSizeSelect = (size: SizeSelection | null) => choose(
-    !size ? "All" : size.sizeLabel
-      ? formatSizeDimensions(size.sizeLabel, size.unit)
-      : formatSize(size.nominal, size.unit),
-    () => commitSize(size),
-  );
+  // Regular cards retain their broad nominal-size filter and sub-size picker.
+  const onSizeSelect = commitSize;
   const [subSizePreview, setSubSizePreview] = useState<SubSizePreview | null>(null);
   const subSizePreviewRef = useRef<SubSizePreview | null>(null);
   const pickerTouchYRef = useRef<number | null>(null);

@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { SizeStage, type SizeStageProps } from "./SizeStage";
-import { formatSize } from "~/lib/size-utils";
 import {
   act,
   cleanup,
@@ -379,6 +378,56 @@ describe("wizard quick wheel", () => {
     more();
     expect(choices()).toEqual(["Choice 0", "Choice 1", "Choice 2"]);
   });
+  it("shows only exact combinations in the size wheel while cards retain the nominal choice", () => {
+    const select = vi.fn();
+    const noop = () => undefined;
+    render(
+      <QuickWheelSurface>
+        <SizeStage
+          availableSizes={[
+            {
+              nominal: 4,
+              unit: "in",
+              count: 3,
+              subSizes: [
+                { label: "4", count: 1 },
+                { label: "4 x 2", count: 2 },
+              ],
+            },
+          ]}
+          selectedSize={null}
+          onSizeSelect={select}
+          showCustomSize={false}
+          onShowCustomSize={noop}
+          customSizeInput=""
+          onCustomSizeInputChange={noop}
+          customSizeUnitId={null}
+          onCustomSizeUnitIdChange={noop}
+          allUnits={[]}
+          onCreateSize={{ mutate: noop, isPending: false }}
+        />
+      </QuickWheelSurface>,
+    );
+    expect(screen.getByRole("button", { name: '4"' })).toBeInTheDocument();
+    fireEvent.pointerDown(screen.getByText("Select Size"), pointer);
+    const labels = Array.from(wheel()!.querySelectorAll("foreignObject"));
+    expect(labels.map((n) => n.textContent)).toEqual(["All", '4"', '4" x 2"']);
+    const combo = labels[2]!;
+    aim(
+      Number(combo.getAttribute("x")) +
+        Number(combo.getAttribute("width")) / 2 +
+        30,
+      Number(combo.getAttribute("y")) +
+        Number(combo.getAttribute("height")) / 2 +
+        130,
+    );
+    dwell();
+    expect(select).toHaveBeenCalledExactlyOnceWith({
+      nominal: 4,
+      unit: "in",
+      sizeLabel: "4 x 2",
+    });
+  });
   it.each(["touch", "keyboard"])(
     "keeps real size-card %s selections working without influencing order ranking",
     (mode) => {
@@ -402,7 +451,7 @@ describe("wizard quick wheel", () => {
           <SizeStage {...props} />
         </QuickWheelSurface>,
       );
-      const label = formatSize(2, "in");
+      const label = '2"';
       const card = screen.getByRole("button", { name: '2"' });
       Object.assign(card, { setPointerCapture: vi.fn() });
       if (mode === "touch") {

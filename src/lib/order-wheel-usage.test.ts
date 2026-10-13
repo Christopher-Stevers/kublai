@@ -23,7 +23,7 @@ it("propagates ordered-part frequency into all wheel stages with flat material c
   expect(usage[wheelUsageId("Select Material", "PVC")]).toBeUndefined();
   expect(usage[wheelUsageId("Select Material", "XFR")]).toBe(3);
   expect(usage[wheelUsageId("Select Material", "Copper")]).toBe(2);
-  expect(usage[wheelUsageId("Select Size", "2 in")]).toBe(5);
+  expect(usage[wheelUsageId("Select Size", '2"')]).toBe(5);
   expect(usage[wheelUsageId("Select Category", "Elbows")]).toBe(5);
   expect(usage[wheelUsageId("Select Catalog", "All")]).toBeUndefined();
 });
@@ -40,4 +40,13 @@ it("handles missing facets and empty order history", () => {
     },
   ]);
   expect(usage).toEqual({ [wheelUsageId("Select Catalog", "Plumbing")]: 3 });
+});
+
+it("ranks an exact combination without also boosting the broad nominal size", () => {
+  const usage = orderWheelUsage([
+    { ...part, sizeLabel: "2 x 1", frequency: 7 },
+  ]);
+  expect(usage[wheelUsageId("Select Size", '2" x 1"')]).toBe(7);
+  expect(usage[wheelUsageId("Select Size", '2"')]).toBeUndefined();
+  expect(usage[wheelUsageId("Select Size", "2 in")]).toBeUndefined();
 });

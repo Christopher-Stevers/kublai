@@ -1,4 +1,4 @@
-import { formatSize, formatSizeDimensions } from "./size-utils";
+import { formatSizeDimensions } from "./size-utils";
 export type WheelUsage = Record<string, number>;
 export const wheelUsageId = (title: string, label: string) =>
   JSON.stringify([title, label]);
@@ -23,9 +23,10 @@ export function orderWheelUsage(rows: OrderedFacet[]): WheelUsage {
     if (row.material) add("Select Material", row.material);
     if (row.category) add("Select Category", row.category);
     if (row.nominal !== null && row.unit) {
-      add("Select Size", formatSize(Number(row.nominal), row.unit));
-      if (row.sizeLabel)
-        add("Select Size", formatSizeDimensions(row.sizeLabel, row.unit));
+      add(
+        "Select Size",
+        formatSizeDimensions(row.sizeLabel || Number(row.nominal), row.unit),
+      );
     }
     for (const key of keys)
       usage[key] = (usage[key] ?? 0) + Number(row.frequency);
