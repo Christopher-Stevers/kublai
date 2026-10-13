@@ -1,4 +1,5 @@
 "use client";
+import { appendQuantityDescription } from "~/lib/pack-quantity";
 import { notify } from "~/components/ui/app-dialogs";
 import {
   FinancialOnly,
@@ -71,6 +72,25 @@ function FieldHeader({
       )}
     </div>
   );
+}
+
+function QuantityUnitField({label, value, onChange, options, onAdd, disabled}: {
+  label:string; value:string; onChange:(value:string)=>void; options:string[];
+  onAdd:(name:string)=>Promise<void>; disabled:boolean;
+}) {
+  const [adding, setAdding] = useState(false);
+  const [name, setName] = useState("");
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+  return <div><FieldHeader label={label} onAdd={() => {setAdding(!adding); setError("");}} />
+    {adding ? <div className="mt-1 flex min-w-0 gap-2"><Input aria-label={`New ${label.toLowerCase()}`} maxLength={32} value={name} onChange={e=>setName(e.target.value)} disabled={saving} /><Button type="button" variant="outline" disabled={disabled || saving || !name.trim()} onClick={async()=>{
+      setSaving(true); setError("");
+      try {await onAdd(name.trim()); onChange(name.trim().toLowerCase()); setName(""); setAdding(false);} catch {setError("Could not add unit. Try again.");} finally {setSaving(false);}
+    }}>Add</Button></div> : <select aria-label={label} className="border-input bg-background mt-1 h-10 w-full rounded-md border px-3 text-sm" value={value} onChange={e=>onChange(e.target.value)} disabled={disabled}>
+      <option value="">Select unit</option>{Array.from(new Set([...options, ...(value ? [value] : [])])).sort().map(unit=><option key={unit} value={unit}>{unit}</option>)}
+    </select>}
+    {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
+  </div>;
 }
 
 function normalizeCurrencyInput(value: string) {
@@ -262,6 +282,8 @@ export function PartDetailsDialog({
     );
   const [displayName, setDisplayName] = useState("");
   const [piecesPerPack, setPiecesPerPack] = useState("");
+  const quantityUnits = api.catalogue.getQuantityUnits.useQuery(undefined, {enabled:open});
+  const createQuantityUnit = api.catalogue.createQuantityUnit.useMutation();
   const [bulkUnit, setBulkUnit] = useState("");
   const [individualUnit, setIndividualUnit] = useState("");
   const [hasManuallyEditedDisplayName, setHasManuallyEditedDisplayName] =
@@ -449,7 +471,7 @@ export function PartDetailsDialog({
 
     setDisplayName(
       buildPartName({
-        description,
+        description: appendQuantityDescription(description, Number(piecesPerPack), individualUnit, bulkUnit),
         materialName: materials?.find((material) => material.id === materialId)
           ?.name,
         sizeValue,
@@ -461,6 +483,9 @@ export function PartDetailsDialog({
     isEditMode,
     hasManuallyEditedDisplayName,
     description,
+    piecesPerPack,
+    individualUnit,
+    bulkUnit,
     materials,
     materialId,
     sizeValue,
@@ -663,11 +688,11 @@ export function PartDetailsDialog({
     : {
         mode: familyImageMode,
         draft: {
-          displayName: displayName.trim(),
+          displayName: isEditMode ? displayName.trim() : appendQuantityDescription(displayName, Number(piecesPerPack), individualUnit, bulkUnit),
       piecesPerPack: piecesPerPack.trim() ? Number(piecesPerPack) : null,
       bulkUnit: bulkUnit.trim() || null,
       individualUnit: individualUnit.trim() || null,
-          description: description.trim() || null,
+          description: appendQuantityDescription(description, Number(piecesPerPack), individualUnit, bulkUnit) || null,
           categoryName: selectedCategory?.name ?? null,
           materialId,
           materialName: selectedMaterial?.name ?? null,
@@ -1043,11 +1068,11 @@ export function PartDetailsDialog({
     const imageUrlToSave = normalizedImageUrl;
 
     const payload = {
-      displayName: displayName.trim(),
+      displayName: isEditMode ? displayName.trim() : appendQuantityDescription(displayName, Number(piecesPerPack), individualUnit, bulkUnit),
       piecesPerPack: piecesPerPack.trim() ? Number(piecesPerPack) : null,
       bulkUnit: bulkUnit.trim() || null,
       individualUnit: individualUnit.trim() || null,
-      description: description.trim() || null,
+      description: appendQuantityDescription(description, Number(piecesPerPack), individualUnit, bulkUnit) || null,
       imageUrl: imageUrlToSave,
       catalogId,
       assetTracking: isToolType ? assetTracking : null,
@@ -1198,15 +1223,6 @@ export function PartDetailsDialog({
                     className="mt-1 h-10 text-base font-medium"
                     disabled={isLoading}
                   />
-                  {!isToolType && <div className="mt-3">
-                    <div className="grid grid-cols-2 gap-3 mb-3">
-                      <div><Label htmlFor="bulkUnit">Bulk unit</Label><Input id="bulkUnit" list="bulk-unit-options" maxLength={32} value={bulkUnit} onChange={e => setBulkUnit(e.target.value)} placeholder="box, roll, length, pack" disabled={isLoading} /><datalist id="bulk-unit-options">{["box", "roll", "coil", "length", "pack"].map(unit => <option key={unit} value={unit} />)}</datalist></div>
-                      <div><Label htmlFor="individualUnit">Individual unit</Label><Input id="individualUnit" list="individual-unit-options" maxLength={32} value={individualUnit} onChange={e => setIndividualUnit(e.target.value)} placeholder="pcs, feet, inch, mm" disabled={isLoading} /><datalist id="individual-unit-options">{["pcs", "ft", "feet", "inch", "mm", "m"].map(unit => <option key={unit} value={unit} />)}</datalist></div>
-                    </div>
-                    <Label htmlFor="piecesPerPack">Individual units per bulk unit</Label>
-                    <Input id="piecesPerPack" type="number" min="2" max="999999" step="1" value={piecesPerPack} onChange={event => setPiecesPerPack(event.target.value)} placeholder="Leave blank for individual items" disabled={isLoading} />
-                    <p className="text-muted-foreground text-xs">For example, 50 pcs per box or 100 feet per roll. Price is per bulk unit. Unit labels do not convert measurements.</p>
-                  </div>}
                   {!isEditMode && (
                     <p className="text-muted-foreground mt-1 text-xs">
                       Fills in from size, material and description.
@@ -1268,6 +1284,14 @@ export function PartDetailsDialog({
 
             <section className={sectionCard}>
               <h3 className={sectionTitle}>Where it goes</h3>
+              {!isToolType && <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <QuantityUnitField label="Bulk unit" value={bulkUnit} onChange={setBulkUnit} disabled={isLoading} options={["box","roll","coil","length","pack",...(quantityUnits.data ?? []).filter(u=>u.kind === "bulk").map(u=>u.name)]} onAdd={async name=>{await createQuantityUnit.mutateAsync({kind:"bulk",name}); await quantityUnits.refetch();}} />
+                  <QuantityUnitField label="Individual unit" value={individualUnit} onChange={setIndividualUnit} disabled={isLoading} options={["pcs","ft","inch","mm","m",...(quantityUnits.data ?? []).filter(u=>u.kind === "individual").map(u=>u.name)]} onAdd={async name=>{await createQuantityUnit.mutateAsync({kind:"individual",name}); await quantityUnits.refetch();}} />
+                </div>
+                <div><Label htmlFor="piecesPerPack">Individual units per bulk unit</Label><Input id="piecesPerPack" type="number" min="2" max="999999" step="1" value={piecesPerPack} onChange={e=>setPiecesPerPack(e.target.value)} placeholder="e.g. 100" disabled={isLoading} /></div>
+              </div>}
+
               <div>
                 <FieldHeader
                   label={

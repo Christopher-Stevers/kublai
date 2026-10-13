@@ -168,6 +168,8 @@ vi.mock("~/trpc/react", () => {
         },
       }),
       catalogue: {
+        getQuantityUnits: {useQuery: () => ({data:[], refetch:vi.fn().mockResolvedValue({})})},
+        createQuantityUnit: {useMutation: () => ({mutateAsync:vi.fn().mockResolvedValue({})})},
         getPart: { useQuery: () => ({ data: editState.part, isLoading: false }) },
         getCatalogs: {
           useQuery: () => makeResult(globalThis.__partDialogMockData.catalogs),
@@ -376,7 +378,7 @@ describe("PartDetailsDialog inline add", () => {
       />,
     );
 
-    fireEvent.click(screen.getAllByText("+ Add")[0]!);
+    fireEvent.click(screen.getAllByText("+ Add")[2]!);
     fireEvent.change(screen.getByPlaceholderText("New catalog name"), {
       target: { value: "Plumbing" },
     });
@@ -406,7 +408,7 @@ describe("PartDetailsDialog inline add", () => {
       />,
     );
 
-    fireEvent.click(screen.getAllByText("+ Add")[0]!);
+    fireEvent.click(screen.getAllByText("+ Add")[2]!);
     fireEvent.change(screen.getByPlaceholderText("New catalog name"), {
       target: { value: "Plumbing" },
     });
@@ -439,6 +441,16 @@ describe("editing a part name", () => {
     finish();
     await waitFor(()=>expect(close).toHaveBeenCalledWith(false));
   });
+  it("adds a custom unit from Where it goes and selects it", async () => {
+    render(<PartDetailsDialog mode="edit" open partId="part-existing" onOpenChange={() => {}} />);
+    const section = screen.getByText("Where it goes").closest("section")!;
+    expect(section.contains(screen.getByLabelText("Bulk unit"))).toBe(true);
+    expect(section.contains(screen.getByLabelText("Individual units per bulk unit"))).toBe(true);
+    fireEvent.click(screen.getAllByText("+ Add")[0]!);
+    fireEvent.change(screen.getByLabelText("New bulk unit"), {target:{value:"carton"}});
+    fireEvent.click(screen.getByRole("button", {name:"Add"}));
+    await waitFor(() => expect(screen.getByLabelText("Bulk unit")).toHaveValue("carton"));
+  });
   it("loads and saves separate bulk and individual units", async () => {
     Object.assign(editState.part!, {bulkUnit: "box", individualUnit: "pcs", piecesPerPack: 50});
     editState.save.mockResolvedValue(undefined);
@@ -446,9 +458,9 @@ describe("editing a part name", () => {
     expect(screen.getByLabelText("Bulk unit")).toHaveValue("box");
     expect(screen.getByLabelText("Individual unit")).toHaveValue("pcs");
     fireEvent.change(screen.getByLabelText("Bulk unit"), {target:{value:"roll"}});
-    fireEvent.change(screen.getByLabelText("Individual unit"), {target:{value:"feet"}});
+    fireEvent.change(screen.getByLabelText("Individual unit"), {target:{value:"ft"}});
     fireEvent.click(screen.getByRole("button", {name:"Save"}));
-    await waitFor(() => expect(editState.save).toHaveBeenCalledWith(expect.objectContaining({bulkUnit:"roll", individualUnit:"feet", piecesPerPack:50})));
+    await waitFor(() => expect(editState.save).toHaveBeenCalledWith(expect.objectContaining({bulkUnit:"roll", individualUnit:"ft", piecesPerPack:50, description:"(50 ft per roll)"})));
   });
   it("keeps the editor open and displays a save failure", async () => {
     editState.save.mockRejectedValue(new Error('Save failed'));

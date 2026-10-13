@@ -458,6 +458,12 @@ export const suppliersRelations = relations(suppliers, ({ one, many }) => ({
 // UNITS
 // ============================
 
+export const quantityUnits = createTable("quantity_unit", d => ({
+  organizationId: d.uuid().notNull().references(() => organizations.id, {onDelete:"cascade"}),
+  kind: d.varchar({length:16}).notNull(),
+  name: d.varchar({length:32}).notNull(),
+}), t => [primaryKey({columns:[t.organizationId,t.kind,t.name]}), check("quantity_unit_kind", sql`${t.kind} IN ('bulk', 'individual')`), check("quantity_unit_name", sql`length(trim(${t.name})) > 0`)]);
+
 export const units = createTable(
   "unit",
   (d) => ({

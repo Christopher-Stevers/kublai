@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   formatPackQuantity,
+  appendQuantityDescription,
   pickerQuantity,
   pickerIndex,
   packsFromPieces,
@@ -70,4 +71,11 @@ describe("pack contents separate from order multiples", () => {
       ).updates[0]!.quantity;
     expect(quantity).toBe(1);
   });
+});
+
+it("appends contents once and replaces a prior generated suffix", () => {
+  expect(appendQuantityDescription("Blue PEX", 100, "ft", "coil")).toBe("Blue PEX (100 ft per coil)");
+  expect(appendQuantityDescription("Blue PEX (100 ft per coil)", 300, "ft", "coil")).toBe("Blue PEX (300 ft per coil)");
+  expect(appendQuantityDescription("Blue PEX (300 ft per coil)", 300, "ft", "coil")).toBe("Blue PEX (300 ft per coil)");
+  expect(appendQuantityDescription("Blue PEX", 100, "", "coil")).toBe("Blue PEX");
 });

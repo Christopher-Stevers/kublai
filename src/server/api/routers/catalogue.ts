@@ -1,3 +1,4 @@
+import { appendQuantityDescription } from "~/lib/pack-quantity";
 import { orderMultipleInput, refreshSupplierPurchaseTotals } from "~/server/purchasing";
 import { userCan } from "~/server/auth/permissions";
 import { expandLegacyFacets, facetCount } from "~/lib/catalogue-facets";
@@ -498,6 +499,22 @@ type CatalogNode = {
 };
 
 export const catalogueRouter = createTRPCRouter({
+  getQuantityUnits: hasDashboardAccess.query(async ({ctx}) => {
+    const org = ctx.user.organizationId;
+    if (!org) throw new TRPCError({code:"FORBIDDEN"});
+    return ctx.db.execute<{kind:string; name:string}>(sql`
+      select kind, name from kublai_quantity_unit where "organizationId"=${org}::uuid
+      union select 'bulk', "bulkUnit" from kublai_part_definition where "organizationId"=${org}::uuid and "bulkUnit" is not null
+      union select 'individual', "individualUnit" from kublai_part_definition where "organizationId"=${org}::uuid and "individualUnit" is not null
+      order by name`);
+  }),
+  createQuantityUnit: hasDashboardAccess.input(z.object({kind:z.enum(["bulk","individual"]), name:z.string().trim().min(1).max(32).toLowerCase()})).mutation(async ({ctx,input}) => {
+    assertCanCreateParts(ctx.user);
+    const org=ctx.user.organizationId;
+    if (!org) throw new TRPCError({code:"FORBIDDEN"});
+    await ctx.db.execute(sql`insert into kublai_quantity_unit ("organizationId",kind,name) values (${org}::uuid,${input.kind},${input.name}) on conflict do nothing`);
+    return input;
+  }),
   getCatalogs: hasDashboardAccess.query(async ({ ctx }) => {
     const organizationId = ctx.user.organizationId;
 
@@ -2971,7 +2988,7 @@ export const catalogueRouter = createTRPCRouter({
           piecesPerPack: input.piecesPerPack,
           bulkUnit: input.bulkUnit,
           individualUnit: input.individualUnit,
-          description: input.description ?? null,
+          description: appendQuantityDescription(input.description ?? "", input.piecesPerPack, input.individualUnit, input.bulkUnit) || null,
           imageUrl:
             input.imageUrl && input.imageUrl.trim() !== ""
               ? input.imageUrl

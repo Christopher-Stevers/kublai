@@ -328,6 +328,13 @@
       "when": 1791849600000,
       "tag": "0071_part_quantity_units",
       "breakpoints": false
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1791852000000,
+      "tag": "0072_quantity_unit_types",
+      "breakpoints": false
     }
   ]
 }

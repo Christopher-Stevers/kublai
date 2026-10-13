@@ -42,3 +42,9 @@ export function individualUnitLabel(unit?: string | null) {
   const value = unit?.trim().toLowerCase();
   return ({ pcs: "piece", pieces: "piece", feet: "foot", inches: "inch" } as Record<string, string>)[value ?? ""] ?? (value || "piece");
 }
+
+export function appendQuantityDescription(description: string, count?: number | null, individualUnit?: string | null, bulkUnit?: string | null): string {
+  if (!count || !individualUnit?.trim() || !bulkUnit?.trim()) return description.trim();
+  const base = description.trim().replace(/\s*\(\d[\d,]*\s+[^()]+\s+per\s+[^()]+\)\s*$/i, "");
+  return `${base} (${count} ${individualUnit.trim()} per ${bulkUnit.trim()})`.trim();
+}
