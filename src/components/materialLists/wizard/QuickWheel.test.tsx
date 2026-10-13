@@ -10,11 +10,10 @@ import {
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { QuickWheelSurface, useQuickWheelOptions } from "./QuickWheel";
-import {
-  WHEEL_USAGE_KEY,
-  wheelUsageId,
-  readWheelUsage,
-} from "./quick-wheel-usage";
+import { wheelUsageId } from "./quick-wheel-usage";
+const WHEEL_USAGE_KEY = "foremanhq:quick-wheel-usage:v1";
+const readWheelUsage = () =>
+  JSON.parse(localStorage.getItem(WHEEL_USAGE_KEY) ?? "{}");
 
 function Stage({
   title = "Catalog",
@@ -260,6 +259,20 @@ describe("wizard quick wheel", () => {
     fireEvent.click(screen.getByRole("button", { name: "Normal card" }));
     expect(select).toHaveBeenCalledTimes(2);
   });
+  it("ignores old tap history and ranks only supplied order history", () => {
+    localStorage.setItem(
+      WHEEL_USAGE_KEY,
+      JSON.stringify({ [wheelUsageId("Catalog", "Choice 2")]: 999 }),
+    );
+    render(
+      <QuickWheelSurface usage={{ [wheelUsageId("Catalog", "Choice 1")]: 2 }}>
+        <Stage select={vi.fn()} />
+      </QuickWheelSurface>,
+    );
+    down();
+    const labels = Array.from(wheel()!.querySelectorAll("foreignObject"));
+    expect(labels[1]).toHaveTextContent("Choice 1");
+  });
   it("places the most used choice toward screen centre and invokes the correct reordered action", () => {
     // Screen centre is below/right of this wheel; the nearest slot is lower-right.
     localStorage.setItem(
@@ -271,7 +284,7 @@ describe("wizard quick wheel", () => {
     );
     const select = vi.fn();
     render(
-      <QuickWheelSurface>
+      <QuickWheelSurface usage={readWheelUsage()}>
         <Stage select={select} />
       </QuickWheelSurface>,
     );
@@ -281,7 +294,7 @@ describe("wizard quick wheel", () => {
     aim(304, 360);
     dwell();
     expect(select).toHaveBeenCalledWith(2);
-    expect(readWheelUsage()[wheelUsageId("Catalog", "Choice 2")]).toBe(13);
+    expect(readWheelUsage()[wheelUsageId("Catalog", "Choice 2")]).toBe(12);
   });
   it("puts frequent choices on the first page and progressively less used choices behind More", () => {
     localStorage.setItem(
@@ -296,7 +309,7 @@ describe("wizard quick wheel", () => {
       ),
     );
     render(
-      <QuickWheelSurface>
+      <QuickWheelSurface usage={readWheelUsage()}>
         <Stage count={15} select={vi.fn()} />
       </QuickWheelSurface>,
     );
@@ -333,7 +346,7 @@ describe("wizard quick wheel", () => {
     expect(choices()).toEqual(["Choice 0", "Choice 1", "Choice 2"]);
   });
   it.each(["touch", "keyboard"])(
-    "records real size-card %s selection without relying on click",
+    "keeps real size-card %s selections working without influencing order ranking",
     (mode) => {
       const select = vi.fn();
       const noop = () => undefined;
@@ -367,16 +380,20 @@ describe("wizard quick wheel", () => {
         unit: "in",
         sizeLabel: null,
       });
-      expect(readWheelUsage()[wheelUsageId("Select Size", label)]).toBe(1);
+      expect(
+        readWheelUsage()[wheelUsageId("Select Size", label)],
+      ).toBeUndefined();
       // A compatibility click must not count the same gesture a second time.
       fireEvent.click(card);
-      expect(readWheelUsage()[wheelUsageId("Select Size", label)]).toBe(1);
+      expect(
+        readWheelUsage()[wheelUsageId("Select Size", label)],
+      ).toBeUndefined();
       fireEvent.pointerDown(screen.getByText("Select Size"), pointer);
       const labels = Array.from(wheel()!.querySelectorAll("foreignObject"));
-      expect(labels[1]).toHaveTextContent(label);
+      expect(labels.some((entry) => entry.textContent === label)).toBe(true);
     },
   );
-  it("learns from ordinary wizard card taps too", () => {
+  it("does not treat ordinary wizard card taps as ordered parts", () => {
     const select = vi.fn();
     function Cards() {
       const choose = useQuickWheelOptions("Material", [
@@ -395,7 +412,9 @@ describe("wizard quick wheel", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: "Copper" }));
     expect(select).toHaveBeenCalledTimes(1);
-    expect(readWheelUsage()[wheelUsageId("Material", "Copper")]).toBe(1);
+    expect(
+      readWheelUsage()[wheelUsageId("Material", "Copper")],
+    ).toBeUndefined();
   });
   it("cancels an early release or leaving the highlight without selecting", () => {
     const select = vi.fn();

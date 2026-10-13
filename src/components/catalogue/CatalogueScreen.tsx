@@ -85,6 +85,7 @@ export function CatalogueScreen({
   const isCatalogueOnline =
     isBrowserOnline && !TEMPORARILY_DISCONNECT_BROWSER_FROM_SERVER;
   const utils = api.useUtils();
+  const { data: orderWheelUsage } = api.catalogue.recentOrderWheelUsage.useQuery(undefined, { staleTime: 60_000 });
   const { data: roleData } = api.user.getMyRole.useQuery();
   const canEditParts = roleData?.permissions.canEditParts ?? false;
 
@@ -445,7 +446,7 @@ export function CatalogueScreen({
         </div>
       </div>
 
-      <QuickWheelSurface enabled={!editingPartId && !isWizardSearchActive && ["catalog", "material", "size", "category"].includes(wizardStage)}
+      <QuickWheelSurface usage={orderWheelUsage} enabled={!editingPartId && !isWizardSearchActive && ["catalog", "material", "size", "category"].includes(wizardStage)}
         className={`@container mx-auto min-h-0 w-full max-w-6xl flex-1 space-y-2 overflow-y-auto overscroll-contain px-2 pt-2 pb-3 sm:space-y-4 sm:px-4 sm:pt-4 sm:pb-4 md:px-6 ${centerOptionCards ? "flex flex-col [&_.wizard-option-grid]:my-auto [&>*:last-child]:flex [&>*:last-child]:flex-1 [&>*:last-child]:flex-col" : ""}`}
       >
         {isWizardSearchActive ? (

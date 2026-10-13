@@ -1,3 +1,4 @@
+import { orderWheelUsage, type OrderedFacet } from "~/lib/order-wheel-usage";
 import { appendQuantityDescription } from "~/lib/pack-quantity";
 import { orderMultipleInput, refreshSupplierPurchaseTotals } from "~/server/purchasing";
 import { userCan } from "~/server/auth/permissions";
@@ -499,6 +500,38 @@ type CatalogNode = {
 };
 
 export const catalogueRouter = createTRPCRouter({
+  recentOrderWheelUsage: hasDashboardAccess.query(async ({ ctx }) => {
+    const org = ctx.user.organizationId;
+    if (!org) return {};
+    const since = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000);
+    const rows = await ctx.db.execute(sql`
+      with used as (
+        select distinct o.id as order_id, oi."partDefinitionId" as part_id
+        from kublai_order o
+        join kublai_order_item oi on oi."orderId" = o.id
+        where o."organizationId" = ${org}::uuid
+          and o."createdByUserId" = ${ctx.user.id}
+          and o.kind = 'materials'
+          and o.status in ('sent', 'confirmed', 'received')
+          and o."sentAt" >= ${since.toISOString()}::timestamptz
+          and o."sentAt" <= now()
+          and oi.quantity > 0
+      )
+      select c.name as catalog, m.name as material, m."groupPath" as "groupPath",
+        cat.name as category, s.nominal, u.code as unit, p."sizeLabel" as "sizeLabel",
+        count(*)::integer as frequency
+      from used
+      join kublai_part_definition p on p.id = used.part_id and p."organizationId" = ${org}::uuid
+      join kublai_catalog c on c.id = p."catalogId"
+      left join kublai_material m on m.id = p."materialId"
+      left join kublai_category cat on cat.id = p."categoryId"
+      left join kublai_size s on s.id = p."sizeId"
+      left join kublai_unit u on u.id = s."unitId"
+      group by c.name, m.name, m."groupPath", cat.name, s.nominal, u.code, p."sizeLabel"
+    `);
+    return orderWheelUsage(rows as unknown as OrderedFacet[]);
+  }),
+
   getQuantityUnits: hasDashboardAccess.query(async ({ctx}) => {
     const org = ctx.user.organizationId;
     if (!org) throw new TRPCError({code:"FORBIDDEN"});

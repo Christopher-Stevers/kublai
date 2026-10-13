@@ -19,8 +19,6 @@ import {
 
 import {
   inwardSlots,
-  readWheelUsage,
-  recordWheelChoice,
   wheelUsageId,
   type WheelUsage,
 } from "./quick-wheel-usage";
@@ -45,12 +43,10 @@ export function useQuickWheelOptions(title: string, options: Choice[]) {
       if (registry.current === value) registry.current = null;
     };
   }, [registry, title, options]);
-  // Cards, keyboard activation and touch pickers use the same committed action.
-  // Counting DOM clicks misses controls that select on pointer/touch release.
+  // Keep card and wheel selection actions consistent; selections do not affect ranking.
   return (label: string, commit?: () => void) => {
     const choice = options.find((option) => option.label === label);
     if (!choice) return;
-    recordWheelChoice(title, choice.label);
     (commit ?? choice.select)();
   };
 }
@@ -155,8 +151,11 @@ const interactive =
 export function QuickWheelSurface({
   children,
   enabled = true,
+  usage = {},
   ...props
-}: HTMLAttributes<HTMLDivElement> & { enabled?: boolean }) {
+}: HTMLAttributes<HTMLDivElement> & { enabled?: boolean; usage?: WheelUsage }) {
+  const orderUsage = useRef(usage);
+  orderUsage.current = usage;
   const registry = useRef<Registry>({ current: null }).current;
   const surface = useRef<HTMLDivElement>(null);
   const active = useRef<Wheel | null>(null);
@@ -200,7 +199,7 @@ export function QuickWheelSurface({
         update({
           ...current,
           ...choices,
-          usage: readWheelUsage(),
+          usage: orderUsage.current,
           page: 0,
           hovered: null,
         });
@@ -269,7 +268,7 @@ export function QuickWheelSurface({
           x: viewportLeft + (viewport?.width ?? innerWidth) / 2,
           y: viewportTop + (viewport?.height ?? innerHeight) / 2,
         },
-        usage: readWheelUsage(),
+        usage: orderUsage.current,
         page: 0,
         hovered: null,
         moved: false,
@@ -347,8 +346,6 @@ export function QuickWheelSurface({
                 ? undefined
                 : registry.current?.options[entry.sourceIndex];
             if (choice) {
-              recordWheelChoice(current.title, choice.label);
-              update({ ...active.current!, usage: readWheelUsage() });
               choice.select();
             }
           }
