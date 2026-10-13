@@ -17,6 +17,14 @@ import {
   type WheelBounds,
 } from "./quick-wheel-layout";
 
+import {
+  inwardSlots,
+  readWheelUsage,
+  recordWheelChoice,
+  wheelUsageId,
+  type WheelUsage,
+} from "./quick-wheel-usage";
+
 type Choice = { label: string; select: () => void };
 type Choices = { title: string; options: Choice[] };
 type Registry = {
@@ -47,23 +55,71 @@ type Wheel = Choices & {
   startY: number;
   radius: number;
   bounds: WheelBounds;
+  screenCentre: { x: number; y: number };
+  usage: WheelUsage;
   page: number;
   hovered: number | null;
   moved: boolean;
 };
-type Entry = Choice & { page?: number };
+type Entry = Choice & { page?: number; sourceIndex?: number };
 function entriesFor(wheel: Wheel): Entry[] {
-  if (wheel.options.length <= 8) return wheel.options;
-  const pages = Math.ceil(wheel.options.length / 6);
-  return [
-    ...wheel.options.slice(wheel.page * 6, wheel.page * 6 + 6),
-    {
-      label: "Previous",
-      select: () => undefined,
-      page: (wheel.page + pages - 1) % pages,
-    },
-    { label: "More", select: () => undefined, page: (wheel.page + 1) % pages },
-  ];
+  const ranked = wheel.options.map((choice, sourceIndex) => ({
+    ...choice,
+    sourceIndex,
+  }));
+  const frequency = (entry: Entry) =>
+    wheel.usage[wheelUsageId(wheel.title, entry.label)] ?? 0;
+  ranked.sort(
+    (a, b) => frequency(b) - frequency(a) || a.sourceIndex - b.sourceIndex,
+  );
+  const pages = Math.ceil(ranked.length / 6);
+  const entries: Entry[] =
+    ranked.length <= 8
+      ? ranked
+      : [
+          ...ranked.slice(wheel.page * 6, wheel.page * 6 + 6),
+          {
+            label: "Previous",
+            select: () => undefined,
+            page: (wheel.page + pages - 1) % pages,
+          },
+          {
+            label: "More",
+            select: () => undefined,
+            page: (wheel.page + 1) % pages,
+          },
+        ];
+  if (!ranked.some((entry) => frequency(entry) > 0)) return entries;
+  const layout = quickWheelLayout(
+    wheel.x,
+    wheel.y,
+    wheel.radius,
+    entries.length,
+    wheel.bounds,
+  );
+  const points =
+    layout.kind === "curved"
+      ? layout.choices.map((choice) => choice.label)
+      : entries.map((_, index) => ({
+          x:
+            wheel.x +
+            (Math.sin((index * Math.PI * 2) / entries.length) *
+              wheel.radius *
+              117) /
+              170,
+          y:
+            wheel.y -
+            (Math.cos((index * Math.PI * 2) / entries.length) *
+              wheel.radius *
+              117) /
+              170,
+        }));
+  const slots = inwardSlots(points, wheel.screenCentre);
+  const arranged: Entry[] = [];
+  entries.forEach((entry, index) => {
+    arranged[slots[index]!] = entry;
+  });
+  return arranged;
 }
 export function wheelSector(
   dx: number,
@@ -133,7 +189,13 @@ export function QuickWheelSurface({
         clearTimer();
         // Leave the selected direction before arming another choice.
         pageLatch.current = current.hovered;
-        update({ ...current, ...choices, page: 0, hovered: null });
+        update({
+          ...current,
+          ...choices,
+          usage: readWheelUsage(),
+          page: 0,
+          hovered: null,
+        });
       } else {
         active.current = { ...current, options: choices.options };
       }
@@ -195,6 +257,11 @@ export function QuickWheelSurface({
         startY: event.clientY,
         radius,
         bounds: { left, top, right, bottom },
+        screenCentre: {
+          x: viewportLeft + (viewport?.width ?? innerWidth) / 2,
+          y: viewportTop + (viewport?.height ?? innerHeight) / 2,
+        },
+        usage: readWheelUsage(),
         page: 0,
         hovered: null,
         moved: false,
@@ -267,11 +334,14 @@ export function QuickWheelSurface({
           });
           if (entry.page === undefined) {
             // Use the latest callbacks after query or pending-quantity changes.
-            const index =
-              current.options.length <= 8
-                ? hovered!
-                : current.page * 6 + hovered!;
-            registry.current?.options[index]?.select();
+            const choice =
+              entry.sourceIndex === undefined
+                ? undefined
+                : registry.current?.options[entry.sourceIndex];
+            if (choice) {
+              recordWheelChoice(current.title, choice.label);
+              choice.select();
+            }
           }
         }, 500);
       }
@@ -301,7 +371,19 @@ export function QuickWheelSurface({
       if (active.current) event.preventDefault();
     }
     function click(event: MouseEvent) {
-      if (!suppressClick.current) return;
+      if (!suppressClick.current) {
+        const card =
+          event.target instanceof Element
+            ? event.target.closest<HTMLElement>(
+                ".wizard-option-grid [role=button], .wizard-option-grid button",
+              )
+            : null;
+        const label = card?.dataset.tutorialChoice ?? card?.textContent?.trim();
+        const choices = registry.current;
+        if (choices && choices.options.some((choice) => choice.label === label))
+          recordWheelChoice(choices.title, label!);
+        return;
+      }
       suppressClick.current = false;
       event.preventDefault();
       event.stopPropagation();

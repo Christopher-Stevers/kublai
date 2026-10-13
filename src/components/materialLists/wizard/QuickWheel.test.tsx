@@ -8,6 +8,11 @@ import {
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { QuickWheelSurface, useQuickWheelOptions } from "./QuickWheel";
+import {
+  WHEEL_USAGE_KEY,
+  wheelUsageId,
+  readWheelUsage,
+} from "./quick-wheel-usage";
 
 function Stage({
   title = "Catalog",
@@ -60,6 +65,11 @@ const aim = (x = 200, y = 180) =>
 const dwell = (ms = 500) => act(() => vi.advanceTimersByTime(ms));
 const wheel = () => screen.queryByRole("status");
 beforeEach(() => {
+  const stored = new Map<string, string>();
+  vi.stubGlobal("localStorage", {
+    getItem: (key: string) => stored.get(key) ?? null,
+    setItem: (key: string, value: string) => stored.set(key, value),
+  });
   vi.useFakeTimers();
   vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({
     x: 0,
@@ -76,6 +86,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
   vi.useRealTimers();
 });
 
@@ -246,6 +257,48 @@ describe("wizard quick wheel", () => {
     expect(wheel()).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Normal card" }));
     expect(select).toHaveBeenCalledTimes(2);
+  });
+  it("places the most used choice toward screen centre and invokes the correct reordered action", () => {
+    // Screen centre is below/right of this wheel; the nearest slot is lower-right.
+    localStorage.setItem(
+      WHEEL_USAGE_KEY,
+      JSON.stringify({
+        [wheelUsageId("Catalog", "Choice 2")]: 12,
+        [wheelUsageId("Catalog", "Choice 1")]: 3,
+      }),
+    );
+    const select = vi.fn();
+    render(
+      <QuickWheelSurface>
+        <Stage select={select} />
+      </QuickWheelSurface>,
+    );
+    down();
+    const labels = Array.from(wheel()!.querySelectorAll("foreignObject"));
+    expect(labels[1]).toHaveTextContent("Choice 2");
+    aim(304, 360);
+    dwell();
+    expect(select).toHaveBeenCalledWith(2);
+    expect(readWheelUsage()[wheelUsageId("Catalog", "Choice 2")]).toBe(13);
+  });
+  it("learns from ordinary wizard card taps too", () => {
+    const select = vi.fn();
+    function Cards() {
+      useQuickWheelOptions("Material", [{ label: "Copper", select }]);
+      return (
+        <div className="wizard-option-grid">
+          <button onClick={select}>Copper</button>
+        </div>
+      );
+    }
+    render(
+      <QuickWheelSurface>
+        <Cards />
+      </QuickWheelSurface>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Copper" }));
+    expect(select).toHaveBeenCalledTimes(1);
+    expect(readWheelUsage()[wheelUsageId("Material", "Copper")]).toBe(1);
   });
   it("cancels an early release or leaving the highlight without selecting", () => {
     const select = vi.fn();
