@@ -10,6 +10,12 @@ import {
   type HTMLAttributes,
 } from "react";
 
+import {
+  quickWheelLayout,
+  fanChoiceAt,
+  type WheelBounds,
+} from "./quick-wheel-layout";
+
 type Choice = { label: string; select: () => void };
 type Choices = { title: string; options: Choice[] };
 type Registry = {
@@ -39,6 +45,7 @@ type Wheel = Choices & {
   startX: number;
   startY: number;
   radius: number;
+  bounds: WheelBounds;
   page: number;
   hovered: number | null;
   moved: boolean;
@@ -146,10 +153,19 @@ export function QuickWheelSurface({
       const choices = registry.current;
       if (!choices?.options.length) return;
       const bounds = element!.getBoundingClientRect();
-      const left = Math.max(8, bounds.left + 8),
-        right = Math.min(innerWidth - 8, bounds.right - 8);
-      const top = Math.max(8, bounds.top + 8),
-        bottom = Math.min(innerHeight - 8, bounds.bottom - 8);
+      const viewport = window.visualViewport;
+      const viewportLeft = viewport?.offsetLeft ?? 0;
+      const viewportTop = viewport?.offsetTop ?? 0;
+      const left = Math.max(viewportLeft + 12, bounds.left + 8),
+        right = Math.min(
+          viewportLeft + (viewport?.width ?? innerWidth) - 12,
+          bounds.right - 8,
+        );
+      const top = Math.max(viewportTop + 12, bounds.top + 8),
+        bottom = Math.min(
+          viewportTop + (viewport?.height ?? innerHeight) - 24,
+          bounds.bottom - 8,
+        );
       const radius = Math.min(170, (right - left) / 2, (bottom - top) / 2);
       if (radius < 95) return;
       event.preventDefault();
@@ -159,11 +175,12 @@ export function QuickWheelSurface({
       update({
         ...choices,
         pointerId: event.pointerId,
-        x: Math.max(left + radius, Math.min(right - radius, event.clientX)),
-        y: Math.max(top + radius, Math.min(bottom - radius, event.clientY)),
+        x: event.clientX,
+        y: event.clientY,
         startX: event.clientX,
         startY: event.clientY,
         radius,
+        bounds: { left, top, right, bottom },
         page: 0,
         hovered: null,
         moved: false,
@@ -180,13 +197,28 @@ export function QuickWheelSurface({
           event.clientX - current.startX,
           event.clientY - current.startY,
         ) > 12;
+      const layout = quickWheelLayout(
+        current.x,
+        current.y,
+        current.radius,
+        entriesFor(current).length,
+        current.bounds,
+      );
       const hovered = moved
-        ? wheelSector(
-            event.clientX - current.x,
-            event.clientY - current.y,
-            entriesFor(current).length,
-            current.radius,
-          )
+        ? layout.kind === "fan"
+          ? fanChoiceAt(
+              layout,
+              event.clientX,
+              event.clientY,
+              current.x,
+              current.y,
+            )
+          : wheelSector(
+              event.clientX - current.x,
+              event.clientY - current.y,
+              entriesFor(current).length,
+              current.radius,
+            )
         : null;
       if (hovered === current.hovered && moved === current.moved) return;
       clearTimer();
@@ -273,6 +305,8 @@ export function QuickWheelSurface({
     window.addEventListener("pointercancel", cancel);
     window.addEventListener("blur", cancel);
     window.addEventListener("resize", cancel);
+    window.visualViewport?.addEventListener("resize", cancel);
+    window.visualViewport?.addEventListener("scroll", cancel);
     window.addEventListener("keydown", key, true);
     document.addEventListener("visibilitychange", cancel);
     element.addEventListener("touchstart", touch, { passive: false });
@@ -289,6 +323,8 @@ export function QuickWheelSurface({
       window.removeEventListener("pointercancel", cancel);
       window.removeEventListener("blur", cancel);
       window.removeEventListener("resize", cancel);
+      window.visualViewport?.removeEventListener("resize", cancel);
+      window.visualViewport?.removeEventListener("scroll", cancel);
       window.removeEventListener("keydown", key, true);
       document.removeEventListener("visibilitychange", cancel);
       element.removeEventListener("touchstart", touch);
@@ -311,81 +347,153 @@ export function QuickWheelSurface({
 function WheelDisplay({ wheel }: { wheel: Wheel }) {
   const entries = entriesFor(wheel);
   const selected = wheel.hovered === null ? undefined : entries[wheel.hovered];
+  const layout = quickWheelLayout(
+    wheel.x,
+    wheel.y,
+    wheel.radius,
+    entries.length,
+    wheel.bounds,
+  );
   const point = (angle: number, radius: number) =>
     `${170 + Math.sin(angle) * radius},${170 - Math.cos(angle) * radius}`;
   return (
     <div
       className="pointer-events-none fixed inset-0 z-[100] bg-black/40 select-none"
       data-quick-wheel=""
+      data-layout={layout.kind}
+      data-origin-x={wheel.x}
+      data-origin-y={wheel.y}
       aria-label={`${wheel.title} quick wheel`}
       role="status"
     >
-      <div
-        className="absolute"
-        style={{
-          left: wheel.x - wheel.radius,
-          top: wheel.y - wheel.radius,
-          width: wheel.radius * 2,
-          height: wheel.radius * 2,
-        }}
-      >
-        <svg
-          viewBox="0 0 340 340"
-          className="h-full w-full drop-shadow-2xl"
-          aria-hidden="true"
+      {layout.kind === "fan" ? (
+        <>
+          <svg className="absolute inset-0 h-full w-full" aria-hidden="true">
+            {layout.choices.map((box, index) => (
+              <path
+                key={index}
+                d={`M ${wheel.x} ${wheel.y} L ${box.x} ${box.y + box.height / 2} L ${box.x + box.width} ${box.y + box.height / 2} Z`}
+                fill={wheel.hovered === index ? "#80acd033" : "#7382960c"}
+              />
+            ))}
+            <circle
+              cx={wheel.x}
+              cy={wheel.y}
+              r="14"
+              fill="#111923"
+              stroke="#8ab5df"
+              strokeWidth="2"
+            />
+            <circle cx={wheel.x} cy={wheel.y} r="3" fill="#8ab5df" />
+          </svg>
+          <div
+            className="absolute rounded-2xl border border-slate-500 bg-[#111923] shadow-2xl"
+            style={{
+              left: layout.panel.x,
+              top: layout.panel.y,
+              width: layout.panel.width,
+              height: layout.panel.height,
+            }}
+          >
+            <div className="px-3 pt-2 text-xs text-white">
+              <p className="truncate font-semibold">
+                {selected?.label ?? wheel.title}
+              </p>
+              <p className="text-[10px] text-slate-300">
+                Hold to select
+                {wheel.options.length > 8
+                  ? ` · ${wheel.page + 1} / ${Math.ceil(wheel.options.length / 6)}`
+                  : ""}
+              </p>
+            </div>
+          </div>
+          {layout.choices.map((box, index) => (
+            <div
+              data-wheel-choice={index}
+              key={`${wheel.page}-${index}`}
+              className="absolute flex items-center justify-center rounded-lg border border-slate-500 px-2 text-center text-xs leading-tight font-semibold text-white"
+              style={{
+                left: box.x,
+                top: box.y,
+                width: box.width,
+                height: box.height,
+                background: wheel.hovered === index ? "#426b93" : "#202c3a",
+              }}
+            >
+              <span className="line-clamp-3 break-words">
+                {entries[index]!.label}
+              </span>
+            </div>
+          ))}
+        </>
+      ) : (
+        <div
+          className="absolute"
+          style={{
+            left: wheel.x - wheel.radius,
+            top: wheel.y - wheel.radius,
+            width: wheel.radius * 2,
+            height: wheel.radius * 2,
+          }}
         >
-          <circle cx="170" cy="170" r="169" fill="#111923" stroke="#738296" />
-          {entries.map((entry, index) => {
-            const step = (Math.PI * 2) / entries.length;
-            const angle = index * step;
-            const start = angle - step / 2 + 0.025,
-              end = angle + step / 2 - 0.025;
-            return (
-              <g key={`${wheel.page}-${index}`}>
-                <path
-                  d={`M ${point(start, 64)} L ${point(start, 166)} A 166 166 0 ${end - start > Math.PI ? 1 : 0} 1 ${point(end, 166)} L ${point(end, 64)} A 64 64 0 ${end - start > Math.PI ? 1 : 0} 0 ${point(start, 64)} Z`}
-                  fill={index === wheel.hovered ? "#426b93" : "#202c3a"}
-                  stroke="#738296"
-                  strokeWidth=".6"
-                />
-                <foreignObject
-                  x={170 + Math.sin(angle) * 117 - 43}
-                  y={170 - Math.cos(angle) * 117 - 26}
-                  width="86"
-                  height="52"
-                >
-                  <div className="flex h-full items-center justify-center text-center text-[12px] leading-tight font-semibold text-white">
-                    <span className="line-clamp-3 break-words">
-                      {entry.page !== undefined
-                        ? entry.label === "More"
-                          ? "More →"
-                          : "← Previous"
-                        : entry.label}
-                    </span>
-                  </div>
-                </foreignObject>
-              </g>
-            );
-          })}
-        </svg>
-        <div className="absolute top-1/2 left-1/2 flex w-[34%] -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-1 text-center text-white">
-          <span className="line-clamp-4 text-xs leading-tight font-semibold">
-            {selected?.label ?? wheel.title}
-          </span>
-          <span className="text-[10px] leading-tight text-slate-300">
-            {selected
-              ? selected.page !== undefined
-                ? "Hold to browse"
-                : "Hold to select"
-              : "Slide to choose"}
-          </span>
-          {wheel.options.length > 8 && (
-            <span className="text-[10px] text-slate-400">
-              {wheel.page + 1} / {Math.ceil(wheel.options.length / 6)}
+          <svg
+            viewBox="0 0 340 340"
+            className="h-full w-full drop-shadow-2xl"
+            aria-hidden="true"
+          >
+            <circle cx="170" cy="170" r="169" fill="#111923" stroke="#738296" />
+            {entries.map((entry, index) => {
+              const step = (Math.PI * 2) / entries.length;
+              const angle = index * step;
+              const start = angle - step / 2 + 0.025,
+                end = angle + step / 2 - 0.025;
+              return (
+                <g key={`${wheel.page}-${index}`}>
+                  <path
+                    d={`M ${point(start, 64)} L ${point(start, 166)} A 166 166 0 ${end - start > Math.PI ? 1 : 0} 1 ${point(end, 166)} L ${point(end, 64)} A 64 64 0 ${end - start > Math.PI ? 1 : 0} 0 ${point(start, 64)} Z`}
+                    fill={index === wheel.hovered ? "#426b93" : "#202c3a"}
+                    stroke="#738296"
+                    strokeWidth=".6"
+                  />
+                  <foreignObject
+                    x={170 + Math.sin(angle) * 117 - 43}
+                    y={170 - Math.cos(angle) * 117 - 26}
+                    width="86"
+                    height="52"
+                  >
+                    <div className="flex h-full items-center justify-center text-center text-[12px] leading-tight font-semibold text-white">
+                      <span className="line-clamp-3 break-words">
+                        {entry.page !== undefined
+                          ? entry.label === "More"
+                            ? "More →"
+                            : "← Previous"
+                          : entry.label}
+                      </span>
+                    </div>
+                  </foreignObject>
+                </g>
+              );
+            })}
+          </svg>
+          <div className="absolute top-1/2 left-1/2 flex w-[34%] -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-1 text-center text-white">
+            <span className="line-clamp-4 text-xs leading-tight font-semibold">
+              {selected?.label ?? wheel.title}
             </span>
-          )}
+            <span className="text-[10px] leading-tight text-slate-300">
+              {selected
+                ? selected.page !== undefined
+                  ? "Hold to browse"
+                  : "Hold to select"
+                : "Slide to choose"}
+            </span>
+            {wheel.options.length > 8 && (
+              <span className="text-[10px] text-slate-400">
+                {wheel.page + 1} / {Math.ceil(wheel.options.length / 6)}
+              </span>
+            )}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

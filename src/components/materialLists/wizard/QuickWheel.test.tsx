@@ -93,17 +93,20 @@ describe("wizard quick wheel", () => {
     aim();
     dwell(1000);
     expect(select).toHaveBeenCalledTimes(1);
-    expect(wheel()?.firstElementChild).toHaveStyle({
-      left: "30px",
-      top: "10px",
-    });
-    aim(320, 180);
+    expect(wheel()).toHaveAttribute("data-origin-x", "200");
+    expect(wheel()).toHaveAttribute("data-origin-y", "180");
+    const choice = document.querySelector<HTMLElement>(
+      '[data-wheel-choice="1"]',
+    )!;
+    const x =
+      parseFloat(choice.style.left) + parseFloat(choice.style.width) / 2;
+    const y =
+      parseFloat(choice.style.top) + parseFloat(choice.style.height) / 2;
+    aim(x, y);
     dwell();
     expect(select).toHaveBeenCalledTimes(2);
-    expect(wheel()?.firstElementChild).toHaveStyle({
-      left: "150px",
-      top: "10px",
-    });
+    expect(wheel()).toHaveAttribute("data-origin-x", String(x));
+    expect(wheel()).toHaveAttribute("data-origin-y", String(y));
     fireEvent.pointerUp(window, pointer);
     expect(wheel()).not.toBeInTheDocument();
     expect(select).toHaveBeenCalledTimes(2);
@@ -121,10 +124,9 @@ describe("wizard quick wheel", () => {
     aim(215, 40);
     dwell(200);
     expect(select).toHaveBeenCalledTimes(1);
-    expect(wheel()?.firstElementChild).toHaveStyle({
-      left: "45px",
-      top: "-130px",
-    });
+    expect(wheel()).toHaveAttribute("data-layout", "fan");
+    expect(wheel()).toHaveAttribute("data-origin-x", "215");
+    expect(wheel()).toHaveAttribute("data-origin-y", "40");
     aim(215, 40);
     dwell(1000);
     expect(select).toHaveBeenCalledTimes(1);
@@ -181,11 +183,17 @@ describe("wizard quick wheel", () => {
     down();
     aim(115, 215);
     dwell(); // sector 7: More
-    expect(screen.getByText("2 / 3")).toBeInTheDocument();
+    expect(screen.getByText(/2 \/ 3/)).toBeInTheDocument();
     aim(115, 215);
     dwell(2000);
-    expect(screen.getByText("2 / 3")).toBeInTheDocument();
-    aim(115, 95);
+    expect(screen.getByText(/2 \/ 3/)).toBeInTheDocument();
+    const choice = document.querySelector<HTMLElement>(
+      '[data-wheel-choice="0"]',
+    )!;
+    aim(
+      parseFloat(choice.style.left) + parseFloat(choice.style.width) / 2,
+      parseFloat(choice.style.top) + parseFloat(choice.style.height) / 2,
+    );
     dwell();
     expect(select).toHaveBeenCalledWith(6);
     dwell(1000);
