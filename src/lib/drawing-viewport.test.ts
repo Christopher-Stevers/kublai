@@ -24,6 +24,27 @@ describe("drawing viewport geometry", () => {
     expect(patchCoversView(patch, fit, frame, view, 3)).toBe(true);
   });
 
+  it("keeps Retina iPad detail at native density in both orientations and deep zoom", () => {
+    for (const frame of [
+      { width: 1024, height: 1366 },
+      { width: 1366, height: 1024 },
+      { width: 1032, height: 1376 },
+      { width: 1376, height: 1032 },
+      { width: 834, height: 1194 },
+    ]) {
+      const fit = { width: frame.width, height: frame.width * 0.75 };
+      for (const scale of [1, 2, 5, 18.31, 24]) {
+        const view = { scale, x: 0, y: 0 };
+        const patch = planDrawingPatch(fit, frame, view, 2)!;
+        expect(patch.fullWidth / (fit.width * scale)).toBeGreaterThan(2.19);
+        expect(patch.fullHeight / (fit.height * scale)).toBeGreaterThan(2.19);
+        expect(patchScreenCoverage(patch, fit, frame, view)).toBeCloseTo(1);
+        expect(patch.pixelWidth * patch.pixelHeight).toBeLessThanOrEqual(MAX_DRAWING_PATCH_PIXELS);
+        expect(patchCoversView(patch, fit, frame, view, 2)).toBe(true);
+      }
+    }
+  });
+
   it("uses rotated-preview coordinates and excludes the empty letterbox", () => {
     expect(
       visibleDrawingRect(

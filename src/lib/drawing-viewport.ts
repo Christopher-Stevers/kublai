@@ -17,8 +17,10 @@ export type DrawingPatch = {
   fullWidth: number;
   fullHeight: number;
 };
-// Two buffers use at most32MiB of RGBA pixels, independent of sheet/zoom size.
-export const MAX_DRAWING_PATCH_PIXELS = 4 * 1024 * 1024;
+// Keep the phone allowance small, but allow Retina tablets to retain native
+// resolution. Two buffers remain bounded at 64 MiB, regardless of sheet/zoom.
+export const MAX_DRAWING_PATCH_PIXELS = 8 * 1024 * 1024;
+const BASE_DRAWING_PATCH_PIXELS = 4 * 1024 * 1024;
 export const MAX_DRAWING_PATCH_EDGE = 4096;
 
 function valid(fit: DrawingSize, frame: DrawingSize, view: DrawingView) {
@@ -85,6 +87,18 @@ export function planDrawingPatch(
     (Number.isFinite(dpr) ? Math.min(3, Math.max(1, dpr)) : 1) * 1.1;
   const fullWidth = fit.width * view.scale * density;
   const fullHeight = fit.height * view.scale * density;
+  // Size the allowance from visible pixels, not the full zoomed sheet. The
+  // old fixed 4 MP limit undersampled a 1032 x 1376 Retina iPad viewport.
+  const pixelBudget = Math.min(
+    MAX_DRAWING_PATCH_PIXELS,
+    Math.max(
+      BASE_DRAWING_PATCH_PIXELS,
+      Math.ceil(
+        (visible.right - visible.left) * fullWidth *
+        (visible.bottom - visible.top) * fullHeight * 1.15,
+      ),
+    ),
+  );
   // A guard band prevents ordinary drags from needing another PDF render.
   const marginX = (frame.width / (fit.width * view.scale)) * 0.25;
   const marginY = (frame.height / (fit.height * view.scale)) * 0.25;
@@ -105,7 +119,7 @@ export function planDrawingPatch(
     return (
       width <= MAX_DRAWING_PATCH_EDGE &&
       height <= MAX_DRAWING_PATCH_EDGE &&
-      width * height <= MAX_DRAWING_PATCH_PIXELS
+      width * height <= pixelBudget
     );
   };
   let guard = 1;
@@ -128,7 +142,7 @@ export function planDrawingPatch(
     1,
     MAX_DRAWING_PATCH_EDGE / requestedWidth,
     MAX_DRAWING_PATCH_EDGE / requestedHeight,
-    Math.sqrt(MAX_DRAWING_PATCH_PIXELS / (requestedWidth * requestedHeight)),
+    Math.sqrt(pixelBudget / (requestedWidth * requestedHeight)),
   );
   const pixelWidth = Math.max(1, Math.floor(requestedWidth * reduce));
   const pixelHeight = Math.max(1, Math.floor(requestedHeight * reduce));
