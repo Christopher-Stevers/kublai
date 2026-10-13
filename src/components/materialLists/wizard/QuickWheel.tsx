@@ -10,6 +10,7 @@ import {
   type HTMLAttributes,
 } from "react";
 
+import { cn } from "~/lib/utils";
 import {
   quickWheelLayout,
   curvedChoiceAt,
@@ -447,11 +448,30 @@ function WheelDisplay({ wheel }: { wheel: Wheel }) {
     entries.length,
     wheel.bounds,
   );
-  const point = (angle: number, radius: number) =>
-    `${170 + Math.sin(angle) * radius},${170 - Math.cos(angle) * radius}`;
+  const pages = Math.ceil(wheel.options.length / 6);
+  const hint = selected
+    ? selected.page !== undefined
+      ? "Hold to browse"
+      : "Hold to select"
+    : "Slide to choose";
+  const labelOf = (entry: Entry) =>
+    entry.page !== undefined
+      ? entry.label === "More"
+        ? "More →"
+        : "← Previous"
+      : entry.label;
+  const tileClass = (index: number, entry: Entry) =>
+    cn(
+      "quick-wheel-tile flex h-full w-full items-center justify-center rounded-full border p-1.5 text-center leading-tight font-semibold shadow-md transition-[scale,background-color,color,box-shadow] duration-150 ease-out",
+      wheel.hovered === index
+        ? "bg-primary text-primary-foreground border-primary ring-primary/25 scale-110 shadow-lg ring-4"
+        : entry.page !== undefined
+          ? "bg-card text-muted-foreground"
+          : "bg-card text-card-foreground",
+    );
   return (
     <div
-      className="pointer-events-none fixed inset-0 z-[100] bg-black/40 select-none"
+      className="pointer-events-none fixed inset-0 z-[100] select-none"
       data-quick-wheel=""
       data-layout={layout.kind}
       data-origin-x={wheel.x}
@@ -459,45 +479,125 @@ function WheelDisplay({ wheel }: { wheel: Wheel }) {
       aria-label={`${wheel.title} quick wheel`}
       role="status"
     >
+      <div className="quick-wheel-backdrop bg-background/75 absolute inset-0 backdrop-blur-md" />
+      <div
+        className="absolute text-center"
+        style={{
+          // Over the round wheel; across the screen for the edge layout.
+          left: layout.kind === "circle" ? wheel.x - 160 : 0,
+          width: layout.kind === "circle" ? 320 : "100%",
+          top:
+            layout.kind === "circle"
+              ? wheel.y - wheel.radius - 60 >= wheel.bounds.top
+                ? wheel.y - wheel.radius - 60
+                : wheel.y + wheel.radius + 8
+              : wheel.bounds.top + 4,
+        }}
+      >
+        <p className="text-foreground text-lg font-semibold">{wheel.title}</p>
+        <p className="text-muted-foreground mt-0.5 text-xs">
+          Slide to a choice and hold to pick it
+        </p>
+      </div>
       {layout.kind === "curved" ? (
-        <svg
-          className="absolute inset-0 h-full w-full drop-shadow-2xl"
-          aria-hidden="true"
-        >
-          {layout.choices.map((choice, index) => (
-            <g key={`${wheel.page}-${index}`}>
-              <path
-                d={choice.path}
-                fill={wheel.hovered === index ? "#426b93" : "#202c3a"}
-                stroke="#738296"
-                strokeWidth="1"
-              />
-              <foreignObject
-                data-wheel-choice={index}
-                x={choice.label.x - 27}
-                y={choice.label.y - 22}
-                width="54"
-                height="44"
+        (() => {
+          const points = layout.choices.map((choice) => choice.label);
+          const gap = points.length
+            ? Math.min(
+                ...points.map((point, index) => {
+                  const next = points[(index + 1) % points.length]!;
+                  return points.length > 1
+                    ? Math.hypot(next.x - point.x, next.y - point.y)
+                    : 200;
+                }),
+              )
+            : 200;
+          // Round choices sized to the spacing between them.
+          const width = Math.max(56, Math.min(78, gap - 8)),
+            height = width;
+          const hub = layout.deadZoneRadius;
+          const target =
+            wheel.hovered === null ? undefined : points[wheel.hovered];
+          return (
+            <>
+              <svg
+                className="absolute inset-0 h-full w-full"
+                aria-hidden="true"
               >
-                <div className="flex h-full items-center justify-center text-center text-[11px] leading-tight font-semibold text-white">
-                  <span className="line-clamp-3 break-words">
-                    {entries[index]!.label}
-                  </span>
-                </div>
-              </foreignObject>
-            </g>
-          ))}
-          <circle
-            data-wheel-dead-zone=""
-            cx={wheel.x}
-            cy={wheel.y}
-            r={layout.deadZoneRadius}
-            fill="#111923"
-            stroke="#738296"
-            strokeWidth="1"
-          />
-          <circle cx={wheel.x} cy={wheel.y} r="3" fill="#8ab5df" />
-        </svg>
+                <path
+                  d={smoothCurve(points)}
+                  fill="none"
+                  className="stroke-border"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                />
+                <circle
+                  data-wheel-dead-zone=""
+                  cx={wheel.x}
+                  cy={wheel.y}
+                  r={hub}
+                  className="fill-card stroke-border drop-shadow-lg"
+                  strokeWidth="1.5"
+                />
+                <circle
+                  cx={wheel.x}
+                  cy={wheel.y}
+                  r="4"
+                  className="fill-primary"
+                />
+                <HighlightArc
+                  cx={wheel.x}
+                  cy={wheel.y}
+                  radius={hub + 12}
+                  angle={
+                    target
+                      ? Math.atan2(target.x - wheel.x, wheel.y - target.y)
+                      : null
+                  }
+                />
+                {layout.choices.map((choice, index) => (
+                  <foreignObject
+                    key={`${wheel.page}-${index}`}
+                    data-wheel-choice={index}
+                    x={choice.label.x - width / 2}
+                    y={choice.label.y - height / 2}
+                    width={width}
+                    height={height}
+                    className="overflow-visible"
+                  >
+                    <div
+                      className={cn(
+                        tileClass(index, entries[index]!),
+                        "text-[11px]",
+                      )}
+                      style={{ animationDelay: `${index * 20}ms` }}
+                    >
+                      <span className="line-clamp-3 break-words">
+                        {labelOf(entries[index]!)}
+                      </span>
+                    </div>
+                  </foreignObject>
+                ))}
+              </svg>
+              <div
+                className="absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-0.5 text-center"
+                style={{ left: wheel.x, top: wheel.y - 22, width: hub * 1.5 }}
+              >
+                <span
+                  className={cn(
+                    "line-clamp-2 text-xs leading-tight font-semibold",
+                    selected ? "text-primary" : "text-foreground",
+                  )}
+                >
+                  {selected ? labelOf(selected) : wheel.title}
+                </span>
+                <span className="text-muted-foreground text-[10px] leading-tight">
+                  {hint}
+                </span>
+              </div>
+            </>
+          );
+        })()
       ) : (
         <div
           className="absolute"
@@ -508,64 +608,145 @@ function WheelDisplay({ wheel }: { wheel: Wheel }) {
             height: wheel.radius * 2,
           }}
         >
-          <svg
-            viewBox="0 0 340 340"
-            className="h-full w-full drop-shadow-2xl"
-            aria-hidden="true"
-          >
-            <circle cx="170" cy="170" r="169" fill="#111923" stroke="#738296" />
-            {entries.map((entry, index) => {
-              const step = (Math.PI * 2) / entries.length;
-              const angle = index * step;
-              const start = angle - step / 2 + 0.025,
-                end = angle + step / 2 - 0.025;
-              return (
-                <g key={`${wheel.page}-${index}`}>
-                  <path
-                    d={`M ${point(start, 64)} L ${point(start, 166)} A 166 166 0 ${end - start > Math.PI ? 1 : 0} 1 ${point(end, 166)} L ${point(end, 64)} A 64 64 0 ${end - start > Math.PI ? 1 : 0} 0 ${point(start, 64)} Z`}
-                    fill={index === wheel.hovered ? "#426b93" : "#202c3a"}
-                    stroke="#738296"
-                    strokeWidth=".6"
-                  />
-                  <foreignObject
-                    x={170 + Math.sin(angle) * 117 - 43}
-                    y={170 - Math.cos(angle) * 117 - 26}
-                    width="86"
-                    height="52"
-                  >
-                    <div className="flex h-full items-center justify-center text-center text-[12px] leading-tight font-semibold text-white">
-                      <span className="line-clamp-3 break-words">
-                        {entry.page !== undefined
-                          ? entry.label === "More"
-                            ? "More →"
-                            : "← Previous"
-                          : entry.label}
-                      </span>
-                    </div>
-                  </foreignObject>
-                </g>
-              );
-            })}
-          </svg>
-          <div className="absolute top-1/2 left-1/2 flex w-[34%] -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-1 text-center text-white">
-            <span className="line-clamp-4 text-xs leading-tight font-semibold">
-              {selected?.label ?? wheel.title}
+          {(() => {
+            // Tiles keep a readable size on screen whatever the wheel's scale.
+            const scale = wheel.radius / 170;
+            const step = (Math.PI * 2) / entries.length;
+            const chord =
+              entries.length > 1 ? 2 * 117 * Math.sin(step / 2) - 6 : 150;
+            const width = Math.max(54 / scale, Math.min(76 / scale, chord - 6)),
+              height = width;
+            return (
+              <svg
+                viewBox="0 0 340 340"
+                className="h-full w-full overflow-visible"
+                aria-hidden="true"
+              >
+                <circle
+                  cx="170"
+                  cy="170"
+                  r="117"
+                  fill="none"
+                  className="stroke-border"
+                  strokeWidth={2 / scale}
+                />
+                <circle
+                  cx="170"
+                  cy="170"
+                  r="56"
+                  className="fill-card stroke-border drop-shadow-lg"
+                  strokeWidth={1.5 / scale}
+                />
+                <HighlightArc
+                  cx={170}
+                  cy={170}
+                  radius={70}
+                  strokeWidth={6 / scale}
+                  angle={wheel.hovered === null ? null : wheel.hovered * step}
+                />
+                {entries.map((entry, index) => {
+                  const angle = index * step;
+                  const lift = wheel.hovered === index ? 6 / scale : 0;
+                  return (
+                    <foreignObject
+                      key={`${wheel.page}-${index}`}
+                      x={170 + Math.sin(angle) * (117 + lift) - width / 2}
+                      y={170 - Math.cos(angle) * (117 + lift) - height / 2}
+                      width={width}
+                      height={height}
+                      className="overflow-visible"
+                    >
+                      <div
+                        className={tileClass(index, entry)}
+                        style={{
+                          fontSize: 12 / scale,
+                          animationDelay: `${index * 20}ms`,
+                        }}
+                      >
+                        <span className="line-clamp-3 break-words">
+                          {labelOf(entry)}
+                        </span>
+                      </div>
+                    </foreignObject>
+                  );
+                })}
+              </svg>
+            );
+          })()}
+          <div className="absolute top-1/2 left-1/2 flex w-[28%] -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-0.5 text-center">
+            <span
+              className={cn(
+                "line-clamp-3 text-sm leading-tight font-semibold",
+                selected ? "text-primary" : "text-foreground",
+              )}
+            >
+              {selected ? labelOf(selected) : wheel.title}
             </span>
-            <span className="text-[10px] leading-tight text-slate-300">
-              {selected
-                ? selected.page !== undefined
-                  ? "Hold to browse"
-                  : "Hold to select"
-                : "Slide to choose"}
+            <span className="text-muted-foreground text-[10px] leading-tight">
+              {hint}
             </span>
             {wheel.options.length > 8 && (
-              <span className="text-[10px] text-slate-400">
-                {wheel.page + 1} / {Math.ceil(wheel.options.length / 6)}
+              <span className="text-muted-foreground/80 text-[10px] tabular-nums">
+                {wheel.page + 1} / {pages}
               </span>
             )}
           </div>
         </div>
       )}
     </div>
+  );
+}
+
+/** A smooth track through the tile centres (Catmull-Rom as cubic Béziers). */
+function smoothCurve(points: { x: number; y: number }[]) {
+  if (points.length < 2) return "";
+  let d = `M${points[0]!.x} ${points[0]!.y}`;
+  for (let index = 0; index < points.length - 1; index++) {
+    const p0 = points[index - 1] ?? points[index]!,
+      p1 = points[index]!,
+      p2 = points[index + 1]!,
+      p3 = points[index + 2] ?? p2;
+    d += `C${p1.x + (p2.x - p0.x) / 6} ${p1.y + (p2.y - p0.y) / 6} ${p2.x - (p3.x - p1.x) / 6} ${p2.y - (p3.y - p1.y) / 6} ${p2.x} ${p2.y}`;
+  }
+  return d;
+}
+
+/** A short arc just outside the hub that swings to point at the highlighted choice. */
+function HighlightArc({
+  cx,
+  cy,
+  radius,
+  angle,
+  strokeWidth = 6,
+}: {
+  cx: number;
+  cy: number;
+  radius: number;
+  /** Clockwise from straight up, in radians; null hides the arc. */
+  angle: number | null;
+  strokeWidth?: number;
+}) {
+  const span = 0.9;
+  const at = (a: number) =>
+    `${cx + Math.sin(a) * radius} ${cy - Math.cos(a) * radius}`;
+  return (
+    <g
+      className="text-primary"
+      style={{
+        transform: `rotate(${((angle ?? 0) * 180) / Math.PI}deg)`,
+        transformOrigin: `${cx}px ${cy}px`,
+        transition:
+          "transform 220ms cubic-bezier(0.22, 1.2, 0.36, 1), opacity 150ms",
+        opacity: angle === null ? 0 : 1,
+      }}
+    >
+      <path
+        d={`M${at(-span / 2)}A${radius} ${radius} 0 0 1 ${at(span / 2)}`}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={strokeWidth}
+        strokeLinecap="round"
+      />
+    </g>
   );
 }

@@ -27,6 +27,18 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Part wizard quick wheel: the backdrop fades in and tiles pop into place. */
+@keyframes quick-wheel-fade {
+  from { opacity: 0; }
+}
+@keyframes quick-wheel-tile {
+  from { opacity: 0; transform: scale(0.5); }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .quick-wheel-backdrop { animation: quick-wheel-fade 160ms ease-out backwards; }
+  .quick-wheel-tile { animation: quick-wheel-tile 300ms cubic-bezier(0.22, 1.25, 0.36, 1) backwards; }
+}
+
 /* Part photos are shot on white. In dark mode, dim them and soften the
    border: a narrow fade straddles the photo's edge, half inside and half
    outside it. In a .part-photo-frame the photo is drawn 3% larger on each

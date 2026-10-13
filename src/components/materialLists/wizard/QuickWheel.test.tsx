@@ -164,8 +164,12 @@ describe("wizard quick wheel", () => {
       "64",
     );
     const choice = document.querySelector('[data-wheel-choice="0"]')!;
-    const x = Number(choice.getAttribute("x")) + 27,
-      y = Number(choice.getAttribute("y")) + 22;
+    const x =
+        Number(choice.getAttribute("x")) +
+        Number(choice.getAttribute("width")) / 2,
+      y =
+        Number(choice.getAttribute("y")) +
+        Number(choice.getAttribute("height")) / 2;
     aim(x, y);
     dwell(300);
     const length = Math.hypot(x - 20, y - 300);
@@ -214,8 +218,10 @@ describe("wizard quick wheel", () => {
     const choose = () => {
       const choice = document.querySelector('[data-wheel-choice="0"]')!;
       aim(
-        Number(choice.getAttribute("x")) + 27,
-        Number(choice.getAttribute("y")) + 22,
+        Number(choice.getAttribute("x")) +
+          Number(choice.getAttribute("width")) / 2,
+        Number(choice.getAttribute("y")) +
+          Number(choice.getAttribute("height")) / 2,
       );
       dwell();
     };
