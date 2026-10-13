@@ -540,17 +540,9 @@ export function AddPartDialog({
     size: string | null;
     supplierPartId?: string;
   }) => {
-    // Custom parts should always have a supplier (required during creation)
-    if (part.supplierPartId) {
-      addToPendingList(
-        part.id,
-        {
-          ...part,
-          description: null,
-        },
-        part.supplierPartId,
-      );
-    }
+    // A newly created part must remain visible even without a supplier, or
+    // when the supplier lookup fails. Review can resolve the supplier later.
+    addToPendingList(part.id, { ...part, description: null }, part.supplierPartId);
     setCustomPartContext(null);
   };
 

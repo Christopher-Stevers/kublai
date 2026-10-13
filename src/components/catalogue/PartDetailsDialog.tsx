@@ -235,6 +235,9 @@ interface PartDetailsDialogProps {
     material: string | null;
     size: string | null;
     supplierPartId?: string;
+    piecesPerPack?: number | null;
+    bulkUnit?: string | null;
+    individualUnit?: string | null;
   }) => void;
 }
 
@@ -624,6 +627,9 @@ export function PartDetailsDialog({
       onPartCreated?.({
         id: newPart.id,
         displayName: newPart.displayName,
+        piecesPerPack: newPart.piecesPerPack,
+        bulkUnit: newPart.bulkUnit,
+        individualUnit: newPart.individualUnit,
         imageUrl: newPart.imageUrl,
         material: newPart.material,
         size:
@@ -1126,11 +1132,16 @@ export function PartDetailsDialog({
       return;
     }
 
-    createPart.mutate({
-      ...payload,
-      ...supplierPayload,
-    });
-    window.setTimeout(() => onOpenChange(false), 0);
+    try {
+      // Keep the form (and its pending-list callback) mounted until creation
+      // succeeds. Closing optimistically can hide a failed save.
+      await createPart.mutateAsync({ ...payload, ...supplierPayload });
+      requestCatalogueReplicachePull(0);
+      setIsSubmittingInBackground(false);
+      onOpenChange(false);
+    } catch {
+      // onError keeps the entered values visible with the failure message.
+    }
   };
 
   if (isEditMode && open && isLoadingPart) {

@@ -3,7 +3,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { PartDetailsDialog } from "./PartDetailsDialog";
 
-const editState = vi.hoisted(() => ({ part: undefined as Record<string, unknown> | undefined, save: vi.fn() }));
+const editState = vi.hoisted(() => ({ part: undefined as Record<string, unknown> | undefined, save: vi.fn(), create: vi.fn() }));
 const familyState = vi.hoisted(() => ({
   lastInput: undefined as { mode?: string } | undefined,
   data: undefined as
@@ -162,6 +162,7 @@ vi.mock("~/trpc/react", () => {
           getAvailableSizes: { invalidate: vi.fn() },
           searchParts: { invalidate: vi.fn() },
           getPart: { invalidate: vi.fn() },
+          getPartWizardSummary: { invalidate: vi.fn() },
         },
         supplier: {
           getSupplierPartsByPart: { fetch: vi.fn().mockResolvedValue([]) },
@@ -244,7 +245,16 @@ vi.mock("~/trpc/react", () => {
           useMutation: () => ({ isPending: false, mutate: vi.fn() }),
         },
         createPart: {
-          useMutation: () => ({ isPending: false, mutate: vi.fn() }),
+          useMutation: (opts: { onSuccess?: (part: any) => Promise<void>; onError?: (error: Error) => void }) => ({
+            isPending: false,
+            mutateAsync: async (input: unknown) => {
+              try {
+                const result = await editState.create(input);
+                await opts.onSuccess?.(result);
+                return result;
+              } catch (error) { opts.onError?.(error as Error); throw error; }
+            },
+          }),
         },
         updatePart: {
           useMutation: (opts: { onError?: (error: Error) => void }) => ({ isPending: false, mutate: vi.fn(), mutateAsync: async (input: unknown) => { try { return await editState.save(input); } catch (error) { opts.onError?.(error as Error); throw error; } } }),
@@ -468,6 +478,41 @@ describe("editing a part name", () => {
     render(<PartDetailsDialog mode="edit" open partId="part-existing" onOpenChange={close} />);
     fireEvent.click(screen.getByRole('button',{name:'Save'}));
     await waitFor(()=>expect(screen.getByText('Save failed')).toBeTruthy());
+    expect(close).not.toHaveBeenCalled();
+  });
+});
+
+
+describe("creating a part from a material list", () => {
+  beforeEach(() => {
+    editState.part = undefined;
+    editState.create.mockReset();
+    globalThis.__partDialogMockData = { catalogs:[{id:"catalog-existing",name:"Plumbing"}], materials:[], categories:[], units:[{id:"u-in",code:"in",displayName:"Inches",kind:"length"}] };
+  });
+  it("waits for creation and the pending-list handoff before closing", async () => {
+    let finish!: (part: unknown) => void;
+    editState.create.mockImplementation(() => new Promise(resolve => { finish = resolve; }));
+    const close = vi.fn();
+    const created = vi.fn();
+    render(<PartDetailsDialog mode="create" open initialContext={{catalogId:"catalog-existing"}} onOpenChange={close} onPartCreated={created} />);
+    fireEvent.change(screen.getByPlaceholderText("e.g., 90° Copper Elbow"), {target:{value:"Test valve"}});
+    fireEvent.click(screen.getByRole("button",{name:"Create"}));
+    await waitFor(() => expect(editState.create).toHaveBeenCalled());
+    expect(close).not.toHaveBeenCalled();
+    expect(created).not.toHaveBeenCalled();
+    finish({id:"new-valve",displayName:"Test valve",imageUrl:null,material:null,sizeLabel:null,sizeUnit:null,piecesPerPack:50,bulkUnit:"box",individualUnit:"pcs"});
+    await waitFor(() => expect(close).toHaveBeenCalledWith(false));
+    expect(created).toHaveBeenCalledWith(expect.objectContaining({id:"new-valve",piecesPerPack:50,bulkUnit:"box",individualUnit:"pcs"}));
+    expect(created.mock.invocationCallOrder[0]).toBeLessThan(close.mock.invocationCallOrder[0]!);
+  });
+  it("keeps the entered part and error visible when creation fails", async () => {
+    editState.create.mockRejectedValue(new Error("Could not save valve"));
+    const close = vi.fn();
+    render(<PartDetailsDialog mode="create" open initialContext={{catalogId:"catalog-existing"}} onOpenChange={close} />);
+    fireEvent.change(screen.getByPlaceholderText("e.g., 90° Copper Elbow"), {target:{value:"Test valve"}});
+    fireEvent.click(screen.getByRole("button",{name:"Create"}));
+    expect(await screen.findByText("Could not save valve")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("Test valve")).toBeInTheDocument();
     expect(close).not.toHaveBeenCalled();
   });
 });
