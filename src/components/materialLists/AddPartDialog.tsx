@@ -1,7 +1,6 @@
 "use client";
-import { IndividualQuantityPicker, individualUnitLabel } from "./wizard/IndividualQuantityPicker";
 import { PackQuantityControls } from "./PackQuantityControls";
-import { packContents, packsFromPieces } from "~/lib/pack-quantity";
+import { packContents, packsFromPieces, individualUnitLabel } from "~/lib/pack-quantity";
 
 import { purchaseLineTotal } from "~/lib/purchase-quantity";
 import { FinancialOnly } from "~/components/permissions/FinancialVisibility";
@@ -11,7 +10,7 @@ import { useMaterialListSortPreference } from "~/hooks/use-material-list-sort";
 import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
-import { AlertCircle, Plus, Minus, ChevronDown, ChevronUp, Search, XIcon, ArrowLeftIcon, PlusIcon } from "lucide-react";
+import { AlertCircle, Plus, Minus, ChevronDown, ChevronUp, Search, XIcon, ArrowLeftIcon, PlusIcon, ArrowLeftRight } from "lucide-react";
 import { CreateCustomPartDialog } from "./CreateCustomPartDialog";
 import { WizardHeader } from "./WizardHeader";
 import { EditPartDialog } from "~/components/catalogue/EditPartDialog";
@@ -71,6 +70,8 @@ export function AddPartDialog({
     partId: string;
     partName: string;
     mode?: "individual";
+    pointerY?: number;
+    inputType?: string;
     quantity: number;
   } | null>(null);
   const stageBeforeReviewRef = useRef<WizardStage>("catalog");
@@ -392,12 +393,13 @@ export function AddPartDialog({
   };
 
   useEffect(() => {
-    if (!quantityPickerPreview || quantityPickerPreview.mode === "individual") {
+    if (!quantityPickerPreview) {
       pickerTouchYRef.current = null;
       pickerTouchAccumulatorRef.current = 0;
       return;
     }
 
+    if (pickerTouchYRef.current === null && quantityPickerPreview.pointerY !== undefined) pickerTouchYRef.current = quantityPickerPreview.pointerY;
     const clampQuantity = (quantity: number) => Math.max(0, quantity);
 
     const handleTouchMove = (event: TouchEvent) => {
@@ -438,7 +440,7 @@ export function AddPartDialog({
 
         return {
           ...prev,
-          quantity: packContents(filteredPartsForSelection.find(part => part.id === prev.partId)?.piecesPerPack) > 1 ? Math.max(-1, prev.quantity + stepDelta) : clampQuantity(prev.quantity + stepDelta),
+          quantity: prev.mode !== "individual" && packContents(filteredPartsForSelection.find(part => part.id === prev.partId)?.piecesPerPack) > 1 ? Math.max(-1, prev.quantity + stepDelta) : clampQuantity(prev.quantity + stepDelta),
         };
       });
     };
@@ -451,13 +453,7 @@ export function AddPartDialog({
       );
 
       if (matchingPart) {
-        if (quantityPickerPreview.quantity === -1 && packContents(matchingPart.piecesPerPack) > 1) {
-          pickerTouchYRef.current = null;
-          pickerTouchAccumulatorRef.current = 0;
-          setQuantityPickerPreview({...quantityPickerPreview, quantity: 1, mode: "individual"});
-          return;
-        }
-        handlePartQuantitySet(matchingPart, quantityPickerPreview.quantity);
+        if (quantityPickerPreview.quantity >= 0) handlePartQuantitySet(matchingPart, quantityPickerPreview.mode === "individual" ? packsFromPieces(quantityPickerPreview.quantity, matchingPart.piecesPerPack) : quantityPickerPreview.quantity);
       }
 
       pickerTouchYRef.current = null;
@@ -476,6 +472,15 @@ export function AddPartDialog({
       window.removeEventListener("touchcancel", handleTouchCancel);
     };
   }, [filteredPartsForSelection, quantityPickerPreview]);
+
+  useEffect(() => {
+    if (quantityPickerPreview?.inputType !== "touch" || quantityPickerPreview.quantity !== -1 || quantityPickerPreview.mode === "individual") return;
+    const timer = setTimeout(() => {
+      pickerTouchAccumulatorRef.current = 0;
+      setQuantityPickerPreview(prev => prev?.quantity === -1 ? {...prev, quantity:1, mode:"individual"} : prev);
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [quantityPickerPreview?.partId, quantityPickerPreview?.quantity, quantityPickerPreview?.mode, quantityPickerPreview?.inputType]);
 
   const addToPendingList = (
     partId: string,
@@ -1530,28 +1535,18 @@ export function AddPartDialog({
             </div>
           </div>
 
-          {quantityPickerPreview?.mode === "individual" ? (
-            <IndividualQuantityPicker
-              partName={quantityPickerPreview.partName}
-              unit={filteredPartsForSelection.find(part => part.id === quantityPickerPreview.partId)?.individualUnit}
-              onCancel={() => setQuantityPickerPreview(null)}
-              onSelect={value => {
-                const part = filteredPartsForSelection.find(part => part.id === quantityPickerPreview.partId);
-                if (part) handlePartQuantitySet(part, packsFromPieces(value, part.piecesPerPack));
-                setQuantityPickerPreview(null);
-              }}
-            />
-          ) : quantityPickerPreview && (
+          {quantityPickerPreview && (
             <VerticalPickerOverlay<number>
               className="absolute"
-              title={packContents(filteredPartsForSelection.find(part => part.id === quantityPickerPreview.partId)?.piecesPerPack) > 1 ? "Scroll above 0 to choose individual units" : "Quantity"}
+              title={quantityPickerPreview.mode === "individual" ? `Per ${individualUnitLabel(pickerPart?.individualUnit)}` : pickerContents > 1 ? "Hold the switch for 1 second for individual units" : "Quantity"}
               subtitle={quantityPickerPreview.partName}
               description={pickerContents > 1 ? `${pickerContents.toLocaleString("en-CA")} ${pickerPart?.individualUnit || "pcs"} per ${bulkUnit}` : undefined}
               centerIndex={quantityPickerPreview.quantity}
               getItemFontSize={value => value === -1 ? "2rem" : undefined}
-              getItem={(value) => (value < (packContents(filteredPartsForSelection.find(part => part.id === quantityPickerPreview.partId)?.piecesPerPack) > 1 ? -1 : 0) ? null : value)}
+              getItem={(value) => (value < (quantityPickerPreview.mode !== "individual" && pickerContents > 1 ? -1 : 0) ? null : value)}
               renderItem={(value) => {
-                if (value === -1) return `Per ${individualUnitLabel(pickerPart?.individualUnit)}`;
+                if (value === -1) return <ArrowLeftRight className="h-12 w-12" aria-label={`Switch to ${individualUnitLabel(pickerPart?.individualUnit)}`} />;
+                if (quantityPickerPreview.mode === "individual") return `${value.toLocaleString("en-CA")} ${pickerPart?.individualUnit || "pcs"}`;
                 return pickerContents > 1 ? `${value.toLocaleString("en-CA")} ${value === 1 ? bulkUnit : bulkPlural}` : value.toLocaleString("en-CA");
               }}
             />

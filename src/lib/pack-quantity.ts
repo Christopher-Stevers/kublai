@@ -37,3 +37,8 @@ export function pickerIndex(packs: number, contents?: number | null): number {
     ? -pieceCount(packs, contents)
     : packs;
 }
+
+export function individualUnitLabel(unit?: string | null) {
+  const value = unit?.trim().toLowerCase();
+  return ({ pcs: "piece", pieces: "piece", feet: "foot", inches: "inch" } as Record<string, string>)[value ?? ""] ?? (value || "piece");
+}

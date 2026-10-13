@@ -1,4 +1,4 @@
-import { packContents, formatPackQuantity } from "~/lib/pack-quantity";
+import { packContents, packsFromPieces, formatPackQuantity } from "~/lib/pack-quantity";
 import { PackQuantityControls } from "../PackQuantityControls";
 import {
   useState,
@@ -71,6 +71,8 @@ interface PartCardProps {
       partId: string;
       partName: string;
       mode?: "individual";
+      pointerY?: number;
+      inputType?: string;
       quantity: number;
     } | null,
   ) => void;
@@ -97,6 +99,10 @@ function PartCard({
   const dragQuantityRef = useRef(Math.max(pendingQuantity, 1));
   const activePointerIdRef = useRef<number | null>(null);
   const activePointerTypeRef = useRef<string | null>(null);
+  const dwellTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const individualModeRef = useRef(false);
+  const latestYRef = useRef(0);
+  const clearDwell = () => { if (dwellTimerRef.current) clearTimeout(dwellTimerRef.current); dwellTimerRef.current = null; };
   const pointerElementRef = useRef<HTMLDivElement | null>(null);
 
   const clearLongPressTimer = () => {
@@ -106,7 +112,7 @@ function PartCard({
     }
   };
 
-  const clampQuantity = (quantity: number) => Math.max(packContents(part.piecesPerPack) > 1 ? -1 : 0, quantity);
+  const clampQuantity = (quantity: number) => Math.max(!individualModeRef.current && packContents(part.piecesPerPack) > 1 ? -1 : 0, quantity);
 
   const clearPickerPreview = () => {
     onQuantityPickerPreviewChange?.(null);
@@ -116,6 +122,8 @@ function PartCard({
     if (!longPressTriggeredRef.current || pointerStartYRef.current === null)
       return;
 
+    if (activePointerTypeRef.current === "touch") return;
+    latestYRef.current = clientY;
     const deltaY = clientY - pointerStartYRef.current;
     const steps = Math.round(deltaY / 18);
     const nextQuantity = clampQuantity(baseQuantityRef.current + steps);
@@ -124,7 +132,18 @@ function PartCard({
       partId: part.id,
       partName: part.displayName,
       quantity: nextQuantity,
+      mode: individualModeRef.current ? "individual" : undefined,
     });
+    if (nextQuantity === -1 && !individualModeRef.current) {
+      if (!dwellTimerRef.current) dwellTimerRef.current = setTimeout(() => {
+        dwellTimerRef.current = null;
+        individualModeRef.current = true;
+        pointerStartYRef.current = latestYRef.current;
+        baseQuantityRef.current = 1;
+        dragQuantityRef.current = 1;
+        onQuantityPickerPreviewChange?.({partId:part.id, partName:part.displayName, quantity:1, mode:"individual"});
+      }, 1000);
+    } else clearDwell();
   };
 
   const teardownWindowListeners = () => {
@@ -134,12 +153,9 @@ function PartCard({
   };
 
   const finishLongPressSelection = () => {
-    if (dragQuantityRef.current === -1 && packContents(part.piecesPerPack) > 1) {
-      onQuantityPickerPreviewChange?.({partId: part.id, partName: part.displayName, quantity: 1, mode: "individual"});
-    } else {
-      onPartQuantitySet?.(part, dragQuantityRef.current);
-      clearPickerPreview();
-    }
+    clearDwell();
+    if (dragQuantityRef.current >= 0) onPartQuantitySet?.(part, individualModeRef.current ? packsFromPieces(dragQuantityRef.current, part.piecesPerPack) : dragQuantityRef.current);
+    clearPickerPreview();
     longPressTriggeredRef.current = false;
     pointerStartYRef.current = null;
     activePointerIdRef.current = null;
@@ -149,6 +165,7 @@ function PartCard({
   };
 
   const cancelLongPressSelection = () => {
+    clearDwell();
     clearPickerPreview();
     longPressTriggeredRef.current = false;
     pointerStartYRef.current = null;
@@ -207,6 +224,8 @@ function PartCard({
       return;
     }
 
+    clearDwell();
+    individualModeRef.current = false;
     longPressTriggeredRef.current = false;
     activePointerIdRef.current = event.pointerId;
     activePointerTypeRef.current = event.pointerType;
@@ -233,6 +252,8 @@ function PartCard({
         partId: part.id,
         partName: part.displayName,
         quantity: baseQuantityRef.current,
+        pointerY: pointerStartYRef.current ?? undefined,
+        inputType: activePointerTypeRef.current ?? undefined,
       });
       window.addEventListener("pointermove", handleWindowPointerMove, {
         passive: false,
@@ -294,6 +315,7 @@ function PartCard({
   useEffect(() => {
     return () => {
       clearLongPressTimer();
+      clearDwell();
       teardownWindowListeners();
     };
   }, []);
@@ -552,6 +574,8 @@ export interface PartStageProps {
       partId: string;
       partName: string;
       mode?: "individual";
+      pointerY?: number;
+      inputType?: string;
       quantity: number;
     } | null,
   ) => void;
