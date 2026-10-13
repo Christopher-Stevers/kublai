@@ -26,6 +26,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "~/components/ui/dialog";
+import { QuickWheelSurface } from "~/components/materialLists/wizard/QuickWheel";
 import { CatalogStage } from "~/components/materialLists/wizard/CatalogStage";
 import { MaterialStage } from "~/components/materialLists/wizard/MaterialStage";
 import { SizeStage } from "~/components/materialLists/wizard/SizeStage";
@@ -444,7 +445,7 @@ export function CatalogueScreen({
         </div>
       </div>
 
-      <div
+      <QuickWheelSurface enabled={!editingPartId}
         className={`@container mx-auto min-h-0 w-full max-w-6xl flex-1 space-y-2 overflow-y-auto overscroll-contain px-2 pt-2 pb-3 sm:space-y-4 sm:px-4 sm:pt-4 sm:pb-4 md:px-6 ${centerOptionCards ? "flex flex-col [&_.wizard-option-grid]:my-auto [&>*:last-child]:flex [&>*:last-child]:flex-1 [&>*:last-child]:flex-col" : ""}`}
       >
         {isWizardSearchActive ? (
@@ -552,7 +553,7 @@ export function CatalogueScreen({
               actionLabel="Edit"
             />
           )}
-      </div>
+      </QuickWheelSurface>
 
       <input
         ref={fileInputRef}

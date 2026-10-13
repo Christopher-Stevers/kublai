@@ -1,5 +1,6 @@
 "use client";
 
+import { useQuickWheelOptions } from "./QuickWheel";
 import { useState } from "react";
 import { ChevronRight } from "lucide-react";
 import { useClientPagination } from "~/components/ui/list-pagination";
@@ -57,6 +58,10 @@ export function MaterialStage({
     setBrowsingPath(next);
     pagination.setPage(1);
   }
+  useQuickWheelOptions(path.length ? `Select ${path.at(-1)} type` : "Select Material", [
+    ...(path.length ? [{ label: "Back", select: () => browse(path.slice(0, -1)) }] : [{ label: "All", select: () => onMaterialSelect(null) }]),
+    ...entries.map(entry => ({ label: entry.name, select: () => entry.kind === "group" ? browse(entry.path) : onMaterialSelect(entry.material.id) })),
+  ]);
   return (
     <div className="space-y-3 sm:space-y-4">
       <h3 className="text-base font-semibold sm:text-lg">

@@ -1,5 +1,6 @@
 "use client";
 
+import { useQuickWheelOptions } from "./QuickWheel";
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { formatSize, formatSizeDimensions } from "~/lib/size-utils";
 import { Card, CardContent } from "~/components/ui/card";
@@ -271,6 +272,13 @@ export function SizeStage({
   isOnline = true,
 }: SizeStageProps) {
   const pagination = useClientPagination(availableSizes ?? []);
+  useQuickWheelOptions("Select Size", [
+    { label: "All", select: () => onSizeSelect(null) },
+    ...(availableSizes ?? []).flatMap(size => [
+      { label: formatSize(size.nominal, size.unit), select: () => onSizeSelect(size) },
+      ...(size.subSizes ?? []).map(sub => ({ label: formatSizeDimensions(sub.label, size.unit), select: () => onSizeSelect({ nominal: size.nominal, unit: size.unit, sizeLabel: sub.label }) })),
+    ]),
+  ]);
   const [subSizePreview, setSubSizePreview] = useState<SubSizePreview | null>(null);
   const subSizePreviewRef = useRef<SubSizePreview | null>(null);
   const pickerTouchYRef = useRef<number | null>(null);

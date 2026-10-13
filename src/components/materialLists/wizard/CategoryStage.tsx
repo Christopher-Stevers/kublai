@@ -1,5 +1,6 @@
 "use client";
 
+import { useQuickWheelOptions } from "./QuickWheel";
 import { useClientPagination } from "~/components/ui/list-pagination";
 import {
   WIZARD_OPTION_LABEL_CLASS,
@@ -42,6 +43,10 @@ export function CategoryStage({
   isOnline = true,
 }: CategoryStageProps) {
   const pagination = useClientPagination(categories);
+  useQuickWheelOptions("Select Category", [
+    { label: "All", select: () => onCategorySelect({ categoryId: null, name: "All Categories" }) },
+    ...categories.map(category => ({ label: category.name, select: () => onCategorySelect(category) })),
+  ]);
   void showCustomCategoryInput;
   void onShowCustomCategoryInput;
   void customCategoryName;

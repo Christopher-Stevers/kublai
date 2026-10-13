@@ -1,5 +1,6 @@
 "use client";
 
+import { useQuickWheelOptions } from "./QuickWheel";
 import { useClientPagination } from "~/components/ui/list-pagination";
 import {
   WIZARD_OPTION_LABEL_CLASS,
@@ -42,6 +43,11 @@ export function CatalogStage({
   onPrefabsSelect,
 }: CatalogStageProps) {
   const pagination = useClientPagination(catalogs);
+  useQuickWheelOptions("Select Catalog", [
+    { label: "All", select: () => onCatalogSelect(null) },
+    ...(onPrefabsSelect ? [{ label: "Prefabs", select: onPrefabsSelect }] : []),
+    ...catalogs.map(catalog => ({ label: catalog.name, select: () => onCatalogSelect(catalog.id) })),
+  ]);
   void showCustomCatalogInput;
   void onShowCustomCatalogInput;
   void customCatalogName;

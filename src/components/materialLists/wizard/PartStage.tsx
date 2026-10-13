@@ -1,3 +1,4 @@
+import { useQuickWheelOptions } from "./QuickWheel";
 import { packContents, packsFromPieces, formatPackQuantity } from "~/lib/pack-quantity";
 import { PackQuantityControls } from "../PackQuantityControls";
 import {
@@ -608,6 +609,10 @@ export function PartStage({
   const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
   const pagination = useClientPagination(partsForSelection);
   const visibleParts = pagination.paginatedItems;
+  useQuickWheelOptions(actionMode === "edit" ? "Edit Part" : "Add Part", partsForSelection.map(part => ({
+    label: part.displayName,
+    select: () => actionMode === "edit" ? onEditPart(part.id) : onPartSelect(part),
+  })));
 
   const getPendingPartState = (partId: string) => {
     const pendingPart = pendingParts.find((part) => part.partId === partId);
