@@ -1102,7 +1102,7 @@ export function AddPartDialog({
 
   const pickerPart = filteredPartsForSelection.find(part => part.id === quantityPickerPreview?.partId);
   const bulkUnit = pickerPart?.bulkUnit || "pack";
-  const bulkPlural = ({box: "boxes", pack: "packs", roll: "rolls", length: "lengths"} as Record<string, string>)[bulkUnit] || bulkUnit;
+  const bulkPlural = ({box: "boxes", pack: "packs", roll: "rolls", coil: "coils", length: "lengths"} as Record<string, string>)[bulkUnit] || bulkUnit;
   const pickerContents = packContents(pickerPart?.piecesPerPack);
 
   return (
