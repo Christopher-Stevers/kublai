@@ -55,14 +55,14 @@ export function PackQuantityControls({quantity, piecesPerPack, bulkUnit, individ
     </div>
     <div className="flex min-w-0 items-center gap-1">
       <Button type="button" variant="outline" className="h-9 w-8 shrink-0 p-0" disabled={disabled} aria-label="Decrease quantity" onClick={()=>step(-1)}><MinusIcon className="h-4 w-4" /></Button>
-      <div className="border-input flex h-9 min-w-0 flex-1 items-center rounded-md border">
+      <div className="flex h-9 min-w-0 flex-1 items-center">
         <Input aria-label={`Quantity in ${bulkUnit || "packs"}`} type="text" inputMode="numeric" disabled={disabled}
           value={bulkDraft ?? `${ordered} ${ordered === 1 ? bulkLabel : plural}`}
           onFocus={event=>{setBulkDraft(String(ordered)); const input=event.currentTarget; requestAnimationFrame(()=>input.select());}}
           onChange={event=>{setBulkDraft(event.target.value); if(event.target.value.trim()) save(Number(event.target.value), false);}}
           onBlur={()=>setBulkDraft(null)}
           onKeyDown={event=>{if(event.key === "Enter") event.currentTarget.blur(); if(event.key === "ArrowDown") {event.preventDefault(); step(-1);}}}
-          className="h-9 min-w-0 flex-1 border-0 px-1 text-center text-sm shadow-none" />
+          className="h-9 min-w-0 flex-1 px-1 text-center text-sm shadow-none" />
       </div>
       <Button type="button" variant="outline" className="h-9 w-8 shrink-0 p-0" disabled={disabled} aria-label="Increase quantity" onClick={()=>step(1)}><PlusIcon className="h-4 w-4" /></Button>
     </div>
