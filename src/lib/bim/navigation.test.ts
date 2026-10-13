@@ -17,7 +17,7 @@ describe("model keyboard navigation", () => {
     expect(move("forward").clone().add(move("backward")).length()).toBeCloseTo(
       0,
     );
-    expect(move("forward").length()).toBeCloseTo(0.1);
+    expect(move("forward").length()).toBeCloseTo(0.668);
   });
   it("strafes perpendicular to the view and reverses with A", () => {
     expect(move("right").dot(move("forward"))).toBeCloseTo(0);
@@ -30,14 +30,14 @@ describe("model keyboard navigation", () => {
     );
     expect(move("forward", "backward", "left", "right").length()).toBe(0);
     expect(move("boost").length()).toBe(0);
-    expect(move("forward", "boost").length()).toBeCloseTo(0.32);
+    expect(move("forward", "boost").length()).toBeCloseTo(2.1376);
   });
   it("keeps strafing available when looking straight up", () => {
     const vertical = new Quaternion().setFromEuler(
       new Euler(Math.PI / 2, 0, 0),
     );
     expect(navigationDelta(vertical, new Set(["right"]), 0.04).x).toBeCloseTo(
-      0.1,
+      0.668,
     );
   });
   it("supports horizontal travel and explicit elevation independently of pitch", () => {
@@ -64,7 +64,7 @@ describe("model keyboard navigation", () => {
       new Set(["forward", "boost", "slow"]),
       1,
     );
-    expect(delta.length()).toBeCloseTo(0.05 * 2.5 * 0.25);
+    expect(delta.length()).toBeCloseTo(0.20875);
     expect(
       navigationDelta(orientation, new Set(["forward"]), -1).length(),
     ).toBe(0);

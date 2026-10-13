@@ -54,10 +54,10 @@ export type ThumbAction = keyof typeof thumbActions;
 export type ThumbSide = "left" | "right";
 const defaultTouch = {
   display: "auto" as const,
-  left: "look" as ThumbAction,
-  right: "fly" as ThumbAction,
-  sensitivity: 1,
-  size: 112,
+  left: "move" as ThumbAction,
+  right: "look" as ThumbAction,
+  sensitivity: 0.4,
+  size: 136,
   invertY: false,
   showJoysticks: true,
 };
@@ -129,7 +129,7 @@ export const DEFAULT_NAVIGATION: NavigationSettings = {
     shiftRight: "look",
   },
   movement: "fly",
-  moveSpeed: 2.5,
+  moveSpeed: 16.7,
   boostMultiplier: 3.2,
   slowMultiplier: 0.25,
   lookSensitivity: 1,
