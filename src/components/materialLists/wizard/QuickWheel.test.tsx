@@ -93,13 +93,43 @@ describe("wizard quick wheel", () => {
     aim();
     dwell(1000);
     expect(select).toHaveBeenCalledTimes(1);
-    aim(200, 300);
-    aim();
+    expect(wheel()?.firstElementChild).toHaveStyle({
+      left: "30px",
+      top: "10px",
+    });
+    aim(320, 180);
     dwell();
     expect(select).toHaveBeenCalledTimes(2);
+    expect(wheel()?.firstElementChild).toHaveStyle({
+      left: "150px",
+      top: "10px",
+    });
     fireEvent.pointerUp(window, pointer);
     expect(wheel()).not.toBeInTheDocument();
     expect(select).toHaveBeenCalledTimes(2);
+  });
+  it("recenters at the latest position within a highlighted sector, including near edges", () => {
+    const select = vi.fn();
+    render(
+      <QuickWheelSurface>
+        <Stage select={select} />
+      </QuickWheelSurface>,
+    );
+    down();
+    aim();
+    dwell(300);
+    aim(215, 40);
+    dwell(200);
+    expect(select).toHaveBeenCalledTimes(1);
+    expect(wheel()?.firstElementChild).toHaveStyle({
+      left: "45px",
+      top: "-130px",
+    });
+    aim(215, 40);
+    dwell(1000);
+    expect(select).toHaveBeenCalledTimes(1);
+    fireEvent.pointerUp(window, pointer);
+    expect(wheel()).toBeNull();
   });
   it("cancels an early release or leaving the highlight without selecting", () => {
     const select = vi.fn();
@@ -155,8 +185,7 @@ describe("wizard quick wheel", () => {
     aim(115, 215);
     dwell(2000);
     expect(screen.getByText("2 / 3")).toBeInTheDocument();
-    aim(200, 300);
-    aim();
+    aim(115, 95);
     dwell();
     expect(select).toHaveBeenCalledWith(6);
     dwell(1000);

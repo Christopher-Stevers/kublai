@@ -88,6 +88,7 @@ export function QuickWheelSurface({
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pageLatch = useRef<number | null>(null);
   const suppressClick = useRef(false);
+  const pointerPosition = useRef({ x: 0, y: 0 });
   const update = (value: Wheel | null) => {
     active.current = value;
     setWheel(value);
@@ -153,6 +154,7 @@ export function QuickWheelSurface({
       if (radius < 95) return;
       event.preventDefault();
       suppressClick.current = true;
+      pointerPosition.current = { x: event.clientX, y: event.clientY };
       pageLatch.current = null;
       update({
         ...choices,
@@ -171,6 +173,7 @@ export function QuickWheelSurface({
       const current = active.current;
       if (!current || event.pointerId !== current.pointerId) return;
       event.preventDefault();
+      pointerPosition.current = { x: event.clientX, y: event.clientY };
       const moved =
         current.moved ||
         Math.hypot(
@@ -202,10 +205,21 @@ export function QuickWheelSurface({
             current.title !== next.title
           )
             return;
-          pageLatch.current = hovered;
-          if (entry.page !== undefined)
-            update({ ...current, page: entry.page, hovered: null });
-          else {
+          // Start the next choice directly under the finger, even when it
+          // moved within the same sector during the dwell timer.
+          const { x, y } = pointerPosition.current;
+          pageLatch.current = null;
+          update({
+            ...current,
+            x,
+            y,
+            startX: x,
+            startY: y,
+            page: entry.page ?? current.page,
+            hovered: null,
+            moved: false,
+          });
+          if (entry.page === undefined) {
             // Use the latest callbacks after query or pending-quantity changes.
             const index =
               current.options.length <= 8
