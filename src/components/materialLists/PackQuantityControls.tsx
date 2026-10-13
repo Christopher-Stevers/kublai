@@ -48,7 +48,7 @@ export function PackQuantityControls({quantity, piecesPerPack, bulkUnit, individ
           onChange={event=>{setIndividualDraft(event.target.value); if(event.target.value.trim()) save(Number(event.target.value), true);}}
           onBlur={finishIndividualEdit}
           onKeyDown={event=>{if(event.key === "Enter" || event.key === "Escape") {event.preventDefault(); event.currentTarget.blur();}}}
-          className="h-6 w-16 px-1 text-center text-xs" />
+          className="h-6 w-16 px-1 text-center text-xs md:text-xs" />
         <span>{individualLabel}</span>
       </> : <button type="button" disabled={disabled} className="text-right tabular-nums" aria-label={`Edit ${individualLabel}: ${pieceCount(quantity, contents)}`} onClick={()=>setEditingIndividuals(true)}>{pieceCount(quantity, contents)} {individualLabel}</button>}
       </div>
@@ -62,7 +62,7 @@ export function PackQuantityControls({quantity, piecesPerPack, bulkUnit, individ
           onChange={event=>{setBulkDraft(event.target.value); if(event.target.value.trim()) save(Number(event.target.value), false);}}
           onBlur={()=>setBulkDraft(null)}
           onKeyDown={event=>{if(event.key === "Enter") event.currentTarget.blur(); if(event.key === "ArrowDown") {event.preventDefault(); step(-1);}}}
-          className="h-9 min-w-0 flex-1 border-0 px-1 text-center shadow-none" />
+          className="h-9 min-w-0 flex-1 border-0 px-1 text-center text-sm shadow-none" />
       </div>
       <Button type="button" variant="outline" className="h-9 w-8 shrink-0 p-0" disabled={disabled} aria-label="Increase quantity" onClick={()=>step(1)}><PlusIcon className="h-4 w-4" /></Button>
     </div>
