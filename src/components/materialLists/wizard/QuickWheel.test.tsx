@@ -92,6 +92,34 @@ afterEach(() => {
 });
 
 describe("wizard quick wheel", () => {
+  it("keeps the frosted backdrop below the wizard header", () => {
+    vi.mocked(HTMLElement.prototype.getBoundingClientRect).mockReturnValue({
+      x: 0,
+      y: 120,
+      left: 0,
+      top: 120,
+      right: 400,
+      bottom: 700,
+      width: 400,
+      height: 580,
+      toJSON() {},
+    });
+    render(
+      <QuickWheelSurface>
+        <Stage select={vi.fn()} />
+      </QuickWheelSurface>,
+    );
+    down();
+    expect(wheel()!.querySelector(".quick-wheel-backdrop")).toHaveStyle({
+      top: "120px",
+    });
+    // Full-circle label centres use the expanded ring, not the old 117-unit radius.
+    const label = wheel()!.querySelector("foreignObject")!;
+    const y =
+      Number(label.getAttribute("y")) +
+      Number(label.getAttribute("height")) / 2;
+    expect(y).toBeCloseTo(170 - 138);
+  });
   it("selects after 500 ms and continues through stages without releasing", () => {
     const select = vi.fn();
     render(<Harness select={select} />);

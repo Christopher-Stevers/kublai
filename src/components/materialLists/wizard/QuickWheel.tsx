@@ -60,6 +60,7 @@ type Wheel = Choices & {
   startY: number;
   radius: number;
   bounds: WheelBounds;
+  overlayTop: number;
   screenCentre: { x: number; y: number };
   usage: WheelUsage;
   page: number;
@@ -110,13 +111,13 @@ function entriesFor(wheel: Wheel): Entry[] {
             wheel.x +
             (Math.sin((index * Math.PI * 2) / entries.length) *
               wheel.radius *
-              117) /
+              RING) /
               170,
           y:
             wheel.y -
             (Math.cos((index * Math.PI * 2) / entries.length) *
               wheel.radius *
-              117) /
+              RING) /
               170,
         }));
   const slots = inwardSlots(points, wheel.screenCentre);
@@ -265,6 +266,7 @@ export function QuickWheelSurface({
         startY: event.clientY,
         radius,
         bounds: { left, top, right, bottom },
+        overlayTop: Math.max(viewportTop, bounds.top),
         screenCentre: {
           x: viewportLeft + (viewport?.width ?? innerWidth) / 2,
           y: viewportTop + (viewport?.height ?? innerHeight) / 2,
@@ -438,6 +440,9 @@ export function QuickWheelSurface({
   );
 }
 
+/** Where the round choices sit on the full wheel (340-unit drawing space). */
+const RING = 138;
+
 function WheelDisplay({ wheel }: { wheel: Wheel }) {
   const entries = entriesFor(wheel);
   const selected = wheel.hovered === null ? undefined : entries[wheel.hovered];
@@ -479,7 +484,10 @@ function WheelDisplay({ wheel }: { wheel: Wheel }) {
       aria-label={`${wheel.title} quick wheel`}
       role="status"
     >
-      <div className="quick-wheel-backdrop bg-background/75 absolute inset-0 backdrop-blur-md" />
+      <div
+        className="quick-wheel-backdrop bg-background/75 absolute inset-x-0 bottom-0 backdrop-blur-md"
+        style={{ top: wheel.overlayTop }}
+      />
       <div
         className="absolute text-center"
         style={{
@@ -488,9 +496,9 @@ function WheelDisplay({ wheel }: { wheel: Wheel }) {
           width: layout.kind === "circle" ? 320 : "100%",
           top:
             layout.kind === "circle"
-              ? wheel.y - wheel.radius - 60 >= wheel.bounds.top
-                ? wheel.y - wheel.radius - 60
-                : wheel.y + wheel.radius + 8
+              ? wheel.y - wheel.radius - 76 >= wheel.bounds.top
+                ? wheel.y - wheel.radius - 76
+                : wheel.y + wheel.radius + 22
               : wheel.bounds.top + 4,
         }}
       >
@@ -613,7 +621,7 @@ function WheelDisplay({ wheel }: { wheel: Wheel }) {
             const scale = wheel.radius / 170;
             const step = (Math.PI * 2) / entries.length;
             const chord =
-              entries.length > 1 ? 2 * 117 * Math.sin(step / 2) - 6 : 150;
+              entries.length > 1 ? 2 * RING * Math.sin(step / 2) - 6 : 150;
             const width = Math.max(54 / scale, Math.min(76 / scale, chord - 6)),
               height = width;
             return (
@@ -625,7 +633,7 @@ function WheelDisplay({ wheel }: { wheel: Wheel }) {
                 <circle
                   cx="170"
                   cy="170"
-                  r="117"
+                  r={RING}
                   fill="none"
                   className="stroke-border"
                   strokeWidth={2 / scale}
@@ -650,8 +658,8 @@ function WheelDisplay({ wheel }: { wheel: Wheel }) {
                   return (
                     <foreignObject
                       key={`${wheel.page}-${index}`}
-                      x={170 + Math.sin(angle) * (117 + lift) - width / 2}
-                      y={170 - Math.cos(angle) * (117 + lift) - height / 2}
+                      x={170 + Math.sin(angle) * (RING + lift) - width / 2}
+                      y={170 - Math.cos(angle) * (RING + lift) - height / 2}
                       width={width}
                       height={height}
                       className="overflow-visible"
