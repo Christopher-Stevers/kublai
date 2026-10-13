@@ -99,9 +99,11 @@ describe("wizard quick wheel", () => {
       '[data-wheel-choice="1"]',
     )!;
     const x =
-      parseFloat(choice.style.left) + parseFloat(choice.style.width) / 2;
+      Number(choice.getAttribute("x")) +
+      Number(choice.getAttribute("width")) / 2;
     const y =
-      parseFloat(choice.style.top) + parseFloat(choice.style.height) / 2;
+      Number(choice.getAttribute("y")) +
+      Number(choice.getAttribute("height")) / 2;
     aim(x, y);
     dwell();
     expect(select).toHaveBeenCalledTimes(2);
@@ -124,7 +126,7 @@ describe("wizard quick wheel", () => {
     aim(215, 40);
     dwell(200);
     expect(select).toHaveBeenCalledTimes(1);
-    expect(wheel()).toHaveAttribute("data-layout", "fan");
+    expect(wheel()).toHaveAttribute("data-layout", "curved");
     expect(wheel()).toHaveAttribute("data-origin-x", "215");
     expect(wheel()).toHaveAttribute("data-origin-y", "40");
     aim(215, 40);
@@ -183,16 +185,18 @@ describe("wizard quick wheel", () => {
     down();
     aim(115, 215);
     dwell(); // sector 7: More
-    expect(screen.getByText(/2 \/ 3/)).toBeInTheDocument();
+    expect(screen.getByText("Choice 6")).toBeInTheDocument();
     aim(115, 215);
     dwell(2000);
-    expect(screen.getByText(/2 \/ 3/)).toBeInTheDocument();
+    expect(screen.getByText("Choice 6")).toBeInTheDocument();
     const choice = document.querySelector<HTMLElement>(
       '[data-wheel-choice="0"]',
     )!;
     aim(
-      parseFloat(choice.style.left) + parseFloat(choice.style.width) / 2,
-      parseFloat(choice.style.top) + parseFloat(choice.style.height) / 2,
+      Number(choice.getAttribute("x")) +
+        Number(choice.getAttribute("width")) / 2,
+      Number(choice.getAttribute("y")) +
+        Number(choice.getAttribute("height")) / 2,
     );
     dwell();
     expect(select).toHaveBeenCalledWith(6);

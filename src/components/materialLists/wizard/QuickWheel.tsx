@@ -12,7 +12,7 @@ import {
 
 import {
   quickWheelLayout,
-  fanChoiceAt,
+  curvedChoiceAt,
   type WheelBounds,
 } from "./quick-wheel-layout";
 
@@ -205,8 +205,8 @@ export function QuickWheelSurface({
         current.bounds,
       );
       const hovered = moved
-        ? layout.kind === "fan"
-          ? fanChoiceAt(
+        ? layout.kind === "curved"
+          ? curvedChoiceAt(
               layout,
               event.clientX,
               event.clientY,
@@ -366,66 +366,36 @@ function WheelDisplay({ wheel }: { wheel: Wheel }) {
       aria-label={`${wheel.title} quick wheel`}
       role="status"
     >
-      {layout.kind === "fan" ? (
-        <>
-          <svg className="absolute inset-0 h-full w-full" aria-hidden="true">
-            {layout.choices.map((box, index) => (
+      {layout.kind === "curved" ? (
+        <svg
+          className="absolute inset-0 h-full w-full drop-shadow-2xl"
+          aria-hidden="true"
+        >
+          {layout.choices.map((choice, index) => (
+            <g key={`${wheel.page}-${index}`}>
               <path
-                key={index}
-                d={`M ${wheel.x} ${wheel.y} L ${box.x} ${box.y + box.height / 2} L ${box.x + box.width} ${box.y + box.height / 2} Z`}
-                fill={wheel.hovered === index ? "#80acd033" : "#7382960c"}
+                d={choice.path}
+                fill={wheel.hovered === index ? "#426b93" : "#202c3a"}
+                stroke="#738296"
+                strokeWidth="1"
               />
-            ))}
-            <circle
-              cx={wheel.x}
-              cy={wheel.y}
-              r="14"
-              fill="#111923"
-              stroke="#8ab5df"
-              strokeWidth="2"
-            />
-            <circle cx={wheel.x} cy={wheel.y} r="3" fill="#8ab5df" />
-          </svg>
-          <div
-            className="absolute rounded-2xl border border-slate-500 bg-[#111923] shadow-2xl"
-            style={{
-              left: layout.panel.x,
-              top: layout.panel.y,
-              width: layout.panel.width,
-              height: layout.panel.height,
-            }}
-          >
-            <div className="px-3 pt-2 text-xs text-white">
-              <p className="truncate font-semibold">
-                {selected?.label ?? wheel.title}
-              </p>
-              <p className="text-[10px] text-slate-300">
-                Hold to select
-                {wheel.options.length > 8
-                  ? ` · ${wheel.page + 1} / ${Math.ceil(wheel.options.length / 6)}`
-                  : ""}
-              </p>
-            </div>
-          </div>
-          {layout.choices.map((box, index) => (
-            <div
-              data-wheel-choice={index}
-              key={`${wheel.page}-${index}`}
-              className="absolute flex items-center justify-center rounded-lg border border-slate-500 px-2 text-center text-xs leading-tight font-semibold text-white"
-              style={{
-                left: box.x,
-                top: box.y,
-                width: box.width,
-                height: box.height,
-                background: wheel.hovered === index ? "#426b93" : "#202c3a",
-              }}
-            >
-              <span className="line-clamp-3 break-words">
-                {entries[index]!.label}
-              </span>
-            </div>
+              <foreignObject
+                data-wheel-choice={index}
+                x={choice.label.x - 27}
+                y={choice.label.y - 22}
+                width="54"
+                height="44"
+              >
+                <div className="flex h-full items-center justify-center text-center text-[11px] leading-tight font-semibold text-white">
+                  <span className="line-clamp-3 break-words">
+                    {entries[index]!.label}
+                  </span>
+                </div>
+              </foreignObject>
+            </g>
           ))}
-        </>
+          <circle cx={wheel.x} cy={wheel.y} r="6" fill="#8ab5df" />
+        </svg>
       ) : (
         <div
           className="absolute"

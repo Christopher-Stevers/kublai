@@ -4,14 +4,15 @@ export type WheelBounds = {
   right: number;
   bottom: number;
 };
-type Box = { x: number; y: number; width: number; height: number };
+type Point = { x: number; y: number };
+export type CurvedChoice = { path: string; polygon: Point[]; label: Point };
 export type WheelLayout =
   | { kind: "circle" }
-  | { kind: "fan"; panel: Box; choices: Box[] };
+  | { kind: "curved"; choices: CurvedChoice[] };
 const clamp = (n: number, min: number, max: number) =>
   Math.max(min, Math.min(max, n));
 
-/** Keep the finger as the origin; unfold the choices into the available space. */
+/** The edge shape is a continuous curved fan, with its tip fixed to the finger. */
 export function quickWheelLayout(
   x: number,
   y: number,
@@ -26,74 +27,113 @@ export function quickWheelLayout(
     y + radius <= bounds.bottom
   )
     return { kind: "circle" };
-  const width = Math.min(344, bounds.right - bounds.left);
-  const availableHeight = bounds.bottom - bounds.top;
-  const columns = availableHeight < 290 && width >= 300 ? 4 : 2;
-  const rows = Math.ceil(count / columns);
-  const gap = 6,
-    padding = 10,
-    header = 42;
-  const tileHeight = Math.min(
-    54,
-    (availableHeight - header - padding * 2 - gap * (rows - 1)) / rows,
+  // Reserve space around the curved rim for readable labels, even at corners.
+  const padding = 34;
+  const expandedRadius = radius * (1 + Math.max(0, count - 6) * 0.3);
+  const rx = Math.min(
+    expandedRadius * (bounds.bottom - bounds.top < 260 ? 1.3 : 1),
+    (bounds.right - bounds.left) / 2 - padding,
   );
-  const height = header + padding * 2 + rows * tileHeight + gap * (rows - 1);
-  const candidates = [
-    { x: x - width / 2, y: y + 32 },
-    { x: x - width / 2, y: y - height - 32 },
-    { x: x + 32, y: y - height / 2 },
-    { x: x - width - 32, y: y - height / 2 },
-  ].map((position) => {
-    const placed = {
-      x: clamp(position.x, bounds.left, bounds.right - width),
-      y: clamp(position.y, bounds.top, bounds.bottom - height),
-      width,
-      height,
-    };
-    const distance = Math.hypot(
-      x - clamp(x, placed.x, placed.x + width),
-      y - clamp(y, placed.y, placed.y + height),
-    );
-    return {
-      placed,
-      score:
-        (distance < 24 ? 10000 : 0) +
-        Math.hypot(placed.x - position.x, placed.y - position.y),
-    };
+  const ry = Math.min(
+    expandedRadius,
+    (bounds.bottom - bounds.top) / 2 - padding,
+  );
+  const cx = clamp(x, bounds.left + padding + rx, bounds.right - padding - rx);
+  const cy = clamp(y, bounds.top + padding + ry, bounds.bottom - padding - ry);
+  const dx = (x - cx) / rx,
+    dy = (y - cy) / ry;
+  const distance = Math.hypot(dx, dy);
+  const facing = Math.atan2(dy, dx);
+  // Remove the rim facing the finger. The remaining arc swells inward, instead
+  // of squeezing labels against the edge. At corners its contour is a teardrop.
+  const cut = Math.max(
+    Math.PI / 3,
+    distance > 1 ? Math.acos(1 / distance) : Math.PI / 3,
+  );
+  const start = facing + cut,
+    span = Math.PI * 2 - cut * 2;
+  const rim = (angle: number): Point => ({
+    x: cx + Math.cos(angle) * rx,
+    y: cy + Math.sin(angle) * ry,
   });
-  candidates.sort((a, b) => a.score - b.score);
-  const panel = candidates[0]!.placed;
-  const tileWidth = (width - padding * 2 - gap * (columns - 1)) / columns;
+  // Equal arc-length slices keep labels apart on the stretched outline.
+  const arc = Array.from({ length: 401 }, (_, n) =>
+    rim(start + (span * n) / 400),
+  );
+  const lengths = [0];
+  for (let n = 1; n < arc.length; n++)
+    lengths.push(
+      lengths[n - 1]! +
+        Math.hypot(arc[n]!.x - arc[n - 1]!.x, arc[n]!.y - arc[n - 1]!.y),
+    );
+  const angleAt = (fraction: number) => {
+    const target = lengths.at(-1)! * fraction;
+    const index = Math.max(
+      1,
+      lengths.findIndex((length) => length >= target),
+    );
+    const t =
+      (target - lengths[index - 1]!) / (lengths[index]! - lengths[index - 1]!);
+    return start + (span * (index - 1 + t)) / 400;
+  };
+  const inner = (point: Point): Point => {
+    const length = Math.hypot(point.x - x, point.y - y);
+    return {
+      x: x + ((point.x - x) * 18) / length,
+      y: y + ((point.y - y) * 18) / length,
+    };
+  };
+  const coords = (point: Point) => `${point.x},${point.y}`;
   return {
-    kind: "fan",
-    panel,
-    choices: Array.from({ length: count }, (_, index) => ({
-      x: panel.x + padding + (index % columns) * (tileWidth + gap),
-      y:
-        panel.y +
-        padding +
-        header +
-        Math.floor(index / columns) * (tileHeight + gap),
-      width: tileWidth,
-      height: tileHeight,
-    })),
+    kind: "curved",
+    choices: Array.from({ length: count }, (_, index) => {
+      const a = angleAt(index / count) + 0.012;
+      const b = angleAt((index + 1) / count) - 0.012;
+      const first = rim(a),
+        last = rim(b),
+        mid = rim(angleAt((index + 0.5) / count));
+      const i = inner(first),
+        j = inner(last);
+      const polygon = [
+        i,
+        ...Array.from({ length: 25 }, (_, n) => rim(a + ((b - a) * n) / 24)),
+        j,
+      ];
+      return {
+        path: `M ${coords(i)} L ${coords(first)} A ${rx} ${ry} 0 ${b - a > Math.PI ? 1 : 0} 1 ${coords(last)} L ${coords(j)} Q ${x},${y} ${coords(i)} Z`,
+        polygon,
+        label: { x: x + (mid.x - x) * 0.88, y: y + (mid.y - y) * 0.88 },
+      };
+    }),
   };
 }
 
-export function fanChoiceAt(
-  layout: Extract<WheelLayout, { kind: "fan" }>,
+export function curvedChoiceAt(
+  layout: Extract<WheelLayout, { kind: "curved" }>,
   x: number,
   y: number,
   originX: number,
   originY: number,
 ) {
   if (Math.hypot(x - originX, y - originY) < 24) return null;
-  const index = layout.choices.findIndex(
-    (box) =>
-      x >= box.x &&
-      x <= box.x + box.width &&
-      y >= box.y &&
-      y <= box.y + box.height,
+  // Labels are part of their wedge, including the small rim overhang.
+  const label = layout.choices.findIndex(
+    (choice) =>
+      Math.abs(x - choice.label.x) <= 27 && Math.abs(y - choice.label.y) <= 22,
   );
+  if (label >= 0) return label;
+  const index = layout.choices.findIndex(({ polygon }) => {
+    let inside = false;
+    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+      const a = polygon[i]!,
+        b = polygon[j]!;
+      if (
+        a.y > y !== b.y > y &&
+        x < ((b.x - a.x) * (y - a.y)) / (b.y - a.y) + a.x
+      )
+        inside = !inside;
+    }
+    return inside;
+  });
   return index < 0 ? null : index;
 }

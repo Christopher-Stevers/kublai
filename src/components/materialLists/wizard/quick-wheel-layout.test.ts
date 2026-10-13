@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fanChoiceAt, quickWheelLayout } from "./quick-wheel-layout";
+import { curvedChoiceAt, quickWheelLayout } from "./quick-wheel-layout";
 
 describe("edge-aware wheel layout", () => {
   it("preserves the circular wheel when it fits", () => {
@@ -39,37 +39,31 @@ describe("edge-aware wheel layout", () => {
           y = bounds.top + v! * (bounds.bottom - bounds.top);
         for (let count = 1; count <= 8; count++) {
           const layout = quickWheelLayout(x, y, 170, count, bounds);
-          expect(layout.kind).toBe("fan");
-          if (layout.kind !== "fan") continue;
+          expect(layout.kind).toBe("curved");
+          if (layout.kind !== "curved") continue;
           expect(layout.choices).toHaveLength(count);
-          layout.choices.forEach((box, index) => {
-            expect(box.x).toBeGreaterThanOrEqual(bounds.left);
-            expect(box.y).toBeGreaterThanOrEqual(bounds.top);
-            expect(box.x + box.width).toBeLessThanOrEqual(bounds.right + 0.001);
-            expect(box.y + box.height).toBeLessThanOrEqual(
-              bounds.bottom + 0.001,
-            );
-            expect(box.width).toBeGreaterThanOrEqual(60);
-            expect(box.height).toBeGreaterThanOrEqual(44);
+          layout.choices.forEach((choice, index) => {
+            const box = {
+              x: choice.label.x - 27,
+              y: choice.label.y - 22,
+              width: 54,
+              height: 44,
+            };
+            expect(box.x).toBeGreaterThanOrEqual(bounds.left - 1);
+            expect(box.y).toBeGreaterThanOrEqual(bounds.top - 1);
+            expect(box.x + box.width).toBeLessThanOrEqual(bounds.right + 1);
+            expect(box.y + box.height).toBeLessThanOrEqual(bounds.bottom + 1);
             expect(
-              fanChoiceAt(
-                layout,
-                box.x + box.width / 2,
-                box.y + box.height / 2,
-                x,
-                y,
-              ),
+              curvedChoiceAt(layout, choice.label.x, choice.label.y, x, y),
             ).toBe(index);
             for (const other of layout.choices.slice(index + 1)) {
               expect(
-                box.x + box.width <= other.x ||
-                  other.x + other.width <= box.x ||
-                  box.y + box.height <= other.y ||
-                  other.y + other.height <= box.y,
+                Math.abs(choice.label.x - other.label.x) >= 54 ||
+                  Math.abs(choice.label.y - other.label.y) >= 44,
               ).toBe(true);
             }
           });
-          expect(fanChoiceAt(layout, x, y, x, y)).toBeNull();
+          expect(curvedChoiceAt(layout, x, y, x, y)).toBeNull();
         }
       });
     }
