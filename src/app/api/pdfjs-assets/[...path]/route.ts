@@ -10,7 +10,7 @@ export const runtime = "nodejs";
  * from the installed package instead of copying binaries into `public/`.
  */
 const ALLOWED =
-  /^(legacy\/build\/pdf\.worker\.min\.mjs|wasm\/[a-z0-9_]+\.(?:wasm|js)|standard_fonts\/[A-Za-z0-9_-]+\.(?:pfb|ttf))$/;
+  /^(legacy\/build\/pdf\.worker\.min\.mjs|wasm\/[a-z0-9_-]+\.(?:wasm|js)|standard_fonts\/[A-Za-z0-9_-]+\.(?:pfb|ttf))$/;
 const TYPES: Record<string, string> = {
   wasm: "application/wasm",
   js: "text/javascript; charset=utf-8",
