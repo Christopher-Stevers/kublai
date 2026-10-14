@@ -494,12 +494,12 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
             first: More, Tools, Markup, Measure). */}
         <div
           data-drawing-chrome
-          className="bg-card shrink-0 px-4 pt-1 pb-[calc(0.5rem+env(safe-area-inset-bottom))]"
+          className="bg-card shrink-0 px-3 pt-0.5 pb-[calc(0.25rem+env(safe-area-inset-bottom))]"
         >
           <div className="mx-auto grid max-w-6xl grid-cols-[minmax(0,1fr)_minmax(0,1.25fr)_minmax(0,1fr)] items-center gap-2">
             <Button
               variant="outline"
-              className="h-11 min-w-0 rounded-xl px-2 text-sm"
+              className="h-9 min-w-0 rounded-lg px-2 text-sm"
               disabled={sheetIndex <= 0}
               onClick={() => openSheet(sheets[sheetIndex - 1]!.id, true)}
             >
@@ -512,7 +512,7 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
                   <Button
                     type="button"
                     variant="ghost"
-                    className="h-8 min-w-0 shrink gap-1 px-1 text-sm"
+                    className="h-6 min-w-0 shrink gap-1 px-1 text-xs"
                     aria-label={`Rename drawing ${sheet.name}`}
                     title={sheet.name}
                     disabled={renameSheet.isPending}
@@ -556,6 +556,7 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
                   type="button"
                   variant="ghost"
                   size="icon-sm"
+                  className="size-6"
                   aria-label="Full screen"
                   title="Full screen"
                   onClick={full.enter}
@@ -566,7 +567,7 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
             </div>
             <Button
               variant="outline"
-              className="h-11 min-w-0 rounded-xl px-2 text-sm"
+              className="h-9 min-w-0 rounded-lg px-2 text-sm"
               disabled={sheetIndex >= sheets.length - 1}
               onClick={() => openSheet(sheets[sheetIndex + 1]!.id, true)}
             >

@@ -87,7 +87,7 @@ const OTHER_TOOLS = new Set<DrawingTool>([
   "rfi",
 ]);
 const BAR_BUTTON =
-  "h-14 w-full flex-col gap-1 rounded-xl px-1 text-xs font-medium whitespace-normal";
+  "h-10 w-full flex-row gap-1.5 rounded-lg px-1 text-xs font-medium whitespace-normal [&_svg]:size-4";
 export const tools: Array<[DrawingTool, string]> = [
   ["pan", "Move"],
   ["select", "Select / edit"],
@@ -2344,7 +2344,7 @@ export function DrawingWorkspace({
           below it in the Drawings screen). */}
       <div
         data-drawing-chrome
-        className="bg-card relative shrink-0 border-t px-4 pt-2 pb-1"
+        className="bg-card relative shrink-0 border-t px-3 pt-1 pb-0.5"
       >
         {markupOpen && (
           <>

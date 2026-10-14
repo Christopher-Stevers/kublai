@@ -119,7 +119,7 @@ export function SheetMeasureBar({
       data-drawing-chrome
       aria-label="Drawing tool options"
       data-snapping={snapping ? "ready" : undefined}
-      className="bg-card max-h-[45dvh] shrink-0 overflow-y-auto overscroll-contain border-t px-3 py-2"
+      className="bg-card max-h-[45dvh] shrink-0 overflow-y-auto overscroll-contain border-t px-3 py-1"
       onPointerDown={stop}
       onPointerMove={stop}
       onPointerUp={stop}
@@ -196,7 +196,7 @@ function MeasureColorPicker({
     <div className={`min-w-0 ${open ? "basis-full" : "ml-auto"}`}>
       <button
         type="button"
-        className="flex min-h-9 items-center gap-2 rounded-md border px-2 text-sm"
+        className="flex min-h-8 items-center gap-1.5 rounded-md border px-2 text-sm"
         aria-label={`Measuring color: ${name}`}
         aria-expanded={open}
         aria-controls={id}
