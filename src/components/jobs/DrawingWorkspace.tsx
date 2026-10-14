@@ -1,4 +1,5 @@
 "use client";
+import { MARKUP_SHAKE_MS } from "./useDrawingEditor";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSnapshot } from "~/components/chat/SnapshotProvider";
@@ -351,6 +352,12 @@ export function DrawingWorkspace({
     },
   );
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [editReadyId, setEditReadyId] = useState<string | null>(null);
+  useEffect(() => {
+    setEditReadyId(null);
+    const timer = setTimeout(() => setEditReadyId(selectedId), MARKUP_SHAKE_MS);
+    return () => clearTimeout(timer);
+  }, [selectedId]);
   // A text markup being typed in place on the drawing.
   const [inlineText, setInlineText] = useState<{
     id: string | null;
@@ -622,6 +629,7 @@ export function DrawingWorkspace({
     (entity: DrawingEntity) =>
       writable &&
       !blockedEdits.has(entity.id) &&
+      (entity.kind !== "markup" || entity.id !== selectedId || editReadyId === selectedId) &&
       (online ||
         (entity.authorId === data?.actor.id &&
           (entity.kind === "markup" ||
@@ -638,7 +646,7 @@ export function DrawingWorkspace({
           (entity.kind === "issue" &&
             entity.data.assigneeId === data.actor.id)),
       ),
-    [writable, blockedEdits, online, data],
+    [writable, blockedEdits, online, data, selectedId, editReadyId],
   );
   const toForm = (entity: DrawingEntity): DrawingSave =>
     ({

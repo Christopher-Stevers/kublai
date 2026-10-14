@@ -1,7 +1,7 @@
 import { act, cleanup, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  MARKUP_HOLD_MS,
+  MARKUP_SHAKE_MS,
   useDrawingEditor,
   type DrawingEditorProps,
 } from "./useDrawingEditor";
@@ -62,6 +62,33 @@ const open = (props: DrawingEditorProps) =>
   );
 
 describe("drawing input and frame scheduling", () => {
+  it("selects instantly but blocks resize and delete until the shake completes", () => {
+    vi.useFakeTimers();
+    const onSelect = vi.fn(), onUpdate = vi.fn(), onDelete = vi.fn();
+    const props: DrawingEditorProps = { tool: "select", annotations: [entity], onSelect, onUpdate, onDelete };
+    const { result, rerender } = open(props);
+    act(() => { result.current.down({ x: .2, y: .2 }, target()); });
+    expect(onSelect).toHaveBeenCalledWith(entity.id);
+    act(() => { result.current.up({ x: .2, y: .2 }); });
+    rerender({ ...props, selectedId: entity.id });
+    const handle = target(); handle.dataset.annotationHandle = "se";
+    act(() => {
+      result.current.down({ x: .4, y: .4 }, handle);
+      result.current.move({ x: .6, y: .6 });
+      result.current.up({ x: .6, y: .6 });
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "Delete" }));
+    });
+    expect(onUpdate).not.toHaveBeenCalled();
+    expect(onDelete).not.toHaveBeenCalled();
+    act(() => { vi.advanceTimersByTime(MARKUP_SHAKE_MS); });
+    act(() => {
+      result.current.down({ x: .4, y: .4 }, handle);
+      result.current.move({ x: .6, y: .6 });
+      result.current.up({ x: .6, y: .6 });
+    });
+    expect(onUpdate).toHaveBeenCalledOnce();
+    vi.useRealTimers();
+  });
   it("retains a fast pen corner and release endpoint even before the preview frame", () => {
     const onCreate = vi.fn();
     const { result } = open({
@@ -101,7 +128,7 @@ describe("drawing input and frame scheduling", () => {
     // Hold still long enough to pick the markup up, then drag it.
     act(() => {
       result.current.down({ x: 0.2, y: 0.2 }, target());
-      vi.advanceTimersByTime(MARKUP_HOLD_MS);
+      vi.advanceTimersByTime(MARKUP_SHAKE_MS);
     });
     vi.useRealTimers();
     act(() => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { DrawingEntity, DrawingMarkup, DrawingPoint, DrawingStyle, DrawingTool } from "~/lib/drawing-workspace";
 import type { SheetScale } from "~/lib/sheet-measure";
 import { isPathTool, isStrokeTool, minimumDrawingPoints, resizeDrawingMarkup, simplifyDrawingStroke, translateDrawingPoints, type DrawingResizeHandle } from "~/lib/drawing-annotation-geometry";
@@ -27,13 +27,13 @@ export type DrawingEditorProps = {
 type Gesture = {
   start: DrawingPoint; points: DrawingPoint[]; moved: boolean; entity?: DrawingEntity; handle?: number | DrawingResizeHandle;
   activate?: boolean; edited?: DrawingMarkup; latest?: DrawingPoint;
-  /** A markup is only picked up after a short hold, so a drag that starts on one still pans. */
+  /** Selection is immediate; a drag can edit only after the pickup shake. */
   armed?: boolean; holdTimer?: ReturnType<typeof setTimeout>;
   /** Moved before the hold completed: the drag pans the drawing instead. */
   panning?: boolean;
 };
-/** How long to hold still on a markup before it is picked up. */
-export const MARKUP_HOLD_MS = 350;
+/** Matches annotation-shake in globals.css; edits unlock after the animation. */
+export const MARKUP_SHAKE_MS = 380;
 const holdsToSelect = (entity: DrawingEntity) => entity.kind === "markup" && entity.data.type !== "link";
 
 export function useDrawingEditor(props: DrawingEditorProps, aspect: number, screenWidth: number) {
@@ -43,6 +43,11 @@ export function useDrawingEditor(props: DrawingEditorProps, aspect: number, scre
   const [editing, setEditing] = useState<{ id: string; data: DrawingMarkup } | null>(null);
   const [heldId, setHeldId] = useState<string | null>(null);
   const gesture = useRef<Gesture | null>(null);
+  const selectionLock = useRef({ id: "", until: 0 });
+  useLayoutEffect(() => {
+    if (props.selectedId && selectionLock.current.id !== props.selectedId)
+      selectionLock.current = { id: props.selectedId, until: Date.now() + MARKUP_SHAKE_MS };
+  }, [props.selectedId]);
   const committed = useRef(points);
   committed.current = points;
   const { annotations, canEditAnnotation } = props;
@@ -63,19 +68,25 @@ export function useDrawingEditor(props: DrawingEditorProps, aspect: number, scre
     });
   };
   const stopHold = (active: Gesture | null) => { if (active?.holdTimer) clearTimeout(active.holdTimer); setHeldId(null); };
-  /** After a short hold, select the markup and let the drag move it. */
+  /** Select immediately; the pickup shake is an edit lock, not a selection delay. */
   const startHold = (active: Gesture) => {
-    active.holdTimer = setTimeout(() => {
+    const entity = active.entity;
+    if (!entity) return;
+    const existing = props.selectedId === entity.id && selectionLock.current.id === entity.id;
+    if (!existing) {
+      selectionLock.current = { id: entity.id, until: Date.now() + MARKUP_SHAKE_MS };
+      setHeldId(entity.id);
+      props.onSelect?.(entity.id);
+    }
+    const arm = () => {
       active.holdTimer = undefined;
-      if (gesture.current !== active || active.moved || !active.entity) return;
+      if (gesture.current !== active || active.moved) return;
       active.armed = true;
-      try { navigator.vibrate?.(12); } catch { /* Haptics are optional. */ }
-      // From here the gesture edits the markup rather than panning.
       if (active.activate) { active.activate = false; active.start = active.latest ?? active.start; }
-      // Show it is held now; selecting waits for release because selection can
-      // change the viewer layout under the finger.
-      setHeldId(active.entity.id);
-    }, MARKUP_HOLD_MS);
+    };
+    const delay = Math.max(0, selectionLock.current.until - Date.now());
+    if (!delay) arm();
+    else active.holdTimer = setTimeout(arm, delay);
   };
   const clear = () => { cancelPreview(); stopHold(gesture.current); gesture.current = null; committed.current = []; setPoints([]); setPreview([]); setEditing(null); };
   useEffect(clear, [tool, props.sourceSheetId, props.selectionMode, props.hideAnnotations, cancelPreview]);
@@ -123,16 +134,15 @@ export function useDrawingEditor(props: DrawingEditorProps, aspect: number, scre
     }
     if (tool === "select") {
       if (!entity) { props.onSelect?.(null); return false; }
-      // Selecting can show a toolbar and change the sheet's fitted size. Keep
-      // that layout change after the gesture uses its final coordinates.
+      // Selection may resize the viewport; a stationary release never edits geometry.
       const handleElement = target instanceof Element ? target.closest<SVGElement>("[data-annotation-handle]") : null;
       const handleName = handleElement?.dataset.annotationHandle;
       const corner = handleName && ["nw", "ne", "sw", "se"].includes(handleName) ? handleName as DrawingResizeHandle : undefined;
       const vertex = handleName !== undefined ? Number(handleName) : undefined;
       const handle = props.selectionMode === "move" ? undefined : corner ??
         (vertex !== undefined && Number.isInteger(vertex) && vertex >= 0 && entity.kind === "markup" && vertex < entity.data.points.length ? vertex : undefined);
-      // Handles on an already selected markup respond at once; the body needs a hold.
-      const active: Gesture = { start: point, points: [point], moved: false, entity, handle, armed: handle !== undefined || !holdsToSelect(entity) };
+      // Both handles and the body obey the selection shake lock.
+      const active: Gesture = { start: point, points: [point], moved: false, entity, handle, armed: !holdsToSelect(entity) };
       gesture.current = active;
       if (!active.armed) startHold(active);
       return true;
@@ -147,7 +157,7 @@ export function useDrawingEditor(props: DrawingEditorProps, aspect: number, scre
     const point = active?.latest;
     if (!active || !point || active.activate) return;
     if (active.entity?.kind === "markup") {
-      if (!props.onUpdate || !canEdit(active.entity)) {
+      if (!active.armed || !props.onUpdate || !canEdit(active.entity)) {
         active.edited = undefined;
         if (show) setEditing(null);
         return;
@@ -204,7 +214,7 @@ export function useDrawingEditor(props: DrawingEditorProps, aspect: number, scre
     if (!active) return false;
     stopHold(active);
     if (active.panning) { gesture.current = null; return false; }
-    if (point) move(point);
+    if (point && (active.moved || !active.entity)) move(point);
     cancelPreview();
     // Release can happen before the scheduled frame. Commit the final geometry
     // synchronously so a fast drag never saves an earlier pointer position.
@@ -213,13 +223,13 @@ export function useDrawingEditor(props: DrawingEditorProps, aspect: number, scre
     setPreview([]);
     if (!point) { setEditing(null); return true; }
     if (active.entity) {
-      // Links and issue pins still respond to a tap; markups need a hold to be selected.
+      // Links and issue pins activate on release; ordinary markups were selected on press.
       if (active.activate && !active.moved) {
         if (active.entity.kind === "markup" && active.entity.data.type === "link") props.onActivate?.(active.entity.data);
         else if (!holdsToSelect(active.entity)) props.onSelect?.(active.entity.id);
       }
       if (active.edited && active.moved && props.onUpdate && canEdit(active.entity)) props.onUpdate(active.entity.id, active.edited);
-      if (!active.activate && active.armed) props.onSelect?.(active.entity.id);
+      if (!active.activate && active.armed && !holdsToSelect(active.entity)) props.onSelect?.(active.entity.id);
       setEditing(null);
       return !active.activate || !active.moved;
     }
@@ -247,7 +257,7 @@ export function useDrawingEditor(props: DrawingEditorProps, aspect: number, scre
       if (tool !== "pan" && (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") { event.preventDefault(); undo(); }
       if (tool !== "pan" && event.key === "Enter" && committed.current.length >= minimumDrawingPoints(tool)) { event.preventDefault(); finish(); }
       const selected = props.annotations?.find(entity => entity.id === props.selectedId);
-      if ((event.key === "Delete" || event.key === "Backspace") && (tool === "select" || tool === "pan") && selected && props.onDelete && canEdit(selected)) {
+      if ((event.key === "Delete" || event.key === "Backspace") && (tool === "select" || tool === "pan") && selected && props.onDelete && canEdit(selected) && (selectionLock.current.id !== selected.id || Date.now() >= selectionLock.current.until)) {
         event.preventDefault(); props.onDelete(selected.id);
       }
     };
