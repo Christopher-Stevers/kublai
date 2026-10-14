@@ -322,3 +322,56 @@ describe("persistent PDF detail during gestures", () => {
     expect(renderPage.mock.calls[1]![0].operationsFilter).toBeUndefined();
   });
 });
+
+it("recovers detail after four failures when a new zoom settles", async () => {
+  const view = render(<DrawingPdfLayer {...props} />);
+  await tick();
+  for (let attempt = 0; attempt < 4; attempt++) {
+    await act(async () => {
+      pending[attempt]!.reject(new Error("Transient memory pressure"));
+      await vi.advanceTimersByTimeAsync(3000 * (attempt + 1) + 1);
+    });
+  }
+  expect(pending).toHaveLength(4);
+  expect([...view.container.querySelectorAll("canvas")].every(c => c.width === 0)).toBe(true);
+  view.rerender(<DrawingPdfLayer {...props} view={{...props.view,scale:3.11}} />);
+  await tick();
+  expect(pending).toHaveLength(5);
+  await finish(4);
+  expect(visibleCanvases(view.container)).toHaveLength(1);
+});
+it("retries exhausted detail after connectivity returns", async () => {
+  render(<DrawingPdfLayer {...props} />);
+  await tick();
+  for (let attempt = 0; attempt < 4; attempt++) {
+    await act(async () => {
+      pending[attempt]!.reject(new Error("Network error"));
+      await vi.advanceTimersByTimeAsync(3000 * (attempt + 1) + 1);
+    });
+  }
+  act(() => window.dispatchEvent(new Event("online")));
+  await tick();
+  expect(pending).toHaveLength(5);
+});
+it("releases the previous canvas only after replacement detail is ready", async () => {
+  const view = render(<DrawingPdfLayer {...props} />);
+  await tick(); await finish(0);
+  const first = visibleCanvases(view.container)[0]!;
+  view.rerender(<DrawingPdfLayer {...props} view={{...props.view,scale:20}} />);
+  await tick();
+  expect(first.width).toBeGreaterThan(0);
+  await finish(1);
+  expect(first.width).toBe(0);
+  expect(visibleCanvases(view.container)[0]!.width).toBeGreaterThan(0);
+});
+it("cancels a stalled detail task so a later retry can run", async () => {
+  render(<DrawingPdfLayer {...props} />);
+  await tick();
+  await act(async () => { await vi.advanceTimersByTimeAsync(30_000); });
+  expect(pending[0]!.cancel).toHaveBeenCalledOnce();
+  await act(async () => {
+    pending[0]!.reject(new Error("Rendering cancelled"));
+    await vi.advanceTimersByTimeAsync(3001);
+  });
+  expect(pending).toHaveLength(2);
+});

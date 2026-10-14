@@ -85,12 +85,18 @@ export function DrawingPdfLayer(props: Props) {
     let task: RenderTask | null = null;
     let nextTimer: ReturnType<typeof setTimeout> | null = null;
     let retryAfter = 0;
+    let stalledTimer: ReturnType<typeof setTimeout> | null = null;
     let failures = 0;
     let viewRequestedAt = performance.now();
     let requestedView = "";
     const source = { ...props.pdf };
-    for (const canvas of buffers)
-      if (canvas) canvas.style.visibility = "hidden";
+    for (const canvas of buffers) {
+      if (canvas) {
+        canvas.style.visibility = "hidden";
+        canvas.width = 0;
+        canvas.height = 0;
+      }
+    }
 
     // Prepare the current page after the initial image has painted. Byte-range
     // loading keeps this to needed PDF objects, avoiding a cold worker/page
@@ -185,9 +191,13 @@ export function DrawingPdfLayer(props: Props) {
           ],
         });
         task = render;
+        // A stuck PDF task must not block all future zoom/detail requests.
+        stalledTimer = setTimeout(() => render.cancel(), 30_000);
         // Display rendering in the installed PDF.js already yields via RAF.
         // Keep that scheduler instead of adding another frame of latency.
         await render.promise;
+        if (stalledTimer !== null) clearTimeout(stalledTimer);
+        stalledTimer = null;
         if (disposed) return;
         if (recordFullPage && page.recordedBBoxes)
           completedPageBounds.set(
@@ -212,7 +222,14 @@ export function DrawingPdfLayer(props: Props) {
           canvas.style.visibility = "visible";
           if (current) {
             const previous = buffers[current.index];
-            if (previous) previous.style.visibility = "hidden";
+            if (previous) {
+              previous.style.visibility = "hidden";
+              // Safari retains hidden canvas backing stores. Free the old
+              // bitmap only after the replacement is ready and visible.
+              previous.width = 0;
+              previous.height = 0;
+              patches.current[current.index] = null;
+            }
           }
           current = { index, patch };
         }
@@ -240,6 +257,13 @@ export function DrawingPdfLayer(props: Props) {
         // Preserve the existing sharp patch/tiles through transient failures.
         retryAfter = Date.now() + 3000 * ++failures;
       } finally {
+        if (stalledTimer !== null) clearTimeout(stalledTimer);
+        stalledTimer = null;
+        // Failed and obsolete work must not retain a second large bitmap.
+        if (!disposed && current?.index !== index) {
+          canvas.width = 0;
+          canvas.height = 0;
+        }
         task = null;
         rendering = false;
         if (!disposed) schedule(Math.max(0, retryAfter - Date.now()));
@@ -249,13 +273,34 @@ export function DrawingPdfLayer(props: Props) {
       const p = latest.current;
       const key = `${p.view.scale}:${p.view.x}:${p.view.y}:${p.frameSize.width}:${p.frameSize.height}:${p.fit.width}:${p.fit.height}:${p.dpr}:${p.moving}`;
       if (key !== requestedView) {
+        // Bound retries for a stationary broken PDF, but don't permanently
+        // disable detail after a transient iPad memory/network failure.
+        if (!p.moving && failures > 0) {
+          failures = 0;
+          retryAfter = 0;
+          if (nextTimer !== null) clearTimeout(nextTimer);
+          nextTimer = null;
+        }
         requestedView = key;
         viewRequestedAt = performance.now();
       }
       schedule(Math.max(0, retryAfter - Date.now()));
     };
+    const resume = () => {
+      if (document.visibilityState === "hidden") return;
+      failures = 0;
+      retryAfter = 0;
+      if (nextTimer !== null) clearTimeout(nextTimer);
+      nextTimer = null;
+      schedule();
+    };
+    window.addEventListener("online", resume);
+    document.addEventListener("visibilitychange", resume);
     schedule();
     return () => {
+      window.removeEventListener("online", resume);
+      document.removeEventListener("visibilitychange", resume);
+      if (stalledTimer !== null) clearTimeout(stalledTimer);
       disposed = true;
       request.current = () => undefined;
       task?.cancel();
