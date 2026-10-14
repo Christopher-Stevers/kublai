@@ -1376,7 +1376,7 @@ function ChatBubble({
         aria-label={`Message from ${mine ? "you" : message.author.name}. Press and hold for options.`}
         className={`focus-visible:ring-ring max-w-[85%] min-w-0 cursor-default rounded-2xl px-3 py-2 shadow-[0_1px_2px_rgba(15,23,42,0.25)] transition-transform outline-none select-none [-webkit-touch-callout:none] focus-visible:ring-2 active:scale-[0.99] sm:max-w-[70%] ${
           mine
-            ? "bg-primary text-primary-foreground rounded-br-md"
+            ? "bg-[#315675] text-[#ffffff] rounded-br-md"
             : "bg-card text-card-foreground rounded-bl-md"
         }`}
       >
@@ -1393,7 +1393,7 @@ function ChatBubble({
               <div
                 className={`mb-1.5 rounded-md border-l-[3px] px-2 py-1 text-xs ${
                   mine
-                    ? "border-primary-foreground/70 bg-black/15"
+                    ? "border-white/70 bg-black/15"
                     : "border-primary bg-muted"
                 }`}
               >

@@ -870,11 +870,11 @@ function ConversationThread({
                   key={m.id}
                   data-chat-message-id={m.id}
                   aria-label={`Message from ${m.author.name}`}
-                  className={`max-w-[85%] min-w-0 rounded-2xl p-3 shadow-sm sm:max-w-[70%] ${m.author.id === userId ? "bg-primary text-primary-foreground ml-auto rounded-br-md" : "bg-card text-card-foreground rounded-bl-md"}`}
+                  className={`max-w-[85%] min-w-0 rounded-2xl p-3 shadow-sm sm:max-w-[70%] ${m.author.id === userId ? "bg-[#315675] text-[#ffffff] ml-auto rounded-br-md" : "bg-card text-card-foreground rounded-bl-md"}`}
                 >
                   <div className="mb-1 flex items-center justify-between gap-3">
                     <span className="text-sm font-medium">{m.author.name}</span>
-                    <span className="text-xs opacity-70">
+                    <span className="text-xs opacity-85">
                       {new Date(m.createdAt).toLocaleTimeString([], {
                         hour: "2-digit",
                         minute: "2-digit",
@@ -882,7 +882,7 @@ function ConversationThread({
                     </span>
                   </div>
                   {m.deletedAt ? (
-                    <p className="text-muted-foreground text-sm italic">
+                    <p className="text-sm italic opacity-85">
                       Message deleted
                     </p>
                   ) : (
@@ -891,7 +891,7 @@ function ConversationThread({
                         {m.body}
                       </p>
                       {m.editedAt && (
-                        <span className="text-muted-foreground text-xs">
+                        <span className="text-xs opacity-85">
                           Edited
                         </span>
                       )}
@@ -903,7 +903,7 @@ function ConversationThread({
                           rel="noreferrer"
                           className="mt-2 block min-w-0"
                         >
-                          <span className="text-primary block truncate text-xs underline">
+                          <span className="text-inherit block truncate text-xs underline">
                             {file.name}
                           </span>
                           {file.mimeType.startsWith("image/") && (
@@ -919,7 +919,7 @@ function ConversationThread({
                         <a
                           href={m.source.href}
                           title={m.source.title}
-                          className="text-primary mt-3 inline-flex items-center gap-1.5 text-sm font-medium underline underline-offset-4"
+                          className="text-inherit mt-3 inline-flex items-center gap-1.5 text-sm font-medium underline underline-offset-4"
                         >
                           <ExternalLinkIcon className="size-4" />
                           Open snapshot source
