@@ -102,7 +102,7 @@ function open(
 }
 
 describe("crisp drawing overlays", () => {
-  it.each([1, 18.31, 24, 35])(
+  it.each([1, 18.31, 24, 35, 50])(
     "draws at %s zoom in an unscaled viewport SVG",
     (scale) => {
       const { frame, sheet, annotations } = open(scale);
@@ -122,7 +122,7 @@ describe("crisp drawing overlays", () => {
   );
 
   it("keeps active dimensions in the same unscaled, clipped camera at maximum zoom", () => {
-    const { frame, annotations } = open(35, {
+    const { frame, annotations } = open(50, {
       sharedScale: { unit: "m", unitsPerSheetWidth: 100 },
     });
     fireEvent.click(screen.getByRole("button", { name: "Measure" }));
@@ -149,7 +149,7 @@ describe("crisp drawing overlays", () => {
       drawingVectorViewBox(
         { width: 390, height: 292.5 },
         { width: 390, height: 600 },
-        { scale: 35, x: 0, y: 0 },
+        { scale: 50, x: 0, y: 0 },
         390,
       ),
     );
