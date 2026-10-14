@@ -226,7 +226,12 @@ export function DrawingSheetViewer({
       : annotations;
   }, [editorProps.annotations, measuring, measureSource]);
   const path = trace.map(({ point }) => point);
-  const [calNodes, setCalNodes] = useState<MeasureNode[]>([]);
+  const [calNodes, updateCalNodes] = useState<MeasureNode[]>([]);
+  const [calFuture, setCalFuture] = useState<MeasureNode[][]>([]);
+  const setCalNodes = (next: React.SetStateAction<MeasureNode[]>) => {
+    setCalFuture([]);
+    updateCalNodes(next);
+  };
   const calPoints = calNodes.map(({ point }) => point);
   const nodeDrag = useRef<{ pointerId: number; index: number; x: number; y: number; moved: boolean } | null>(null);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
@@ -610,12 +615,17 @@ export function DrawingSheetViewer({
     setDragIndex(null);
     setLoupe(null);
     if (calibrating) {
-      setCalNodes((points) => points.slice(0, -1));
+      if (calNodes.length) { setCalFuture((future) => [calNodes, ...future]); updateCalNodes(calNodes.slice(0, -1)); }
     } else { dispatchRun({ type: "undo" }); setGapMessage(null); }
     setHover(null);
     setSnapLine(null);
     setAngleSnap(null);
-  }, [calibrating, gapMode]);
+  }, [calibrating, gapMode, calNodes]);
+  const redoPoint = () => {
+    if (calibrating) { const next = calFuture[0]; if (next) { updateCalNodes(next); setCalFuture(calFuture.slice(1)); } }
+    else dispatchRun({ type: "redo" });
+    setGapMode(false); setGapMessage(null); clearAim();
+  };
   const proposeScale = (next: SheetScale) => {
     if (scaleSavePending.current) return;
     const request = ++scaleSave.current;
@@ -1973,6 +1983,8 @@ export function DrawingSheetViewer({
         readError={scaleReadError}
         onToggle={toggleMeasuring}
         onUndo={undoPoint}
+        onRedo={redoPoint}
+        canRedo={calibrating ? calFuture.length > 0 : run.future.length > 0}
         onClear={() => {
           cancelNodeDrag();
           dispatchRun({ type: "clear" });

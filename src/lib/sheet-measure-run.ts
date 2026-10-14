@@ -13,7 +13,7 @@ type Snapshot = {
   active: number | null;
   branching: boolean;
 };
-export type MeasureRun = Snapshot & { history: Snapshot[] };
+export type MeasureRun = Snapshot & { history: Snapshot[]; future: Snapshot[] };
 export type RunHit = {
   point: SheetPoint;
   from: number;
@@ -26,17 +26,19 @@ export const emptyMeasureRun = (): MeasureRun => ({
   active: null,
   branching: false,
   history: [],
+  future: [],
 });
 export type RunAction =
   | { type: "load"; nodes: MeasureRunNode[] }
   | { type: "append"; point: SheetPoint; line: SnapSegment | null }
   | { type: "branch"; hit: RunHit }
   | { type: "move"; index: number; point: SheetPoint; line: SnapSegment | null }
-  | { type: "undo" | "clear" | "forget-lines" };
+  | { type: "undo" | "redo" | "clear" | "forget-lines" };
 
 function save(run: MeasureRun, next: Snapshot): MeasureRun {
   return {
     ...next,
+    future: [],
     history: [
       ...run.history,
       { nodes: run.nodes, active: run.active, branching: run.branching },
@@ -56,6 +58,7 @@ export function measureRunReducer(
         active: action.nodes.length - 1,
         branching: false,
         history: [],
+  future: [],
       };
     case "clear":
       return emptyMeasureRun();
@@ -68,6 +71,7 @@ export function measureRunReducer(
       return {
         ...run,
         nodes: clear(run.nodes),
+        future: run.future.map((snapshot) => ({ ...snapshot, nodes: clear(snapshot.nodes) })),
         history: run.history.map((snapshot) => ({
           ...snapshot,
           nodes: clear(snapshot.nodes),
@@ -77,8 +81,12 @@ export function measureRunReducer(
     case "undo": {
       const previous = run.history.at(-1);
       return previous
-        ? { ...previous, history: run.history.slice(0, -1) }
+        ? { ...previous, history: run.history.slice(0, -1), future: [{ nodes: run.nodes, active: run.active, branching: run.branching }, ...run.future] }
         : run;
+    }
+    case "redo": {
+      const next = run.future[0];
+      return next ? { ...next, future: run.future.slice(1), history: [...run.history, { nodes: run.nodes, active: run.active, branching: run.branching }] } : run;
     }
     case "append": {
       const anchor =

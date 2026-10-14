@@ -181,6 +181,23 @@ describe("drawing measure", () => {
     expect(screen.getAllByRole("region", { name: "Pipe system selection" })).toHaveLength(1);
     expect(onMode).toHaveBeenLastCalledWith({ measuring: false, pipe: true });
   });
+  it.each([false, true])("redos undone points with icon-only buttons (calibration: %s)", calibration => {
+    const { frame } = openSheet();
+    fireEvent.click(screen.getByRole("button", { name: "Measure" }));
+    if (calibration) fireEvent.click(screen.getByRole("button", { name: "Set Scale" }));
+    tap(frame, 200, 300);
+    const undo = screen.getByRole("button", { name: "Undo" });
+    const redo = screen.getByRole("button", { name: "Redo" });
+    expect(undo.textContent).toBe("");
+    expect(redo.textContent).toBe("");
+    expect(redo).toBeDisabled();
+    fireEvent.click(undo);
+    expect(frame.querySelectorAll("[data-measure-node]")).toHaveLength(0);
+    expect(redo).toBeEnabled();
+    fireEvent.click(redo);
+    expect(frame.querySelectorAll("[data-measure-node]")).toHaveLength(1);
+    expect(redo).toBeDisabled();
+  });
   it.each([false, true])("middle-pan preserves measurement nodes, including while setting scale (%s)", calibration => {
     const { frame } = openSheet();
     const image = screen.getByAltText("Sheet");
@@ -231,7 +248,7 @@ describe("drawing measure", () => {
     const view = openSheet(source, undefined, { sharedScale, onCreate });
     fireEvent.click(screen.getByRole("button", { name: "Measure" }));
     tap(view.frame, 200, 300); tap(view.frame, 600, 300);
-    fireEvent.click(screen.getByRole("button", { name: "Gap" }));
+    fireEvent.click(screen.getByRole("button", { name: "Branch" }));
     tap(view.frame, 400, 300); tap(view.frame, 400, 180);
     fireEvent.click(screen.getByRole("button", { name: /^Measuring color:/ }));
     fireEvent.click(screen.getByRole("button", { name: "Neon cyan" }));
@@ -290,7 +307,7 @@ describe("drawing measure", () => {
     const { frame } = openSheet("0391aed4-7773-47ec-9141-09df373ec008", undefined, { sharedScale: { unit: "ft", unitsPerSheetWidth: 100 }, onCreate });
     fireEvent.click(screen.getByRole("button", { name: "Measure" }));
     tap(frame, 200, 300); tap(frame, 600, 300);
-    fireEvent.click(screen.getByRole("button", { name: "Gap" }));
+    fireEvent.click(screen.getByRole("button", { name: "Branch" }));
     tap(frame, 400, 300); tap(frame, 400, 180);
     fireEvent.click(screen.getByRole("button", { name: "Done" }));
     expect(onCreate).toHaveBeenCalledOnce();
@@ -1151,8 +1168,8 @@ describe("Gap branching in Measure", () => {
     const entity = savedRun(), onCreate = vi.fn(), onUpdate = vi.fn();
     const { frame } = openSheet(source, undefined, { annotations: [entity], sharedScale: { unit: "m", unitsPerSheetWidth: 200 }, onCreate, onUpdate });
     fireEvent.click(screen.getByRole("button", { name: "Measure" }));
-    expect(screen.getByRole("button", { name: "Gap" })).toBeEnabled();
-    fireEvent.click(screen.getByRole("button", { name: "Gap" }));
+    expect(screen.getByRole("button", { name: "Branch" })).toBeEnabled();
+    fireEvent.click(screen.getByRole("button", { name: "Branch" }));
     tap(frame, 400, 300);
     expect(frame.querySelectorAll('[data-measure-node]')).toHaveLength(3);
     expect(frame.querySelector('[data-annotation-id="existing-run"]')).toBeNull();
@@ -1174,7 +1191,7 @@ describe("Gap branching in Measure", () => {
     const { frame } = openSheet(source, undefined, { annotations: [entity], onUpdate });
     for (const action of ["Escape", "Clear"]) {
       if (action === "Escape") fireEvent.click(screen.getByRole("button", { name: "Measure" }));
-      fireEvent.click(screen.getByRole("button", { name: "Gap" }));
+      fireEvent.click(screen.getByRole("button", { name: "Branch" }));
       tap(frame, 400, 300); tap(frame, 400, 180);
       if (action === "Escape") { fireEvent.keyDown(window, { key: "Escape" }); fireEvent.click(screen.getByRole("button", { name: "Measure" })); }
       else fireEvent.click(screen.getByRole("button", { name: "Clear" }));
@@ -1191,7 +1208,7 @@ describe("Gap branching in Measure", () => {
     const { frame } = openSheet(source, { url: "/plan.pdf", page: 1 }, { annotations: [entity], onUpdate: vi.fn() });
     fireEvent.click(screen.getByRole("button", { name: "Measure" }));
     await waitFor(() => expect(loadSnapLines).toHaveBeenCalled());
-    fireEvent.click(screen.getByRole("button", { name: "Gap" }));
+    fireEvent.click(screen.getByRole("button", { name: "Branch" }));
     tap(frame, 240, 220); tap(frame, 258, 340);
     expect(frame.querySelector('[data-measure-path]')!.getAttribute("d")).toContain("L258,240");
     expect(frame.querySelector('[data-measure-angle]')).toHaveTextContent("90°");
@@ -1201,11 +1218,11 @@ describe("Gap branching in Measure", () => {
     const entity = savedRun(), onUpdate = vi.fn();
     const view = openSheet(source, undefined, { annotations: [entity], onUpdate, canEditAnnotation: () => false });
     fireEvent.click(screen.getByRole("button", { name: "Measure" }));
-    expect(screen.getByRole("button", { name: "Gap" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Branch" })).toBeDisabled();
     view.rerender(<DrawingSheetViewer src="/sheet.webp" alt="Sheet" sheetKey={source} annotations={[entity]} onUpdate={onUpdate} hideAnnotations />);
-    expect(screen.getByRole("button", { name: "Gap" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Branch" })).toBeDisabled();
     view.rerender(<DrawingSheetViewer src="/sheet.webp" alt="Sheet" sheetKey={source} annotations={[entity]} onUpdate={onUpdate} />);
-    fireEvent.click(screen.getByRole("button", { name: "Gap" })); tap(view.frame, 400, 300);
+    fireEvent.click(screen.getByRole("button", { name: "Branch" })); tap(view.frame, 400, 300);
     view.rerender(<DrawingSheetViewer src="/sheet.webp" alt="Sheet" sheetKey={source} annotations={[{ ...entity, revision: 2 }]} onUpdate={onUpdate} />);
     expect(view.frame.querySelectorAll('[data-measure-node]')).toHaveLength(0);
     expect(screen.getByRole("note")).toHaveTextContent("measurement changed");
@@ -1216,12 +1233,12 @@ describe("Gap branching in Measure", () => {
   it("creates a node on an existing segment, preserves the trunk, and measures only the new branch", () => {
     const { frame } = openSheet("gap-run", undefined, { sharedScale: { unit: "ft", unitsPerSheetWidth: 100 } });
     fireEvent.click(screen.getByRole("button", { name: "Measure" }));
-    expect(screen.getByRole("button", { name: "Gap" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Branch" })).toBeDisabled();
     tap(frame, 200, 300); tap(frame, 600, 300);
     expect(screen.getByRole("status")).toHaveTextContent("50'-0\"");
-    fireEvent.click(screen.getByRole("button", { name: "Gap" }));
+    fireEvent.click(screen.getByRole("button", { name: "Branch" }));
     tap(frame, 400, 305);
-    expect(screen.getByRole("button", { name: "Gap" })).toHaveAttribute("aria-pressed", "false");
+    expect(screen.getByRole("button", { name: "Branch" })).toHaveAttribute("aria-pressed", "false");
     expect(frame.querySelectorAll("[data-measure-node]")).toHaveLength(3);
     expect(frame.querySelector('[data-measure-node="2"]')).toHaveAttribute("data-measure-active", "true");
     expect(screen.getByRole("status")).toHaveTextContent("50'-0\"");
@@ -1243,7 +1260,7 @@ describe("Gap branching in Measure", () => {
     const { frame } = openSheet("gap-gestures", undefined, { sharedScale: { unit: "m", unitsPerSheetWidth: 100 } });
     fireEvent.click(screen.getByRole("button", { name: "Measure" }));
     tap(frame, 200, 300); tap(frame, 600, 300);
-    fireEvent.click(screen.getByRole("button", { name: "Gap" }));
+    fireEvent.click(screen.getByRole("button", { name: "Branch" }));
     tap(frame, 400, 450);
     expect(screen.getByRole("note")).toHaveTextContent("Tap an existing measured segment");
     expect(frame.querySelectorAll("[data-measure-node]")).toHaveLength(2);
@@ -1258,7 +1275,7 @@ describe("Gap branching in Measure", () => {
     fireEvent.pointerUp(frame, { clientX: 300, clientY: 300, pointerId: 1, button: 0 });
     expect(frame.querySelectorAll("[data-measure-node]")).toHaveLength(2);
     fireEvent.keyDown(window, { key: "Escape" });
-    expect(screen.getByRole("button", { name: "Gap" })).toHaveAttribute("aria-pressed", "false");
+    expect(screen.getByRole("button", { name: "Branch" })).toHaveAttribute("aria-pressed", "false");
     expect(screen.getByRole("button", { name: "Done" })).toBeInTheDocument();
     expect(screen.getByRole("status")).toHaveTextContent("50 m");
   });
@@ -1266,15 +1283,15 @@ describe("Gap branching in Measure", () => {
     const { frame } = openSheet("gap-endpoint", undefined, { sharedScale: { unit: "m", unitsPerSheetWidth: 100 } });
     fireEvent.click(screen.getByRole("button", { name: "Measure" }));
     tap(frame, 200, 300); tap(frame, 600, 300);
-    fireEvent.click(screen.getByRole("button", { name: "Gap" })); tap(frame, 200, 300);
+    fireEvent.click(screen.getByRole("button", { name: "Branch" })); tap(frame, 200, 300);
     expect(frame.querySelectorAll("[data-measure-node]")).toHaveLength(2);
     tap(frame, 200, 380);
     expect(screen.getByRole("status")).toHaveTextContent("60 m");
-    fireEvent.click(screen.getByRole("button", { name: "Gap" })); tap(frame, 400, 300); tap(frame, 400, 220);
+    fireEvent.click(screen.getByRole("button", { name: "Branch" })); tap(frame, 400, 300); tap(frame, 400, 220);
     expect(screen.getByRole("status")).toHaveTextContent("70 m");
     fireEvent.click(screen.getByRole("button", { name: "Clear" }));
     expect(frame.querySelectorAll("[data-measure-node]")).toHaveLength(0);
-    expect(screen.getByRole("button", { name: "Gap" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Branch" })).toBeDisabled();
   });
 });
 
@@ -1282,7 +1299,7 @@ it("places a short first branch instead of grabbing the new gap node", () => {
   const { frame } = openSheet("gap-short", undefined, { sharedScale: { unit: "ft", unitsPerSheetWidth: 100 } });
   fireEvent.click(screen.getByRole("button", { name: "Measure" }));
   tap(frame, 200, 300); tap(frame, 600, 300);
-  fireEvent.click(screen.getByRole("button", { name: "Gap" })); tap(frame, 400, 300);
+  fireEvent.click(screen.getByRole("button", { name: "Branch" })); tap(frame, 400, 300);
   tap(frame, 400, 286);
   expect(frame.querySelectorAll("[data-measure-node]")).toHaveLength(4);
   expect(screen.getByRole("status")).toHaveTextContent("51'-9\"");

@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckIcon, ChevronDownIcon, RulerIcon } from "lucide-react";
+import { CheckIcon, ChevronDownIcon, RulerIcon, Undo2Icon, Redo2Icon } from "lucide-react";
 import { useId, useState, type PointerEvent, type ReactNode } from "react";
 
 import { Button } from "~/components/ui/button";
@@ -37,6 +37,8 @@ export function SheetMeasureBar({
   readError,
   onToggle,
   onUndo,
+  onRedo,
+  canRedo = false,
   onClear,
   onStartScale,
   onCancelScale,
@@ -74,6 +76,8 @@ export function SheetMeasureBar({
   readError?: string | null;
   onToggle: () => void;
   onUndo: () => void;
+  onRedo?: () => void;
+  canRedo?: boolean;
   onClear: () => void;
   /** Set the scale from two ends of a known length. */
   onStartScale: () => void;
@@ -137,6 +141,8 @@ export function SheetMeasureBar({
               saving={saving}
               readError={readError}
               onUndo={onUndo}
+              onRedo={onRedo}
+              canRedo={canRedo}
               onCancel={onCancelScale}
               onDraft={onDraft}
               onUnit={onUnit}
@@ -157,6 +163,8 @@ export function SheetMeasureBar({
               scaleLabel={scaleLabel}
               readError={readError}
               onUndo={onUndo}
+              onRedo={onRedo}
+              canRedo={canRedo}
               onClear={onClear}
               onStartScale={onStartScale}
               gap={gap}
@@ -193,10 +201,10 @@ function MeasureColorPicker({
   const name =
     MEASURE_COLORS.find((item) => item.value === color)?.name ?? "Custom";
   return (
-    <div className={`min-w-0 ${open ? "basis-full" : "ml-auto"}`}>
+    <div className="contents">
       <button
         type="button"
-        className="flex min-h-8 items-center gap-1.5 rounded-md border px-2 text-sm"
+        className="flex h-8 w-full items-center justify-center gap-1 rounded-md border px-1 text-xs"
         aria-label={`Measuring color: ${name}`}
         aria-expanded={open}
         aria-controls={id}
@@ -206,14 +214,14 @@ function MeasureColorPicker({
           className="h-5 w-5 rounded-full border border-current/30"
           style={{ backgroundColor: color }}
         />
-        <span>Color</span>
+        <span className="sr-only">Color</span>
         <span className="sr-only">{name}</span>
         <ChevronDownIcon
           className={`h-4 w-4 transition-transform ${open ? "rotate-180" : ""}`}
         />
       </button>
       {open && (
-        <div id={id} className="space-y-2 pt-1">
+        <div id={id} className="col-span-full space-y-2 pt-1">
           <div
             role="group"
             aria-label="Measuring colors"
@@ -309,6 +317,8 @@ function Tracing({
   scaleLabel,
   readError,
   onUndo,
+  onRedo,
+  canRedo = false,
   onClear,
   onStartScale,
   onUnit,
@@ -330,6 +340,8 @@ function Tracing({
   scaleLabel?: string | null;
   readError?: string | null;
   onUndo: () => void;
+  onRedo?: () => void;
+  canRedo?: boolean;
   onClear: () => void;
   onStartScale: () => void;
   onUnit: (unit: LengthUnit) => void;
@@ -377,7 +389,7 @@ function Tracing({
           {gapMessage}
         </p>
       )}
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="grid grid-cols-6 items-center gap-1 [&>button]:min-w-0 [&>button]:px-1 [&>button]:text-xs [&>button]:whitespace-normal [&>button]:leading-tight">
         <Button
           type="button"
           size="sm"
@@ -386,16 +398,21 @@ function Tracing({
           disabled={!canGap || !onGap}
           onClick={onGap}
         >
-          Gap
+          Branch
         </Button>
         <Button
           type="button"
           size="sm"
           variant="outline"
           disabled={pointCount === 0}
+          aria-label="Undo"
+          title="Undo"
           onClick={onUndo}
         >
-          Undo
+          <Undo2Icon aria-hidden="true" className="size-4" />
+        </Button>
+        <Button type="button" size="sm" variant="outline" aria-label="Redo" title="Redo" disabled={!canRedo || !onRedo} onClick={onRedo}>
+          <Redo2Icon aria-hidden="true" className="size-4" />
         </Button>
         <Button
           type="button"
@@ -430,6 +447,8 @@ function Calibration({
   saving,
   readError,
   onUndo,
+  onRedo,
+  canRedo = false,
   onCancel,
   onDraft,
   onUnit,
@@ -446,6 +465,8 @@ function Calibration({
   saving: boolean;
   readError?: string | null;
   onUndo: () => void;
+  onRedo?: () => void;
+  canRedo?: boolean;
   onCancel: () => void;
   onDraft: (value: string) => void;
   onUnit: (unit: LengthUnit) => void;
@@ -456,7 +477,7 @@ function Calibration({
 }) {
   return (
     <>
-      {(saving || reading || count >= 2 || controls) && (
+      {(saving || reading || count >= 2 || Boolean(controls)) && (
         <div className="flex items-center gap-2">
           <p role="status" className="min-w-0 flex-1 text-sm">
             {saving
@@ -516,15 +537,20 @@ function Calibration({
       {readError && !reading && (
         <p className="text-destructive text-xs">{readError}</p>
       )}
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="grid grid-cols-4 items-center gap-1 [&>button]:min-w-0 [&>button]:px-1 [&>button]:text-xs [&>button]:whitespace-normal [&>button]:leading-tight">
         <Button
           type="button"
           size="sm"
           variant="outline"
           disabled={count === 0 || saving}
+          aria-label="Undo"
+          title="Undo"
           onClick={onUndo}
         >
-          Undo
+          <Undo2Icon aria-hidden="true" className="size-4" />
+        </Button>
+        <Button type="button" size="sm" variant="outline" aria-label="Redo" title="Redo" disabled={!canRedo || !onRedo || saving} onClick={onRedo}>
+          <Redo2Icon aria-hidden="true" className="size-4" />
         </Button>
         <Button
           type="button"

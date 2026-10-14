@@ -92,3 +92,21 @@ describe("branched manual measurement", () => {
     expect(ref.reference).toEqual({ x1: 0.1, y1: 0.5, x2: 0.4, y2: 0.5 });
   });
 });
+
+it("redos a branch and its points, and discards redo after a new edit", () => {
+  const base = trunk();
+  const fork = branch(base, 0.5, 0.5);
+  const tip = append(fork, 0.5, 0.8);
+  let run = measureRunReducer(tip, { type: "undo" });
+  run = measureRunReducer(run, { type: "undo" });
+  expect(run.nodes).toEqual(base.nodes);
+  run = measureRunReducer(run, { type: "redo" });
+  expect(run.nodes).toEqual(fork.nodes);
+  expect(run.active).toBe(fork.active);
+  run = measureRunReducer(run, { type: "redo" });
+  expect(run.nodes).toEqual(tip.nodes);
+  expect(run.future).toHaveLength(0);
+  run = append(measureRunReducer(run, { type: "undo" }), 0.5, 0.2);
+  expect(run.future).toHaveLength(0);
+  expect(measureRunReducer(run, { type: "redo" })).toBe(run);
+});
