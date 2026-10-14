@@ -915,10 +915,10 @@ describe("drawing workspace workflows", () => {
       screen.getByRole("toolbar", { name: "Selected markup actions" }),
     ).toBeVisible();
     expect(screen.queryByLabelText("Drawing tools panel")).toBeNull();
-    expect(screen.getByRole("button", { name: "Resize" })).toHaveAttribute(
-      "aria-pressed",
-      "true",
-    );
+    // Edits unlock once the pickup shake has finished.
+    expect(
+      await screen.findByRole("button", { name: "Resize" }),
+    ).toHaveAttribute("aria-pressed", "true");
     fireEvent.click(screen.getByRole("button", { name: "Move" }));
     expect(screen.getByTestId("markup-editor")).toHaveAttribute(
       "data-selection-mode",
@@ -1124,7 +1124,7 @@ describe("drawing workspace workflows", () => {
     fireEvent.click(
       screen.getByRole("button", { name: "Select first annotation" }),
     );
-    const style = screen.getByRole("group", { name: "Markup style" });
+    const style = await screen.findByRole("group", { name: "Markup style" });
     fireEvent.click(within(style).getByRole("button", { name: "Blue" }));
     await waitFor(() => expect(mocks.save).toHaveBeenCalledOnce());
     expect(mocks.save.mock.calls[0]![0]).toMatchObject({
@@ -1140,7 +1140,8 @@ describe("drawing workspace workflows", () => {
     fireEvent.click(
       screen.getByRole("button", { name: "Select first annotation" }),
     );
-    expect(screen.getByRole("button", { name: "Move" })).toBeEnabled();
+    // Edits unlock once the pickup shake has finished.
+    expect(await screen.findByRole("button", { name: "Move" })).toBeEnabled();
     fireEvent.click(
       screen.getByRole("button", { name: "Move selected annotation" }),
     );
