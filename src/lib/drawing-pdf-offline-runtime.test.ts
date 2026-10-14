@@ -115,3 +115,18 @@ describe("explicit public PDF runtime offline preparation", () => {
     await expect(warmDrawingPdfRuntime()).rejects.toThrow(/Quota/);
   });
 });
+
+it("bypasses a stale CDN 404 and caches the result under the canonical offline URL", async () => {
+  const path = "/api/pdfjs-assets/wasm/quickjs-eval.js";
+  fetcher.mockImplementation(async (input) => {
+    if (typeof input !== "string") throw Error("Expected a string asset URL");
+    const url = new URL(input);
+    return new Response("runtime", {
+      status: url.pathname === path && !url.searchParams.has("offline-retry") ? 404 : 200,
+    });
+  });
+  await warmDrawingPdfRuntime();
+  expect(fetcher.mock.calls.some(([url]) => typeof url === "string" && url.includes(path + "?offline-retry="))).toBe(true);
+  expect(stores.get(version + ":pdf-runtime")?.has(location.origin + path)).toBe(true);
+  expect(stores.get(version + ":pdf-runtime")?.size).toBe(DRAWING_PDF_RUNTIME_FILES.length);
+});

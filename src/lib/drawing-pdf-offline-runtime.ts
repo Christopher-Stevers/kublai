@@ -172,8 +172,8 @@ export async function warmDrawingPdfRuntime({
           signal?.throwIfAborted();
           controller.signal.throwIfAborted();
           const job = jobs[next++]!;
-          const response = await bounded(
-            fetch(job.url, {
+          const fetchRuntime = (url: string) => bounded(
+            fetch(url, {
               credentials: "same-origin",
               cache: "reload",
               signal: controller.signal,
@@ -181,6 +181,14 @@ export async function warmDrawingPdfRuntime({
             controller.signal,
             20_000,
           );
+          let response = await fetchRuntime(job.url);
+          // A CDN can retain an earlier missing-asset response after deployment.
+          // Fetch a fresh URL, but retain the canonical cache key for offline use.
+          if (response.status === 404) {
+            const fresh = new URL(job.url);
+            fresh.searchParams.set("offline-retry", String(Date.now()));
+            response = await fetchRuntime(fresh.href);
+          }
           if (!response.ok)
             throw Error(
               "Could not download the PDF renderer. Reconnect and save offline again.",

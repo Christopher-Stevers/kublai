@@ -34,7 +34,7 @@ export async function GET(
 ) {
   const relative = (await context.params).path.join("/");
   if (!ALLOWED.test(relative))
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+    return NextResponse.json({ error: "Not found" }, { status: 404, headers: { "Cache-Control": "no-store" } });
   try {
     const body = await readFile(path.join(packageRoot(), relative));
     return new NextResponse(body, {
@@ -44,6 +44,6 @@ export async function GET(
       },
     });
   } catch {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+    return NextResponse.json({ error: "Not found" }, { status: 404, headers: { "Cache-Control": "no-store" } });
   }
 }
