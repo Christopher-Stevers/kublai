@@ -31,6 +31,7 @@ export const emptyMeasureRun = (): MeasureRun => ({
 export type RunAction =
   | { type: "load"; nodes: MeasureRunNode[] }
   | { type: "append"; point: SheetPoint; line: SnapSegment | null }
+  | { type: "select"; index: number }
   | { type: "branch"; hit: RunHit }
   | { type: "move"; index: number; point: SheetPoint; line: SnapSegment | null }
   | { type: "undo" | "redo" | "clear" | "forget-lines" };
@@ -104,6 +105,20 @@ export function measureRunReducer(
           { point: action.point, line: action.line, parent: run.active },
         ],
         active: run.nodes.length,
+        branching: false,
+      });
+    }
+    case "select": {
+      const node = run.nodes[action.index];
+      if (!node || run.active === action.index) return run;
+      const neighbor = node.parent === null
+        ? run.nodes.find(candidate => candidate.parent === action.index)
+        : run.nodes[node.parent];
+      return save(run, {
+        nodes: run.nodes.map((candidate, index) => index === action.index && !candidate.line && neighbor
+          ? { ...candidate, line: { x1: neighbor.point.x, y1: neighbor.point.y, x2: node.point.x, y2: node.point.y }, referenceOnly: true }
+          : candidate),
+        active: action.index,
         branching: false,
       });
     }

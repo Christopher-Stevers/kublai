@@ -190,3 +190,22 @@ describe("crisp drawing overlays", () => {
     expect(annotations.querySelector("text")).toBe(text);
   });
 });
+
+it("moves the focus circle when tapping an existing measurement node", () => {
+  const { frame } = open(1);
+  fireEvent.click(screen.getByRole("button", { name: "Measure" }));
+  const tap = (x: number, y: number) => {
+    fireEvent.pointerDown(frame, { button: 0, pointerId: 1, clientX: x, clientY: y });
+    fireEvent.pointerUp(frame, { button: 0, pointerId: 1, clientX: x, clientY: y });
+  };
+  tap(100, 250);
+  tap(280, 250);
+  expect(frame.querySelector('[data-measure-node="1"]')?.getAttribute("data-measure-active")).toBe("true");
+  tap(100, 250);
+  expect(frame.querySelectorAll("[data-measure-node]")).toHaveLength(2);
+  expect(frame.querySelector('[data-measure-node="0"]')?.getAttribute("data-measure-active")).toBe("true");
+  expect(frame.querySelector('[data-measure-node="0"]')?.querySelectorAll("polygon")).toHaveLength(8);
+  tap(100, 350);
+  expect(frame.querySelectorAll("[data-measure-node]")).toHaveLength(3);
+  expect(frame.querySelector('[data-measure-node="2"]')?.getAttribute("data-measure-active")).toBe("true");
+});

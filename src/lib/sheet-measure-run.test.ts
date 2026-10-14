@@ -110,3 +110,14 @@ it("redos a branch and its points, and discards redo after a new edit", () => {
   expect(run.future).toHaveLength(0);
   expect(measureRunReducer(run, { type: "redo" })).toBe(run);
 });
+
+it("selects an existing node and extends from it without changing existing edges", () => {
+  const original = append(trunk(), 0.9, 0.8);
+  const selected = measureRunReducer(original, { type: "select", index: 0 });
+  expect(selected.active).toBe(0);
+  expect(selected.nodes.map(n => n.point)).toEqual(original.nodes.map(n => n.point));
+  expect(selected.nodes.map(n => n.parent)).toEqual([null, 0, 1]);
+  expect(runAngleReference(selected.nodes, selected.nodes.length, selected.active)?.reference).not.toBeNull();
+  expect(append(selected, 0.1, 0.2).nodes.at(-1)?.parent).toBe(0);
+  expect(measureRunReducer(selected, { type: "undo" }).active).toBe(2);
+});

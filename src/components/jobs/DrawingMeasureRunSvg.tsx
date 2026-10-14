@@ -1,3 +1,4 @@
+import { DrawingMeasureNode } from "./DrawingMeasureNode";
 import { useId } from "react";
 import type { DrawingMarkup } from "~/lib/drawing-workspace";
 import {
@@ -210,29 +211,7 @@ export function DrawingMeasureRunSvg({
       )}
       {points.map((point, index) => (
         <g key={index} opacity={0.6} data-saved-measure-node={index}>
-          {[-1, 1].map((direction) => (
-            <g key={direction}>
-              <line
-                x1={point.x - style.arm}
-                y1={point.y - direction * style.arm}
-                x2={point.x + style.arm}
-                y2={point.y + direction * style.arm}
-                stroke={halo}
-                strokeOpacity={0.85}
-                strokeWidth={style.stroke * 2.2}
-                strokeLinecap="round"
-              />
-              <line
-                x1={point.x - style.arm}
-                y1={point.y - direction * style.arm}
-                x2={point.x + style.arm}
-                y2={point.y + direction * style.arm}
-                stroke={data.stroke}
-                strokeWidth={style.stroke}
-                strokeLinecap="round"
-              />
-            </g>
-          ))}
+          <DrawingMeasureNode x={point.x} y={point.y} arm={style.arm} stroke={style.stroke} color={data.stroke} halo={halo} />
         </g>
       ))}
     </g>

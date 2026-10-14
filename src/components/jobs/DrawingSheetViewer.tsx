@@ -1,4 +1,5 @@
 "use client";
+import { DrawingMeasureNode } from "./DrawingMeasureNode";
 import { SNAPSHOT_FREEZE_EVENT } from "~/lib/snapshot-source";
 
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useReducer, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
@@ -1140,9 +1141,17 @@ export function DrawingSheetViewer({
     }
     const c = map(centre);
     const arm = 10 * dpr;
-    for (const [dx, dy] of [[1, 1], [1, -1]] as const) {
-      strokeLine({ x: c.x - dx * arm, y: c.y - dy * arm }, { x: c.x + dx * arm, y: c.y + dy * arm }, measureHalo, 3.5 * dpr);
-      strokeLine({ x: c.x - dx * arm, y: c.y - dy * arm }, { x: c.x + dx * arm, y: c.y + dy * arm }, measureColor, 1.5 * dpr);
+    for (const dx of [-1, 1]) for (const dy of [-1, 1]) {
+      for (const [color, width] of [[measureHalo, 3.5], [measureColor, 1.5]] as const) {
+        const offset = width * dpr / Math.SQRT2 / 2;
+        ctx.beginPath();
+        ctx.moveTo(c.x, c.y);
+        ctx.lineTo(c.x + dx * arm - dy * offset, c.y + dy * arm + dx * offset);
+        ctx.lineTo(c.x + dx * arm + dy * offset, c.y + dy * arm - dx * offset);
+        ctx.closePath();
+        ctx.fillStyle = color;
+        ctx.fill();
+      }
     }
   });
   const snapMark = Math.max(1.2, 8 / view.scale);
@@ -1477,6 +1486,7 @@ export function DrawingSheetViewer({
         if (drag?.pointerId === event.pointerId) {
           const moved = drag.moved || Math.hypot(event.clientX - drag.x, event.clientY - drag.y) > 2;
           const aim = moved ? aimFromClient(event.clientX, event.clientY, drag.index) : null;
+          if (!moved && !calibrating) dispatchRun({ type: "select", index: drag.index });
           if (aim) {
             const replace = (nodes: MeasureNode[]) => nodes.map((node, index) => index === drag.index ? { point: aim.point, line: aim.segment } : node);
             if (calibrating) setCalNodes(replace);
@@ -1852,8 +1862,7 @@ export function DrawingSheetViewer({
                 ))}
               </>
             )}
-            {/* End points are thin, semi-transparent X marks so they can be
-                placed precisely and the linework under them stays visible. */}
+            {/* Each arm narrows to the exact node coordinate. */}
             {marked.map((point, index) => {
               const cx = point.x * fit.width;
               const cy = point.y * fit.height;
@@ -1861,32 +1870,7 @@ export function DrawingSheetViewer({
               return (
                 <g key={index} data-measure-node={index < drawn.length ? index : undefined} data-measure-active={!calibrating && run.active === index ? "true" : undefined} opacity={dragIndex === index ? 1 : 0.6}>
                   {measuring && !calibrating && run.active === index && <circle cx={cx} cy={cy} r={markArm * 1.7} fill="none" stroke={measureColor} strokeWidth={markStroke} />}
-                  {[
-                    [-1, -1, 1, 1],
-                    [-1, 1, 1, -1],
-                  ].map(([ax, ay, bx, by], stroke) => (
-                    <g key={stroke}>
-                      <line
-                        x1={cx + ax! * arm}
-                        y1={cy + ay! * arm}
-                        x2={cx + bx! * arm}
-                        y2={cy + by! * arm}
-                        stroke={measureHalo}
-                        strokeOpacity={0.85}
-                        strokeWidth={markStroke * 2.2}
-                        strokeLinecap="round"
-                      />
-                      <line
-                        x1={cx + ax! * arm}
-                        y1={cy + ay! * arm}
-                        x2={cx + bx! * arm}
-                        y2={cy + by! * arm}
-                        stroke={measureColor}
-                        strokeWidth={markStroke}
-                        strokeLinecap="round"
-                      />
-                    </g>
-                  ))}
+                  <DrawingMeasureNode x={cx} y={cy} arm={arm} stroke={markStroke} color={measureColor} halo={measureHalo} />
                 </g>
               );
             })}
