@@ -24,13 +24,24 @@ export type DrawingEditorProps = {
   sharedScale?: SheetScale | null;
   onScaleChange?: (scale: SheetScale) => boolean | void | Promise<boolean | void>;
 };
-type Gesture = { start: DrawingPoint; points: DrawingPoint[]; moved: boolean; entity?: DrawingEntity; handle?: number | DrawingResizeHandle; activate?: boolean; edited?: DrawingMarkup; latest?: DrawingPoint };
+type Gesture = {
+  start: DrawingPoint; points: DrawingPoint[]; moved: boolean; entity?: DrawingEntity; handle?: number | DrawingResizeHandle;
+  activate?: boolean; edited?: DrawingMarkup; latest?: DrawingPoint;
+  /** A markup is only picked up after a short hold, so a drag that starts on one still pans. */
+  armed?: boolean; holdTimer?: ReturnType<typeof setTimeout>;
+  /** Moved before the hold completed: the drag pans the drawing instead. */
+  panning?: boolean;
+};
+/** How long to hold still on a markup before it is picked up. */
+export const MARKUP_HOLD_MS = 350;
+const holdsToSelect = (entity: DrawingEntity) => entity.kind === "markup" && entity.data.type !== "link";
 
 export function useDrawingEditor(props: DrawingEditorProps, aspect: number, screenWidth: number) {
   const tool = props.tool ?? "pan";
   const [points, setPoints] = useState<DrawingPoint[]>([]);
   const [preview, setPreview] = useState<DrawingPoint[]>([]);
   const [editing, setEditing] = useState<{ id: string; data: DrawingMarkup } | null>(null);
+  const [heldId, setHeldId] = useState<string | null>(null);
   const gesture = useRef<Gesture | null>(null);
   const committed = useRef(points);
   committed.current = points;
@@ -51,7 +62,22 @@ export function useDrawingEditor(props: DrawingEditorProps, aspect: number, scre
       publishRef.current();
     });
   };
-  const clear = () => { cancelPreview(); gesture.current = null; committed.current = []; setPoints([]); setPreview([]); setEditing(null); };
+  const stopHold = (active: Gesture | null) => { if (active?.holdTimer) clearTimeout(active.holdTimer); setHeldId(null); };
+  /** After a short hold, select the markup and let the drag move it. */
+  const startHold = (active: Gesture) => {
+    active.holdTimer = setTimeout(() => {
+      active.holdTimer = undefined;
+      if (gesture.current !== active || active.moved || !active.entity) return;
+      active.armed = true;
+      try { navigator.vibrate?.(12); } catch { /* Haptics are optional. */ }
+      // From here the gesture edits the markup rather than panning.
+      if (active.activate) { active.activate = false; active.start = active.latest ?? active.start; }
+      // Show it is held now; selecting waits for release because selection can
+      // change the viewer layout under the finger.
+      setHeldId(active.entity.id);
+    }, MARKUP_HOLD_MS);
+  };
+  const clear = () => { cancelPreview(); stopHold(gesture.current); gesture.current = null; committed.current = []; setPoints([]); setPreview([]); setEditing(null); };
   useEffect(clear, [tool, props.sourceSheetId, props.selectionMode, props.hideAnnotations, cancelPreview]);
   const canEdit = useCallback((entity: DrawingEntity) => entity.kind === "markup" && entity.visibility !== "archived"
     && annotations?.some(current => current.id === entity.id && current.revision === entity.revision && current.visibility !== "archived")
@@ -75,7 +101,7 @@ export function useDrawingEditor(props: DrawingEditorProps, aspect: number, scre
     if (data && props.onCreate) { props.onCreate(data); clear(); }
   };
   const undo = () => { cancelPreview(); const next = committed.current.slice(0, -1); committed.current = next; setPoints(next); setPreview([]); };
-  const cancelGesture = () => { cancelPreview(); gesture.current = null; setPreview([]); setEditing(null); };
+  const cancelGesture = () => { cancelPreview(); stopHold(gesture.current); gesture.current = null; setPreview([]); setEditing(null); };
   useEffect(() => {
     const active = gesture.current;
     if (active?.entity?.kind === "markup" && !active.activate && (!props.onUpdate || !canEdit(active.entity))) {
@@ -90,7 +116,9 @@ export function useDrawingEditor(props: DrawingEditorProps, aspect: number, scre
     const entity = props.hideAnnotations ? undefined : props.annotations?.find(item => item.id === element?.dataset.annotationId);
     if (tool === "pan") {
       if (!entity || (entity.kind !== "issue" && entity.kind !== "markup")) return false;
-      gesture.current = { start: point, points: [point], moved: false, entity, activate: true };
+      const active: Gesture = { start: point, points: [point], moved: false, entity, activate: true };
+      gesture.current = active;
+      if (holdsToSelect(entity)) startHold(active);
       return true;
     }
     if (tool === "select") {
@@ -103,7 +131,10 @@ export function useDrawingEditor(props: DrawingEditorProps, aspect: number, scre
       const vertex = handleName !== undefined ? Number(handleName) : undefined;
       const handle = props.selectionMode === "move" ? undefined : corner ??
         (vertex !== undefined && Number.isInteger(vertex) && vertex >= 0 && entity.kind === "markup" && vertex < entity.data.points.length ? vertex : undefined);
-      gesture.current = { start: point, points: [point], moved: false, entity, handle };
+      // Handles on an already selected markup respond at once; the body needs a hold.
+      const active: Gesture = { start: point, points: [point], moved: false, entity, handle, armed: handle !== undefined || !holdsToSelect(entity) };
+      gesture.current = active;
+      if (!active.armed) startHold(active);
       return true;
     }
     if (!props.onCreate && !props.onPoint) return false;
@@ -143,8 +174,19 @@ export function useDrawingEditor(props: DrawingEditorProps, aspect: number, scre
       if (active.activate) { active.moved = true; return false; }
       return true;
     }
+    if (active.panning) return false;
     active.moved ||= distance(point, active.start) * screenWidth > 6;
-    if (active.activate) return !active.moved;
+    if (active.activate) {
+      if (active.moved) stopHold(active);
+      else active.latest = point;
+      return !active.moved;
+    }
+    if (active.entity && !active.armed) {
+      if (!active.moved) return true;
+      // Dragged before the hold completed: this is a pan, not a move.
+      stopHold(active); active.panning = true; active.moved = false;
+      return false;
+    }
     active.latest = point;
     if (active.entity?.kind === "markup") {
       if (!active.moved) return true;
@@ -160,6 +202,8 @@ export function useDrawingEditor(props: DrawingEditorProps, aspect: number, scre
   const up = (point: DrawingPoint | null) => {
     const active = gesture.current;
     if (!active) return false;
+    stopHold(active);
+    if (active.panning) { gesture.current = null; return false; }
     if (point) move(point);
     cancelPreview();
     // Release can happen before the scheduled frame. Commit the final geometry
@@ -169,12 +213,13 @@ export function useDrawingEditor(props: DrawingEditorProps, aspect: number, scre
     setPreview([]);
     if (!point) { setEditing(null); return true; }
     if (active.entity) {
+      // Links and issue pins still respond to a tap; markups need a hold to be selected.
       if (active.activate && !active.moved) {
         if (active.entity.kind === "markup" && active.entity.data.type === "link") props.onActivate?.(active.entity.data);
-        else props.onSelect?.(active.entity.id);
+        else if (!holdsToSelect(active.entity)) props.onSelect?.(active.entity.id);
       }
       if (active.edited && active.moved && props.onUpdate && canEdit(active.entity)) props.onUpdate(active.entity.id, active.edited);
-      if (!active.activate) props.onSelect?.(active.entity.id);
+      if (!active.activate && active.armed) props.onSelect?.(active.entity.id);
       setEditing(null);
       return !active.activate || !active.moved;
     }
@@ -210,7 +255,7 @@ export function useDrawingEditor(props: DrawingEditorProps, aspect: number, scre
     return () => window.removeEventListener("keydown", key);
   });
   return {
-    down, move, up, cancelGesture, clear, undo, finish: () => finish(), editing,
+    down, move, up, cancelGesture, clear, undo, finish: () => finish(), editing, heldId,
     draft: dataFor(preview.length ? preview : points),
     pointCount: points.length, canFinish: points.length >= minimumDrawingPoints(tool),
     active: () => gesture.current !== null,

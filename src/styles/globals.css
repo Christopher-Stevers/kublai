@@ -27,6 +27,22 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* A markup gives a little shake when it is picked up. */
+@keyframes annotation-shake {
+  0%, 100% { transform: none; }
+  20% { transform: rotate(-3deg); }
+  40% { transform: rotate(3deg); }
+  60% { transform: rotate(-2deg); }
+  80% { transform: rotate(1deg); }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .annotation-shake {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: annotation-shake 380ms ease-in-out;
+  }
+}
+
 /* Part wizard quick wheel: the backdrop fades in and tiles pop into place. */
 @keyframes quick-wheel-fade {
   from { opacity: 0; }

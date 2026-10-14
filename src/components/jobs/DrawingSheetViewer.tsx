@@ -1703,6 +1703,7 @@ export function DrawingSheetViewer({
             annotations={visibleAnnotations}
             aspect={fit.aspect}
             selectedId={pipeMode ? null : editorProps.selectedId}
+            heldId={pipeMode ? null : editor.heldId}
             draft={measuring || pipeMode ? null : editor.draft}
             editing={editor.editing}
             hidden={editorProps.hideAnnotations}

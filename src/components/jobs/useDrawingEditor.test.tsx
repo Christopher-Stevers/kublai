@@ -1,6 +1,10 @@
 import { act, cleanup, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { useDrawingEditor, type DrawingEditorProps } from "./useDrawingEditor";
+import {
+  MARKUP_HOLD_MS,
+  useDrawingEditor,
+  type DrawingEditorProps,
+} from "./useDrawingEditor";
 import type { DrawingEntity, DrawingMarkup } from "~/lib/drawing-workspace";
 
 let frames: Map<number, FrameRequestCallback>;
@@ -93,8 +97,14 @@ describe("drawing input and frame scheduling", () => {
       annotations: [entity],
       onUpdate,
     });
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    // Hold still long enough to pick the markup up, then drag it.
     act(() => {
       result.current.down({ x: 0.2, y: 0.2 }, target());
+      vi.advanceTimersByTime(MARKUP_HOLD_MS);
+    });
+    vi.useRealTimers();
+    act(() => {
       for (let i = 1; i <= 100; i++)
         result.current.move({ x: 0.2 + i / 1000, y: 0.3 });
     });

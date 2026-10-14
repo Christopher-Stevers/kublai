@@ -14,6 +14,8 @@ type DrawingAnnotationLayerProps = {
   annotations: DrawingEntity[];
   aspect: number;
   selectedId?: string | null;
+  /** A markup being held before it is picked up; it shakes. */
+  heldId?: string | null;
   draft?: DrawingMarkup | null;
   editing?: { id: string; data: DrawingMarkup } | null;
   hidden?: boolean;
@@ -36,6 +38,7 @@ const SavedAnnotation = memo(function SavedAnnotation({
   entity,
   data,
   selected,
+  held = false,
   canEdit,
   aspect,
   sharedScale,
@@ -49,6 +52,7 @@ const SavedAnnotation = memo(function SavedAnnotation({
   entity: DrawingEntity;
   data: DrawingMarkup | null;
   selected: boolean;
+  held?: boolean;
   canEdit: boolean;
 } & Pick<
   DrawingAnnotationLayerProps,
@@ -95,7 +99,15 @@ const SavedAnnotation = memo(function SavedAnnotation({
           else onSelect?.(entity.id);
         }
       }}
-      style={{ pointerEvents: "visiblePainted", cursor: "pointer" }}
+      // A tap must not paint the browser's grey highlight or focus box around the markup.
+      className={
+        selected || held ? "annotation-shake outline-none" : "outline-none"
+      }
+      style={{
+        pointerEvents: "visiblePainted",
+        cursor: "pointer",
+        WebkitTapHighlightColor: "transparent",
+      }}
     >
       {data ? (
         <>
@@ -272,6 +284,7 @@ export const DrawingAnnotationLayer = memo(function DrawingAnnotationLayer({
   annotations,
   aspect,
   selectedId,
+  heldId,
   draft,
   editing,
   hidden,
@@ -320,6 +333,7 @@ export const DrawingAnnotationLayer = memo(function DrawingAnnotationLayer({
                 entity={entity}
                 data={data}
                 selected={selected}
+                held={entity.id === heldId}
                 canEdit={selected && (canEditAnnotation?.(entity.id) ?? true)}
                 aspect={aspect}
                 sharedScale={sharedScale}
