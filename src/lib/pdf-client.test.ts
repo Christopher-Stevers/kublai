@@ -70,6 +70,21 @@ describe("browser PDF document cache", () => {
     vi.doUnmock("pdfjs-dist/legacy/build/pdf.mjs");
   });
 
+  it("discards only the stalled cached document and preserves a newer replacement", async () => {
+    libraryReady.resolve();
+    const task = loadingTask("/stalled.pdf");
+    getDocument.mockReturnValueOnce(task);
+    const original = client.loadPdfDocument("/stalled.pdf");
+    await original;
+    client.discardPdfDocument("/stalled.pdf", original);
+    expect(task.destroy).toHaveBeenCalledOnce();
+    const replacement = client.loadPdfDocument("/stalled.pdf");
+    await replacement;
+    client.discardPdfDocument("/stalled.pdf", original);
+    expect(client.loadPdfDocument("/stalled.pdf")).toBe(replacement);
+    expect(replacement).not.toBe(original);
+  });
+
   it("shares an in-flight request and enables authenticated demand-driven range loading", async () => {
     const first = client.loadPdfDocument("/one.pdf");
     const duplicate = client.loadPdfDocument("/one.pdf");

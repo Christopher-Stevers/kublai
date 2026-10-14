@@ -7,7 +7,7 @@ import {
   isFullDrawingPatch,
   type PdfOperationBounds,
 } from "~/lib/drawing-pdf-operations";
-import { loadPdfDocument } from "~/lib/pdf-client";
+import { discardPdfDocument, loadPdfDocument } from "~/lib/pdf-client";
 import { recordDrawingPerformance } from "~/lib/drawing-performance";
 import {
   patchCoversView,
@@ -125,7 +125,7 @@ export function DrawingPdfLayer(props: Props) {
     const draw = async () => {
       if (disposed || rendering) return;
       const start = latest.current;
-      if (!start.enabled || Date.now() < retryAfter || failures >= 4) return;
+      if (!start.enabled || document.visibilityState === "hidden" || Date.now() < retryAfter) return;
       if (!planDrawingPatch(start.fit, start.frameSize, start.view, start.dpr))
         return;
       if (
@@ -147,9 +147,19 @@ export function DrawingPdfLayer(props: Props) {
       let renderingAt = loadingAt;
       let pixels = 0;
       try {
-        const document = await loadPdfDocument(source.url);
-        const page = await document.getPage(source.page);
-        if (disposed) return;
+        const loading = loadPdfDocument(source.url);
+        const page = await Promise.race([
+          loading.then((document) => disposed ? null : document.getPage(source.page)),
+          new Promise<never>((_, reject) => {
+            stalledTimer = setTimeout(() => {
+              discardPdfDocument(source.url, loading);
+              reject(new Error("Drawing PDF loading timed out"));
+            }, 30_000);
+          }),
+        ]);
+        if (stalledTimer !== null) clearTimeout(stalledTimer);
+        stalledTimer = null;
+        if (disposed || !page) return;
         // Loading a cold document may outlast a whole gesture. Rasterize the
         // newest view, not the one captured before the network/worker wait.
         const ready = latest.current;
@@ -255,7 +265,10 @@ export function DrawingPdfLayer(props: Props) {
             outcome: "failed",
           });
         // Preserve the existing sharp patch/tiles through transient failures.
-        retryAfter = Date.now() + 3000 * ++failures;
+        // After the quick retries, keep a low-frequency recovery attempt while
+        // visible. A stationary drawing must not remain blurry indefinitely.
+        failures++;
+        retryAfter = Date.now() + (failures >= 4 ? 60_000 : 3000 * failures);
       } finally {
         if (stalledTimer !== null) clearTimeout(stalledTimer);
         stalledTimer = null;
@@ -273,8 +286,7 @@ export function DrawingPdfLayer(props: Props) {
       const p = latest.current;
       const key = `${p.view.scale}:${p.view.x}:${p.view.y}:${p.frameSize.width}:${p.frameSize.height}:${p.fit.width}:${p.fit.height}:${p.dpr}:${p.moving}`;
       if (key !== requestedView) {
-        // Bound retries for a stationary broken PDF, but don't permanently
-        // disable detail after a transient iPad memory/network failure.
+        // A fresh settled view gets an immediate retry after a transient failure.
         if (!p.moving && failures > 0) {
           failures = 0;
           retryAfter = 0;

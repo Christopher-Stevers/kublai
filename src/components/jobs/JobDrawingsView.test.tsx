@@ -510,9 +510,9 @@ describe("Drawings", () => {
 describe("drawing set downloads", () => {
   function offlineStore() {
     const store = {
-      readSnapshot: vi.fn(async () => null),
-      saveSnapshot: vi.fn(async () => undefined),
-      readAsset: vi.fn(async () => null),
+      readSnapshot: vi.fn(async (_key: string): Promise<unknown> => null),
+      saveSnapshot: vi.fn(async (_key: string, _value: unknown) => undefined),
+      readAsset: vi.fn(async (_url: string): Promise<Blob | null> => null),
       resolveAssetUrl: vi.fn(async () => null),
       summary: vi.fn(async () => ({ bytes: 0, files: 0 })),
       saveAssets: vi.fn(async () => undefined),

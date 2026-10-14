@@ -88,6 +88,17 @@ export function loadPdfDocument(url: string) {
   return promise;
 }
 
+/** Evict only the stalled request; a newer consumer may already have replaced it. */
+export function discardPdfDocument(
+  url: string,
+  expected: Promise<PDFDocumentProxy>,
+) {
+  const entry = documents.get(url);
+  if (entry?.promise !== expected) return;
+  documents.delete(url);
+  entry.destroy();
+}
+
 /**
  * The original PDF page behind a split drawing image:
  * `/api/job-rooms/files/<job>/<upload>/floor-<n>.webp` → that upload's

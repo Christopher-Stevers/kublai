@@ -1,11 +1,11 @@
 import { act, cleanup, render } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { loadPdfDocument } from "~/lib/pdf-client";
+import { discardPdfDocument, loadPdfDocument } from "~/lib/pdf-client";
 import { MAX_DRAWING_PATCH_PIXELS } from "~/lib/drawing-viewport";
 import { recordDrawingPerformance } from "~/lib/drawing-performance";
 import { DrawingPdfLayer } from "./DrawingPdfLayer";
 
-vi.mock("~/lib/pdf-client", () => ({ loadPdfDocument: vi.fn() }));
+vi.mock("~/lib/pdf-client", () => ({ loadPdfDocument: vi.fn(), discardPdfDocument: vi.fn() }));
 vi.mock("~/lib/drawing-performance", () => ({
   recordDrawingPerformance: vi.fn(),
 }));
@@ -264,8 +264,8 @@ describe("persistent PDF detail during gestures", () => {
     ).toBe("none");
   });
 
-  it("bounds repeated render failures instead of using a phone's battery forever", async () => {
-    render(<DrawingPdfLayer {...props} />);
+  it("backs off repeated failures and recovers a stationary drawing automatically", async () => {
+    const view = render(<DrawingPdfLayer {...props} />);
     await tick();
     for (let attempt = 0; attempt < 4; attempt++) {
       await act(async () => {
@@ -273,10 +273,13 @@ describe("persistent PDF detail during gestures", () => {
         await vi.advanceTimersByTimeAsync(3000 * (attempt + 1) + 1);
       });
     }
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(60_000);
-    });
     expect(pending).toHaveLength(4);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(48_000);
+    });
+    expect(pending).toHaveLength(5);
+    await finish(4);
+    expect(visibleCanvases(view.container)).toHaveLength(1);
   });
   it("records a complete page once, then filters cropped detail from confirmed bounds", async () => {
     const whole = { ...props, view: { scale: 1, x: 0, y: 0 } };
@@ -349,7 +352,7 @@ it("retries exhausted detail after connectivity returns", async () => {
       await vi.advanceTimersByTimeAsync(3000 * (attempt + 1) + 1);
     });
   }
-  act(() => window.dispatchEvent(new Event("online")));
+  await act(async () => { window.dispatchEvent(new Event("online")); });
   await tick();
   expect(pending).toHaveLength(5);
 });
@@ -374,4 +377,48 @@ it("cancels a stalled detail task so a later retry can run", async () => {
     await vi.advanceTimersByTimeAsync(3001);
   });
   expect(pending).toHaveLength(2);
+});
+
+it("times out a stuck document load and retries without changing pages", async () => {
+  const loading = new Promise<Awaited<ReturnType<typeof loadPdfDocument>>>(() => undefined);
+  vi.mocked(loadPdfDocument).mockReturnValueOnce(loading);
+  const view = render(<DrawingPdfLayer {...props} />);
+  await tick();
+  await act(async () => { await vi.advanceTimersByTimeAsync(30_000); });
+  expect(discardPdfDocument).toHaveBeenCalledWith(props.pdf.url, loading);
+  await act(async () => { await vi.advanceTimersByTimeAsync(3001); });
+  expect(pending).toHaveLength(1);
+  await finish(0);
+  expect(visibleCanvases(view.container)).toHaveLength(1);
+});
+
+it("does not retry while hidden and resumes when visible again", async () => {
+  const view = render(<DrawingPdfLayer {...props} />);
+  await tick();
+  await act(async () => { pending[0]!.reject(new Error("Temporary failure")); });
+  vi.spyOn(document, "visibilityState", "get").mockReturnValue("hidden");
+  await act(async () => { await vi.advanceTimersByTimeAsync(120_000); });
+  expect(pending).toHaveLength(1);
+  vi.restoreAllMocks();
+  await act(async () => { document.dispatchEvent(new Event("visibilitychange")); });
+  await tick();
+  await finish(1);
+  expect(visibleCanvases(view.container)).toHaveLength(1);
+});
+
+it("times out a stuck page lookup and ignores its late result", async () => {
+  let resolvePage!: (page: unknown) => void;
+  const document = await loadPdfDocument("/fixture.pdf");
+  const page = await document.getPage(1);
+  vi.mocked(loadPdfDocument).mockResolvedValueOnce({
+    getPage: () => new Promise((resolve) => { resolvePage = resolve; }),
+  } as unknown as typeof document);
+  const view = render(<DrawingPdfLayer {...props} />);
+  await tick();
+  await act(async () => { await vi.advanceTimersByTimeAsync(33_001); });
+  expect(pending).toHaveLength(1);
+  await finish(0);
+  await act(async () => { resolvePage(page); });
+  expect(pending).toHaveLength(1);
+  expect(visibleCanvases(view.container)).toHaveLength(1);
 });
