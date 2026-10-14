@@ -715,7 +715,7 @@ describe("drawing workspace workflows", () => {
   it("finishes each bottom tool from its own button and restores normal movement", () => {
     open();
     expect(screen.queryByRole("button", { name: "Done" })).toBeNull();
-    for (const id of ["pan", "select", "line"]) {
+    for (const id of ["select", "line"]) {
       chooseTool(id);
       expect(screen.getAllByRole("button", { name: "Done" })).toHaveLength(1);
       expect(screen.getByTestId("markup-editor")).toHaveAttribute(
@@ -970,11 +970,8 @@ describe("drawing workspace workflows", () => {
       screen.getByRole("button", { name: "Move selected annotation" }),
     );
     expect(mocks.save).not.toHaveBeenCalled();
-    fireEvent.click(
-      within(
-        screen.getByRole("toolbar", { name: "Selected markup actions" }),
-      ).getByRole("button", { name: "Done" }),
-    );
+    expect(within(screen.getByRole("toolbar", { name: "Selected markup actions" })).queryByRole("button", { name: "Done" })).toBeNull();
+    fireEvent.click(within(screen.getByRole("toolbar", { name: "Drawing tools" })).getByRole("button", { name: "Done" }));
     expect(
       screen.queryByRole("toolbar", { name: "Selected markup actions" }),
     ).toBeNull();

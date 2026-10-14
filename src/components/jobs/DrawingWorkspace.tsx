@@ -89,8 +89,7 @@ const OTHER_TOOLS = new Set<DrawingTool>([
 const BAR_BUTTON =
   "h-10 w-full flex-row gap-1.5 rounded-lg px-1 text-xs font-medium whitespace-normal [&_svg]:size-4";
 export const tools: Array<[DrawingTool, string]> = [
-  ["pan", "Move"],
-  ["select", "Select / edit"],
+  ["select", "Select"],
   ["freehand", "Pen"],
   ["highlight", "Highlighter"],
   ["text", "Text"],
@@ -228,15 +227,13 @@ export function DrawingWorkspace({
     id: number;
     mode: "idle" | "measure" | "pipe";
   }>({ id: 0, mode: "idle" });
-  const [moveToolActive, setMoveToolActive] = useState(false);
   const requestMode = useCallback((mode: "idle" | "measure" | "pipe") => {
     setModeRequest((current) => ({ id: current.id + 1, mode }));
   }, []);
   const selectTool = useCallback(
-    (next: DrawingTool, explicitMove = false) => {
+    (next: DrawingTool) => {
       requestMode("idle");
       setTool(next);
-      setMoveToolActive(next === "pan" && explicitMove);
       setMarkupOpen(false);
     },
     [requestMode],
@@ -1410,16 +1407,6 @@ export function DrawingWorkspace({
             >
               Details
             </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => {
-                selectAnnotation(null);
-                selectTool("pan");
-              }}
-            >
-              Done
-            </Button>
             {editable(selected) && tool === "select" && (
               <span className="text-muted-foreground min-h-8 basis-full text-xs sm:min-h-0 sm:basis-auto">
                 {selectionMode === "resize"
@@ -2527,7 +2514,7 @@ export function DrawingWorkspace({
           )}
           {bottomMode.pipe ||
           (!bottomMode.measuring &&
-            (moveToolActive || (tool !== "pan" && OTHER_TOOLS.has(tool)))) ? (
+            (tool !== "pan" && OTHER_TOOLS.has(tool))) ? (
             <Button
               variant="default"
               className={BAR_BUTTON}
@@ -2565,14 +2552,14 @@ export function DrawingWorkspace({
                   value={
                     bottomMode.pipe ||
                     bottomMode.measuring ||
-                    (tool === "pan" && !moveToolActive)
+                    tool === "pan"
                       ? ""
                       : writable
                         ? tool
                         : "pan"
                   }
                   onValueChange={(value) => {
-                    selectTool(value as DrawingTool, true);
+                    selectTool(value as DrawingTool);
                     setPanel("");
                     setHighlight(null);
                   }}
@@ -2594,7 +2581,6 @@ export function DrawingWorkspace({
                   checked={bottomMode.pipe}
                   onCheckedChange={() => {
                     setTool("pan");
-                    setMoveToolActive(false);
                     setMarkupOpen(false);
                     requestMode("pipe");
                   }}
@@ -2641,7 +2627,6 @@ export function DrawingWorkspace({
             onClick={() => {
               setMarkupOpen(false);
               setTool("pan");
-              setMoveToolActive(false);
               setSelectedId(null);
               requestMode(bottomMode.measuring ? "idle" : "measure");
             }}
