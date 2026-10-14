@@ -40,6 +40,7 @@ export async function recalculatePurchaseTotals(
   const items = await database
     .select({
       id: quoteItems.id,
+      sentOrderItemId: quoteItems.sentOrderItemId,
       quantity: quoteItems.quantity,
       unitCost: quoteItems.unitCost,
       extendedPrice: quoteItems.extendedPrice,
@@ -54,7 +55,7 @@ export async function recalculatePurchaseTotals(
     .where(eq(quoteItems.quoteId, quoteId));
   let subtotal = 0;
   for (const item of items) {
-    const price = purchaseLineTotal(
+    const price = item.sentOrderItemId ? Number(item.extendedPrice ?? 0) : purchaseLineTotal(
       item.quantity,
       item.unitCost,
       item.packSize,

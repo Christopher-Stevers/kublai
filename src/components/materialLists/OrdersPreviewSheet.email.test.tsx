@@ -1,3 +1,4 @@
+vi.mock("~/lib/replicache-material-list", () => ({ requestMaterialListReplicacheSync: vi.fn() }));
 vi.mock("~/components/materialLists/DeliveryCalendarSettings", () => ({ DeliveryCalendarSettings: () => null }));
 import {
   act,

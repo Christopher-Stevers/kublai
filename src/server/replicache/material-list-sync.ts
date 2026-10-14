@@ -407,6 +407,14 @@ async function getUnitCostFromSupplierPart(
 // Mutator dispatch
 // ---------------------------------------------------------------------------
 
+/** Row lock shares the send transaction's lock; acknowledge stale offline edits without applying them. */
+async function sentItemIsLocked(tx: ReplicacheTx, itemId: string, organizationId: string) {
+  const [item] = await tx.select({ sentOrderItemId: quoteItems.sentOrderItemId }).from(quoteItems)
+    .where(and(eq(quoteItems.id, itemId), sql`exists (select 1 from ${quotes} where ${quotes.id} = ${quoteItems.quoteId} and ${quotes.organizationId} = ${organizationId})`))
+    .for("update");
+  return Boolean(item?.sentOrderItemId);
+}
+
 async function applyReplicacheMutation(
   tx: ReplicacheTx,
   input: {
@@ -440,6 +448,7 @@ async function applyReplicacheMutation(
     // -----------------------------------------------------------------------
     case "updateItemQuantity": {
       const args = updateItemQuantityArgs.parse(input.args);
+      if (await sentItemIsLocked(tx, args.itemId, input.organizationId)) return;
       const [item] = await tx
         .select({
           id: quoteItems.id,
@@ -494,6 +503,7 @@ async function applyReplicacheMutation(
     // -----------------------------------------------------------------------
     case "removeItem": {
       const args = removeItemArgs.parse(input.args);
+      if (await sentItemIsLocked(tx, args.itemId, input.organizationId)) return;
       let materialList: Awaited<ReturnType<typeof getMaterialListForMutation>>;
       try {
         materialList = await getMaterialListForMutation(tx, {
@@ -594,6 +604,7 @@ async function applyReplicacheMutation(
     // -----------------------------------------------------------------------
     case "updateItemSupplierPart": {
       const args = updateItemSupplierPartArgs.parse(input.args);
+      if (await sentItemIsLocked(tx, args.itemId, input.organizationId)) return;
       const [item] = await tx
         .select({
           id: quoteItems.id,
@@ -847,9 +858,11 @@ async function applyReplicacheMutation(
 
       if (materialList.quoteId) {
         const listItems = await tx
-          .select({ id: quoteItems.id })
+          .select({ id: quoteItems.id, sentOrderItemId: quoteItems.sentOrderItemId })
           .from(quoteItems)
-          .where(eq(quoteItems.quoteId, materialList.quoteId));
+          .where(eq(quoteItems.quoteId, materialList.quoteId)).orderBy(quoteItems.id).for("update");
+
+        if (listItems.some(item => item.sentOrderItemId)) return;
 
         for (const item of listItems) {
           await recordMaterialListItemTombstone(tx, {
@@ -1184,6 +1197,13 @@ export async function handleMaterialListReplicachePull(
       const itemRows = await tx
         .select({
           id: quoteItems.id,
+          sentOrderItemId: quoteItems.sentOrderItemId,
+          sentOrderId: orderItems.orderId,
+          sentOrderNumber: orders.orderNumber,
+          sentOrderStatus: orders.status,
+          sentQuantity: orderItems.quantity,
+          receivedQuantity: orderItems.receivedQuantity,
+          verificationStatus: orderItems.verificationStatus,
           roomId: quoteItems.roomId,
           roomName: jobRooms.name,
           quoteId: quoteItems.quoteId,
@@ -1210,6 +1230,8 @@ export async function handleMaterialListReplicachePull(
           createdAt: quoteItems.createdAt,
         })
         .from(quoteItems)
+        .leftJoin(orderItems, eq(quoteItems.sentOrderItemId, orderItems.id))
+        .leftJoin(orders, eq(orderItems.orderId, orders.id))
         .leftJoin(jobRooms, eq(quoteItems.roomId, jobRooms.id))
         .innerJoin(quotes, eq(quoteItems.quoteId, quotes.id))
         .leftJoin(
@@ -1421,13 +1443,19 @@ export async function handleMaterialListReplicachePull(
           key: `materialListItem/${item.id}`,
           value: {
             id: item.id,
+            sentOrderItemId: item.sentOrderItemId,
+            sentOrder: item.sentOrderId ? {
+              id: item.sentOrderId, number: item.sentOrderNumber, status: item.sentOrderStatus,
+              quantity: item.sentQuantity, receivedQuantity: item.receivedQuantity,
+              verificationStatus: item.verificationStatus,
+            } : null,
             roomId: item.roomId,
             roomName: item.roomName,
             quoteId: item.quoteId,
             materialListId: item.materialListId,
             quantity: item.quantity,
             unitCost: item.unitCost,
-            extendedPrice: String(purchaseLineTotal(item.quantity, item.unitCost, item.supplierPartPackSize, item.partDefinitionPiecesPerPack)),
+            extendedPrice: item.sentOrderItemId ? item.extendedPrice : String(purchaseLineTotal(item.quantity, item.unitCost, item.supplierPartPackSize, item.partDefinitionPiecesPerPack)),
             descriptionSnapshot: item.descriptionSnapshot,
             partDefinitionId: item.partDefinitionId,
             supplierPartId: item.supplierPartId,

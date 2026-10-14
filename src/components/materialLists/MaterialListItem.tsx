@@ -1,4 +1,5 @@
 "use client";
+import { SentMaterialStatus, type SentMaterialOrder } from "./SentMaterialStatus";
 import { packContents } from "~/lib/pack-quantity";
 
 import { memo, useEffect, useRef, useState } from "react";
@@ -37,6 +38,8 @@ type VerifyStatus = "pending" | "partial" | "complete" | "problem";
 
 interface MaterialListItemProps {
   item: {
+    sentOrderItemId?: string | null;
+    sentOrder?: SentMaterialOrder | null;
     id: string;
     quantity: string;
     unitCost: string | null;
@@ -664,7 +667,7 @@ function MaterialListItemComponent({
       <CardContent className="h-full p-0">
         <div className="flex h-full w-full flex-col px-3 pt-3 pb-2">
           <InitialsSyncBadge user={item.addedBy} status={itemSyncStatus} />
-          {!verifyMode && (
+          {!verifyMode && !item.sentOrderItemId && (
             // Card actions live in a menu so more can be added later.
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -788,7 +791,8 @@ function MaterialListItemComponent({
             </p>
           )}
 
-          {!verifyMode && (
+          {!verifyMode && item.sentOrder && <SentMaterialStatus order={item.sentOrder} materialListId={materialListId} unit={item.partDefinition?.bulkUnit || item.uom?.code} />}
+          {!verifyMode && !item.sentOrderItemId && (
             <div className="mt-auto flex flex-col gap-2 pt-2">
               {/* Each label sits just above its control. */}
               <div className="flex flex-col gap-0.5">

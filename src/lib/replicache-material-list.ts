@@ -183,6 +183,8 @@ export function makeMaterialListMutators(): MaterialListReplicacheMutators {
       },
 
       async updateItemQuantity(tx, args) {
+        const locked = await tx.get(`materialListItem/${args.itemId}`);
+        if (locked && typeof locked === "object" && "sentOrderItemId" in locked && locked.sentOrderItemId) return;
         const existing = await tx.get(`materialListItem/${args.itemId}`);
         if (
           !existing ||
@@ -203,6 +205,8 @@ export function makeMaterialListMutators(): MaterialListReplicacheMutators {
       },
 
       async removeItem(tx, args) {
+        const locked = await tx.get(`materialListItem/${args.itemId}`);
+        if (locked && typeof locked === "object" && "sentOrderItemId" in locked && locked.sentOrderItemId) return;
         await tx.del(`materialListItem/${args.itemId}`);
         await tx.put(`materialListItemTombstone/${args.itemId}`, {
           itemId: args.itemId,
@@ -250,6 +254,8 @@ export function makeMaterialListMutators(): MaterialListReplicacheMutators {
       },
 
       async updateItemSupplierPart(tx, args) {
+        const locked = await tx.get(`materialListItem/${args.itemId}`);
+        if (locked && typeof locked === "object" && "sentOrderItemId" in locked && locked.sentOrderItemId) return;
         const existing = await tx.get(`materialListItem/${args.itemId}`);
         if (
           !existing ||

@@ -55,3 +55,10 @@ describe("delivery matching by room", () => {
     ).toBe(false);
   });
 });
+
+
+it("uses the permanent order line link instead of matching another identical part", () => {
+  const item = { sentOrderItemId: "line-a", partDefinition: { id: "part" } };
+  expect(matchesMaterialOrderLine(item, { id: "line-a", partDefinitionId: "part" }, null)).toBe(true);
+  expect(matchesMaterialOrderLine(item, { id: "line-b", partDefinitionId: "part" }, null)).toBe(false);
+});

@@ -1,5 +1,6 @@
 "use client";
 
+import type { SentMaterialOrder } from "~/components/materialLists/SentMaterialStatus";
 import { purchaseLineTotal, purchaseQuantity } from "~/lib/purchase-quantity";
 
 import { useEffect, useMemo, useState } from "react";
@@ -33,6 +34,8 @@ export function useReplicacheSyncing() {
 }
 
 export interface ReplicacheMaterialListItem {
+  sentOrderItemId?: string | null;
+  sentOrder?: SentMaterialOrder | null;
   id: string;
   materialListId: string | null;
   roomId?: string | null;
@@ -130,7 +133,7 @@ export function useReplicacheMaterialList(materialListId: string) {
           orderQuantity: String(
             purchaseQuantity(item.quantity, item.supplierPart?.packSize, item.partDefinition?.piecesPerPack),
           ),
-          extendedPrice: String(
+          extendedPrice: item.sentOrderItemId ? item.extendedPrice : String(
             purchaseLineTotal(
               item.quantity,
               item.unitCost,

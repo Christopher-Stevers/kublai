@@ -1598,6 +1598,9 @@ export const quoteItems = createTable(
       .notNull()
       .references(() => quotes.id, { onDelete: "cascade" }),
 
+    /** Permanent sent-order link; duplicates intentionally leave this empty. */
+    sentOrderItemId: d.uuid().references(() => orderItems.id, { onDelete: "restrict" }),
+
     roomId: d.uuid().references(() => jobRooms.id, { onDelete: "set null" }),
 
     supplierPartId: d
@@ -1642,6 +1645,7 @@ export const quoteItems = createTable(
       .$onUpdate(() => new Date()),
   }),
   (t) => [
+    index("quote_item_sent_order_idx").on(t.sentOrderItemId),
     index("quote_item_room_idx").on(t.roomId),
     index("quote_item_quote_idx").on(t.quoteId),
     index("quote_item_updated_idx").on(t.updatedAt, t.id),

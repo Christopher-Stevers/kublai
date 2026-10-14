@@ -1,8 +1,9 @@
+import { publishMaterialListEvent } from "~/server/material-list-events";
 import { packContents, formatOrderedBulkQuantity } from "~/lib/pack-quantity";
 import { purchaseQuantity, purchaseLineTotal, formatPurchaseQuantity } from "~/lib/purchase-quantity";
 import { recalculatePurchaseTotals } from "~/server/purchasing";
 import { TRPCError } from "@trpc/server";
-import { and, asc, desc, eq, gte, inArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
 import { formatDeliveryDate } from "~/lib/delivery-calendar";
 import {
@@ -226,7 +227,7 @@ async function loadOrderableQuoteItems(
       partDefinitions,
       eq(quoteItems.partDefinitionId, partDefinitions.id),
     )
-    .where(eq(quoteItems.quoteId, quoteId)) as Promise<OrderableQuoteItem[]>;
+    .where(and(eq(quoteItems.quoteId, quoteId), isNull(quoteItems.sentOrderItemId))) as Promise<OrderableQuoteItem[]>;
 }
 
 import { createTRPCRouter, hasDashboardAccess } from "~/server/api/trpc";
@@ -251,6 +252,36 @@ import {
 } from "~/server/db/schema";
 
 export const materialListRouter = createTRPCRouter({
+  duplicate: hasDashboardAccess
+    .input(z.object({ materialListId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      assertCan(ctx.user, "lists.edit");
+      if (!ctx.user.organizationId) throw new TRPCError({ code: "FORBIDDEN" });
+      const organizationId = ctx.user.organizationId;
+      const copy = await ctx.db.transaction(async tx => {
+        const [source] = await tx.select().from(materialLists).where(and(
+          eq(materialLists.id, input.materialListId), eq(materialLists.organizationId, organizationId),
+        )).limit(1);
+        if (!source) throw new TRPCError({ code: "NOT_FOUND", message: "Material list not found" });
+        const id = crypto.randomUUID(), quoteId = crypto.randomUUID();
+        await tx.insert(materialLists).values({ id, organizationId, jobId: source.jobId,
+          name: `${source.name} (copy)`.slice(0, 255), kind: source.kind, roomId: source.roomId, createdByUserId: ctx.userId });
+        const [quote] = source.quoteId ? await tx.select().from(quotes).where(eq(quotes.id, source.quoteId)).limit(1) : [];
+        await tx.insert(quotes).values({ id: quoteId, organizationId, materialListId: id, jobId: source.jobId,
+          createdByUserId: ctx.userId, notes: quote?.notes, markupPercent: quote?.markupPercent });
+        await tx.update(materialLists).set({ quoteId }).where(eq(materialLists.id, id));
+        const rows = source.quoteId ? await tx.select().from(quoteItems).where(eq(quoteItems.quoteId, source.quoteId)) : [];
+        if (rows.length) await tx.insert(quoteItems).values(rows.map(row => ({ ...row,
+          id: crypto.randomUUID(), quoteId, sentOrderItemId: null, addedByUserId: ctx.userId,
+          createdAt: new Date(), updatedAt: new Date(),
+        })));
+        await recalculatePurchaseTotals(tx, quoteId);
+        return { id };
+      });
+      publishMaterialListEvent(copy.id, "updated", organizationId);
+      return copy;
+    }),
+
   applyMaterialListMutationsBatch: retiredOfflineMutation,
   syncMaterialListMutations: retiredOfflineMutation,
 
@@ -341,6 +372,7 @@ export const materialListRouter = createTRPCRouter({
         ctx.db
           .select({
             id: quoteItems.id,
+            sentOrderItemId: quoteItems.sentOrderItemId,
             roomId: quoteItems.roomId,
             roomName: jobRooms.name,
             quantity: quoteItems.quantity,
@@ -411,7 +443,8 @@ export const materialListRouter = createTRPCRouter({
         roomName: item.roomName,
         quantity: item.quantity,
         unitCost: item.unitCost,
-        extendedPrice: String(purchaseLineTotal(item.quantity, item.unitCost, item.supplierPartPackSize, item.partDefinitionPiecesPerPack)),
+        sentOrderItemId: item.sentOrderItemId,
+        extendedPrice: item.sentOrderItemId ? item.extendedPrice : String(purchaseLineTotal(item.quantity, item.unitCost, item.supplierPartPackSize, item.partDefinitionPiecesPerPack)),
         descriptionSnapshot: item.descriptionSnapshot,
         createdAt: item.createdAt,
         updatedAt: item.updatedAt,
@@ -1289,31 +1322,18 @@ ${foremanName}`;
         });
       }
 
-      const quoteItemsList = await loadOrderableQuoteItems(
-        ctx.db,
-        materialList.quoteId,
-      );
-      const items = isToolRequest
-        ? await withoutAlreadyRequestedTools(
-            ctx.db,
-            input.materialListId,
-            quoteItemsList,
-          )
-        : (groupOrderableItemsBySupplier(quoteItemsList).get(
-            input.supplierId,
-          ) ?? []);
-
-      if (items.length === 0) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "No orderable items found for this supplier",
-        });
-      }
-
-      return ctx.db.transaction(async (tx) => {
+      const result = await ctx.db.transaction(async (tx) => {
         await tx.execute(
           sql`select pg_advisory_xact_lock(hashtext(${`${ctx.user.organizationId}:${materialList.jobId}:orders`}))`,
         );
+        // Serialize sending against edits and simultaneous sends of the same rows.
+        await tx.select({ id: quoteItems.id }).from(quoteItems)
+          .where(eq(quoteItems.quoteId, materialList.quoteId!)).orderBy(quoteItems.id).for("update");
+        const quoteItemsList = await loadOrderableQuoteItems(tx, materialList.quoteId!);
+        const items = isToolRequest
+          ? await withoutAlreadyRequestedTools(tx, input.materialListId, quoteItemsList)
+          : (groupOrderableItemsBySupplier(quoteItemsList).get(input.supplierId) ?? []);
+        if (!items.length) throw new TRPCError({ code: "BAD_REQUEST", message: "No unsent items remain for this supplier. Duplicate the list to reorder." });
 
         const [existingOrderCountResult] = await tx
           .select({
@@ -1360,8 +1380,10 @@ ${foremanName}`;
           });
         }
 
-        await tx.insert(orderItems).values(
-          items.map((item) => ({
+        for (const item of items) {
+          const orderItemId = crypto.randomUUID();
+          await tx.insert(orderItems).values({
+            id: orderItemId,
             orderId: createdOrder.id,
             roomId: item.roomId,
             supplierPartId: item.supplierPartId ?? undefined,
@@ -1376,11 +1398,16 @@ ${foremanName}`;
               item.partDefinitionDisplayName?.trim() ||
               undefined,
             supplierSkuSnapshot: item.supplierSku ?? undefined,
-          })),
-        );
+          });
+          if (!isToolRequest) await tx.update(quoteItems).set({ sentOrderItemId: orderItemId, extendedPrice: String(purchaseLineTotal(item.quantity, item.unitCost)), updatedAt: new Date() })
+            .where(eq(quoteItems.id, item.id));
+        }
+
 
         return createdOrder;
       });
+      publishMaterialListEvent(input.materialListId, "updated", ctx.user.organizationId);
+      return result;
     }),
 
   /**
@@ -1902,7 +1929,7 @@ ${foremanName}`;
       }
 
       const [existing] = await ctx.db
-        .select({ id: orderItems.id })
+        .select({ id: orderItems.id, materialListId: orders.materialListId })
         .from(orderItems)
         .innerJoin(orders, eq(orderItems.orderId, orders.id))
         .where(
@@ -1933,6 +1960,7 @@ ${foremanName}`;
           verificationStatus: orderItems.verificationStatus,
         });
 
+      if (existing.materialListId) publishMaterialListEvent(existing.materialListId, "updated", ctx.user.organizationId);
       return updated;
     }),
 

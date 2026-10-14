@@ -1,4 +1,5 @@
 "use client";
+import { SentMaterialStatus, type SentMaterialOrder } from "./SentMaterialStatus";
 
 import { purchaseLineTotal } from "~/lib/purchase-quantity";
 import { FinancialOnly, useFinancialVisibility } from "~/components/permissions/FinancialVisibility";
@@ -16,6 +17,8 @@ import type { ReplicacheSupplier } from "~/hooks/use-replicache-suppliers";
 
 export interface MaterialListTableRowProps {
   item: {
+    sentOrderItemId?: string | null;
+    sentOrder?: SentMaterialOrder | null;
     id: string;
     quantity: string;
     unitCost: string | null;
@@ -99,7 +102,7 @@ function MaterialListTableRowComponent({
 
   const quantity = parseFloat(item.quantity);
   const unitCost = item.unitCost ? parseFloat(item.unitCost) : 0;
-  const lineTotal = purchaseLineTotal(quantity, unitCost, isToolRequest ? null : item.supplierPart?.packSize, isToolRequest ? null : item.partDefinition?.piecesPerPack);
+  const lineTotal = item.sentOrderItemId ? Number(item.extendedPrice ?? 0) : purchaseLineTotal(quantity, unitCost, isToolRequest ? null : item.supplierPart?.packSize, isToolRequest ? null : item.partDefinition?.piecesPerPack);
 
   return (
     <tr
@@ -132,6 +135,7 @@ function MaterialListTableRowComponent({
             </span>
           )}
         </div>
+        {item.sentOrder && <SentMaterialStatus order={item.sentOrder} materialListId={materialListId} unit={item.partDefinition?.bulkUnit || item.uom?.code} />}
         {item.oneOff?.sizeNominal && (
           <div className="text-muted-foreground text-xs">
             Size: {item.oneOff.sizeNominal}
@@ -142,7 +146,7 @@ function MaterialListTableRowComponent({
         {item.roomName ?? "—"}
       </td>
       <td className="content-center">
-        <QuantityControls
+        {item.sentOrderItemId ? <span>{item.sentOrder?.quantity ?? item.quantity} {item.partDefinition?.bulkUnit}</span> : <QuantityControls
           itemId={item.id}
           quantity={quantity}
                   orderMultiple={isToolRequest ? null : item.supplierPart?.packSize}
@@ -150,13 +154,13 @@ function MaterialListTableRowComponent({
           materialListId={materialListId}
           pendingSync={item.pendingSync}
           compact
-        />
+        />}
       </td>
       <td className="content-center">
         <div className="w-full max-w-[200px]">
           {isToolRequest ? (
             <div className="text-muted-foreground text-sm">Tool room</div>
-          ) : item.partDefinition?.id ? (
+          ) : item.partDefinition?.id && !item.sentOrderItemId ? (
             <SupplierSelector
               itemId={item.id}
               partDefinitionId={item.partDefinition.id}
@@ -202,6 +206,7 @@ function MaterialListTableRowComponent({
           variant="ghost"
           size="sm"
           onClick={removeItem}
+          disabled={Boolean(item.sentOrderItemId)}
           className="h-8 w-8 p-0"
           aria-label="Remove item"
         >

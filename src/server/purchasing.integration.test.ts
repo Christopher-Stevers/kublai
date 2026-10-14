@@ -315,7 +315,7 @@ describe.skipIf(!socket)(
       });
       await suppliers.updateSupplierPart({ id: sp, packSize: "20" });
       const detail = await material.getMaterialList({ materialListId: list });
-      expect(detail.materialTotal).toBe(80);
+      expect(detail.materialTotal).toBe(100);
       expect(Number(detail.items[0]?.quantity)).toBe(37);
       const [old] = await db
         .select()
@@ -326,7 +326,49 @@ describe.skipIf(!socket)(
       expect(
         (await material.previewOrders({ materialListId: list })).possible[0]
           ?.items[0]?.quantity,
-      ).toBe("40");
+      ).toBeUndefined();
+    });
+    it("links sent rows, excludes them from new orders and duplicates into editable rows", async () => {
+      const sent = await material.sendGeneratedOrder({ materialListId: list, supplierId: supplier, sentTo: "supplier@example.test" });
+      const [locked] = await db.select().from(schema.quoteItems).where(eq(schema.quoteItems.id, item));
+      const [orderItem] = await db.select().from(schema.orderItems).where(eq(schema.orderItems.orderId, sent.id));
+      expect(locked!.sentOrderItemId).toBe(orderItem!.id);
+      expect((await material.previewOrders({ materialListId: list })).possible).toEqual([]);
+      await expect(material.sendGeneratedOrder({ materialListId: list, supplierId: supplier, sentTo: "supplier@example.test" })).rejects.toThrow("No unsent items");
+      await material.updateOrderItemVerification({ orderItemId: orderItem!.id, receivedQuantity: 20, verificationStatus: "partial" });
+      const copy = await material.duplicate({ materialListId: list });
+      const [newList] = await db.select().from(schema.materialLists).where(eq(schema.materialLists.id, copy.id));
+      const [newItem] = await db.select().from(schema.quoteItems).where(eq(schema.quoteItems.quoteId, newList!.quoteId!));
+      expect(newItem!.sentOrderItemId).toBeNull();
+      expect(newItem!.id).not.toBe(item);
+      expect(Number(newItem!.quantity)).toBe(37);
+      expect((await material.previewOrders({ materialListId: copy.id })).possible).toHaveLength(1);
+      expect(Number((await material.getOrderById({orderId:sent.id})).items[0]!.receivedQuantity)).toBe(20);
+    });
+    it("links only unambiguous historical rows and preserves receipt history", async () => {
+      const sent = await material.sendGeneratedOrder({ materialListId:list, supplierId:supplier, sentTo:"supplier@example.test" });
+      await db.update(schema.quoteItems).set({sentOrderItemId:null, updatedAt:new Date("2020-01-01")}).where(eq(schema.quoteItems.id,item));
+      const migration = await readFile(new URL("../../drizzle/0073_material_list_sent_links.sql", import.meta.url), "utf8");
+      await conn.unsafe(migration);
+      const [linked] = await db.select().from(schema.quoteItems).where(eq(schema.quoteItems.id,item));
+      expect(linked!.sentOrderItemId).toBe((await material.getOrderById({orderId:sent.id})).items[0]!.id);
+      await conn.unsafe(migration);
+      expect((await material.previewOrders({materialListId:list})).possible).toEqual([]);
+    });
+    it("sends newly added rows without resending the already locked rows", async () => {
+      await material.sendGeneratedOrder({ materialListId:list, supplierId:supplier, sentTo:"supplier@example.test" });
+      await db.insert(schema.quoteItems).values({id:id(90),quoteId:quote,partDefinitionId:part,supplierPartId:sp,supplierId:supplier,quantity:"3",unitCost:"2"});
+      const preview = await material.previewOrders({materialListId:list});
+      expect(preview.possible[0]!.items).toHaveLength(1);
+      expect(preview.possible[0]!.items[0]!.requestedQuantity).toBe("3.000000");
+      const second = await material.sendGeneratedOrder({ materialListId:list, supplierId:supplier, sentTo:"supplier@example.test" });
+      expect((await material.getOrderById({orderId:second.id})).items).toHaveLength(1);
+      expect(await db.select().from(schema.orderItems)).toHaveLength(2);
+    });
+    it("serializes simultaneous sends so a row is ordered once", async () => {
+      const results = await Promise.allSettled([1, 2].map(() => material.sendGeneratedOrder({ materialListId: list, supplierId: supplier, sentTo: "supplier@example.test" })));
+      expect(results.filter(result => result.status === "fulfilled")).toHaveLength(1);
+      expect(await db.select().from(schema.orderItems)).toHaveLength(1);
     });
     it("orders whole packs at pack prices while retaining the exact piece requirement", async () => {
       await db.update(schema.partDefinitions).set({ piecesPerPack: 50, bulkUnit:"box", individualUnit:"pcs" }).where(eq(schema.partDefinitions.id, part));

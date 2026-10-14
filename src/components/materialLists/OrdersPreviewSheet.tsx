@@ -1,4 +1,5 @@
 "use client";
+import { requestMaterialListReplicacheSync } from "~/lib/replicache-material-list";
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "~/trpc/react";
@@ -303,6 +304,7 @@ export function OrdersPreviewSheet({
         notes: notes.trim() || undefined,
       });
 
+      requestMaterialListReplicacheSync(0, "pull");
       setSyncError(null);
       await Promise.all([
         utils.materialList.previewOrders.invalidate({ materialListId }),

@@ -186,3 +186,13 @@ it("retains pack contents offline and charges only whole packs on edits", async 
   await mutators().updateItemSupplierPart(tx, {materialListId: "list", itemId: "item", supplierPartId: "new", supplierId: "new-supplier", unitCost: 30});
   expect(rows.get("materialListItem/item")).toMatchObject({quantity: "1.4", extendedPrice: "60"});
 });
+
+
+it("keeps a sent row unchanged during optimistic edits and deletion", async () => {
+  const locked = { id: "item", materialListId: "list", sentOrderItemId: "order-line", quantity: "2" };
+  rows.set("materialListItem/item", locked);
+  await mutators().updateItemQuantity(tx, { materialListId: "list", itemId: "item", quantity: 8 });
+  await mutators().updateItemSupplierPart(tx, { materialListId: "list", itemId: "item", supplierPartId: null, supplierId: null });
+  await mutators().removeItem(tx, { materialListId: "list", itemId: "item" });
+  expect(rows.get("materialListItem/item")).toEqual(locked);
+});

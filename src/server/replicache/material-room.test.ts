@@ -74,6 +74,7 @@ function setup(reads: Row[][]) {
         leftJoin: () => query,
         orderBy: () => query,
         groupBy: () => query,
+        for: () => query,
         limit: () => query,
         where: (predicate: SQL) => {
           predicates.push({ table, ...dialect.sqlToQuery(predicate) });
@@ -351,6 +352,7 @@ describe("material-line room attribution", () => {
       const test = setup([
         [client],
         [{ lastMutationId: 0 }],
+        [{ sentOrderItemId: null }],
         [
           {
             id: itemId,
@@ -386,6 +388,7 @@ describe("material mutation notifications", () => {
       const test = setup([
         [client],
         [{ lastMutationId: 0 }],
+        [{ sentOrderItemId: null }],
         [
           {
             id: itemId,
@@ -424,3 +427,14 @@ describe("material mutation notifications", () => {
 vi.mock("~/server/notifications/materials", () => ({
   enqueueMaterialNotification: vi.fn(() => Promise.resolve()),
 }));
+
+
+describe("sent material locks", () => {
+  it.each(["updateItemQuantity", "updateItemSupplierPart", "removeItem"])("acknowledges but ignores stale offline %s", async name => {
+    const test = setup([[client], [{lastMutationId:0}], [{sentOrderItemId:"order-line"}], [{cvrVersion:0}]]);
+    await push(name, { materialListId:listId, itemId, quantity:3, supplierPartId:null, supplierId:null });
+    expect(test.writes.filter(write => write.table === quoteItems)).toEqual([]);
+    expect(enqueueMaterialNotification).not.toHaveBeenCalled();
+    test.assertConsumed();
+  });
+});
