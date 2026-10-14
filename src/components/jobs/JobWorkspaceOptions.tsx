@@ -63,39 +63,6 @@ export function JobWorkspaceOptions({
           </div>
         </CardContent>
       </Card>
-      <Card
-        data-tutorial="rooms"
-        role="button"
-        tabIndex={0}
-        onKeyDown={(event) => {
-          if (event.key === "Enter" || event.key === " ") {
-            event.preventDefault();
-            onSelect("rooms");
-          }
-        }}
-        className="cursor-pointer transition-shadow hover:shadow-md"
-        onClick={() => onSelect("rooms")}
-      >
-        <CardHeader>
-          <CardTitle className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1 leading-tight break-words">
-            <span>Rooms</span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-muted-foreground space-y-2 text-sm">
-            <div className="flex items-center gap-2">
-              <DoorOpenIcon className="h-4 w-4" />
-              <span>
-                {roomCount === undefined
-                  ? roomCountLoading
-                    ? "Loading rooms…"
-                    : "Room count unavailable"
-                  : `${roomCount} ${roomCount === 1 ? "room" : "rooms"}`}
-              </span>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
       {canAccessDrawings && (
         <Card
           data-tutorial="drawings"
@@ -123,60 +90,6 @@ export function JobWorkspaceOptions({
           </CardContent>
         </Card>
       )}
-      {canAccessDrawings && (
-        <Card
-          role="button"
-          tabIndex={0}
-          aria-label="Models, experimental"
-          className="cursor-pointer transition-shadow hover:shadow-md"
-          onClick={() => onSelect("models")}
-          onKeyDown={(event) => {
-            if (event.key === "Enter" || event.key === " ") {
-              event.preventDefault();
-              onSelect("models");
-            }
-          }}
-        >
-          <CardHeader>
-            <CardTitle className="flex flex-wrap items-center gap-2">
-              <span>Models</span>
-              <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-400">
-                Experimental
-              </span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-muted-foreground flex items-center gap-2 text-sm">
-              <BoxIcon className="h-4 w-4" />
-              <span>Revit &amp; IFC · 3D construction coordination</span>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-      <Card
-        data-tutorial="documents"
-        role="button"
-        aria-label="Documents"
-        tabIndex={0}
-        className="focus-visible:ring-ring cursor-pointer transition-shadow hover:shadow-md focus-visible:ring-2"
-        onClick={() => onSelect("documents")}
-        onKeyDown={(event) => {
-          if (event.key === "Enter" || event.key === " ") {
-            event.preventDefault();
-            onSelect("documents");
-          }
-        }}
-      >
-        <CardHeader>
-          <CardTitle>Documents</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-muted-foreground flex items-center gap-2 text-sm">
-            <FilesIcon className="h-4 w-4" />
-            <span>Files, revisions, reviews &amp; Office documents</span>
-          </div>
-        </CardContent>
-      </Card>
       <Card
         role="button"
         data-tutorial="chat"
@@ -212,6 +125,97 @@ export function JobWorkspaceOptions({
           </div>
         </CardContent>
       </Card>
+      <Card
+        data-tutorial="documents"
+        role="button"
+        aria-label="Documents"
+        tabIndex={0}
+        className="focus-visible:ring-ring cursor-pointer transition-shadow hover:shadow-md focus-visible:ring-2"
+        onClick={() => onSelect("documents")}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            onSelect("documents");
+          }
+        }}
+      >
+        <CardHeader>
+          <CardTitle>Documents</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-muted-foreground flex items-center gap-2 text-sm">
+            <FilesIcon className="h-4 w-4" />
+            <span>Files, revisions, reviews &amp; Office documents</span>
+          </div>
+        </CardContent>
+      </Card>
+      <Card
+        data-tutorial="rooms"
+        aria-label="Rooms, experimental"
+        role="button"
+        tabIndex={0}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            onSelect("rooms");
+          }
+        }}
+        className="cursor-pointer transition-shadow hover:shadow-md"
+        onClick={() => onSelect("rooms")}
+      >
+        <CardHeader>
+          <CardTitle className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1 leading-tight break-words">
+            <span>Rooms</span>
+            <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-400">
+              Experimental
+            </span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-muted-foreground space-y-2 text-sm">
+            <div className="flex items-center gap-2">
+              <DoorOpenIcon className="h-4 w-4" />
+              <span>
+                {roomCount === undefined
+                  ? roomCountLoading
+                    ? "Loading rooms…"
+                    : "Room count unavailable"
+                  : `${roomCount} ${roomCount === 1 ? "room" : "rooms"}`}
+              </span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+      {canAccessDrawings && (
+        <Card
+          role="button"
+          tabIndex={0}
+          aria-label="Models, experimental"
+          className="cursor-pointer transition-shadow hover:shadow-md"
+          onClick={() => onSelect("models")}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              onSelect("models");
+            }
+          }}
+        >
+          <CardHeader>
+            <CardTitle className="flex flex-wrap items-center gap-2">
+              <span>Models</span>
+              <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-400">
+                Experimental
+              </span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-muted-foreground flex items-center gap-2 text-sm">
+              <BoxIcon className="h-4 w-4" />
+              <span>Revit &amp; IFC · 3D construction coordination</span>
+            </div>
+          </CardContent>
+        </Card>
+      )}
       {onTools && (
         <Card
           className="cursor-pointer transition-shadow hover:shadow-md"
