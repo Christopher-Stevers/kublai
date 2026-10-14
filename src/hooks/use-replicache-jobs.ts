@@ -156,6 +156,7 @@ export function indexWorkspaceRecords(
     const bucket = listsByJob.get(list.jobId) ?? [];
     bucket.push({
       ...list,
+      pendingSync: Boolean(list.pendingSync || items.some(item => item.pendingSync)),
       itemCount: items.length,
       materialTotal: total,
       contributors,

@@ -1,9 +1,4 @@
 "use client";
-import { api } from "~/trpc/react";
-import { useRouter } from "next/navigation";
-import { useWorkspaceMutations } from "~/hooks/use-workspace-mutations";
-import { notify } from "~/components/ui/app-dialogs";
-import { CopyIcon } from "lucide-react";
 import { FinancialOnly } from "~/components/permissions/FinancialVisibility";
 import { useState } from "react";
 import {
@@ -31,7 +26,6 @@ export function MaterialListActions({
   blockedReason,
   canQuote = true,
   canOrder = true,
-  canDuplicate = true,
   onQuote,
   onOrder,
   onAdd,
@@ -45,7 +39,6 @@ export function MaterialListActions({
   /** Member may request quotes / send orders (permissions). */
   canQuote?: boolean;
   canOrder?: boolean;
-  canDuplicate?: boolean;
   onQuote: () => void;
   onOrder: () => void;
   onAdd: () => void;
@@ -56,12 +49,6 @@ export function MaterialListActions({
   materialListId?: string;
 }) {
   const sandbox = useTutorialSandbox();
-  const router = useRouter();
-  const { requestSync } = useWorkspaceMutations();
-  const duplicate = api.materialList.duplicate.useMutation({
-    onSuccess: ({ id }) => { requestSync(); router.push(`/dashboard/material-lists/${id}`); },
-    onError: error => notify(error.message, "error"),
-  });
   const isOnline = useOnlineStatus();
   const [savingPrefab, setSavingPrefab] = useState(false);
   const style =
@@ -114,13 +101,6 @@ export function MaterialListActions({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent side="top" align="start" className="min-w-48">
-                <DropdownMenuItem
-                  disabled={!materialListId || !!sandbox || !isOnline || !canDuplicate || duplicate.isPending}
-                  onSelect={() => materialListId && duplicate.mutate({ materialListId })}
-                >
-                  <CopyIcon className="h-4 w-4" />
-                  {duplicate.isPending ? "Duplicating…" : "Duplicate"}
-                </DropdownMenuItem>
                 <DropdownMenuItem
                   onSelect={onQuote}
                   disabled={!canGenerate || !canQuote}

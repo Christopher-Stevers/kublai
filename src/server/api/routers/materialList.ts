@@ -252,6 +252,43 @@ import {
 } from "~/server/db/schema";
 
 export const materialListRouter = createTRPCRouter({
+  merge: hasDashboardAccess
+    .input(z.object({ sourceId: z.string().uuid(), targetId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      assertCan(ctx.user, "lists.edit");
+      const organizationId = ctx.user.organizationId;
+      if (!organizationId) throw new TRPCError({ code: "FORBIDDEN" });
+      if (input.sourceId === input.targetId) throw new TRPCError({ code: "BAD_REQUEST", message: "Choose another material list." });
+      const result = await ctx.db.transaction(async tx => {
+        const lists = await tx.select().from(materialLists).where(and(
+          inArray(materialLists.id, [input.sourceId, input.targetId]), eq(materialLists.organizationId, organizationId),
+        ));
+        const source = lists.find(list => list.id === input.sourceId);
+        const target = lists.find(list => list.id === input.targetId);
+        if (!source || !target) throw new TRPCError({ code: "NOT_FOUND", message: "Material list not found." });
+        if (source.jobId !== target.jobId || source.kind === "tools" || target.kind === "tools")
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Choose another material list in the same job." });
+        if (!source.quoteId || !target.quoteId) throw new TRPCError({ code: "BAD_REQUEST", message: "This material list is not ready to merge." });
+        // Same lock order as sending an order; a sent row can never move.
+        await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`${organizationId}:${source.jobId}:orders`}))`);
+        await tx.select({ id: quoteItems.id }).from(quoteItems)
+          .where(inArray(quoteItems.quoteId, [source.quoteId, target.quoteId]))
+          .orderBy(quoteItems.id).for("update");
+        const moved = await tx.update(quoteItems).set({ quoteId: target.quoteId, updatedAt: new Date() })
+          .where(and(eq(quoteItems.quoteId, source.quoteId), isNull(quoteItems.sentOrderItemId)))
+          .returning({ id: quoteItems.id });
+        if (!moved.length) throw new TRPCError({ code: "BAD_REQUEST", message: "This list has no unlocked items to merge." });
+        await recalculatePurchaseTotals(tx, source.quoteId);
+        await recalculatePurchaseTotals(tx, target.quoteId);
+        await tx.update(materialLists).set({ updatedAt: new Date() })
+          .where(inArray(materialLists.id, [source.id, target.id]));
+        return { id: target.id, movedCount: moved.length };
+      });
+      publishMaterialListEvent(input.sourceId, "updated", organizationId);
+      publishMaterialListEvent(input.targetId, "updated", organizationId);
+      return result;
+    }),
+
   duplicate: hasDashboardAccess
     .input(z.object({ materialListId: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {

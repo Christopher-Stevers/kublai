@@ -473,9 +473,9 @@ async function applyReplicacheMutation(
         );
       }
       if (args.materialListId && item.materialListId !== args.materialListId) {
-        throw new Error(
-          `Material-list item ${args.itemId} does not belong to ${args.materialListId}`,
-        );
+        // A merge may have moved this row while this device was offline.
+        // Acknowledge the stale edit; the authoritative pull relocates the row.
+        return;
       }
 
       if (Number(item.quantity) === args.quantity) return;
@@ -519,7 +519,8 @@ async function applyReplicacheMutation(
         .where(eq(quoteItems.id, args.itemId))
         .limit(1);
 
-      if (!item || item.quoteId !== materialList.quoteId) {
+      if (item && item.quoteId !== materialList.quoteId) return;
+      if (!item) {
         await recordMaterialListItemTombstone(tx, {
           organizationId: input.organizationId,
           materialListId: args.materialListId,
@@ -631,9 +632,9 @@ async function applyReplicacheMutation(
         );
       }
       if (args.materialListId && item.materialListId !== args.materialListId) {
-        throw new Error(
-          `Material-list item ${args.itemId} does not belong to ${args.materialListId}`,
-        );
+        // A merge may have moved this row while this device was offline.
+        // Acknowledge the stale edit; the authoritative pull relocates the row.
+        return;
       }
 
       const offlineSupplierPart = parseOfflineSupplierPartId(

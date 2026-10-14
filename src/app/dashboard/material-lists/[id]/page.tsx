@@ -428,7 +428,7 @@ export default function MaterialListDetailPage({
 
       {/* Footer - Always Visible */}
       <div className="shrink-0 border-t bg-card px-4 pt-1.5 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:px-6 sm:pt-2">
-        <MaterialListActions canDuplicate={!isLoading && !hasPendingSync && (userData?.permissions.can["lists.edit"] ?? false)} total={footerMaterialTotal} canGenerate={canGenerateQuoteOrOrder} blockedReason={generationBlockReason} canQuote={canQuote} canOrder={canOrder}
+        <MaterialListActions total={footerMaterialTotal} canGenerate={canGenerateQuoteOrOrder} blockedReason={generationBlockReason} canQuote={canQuote} canOrder={canOrder}
           onQuote={handleGenerateQuote} onOrder={handleGenerateOrder} onAdd={openAddPartDialog}
           onNotes={verifyOrderId ? () => setShowVerifyNotesDialog(true) : undefined}
           isToolRequest={isToolRequest} materialListId={id} />

@@ -438,3 +438,16 @@ describe("sent material locks", () => {
     test.assertConsumed();
   });
 });
+
+it.each(["updateItemQuantity", "updateItemSupplierPart", "removeItem"])(
+  "ignores stale %s from the original list after a merge", async name => {
+    const moved = { id:itemId, quoteId:"other-quote", materialListId:"other-list" };
+    const reads = [[client], [{lastMutationId:0}], [{sentOrderItemId:null}],
+      ...(name === "removeItem" ? [[list], [moved]] : [[moved]]), [{cvrVersion:0}]];
+    const test = setup(reads);
+    await push(name, {materialListId:listId,itemId,quantity:3,supplierId:null,supplierPartId:null});
+    expect(test.writes.filter(write => write.table === quoteItems)).toEqual([]);
+    expect(test.writes.filter(write => write.kind === "insert")).toEqual([]);
+    test.assertConsumed();
+  },
+);

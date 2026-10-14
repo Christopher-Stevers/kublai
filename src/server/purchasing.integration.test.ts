@@ -365,6 +365,33 @@ describe.skipIf(!socket)(
       expect((await material.getOrderById({orderId:second.id})).items).toHaveLength(1);
       expect(await db.select().from(schema.orderItems)).toHaveLength(2);
     });
+    it("merges only unlocked rows and preserves both lists' sent links", async () => {
+      const target = await material.duplicate({materialListId:list});
+      const sourceOrder = await material.sendGeneratedOrder({materialListId:list,supplierId:supplier,sentTo:"test@example.test"});
+      await material.sendGeneratedOrder({materialListId:target.id,supplierId:supplier,sentTo:"test@example.test"});
+      await db.insert(schema.quoteItems).values({id:id(91),quoteId:quote,partDefinitionId:part,supplierId:supplier,supplierPartId:sp,quantity:"3",unitCost:"2",notes:"Keep this note"});
+      const merged = await material.merge({sourceId:list,targetId:target.id});
+      expect(merged).toEqual({id:target.id,movedCount:1});
+      const [targetList] = await db.select().from(schema.materialLists).where(eq(schema.materialLists.id,target.id));
+      const sourceRows = await db.select().from(schema.quoteItems).where(eq(schema.quoteItems.quoteId,quote));
+      const targetRows = await db.select().from(schema.quoteItems).where(eq(schema.quoteItems.quoteId,targetList!.quoteId!));
+      expect(sourceRows).toHaveLength(1);
+      expect(sourceRows[0]!.sentOrderItemId).toBeTruthy();
+      expect(targetRows).toHaveLength(2);
+      expect(targetRows.find(row => row.id === id(91))).toMatchObject({quantity:"3.000000",notes:"Keep this note",sentOrderItemId:null});
+      expect((await material.getOrderById({orderId:sourceOrder.id})).items).toHaveLength(1);
+      await expect(material.merge({sourceId:list,targetId:target.id})).rejects.toThrow("no unlocked items");
+    });
+    it("rejects self-merges, foreign lists and another job", async () => {
+      await expect(material.merge({sourceId:list,targetId:list})).rejects.toThrow("another material list");
+      await expect(material.merge({sourceId:list,targetId:id(999)})).rejects.toThrow("not found");
+      const target = await material.duplicate({materialListId:list});
+      await db.insert(schema.jobs).values({id:id(92),organizationId:org,name:"Other job"});
+      await db.update(schema.materialLists).set({jobId:id(92)}).where(eq(schema.materialLists.id,target.id));
+      await expect(material.merge({sourceId:list,targetId:target.id})).rejects.toThrow("same job");
+      await db.update(schema.materialLists).set({organizationId:id(999)}).where(eq(schema.materialLists.id,target.id));
+      await expect(material.merge({sourceId:list,targetId:target.id})).rejects.toThrow("not found");
+    });
     it("serializes simultaneous sends so a row is ordered once", async () => {
       const results = await Promise.allSettled([1, 2].map(() => material.sendGeneratedOrder({ materialListId: list, supplierId: supplier, sentTo: "supplier@example.test" })));
       expect(results.filter(result => result.status === "fulfilled")).toHaveLength(1);
