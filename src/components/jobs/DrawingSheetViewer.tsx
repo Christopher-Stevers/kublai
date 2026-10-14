@@ -143,6 +143,7 @@ export function DrawingSheetViewer({
   const appearanceFilter = appearanceMatrix ? `url(#${appearanceId})` : undefined;
   const frame = useRef<HTMLDivElement>(null);
   const layer = useRef<HTMLDivElement>(null);
+  const overlayPaint = useRef<((view: View) => void) | null>(null);
   const pdfPaint = useRef<((view: View) => void) | null>(null);
   const annotationViewport = useRef<SVGSVGElement>(null);
   const pipeViewport = useRef<SVGSVGElement>(null);
@@ -782,6 +783,7 @@ export function DrawingSheetViewer({
     const transform = `translate(-50%, -50%) translate3d(${x}px, ${y}px, 0) scale(${scale})`;
     if (layer.current) layer.current.style.transform = transform;
     pdfPaint.current?.(live.current);
+    overlayPaint.current?.(live.current);
     if (fit && frame.current) {
       const size = { width: frame.current.clientWidth, height: frame.current.clientHeight };
       const camera = drawingVectorViewBox(fit, size, live.current);
@@ -1651,7 +1653,7 @@ export function DrawingSheetViewer({
           />
         )}
         </div>
-        {comparison && fit && (
+        {comparison && fit && !usesInkComparison && (
           <DrawingComparisonLayer
             appearance={appearance}
             appearanceFilter={appearanceFilter}
@@ -1665,6 +1667,19 @@ export function DrawingSheetViewer({
         )}
         {fit && pdfLinksEnabled && <DrawingPdfLinkLayer links={importedLinks} aspect={fit.aspect} onActivate={link => onPdfLink?.(link)} />}
       </div>
+      {comparison && fit && usesInkComparison && (
+        <DrawingComparisonLayer
+          screenSpace
+          paintRef={overlayPaint}
+          appearance={appearance}
+          primary={{ src, pdf }}
+          comparison={comparison}
+          fit={fit}
+          frameSize={frameSize}
+          view={view}
+          dpr={dpr}
+        />
+      )}
       {pdf && fit && !comparison && (
         <DrawingPdfLayer
           pdf={pdf}

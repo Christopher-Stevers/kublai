@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type RefObject } from "react";
 import type { DrawingSize, DrawingView } from "~/lib/drawing-viewport";
 import {
   DEFAULT_OVERLAY_STYLES,
@@ -62,6 +62,8 @@ export function DrawingComparisonLayer({
   dpr,
   appearance = DEFAULT_DRAWING_APPEARANCE,
   appearanceFilter,
+  screenSpace,
+  paintRef,
 }: {
   comparison: DrawingComparison;
   primary: ComparisonSource;
@@ -71,6 +73,8 @@ export function DrawingComparisonLayer({
   dpr: number;
   appearance?: DrawingAppearance;
   appearanceFilter?: string;
+  screenSpace?: boolean;
+  paintRef?: RefObject<((view: DrawingView) => void) | null>;
 }) {
   const [image, setImage] = useState<{
     src: string;
@@ -85,6 +89,8 @@ export function DrawingComparisonLayer({
   if (comparison.mode === "overlay" || comparison.mode === "difference")
     return (
       <DrawingLineOverlayLayer
+        screenSpace={screenSpace}
+        paintRef={paintRef}
         inverted={appearance.inverted}
         first={primary}
         second={comparison}

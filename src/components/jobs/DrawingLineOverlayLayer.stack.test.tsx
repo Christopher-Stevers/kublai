@@ -1,4 +1,5 @@
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -7,6 +8,7 @@ import {
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DrawingLineOverlayLayer } from "./DrawingLineOverlayLayer";
+import { loadPdfDocument } from "~/lib/pdf-client";
 import { defaultOverlayInk } from "~/lib/drawing-overlay-stack";
 vi.mock("~/lib/pdf-client", () => ({ loadPdfDocument: vi.fn() }));
 let opened: string[], held: number, maximumHeld: number, fail: boolean;
@@ -151,4 +153,30 @@ describe("multi-drawing raster pipeline", () => {
     );
     expect(screen.queryByRole("alert")).toBeNull();
   });
+});
+
+it("retries failed PDF detail on reconnect and follows gestures in screen pixels", async () => {
+  const pdf = vi.mocked(loadPdfDocument);
+  pdf.mockRejectedValue(new Error("Offline"));
+  const paintRef = { current: null as ((view: { scale: number; x: number; y: number }) => void) | null };
+  const view = render(<DrawingLineOverlayLayer {...props} screenSpace paintRef={paintRef}
+    first={{ src: "/first.png", pdf: { url: "/first.pdf", page: 1 } }}
+    frameSize={{ width: 2, height: 1 }} />);
+  await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("Could not load drawing detail"));
+  const detail = view.container.querySelector<HTMLCanvasElement>("[data-overlay-detail]")!;
+  expect(detail.style.visibility).toBe("hidden");
+  expect(overview(view.container).style.visibility).toBe("visible");
+  pdf.mockResolvedValue({ getPage: async () => ({
+    getViewport: ({ scale }: { scale: number }) => ({ width: 2 * scale, height: scale }),
+    render: () => ({ promise: Promise.resolve(), cancel: vi.fn() }),
+  }) } as never);
+  fireEvent(window, new Event("online"));
+  await waitFor(() => expect(detail.style.visibility).toBe("visible"));
+  expect(screen.queryByRole("alert")).toBeNull();
+  const before = parseFloat(detail.style.left);
+  act(() => paintRef.current?.({ scale: 1, x: 7, y: 0 }));
+  expect(parseFloat(detail.style.left)).toBeCloseTo(before + 7);
+  expect(detail.style.width).toMatch(/px$/);
+  expect(held).toBe(0);
+  pdf.mockReset();
 });

@@ -209,3 +209,13 @@ it("moves the focus circle when tapping an existing measurement node", () => {
   expect(frame.querySelectorAll("[data-measure-node]")).toHaveLength(3);
   expect(frame.querySelector('[data-measure-node="2"]')?.getAttribute("data-measure-active")).toBe("true");
 });
+
+it("places overlay detail outside the transformed drawing sheet", () => {
+  const { frame, sheet } = open(12, { comparison: {
+    src: "/second.png", mode: "overlay", opacity: 1, wipe: 0.5,
+    alignment: { x: 0, y: 0, scale: 1 },
+  } });
+  const overlay = frame.querySelector("[data-line-overlay]")!;
+  expect(overlay.parentElement).toBe(frame);
+  expect(sheet.contains(overlay)).toBe(false);
+});

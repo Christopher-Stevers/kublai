@@ -1,5 +1,6 @@
 import {
   planDrawingPatch,
+  MAX_DRAWING_PATCH_PIXELS,
   type DrawingPatch,
   type DrawingSize,
   type DrawingView,
@@ -10,7 +11,7 @@ export const DEFAULT_OVERLAY_STYLES: [OverlayInkStyle, OverlayInkStyle] = [
   { color: "#dc2626", opacity: 1 },
   { color: "#2563eb", opacity: 1 },
 ];
-export const MAX_OVERLAY_PIXELS = 2 * 1024 * 1024;
+export const MAX_OVERLAY_PIXELS = MAX_DRAWING_PATCH_PIXELS;
 
 export function overlayStyle(value: OverlayInkStyle): OverlayInkStyle {
   return {

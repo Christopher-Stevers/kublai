@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
 import type { RenderTask } from "pdfjs-dist/legacy/build/pdf.mjs";
 import { loadPdfDocument } from "~/lib/pdf-client";
 import {
@@ -40,6 +40,8 @@ type Props = {
   view: DrawingView;
   dpr: number;
   inverted?: boolean;
+  screenSpace?: boolean;
+  paintRef?: RefObject<((view: DrawingView) => void) | null>;
 };
 type Raster = { patch: DrawingPatch; ink: InkStack };
 const nextTurn = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
@@ -54,12 +56,38 @@ function loadImage(src: string) {
   });
 }
 
-/** Bounded, sheet-anchored buffers keep the overlay sharp while sharing pan/zoom. */
+/** Bounded PDF patches follow the camera without CSS-scaling the detail canvas. */
 export function DrawingLineOverlayLayer(props: Props) {
   const overview = useRef<HTMLCanvasElement>(null);
   const detail = useRef<HTMLCanvasElement>(null);
   const latest = useRef(props);
   latest.current = props;
+  const camera = useRef(props.view);
+  const patches = useRef<Array<DrawingPatch | null>>([null, null]);
+  const position = (canvas: HTMLCanvasElement, patch: DrawingPatch, view: DrawingView) => {
+    const p = latest.current;
+    const width = p.fit.width * view.scale, height = p.fit.height * view.scale;
+    Object.assign(canvas.style, p.screenSpace ? {
+      left: `${(p.frameSize.width - width) / 2 + view.x + patch.left * width}px`,
+      top: `${(p.frameSize.height - height) / 2 + view.y + patch.top * height}px`,
+      width: `${patch.width * width}px`, height: `${patch.height * height}px`,
+    } : {
+      left: `${patch.left * 100}%`, top: `${patch.top * 100}%`,
+      width: `${patch.width * 100}%`, height: `${patch.height * 100}%`,
+    });
+  };
+  useLayoutEffect(() => {
+    const paint = (view: DrawingView) => {
+      camera.current = view;
+      [overview.current, detail.current].forEach((canvas, index) => {
+        const patch = patches.current[index];
+        if (canvas && patch) position(canvas, patch, view);
+      });
+    };
+    paint(props.view);
+    if (props.paintRef) props.paintRef.current = paint;
+    return () => { if (props.paintRef) props.paintRef.current = null; };
+  });
   const request = useRef<() => void>(() => undefined);
   const repaint = useRef<() => void>(() => undefined);
   const [error, setError] = useState<string | null>(null);
@@ -101,6 +129,9 @@ export function DrawingLineOverlayLayer(props: Props) {
     let preview: Raster | null = null,
       sharp: Raster | null = null;
     let paintId = 0;
+    let failures = 0;
+    let retryAfter = 0;
+    let watchdog: ReturnType<typeof setTimeout> | null = null;
     const canvases = [overview.current, detail.current];
     setError(null);
     setReady(false);
@@ -154,13 +185,9 @@ export function DrawingLineOverlayLayer(props: Props) {
         canvas.width = raster.patch.pixelWidth;
         canvas.height = raster.patch.pixelHeight;
         context.putImageData(pixels, 0, 0);
-        Object.assign(canvas.style, {
-          left: `${raster.patch.left * 100}%`,
-          top: `${raster.patch.top * 100}%`,
-          width: `${raster.patch.width * 100}%`,
-          height: `${raster.patch.height * 100}%`,
-          visibility: "visible",
-        });
+        patches.current[canvas === canvases[0] ? 0 : 1] = raster.patch;
+        position(canvas, raster.patch, camera.current);
+        canvas.style.visibility = "visible";
       }
       if (!disposed && id === paintId) setReady(true);
     };
@@ -216,23 +243,20 @@ export function DrawingLineOverlayLayer(props: Props) {
               ],
             });
             task = render;
-            await render.promise;
-            task = null;
-          } catch {
-            if (disposed) throw new Error("Overlay closed");
-            context.fillStyle = "#ffffff";
-            context.fillRect(0, 0, canvas.width, canvas.height);
-            context.drawImage(
-              image,
-              rect.left,
-              rect.top,
-              rect.width,
-              rect.height,
-            );
-            setError(
-              "Drawing detail could not load. Showing the saved preview.",
-            );
+            watchdog = setTimeout(() => render.cancel(), 30_000);
+            try { await render.promise; }
+            finally {
+              if (watchdog !== null) clearTimeout(watchdog);
+              watchdog = null;
+              task = null;
+            }
+          } catch (error) {
+            image.onload = image.onerror = null;
+            image.removeAttribute("src");
+            canvas.width = canvas.height = 0;
+            throw error;
           }
+
         } else
           context.drawImage(
             image,
@@ -269,11 +293,11 @@ export function DrawingLineOverlayLayer(props: Props) {
       return { patch, ink };
     };
     const schedule = () => {
-      if (disposed || rendering || timer !== null) return;
+      if (disposed || rendering || timer !== null || failures >= 4) return;
       timer = setTimeout(() => {
         timer = null;
         void draw();
-      }, 50);
+      }, Math.max(50, retryAfter - Date.now()));
     };
     const draw = async () => {
       if (disposed || rendering || !preview || !bounds) return;
@@ -299,12 +323,19 @@ export function DrawingLineOverlayLayer(props: Props) {
       )
         return;
       rendering = true;
+      // Keep the displayed canvas, but release its large ink arrays before rebuilding.
+      sharp = null;
       try {
         const next = await raster(patch, true);
         if (disposed) return;
         sharp = next;
+        failures = 0;
+        retryAfter = 0;
+        setError(null);
         await paint();
       } catch {
+        failures++;
+        retryAfter = Date.now() + failures * 3000;
         if (!disposed)
           setError(
             "Could not load drawing detail. The overview is still available.",
@@ -314,7 +345,17 @@ export function DrawingLineOverlayLayer(props: Props) {
         if (!disposed) schedule();
       }
     };
-    request.current = schedule;
+    const resume = () => {
+      if (document.visibilityState === "hidden") return;
+      failures = 0;
+      retryAfter = 0;
+      if (timer !== null) clearTimeout(timer);
+      timer = null;
+      schedule();
+    };
+    request.current = resume;
+    window.addEventListener("online", resume);
+    document.addEventListener("visibilitychange", resume);
     void (async () => {
       const { fit } = latest.current;
       bounds = { left: 0, top: 0, right: 1, bottom: 1 };
@@ -367,6 +408,10 @@ export function DrawingLineOverlayLayer(props: Props) {
       request.current = () => undefined;
       repaint.current = () => undefined;
       task?.cancel();
+      if (watchdog !== null) clearTimeout(watchdog);
+      window.removeEventListener("online", resume);
+      document.removeEventListener("visibilitychange", resume);
+      patches.current = [null, null];
       if (timer !== null) clearTimeout(timer);
       for (const canvas of canvases)
         if (canvas) {
