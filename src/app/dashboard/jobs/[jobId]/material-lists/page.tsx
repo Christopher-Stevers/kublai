@@ -1,4 +1,5 @@
 "use client";
+import { useCardMerge } from "~/components/materialLists/use-card-merge";
 import { notify } from "~/components/ui/app-dialogs";
 import { CopyIcon, MergeIcon } from "lucide-react";
 import { FinancialOnly } from "~/components/permissions/FinancialVisibility";
@@ -151,22 +152,11 @@ export default function JobDetailPage({
     pathname.match(/^\/dashboard\/jobs\/([^/?#]+)/)?.[1] ?? paramJobId;
   const router = useRouter();
   const utils = api.useUtils();
-  const [mergeSource, setMergeSource] = useState<{ id: string; name: string } | null>(null);
-  const [mergeTarget, setMergeTarget] = useState("");
   const duplicate = api.materialList.duplicate.useMutation({
     onSuccess: ({ id }) => { requestMaterialListReplicacheSync(); void utils.job.getJob.invalidate({ jobId }); router.push(`/dashboard/material-lists/${id}`); },
     onError: error => notify(error.message, "error"),
   });
-  const merge = api.materialList.merge.useMutation({
-    onSuccess: ({ id, movedCount }) => {
-      requestMaterialListReplicacheSync();
-      void utils.job.getJob.invalidate({ jobId });
-      setMergeSource(null); setMergeTarget("");
-      notify(`${movedCount} unlocked ${movedCount === 1 ? "item moved" : "items moved"}. Sent items remain in their original list.`, "success");
-      router.push(`/dashboard/material-lists/${id}`);
-    },
-    onError: error => notify(error.message, "error"),
-  });
+
   const [materialListToDelete, setMaterialListToDelete] = useState<{
     id: string;
     name: string;
@@ -233,6 +223,10 @@ export default function JobDetailPage({
   );
 
   const listsPending = Boolean(materialLists?.some(list => "pendingSync" in list && list.pendingSync));
+  const merge = useCardMerge({
+    disabled: !isBrowserOnline || listsPending || duplicate.isPending,
+    onMerged: () => { void utils.job.getJob.invalidate({ jobId }); },
+  });
 
   const handleCreateNew = () => {
     if (!job?.id) return;
@@ -390,6 +384,7 @@ export default function JobDetailPage({
           </div>
         </div>
 
+        {merge.banner}
         {!materialLists || materialLists.length === 0 ? (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12">
@@ -411,19 +406,22 @@ export default function JobDetailPage({
             {materialLists.map((list) => (
               <Card
                 key={list.id}
-                className="cursor-pointer transition-shadow hover:shadow-md"
-                onPointerDown={() => startMaterialListLongPress(list)}
+                {...merge.cardProps(list)}
+                className={"cursor-pointer transition-shadow hover:shadow-md" + merge.cardClassName(list)}
+                onPointerDown={() => { if (!merge.active) startMaterialListLongPress(list); }}
                 onPointerUp={clearLongPressTimer}
                 onPointerLeave={clearLongPressTimer}
                 onPointerCancel={clearLongPressTimer}
                 onContextMenu={(event) => {
                   event.preventDefault();
                   clearLongPressTimer();
+                  if (merge.active) return;
                   longPressHandledRef.current = true;
                   setMaterialListForOrders({ id: list.id, name: list.name });
                 }}
                 onClick={(event) => {
                   clearLongPressTimer();
+                  if (merge.active) { merge.pick(list); return; }
                   if (longPressHandledRef.current) {
                     event.preventDefault();
                     longPressHandledRef.current = false;
@@ -443,7 +441,7 @@ export default function JobDetailPage({
                       )}
                       {list.name}
                     </CardTitle>
-                    {(canDeleteCoreRecords || canEditLists) && (
+                    {!merge.active && (canDeleteCoreRecords || canEditLists) && (
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button
@@ -468,7 +466,7 @@ export default function JobDetailPage({
                               <CopyIcon className="h-4 w-4" />Duplicate
                             </DropdownMenuItem>
                             {list.kind !== "tools" && <DropdownMenuItem disabled={!isBrowserOnline || listsPending || duplicate.isPending || merge.isPending}
-                              onSelect={() => { setMergeSource({id:list.id,name:list.name}); setMergeTarget(""); }}>
+                              onSelect={() => { merge.begin(list); }}>
                               <MergeIcon className="h-4 w-4" />Merge
                             </DropdownMenuItem>}
                           </>}
@@ -603,27 +601,7 @@ export default function JobDetailPage({
           </DialogContent>
         </Dialog>
 
-        <Dialog open={Boolean(mergeSource)} onOpenChange={open => { if (!open && !merge.isPending) setMergeSource(null); }}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Merge material lists</DialogTitle>
-              <DialogDescription>Move all unlocked items from “{mergeSource?.name}” into the list you choose below. Sent items stay in their original list with their order history. The original list is kept.</DialogDescription>
-            </DialogHeader>
-            <label htmlFor="merge-material-target" className="text-sm font-medium">Merge into</label>
-            <select id="merge-material-target" className="w-full rounded-md border bg-background p-3 text-foreground"
-              value={mergeTarget} onChange={event => setMergeTarget(event.target.value)} disabled={merge.isPending}>
-              <option value="">Choose a material list</option>
-              {materialLists?.filter(list => list.id !== mergeSource?.id && list.kind !== "tools").map(list => <option key={list.id} value={list.id}>{list.name}</option>)}
-            </select>
-            <DialogFooter>
-              <Button variant="outline" disabled={merge.isPending} onClick={() => setMergeSource(null)}>Cancel</Button>
-              <Button disabled={!mergeSource || !mergeTarget || !isBrowserOnline || listsPending || merge.isPending}
-                onClick={() => mergeSource && merge.mutate({sourceId:mergeSource.id,targetId:mergeTarget})}>
-                {merge.isPending ? "Merging…" : "Merge unlocked items"}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+
 
         <MaterialListOrderPickerDialog
           materialList={materialListForOrders}

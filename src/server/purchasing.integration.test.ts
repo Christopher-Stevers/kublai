@@ -78,6 +78,7 @@ const tables = [
   schema.locations,
   schema.jobs,
   schema.materialLists,
+  schema.materialListSyncTombstones,
   schema.quotes,
   schema.quoteItems,
   schema.materials,
@@ -112,6 +113,7 @@ describe.skipIf(!socket)(
         );
       }
       await conn`CREATE UNIQUE INDEX IF NOT EXISTS prefab_item_unique ON kublai_material_prefab_item ("prefabId", "partDefinitionId")`;
+      await conn`CREATE UNIQUE INDEX tombstone_entity_unique ON kublai_material_list_sync_tombstone ("organizationId", "entityType", "entityId")`;
       const migration = await readFile(
         new URL(
           "../../drizzle/0065_order_requested_quantity.sql",
@@ -371,7 +373,7 @@ describe.skipIf(!socket)(
       await material.sendGeneratedOrder({materialListId:target.id,supplierId:supplier,sentTo:"test@example.test"});
       await db.insert(schema.quoteItems).values({id:id(91),quoteId:quote,partDefinitionId:part,supplierId:supplier,supplierPartId:sp,quantity:"3",unitCost:"2",notes:"Keep this note"});
       const merged = await material.merge({sourceId:list,targetId:target.id});
-      expect(merged).toEqual({id:target.id,movedCount:1});
+      expect(merged).toEqual({id:target.id,movedCount:1,sourceDeleted:false});
       const [targetList] = await db.select().from(schema.materialLists).where(eq(schema.materialLists.id,target.id));
       const sourceRows = await db.select().from(schema.quoteItems).where(eq(schema.quoteItems.quoteId,quote));
       const targetRows = await db.select().from(schema.quoteItems).where(eq(schema.quoteItems.quoteId,targetList!.quoteId!));
@@ -381,6 +383,18 @@ describe.skipIf(!socket)(
       expect(targetRows.find(row => row.id === id(91))).toMatchObject({quantity:"3.000000",notes:"Keep this note",sentOrderItemId:null});
       expect((await material.getOrderById({orderId:sourceOrder.id})).items).toHaveLength(1);
       await expect(material.merge({sourceId:list,targetId:target.id})).rejects.toThrow("no unlocked items");
+    });
+    it("removes the emptied source and syncs its deletion without losing moved items", async () => {
+      const target = await material.duplicate({materialListId:list});
+      const result = await material.merge({sourceId:list,targetId:target.id});
+      expect(result).toEqual({id:target.id,movedCount:1,sourceDeleted:true});
+      expect(await db.select().from(schema.materialLists).where(eq(schema.materialLists.id,list))).toHaveLength(0);
+      expect(await db.select().from(schema.quotes).where(eq(schema.quotes.id,quote))).toHaveLength(0);
+      const [destination] = await db.select().from(schema.materialLists).where(eq(schema.materialLists.id,target.id));
+      expect(await db.select().from(schema.quoteItems).where(eq(schema.quoteItems.quoteId,destination!.quoteId!))).toHaveLength(2);
+      const tombstones = await db.select().from(schema.materialListSyncTombstones).where(eq(schema.materialListSyncTombstones.entityId,list));
+      expect(tombstones).toHaveLength(1);
+      expect(tombstones[0]!.entityType).toBe("materialList");
     });
     it("rejects self-merges, foreign lists and another job", async () => {
       await expect(material.merge({sourceId:list,targetId:list})).rejects.toThrow("another material list");

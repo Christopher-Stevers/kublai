@@ -296,6 +296,9 @@ export const materialListRouter = createTRPCRouter({
         if (!source.quoteId || !target.quoteId) throw new TRPCError({ code: "BAD_REQUEST", message: "This material list is not ready to merge." });
         // Same lock order as sending an order; a sent row can never move.
         await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`${organizationId}:${source.jobId}:orders`}))`);
+        // Block concurrent inserts through the quote FK while checking emptiness.
+        await tx.select({ id: quotes.id }).from(quotes)
+          .where(inArray(quotes.id, [source.quoteId, target.quoteId])).orderBy(quotes.id).for("update");
         await tx.select({ id: quoteItems.id }).from(quoteItems)
           .where(inArray(quoteItems.quoteId, [source.quoteId, target.quoteId]))
           .orderBy(quoteItems.id).for("update");
@@ -307,9 +310,23 @@ export const materialListRouter = createTRPCRouter({
         await recalculatePurchaseTotals(tx, target.quoteId);
         await tx.update(materialLists).set({ updatedAt: new Date() })
           .where(inArray(materialLists.id, [source.id, target.id]));
-        return { id: target.id, movedCount: moved.length };
+        const remaining = await tx.select({ id: quoteItems.id }).from(quoteItems)
+          .where(eq(quoteItems.quoteId, source.quoteId)).limit(1);
+        const sourceDeleted = remaining.length === 0;
+        if (sourceDeleted) {
+          await tx.insert(materialListSyncTombstones).values({
+            organizationId, materialListId: source.id, entityType: "materialList",
+            entityId: source.id, deletedAt: new Date(),
+          }).onConflictDoUpdate({
+            target: [materialListSyncTombstones.organizationId, materialListSyncTombstones.entityType, materialListSyncTombstones.entityId],
+            set: { deletedAt: new Date() },
+          });
+          await tx.delete(quotes).where(eq(quotes.id, source.quoteId));
+          await tx.delete(materialLists).where(eq(materialLists.id, source.id));
+        }
+        return { id: target.id, movedCount: moved.length, sourceDeleted };
       });
-      publishMaterialListEvent(input.sourceId, "updated", organizationId);
+      publishMaterialListEvent(input.sourceId, result.sourceDeleted ? "deleted" : "updated", organizationId);
       publishMaterialListEvent(input.targetId, "updated", organizationId);
       return result;
     }),
