@@ -1,6 +1,14 @@
 "use client";
 
 import { useEffect, useRef, useState, type ComponentProps } from "react";
+import {
+  FilesIcon,
+  LayersIcon,
+  RotateCcwIcon,
+  SlidersHorizontalIcon,
+  XIcon,
+} from "lucide-react";
+import { cn } from "~/lib/utils";
 import { DrawingSheetViewer, type DrawingViewport } from "./DrawingSheetViewer";
 import {
   defaultOverlayInk,
@@ -119,6 +127,8 @@ export function DrawingCompare({
     ...DrawingCompareSheet[],
   ];
   const [wipe, setWipe] = useState(initialSnapshot?.wipe ?? 0.5);
+  // Colours, opacity and alignment live in a panel so the drawing keeps the screen.
+  const [adjusting, setAdjusting] = useState(false);
   const [requestedMode, setMode] = useState<
     "side-by-side" | DrawingComparison["mode"]
   >(initialSnapshot?.mode ?? "overlay");
@@ -194,27 +204,26 @@ export function DrawingCompare({
     >
       <div
         data-drawing-chrome
-        className="bg-background absolute inset-x-0 top-0 z-20 max-h-[40dvh] overflow-y-auto overscroll-contain border-b p-2"
+        className="absolute inset-x-0 top-0 z-20 max-h-[60dvh] overflow-y-auto overscroll-contain"
       >
-        {!ready && previousReady && (
-          <p role="status" className="text-muted-foreground text-xs">
-            Opening added drawings…
-          </p>
-        )}
-        <div className="flex flex-wrap items-center gap-2">
-          <span
-            className="min-w-0 truncate text-sm font-medium"
-            title={drawings.map((sheet) => sheet.name).join(" / ")}
-          >
-            {multi
-              ? `${first.name} + ${drawings.length - 1} drawings`
-              : `${first.name} / ${second.name}`}
-          </span>
-          <label className="text-sm">
-            Comparison{" "}
+        <div className="bg-background/95 border-b shadow-sm backdrop-blur">
+          <div className="flex h-12 items-center gap-2 px-2">
+            <span
+              aria-hidden
+              className="bg-primary/10 text-primary grid size-8 shrink-0 place-items-center rounded-lg"
+            >
+              <LayersIcon className="size-4" />
+            </span>
+            {/* The legend underneath names each drawing. */}
+            <span
+              className="min-w-0 flex-1 truncate text-sm font-semibold"
+              title={drawings.map((sheet) => sheet.name).join(" / ")}
+            >
+              Compare
+            </span>
             <select
               aria-label="Comparison mode"
-              className="bg-background rounded border p-1"
+              className="bg-muted hover:bg-accent focus-visible:ring-ring h-9 w-auto max-w-[9.5rem] shrink-0 cursor-pointer rounded-full border-0 pr-7 pl-3 text-sm font-medium focus-visible:ring-2 focus-visible:outline-none"
               value={mode}
               onChange={(event) => {
                 setEntryView(camera.current);
@@ -225,39 +234,113 @@ export function DrawingCompare({
                 Side by side{multi ? " (two drawings)" : ""}
               </option>
               <option value="overlay">Overlay</option>
-              <option value="difference">Red / blue changes</option>
+              <option value="difference">Changes</option>
               <option value="wipe" disabled={multi}>
                 Wipe{multi ? " (two drawings)" : ""}
               </option>
             </select>
-          </label>
-          {onEditDrawings && (
-            <button
-              type="button"
-              className="rounded border px-3 py-1 text-sm"
-              onClick={onEditDrawings}
+            {mode !== "side-by-side" && (
+              <button
+                type="button"
+                aria-label="Adjust layers"
+                title="Colours, opacity and alignment"
+                aria-expanded={adjusting}
+                onClick={() => setAdjusting((open) => !open)}
+                className={cn(
+                  "grid size-9 shrink-0 place-items-center rounded-full transition-colors",
+                  adjusting
+                    ? "bg-primary text-primary-foreground"
+                    : "hover:bg-accent text-muted-foreground",
+                )}
+              >
+                <SlidersHorizontalIcon className="size-4" />
+              </button>
+            )}
+            {onEditDrawings && (
+              <button
+                type="button"
+                aria-label="Choose Drawings"
+                title="Choose drawings"
+                onClick={onEditDrawings}
+                className="hover:bg-accent text-muted-foreground grid size-9 shrink-0 place-items-center rounded-full"
+              >
+                <FilesIcon className="size-4" />
+              </button>
+            )}
+            {onClose && (
+              <button
+                type="button"
+                aria-label="Close comparison"
+                title="Close comparison"
+                onClick={onClose}
+                className="hover:bg-accent text-muted-foreground -mr-0.5 grid size-9 shrink-0 place-items-center rounded-full"
+              >
+                <XIcon className="size-5" />
+              </button>
+            )}
+          </div>
+          {!ready && previousReady && (
+            <p
+              role="status"
+              className="text-muted-foreground px-3 pb-2 text-xs"
             >
-              Choose Drawings
-            </button>
+              Opening added drawings…
+            </p>
           )}
-          {onClose && (
-            <button
-              type="button"
-              className="ml-auto rounded border px-3 py-1"
-              onClick={onClose}
-            >
-              Close comparison
-            </button>
+          {(mode === "overlay" || mode === "difference") && (
+            <div className="text-muted-foreground flex items-center gap-x-3 overflow-x-auto px-3 pb-2 text-xs whitespace-nowrap [scrollbar-width:none]">
+              {drawings.map((sheet, index) => (
+                <span
+                  key={sheet.id}
+                  className="inline-flex items-center gap-1.5"
+                >
+                  <span
+                    aria-hidden
+                    className="size-2.5 rounded-full"
+                    style={{
+                      background:
+                        mode === "overlay"
+                          ? ink(sheet).color
+                          : defaultOverlayInk(index).color,
+                    }}
+                  />
+                  {sheet.name}
+                </span>
+              ))}
+              <span className="inline-flex items-center gap-1.5">
+                <span
+                  aria-hidden
+                  className="bg-foreground size-2.5 rounded-full"
+                />
+                Shared lines
+              </span>
+            </div>
+          )}
+          {mode === "wipe" && (
+            <label className="text-muted-foreground flex items-center gap-3 px-3 pb-2 text-xs">
+              <span className="truncate">{first.name}</span>
+              <input
+                aria-label="Wipe position"
+                className="accent-primary min-w-0 flex-1"
+                type="range"
+                min="0"
+                max="1"
+                step="0.01"
+                value={wipe}
+                onChange={(event) => setWipe(Number(event.target.value))}
+              />
+              <span className="truncate">{second.name}</span>
+            </label>
           )}
         </div>
-        {mode !== "side-by-side" && (
-          <div className="mt-2 flex flex-wrap items-center gap-3 text-sm">
+        {adjusting && mode !== "side-by-side" && (
+          <div className="bg-card mx-2 mt-2 space-y-4 rounded-xl border p-3 shadow-lg">
             {multi && (
-              <label>
-                Overlay drawing{" "}
+              <label className="flex items-center justify-between gap-3 text-sm">
+                <span className="text-muted-foreground">Adjusting</span>
                 <select
                   aria-label="Overlay drawing"
-                  className="bg-background max-w-64 rounded border p-1"
+                  className="bg-muted h-9 max-w-64 min-w-0 rounded-full border-0 pr-7 pl-3 text-sm font-medium"
                   value={selected.id}
                   onChange={(event) => setSelectedId(event.target.value)}
                 >
@@ -270,24 +353,13 @@ export function DrawingCompare({
               </label>
             )}
             {mode === "overlay" && (
-              <>
+              <div className="space-y-2">
                 {configure.map((drawing) => {
-                  const index = drawings.indexOf(drawing),
-                    label = overlayLabel(index),
+                  const label = overlayLabel(drawings.indexOf(drawing)),
                     style = ink(drawing);
                   return (
-                    <fieldset
-                      key={drawing.id}
-                      className="flex min-w-0 flex-wrap items-center gap-2 rounded border px-2 py-1"
-                    >
-                      <legend
-                        className="max-w-56 truncate px-1 text-xs"
-                        title={drawing.name}
-                      >
-                        {label} · {drawing.name}
-                      </legend>
-                      <label className="flex items-center gap-1">
-                        Colour{" "}
+                    <div key={drawing.id} className="flex items-center gap-3">
+                      <span className="relative size-8 shrink-0 overflow-hidden rounded-full border shadow-sm">
                         <input
                           type="color"
                           aria-label={`${label} colour`}
@@ -295,155 +367,101 @@ export function DrawingCompare({
                           onChange={(event) =>
                             changeInk(drawing.id, { color: event.target.value })
                           }
-                          className="h-8 w-10 rounded border bg-transparent p-0.5"
+                          className="absolute -inset-2 size-12 cursor-pointer border-0 p-0"
                         />
-                      </label>
-                      <label className="flex items-center gap-1">
-                        Opacity{" "}
-                        <input
-                          aria-label={`${label} opacity`}
-                          className="w-24"
-                          type="range"
-                          min="0"
-                          max="1"
-                          step="0.05"
-                          value={style.opacity}
-                          onChange={(event) =>
-                            changeInk(drawing.id, {
-                              opacity: Number(event.target.value),
-                            })
-                          }
-                        />
-                        <output className="w-9 text-right tabular-nums">
-                          {Math.round(style.opacity * 100)}%
-                        </output>
-                      </label>
-                    </fieldset>
+                      </span>
+                      <span
+                        className="w-20 shrink-0 truncate text-sm font-medium"
+                        title={`${label} · ${drawing.name}`}
+                      >
+                        {drawing.name}
+                      </span>
+                      <input
+                        aria-label={`${label} opacity`}
+                        className="accent-primary min-w-0 flex-1"
+                        type="range"
+                        min="0"
+                        max="1"
+                        step="0.05"
+                        value={style.opacity}
+                        onChange={(event) =>
+                          changeInk(drawing.id, {
+                            opacity: Number(event.target.value),
+                          })
+                        }
+                      />
+                      <output className="text-muted-foreground w-10 text-right text-xs tabular-nums">
+                        {Math.round(style.opacity * 100)}%
+                      </output>
+                    </div>
                   );
                 })}
-                <p className="text-muted-foreground text-xs">
-                  Matching lines are black. Each drawing has its own colour,
-                  opacity and alignment.
-                </p>
-              </>
-            )}
-            {mode === "wipe" && (
-              <label>
-                Reveal{" "}
-                <input
-                  aria-label="Wipe position"
-                  type="range"
-                  min="0"
-                  max="1"
-                  step="0.01"
-                  value={wipe}
-                  onChange={(event) => setWipe(Number(event.target.value))}
-                />
-              </label>
-            )}
-            {mode === "difference" && (
-              <p className="w-full text-xs">
-                {drawings.map((sheet, index) => (
-                  <span
-                    key={sheet.id}
-                    style={{ color: defaultOverlayInk(index).color }}
-                  >
-                    {sheet.name}
-                    {index === drawings.length - 1 ? "" : " · "}
-                  </span>
-                ))}{" "}
-                · common lines are black
-              </p>
+              </div>
             )}
             {selected.id === first.id ? (
               <p className="text-muted-foreground text-xs">
-                Drawing A anchors the stack. Select another drawing to adjust
-                its alignment.
+                {first.name} anchors the stack. Choose another drawing to align
+                it.
               </p>
             ) : (
-              <>
-                <label>
-                  Horizontal %{" "}
-                  <input
-                    aria-label="Horizontal alignment"
-                    className="bg-background w-20 rounded border p-1"
-                    type="number"
-                    min="-100"
-                    max="100"
-                    step="0.1"
-                    value={alignment.x * 100}
-                    onChange={(event) =>
-                      change(
-                        "x",
-                        String(
-                          Math.max(
-                            -1,
-                            Math.min(1, Number(event.target.value) / 100),
-                          ),
-                        ),
-                      )
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">
+                    Align {selected.name}
+                  </span>
+                  <button
+                    type="button"
+                    className="text-primary hover:bg-primary/10 inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-xs font-medium"
+                    onClick={() =>
+                      setAlignments((current) => ({
+                        ...current,
+                        [alignmentKey(selected.id)]: IDENTITY_ALIGNMENT,
+                      }))
                     }
-                  />
-                </label>
-                <label>
-                  Vertical %{" "}
-                  <input
-                    aria-label="Vertical alignment"
-                    className="bg-background w-20 rounded border p-1"
-                    type="number"
-                    min="-100"
-                    max="100"
-                    step="0.1"
-                    value={alignment.y * 100}
-                    onChange={(event) =>
-                      change(
-                        "y",
-                        String(
-                          Math.max(
-                            -1,
-                            Math.min(1, Number(event.target.value) / 100),
-                          ),
-                        ),
-                      )
-                    }
-                  />
-                </label>
-                <label>
-                  Scale %{" "}
-                  <input
-                    aria-label="Comparison scale"
-                    className="bg-background w-20 rounded border p-1"
-                    type="number"
-                    min="25"
-                    max="400"
-                    step="0.1"
-                    value={alignment.scale * 100}
-                    onChange={(event) =>
-                      change(
-                        "scale",
-                        String(
-                          Math.max(
-                            0.25,
-                            Math.min(4, Number(event.target.value) / 100),
-                          ),
-                        ),
-                      )
-                    }
-                  />
-                </label>
-                <button
-                  type="button"
-                  className="rounded border px-2 py-1"
-                  onClick={() =>
-                    setAlignments((current) => ({
-                      ...current,
-                      [alignmentKey(selected.id)]: IDENTITY_ALIGNMENT,
-                    }))
-                  }
-                >
-                  Reset alignment
-                </button>
-              </>
+                  >
+                    <RotateCcwIcon className="size-3.5" />
+                    Reset alignment
+                  </button>
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  {(
+                    [
+                      ["x", "Horizontal alignment", "Left / right", -100, 100],
+                      ["y", "Vertical alignment", "Up / down", -100, 100],
+                      ["scale", "Comparison scale", "Scale", 25, 400],
+                    ] as const
+                  ).map(([key, aria, caption, min, max]) => (
+                    <label key={key} className="space-y-1">
+                      <span className="text-muted-foreground block text-[11px]">
+                        {caption}
+                      </span>
+                      <span className="bg-background focus-within:ring-ring flex h-9 items-center rounded-lg border pr-2 focus-within:ring-2">
+                        <input
+                          aria-label={aria}
+                          className="w-full min-w-0 bg-transparent px-2 text-sm tabular-nums outline-none"
+                          type="number"
+                          min={min}
+                          max={max}
+                          step="0.1"
+                          value={alignment[key] * 100}
+                          onChange={(event) => {
+                            const percent = Number(event.target.value);
+                            change(
+                              key,
+                              String(
+                                key === "scale"
+                                  ? Math.max(0.25, Math.min(4, percent / 100))
+                                  : Math.max(-1, Math.min(1, percent / 100)),
+                              ),
+                            );
+                          }}
+                        />
+                        <span className="text-muted-foreground text-xs">%</span>
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </div>
             )}
           </div>
         )}

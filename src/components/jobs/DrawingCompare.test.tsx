@@ -71,6 +71,7 @@ describe("drawing comparison", () => {
     const third = { id: "three", name: "Electrical", imageUrl: "/third.webp" };
     const fourth = { id: "four", name: "Architectural", imageUrl: "/fourth.webp" };
     const view = render(<DrawingCompare first={first} second={second} additional={[third,fourth]} />);
+    fireEvent.click(screen.getByRole("button", { name: "Adjust layers" }));
     fireEvent.change(screen.getByLabelText("Overlay drawing"), {target:{value:"three"}});
     fireEvent.change(screen.getByLabelText("Drawing C colour"), {target:{value:"#ff00ff"}});
     fireEvent.change(screen.getByLabelText("Drawing C opacity"), {target:{value:"0.4"}});
@@ -94,6 +95,7 @@ describe("drawing comparison", () => {
 
   it("passes independently chosen colours and opacities to the overlay and retains them across comparison modes", () => {
     render(<DrawingCompare first={first} second={second} />);
+    fireEvent.click(screen.getByRole("button", { name: "Adjust layers" }));
     fireEvent.change(screen.getByLabelText("Drawing A colour"), {
       target: { value: "#9333ea" },
     });
@@ -194,6 +196,7 @@ describe("drawing comparison", () => {
   });
   it("exposes manual registration and resets it without altering source drawings", () => {
     render(<DrawingCompare first={first} second={second} />);
+    fireEvent.click(screen.getByRole("button", { name: "Adjust layers" }));
     fireEvent.change(screen.getByLabelText("Horizontal alignment"), {
       target: { value: "5" },
     });
