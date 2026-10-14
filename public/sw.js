@@ -543,9 +543,9 @@ async function pushAccount() {
     return null;
   }
 }
-async function updateAppIconBadge(unread) {
+async function updateAppIconBadge(count) {
   try {
-    if (unread) await self.navigator?.setAppBadge?.();
+    if (count > 0) await self.navigator?.setAppBadge?.(count);
     else await self.navigator?.clearAppBadge?.();
   } catch {
     // Unsupported/disabled badges must never interrupt notification delivery.
@@ -568,7 +568,7 @@ self.addEventListener("message", (event) => {
         const previousAccount = await pushAccount();
         const cache = await caches.open(PUSH_BINDING_CACHE);
         await cache.put(PUSH_BINDING_URL, new Response(account ?? ""));
-        if (!account || previousAccount !== account) await updateAppIconBadge(false);
+        if (!account || previousAccount !== account) await updateAppIconBadge(0);
         if (!account) {
           const notifications = await self.registration.getNotifications();
           for (const notification of notifications)
@@ -607,7 +607,13 @@ self.addEventListener("push", (event) => {
         data.account !== (await pushAccount())
       )
         return;
-      await updateAppIconBadge(true);
+      // Always supply a number: replacing a numeric badge with the flag-only
+      // API variant is not displayed consistently by iPadOS.
+      await updateAppIconBadge(
+        Number.isSafeInteger(data.badgeCount) && data.badgeCount >= 0
+          ? data.badgeCount
+          : 1,
+      );
       const chat =
         data.type === "job-chat" || data.type === "conversation-chat";
       // Chat pushes carry the sender and message, like a messaging app.

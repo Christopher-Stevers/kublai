@@ -1,13 +1,14 @@
 import { lookup } from "node:dns/promises";
 import { Agent } from "node:https";
 import webpush from "web-push";
+import { withPushBadge } from "~/server/notifications/push-badge";
 import {
   isAllowedPushEndpoint,
   isPublicPushAddress,
   PUSH_TTL_SECONDS,
 } from "./push-policy";
 export async function sendPushPayload(
-  delivery: { endpoint: string; p256dh: string; auth: string },
+  delivery: { endpoint: string; p256dh: string; auth: string; recipientId?: string },
   configuration: { publicKey: string; privateKey: string; subject: string },
   payload: string,
 ) {
@@ -15,6 +16,7 @@ export async function sendPushPayload(
     throw Object.assign(new Error("Invalid push provider"), {
       statusCode: 400,
     });
+  payload = await withPushBadge(payload, delivery.recipientId);
   const hostname = new URL(delivery.endpoint).hostname;
   let lookupTimer: NodeJS.Timeout | undefined;
   const addresses = await Promise.race([

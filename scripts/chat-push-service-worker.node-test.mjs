@@ -392,3 +392,20 @@ test("app icon badge rejection does not prevent a notification", async () => {
   await h.emit("push", {data:{json:()=>({type:"job-chat",account,url})}});
   assert.equal(h.shown.length, 1);
 });
+
+test("app icon badge retains numeric counts across consecutive pushes", async () => {
+  const h = harness();
+  const counts = [];
+  h.self.navigator = {
+    setAppBadge: async count => counts.push(count),
+    clearAppBadge: async () => counts.push(0),
+  };
+  await h.bind(account);
+  counts.length = 0;
+  for (const badgeCount of [4, 5, 0]) {
+    await h.emit("push", {data:{json:()=>({type:"job-chat",account,url,badgeCount})}});
+  }
+  assert.deepEqual(counts, [4, 5, 0]);
+  await h.emit("push", {data:{json:()=>({type:"job-chat",account,url})}});
+  assert.equal(counts.at(-1), 1);
+});
