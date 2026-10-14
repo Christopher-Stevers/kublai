@@ -116,7 +116,7 @@ vi.mock("./DrawingCompare", () => ({
         Pan overlay
       </button>
       <button onClick={props.onClose}>Close comparison</button>
-      <button onClick={props.onEditDrawings}>Add / remove drawings</button>
+      <button onClick={props.onEditDrawings}>Choose Drawings</button>
     </div>
   ),
 }));
@@ -683,26 +683,20 @@ describe("drawing workspace workflows", () => {
     open();
     openMenu("More");
     fireEvent.click(screen.getByRole("menuitem", { name: "Overlay drawings" }));
-    fireEvent.change(screen.getByLabelText("Drawing B"), {
-      target: { value: revisionId },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Add drawing" }));
-    fireEvent.change(screen.getByLabelText("Drawing C"), {
-      target: { value: fourth },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Add drawing" }));
-    fireEvent.change(screen.getByLabelText("Drawing D"), {
-      target: { value: third },
-    });
+    document.querySelectorAll("details").forEach(group => group.open = true);
+    fireEvent.click(screen.getByLabelText("A101 revision 2"));
+    fireEvent.click(screen.getByLabelText("Drawing 4"));
+    fireEvent.click(screen.getByLabelText("Drawing 3"));
     fireEvent.click(screen.getByRole("button", { name: "Open overlay" }));
     expect(screen.getByTestId("comparison")).toHaveAttribute(
       "data-additional",
       JSON.stringify([fourth, third]),
     );
     fireEvent.click(
-      screen.getByRole("button", { name: "Add / remove drawings" }),
+      screen.getByRole("button", { name: "Choose Drawings" }),
     );
-    fireEvent.click(screen.getByRole("button", { name: "Remove Drawing C" }));
+    document.querySelectorAll("details").forEach(group => group.open = true);
+    fireEvent.click(screen.getByLabelText("Drawing 4"));
     fireEvent.click(screen.getByRole("button", { name: "Open overlay" }));
     expect(screen.getByTestId("comparison")).toHaveAttribute(
       "data-additional",
@@ -825,12 +819,10 @@ describe("drawing workspace workflows", () => {
     );
     openMenu("More");
     fireEvent.click(screen.getByRole("menuitem", { name: "Overlay drawings" }));
-    fireEvent.change(screen.getByLabelText("Drawing A"), {
-      target: { value: revisionId },
-    });
-    fireEvent.change(screen.getByLabelText("Drawing B"), {
-      target: { value: third },
-    });
+    document.querySelectorAll("details").forEach(group => group.open = true);
+    fireEvent.click(screen.getByLabelText(sheet.name));
+    fireEvent.click(screen.getByLabelText("A101 revision 2"));
+    fireEvent.click(screen.getByLabelText(mocks.data!.jobSheets.find(item => item.id === third)!.name));
     fireEvent.click(screen.getByRole("button", { name: "Open overlay" }));
     expect(screen.getByTestId("comparison")).toHaveAttribute(
       "data-first",

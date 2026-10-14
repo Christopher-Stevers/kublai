@@ -345,7 +345,7 @@ export type DrawingMetadata = z.infer<typeof drawingMetadataSchema> & {
   revision: number;
   currentSourceSheetId: string;
 };
-export type DrawingJobSheet = DrawingSnapshot & { id: string; setId: string };
+export type DrawingJobSheet = DrawingSnapshot & { id: string; setId: string; setName?: string | null };
 export type DrawingActivity = {
   id: string;
   entityId: string | null;

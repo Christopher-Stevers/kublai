@@ -20,7 +20,7 @@ import {
   jobChatAttachments,
   jobChatMessages,
 } from "~/server/chat/tables";
-import { jobDrawingSheets, jobDocumentWorkspaces } from "~/server/db/schema";
+import { jobDrawingSets, jobDrawingSheets, jobDocumentWorkspaces } from "~/server/db/schema";
 import {
   drawingWorkspaceEntities as entities,
   drawingWorkspaceMetadata as metadata,
@@ -90,6 +90,7 @@ async function jobSheets(
     .select({
       id: jobDrawingSheets.id,
       setId: jobDrawingSheets.setId,
+      setName: jobDrawingSets.name,
       name: jobDrawingSheets.name,
       imageUrl: jobDrawingSheets.imageUrl,
       width: jobDrawingSheets.width,
@@ -97,6 +98,7 @@ async function jobSheets(
       sourceFilename: jobDrawingSheets.sourceFilename,
     })
     .from(jobDrawingSheets)
+    .leftJoin(jobDrawingSets, and(eq(jobDrawingSets.id, jobDrawingSheets.setId), eq(jobDrawingSets.organizationId, organizationId), eq(jobDrawingSets.jobId, jobId)))
     .where(
       and(
         eq(jobDrawingSheets.jobId, jobId),

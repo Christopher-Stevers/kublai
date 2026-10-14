@@ -16,6 +16,8 @@ export type OverlayDrawingChoice = {
   id: string;
   name: string;
   revision?: string;
+  setId?: string;
+  setName?: string | null;
 };
 export function DrawingOverlayPicker({
   drawings,
@@ -36,17 +38,17 @@ export function DrawingOverlayPicker({
     additionalIds?: string[],
   ) => void;
 }) {
-  const [ids, setIds] = useState([
-    initialFirstId,
-    initialSecondId ?? "",
-    ...initialAdditionalIds,
-  ]);
-  const [editing, setEditing] = useState<number | null>(null);
-  const choices = new Map(drawings.map((drawing) => [drawing.id, drawing]));
-  const duplicate =
-    new Set(ids.filter(Boolean)).size !== ids.filter(Boolean).length;
-  const valid =
-    ids.length >= 2 && !duplicate && ids.every((id) => choices.has(id));
+  const [ids, setIds] = useState(() => [...new Set([
+    initialFirstId, initialSecondId ?? "", ...initialAdditionalIds,
+  ].filter(Boolean))]);
+  const choices = new Map(drawings.map(drawing => [drawing.id, drawing]));
+  const groups = new Map<string, { name: string; drawings: OverlayDrawingChoice[] }>();
+  for (const drawing of drawings) {
+    const key = drawing.setId ?? "unassigned";
+    if (!groups.has(key)) groups.set(key, { name: drawing.setName?.trim() || "Other drawings", drawings: [] });
+    groups.get(key)!.drawings.push(drawing);
+  }
+  const valid = ids.length >= 2 && ids.every(id => choices.has(id));
   return (
     <Dialog
       open
@@ -56,94 +58,44 @@ export function DrawingOverlayPicker({
     >
       <DialogContent className="max-h-[85dvh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Overlay drawings</DialogTitle>
+          <DialogTitle>Choose Drawings</DialogTitle>
         </DialogHeader>
         <DialogDescription>
           Choose drawings or uploaded revisions from this job. Add as many
           layers as you need.
         </DialogDescription>
-        {ids.map((id, index) => (
-          <div key={index} className="space-y-1 text-sm">
-            <span className="flex items-center justify-between">
-              {overlayLabel(index)}
-              <span className="flex items-center gap-1">
-                {index >= 2 && id && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    aria-label={`Change ${overlayLabel(index)}`}
-                    onClick={() => setEditing(index)}
-                  >
-                    Change
-                  </Button>
-                )}
-                {ids.length > 2 && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    aria-label={`Remove ${overlayLabel(index)}`}
-                    onClick={() => {
-                      setEditing(null);
-                      setIds((current) =>
-                        current.filter((_, at) => at !== index),
-                      );
-                    }}
-                  >
-                    Remove
-                  </Button>
-                )}
-              </span>
-            </span>
-            {index < 2 || !id || editing === index ? (
-              <select
-                aria-label={overlayLabel(index)}
-                className="bg-background h-10 w-full min-w-0 rounded border px-2"
-                value={id}
-                onChange={(event) => {
-                  const value = event.target.value;
-                  setIds((current) =>
-                    current.map((id, at) => (at === index ? value : id)),
-                  );
-                  setEditing(null);
-                }}
-              >
-                <option value="">Choose a drawing or revision</option>
-                {drawings.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.revision
-                      ? `${item.revision} · ${item.name}`
-                      : item.name}
-                  </option>
-                ))}
-              </select>
-            ) : (
-              <p className="rounded border px-2 py-2">
-                {choices.get(id)?.revision
-                  ? `${choices.get(id)!.revision} · `
-                  : ""}
-                {choices.get(id)?.name ?? "Drawing no longer available"}
-              </p>
-            )}
-          </div>
-        ))}
-        <Button
-          type="button"
-          variant="outline"
-          disabled={ids.some((id) => !id)}
-          onClick={() => {
-            setEditing(null);
-            setIds((current) => [...current, ""]);
-          }}
-        >
-          Add drawing
-        </Button>
-        {duplicate && (
-          <p role="alert" className="text-destructive text-sm">
-            Choose different drawings or revisions for each layer.
-          </p>
-        )}
+        <p className="text-muted-foreground text-sm" aria-live="polite">
+          {ids.length} selected · Choose at least two drawings
+        </p>
+        <div className="space-y-2">
+          {[...groups.entries()].map(([id, group]) => (
+            <details key={id} className="rounded-lg border">
+              <summary className="cursor-pointer px-3 py-3 font-medium">
+                {group.name}
+                <span className="text-muted-foreground ml-2 text-xs">
+                  {group.drawings.filter(drawing => ids.includes(drawing.id)).length} / {group.drawings.length}
+                </span>
+              </summary>
+              <div className="border-t px-3 py-1">
+                {group.drawings.map(drawing => {
+                  const index = ids.indexOf(drawing.id);
+                  return <label key={drawing.id} className="flex min-h-11 cursor-pointer items-center gap-3 py-2 text-sm">
+                    <input type="checkbox" aria-label={`${drawing.revision ? `${drawing.revision} · ` : ""}${drawing.name}`} className="h-4 w-4 shrink-0 accent-primary"
+                      checked={index >= 0}
+                      onChange={event => {
+                        const checked = event.target.checked;
+                        setIds(current => checked ? [...current, drawing.id] : current.filter(id => id !== drawing.id));
+                      }} />
+                    <span className="min-w-0 flex-1 break-words">
+                      {drawing.revision ? `${drawing.revision} · ` : ""}{drawing.name}
+                    </span>
+                    {index >= 0 && <span aria-hidden="true" className="text-muted-foreground shrink-0 text-xs">{overlayLabel(index)}</span>}
+                  </label>;
+                })}
+              </div>
+            </details>
+          ))}
+        </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>
             Cancel

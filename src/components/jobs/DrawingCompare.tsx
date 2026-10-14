@@ -237,7 +237,7 @@ export function DrawingCompare({
               className="rounded border px-3 py-1 text-sm"
               onClick={onEditDrawings}
             >
-              Add / remove drawings
+              Choose Drawings
             </button>
           )}
           {onClose && (

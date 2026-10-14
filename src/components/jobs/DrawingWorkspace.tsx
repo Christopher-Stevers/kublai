@@ -971,6 +971,8 @@ export function DrawingWorkspace({
     data?.jobSheets.map((item) => ({
       id: item.id,
       name: item.name,
+      setId: item.setId,
+      setName: item.setName,
       revision:
         versionLabels.get(item.id) ??
         (item.id === sheet.id && versionLabels.size
