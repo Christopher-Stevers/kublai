@@ -1,4 +1,5 @@
 "use client";
+import { bindChatViewport } from "~/lib/chat-viewport";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
@@ -155,30 +156,8 @@ function ChatWorkspace({ initialJobId }: { initialJobId?: string }) {
       button?.focus({ preventScroll: true });
     };
   }, [chatsOpen, setChatsOpen]);
-  const [height, setHeight] = useState<number>();
   useEffect(() => {
-    const resize = () => {
-      if (!panel.current) return;
-      const viewport = window.visualViewport;
-      setHeight(
-        Math.max(
-          0,
-          (viewport?.offsetTop ?? 0) +
-            (viewport?.height ?? innerHeight) -
-            panel.current.getBoundingClientRect().top,
-        ),
-      );
-    };
-    const frame = requestAnimationFrame(resize);
-    window.addEventListener("resize", resize);
-    window.visualViewport?.addEventListener("resize", resize);
-    window.visualViewport?.addEventListener("scroll", resize);
-    return () => {
-      cancelAnimationFrame(frame);
-      window.removeEventListener("resize", resize);
-      window.visualViewport?.removeEventListener("resize", resize);
-      window.visualViewport?.removeEventListener("scroll", resize);
-    };
+    if (panel.current) return bindChatViewport(panel.current);
   }, []);
   const explicit =
     params.has("conversation") || params.has("job") || initialJobId;
@@ -338,7 +317,6 @@ function ChatWorkspace({ initialJobId }: { initialJobId?: string }) {
       ref={panel}
       aria-label="Chat workspace"
       className="bg-card fixed inset-x-0 top-14 bottom-0 z-30 flex min-h-0 flex-col overflow-hidden sm:top-16"
-      style={{ height }}
     >
       <header
         className="flex shrink-0 items-center justify-between gap-2 px-3 py-2 text-white sm:px-4"

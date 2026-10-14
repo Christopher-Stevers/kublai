@@ -75,7 +75,7 @@ export default async function DashboardLayout({
             >
               <SnapshotProvider>
                 <DrawingDestinationProvider>
-                  <div className="bg-canvas flex min-h-screen flex-col">
+                  <div data-app-shell className="bg-canvas flex min-h-screen flex-col">
                     <ReplicacheSyncBootstrap
                       userId={effectiveUserId}
                       organizationId={organizationId}
