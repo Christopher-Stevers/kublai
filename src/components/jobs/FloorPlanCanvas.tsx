@@ -30,7 +30,7 @@ export type FloorRoom = {
 type Point = { x: number; y: number };
 
 const MIN_SCALE = 1;
-const MAX_SCALE = 24;
+const MAX_SCALE = 35;
 const LONG_PRESS_MS = 550;
 const DOUBLE_TAP_MS = 300;
 const DOUBLE_TAP_SLOP_PX = 28;

@@ -33,7 +33,7 @@ describe("drawing viewport geometry", () => {
       { width: 834, height: 1194 },
     ]) {
       const fit = { width: frame.width, height: frame.width * 0.75 };
-      for (const scale of [1, 2, 5, 18.31, 24]) {
+      for (const scale of [1, 2, 5, 18.31, 24, 35]) {
         const view = { scale, x: 0, y: 0 };
         const patch = planDrawingPatch(fit, frame, view, 2)!;
         expect(patch.fullWidth / (fit.width * scale)).toBeGreaterThan(2.19);
@@ -127,7 +127,7 @@ describe("drawing viewport geometry", () => {
         { width: 390, height: 240 },
         { width: 1024, height: 4096 },
       ]) {
-        for (const scale of [1, 1.7, 4, 12, 24]) {
+        for (const scale of [1, 1.7, 4, 12, 24, 35]) {
           for (const dpr of [1, 1.5, 2, 3, 8]) {
             const view = { scale, x: 0, y: 0 };
             const patch = planDrawingPatch(fit, frame, view, dpr)!;

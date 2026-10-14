@@ -60,7 +60,7 @@ import { PipeSystemPanel } from "./PipeSystemPanel";
 export type { DrawingEditorProps } from "./useDrawingEditor";
 
 const MIN_ZOOM = 1;
-const MAX_ZOOM = 24;
+const MAX_ZOOM = 35;
 /** A tap this close to a line, in screen pixels, lands on that line. */
 const SNAP_PX = 18;
 /** A finger can grab an existing point within this screen-space radius. */
