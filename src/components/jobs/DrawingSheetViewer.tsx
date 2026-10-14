@@ -1088,6 +1088,14 @@ export function DrawingSheetViewer({
         // An image that cannot be drawn is simply left out of the magnifier.
       }
     }
+    // Clip only overlays, preserving the drawing beneath the reticle center.
+    const target = map(centre);
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, 0, canvas.width, canvas.height);
+    ctx.moveTo(target.x + 4 * dpr, target.y);
+    ctx.arc(target.x, target.y, 4 * dpr, 0, Math.PI * 2);
+    ctx.clip("evenodd");
     const strokeLine = (a: { x: number; y: number }, z: { x: number; y: number }, colour: string, width: number) => {
       ctx.beginPath();
       ctx.moveTo(a.x, a.y);
@@ -1143,16 +1151,16 @@ export function DrawingSheetViewer({
     const arm = 10 * dpr;
     for (const dx of [-1, 1]) for (const dy of [-1, 1]) {
       for (const [color, width] of [[measureHalo, 3.5], [measureColor, 1.5]] as const) {
-        const offset = width * dpr / Math.SQRT2 / 2;
         ctx.beginPath();
-        ctx.moveTo(c.x, c.y);
-        ctx.lineTo(c.x + dx * arm - dy * offset, c.y + dy * arm + dx * offset);
-        ctx.lineTo(c.x + dx * arm + dy * offset, c.y + dy * arm - dx * offset);
-        ctx.closePath();
-        ctx.fillStyle = color;
-        ctx.fill();
+        ctx.moveTo(c.x + dx * arm * 0.35, c.y + dy * arm * 0.35);
+        ctx.lineTo(c.x + dx * arm, c.y + dy * arm);
+        ctx.strokeStyle = color;
+        ctx.lineWidth = width * dpr;
+        ctx.lineCap = "butt";
+        ctx.stroke();
       }
     }
+    ctx.restore();
   });
   const snapMark = Math.max(1.2, 8 / view.scale);
   const total =
@@ -1862,7 +1870,7 @@ export function DrawingSheetViewer({
                 ))}
               </>
             )}
-            {/* Each arm narrows to the exact node coordinate. */}
+            {/* Straight arms leave a transparent gap around the node coordinate. */}
             {marked.map((point, index) => {
               const cx = point.x * fit.width;
               const cy = point.y * fit.height;
