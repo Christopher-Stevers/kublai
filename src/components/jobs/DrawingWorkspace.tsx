@@ -1086,6 +1086,7 @@ export function DrawingWorkspace({
           }}
         />
       )}
+      <div className="absolute inset-x-0 top-0 z-30 max-h-[45dvh] overflow-y-auto">
       {error && (
         <div
           role="alert"
@@ -1097,103 +1098,6 @@ export function DrawingWorkspace({
           </button>
         </div>
       )}
-      {selected?.kind === "markup" &&
-        selected.visibility !== "archived" &&
-        sourceOf(selected) === sourceId &&
-        !form &&
-        !compareIds && (
-          <div
-            role="toolbar"
-            aria-label="Selected markup actions"
-            data-drawing-chrome
-            className="bg-background flex shrink-0 flex-wrap items-center gap-2 border-b px-2 py-2"
-          >
-            <span className="max-w-32 truncate text-sm font-medium">
-              {nameOf(selected)}
-            </span>
-            {editable(selected) ? (
-              <>
-                <Button
-                  size="sm"
-                  variant={
-                    selectionMode === "move" && tool === "select"
-                      ? "default"
-                      : "outline"
-                  }
-                  aria-pressed={selectionMode === "move" && tool === "select"}
-                  disabled={pending > 0}
-                  onClick={() => {
-                    selectTool("select");
-                    setSelectionMode("move");
-                    setPanel("");
-                  }}
-                >
-                  Move
-                </Button>
-                <Button
-                  size="sm"
-                  variant={
-                    selectionMode === "resize" && tool === "select"
-                      ? "default"
-                      : "outline"
-                  }
-                  aria-pressed={selectionMode === "resize" && tool === "select"}
-                  disabled={pending > 0}
-                  onClick={() => {
-                    selectTool("select");
-                    setSelectionMode("resize");
-                    setPanel("");
-                  }}
-                >
-                  Resize
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  aria-label="Delete markup"
-                  disabled={!deletable(selected)}
-                  title={
-                    !online ? "Reconnect to delete this markup" : undefined
-                  }
-                  onClick={() => void archive(selected)}
-                >
-                  Delete
-                </Button>
-              </>
-            ) : (
-              <span className="text-muted-foreground text-xs">Read only</span>
-            )}
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setPanel("selected")}
-            >
-              Details
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => {
-                selectAnnotation(null);
-                selectTool("pan");
-              }}
-            >
-              Done
-            </Button>
-            {editable(selected) && tool === "select" && (
-              <span className="text-muted-foreground min-h-8 basis-full text-xs sm:min-h-0 sm:basis-auto">
-                {selectionMode === "resize"
-                  ? "Drag a handle to resize, or drag the markup to move."
-                  : "Drag the markup to move it."}
-              </span>
-            )}
-            {editable(selected) && !online && (
-              <span className="text-muted-foreground basis-full text-xs">
-                Reconnect to delete this markup.
-              </span>
-            )}
-          </div>
-        )}
       {failedDrafts.length > 0 && (
         <div className="flex flex-wrap items-center gap-2 border-b bg-amber-50 px-3 py-2 text-sm text-amber-950">
           <span>
@@ -1302,6 +1206,7 @@ export function DrawingWorkspace({
           ))}
         </div>
       )}
+      </div>
       <div className="relative flex min-h-0 flex-1">
         <div className="min-h-0 min-w-0 flex-1">
           {compare && compareFirst ? (
@@ -1428,11 +1333,109 @@ export function DrawingWorkspace({
             />
           )}
         </div>
+      {selected?.kind === "markup" &&
+        selected.visibility !== "archived" &&
+        sourceOf(selected) === sourceId &&
+        !form &&
+        !compareIds && (
+          <div
+            role="toolbar"
+            aria-label="Selected markup actions"
+            data-drawing-chrome
+            className="bg-background absolute inset-x-0 bottom-0 z-20 flex max-h-[45dvh] flex-wrap items-center gap-2 overflow-y-auto border-t px-2 py-2"
+          >
+            <span className="max-w-32 truncate text-sm font-medium">
+              {nameOf(selected)}
+            </span>
+            {editable(selected) ? (
+              <>
+                <Button
+                  size="sm"
+                  variant={
+                    selectionMode === "move" && tool === "select"
+                      ? "default"
+                      : "outline"
+                  }
+                  aria-pressed={selectionMode === "move" && tool === "select"}
+                  disabled={pending > 0}
+                  onClick={() => {
+                    selectTool("select");
+                    setSelectionMode("move");
+                    setPanel("");
+                  }}
+                >
+                  Move
+                </Button>
+                <Button
+                  size="sm"
+                  variant={
+                    selectionMode === "resize" && tool === "select"
+                      ? "default"
+                      : "outline"
+                  }
+                  aria-pressed={selectionMode === "resize" && tool === "select"}
+                  disabled={pending > 0}
+                  onClick={() => {
+                    selectTool("select");
+                    setSelectionMode("resize");
+                    setPanel("");
+                  }}
+                >
+                  Resize
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  aria-label="Delete markup"
+                  disabled={!deletable(selected)}
+                  title={
+                    !online ? "Reconnect to delete this markup" : undefined
+                  }
+                  onClick={() => void archive(selected)}
+                >
+                  Delete
+                </Button>
+              </>
+            ) : (
+              <span className="text-muted-foreground text-xs">Read only</span>
+            )}
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setPanel("selected")}
+            >
+              Details
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => {
+                selectAnnotation(null);
+                selectTool("pan");
+              }}
+            >
+              Done
+            </Button>
+            {editable(selected) && tool === "select" && (
+              <span className="text-muted-foreground min-h-8 basis-full text-xs sm:min-h-0 sm:basis-auto">
+                {selectionMode === "resize"
+                  ? "Drag a handle to resize, or drag the markup to move."
+                  : "Drag the markup to move it."}
+              </span>
+            )}
+            {editable(selected) && !online && (
+              <span className="text-muted-foreground basis-full text-xs">
+                Reconnect to delete this markup.
+              </span>
+            )}
+          </div>
+        )}
+
         {panel && (
           <aside
             data-drawing-chrome
             aria-label="Drawing tools panel"
-            className="bg-background absolute inset-y-0 right-0 z-30 flex w-[min(22rem,calc(100%-1rem))] flex-col border-l shadow-xl lg:static lg:w-80 lg:shrink-0"
+            className="bg-background absolute inset-y-0 right-0 z-30 flex w-[min(22rem,calc(100%-1rem))] flex-col border-l shadow-xl lg:w-80"
           >
             <div className="flex items-center justify-between border-b p-3">
               <h2 className="font-semibold">

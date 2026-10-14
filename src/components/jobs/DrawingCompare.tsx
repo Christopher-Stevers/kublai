@@ -189,12 +189,12 @@ export function DrawingCompare({
   const configure = multi ? [selected] : drawings;
   return (
     <section
-      className="flex h-full min-h-0 flex-col"
+      className="relative flex h-full min-h-0 flex-col"
       aria-label="Compare drawings"
     >
       <div
         data-drawing-chrome
-        className="bg-background max-h-[40dvh] shrink-0 overflow-y-auto overscroll-contain border-b p-2"
+        className="bg-background absolute inset-x-0 top-0 z-20 max-h-[40dvh] overflow-y-auto overscroll-contain border-b p-2"
       >
         {!ready && previousReady && (
           <p role="status" className="text-muted-foreground text-xs">

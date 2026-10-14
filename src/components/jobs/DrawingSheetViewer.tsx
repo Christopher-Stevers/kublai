@@ -1264,7 +1264,7 @@ export function DrawingSheetViewer({
   }, [measuring, pipeMode, reportMode]);
 
   return (
-    <div className="flex h-full min-h-0 w-full flex-col">
+    <div className="relative flex h-full min-h-0 w-full flex-col">
     <div
       ref={frame}
       className={`relative min-h-0 w-full flex-1 touch-none overflow-hidden bg-muted select-none [&_img]:pointer-events-none${middlePanning || dragIndex !== null ? " cursor-grabbing" : measuring ? " cursor-crosshair" : ""}`}

@@ -123,7 +123,7 @@ export function SheetMeasureBar({
       data-drawing-chrome
       aria-label="Drawing tool options"
       data-snapping={snapping ? "ready" : undefined}
-      className="bg-card max-h-[45dvh] shrink-0 overflow-y-auto overscroll-contain border-t px-3 py-1"
+      className="bg-card absolute inset-x-0 bottom-0 z-20 max-h-[45dvh] overflow-y-auto overscroll-contain border-t px-3 py-1"
       onPointerDown={stop}
       onPointerMove={stop}
       onPointerUp={stop}
