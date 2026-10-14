@@ -52,8 +52,27 @@ import {
   SendIcon,
   SplineIcon,
   WrenchIcon,
+  ArrowUpRightIcon,
+  CircleIcon,
+  CloudIcon,
+  CloudyIcon,
+  HashIcon,
+  HighlighterIcon,
+  MessageSquareTextIcon,
+  MoveHorizontalIcon,
+  PaintBucketIcon,
+  PencilIcon,
+  SlashIcon,
+  SquareDashedIcon,
+  SquareIcon,
+  TriangleRightIcon,
+  TypeIcon,
+  WaypointsIcon,
+  XIcon,
   type LucideIcon,
 } from "lucide-react";
+import { MEASURE_TILE } from "./SheetMeasureBar";
+import { MEASURE_COLORS } from "~/lib/sheet-measure-color";
 import { notify } from "~/components/ui/app-dialogs";
 import {
   drawingPdfLinkTarget,
@@ -175,6 +194,23 @@ const TOOL_ICONS: Partial<Record<DrawingTool, LucideIcon>> = {
   link: Link2Icon,
   issue: CircleAlertIcon,
   rfi: MessageSquareMoreIcon,
+};
+const MARKUP_ICONS: Partial<Record<DrawingTool, LucideIcon>> = {
+  freehand: PencilIcon,
+  highlight: HighlighterIcon,
+  text: TypeIcon,
+  callout: MessageSquareTextIcon,
+  cloud: CloudIcon,
+  polycloud: CloudyIcon,
+  rect: SquareIcon,
+  ellipse: CircleIcon,
+  polyline: WaypointsIcon,
+  line: SlashIcon,
+  arrow: ArrowUpRightIcon,
+  dimension: MoveHorizontalIcon,
+  area: SquareDashedIcon,
+  angle: TriangleRightIcon,
+  count: HashIcon,
 };
 const MENU_CLASS = "w-64 rounded-xl p-1.5 shadow-xl";
 const MENU_ITEM = "min-h-11 gap-3 rounded-lg";
@@ -2498,74 +2534,145 @@ export function DrawingWorkspace({
             <div
               role="dialog"
               aria-label="Markup tools"
-              className="bg-card absolute right-2 bottom-full left-2 z-50 mb-2 max-h-[60dvh] overflow-y-auto rounded-xl border p-3 shadow-lg"
+              className="bg-card/95 absolute right-2 bottom-full left-2 z-50 mb-2 max-h-[65dvh] overflow-y-auto rounded-2xl border p-3 shadow-xl backdrop-blur"
             >
-              <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-5">
+              <div className="mb-2 flex items-center justify-between px-1">
+                <p className="text-sm font-semibold">Markup</p>
+                <button
+                  type="button"
+                  aria-label="Close markup"
+                  className="text-muted-foreground hover:bg-accent grid size-8 place-items-center rounded-full"
+                  onClick={() => setMarkupOpen(false)}
+                >
+                  <XIcon className="size-4" />
+                </button>
+              </div>
+              <div className="grid grid-cols-5 gap-1">
                 {tools
                   .filter(([id]) => !OTHER_TOOLS.has(id))
-                  .map(([id, label]) => (
-                    <Button
-                      key={id}
-                      type="button"
-                      size="sm"
-                      variant={tool === id ? "default" : "outline"}
-                      className="h-9 rounded-lg px-1 text-xs whitespace-normal"
-                      disabled={!writable}
-                      aria-pressed={tool === id}
-                      onClick={() => {
-                        selectTool(id);
-                        setPanel("");
-                        setHighlight(null);
-                        setMarkupOpen(false);
-                      }}
-                    >
-                      {label}
-                    </Button>
-                  ))}
+                  .map(([id, label]) => {
+                    const Icon = MARKUP_ICONS[id] ?? PenLineIcon;
+                    return (
+                      <Button
+                        key={id}
+                        type="button"
+                        variant={tool === id ? "default" : "ghost"}
+                        className={`${MEASURE_TILE} h-14 text-center whitespace-normal`}
+                        disabled={!writable}
+                        aria-pressed={tool === id}
+                        onClick={() => {
+                          selectTool(id);
+                          setPanel("");
+                          setHighlight(null);
+                          setMarkupOpen(false);
+                        }}
+                      >
+                        <Icon aria-hidden="true" />
+                        <span className="line-clamp-2">{label}</span>
+                      </Button>
+                    );
+                  })}
               </div>
               {writable && (
-                <div className="mt-3 flex flex-wrap items-center gap-2 border-t pt-3">
-                  <input
-                    aria-label="Markup color"
-                    type="color"
-                    value={style.stroke.slice(0, 7)}
-                    className="h-9 w-10 rounded border"
-                    onChange={(e) =>
-                      setStyle((old) => ({ ...old, stroke: e.target.value }))
-                    }
-                  />
-                  <select
-                    aria-label="Markup width"
-                    className="bg-background rounded border p-2 text-sm"
-                    value={style.width}
-                    onChange={(e) =>
-                      setStyle((old) => ({
-                        ...old,
-                        width: Number(e.target.value),
-                      }))
-                    }
+                <div className="mt-3 space-y-3 border-t pt-3">
+                  <div
+                    role="group"
+                    aria-label="Markup colours"
+                    className="flex flex-wrap items-center gap-2"
                   >
-                    {[1, 2, 4, 8].map((width) => (
-                      <option key={width} value={width}>
-                        {width}
-                      </option>
-                    ))}
-                  </select>
-                  <label className="flex items-center gap-1 text-xs">
-                    <input
-                      type="checkbox"
-                      checked={style.fill !== "none"}
-                      onChange={(e) =>
+                    {MEASURE_COLORS.map((item) => {
+                      const active =
+                        style.stroke.slice(0, 7).toLowerCase() ===
+                        item.value.toLowerCase();
+                      return (
+                        <button
+                          key={item.value}
+                          type="button"
+                          aria-label={item.name}
+                          aria-pressed={active}
+                          title={item.name}
+                          className={`size-7 rounded-full border border-black/15 shadow-sm transition-transform hover:scale-110 ${active ? "ring-primary ring-offset-background ring-2 ring-offset-2" : ""}`}
+                          style={{ backgroundColor: item.value }}
+                          onClick={() =>
+                            setStyle((old) => ({
+                              ...old,
+                              stroke: item.value,
+                              fill:
+                                old.fill === "none"
+                                  ? "none"
+                                  : `${item.value.slice(0, 7)}33`,
+                            }))
+                          }
+                        />
+                      );
+                    })}
+                    <label
+                      className="relative size-7 cursor-pointer overflow-hidden rounded-full border shadow-sm"
+                      title="Custom colour"
+                      style={{
+                        background:
+                          "conic-gradient(#ef4444, #eab308, #22c55e, #06b6d4, #3b82f6, #a855f7, #ef4444)",
+                      }}
+                    >
+                      <input
+                        aria-label="Markup color"
+                        type="color"
+                        value={style.stroke.slice(0, 7)}
+                        className="absolute inset-0 cursor-pointer opacity-0"
+                        onChange={(e) =>
+                          setStyle((old) => ({
+                            ...old,
+                            stroke: e.target.value,
+                          }))
+                        }
+                      />
+                    </label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div
+                      role="radiogroup"
+                      aria-label="Markup width"
+                      className="bg-muted flex flex-1 rounded-full p-1"
+                    >
+                      {[1, 2, 4, 8].map((width) => (
+                        <button
+                          key={width}
+                          type="button"
+                          role="radio"
+                          aria-checked={style.width === width}
+                          aria-label={`Width ${width}`}
+                          className={`flex h-8 flex-1 items-center justify-center rounded-full transition-colors ${style.width === width ? "bg-background shadow-sm" : "hover:bg-background/60"}`}
+                          onClick={() => setStyle((old) => ({ ...old, width }))}
+                        >
+                          <span
+                            aria-hidden="true"
+                            className="w-6 rounded-full"
+                            style={{
+                              height: Math.max(1.5, width * 0.9),
+                              backgroundColor: style.stroke.slice(0, 7),
+                            }}
+                          />
+                        </button>
+                      ))}
+                    </div>
+                    <button
+                      type="button"
+                      aria-pressed={style.fill !== "none"}
+                      className={`inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full px-3 text-xs font-medium transition-colors ${style.fill !== "none" ? "bg-primary text-primary-foreground" : "bg-muted hover:bg-accent"}`}
+                      onClick={() =>
                         setStyle((old) => ({
                           ...old,
-                          fill: e.target.checked
-                            ? `${old.stroke.slice(0, 7)}33`
-                            : "none",
+                          fill:
+                            old.fill === "none"
+                              ? `${old.stroke.slice(0, 7)}33`
+                              : "none",
                         }))
                       }
-                    />
-                    Fill
-                  </label>
+                    >
+                      <PaintBucketIcon className="size-4" />
+                      Fill
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
