@@ -215,6 +215,20 @@ describe("drawing measure", () => {
     tap(frame, 680, 340);
     expect(nodes()).toHaveLength(2);
   });
+  it("creates a named measurement layer and includes it in the validated saved markup", () => {
+    const onCreate = vi.fn();
+    const { frame } = openSheet("0391aed4-7773-47ec-9141-09df373ec008", undefined, { onCreate, measurementLayers: ["Plumbing"] });
+    fireEvent.click(screen.getByRole("button", { name: "Measure" }));
+    fireEvent.keyDown(screen.getByRole("button", { name: "Measurement layer: General" }), { key: "Enter" });
+    fireEvent.click(screen.getByRole("menuitemradio", { name: "Plumbing" }));
+    fireEvent.keyDown(screen.getByRole("button", { name: "Measurement layer: Plumbing" }), { key: "Enter" });
+    fireEvent.change(screen.getByRole("textbox", { name: "New measurement layer" }), { target: { value: "  Cold water  " } });
+    fireEvent.submit(screen.getByRole("textbox", { name: "New measurement layer" }).closest("form")!);
+    expect(screen.getByRole("button", { name: "Measurement layer: Cold water" })).toBeInTheDocument();
+    tap(frame, 200, 300); tap(frame, 600, 300);
+    fireEvent.click(screen.getByRole("button", { name: "Done" }));
+    expect(drawingMarkupSchema.parse(onCreate.mock.calls[0]![0]).layer).toBe("Cold water");
+  });
   it("saves Done as a persistent coloured dimension with converted units, and starts a fresh run", () => {
     const source = "0391aed4-7773-47ec-9141-09df373ec008";
     const onCreate = vi.fn();

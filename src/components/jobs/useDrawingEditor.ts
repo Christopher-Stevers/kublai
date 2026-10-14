@@ -7,6 +7,7 @@ import { isPathTool, isStrokeTool, minimumDrawingPoints, resizeDrawingMarkup, si
 
 export type DrawingEditorProps = {
   annotations?: DrawingEntity[];
+  measurementLayers?: string[];
   sourceSheetId?: string;
   tool?: DrawingTool;
   style?: DrawingStyle;

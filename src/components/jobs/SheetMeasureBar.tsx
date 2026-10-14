@@ -1,4 +1,5 @@
 "use client";
+import { MeasurementLayerPicker } from "./MeasurementLayerPicker";
 
 import { CheckIcon, ChevronDownIcon, RulerIcon, Undo2Icon, Redo2Icon } from "lucide-react";
 import { useId, useState, type PointerEvent, type ReactNode } from "react";
@@ -20,6 +21,7 @@ import { MEASURE_COLORS, measureColorHalo } from "~/lib/sheet-measure-color";
  * Pointer events stop here so a tap on a button is not another point on the sheet.
  */
 export function SheetMeasureBar({
+  measurementLayer = "General", measurementLayers = [], onMeasurementLayer,
   measuring,
   calibrating,
   pointCount,
@@ -55,6 +57,7 @@ export function SheetMeasureBar({
   gapMessage,
   onGap,
 }: {
+  measurementLayer?: string; measurementLayers?: string[]; onMeasurementLayer?: (layer: string) => void;
   measuring: boolean;
   calibrating: boolean;
   pointCount: number;
@@ -153,6 +156,7 @@ export function SheetMeasureBar({
             />
           ) : (
             <Tracing
+              layerControl={onMeasurementLayer ? <MeasurementLayerPicker value={measurementLayer} layers={measurementLayers} onChange={onMeasurementLayer} /> : null}
               pointCount={pointCount}
               total={total}
               unit={unit}
@@ -308,6 +312,7 @@ function UnitToggle({
 }
 
 function Tracing({
+  layerControl,
   pointCount,
   total,
   unit,
@@ -330,6 +335,7 @@ function Tracing({
   gapMessage,
   onGap,
 }: {
+  layerControl?: ReactNode;
   pointCount: number;
   total: string | null;
   unit: LengthUnit;
@@ -389,7 +395,7 @@ function Tracing({
           {gapMessage}
         </p>
       )}
-      <div className="grid grid-cols-6 items-center gap-1 [&>button]:min-w-0 [&>button]:px-1 [&>button]:text-xs [&>button]:whitespace-normal [&>button]:leading-tight">
+      <div className={`grid ${layerControl ? "grid-cols-7" : "grid-cols-6"} items-center gap-1 [&>button]:min-w-0 [&>button]:px-1 [&>button]:text-xs [&>button]:whitespace-normal [&>button]:leading-tight`}>
         <Button
           type="button"
           size="sm"
@@ -432,6 +438,7 @@ function Tracing({
         >
           Set Scale
         </Button>
+        {layerControl}
         <MeasureColorPicker color={color} onColor={onColor} />
       </div>
     </>

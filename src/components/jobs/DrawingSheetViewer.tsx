@@ -227,6 +227,7 @@ export function DrawingSheetViewer({
       : annotations;
   }, [editorProps.annotations, measuring, measureSource]);
   const path = trace.map(({ point }) => point);
+  const [measurementLayer, setMeasurementLayer] = useState("General");
   const [calNodes, updateCalNodes] = useState<MeasureNode[]>([]);
   const [calFuture, setCalFuture] = useState<MeasureNode[][]>([]);
   const setCalNodes = (next: React.SetStateAction<MeasureNode[]>) => {
@@ -1178,6 +1179,7 @@ export function DrawingSheetViewer({
           ...(measureSource?.data ?? {}),
           sourceSheetId,
           type: "dimension",
+          layer: measurementLayer,
           points: trace.map(node => ({ ...node.point })),
           parents: trace.map(node => node.parent),
           angleReferences: savedMeasureReferences(trace),
@@ -1576,6 +1578,7 @@ export function DrawingSheetViewer({
             if (selected) {
               if (selected.source) {
                 setMeasureSource(selected.source);
+                setMeasurementLayer(selected.source.data.layer ?? "General");
                 setRunScaleOverride(null);
                 setMeasureColor(selected.source.data.stroke);
                 setUnit(selected.source.data.unit === "cm" ? "m" : selected.source.data.unit ?? sheetScale?.unit ?? "ft");
@@ -1903,6 +1906,9 @@ export function DrawingSheetViewer({
       })()}
     </div>
       <SheetMeasureBar
+        measurementLayer={measurementLayer}
+        measurementLayers={editorProps.measurementLayers ?? []}
+        onMeasurementLayer={setMeasurementLayer}
         hideIdle={Boolean(toolControls)}
         pipeControl={
           <Button

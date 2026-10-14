@@ -65,6 +65,7 @@ export const drawingMarkupSchema = z
   .object({
     sourceSheetId: id,
     type: drawingMarkupTypeSchema,
+    layer: z.string().trim().min(1).max(80).optional(),
     points: z.array(drawingPointSchema).min(1).max(4000),
     /** Saved measuring runs can branch; null starts a disconnected run. */
     parents: z

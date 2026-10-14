@@ -906,17 +906,20 @@ export function DrawingWorkspace({
     });
     setPanel("");
   };
+  const [hiddenMeasurementLayers, setHiddenMeasurementLayers] = useState<string[]>([]);
+  const measurementLayers = [...new Set(["General", ...entities.flatMap(entity => entity.kind === "markup" && entity.data.type === "dimension" && sourceOf(entity) === sourceId && entity.visibility !== "archived" ? [entity.data.layer ?? "General"] : [])])];
   const visible = useMemo(() => entities.filter(
     (entity) =>
       entity.visibility !== "archived" &&
       sourceOf(entity) === sourceId &&
+      !(entity.kind === "markup" && entity.data.type === "dimension" && hiddenMeasurementLayers.includes(entity.data.layer ?? "General")) &&
       (entity.kind === "markup"
         ? layers.markups
         : entity.kind === "issue"
           ? layers.issues
           : false) &&
       (entity.visibility === "private" ? layers.private : layers.published),
-  ), [entities, sourceId, layers.markups, layers.issues, layers.private, layers.published]);
+  ), [entities, sourceId, hiddenMeasurementLayers, layers.markups, layers.issues, layers.private, layers.published]);
   const highlighted = useMemo<DrawingEntity[]>(() => highlight
     ? [
         {
@@ -1263,6 +1266,7 @@ export function DrawingWorkspace({
               sourceSheetId={source.id}
               resolveAssetUrl={resolveAssetUrl}
               annotations={viewerAnnotations}
+              measurementLayers={measurementLayers}
               tool={writable ? tool : "pan"}
               style={style}
               selectedId={selectedId}
@@ -1678,6 +1682,10 @@ export function DrawingWorkspace({
                   {panel === "markups" && (
                     <fieldset className="grid grid-cols-2 gap-2 rounded border p-2">
                       <legend className="px-1 text-xs">Visible layers</legend>
+                      {measurementLayers.map(name => <label key={`measurement:${name}`} className="flex gap-2 text-sm">
+                        <input type="checkbox" checked={!hiddenMeasurementLayers.includes(name)} onChange={event => setHiddenMeasurementLayers(old => event.target.checked ? old.filter(item => item !== name) : [...old, name])} />
+                        {name} measurements
+                      </label>)}
                       {Object.entries(layers).map(([key, value]) => (
                         <label
                           className="flex gap-2 text-sm capitalize"
