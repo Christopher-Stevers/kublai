@@ -229,6 +229,24 @@ describe("drawing annotation tools in the real viewer", () => {
     expect(frame.clientHeight).toBe(250);
     expect(onUpdate).not.toHaveBeenCalled();
   });
+  it("reopens a held saved measurement in Measure instead of selecting it", async () => {
+    const onSelect = vi.fn(), onUpdate = vi.fn();
+    const run = markup({
+      type: "dimension",
+      parents: [null, 0],
+      points: [{ x: 0.25, y: 0.25 }, { x: 0.5, y: 0.25 }],
+      unit: "m",
+      scale: 100,
+    });
+    const { frame, container } = open({ annotations: [run], onSelect, onUpdate });
+    expect(frame.querySelectorAll("[data-measure-node]")).toHaveLength(0);
+    const hit = container.querySelector('[data-annotation-id="markup"] path, [data-annotation-id="markup"] polyline')!;
+    fireEvent.pointerDown(hit, { clientX: 300, clientY: 250, pointerId: 1, button: 0 });
+    await hold();
+    fireEvent.pointerUp(frame, { clientX: 300, clientY: 250, pointerId: 1, button: 0 });
+    expect(onSelect).not.toHaveBeenCalledWith("markup");
+    expect(frame.querySelectorAll("[data-measure-node]")).toHaveLength(2);
+  });
   it("pans instead of moving when a drag starts on a markup without a hold", () => {
     const onSelect = vi.fn(), onUpdate = vi.fn();
     const { frame, image, container } = open({ tool: "select", annotations: [markup()], selectedId: "markup", onSelect, onUpdate });
@@ -299,7 +317,7 @@ describe("drawing annotation tools in the real viewer", () => {
     fireEvent.pointerUp(frame, { clientX: 600, clientY: 400, pointerId: 1, button: 0 });
     expect(onUpdate).toHaveBeenCalledWith("markup", expect.objectContaining({ points: [{ x: 0.25, y: 0.25 }, { x: 0.75, y: 0.75 }], scale: 100, unit: "ft" }));
   });
-  it("resizes a text note through visible corner handles and persists its font size", async () => {
+  it("resizes a text note's box through visible corner handles, keeping its text", async () => {
     const onUpdate = vi.fn();
     const { frame, container } = open({ tool: "select", annotations: [markup({ type: "text", text: "Note", points: [{ x: 0.25, y: 0.25 }] })], selectedId: "markup", onUpdate });
     await hold();
@@ -311,7 +329,8 @@ describe("drawing annotation tools in the real viewer", () => {
     fireEvent.pointerUp(frame, { clientX: x + 80, clientY: y + 40, pointerId: 1, button: 0 });
     expect(onUpdate).toHaveBeenCalledOnce();
     const data = onUpdate.mock.calls[0]![1] as DrawingMarkup;
-    expect(data.fontSize).toBeGreaterThan(18);
+    expect(data.textBox!.width).toBeGreaterThan(0);
+    expect(data.textBox!.height).toBeGreaterThan(0);
     expect(data.text).toBe("Note");
     expect(data.points[0]!.x).toBe(0.25);
   });

@@ -60,7 +60,7 @@ import {
   savedMeasureScale,
   savedMeasureReferences,
 } from "~/lib/saved-measure-run";
-import type { DrawingMarkup } from "~/lib/drawing-workspace";
+import type { DrawingEntity, DrawingMarkup } from "~/lib/drawing-workspace";
 import { sheetMeasureStyle } from "~/lib/sheet-measure-style";
 import {
   emptyMeasureRun,
@@ -419,9 +419,22 @@ export function DrawingSheetViewer({
     y: 0,
     t: 0,
   });
+  // Selecting a saved measurement reopens it in Measure, set from its own
+  // points, unit, colour and layer, the way it was made.
+  const resumeRun = useRef<(entity: DrawingEntity) => void>(() => undefined);
   const editor = useDrawingEditor(
     {
       ...editorProps,
+      onSelect: (id) => {
+        const run = id
+          ? savedRuns.find((entity) => entity.id === id)
+          : undefined;
+        if (run && !pipeMode) {
+          resumeRun.current(run);
+          return;
+        }
+        editorProps.onSelect?.(id);
+      },
       ...(pipeMode
         ? { tool: "pan" as const, onUpdate: undefined, onDelete: undefined }
         : {}),
@@ -1756,6 +1769,24 @@ export function DrawingSheetViewer({
     setCalNodes([]);
     setScaleError(null);
     setScaleReadError(null);
+  };
+  resumeRun.current = (entity) => {
+    if (entity.kind !== "markup") return;
+    const data = entity.data;
+    editorProps.onSelect?.(null);
+    clearAim();
+    setPipeMode(false);
+    setCalibrating(false);
+    setCalNodes([]);
+    setMeasuring(true);
+    setMeasureSource({ id: entity.id, revision: entity.revision, data });
+    setMeasurementLayer(data.layer ?? "General");
+    setRunScaleOverride(null);
+    setMeasureColor(data.stroke);
+    setUnit(data.unit === "cm" ? "m" : (data.unit ?? sheetScale?.unit ?? "ft"));
+    dispatchRun({ type: "load", nodes: savedMeasureNodes(data) });
+    setGapMode(false);
+    setGapMessage(null);
   };
   const togglePipe = () => {
     endHold();

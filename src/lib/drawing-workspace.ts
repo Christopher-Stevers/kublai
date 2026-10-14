@@ -90,6 +90,13 @@ export const drawingMarkupSchema = z
     width: z.number().finite().min(0.1).max(40).default(2),
     /** Text size in the shared 1000-unit drawing coordinate system. */
     fontSize: z.number().finite().min(6).max(300).optional(),
+    /** A text note's box, in drawing units; words wrap to its width. */
+    textBox: z
+      .object({
+        width: z.number().finite().min(1).max(1000),
+        height: z.number().finite().min(1).max(10000),
+      })
+      .optional(),
     fill: color.optional(),
     opacity: z.number().finite().min(0.05).max(1).optional(),
     text: z.string().max(4000).optional(),

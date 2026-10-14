@@ -7,18 +7,30 @@ import { formatLength, realLength, type SheetScale } from "./sheet-measure";
 
 export const DRAWING_SVG_WIDTH = 1000;
 /** Explicit edges avoid phantom connections when a measuring run branches. */
-export function drawingMarkupEdges(data: Pick<DrawingMarkup, "points" | "parents">) {
+export function drawingMarkupEdges(
+  data: Pick<DrawingMarkup, "points" | "parents">,
+) {
   return data.points.flatMap((_, index) => {
     const parent = data.parents ? data.parents[index] : index - 1;
-    return parent != null && parent >= 0 && parent !== index && data.points[parent]
-      ? [{ from: parent, to: index }] : [];
+    return parent != null &&
+      parent >= 0 &&
+      parent !== index &&
+      data.points[parent]
+      ? [{ from: parent, to: index }]
+      : [];
   });
 }
-export function drawingLinePath(data: Pick<DrawingMarkup, "points" | "parents">, aspect: number) {
-  return drawingMarkupEdges(data).map(({ from, to }) => {
-    const a = data.points[from]!, b = data.points[to]!;
-    return `M ${a.x * 1000} ${a.y * 1000 * aspect} L ${b.x * 1000} ${b.y * 1000 * aspect}`;
-  }).join(" ");
+export function drawingLinePath(
+  data: Pick<DrawingMarkup, "points" | "parents">,
+  aspect: number,
+) {
+  return drawingMarkupEdges(data)
+    .map(({ from, to }) => {
+      const a = data.points[from]!,
+        b = data.points[to]!;
+      return `M ${a.x * 1000} ${a.y * 1000 * aspect} L ${b.x * 1000} ${b.y * 1000 * aspect}`;
+    })
+    .join(" ");
 }
 export type DrawingResizeHandle = "nw" | "ne" | "sw" | "se";
 export type DrawingBounds = {
@@ -34,6 +46,94 @@ export function drawingFontSize(
   data: Pick<DrawingMarkup, "fontSize" | "width">,
 ) {
   return data.fontSize ?? Math.max(18, 14 + data.width * 2);
+}
+/** Approximate glyph advance in ems, for when real font metrics are unavailable. */
+function glyphEm(char: string) {
+  return /\s/.test(char)
+    ? 0.32
+    : /[ilI.,'!|]/.test(char)
+      ? 0.28
+      : /[MW@#]/.test(char)
+        ? 0.85
+        : 0.58;
+}
+/** Width of one line of text, in drawing units, at a font size in drawing units. */
+export type DrawingTextMeasure = (line: string, fontSize: number) => number;
+const estimateTextWidth: DrawingTextMeasure = (line, fontSize) =>
+  Array.from(line).reduce((width, char) => width + glyphEm(char), 0) * fontSize;
+let canvasContext: CanvasRenderingContext2D | null | undefined;
+/**
+ * In a browser, measure with the page's own font so wrapped notes break
+ * where the in-place editor broke them; elsewhere fall back to an estimate.
+ */
+const measureTextWidth: DrawingTextMeasure = (line, fontSize) => {
+  if (canvasContext === undefined) {
+    try {
+      canvasContext =
+        typeof document === "undefined"
+          ? null
+          : document.createElement("canvas").getContext("2d");
+    } catch {
+      canvasContext = null;
+    }
+  }
+  if (!canvasContext) return estimateTextWidth(line, fontSize);
+  const family = getComputedStyle(document.body).fontFamily || "sans-serif";
+  // Measure at a fixed size and scale; canvas fonts round small sizes.
+  canvasContext.font = `100px ${family}`;
+  return (canvasContext.measureText(line).width / 100) * fontSize;
+};
+/** Words that do not fit the width move to the next line; a long word breaks. */
+export function wrapDrawingText(
+  text: string,
+  fontSize: number,
+  maxWidth: number,
+  measure: DrawingTextMeasure = measureTextWidth,
+) {
+  const lines: string[] = [];
+  for (const paragraph of text.split("\n")) {
+    let line = "";
+    for (const word of paragraph.split(/(?<=\s)/)) {
+      const candidate = line + word;
+      if (!line || measure(candidate.trimEnd(), fontSize) <= maxWidth) {
+        line = candidate;
+        continue;
+      }
+      lines.push(line.trimEnd());
+      line = word;
+    }
+    // Break a single word that is wider than the box.
+    while (line.length > 1 && measure(line.trimEnd(), fontSize) > maxWidth) {
+      let cut = line.length - 1;
+      while (cut > 1 && measure(line.slice(0, cut), fontSize) > maxWidth) cut--;
+      lines.push(line.slice(0, cut));
+      line = line.slice(cut);
+    }
+    lines.push(line.trimEnd());
+  }
+  return lines;
+}
+/** Height of a block of lines, in drawing units. */
+export const drawingTextHeight = (lines: number, fontSize: number) =>
+  (1 + (Math.max(1, lines) - 1) * 1.25) * fontSize;
+/**
+ * The lines and font size a text note is drawn with. Inside a box the text
+ * wraps to the box width; when the box is also full, the text shrinks.
+ */
+export function layoutDrawingText(
+  data: Pick<DrawingMarkup, "text" | "fontSize" | "width" | "textBox">,
+  measure: DrawingTextMeasure = measureTextWidth,
+) {
+  const text = data.text?.length ? data.text : "Text";
+  let fontSize = drawingFontSize(data);
+  if (!data.textBox) return { lines: text.split("\n"), fontSize };
+  const { width, height } = data.textBox;
+  for (;;) {
+    const lines = wrapDrawingText(text, fontSize, width, measure);
+    if (drawingTextHeight(lines.length, fontSize) <= height || fontSize <= 6)
+      return { lines, fontSize };
+    fontSize = Math.max(6, fontSize * 0.95);
+  }
 }
 export const isStrokeTool = (tool: DrawingTool) =>
   tool === "freehand" || tool === "highlight";
@@ -57,32 +157,23 @@ export function drawingBounds(points: DrawingPoint[]) {
   };
 }
 function textDimensions(data: DrawingMarkup, aspect: number) {
-  const fontSize = drawingFontSize(data);
-  const lines = (data.text?.length ? data.text : "Text").split("\n");
+  const { lines, fontSize } = layoutDrawingText(data, estimateTextWidth);
+  if (data.textBox)
+    return {
+      width: data.textBox.width / DRAWING_SVG_WIDTH,
+      height: data.textBox.height / (DRAWING_SVG_WIDTH * aspect),
+      fontSize,
+    };
   // Browser and PDF fonts differ slightly; a glyph estimate keeps handles useful
   // without relying on canvas, the DOM, or a particular device's font metrics.
   const longest = Math.max(
     1,
-    ...lines.map((line) =>
-      Array.from(line).reduce(
-        (width, char) =>
-          width +
-          (/\s/.test(char)
-            ? 0.32
-            : /[ilI.,'!|]/.test(char)
-              ? 0.28
-              : /[MW@#]/.test(char)
-                ? 0.85
-                : 0.58),
-        0,
-      ),
-    ),
+    ...lines.map((line) => estimateTextWidth(line, 1)),
   );
   return {
     width: (longest * fontSize) / DRAWING_SVG_WIDTH,
     height:
-      ((1 + (lines.length - 1) * 1.25) * fontSize) /
-      (DRAWING_SVG_WIDTH * aspect),
+      drawingTextHeight(lines.length, fontSize) / (DRAWING_SVG_WIDTH * aspect),
     fontSize,
   };
 }
@@ -160,38 +251,30 @@ export function resizeDrawingMarkup(
   const availableWidth = west ? anchor.x : 1 - anchor.x;
   const availableHeight = north ? anchor.y : 1 - anchor.y;
   if (data.type === "text") {
+    // Corner handles size the text box; the words wrap inside it and only
+    // shrink when the box is full both ways.
     const dimensions = textDimensions(data, safeAspect);
-    const requested = Math.min(
-      targetWidth / dimensions.width,
-      targetHeight / dimensions.height,
-    );
-    const pageLimit = Math.min(
-      availableWidth / dimensions.width,
-      availableHeight / dimensions.height,
-    );
-    const fontSize = clamp(
-      dimensions.fontSize * Math.min(requested, pageLimit),
-      6,
-      300,
-    );
-    const scale = fontSize / dimensions.fontSize;
-    const left = clamp(
-      west ? anchor.x - dimensions.width * scale : anchor.x,
-      0,
-      Math.max(0, 1 - dimensions.width * scale),
-    );
-    const top = clamp(
-      north ? anchor.y - dimensions.height * scale : anchor.y,
-      0,
-      Math.max(0, 1 - dimensions.height * scale),
-    );
+    const boxWidth = Math.min(availableWidth, targetWidth),
+      boxHeight = Math.min(availableHeight, targetHeight);
+    const left = west ? anchor.x - boxWidth : anchor.x;
+    const top = north ? anchor.y - boxHeight : anchor.y;
+    const textBox = {
+      width: clamp(boxWidth * DRAWING_SVG_WIDTH, 1, DRAWING_SVG_WIDTH),
+      height: clamp(
+        boxHeight * DRAWING_SVG_WIDTH * safeAspect,
+        1,
+        DRAWING_SVG_WIDTH * 10,
+      ),
+    };
+    const fontSize = data.fontSize ?? dimensions.fontSize;
     const origin = {
-      x: left,
+      x: clamp(left, 0, 1),
       y: clamp(top + (fontSize * 0.8) / (DRAWING_SVG_WIDTH * safeAspect), 0, 1),
     };
     return {
       ...data,
       fontSize,
+      textBox,
       points: data.points.map((p, index) => (index === 0 ? origin : p)),
     };
   }
@@ -257,7 +340,12 @@ export function drawingMeasurement(
   if (data.type === "area")
     return `${drawingArea(data.points, aspect, scale).toFixed(2)} ${unit}²`;
   const length = data.parents
-    ? drawingMarkupEdges(data).reduce((total, { from, to }) => total + realLength([data.points[from]!, data.points[to]!], aspect, scale), 0)
+    ? drawingMarkupEdges(data).reduce(
+        (total, { from, to }) =>
+          total +
+          realLength([data.points[from]!, data.points[to]!], aspect, scale),
+        0,
+      )
     : realLength(data.points, aspect, scale);
   return unit === "ft" || unit === "m"
     ? formatLength(length, unit)

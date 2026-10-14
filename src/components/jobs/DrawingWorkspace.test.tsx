@@ -1096,6 +1096,43 @@ describe("drawing workspace workflows", () => {
     expect(mocks.save).not.toHaveBeenCalled();
     expect(screen.queryByLabelText("Text")).toBeNull();
   });
+  it("reopens a selected text note in the in-place editor", () => {
+    const note = existingMarkup("published");
+    mocks.data!.entities = [
+      {
+        ...note,
+        data: {
+          ...note.data,
+          type: "text",
+          text: "Old note",
+          points: [{ x: 0.2, y: 0.2 }],
+        },
+      } as DrawingEntity,
+    ];
+    open();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Select first annotation" }),
+    );
+    expect(screen.getByLabelText("Text")).toHaveValue("Old note");
+    expect(
+      screen.queryByRole("toolbar", { name: "Selected markup actions" }),
+    ).toBeNull();
+  });
+  it("offers a selected markup's drawing style and saves a change", async () => {
+    mocks.data!.entities = [existingMarkup("published")];
+    open();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Select first annotation" }),
+    );
+    const style = screen.getByRole("group", { name: "Markup style" });
+    fireEvent.click(within(style).getByRole("button", { name: "Blue" }));
+    await waitFor(() => expect(mocks.save).toHaveBeenCalledOnce());
+    expect(mocks.save.mock.calls[0]![0]).toMatchObject({
+      kind: "markup",
+      expectedRevision: 4,
+      data: expect.objectContaining({ stroke: "#2563eb" }),
+    });
+  });
   it("lets a worker edit their own public markup", async () => {
     mocks.data!.canManage = false;
     mocks.data!.entities = [existingMarkup("published")];

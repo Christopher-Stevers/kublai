@@ -3,7 +3,10 @@
 import { useEffect, useRef, type PointerEvent } from "react";
 import { CheckIcon, MinusIcon, PlusIcon, Trash2Icon } from "lucide-react";
 import type { DrawingMarkup } from "~/lib/drawing-workspace";
-import { drawingFontSize } from "~/lib/drawing-annotation-geometry";
+import {
+  drawingFontSize,
+  layoutDrawingText,
+} from "~/lib/drawing-annotation-geometry";
 import { MEASURE_COLORS } from "~/lib/sheet-measure-color";
 
 const MIN_FONT = 6;
@@ -49,10 +52,28 @@ export function InlineTextEditor({
   useEffect(() => {
     done.current = onDone;
   }, [onDone]);
-  const resize = useRef<{ x: number; size: number } | null>(null);
+  const resize = useRef<{
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  } | null>(null);
   const fontSize = drawingFontSize(data);
-  const screenFont = Math.max(10, fontSize * pxPerUnit);
+  const box = data.textBox;
+  // Inside a box the words wrap and, once the box is full, shrink to fit,
+  // exactly as the saved note is drawn.
+  const shownSize = box ? layoutDrawingText(data).fontSize : fontSize;
+  const screenFont = Math.max(box ? 1 : 10, shownSize * pxPerUnit);
   const top = y - screenFont * 0.8;
+  const setBox = (width: number, height: number) =>
+    onChange({
+      ...data,
+      fontSize,
+      textBox: {
+        width: Math.round(Math.min(1000, Math.max(fontSize, width))),
+        height: Math.round(Math.min(10000, Math.max(fontSize, height))),
+      },
+    });
   const setFont = (size: number) =>
     onChange({ ...data, fontSize: clampFont(size) });
 
@@ -77,15 +98,15 @@ export function InlineTextEditor({
     document.addEventListener("pointerdown", outside, true);
     return () => document.removeEventListener("pointerdown", outside, true);
   }, []);
-  // Grow with the text, line by line.
+  // Without a box, grow with the text, line by line.
   useEffect(() => {
     const element = field.current;
-    if (!element) return;
+    if (!element || box) return;
     element.style.height = "auto";
     element.style.height = `${element.scrollHeight}px`;
     element.style.width = "auto";
     element.style.width = `${Math.min(frameWidth - x - 8, Math.max(screenFont * 2, element.scrollWidth + 4))}px`;
-  }, [data.text, screenFont, frameWidth, x]);
+  }, [data.text, screenFont, frameWidth, x, box]);
 
   // The drawing must not pan, select or draw under the editor.
   const stop = (event: PointerEvent) => event.stopPropagation();
@@ -226,8 +247,14 @@ export function InlineTextEditor({
                 onDone();
               }
             }}
-            className="border-primary/70 block resize-none overflow-hidden rounded-sm border border-dashed bg-transparent p-0 whitespace-pre outline-none placeholder:opacity-50"
+            className={`border-primary/70 block resize-none overflow-hidden rounded-sm border border-dashed bg-transparent p-0 outline-none placeholder:opacity-50 ${box ? "break-words whitespace-pre-wrap" : "whitespace-pre"}`}
             style={{
+              ...(box
+                ? {
+                    width: box.width * pxPerUnit,
+                    height: box.height * pxPerUnit,
+                  }
+                : {}),
               fontSize: screenFont,
               lineHeight: 1.25,
               color: data.stroke,
@@ -238,41 +265,54 @@ export function InlineTextEditor({
             }}
           />
           <span
-            role="slider"
-            aria-label="Resize text"
-            aria-valuemin={MIN_FONT}
-            aria-valuemax={MAX_FONT}
-            aria-valuenow={Math.round(fontSize)}
+            role="button"
+            aria-label="Resize text box"
             tabIndex={0}
+            title="Drag to resize the text box"
             className="bg-card border-primary absolute -right-3 -bottom-3 size-5 cursor-nwse-resize touch-none rounded-full border-2 shadow"
             onPointerDown={(event) => {
               event.stopPropagation();
               event.currentTarget.setPointerCapture?.(event.pointerId);
-              resize.current = { x: event.clientX, size: fontSize };
+              const element = field.current;
+              resize.current = {
+                x: event.clientX,
+                y: event.clientY,
+                width: box?.width ?? (element?.offsetWidth ?? 80) / pxPerUnit,
+                height:
+                  box?.height ?? (element?.offsetHeight ?? 24) / pxPerUnit,
+              };
             }}
             onPointerMove={(event) => {
               event.stopPropagation();
               const start = resize.current;
               if (!start) return;
-              // Dragging right by the note's own width doubles its size.
-              const width = Math.max(40, field.current?.offsetWidth ?? 80);
-              setFont(start.size * (1 + (event.clientX - start.x) / width));
+              // Width and height follow the handle; text wraps to the width.
+              setBox(
+                start.width + (event.clientX - start.x) / pxPerUnit,
+                start.height + (event.clientY - start.y) / pxPerUnit,
+              );
             }}
             onPointerUp={(event) => {
               event.stopPropagation();
               resize.current = null;
             }}
             onKeyDown={(event) => {
-              if (event.key === "ArrowUp" || event.key === "ArrowRight") {
-                event.preventDefault();
-                setFont(fontSize + 2);
-              } else if (
-                event.key === "ArrowDown" ||
-                event.key === "ArrowLeft"
-              ) {
-                event.preventDefault();
-                setFont(fontSize - 2);
-              }
+              const element = field.current;
+              const width =
+                box?.width ?? (element?.offsetWidth ?? 80) / pxPerUnit;
+              const height =
+                box?.height ?? (element?.offsetHeight ?? 24) / pxPerUnit;
+              const step = 10;
+              const change: Record<string, [number, number]> = {
+                ArrowRight: [step, 0],
+                ArrowLeft: [-step, 0],
+                ArrowDown: [0, step],
+                ArrowUp: [0, -step],
+              };
+              const delta = change[event.key];
+              if (!delta) return;
+              event.preventDefault();
+              setBox(width + delta[0], height + delta[1]);
             }}
           />
         </div>

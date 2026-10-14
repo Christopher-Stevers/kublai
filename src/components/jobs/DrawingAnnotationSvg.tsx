@@ -2,6 +2,7 @@ import type { DrawingMarkup } from "~/lib/drawing-workspace";
 import type { SheetScale } from "~/lib/sheet-measure";
 import { DrawingMeasureRunSvg } from "./DrawingMeasureRunSvg";
 import {
+  layoutDrawingText,
   drawingBounds,
   drawingCloudPath,
   drawingFontSize,
@@ -29,7 +30,15 @@ export function DrawingAnnotationSvg({
 }) {
   if (!data.points.length || !(aspect > 0)) return null;
   if (data.type === "dimension" && data.parents && screenPixelSize) {
-    return <DrawingMeasureRunSvg data={data} aspect={aspect} sharedScale={sharedScale} screenPixelSize={screenPixelSize} sheetPixelSize={sheetPixelSize} />;
+    return (
+      <DrawingMeasureRunSvg
+        data={data}
+        aspect={aspect}
+        sharedScale={sharedScale}
+        screenPixelSize={screenPixelSize}
+        sheetPixelSize={sheetPixelSize}
+      />
+    );
   }
   const points = data.points.map((point) => ({
     x: point.x * 1000,
@@ -38,7 +47,8 @@ export function DrawingAnnotationSvg({
   const first = points[0]!,
     last = points.at(-1)!;
   const bounds = drawingBounds(points);
-  const linkHighlight = data.type === "link" && data.linkAppearance === "highlight";
+  const linkHighlight =
+    data.type === "link" && data.linkAppearance === "highlight";
   const common = {
     stroke: data.stroke,
     strokeWidth: data.width,
@@ -80,9 +90,11 @@ export function DrawingAnnotationSvg({
   let geometry;
   switch (data.type) {
     case "dimension":
-      geometry = data.parents
-        ? <path d={drawingLinePath(data, aspect)} {...common} fill="none" />
-        : <polyline points={line} {...common} fill="none" />;
+      geometry = data.parents ? (
+        <path d={drawingLinePath(data, aspect)} {...common} fill="none" />
+      ) : (
+        <polyline points={line} {...common} fill="none" />
+      );
       break;
     case "rect":
     case "link":
@@ -93,8 +105,22 @@ export function DrawingAnnotationSvg({
           width={bounds.right - bounds.left}
           height={bounds.bottom - bounds.top}
           {...common}
-          strokeDasharray={data.type === "link" && !linkHighlight && !linkHighlight ? "8 5" : undefined}
-          {...(linkHighlight ? { stroke: "none", fill: data.fill && data.fill !== "none" ? data.fill : data.stroke === "none" ? "#facc15" : data.stroke } : {})}
+          strokeDasharray={
+            data.type === "link" && !linkHighlight && !linkHighlight
+              ? "8 5"
+              : undefined
+          }
+          {...(linkHighlight
+            ? {
+                stroke: "none",
+                fill:
+                  data.fill && data.fill !== "none"
+                    ? data.fill
+                    : data.stroke === "none"
+                      ? "#facc15"
+                      : data.stroke,
+              }
+            : {})}
         />
       );
       break;
@@ -139,9 +165,33 @@ export function DrawingAnnotationSvg({
         />
       );
       break;
-    case "text":
-      geometry = label(data.text ?? "Text", first.x, first.y);
+    case "text": {
+      // Wrapped to its box (and shrunk to fit) exactly as it was typed.
+      const layout = layoutDrawingText(data);
+      geometry = (
+        <text
+          x={first.x}
+          y={first.y}
+          fontSize={layout.fontSize}
+          fill={data.stroke}
+          stroke="#ffffff"
+          strokeWidth={3}
+          paintOrder="stroke"
+          strokeLinejoin="round"
+        >
+          {layout.lines.map((line, index) => (
+            <tspan
+              key={index}
+              x={first.x}
+              dy={index ? layout.fontSize * 1.25 : 0}
+            >
+              {line}
+            </tspan>
+          ))}
+        </text>
+      );
       break;
+    }
     case "count":
       geometry = (
         <>
@@ -185,31 +235,56 @@ export function DrawingAnnotationSvg({
   }
   const measurement = drawingMeasurement(data, aspect, sharedScale);
   return (
-    <g opacity={data.opacity ?? (data.type === "highlight" || linkHighlight ? 0.35 : 1)}>
+    <g
+      opacity={
+        data.opacity ?? (data.type === "highlight" || linkHighlight ? 0.35 : 1)
+      }
+    >
       {geometry}
-      {(data.type === "arrow" || data.type === "dimension" && !data.parents) &&
+      {(data.type === "arrow" ||
+        (data.type === "dimension" && !data.parents)) &&
         arrow(last, first)}
-      {(data.type === "callout" || data.type === "dimension" && !data.parents) &&
+      {(data.type === "callout" ||
+        (data.type === "dimension" && !data.parents)) &&
         arrow(first, last)}
       {data.type === "callout" &&
         label(data.text ?? "Note", last.x + 8, last.y - 8)}
-      {data.type === "link" && !linkHighlight &&
+      {data.type === "link" &&
+        !linkHighlight &&
         label(
           data.text ?? (data.targetSheetId ? "Sheet link" : "Link"),
           bounds.left + 5,
           bounds.top + fontSize,
         )}
-      {data.type === "dimension" && data.parents && drawingMarkupEdges(data).map(({ from, to }) => {
-        const a = points[from]!, b = points[to]!;
-        let rotation = Math.atan2(b.y - a.y, b.x - a.x) * 180 / Math.PI;
-        if (rotation > 90) rotation -= 180;
-        if (rotation < -90) rotation += 180;
-        const segmentLabel = drawingMeasurement({ ...data, parents: undefined, points: [data.points[from]!, data.points[to]!] }, aspect, sharedScale);
-        return <g key={to} transform={`translate(${(a.x + b.x) / 2} ${(a.y + b.y) / 2}) rotate(${rotation})`} data-measurement-segment={to}>
-          {label(segmentLabel ?? "Set scale", 0, -8)}
-        </g>;
-      })}
-      {measurement && (!data.parents || drawingMarkupEdges(data).length > 1) &&
+      {data.type === "dimension" &&
+        data.parents &&
+        drawingMarkupEdges(data).map(({ from, to }) => {
+          const a = points[from]!,
+            b = points[to]!;
+          let rotation = (Math.atan2(b.y - a.y, b.x - a.x) * 180) / Math.PI;
+          if (rotation > 90) rotation -= 180;
+          if (rotation < -90) rotation += 180;
+          const segmentLabel = drawingMeasurement(
+            {
+              ...data,
+              parents: undefined,
+              points: [data.points[from]!, data.points[to]!],
+            },
+            aspect,
+            sharedScale,
+          );
+          return (
+            <g
+              key={to}
+              transform={`translate(${(a.x + b.x) / 2} ${(a.y + b.y) / 2}) rotate(${rotation})`}
+              data-measurement-segment={to}
+            >
+              {label(segmentLabel ?? "Set scale", 0, -8)}
+            </g>
+          );
+        })}
+      {measurement &&
+        (!data.parents || drawingMarkupEdges(data).length > 1) &&
         label(measurement, (bounds.left + bounds.right) / 2, bounds.top - 8)}
     </g>
   );

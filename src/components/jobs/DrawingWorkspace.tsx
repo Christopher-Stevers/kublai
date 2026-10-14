@@ -217,6 +217,85 @@ const MENU_CLASS = "w-64 rounded-xl p-1.5 shadow-xl";
 const MENU_ITEM = "min-h-11 gap-3 rounded-lg";
 const MENU_SECTION =
   "text-muted-foreground px-2 pt-2 pb-1 text-[11px] font-semibold tracking-wide uppercase";
+/** Colour, line width and fill: the same style controls a markup is drawn with. */
+function MarkupStyleRow({
+  data,
+  disabled,
+  onChange,
+}: {
+  data: DrawingMarkup;
+  disabled?: boolean;
+  onChange: (patch: Partial<DrawingMarkup>) => void;
+}) {
+  const stroke = data.stroke.slice(0, 7).toLowerCase();
+  const filled = Boolean(data.fill && data.fill !== "none");
+  return (
+    <div
+      role="group"
+      aria-label="Markup style"
+      className="flex basis-full flex-wrap items-center gap-2"
+    >
+      <div className="flex items-center gap-1.5">
+        {MEASURE_COLORS.slice(0, 6).map((item) => (
+          <button
+            key={item.value}
+            type="button"
+            aria-label={item.name}
+            aria-pressed={stroke === item.value.toLowerCase()}
+            disabled={disabled}
+            className={`size-7 rounded-full border border-black/15 shadow-sm disabled:opacity-50 ${stroke === item.value.toLowerCase() ? "ring-primary ring-offset-card ring-2 ring-offset-2" : ""}`}
+            style={{ backgroundColor: item.value }}
+            onClick={() =>
+              onChange({
+                stroke: item.value,
+                ...(filled ? { fill: `${item.value.slice(0, 7)}33` } : {}),
+              })
+            }
+          />
+        ))}
+      </div>
+      <div
+        role="radiogroup"
+        aria-label="Line width"
+        className="bg-muted flex rounded-full p-1"
+      >
+        {[1, 2, 4, 8].map((width) => (
+          <button
+            key={width}
+            type="button"
+            role="radio"
+            aria-checked={data.width === width}
+            aria-label={`Width ${width}`}
+            disabled={disabled}
+            className={`flex h-7 w-9 items-center justify-center rounded-full ${data.width === width ? "bg-background shadow-sm" : ""}`}
+            onClick={() => onChange({ width })}
+          >
+            <span
+              aria-hidden="true"
+              className="w-5 rounded-full"
+              style={{
+                height: Math.max(1.5, width * 0.9),
+                backgroundColor: data.stroke.slice(0, 7),
+              }}
+            />
+          </button>
+        ))}
+      </div>
+      <button
+        type="button"
+        aria-pressed={filled}
+        disabled={disabled}
+        className={`inline-flex h-9 items-center gap-1.5 rounded-full px-3 text-xs font-medium ${filled ? "bg-primary text-primary-foreground" : "bg-muted"}`}
+        onClick={() =>
+          onChange({ fill: filled ? "none" : `${data.stroke.slice(0, 7)}33` })
+        }
+      >
+        <PaintBucketIcon className="size-4" />
+        Fill
+      </button>
+    </div>
+  );
+}
 /** A small icon tile at the start of a bottom-bar menu item. */
 function MenuTile({ icon: Icon }: { icon?: LucideIcon }) {
   return (
@@ -692,9 +771,21 @@ export function DrawingWorkspace({
   const selectAnnotation = useCallback(
     (id: string | null) => {
       if (id === "search-highlight") return;
+      const entity = entities.find((item) => item.id === id);
+      // Selecting a text note reopens it for typing, as when it was made.
+      if (
+        entity?.kind === "markup" &&
+        entity.data.type === "text" &&
+        editable(entity)
+      ) {
+        setSelectedId(null);
+        setForm(null);
+        setInlineText({ id: entity.id, data: entity.data });
+        selectTool("pan");
+        return;
+      }
       setSelectedId(id);
       setForm(null);
-      const entity = entities.find((item) => item.id === id);
       if (entity?.kind === "markup") {
         selectTool("select");
         if (id !== selectedId) setSelectionMode("resize");
@@ -702,7 +793,7 @@ export function DrawingWorkspace({
       } else if (id) setPanel("selected");
       else setPanel((current) => (current === "selected" ? "" : current));
     },
-    [entities, selectTool, selectedId],
+    [entities, selectTool, selectedId, editable],
   );
   const base = (kind: DrawingSave["kind"] = "markup") => ({
     sheetId: sheet.id,
@@ -1567,7 +1658,7 @@ export function DrawingWorkspace({
               role="toolbar"
               aria-label="Selected markup actions"
               data-drawing-chrome
-              className="bg-background absolute inset-x-0 bottom-0 z-20 flex max-h-[45dvh] flex-wrap items-center gap-2 overflow-y-auto border-t px-2 py-2"
+              className="bg-card/95 absolute inset-x-0 bottom-0 z-20 flex max-h-[45dvh] flex-wrap items-center gap-2 overflow-y-auto rounded-t-2xl border-t px-3 pt-2.5 pb-2 shadow-[0_-8px_24px_rgba(0,0,0,0.12)] backdrop-blur"
             >
               <span className="max-w-32 truncate text-sm font-medium">
                 {nameOf(selected)}
@@ -1646,6 +1737,21 @@ export function DrawingWorkspace({
               >
                 Details
               </Button>
+              {editable(selected) &&
+                selected.data.type !== "text" &&
+                selected.data.type !== "link" && (
+                  <MarkupStyleRow
+                    data={selected.data}
+                    disabled={pending > 0}
+                    onChange={(patch) =>
+                      void save({
+                        ...toForm(selected),
+                        kind: "markup",
+                        data: { ...selected.data, ...patch },
+                      })
+                    }
+                  />
+                )}
               {editable(selected) && tool === "select" && (
                 <span className="text-muted-foreground min-h-8 basis-full text-xs sm:min-h-0 sm:basis-auto">
                   {selectionMode === "resize"

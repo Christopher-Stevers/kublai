@@ -5,6 +5,8 @@ import {
   drawingCloudPath,
   drawingFontSize,
   drawingMarkupBounds,
+  layoutDrawingText,
+  wrapDrawingText,
   drawingMeasurement,
   drawingLinePath,
   resizeDrawingMarkup,
@@ -90,28 +92,64 @@ describe("drawing annotation geometry", () => {
   });
   it("preserves a branched measurement through schema parsing, SVG and resizing", () => {
     const data = drawingMarkupSchema.parse({
-      ...rectangle, type: "dimension", unit: "ft", scale: 100,
-      points: [{ x: .2, y: .5 }, { x: .8, y: .5 }, { x: .5, y: .5 }, { x: .5, y: .2 }],
+      ...rectangle,
+      type: "dimension",
+      unit: "ft",
+      scale: 100,
+      points: [
+        { x: 0.2, y: 0.5 },
+        { x: 0.8, y: 0.5 },
+        { x: 0.5, y: 0.5 },
+        { x: 0.5, y: 0.2 },
+      ],
       parents: [null, 2, 0, 2],
     });
-    expect(drawingMeasurement(data, .5)).toBe("75'-0\"");
-    expect(drawingLinePath(data, .5)).toBe("M 500 250 L 800 250 M 200 250 L 500 250 M 500 250 L 500 100");
-    const svg = renderToStaticMarkup(createElement(DrawingAnnotationSvg, { data, aspect: .5 }));
-    expect(svg).toContain(drawingLinePath(data, .5));
+    expect(drawingMeasurement(data, 0.5)).toBe("75'-0\"");
+    expect(drawingLinePath(data, 0.5)).toBe(
+      "M 500 250 L 800 250 M 200 250 L 500 250 M 500 250 L 500 100",
+    );
+    const svg = renderToStaticMarkup(
+      createElement(DrawingAnnotationSvg, { data, aspect: 0.5 }),
+    );
+    expect(svg).toContain(drawingLinePath(data, 0.5));
     expect(svg).toContain("75&#x27;-0&quot;");
     expect(svg).toContain('data-measurement-segment="3"');
-    const resized = resizeDrawingMarkup(data, "se", { x: .9, y: .7 }, .5);
+    const resized = resizeDrawingMarkup(data, "se", { x: 0.9, y: 0.7 }, 0.5);
     expect(resized.parents).toEqual(data.parents);
     expect(drawingMarkupSchema.safeParse(resized).success).toBe(true);
   });
 
   it("rejects invalid measurement graphs without rejecting forward references from split branches", () => {
-    const data = { ...rectangle, type: "dimension", points: [{ x: .1, y: .2 }, { x: .5, y: .2 }, { x: .3, y: .2 }] };
-    for (const parents of [[null, 0], [null, 5, 0], [null, 1, 0], [1, 2, 0], [null, null, null]]) {
-      expect(drawingMarkupSchema.safeParse({ ...data, parents }).success).toBe(false);
+    const data = {
+      ...rectangle,
+      type: "dimension",
+      points: [
+        { x: 0.1, y: 0.2 },
+        { x: 0.5, y: 0.2 },
+        { x: 0.3, y: 0.2 },
+      ],
+    };
+    for (const parents of [
+      [null, 0],
+      [null, 5, 0],
+      [null, 1, 0],
+      [1, 2, 0],
+      [null, null, null],
+    ]) {
+      expect(drawingMarkupSchema.safeParse({ ...data, parents }).success).toBe(
+        false,
+      );
     }
-    expect(drawingMarkupSchema.safeParse({ ...data, parents: [null, 2, 0] }).success).toBe(true);
-    expect(drawingMarkupSchema.safeParse({ ...data, type: "polyline", parents: [null, 2, 0] }).success).toBe(false);
+    expect(
+      drawingMarkupSchema.safeParse({ ...data, parents: [null, 2, 0] }).success,
+    ).toBe(true);
+    expect(
+      drawingMarkupSchema.safeParse({
+        ...data,
+        type: "polyline",
+        parents: [null, 2, 0],
+      }).success,
+    ).toBe(false);
   });
   it("moves a whole shape without deforming it or crossing the page edge", () => {
     expect(
@@ -256,7 +294,7 @@ describe("drawing annotation geometry", () => {
       expectPointsOnPage(resized);
     }
   });
-  it("resizes text uniformly, moves its baseline, and preserves the opposite glyph corner", () => {
+  it("resizes a text box both ways, keeps its size, and anchors the opposite corner", () => {
     const data: DrawingMarkup = {
       ...rectangle,
       type: "text",
@@ -267,33 +305,64 @@ describe("drawing annotation geometry", () => {
     const bounds = drawingMarkupBounds(data, 0.5);
     expect(bounds.top).toBeCloseTo(0.436);
     expect(bounds.bottom).toBeCloseTo(0.516);
-    const doubled = resizeDrawingMarkup(
+    const wider = resizeDrawingMarkup(
       data,
       "se",
-      {
-        x: bounds.left + 2 * (bounds.right - bounds.left),
-        y: bounds.top + 2 * (bounds.bottom - bounds.top),
-      },
+      { x: bounds.left + 0.3, y: bounds.top + 0.2 },
       0.5,
     );
-    expect(doubled.fontSize).toBeCloseTo(80);
-    expect(doubled.points[0]!.x).toBeCloseTo(0.2);
-    expect(doubled.points[0]!.y).toBeCloseTo(0.564);
-    const smaller = resizeDrawingMarkup(
-      data,
+    expect(wider.fontSize).toBe(40);
+    expect(wider.textBox!.width).toBeCloseTo(300);
+    expect(wider.textBox!.height).toBeCloseTo(100);
+    expect(wider.points[0]!.x).toBeCloseTo(0.2);
+    const widerBounds = drawingMarkupBounds(wider, 0.5);
+    expect(widerBounds.right).toBeCloseTo(bounds.left + 0.3);
+    expect(widerBounds.bottom).toBeCloseTo(bounds.top + 0.2);
+    const fromCorner = resizeDrawingMarkup(
+      wider,
       "nw",
-      {
-        x: (bounds.left + bounds.right) / 2,
-        y: (bounds.top + bounds.bottom) / 2,
-      },
+      { x: widerBounds.left + 0.1, y: widerBounds.top + 0.05 },
       0.5,
     );
-    expect(smaller.fontSize).toBeCloseTo(20);
-    const smallerBounds = drawingMarkupBounds(smaller, 0.5);
-    expect(smallerBounds.right).toBeCloseTo(bounds.right);
-    expect(smallerBounds.bottom).toBeCloseTo(bounds.bottom);
+    const cornerBounds = drawingMarkupBounds(fromCorner, 0.5);
+    expect(cornerBounds.right).toBeCloseTo(widerBounds.right);
+    expect(cornerBounds.bottom).toBeCloseTo(widerBounds.bottom);
   });
-  it("bounds resized text size and fits ordinary notes inside the page", () => {
+  it("wraps words to the box width and shrinks text only when the box is full", () => {
+    const measure = (line: string, size: number) => line.length * size * 0.5;
+    expect(wrapDrawingText("one two three", 10, 40, measure)).toEqual([
+      "one two",
+      "three",
+    ]);
+    expect(wrapDrawingText("abcdefghijkl", 10, 30, measure)).toEqual([
+      "abcdef",
+      "ghijkl",
+    ]);
+    const roomy = layoutDrawingText(
+      {
+        text: "one two three",
+        fontSize: 10,
+        width: 2,
+        textBox: { width: 40, height: 100 },
+      },
+      measure,
+    );
+    expect(roomy).toEqual({ lines: ["one two", "three"], fontSize: 10 });
+    const tight = layoutDrawingText(
+      {
+        text: "one two three",
+        fontSize: 10,
+        width: 2,
+        textBox: { width: 40, height: 12 },
+      },
+      measure,
+    );
+    expect(tight.fontSize).toBeLessThan(10);
+    expect(tight.lines.length * tight.fontSize * 1.25).toBeLessThanOrEqual(
+      12 + tight.fontSize * 0.25,
+    );
+  });
+  it("keeps resized text boxes inside the page", () => {
     const data: DrawingMarkup = {
       ...rectangle,
       type: "text",
@@ -303,13 +372,10 @@ describe("drawing annotation geometry", () => {
     };
     const large = resizeDrawingMarkup(data, "se", { x: 5, y: 5 }, 0.5);
     const bounds = drawingMarkupBounds(large, 0.5);
-    expect(large.fontSize).toBeLessThanOrEqual(300);
     expect(bounds.left).toBeGreaterThanOrEqual(0);
     expect(bounds.top).toBeGreaterThanOrEqual(0);
     expect(bounds.right).toBeLessThanOrEqual(1);
     expect(bounds.bottom).toBeLessThanOrEqual(1);
-    const small = resizeDrawingMarkup(data, "se", { x: -1, y: -1 }, 0.5);
-    expect(small.fontSize).toBe(6);
     const overflow: DrawingMarkup = {
       ...data,
       text: "An overflowing note",

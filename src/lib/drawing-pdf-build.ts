@@ -19,6 +19,7 @@ import {
   drawingBounds,
   drawingCloudPath,
   drawingFontSize,
+  layoutDrawingText,
   drawingMeasurement,
   drawingLinePath,
   drawingMarkupEdges,
@@ -233,9 +234,22 @@ async function drawMarkup(
           (data.fill && data.fill !== "none" ? alpha(data.fill) : 0.13),
       });
       break;
-    case "text":
-      await text(data.text?.length ? data.text : "Text", first.x, first.y);
+    case "text": {
+      // Same wrapping and fit-to-box size as on screen.
+      const layout = layoutDrawingText(data);
+      await label(
+        doc,
+        page,
+        font,
+        layout.lines.join("\n"),
+        first.x * factor,
+        height - first.y * factor,
+        layout.fontSize * factor,
+        data.stroke,
+        opacity,
+      );
       break;
+    }
     case "count":
       for (const [index, point] of points.entries()) {
         page.drawCircle({

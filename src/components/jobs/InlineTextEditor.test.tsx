@@ -52,12 +52,34 @@ it("changes size from the toolbar and the corner handle, within limits", () => {
   expect(editing.onChange).toHaveBeenLastCalledWith({ ...note, fontSize: 23 });
   fireEvent.click(screen.getByRole("button", { name: "Smaller text" }));
   expect(editing.onChange).toHaveBeenLastCalledWith({ ...note, fontSize: 17 });
-  const handle = screen.getByRole("slider", { name: "Resize text" });
-  fireEvent.keyDown(handle, { key: "ArrowUp" });
-  expect(editing.onChange).toHaveBeenLastCalledWith({ ...note, fontSize: 22 });
-  fireEvent.pointerDown(handle, { clientX: 0, pointerId: 1 });
-  fireEvent.pointerMove(handle, { clientX: -10000, pointerId: 1 });
-  expect(editing.onChange).toHaveBeenLastCalledWith({ ...note, fontSize: 6 });
+});
+
+it("resizes the text box in both directions from its corner handle", () => {
+  const editing = open({
+    data: { ...note, textBox: { width: 200, height: 60 } },
+  });
+  const handle = screen.getByRole("button", { name: "Resize text box" });
+  fireEvent.pointerDown(handle, { clientX: 0, clientY: 0, pointerId: 1 });
+  fireEvent.pointerMove(handle, { clientX: 100, clientY: 40, pointerId: 1 });
+  expect(editing.onChange).toHaveBeenLastCalledWith({
+    ...note,
+    textBox: { width: 300, height: 100 },
+  });
+  fireEvent.keyDown(handle, { key: "ArrowLeft" });
+  expect(editing.onChange).toHaveBeenLastCalledWith({
+    ...note,
+    textBox: { width: 190, height: 60 },
+  });
+  // The box never gets smaller than one line of text.
+  fireEvent.pointerMove(handle, {
+    clientX: -10000,
+    clientY: -10000,
+    pointerId: 1,
+  });
+  expect(editing.onChange).toHaveBeenLastCalledWith({
+    ...note,
+    textBox: { width: 20, height: 20 },
+  });
 });
 
 it("sets the colour from a swatch", () => {
