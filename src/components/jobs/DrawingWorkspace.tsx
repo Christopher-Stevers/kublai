@@ -351,6 +351,11 @@ export function DrawingWorkspace({
     },
   );
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  // A text markup being typed in place on the drawing.
+  const [inlineText, setInlineText] = useState<{
+    id: string | null;
+    data: DrawingMarkup;
+  } | null>(null);
   const [selectionMode, setSelectionMode] = useState<"move" | "resize">(
     "resize",
   );
@@ -803,7 +808,14 @@ export function DrawingWorkspace({
             }
           : markup,
     };
-    if (["text", "callout", "link"].includes(markup.type)) {
+    if (markup.type === "text") {
+      // Type straight onto the drawing; it is saved when you are done.
+      setInlineText({ id: null, data: { ...markup, text: "" } });
+      setSelectedId(null);
+      selectTool("pan");
+      return;
+    }
+    if (["callout", "link"].includes(markup.type)) {
       setForm(value);
       setPanel("selected");
       selectTool("pan");
@@ -1452,6 +1464,48 @@ export function DrawingWorkspace({
                   : undefined
               }
               onCreate={writable ? createMarkup : undefined}
+              textEditing={
+                inlineText && {
+                  id: inlineText.id,
+                  data: inlineText.data,
+                  onChange: (next) =>
+                    setInlineText((current) =>
+                      current ? { ...current, data: next } : current,
+                    ),
+                  onCancel: () => setInlineText(null),
+                  onDone: () => {
+                    const current = inlineText;
+                    setInlineText(null);
+                    // An empty new note is simply discarded.
+                    if (!current.data.text?.trim()) return;
+                    if (current.id) {
+                      const entity = entities.find(
+                        (item) => item.id === current.id,
+                      );
+                      if (entity && editable(entity))
+                        void save({
+                          ...toForm(entity),
+                          kind: "markup",
+                          data: current.data,
+                        });
+                    } else
+                      void save({
+                        ...base(),
+                        kind: "markup",
+                        data: current.data,
+                      });
+                  },
+                  onDelete: inlineText.id
+                    ? () => {
+                        const entity = entities.find(
+                          (item) => item.id === inlineText.id,
+                        );
+                        setInlineText(null);
+                        if (entity && deletable(entity)) void archive(entity);
+                      }
+                    : undefined,
+                }
+              }
               onPoint={
                 writable
                   ? (type, point) => {
@@ -1548,6 +1602,19 @@ export function DrawingWorkspace({
                   >
                     Resize
                   </Button>
+                  {selected.data.type === "text" && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={pending > 0}
+                      onClick={() => {
+                        setInlineText({ id: selected.id, data: selected.data });
+                        setSelectedId(null);
+                      }}
+                    >
+                      Edit text
+                    </Button>
+                  )}
                   <Button
                     size="sm"
                     variant="outline"

@@ -166,6 +166,23 @@ vi.mock("./DrawingSheetViewer", () => ({
         <div data-testid="viewer-source">
           {props.sourceSheetId ?? props.sheetKey}
         </div>
+        {props.textEditing && (
+          <div>
+            <textarea
+              aria-label="Text"
+              value={props.textEditing.data.text ?? ""}
+              onChange={(event) =>
+                props.textEditing!.onChange({
+                  ...props.textEditing!.data,
+                  text: event.target.value,
+                })
+              }
+            />
+            <button onClick={props.textEditing.onDone}>
+              Done editing text
+            </button>
+          </div>
+        )}
         <div data-testid="inherited-viewport">
           {JSON.stringify(props.initialViewport)}
         </div>
@@ -683,7 +700,9 @@ describe("drawing workspace workflows", () => {
     open();
     openMenu("More");
     fireEvent.click(screen.getByRole("menuitem", { name: "Overlay drawings" }));
-    document.querySelectorAll("details").forEach(group => group.open = true);
+    document
+      .querySelectorAll("details")
+      .forEach((group) => (group.open = true));
     fireEvent.click(screen.getByLabelText("A101 revision 2"));
     fireEvent.click(screen.getByLabelText("Drawing 4"));
     fireEvent.click(screen.getByLabelText("Drawing 3"));
@@ -692,10 +711,10 @@ describe("drawing workspace workflows", () => {
       "data-additional",
       JSON.stringify([fourth, third]),
     );
-    fireEvent.click(
-      screen.getByRole("button", { name: "Choose Drawings" }),
-    );
-    document.querySelectorAll("details").forEach(group => group.open = true);
+    fireEvent.click(screen.getByRole("button", { name: "Choose Drawings" }));
+    document
+      .querySelectorAll("details")
+      .forEach((group) => (group.open = true));
     fireEvent.click(screen.getByLabelText("Drawing 4"));
     fireEvent.click(screen.getByRole("button", { name: "Open overlay" }));
     expect(screen.getByTestId("comparison")).toHaveAttribute(
@@ -819,10 +838,16 @@ describe("drawing workspace workflows", () => {
     );
     openMenu("More");
     fireEvent.click(screen.getByRole("menuitem", { name: "Overlay drawings" }));
-    document.querySelectorAll("details").forEach(group => group.open = true);
+    document
+      .querySelectorAll("details")
+      .forEach((group) => (group.open = true));
     fireEvent.click(screen.getByLabelText(sheet.name));
     fireEvent.click(screen.getByLabelText("A101 revision 2"));
-    fireEvent.click(screen.getByLabelText(mocks.data!.jobSheets.find(item => item.id === third)!.name));
+    fireEvent.click(
+      screen.getByLabelText(
+        mocks.data!.jobSheets.find((item) => item.id === third)!.name,
+      ),
+    );
     fireEvent.click(screen.getByRole("button", { name: "Open overlay" }));
     expect(screen.getByTestId("comparison")).toHaveAttribute(
       "data-first",
@@ -962,8 +987,17 @@ describe("drawing workspace workflows", () => {
       screen.getByRole("button", { name: "Move selected annotation" }),
     );
     expect(mocks.save).not.toHaveBeenCalled();
-    expect(within(screen.getByRole("toolbar", { name: "Selected markup actions" })).queryByRole("button", { name: "Done" })).toBeNull();
-    fireEvent.click(within(screen.getByRole("toolbar", { name: "Drawing tools" })).getByRole("button", { name: "Done" }));
+    expect(
+      within(
+        screen.getByRole("toolbar", { name: "Selected markup actions" }),
+      ).queryByRole("button", { name: "Done" }),
+    ).toBeNull();
+    fireEvent.click(
+      within(screen.getByRole("toolbar", { name: "Drawing tools" })).getByRole(
+        "button",
+        { name: "Done" },
+      ),
+    );
     expect(
       screen.queryByRole("toolbar", { name: "Selected markup actions" }),
     ).toBeNull();
@@ -1033,30 +1067,34 @@ describe("drawing workspace workflows", () => {
       expect(screen.getByRole("status")).toHaveTextContent("Saved"),
     );
   });
-  it("defaults worker text and link markups to public while retaining an explicit private choice", async () => {
+  it("types a worker's text markup in place and saves it to the job team; links keep their form", async () => {
     mocks.data!.canManage = false;
     open();
     chooseTool("text");
     fireEvent.click(screen.getByRole("button", { name: "Draw sample" }));
-    expect(screen.getByLabelText("Visibility")).toHaveValue("published");
-    expect(
-      screen.getByRole("option", { name: "Public · job team" }),
-    ).toBeEnabled();
-    fireEvent.change(screen.getByLabelText("Note / label"), {
+    expect(screen.queryByLabelText("Note / label")).toBeNull();
+    fireEvent.change(screen.getByLabelText("Text"), {
       target: { value: "Crew note" },
     });
-    fireEvent.change(screen.getByLabelText("Visibility"), {
-      target: { value: "private" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    fireEvent.click(screen.getByRole("button", { name: "Done editing text" }));
     await waitFor(() => expect(mocks.save).toHaveBeenCalledOnce());
     expect(mocks.save.mock.calls[0]![0]).toMatchObject({
       kind: "markup",
-      visibility: "private",
+      visibility: "published",
+      data: expect.objectContaining({ type: "text", text: "Crew note" }),
     });
+    expect(screen.queryByLabelText("Text")).toBeNull();
     chooseTool("link");
     fireEvent.click(screen.getByRole("button", { name: "Draw sample" }));
     expect(screen.getByLabelText("Visibility")).toHaveValue("published");
+  });
+  it("discards an empty new text note without saving", () => {
+    open();
+    chooseTool("text");
+    fireEvent.click(screen.getByRole("button", { name: "Draw sample" }));
+    fireEvent.click(screen.getByRole("button", { name: "Done editing text" }));
+    expect(mocks.save).not.toHaveBeenCalled();
+    expect(screen.queryByLabelText("Text")).toBeNull();
   });
   it("lets a worker edit their own public markup", async () => {
     mocks.data!.canManage = false;
@@ -1075,7 +1113,7 @@ describe("drawing workspace workflows", () => {
       expectedRevision: 4,
     });
   });
-  it("does not discard a new text form when an earlier pen save finishes", async () => {
+  it("does not discard a note being typed when an earlier pen save finishes", async () => {
     let complete!: (value: DrawingEntity) => void;
     mocks.save.mockImplementationOnce(
       () =>
@@ -1088,7 +1126,7 @@ describe("drawing workspace workflows", () => {
     fireEvent.click(screen.getByRole("button", { name: "Draw sample" }));
     chooseTool("text");
     fireEvent.click(screen.getByRole("button", { name: "Draw sample" }));
-    fireEvent.change(screen.getByLabelText("Note / label"), {
+    fireEvent.change(screen.getByLabelText("Text"), {
       target: { value: "Keep this note" },
     });
     const original = mocks.save.mock.calls[0]![0];
@@ -1107,8 +1145,7 @@ describe("drawing workspace workflows", () => {
         comments: [],
       } as DrawingEntity),
     );
-    expect(screen.getByLabelText("Note / label")).toHaveValue("Keep this note");
-    expect(screen.getByRole("status")).toHaveTextContent("Unsaved changes");
+    expect(screen.getByLabelText("Text")).toHaveValue("Keep this note");
   });
   it("preserves unsaved geometry after a server failure for a visible retry", async () => {
     mocks.save.mockRejectedValueOnce(new Error("Connection interrupted"));
@@ -1287,13 +1324,17 @@ describe("drawing workspace workflows", () => {
   });
 });
 
- it("reuses saved annotation geometry and callbacks when opening an unrelated tools panel", () => {
+it("reuses saved annotation geometry and callbacks when opening an unrelated tools panel", () => {
   open();
-  const before = mocks.viewer.mock.calls.at(-1)![0] as ComponentProps<typeof DrawingSheetViewer>;
+  const before = mocks.viewer.mock.calls.at(-1)![0] as ComponentProps<
+    typeof DrawingSheetViewer
+  >;
   panel("details");
-  const after = mocks.viewer.mock.calls.at(-1)![0] as ComponentProps<typeof DrawingSheetViewer>;
+  const after = mocks.viewer.mock.calls.at(-1)![0] as ComponentProps<
+    typeof DrawingSheetViewer
+  >;
   expect(after.annotations).toBe(before.annotations);
   expect(after.onSelect).toBe(before.onSelect);
   expect(after.onActivate).toBe(before.onActivate);
   expect(after.canEditAnnotation).toBe(before.canEditAnnotation);
- });
+});
