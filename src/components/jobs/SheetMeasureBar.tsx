@@ -1,7 +1,16 @@
 "use client";
 import { MeasurementLayerPicker } from "./MeasurementLayerPicker";
 
-import { CheckIcon, ChevronDownIcon, RulerIcon, Undo2Icon, Redo2Icon } from "lucide-react";
+import {
+  CheckIcon,
+  ChevronDownIcon,
+  EraserIcon,
+  GitBranchIcon,
+  Redo2Icon,
+  RulerIcon,
+  Undo2Icon,
+  XIcon,
+} from "lucide-react";
 import { useId, useState, type PointerEvent, type ReactNode } from "react";
 
 import { Button } from "~/components/ui/button";
@@ -16,12 +25,18 @@ import { Input } from "~/components/ui/input";
 import { LENGTH_UNITS, type LengthUnit } from "~/lib/sheet-measure";
 import { MEASURE_COLORS, measureColorHalo } from "~/lib/sheet-measure-color";
 
+/** One tile in the measuring tool row: an icon over a short label. */
+export const MEASURE_TILE =
+  "flex h-12 min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl px-1 text-[11px] leading-none font-medium whitespace-nowrap [&_svg]:size-[18px]";
+
 /**
  * Controls for tracing a distance on a drawing.
  * Pointer events stop here so a tap on a button is not another point on the sheet.
  */
 export function SheetMeasureBar({
-  measurementLayer = "General", measurementLayers = [], onMeasurementLayer,
+  measurementLayer = "General",
+  measurementLayers = [],
+  onMeasurementLayer,
   measuring,
   calibrating,
   pointCount,
@@ -57,7 +72,9 @@ export function SheetMeasureBar({
   gapMessage,
   onGap,
 }: {
-  measurementLayer?: string; measurementLayers?: string[]; onMeasurementLayer?: (layer: string) => void;
+  measurementLayer?: string;
+  measurementLayers?: string[];
+  onMeasurementLayer?: (layer: string) => void;
   measuring: boolean;
   calibrating: boolean;
   pointCount: number;
@@ -126,7 +143,7 @@ export function SheetMeasureBar({
       data-drawing-chrome
       aria-label="Drawing tool options"
       data-snapping={snapping ? "ready" : undefined}
-      className="bg-card absolute inset-x-0 bottom-0 z-20 max-h-[45dvh] overflow-y-auto overscroll-contain border-t px-3 py-1"
+      className="bg-card/95 absolute inset-x-0 bottom-0 z-20 max-h-[45dvh] overflow-y-auto overscroll-contain rounded-t-2xl border-t px-3 pt-2.5 pb-2 shadow-[0_-8px_24px_rgba(0,0,0,0.12)] backdrop-blur"
       onPointerDown={stop}
       onPointerMove={stop}
       onPointerUp={stop}
@@ -156,7 +173,15 @@ export function SheetMeasureBar({
             />
           ) : (
             <Tracing
-              layerControl={onMeasurementLayer ? <MeasurementLayerPicker value={measurementLayer} layers={measurementLayers} onChange={onMeasurementLayer} /> : null}
+              layerControl={
+                onMeasurementLayer ? (
+                  <MeasurementLayerPicker
+                    value={measurementLayer}
+                    layers={measurementLayers}
+                    onChange={onMeasurementLayer}
+                  />
+                ) : null
+              }
               pointCount={pointCount}
               total={total}
               unit={unit}
@@ -208,28 +233,25 @@ function MeasureColorPicker({
     <div className="contents">
       <button
         type="button"
-        className="flex h-8 w-full items-center justify-center gap-1 rounded-md border px-1 text-xs"
+        className={`${MEASURE_TILE} hover:bg-accent ${open ? "bg-accent" : ""}`}
         aria-label={`Measuring color: ${name}`}
         aria-expanded={open}
         aria-controls={id}
         onClick={() => setOpen((current) => !current)}
       >
         <span
-          className="h-5 w-5 rounded-full border border-current/30"
+          aria-hidden="true"
+          className="ring-background size-[18px] rounded-full shadow ring-2"
           style={{ backgroundColor: color }}
         />
-        <span className="sr-only">Color</span>
-        <span className="sr-only">{name}</span>
-        <ChevronDownIcon
-          className={`h-4 w-4 transition-transform ${open ? "rotate-180" : ""}`}
-        />
+        <span aria-hidden="true">Colour</span>
       </button>
       {open && (
         <div id={id} className="col-span-full space-y-2 pt-1">
           <div
             role="group"
             aria-label="Measuring colors"
-            className="grid max-w-sm grid-cols-5 gap-1"
+            className="grid max-w-sm grid-cols-5 gap-2 py-1"
           >
             {MEASURE_COLORS.map((item) => (
               <button
@@ -238,7 +260,7 @@ function MeasureColorPicker({
                 aria-label={item.name}
                 aria-pressed={color === item.value}
                 title={item.name}
-                className="focus-visible:outline-primary flex h-11 items-center justify-center rounded-md border border-current/25 focus-visible:outline-2 focus-visible:outline-offset-2"
+                className="focus-visible:outline-primary mx-auto grid size-10 place-items-center rounded-full border border-current/25 shadow-sm transition-transform hover:scale-110 focus-visible:outline-2 focus-visible:outline-offset-2"
                 style={{
                   backgroundColor: item.value,
                   color: measureColorHalo(item.value),
@@ -261,7 +283,7 @@ function MeasureColorPicker({
               aria-label="Custom measuring color"
               value={color}
               onChange={(event) => onColor(event.target.value)}
-              className="h-10 w-12 cursor-pointer rounded border bg-transparent p-0.5"
+              className="size-10 cursor-pointer rounded-full border bg-transparent p-0.5"
             />
           </label>
         </div>
@@ -286,8 +308,8 @@ function UnitToggle({
         <Button
           type="button"
           size="sm"
-          variant="outline"
-          className="shrink-0 gap-1"
+          variant="secondary"
+          className="h-9 shrink-0 gap-1 rounded-full px-3 font-semibold"
           disabled={disabled}
           aria-label={`Units: ${unit}`}
         >
@@ -362,16 +384,16 @@ function Tracing({
   return (
     <>
       <div
-        className={`flex flex-wrap items-center gap-2 ${reading || (total && pointCount > 0) || scaleSet || controls ? "" : "hidden"}`}
+        className={`flex items-center gap-2 ${reading || (total && pointCount > 0) || scaleSet || scaleLabel || controls ? "" : "hidden"}`}
       >
-        <div className="min-w-0 flex-1">
+        <div className="flex min-w-0 flex-1 items-baseline gap-2">
           {/* Just the total (or the scale being read): no instructions. */}
           <p
             role="status"
             className={
-              total && !reading
-                ? "text-lg font-semibold tabular-nums"
-                : "text-sm"
+              total && !reading && pointCount > 0
+                ? "truncate text-2xl leading-none font-bold tabular-nums"
+                : "text-muted-foreground text-sm"
             }
           >
             {reading
@@ -380,13 +402,15 @@ function Tracing({
                 ? total
                 : null}
           </p>
+          {!reading && scaleLabel && (
+            <span className="bg-muted text-muted-foreground shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium tabular-nums">
+              {scaleLabel}
+            </span>
+          )}
         </div>
         {scaleSet && <UnitToggle unit={unit} onUnit={onUnit} />}
         {controls}
       </div>
-      {!reading && scaleLabel && (
-        <p className="text-muted-foreground text-xs">{scaleLabel}</p>
-      )}
       {readError && !reading && (
         <p className="text-destructive text-xs">{readError}</p>
       )}
@@ -395,48 +419,63 @@ function Tracing({
           {gapMessage}
         </p>
       )}
-      <div className={`grid ${layerControl ? "grid-cols-7" : "grid-cols-6"} items-center gap-1 [&>button]:min-w-0 [&>button]:px-1 [&>button]:text-xs [&>button]:whitespace-normal [&>button]:leading-tight`}>
+      <div
+        className={`grid ${layerControl ? "grid-cols-7" : "grid-cols-6"} items-stretch gap-1`}
+      >
         <Button
           type="button"
-          size="sm"
-          variant={gap ? "default" : "outline"}
+          variant={gap ? "default" : "ghost"}
+          className={MEASURE_TILE}
           aria-pressed={gap}
           disabled={!canGap || !onGap}
           onClick={onGap}
         >
+          <GitBranchIcon aria-hidden="true" />
           Branch
         </Button>
         <Button
           type="button"
-          size="sm"
-          variant="outline"
+          variant="ghost"
+          className={MEASURE_TILE}
           disabled={pointCount === 0}
           aria-label="Undo"
           title="Undo"
           onClick={onUndo}
         >
-          <Undo2Icon aria-hidden="true" className="size-4" />
-        </Button>
-        <Button type="button" size="sm" variant="outline" aria-label="Redo" title="Redo" disabled={!canRedo || !onRedo} onClick={onRedo}>
-          <Redo2Icon aria-hidden="true" className="size-4" />
+          <Undo2Icon aria-hidden="true" className="size-5!" />
         </Button>
         <Button
           type="button"
-          size="sm"
-          variant="outline"
+          variant="ghost"
+          className={MEASURE_TILE}
+          aria-label="Redo"
+          title="Redo"
+          disabled={!canRedo || !onRedo}
+          onClick={onRedo}
+        >
+          <Redo2Icon aria-hidden="true" className="size-5!" />
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          className={MEASURE_TILE}
           disabled={pointCount === 0}
+          aria-label="Clear"
           onClick={onClear}
         >
+          <EraserIcon aria-hidden="true" />
           Clear
         </Button>
         <Button
           type="button"
-          size="sm"
-          variant="outline"
+          variant="ghost"
+          className={MEASURE_TILE}
+          aria-label="Set Scale"
           disabled={(reading ?? false) || !canSetScale}
           onClick={onStartScale}
         >
-          Set Scale
+          <RulerIcon aria-hidden="true" />
+          Scale
         </Button>
         {layerControl}
         <MeasureColorPicker color={color} onColor={onColor} />
@@ -486,7 +525,7 @@ function Calibration({
     <>
       {(saving || reading || count >= 2 || Boolean(controls)) && (
         <div className="flex items-center gap-2">
-          <p role="status" className="min-w-0 flex-1 text-sm">
+          <p role="status" className="min-w-0 flex-1 text-sm font-medium">
             {saving
               ? "Saving scale…"
               : reading
@@ -501,7 +540,7 @@ function Calibration({
       {count >= 2 && (
         <div className="flex flex-wrap items-center gap-2">
           <Input
-            className="min-w-24 flex-1"
+            className="h-10 min-w-24 flex-1 rounded-xl text-base"
             autoFocus
             disabled={saving}
             aria-label="How long is this line?"
@@ -528,7 +567,7 @@ function Calibration({
 
           <Button
             type="button"
-            size="sm"
+            className="h-10 rounded-xl"
             disabled={!draft.trim() || saving || reading}
             onClick={onApply}
           >
@@ -544,28 +583,38 @@ function Calibration({
       {readError && !reading && (
         <p className="text-destructive text-xs">{readError}</p>
       )}
-      <div className="grid grid-cols-4 items-center gap-1 [&>button]:min-w-0 [&>button]:px-1 [&>button]:text-xs [&>button]:whitespace-normal [&>button]:leading-tight">
+      <div className="grid grid-cols-4 items-stretch gap-1">
         <Button
           type="button"
-          size="sm"
-          variant="outline"
+          variant="ghost"
+          className={MEASURE_TILE}
           disabled={count === 0 || saving}
           aria-label="Undo"
           title="Undo"
           onClick={onUndo}
         >
-          <Undo2Icon aria-hidden="true" className="size-4" />
-        </Button>
-        <Button type="button" size="sm" variant="outline" aria-label="Redo" title="Redo" disabled={!canRedo || !onRedo || saving} onClick={onRedo}>
-          <Redo2Icon aria-hidden="true" className="size-4" />
+          <Undo2Icon aria-hidden="true" className="size-5!" />
         </Button>
         <Button
           type="button"
-          size="sm"
-          variant="outline"
+          variant="ghost"
+          className={MEASURE_TILE}
+          aria-label="Redo"
+          title="Redo"
+          disabled={!canRedo || !onRedo || saving}
+          onClick={onRedo}
+        >
+          <Redo2Icon aria-hidden="true" className="size-5!" />
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          className={MEASURE_TILE}
+          aria-label="Cancel"
           disabled={saving}
           onClick={onCancel}
         >
+          <XIcon aria-hidden="true" />
           Cancel
         </Button>
         <MeasureColorPicker color={color} onColor={onColor} />

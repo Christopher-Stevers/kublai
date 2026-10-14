@@ -29,10 +29,30 @@ import {
   DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu";
 import {
+  ActivityIcon,
+  BellIcon,
+  BookmarkIcon,
+  CameraIcon,
+  CircleAlertIcon,
+  DownloadIcon,
+  FileTextIcon,
+  HandIcon,
+  HistoryIcon,
+  LayersIcon,
+  Link2Icon,
+  ListChecksIcon,
+  MessageSquareMoreIcon,
   MoreHorizontalIcon,
+  MousePointer2Icon,
+  PaletteIcon,
   PenLineIcon,
   RulerIcon,
+  ScanIcon,
+  SearchIcon,
+  SendIcon,
+  SplineIcon,
   WrenchIcon,
+  type LucideIcon,
 } from "lucide-react";
 import { notify } from "~/components/ui/app-dialogs";
 import {
@@ -136,6 +156,41 @@ export const panels: Array<[Panel, string]> = [
   ["files", "Download / offline"],
   ["activity", "Activity"],
 ];
+const PANEL_ICONS: Partial<Record<Panel, LucideIcon>> = {
+  notifications: BellIcon,
+  markups: LayersIcon,
+  issues: CircleAlertIcon,
+  search: SearchIcon,
+  views: BookmarkIcon,
+  details: FileTextIcon,
+  history: HistoryIcon,
+  reviews: ListChecksIcon,
+  packages: SendIcon,
+  files: DownloadIcon,
+  activity: ActivityIcon,
+};
+const TOOL_ICONS: Partial<Record<DrawingTool, LucideIcon>> = {
+  pan: HandIcon,
+  select: MousePointer2Icon,
+  link: Link2Icon,
+  issue: CircleAlertIcon,
+  rfi: MessageSquareMoreIcon,
+};
+const MENU_CLASS = "w-64 rounded-xl p-1.5 shadow-xl";
+const MENU_ITEM = "min-h-11 gap-3 rounded-lg";
+const MENU_SECTION =
+  "text-muted-foreground px-2 pt-2 pb-1 text-[11px] font-semibold tracking-wide uppercase";
+/** A small icon tile at the start of a bottom-bar menu item. */
+function MenuTile({ icon: Icon }: { icon?: LucideIcon }) {
+  return (
+    <span
+      aria-hidden
+      className="bg-muted text-foreground/80 grid size-8 shrink-0 place-items-center rounded-lg"
+    >
+      {Icon && <Icon className="size-4" />}
+    </span>
+  );
+}
 const nameOf = (entity: DrawingEntity) =>
   entity.kind === "issue"
     ? entity.data.title
@@ -495,38 +550,55 @@ export function DrawingWorkspace({
   });
   const writable = current && Boolean(data) && (online || queued.ready);
   const entities = useMemo(() => {
-    const queuedIds = new Set(queued.records.map(record => record.preview.id));
+    const queuedIds = new Set(
+      queued.records.map((record) => record.preview.id),
+    );
     const local = [
-      ...optimistic.filter(entity => !queuedIds.has(entity.id)),
+      ...optimistic.filter((entity) => !queuedIds.has(entity.id)),
       ...queued.records.map((record) => record.preview),
     ];
-    const localIds = new Set(local.map(entity => entity.id));
+    const localIds = new Set(local.map((entity) => entity.id));
     return [
-      ...(data?.entities ?? []).filter(entity => !localIds.has(entity.id)),
+      ...(data?.entities ?? []).filter((entity) => !localIds.has(entity.id)),
       ...local,
     ];
   }, [data?.entities, optimistic, queued.records]);
-  const entitiesById = useMemo(() => new Map(entities.map(entity => [entity.id, entity])), [entities]);
-  const blockedEdits = useMemo(() => new Set(queued.records.filter(record => record.state !== "pending").map(record => record.input.id)), [queued.records]);
+  const entitiesById = useMemo(
+    () => new Map(entities.map((entity) => [entity.id, entity])),
+    [entities],
+  );
+  const blockedEdits = useMemo(
+    () =>
+      new Set(
+        queued.records
+          .filter((record) => record.state !== "pending")
+          .map((record) => record.input.id),
+      ),
+    [queued.records],
+  );
   const selected = entitiesById.get(selectedId ?? "");
-  const editable = useCallback((entity: DrawingEntity) =>
-    writable &&
-    !blockedEdits.has(entity.id) &&
-    (online ||
-      (entity.authorId === data?.actor.id &&
-        (entity.kind === "markup" ||
-          (entity.kind === "issue" && entity.visibility === "private")))) &&
-    entity.visibility !== "archived" &&
-    ["markup", "issue", "view"].includes(entity.kind) &&
-    Boolean(
-      data &&
-      (data.canManage ||
-        (entity.authorId === data.actor.id &&
-          (entity.visibility === "private" ||
-            entity.kind === "issue" ||
-            entity.kind === "markup")) ||
-        (entity.kind === "issue" && entity.data.assigneeId === data.actor.id)),
-    ), [writable, blockedEdits, online, data]);
+  const editable = useCallback(
+    (entity: DrawingEntity) =>
+      writable &&
+      !blockedEdits.has(entity.id) &&
+      (online ||
+        (entity.authorId === data?.actor.id &&
+          (entity.kind === "markup" ||
+            (entity.kind === "issue" && entity.visibility === "private")))) &&
+      entity.visibility !== "archived" &&
+      ["markup", "issue", "view"].includes(entity.kind) &&
+      Boolean(
+        data &&
+        (data.canManage ||
+          (entity.authorId === data.actor.id &&
+            (entity.visibility === "private" ||
+              entity.kind === "issue" ||
+              entity.kind === "markup")) ||
+          (entity.kind === "issue" &&
+            entity.data.assigneeId === data.actor.id)),
+      ),
+    [writable, blockedEdits, online, data],
+  );
   const toForm = (entity: DrawingEntity): DrawingSave =>
     ({
       sheetId: sheet.id,
@@ -568,18 +640,21 @@ export function DrawingWorkspace({
     pending === 0 &&
     !queued.records.some((record) => record.input.id === entity.id) &&
     Boolean(data && (data.canManage || entity.authorId === data.actor.id));
-  const selectAnnotation = useCallback((id: string | null) => {
-    if (id === "search-highlight") return;
-    setSelectedId(id);
-    setForm(null);
-    const entity = entities.find((item) => item.id === id);
-    if (entity?.kind === "markup") {
-      selectTool("select");
-      if (id !== selectedId) setSelectionMode("resize");
-      setPanel("");
-    } else if (id) setPanel("selected");
-    else setPanel(current => current === "selected" ? "" : current);
-  }, [entities, selectTool, selectedId]);
+  const selectAnnotation = useCallback(
+    (id: string | null) => {
+      if (id === "search-highlight") return;
+      setSelectedId(id);
+      setForm(null);
+      const entity = entities.find((item) => item.id === id);
+      if (entity?.kind === "markup") {
+        selectTool("select");
+        if (id !== selectedId) setSelectionMode("resize");
+        setPanel("");
+      } else if (id) setPanel("selected");
+      else setPanel((current) => (current === "selected" ? "" : current));
+    },
+    [entities, selectTool, selectedId],
+  );
   const base = (kind: DrawingSave["kind"] = "markup") => ({
     sheetId: sheet.id,
     id: crypto.randomUUID(),
@@ -797,33 +872,39 @@ export function DrawingWorkspace({
       setPending((n) => n - 1);
     }
   };
-  const openDestination = useCallback((link: DrawingMarkupLink) => {
-    if (link.targetSheetId) {
-      const target = data?.jobSheets.find(
-        (item) => item.id === link.targetSheetId,
-      );
-      if (target) onOpenSheet(target);
-      else setError("That linked sheet is no longer available.");
-    } else {
-      const href = drawingLinkHref(link, jobId, data?.jobSheets ?? []);
-      if (href) {
-        if (destinationPicker?.active && href.startsWith("/dashboard"))
-          window.location.assign(href);
-        else
-          window.open(
-            new URL(href, location.origin).href,
-            "_blank",
-            "noopener,noreferrer",
-          );
-      } else setError("That destination is no longer available.");
-    }
-  }, [data?.jobSheets, onOpenSheet, jobId, destinationPicker?.active]);
-  const activate = useCallback((markup: DrawingMarkup) => {
-    const links = drawingMarkupLinks(markup);
-    if (links.length > 1) setLinkChooser(markup);
-    else if (links[0]) openDestination(links[0]);
-    else setError("Add a destination to this hyperlink.");
-  }, [openDestination]);
+  const openDestination = useCallback(
+    (link: DrawingMarkupLink) => {
+      if (link.targetSheetId) {
+        const target = data?.jobSheets.find(
+          (item) => item.id === link.targetSheetId,
+        );
+        if (target) onOpenSheet(target);
+        else setError("That linked sheet is no longer available.");
+      } else {
+        const href = drawingLinkHref(link, jobId, data?.jobSheets ?? []);
+        if (href) {
+          if (destinationPicker?.active && href.startsWith("/dashboard"))
+            window.location.assign(href);
+          else
+            window.open(
+              new URL(href, location.origin).href,
+              "_blank",
+              "noopener,noreferrer",
+            );
+        } else setError("That destination is no longer available.");
+      }
+    },
+    [data?.jobSheets, onOpenSheet, jobId, destinationPicker?.active],
+  );
+  const activate = useCallback(
+    (markup: DrawingMarkup) => {
+      const links = drawingMarkupLinks(markup);
+      if (links.length > 1) setLinkChooser(markup);
+      else if (links[0]) openDestination(links[0]);
+      else setError("Add a destination to this hyperlink.");
+    },
+    [openDestination],
+  );
   const requestedLink = useRef<string | null>(null);
   useEffect(() => {
     if (!data) return;
@@ -843,16 +924,19 @@ export function DrawingWorkspace({
     // A PDF or shared address must never launch another window without a tap.
     setLinkChooser(entity.data);
   }, [data, sheet.id]);
-  const activatePdfLink = useCallback((link: DrawingPdfLink) => {
-    if (link.url) {
-      const url = drawingPdfLinkUrl(link.url);
-      if (url) window.open(url, "_blank", "noopener,noreferrer");
-    } else if (pdf) {
-      const target = drawingPdfLinkTarget(link, pdf, data?.jobSheets ?? []);
-      if (target) onOpenSheet(target);
-      else setError("That linked page has not been added to this job.");
-    }
-  }, [pdf, data?.jobSheets, onOpenSheet]);
+  const activatePdfLink = useCallback(
+    (link: DrawingPdfLink) => {
+      if (link.url) {
+        const url = drawingPdfLinkUrl(link.url);
+        if (url) window.open(url, "_blank", "noopener,noreferrer");
+      } else if (pdf) {
+        const target = drawingPdfLinkTarget(link, pdf, data?.jobSheets ?? []);
+        if (target) onOpenSheet(target);
+        else setError("That linked page has not been added to this job.");
+      }
+    },
+    [pdf, data?.jobSheets, onOpenSheet],
+  );
   const readText = async (ocr = false) => {
     const request = ++textRequest.current;
     ocrRequest.current?.abort();
@@ -903,52 +987,92 @@ export function DrawingWorkspace({
     });
     setPanel("");
   };
-  const [hiddenMeasurementLayers, setHiddenMeasurementLayers] = useState<string[]>([]);
-  const measurementLayers = [...new Set(["General", ...entities.flatMap(entity => entity.kind === "markup" && entity.data.type === "dimension" && sourceOf(entity) === sourceId && entity.visibility !== "archived" ? [entity.data.layer ?? "General"] : [])])];
-  const visible = useMemo(() => entities.filter(
-    (entity) =>
-      entity.visibility !== "archived" &&
-      sourceOf(entity) === sourceId &&
-      !(entity.kind === "markup" && entity.data.type === "dimension" && hiddenMeasurementLayers.includes(entity.data.layer ?? "General")) &&
-      (entity.kind === "markup"
-        ? layers.markups
-        : entity.kind === "issue"
-          ? layers.issues
-          : false) &&
-      (entity.visibility === "private" ? layers.private : layers.published),
-  ), [entities, sourceId, hiddenMeasurementLayers, layers.markups, layers.issues, layers.private, layers.published]);
-  const highlighted = useMemo<DrawingEntity[]>(() => highlight
-    ? [
-        {
-          id: "search-highlight",
-          sheetId: sheet.id,
-          kind: "markup",
-          revision: 0,
-          visibility: "private",
-          authorId: "",
-          authorName: "",
-          createdAt: "",
-          updatedAt: "",
-          comments: [],
-          data: {
-            sourceSheetId: sourceId,
-            type: "rect",
-            points: [
-              { x: highlight.left, y: highlight.top },
-              { x: highlight.right, y: highlight.bottom },
-            ],
-            stroke: "#eab308",
-            fill: "#facc1544",
-            width: 2,
-          },
-        },
-      ]
-    : [], [highlight, sheet.id, sourceId]);
-  const viewerAnnotations = useMemo(() => highlighted.length ? [...visible, ...highlighted] : visible, [visible, highlighted]);
-  const canEditAnnotation = useCallback((id: string) => {
-    const entity = entitiesById.get(id);
-    return Boolean(entity && editable(entity) && pending === 0 && !form);
-  }, [entitiesById, editable, pending, form]);
+  const [hiddenMeasurementLayers, setHiddenMeasurementLayers] = useState<
+    string[]
+  >([]);
+  const measurementLayers = [
+    ...new Set([
+      "General",
+      ...entities.flatMap((entity) =>
+        entity.kind === "markup" &&
+        entity.data.type === "dimension" &&
+        sourceOf(entity) === sourceId &&
+        entity.visibility !== "archived"
+          ? [entity.data.layer ?? "General"]
+          : [],
+      ),
+    ]),
+  ];
+  const visible = useMemo(
+    () =>
+      entities.filter(
+        (entity) =>
+          entity.visibility !== "archived" &&
+          sourceOf(entity) === sourceId &&
+          !(
+            entity.kind === "markup" &&
+            entity.data.type === "dimension" &&
+            hiddenMeasurementLayers.includes(entity.data.layer ?? "General")
+          ) &&
+          (entity.kind === "markup"
+            ? layers.markups
+            : entity.kind === "issue"
+              ? layers.issues
+              : false) &&
+          (entity.visibility === "private" ? layers.private : layers.published),
+      ),
+    [
+      entities,
+      sourceId,
+      hiddenMeasurementLayers,
+      layers.markups,
+      layers.issues,
+      layers.private,
+      layers.published,
+    ],
+  );
+  const highlighted = useMemo<DrawingEntity[]>(
+    () =>
+      highlight
+        ? [
+            {
+              id: "search-highlight",
+              sheetId: sheet.id,
+              kind: "markup",
+              revision: 0,
+              visibility: "private",
+              authorId: "",
+              authorName: "",
+              createdAt: "",
+              updatedAt: "",
+              comments: [],
+              data: {
+                sourceSheetId: sourceId,
+                type: "rect",
+                points: [
+                  { x: highlight.left, y: highlight.top },
+                  { x: highlight.right, y: highlight.bottom },
+                ],
+                stroke: "#eab308",
+                fill: "#facc1544",
+                width: 2,
+              },
+            },
+          ]
+        : [],
+    [highlight, sheet.id, sourceId],
+  );
+  const viewerAnnotations = useMemo(
+    () => (highlighted.length ? [...visible, ...highlighted] : visible),
+    [visible, highlighted],
+  );
+  const canEditAnnotation = useCallback(
+    (id: string) => {
+      const entity = entitiesById.get(id);
+      return Boolean(entity && editable(entity) && pending === 0 && !form);
+    },
+    [entitiesById, editable, pending, form],
+  );
   const resolved =
     assets?.key === source.imageUrl ? assets : { src: source.imageUrl, pdf };
   const comparisonSheets = new Map(
@@ -1089,125 +1213,125 @@ export function DrawingWorkspace({
         />
       )}
       <div className="absolute inset-x-0 top-0 z-30 max-h-[45dvh] overflow-y-auto">
-      {error && (
-        <div
-          role="alert"
-          className="bg-destructive/10 text-destructive flex items-center gap-2 px-3 py-2 text-sm"
-        >
-          <span className="flex-1">{error}</span>
-          <button onClick={() => setError(null)} aria-label="Dismiss error">
-            ×
-          </button>
-        </div>
-      )}
-      {failedDrafts.length > 0 && (
-        <div className="flex flex-wrap items-center gap-2 border-b bg-amber-50 px-3 py-2 text-sm text-amber-950">
-          <span>
-            {failedDrafts.length} unsaved item(s) kept on this screen.
-          </span>
-          {failedDrafts.map((item) => (
-            <button
-              key={item.id}
-              className="underline"
-              onClick={() => {
-                setForm(item);
-                setPanel("selected");
-              }}
-            >
-              Review {item.kind}
+        {error && (
+          <div
+            role="alert"
+            className="bg-destructive/10 text-destructive flex items-center gap-2 px-3 py-2 text-sm"
+          >
+            <span className="flex-1">{error}</span>
+            <button onClick={() => setError(null)} aria-label="Dismiss error">
+              ×
             </button>
-          ))}
-        </div>
-      )}
-      {queued.records.length > 0 && (
-        <div
-          aria-label="Offline drawing edits"
-          className="max-h-40 space-y-2 overflow-y-auto border-b bg-amber-50 px-3 py-2 text-sm text-amber-950"
-        >
-          <div className="flex items-center gap-2">
-            <b>{queued.records.length} edit(s) saved on this device</b>
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={!online}
-              onClick={() => void queued.sync()}
-            >
-              Sync now
-            </Button>
           </div>
-          {queued.records.map((record) => (
-            <div
-              key={record.operationId}
-              className="flex flex-wrap items-center gap-2"
-            >
-              <span>
-                {nameOf(record.preview)} · {record.state}
-                {record.error ? ` · ${record.error}` : ""}
-              </span>
+        )}
+        {failedDrafts.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2 border-b bg-amber-50 px-3 py-2 text-sm text-amber-950">
+            <span>
+              {failedDrafts.length} unsaved item(s) kept on this screen.
+            </span>
+            {failedDrafts.map((item) => (
               <button
+                key={item.id}
                 className="underline"
                 onClick={() => {
-                  setSelectedId(record.input.id);
+                  setForm(item);
                   setPanel("selected");
                 }}
               >
-                View draft
+                Review {item.kind}
               </button>
-              {record.state !== "syncing" && (
+            ))}
+          </div>
+        )}
+        {queued.records.length > 0 && (
+          <div
+            aria-label="Offline drawing edits"
+            className="max-h-40 space-y-2 overflow-y-auto border-b bg-amber-50 px-3 py-2 text-sm text-amber-950"
+          >
+            <div className="flex items-center gap-2">
+              <b>{queued.records.length} edit(s) saved on this device</b>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={!online}
+                onClick={() => void queued.sync()}
+              >
+                Sync now
+              </Button>
+            </div>
+            {queued.records.map((record) => (
+              <div
+                key={record.operationId}
+                className="flex flex-wrap items-center gap-2"
+              >
+                <span>
+                  {nameOf(record.preview)} · {record.state}
+                  {record.error ? ` · ${record.error}` : ""}
+                </span>
                 <button
                   className="underline"
-                  onClick={() =>
-                    void queued.discard(record.operationId).catch(fail)
-                  }
+                  onClick={() => {
+                    setSelectedId(record.input.id);
+                    setPanel("selected");
+                  }}
                 >
-                  Discard local edit
+                  View draft
                 </button>
-              )}
-              {record.state === "blocked" && (
-                <button
-                  className="underline"
-                  disabled={!online}
-                  onClick={() =>
-                    void queued.retry(record.operationId).catch(fail)
-                  }
-                >
-                  Retry sync
-                </button>
-              )}
-              {record.state === "conflict" && (
-                <>
-                  <button
-                    className="underline"
-                    disabled={!online}
-                    onClick={() => void refresh().catch(fail)}
-                  >
-                    Refresh server version
-                  </button>
+                {record.state !== "syncing" && (
                   <button
                     className="underline"
                     onClick={() =>
-                      void queued
-                        .enqueue(
-                          {
-                            ...record.input,
-                            id: crypto.randomUUID(),
-                            expectedRevision: 0,
-                          },
-                          undefined,
-                          data.actor.name,
-                        )
-                        .then(() => queued.discard(record.operationId))
-                        .catch(fail)
+                      void queued.discard(record.operationId).catch(fail)
                     }
                   >
-                    Keep as new private copy
+                    Discard local edit
                   </button>
-                </>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
+                )}
+                {record.state === "blocked" && (
+                  <button
+                    className="underline"
+                    disabled={!online}
+                    onClick={() =>
+                      void queued.retry(record.operationId).catch(fail)
+                    }
+                  >
+                    Retry sync
+                  </button>
+                )}
+                {record.state === "conflict" && (
+                  <>
+                    <button
+                      className="underline"
+                      disabled={!online}
+                      onClick={() => void refresh().catch(fail)}
+                    >
+                      Refresh server version
+                    </button>
+                    <button
+                      className="underline"
+                      onClick={() =>
+                        void queued
+                          .enqueue(
+                            {
+                              ...record.input,
+                              id: crypto.randomUUID(),
+                              expectedRevision: 0,
+                            },
+                            undefined,
+                            data.actor.name,
+                          )
+                          .then(() => queued.discard(record.operationId))
+                          .catch(fail)
+                      }
+                    >
+                      Keep as new private copy
+                    </button>
+                  </>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
       <div className="relative flex min-h-0 flex-1">
         <div className="min-h-0 min-w-0 flex-1">
@@ -1336,93 +1460,95 @@ export function DrawingWorkspace({
             />
           )}
         </div>
-      {selected?.kind === "markup" &&
-        selected.visibility !== "archived" &&
-        sourceOf(selected) === sourceId &&
-        !form &&
-        !compareIds && (
-          <div
-            role="toolbar"
-            aria-label="Selected markup actions"
-            data-drawing-chrome
-            className="bg-background absolute inset-x-0 bottom-0 z-20 flex max-h-[45dvh] flex-wrap items-center gap-2 overflow-y-auto border-t px-2 py-2"
-          >
-            <span className="max-w-32 truncate text-sm font-medium">
-              {nameOf(selected)}
-            </span>
-            {editable(selected) ? (
-              <>
-                <Button
-                  size="sm"
-                  variant={
-                    selectionMode === "move" && tool === "select"
-                      ? "default"
-                      : "outline"
-                  }
-                  aria-pressed={selectionMode === "move" && tool === "select"}
-                  disabled={pending > 0}
-                  onClick={() => {
-                    selectTool("select");
-                    setSelectionMode("move");
-                    setPanel("");
-                  }}
-                >
-                  Move
-                </Button>
-                <Button
-                  size="sm"
-                  variant={
-                    selectionMode === "resize" && tool === "select"
-                      ? "default"
-                      : "outline"
-                  }
-                  aria-pressed={selectionMode === "resize" && tool === "select"}
-                  disabled={pending > 0}
-                  onClick={() => {
-                    selectTool("select");
-                    setSelectionMode("resize");
-                    setPanel("");
-                  }}
-                >
-                  Resize
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  aria-label="Delete markup"
-                  disabled={!deletable(selected)}
-                  title={
-                    !online ? "Reconnect to delete this markup" : undefined
-                  }
-                  onClick={() => void archive(selected)}
-                >
-                  Delete
-                </Button>
-              </>
-            ) : (
-              <span className="text-muted-foreground text-xs">Read only</span>
-            )}
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setPanel("selected")}
+        {selected?.kind === "markup" &&
+          selected.visibility !== "archived" &&
+          sourceOf(selected) === sourceId &&
+          !form &&
+          !compareIds && (
+            <div
+              role="toolbar"
+              aria-label="Selected markup actions"
+              data-drawing-chrome
+              className="bg-background absolute inset-x-0 bottom-0 z-20 flex max-h-[45dvh] flex-wrap items-center gap-2 overflow-y-auto border-t px-2 py-2"
             >
-              Details
-            </Button>
-            {editable(selected) && tool === "select" && (
-              <span className="text-muted-foreground min-h-8 basis-full text-xs sm:min-h-0 sm:basis-auto">
-                {selectionMode === "resize"
-                  ? "Drag a handle to resize, or drag the markup to move."
-                  : "Drag the markup to move it."}
+              <span className="max-w-32 truncate text-sm font-medium">
+                {nameOf(selected)}
               </span>
-            )}
-            {editable(selected) && !online && (
-              <span className="text-muted-foreground basis-full text-xs">
-                Reconnect to delete this markup.
-              </span>
-            )}
-          </div>
-        )}
+              {editable(selected) ? (
+                <>
+                  <Button
+                    size="sm"
+                    variant={
+                      selectionMode === "move" && tool === "select"
+                        ? "default"
+                        : "outline"
+                    }
+                    aria-pressed={selectionMode === "move" && tool === "select"}
+                    disabled={pending > 0}
+                    onClick={() => {
+                      selectTool("select");
+                      setSelectionMode("move");
+                      setPanel("");
+                    }}
+                  >
+                    Move
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={
+                      selectionMode === "resize" && tool === "select"
+                        ? "default"
+                        : "outline"
+                    }
+                    aria-pressed={
+                      selectionMode === "resize" && tool === "select"
+                    }
+                    disabled={pending > 0}
+                    onClick={() => {
+                      selectTool("select");
+                      setSelectionMode("resize");
+                      setPanel("");
+                    }}
+                  >
+                    Resize
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    aria-label="Delete markup"
+                    disabled={!deletable(selected)}
+                    title={
+                      !online ? "Reconnect to delete this markup" : undefined
+                    }
+                    onClick={() => void archive(selected)}
+                  >
+                    Delete
+                  </Button>
+                </>
+              ) : (
+                <span className="text-muted-foreground text-xs">Read only</span>
+              )}
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setPanel("selected")}
+              >
+                Details
+              </Button>
+              {editable(selected) && tool === "select" && (
+                <span className="text-muted-foreground min-h-8 basis-full text-xs sm:min-h-0 sm:basis-auto">
+                  {selectionMode === "resize"
+                    ? "Drag a handle to resize, or drag the markup to move."
+                    : "Drag the markup to move it."}
+                </span>
+              )}
+              {editable(selected) && !online && (
+                <span className="text-muted-foreground basis-full text-xs">
+                  Reconnect to delete this markup.
+                </span>
+              )}
+            </div>
+          )}
 
         {panel && (
           <aside
@@ -1671,10 +1797,25 @@ export function DrawingWorkspace({
                   {panel === "markups" && (
                     <fieldset className="grid grid-cols-2 gap-2 rounded border p-2">
                       <legend className="px-1 text-xs">Visible layers</legend>
-                      {measurementLayers.map(name => <label key={`measurement:${name}`} className="flex gap-2 text-sm">
-                        <input type="checkbox" checked={!hiddenMeasurementLayers.includes(name)} onChange={event => setHiddenMeasurementLayers(old => event.target.checked ? old.filter(item => item !== name) : [...old, name])} />
-                        {name} measurements
-                      </label>)}
+                      {measurementLayers.map((name) => (
+                        <label
+                          key={`measurement:${name}`}
+                          className="flex gap-2 text-sm"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={!hiddenMeasurementLayers.includes(name)}
+                            onChange={(event) =>
+                              setHiddenMeasurementLayers((old) =>
+                                event.target.checked
+                                  ? old.filter((item) => item !== name)
+                                  : [...old, name],
+                              )
+                            }
+                          />
+                          {name} measurements
+                        </label>
+                      ))}
                       {Object.entries(layers).map(([key, value]) => (
                         <label
                           className="flex gap-2 text-sm capitalize"
@@ -2470,15 +2611,25 @@ export function DrawingWorkspace({
               <DropdownMenuContent
                 side="top"
                 align="start"
-                className="max-h-[70dvh] min-w-60 overflow-y-auto"
+                className={`${MENU_CLASS} max-h-[70dvh] overflow-y-auto`}
               >
-                <DropdownMenuLabel className="text-muted-foreground text-xs font-normal">
-                  {statusText}
+                {statusText && (
+                  <DropdownMenuLabel className="text-muted-foreground px-2 py-1.5 text-xs font-normal">
+                    {statusText}
+                  </DropdownMenuLabel>
+                )}
+                <DropdownMenuLabel className={MENU_SECTION}>
+                  View
                 </DropdownMenuLabel>
-                <DropdownMenuItem onSelect={() => snapshotTool?.start()}>
+                <DropdownMenuItem
+                  className={MENU_ITEM}
+                  onSelect={() => snapshotTool?.start()}
+                >
+                  <MenuTile icon={CameraIcon} />
                   Snapshot
                 </DropdownMenuItem>
                 <DropdownMenuItem
+                  className={MENU_ITEM}
                   onSelect={() =>
                     setNavigate({
                       center: { x: 0.5, y: 0.5 },
@@ -2487,27 +2638,39 @@ export function DrawingWorkspace({
                     })
                   }
                 >
+                  <MenuTile icon={ScanIcon} />
                   Fit to screen
                 </DropdownMenuItem>
                 <DropdownMenuItem
+                  className={MENU_ITEM}
                   disabled={overlayChoices.length < 2}
                   onSelect={() => setOverlayPickerOpen(true)}
                 >
+                  <MenuTile icon={LayersIcon} />
                   Overlay drawings
                 </DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => setAppearanceOpen(true)}>
+                <DropdownMenuItem
+                  className={MENU_ITEM}
+                  onSelect={() => setAppearanceOpen(true)}
+                >
+                  <MenuTile icon={PaletteIcon} />
                   Drawing appearance
                 </DropdownMenuItem>
-                <DropdownMenuSeparator />
+                <DropdownMenuSeparator className="my-1.5" />
+                <DropdownMenuLabel className={MENU_SECTION}>
+                  Sheet
+                </DropdownMenuLabel>
                 {panels.map(([id, label]) => (
                   <DropdownMenuItem
                     key={id}
+                    className={MENU_ITEM}
                     onSelect={() => {
                       setMoreOpen(false);
                       setPanel(id);
                       setForm(null);
                     }}
                   >
+                    <MenuTile icon={PANEL_ICONS[id]} />
                     {label}
                   </DropdownMenuItem>
                 ))}
@@ -2515,8 +2678,7 @@ export function DrawingWorkspace({
             </DropdownMenu>
           )}
           {bottomMode.pipe ||
-          (!bottomMode.measuring &&
-            (tool !== "pan" && OTHER_TOOLS.has(tool))) ? (
+          (!bottomMode.measuring && tool !== "pan" && OTHER_TOOLS.has(tool)) ? (
             <Button
               variant="default"
               className={BAR_BUTTON}
@@ -2548,13 +2710,14 @@ export function DrawingWorkspace({
               <DropdownMenuContent
                 side="top"
                 align="center"
-                className="min-w-52"
+                className={MENU_CLASS}
               >
+                <DropdownMenuLabel className={MENU_SECTION}>
+                  Tools
+                </DropdownMenuLabel>
                 <DropdownMenuRadioGroup
                   value={
-                    bottomMode.pipe ||
-                    bottomMode.measuring ||
-                    tool === "pan"
+                    bottomMode.pipe || bottomMode.measuring || tool === "pan"
                       ? ""
                       : writable
                         ? tool
@@ -2572,14 +2735,17 @@ export function DrawingWorkspace({
                       <DropdownMenuRadioItem
                         key={id}
                         value={id}
+                        className={MENU_ITEM}
                         disabled={!writable && id !== "pan"}
                       >
+                        <MenuTile icon={TOOL_ICONS[id]} />
                         {label}
                       </DropdownMenuRadioItem>
                     ))}
                 </DropdownMenuRadioGroup>
-                <DropdownMenuSeparator />
+                <DropdownMenuSeparator className="my-1.5" />
                 <DropdownMenuCheckboxItem
+                  className={MENU_ITEM}
                   checked={bottomMode.pipe}
                   onCheckedChange={() => {
                     setTool("pan");
@@ -2587,6 +2753,7 @@ export function DrawingWorkspace({
                     requestMode("pipe");
                   }}
                 >
+                  <MenuTile icon={SplineIcon} />
                   Pipe system
                 </DropdownMenuCheckboxItem>
               </DropdownMenuContent>
