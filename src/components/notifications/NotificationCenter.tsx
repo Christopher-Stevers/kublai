@@ -18,6 +18,8 @@ import {
   XIcon,
 } from "lucide-react";
 import { api } from "~/trpc/react";
+import { useEmployeeSimulation } from "~/components/simulation/SimulationProvider";
+import { updateAppBadge } from "~/lib/app-badge";
 import { Button } from "~/components/ui/button";
 import {
   Dialog,
@@ -87,6 +89,7 @@ function NotificationInbox({
   refreshIdentity: () => void;
 }) {
   const router = useRouter();
+  const simulation = useEmployeeSimulation();
   const utils = api.useUtils();
   const [open, setOpen] = useState(false);
   const [unreadOnly, setUnreadOnly] = useState(true);
@@ -121,6 +124,13 @@ function NotificationInbox({
   );
   const read = api.notifications.read.useMutation();
   const unreadCount = overview.isError ? 0 : (overview.data?.unreadCount ?? 0);
+  useEffect(() => {
+    // Never replace the signed-in device badge with a simulated employee's
+    // count, stale cached data, or a failed/offline request's fallback zero.
+    if (simulation || !accountKey || !isOnline || overview.isError ||
+        !overview.isFetchedAfterMount || !overview.data) return;
+    void updateAppBadge(overview.data.unreadCount);
+  }, [simulation, accountKey, isOnline, overview.isError, overview.isFetchedAfterMount, overview.data]);
   const ring = useNotificationReminder(unreadCount, open);
   const hasUnread = unreadCount > 0;
   const items = list.isError

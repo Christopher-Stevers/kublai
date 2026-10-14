@@ -14,6 +14,7 @@ const mocks = vi.hoisted(() => ({
       targets: AppNotification["target"][];
     }) => Promise<{ ok: boolean }>
   >(),
+  badge: vi.fn(),
   invalidate: vi.fn(),
   refetch: vi.fn(),
   push: vi.fn(),
@@ -28,6 +29,7 @@ const mocks = vi.hoisted(() => ({
   listInput: {} as { unreadOnly?: boolean },
   more: false,
 }));
+vi.mock("~/lib/app-badge", () => ({ updateAppBadge: mocks.badge }));
 vi.mock("./PushNotifications", () => ({
   PushNotifications: () => <button>Turn push notifications on</button>,
 }));
@@ -63,6 +65,7 @@ vi.mock("~/trpc/react", () => ({
           data: input.accountKey
             ? { unreadCount: mocks.count, readTargets: mocks.targets }
             : undefined,
+          isFetchedAfterMount: mocks.validated,
           isError: mocks.error,
           refetch: mocks.refetch,
         }),
@@ -265,4 +268,19 @@ it("loads older notifications and shows an empty inbox", () => {
   fireEvent.click(screen.getByRole("button", { name: "All" }));
   expect(screen.getByText("No notifications yet.")).toBeVisible();
   expect(screen.getByRole("button", { name: "Mark all read" })).toBeDisabled();
+});
+
+it("synchronizes icon badges from unread counts, but never clears on a failed request", async () => {
+  mocks.badge.mockClear();
+  mocks.count = 4;
+  const view = render(<NotificationCenter />);
+  await waitFor(() => expect(mocks.badge).toHaveBeenLastCalledWith(4));
+  mocks.error = true;
+  mocks.badge.mockClear();
+  view.rerender(<NotificationCenter />);
+  expect(mocks.badge).not.toHaveBeenCalled();
+  mocks.error = false;
+  mocks.count = 0;
+  view.rerender(<NotificationCenter />);
+  await waitFor(() => expect(mocks.badge).toHaveBeenLastCalledWith(0));
 });

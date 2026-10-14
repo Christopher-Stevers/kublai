@@ -366,3 +366,29 @@ test("private and group chat pushes open the exact conversation without disclosi
   });
   assert.equal(h.shown.length, 1);
 });
+
+test("app icon badge follows valid pushes and clears on account changes", async () => {
+  const h = harness();
+  const badges = [];
+  h.self.navigator = {
+    setAppBadge: async () => badges.push("set"),
+    clearAppBadge: async () => badges.push("clear"),
+  };
+  await h.bind(account);
+  badges.length = 0;
+  await h.emit("push", {data:{json:()=>({type:"job-chat",account,url})}});
+  assert.deepEqual(badges, ["set"]);
+  await h.emit("push", {data:{json:()=>({type:"job-chat",account:"b".repeat(64),url})}});
+  assert.deepEqual(badges, ["set"]);
+  await h.bind(account);
+  assert.deepEqual(badges, ["set"]);
+  await h.bind(null);
+  assert.deepEqual(badges, ["set", "clear"]);
+});
+test("app icon badge rejection does not prevent a notification", async () => {
+  const h = harness();
+  h.self.navigator = {setAppBadge: async () => {throw Error("Denied")}};
+  await h.bind(account);
+  await h.emit("push", {data:{json:()=>({type:"job-chat",account,url})}});
+  assert.equal(h.shown.length, 1);
+});

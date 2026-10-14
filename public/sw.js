@@ -543,6 +543,14 @@ async function pushAccount() {
     return null;
   }
 }
+async function updateAppIconBadge(unread) {
+  try {
+    if (unread) await self.navigator?.setAppBadge?.();
+    else await self.navigator?.clearAppBadge?.();
+  } catch {
+    // Unsupported/disabled badges must never interrupt notification delivery.
+  }
+}
 let pushBindingWrite = Promise.resolve();
 self.addEventListener("message", (event) => {
   if (event.data?.type !== "FOREMANHQ_PUSH_ACCOUNT") return;
@@ -557,8 +565,10 @@ self.addEventListener("message", (event) => {
     .then(async () => {
       let ok = false;
       try {
+        const previousAccount = await pushAccount();
         const cache = await caches.open(PUSH_BINDING_CACHE);
         await cache.put(PUSH_BINDING_URL, new Response(account ?? ""));
+        if (!account || previousAccount !== account) await updateAppIconBadge(false);
         if (!account) {
           const notifications = await self.registration.getNotifications();
           for (const notification of notifications)
@@ -597,6 +607,7 @@ self.addEventListener("push", (event) => {
         data.account !== (await pushAccount())
       )
         return;
+      await updateAppIconBadge(true);
       const chat =
         data.type === "job-chat" || data.type === "conversation-chat";
       // Chat pushes carry the sender and message, like a messaging app.
