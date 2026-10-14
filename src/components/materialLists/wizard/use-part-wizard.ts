@@ -8,6 +8,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { wizardExactSizeLabel, sortWizardSizeFamily } from "~/lib/wizard-size-selection";
 import { facetCount } from "~/lib/catalogue-facets";
 import { api } from "~/trpc/react";
 import { useOnlineStatus } from "~/hooks/use-online-status";
@@ -182,7 +183,7 @@ export function usePartWizard(open = true, sortMode?: MaterialListSort, keywordG
         hasSizeSelection && selectedSize ? selectedSize.unit : undefined,
       sizeLabel:
         hasSizeSelection && selectedSize?.sizeLabel
-          ? selectedSize.sizeLabel
+          ? wizardExactSizeLabel(selectedSize.sizeLabel)
           : undefined,
       categoryId:
         hasCategorySelection && selectedCategory
@@ -265,7 +266,7 @@ export function usePartWizard(open = true, sortMode?: MaterialListSort, keywordG
           return false;
         }
         if (
-          selectedSize.sizeLabel &&
+          wizardExactSizeLabel(selectedSize.sizeLabel) &&
           part.sizeLabel !== selectedSize.sizeLabel
         ) {
           return false;
@@ -348,7 +349,7 @@ export function usePartWizard(open = true, sortMode?: MaterialListSort, keywordG
           nominal === selectedSize.nominal &&
           part.sizeUnit === selectedSize.unit;
         if (!primaryMatch) return false;
-        if (!selectedSize.sizeLabel) return true;
+        if (!wizardExactSizeLabel(selectedSize.sizeLabel)) return true;
         return part.sizeLabel === selectedSize.sizeLabel;
       }),
     [hasSizeSelection, partsByMaterial, selectedSize],
@@ -470,8 +471,10 @@ export function usePartWizard(open = true, sortMode?: MaterialListSort, keywordG
 
   const filteredPartsForSelection = useMemo(() => {
     const parts = selectionParts ?? [];
-    return sortMode ? sortMaterialListPartChoices(parts, sortMode, categoryTree ?? [], keywordGroups, catalogs ?? []) : parts;
-  }, [selectionParts, sortMode, categoryTree, keywordGroups, catalogs]);
+    const sorted = sortMode ? sortMaterialListPartChoices(parts, sortMode, categoryTree ?? [], keywordGroups, catalogs ?? []) : parts;
+    return hasSizeSelection && selectedSize && !wizardExactSizeLabel(selectedSize.sizeLabel)
+      ? sortWizardSizeFamily(sorted) : sorted;
+  }, [selectionParts, sortMode, categoryTree, keywordGroups, catalogs, hasSizeSelection, selectedSize]);
 
   const createCatalog = api.catalogue.createCatalog.useMutation({
     onSuccess: (newCatalog) => {
@@ -567,7 +570,7 @@ export function usePartWizard(open = true, sortMode?: MaterialListSort, keywordG
     size: { nominal: number; unit: string; sizeLabel?: string | null } | null,
   ) => {
     stepDirectionRef.current = "forward";
-    setSelectedSize(size);
+    setSelectedSize(size ? { ...size, sizeLabel: wizardExactSizeLabel(size.sizeLabel) ?? null } : null);
     setHasSizeSelection(true);
     setSelectedCategory(null);
     setHasCategorySelection(false);
