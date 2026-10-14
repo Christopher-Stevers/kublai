@@ -1,4 +1,5 @@
 "use client";
+import { UndoOrderButton } from "~/components/materialLists/UndoOrderButton";
 import { usePageViewState } from "~/hooks/use-page-view-state";
 
 import { useMemo, useRef, useState } from "react";
@@ -565,11 +566,12 @@ export default function OrdersPage() {
                         )}
                       </span>
                     </button>
-                    <div className="flex h-8 w-24 shrink-0 items-center justify-center">
+                    <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+                      {canSendOrders && <UndoOrderButton orderId={order.id} disabled={!isOnline || isSending} />}
                       <Button
                         size="sm"
                         variant="outline"
-                        className="h-8 w-full"
+                        className="h-8"
                         onClick={() => handleResendOrder(order.id)}
                         disabled={
                           !isOnline ||

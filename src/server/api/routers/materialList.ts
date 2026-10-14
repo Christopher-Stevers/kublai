@@ -252,6 +252,31 @@ import {
 } from "~/server/db/schema";
 
 export const materialListRouter = createTRPCRouter({
+  undoOrder: hasDashboardAccess
+    .input(z.object({ orderId: z.string().uuid() }))
+    .mutation(async ({ctx, input}) => {
+      assertCan(ctx.user, "orders.send");
+      const organizationId = ctx.user.organizationId;
+      if (!organizationId) throw new TRPCError({code:"FORBIDDEN"});
+      const result = await ctx.db.transaction(async tx => {
+        const [order] = await tx.select().from(orders).where(and(eq(orders.id,input.orderId),eq(orders.organizationId,organizationId))).limit(1);
+        if (!order || order.kind !== "materials") throw new TRPCError({code:"NOT_FOUND",message:"Material order not found."});
+        await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`${organizationId}:${order.jobId}:orders`}))`);
+        await tx.select({id:orders.id}).from(orders).where(eq(orders.id,order.id)).for("update");
+
+        const lines = await tx.select({id:orderItems.id}).from(orderItems).where(eq(orderItems.orderId,order.id));
+        const unlocked = lines.length ? await tx.update(quoteItems).set({sentOrderItemId:null,updatedAt:new Date()})
+          .where(inArray(quoteItems.sentOrderItemId,lines.map(line=>line.id))).returning({quoteId:quoteItems.quoteId}) : [];
+        // Undo removes the order, including its delivery verification records.
+        await tx.delete(orderItems).where(eq(orderItems.orderId,order.id));
+        await tx.delete(orders).where(eq(orders.id,order.id));
+        for (const quoteId of new Set(unlocked.map(line=>line.quoteId))) await recalculatePurchaseTotals(tx,quoteId);
+        return {materialListId:order.materialListId};
+      });
+      if (result.materialListId) publishMaterialListEvent(result.materialListId,"updated",organizationId);
+      return result;
+    }),
+
   merge: hasDashboardAccess
     .input(z.object({ sourceId: z.string().uuid(), targetId: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
@@ -1374,7 +1399,7 @@ ${foremanName}`;
 
         const [existingOrderCountResult] = await tx
           .select({
-            count: sql<number>`count(*)::int`,
+            count: sql<number>`coalesce(max(substring(${orders.orderNumber} from '([0-9]{1,9})$')::int), 0)::int`,
           })
           .from(orders)
           .where(

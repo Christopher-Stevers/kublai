@@ -392,6 +392,32 @@ describe.skipIf(!socket)(
       await db.update(schema.materialLists).set({organizationId:id(999)}).where(eq(schema.materialLists.id,target.id));
       await expect(material.merge({sourceId:list,targetId:target.id})).rejects.toThrow("not found");
     });
+    it("undoes an order completely, clears receipts and makes its original demand orderable", async () => {
+      const sent = await material.sendGeneratedOrder({materialListId:list,supplierId:supplier,sentTo:"test@example.test"});
+      const [line] = await db.select().from(schema.orderItems).where(eq(schema.orderItems.orderId,sent.id));
+      await material.updateOrderItemVerification({orderItemId:line!.id,receivedQuantity:20,verificationStatus:"partial"});
+      await material.undoOrder({orderId:sent.id});
+      expect(await db.select().from(schema.orders)).toHaveLength(0);
+      expect(await db.select().from(schema.orderItems)).toHaveLength(0);
+      const [editable] = await db.select().from(schema.quoteItems).where(eq(schema.quoteItems.id,item));
+      expect(editable).toMatchObject({sentOrderItemId:null,quantity:"37.000000"});
+      const preview = await material.previewOrders({materialListId:list});
+      expect(preview.sent).toHaveLength(0);
+      expect(preview.possible[0]!.items).toHaveLength(1);
+      expect(await material.listOrders()).toHaveLength(0);
+      await material.sendGeneratedOrder({materialListId:list,supplierId:supplier,sentTo:"test@example.test"});
+      expect(await db.select().from(schema.orders)).toHaveLength(1);
+    });
+    it("undo only unlocks its own rows and does not reuse another order's number", async () => {
+      const first = await material.sendGeneratedOrder({materialListId:list,supplierId:supplier,sentTo:"test@example.test"});
+      const copy = await material.duplicate({materialListId:list});
+      const second = await material.sendGeneratedOrder({materialListId:copy.id,supplierId:supplier,sentTo:"test@example.test"});
+      await material.undoOrder({orderId:first.id});
+      expect((await material.previewOrders({materialListId:copy.id})).possible).toHaveLength(0);
+      const third = await material.sendGeneratedOrder({materialListId:list,supplierId:supplier,sentTo:"test@example.test"});
+      expect(third.orderNumber).toBe("ORDER-003");
+      expect((await material.getOrderById({orderId:second.id})).items).toHaveLength(1);
+    });
     it("serializes simultaneous sends so a row is ordered once", async () => {
       const results = await Promise.allSettled([1, 2].map(() => material.sendGeneratedOrder({ materialListId: list, supplierId: supplier, sentTo: "supplier@example.test" })));
       expect(results.filter(result => result.status === "fulfilled")).toHaveLength(1);

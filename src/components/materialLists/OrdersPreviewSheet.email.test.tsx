@@ -40,6 +40,7 @@ vi.mock("~/trpc/react", () => ({
       },
     },
     materialList: {
+      undoOrder: { useMutation: () => ({ isPending: false, mutateAsync: vi.fn() }) },
       sendGeneratedOrder: { useMutation: () => ({ mutateAsync: state.save }) },
       markOrderSent: { useMutation: () => ({ mutateAsync: state.resend }) },
       listOrders: {

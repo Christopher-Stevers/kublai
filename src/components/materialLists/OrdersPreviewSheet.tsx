@@ -1,4 +1,5 @@
 "use client";
+import { UndoOrderButton } from "./UndoOrderButton";
 import { requestMaterialListReplicacheSync } from "~/lib/replicache-material-list";
 
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -503,6 +504,7 @@ export function OrdersPreviewSheet({
             {isSent ? (
               <div className="flex items-center gap-2">
                 <span className="text-sm font-medium text-green-700">Sent</span>
+                {canGenerateDocuments && <UndoOrderButton orderId={order.id} disabled={!isOnline || isSending} onUndone={loadPreview} />}
                 {draft && (
                   <Button
                     size="sm"
