@@ -10,6 +10,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { runHeaderBackOverride } from "~/lib/header-back-events";
 
 const state = vi.hoisted(() => ({
+  account: null as null | { accountKey: string; store: Record<string, ReturnType<typeof vi.fn>> },
+  fetchSet: vi.fn(),
+  fetchWorkspace: vi.fn(),
   canManage: true,
   canDelete: undefined as boolean | undefined,
   sets: [] as Array<{
@@ -62,10 +65,10 @@ vi.mock("~/trpc/react", () => {
   return {
     api: {
       useUtils: () => ({
-        drawingsWorkspace: { list: { invalidate: state.refreshIdentities }, get: { invalidate: vi.fn(), prefetch: state.prefetch } },
+        drawingsWorkspace: { list: { invalidate: state.refreshIdentities }, get: { invalidate: vi.fn(), prefetch: state.prefetch, fetch: state.fetchWorkspace } },
         drawings: {
           listSets: { invalidate: vi.fn() },
-          getSet: { invalidate: vi.fn() },
+          getSet: { invalidate: vi.fn(), fetch: state.fetchSet },
         },
       }),
       drawingsWorkspace: {
@@ -121,11 +124,15 @@ vi.mock("./DrawingWorkspace", () => ({
     </div>
   ),
 }));
-vi.mock("./DrawingAccountProvider", () => ({ useDrawingAccount: () => null }));
+vi.mock("./DrawingAccountProvider", () => ({ useDrawingAccount: () => state.account }));
+
+vi.mock("~/lib/drawing-pdf-offline-runtime", () => ({ warmDrawingPdfRuntime: vi.fn(async () => undefined) }));
+vi.mock("~/lib/drawing-offline", () => ({ collectDrawingOfflineUrls: vi.fn(async (urls: string[]) => [...urls, "/original.pdf"]) }));
 
 import { JobDrawingsView } from "./JobDrawingsView";
 
 beforeEach(() => {
+  state.account = null;
   window.history.replaceState({}, "", "/");
   state.summaries = [];
   state.canManage = true;
@@ -498,3 +505,57 @@ describe("Drawings", () => {
   expect(state.prefetch).toHaveBeenCalledWith({ sheetId: "s1" }, { staleTime: 15_000 });
   expect(screen.queryByText("Viewing M-101")).toBeNull();
  });
+
+
+describe("drawing set downloads", () => {
+  function offlineStore() {
+    const store = {
+      readSnapshot: vi.fn(async () => null),
+      saveSnapshot: vi.fn(async () => undefined),
+      readAsset: vi.fn(async () => null),
+      resolveAssetUrl: vi.fn(async () => null),
+      summary: vi.fn(async () => ({ bytes: 0, files: 0 })),
+      saveAssets: vi.fn(async () => undefined),
+    };
+    state.account = { accountKey: "test", store };
+    state.fetchSet.mockResolvedValue({ set: { id: "set-1" }, sheets: state.sheets });
+    state.fetchWorkspace.mockImplementation(async ({ sheetId }: { sheetId: string }) => ({ sheetId, metadata: {}, jobSheets: [] }));
+    return store;
+  }
+  it("downloads from the set card without opening it, including originals and workspaces", async () => {
+    const store = offlineStore();
+    state.canManage = false;
+    render(<JobDrawingsView jobId="job" />);
+    fireEvent.click(screen.getByRole("button", { name: "Download Mechanical for offline use" }));
+    await screen.findByText("Downloaded · Refresh");
+    expect(state.fetchSet).toHaveBeenCalledWith({ setId: "set-1" });
+    expect(store.saveAssets).toHaveBeenCalledWith(["/1.webp", "/2.webp", "/original.pdf"], expect.objectContaining({ budgetBytes: expect.any(Number) }));
+    expect(store.saveSnapshot).toHaveBeenCalledWith("workspace:s2", expect.objectContaining({ sheetId: "s2" }));
+    expect(store.saveSnapshot).toHaveBeenCalledWith("drawing-download:set-1", expect.objectContaining({ sheets: ["s1", "s2"] }));
+    expect(screen.getByRole("button", { name: "Open Mechanical" })).toBeTruthy();
+  });
+  it("restores downloaded status only when the saved files and workspaces exist", async () => {
+    const store = offlineStore();
+    store.readSnapshot.mockImplementation(async (key: string) => key === "drawing-download:set-1" ? {
+      version: `${state.sets[0]!.updatedAt.toISOString()}:2`, urls: ["/original.pdf"], sheets: ["s1", "s2"],
+    } : {});
+    store.readAsset.mockResolvedValue(new Blob(["PDF"]));
+    const view = render(<JobDrawingsView jobId="job" />);
+    await screen.findByText("Downloaded · Refresh");
+    view.unmount();
+    store.readAsset.mockResolvedValue(null);
+    render(<JobDrawingsView jobId="job" />);
+    await waitFor(() => expect(store.readAsset).toHaveBeenCalledTimes(2));
+    expect(screen.queryByText("Downloaded · Refresh")).toBeNull();
+  });
+  it("does not mark a failed download as complete", async () => {
+    const store = offlineStore();
+    store.saveAssets.mockRejectedValue(new Error("Device storage is full"));
+    render(<JobDrawingsView jobId="job" />);
+    fireEvent.click(screen.getByRole("button", { name: "Download Mechanical for offline use" }));
+    await waitFor(() => expect(store.saveAssets).toHaveBeenCalled());
+    await waitFor(() => expect(screen.queryByText("Cancel download")).toBeNull());
+    expect(screen.queryByText("Downloaded · Refresh")).toBeNull();
+    expect(store.saveSnapshot.mock.calls.some(call => call[0] === "drawing-download:set-1")).toBe(false);
+  });
+});
