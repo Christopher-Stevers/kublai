@@ -1,4 +1,5 @@
 "use client";
+import { notify } from "~/components/ui/app-dialogs";
 import { usePageViewState } from "~/hooks/use-page-view-state";
 import { FinancialOnly } from "~/components/permissions/FinancialVisibility";
 import { DeferredJobModelsView } from "~/components/models/DeferredJobModelsView";
@@ -24,6 +25,8 @@ import { Input } from "~/components/ui/input";
 import {
   BriefcaseIcon,
   CalendarIcon,
+  CopyIcon,
+  MergeIcon,
   CheckCircle2Icon,
   UserIcon,
   UsersIcon,
@@ -215,7 +218,7 @@ export function DashboardClient({
 }: {
   initialJobs: DashboardJob[];
 }) {
-  const { getReplicache: getMaterialListReplicache, mutateAndSync: mutateMaterialListAndSync } = useWorkspaceMutations();
+  const { getReplicache: getMaterialListReplicache, mutateAndSync: mutateMaterialListAndSync, requestSync } = useWorkspaceMutations();
   const sandbox = useTutorialSandbox();
   const router = useRouter();
   const hasRedirectedRef = useRef(false);
@@ -284,6 +287,7 @@ export function DashboardClient({
     });
   const can = userData?.permissions.can;
   const canDeleteJobs = !sandbox && (can?.["jobs.delete"] ?? true);
+  const canEditLists = !sandbox && (can?.["lists.edit"] ?? false);
   const canDeleteLists = !sandbox && (can?.["lists.delete"] ?? true);
 
   // Redirect to onboarding if user has no organizationId
@@ -305,6 +309,31 @@ export function DashboardClient({
   const offlineMaterialListDetail = useReplicacheMaterialList(
     offlineMaterialListId ?? "",
   );
+  const [mergeSource, setMergeSource] = useState<{ id: string; name: string } | null>(null);
+  const [mergeTarget, setMergeTarget] = useState("");
+  const utils = api.useUtils();
+  const refreshMaterialLists = () => {
+    requestSync();
+    if (offlineJobId) void utils.job.getJob.invalidate({ jobId: offlineJobId });
+  };
+  const duplicate = api.materialList.duplicate.useMutation({
+    onSuccess: () => {
+      refreshMaterialLists();
+      notify("Editable copy created.", "success");
+    },
+    onError: error => notify(error.message, "error"),
+  });
+  const merge = api.materialList.merge.useMutation({
+    onSuccess: ({ movedCount }) => {
+      refreshMaterialLists();
+      setMergeSource(null);
+      setMergeTarget("");
+      notify(`${movedCount} unlocked ${movedCount === 1 ? "item moved" : "items moved"}. Sent items remain in their original list.`, "success");
+    },
+    onError: error => notify(error.message, "error"),
+  });
+  const listsPending = offlineJobDetail?.materialLists.some(list => list.pendingSync) ?? false;
+  const listActionsBusy = !isBrowserOnline || listsPending || duplicate.isPending || merge.isPending;
   const suppliers = useReplicacheSuppliers();
   const { sortedItems } = useMaterialListSort(offlineMaterialListDetail.items, suppliers);
   const jobs = sandbox || replicacheJobs.length > 0 ? replicacheJobs : initialJobs;
@@ -741,7 +770,7 @@ export function DashboardClient({
                           <CardTitle className="line-clamp-2 min-w-0 leading-tight break-words">
                             {list.name}
                           </CardTitle>
-                          {canDeleteLists && (
+                          {(canDeleteLists || canEditLists) && (
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
                                 <Button
@@ -760,7 +789,17 @@ export function DashboardClient({
                                 align="end"
                                 onClick={(event) => event.stopPropagation()}
                               >
-                                <DropdownMenuItem
+                                {canEditLists && <>
+                                  <DropdownMenuItem disabled={listActionsBusy}
+                                    onSelect={() => duplicate.mutate({ materialListId: list.id })}>
+                                    <CopyIcon className="h-4 w-4" />Duplicate
+                                  </DropdownMenuItem>
+                                  {list.kind !== "tools" && <DropdownMenuItem disabled={listActionsBusy}
+                                    onSelect={() => { setMergeSource({ id: list.id, name: list.name }); setMergeTarget(""); }}>
+                                    <MergeIcon className="h-4 w-4" />Merge
+                                  </DropdownMenuItem>}
+                                </>}
+                                {canDeleteLists && <DropdownMenuItem
                                   variant="destructive"
                                   onSelect={() =>
                                     setMaterialListToDelete({
@@ -772,7 +811,7 @@ export function DashboardClient({
                                 >
                                   <TrashIcon className="h-4 w-4" />
                                   Delete list
-                                </DropdownMenuItem>
+                                </DropdownMenuItem>}
                               </DropdownMenuContent>
                             </DropdownMenu>
                           )}
@@ -863,6 +902,28 @@ export function DashboardClient({
               initialPoNumber={offlineJob.poNumber ?? null}
             />
           )}
+
+          <Dialog open={!!mergeSource} onOpenChange={open => { if (!open && !merge.isPending) setMergeSource(null); }}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Merge material lists</DialogTitle>
+                <DialogDescription>Move all unlocked items from “{mergeSource?.name}” into the list you choose below. Sent items stay in their original list with their order history. The original list is kept.</DialogDescription>
+              </DialogHeader>
+              <label htmlFor="dashboard-merge-target" className="text-sm font-medium">Merge into</label>
+              <select id="dashboard-merge-target" className="w-full rounded-md border bg-background p-3 text-foreground"
+                value={mergeTarget} onChange={event => setMergeTarget(event.target.value)} disabled={merge.isPending}>
+                <option value="">Choose a material list</option>
+                {offlineJobDetail?.materialLists.filter(list => list.id !== mergeSource?.id && list.kind !== "tools").map(list => <option key={list.id} value={list.id}>{list.name}</option>)}
+              </select>
+              <DialogFooter>
+                <Button variant="outline" disabled={merge.isPending} onClick={() => setMergeSource(null)}>Cancel</Button>
+                <Button disabled={!mergeSource || !mergeTarget || listActionsBusy}
+                  onClick={() => mergeSource && merge.mutate({ sourceId: mergeSource.id, targetId: mergeTarget })}>
+                  {merge.isPending ? "Merging…" : "Merge unlocked items"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
 
           <MaterialListOrderPickerDialog
             materialList={materialListForOrders}
