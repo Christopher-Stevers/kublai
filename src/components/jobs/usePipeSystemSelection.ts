@@ -49,7 +49,9 @@ export function usePipeSystemSelection({ active, url, page, sheetKey }: {
   }, [active, url, page, key, result, attempt]);
   return {
     selection, reading: active && hasPdf && !result,
-    selecting: busy === key, error, codes: session?.codes ?? [], system, hasPdf,
+    selecting: busy === key, error,
+    codes: session?.layerCodes.length ? session.layerCodes : session?.codes ?? [],
+    system, hasPdf,
     layerCodes: session?.layerCodes ?? [],
     ready: Boolean(session), hasLines: session?.hasLines ?? false,
     select: (point: SheetPoint | null, tolerance: number) => {

@@ -179,16 +179,20 @@ async function activate() {
 
 it("choosing a saved system immediately highlights disconnected runs and excludes other systems", async () => {
   loadPipeLinework.mockResolvedValueOnce({
-    aspect: 0.5, truncated: false, labels: [], segments: [
+    aspect: 0.5, truncated: false,
+    labels: [{ text: "GAS", system: "GAS", left: 0.4, right: 0.5, top: 0.49, bottom: 0.51 }],
+    segments: [
       { ...line("cold-one", 0.1, 0.2, 0.3, 0.2), layer: "M-PLMB-DCWT" },
       { ...line("cold-two", 0.7, 0.8, 0.9, 0.8), layer: "M-PLMB-DCWT" },
       { ...line("hot", 0.1, 0.4, 0.8, 0.4), layer: "M-PLMB-DHWT" },
+      line("unassigned", 0.3, 0.5, 0.6, 0.5),
     ],
   });
   open();
   await activate();
   const systems = screen.getByRole("combobox", { name: "Pipe system" });
   expect(within(systems).getByRole("option", { name: "Domestic cold water (DCW)" })).toBeInTheDocument();
+  expect(within(systems).queryByRole("option", { name: "Gas (GAS)" })).toBeNull();
   fireEvent.change(systems, { target: { value: "DCW" } });
   await waitFor(() => expect(screen.getByRole("img", { name: "Selected pipe system" })).toHaveAttribute("data-pipe-segment-count", "2"));
   expect(screen.getByText("Highlighted line length · this sheet")).toBeInTheDocument();
