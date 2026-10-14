@@ -8,6 +8,7 @@ import { extractSheetName } from "~/server/rooms/sheet-name";
 import { pdfTitleBlockWord } from "~/lib/drawing-title-block";
 import { readUploadTitleBlock } from "~/server/drawings/upload-title-block";
 import { SERVER_PDF_RENDER_OPTIONS } from "./pdf-render-options";
+import { saveDrawingPipeLinework } from "~/server/drawings/pipe-linework";
 
 async function load(dest: string) {
   const bytes = await readFile(path.join(dest, "plan.pdf"));
@@ -71,6 +72,11 @@ async function main() {
         .webp({ quality: 82 })
         .toBuffer();
       await writeFile(path.join(dest, `floor-${pageNumber}.webp`), webp);
+      // Retain the original vectors and their system assignments at upload.
+      // An unusual PDF can still open through the browser extraction fallback.
+      await saveDrawingPipeLinework(dest, document, page).catch((error: unknown) => {
+        console.error("Drawing system extraction failed", error instanceof Error ? error.message : "Unknown PDF error");
+      });
       const text = await page.getTextContent();
       const words = text.items.flatMap((item) =>
         "str" in item && item.str.trim() ? [pdfTitleBlockWord(item, raw)] : [],

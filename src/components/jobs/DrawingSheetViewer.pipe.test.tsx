@@ -176,6 +176,28 @@ async function activate() {
     ).toBeInTheDocument(),
   );
 }
+
+it("choosing a saved system immediately highlights disconnected runs and excludes other systems", async () => {
+  loadPipeLinework.mockResolvedValueOnce({
+    aspect: 0.5, truncated: false, labels: [], segments: [
+      { ...line("cold-one", 0.1, 0.2, 0.3, 0.2), layer: "M-PLMB-DCWT" },
+      { ...line("cold-two", 0.7, 0.8, 0.9, 0.8), layer: "M-PLMB-DCWT" },
+      { ...line("hot", 0.1, 0.4, 0.8, 0.4), layer: "M-PLMB-DHWT" },
+    ],
+  });
+  open();
+  await activate();
+  const systems = screen.getByRole("combobox", { name: "Pipe system" });
+  expect(within(systems).getByRole("option", { name: "Domestic cold water (DCW)" })).toBeInTheDocument();
+  fireEvent.change(systems, { target: { value: "DCW" } });
+  await waitFor(() => expect(screen.getByRole("img", { name: "Selected pipe system" })).toHaveAttribute("data-pipe-segment-count", "2"));
+  expect(screen.getByText("Highlighted line length · this sheet")).toBeInTheDocument();
+  fireEvent.change(systems, { target: { value: "DHW" } });
+  await waitFor(() => expect(screen.getByRole("img", { name: "Selected pipe system" })).toHaveAttribute("data-pipe-segment-count", "1"));
+  fireEvent.click(screen.getByRole("button", { name: "Clear selection" }));
+  expect(systems).toHaveValue("");
+  expect(screen.queryByRole("img", { name: "Selected pipe system" })).toBeNull();
+});
 async function tap(frame: Element, x: number, y: number, pointerId = 1) {
   fireEvent.pointerDown(frame, {
     clientX: x,
@@ -248,7 +270,7 @@ describe("pipe selection in the drawing viewer", () => {
       const { frame } = open();
       await activate();
       await tap(frame, x, y);
-      expect(screen.getByText("ST system")).toBeInTheDocument();
+      expect(screen.getByText("Storm")).toBeInTheDocument();
       expect(total()).toHaveTextContent("110 m");
       expect(total()).toHaveTextContent("Total distance · this sheet");
       const highlight = screen.getByRole("img", {

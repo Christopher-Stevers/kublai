@@ -86,7 +86,7 @@ describe("drawing geometry worker lifecycle", () => {
     worker.respond({
       id: worker.messages[1]!.id,
       ok: true,
-      value: { codes: ["ST"], hasLines: true },
+      value: { layerCodes: [], codes: ["ST"], hasLines: true },
     });
     const session = await pending;
     const selection = session.select({ x: 0.5, y: 0.5 }, 0.01);

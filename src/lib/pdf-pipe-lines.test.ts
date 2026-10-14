@@ -346,6 +346,21 @@ describe("embedded pipe labels", () => {
 });
 
 describe("pipe PDF loader", () => {
+  it("loads saved upload geometry without downloading or parsing the PDF again", async () => {
+    const saved = { segments: [], labels: [], aspect: 0.5, truncated: false };
+    const fetcher = vi.fn().mockResolvedValue(new Response(JSON.stringify({ version: 1, linework: saved })));
+    vi.stubGlobal("fetch", fetcher);
+    const before = pdf.load.mock.calls.length;
+    try {
+      const url = "/api/job-rooms/files/0391aed4-7773-47ec-9141-09df373ec008/d814fc88-da7c-4df5-aa89-fe3c1fde0462/plan.pdf";
+      expect(await loadPipeLinework({ url, page: 10 })).toEqual(saved);
+      expect(fetcher.mock.calls[0]?.[0]).toBe(url.replace("plan.pdf", "pipes-10-v1.json"));
+      expect(pdf.load.mock.calls.length).toBe(before);
+      fetcher.mockResolvedValue(new Response(null, { status: 403 }));
+      await expect(loadPipeLinework({ url, page: 10 })).rejects.toThrow("access denied");
+      expect(pdf.load.mock.calls.length).toBe(before);
+    } finally { vi.unstubAllGlobals(); }
+  });
   it("uses shared document lifecycle, disables imported annotations, and loads no raster interpretation", async () => {
     const getOperatorList = vi.fn(async () => ({
       fnArray: [PIPE_OPS.constructPath],

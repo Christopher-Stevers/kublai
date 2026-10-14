@@ -33,6 +33,7 @@ export type PipeLinework = {
 };
 
 export type PipeSystemSelection = {
+  source?: "layer";
   system: string | null;
   segments: PipeSegment[];
   lengthInSheetWidths: number;
@@ -363,11 +364,40 @@ function labelParallel(label: PipeLabel, segment: PipeSegment, aspect: number) {
 
 
 /** Conservative CAD discipline names are stronger than a nearby annotation. */
-function layerSystem(layer?: string): string | null {
-  if (!layer || !/(?:^|[-_| ])(?:PLMB|PIPE|PIPING|HYDR|P)(?:[-_| ]|$)/i.test(layer)) return null;
-  const code = layer.toUpperCase().split(/[-_| ]+/).at(-1)!;
-  const aliases: Record<string, string> = { SANI: "SAN", SANITARY: "SAN", STRM: "ST", STORM: "ST", DCWT: "DCW", DHWT: "DHW" };
+export function layerSystem(layer?: string): string | null {
+  if (!layer) return null;
+  if (/(?:^|[|])M[-_]FIRE[-_]PIPE(?:[-_]|$)/i.test(layer)) return "FIRE";
+  if (/(?:^|[|])M[-_]FUEL[-_]GAS(?:[-_]|$)/i.test(layer)) return "GAS";
+  const match = /(?:^|[-_| ])(?:PLMB|PIPE|PIPING|HYDR|P)[-_| ](.+)$/i.exec(layer);
+  if (!match) return null;
+  // Status/location suffixes do not erase the source system assignment.
+  const code = match[1]!.toUpperCase().replace(/(?:[-_| ](?:BELW|ABOV|EXST|DEMO|NEW))+$/, "");
+  const aliases: Record<string, string> = { SANI: "SAN", SANITARY: "SAN", STRM: "ST", STORM: "ST", DCWT: "DCW", DHWT: "DHW", CHS: "CHWS", CHR: "CHWR", CWS: "CWS", CWR: "CWR", "RFRG-SPLY": "RFRG-SPLY", "RFRG-RTRN": "RFRG-RTRN", "RFRG-RETN": "RFRG-RTRN" };
   return aliases[code] ?? (/^(ST|SAN|CW|HW|HWR|DCW|DHW|DHWR|RW|RWL|SW|FW|CHWS|CHWR|HWS|MWS|MWR|NG|LPG|GAS|CD|COND|SD|PD|VENT)$/.test(code) ? code : null);
+}
+
+export const PIPE_SYSTEM_NAMES: Record<string, string> = {
+  SAN: "Sanitary", VENT: "Vent", ST: "Storm", DCW: "Domestic cold water",
+  DHW: "Domestic hot water", DHWR: "Domestic hot-water return",
+  HWS: "Heating water supply", HWR: "Heating water return",
+  CHWS: "Chilled water supply", CHWR: "Chilled water return",
+  CWS: "Condenser water supply", CWR: "Condenser water return",
+  GAS: "Gas", FIRE: "Fire piping", "RFRG-SPLY": "Refrigerant supply", "RFRG-RTRN": "Refrigerant return",
+};
+
+export function pipeLayerCodes(linework: PipeLinework): string[] {
+  return [...new Set(linework.segments.map(segment => layerSystem(segment.layer)).filter((code): code is string => Boolean(code)))].sort();
+}
+
+/** Exact source-layer membership, including disconnected runs on the sheet. */
+export function selectPipeLayerSystem(linework: PipeLinework, system: string): PipeSystemSelection {
+  const segments = linework.segments.filter(segment => layerSystem(segment.layer) === system);
+  return {
+    source: "layer", system, segments,
+    lengthInSheetWidths: unionLength(segments, linework.aspect),
+    truncated: linework.truncated,
+    warnings: [...(linework.warnings ?? []), ...(linework.truncated ? [PARTIAL_WARNING] : []), "Length covers the highlighted PDF linework, including any symbols on the system layer."],
+  };
 }
 
 function annotationLayer(layer?: string) {

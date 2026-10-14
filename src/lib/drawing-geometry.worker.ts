@@ -2,6 +2,8 @@ import { buildSnapIndex, mergeCollinear, type SnapSegment } from "./sheet-snap";
 import {
   buildPipeSystemIndex,
   selectPipeSystem,
+  selectPipeLayerSystem,
+  pipeLayerCodes,
   type PipeLinework,
   type PipeSystemIndex,
 } from "./pipe-system";
@@ -53,9 +55,10 @@ scope.onmessage = ({ data }) => {
         pipes = buildPipeSystemIndex(linework);
         linework = null;
         const info: PipeGeometryInfo = {
+          layerCodes: pipeLayerCodes(pipes.linework),
           codes: [
             ...new Set(
-              [...pipes.segmentSystems.values()].flatMap((codes) => [...codes]),
+              [...pipeLayerCodes(pipes.linework), ...[...pipes.segmentSystems.values()].flatMap((codes) => [...codes])],
             ),
           ].sort(),
           hasLines: pipes.linework.segments.length > 0,
@@ -75,6 +78,11 @@ scope.onmessage = ({ data }) => {
             data.system,
           ),
         });
+        break;
+      case "pipe-layer":
+        if (!pipes) throw new Error("The drawing lines are not ready.");
+        scope.postMessage({ id: data.id, ok: true, value: selectPipeLayerSystem(pipes.linework, data.system) });
+        break;
     }
   } catch (error) {
     scope.postMessage({

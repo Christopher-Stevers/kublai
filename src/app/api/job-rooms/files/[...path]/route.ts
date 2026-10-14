@@ -37,8 +37,8 @@ async function serve(
   if (
     !jobId ||
     !new RegExp(
-      // Drawings tiles live only under an upload folder.
-      `^${uuid}/(?:${uuid}/)?(?:plan\\.pdf|floor-\\d+\\.webp)$|^${uuid}/${uuid}/tiles/\\d+/(?:manifest\\.json|[24]/\\d+_\\d+\\.webp)$`,
+      // Saved system geometry and tiles live only under an immutable upload folder.
+      `^${uuid}/(?:${uuid}/)?(?:plan\\.pdf|floor-\\d+\\.webp)$|^${uuid}/${uuid}/pipes-[1-9][0-9]*-v1\\.json$|^${uuid}/${uuid}/tiles/\\d+/(?:manifest\\.json|[24]/\\d+_\\d+\\.webp)$`,
       "i",
     ).test(storageKey)
   ) {
@@ -90,6 +90,7 @@ async function serve(
       "Accept-Ranges": "bytes",
       "X-Content-Type-Options": "nosniff",
     });
+    if (/\/pipes-[1-9][0-9]*-v1\.json$/.test(storageKey)) headers.set("Content-Encoding", "gzip");
     // Auth and organization checks above must also precede metadata responses.
     if (isNotModified(request.headers, file.etag, file.modified)) {
       await file.close();

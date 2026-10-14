@@ -9,6 +9,8 @@ import {
 import {
   buildPipeSystemIndex,
   selectPipeSystem,
+  selectPipeLayerSystem,
+  pipeLayerCodes,
   type PipeLinework,
   type PipeSystemIndex,
   type PipeSystemSelection,
@@ -153,6 +155,7 @@ export async function buildDrawingSnapIndex(
 }
 
 export type PipeGeometrySession = PipeGeometryInfo & {
+  selectLayer: (system: string) => Promise<PipeSystemSelection>;
   select: (
     point: SheetPoint,
     tolerance: number,
@@ -190,6 +193,7 @@ export async function createPipeGeometrySession(
       );
       return {
         ...info,
+        selectLayer: (system) => client.request<PipeSystemSelection>({ kind: "pipe-layer", system }),
         select: (point, tolerance, system) =>
           client.request<PipeSystemSelection>({
             kind: "pipe-select",
@@ -206,9 +210,14 @@ export async function createPipeGeometrySession(
   }
   let index: PipeSystemIndex | null = buildPipeSystemIndex(linework);
   const session: PipeGeometrySession = {
+    layerCodes: pipeLayerCodes(linework),
+    selectLayer: async (system) => {
+      if (!index) throw aborted();
+      return selectPipeLayerSystem(index.linework, system);
+    },
     codes: [
       ...new Set(
-        [...index.segmentSystems.values()].flatMap((codes) => [...codes]),
+        [...pipeLayerCodes(index.linework), ...[...index.segmentSystems.values()].flatMap((codes) => [...codes])],
       ),
     ].sort(),
     hasLines: index.linework.segments.length > 0,

@@ -1949,6 +1949,8 @@ export function DrawingSheetViewer({
               codes={pipe.codes}
               system={pipe.system}
               selectedSystem={pipe.selection?.system}
+              wholeSystem={pipe.selection?.source === "layer"}
+              hasLayerSystems={pipe.layerCodes.length > 0}
               total={pipeTotal}
               selected={pipeSelected}
               partial={pipe.selection?.truncated ?? false}

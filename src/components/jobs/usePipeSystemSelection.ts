@@ -50,6 +50,7 @@ export function usePipeSystemSelection({ active, url, page, sheetKey }: {
   return {
     selection, reading: active && hasPdf && !result,
     selecting: busy === key, error, codes: session?.codes ?? [], system, hasPdf,
+    layerCodes: session?.layerCodes ?? [],
     ready: Boolean(session), hasLines: session?.hasLines ?? false,
     select: (point: SheetPoint | null, tolerance: number) => {
       if (!point || !session) return;
@@ -67,8 +68,20 @@ export function usePipeSystemSelection({ active, url, page, sheetKey }: {
     },
     setSystem: (value: string) => {
       request.current++; setBusy(null); setFilter({ key, value }); setSelected(null);
+      if (!session?.layerCodes.includes(value)) return;
+      const sequence = request.current;
+      setBusy(key);
+      void session.selectLayer(value).then(selection => {
+        if (sequence !== request.current) return;
+        setSelected({ key, value: selection, error: null });
+        setBusy(null);
+      }).catch(() => {
+        if (sequence !== request.current) return;
+        setSelected({ key, error: "The system could not be highlighted. Try again." });
+        setBusy(null);
+      });
     },
-    clear: () => { request.current++; setBusy(null); setSelected(null); },
+    clear: () => { request.current++; setBusy(null); setSelected(null); setFilter(null); },
     retry: () => {
       request.current++; setBusy(null); owner.current?.dispose(); owner.current = null;
       setLoaded(null); setAttempt(value => value + 1);

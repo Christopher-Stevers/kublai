@@ -4,6 +4,7 @@ import { useId, useState } from "react";
 import { XIcon } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { LENGTH_UNITS, type LengthUnit } from "~/lib/sheet-measure";
+import { PIPE_SYSTEM_NAMES } from "~/lib/pipe-system";
 
 export function PipeSystemPanel({
   reading,
@@ -15,6 +16,8 @@ export function PipeSystemPanel({
   codes,
   system,
   selectedSystem,
+  wholeSystem = false,
+  hasLayerSystems = false,
   total,
   selected,
   partial,
@@ -37,6 +40,8 @@ export function PipeSystemPanel({
   codes: string[];
   system: string;
   selectedSystem?: string | null;
+  wholeSystem?: boolean;
+  hasLayerSystems?: boolean;
   total: string | null;
   selected: boolean;
   partial: boolean;
@@ -61,10 +66,10 @@ export function PipeSystemPanel({
         value={system}
         onChange={(event) => onSystem(event.target.value)}
       >
-        <option value="">Detect from drawing</option>
+        <option value="">Tap a connected run</option>
         {codes.map((code) => (
           <option key={code} value={code}>
-            {code}
+            {PIPE_SYSTEM_NAMES[code] ? `${PIPE_SYSTEM_NAMES[code]} (${code})` : code}
           </option>
         ))}
       </select>
@@ -80,7 +85,7 @@ export function PipeSystemPanel({
         <p className="mr-auto text-sm font-medium">
           {selected
             ? selectedSystem
-              ? `${selectedSystem} system`
+              ? PIPE_SYSTEM_NAMES[selectedSystem] ?? `${selectedSystem} system`
               : "Unclassified linework"
             : "Select a pipe system"}
         </p>
@@ -112,7 +117,8 @@ export function PipeSystemPanel({
           </>
         )}
       </div>
-      {selecting && <p role="status" className="text-muted-foreground text-xs">Tracing connected pipes…</p>}
+      {systemControl}
+      {selecting && <p role="status" className="text-muted-foreground text-xs">Selecting pipe lines…</p>}
       {!hasPdf ? (
         <p className="text-muted-foreground text-xs">
           Upload the original vector PDF to select connected pipes. For a
@@ -135,7 +141,7 @@ export function PipeSystemPanel({
             className="space-y-1"
           >
             <span className="text-muted-foreground block text-xs">
-              {partial ? "Partial distance" : "Total distance"} · this sheet
+              {partial ? "Partial distance" : wholeSystem ? "Highlighted line length" : "Total distance"} · this sheet
             </span>
             <strong className="block text-xl tabular-nums">
               {total ?? "Set scale to see distance"}
@@ -165,7 +171,6 @@ export function PipeSystemPanel({
             id={optionsId}
             className={expanded ? "space-y-2" : "hidden space-y-2 sm:block"}
           >
-            {systemControl}
             <div
               role="group"
               aria-label="Pipe distance units"
@@ -209,10 +214,8 @@ export function PipeSystemPanel({
         </>
       ) : (
         <>
-          {systemControl}
           <p className="text-muted-foreground text-xs">
-            Tap a pipe or its ST label to highlight the connected run and
-            branches.
+            {hasLayerSystems ? "Choose a system to highlight all its lines on this sheet. You can also tap a pipe to trace a connected run." : "Tap a pipe or its system label to highlight the connected run and branches."}
           </p>
         </>
       )}

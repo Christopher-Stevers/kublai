@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildPipeSystemIndex, selectPipeSystem, type PipeLabel, type PipeLinework, type PipeSegment } from "./pipe-system";
+import { buildPipeSystemIndex, selectPipeSystem, selectPipeLayerSystem, pipeLayerCodes, type PipeLabel, type PipeLinework, type PipeSegment } from "./pipe-system";
 
 function line(id: string, x1: number, y1: number, x2: number, y2: number, extra: Partial<PipeSegment> = {}): PipeSegment {
   return { id, pathId: id, x1, y1, x2, y2, stroke: "#111111", width: 0.001, dash: [], ...extra };
@@ -18,6 +18,22 @@ function ids(selection: ReturnType<typeof selectPipeSystem>) {
 }
 
 describe("pipe system trace", () => {
+  it("selects all source-tagged runs, including below-grade variants, without borrowing nearby labels", () => {
+    const linework: PipeLinework = { aspect: 1, truncated: false, labels: [label("SAN", 0.5, 0.5)], segments: [
+      line("above", 0.1, 0.1, 0.2, 0.1, { layer: "M-PLMB-SANI" }),
+      line("below", 0.7, 0.7, 0.8, 0.7, { layer: "xref|M-PLMB-SANI-BELW" }),
+      line("untagged", 0.4, 0.5, 0.6, 0.5),
+      line("storm", 0.1, 0.2, 0.2, 0.2, { layer: "M-PLMB-STRM" }),
+      line("fire", 0.2, 0.2, 0.3, 0.2, { layer: "M-FIRE-PIPE" }),
+      line("gas", 0.3, 0.3, 0.4, 0.3, { layer: "M-FUEL-GAS" }),
+    ] };
+    expect(pipeLayerCodes(linework)).toEqual(["FIRE", "GAS", "SAN", "ST"]);
+    const selection = selectPipeLayerSystem(linework, "SAN");
+    expect(ids(selection)).toEqual(["above", "below"]);
+    expect(selection.lengthInSheetWidths).toBeCloseTo(0.2);
+    expect(selection.source).toBe("layer");
+    expect(selectPipeLayerSystem({ ...linework, truncated: true }, "SAN").truncated).toBe(true);
+  });
   it("identifies unlabelled CAD pipes and ignores an architectural line closer to the tap", () => {
     const drawing = index([
       line("pipe", 0.1, 0.5, 0.8, 0.5, { layer: "M-PLMB-SANI" }),

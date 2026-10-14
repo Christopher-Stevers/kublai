@@ -111,6 +111,17 @@ test("an organization member can read its PDF with private cache headers", async
   expect(mocks.openFile).toHaveBeenCalledWith(`${ownJob}/${upload}/plan.pdf`);
 });
 
+test("saved system vectors use the PDF authorization boundary", async () => {
+  const response = await GET(request(), context(ownJob, upload, "pipes-1-v1.json"));
+  expect(response.status).toBe(200);
+  expect(response.headers.get("content-type")).toBe("application/json");
+  expect(response.headers.get("content-encoding")).toBe("gzip");
+  mocks.openFile.mockClear();
+  const denied = await GET(request(), context(foreignJob, upload, "pipes-1-v1.json"));
+  expect(denied.status).toBe(404);
+  expect(mocks.openFile).not.toHaveBeenCalled();
+});
+
 test("authorized legacy preview paths preserve their content type", async () => {
   const response = await GET(request(), context(ownJob, "floor-12.webp"));
   expect(response.status).toBe(200);
