@@ -4,6 +4,7 @@ import { PgDialect } from "drizzle-orm/pg-core";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const state = vi.hoisted(() => ({ transaction: vi.fn() }));
+vi.mock("~/server/job-pricing",async(importOriginal)=>({...await importOriginal<typeof import("~/server/job-pricing")>(),applyJobQuotePrices:vi.fn()}));
 vi.mock("~/server/db", () => ({ db: { transaction: state.transaction } }));
 vi.mock("./pull", () => ({
   ensureClientGroup: vi.fn(),

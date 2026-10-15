@@ -1,4 +1,7 @@
 "use client";
+import { useJobPricing, jobPriceStatus } from "~/hooks/use-job-pricing";
+import { listedPartsFirst } from "~/lib/job-pricing";
+import Link from "next/link";
 import { usePageViewState } from "~/hooks/use-page-view-state";
 import { matchesMaterialOrderLine } from "~/lib/material-order-line";
 import { MaterialListSheet as MaterialListTableView } from "~/components/materialLists/MaterialListSheet";
@@ -8,7 +11,7 @@ import { AddPartDialog, QuotePreviewSheet, OrdersPreviewSheet, ExistingQuotesOrd
 import { useMaterialListSort } from "~/hooks/use-material-list-sort";
 
 
-import { use, useEffect, useState } from "react";
+import { use, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { api } from "~/trpc/react";
 import { Button, LargeButton } from "~/components/ui/button";
@@ -105,7 +108,12 @@ export default function MaterialListDetailPage({
       { enabled: isBrowserOnline && !!verifyOrderId },
     );
   const suppliers = useReplicacheSuppliers();
-  const { sortedItems: items } = useMaterialListSort(unsortedItems, suppliers);
+  const { sortedItems: ordinaryItems } = useMaterialListSort(unsortedItems, suppliers);
+  const {data:jobPriceBook}=useJobPricing(mlHeader?.kind === "tools" ? null : mlHeader?.jobId);
+  const items=useMemo(()=>{
+    const annotated=ordinaryItems.map(item=>({...item,jobPriceStatus:jobPriceStatus(jobPriceBook,item.partDefinition?.id,item.supplierId??item.supplierPart?.supplierId,item.supplierPart?.id)}));
+    return jobPriceBook?.policy?.active ? listedPartsFirst(annotated,item=>item.jobPriceStatus!=="unlisted") : annotated;
+  },[ordinaryItems,jobPriceBook]);
   const jobDetail = useReplicacheJob(mlHeader?.jobId ?? "");
   const jobName = jobDetail?.name;
   // Tool request lists reuse this screen; they send to the tool room.
@@ -358,6 +366,7 @@ export default function MaterialListDetailPage({
             </div>
           ) : (
             <>
+              {jobPriceBook?.policy?.active&&<p className="mb-3 text-xs text-muted-foreground">On-list parts first. Estimated prices are CAD allowances. <Link className="underline" href={`/dashboard/jobs/${mlHeader?.jobId}/pricing`}>Job pricing & approvals</Link></p>}
               {/* Grid View */}
               {(verifyOrderId || viewMode === "grid") && (
                 <div className="grid items-stretch grid-cols-[repeat(auto-fit,minmax(12rem,1fr))] gap-3">
@@ -369,6 +378,7 @@ export default function MaterialListDetailPage({
                       <MaterialListItem
                         key={item.id}
                         item={{
+                          jobPriceStatus:item.jobPriceStatus,
                           id: item.id,
                           sentOrderItemId: item.sentOrderItemId,
                           sentOrder: item.sentOrder,

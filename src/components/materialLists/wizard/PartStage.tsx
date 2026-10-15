@@ -1,3 +1,4 @@
+import { JobPriceBadge } from "~/components/jobPricing/JobPriceBadge";
 import { useQuickWheelOptions } from "./QuickWheel";
 import { packContents, packsFromPieces, formatPackQuantity } from "~/lib/pack-quantity";
 import { PackQuantityControls } from "../PackQuantityControls";
@@ -31,6 +32,7 @@ interface PartCardProps {
     individualUnit?: string | null;
     description: string | null;
     imageUrl: string | null;
+    jobPriceStatus?: string;
     imageApprovalStatus?: "approved" | "suggested" | "missing";
     material: string | null;
     size: string | null;
@@ -46,7 +48,8 @@ interface PartCardProps {
       individualUnit?: string | null;
       description: string | null;
       imageUrl: string | null;
-      imageApprovalStatus?: "approved" | "suggested" | "missing";
+      jobPriceStatus?: string;
+    imageApprovalStatus?: "approved" | "suggested" | "missing";
       material: string | null;
       size: string | null;
     },
@@ -61,7 +64,8 @@ interface PartCardProps {
       individualUnit?: string | null;
       description: string | null;
       imageUrl: string | null;
-      imageApprovalStatus?: "approved" | "suggested" | "missing";
+      jobPriceStatus?: string;
+    imageApprovalStatus?: "approved" | "suggested" | "missing";
       material: string | null;
       size: string | null;
     },
@@ -387,10 +391,11 @@ function PartCard({
             )}
           </div>
 
-          <div className="flex items-start justify-center text-center text-foreground">
+          <div className="flex flex-col items-center justify-center gap-1 text-center text-foreground">
             <h4 className="line-clamp-4 text-sm leading-snug font-medium">
               {part.displayName}
             </h4>
+            <JobPriceBadge status={part.jobPriceStatus}/>
           </div>
         </div>
       </CardContent>
@@ -455,6 +460,7 @@ function PartListRow({
               {part.displayName}
             </h4>
           </div>
+          <JobPriceBadge status={part.jobPriceStatus}/>
         </div>
 
         <div className="flex items-center justify-center gap-1.5">
@@ -538,6 +544,7 @@ export interface PartStageProps {
     individualUnit?: string | null;
     description: string | null;
     imageUrl: string | null;
+    jobPriceStatus?: string;
     imageApprovalStatus?: "approved" | "suggested" | "missing";
     material: string | null;
     size: string | null;
@@ -552,7 +559,8 @@ export interface PartStageProps {
       individualUnit?: string | null;
       description: string | null;
       imageUrl: string | null;
-      imageApprovalStatus?: "approved" | "suggested" | "missing";
+      jobPriceStatus?: string;
+    imageApprovalStatus?: "approved" | "suggested" | "missing";
       material: string | null;
       size: string | null;
     },
@@ -567,7 +575,8 @@ export interface PartStageProps {
       individualUnit?: string | null;
       description: string | null;
       imageUrl: string | null;
-      imageApprovalStatus?: "approved" | "suggested" | "missing";
+      jobPriceStatus?: string;
+    imageApprovalStatus?: "approved" | "suggested" | "missing";
       material: string | null;
       size: string | null;
     },

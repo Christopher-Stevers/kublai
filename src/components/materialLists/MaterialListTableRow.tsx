@@ -1,4 +1,5 @@
 "use client";
+import { JobPriceBadge } from "~/components/jobPricing/JobPriceBadge";
 import { SentMaterialStatus, type SentMaterialOrder } from "./SentMaterialStatus";
 
 import { purchaseLineTotal } from "~/lib/purchase-quantity";
@@ -17,6 +18,7 @@ import type { ReplicacheSupplier } from "~/hooks/use-replicache-suppliers";
 
 export interface MaterialListTableRowProps {
   item: {
+    jobPriceStatus?: string;
     sentOrderItemId?: string | null;
     sentOrder?: SentMaterialOrder | null;
     id: string;
@@ -135,6 +137,7 @@ function MaterialListTableRowComponent({
             </span>
           )}
         </div>
+        <JobPriceBadge status={item.jobPriceStatus}/>
         {item.sentOrder && <SentMaterialStatus order={item.sentOrder} materialListId={materialListId} unit={item.partDefinition?.bulkUnit || item.uom?.code} />}
         {item.oneOff?.sizeNominal && (
           <div className="text-muted-foreground text-xs">

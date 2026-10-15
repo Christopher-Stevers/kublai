@@ -349,6 +349,13 @@
       "when": 1791984000000,
       "tag": "0073_material_list_sent_links",
       "breakpoints": false
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1792022400000,
+      "tag": "0074_job_pricing",
+      "breakpoints": true
     }
   ]
 }

@@ -1,3 +1,4 @@
+import { applyJobQuotePrices } from "~/server/job-pricing";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import type { db } from "~/server/db";
@@ -31,12 +32,13 @@ export const orderMultipleInput = z
     "Enter a positive order multiple up to 999999, with at most six decimal places",
   );
 
-type Database = Pick<typeof db, "select" | "update">;
+type Database = Pick<typeof db, "select" | "update" | "execute">;
 
 export async function recalculatePurchaseTotals(
   database: Database,
   quoteId: string,
 ) {
+  await applyJobQuotePrices(database, quoteId);
   const items = await database
     .select({
       id: quoteItems.id,

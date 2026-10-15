@@ -1,3 +1,5 @@
+import { resolveJobOrderItems, loadJobApprovalSnapshot, assertJobOrderApproved, getJobPriceBook, checkJobOrderApproval } from "~/server/job-pricing";
+import { jobOrderApprovals } from "~/server/db/schema";
 import { publishMaterialListEvent } from "~/server/material-list-events";
 import { packContents, formatOrderedBulkQuantity } from "~/lib/pack-quantity";
 import { purchaseQuantity, purchaseLineTotal, formatPurchaseQuantity } from "~/lib/purchase-quantity";
@@ -17,6 +19,8 @@ import { retiredOfflineMutation } from "../retired-offline-sync";
 
 function formatEmailItemLine(item: {
   quantity: string | null;
+  supplierSku?: string | null;
+  supplierSkuSnapshot?: string | null;
   descriptionSnapshot: string | null;
   partDefinitionDisplayName?: string | null;
   partDefinitionPiecesPerPack?: number | null;
@@ -38,7 +42,7 @@ function formatEmailItemLine(item: {
     item.partDefinitionDisplayName?.trim() ||
     "Item";
 
-  return `${qty} - ${description}`;
+  return `${qty} - ${description}${item.supplierSku || item.supplierSkuSnapshot ? ` [SKU: ${item.supplierSku || item.supplierSkuSnapshot}]` : ""}`;
 }
 
 function formatOneLineAddress(address: {
@@ -87,6 +91,8 @@ type OrderableQuoteItem = {
   orderMultipleSnapshot?: string | null;
   roomId: string | null;
   roomName: string | null;
+  jobListed?: boolean;
+  priceStatus?: string | null;
 };
 
 function groupOrderableItemsBySupplier(items: OrderableQuoteItem[]) {
@@ -1105,7 +1111,8 @@ ${foremanName}`;
         });
       }
 
-      const quoteItemsList = await loadOrderableQuoteItems(ctx.db, quote.id);
+      const rawItems = await loadOrderableQuoteItems(ctx.db, quote.id);
+      const quoteItemsList = isToolRequest ? rawItems : await resolveJobOrderItems(ctx.db, ctx.user.organizationId, materialList.jobId, rawItems);
       // Every tool on a tool request goes to the organization's tool room,
       // minus anything this list has already requested.
       const toolItems = isToolRequest
@@ -1217,9 +1224,11 @@ ${foremanName}`;
       const foremanName = ctx.user.name || "Foreman";
       const deliveryDate = await userDeliveryDate(ctx.db, ctx.user.id);
 
-      const possible = possibleSupplierIds.map((supplierId) => {
+      const possible = await Promise.all(possibleSupplierIds.map(async (supplierId) => {
+
         const supplier = possibleSuppliersById.get(supplierId) ?? null;
         const items = orderableItemsBySupplier.get(supplierId) ?? [];
+        const approval = isToolRequest ? null : await checkJobOrderApproval(ctx.db,{organizationId:ctx.user.organizationId,jobId:materialList.jobId,materialListId:materialList.id,supplierId,items:items.map(item=>({id:item.id,partDefinitionId:item.partDefinitionId,supplierPartId:item.supplierPartId,supplierSku:item.supplierSku,quantity:item.quantity,requestedQuantity:item.requestedQuantity,unitCost:item.unitCost,descriptionSnapshot:item.descriptionSnapshot?.trim()||item.partDefinitionDisplayName?.trim()||null,listed:!!item.jobListed}))});
         const supplierContacts = normalizeSupplierContacts(supplier?.contacts, {
           contactName: supplier?.contactName ?? supplier?.name ?? null,
           contactEmail: supplier?.contactEmail ?? null,
@@ -1243,6 +1252,8 @@ ${foremanName}`;
 
         return {
           id: `preview:${supplierId}`,
+          jobId:materialList.jobId,
+          approval,
           supplierId,
           orderNumber: null,
           notes: null,
@@ -1267,13 +1278,13 @@ ${foremanName}`;
               null,
             supplierSkuSnapshot: item.supplierSku ?? null,
           })),
-          email: {
+          email: approval && !approval.allowed ? undefined : {
             ...email,
             to: recipients.to,
             cc: recipients.cc,
           },
         };
-      });
+      }));
 
       const sent = sentOrders.map((order) => {
         const items = (sentItemsByOrderId.get(order.id) ?? []).map(
@@ -1347,6 +1358,7 @@ ${foremanName}`;
       z.object({
         materialListId: z.string().uuid(),
         supplierId: z.string().uuid(),
+        approvalFingerprint:z.string().length(64).optional(),
         sentTo: z.string().min(1).max(1000),
         notes: z.string().optional(),
       }),
@@ -1401,6 +1413,7 @@ ${foremanName}`;
         });
       }
 
+      const orderingScope=z.object({id:z.string().uuid(),jobId:z.string().uuid(),quoteId:z.string().uuid()}).parse(materialList);
       const result = await ctx.db.transaction(async (tx) => {
         await tx.execute(
           sql`select pg_advisory_xact_lock(hashtext(${`${ctx.user.organizationId}:${materialList.jobId}:orders`}))`,
@@ -1408,11 +1421,19 @@ ${foremanName}`;
         // Serialize sending against edits and simultaneous sends of the same rows.
         await tx.select({ id: quoteItems.id }).from(quoteItems)
           .where(eq(quoteItems.quoteId, materialList.quoteId!)).orderBy(quoteItems.id).for("update");
-        const quoteItemsList = await loadOrderableQuoteItems(tx, materialList.quoteId!);
+        await recalculatePurchaseTotals(tx, orderingScope.quoteId);
+        const rawItems = await loadOrderableQuoteItems(tx, orderingScope.quoteId);
+        const quoteItemsList = isToolRequest ? rawItems : await resolveJobOrderItems(tx, ctx.user.organizationId, orderingScope.jobId, rawItems);
         const items = isToolRequest
           ? await withoutAlreadyRequestedTools(tx, input.materialListId, quoteItemsList)
           : (groupOrderableItemsBySupplier(quoteItemsList).get(input.supplierId) ?? []);
         if (!items.length) throw new TRPCError({ code: "BAD_REQUEST", message: "No unsent items remain for this supplier. Duplicate the list to reorder." });
+
+        const approval = isToolRequest ? null : (await loadJobApprovalSnapshot(tx, ctx.user.organizationId, orderingScope.id, input.supplierId)).approval;
+        if (approval) {
+          assertJobOrderApproved(approval);
+          if (input.approvalFingerprint && input.approvalFingerprint!==approval.fingerprint) throw new TRPCError({code:"CONFLICT",message:"This list or its prices changed. Refresh the order preview before sending."});
+        }
 
         const [existingOrderCountResult] = await tx
           .select({
@@ -1472,6 +1493,7 @@ ${foremanName}`;
             orderMultipleSnapshot: item.orderMultipleSnapshot ?? null,
             uomId: item.uomId ?? undefined,
             unitCostAtOrderTime: item.unitCost ?? undefined,
+            priceStatusSnapshot:item.priceStatus??null,
             descriptionSnapshot:
               item.descriptionSnapshot?.trim() ||
               item.partDefinitionDisplayName?.trim() ||
@@ -1483,6 +1505,7 @@ ${foremanName}`;
         }
 
 
+        if (approval?.approvalId) await tx.update(jobOrderApprovals).set({usedAt:new Date()}).where(eq(jobOrderApprovals.id,approval.approvalId));
         return createdOrder;
       });
       publishMaterialListEvent(input.materialListId, "updated", ctx.user.organizationId);
@@ -1506,6 +1529,9 @@ ${foremanName}`;
       const [order] = await ctx.db
         .select({
           id: orders.id,
+          status: orders.status,
+          jobId: orders.jobId,
+          kind: orders.kind,
           orderNumber: orders.orderNumber,
           notes: orders.notes,
           job: {
@@ -1547,6 +1573,11 @@ ${foremanName}`;
           code: "NOT_FOUND",
           message: "Order not found",
         });
+      }
+
+      if (order.status !== "sent" && order.kind !== "tool_request") {
+        const book = await getJobPriceBook(ctx.db, ctx.user.organizationId, order.jobId);
+        if (book.policy?.active) throw new TRPCError({code:"PRECONDITION_FAILED",message:"Prepare a fresh order from the material list to check job pricing and approvals."});
       }
 
       // Get order items
@@ -1649,6 +1680,10 @@ ${foremanName}`;
         });
       }
 
+      if (existing.status !== "sent" && existing.kind !== "tool_request") {
+        const book = await getJobPriceBook(ctx.db, ctx.user.organizationId, existing.jobId);
+        if (book.policy?.active) throw new TRPCError({code:"PRECONDITION_FAILED",message:"Open the material list and prepare a fresh order so job pricing and approval can be checked."});
+      }
       // Update order
       const updateData: {
         status: string;
@@ -2172,7 +2207,7 @@ ${foremanName}`;
         sentTo: order.sentTo,
         job: {
           id: order.jobId,
-          name: order.jobName ?? "",
+          name: typeof order.jobName === "string" ? order.jobName : "",
         },
         supplier: order.supplierId
           ? {
@@ -2184,8 +2219,8 @@ ${foremanName}`;
           : null,
         materialList: order.materialListId
           ? {
-              id: order.materialListId,
-              name: order.materialListName ?? "",
+              id: typeof order.materialListId === "string" ? order.materialListId : "",
+              name: typeof order.materialListName === "string" ? order.materialListName : "",
             }
           : null,
         // Current clients search this compact text and load email details on demand.
@@ -2195,8 +2230,7 @@ ${foremanName}`;
               .flatMap((item) => [
                 item.roomName,
                 item.quantity,
-                item.descriptionSnapshot?.trim() ||
-                  item.partDefinitionDisplayName?.trim(),
+                [item.descriptionSnapshot,item.partDefinitionDisplayName].find(v=>v?.trim())?.trim(),
                 item.supplierSkuSnapshot,
               ])
               .filter(Boolean)
@@ -2209,9 +2243,7 @@ ${foremanName}`;
               roomName: item.roomName,
               quantity: item.quantity,
               description:
-                item.descriptionSnapshot?.trim() ||
-                item.partDefinitionDisplayName?.trim() ||
-                null,
+                [item.descriptionSnapshot,item.partDefinitionDisplayName].find(v=>v?.trim())?.trim() ?? null,
               supplierSku: item.supplierSkuSnapshot,
             })),
       }));

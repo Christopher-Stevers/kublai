@@ -1979,6 +1979,7 @@ export const orderItems = createTable(
     uomId: d.uuid().references(() => units.id, { onDelete: "set null" }),
 
     unitCostAtOrderTime: d.numeric({ precision: 12, scale: 4 }),
+    priceStatusSnapshot:d.varchar({length:20}),
     descriptionSnapshot: d.text(),
     supplierSkuSnapshot: d.varchar({ length: 255 }),
     notes: d.text(),
@@ -2540,3 +2541,51 @@ export const orderDeliveryPreferences = createTable("order_delivery_preferences"
 }));
 
 export * from "./bim-schema";
+
+const pricingReferenceId=(table:unknown)=>(table as {id:AnyPgColumn}).id;
+
+// Job purchasing lists: supplier listings reference the catalogue's permanent part ID.
+export const jobPriceLists = createTable("job_price_list", (d) => ({
+  id:d.uuid().primaryKey().$defaultFn(()=>crypto.randomUUID()),
+  organizationId:d.uuid().notNull().references(()=>organizations.id,{onDelete:"cascade"}),
+  jobId:d.uuid().notNull().references(()=>pricingReferenceId(jobs),{onDelete:"cascade"}),
+  name:d.varchar({length:255}).notNull(),currency:d.varchar({length:10}).notNull().default("CAD"),
+  active:d.boolean().notNull().default(true),requireApproval:d.boolean().notNull().default(true),
+  revision:d.integer().notNull().default(1),updatedAt:d.timestamp({withTimezone:true}).notNull().defaultNow(),
+}), t=>[unique("job_price_list_job_uniq").on(t.jobId), index("job_price_list_org_idx").on(t.organizationId)]);
+
+export const jobPriceEntries = createTable("job_price_entry", (d) => ({
+  id:d.uuid().primaryKey().$defaultFn(()=>crypto.randomUUID()),
+  priceListId:d.uuid().notNull().references(()=>jobPriceLists.id,{onDelete:"cascade"}),
+  supplierPartId:d.uuid().notNull().references(()=>supplierParts.id,{onDelete:"restrict"}),
+  sourceDescription:d.text(), unitCost:d.numeric({precision:12,scale:4}),
+  priceStatus:d.varchar({length:20}).notNull().default("none"),
+  priceBasis:d.varchar({length:100}).notNull().default("each"),priceSource:d.text(),
+  active:d.boolean().notNull().default(true),updatedAt:d.timestamp({withTimezone:true}).notNull().defaultNow(),
+}),t=>[unique("job_price_entry_listing_uniq").on(t.priceListId,t.supplierPartId),check("job_price_entry_cost_check",sql`${t.unitCost} is null or ${t.unitCost} >= 0`),check("job_price_entry_status_check",sql`${t.priceStatus} in ('none','estimated','confirmed')`)]);
+
+export const jobOrderApprovals = createTable("job_order_approval", (d) => ({
+  id:d.uuid().primaryKey().$defaultFn(()=>crypto.randomUUID()),
+  organizationId:d.uuid().notNull().references(()=>organizations.id,{onDelete:"cascade"}),
+  jobId:d.uuid().notNull().references(()=>pricingReferenceId(jobs),{onDelete:"cascade"}),
+  materialListId:d.uuid().notNull().references(()=>pricingReferenceId(materialLists),{onDelete:"cascade"}),
+  supplierId:d.uuid().notNull().references(()=>pricingReferenceId(suppliers),{onDelete:"restrict"}),
+  fingerprint:d.varchar({length:64}).notNull(),status:d.varchar({length:20}).notNull().default("pending"),
+  snapshot:d.jsonb().$type<import("~/lib/job-pricing").ApprovalSnapshotItem[]>().notNull(),
+  requestNote:d.text().notNull(),reviewNote:d.text(),
+  requestedBy:d.varchar({length:255}).references(()=>pricingReferenceId(users),{onDelete:"set null"}),
+  requestedByActor:d.varchar({length:255}).references(()=>pricingReferenceId(users),{onDelete:"set null"}),
+  reviewedBy:d.varchar({length:255}).references(()=>pricingReferenceId(users),{onDelete:"set null"}),
+  reviewedByActor:d.varchar({length:255}).references(()=>pricingReferenceId(users),{onDelete:"set null"}),
+  createdAt:d.timestamp({withTimezone:true}).notNull().defaultNow(),reviewedAt:d.timestamp({withTimezone:true}),usedAt:d.timestamp({withTimezone:true}),
+}),t=>[unique("job_order_approval_content_uniq").on(t.organizationId,t.materialListId,t.supplierId,t.fingerprint),index("job_order_approval_queue_idx").on(t.organizationId,t.jobId,t.status),check("job_order_approval_status_check",sql`${t.status} in ('pending','approved','rejected','superseded')`)]);
+
+export const jobPricingAudit = createTable("job_pricing_audit", (d) => ({
+  id:d.uuid().primaryKey().$defaultFn(()=>crypto.randomUUID()),
+  organizationId:d.uuid().notNull().references(()=>organizations.id,{onDelete:"cascade"}),
+  jobId:d.uuid().notNull().references(()=>pricingReferenceId(jobs),{onDelete:"cascade"}),
+  action:d.varchar({length:60}).notNull(),detail:d.jsonb().notNull(),
+  userId:d.varchar({length:255}).references(()=>pricingReferenceId(users),{onDelete:"set null"}),
+  actorUserId:d.varchar({length:255}).references(()=>pricingReferenceId(users),{onDelete:"set null"}),
+  createdAt:d.timestamp({withTimezone:true}).notNull().defaultNow(),
+}), t=>[index("job_pricing_audit_job_idx").on(t.organizationId,t.jobId,t.createdAt)]);

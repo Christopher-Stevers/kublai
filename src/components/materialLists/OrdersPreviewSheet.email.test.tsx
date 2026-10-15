@@ -31,6 +31,7 @@ vi.mock("~/trpc/react", () => ({
       },
       assets: { listRequests: { invalidate: vi.fn() } },
     }),
+    jobPricing: {requestApproval:{useMutation:()=>({isPending:false,mutate:vi.fn()})}},
     user: {
       getMyRole: {
         useQuery: () => ({

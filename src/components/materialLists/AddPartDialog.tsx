@@ -1,4 +1,6 @@
 "use client";
+import { useJobPricing, jobPriceStatus } from "~/hooks/use-job-pricing";
+import { findJobPrice, listedPartsFirst } from "~/lib/job-pricing";
 import { PackQuantityControls } from "./PackQuantityControls";
 import { packContents, packsFromPieces, individualUnitLabel } from "~/lib/pack-quantity";
 
@@ -127,7 +129,7 @@ export function AddPartDialog({
     allUnits,
     categoriesWithCounts,
     filteredAvailableSizes,
-    filteredPartsForSelection,
+    filteredPartsForSelection: baseFilteredPartsForSelection,
     createCatalog,
     createMaterial,
     createSize,
@@ -151,6 +153,11 @@ export function AddPartDialog({
     isToolRequest ? "assets" : "materials",
   );
 
+  const {data:jobPriceBook}=useJobPricing(listHeader?.kind === "tools" ? null : listHeader?.jobId);
+  const filteredPartsForSelection=useMemo(()=>{
+    const annotated=baseFilteredPartsForSelection.map(p=>({...p,jobPriceStatus:jobPriceStatus(jobPriceBook,p.id)}));
+    return jobPriceBook?.policy?.active ? listedPartsFirst(annotated,p=>p.jobPriceStatus!=="unlisted") : annotated;
+  },[baseFilteredPartsForSelection,jobPriceBook]);
   const utils = api.useUtils();
   const { data: orderWheelUsage } = api.catalogue.recentOrderWheelUsage.useQuery(undefined, { staleTime: 60_000 });
   const isOnline = useOnlineStatus();
@@ -309,7 +316,8 @@ export function AddPartDialog({
 
       const partsData = supplierPartsData.get(pendingPart.partId);
       if (partsData && partsData.length > 0) {
-        const preferred = partsData.find((sp) => sp.isPreferred);
+        const jobEntry = findJobPrice(jobPriceBook?.entries??[],pendingPart.partId);
+        const preferred = partsData.find(sp=>sp.id===jobEntry?.supplierPartId) ?? partsData.find((sp) => sp.isPreferred);
         const supplierPartId = preferred?.id ?? partsData[0]?.id;
         if (supplierPartId) {
           setPendingParts((prev) =>
@@ -320,7 +328,7 @@ export function AddPartDialog({
         }
       }
     });
-  }, [pendingParts, supplierPartsData]);
+  }, [pendingParts, supplierPartsData, jobPriceBook]);
 
   // Handler for individual part selection
   const handlePartSelect = (
@@ -751,9 +759,8 @@ export function AddPartDialog({
             (supplierPart) => supplierPart.id === pendingPart.supplierPartId,
           ) ??
           null;
-        const unitCost = selectedSupplierPart?.lastKnownUnitCost
-          ? parseFloat(selectedSupplierPart.lastKnownUnitCost)
-          : 0;
+        const jobCost=findJobPrice(jobPriceBook?.entries??[],pendingPart.partId,selectedSupplierPart?.supplierId,selectedSupplierPart?.id)?.unitCost;
+        const unitCost=Number(jobCost ?? selectedSupplierPart?.lastKnownUnitCost ?? 0);
         const partDefinitionSnapshot = {
           id: pendingPart.partDefinition.id,
           displayName: pendingPart.partDefinition.displayName,
@@ -768,7 +775,7 @@ export function AddPartDialog({
               id: selectedSupplierPart.id,
               supplierId: selectedSupplierPart.supplierId,
               supplierSku: selectedSupplierPart.supplierSku,
-              lastKnownUnitCost: selectedSupplierPart.lastKnownUnitCost,
+              lastKnownUnitCost: findJobPrice(jobPriceBook?.entries??[],pendingPart.partId,selectedSupplierPart.supplierId,selectedSupplierPart.id)?.unitCost ?? selectedSupplierPart.lastKnownUnitCost,
               packSize: selectedSupplierPart.packSize ?? null,
               supplier: selectedSupplierPart.supplier,
             }

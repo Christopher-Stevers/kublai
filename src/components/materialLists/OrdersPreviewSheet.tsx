@@ -36,6 +36,8 @@ type EmailDraft = {
 
 type PreviewOrder = {
   id: string;
+  jobId?: string;
+  approval?: {required:boolean;allowed:boolean;fingerprint:string;unlistedCount:number;approvalId:string|null;status:string;reviewNote:string|null}|null;
   supplierId?: string | null;
   orderNumber?: string | null;
   notes?: string | null;
@@ -101,6 +103,7 @@ export function OrdersPreviewSheet({
     isToolRequest || (userData?.permissions.can["orders.send"] ?? false);
 
   const sendGeneratedOrder = api.materialList.sendGeneratedOrder.useMutation();
+  const requestApproval=api.jobPricing.requestApproval.useMutation({onSuccess:async()=>{setSyncError(null);await loadPreview();},onError:e=>setSyncError(e.message)});
 
   const applyPreviewData = (data: {
     possible: PreviewOrder[];
@@ -249,6 +252,7 @@ export function OrdersPreviewSheet({
       setSyncError("You don't have permission to send orders.");
       return;
     }
+    if (order.approval && !order.approval.allowed) { setSyncError("Approval is required before opening this order email."); return; }
     if (!order.supplierId) {
       setSyncError("This order is missing a supplier.");
       return;
@@ -301,6 +305,7 @@ export function OrdersPreviewSheet({
       await sendGeneratedOrder.mutateAsync({
         materialListId,
         supplierId: order.supplierId,
+        approvalFingerprint:order.approval?.fingerprint,
         sentTo: toRecipients.join(", "),
         notes: notes.trim() || undefined,
       });
@@ -541,7 +546,7 @@ export function OrdersPreviewSheet({
                 size="sm"
                 className="h-8 w-full"
                 onClick={() => handleEmailOrder(order)}
-                disabled={!canGenerateDocuments || isSending || !draft}
+                disabled={!canGenerateDocuments || isSending || !draft || (order.approval?.required && !order.approval.allowed)}
               >
                 {isSending ? "Opening..." : "Send"}
               </Button>
@@ -549,10 +554,17 @@ export function OrdersPreviewSheet({
           </div>
         </div>
 
+        {!isSent && order.approval?.required && <div className="mt-3 space-y-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-100">
+          <p>{order.approval.allowed ? "Approved for this order." : `${order.approval.unlistedCount} unlisted ${order.approval.unlistedCount===1?"part requires":"parts require"} approval.`} {order.approval.status==="pending"&&"Waiting for an authorized reviewer."}</p>
+          {order.approval.reviewNote&&<p>Review: {order.approval.reviewNote}</p>}
+          {!order.approval.allowed && order.approval.status!=="pending" && <><Textarea aria-label="Reason for unlisted parts" placeholder="Why are these unlisted parts needed?" value={orderNotes.get(order.id)??""} onChange={event=>setOrderNotes(new Map(orderNotes).set(order.id,event.target.value))}/><Button size="sm" variant="outline" disabled={requestApproval.isPending||(orderNotes.get(order.id)??"").trim().length<3||!isOnline} onClick={()=>order.supplierId&&requestApproval.mutate({materialListId,supplierId:order.supplierId,note:orderNotes.get(order.id)??""})}>Request approval</Button></>}
+          {!order.approval.allowed&&<Button size="sm" variant="outline" className="ml-2" onClick={()=>void loadPreview().catch(e=>setSyncError(String(e)))}>Check approval</Button>}
+          {order.jobId&&<a className="ml-2 underline" href={`/dashboard/jobs/${order.jobId}/pricing`}>Job pricing & reviews</a>}
+        </div>}
         {isExpanded && (
           <div className="mt-4 space-y-4 pl-6">
             {!draft ? (
-              <p className="text-muted-foreground text-sm">Loading email...</p>
+              <p className="text-muted-foreground text-sm">{order.approval?.required&&!order.approval.allowed?"The email becomes available after approval.":"Loading email..."}</p>
             ) : (
               <>
                 <div className="space-y-2">

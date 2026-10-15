@@ -45,6 +45,7 @@ vi.mock("~/server/orders/delivery-calendar", () => ({
 import { db } from "~/server/db";
 import { prefabsRouter } from "~/server/api/routers/prefabs";
 import { materialListRouter } from "~/server/api/routers/materialList";
+import { jobPricingRouter } from "~/server/api/routers/jobPricing";
 import { supplierRouter } from "~/server/api/routers/supplier";
 import { recalculatePurchaseTotals, orderMultipleInput } from "./purchasing";
 
@@ -123,10 +124,11 @@ describe.skipIf(!socket)(
       );
       await conn.unsafe(migration);
       await conn.unsafe(migration);
+      await conn.unsafe(await readFile(new URL("../../drizzle/0074_job_pricing.sql",import.meta.url),"utf8"));
     });
     beforeEach(async () => {
       await conn.unsafe(
-        `TRUNCATE ${tables.map((table) => `"${getTableName(table)}"`).join(",")}`,
+        `TRUNCATE kublai_job_pricing_audit, kublai_job_order_approval, kublai_job_price_entry, kublai_job_price_list, ${tables.map((table) => `"${getTableName(table)}"`).join(",")}`,
       );
       await db
         .insert(schema.organizations)
@@ -277,7 +279,7 @@ describe.skipIf(!socket)(
         quantity: "50",
         requestedQuantity: "37.000000",
       });
-      expect(preview.possible[0]?.email.body).toContain(
+      expect(preview.possible[0]?.email!.body).toContain(
         '50 - 1/2" PEX pipe clip',
       );
       const sent = await material.sendGeneratedOrder({
@@ -446,7 +448,7 @@ describe.skipIf(!socket)(
       expect(detail.items[0]).toMatchObject({quantity: "1.400000", extendedPrice: "50", partDefinition: { piecesPerPack: 50 }});
       const preview = await material.previewOrders({materialListId: list});
       expect(preview.possible[0]?.items[0]).toMatchObject({quantity:"2",requestedQuantity:"1.400000"});
-      expect(preview.possible[0]?.email.body).toContain("2 boxes (100 pcs)");
+      expect(preview.possible[0]?.email!.body).toContain("2 boxes (100 pcs)");
       const sent = await material.sendGeneratedOrder({materialListId:list,supplierId:supplier,sentTo:"supplier@example.test"});
       const [line] = await db.select().from(schema.orderItems).where(eq(schema.orderItems.orderId,sent.id));
       expect(Number(line!.quantity)).toBe(2);
@@ -462,6 +464,51 @@ describe.skipIf(!socket)(
       await caller.addItems({prefabId:prefab.id,items:[{partDefinitionId:part,quantity:.000333}]});
       const [line] = await db.select().from(schema.materialPrefabItems).where(eq(schema.materialPrefabItems.prefabId,prefab.id));
       expect(Number(line!.quantity)).toBe(.000667);
+    });
+    describe("job supplier pricing and approvals",()=>{
+      const pricing=jobPricingRouter.createCaller(context as never);
+      const policyId=id(400);
+      beforeEach(async()=>{
+        await db.insert(schema.jobPriceLists).values({id:policyId,organizationId:org,jobId:job,name:"Job scope"});
+      });
+      it("withholds the email and rejects a direct send for unlisted parts",async()=>{
+        const preview=await material.previewOrders({materialListId:list});
+        expect(preview.possible[0]?.approval).toMatchObject({required:true,allowed:false,unlistedCount:1});
+        expect(preview.possible[0]?.email).toBeUndefined();
+        await expect(material.sendGeneratedOrder({materialListId:list,supplierId:supplier,sentTo:"supplier@example.test"})).rejects.toThrow("outside the job pricing list");
+        expect(await db.select().from(schema.orders)).toHaveLength(0);
+      });
+      it("freezes an approval to the exact quantity and records its use",async()=>{
+        const request=await pricing.requestApproval({materialListId:list,supplierId:supplier,note:"Unlisted part needed for this job"});
+        await pricing.reviewApproval({approvalId:request.approvalId!,decision:"approved",note:"Reviewed requirement"});
+        await db.update(schema.quoteItems).set({quantity:"38"}).where(eq(schema.quoteItems.id,item));
+        await expect(material.sendGeneratedOrder({materialListId:list,supplierId:supplier,sentTo:"supplier@example.test"})).rejects.toThrow("outside the job pricing list");
+        await db.update(schema.quoteItems).set({quantity:"37"}).where(eq(schema.quoteItems.id,item));
+        const sent=await material.sendGeneratedOrder({materialListId:list,supplierId:supplier,sentTo:"supplier@example.test"});
+        expect(sent.status).toBe("sent");
+        expect((await db.select().from(schema.jobOrderApprovals))[0]?.usedAt).toBeInstanceOf(Date);
+      });
+      it("uses a job-specific price and SKU without changing the generic supplier price",async()=>{
+        const listing=id(401);
+        await db.insert(schema.supplierParts).values({id:listing,organizationId:org,supplierId:supplier,partDefinitionId:part,supplierSku:"REAL-SKU",packSize:"25",lastKnownUnitCost:null});
+        await db.insert(schema.jobPriceEntries).values({priceListId:policyId,supplierPartId:listing,unitCost:"3",priceStatus:"estimated",priceBasis:"each"});
+        await recalculatePurchaseTotals(db,quote);
+        const row=(await db.select().from(schema.quoteItems))[0]!;
+        expect(row.supplierPartId).toBe(listing);expect(Number(row.unitCost)).toBe(3);expect(Number(row.extendedPrice)).toBe(150);
+        expect(Number((await db.select().from(schema.supplierParts).where(eq(schema.supplierParts.id,sp)))[0]?.lastKnownUnitCost)).toBe(2);
+        const preview=await material.previewOrders({materialListId:list});
+        expect(preview.possible[0]?.approval?.allowed).toBe(true);
+        expect(preview.possible[0]?.email?.body).toContain("SKU: REAL-SKU");
+        const sent=await material.sendGeneratedOrder({materialListId:list,supplierId:supplier,sentTo:"supplier@example.test"});
+        await pricing.savePrices({jobId:job,revision:1,lines:[{entryId:(await db.select().from(schema.jobPriceEntries))[0]!.id,unitCost:4,priceStatus:"confirmed",priceSource:"Actual quote"}]});
+        expect(Number((await db.select().from(schema.orderItems).where(eq(schema.orderItems.orderId,sent.id)))[0]?.unitCostAtOrderTime)).toBe(3);
+      });
+      it("rejects a cross-organization supplier listing at the database boundary",async()=>{
+        const other=id(402);await db.insert(schema.organizations).values({id:other,name:"Other"});
+        await db.insert(schema.suppliers).values({id:id(403),organizationId:other,name:"Other supplier"});
+        await db.insert(schema.supplierParts).values({id:id(404),organizationId:other,supplierId:id(403),partDefinitionId:part});
+        await expect(db.insert(schema.jobPriceEntries).values({priceListId:policyId,supplierPartId:id(404)})).rejects.toThrow();
+      });
     });
     it("rejects zero, negatives, malformed and excessive precision rules", () => {
       for (const value of ["0", "-25", "25abc", "NaN", "1000000", "0.0000001"])

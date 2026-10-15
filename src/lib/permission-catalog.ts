@@ -66,6 +66,8 @@ export const PERMISSION_GROUPS = [
     permissions: [
       { key: "quotes.create", label: "Request quotes", description: "Generate and email quote requests to suppliers." },
       { key: "orders.send", label: "Send orders", description: "Generate and email purchase orders to suppliers." },
+      { key: "jobPricing.manage", label: "Manage job pricing", description: "Maintain job supplier lists and replace estimated prices with confirmed prices." },
+      { key: "jobPricing.approve", label: "Approve unlisted orders", description: "Review requests to order parts outside a job pricing list." },
       { key: "orders.receive", label: "Check in deliveries", description: "Verify delivered quantities and add delivery notes." },
     ],
   },

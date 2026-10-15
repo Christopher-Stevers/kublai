@@ -40,6 +40,7 @@ vi.mock("~/trpc/react", () => ({
       },
     },
     catalogue: {
+      recentOrderWheelUsage:{useQuery:()=>({data:undefined})},
       importCatalogueRows: {
         useMutation: () => ({ mutateAsync: state.mutate }),
       },
