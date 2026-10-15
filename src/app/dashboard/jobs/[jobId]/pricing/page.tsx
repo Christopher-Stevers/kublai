@@ -326,7 +326,10 @@ export default function JobPricingPage({
       <div className="rounded-lg border border-amber-300/70 bg-amber-50/70 p-3 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
         Estimated prices are budgeting allowances in CAD before tax and
         delivery. They are not confirmed supplier quotes. Each price shows its order
-        unit and basis. Unlisted parts require approval before ordering.
+        unit and basis.{" "}
+        {data.policy?.requireApproval
+          ? "Unlisted parts require approval before ordering."
+          : "Approval for unlisted parts is currently off."}
       </div>
       {message && (
         <div role="status" className="rounded-lg border p-3 text-sm">

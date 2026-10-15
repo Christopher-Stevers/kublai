@@ -478,6 +478,16 @@ describe.skipIf(!socket)(
         await expect(material.sendGeneratedOrder({materialListId:list,supplierId:supplier,sentTo:"supplier@example.test"})).rejects.toThrow("outside the job pricing list");
         expect(await db.select().from(schema.orders)).toHaveLength(0);
       });
+      it("allows unlisted orders when approval is turned off without changing their prices", async()=>{
+        await db.update(schema.jobPriceLists).set({requireApproval:false}).where(eq(schema.jobPriceLists.id,policyId));
+        const preview=await material.previewOrders({materialListId:list});
+        expect(preview.possible[0]?.approval).toMatchObject({required:false,allowed:true,unlistedCount:1,status:"not_required"});
+        expect(preview.possible[0]?.email).toBeDefined();
+        const sent=await material.sendGeneratedOrder({materialListId:list,supplierId:supplier,sentTo:"supplier@example.test"});
+        expect(sent.status).toBe("sent");
+        expect(await db.select().from(schema.jobOrderApprovals)).toHaveLength(0);
+        expect(Number((await db.select().from(schema.orderItems))[0]?.unitCostAtOrderTime)).toBe(2);
+      });
       it("freezes an approval to the exact quantity and records its use",async()=>{
         const request=await pricing.requestApproval({materialListId:list,supplierId:supplier,note:"Unlisted part needed for this job"});
         await pricing.reviewApproval({approvalId:request.approvalId!,decision:"approved",note:"Reviewed requirement"});
