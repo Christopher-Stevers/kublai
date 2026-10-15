@@ -3,6 +3,8 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { PartDetailsDialog } from "./PartDetailsDialog";
 
+const deleteState = vi.hoisted(() => ({usage: vi.fn(), remove: vi.fn(), confirm: vi.fn()}));
+vi.mock("~/components/ui/app-dialogs", () => ({confirmAction: deleteState.confirm}));
 const editState = vi.hoisted(() => ({ part: undefined as Record<string, unknown> | undefined, save: vi.fn(), create: vi.fn() }));
 const familyState = vi.hoisted(() => ({
   lastInput: undefined as { mode?: string } | undefined,
@@ -129,6 +131,8 @@ vi.mock("~/trpc/react", () => {
     api: {
       useUtils: () => ({
         catalogue: {
+          invalidate: vi.fn(),
+          getPartDeletionUsage: {fetch: deleteState.usage},
           getCatalogs: {
             setData: (
               _key: unknown,
@@ -256,6 +260,7 @@ vi.mock("~/trpc/react", () => {
             },
           }),
         },
+        deletePart: { useMutation: () => ({isPending:false, mutateAsync:deleteState.remove}) },
         updatePart: {
           useMutation: (opts: { onError?: (error: Error) => void }) => ({ isPending: false, mutate: vi.fn(), mutateAsync: async (input: unknown) => { try { return await editState.save(input); } catch (error) { opts.onError?.(error as Error); throw error; } } }),
         },
@@ -514,5 +519,39 @@ describe("creating a part from a material list", () => {
     expect(await screen.findByText("Could not save valve")).toBeInTheDocument();
     expect(screen.getByDisplayValue("Test valve")).toBeInTheDocument();
     expect(close).not.toHaveBeenCalled();
+  });
+});
+
+describe("permanent part deletion", () => {
+  beforeEach(() => {
+    deleteState.remove.mockReset(); deleteState.usage.mockReset(); deleteState.confirm.mockReset();
+    globalThis.__partDialogMockData = {catalogs:[{id:"catalog-existing",name:"Plumbing"}],materials:[],categories:[],units:[]};
+    editState.part = {id:"part-existing",displayName:"Unused test part",sizeNominal:null,catalogId:"catalog-existing",isActive:true,aliases:[]};
+  });
+  it("blocks used parts without asking to delete or closing the editor", async () => {
+    deleteState.usage.mockResolvedValue({name:"Used part",canDelete:false,usages:[{label:"order entries",count:1}]});
+    const close=vi.fn();
+    render(<PartDetailsDialog mode="edit" open partId="part-existing" onOpenChange={close} />);
+    fireEvent.click(screen.getByRole("button",{name:"Delete permanently"}));
+    expect(await screen.findByRole("alert")).toHaveTextContent("order entries");
+    expect(deleteState.remove).not.toHaveBeenCalled(); expect(deleteState.confirm).not.toHaveBeenCalled(); expect(close).not.toHaveBeenCalled();
+  });
+  it("keeps an unused part when confirmation is cancelled", async () => {
+    deleteState.usage.mockResolvedValue({name:"Unused test part",canDelete:true,usages:[]});
+    deleteState.confirm.mockResolvedValue(false);
+    render(<PartDetailsDialog mode="edit" open partId="part-existing" onOpenChange={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button",{name:"Delete permanently"}));
+    await waitFor(()=>expect(deleteState.confirm).toHaveBeenCalledOnce());
+    await waitFor(()=>expect(screen.getByRole("button",{name:"Delete permanently"})).toBeEnabled());
+    expect(deleteState.remove).not.toHaveBeenCalled();
+  });
+  it("deletes an unused part only after confirmation", async () => {
+    deleteState.usage.mockResolvedValue({name:"Unused test part",canDelete:true,usages:[]});
+    deleteState.confirm.mockResolvedValue(true); deleteState.remove.mockResolvedValue({deleted:true});
+    const close=vi.fn();
+    render(<PartDetailsDialog mode="edit" open partId="part-existing" onOpenChange={close} />);
+    fireEvent.click(screen.getByRole("button",{name:"Delete permanently"}));
+    await waitFor(()=>expect(close).toHaveBeenCalledWith(false));
+    expect(deleteState.remove).toHaveBeenCalledWith({partId:"part-existing"});
   });
 });

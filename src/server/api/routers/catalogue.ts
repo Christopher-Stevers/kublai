@@ -1,3 +1,4 @@
+import { partDeletionUsage, permanentlyDeletePart } from "~/server/catalogue/delete-part";
 import { orderWheelUsage, type OrderedFacet } from "~/lib/order-wheel-usage";
 import { appendQuantityDescription } from "~/lib/pack-quantity";
 import { orderMultipleInput, refreshSupplierPurchaseTotals } from "~/server/purchasing";
@@ -2234,6 +2235,19 @@ export const catalogueRouter = createTRPCRouter({
   /**
    * Update a part definition
    */
+  getPartDeletionUsage: hasDashboardAccess.input(z.object({ partId: z.string().uuid() })).query(async ({ctx,input}) => {
+    assertCanDeleteParts(ctx.user);
+    if (!ctx.user.organizationId) throw new TRPCError({code:"FORBIDDEN"});
+    return partDeletionUsage(ctx.db, ctx.user.organizationId, input.partId);
+  }),
+  deletePart: hasDashboardAccess.input(z.object({ partId: z.string().uuid() })).mutation(async ({ctx,input}) => {
+    assertCanDeleteParts(ctx.user);
+    if (!ctx.user.organizationId) throw new TRPCError({code:"FORBIDDEN"});
+    const result = await permanentlyDeletePart(ctx.db, ctx.user.organizationId, input.partId);
+    publishCatalogueChange(ctx.user.organizationId);
+    return result;
+  }),
+
   updatePart: hasDashboardAccess
     .input(
       z.object({

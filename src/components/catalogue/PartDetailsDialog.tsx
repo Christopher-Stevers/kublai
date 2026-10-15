@@ -1,4 +1,5 @@
 "use client";
+import { confirmAction } from "~/components/ui/app-dialogs";
 import { appendQuantityDescription } from "~/lib/pack-quantity";
 import { notify } from "~/components/ui/app-dialogs";
 import {
@@ -653,6 +654,27 @@ export function PartDetailsDialog({
     },
   });
 
+  const [checkingDelete, setCheckingDelete] = useState(false);
+  const deletePart = api.catalogue.deletePart.useMutation();
+  const handlePermanentDelete = async () => {
+    if (!partId || !isOnline) return;
+    setCheckingDelete(true);
+    setSubmitError(null);
+    try {
+      const usage = await utils.catalogue.getPartDeletionUsage.fetch({partId});
+      if (!usage.canDelete) {
+        setSubmitError(`Cannot delete: this part is used in ${[...new Set(usage.usages.map(item => item.label))].join(", ")}. Turn off “Show in catalogue” to hide it while keeping existing records.`);
+        return;
+      }
+      const confirmed = await confirmAction({title: "Permanently delete this part?", description: `“${usage.name}” is unused. This permanently removes the part and its supplier listings. This cannot be undone.`, confirmLabel: "Delete permanently", destructive: true});
+      if (!confirmed) return;
+      await deletePart.mutateAsync({partId});
+      await utils.catalogue.invalidate();
+      requestCatalogueReplicachePull(0);
+      onOpenChange(false);
+    } catch (error) { setSubmitError(error instanceof Error ? error.message : "Could not delete this part."); }
+    finally {setCheckingDelete(false);}
+  };
   const updatePart = api.catalogue.updatePart.useMutation({
     onSuccess: () => {
       void utils.catalogue.searchParts.invalidate();
@@ -888,6 +910,7 @@ export function PartDetailsDialog({
     ? parsePrimarySizeInput(sizeValue.trim())
     : null;
   const isLoading =
+    checkingDelete || deletePart.isPending ||
     createPart.isPending ||
     updatePart.isPending ||
     isProcessingImage ||
@@ -1807,6 +1830,9 @@ export function PartDetailsDialog({
               )}
             </section>
 
+            {isEditMode && <Button type="button" variant="destructive" disabled={isLoading || !isOnline} onClick={() => void handlePermanentDelete()}>
+              {checkingDelete ? "Checking usage…" : "Delete permanently"}
+            </Button>}
             {submitError && (
               <p className="px-1 text-sm text-red-600" role="alert">
                 {submitError}
