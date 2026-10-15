@@ -3,6 +3,7 @@ import { FinancialOnly } from "~/components/permissions/FinancialVisibility";
 import { useState } from "react";
 import {
   BoxesIcon,
+  CheckCheckIcon,
   FileTextIcon,
   MoreHorizontalIcon,
   PlusIcon,
@@ -30,6 +31,9 @@ export function MaterialListActions({
   onOrder,
   onAdd,
   onNotes,
+  onMarkAllReceived,
+  receivingAll = false,
+  receiveDisabled = false,
   isToolRequest = false,
   materialListId,
 }: {
@@ -43,6 +47,9 @@ export function MaterialListActions({
   onOrder: () => void;
   onAdd: () => void;
   onNotes?: () => void;
+  onMarkAllReceived?: () => void;
+  receivingAll?: boolean;
+  receiveDisabled?: boolean;
   /** Tool requests: no totals or quotes; "Request" sends to the tool room. */
   isToolRequest?: boolean;
   /** The list, for "Save as Prefab" in the More menu. */
@@ -67,14 +74,18 @@ export function MaterialListActions({
       )}
       <div className="grid grid-cols-3 gap-1.5">
         {onNotes ? (
-          <Button
-            variant="outline"
-            className={`col-span-3 ${style}`}
-            onClick={onNotes}
-          >
-            <FileTextIcon className="mr-1 h-3.5 w-3.5 shrink-0" />
-            Notes
-          </Button>
+          <>
+            <Button variant="outline" className={`${onMarkAllReceived ? "col-span-1" : "col-span-3"} ${style}`} onClick={onNotes}>
+              <FileTextIcon className="mr-1 h-3.5 w-3.5 shrink-0" />
+              Notes
+            </Button>
+            {onMarkAllReceived && (
+              <Button className={`col-span-2 ${style}`} onClick={onMarkAllReceived} disabled={receiveDisabled || receivingAll || !isOnline}>
+                <CheckCheckIcon className="mr-1 h-3.5 w-3.5 shrink-0" />
+                {receivingAll ? "Saving..." : "Mark all received"}
+              </Button>
+            )}
+          </>
         ) : isToolRequest ? (
           <>
             <Button

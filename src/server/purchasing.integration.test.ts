@@ -349,6 +349,24 @@ describe.skipIf(!socket)(
       expect((await material.previewOrders({ materialListId: copy.id })).possible).toHaveLength(1);
       expect(Number((await material.getOrderById({orderId:sent.id})).items[0]!.receivedQuantity)).toBe(20);
     });
+    it("marks every order line received without changing purchased quantities or other orders", async () => {
+      const sent = await material.sendGeneratedOrder({ materialListId: list, supplierId: supplier, sentTo: "supplier@example.test" });
+      const [first] = await db.select().from(schema.orderItems).where(eq(schema.orderItems.orderId, sent.id));
+      await db.update(schema.orderItems).set({ receivedQuantity: "20", verificationStatus: "partial" }).where(eq(schema.orderItems.id, first!.id));
+      await db.insert(schema.orderItems).values({ ...first!, id: id(800), quantity: "3.5", receivedQuantity: "0", verificationStatus: "problem" });
+      const copy = await material.duplicate({ materialListId: list });
+      const another = await material.sendGeneratedOrder({ materialListId: copy.id, supplierId: supplier, sentTo: "supplier@example.test" });
+      expect((await material.markAllOrderItemsReceived({ orderId: sent.id })).count).toBe(2);
+      const received = await material.getOrderById({ orderId: sent.id });
+      expect(received.items.every(line => line.receivedQuantity === line.quantity && line.verificationStatus === "complete")).toBe(true);
+      expect(Number(received.items.find(line => line.id === first!.id)!.quantity)).toBe(50);
+      expect(Number((await material.getOrderById({ orderId: another.id })).items[0]!.receivedQuantity)).toBe(0);
+      await material.markAllOrderItemsReceived({ orderId: sent.id });
+      const foreign = materialListRouter.createCaller({ ...context, user: { ...context.user, organizationId: id(999) } } as never);
+      await expect(foreign.markAllOrderItemsReceived({ orderId: sent.id })).rejects.toThrow("Order not found");
+      await db.update(schema.orders).set({ status: "cancelled" }).where(eq(schema.orders.id, sent.id));
+      await expect(material.markAllOrderItemsReceived({ orderId: sent.id })).rejects.toThrow("Cancelled orders");
+    });
     it("links only unambiguous historical rows and preserves receipt history", async () => {
       const sent = await material.sendGeneratedOrder({ materialListId:list, supplierId:supplier, sentTo:"supplier@example.test" });
       await db.update(schema.quoteItems).set({sentOrderItemId:null, updatedAt:new Date("2020-01-01")}).where(eq(schema.quoteItems.id,item));

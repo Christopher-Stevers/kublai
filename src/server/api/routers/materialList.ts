@@ -2017,6 +2017,29 @@ ${foremanName}`;
       };
     }),
 
+  markAllOrderItemsReceived: hasDashboardAccess
+    .input(z.object({ orderId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      assertCan(ctx.user, "orders.receive");
+      const organizationId = ctx.user.organizationId;
+      if (!organizationId) throw new TRPCError({ code: "FORBIDDEN" });
+      const result = await ctx.db.transaction(async (tx) => {
+        const [order] = await tx.select().from(orders)
+          .where(and(eq(orders.id, input.orderId), eq(orders.organizationId, organizationId)))
+          .for("update");
+        if (!order) throw new TRPCError({ code: "NOT_FOUND", message: "Order not found" });
+        if (order.status === "cancelled" || order.fulfillmentStatus === "cancelled") {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Cancelled orders cannot be received." });
+        }
+        const updated = await tx.update(orderItems)
+          .set({ receivedQuantity: sql`${orderItems.quantity}`, verificationStatus: "complete" })
+          .where(eq(orderItems.orderId, order.id)).returning({ id: orderItems.id });
+        return { materialListId: order.materialListId, count: updated.length };
+      });
+      if (result.materialListId) publishMaterialListEvent(result.materialListId, "updated", organizationId);
+      return result;
+    }),
+
   /**
    * Update verification state for a single order item.
    */

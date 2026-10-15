@@ -136,6 +136,15 @@ export default function MaterialListDetailPage({
   });
   const updateOrderItemVerification =
     api.materialList.updateOrderItemVerification.useMutation();
+  const markAllReceived = api.materialList.markAllOrderItemsReceived.useMutation({
+    onSuccess: async () => {
+      await Promise.all([
+        utils.materialList.getOrderById.invalidate(),
+        utils.materialList.listOrders.invalidate(),
+        utils.materialList.getOrdersForMaterialList.invalidate(),
+      ]);
+    },
+  });
   const canQuote = userData?.permissions.can["quotes.create"] ?? true;
   const canOrder =
     isToolRequest || (userData?.permissions.can["orders.send"] ?? true);
@@ -441,8 +450,14 @@ export default function MaterialListDetailPage({
         <MaterialListActions total={footerMaterialTotal} canGenerate={canGenerateQuoteOrOrder} blockedReason={generationBlockReason} canQuote={canQuote} canOrder={canOrder}
           onQuote={handleGenerateQuote} onOrder={handleGenerateOrder} onAdd={openAddPartDialog}
           onNotes={verifyOrderId ? () => setShowVerifyNotesDialog(true) : undefined}
+          onMarkAllReceived={verifyOrderId && userData?.permissions.can["orders.receive"] ? () => markAllReceived.mutate({ orderId: verifyOrderId }) : undefined}
+          receivingAll={markAllReceived.isPending}
+          receiveDisabled={!verifyOrder?.items.length || updateOrderItemVerification.isPending}
+
           isToolRequest={isToolRequest} materialListId={id} />
       </div>
+
+      {markAllReceived.error && <p role="alert" className="px-4 py-2 text-sm text-destructive">{markAllReceived.error.message}</p>}
 
       {/* Modals and Sheets */}
       <Dialog
