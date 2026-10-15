@@ -1,3 +1,4 @@
+import { openDocumentDrawingWorkspace } from "~/server/documents/drawing-workspace";
 import { drawingLinkTargets } from "~/server/drawings/link-targets";
 import { drawingLinkTargetKinds } from "~/lib/drawing-links";
 import { z } from "zod";
@@ -29,6 +30,9 @@ const item = z.object({
   expectedRevision: revision,
 });
 export const drawingsWorkspaceRouter = createTRPCRouter({
+  openDocument: hasDashboardAccess
+    .input(z.object({ jobId: z.string().uuid(), versionId: z.string().uuid() }))
+    .mutation(({ ctx, input }) => openDocumentDrawingWorkspace(ctx, input)),
   linkTargets: hasDashboardAccess
     .input(
       z.object({

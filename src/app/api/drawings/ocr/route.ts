@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { execFile } from "node:child_process";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
@@ -73,6 +73,7 @@ export async function POST(request: Request) {
     .where(
       and(
         eq(jobDrawingSheets.id, input.sheetId),
+        isNull(jobDrawingSheets.documentVersionId),
         eq(jobDrawingSheets.organizationId, user.organizationId),
       ),
     )

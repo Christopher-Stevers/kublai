@@ -2295,12 +2295,13 @@ export const jobDrawingSets = createTable(
     id: d.uuid().notNull().primaryKey().$defaultFn(() => crypto.randomUUID()),
     organizationId: d.uuid().notNull().references(() => organizations.id, { onDelete: "cascade" }),
     jobId: d.uuid().notNull().references(() => jobs.id, { onDelete: "cascade" }),
+    documentVersionId: d.uuid(),
     name: d.varchar({ length: 255 }).notNull(),
     createdByUserId: d.varchar({ length: 255 }),
     createdAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
     updatedAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
   }),
-  (t) => [index("job_drawing_set_job_idx").on(t.organizationId, t.jobId)],
+  (t) => [index("job_drawing_set_job_idx").on(t.organizationId, t.jobId), uniqueIndex("drawing_document_version_set_idx").on(t.documentVersionId).where(sql`${t.documentVersionId} is not null`)],
 );
 
 export const jobDrawingSheets = createTable(
@@ -2310,6 +2311,7 @@ export const jobDrawingSheets = createTable(
     organizationId: d.uuid().notNull().references(() => organizations.id, { onDelete: "cascade" }),
     jobId: d.uuid().notNull().references(() => jobs.id, { onDelete: "cascade" }),
     setId: d.uuid().notNull().references(() => jobDrawingSets.id, { onDelete: "cascade" }),
+    documentVersionId: d.uuid(),
     name: d.varchar({ length: 255 }).notNull(),
     imageUrl: d.text().notNull(),
     width: d.integer().notNull(),
@@ -2319,7 +2321,7 @@ export const jobDrawingSheets = createTable(
     uploadedByUserId: d.varchar({ length: 255 }),
     createdAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
   }),
-  (t) => [index("job_drawing_sheet_set_idx").on(t.setId, t.sortOrder)],
+  (t) => [index("job_drawing_sheet_set_idx").on(t.setId, t.sortOrder), uniqueIndex("drawing_document_version_page_idx").on(t.documentVersionId, t.sortOrder).where(sql`${t.documentVersionId} is not null`)],
 );
 
 // Prefabs: named, company-wide sets of parts (e.g. a whole room) that are added

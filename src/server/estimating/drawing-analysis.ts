@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull } from "drizzle-orm";
 import type { db as database } from "~/server/db";
 import { jobDrawingSheets, jobFloors, jobRooms } from "~/server/db/schema";
 import {
@@ -157,6 +157,7 @@ async function resolveCurrentDrawingSources(input: {
     .where(
       and(
         eq(jobDrawingSheets.organizationId, input.organizationId),
+        isNull(jobDrawingSheets.documentVersionId),
         eq(jobDrawingSheets.jobId, input.jobId),
         inArray(jobDrawingSheets.id, currentIds),
       ),
@@ -666,6 +667,7 @@ export async function analyzeJobDrawings(input: {
     .where(
       and(
         eq(jobDrawingSheets.organizationId, input.organizationId),
+        isNull(jobDrawingSheets.documentVersionId),
         eq(jobDrawingSheets.jobId, input.jobId),
         selectedIds.length
           ? inArray(jobDrawingSheets.id, selectedIds)
@@ -940,6 +942,7 @@ export async function validateDrawingEvidence(input: {
       .where(
         and(
           eq(jobDrawingSheets.organizationId, input.organizationId),
+        isNull(jobDrawingSheets.documentVersionId),
           eq(jobDrawingSheets.jobId, input.jobId),
           inArray(jobDrawingSheets.id, sheetIds),
         ),

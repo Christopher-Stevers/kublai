@@ -1,3 +1,4 @@
+import { accessSheet } from "~/server/drawings/service";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
@@ -33,7 +34,7 @@ export async function POST(request: Request) {
     const url = new URL(request.url);
     const sheetId = z.string().uuid().parse(url.searchParams.get("sheetId"));
     const [sheet] = await db
-      .select({ jobId: jobDrawingSheets.jobId })
+      .select({ jobId: jobDrawingSheets.jobId, documentVersionId: jobDrawingSheets.documentVersionId })
       .from(jobDrawingSheets)
       .where(
         and(
@@ -43,6 +44,10 @@ export async function POST(request: Request) {
       )
       .limit(1);
     if (!sheet) throw new TRPCError({ code: "NOT_FOUND" });
+    if (sheet.documentVersionId) {
+      const access = await accessSheet(db, user.id, sheetId);
+      if (!access.canAnnotate) throw new TRPCError({ code: "FORBIDDEN" });
+    }
     const result = await withDrawingAttachmentSlot(async () =>
       writeDrawingAttachment({
         jobId: sheet.jobId,

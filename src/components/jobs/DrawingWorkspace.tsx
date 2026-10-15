@@ -328,6 +328,9 @@ export function DrawingWorkspace({
   onOpenSheet,
   initialViewport,
   onViewportChange,
+  onReady,
+  onDocumentDetails,
+  onClose,
 }: {
   jobId: string;
   sheet: {
@@ -341,6 +344,9 @@ export function DrawingWorkspace({
   onOpenSheet: (sheet: DrawingJobSheet) => void;
   initialViewport?: DrawingViewport | null;
   onViewportChange?: (viewport: DrawingViewport) => void;
+  onReady?: () => void;
+  onDocumentDetails?: () => void;
+  onClose?: () => void;
 }) {
   const snapshotTool = useSnapshot();
   const destinationPicker = useDrawingDestination();
@@ -375,8 +381,13 @@ export function DrawingWorkspace({
   // Cache keys also include the simulation session; identity comes from the
   // server-validated account, never from parsing a storage namespace.
   const boundUser = account?.userId;
+  const accessRevoked = ["UNAUTHORIZED", "FORBIDDEN", "NOT_FOUND"].includes(
+    query.error?.data?.code ?? "",
+  );
   const serverData =
-    query.data && (!boundUser || query.data.actor.id === boundUser)
+    !accessRevoked &&
+    query.data &&
+    (!boundUser || query.data.actor.id === boundUser)
       ? query.data
       : null;
   const data =
@@ -531,8 +542,12 @@ export function DrawingWorkspace({
   } | null>(null);
   const resolveAssetUrl = useCallback(
     async (url: string) =>
-      account?.store ? account.store.resolveAssetUrl(url) : url,
-    [account?.store],
+      data?.documentSource
+        ? url
+        : account?.store
+          ? account.store.resolveAssetUrl(url)
+          : url,
+    [account?.store, data?.documentSource],
   );
   const pdf = useMemo(() => sourcePdfPage(source.imageUrl), [source.imageUrl]);
 
@@ -675,7 +690,11 @@ export function DrawingWorkspace({
     onSaved: patchEntity,
     onError: fail,
   });
-  const writable = current && Boolean(data) && (online || queued.ready);
+  const writable =
+    current &&
+    Boolean(data) &&
+    data?.canAnnotate !== false &&
+    (online || queued.ready);
   const entities = useMemo(() => {
     const queuedIds = new Set(
       queued.records.map((record) => record.preview.id),
@@ -708,7 +727,9 @@ export function DrawingWorkspace({
     (entity: DrawingEntity) =>
       writable &&
       !blockedEdits.has(entity.id) &&
-      (entity.kind !== "markup" || entity.id !== selectedId || editReadyId === selectedId) &&
+      (entity.kind !== "markup" ||
+        entity.id !== selectedId ||
+        editReadyId === selectedId) &&
       (online ||
         (entity.authorId === data?.actor.id &&
           (entity.kind === "markup" ||
@@ -1269,6 +1290,7 @@ export function DrawingWorkspace({
             appearance={appearance}
             src={resolved.src}
             alt={source.name}
+            onPdfReady={onReady}
             pdf={resolved.pdf}
             tiles={tileBase(source.imageUrl)}
             sheetKey={source.id}
@@ -1529,6 +1551,7 @@ export function DrawingWorkspace({
               initialViewport={viewport.current}
               src={resolved.src}
               alt={source.name}
+              onPdfReady={onReady}
               pdf={resolved.pdf}
               onPdfLink={activatePdfLink}
               tiles={tileBase(source.imageUrl)}
@@ -2580,7 +2603,9 @@ export function DrawingWorkspace({
                                 id: item.sheetId,
                               }))}
                               entities={[]}
-                              store={account?.store}
+                              store={
+                                data.documentSource ? null : account?.store
+                              }
                               resolveAssetUrl={resolveAssetUrl}
                             />
                           </div>
@@ -2595,7 +2620,7 @@ export function DrawingWorkspace({
                   sheets={data.jobSheets}
                   entities={visible}
                   scale={current ? data.metadata.scale : null}
-                  store={account?.store}
+                  store={data.documentSource ? null : account?.store}
                   resolveAssetUrl={resolveAssetUrl}
                   onOfflineSaved={() =>
                     account?.store?.saveSnapshot(
@@ -2948,20 +2973,39 @@ export function DrawingWorkspace({
                 <DropdownMenuLabel className={MENU_SECTION}>
                   Sheet
                 </DropdownMenuLabel>
-                {panels.map(([id, label]) => (
+                {onDocumentDetails && (
                   <DropdownMenuItem
-                    key={id}
                     className={MENU_ITEM}
-                    onSelect={() => {
-                      setMoreOpen(false);
-                      setPanel(id);
-                      setForm(null);
-                    }}
+                    onSelect={onDocumentDetails}
                   >
-                    <MenuTile icon={PANEL_ICONS[id]} />
-                    {label}
+                    <MenuTile icon={FileTextIcon} />
+                    Document details
                   </DropdownMenuItem>
-                ))}
+                )}
+                {onClose && (
+                  <DropdownMenuItem className={MENU_ITEM} onSelect={onClose}>
+                    <MenuTile icon={XIcon} />
+                    Close document
+                  </DropdownMenuItem>
+                )}
+                {panels
+                  .filter(
+                    ([id]) => !data.documentSource || id !== "notifications",
+                  )
+                  .map(([id, label]) => (
+                    <DropdownMenuItem
+                      key={id}
+                      className={MENU_ITEM}
+                      onSelect={() => {
+                        setMoreOpen(false);
+                        setPanel(id);
+                        setForm(null);
+                      }}
+                    >
+                      <MenuTile icon={PANEL_ICONS[id]} />
+                      {label}
+                    </DropdownMenuItem>
+                  ))}
               </DropdownMenuContent>
             </DropdownMenu>
           )}

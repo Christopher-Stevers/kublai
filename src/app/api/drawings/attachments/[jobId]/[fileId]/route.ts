@@ -1,3 +1,4 @@
+import { accessSheet } from "~/server/drawings/service";
 import { and, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
@@ -33,7 +34,7 @@ export async function GET(
       .parse(await context.params);
     const info = await drawingAttachmentInfo(jobId, fileId);
     const [sheet] = await db
-      .select({ id: jobDrawingSheets.id })
+      .select({ id: jobDrawingSheets.id, documentVersionId: jobDrawingSheets.documentVersionId })
       .from(jobDrawingSheets)
       .where(
         and(
@@ -44,6 +45,7 @@ export async function GET(
       )
       .limit(1);
     if (!sheet) throw new TRPCError({ code: "NOT_FOUND" });
+    if (sheet.documentVersionId) await accessSheet(db, user.id, info.sheetId);
     if (info.authorId !== user.id) {
       const url = `/api/drawings/attachments/${jobId}/${fileId}`;
       const [visible] = await db
@@ -52,6 +54,7 @@ export async function GET(
         .where(
           and(
             eq(drawingWorkspaceEntities.jobId, jobId),
+            eq(drawingWorkspaceEntities.sheetId, sheet.id),
             eq(drawingWorkspaceEntities.organizationId, user.organizationId),
             sql`${drawingWorkspaceEntities.entity}->>'kind' in ('issue', 'markup')`,
             sql`(${drawingWorkspaceEntities.entity}->>'visibility' = 'published' OR ${drawingWorkspaceEntities.entity}->>'authorId' = ${user.id})`,

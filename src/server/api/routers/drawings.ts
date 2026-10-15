@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import { and, asc, count, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, count, eq, inArray, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { createTRPCRouter, hasDashboardAccess } from "~/server/api/trpc";
@@ -48,6 +48,7 @@ async function requireSet(ctx: Ctx, setId: string) {
       and(
         eq(jobDrawingSets.id, setId),
         eq(jobDrawingSets.organizationId, organizationOf(ctx)),
+        isNull(jobDrawingSets.documentVersionId),
       ),
     )
     .limit(1);
@@ -63,6 +64,7 @@ async function requireSheet(ctx: Ctx, sheetId: string) {
       and(
         eq(jobDrawingSheets.id, sheetId),
         eq(jobDrawingSheets.organizationId, organizationOf(ctx)),
+        isNull(jobDrawingSheets.documentVersionId),
       ),
     )
     .limit(1);
@@ -85,6 +87,7 @@ export const drawingsRouter = createTRPCRouter({
           and(
             eq(jobDrawingSets.jobId, input.jobId),
             eq(jobDrawingSets.organizationId, organizationOf(ctx)),
+        isNull(jobDrawingSets.documentVersionId),
           ),
         )
         .orderBy(asc(jobDrawingSets.name), asc(jobDrawingSets.createdAt));

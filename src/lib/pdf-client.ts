@@ -105,6 +105,15 @@ export function discardPdfDocument(
  * `plan.pdf`, page n.
  */
 export function sourcePdfPage(imageUrl: string) {
+  const documentPage =
+    /^\/api\/job-documents\/pages\/([0-9a-f-]{36})\/([1-9]\d*)\?jobId=([0-9a-f-]{36})$/i.exec(
+      imageUrl,
+    );
+  if (documentPage)
+    return {
+      url: `/api/job-documents/files/${documentPage[1]}?jobId=${documentPage[3]}`,
+      page: Number(documentPage[2]),
+    };
   const match =
     /^(\/api\/job-rooms\/files\/[0-9a-f-]{36}\/[0-9a-f-]{36})\/floor-(\d+)\.webp$/i.exec(
       imageUrl,

@@ -362,6 +362,8 @@ export type DrawingActivity = {
   createdAt: string;
 };
 export type DrawingWorkspace = {
+  canAnnotate?: boolean;
+  documentSource?: boolean;
   sheetId: string;
   jobId: string;
   canManage: boolean;

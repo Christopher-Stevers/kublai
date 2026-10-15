@@ -1,10 +1,9 @@
 "use client";
+import { DrawingPageNavigation } from "./DrawingPageNavigation";
 import { usePageViewState } from "~/hooks/use-page-view-state";
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  ChevronLeftIcon,
-  ChevronRightIcon,
   FileTextIcon,
   FolderIcon,
   FolderPlusIcon,
@@ -18,7 +17,6 @@ import {
   CheckIcon,
   SearchIcon,
   SlidersHorizontalIcon,
-  MaximizeIcon,
   MinimizeIcon,
 } from "lucide-react";
 
@@ -539,92 +537,42 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
             }}
           />
         </div>
-        {/* Second row of the drawing's bottom bar (the workspace draws the
-            first: More, Tools, Markup, Measure). */}
-        <div
-          data-drawing-chrome
-          className="bg-card shrink-0 px-3 pt-0.5 pb-[calc(0.25rem+env(safe-area-inset-bottom))]"
-        >
-          <div className="mx-auto grid max-w-6xl grid-cols-[minmax(0,1fr)_minmax(0,1.25fr)_minmax(0,1fr)] items-center gap-2">
-            <Button
-              variant="outline"
-              className="h-9 min-w-0 rounded-lg px-2 text-sm"
-              disabled={sheetIndex <= 0}
-              onClick={() => openSheet(sheets[sheetIndex - 1]!.id, true)}
-            >
-              <ChevronLeftIcon className="mr-1 h-4 w-4" />
-              Previous
-            </Button>
-            <div className="flex min-w-0 flex-col items-center">
-              <div className="flex w-full min-w-0 items-center justify-center gap-1.5">
-                {canUpload ? (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    className="h-6 min-w-0 shrink gap-1 px-1 text-xs"
-                    aria-label={`Rename drawing ${sheet.name}`}
-                    title={sheet.name}
-                    disabled={renameSheet.isPending}
-                    onClick={() =>
-                      openNameDialog({
-                        kind: "rename-sheet",
-                        id: sheet.id,
-                        name: sheet.name,
-                      })
-                    }
-                  >
-                    <span className="truncate">{sheet.name}</span>
-                    <PencilIcon
-                      className="h-3.5 w-3.5 shrink-0"
-                      aria-hidden="true"
-                    />
-                  </Button>
-                ) : (
-                  <span
-                    className="min-w-0 truncate py-1 text-center text-sm"
-                    title={sheet.name}
-                  >
-                    {sheet.name}
-                  </span>
-                )}
-                <span
-                  ref={zoomLabel}
-                  aria-label="Drawing zoom"
-                  title="Zoom (100% = fit to screen)"
-                  className="text-muted-foreground shrink-0 text-xs tabular-nums"
-                >
-                  {Math.round((entryViewport?.zoom ?? 1) * 100)}%
-                </span>
-              </div>
-              <div className="flex items-center justify-center gap-1.5">
-                <span className="text-muted-foreground text-xs tabular-nums">
-                  {sheetIndex + 1} of {sheets.length}
-                </span>
-                <Button
-                  ref={full.enterButton}
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  className="size-6"
-                  aria-label="Full screen"
-                  title="Full screen"
-                  onClick={full.enter}
-                >
-                  <MaximizeIcon className="size-4" aria-hidden="true" />
-                </Button>
-              </div>
-            </div>
-            <Button
-              variant="outline"
-              className="h-9 min-w-0 rounded-lg px-2 text-sm"
-              disabled={sheetIndex >= sheets.length - 1}
-              onClick={() => openSheet(sheets[sheetIndex + 1]!.id, true)}
-            >
-              Next
-              <ChevronRightIcon className="ml-1 h-4 w-4" />
-            </Button>
-          </div>
-        </div>
+        <DrawingPageNavigation
+          name={sheet.name}
+          index={sheetIndex}
+          count={sheets.length}
+          zoom={entryViewport?.zoom ?? 1}
+          zoomRef={zoomLabel}
+          fullscreenRef={full.enterButton}
+          onFullscreen={full.enter}
+          onPrevious={() => openSheet(sheets[sheetIndex - 1]!.id, true)}
+          onNext={() => openSheet(sheets[sheetIndex + 1]!.id, true)}
+          nameControl={
+            canUpload ? (
+              <Button
+                type="button"
+                variant="ghost"
+                className="h-6 min-w-0 shrink gap-1 px-1 text-xs"
+                aria-label={`Rename drawing ${sheet.name}`}
+                title={sheet.name}
+                disabled={renameSheet.isPending}
+                onClick={() =>
+                  openNameDialog({
+                    kind: "rename-sheet",
+                    id: sheet.id,
+                    name: sheet.name,
+                  })
+                }
+              >
+                <span className="truncate">{sheet.name}</span>
+                <PencilIcon
+                  className="h-3.5 w-3.5 shrink-0"
+                  aria-hidden="true"
+                />
+              </Button>
+            ) : undefined
+          }
+        />
         {nameDialogView}
       </div>
     );

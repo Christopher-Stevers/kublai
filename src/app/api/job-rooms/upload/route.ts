@@ -1,6 +1,6 @@
 import { spawn } from "node:child_process";
 import path from "node:path";
-import { and, eq, like } from "drizzle-orm";
+import { isNull, and, eq, like } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { userCan } from "~/server/auth/permissions";
 import { db } from "~/server/db";
@@ -49,6 +49,7 @@ async function checkDrawingSet(setId: string, jobId: string, organizationId: str
         eq(jobDrawingSets.id, setId),
         eq(jobDrawingSets.jobId, jobId),
         eq(jobDrawingSets.organizationId, organizationId),
+        isNull(jobDrawingSets.documentVersionId),
       ),
     )
     .limit(1);

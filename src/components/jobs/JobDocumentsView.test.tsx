@@ -20,15 +20,19 @@ vi.mock("./documents/DocumentPdfPreview", async () => {
       url,
       title,
       onReady,
+      onDocumentDetails,
+      onClose,
     }: {
       url: string;
       title: string;
       onReady?: () => void;
+      onDocumentDetails?: () => void;
+      onClose?: () => void;
     }) => {
       useEffect(() => {
         onReady?.();
       }, [onReady]);
-      return <iframe title={title} src={url} />;
+      return <><iframe title={title} src={url} />{onDocumentDetails && <button onClick={onDocumentDetails}>Document details</button>}{onClose && <button onClick={onClose}>Close</button>}</>;
     },
   };
 });
@@ -178,8 +182,8 @@ describe("job documents workspace", () => {
       screen.getByRole("button", { name: "Open Specification.pdf" }),
     );
     expect(
-      screen.getByRole("dialog", { name: "Specification.pdf" }),
-    ).toHaveClass("h-dvh", "w-screen");
+      screen.getByRole("region", { name: "Specification.pdf" }),
+    ).toHaveClass("fixed", "top-14", "bottom-0");
     expect(
       screen.queryByRole("tab", { name: "versions" }),
     ).not.toBeInTheDocument();
@@ -187,8 +191,8 @@ describe("job documents workspace", () => {
     expect(screen.getByRole("tab", { name: "versions" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Full screen" }));
     expect(
-      screen.getByRole("dialog", { name: "Specification.pdf" }),
-    ).toHaveClass("h-dvh");
+      screen.getByRole("region", { name: "Specification.pdf" }),
+    ).toHaveClass("top-14", "bottom-0");
   });
   it("opens an accessible document from a drawing link in its own folder", async () => {
     window.history.replaceState(null, "", "/?document=doc-2");
@@ -233,11 +237,11 @@ describe("job documents workspace", () => {
     expect(
       screen.queryByRole("button", { name: "Open Agreement.docx" }),
     ).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "More", exact: true }));
+    fireEvent.click(screen.getByRole("button", { name: "More" }));
     fireEvent.change(screen.getByLabelText("Filter by file type"), {
       target: { value: "word" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Close", exact: true }));
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
     expect(screen.getByText("No matching documents")).toBeInTheDocument();
   });
 
@@ -245,7 +249,7 @@ describe("job documents workspace", () => {
     render(<JobDocumentsView jobId="job-1" />);
     await ready();
     fireEvent.click(screen.getByRole("button", { name: "Contracts" }));
-    fireEvent.click(screen.getByRole("button", { name: "More", exact: true }));
+    fireEvent.click(screen.getByRole("button", { name: "More" }));
     fireEvent.click(screen.getByRole("button", { name: "New folder" }));
     fireEvent.change(screen.getByLabelText("Name"), {
       target: { value: " Submittals " },
@@ -454,7 +458,7 @@ describe("job documents workspace", () => {
           )
         : new Response(JSON.stringify(overview)),
     );
-    fireEvent.click(screen.getByRole("button", { name: "More", exact: true }));
+    fireEvent.click(screen.getByRole("button", { name: "More" }));
     fireEvent.click(screen.getByRole("button", { name: "New folder" }));
     fireEvent.change(screen.getByLabelText("Name"), {
       target: { value: "Private" },
@@ -494,7 +498,7 @@ describe("job documents workspace", () => {
     render(<JobDocumentsView jobId="job-1" />);
     await ready();
     fireEvent.click(screen.getByRole("button", { name: "Contracts" }));
-    fireEvent.click(screen.getByRole("button", { name: "More", exact: true }));
+    fireEvent.click(screen.getByRole("button", { name: "More" }));
     fireEvent.click(screen.getByRole("button", { name: "Permissions" }));
     fireEvent.change(screen.getByLabelText("Access for Alex"), {
       target: { value: "viewer" },
@@ -570,7 +574,7 @@ describe("job documents workspace", () => {
       .mockImplementation(() => undefined);
     render(<JobDocumentsView jobId="job-1" />);
     await ready();
-    fireEvent.click(screen.getByRole("button", { name: "More", exact: true }));
+    fireEvent.click(screen.getByRole("button", { name: "More" }));
     fireEvent.click(screen.getByRole("tab", { name: "Transmittals" }));
     fireEvent.click(screen.getByRole("button", { name: "Download manifest" }));
     const blob = createObjectURL.mock.calls[0]![0] as Blob | undefined;
@@ -651,7 +655,7 @@ describe("job documents workspace", () => {
       render(<JobDocumentsView jobId="job-1" />);
       await ready();
       fireEvent.click(
-        screen.getByRole("button", { name: "Add document", exact: true }),
+        screen.getByRole("button", { name: "Add document" }),
       );
       fireEvent.click(await screen.findByRole("button", { name: label }));
       fireEvent.change(screen.getByLabelText("Name"), {
@@ -678,7 +682,7 @@ describe("job documents workspace", () => {
     render(<JobDocumentsView jobId="job-1" />);
     await ready();
     fireEvent.click(
-      screen.getByRole("button", { name: "Add document", exact: true }),
+      screen.getByRole("button", { name: "Add document" }),
     );
     expect(
       screen.getByText(/Online Word and spreadsheet editing is not set up/),
@@ -689,7 +693,7 @@ describe("job documents workspace", () => {
     expect(
       screen.queryByRole("button", { name: "New spreadsheet" }),
     ).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Close", exact: true }));
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
     fireEvent.click(screen.getByRole("button", { name: "Contracts" }));
     fireEvent.click(
       screen.getByRole("button", { name: "Open Agreement.docx" }),
@@ -753,7 +757,7 @@ function pendingSubmittal() {
 }
 async function openSubmittals() {
   await ready();
-  fireEvent.click(screen.getByRole("button", { name: "More", exact: true }));
+  fireEvent.click(screen.getByRole("button", { name: "More" }));
   fireEvent.click(screen.getByRole("tab", { name: "Submittals" }));
 }
 describe("dedicated submittal workspace", () => {
@@ -778,7 +782,7 @@ describe("dedicated submittal workspace", () => {
     expect(
       screen.queryByRole("button", { name: "Open SUB-001 · valve.pdf" }),
     ).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "More", exact: true }));
+    fireEvent.click(screen.getByRole("button", { name: "More" }));
     fireEvent.click(screen.getByRole("tab", { name: "Submittals" }));
     expect(
       screen.getByRole("button", { name: "Open SUB-002: Motor" }),
@@ -964,12 +968,12 @@ it("routes grouped approvals through the full review instead of approving unseen
     screen.queryByRole("button", { name: "Approve PDF" }),
   ).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "Open grouped review" }));
-  fireEvent.click(screen.getByRole("button", { name: "More", exact: true }));
+  fireEvent.click(screen.getByRole("button", { name: "More" }));
   expect(screen.getByRole("tab", { name: "Reviews" })).toHaveAttribute(
     "aria-selected",
     "true",
   );
-  fireEvent.click(screen.getByRole("button", { name: "Close", exact: true }));
+  fireEvent.click(screen.getByRole("button", { name: "Close" }));
   expect(
     screen.getByRole("button", { name: "Complete review" }),
   ).toBeInTheDocument();

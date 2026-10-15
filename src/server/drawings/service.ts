@@ -1,3 +1,4 @@
+import { documentDrawingAccess } from "~/server/documents/drawing-workspace";
 import { drawingMarkupLinks } from "~/lib/drawing-links";
 import { randomUUID } from "node:crypto";
 import { TRPCError } from "@trpc/server";
@@ -20,7 +21,11 @@ import {
   jobChatAttachments,
   jobChatMessages,
 } from "~/server/chat/tables";
-import { jobDrawingSets, jobDrawingSheets, jobDocumentWorkspaces } from "~/server/db/schema";
+import {
+  jobDrawingSets,
+  jobDrawingSheets,
+  jobDocumentWorkspaces,
+} from "~/server/db/schema";
 import {
   drawingWorkspaceEntities as entities,
   drawingWorkspaceMetadata as metadata,
@@ -78,13 +83,28 @@ export async function accessSheet(
   const sheet = rows[0];
   if (!sheet)
     throw new TRPCError({ code: "NOT_FOUND", message: "Drawing not found." });
+  if (sheet.documentVersionId) {
+    const document = await documentDrawingAccess(
+      reader,
+      userId,
+      sheet.jobId,
+      sheet.documentVersionId,
+    );
+    return {
+      actor: document.actor,
+      sheet,
+      user: document.access.user,
+      canAnnotate: document.canAnnotate,
+    };
+  }
   const actor = drawingActor(user, sheet.organizationId);
-  return { actor, sheet, user: user! };
+  return { actor, sheet, user: user!, canAnnotate: true };
 }
 async function jobSheets(
   reader: Reader,
   jobId: string,
   organizationId: string,
+  documentVersionId?: string | null,
 ): Promise<DrawingJobSheet[]> {
   const rows = await reader
     .select({
@@ -98,11 +118,21 @@ async function jobSheets(
       sourceFilename: jobDrawingSheets.sourceFilename,
     })
     .from(jobDrawingSheets)
-    .leftJoin(jobDrawingSets, and(eq(jobDrawingSets.id, jobDrawingSheets.setId), eq(jobDrawingSets.organizationId, organizationId), eq(jobDrawingSets.jobId, jobId)))
+    .leftJoin(
+      jobDrawingSets,
+      and(
+        eq(jobDrawingSets.id, jobDrawingSheets.setId),
+        eq(jobDrawingSets.organizationId, organizationId),
+        eq(jobDrawingSets.jobId, jobId),
+      ),
+    )
     .where(
       and(
         eq(jobDrawingSheets.jobId, jobId),
         eq(jobDrawingSheets.organizationId, organizationId),
+        documentVersionId
+          ? eq(jobDrawingSheets.documentVersionId, documentVersionId)
+          : isNull(jobDrawingSheets.documentVersionId),
       ),
     )
     .orderBy(asc(jobDrawingSheets.sortOrder), asc(jobDrawingSheets.createdAt))
@@ -211,7 +241,17 @@ async function withSheet<T>(
     await tx.execute(
       sql`select pg_advisory_xact_lock(hashtextextended(${access.sheet.jobId}, 4151))`,
     );
+    if (access.sheet.documentVersionId) {
+      await tx.execute(
+        sql`select pg_advisory_xact_lock(hashtextextended(${access.sheet.jobId}, 4149))`,
+      );
+    }
     access = await accessSheet(tx, ctx.userId, sheetId);
+    if (!access.canAnnotate)
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "This document version is read only or locked.",
+      });
     // Prevent deletion while cross-sheet references or children are being inserted.
     await tx
       .select({ id: jobDrawingSheets.id })
@@ -430,7 +470,12 @@ export async function getDrawingWorkspace(
       sheetEntities(ctx.db, sheetId),
       sheetMetadata(ctx.db, sheetId),
       members(ctx.db, access.actor.organizationId),
-      jobSheets(ctx.db, access.sheet.jobId, access.actor.organizationId),
+      jobSheets(
+        ctx.db,
+        access.sheet.jobId,
+        access.actor.organizationId,
+        access.sheet.documentVersionId,
+      ),
       ctx.db
         .select()
         .from(favorites)
@@ -459,6 +504,8 @@ export async function getDrawingWorkspace(
     jobId: access.sheet.jobId,
     actor: { id: access.actor.id, name: access.actor.name },
     canManage: access.actor.canManage,
+    canAnnotate: access.canAnnotate,
+    documentSource: Boolean(access.sheet.documentVersionId),
     entities: visible,
     metadata: data,
     members: people,
@@ -543,7 +590,12 @@ export async function saveDrawingEntity(
   return withSheet(ctx, input.sheetId, async (tx, access) => {
     const [items, sheets, people, current] = await Promise.all([
       sheetEntities(tx, input.sheetId),
-      jobSheets(tx, access.sheet.jobId, access.actor.organizationId),
+      jobSheets(
+        tx,
+        access.sheet.jobId,
+        access.actor.organizationId,
+        access.sheet.documentVersionId,
+      ),
       members(tx, access.actor.organizationId),
       sheetMetadata(tx, input.sheetId),
     ]);
@@ -674,12 +726,13 @@ export async function saveDrawingEntity(
       existing ? "updated" : "created",
       entity.id,
     );
-    await enqueueDrawingNotifications(tx, {
-      sheetId: input.sheetId,
-      organizationId: access.actor.organizationId,
-      senderId: access.actor.id,
-      entity,
-    });
+    if (!access.sheet.documentVersionId)
+      await enqueueDrawingNotifications(tx, {
+        sheetId: input.sheetId,
+        organizationId: access.actor.organizationId,
+        senderId: access.actor.id,
+        entity,
+      });
     return entity;
   });
 }
@@ -703,12 +756,13 @@ export async function archiveDrawingEntity(
       items,
     );
     await record(tx, input.sheetId, access.actor, "archived", entity.id);
-    await enqueueDrawingNotifications(tx, {
-      sheetId: input.sheetId,
-      organizationId: access.actor.organizationId,
-      senderId: access.actor.id,
-      entity,
-    });
+    if (!access.sheet.documentVersionId)
+      await enqueueDrawingNotifications(tx, {
+        sheetId: input.sheetId,
+        organizationId: access.actor.organizationId,
+        senderId: access.actor.id,
+        entity,
+      });
     return entity;
   });
 }
@@ -739,12 +793,13 @@ export async function commentDrawingEntity(
       items,
     );
     await record(tx, input.sheetId, access.actor, "commented", entity.id);
-    await enqueueDrawingNotifications(tx, {
-      sheetId: input.sheetId,
-      organizationId: access.actor.organizationId,
-      senderId: access.actor.id,
-      entity,
-    });
+    if (!access.sheet.documentVersionId)
+      await enqueueDrawingNotifications(tx, {
+        sheetId: input.sheetId,
+        organizationId: access.actor.organizationId,
+        senderId: access.actor.id,
+        entity,
+      });
     return entity;
   });
 }
@@ -783,6 +838,7 @@ export async function setDrawingCurrentVersion(
       tx,
       access.sheet.jobId,
       access.actor.organizationId,
+      access.sheet.documentVersionId,
     );
     requireSource(sheets, input.sourceSheetId);
     if (

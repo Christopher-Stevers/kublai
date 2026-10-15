@@ -76,6 +76,7 @@ export async function drawingLinkTargets(
         and(
           eq(jobDrawingSheets.jobId, jobId),
           eq(jobDrawingSheets.organizationId, access.actor.organizationId),
+          isNull(jobDrawingSheets.documentVersionId),
           query ? ilike(jobDrawingSheets.name, pattern) : undefined,
         ),
       )
@@ -85,7 +86,7 @@ export async function drawingLinkTargets(
       targets.push({
         key: row.id,
         label: row.name,
-        ...(jobId === access.sheet.jobId
+        ...(jobId === access.sheet.jobId && !access.sheet.documentVersionId
           ? { targetSheetId: row.id }
           : {
               url: `${prefix}/drawings?drawingSet=${row.setId}&drawingSheet=${row.id}`,

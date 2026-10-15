@@ -1,5 +1,6 @@
 // @vitest-environment node
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { TRPCError } from "@trpc/server";
 import { PgDialect } from "drizzle-orm/pg-core";
 import type { SQL } from "drizzle-orm";
 
@@ -18,6 +19,7 @@ const mock = vi.hoisted(() => ({
   where: vi.fn<(where: SQL) => { limit: () => Promise<unknown[]> }>(),
   select: vi.fn(),
   write: vi.fn(),
+  access: vi.fn(),
   info: vi.fn(),
   read: vi.fn(),
 }));
@@ -25,6 +27,7 @@ vi.mock("~/server/utils/get-request-identity", () => ({
   getRequestIdentity: async () => ({ user: mock.user }),
 }));
 vi.mock("~/server/auth/permissions", () => ({ userCan: () => mock.permitted }));
+vi.mock("~/server/drawings/service", () => ({ accessSheet: mock.access }));
 vi.mock("~/server/db", () => ({ db: { select: mock.select } }));
 vi.mock("~/server/drawings/attachments", () => ({
   MAX_DRAWING_ATTACHMENT_BYTES: 10 * 1024 * 1024,
@@ -55,6 +58,7 @@ beforeEach(() => {
     organizationAccessStatus: "approved",
   };
   mock.permitted = true;
+  mock.access.mockResolvedValue({ canAnnotate: true });
   mock.rows = [[{ jobId, id: sheetId }]];
   mock.where.mockImplementation(() => ({
     limit: async () => mock.rows.shift() ?? [],
@@ -76,6 +80,17 @@ beforeEach(() => {
 });
 
 describe("private drawing attachments", () => {
+  it("rechecks document access for private document page attachments and rejects read-only uploads", async () => {
+    mock.rows = [[{ id: sheetId, jobId, documentVersionId: fileId }]];
+    mock.access.mockResolvedValue({ canAnnotate: false });
+    expect((await POST(post())).status).toBe(403);
+    expect(mock.access).toHaveBeenCalledWith(expect.anything(), "alice", sheetId);
+    expect(mock.write).not.toHaveBeenCalled();
+    mock.rows = [[{ id: sheetId, documentVersionId: fileId }]];
+    mock.access.mockRejectedValue(new TRPCError({ code: "NOT_FOUND" }));
+    expect((await get()).status).toBe(404);
+    expect(mock.read).not.toHaveBeenCalled();
+  });
   it("rejects unauthenticated, unapproved, and unauthorized accounts before file or database access", async () => {
     mock.user = null;
     expect((await POST(post())).status).toBe(403);
@@ -141,6 +156,7 @@ describe("private drawing attachments", () => {
     expect(scope.sql).toMatch(/in \('issue',\s*'markup'\)/);
     expect(scope.params).toEqual([
       jobId,
+      sheetId,
       "org-a",
       "alice",
       JSON.stringify([{ url: path }]),

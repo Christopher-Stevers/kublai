@@ -8,6 +8,7 @@ import {
   supportsDocumentEditor,
   type EditorAvailability,
 } from "./DocumentEditor";
+import { useHeaderBackOverride } from "~/lib/header-back-events";
 import { DocumentPdfPreview } from "./DocumentPdfPreview";
 import { SubmittalReviewPanel } from "./SubmittalReviewPanel";
 import { SubmittalBadge } from "./SubmittalsView";
@@ -19,7 +20,6 @@ import {
   ExternalLinkIcon,
   HistoryIcon,
   LockIcon,
-  InfoIcon,
   MaximizeIcon,
   MessageSquareIcon,
   UploadIcon,
@@ -172,80 +172,36 @@ export function DocumentDetails({
   const comparisonVersion = versions.find(
     (item) => item.id === compareVersionId,
   );
-  if (
+  const fullPdf =
     version?.mimeType === "application/pdf" &&
     !document.officeWebUrl &&
     !showPdfDetails &&
-    !comparisonVersion
-  ) {
+    !comparisonVersion;
+  useHeaderBackOverride(fullPdf ? onClose : null);
+  if (fullPdf && version) {
     return (
-      <Dialog open onOpenChange={(open) => !open && onClose()}>
-        <DialogContent
-          ref={detailFrame}
-          showCloseButton={false}
-          data-snapshot-source-title={`${document.name} · v${version.number}`}
-          className="fixed inset-0 flex h-dvh max-h-none w-screen max-w-none flex-col gap-0 overflow-hidden rounded-none border-0 p-0 sm:max-w-none"
-        >
-          <DialogHeader className="flex shrink-0 flex-row items-center gap-2 border-b px-3 pt-[max(0.5rem,env(safe-area-inset-top))] pb-2 text-left">
-            <div className="min-w-0 flex-1">
-              <DialogTitle className="truncate text-sm leading-normal">
-                {document.submittal?.title ?? document.name}
-              </DialogTitle>
-              <DialogDescription className="text-xs">
-                Version {version.number}
-              </DialogDescription>
-            </div>
-            <Button
-              size="icon"
-              variant="ghost"
-              aria-label="Document details"
-              title="Document details"
-              onClick={() => setShowPdfDetails(true)}
-            >
-              <InfoIcon />
-            </Button>
-            {snapshot && (
-              <Button
-                size="icon"
-                variant="ghost"
-                aria-label="Snapshot"
-                title="Snapshot"
-                onClick={snapshot.start}
-              >
-                <CameraIcon />
-              </Button>
-            )}
-            <Button size="icon" variant="ghost" asChild>
-              <a
-                href={versionUrl(jobId, version.id, true)}
-                aria-label="Download PDF"
-                title="Download PDF"
-              >
-                <DownloadIcon />
-              </a>
-            </Button>
-            <Button
-              size="icon"
-              variant="ghost"
-              aria-label="Close"
-              title="Close"
-              onClick={onClose}
-            >
-              <XIcon />
-            </Button>
-          </DialogHeader>
-          <DocumentPdfPreview
-            key={version.id}
-            fillHeight
-            initialView={
-              initial?.versionId === version.id ? entry?.pdf : undefined
-            }
-            title={`Preview ${document.name} version ${version.number}`}
-            url={versionUrl(jobId, version.id)}
-            onReady={() => setReadyVersionId(version.id)}
-          />
-        </DialogContent>
-      </Dialog>
+      <div
+        ref={detailFrame}
+        role="region"
+        aria-label={document.name}
+        data-snapshot-source-title={`${document.name} · v${version.number}`}
+        className="bg-background fixed inset-x-0 top-14 bottom-0 z-30 flex min-h-0 flex-col sm:top-16"
+      >
+        <DocumentPdfPreview
+          key={version.id}
+          fillHeight
+          jobId={jobId}
+          versionId={version.id}
+          initialView={
+            initial?.versionId === version.id ? entry?.pdf : undefined
+          }
+          title={`Preview ${document.name} version ${version.number}`}
+          url={versionUrl(jobId, version.id)}
+          onReady={() => setReadyVersionId(version.id)}
+          onDocumentDetails={() => setShowPdfDetails(true)}
+          onClose={onClose}
+        />
+      </div>
     );
   }
   return (
@@ -486,15 +442,26 @@ export function DocumentDetails({
                     </p>
                   </div>
                 ) : version?.mimeType === "application/pdf" ? (
-                  <DocumentPdfPreview
-                    initialView={
-                      initial?.versionId === version.id ? entry?.pdf : undefined
-                    }
-                    key={version.id}
-                    title={`Preview ${document.name} version ${version.number}`}
-                    url={versionUrl(jobId, version.id)}
-                    onReady={() => setReadyVersionId(version.id)}
-                  />
+                  <div className="flex w-full flex-col">
+                    <Button
+                      variant="outline"
+                      className="m-3"
+                      onClick={() => setShowPdfDetails(false)}
+                    >
+                      Open drawing workspace
+                    </Button>
+                    <DocumentPdfPreview
+                      initialView={
+                        initial?.versionId === version.id
+                          ? entry?.pdf
+                          : undefined
+                      }
+                      key={version.id}
+                      title={`Preview ${document.name} version ${version.number}`}
+                      url={versionUrl(jobId, version.id)}
+                      onReady={() => setReadyVersionId(version.id)}
+                    />
+                  </div>
                 ) : version &&
                   [
                     "image/png",

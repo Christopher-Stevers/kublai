@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, isNull } from "drizzle-orm";
 import type { db as database } from "~/server/db";
 import { jobDrawingSets, jobDrawingSheets } from "~/server/db/schema";
 import { drawingWorkspaceMetadata } from "~/server/db/drawing-workspace-schema";
@@ -22,6 +22,7 @@ export async function addDrawingUpload(
           eq(jobDrawingSets.id, setId),
           eq(jobDrawingSets.jobId, s.jobId),
           eq(jobDrawingSets.organizationId, s.organizationId),
+          isNull(jobDrawingSets.documentVersionId),
         ),
       )
       .for("update");

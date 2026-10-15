@@ -6,6 +6,22 @@ const job = "0391aed4-7773-47ec-9141-09df373ec008";
 const upload = "d814fc88-da7c-4df5-aa89-fe3c1fde0462";
 
 describe("sourcePdfPage", () => {
+  it("resolves private document pages to the original authenticated PDF", () => {
+    expect(
+      sourcePdfPage(`/api/job-documents/pages/${upload}/2?jobId=${job}`),
+    ).toEqual({
+      url: `/api/job-documents/files/${upload}?jobId=${job}`,
+      page: 2,
+    });
+    expect(
+      sourcePdfPage(
+        `https://evil.example/api/job-documents/pages/${upload}/2?jobId=${job}`,
+      ),
+    ).toBeNull();
+    expect(
+      sourcePdfPage(`/api/job-documents/pages/${upload}/0?jobId=${job}`),
+    ).toBeNull();
+  });
   it("maps a split drawing image to its original PDF page", () => {
     expect(
       sourcePdfPage(`/api/job-rooms/files/${job}/${upload}/floor-14.webp`),
