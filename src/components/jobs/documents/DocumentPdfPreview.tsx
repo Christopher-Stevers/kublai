@@ -1,13 +1,15 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import type { RenderTask } from "pdfjs-dist/legacy/build/pdf.mjs";
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  DrawingSheetViewer,
+  type DrawingViewport,
+} from "../DrawingSheetViewer";
+import type { DrawingEntity } from "~/lib/drawing-workspace";
 import {
   ChevronLeftIcon,
   ChevronRightIcon,
   Loader2Icon,
-  MinusIcon,
-  PlusIcon,
   SearchIcon,
   XIcon,
 } from "lucide-react";
@@ -44,7 +46,7 @@ const emptySearch = (): SearchState => ({
   capped: false,
 });
 
-/** Private PDF rendering and document-wide text search, including mobile browsers. */
+/** Document adapter for the shared drawing viewer; private URLs and cross-page search stay document scoped. */
 export function DocumentPdfPreview({
   url,
   title,
@@ -58,61 +60,82 @@ export function DocumentPdfPreview({
   initialView?: SnapshotState["pdf"];
   fillHeight?: boolean;
 }) {
-  const frame = useRef<HTMLDivElement>(null);
-  const canvas = useRef<HTMLCanvasElement>(null);
+  const [backing, setBacking] = useState<{ page: number; src: string } | null>(
+    null,
+  );
+  const [viewport, setViewport] = useState<DrawingViewport>(
+    initialView?.viewport ?? {
+      zoom: initialView?.zoom ?? 1,
+      center: { x: 0.5, y: 0.5 },
+    },
+  );
+  const [navigate, setNavigate] = useState<
+    (DrawingViewport & { requestId: string; page: number }) | null
+  >(null);
   const searchInput = useRef<HTMLInputElement>(null);
-  const activeHighlight = useRef<HTMLSpanElement>(null);
-  const rendering = useRef<RenderTask | null>(null);
+
   const ready = useRef(onReady);
-  const [width, setWidth] = useState(0);
   const [page, setPage] = useState(initialView?.page ?? 1);
   const [pages, setPages] = useState(0);
-  const [zoom, setZoom] = useState(initialView?.zoom ?? 1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
   const [search, setSearch] = useState<SearchState>(emptySearch);
   const [matchIndex, setMatchIndex] = useState(0);
   const indexes = useRef(new Map<string, PdfTextIndex>());
-  const position = useRef(initialView);
   const selected = search.matches[matchIndex];
-  const highlights = useMemo(
+  const highlights = useMemo<DrawingEntity[]>(
     () =>
       search.matches.flatMap((match, index) =>
         match.page === page
           ? match.rects.map((rect, part) => ({
-              rect,
-              active: index === matchIndex,
-              key: `${index}:${part}`,
+              id: `search-${index}-${part}`,
+              sheetId: "document",
+              kind: "markup" as const,
+              visibility: "private" as const,
+              revision: 0,
+              authorId: "",
+              authorName: "",
+              createdAt: "",
+              updatedAt: "",
+              comments: [],
+              data: {
+                sourceSheetId: "document",
+                type: "rect" as const,
+                points: [
+                  { x: rect.left, y: rect.top },
+                  { x: rect.right, y: rect.bottom },
+                ],
+                stroke: index === matchIndex ? "#ea580c" : "#eab308",
+                fill: index === matchIndex ? "#fb923c66" : "#fde04755",
+                width: 1,
+              },
             }))
           : [],
       ),
     [search.matches, page, matchIndex],
   );
-
-  useLayoutEffect(() => {
-    if (loading || error || !position.current || !frame.current) return;
-    frame.current.scrollLeft =
-      position.current.left * frame.current.scrollWidth;
-    frame.current.scrollTop = position.current.top * frame.current.scrollHeight;
-    position.current = undefined;
-  }, [loading, error]);
-  useLayoutEffect(() => {
-    if (!loading && selected?.page === page)
-      activeHighlight.current?.scrollIntoView?.({
-        block: "center",
-        inline: "center",
-      });
-  }, [loading, page, selected, zoom]);
+  useEffect(() => {
+    if (selected?.page !== page || !selected.rects[0]) return;
+    const rect = selected.rects[0];
+    setNavigate({
+      page,
+      center: {
+        x: (rect.left + rect.right) / 2,
+        y: (rect.top + rect.bottom) / 2,
+      },
+      zoom: Math.max(2, viewport.zoom),
+      requestId: `search-${page}-${matchIndex}-${query}`,
+    });
+    // A search result moves once; panning afterwards must remain under user control.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected, page, matchIndex, query]);
   useSnapshotSource("pdf", () => ({
     page,
-    zoom,
-    left: frame.current
-      ? frame.current.scrollLeft / Math.max(1, frame.current.scrollWidth)
-      : 0,
-    top: frame.current
-      ? frame.current.scrollTop / Math.max(1, frame.current.scrollHeight)
-      : 0,
+    zoom: viewport.zoom,
+    viewport,
+    left: 0,
+    top: 0,
   }));
   useEffect(() => {
     ready.current = onReady;
@@ -130,24 +153,11 @@ export function DocumentPdfPreview({
     return () => window.removeEventListener("keydown", find);
   }, [fillHeight]);
   useEffect(() => {
-    const element = frame.current;
-    if (!element) return;
-    const update = () => setWidth(Math.max(0, element.clientWidth - 16));
-    update();
-    const observer = new ResizeObserver(update);
-    observer.observe(element);
-    return () => observer.disconnect();
-  }, []);
-  useEffect(() => {
-    const target = canvas.current;
-    if (!target || !width) return;
     let active = true;
-    let task: RenderTask | null = null;
     setLoading(true);
     setError("");
+    setBacking(null);
     void (async () => {
-      // Cancellation is asynchronous: do not reuse the canvas until it finishes.
-      await rendering.current?.promise.catch(() => undefined);
       const document = await loadPdfDocument(url);
       if (!active) return;
       setPages(document.numPages);
@@ -158,39 +168,23 @@ export function DocumentPdfPreview({
       }
       const pdfPage = await document.getPage(actualPage);
       if (!active) return;
-      const unit = pdfPage.getViewport({ scale: 1 });
-      const cssWidth = width * zoom;
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      const scale = Math.min(
-        (cssWidth / unit.width) * dpr,
-        Math.sqrt(8_000_000 / (unit.width * unit.height)),
-      );
-      const viewport = pdfPage.getViewport({ scale });
-      target.width = Math.ceil(viewport.width);
-      target.height = Math.ceil(viewport.height);
-      target.style.width = `${cssWidth}px`;
-      target.style.height = `${(cssWidth * unit.height) / unit.width}px`;
-      task = pdfPage.render({ canvas: target, viewport });
-      rendering.current = task;
-      await task.promise;
+      const size = pdfPage.getViewport({ scale: 1 });
+      // Only a white page-sized backing image is needed. All PDF ink, including
+      // sharp detail at deep zoom, is rendered by the shared drawing viewer.
+      const src = `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="${size.width}" height="${size.height}"><rect width="100%" height="100%" fill="white"/></svg>`)}`;
+      setBacking({ page: actualPage, src });
+    })().catch((reason: unknown) => {
       if (active) {
         setLoading(false);
-        ready.current?.();
+        setError(
+          reason instanceof Error ? reason.message : "Could not load the PDF.",
+        );
       }
-    })().catch((reason: unknown) => {
-      if (!active) return;
-      setLoading(false);
-      setError(
-        reason instanceof Error
-          ? reason.message
-          : "Could not load the PDF. Download it to view it in another app.",
-      );
     });
     return () => {
       active = false;
-      task?.cancel();
     };
-  }, [url, page, width, zoom]);
+  }, [url, page]);
 
   useEffect(() => {
     const needle = normalizePdfSearchText(query);
@@ -287,74 +281,6 @@ export function DocumentPdfPreview({
       data-snapshot-rendering={loading}
       className={`flex w-full flex-col overflow-hidden ${fillHeight ? "min-h-0 flex-1" : "rounded-md border"}`}
     >
-      <div className="bg-background flex shrink-0 flex-wrap items-center justify-between gap-2 border-b p-2">
-        <div className="flex items-center gap-1">
-          <Button
-            type="button"
-            size="icon"
-            variant="ghost"
-            className="size-9"
-            aria-label="Previous PDF page"
-            disabled={loading || page <= 1}
-            onClick={() => {
-              setPage((value) => value - 1);
-              if (frame.current) frame.current.scrollTop = 0;
-            }}
-          >
-            <ChevronLeftIcon />
-          </Button>
-          <span className="min-w-16 text-center text-xs tabular-nums">
-            {page} / {pages || "…"}
-          </span>
-          <Button
-            type="button"
-            size="icon"
-            variant="ghost"
-            className="size-9"
-            aria-label="Next PDF page"
-            disabled={loading || page >= pages}
-            onClick={() => {
-              setPage((value) => value + 1);
-              if (frame.current) frame.current.scrollTop = 0;
-            }}
-          >
-            <ChevronRightIcon />
-          </Button>
-        </div>
-        <div className="flex items-center gap-1">
-          <Button
-            type="button"
-            size="icon"
-            variant="ghost"
-            className="size-9"
-            aria-label="Zoom PDF out"
-            disabled={zoom <= 1}
-            onClick={() => setZoom((value) => Math.max(1, value - 0.5))}
-          >
-            <MinusIcon />
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            className="h-9 px-2 text-xs"
-            onClick={() => setZoom(1)}
-          >
-            Fit
-          </Button>
-          <Button
-            type="button"
-            size="icon"
-            variant="ghost"
-            className="size-9"
-            aria-label="Zoom PDF in"
-            disabled={zoom >= 5}
-            onClick={() => setZoom((value) => Math.min(5, value + 0.5))}
-          >
-            <PlusIcon />
-          </Button>
-        </div>
-      </div>
       <div className="bg-background flex shrink-0 flex-wrap items-center gap-1 border-b px-2 py-1.5">
         <SearchIcon
           className="text-muted-foreground mx-1 size-4 shrink-0"
@@ -429,54 +355,110 @@ export function DocumentPdfPreview({
         )}
       </div>
       <div
-        ref={frame}
-        data-testid="pdf-scroll-area"
-        className={`relative overflow-auto bg-slate-200 p-2 dark:bg-slate-900 ${fillHeight ? "min-h-0 flex-1" : "h-[48dvh] min-h-60"}`}
+        className={`relative min-h-0 flex-1 ${fillHeight ? "" : "h-[48dvh] min-h-60"}`}
       >
-        <div
-          className="relative mx-auto"
-          style={{ width: width ? width * zoom : undefined }}
-        >
-          <canvas
-            ref={canvas}
-            aria-label={`${title}, page ${page}`}
-            className={`block bg-white ${error ? "hidden" : ""}`}
+        {backing?.page === page && (
+          <DrawingSheetViewer
+            key={`${url}:${page}`}
+            src={backing.src}
+            alt={`${title}, page ${page}`}
+            pdf={{ url, page }}
+            sheetKey={`document:${url}:${page}`}
+            initialViewport={
+              initialView?.page === page
+                ? (initialView.viewport ?? {
+                    center: { x: 0.5, y: 0.5 },
+                    zoom: initialView.zoom,
+                  })
+                : null
+            }
+            navigateTo={navigate?.page === page ? navigate : null}
+            onViewportChange={setViewport}
+            annotations={highlights}
+            canEditAnnotation={() => false}
+            onPdfReady={() => {
+              setLoading(false);
+              setError("");
+              ready.current?.();
+            }}
+            onPdfError={() => {
+              setLoading(false);
+              setError("Could not render the PDF. Retrying…");
+            }}
+            onPdfLink={(link) => {
+              if (link.page) setPage(link.page);
+              else if (link.url && /^(https?:|mailto:|tel:)/i.test(link.url))
+                window.open(link.url, "_blank", "noopener,noreferrer");
+            }}
           />
-          {!loading &&
-            !error &&
-            highlights.map(({ rect, active, key }) => (
-              <span
-                key={key}
-                ref={active ? activeHighlight : undefined}
-                data-pdf-search-match=""
-                data-active={active}
-                className={`pointer-events-none absolute mix-blend-multiply ${active ? "bg-orange-400/60 outline-2 outline-orange-600" : "bg-yellow-300/50"}`}
-                style={{
-                  left: `${rect.left * 100}%`,
-                  top: `${rect.top * 100}%`,
-                  width: `${Math.max(0.001, rect.right - rect.left) * 100}%`,
-                  height: `${Math.max(0.001, rect.bottom - rect.top) * 100}%`,
-                }}
-              />
-            ))}
-        </div>
+        )}
         {loading && (
-          <div
+          <p
             role="status"
-            className="bg-background/95 sticky bottom-2 mx-auto flex w-fit items-center gap-2 rounded-md px-3 py-2 text-xs shadow-sm"
+            className="bg-background/95 absolute top-2 left-1/2 flex -translate-x-1/2 items-center gap-2 rounded-md px-3 py-2 text-xs shadow-sm"
           >
-            <Loader2Icon className="size-4 animate-spin motion-reduce:animate-none" />
+            <Loader2Icon className="size-4 animate-spin" />
             Loading PDF…
-          </div>
+          </p>
         )}
         {error && (
           <p
             role="alert"
-            className="bg-background text-destructive rounded-md p-4 text-sm break-words"
+            className="bg-background text-destructive absolute inset-x-2 top-2 rounded-md p-4 text-sm"
           >
             {error}
           </p>
         )}
+      </div>
+      <div className="bg-background flex shrink-0 flex-wrap items-center justify-between gap-2 border-b p-2">
+        <div className="flex items-center gap-1">
+          <Button
+            type="button"
+            size="icon"
+            variant="ghost"
+            className="size-9"
+            aria-label="Previous PDF page"
+            disabled={loading || page <= 1}
+            onClick={() => {
+              setPage((value) => value - 1);
+            }}
+          >
+            <ChevronLeftIcon />
+          </Button>
+          <span className="min-w-16 text-center text-xs tabular-nums">
+            {page} / {pages || "…"}
+          </span>
+          <Button
+            type="button"
+            size="icon"
+            variant="ghost"
+            className="size-9"
+            aria-label="Next PDF page"
+            disabled={loading || page >= pages}
+            onClick={() => {
+              setPage((value) => value + 1);
+            }}
+          >
+            <ChevronRightIcon />
+          </Button>
+        </div>
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={() =>
+            setNavigate({
+              page,
+              center: { x: 0.5, y: 0.5 },
+              zoom: 1,
+              requestId: crypto.randomUUID(),
+            })
+          }
+        >
+          Fit
+        </Button>
+        <span className="text-xs tabular-nums">
+          {Math.round(viewport.zoom * 100)}%
+        </span>
       </div>
     </section>
   );

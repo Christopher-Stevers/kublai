@@ -20,6 +20,8 @@ import {
 
 type Props = {
   pdf: { url: string; page: number };
+  onReady?: () => void;
+  onError?: (error: unknown) => void;
   fit: DrawingSize;
   frameSize: DrawingSize;
   view: DrawingView;
@@ -242,6 +244,7 @@ export function DrawingPdfLayer(props: Props) {
             }
           }
           current = { index, patch };
+          latest.current.onReady?.();
         }
         const sharp =
           current?.index === index &&
@@ -255,7 +258,8 @@ export function DrawingPdfLayer(props: Props) {
         });
         retryAfter = 0;
         failures = 0;
-      } catch {
+      } catch (error) {
+        if (!disposed) latest.current.onError?.(error);
         if (!disposed)
           recordDrawingPerformance({
             loadMs: renderingAt - loadingAt,

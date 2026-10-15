@@ -23,7 +23,7 @@ recorded below.
 | File operations | Rename, move, copy, locks, recycle and restore | Batch processing, retention and purge policies |
 | Discovery | Search/filter the accessible document list | Full-text indexing, OCR and saved searches |
 | Access | Organization access and folder viewer/editor/manager permissions | External guests, company/role-based groups and richer access reports |
-| Preview | Browser previews for supported PDF and image uploads; downloads for other files | CAD/BIM translation, a 2D/3D viewer, measurement and linked sheets |
+| Preview | Full-screen PDFs use the shared `DrawingSheetViewer` / `DrawingPdfLayer`: touch pan/zoom to 5,000%, sharp viewport rendering, calibration/measurement, PDF links, snapshots and document-wide text search; images preview inline | CAD/BIM translation and cross-document drawing-set workflows |
 | Collaboration | Document comments and activity history | Anchored graphical markups, issue/RFI links and notifications |
 | Reviews | A named reviewer records approval or changes requested against selected versions; replacing/recycling a reviewed file supersedes the pending review | Reusable multi-step/group workflows, deadlines and controlled publication |
 | Transmittals | Stored package records with document/version references, recipients, message and downloadable JSON manifests | ZIP archives of transmitted files, actual delivery and recipient receipts |
@@ -326,3 +326,7 @@ The BIM 360 comparison above follows Autodesk's
 [transmittals](https://help.autodesk.com/cloudhelp/ENU/BIM360D-Document-Management/files/BIM360D_Document_Management_about_transmittals_html.html),
 and [Microsoft 365 support](https://help.autodesk.com/cloudhelp/ENU/BIM360D-Document-Management/files/To-Work-with-Document-Management/To-Work-with-Documents/BIM360D_Document_Management_To_Work_with_Document_Management_To_Work_with_Documents_to_work_office_html.html).
 Integration references were checked on October 7, 2026.
+
+### Shared PDF drawing viewer
+
+Document PDFs and side-by-side version previews use `DocumentPdfPreview`, a document adapter around the same `DrawingSheetViewer` used by Drawings. It passes the existing authenticated immutable-version URL directly into the shared PDF renderer; it does not copy files into drawing sets or weaken document/folder access rules. Page sizing uses PDF metadata, with no separate document canvas renderer. Cross-page text search supplies highlight annotations and camera destinations to the drawing viewer. Snapshots retain the page and drawing camera, including deep zoom. Measurements use the drawing tool's calibration and controls; they do not modify the original PDF. Document versions, reviews and comments stay in Document details.

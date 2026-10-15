@@ -5,252 +5,158 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { snapshotStateSchema } from "~/lib/snapshot-source";
 import { loadPdfDocument } from "~/lib/pdf-client";
-import { DocumentPdfPreview } from "./DocumentPdfPreview";
+import type { ComponentProps } from "react";
+import type { DrawingSheetViewer } from "../DrawingSheetViewer";
+const state = vi.hoisted(() => ({
+  props: null as ComponentProps<typeof DrawingSheetViewer> | null,
+  snapshot: null as (() => unknown) | null,
+}));
 vi.mock("~/lib/pdf-client", () => ({ loadPdfDocument: vi.fn() }));
-let renderPage: ReturnType<typeof vi.fn>;
-type MockPage = {
-  getViewport: (options: { scale: number }) => {
-    width: number;
-    height: number;
-    convertToViewportPoint: (x: number, y: number) => number[];
-  };
-  render: typeof renderPage;
-  getTextContent?: () => Promise<{
-    items: Array<{
-      str: string;
-      transform: number[];
-      width: number;
-      height: number;
-      hasEOL: boolean;
-    }>;
-  }>;
-};
-let getPage: ReturnType<typeof vi.fn<(page: number) => Promise<MockPage>>>;
-let cancel: ReturnType<typeof vi.fn>;
+vi.mock("~/components/chat/SnapshotSourceContext", () => ({
+  useSnapshotSource: (_: string, read: () => unknown) => {
+    state.snapshot = read;
+  },
+}));
+vi.mock("../DrawingSheetViewer", () => ({
+  DrawingSheetViewer: (props: ComponentProps<typeof DrawingSheetViewer>) => {
+    state.props = props;
+    return (
+      <div aria-label={props.alt}>
+        <button onClick={props.onPdfReady}>Render shared drawing</button>
+        <button
+          onClick={() =>
+            props.onViewportChange?.({ center: { x: 0.7, y: 0.6 }, zoom: 50 })
+          }
+        >
+          Pan drawing
+        </button>
+      </div>
+    );
+  },
+}));
+import { DocumentPdfPreview as DocumentDrawingViewer } from "./DocumentPdfPreview";
 beforeEach(() => {
   vi.clearAllMocks();
-  vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(400);
-  vi.stubGlobal(
-    "ResizeObserver",
-    class {
-      observe = vi.fn();
-      disconnect = vi.fn();
-    },
-  );
-  cancel = vi.fn();
-  renderPage = vi.fn(() => ({ promise: Promise.resolve(), cancel }));
-  getPage = vi.fn(async () => ({
-    getViewport: ({ scale }: { scale: number }) => ({
-      width: 600 * scale,
-      height: 800 * scale,
-      convertToViewportPoint: (x: number, y: number) => [
-        x * scale,
-        (800 - y) * scale,
-      ],
-    }),
-    render: renderPage,
-  }));
+  state.props = null;
   vi.mocked(loadPdfDocument).mockResolvedValue({
     numPages: 2,
-    getPage,
+    getPage: async (page: number) => ({
+      getViewport: () => ({
+        width: 600,
+        height: 800,
+        convertToViewportPoint: (x: number, y: number) => [x, 800 - y],
+      }),
+      getTextContent: async () => ({
+        items: Array.from({ length: page === 1 ? 2 : 1 }, (_, index) => ({
+          str: "Valve",
+          transform: [1, 0, 0, 1, 20 + index * 80, 700],
+          width: 50,
+          height: 12,
+          hasEOL: false,
+        })),
+      }),
+    }),
   } as unknown as Awaited<ReturnType<typeof loadPdfDocument>>);
 });
-afterEach(() => {
-  cleanup();
-  vi.restoreAllMocks();
-  vi.unstubAllGlobals();
+afterEach(cleanup);
+it("uses the shared drawing renderer with the authenticated source and only declares readiness after ink is painted", async () => {
+  const ready = vi.fn();
+  render(
+    <DocumentDrawingViewer
+      url="/api/job-documents/files/private?jobId=job"
+      title="Product PDF"
+      onReady={ready}
+      fillHeight
+    />,
+  );
+  await screen.findByLabelText("Product PDF, page 1");
+  expect(state.props?.pdf).toEqual({
+    url: "/api/job-documents/files/private?jobId=job",
+    page: 1,
+  });
+  expect(ready).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByText("Render shared drawing"));
+  expect(ready).toHaveBeenCalledOnce();
+  fireEvent.click(screen.getByRole("button", { name: "Next PDF page" }));
+  await screen.findByLabelText("Product PDF, page 2");
+  expect(state.props?.pdf?.page).toBe(2);
+  expect(ready).toHaveBeenCalledOnce();
 });
-
-describe("Private PDF preview without browser plugins", () => {
-  it("searches every page, highlights repeated matches and navigates across page boundaries", async () => {
-    const pageValue = await getPage(1);
-    getPage.mockImplementation(async (number: number) => ({
-      ...pageValue,
-      getTextContent: async () => ({
-        items: (number === 1 ? ["Valve", "Schedule", "Valve"] : ["Valve"]).map(
-          (str, index) => ({
-            str,
-            transform: [1, 0, 0, 1, 20 + index * 80, 700],
-            width: 50,
-            height: 12,
-            hasEOL: false,
-          }),
-        ),
-      }),
-    }));
-    const view = render(
-      <DocumentPdfPreview
-        url="/search.pdf"
-        title="Searchable PDF"
-        fillHeight
-      />,
-    );
-    fireEvent.change(
-      screen.getByRole("searchbox", { name: "Search PDF text" }),
-      { target: { value: "vAlVe" } },
-    );
-    await waitFor(() =>
-      expect(screen.getByLabelText("PDF search results")).toHaveTextContent(
-        "1 of 3",
-      ),
-    );
-    await waitFor(() =>
-      expect(
-        view.container.querySelectorAll("[data-pdf-search-match]"),
-      ).toHaveLength(2),
-    );
-    fireEvent.click(screen.getByRole("button", { name: "Next search result" }));
+it("searches across pages and navigates/highlights results inside the drawing viewer", async () => {
+  render(
+    <DocumentDrawingViewer
+      url="/search.pdf"
+      title="Searchable PDF"
+      fillHeight
+    />,
+  );
+  fireEvent.change(screen.getByRole("searchbox"), {
+    target: { value: "vAlVe" },
+  });
+  await waitFor(() =>
     expect(screen.getByLabelText("PDF search results")).toHaveTextContent(
-      "2 of 3",
-    );
-    fireEvent.keyDown(screen.getByRole("searchbox"), { key: "Enter" });
-    await waitFor(() =>
-      expect(
-        screen.getByLabelText("Searchable PDF, page 2"),
-      ).toBeInTheDocument(),
-    );
-    expect(screen.getByLabelText("PDF search results")).toHaveTextContent(
-      "3 of 3",
-    );
-    fireEvent.click(screen.getByRole("button", { name: "Next search result" }));
-    await waitFor(() =>
-      expect(
-        screen.getByLabelText("Searchable PDF, page 1"),
-      ).toBeInTheDocument(),
-    );
-    fireEvent.click(screen.getByRole("button", { name: "Clear PDF search" }));
-    await waitFor(() =>
-      expect(
-        view.container.querySelector("[data-pdf-search-match]"),
-      ).toBeNull(),
-    );
+      "1 of 3",
+    ),
+  );
+  expect(state.props?.annotations).toHaveLength(2);
+  expect(state.props?.navigateTo?.center.x).toBeGreaterThan(0);
+  fireEvent.click(screen.getByRole("button", { name: "Next search result" }));
+  fireEvent.keyDown(screen.getByRole("searchbox"), { key: "Enter" });
+  await screen.findByLabelText("Searchable PDF, page 2");
+  expect(state.props?.annotations).toHaveLength(1);
+  expect(screen.getByLabelText("PDF search results")).toHaveTextContent(
+    "3 of 3",
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Clear PDF search" }));
+  await waitFor(() => expect(state.props?.annotations).toHaveLength(0));
+  fireEvent.keyDown(window, { key: "f", ctrlKey: true });
+  expect(screen.getByRole("searchbox")).toHaveFocus();
+});
+it("captures and restores drawing camera positions including 5000 percent zoom", async () => {
+  const viewport = { center: { x: 0.6, y: 0.7 }, zoom: 30 };
+  render(
+    <DocumentDrawingViewer
+      url="/capture.pdf"
+      title="Capture"
+      initialView={{ page: 2, zoom: 30, left: 0, top: 0, viewport }}
+    />,
+  );
+  await screen.findByLabelText("Capture, page 2");
+  expect(state.props?.initialViewport).toEqual(viewport);
+  fireEvent.click(screen.getByText("Pan drawing"));
+  expect(state.snapshot?.()).toMatchObject({
+    page: 2,
+    zoom: 50,
+    viewport: { center: { x: 0.7, y: 0.6 }, zoom: 50 },
   });
-  it("explains scanned PDFs instead of claiming a text search succeeded", async () => {
-    const pageValue = await getPage(1);
-    getPage.mockResolvedValue({
-      ...pageValue,
-      getTextContent: async () => ({ items: [] }),
-    });
-    render(<DocumentPdfPreview url="/scanned.pdf" title="Scanned PDF" />);
-    fireEvent.change(screen.getByRole("searchbox"), {
-      target: { value: "valve" },
-    });
-    await waitFor(() =>
-      expect(screen.getByLabelText("PDF search results")).toHaveTextContent(
-        "No searchable text",
-      ),
-    );
-    expect(
-      screen.getByRole("button", { name: "Next search result" }),
-    ).toBeDisabled();
+  expect(
+    snapshotStateSchema.safeParse({ version: 1, pdf: state.snapshot?.() })
+      .success,
+  ).toBe(true);
+  fireEvent.click(screen.getByRole("button", { name: "Fit" }));
+  expect(state.props?.navigateTo).toMatchObject({
+    center: { x: 0.5, y: 0.5 },
+    zoom: 1,
   });
-  it("returns to the captured PDF page, zoom and scroll without resetting later navigation", async () => {
-    vi.spyOn(HTMLElement.prototype, "scrollWidth", "get").mockReturnValue(1200);
-    vi.spyOn(HTMLElement.prototype, "scrollHeight", "get").mockReturnValue(
-      1600,
-    );
-    const onReady = vi.fn();
-    render(
-      <DocumentPdfPreview
-        url="/captured.pdf"
-        title="Captured PDF"
-        onReady={onReady}
-        initialView={{ page: 2, zoom: 2, left: 0.25, top: 0.5 }}
-      />,
-    );
-    await waitFor(() => expect(onReady).toHaveBeenCalledTimes(1));
-    expect(getPage).toHaveBeenLastCalledWith(2);
-    const canvas = screen.getByLabelText<HTMLCanvasElement>(
-      "Captured PDF, page 2",
-    );
-    const frame = screen.getByTestId("pdf-scroll-area");
-    expect(canvas.style.width).toBe("768px");
-    expect(frame.scrollLeft).toBe(300);
-    expect(frame.scrollTop).toBe(800);
-    frame.scrollLeft = 50;
-    fireEvent.click(screen.getByRole("button", { name: "Previous PDF page" }));
-    await waitFor(() => expect(onReady).toHaveBeenCalledTimes(2));
-    expect(getPage).toHaveBeenLastCalledWith(1);
-    expect(frame.scrollLeft).toBe(50);
-    expect(frame.scrollTop).toBe(0);
-  });
-  it("renders an authenticated URL, reports readiness, pages through a document, and zooms without a plugin", async () => {
-    const onReady = vi.fn();
-    render(
-      <DocumentPdfPreview
-        url="/api/job-documents/files/version?jobId=job"
-        title="Product PDF"
-        onReady={onReady}
-      />,
-    );
-    await waitFor(() => expect(onReady).toHaveBeenCalledTimes(1));
-    expect(loadPdfDocument).toHaveBeenCalledWith(
-      "/api/job-documents/files/version?jobId=job",
-    );
-    expect(screen.queryByTitle("Product PDF")).not.toBeInTheDocument(); // no embedded plugin
-    expect(
-      screen.getByRole("button", { name: "Previous PDF page" }),
-    ).toBeDisabled();
-    fireEvent.click(screen.getByRole("button", { name: "Next PDF page" }));
-    await waitFor(() => expect(onReady).toHaveBeenCalledTimes(2));
-    expect(getPage).toHaveBeenLastCalledWith(2);
-    expect(
-      screen.getByRole("button", { name: "Next PDF page" }),
-    ).toBeDisabled();
-    const canvas = screen.getByLabelText<HTMLCanvasElement>(
-      "Product PDF, page 2",
-    );
-    const width = canvas.width;
-    fireEvent.click(screen.getByRole("button", { name: "Zoom PDF in" }));
-    await waitFor(() => expect(canvas.width).toBeGreaterThan(width));
-    fireEvent.click(screen.getByRole("button", { name: "Fit" }));
-    await waitFor(() => expect(canvas.width).toBe(width));
-  });
-  it("bounds raster memory for oversized sheets", async () => {
-    vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(
-      10000,
-    );
-    render(<DocumentPdfPreview url="/large.pdf" title="Large PDF" />);
-    await waitFor(() => expect(renderPage).toHaveBeenCalledTimes(1));
-    const canvas =
-      screen.getByLabelText<HTMLCanvasElement>("Large PDF, page 1");
-    expect(canvas.width * canvas.height).toBeLessThan(8_020_000);
-  });
-  it("shows failed private-file access without claiming the revision is ready", async () => {
-    vi.mocked(loadPdfDocument).mockRejectedValue(
-      new Error("You no longer have access"),
-    );
-    const onReady = vi.fn();
-    render(
-      <DocumentPdfPreview
-        url="/private.pdf"
-        title="Private PDF"
-        onReady={onReady}
-      />,
-    );
-    expect(await screen.findByRole("alert")).toHaveTextContent(
-      "no longer have access",
-    );
-    expect(onReady).not.toHaveBeenCalled();
-  });
-  it("cancels unfinished renders when a revision is closed", async () => {
-    renderPage.mockReturnValue({
-      promise: new Promise<void>(() => undefined),
-      cancel,
-    });
-    const onReady = vi.fn();
-    const view = render(
-      <DocumentPdfPreview
-        url="/private.pdf"
-        title="Private PDF"
-        onReady={onReady}
-      />,
-    );
-    await waitFor(() => expect(renderPage).toHaveBeenCalledTimes(1));
-    view.unmount();
-    expect(cancel).toHaveBeenCalledTimes(1);
-    expect(onReady).not.toHaveBeenCalled();
-  });
+});
+it("does not send inaccessible document versions to the drawing renderer", async () => {
+  vi.mocked(loadPdfDocument).mockRejectedValue(
+    new Error("You no longer have access"),
+  );
+  const ready = vi.fn();
+  render(
+    <DocumentDrawingViewer
+      url="/private.pdf"
+      title="Private"
+      onReady={ready}
+    />,
+  );
+  expect(await screen.findByRole("alert")).toHaveTextContent(
+    "no longer have access",
+  );
+  expect(state.props).toBeNull();
+  expect(ready).not.toHaveBeenCalled();
 });

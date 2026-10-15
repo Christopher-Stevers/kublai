@@ -160,7 +160,8 @@ export const snapshotStateSchema = z.object({
   pdf: z
     .object({
       page: z.number().int().min(1).max(100_000),
-      zoom: z.number().min(1).max(3),
+      zoom: z.number().min(1).max(50),
+      viewport: z.object({ center: point, zoom: z.number().min(1).max(50) }).optional(),
       left: z.number().min(0).max(1),
       top: z.number().min(0).max(1),
     })

@@ -143,6 +143,8 @@ export function DrawingSheetViewer({
   onViewportChange,
   initialViewport,
   toolControls,
+  onPdfReady,
+  onPdfError,
   onPdfLink,
   textEditing,
   ...editorProps
@@ -152,6 +154,8 @@ export function DrawingSheetViewer({
   src: string;
   alt: string;
   onPdfLink?: (link: DrawingPdfLink) => void;
+  onPdfReady?: () => void;
+  onPdfError?: (error: unknown) => void;
   pdf?: { url: string; page: number } | null;
   /** Folder holding manifest.json and <factor>/<col>_<row>.webp tiles. */
   tiles?: string | null;
@@ -2460,6 +2464,8 @@ export function DrawingSheetViewer({
             enabled={needsPdf}
             moving={moving}
             screenSpace
+            onReady={onPdfReady}
+            onError={onPdfError}
             paintRef={pdfPaint}
             appearanceFilter={appearanceFilter}
           />
