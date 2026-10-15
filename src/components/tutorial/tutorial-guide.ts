@@ -1,4 +1,4 @@
-export type TutorialPhase = "materials" | "rooms" | "chat" | "done";
+export type TutorialPhase = "materials" | "drawings" | "chat" | "done";
 export type TutorialGuide = {
   target: string;
   title: string;
@@ -22,7 +22,7 @@ export function getTutorialGuide(
     return {
       target: "chat-own-message",
       title: "You're ready",
-      text: "You created a list, added material, explored Rooms, and sent a practice message. Finish to open your real jobs.",
+      text: "You created a list, added material, opened a drawing, and sent a practice message. Finish to open your real jobs.",
       next: "finish",
     };
   if (phase === "materials") {
@@ -80,38 +80,31 @@ export function getTutorialGuide(
       text: "This is a practice job. Only this job is available until you finish or end the tutorial.",
     };
   }
-  if (phase === "rooms") {
-    if (find("room-details"))
+  if (phase === "drawings") {
+    if (find("drawing-view"))
       return {
-        target: "room-notes",
-        title: "Notes stay with the room",
-        text: "Try writing and saving a note for this room. When you're ready, continue to Chat.",
-        allow: ["room-notes-save"],
+        target: "drawing-view",
+        title: "Look around the drawing",
+        text: "Pinch or scroll to zoom, and drag to move around. When you're ready, continue to Chat.",
         next: "chat",
       };
-    if (find("room-list-item"))
+    if (find("drawing-sheet"))
       return {
-        target: "room-list-item",
-        title: "Open a room",
-        text: "Select a room to see its details and notes.",
+        target: "drawing-sheet",
+        title: "Open a sheet",
+        text: "Tap the sheet to open the drawing.",
       };
-    if (find("drawing-viewer"))
+    if (find("drawing-folder"))
       return {
-        target: "room-list-toggle",
-        title: "Explore the drawing",
-        text: "This is the regular drawing screen. Open its Rooms list to select a room.",
+        target: "drawing-folder",
+        title: "Open a folder",
+        text: "Drawings are kept in folders, like Plumbing or Electrical. Open the Plumbing folder.",
       };
-    if (find("floor-card"))
+    if (find("drawings"))
       return {
-        target: "floor-card",
-        title: "Open a floor",
-        text: "Select the example floor to view its drawing and rooms.",
-      };
-    if (find("rooms"))
-      return {
-        target: "rooms",
-        title: "Open Rooms",
-        text: "Next, explore the job's floors and rooms.",
+        target: "drawings",
+        title: "Open Drawings",
+        text: "Next, look at the job's drawings.",
       };
     return back;
   }

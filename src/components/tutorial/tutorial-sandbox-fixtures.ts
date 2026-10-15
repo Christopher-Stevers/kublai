@@ -12,6 +12,8 @@ export const DEMO_PART_ID = "10000000-0000-4000-8000-000000000008";
 export const DEMO_UNIT_ID = "10000000-0000-4000-8000-000000000009";
 export const DEMO_SUPPLIER_PART_ID = "10000000-0000-4000-8000-00000000000a";
 export const DEMO_ORGANIZATION_ID = "10000000-0000-4000-8000-00000000000b";
+export const DEMO_DRAWING_SET_ID = "10000000-0000-4000-8000-000000000031";
+export const DEMO_DRAWING_SHEET_ID = "10000000-0000-4000-8000-000000000032";
 const date = "2026-10-01T12:00:00.000Z";
 
 export const demoJob = {
@@ -44,6 +46,7 @@ export const demoCatalogue = {
 
 // A deliberately simple practice floor, not an architectural detection result.
 const drawing = `<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="700" viewBox="0 0 1000 700"><rect width="1000" height="700" fill="white"/><g fill="none" stroke="#111827" stroke-width="10"><rect x="80" y="100" width="840" height="500"/><path d="M500 100V420M80 420H920M700 420V600"/></g><g font-family="sans-serif" font-size="26" fill="#111827" text-anchor="middle"><text x="290" y="255">Mechanical room</text><text x="710" y="255">Meeting room</text><text x="385" y="515">Hallway</text><text x="810" y="515">Storage</text></g><text x="80" y="55" font-family="sans-serif" font-size="22" fill="#64748b">Practice drawing · Ground floor</text></svg>`;
+const drawingUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(drawing)}`;
 export function createDemoRooms() {
   const roomDefinitions = [
     { id: DEMO_ROOM_ID, name: "Mechanical room", x: 0.08, y: 0.143, w: 0.42, h: 0.457 },
@@ -57,7 +60,7 @@ export function createDemoRooms() {
     floors: [{
       id: DEMO_FLOOR_ID, jobId: DEMO_JOB_ID, floorPlanId: DEMO_FLOOR_ID,
       organizationId: DEMO_ORGANIZATION_ID, pageNumber: 1, name: "Ground floor",
-      imageUrl: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(drawing)}`,
+      imageUrl: drawingUrl,
       width: 1000, height: 700, status: "confirmed", confirmedAt: new Date(date),
       completenessReviewedAt: new Date(date), createdAt: new Date(date), updatedAt: new Date(date),
       rooms: roomDefinitions.map(({ x, y, w, h, ...room }, index) => ({
@@ -67,6 +70,22 @@ export function createDemoRooms() {
         sortOrder: index, reviewPriority: 0, createdAt: new Date(date), updatedAt: new Date(date),
       })),
     }],
+  };
+}
+/** One folder with one sheet, served to the regular Drawings screen. */
+export function createDemoDrawings() {
+  const sheet = {
+    id: DEMO_DRAWING_SHEET_ID, name: "P-101 Ground floor", imageUrl: drawingUrl,
+    width: 1000, height: 700, sourceFilename: "Practice drawing.pdf",
+  };
+  const set = { id: DEMO_DRAWING_SET_ID, jobId: DEMO_JOB_ID, name: "Plumbing" };
+  return {
+    set, sheet,
+    jobSheets: [{ ...sheet, setId: set.id, setName: set.name }],
+    metadata: {
+      revision: 0, currentSourceSheetId: sheet.id, number: "P-101", title: "Ground floor",
+      discipline: "Plumbing", tags: [], status: "approved", scale: null,
+    },
   };
 }
 export function createDemoMessages(): ChatMessage[] {

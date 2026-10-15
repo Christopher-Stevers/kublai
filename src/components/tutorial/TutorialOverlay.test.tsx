@@ -90,15 +90,15 @@ describe("guidance on real controls", () => {
     render(
       <>
         <div data-tutorial="material-items" />
-        <div data-tutorial="room-details">
-          <textarea aria-label="Room notes" data-tutorial="room-notes" />
+        <div data-tutorial="drawing-view">
+          <textarea aria-label="Drawing search" />
         </div>
         <TutorialOverlay onFinish={vi.fn()} />
       </>,
     );
     await screen.findByText("Next: Chat");
     await act(async () => {
-      screen.getByLabelText("Room notes").focus();
+      screen.getByLabelText("Drawing search").focus();
     });
     await act(async () => {
       await new Promise((resolve) => requestAnimationFrame(resolve));
@@ -129,7 +129,7 @@ describe("guidance on real controls", () => {
     expect(finish).toHaveBeenCalledWith("skipped");
   });
 
-  it("follows actual picker state and confirms an item exists before moving to Rooms", async () => {
+  it("follows actual picker state and confirms an item exists before moving to Drawings", async () => {
     const finish = vi.fn();
     const view = render(
       <>
@@ -161,7 +161,7 @@ describe("guidance on real controls", () => {
       </>,
     );
     expect(await screen.findByText("Back to your job")).toBeInTheDocument();
-    expect(screen.getByText("Rooms · 2 of 3")).toBeInTheDocument();
+    expect(screen.getByText("Drawings · 2 of 3")).toBeInTheDocument();
   });
 
   it("keeps End inside the real modal focus boundary", async () => {
@@ -196,9 +196,7 @@ describe("guidance on real controls", () => {
       <>
         <div>
           <div data-tutorial="material-items" />
-          <div data-tutorial="room-details">
-            <textarea data-tutorial="room-notes" />
-          </div>
+          <div data-tutorial="drawing-view" />
         </div>
         <TutorialOverlay onFinish={finish} />
       </>,

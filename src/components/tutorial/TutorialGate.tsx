@@ -252,7 +252,7 @@ export function RestartTutorialCard() {
         Getting started
       </h2>
       <p className="text-muted-foreground text-sm">
-        Practice material lists, Rooms, and Chat with a demo job.
+        Practice material lists, Drawings, and Chat with a demo job.
       </p>
       <Button variant="outline" onClick={tutorial.restart}>
         Restart tutorial

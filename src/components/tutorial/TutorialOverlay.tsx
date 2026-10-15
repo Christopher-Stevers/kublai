@@ -90,7 +90,7 @@ export function TutorialOverlay({
     const refresh = () => {
       frame = 0;
       if (phase === "materials" && find("material-items")) {
-        setPhase("rooms");
+        setPhase("drawings");
         return;
       }
       if (phase === "chat" && find("chat-own-message")) {

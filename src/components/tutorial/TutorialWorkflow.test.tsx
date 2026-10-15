@@ -28,6 +28,10 @@ vi.mock("~/components/jobs/FloorPlanCanvas", () => ({
   FloorPlanCanvas: ({ rooms, onSelectRoom }: { rooms: Array<{id: string; name: string}>; onSelectRoom: (id: string) => void }) => <div aria-label="Practice drawing">{rooms.map(room => <button key={room.id} onClick={() => onSelectRoom(room.id)}>Drawing room: {room.name}</button>)}</div>,
 }));
 
+vi.mock("~/components/jobs/DrawingWorkspace", () => ({
+  DrawingWorkspace: () => <div aria-label="Practice drawing sheet" />,
+}));
+
 import { DashboardClient } from "~/app/dashboard/DashboardClient";
 import { TutorialSandboxProvider } from "./TutorialSandboxProvider";
 import { TutorialOverlay } from "./TutorialOverlay";
@@ -155,7 +159,7 @@ describe("tutorial on the real ForemanHQ workflow", () => {
     expect(storageWrites).not.toHaveBeenCalled();
   }, 20000);
 
-  it("completes the real workflow with the guide, header back arrow, and Rooms list", async () => {
+  it("completes the real workflow with the guide, header back arrow, and Drawings", async () => {
     geometry();
     const onFinish = vi.fn();
     const storageWrites = vi.spyOn(Storage.prototype, "setItem");
@@ -197,21 +201,16 @@ describe("tutorial on the real ForemanHQ workflow", () => {
     await screen.findByRole("heading", { name: "Material Lists" });
     await guide("Back to your job");
     fireEvent.click(screen.getByRole("button", { name: "Go back" }));
-    await guide("Open Rooms");
-    await clickTarget("rooms");
-    await guide("Open a floor");
-    await clickTarget("floor-card");
-    await guide("Explore the drawing");
-    await clickTarget("room-list-toggle");
-    await guide("Open a room");
-    // Use the real list/selection controls, never the mocked canvas buttons.
-    await clickTarget("room-list-item");
-    await guide("Notes stay with the room");
-    fireEvent.change(screen.getByLabelText("Room notes"), { target: { value: "Check the practice boiler clearance." } });
-    await clickTarget("room-notes-save");
-    await screen.findByText("Saved");
+    await guide("Open Drawings");
+    await clickTarget("drawings");
+    await guide("Open a folder");
+    await clickTarget("drawing-folder");
+    await guide("Open a sheet");
+    await clickTarget("drawing-sheet");
+    await guide("Look around the drawing");
+    await screen.findByLabelText("Practice drawing sheet");
     fireEvent.click(screen.getByRole("button", { name: "Next: Chat" }));
-    // Header back walks room → floor → rooms → job, with guidance active.
+    // Header back walks sheet → folder → drawings → job, with guidance active.
     for (let count = 0; count < 4 && !document.querySelector('[data-tutorial="chat"]'); count++) {
       await guide("Back to your job");
       fireEvent.click(screen.getByRole("button", { name: "Go back" }));

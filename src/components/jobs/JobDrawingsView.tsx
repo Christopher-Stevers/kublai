@@ -142,7 +142,7 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
   const downloader = useRef<AbortController | null>(null);
   const summaries = api.drawingsWorkspace.list.useQuery(
     { jobId },
-    { enabled: !sandbox, staleTime: 30_000 },
+    { staleTime: 30_000 },
   );
   const summarySnapshot = useDrawingSnapshot(
     `drawing-index:${jobId}`,
@@ -182,10 +182,10 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
     return () => downloader.current?.abort();
   }, [jobId]);
 
-  const sets = api.drawings.listSets.useQuery({ jobId }, { enabled: !sandbox });
+  const sets = api.drawings.listSets.useQuery({ jobId });
   const set = api.drawings.getSet.useQuery(
     { setId: setId ?? "" },
-    { enabled: !sandbox && Boolean(setId) },
+    { enabled: Boolean(setId) },
   );
   const setSnapshot = useDrawingSnapshot(`drawing-set:${setId}`, set.data);
   const setsSnapshot = useDrawingSnapshot(`drawing-sets:${jobId}`, sets.data);
@@ -521,7 +521,7 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
             <MinimizeIcon className="size-5" aria-hidden="true" />
           </Button>
         )}
-        <div className="relative min-h-0 flex-1">
+        <div data-tutorial="drawing-view" className="relative min-h-0 flex-1">
           <DrawingWorkspace
             key={sheet.id}
             jobId={jobId}
@@ -737,6 +737,7 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
             {visibleSheets.map((item) => (
               <Card
                 key={item.id}
+                data-tutorial="drawing-sheet"
                 role="button"
                 tabIndex={0}
                 aria-label={`Open ${item.name}`}
@@ -1017,11 +1018,7 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
           folders.length > 0 &&
           newFolderButton("hidden h-11 sm:inline-flex")}
       </div>
-      {sandbox ? (
-        <p className="text-muted-foreground text-sm">
-          Drawings aren&apos;t part of the practice job.
-        </p>
-      ) : sets.isLoading && !setsData ? (
+      {sets.isLoading && !setsData ? (
         <p role="status" className="text-muted-foreground text-sm">
           Loading drawings…
         </p>
@@ -1044,6 +1041,7 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
           {folders.map((folder) => (
             <Card
               key={folder.id}
+              data-tutorial="drawing-folder"
               role="button"
               tabIndex={0}
               aria-label={`Open ${folder.name}`}

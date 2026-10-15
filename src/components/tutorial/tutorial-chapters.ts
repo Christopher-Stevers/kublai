@@ -1,4 +1,4 @@
-import { ClipboardList, DoorOpen, MessageSquare, type LucideIcon } from "lucide-react";
+import { ClipboardList, FolderOpen, MessageSquare, type LucideIcon } from "lucide-react";
 import type { TutorialPhase } from "./tutorial-guide";
 
 /** The tour's three chapters, shown on the welcome screen and as progress. */
@@ -19,11 +19,11 @@ export const TUTORIAL_CHAPTERS: Array<{
     done: "Built a material list",
   },
   {
-    phase: "rooms",
-    label: "Rooms",
-    icon: DoorOpen,
-    intro: "Find a room on the drawing and leave it a note.",
-    done: "Explored a room on the drawing",
+    phase: "drawings",
+    label: "Drawings",
+    icon: FolderOpen,
+    intro: "Open a drawing and look around it.",
+    done: "Opened a drawing",
   },
   {
     phase: "chat",

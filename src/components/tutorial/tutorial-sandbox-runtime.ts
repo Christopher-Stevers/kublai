@@ -6,7 +6,7 @@ import type { TutorialSandbox } from "./tutorial-sandbox-context";
 import {
   DEMO_JOB_ID, DEMO_ORGANIZATION_ID, DEMO_PART_ID,
   demoCatalogue, demoCatalogueRecords, demoMaterialRecords, demoSupplier, demoSupplierPart,
-  createDemoMessages, createDemoRooms,
+  createDemoDrawings, createDemoMessages, createDemoRooms,
 } from "./tutorial-sandbox-fixtures";
 
 const httpRequestInfo = { httpStatusCode: 200, errorMessage: "" };
@@ -33,6 +33,7 @@ const jobInput = z.object({ jobId: z.literal(DEMO_JOB_ID) });
 /** This local handler has no fetch/client fallback. Every unsupported call fails closed. */
 export function createSandboxHandler(sandbox: TutorialSandbox) {
   const rooms = createDemoRooms();
+  const drawings = createDemoDrawings();
   const messages = createDemoMessages();
   let muted = false;
   const getItems = (listId: string) => sandbox.material.query(async tx => {
@@ -51,7 +52,7 @@ export function createSandboxHandler(sandbox: TutorialSandbox) {
         role: "user", organizationId: DEMO_ORGANIZATION_ID, hasOneTimeAccess: false,
         permissions: {
           role: "user", isAdmin: false, accountType: "standard", accountTypeLabel: "Practice account", isManagingAccount: false, isStandardAccount: true, isWorker: false,
-          can: { ...STANDARD_DEFAULTS, "parts.create": false, "parts.edit": false },
+          can: { ...STANDARD_DEFAULTS, "parts.create": false, "parts.edit": false, "drawings.view": true, "drawings.upload": false, "drawings.delete": false },
           tabAccess: { dashboard: true, catalogue: true, suppliers: true, quotes: false, orders: false, draws: false, assets: false, organization: false },
           actionAccess: { canCreateParts: false, canEditParts: false, canDeleteParts: false, canDelete: false },
           canCreateParts: false, canEditParts: false, canDeleteParts: false, canManageAssets: false, canGenerateDocuments: false, canDeleteCoreRecords: false,
@@ -66,6 +67,25 @@ export function createSandboxHandler(sandbox: TutorialSandbox) {
         room.notes = args.notes; room.notesRevision++;
         return { notes: room.notes, notesRevision: room.notesRevision };
       }
+      case "drawings.listSets": jobInput.parse(input); return {
+        canManage: false, canUpload: false, canDelete: false,
+        sets: [{ id: drawings.set.id, name: drawings.set.name, updatedAt: new Date(0), sheetCount: 1, coverImageUrl: drawings.sheet.imageUrl }],
+      };
+      case "drawings.getSet":
+        if (input.setId !== drawings.set.id) throw new Error("Practice folder not found");
+        return { canManage: false, canUpload: false, canDelete: false, set: drawings.set, sheets: [drawings.sheet] };
+      case "drawingsWorkspace.list": jobInput.parse(input); return [{
+        sheetId: drawings.sheet.id, metadata: drawings.metadata, favorite: false, issueCount: 0, markupCount: 0, watching: false,
+      }];
+      case "drawingsWorkspace.get":
+        if (input.sheetId !== drawings.sheet.id) throw new Error("Practice drawing not found");
+        return {
+          sheetId: drawings.sheet.id, jobId: DEMO_JOB_ID, canManage: false,
+          actor: { id: sandbox.userId, name: "You" }, members: [{ id: sandbox.userId, name: "You" }],
+          jobSheets: drawings.jobSheets, entities: [], metadata: drawings.metadata,
+          favorite: false, watching: false, activity: [],
+        };
+      case "drawingsWorkspace.notifications": return [];
       case "chat.getOverview":
         jobInput.parse(input);
         return { joined: true, muted, userId: sandbox.userId, canModerate: false, unreadCount: 0, latestSequence: messages.length };
