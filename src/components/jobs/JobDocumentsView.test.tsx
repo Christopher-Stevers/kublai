@@ -185,6 +185,9 @@ describe("job documents workspace", () => {
       screen.getByRole("region", { name: "Specification.pdf" }),
     ).toHaveClass("fixed", "top-14", "bottom-0");
     expect(
+      screen.queryByRole("toolbar", { name: "Document controls" }),
+    ).not.toBeInTheDocument();
+    expect(
       screen.queryByRole("tab", { name: "versions" }),
     ).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Document details" }));
@@ -193,6 +196,10 @@ describe("job documents workspace", () => {
     expect(
       screen.getByRole("region", { name: "Specification.pdf" }),
     ).toHaveClass("top-14", "bottom-0");
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    expect(
+      screen.getByRole("toolbar", { name: "Document controls" }),
+    ).toBeVisible();
   });
   it("opens an accessible document from a drawing link in its own folder", async () => {
     window.history.replaceState(null, "", "/?document=doc-2");

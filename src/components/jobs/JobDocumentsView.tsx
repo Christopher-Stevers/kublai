@@ -1283,6 +1283,7 @@ export function JobDocumentsView({
       <div
         role="toolbar"
         aria-label="Document controls"
+        hidden={Boolean(selected || editorDocument)}
         className="bg-card fixed inset-x-0 bottom-0 z-30 border-t px-3 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))]"
       >
         <div className="mx-auto grid max-w-7xl grid-cols-[minmax(0,0.8fr)_minmax(0,1.5fr)_minmax(0,1fr)] items-center gap-2">
