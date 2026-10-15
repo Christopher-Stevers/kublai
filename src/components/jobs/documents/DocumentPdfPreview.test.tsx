@@ -10,7 +10,24 @@ import { loadPdfDocument } from "~/lib/pdf-client";
 import { DocumentPdfPreview } from "./DocumentPdfPreview";
 vi.mock("~/lib/pdf-client", () => ({ loadPdfDocument: vi.fn() }));
 let renderPage: ReturnType<typeof vi.fn>;
-let getPage: ReturnType<typeof vi.fn>;
+type MockPage = {
+  getViewport: (options: { scale: number }) => {
+    width: number;
+    height: number;
+    convertToViewportPoint: (x: number, y: number) => number[];
+  };
+  render: typeof renderPage;
+  getTextContent?: () => Promise<{
+    items: Array<{
+      str: string;
+      transform: number[];
+      width: number;
+      height: number;
+      hasEOL: boolean;
+    }>;
+  }>;
+};
+let getPage: ReturnType<typeof vi.fn<(page: number) => Promise<MockPage>>>;
 let cancel: ReturnType<typeof vi.fn>;
 beforeEach(() => {
   vi.clearAllMocks();
@@ -28,6 +45,10 @@ beforeEach(() => {
     getViewport: ({ scale }: { scale: number }) => ({
       width: 600 * scale,
       height: 800 * scale,
+      convertToViewportPoint: (x: number, y: number) => [
+        x * scale,
+        (800 - y) * scale,
+      ],
     }),
     render: renderPage,
   }));
@@ -43,6 +64,88 @@ afterEach(() => {
 });
 
 describe("Private PDF preview without browser plugins", () => {
+  it("searches every page, highlights repeated matches and navigates across page boundaries", async () => {
+    const pageValue = await getPage(1);
+    getPage.mockImplementation(async (number: number) => ({
+      ...pageValue,
+      getTextContent: async () => ({
+        items: (number === 1 ? ["Valve", "Schedule", "Valve"] : ["Valve"]).map(
+          (str, index) => ({
+            str,
+            transform: [1, 0, 0, 1, 20 + index * 80, 700],
+            width: 50,
+            height: 12,
+            hasEOL: false,
+          }),
+        ),
+      }),
+    }));
+    const view = render(
+      <DocumentPdfPreview
+        url="/search.pdf"
+        title="Searchable PDF"
+        fillHeight
+      />,
+    );
+    fireEvent.change(
+      screen.getByRole("searchbox", { name: "Search PDF text" }),
+      { target: { value: "vAlVe" } },
+    );
+    await waitFor(() =>
+      expect(screen.getByLabelText("PDF search results")).toHaveTextContent(
+        "1 of 3",
+      ),
+    );
+    await waitFor(() =>
+      expect(
+        view.container.querySelectorAll("[data-pdf-search-match]"),
+      ).toHaveLength(2),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Next search result" }));
+    expect(screen.getByLabelText("PDF search results")).toHaveTextContent(
+      "2 of 3",
+    );
+    fireEvent.keyDown(screen.getByRole("searchbox"), { key: "Enter" });
+    await waitFor(() =>
+      expect(
+        screen.getByLabelText("Searchable PDF, page 2"),
+      ).toBeInTheDocument(),
+    );
+    expect(screen.getByLabelText("PDF search results")).toHaveTextContent(
+      "3 of 3",
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Next search result" }));
+    await waitFor(() =>
+      expect(
+        screen.getByLabelText("Searchable PDF, page 1"),
+      ).toBeInTheDocument(),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Clear PDF search" }));
+    await waitFor(() =>
+      expect(
+        view.container.querySelector("[data-pdf-search-match]"),
+      ).toBeNull(),
+    );
+  });
+  it("explains scanned PDFs instead of claiming a text search succeeded", async () => {
+    const pageValue = await getPage(1);
+    getPage.mockResolvedValue({
+      ...pageValue,
+      getTextContent: async () => ({ items: [] }),
+    });
+    render(<DocumentPdfPreview url="/scanned.pdf" title="Scanned PDF" />);
+    fireEvent.change(screen.getByRole("searchbox"), {
+      target: { value: "valve" },
+    });
+    await waitFor(() =>
+      expect(screen.getByLabelText("PDF search results")).toHaveTextContent(
+        "No searchable text",
+      ),
+    );
+    expect(
+      screen.getByRole("button", { name: "Next search result" }),
+    ).toBeDisabled();
+  });
   it("returns to the captured PDF page, zoom and scroll without resetting later navigation", async () => {
     vi.spyOn(HTMLElement.prototype, "scrollWidth", "get").mockReturnValue(1200);
     vi.spyOn(HTMLElement.prototype, "scrollHeight", "get").mockReturnValue(
@@ -62,7 +165,7 @@ describe("Private PDF preview without browser plugins", () => {
     const canvas = screen.getByLabelText<HTMLCanvasElement>(
       "Captured PDF, page 2",
     );
-    const frame = canvas.parentElement!;
+    const frame = screen.getByTestId("pdf-scroll-area");
     expect(canvas.style.width).toBe("768px");
     expect(frame.scrollLeft).toBe(300);
     expect(frame.scrollTop).toBe(800);

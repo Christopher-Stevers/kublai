@@ -19,6 +19,8 @@ import {
   ExternalLinkIcon,
   HistoryIcon,
   LockIcon,
+  InfoIcon,
+  MaximizeIcon,
   MessageSquareIcon,
   UploadIcon,
   XIcon,
@@ -99,6 +101,9 @@ export function DocumentDetails({
   );
   const [comment, setComment] = useState("");
   const [compareVersionId, setCompareVersionId] = useState<string | null>(null);
+  const [showPdfDetails, setShowPdfDetails] = useState(
+    Boolean(initial && initial.tab !== "details"),
+  );
   const versions = data.versions
     .filter((item) => item.documentId === document.id)
     .sort((a, b) => b.number - a.number);
@@ -167,6 +172,82 @@ export function DocumentDetails({
   const comparisonVersion = versions.find(
     (item) => item.id === compareVersionId,
   );
+  if (
+    version?.mimeType === "application/pdf" &&
+    !document.officeWebUrl &&
+    !showPdfDetails &&
+    !comparisonVersion
+  ) {
+    return (
+      <Dialog open onOpenChange={(open) => !open && onClose()}>
+        <DialogContent
+          ref={detailFrame}
+          showCloseButton={false}
+          data-snapshot-source-title={`${document.name} · v${version.number}`}
+          className="fixed inset-0 flex h-dvh max-h-none w-screen max-w-none flex-col gap-0 overflow-hidden rounded-none border-0 p-0 sm:max-w-none"
+        >
+          <DialogHeader className="flex shrink-0 flex-row items-center gap-2 border-b px-3 pt-[max(0.5rem,env(safe-area-inset-top))] pb-2 text-left">
+            <div className="min-w-0 flex-1">
+              <DialogTitle className="truncate text-sm leading-normal">
+                {document.submittal?.title ?? document.name}
+              </DialogTitle>
+              <DialogDescription className="text-xs">
+                Version {version.number}
+              </DialogDescription>
+            </div>
+            <Button
+              size="icon"
+              variant="ghost"
+              aria-label="Document details"
+              title="Document details"
+              onClick={() => setShowPdfDetails(true)}
+            >
+              <InfoIcon />
+            </Button>
+            {snapshot && (
+              <Button
+                size="icon"
+                variant="ghost"
+                aria-label="Snapshot"
+                title="Snapshot"
+                onClick={snapshot.start}
+              >
+                <CameraIcon />
+              </Button>
+            )}
+            <Button size="icon" variant="ghost" asChild>
+              <a
+                href={versionUrl(jobId, version.id, true)}
+                aria-label="Download PDF"
+                title="Download PDF"
+              >
+                <DownloadIcon />
+              </a>
+            </Button>
+            <Button
+              size="icon"
+              variant="ghost"
+              aria-label="Close"
+              title="Close"
+              onClick={onClose}
+            >
+              <XIcon />
+            </Button>
+          </DialogHeader>
+          <DocumentPdfPreview
+            key={version.id}
+            fillHeight
+            initialView={
+              initial?.versionId === version.id ? entry?.pdf : undefined
+            }
+            title={`Preview ${document.name} version ${version.number}`}
+            url={versionUrl(jobId, version.id)}
+            onReady={() => setReadyVersionId(version.id)}
+          />
+        </DialogContent>
+      </Dialog>
+    );
+  }
   return (
     <>
       {currentVersion && comparisonVersion && (
@@ -258,6 +339,16 @@ export function DocumentDetails({
             </p>
           )}
           <div className="flex flex-wrap gap-2">
+            {version?.mimeType === "application/pdf" &&
+              !document.officeWebUrl && (
+                <Button
+                  variant="outline"
+                  onClick={() => setShowPdfDetails(false)}
+                >
+                  <MaximizeIcon />
+                  Full screen
+                </Button>
+              )}
             {snapshot && (
               <Button
                 variant="outline"

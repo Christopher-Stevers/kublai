@@ -171,6 +171,25 @@ afterEach(async () => {
 });
 
 describe("job documents workspace", () => {
+  it("opens PDFs full screen and keeps their document tools behind Details", async () => {
+    render(<JobDocumentsView jobId="job-1" />);
+    await ready();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Open Specification.pdf" }),
+    );
+    expect(
+      screen.getByRole("dialog", { name: "Specification.pdf" }),
+    ).toHaveClass("h-dvh", "w-screen");
+    expect(
+      screen.queryByRole("tab", { name: "versions" }),
+    ).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Document details" }));
+    expect(screen.getByRole("tab", { name: "versions" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Full screen" }));
+    expect(
+      screen.getByRole("dialog", { name: "Specification.pdf" }),
+    ).toHaveClass("h-dvh");
+  });
   it("opens an accessible document from a drawing link in its own folder", async () => {
     window.history.replaceState(null, "", "/?document=doc-2");
     render(<JobDocumentsView jobId="job-1" />);
@@ -257,6 +276,7 @@ describe("job documents workspace", () => {
     fireEvent.click(
       screen.getByRole("button", { name: "Open Specification.pdf" }),
     );
+    fireEvent.click(screen.getByRole("button", { name: "Document details" }));
     expect(
       screen.getByTitle("Preview Specification.pdf version 2"),
     ).toHaveAttribute("src", "/api/job-documents/files/version-2?jobId=job-1");
@@ -300,6 +320,7 @@ describe("job documents workspace", () => {
     fireEvent.click(
       screen.getByRole("button", { name: "Open Specification.pdf" }),
     );
+    fireEvent.click(screen.getByRole("button", { name: "Document details" }));
     expect(
       screen.queryByRole("button", { name: "Edit details" }),
     ).not.toBeInTheDocument();
@@ -380,6 +401,7 @@ describe("job documents workspace", () => {
     fireEvent.click(
       screen.getByRole("button", { name: "Open Specification.pdf" }),
     );
+    fireEvent.click(screen.getByRole("button", { name: "Document details" }));
     fireEvent.click(screen.getByRole("button", { name: "Edit details" }));
     fireEvent.change(screen.getByLabelText("Description"), {
       target: { value: "Approved scope" },
@@ -489,6 +511,7 @@ describe("job documents workspace", () => {
     fireEvent.click(
       screen.getByRole("button", { name: "Open Specification.pdf" }),
     );
+    fireEvent.click(screen.getByRole("button", { name: "Document details" }));
     fireEvent.click(screen.getByRole("button", { name: "Upload new version" }));
     fireEvent(
       screen.getByLabelText("Upload document files"),
@@ -755,6 +778,7 @@ describe("dedicated submittal workspace", () => {
     fireEvent.click(
       screen.getByRole("button", { name: "Open SUB-001: Valve product data" }),
     );
+    fireEvent.click(screen.getByRole("button", { name: "Document details" }));
     expect(
       screen.getByTitle("Preview SUB-001 · valve.pdf version 2"),
     ).toHaveAttribute(
@@ -811,6 +835,7 @@ describe("dedicated submittal workspace", () => {
     fireEvent.click(
       screen.getByRole("button", { name: "Open SUB-001: Valve product data" }),
     );
+    fireEvent.click(screen.getByRole("button", { name: "Document details" }));
     fireEvent.click(screen.getByRole("button", { name: "Return for changes" }));
     expect(posts()).toHaveLength(0);
     expect(screen.getByRole("alert")).toHaveTextContent("Describe the changes");
@@ -835,6 +860,7 @@ describe("dedicated submittal workspace", () => {
     fireEvent.click(
       screen.getByRole("button", { name: "Open SUB-001: Valve product data" }),
     );
+    fireEvent.click(screen.getByRole("button", { name: "Document details" }));
     fireEvent.click(screen.getByRole("tab", { name: "versions" }));
     fireEvent.click(screen.getByRole("button", { name: "Preview v1" }));
     expect(screen.getByRole("button", { name: "Approve PDF" })).toBeDisabled();
@@ -860,6 +886,7 @@ describe("dedicated submittal workspace", () => {
     fireEvent.click(
       screen.getByRole("button", { name: "Open SUB-001: Valve product data" }),
     );
+    fireEvent.click(screen.getByRole("button", { name: "Document details" }));
     fireEvent.click(screen.getByRole("button", { name: "Edit" }));
     fireEvent.change(screen.getByLabelText("Title"), {
       target: { value: "Correct valve" },
@@ -917,6 +944,7 @@ it("routes grouped approvals through the full review instead of approving unseen
   fireEvent.click(
     screen.getByRole("button", { name: "Open SUB-001: Valve product data" }),
   );
+  fireEvent.click(screen.getByRole("button", { name: "Document details" }));
   expect(
     screen.queryByRole("button", { name: "Approve PDF" }),
   ).not.toBeInTheDocument();
