@@ -4,7 +4,6 @@ import { usePageViewState } from "~/hooks/use-page-view-state";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { currentSnapshotState } from "~/lib/snapshot-source";
 import {
-  CheckCircle2Icon,
   ChevronRightIcon,
   ClipboardCheckIcon,
   FileTextIcon,
@@ -16,6 +15,8 @@ import {
   Loader2Icon,
   LockIcon,
   MoreVerticalIcon,
+  MoreHorizontalIcon,
+  PlusIcon,
   PackageIcon,
   RefreshCwIcon,
   SearchIcon,
@@ -185,10 +186,21 @@ export function JobDocumentsView({
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState<string | null>(null);
   const [offline, setOffline] = useState(false);
-  const [view, setView] = usePageViewState<View>(`documents:${jobId}:view`, "files");
-  const [folderId, setFolderId] = usePageViewState<string | null>(`documents:${jobId}:folderId`, null);
-  const [selectedId, setSelectedId] = usePageViewState<string | null>(`documents:${jobId}:selectedId`, null);
+  const [view, setView] = usePageViewState<View>(
+    `documents:${jobId}:view`,
+    "files",
+  );
+  const [folderId, setFolderId] = usePageViewState<string | null>(
+    `documents:${jobId}:folderId`,
+    null,
+  );
+  const [selectedId, setSelectedId] = usePageViewState<string | null>(
+    `documents:${jobId}:selectedId`,
+    null,
+  );
   const [checkedIds, setCheckedIds] = useState<string[]>([]);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
   const [query, setQuery] = usePageViewState(`documents:${jobId}:query`, "");
   const [status, setStatus] = usePageViewState(`documents:${jobId}:status`, "");
   const [kind, setKind] = usePageViewState(`documents:${jobId}:kind`, "");
@@ -747,7 +759,7 @@ export function JobDocumentsView({
   );
 
   return (
-    <div className="mx-auto w-full max-w-7xl space-y-5 px-4 py-5 pb-24 sm:px-6">
+    <div className="mx-auto w-full max-w-7xl space-y-4 px-4 py-4 pb-[calc(6rem+env(safe-area-inset-bottom))] sm:px-6">
       <input
         ref={fileInput}
         type="file"
@@ -756,87 +768,12 @@ export function JobDocumentsView({
         multiple
         onChange={(event) => void upload(Array.from(event.target.files ?? []))}
       />
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <div className="text-primary mb-1 flex items-center gap-2 text-xs font-semibold tracking-wide uppercase">
-            <FileTextIcon className="size-4" />
-            Project workspace
-          </div>
-          <h1 className="text-2xl font-bold">Documents</h1>
-          <p className="text-muted-foreground mt-1 text-sm">
-            Keep files, revisions, and decisions together.
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {canWrite && view !== "submittals" && (
-            <>
-              {editorStatus?.configured && (
-                <>
-                  <Button
-                    variant="outline"
-                    disabled={processing}
-                    onClick={() => openModal({ kind: "new-word" })}
-                  >
-                    <FileTextIcon />
-                    New Word document
-                  </Button>
-                  <Button
-                    variant="outline"
-                    disabled={processing}
-                    onClick={() => openModal({ kind: "new-spreadsheet" })}
-                  >
-                    <FileSpreadsheetIcon />
-                    New spreadsheet
-                  </Button>
-                </>
-              )}
-              <Button
-                variant="outline"
-                disabled={processing}
-                onClick={() => openModal({ kind: "office" })}
-              >
-                <LinkIcon />
-                Link Microsoft file
-              </Button>
-              <Button disabled={processing} onClick={() => pickFiles()}>
-                {uploading ? (
-                  <Loader2Icon className="animate-spin" />
-                ) : (
-                  <UploadIcon />
-                )}
-                Upload files
-              </Button>
-            </>
-          )}
-          <Button
-            aria-label="Refresh documents"
-            variant="outline"
-            size="icon"
-            disabled={loading || processing || sandbox || offline}
-            onClick={() => {
-              setLoading(true);
-              void refresh()
-                .catch((reason: unknown) =>
-                  setError(
-                    reason instanceof Error
-                      ? reason.message
-                      : "Refresh failed.",
-                  ),
-                )
-                .finally(() => setLoading(false));
-            }}
-          >
-            <RefreshCwIcon className={loading ? "animate-spin" : ""} />
-          </Button>
-        </div>
+      <header className="flex items-center justify-between gap-3">
+        <h1 className="text-xl font-semibold">Documents</h1>
+        <span className="text-muted-foreground text-sm">
+          {activeDocs.length} files
+        </span>
       </header>
-      {!sandbox && editorStatus && view !== "submittals" && (
-        <p className="text-muted-foreground text-sm">
-          {editorStatus.configured
-            ? "Create and edit Word documents and spreadsheets together with Collabora Online. No Microsoft account needed."
-            : "Online Word and spreadsheet editing is not set up on this server. Existing documents can still be uploaded and downloaded."}
-        </p>
-      )}
       {sandbox && (
         <p className="bg-muted rounded-lg border p-3 text-sm">
           Documents is read-only in the tutorial. Open a real job to upload
@@ -870,66 +807,6 @@ export function JobDocumentsView({
           Uploading {uploading}… Keep this page open.
         </p>
       )}
-      {view !== "submittals" && (
-        <div className="grid grid-cols-3 gap-2 sm:gap-4">
-          {[
-            {
-              icon: FileTextIcon,
-              label: "Documents",
-              count: activeDocs.length,
-            },
-            {
-              icon: ClipboardCheckIcon,
-              label: "Pending reviews",
-              count: data.reviews.filter((item) => item.status === "pending")
-                .length,
-            },
-            {
-              icon: CheckCircle2Icon,
-              label: "Approved",
-              count: activeDocs.filter((item) => item.status === "approved")
-                .length,
-            },
-          ].map(({ icon: Icon, label, count }) => (
-            <div className="bg-card rounded-lg border p-3 sm:p-4" key={label}>
-              <div className="text-muted-foreground mb-2 flex items-center gap-2 text-xs sm:text-sm">
-                <Icon className="hidden size-4 sm:block" />
-                {label}
-              </div>
-              <p className="text-xl font-semibold tabular-nums">{count}</p>
-            </div>
-          ))}
-        </div>
-      )}
-      <div
-        className="flex flex-wrap gap-1 border-b"
-        role="tablist"
-        aria-label="Document workspace"
-      >
-        {(
-          [
-            { id: "files", label: "Files", icon: FolderIcon },
-            { id: "submittals", label: "Submittals", icon: ClipboardCheckIcon },
-            { id: "reviews", label: "Reviews", icon: ClipboardCheckIcon },
-            { id: "transmittals", label: "Transmittals", icon: PackageIcon },
-            { id: "recycle", label: "Recycle bin", icon: Trash2Icon },
-          ] as const
-        ).map(({ id, label, icon: Icon }) => (
-          <button
-            role="tab"
-            aria-selected={view === id}
-            key={id}
-            className={`flex shrink-0 items-center gap-2 px-3 py-3 text-sm ${view === id ? "border-primary text-primary border-b-2 font-semibold" : "text-muted-foreground"}`}
-            onClick={() => {
-              setView(id);
-              setCheckedIds([]);
-            }}
-          >
-            <Icon className="size-4" />
-            {label}
-          </button>
-        ))}
-      </div>
       {view === "submittals" && (
         <SubmittalsView
           data={data}
@@ -978,69 +855,6 @@ export function JobDocumentsView({
                 ))
               )}
             </nav>
-            {view === "files" && (
-              <div className="flex gap-2">
-                {folderId && canManage && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => openModal({ kind: "permissions", folderId })}
-                  >
-                    <ShieldIcon />
-                    Permissions
-                  </Button>
-                )}
-                {canWrite && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => openModal({ kind: "folder" })}
-                  >
-                    <FolderPlusIcon />
-                    New folder
-                  </Button>
-                )}
-              </div>
-            )}
-          </div>
-          <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-[1fr_auto_auto]">
-            <div className="relative col-span-2 sm:col-span-1">
-              <SearchIcon className="text-muted-foreground absolute top-2.5 left-3 size-4" />
-              <Input
-                className="pl-9"
-                aria-label="Search documents"
-                placeholder="Search all documents, descriptions, and tags"
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-              />
-            </div>
-            <select
-              className={selectClass}
-              aria-label="Filter by status"
-              value={status}
-              onChange={(event) => setStatus(event.target.value)}
-            >
-              <option value="">All statuses</option>
-              {Object.entries(statusLabels).map(([id, label]) => (
-                <option key={id} value={id}>
-                  {label}
-                </option>
-              ))}
-            </select>
-            <select
-              className={selectClass}
-              aria-label="Filter by file type"
-              value={kind}
-              onChange={(event) => setKind(event.target.value)}
-            >
-              <option value="">All file types</option>
-              <option value="pdf">PDF</option>
-              <option value="word">Word</option>
-              <option value="spreadsheet">Spreadsheets</option>
-              <option value="image">Images</option>
-              <option value="office">Microsoft 365</option>
-              <option value="other">Other files</option>
-            </select>
           </div>
           {view === "files" && !query && childFolders.length > 0 && (
             <div className="mb-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
@@ -1466,6 +1280,254 @@ export function JobDocumentsView({
           mutate={mutate}
         />
       )}
+      <div
+        role="toolbar"
+        aria-label="Document controls"
+        className="bg-card fixed inset-x-0 bottom-0 z-30 border-t px-3 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))]"
+      >
+        <div className="mx-auto grid max-w-7xl grid-cols-[minmax(0,0.8fr)_minmax(0,1.5fr)_minmax(0,1fr)] items-center gap-2">
+          <Button
+            variant="outline"
+            className="h-11 gap-1 px-2 text-xs sm:text-sm"
+            onClick={() => setMoreOpen(true)}
+          >
+            <MoreHorizontalIcon className="size-4" />
+            More
+          </Button>
+          <div className="relative min-w-0">
+            <SearchIcon className="text-muted-foreground pointer-events-none absolute top-3.5 left-2 size-4" />
+            <Input
+              className="h-11 min-w-0 pr-2 pl-7"
+              aria-label="Search documents"
+              placeholder="Search documents"
+              value={query}
+              onChange={(event) => {
+                setQuery(event.target.value);
+                if (view !== "files" && view !== "recycle") setView("files");
+              }}
+            />
+          </div>
+          <Button
+            className="h-11 gap-1 px-1 text-xs sm:text-sm"
+            disabled={!canWrite || processing}
+            onClick={() => setAddOpen(true)}
+          >
+            <PlusIcon className="size-4 shrink-0" />
+            <span className="leading-tight whitespace-normal">
+              Add document
+            </span>
+          </Button>
+        </div>
+      </div>
+      <Dialog open={moreOpen} onOpenChange={setMoreOpen}>
+        <DialogContent className="max-h-[85dvh] overflow-y-auto sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>More</DialogTitle>
+            <DialogDescription>
+              Browse sections, filter documents, and manage folders.
+            </DialogDescription>
+          </DialogHeader>
+          <div
+            className="flex flex-wrap gap-1 border-b"
+            role="tablist"
+            aria-label="Document workspace"
+          >
+            {(
+              [
+                { id: "files", label: "Files", icon: FolderIcon },
+                {
+                  id: "submittals",
+                  label: "Submittals",
+                  icon: ClipboardCheckIcon,
+                },
+                { id: "reviews", label: "Reviews", icon: ClipboardCheckIcon },
+                {
+                  id: "transmittals",
+                  label: "Transmittals",
+                  icon: PackageIcon,
+                },
+                { id: "recycle", label: "Recycle bin", icon: Trash2Icon },
+              ] as const
+            ).map(({ id, label, icon: Icon }) => (
+              <button
+                role="tab"
+                aria-selected={view === id}
+                key={id}
+                className={`flex shrink-0 items-center gap-2 px-3 py-3 text-sm ${view === id ? "border-primary text-primary border-b-2 font-semibold" : "text-muted-foreground"}`}
+                onClick={() => {
+                  setView(id);
+                  setMoreOpen(false);
+                  setCheckedIds([]);
+                }}
+              >
+                <Icon className="size-4" />
+                {label}
+              </button>
+            ))}
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            {" "}
+            <select
+              className={selectClass}
+              aria-label="Filter by status"
+              value={status}
+              onChange={(event) => setStatus(event.target.value)}
+            >
+              <option value="">All statuses</option>
+              {Object.entries(statusLabels).map(([id, label]) => (
+                <option key={id} value={id}>
+                  {label}
+                </option>
+              ))}
+            </select>
+            <select
+              className={selectClass}
+              aria-label="Filter by file type"
+              value={kind}
+              onChange={(event) => setKind(event.target.value)}
+            >
+              <option value="">All file types</option>
+              <option value="pdf">PDF</option>
+              <option value="word">Word</option>
+              <option value="spreadsheet">Spreadsheets</option>
+              <option value="image">Images</option>
+              <option value="office">Microsoft 365</option>
+              <option value="other">Other files</option>
+            </select>
+          </div>
+          {view === "files" && (
+            <div className="flex gap-2">
+              {folderId && canManage && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setMoreOpen(false);
+                    openModal({ kind: "permissions", folderId });
+                  }}
+                >
+                  <ShieldIcon />
+                  Permissions
+                </Button>
+              )}
+              {canWrite && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setMoreOpen(false);
+                    openModal({ kind: "folder" });
+                  }}
+                >
+                  <FolderPlusIcon />
+                  New folder
+                </Button>
+              )}
+            </div>
+          )}
+          <Button
+            aria-label="Refresh documents"
+            variant="outline"
+            className="justify-start"
+            disabled={loading || processing || sandbox || offline}
+            onClick={() => {
+              setLoading(true);
+              void refresh()
+                .catch((reason: unknown) =>
+                  setError(
+                    reason instanceof Error
+                      ? reason.message
+                      : "Refresh failed.",
+                  ),
+                )
+                .finally(() => setLoading(false));
+            }}
+          >
+            <RefreshCwIcon className={loading ? "animate-spin" : ""} /> Refresh
+            documents
+          </Button>
+          <p className="text-muted-foreground text-xs">
+            {data.reviews.filter((item) => item.status === "pending").length}{" "}
+            pending reviews ·{" "}
+            {activeDocs.filter((item) => item.status === "approved").length}{" "}
+            approved documents
+          </p>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={addOpen} onOpenChange={setAddOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add document</DialogTitle>
+            <DialogDescription>
+              Upload a file, create a document, or link a Microsoft file.
+            </DialogDescription>
+          </DialogHeader>
+          {!sandbox && editorStatus && !editorStatus.configured && (
+            <p className="text-muted-foreground text-sm">
+              Online Word and spreadsheet editing is not set up. You can upload
+              existing files.
+            </p>
+          )}
+          <div className="flex flex-col gap-2 [&_button]:justify-start">
+            {" "}
+            {canWrite && (
+              <>
+                {editorStatus?.configured && (
+                  <>
+                    <Button
+                      variant="outline"
+                      disabled={processing}
+                      onClick={() => {
+                        setAddOpen(false);
+                        openModal({ kind: "new-word" });
+                      }}
+                    >
+                      <FileTextIcon />
+                      New Word document
+                    </Button>
+                    <Button
+                      variant="outline"
+                      disabled={processing}
+                      onClick={() => {
+                        setAddOpen(false);
+                        openModal({ kind: "new-spreadsheet" });
+                      }}
+                    >
+                      <FileSpreadsheetIcon />
+                      New spreadsheet
+                    </Button>
+                  </>
+                )}
+                <Button
+                  variant="outline"
+                  disabled={processing}
+                  onClick={() => {
+                    setAddOpen(false);
+                    openModal({ kind: "office" });
+                  }}
+                >
+                  <LinkIcon />
+                  Link Microsoft file
+                </Button>
+                <Button
+                  disabled={processing}
+                  onClick={() => {
+                    setAddOpen(false);
+                    pickFiles();
+                  }}
+                >
+                  {uploading ? (
+                    <Loader2Icon className="animate-spin" />
+                  ) : (
+                    <UploadIcon />
+                  )}
+                  Upload files
+                </Button>
+              </>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
       <Dialog
         open={Boolean(modal)}
         onOpenChange={(open) => !open && closeModal()}
