@@ -7,7 +7,9 @@ import {
   AddPartDialog,
 } from "~/components/app/DeferredFeatures";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { currentSnapshotState } from "~/lib/snapshot-source";
+import { SupplierPartDetails, SupplierPartEditor, type SupplierListing } from "./SupplierPartEditor";
 import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
@@ -62,6 +64,18 @@ export function CatalogueScreen({
 }: {
   catalogKind?: WizardCatalogKind;
 }) {
+  const [supplierId, setSupplierId] = useState<string | undefined>(() => {
+    const saved = currentSnapshotState()?.catalogue;
+    return saved?.kind === catalogKind && saved.scope === window.location.pathname ? saved.supplierId : undefined;
+  });
+  const [supplierMode, setSupplierMode] = useState(!!supplierId);
+  return <CatalogueWorkspace key={supplierMode ? supplierId ?? "choose-supplier" : "all-parts"} catalogKind={catalogKind} supplierMode={supplierMode} supplierId={supplierId}
+    onModeChange={setSupplierMode} onSupplierChange={setSupplierId} />;
+}
+
+function CatalogueWorkspace({ catalogKind, supplierMode, supplierId, onModeChange, onSupplierChange }: {
+  catalogKind: WizardCatalogKind; supplierMode: boolean; supplierId?: string; onModeChange: (mode: boolean) => void; onSupplierChange: (id: string | undefined) => void;
+}) {
   const [editingPartId, setEditingPartId] = useState<string | null>(null);
   const [isCreatePartDialogOpen, setIsCreatePartDialogOpen] = useState(false);
   const [isPrefabsOpen, setIsPrefabsOpen] = useState(false);
@@ -88,6 +102,18 @@ export function CatalogueScreen({
   const { data: orderWheelUsage } = api.catalogue.recentOrderWheelUsage.useQuery(undefined, { staleTime: 60_000 });
   const { data: roleData } = api.user.getMyRole.useQuery();
   const canEditParts = roleData?.permissions.canEditParts ?? false;
+  const canEditSupplier = canEditParts || (roleData?.permissions.can?.["suppliers.edit"] ?? false);
+  const showPrice = roleData?.permissions.can?.["financial.view"] ?? false;
+  const supplierList = api.supplier.list.useQuery(undefined, { enabled: supplierMode && isCatalogueOnline });
+  const supplier = api.supplier.getById.useQuery({ id: supplierId! }, { enabled: supplierMode && !!supplierId && isCatalogueOnline });
+  const listings = useMemo(() => {
+    const groups = new Map<string, SupplierListing[]>();
+    for (const listing of supplier.data?.supplierParts ?? []) groups.set(listing.partDefinitionId, [...(groups.get(listing.partDefinitionId) ?? []), listing]);
+    return groups;
+  }, [supplier.data]);
+  const detailsByPartId = useMemo(() => Object.fromEntries([...listings].map(([id, rows]) => [id,
+    <div key={id} className="w-full space-y-2">{rows.map(listing => <SupplierPartDetails key={listing.id} listing={listing} showPrice={showPrice} />)}</div>,
+  ])), [listings, showPrice]);
 
   // Fit the workspace above the phone keyboard and below its surrounding
   // navigation. Only the selection area scrolls; bottom controls stay reachable.
@@ -140,6 +166,8 @@ export function CatalogueScreen({
   const importCatalogueRows = api.catalogue.importCatalogueRows.useMutation();
 
   const {
+    isLoading: isWizardLoading,
+    loadError: wizardError,
     wizardStage,
     selectedCatalogId,
     hasCatalogSelection,
@@ -189,7 +217,7 @@ export function CatalogueScreen({
     selectedSizeName,
     selectedCategoryName,
     filteredPartsForSelection,
-  } = usePartWizard(true, undefined, undefined, catalogKind);
+  } = usePartWizard(!supplierMode || !!supplierId, undefined, undefined, catalogKind, supplierMode ? supplierId : undefined);
 
   const catalogOptions = catalogs ?? [];
   const isWizardSearchActive =
@@ -434,7 +462,19 @@ export function CatalogueScreen({
       </h1>
       <div className="bg-card relative z-10 shrink-0 shadow-[0_2px_3px_rgba(0,0,0,0.35),0_6px_16px_rgba(0,0,0,0.6)]">
         <div className="mx-auto w-full max-w-6xl px-2 pt-1 pb-2 sm:px-4 sm:pb-3 md:px-6">
-          <WizardHeader
+          <div className="mb-2 flex flex-wrap items-center gap-2 text-sm">
+            <label className="flex min-w-0 items-center gap-2">View
+              <select aria-label="Catalogue mode" value={supplierMode ? "supplier" : "all"} onChange={event => onModeChange(event.target.value === "supplier")} className="border-input bg-background h-9 rounded-md border px-2">
+                <option value="all">All parts</option><option value="supplier">Supplier parts</option>
+              </select>
+            </label>
+            {supplierMode && <label className="flex min-w-0 flex-1 items-center gap-2">Supplier
+              <select aria-label="Catalogue supplier" className="border-input bg-background h-9 min-w-0 flex-1 rounded-md border px-2" value={supplierId ?? ""} onChange={event => onSupplierChange(event.target.value || undefined)}>
+                <option value="">Choose supplier</option>{supplierList.data?.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
+              </select>
+            </label>}
+          </div>
+          {(!supplierMode || supplierId) && <WizardHeader
             currentStage={wizardStage}
             selectedCatalog={selectedCatalogName}
             selectedMaterial={selectedMaterialName}
@@ -442,15 +482,22 @@ export function CatalogueScreen({
             selectedCategory={selectedCategoryName}
             onStageClick={handleStageClick}
             hideSearch
-          />
+          />}
         </div>
       </div>
 
-      <QuickWheelSurface usage={orderWheelUsage} enabled={!editingPartId && !isWizardSearchActive && ["catalog", "material", "size", "category"].includes(wizardStage)}
+      <QuickWheelSurface usage={orderWheelUsage} enabled={(!supplierMode || (!!supplierId && !isWizardLoading && !supplier.error && !wizardError)) && !editingPartId && !isWizardSearchActive && ["catalog", "material", "size", "category"].includes(wizardStage)}
         className={`@container mx-auto min-h-0 w-full max-w-6xl flex-1 space-y-2 overflow-y-auto overscroll-contain px-2 pt-2 pb-3 sm:space-y-4 sm:px-4 sm:pt-4 sm:pb-4 md:px-6 ${centerOptionCards ? "flex flex-col [&_.wizard-option-grid]:my-auto [&>*:last-child]:flex [&>*:last-child]:flex-1 [&>*:last-child]:flex-col" : ""}`}
       >
+        {supplierMode && !supplierId && supplierList.error ? <p role="alert" className="py-8 text-center text-sm">Could not load suppliers. <Button variant="outline" onClick={() => void supplierList.refetch()}>Retry</Button></p>
+          : supplierMode && !supplierId && supplierList.isPending ? <p role="status" className="py-8 text-center text-sm">Loading suppliers…</p>
+          : supplierMode && !supplierId ? <p className="text-muted-foreground py-8 text-center text-sm">Choose a supplier to browse their parts with the catalogue wizard.</p>
+          : supplierMode && (supplierList.error || supplier.error || wizardError) ? <div role="alert" className="space-y-3 py-8 text-center text-sm"><p>Could not load supplier parts. Check your connection and try again.</p><Button variant="outline" onClick={() => { void supplierList.refetch(); void supplier.refetch(); void utils.catalogue.getPartWizardSummary.invalidate(); void utils.catalogue.searchParts.invalidate(); }}>Retry</Button></div>
+          : supplierMode && (supplier.isPending || isWizardLoading) ? <p role="status" className="text-muted-foreground py-8 text-center text-sm">Loading supplier parts…</p>
+          : <>
         {isWizardSearchActive ? (
           <PartStage
+            detailsByPartId={supplierMode ? detailsByPartId : undefined}
             partsForSelection={filteredPartsForSelection}
             pendingParts={[]}
             onPartSelect={(part) => setEditingPartId(part.id)}
@@ -459,7 +506,7 @@ export function CatalogueScreen({
             onEditPart={setEditingPartId}
             actionMode="edit"
             title="Matching Parts"
-            actionLabel="Edit"
+            actionLabel={supplierMode && !canEditSupplier ? "View" : "Edit"}
           />
         ) : (
           wizardStage === "catalog" && (
@@ -543,7 +590,8 @@ export function CatalogueScreen({
           hasSizeSelection &&
           hasCategorySelection && (
             <PartStage
-              partsForSelection={filteredPartsForSelection}
+              detailsByPartId={supplierMode ? detailsByPartId : undefined}
+            partsForSelection={filteredPartsForSelection}
               pendingParts={[]}
               onPartSelect={(part) => setEditingPartId(part.id)}
               onPartQuantitySet={() => undefined}
@@ -551,9 +599,10 @@ export function CatalogueScreen({
               onEditPart={setEditingPartId}
               actionMode="edit"
               title="Parts"
-              actionLabel="Edit"
+              actionLabel={supplierMode && !canEditSupplier ? "View" : "Edit"}
             />
           )}
+        </>}
       </QuickWheelSurface>
 
       <input
@@ -582,7 +631,7 @@ export function CatalogueScreen({
             type="button"
             variant="outline"
             className={barButton}
-            disabled={!canEditParts}
+            disabled={!canEditParts || supplierMode}
             onClick={() => setIsCreatePartDialogOpen(true)}
           >
             Create Part
@@ -603,7 +652,7 @@ export function CatalogueScreen({
               onKeyDown={(event) => {
                 if (event.key === "Enter") event.currentTarget.blur();
               }}
-              placeholder="Search"
+              placeholder={supplierMode ? "Name or SKU" : "Search"}
               aria-label="Search parts"
               className="h-9 w-full rounded-lg pl-8 text-sm [&::-webkit-search-cancel-button]:appearance-none"
             />
@@ -627,7 +676,7 @@ export function CatalogueScreen({
               className="w-56"
             >
               <DropdownMenuItem
-                disabled={!canEditParts}
+                disabled={!canEditParts || supplierMode}
                 onSelect={() => setIsMaterialGroupsOpen(true)}
               >
                 <Grid2X2 />
@@ -743,9 +792,12 @@ export function CatalogueScreen({
         </DialogContent>
       </Dialog>
 
+      {supplierMode && editingPartId && listings.get(editingPartId) && <SupplierPartEditor key={editingPartId}
+        listings={listings.get(editingPartId)!} supplierName={supplier.data?.name ?? "Supplier"} canEdit={canEditSupplier} showPrice={showPrice}
+        bulkUnit={filteredPartsForSelection.find(part => part.id === editingPartId)?.bulkUnit} onClose={() => setEditingPartId(null)} />}
       <EditPartDialog
         catalogKind={catalogKind}
-        open={editingPartId !== null}
+        open={!supplierMode && editingPartId !== null}
         onOpenChange={(open) => {
           if (!open) setEditingPartId(null);
         }}

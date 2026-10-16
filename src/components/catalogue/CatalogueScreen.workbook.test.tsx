@@ -32,6 +32,7 @@ vi.mock("~/trpc/react", () => ({
         getMaterials: { invalidate: state.invalidate },
       },
     }),
+    supplier: { list: { useQuery: () => ({ data: [] }) }, getById: { useQuery: () => ({ data: undefined }) } },
     user: {
       getMyRole: {
         useQuery: () => ({

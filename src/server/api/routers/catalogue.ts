@@ -722,7 +722,7 @@ export const catalogueRouter = createTRPCRouter({
    * searchParts and load only once the user searches or reaches part selection.
    */
   getPartWizardSummary: hasDashboardAccess
-    .input(z.object({ grouped: z.boolean() }).optional())
+    .input(z.object({ grouped: z.boolean(), supplierId: z.string().uuid().optional() }).optional())
     .query(async ({ ctx, input }) => {
     const organizationId = ctx.user.organizationId;
 
@@ -795,6 +795,9 @@ export const catalogueRouter = createTRPCRouter({
             and(
               eq(partDefinitions.isActive, true),
               eq(partDefinitions.organizationId, organizationId),
+              input?.supplierId ? inArray(partDefinitions.id, ctx.db
+                .select({ id: supplierParts.partDefinitionId }).from(supplierParts)
+                .where(and(eq(supplierParts.supplierId, input.supplierId), eq(supplierParts.organizationId, organizationId)))) : undefined,
             ),
           )
           .groupBy(partDefinitions.materialId, partDefinitions.sizeLabel, sizes.nominal, units.code, partDefinitions.catalogId, partDefinitions.categoryId),
@@ -848,6 +851,7 @@ export const catalogueRouter = createTRPCRouter({
       z.object({
         // Text search (optional)
         query: z.string().optional(),
+        supplierId: z.string().uuid().optional(),
         catalogId: z.string().uuid().optional(),
         // Category filter (works with search or alone)
         categoryId: z.string().uuid().nullable().optional(),
@@ -877,6 +881,12 @@ export const catalogueRouter = createTRPCRouter({
         eq(partDefinitions.isActive, true),
         eq(partDefinitions.organizationId, organizationId),
       ];
+
+      if (input.supplierId) {
+        conditions.push(inArray(partDefinitions.id, ctx.db
+          .select({ id: supplierParts.partDefinitionId }).from(supplierParts)
+          .where(and(eq(supplierParts.supplierId, input.supplierId), eq(supplierParts.organizationId, organizationId)))));
+      }
 
       if (input.catalogId) {
         conditions.push(eq(partDefinitions.catalogId, input.catalogId));
@@ -929,6 +939,10 @@ export const catalogueRouter = createTRPCRouter({
         const searchCondition = or(
           ilike(partDefinitions.displayName, searchTerm),
           ilike(partDefinitions.description, searchTerm),
+          input.supplierId ? inArray(partDefinitions.id, ctx.db
+            .select({ id: supplierParts.partDefinitionId }).from(supplierParts)
+            .where(and(eq(supplierParts.supplierId, input.supplierId), eq(supplierParts.organizationId, organizationId),
+              or(ilike(supplierParts.supplierSku, searchTerm), ilike(supplierParts.supplierName, searchTerm))))) : undefined,
           inArray(
             partDefinitions.id,
             ctx.db

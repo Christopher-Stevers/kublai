@@ -1,3 +1,4 @@
+import { publishOrganizationCatalogueEvent, publishOrganizationReplicachePoke } from "~/server/material-list-events";
 import { orderMultipleInput, refreshSupplierPurchaseTotals } from "~/server/purchasing";
 import { TRPCError } from "@trpc/server";
 import { eq, and, desc, asc, isNull } from "drizzle-orm";
@@ -48,6 +49,7 @@ export const supplierRouter = createTRPCRouter({
       })
       .from(suppliers)
       .leftJoin(locations, eq(suppliers.locationId, locations.id))
+      .where(eq(suppliers.organizationId, ctx.user.organizationId))
       .orderBy(suppliers.name);
 
     return supplierList;
@@ -390,17 +392,20 @@ export const supplierRouter = createTRPCRouter({
       z.object({
         id: z.string().uuid(),
         supplierSku: z.string().max(255).optional().or(z.literal("")),
-        supplierName: z.string().optional(),
+        supplierName: z.string().max(2000).optional(),
         packSize: orderMultipleInput.optional(),
-        packUomId: z.string().uuid().optional(),
-        lastKnownUnitCost: z.string().optional(),
-        currency: z.string().max(10).optional(),
+        packUomId: z.string().uuid().nullable().optional(),
+        lastKnownUnitCost: z.string().trim().regex(/^\d{1,8}(\.\d{1,4})?$/, "Enter a valid non-negative price").nullable().optional(),
+        currency: z.string().trim().toUpperCase().regex(/^[A-Z]{3}$/).optional(),
         isPreferred: z.boolean().optional(),
-        notes: z.string().optional(),
+        notes: z.string().max(10000).optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      if (!userCan(ctx.user, "financial.view") && "lastKnownUnitCost" in input) input.lastKnownUnitCost = undefined;
+      if (!userCan(ctx.user, "financial.view")) {
+        input.lastKnownUnitCost = undefined;
+        input.currency = undefined;
+      }
       // Linking parts to suppliers is part of editing either one.
       if (!userCan(ctx.user, "suppliers.edit") && !userCan(ctx.user, "parts.edit"))
         assertCan(ctx.user, "suppliers.edit");
@@ -425,24 +430,16 @@ export const supplierRouter = createTRPCRouter({
         });
       }
 
-      // If setting as preferred, unset other preferred suppliers for this part
-      if (input.isPreferred === true) {
-        await ctx.db
-          .update(supplierParts)
-          .set({ isPreferred: false })
-          .where(
-            and(
-              eq(supplierParts.partDefinitionId, existing.partDefinitionId),
-
-              eq(supplierParts.isPreferred, true),
-            ),
-          );
+      if (input.packUomId) {
+        const [unit] = await ctx.db.select({ id: units.id }).from(units).where(eq(units.id, input.packUomId)).limit(1);
+        if (!unit) throw new TRPCError({ code: "BAD_REQUEST", message: "Order unit not found" });
       }
+
 
       try {
         const updateData: Partial<typeof supplierParts.$inferInsert> = {};
         if (input.supplierSku !== undefined)
-          updateData.supplierSku = input.supplierSku ?? null;
+          updateData.supplierSku = input.supplierSku.trim() || null;
         if (input.supplierName !== undefined)
           updateData.supplierName = input.supplierName ?? null;
         if (input.packSize !== undefined)
@@ -456,15 +453,35 @@ export const supplierRouter = createTRPCRouter({
           updateData.isPreferred = input.isPreferred;
         if (input.notes !== undefined) updateData.notes = input.notes ?? null;
 
-        const [updated] = await ctx.db
+        const updated = await ctx.db.transaction(async (tx) => {
+      // If setting as preferred, unset other preferred suppliers for this part
+      if (input.isPreferred === true) {
+        await tx
+          .update(supplierParts)
+          .set({ isPreferred: false })
+          .where(
+            and(
+              eq(supplierParts.partDefinitionId, existing.partDefinitionId),
+              eq(supplierParts.organizationId, ctx.user.organizationId),
+              eq(supplierParts.isPreferred, true),
+            ),
+          );
+      }
+
+        const [row] = await tx
           .update(supplierParts)
           .set(updateData)
-          .where(eq(supplierParts.id, input.id))
+          .where(and(eq(supplierParts.id, input.id), eq(supplierParts.organizationId, ctx.user.organizationId)))
           .returning();
 
-        if (input.packSize !== undefined) await refreshSupplierPurchaseTotals(ctx.db, [input.id], ctx.user.organizationId);
+        if (input.packSize !== undefined) await refreshSupplierPurchaseTotals(tx, [input.id], ctx.user.organizationId);
+        return row;
+        });
+        publishOrganizationReplicachePoke(ctx.user.organizationId);
+        publishOrganizationCatalogueEvent(ctx.user.organizationId);
         return updated;
       } catch (error) {
+        if ((error as { code?: string; cause?: { code?: string } }).code === "23505" || (error as { cause?: { code?: string } }).cause?.code === "23505") throw new TRPCError({ code: "CONFLICT", message: "That SKU is already used by another part from this supplier." });
         console.error("Error updating supplier part:", error);
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",

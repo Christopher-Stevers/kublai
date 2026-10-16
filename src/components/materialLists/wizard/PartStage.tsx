@@ -7,6 +7,7 @@ import {
   useEffect,
   useRef,
   type PointerEvent as ReactPointerEvent,
+  type ReactNode,
 } from "react";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent } from "~/components/ui/card";
@@ -24,6 +25,7 @@ const PART_TILE_GRID_CLASS =
 type PartStageActionMode = "select" | "edit";
 
 interface PartCardProps {
+  details?: ReactNode;
   part: {
     id: string;
     displayName: string;
@@ -96,6 +98,7 @@ function PartCard({
   onQuantityPickerPreviewChange,
   onEditPart,
   actionMode = "select",
+  details,
 }: PartCardProps) {
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressTriggeredRef = useRef(false);
@@ -401,6 +404,7 @@ function PartCard({
             <h4 className="line-clamp-4 text-sm leading-snug font-medium">
               {part.displayName}
             </h4>
+            {details}
           </div>
         </div>
       </CardContent>
@@ -421,6 +425,7 @@ function PartListRow({
   onEditPart,
   actionMode = "select",
   actionLabel,
+  details,
 }: PartCardProps) {
   const [quantityInput, setQuantityInput] = useState(() =>
     pendingQuantity > 0 ? String(pendingQuantity) : "",
@@ -466,6 +471,7 @@ function PartListRow({
             </h4>
           </div>
           <JobPriceBadge status={part.jobPriceStatus}/>
+            {details}
         </div>
 
         <div className="flex items-center justify-center gap-1.5">
@@ -541,6 +547,7 @@ function PartListRow({
 }
 
 export interface PartStageProps {
+  detailsByPartId?: Record<string, ReactNode>;
   partsForSelection: Array<{
     id: string;
     displayName: string;
@@ -571,7 +578,7 @@ export interface PartStageProps {
     },
     supplierPartId?: string,
   ) => void;
-  onPartQuantitySet: (
+  onPartQuantitySet?: (
     part: {
       id: string;
       displayName: string;
@@ -587,7 +594,7 @@ export interface PartStageProps {
     },
     quantity: number,
   ) => void;
-  onQuantityPickerPreviewChange: (
+  onQuantityPickerPreviewChange?: (
     preview: {
       partId: string;
       partName: string;
@@ -619,6 +626,7 @@ export function PartStage({
   title = "Select Parts",
   actionLabel,
   emptyMessage,
+  detailsByPartId,
 }: PartStageProps) {
   const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
   const pagination = useClientPagination(partsForSelection);
@@ -666,6 +674,7 @@ export function PartStage({
               <PartCard
                 key={part.id}
                 part={part}
+                details={detailsByPartId?.[part.id]}
                 isPending={isPending}
                 pendingQuantity={pendingQuantity}
                 onPartSelect={onPartSelect}
@@ -687,6 +696,7 @@ export function PartStage({
               <PartListRow
                 key={part.id}
                 part={part}
+                details={detailsByPartId?.[part.id]}
                 isPending={isPending}
                 pendingQuantity={pendingQuantity}
                 onPartSelect={onPartSelect}

@@ -57,6 +57,7 @@ export const snapshotStateSchema = z.object({
     .object({
       scope: z.string().max(500),
       kind: z.enum(["materials", "assets"]),
+      supplierId: z.uuid().optional(),
       stage: z.enum([
         "catalog",
         "material",

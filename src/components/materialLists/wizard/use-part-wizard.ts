@@ -56,11 +56,11 @@ export type WizardCatalogKind = "materials" | "assets";
 const catalogKindOf = (catalog: { kind?: string | null }) =>
   catalog.kind === "assets" ? "assets" : "materials";
 
-export function usePartWizard(open = true, sortMode?: MaterialListSort, keywordGroups: readonly NameKeywordGroup[] = EMPTY_NAME_KEYWORD_GROUPS, catalogKind: WizardCatalogKind = "materials") {
+export function usePartWizard(open = true, sortMode?: MaterialListSort, keywordGroups: readonly NameKeywordGroup[] = EMPTY_NAME_KEYWORD_GROUPS, catalogKind: WizardCatalogKind = "materials", supplierId?: string) {
   const sandbox = useTutorialSandbox();
   const [saved] = useState(() => {
     const entry = currentSnapshotState()?.catalogue;
-    return entry?.kind === catalogKind && entry.scope === window.location.pathname ? entry : null;
+    return entry?.kind === catalogKind && entry.supplierId === supplierId && entry.scope === window.location.pathname ? entry : null;
   });
   const [wizardStage, setWizardStage] = useState<WizardStage>(saved?.stage ?? "catalog");
   const [selectedCatalogId, setSelectedCatalogId] = useState<string | null>(
@@ -93,7 +93,7 @@ export function usePartWizard(open = true, sortMode?: MaterialListSort, keywordG
   const [customCategoryName, setCustomCategoryName] = useState("");
   const [wizardSearchQuery, setWizardSearchQuery] = useState(saved?.query ?? "");
   useSnapshotSource("catalogue", () => open ? {
-    scope: window.location.pathname, kind: catalogKind, stage: wizardStage,
+    scope: window.location.pathname, kind: catalogKind, supplierId, stage: wizardStage,
     catalogId: selectedCatalogId, materialId: selectedMaterialId,
     size: selectedSize, category: selectedCategory,
     hasCatalog: hasCatalogSelection, hasMaterial: hasMaterialSelection,
@@ -108,7 +108,7 @@ export function usePartWizard(open = true, sortMode?: MaterialListSort, keywordG
   const deferredWizardSearchQuery = useDeferredValue(wizardSearchQuery);
   const utils = api.useUtils();
   const isOnline = useOnlineStatus();
-  const rawReplicacheCatalogue = useReplicacheCatalogue({ enabled: open });
+  const rawReplicacheCatalogue = useReplicacheCatalogue({ enabled: open && !supplierId });
   // Material lists never offer tool catalogs, and tool requests only offer them.
   const replicacheCatalogue = useMemo(() => {
     const catalogs = rawReplicacheCatalogue.catalogs.filter(
@@ -123,7 +123,7 @@ export function usePartWizard(open = true, sortMode?: MaterialListSort, keywordG
       ),
     };
   }, [rawReplicacheCatalogue, catalogKind]);
-  const hasReplicacheCatalogue = rawReplicacheCatalogue.catalogs.length > 0;
+  const hasReplicacheCatalogue = !supplierId && rawReplicacheCatalogue.catalogs.length > 0;
   const [summaryReady, setSummaryReady] = useState(false);
   useEffect(() => {
     if (!open) { setSummaryReady(false); return; }
@@ -132,8 +132,8 @@ export function usePartWizard(open = true, sortMode?: MaterialListSort, keywordG
     const timer = setTimeout(() => setSummaryReady(true), 150);
     return () => clearTimeout(timer);
   }, [open]);
-  const { data: rawServerSummary } = api.catalogue.getPartWizardSummary.useQuery(
-    { grouped: true },
+  const { data: rawServerSummary, isPending: summaryPending, error: summaryError } = api.catalogue.getPartWizardSummary.useQuery(
+    { grouped: true, supplierId },
     {
       enabled: open && summaryReady && isOnline && !hasReplicacheCatalogue,
       staleTime: 1000 * 60 * 5,
@@ -164,11 +164,12 @@ export function usePartWizard(open = true, sortMode?: MaterialListSort, keywordG
   const shouldLoadSelectionParts =
     open &&
     isOnline &&
-    replicacheCatalogue.parts.length === 0 &&
+    (!!supplierId || replicacheCatalogue.parts.length === 0) &&
     (wizardStage === "part" || deferredWizardSearchQuery.trim().length > 0);
-  const { data: serverSelectionParts } = api.catalogue.searchParts.useQuery(
+  const { data: serverSelectionParts, isPending: selectionPending, error: selectionError } = api.catalogue.searchParts.useQuery(
     {
       query: deferredWizardSearchQuery.trim() || undefined,
+      supplierId,
       catalogId:
         hasCatalogSelection && selectedCatalogId
           ? selectedCatalogId
@@ -236,7 +237,7 @@ export function usePartWizard(open = true, sortMode?: MaterialListSort, keywordG
         .join(" ")
         .toLowerCase();
 
-      if (query && !searchableText.includes(query)) {
+      if (query && !supplierId && !searchableText.includes(query)) {
         return false;
       }
 
@@ -285,6 +286,7 @@ export function usePartWizard(open = true, sortMode?: MaterialListSort, keywordG
     });
   }, [
     deferredWizardSearchQuery,
+    supplierId,
     hasCatalogSelection,
     hasCategorySelection,
     hasMaterialSelection,
@@ -296,9 +298,9 @@ export function usePartWizard(open = true, sortMode?: MaterialListSort, keywordG
   ]);
 
   const replicacheFilteredSelectionParts = useMemo(() => {
-    if (replicacheCatalogue.parts.length === 0) return undefined;
+    if (supplierId || replicacheCatalogue.parts.length === 0) return undefined;
     return filterSelectionParts(replicacheCatalogue.parts);
-  }, [filterSelectionParts, replicacheCatalogue.parts]);
+  }, [filterSelectionParts, replicacheCatalogue.parts, supplierId]);
 
   const filteredServerSelectionParts = useMemo(() => {
     if (!serverSelectionParts) return undefined;
@@ -772,6 +774,8 @@ export function usePartWizard(open = true, sortMode?: MaterialListSort, keywordG
     wizardStage === "review" ? "" : "Search part names...";
 
   return {
+    isLoading: !!supplierId && (summaryPending || (shouldLoadSelectionParts && selectionPending)),
+    loadError: supplierId ? summaryError ?? selectionError : null,
     wizardStage,
     setWizardStage,
     selectedCatalogId,

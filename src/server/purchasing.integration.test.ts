@@ -32,13 +32,15 @@ vi.mock("~/server/api/trpc", async () => {
   const t = initTRPC.create();
   return { createTRPCRouter: t.router, hasDashboardAccess: t.procedure };
 });
+const supplierAccess = vi.hoisted(() => ({ financial: true }));
 vi.mock("~/server/auth/permissions", () => ({
   assertCan: vi.fn(),
-  userCan: () => true,
+  userCan: (_user: unknown, permission: string) => permission !== "financial.view" || supplierAccess.financial,
 }));
 vi.mock("~/server/material-list-events", () => ({
   publishMaterialListEvent: vi.fn(),
   publishOrganizationReplicachePoke: vi.fn(),
+  publishOrganizationCatalogueEvent: vi.fn(),
 }));
 vi.mock("~/server/orders/delivery-calendar", () => ({
   userDeliveryDate: async () => "2026-10-12",
@@ -48,6 +50,7 @@ import { prefabsRouter } from "~/server/api/routers/prefabs";
 import { materialListRouter } from "~/server/api/routers/materialList";
 import { jobPricingRouter } from "~/server/api/routers/jobPricing";
 import { supplierRouter } from "~/server/api/routers/supplier";
+import { catalogueRouter } from "~/server/api/routers/catalogue";
 import { recalculatePurchaseTotals, orderMultipleInput } from "./purchasing";
 
 const socket = process.env.PURCHASE_TEST_SOCKET;
@@ -83,6 +86,10 @@ const tables = [
   schema.materialListSyncTombstones,
   schema.quotes,
   schema.quoteItems,
+  schema.catalogs,
+  schema.categories,
+  schema.sizes,
+  schema.partSynonyms,
   schema.materials,
   schema.units,
   schema.partDefinitions,
@@ -114,6 +121,7 @@ describe.skipIf(!socket)(
           `CREATE TABLE IF NOT EXISTS "${getTableName(table)}" (${columns.join(",")}, PRIMARY KEY ("id"))`,
         );
       }
+      await conn`CREATE UNIQUE INDEX IF NOT EXISTS supplier_sku_unique ON kublai_supplier_part ("organizationId", "supplierId", "supplierSku")`;
       await conn`CREATE UNIQUE INDEX IF NOT EXISTS prefab_item_unique ON kublai_material_prefab_item ("prefabId", "partDefinitionId")`;
       await conn`CREATE UNIQUE INDEX tombstone_entity_unique ON kublai_material_list_sync_tombstone ("organizationId", "entityType", "entityId")`;
       const migration = await readFile(
@@ -129,6 +137,7 @@ describe.skipIf(!socket)(
       await conn.unsafe(await readFile(new URL("../../drizzle/0077_supplier_email_preferences.sql",import.meta.url),"utf8"));
     });
     beforeEach(async () => {
+      supplierAccess.financial = true;
       await conn.unsafe(
         `TRUNCATE kublai_supplier_email_preference, kublai_job_pricing_audit, kublai_job_order_approval, kublai_job_price_entry, kublai_job_price_list, ${tables.map((table) => `"${getTableName(table)}"`).join(",")}`,
       );
@@ -312,6 +321,57 @@ describe.skipIf(!socket)(
             ?.quantity,
         ),
       ).toBe(50);
+    });
+    it("filters supplier wizard facets and searches supplier SKUs without leaking other suppliers", async () => {
+      const catalogue = catalogueRouter.createCaller(context as never);
+      await db.insert(schema.catalogs).values({id:id(9),organizationId:org,name:"Plumbing",kind:"materials",sortOrder:0});
+      await db.update(schema.partDefinitions).set({isActive:true}).where(eq(schema.partDefinitions.id,part));
+      await db.update(schema.supplierParts).set({supplierSku:"NX-CLIP",supplierName:"Vendor pipe bracket"}).where(eq(schema.supplierParts.id,sp));
+      const otherPart=id(901), otherSupplier=id(902), otherOrg=id(903);
+      await db.insert(schema.suppliers).values({id:otherSupplier,organizationId:org,name:"Other vendor"});
+      await db.insert(schema.partDefinitions).values({id:otherPart,organizationId:org,catalogId:id(9),displayName:"Other pipe",isActive:true});
+      await db.insert(schema.supplierParts).values({id:id(904),organizationId:org,supplierId:otherSupplier,partDefinitionId:otherPart,supplierSku:"NX-OTHER"});
+      // Duplicate listings do not double-count a physical catalogue part.
+      await db.insert(schema.supplierParts).values({id:id(905),organizationId:org,supplierId:supplier,partDefinitionId:part,supplierSku:"NX-CLIP-ALT"});
+      // A foreign-organization listing cannot pull our part into this supplier.
+      await db.insert(schema.supplierParts).values({id:id(906),organizationId:otherOrg,supplierId:supplier,partDefinitionId:otherPart,supplierSku:"NX-FOREIGN"});
+      const summary=await catalogue.getPartWizardSummary({grouped:true,supplierId:supplier});
+      expect(summary.partCount).toBe(1);
+      expect((await catalogue.searchParts({supplierId:supplier})).map(p=>p.id)).toEqual([part]);
+      expect((await catalogue.searchParts({supplierId:supplier,query:"NX-CLIP"})).map(p=>p.id)).toEqual([part]);
+      expect((await catalogue.searchParts({supplierId:supplier,query:"Vendor pipe bracket"})).map(p=>p.id)).toEqual([part]);
+      expect(await catalogue.searchParts({supplierId:supplier,query:"NX-OTHER"})).toEqual([]);
+      expect((await catalogue.searchParts({})).map(p=>p.id).sort()).toEqual([part,otherPart].sort());
+      expect((await catalogue.getPartWizardSummary({grouped:true,supplierId:otherSupplier})).partCount).toBe(1);
+    });
+    it("saves and clears supplier metadata without changing the shared part or another organization", async () => {
+      const otherOrg=id(920), foreign=id(921);
+      await db.insert(schema.suppliers).values({id:id(922),organizationId:otherOrg,name:"Private vendor"});
+      await db.insert(schema.supplierParts).values({id:foreign,organizationId:otherOrg,supplierId:id(922),partDefinitionId:part,supplierSku:"PRIVATE",isPreferred:true});
+      expect((await suppliers.list()).map(item=>item.id)).toEqual([supplier]);
+      await suppliers.updateSupplierPart({id:sp,supplierSku:"NEW",supplierName:"New supplier description",lastKnownUnitCost:"12.3456",currency:"CAD",packUomId:null,notes:"Order by phone",isPreferred:true});
+      const detail=await suppliers.getById({id:supplier});
+      expect(detail.supplierParts[0]).toMatchObject({supplierSku:"NEW",supplierName:"New supplier description",lastKnownUnitCost:"12.3456",notes:"Order by phone"});
+      const [core]=await db.select().from(schema.partDefinitions).where(eq(schema.partDefinitions.id,part));
+      expect(core!.displayName).toBe('1/2" PEX pipe clip');
+      expect((await db.select().from(schema.supplierParts).where(eq(schema.supplierParts.id,foreign)))[0]!.isPreferred).toBe(true);
+      await expect(suppliers.updateSupplierPart({id:foreign,supplierSku:"HACK"})).rejects.toMatchObject({code:"NOT_FOUND"});
+      await expect(suppliers.updateSupplierPart({id:sp,lastKnownUnitCost:"-5"})).rejects.toMatchObject({code:"BAD_REQUEST"});
+      await suppliers.updateSupplierPart({id:sp,supplierSku:"",lastKnownUnitCost:null,packUomId:null});
+      expect((await suppliers.getById({id:supplier})).supplierParts[0]).toMatchObject({supplierSku:null,lastKnownUnitCost:null,packUomId:null});
+    });
+    it("keeps prices and currency unchanged without financial permission",async()=>{
+      await db.update(schema.supplierParts).set({currency:"CAD"}).where(eq(schema.supplierParts.id,sp));
+      supplierAccess.financial=false;
+      await suppliers.updateSupplierPart({id:sp,supplierName:"Allowed description edit",lastKnownUnitCost:"999",currency:"USD"});
+      const [row]=await db.select().from(schema.supplierParts).where(eq(schema.supplierParts.id,sp));
+      expect(row).toMatchObject({supplierName:"Allowed description edit",lastKnownUnitCost:"2.0000",currency:"CAD"});
+    });
+    it("rolls back preferred supplier changes when a SKU conflicts",async()=>{
+      await db.update(schema.supplierParts).set({supplierSku:"TAKEN",isPreferred:true}).where(eq(schema.supplierParts.id,sp));
+      await db.insert(schema.supplierParts).values({id:id(930),organizationId:org,supplierId:supplier,partDefinitionId:part,supplierSku:"OTHER",isPreferred:false});
+      await expect(suppliers.updateSupplierPart({id:id(930),supplierSku:"TAKEN",isPreferred:true})).rejects.toMatchObject({code:"CONFLICT"});
+      expect((await db.select().from(schema.supplierParts).where(eq(schema.supplierParts.id,sp)))[0]!.isPreferred).toBe(true);
     });
     it("recalculates active lists after a rule edit but preserves historical orders", async () => {
       const sent = await material.sendGeneratedOrder({
