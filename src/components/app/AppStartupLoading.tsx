@@ -1,4 +1,3 @@
-import Image from "next/image";
 import type { CSSProperties } from "react";
 import {
   ClipboardListIcon,
@@ -25,7 +24,7 @@ const TOOLS = [
   ShoppingCartIcon,
 ];
 
-// Shown only while a route is actually loading, so it never delays a fast start.
+// Also rendered in the first HTML shell; no JavaScript is needed to animate.
 // Dark to match the installed app's launch splash (manifest background_color).
 export function AppStartupLoading() {
   return (
@@ -34,6 +33,7 @@ export function AppStartupLoading() {
       role="status"
       aria-label="Loading"
       className={styles.screen}
+      style={{ backgroundColor: "#111827" }}
     >
       <div className={styles.stage} aria-hidden="true">
         <div className={styles.halo} />
@@ -51,13 +51,17 @@ export function AppStartupLoading() {
             </span>
           ))}
         </div>
-        <Image
+        {/* Use the exact preloaded PWA asset; no image-optimizer handoff. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
           src="/foremanhq/icon-dark-v2-192.png"
           alt=""
           width={96}
           height={96}
           className={styles.icon}
-          priority
+          loading="eager"
+          fetchPriority="high"
+          decoding="sync"
         />
       </div>
       <p className={styles.name}>{APP_NAME}</p>

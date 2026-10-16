@@ -9,6 +9,8 @@ import { APP_NAME } from "~/constants/app";
 import { ClientConsoleErrorReporter } from "~/components/debug/ClientConsoleErrorReporter";
 import { PushAccountBinding } from "~/components/notifications/PushNotifications";
 import { ServiceWorkerRegistration } from "~/components/offline/ServiceWorkerRegistration";
+import { AppStartupLoading } from "~/components/app/AppStartupLoading";
+import { StartupHandoff } from "~/components/app/StartupHandoff";
 import { ThemeProvider } from "~/components/app/ThemeProvider";
 import { AppDialogHost } from "~/components/ui/app-dialogs";
 import { THEME_BOOT_SCRIPT } from "~/lib/theme-document";
@@ -92,10 +94,16 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${geist.variable}`} suppressHydrationWarning>
       <head>
+        <link rel="preload" as="image" href="/foremanhq/icon-dark-v2-192.png" fetchPriority="high" />
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
         <script dangerouslySetInnerHTML={{ __html: installCaptureScript }} />
       </head>
       <body>
+        <div id="app-startup-cover" aria-hidden="true" style={{position:"fixed",inset:0,zIndex:10000,background:"#111827",opacity:1,transition:"opacity 200ms ease-out"}}>
+          <AppStartupLoading />
+        </div>
+        <StartupHandoff />
+        <div id="app-startup-content">
         <ThemeProvider>
           <SessionProviderWrapper>
             <TRPCReactProvider>
@@ -107,6 +115,7 @@ export default function RootLayout({
             </TRPCReactProvider>
           </SessionProviderWrapper>
         </ThemeProvider>
+        </div>
       </body>
     </html>
   );
