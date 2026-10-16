@@ -1,5 +1,6 @@
 import { act, cleanup, render } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { RouteLoading } from "./RouteLoading";
 import { StartupHandoff } from "./StartupHandoff";
 beforeEach(()=>{
  vi.useFakeTimers();
@@ -41,4 +42,22 @@ it("keeps React navigation working after the startup cover finishes",async()=>{
  const page=render(<Page/>);
  await act(()=>vi.advanceTimersByTimeAsync(300));
  expect(()=>page.rerender(<Page banner/>)).not.toThrow();
+});
+
+it("waits for the first route, without replaying startup on subsequent routes",async()=>{
+ document.body.innerHTML="";
+ function App({pending}:{pending:boolean}){
+  return <><StartupHandoff><span>Startup animation</span></StartupHandoff><div id="app-startup-content">{pending?<RouteLoading/>:<main>Ready page</main>}</div></>;
+ }
+ const app=render(<App pending/>);
+ await act(()=>vi.advanceTimersByTimeAsync(1000));
+ expect(document.getElementById("app-startup-cover")!.style.opacity).toBe("1");
+ app.rerender(<App pending={false}/>);
+ await act(()=>vi.advanceTimersByTimeAsync(300));
+ expect(document.getElementById("app-startup-cover")).toBeNull();
+ app.rerender(<App pending/>);
+ await act(()=>vi.advanceTimersByTimeAsync(1000));
+ expect(document.querySelector("[data-route-loading]")).not.toBeNull();
+ expect(document.getElementById("app-startup-cover")).toBeNull();
+ expect(document.body.textContent).not.toContain("Startup animation");
 });

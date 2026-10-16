@@ -1,5 +1,5 @@
-import { AppStartupLoading } from "~/components/app/AppStartupLoading";
+import { RouteLoading } from "~/components/app/RouteLoading";
 
 export default function DashboardLoading() {
-  return <AppStartupLoading />;
+  return <RouteLoading />;
 }

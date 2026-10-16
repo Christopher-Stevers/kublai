@@ -16,7 +16,7 @@ export function StartupHandoff({ children }: { children: React.ReactNode }) {
     const observer = new MutationObserver(check);
     function check() {
       if (exiting || !content || !cover) return;
-      const pending = [...content.querySelectorAll("[data-app-startup-loading]")]
+      const pending = [...content.querySelectorAll("[data-route-loading], [data-app-startup-loading]")]
         .some(element => element.getClientRects().length > 0);
       const painted = [...content.children].some(element =>
         !["SCRIPT", "STYLE", "LINK", "TEMPLATE"].includes(element.tagName) &&

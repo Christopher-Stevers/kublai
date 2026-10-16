@@ -29,3 +29,11 @@ confirmed insertBefore NotFoundError on Android. A regression test reproduces
 insertion of a new sibling after the cover exits, and a hydrated Chromium test
 verifies the same transition and navigation. Both failed/passed as appropriate
 before and after replacing imperative removal with React state.
+
+## Startup only
+
+The root layout owns the startup animation for the lifetime of the open app.
+Route loading fallbacks use a small inline status instead, so navigating between
+screens never replays the full-screen animation. The initial handoff still waits
+for that route status to clear. A lifecycle regression covers initial pending
+content followed by another pending route after startup has finished.
