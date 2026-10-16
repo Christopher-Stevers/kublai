@@ -190,6 +190,14 @@ export type DrawingStyle = Pick<
   "stroke" | "width" | "fill" | "opacity"
 >;
 export const drawingIssueSchema = z.object({
+  revisionImpact: z
+    .object({
+      previousSourceSheetId: id,
+      affectedId: z.string().max(255),
+      affectedKind: z.enum(["markup", "takeoff", "summary"]),
+      alignmentVerified: z.boolean(),
+    })
+    .optional(),
   sourceSheetId: id,
   type: z.enum(["issue", "rfi"]),
   point: drawingPointSchema,
@@ -352,7 +360,11 @@ export type DrawingMetadata = z.infer<typeof drawingMetadataSchema> & {
   revision: number;
   currentSourceSheetId: string;
 };
-export type DrawingJobSheet = DrawingSnapshot & { id: string; setId: string; setName?: string | null };
+export type DrawingJobSheet = DrawingSnapshot & {
+  id: string;
+  setId: string;
+  setName?: string | null;
+};
 export type DrawingActivity = {
   id: string;
   entityId: string | null;

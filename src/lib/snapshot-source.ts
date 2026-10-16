@@ -109,6 +109,7 @@ export const snapshotStateSchema = z.object({
         .enum([
           "",
           "markups",
+          "impacts",
           "issues",
           "search",
           "views",

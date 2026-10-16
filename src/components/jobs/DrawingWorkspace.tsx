@@ -152,6 +152,7 @@ export const tools: Array<[DrawingTool, string]> = [
 type Panel =
   | ""
   | "markups"
+  | "impacts"
   | "issues"
   | "search"
   | "views"
@@ -165,6 +166,7 @@ type Panel =
   | "notifications";
 export const panels: Array<[Panel, string]> = [
   ["notifications", "Drawing notifications"],
+  ["impacts", "Needs review · revision impacts"],
   ["markups", "Markups / layers"],
   ["issues", "Issues / RFIs"],
   ["search", "Find text / PDF links"],
@@ -178,6 +180,7 @@ export const panels: Array<[Panel, string]> = [
 ];
 const PANEL_ICONS: Partial<Record<Panel, LucideIcon>> = {
   notifications: BellIcon,
+  impacts: CircleAlertIcon,
   markups: LayersIcon,
   issues: CircleAlertIcon,
   search: SearchIcon,
@@ -469,6 +472,7 @@ export function DrawingWorkspace({
     first: string;
     second: string;
     additional?: string[];
+    focus?: DrawingViewport;
   } | null>(
     entryDrawing && entrySnapshot?.overlay
       ? {
@@ -1503,6 +1507,33 @@ export function DrawingWorkspace({
         )}
       </div>
       <div className="relative flex min-h-0 flex-1">
+        {entities.some(
+          (e) =>
+            e.kind === "issue" &&
+            e.visibility !== "archived" &&
+            e.data.revisionImpact &&
+            e.data.status !== "closed",
+        ) && (
+          <Button
+            className="absolute top-3 right-3 z-20 shadow-md"
+            size="sm"
+            onClick={() => setPanel("impacts")}
+          >
+            <CircleAlertIcon className="size-4" />
+            Needs review (
+            {
+              entities.filter(
+                (e) =>
+                  e.kind === "issue" &&
+                  e.visibility !== "archived" &&
+                  e.data.revisionImpact &&
+                  e.data.status !== "closed",
+              ).length
+            }
+            )
+          </Button>
+        )}
+
         <div className="min-h-0 min-w-0 flex-1">
           {compare && compareFirst ? (
             <DrawingCompare
@@ -1510,7 +1541,7 @@ export function DrawingWorkspace({
                 entryDrawing ? entrySnapshot?.overlay : undefined
               }
               appearance={appearance}
-              key={compareFirst.id}
+              key={`${compareFirst.id}:${compareIds?.focus ? JSON.stringify(compareIds.focus) : ""}`}
               additional={compareAdditional.map((item) => ({
                 ...item,
                 pdf: sourcePdfPage(item.imageUrl),
@@ -1534,7 +1565,7 @@ export function DrawingWorkspace({
                 pdf: sourcePdfPage(compare.imageUrl),
                 tiles: tileBase(compare.imageUrl),
               }}
-              initialViewport={viewport.current}
+              initialViewport={compareIds?.focus ?? viewport.current}
               onViewportChange={updateViewport}
               onClose={() => setCompareIds(null)}
             />
@@ -2128,6 +2159,90 @@ export function DrawingWorkspace({
                       </button>
                     ))}
                 </>
+              )}
+              {panel === "impacts" && (
+                <div className="space-y-3">
+                  <p className="text-muted-foreground text-sm">
+                    Possible impacts, not confirmed errors. Compare each item
+                    before marking reviewed. Quantities and annotations are
+                    unchanged.
+                  </p>
+                  {entities
+                    .filter(
+                      (entity) =>
+                        entity.kind === "issue" &&
+                        entity.visibility !== "archived" &&
+                        entity.data.revisionImpact,
+                    )
+                    .map(
+                      (entity) =>
+                        entity.kind === "issue" && (
+                          <div
+                            className="space-y-2 rounded-md border p-3"
+                            key={entity.id}
+                          >
+                            <p className="text-sm font-medium">
+                              {entity.data.title}
+                            </p>
+                            <p className="text-muted-foreground text-xs">
+                              {entity.data.body}
+                            </p>
+                            <div className="flex flex-wrap gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  const impact = entity.data.revisionImpact!;
+                                  setCompareIds({
+                                    first: impact.previousSourceSheetId,
+                                    second: entity.data.sourceSheetId,
+                                    focus: {
+                                      center: entity.data.point,
+                                      zoom: 3,
+                                    },
+                                  });
+                                  selectTool("pan");
+                                }}
+                              >
+                                Compare before / after
+                              </Button>
+                              <Button
+                                size="sm"
+                                disabled={
+                                  !editable(entity) ||
+                                  pending > 0 ||
+                                  entity.data.status === "closed"
+                                }
+                                onClick={() =>
+                                  void save({
+                                    sheetId: sheet.id,
+                                    id: entity.id,
+                                    kind: "issue",
+                                    expectedRevision: entity.revision,
+                                    visibility: entity.visibility,
+                                    data: { ...entity.data, status: "closed" },
+                                  })
+                                }
+                              >
+                                {entity.data.status === "closed"
+                                  ? "Reviewed"
+                                  : "Mark reviewed"}
+                              </Button>
+                            </div>
+                          </div>
+                        ),
+                    )}
+                  {!entities.some(
+                    (e) =>
+                      e.kind === "issue" &&
+                      e.visibility !== "archived" &&
+                      e.data.revisionImpact,
+                  ) && (
+                    <p className="text-sm">
+                      No revision impacts have been flagged.
+                    </p>
+                  )}
+                </div>
               )}
               {panel === "search" && (
                 <>

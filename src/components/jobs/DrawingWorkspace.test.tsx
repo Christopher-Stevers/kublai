@@ -102,6 +102,7 @@ vi.mock("./DrawingCompare", () => ({
   DrawingCompare: (props: ComponentProps<typeof DrawingCompare>) => (
     <div
       data-testid="comparison"
+      data-focus={JSON.stringify(props.initialViewport)}
       data-first={props.first.id}
       data-second={props.second.id}
       data-additional={JSON.stringify(
@@ -1375,4 +1376,64 @@ it("reuses saved annotation geometry and callbacks when opening an unrelated too
   expect(after.onSelect).toBe(before.onSelect);
   expect(after.onActivate).toBe(before.onActivate);
   expect(after.canEditAnnotation).toBe(before.canEditAnnotation);
+});
+
+it("reviews possible revision impacts in a focused comparison without editing the original markup", async () => {
+  mocks.data!.entities = [
+    {
+      id: entityId,
+      sheetId,
+      kind: "issue",
+      revision: 1,
+      visibility: "published",
+      authorId: "tim",
+      authorName: "Tim",
+      comments: [],
+      createdAt: "",
+      updatedAt: "",
+      data: {
+        sourceSheetId: sheetId,
+        type: "issue",
+        point: { x: 0.3, y: 0.4 },
+        title: "Needs review: pipe takeoff",
+        body: "Alignment could not be verified. Possible impact only.",
+        status: "open",
+        assigneeId: "tim",
+        dueDate: null,
+        links: [],
+        revisionImpact: {
+          previousSourceSheetId: revisionId,
+          affectedId: "takeoff-line",
+          affectedKind: "takeoff",
+          alignmentVerified: false,
+        },
+      },
+    },
+  ];
+  render(
+    <DrawingWorkspace jobId={jobId} sheet={sheet} onOpenSheet={vi.fn()} />,
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Needs review (1)" }));
+  expect(
+    screen.getByText(/Possible impacts, not confirmed errors/),
+  ).toBeInTheDocument();
+  fireEvent.click(
+    screen.getByRole("button", { name: "Compare before / after" }),
+  );
+  expect(screen.getByTestId("comparison")).toHaveAttribute(
+    "data-first",
+    revisionId,
+  );
+  expect(
+    JSON.parse(screen.getByTestId("comparison").getAttribute("data-focus")!),
+  ).toEqual({ center: { x: 0.3, y: 0.4 }, zoom: 3 });
+  fireEvent.click(screen.getByRole("button", { name: "Mark reviewed" }));
+  await waitFor(() => expect(mocks.save).toHaveBeenCalled());
+  const saved = mocks.save.mock.calls[0]![0];
+  expect(saved.id).toBe(entityId);
+  expect(saved.kind).toBe("issue");
+  if (saved.kind === "issue") expect(saved.data.status).toBe("closed");
+  expect(mocks.save.mock.calls.every(([value]) => value.kind === "issue")).toBe(
+    true,
+  );
 });

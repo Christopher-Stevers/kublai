@@ -1,3 +1,11 @@
+import { estimates } from "~/server/db/estimating-schema";
+import {
+  proposeDrawingRevisions,
+  compatibleRevisionScale,
+  revisionChangedRegions,
+  nearRevisionChanges,
+} from "~/lib/drawing-revision-review";
+import { prepareRevisionEvidence, revisionEvidence } from "./revision-evidence";
 import { documentDrawingAccess } from "~/server/documents/drawing-workspace";
 import { drawingMarkupLinks } from "~/lib/drawing-links";
 import { randomUUID } from "node:crypto";
@@ -693,14 +701,43 @@ export async function saveDrawingEntity(
           code: "CONFLICT",
           message: "This drawing is already in the revision history.",
         });
+      const prior = sheets.find((s) => s.id === current.currentSourceSheetId),
+        next = sheets.find((s) => s.id === input.data.sourceSheetId);
+      const before = prior
+          ? await revisionEvidence(prior.imageUrl, access.sheet.jobId)
+          : null,
+        after = next
+          ? await revisionEvidence(next.imageUrl, access.sheet.jobId)
+          : null;
+      const calibration = compatibleRevisionScale(
+        current.scale,
+        before?.scale ?? null,
+        after?.scale ?? null,
+        before?.linework ?? null,
+        after?.linework ?? null,
+      );
+      await revisionImpactFlags(
+        tx,
+        access.actor,
+        access.sheet,
+        current.currentSourceSheetId,
+        input.data.sourceSheetId,
+        items,
+        sheets,
+      );
       await writeMetadata(tx, input.sheetId, {
         ...current,
         revision: current.revision + 1,
         currentSourceSheetId: input.data.sourceSheetId,
         status: "draft",
-        scale: null,
+        scale: calibration.preserve ? current.scale : null,
       });
     }
+    if (input.kind === "version")
+      await tx
+        .update(jobDrawingSets)
+        .set({ updatedAt: new Date() })
+        .where(eq(jobDrawingSets.id, access.sheet.setId));
     if (input.kind === "review")
       await writeMetadata(tx, input.sheetId, {
         ...current,
@@ -854,14 +891,42 @@ export async function setDrawingCurrentVersion(
         message: "Choose an existing revision of this drawing.",
       });
     if (current.currentSourceSheetId === input.sourceSheetId) return current;
+    const prior = sheets.find((s) => s.id === current.currentSourceSheetId),
+      next = sheets.find((s) => s.id === input.sourceSheetId);
+    const before = prior
+        ? await revisionEvidence(prior.imageUrl, access.sheet.jobId)
+        : null,
+      after = next
+        ? await revisionEvidence(next.imageUrl, access.sheet.jobId)
+        : null;
+    const calibration = compatibleRevisionScale(
+      current.scale,
+      before?.scale ?? null,
+      after?.scale ?? null,
+      before?.linework ?? null,
+      after?.linework ?? null,
+    );
+    await revisionImpactFlags(
+      tx,
+      access.actor,
+      access.sheet,
+      current.currentSourceSheetId,
+      input.sourceSheetId,
+      items,
+      sheets,
+    );
     const data: DrawingMetadata = {
       ...current,
       revision: current.revision + 1,
       currentSourceSheetId: input.sourceSheetId,
       status: "draft",
-      scale: null,
+      scale: calibration.preserve ? current.scale : null,
     };
     await writeMetadata(tx, input.sheetId, data);
+    await tx
+      .update(jobDrawingSets)
+      .set({ updatedAt: new Date() })
+      .where(eq(jobDrawingSets.id, access.sheet.setId));
     await record(
       tx,
       input.sheetId,
@@ -948,4 +1013,488 @@ export async function watchDrawing(
         );
     return { watching: input.watching };
   });
+}
+
+/** Review a split revision PDF without changing any current drawing. */
+export async function reviewDrawingRevisionUpload(
+  ctx: DrawingContext,
+  uploadedSetId: string,
+) {
+  const [set] = await ctx.db
+    .select()
+    .from(jobDrawingSets)
+    .where(eq(jobDrawingSets.id, uploadedSetId))
+    .limit(1);
+  if (!set || set.documentVersionId)
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "Drawing folder not found.",
+    });
+  const actor = drawingActor(
+    await freshUser(ctx.db, ctx.userId),
+    set.organizationId,
+  );
+  assertDrawingManager(actor);
+  const sheets = await jobSheets(ctx.db, set.jobId, actor.organizationId);
+  const ids = sheets.map((s) => s.id);
+  const data = ids.length
+    ? await ctx.db.select().from(metadata).where(inArray(metadata.sheetId, ids))
+    : [];
+  const metas = new Map(data.map((row) => [row.sheetId, row.data]));
+  const versions = await ctx.db
+    .select()
+    .from(entities)
+    .where(
+      and(
+        eq(entities.jobId, set.jobId),
+        eq(entities.organizationId, actor.organizationId),
+        sql`entity->>'kind' = 'version'`,
+      ),
+    );
+  const used = new Map(
+    versions.flatMap((row) =>
+      row.entity.kind === "version"
+        ? [[row.entity.data.sourceSheetId, row.sheetId] as const]
+        : [],
+    ),
+  );
+  const incoming = sheets
+    .filter((s) => s.setId === uploadedSetId)
+    .map((s) => ({
+      ...s,
+      metadata: metas.get(s.id) ?? defaultDrawingMetadata(s.id),
+    }));
+  const targets = sheets
+    .filter((s) => s.setId !== uploadedSetId && !used.has(s.id))
+    .map((s) => ({
+      ...s,
+      metadata: metas.get(s.id) ?? defaultDrawingMetadata(s.id),
+    }));
+  const proposals = proposeDrawingRevisions(incoming, targets);
+  const evidenceSheets = proposals.flatMap((row) => {
+    const target = targets.find((t) => t.id === row.targetId),
+      source = incoming.find((s) => s.id === row.sourceId);
+    const current = sheets.find(
+      (s) => s.id === target?.metadata.currentSourceSheetId,
+    );
+    return target && source && current ? [source, current] : [];
+  });
+  await prepareRevisionEvidence(evidenceSheets, set.jobId);
+  const rows = [];
+  for (const row of proposals) {
+    const source = incoming.find((s) => s.id === row.sourceId)!;
+    const target = targets.find((t) => t.id === row.targetId);
+    const current = sheets.find(
+      (s) => s.id === target?.metadata.currentSourceSheetId,
+    );
+    const before = current
+      ? await revisionEvidence(current.imageUrl, set.jobId)
+      : null;
+    const after = await revisionEvidence(source.imageUrl, set.jobId);
+    const calibration = compatibleRevisionScale(
+      target?.metadata.scale ?? null,
+      before?.scale ?? null,
+      after.scale,
+      before?.linework ?? null,
+      after.linework,
+    );
+    rows.push({
+      ...row,
+      sourceName: source.name,
+      sourceRevision: source.metadata.revision,
+      alreadyAttached: used.has(source.id),
+      calibration,
+    });
+  }
+  return {
+    jobId: set.jobId,
+    uploadedSetId,
+    rows,
+    targets: targets.map((t) => ({
+      id: t.id,
+      name: t.name,
+      setName: t.setName,
+      revision: t.metadata.revision,
+      hasScale: !!t.metadata.scale,
+    })),
+  };
+}
+
+export async function applyDrawingRevisionUpload(
+  ctx: DrawingContext,
+  input: {
+    uploadedSetId: string;
+    label: string;
+    rows: Array<{
+      sourceId: string;
+      sourceRevision: number;
+      targetId: string | null;
+      expectedRevision?: number;
+    }>;
+  },
+) {
+  // Validate permission and folder ownership before acquiring mutation locks.
+  const [set] = await ctx.db
+    .select()
+    .from(jobDrawingSets)
+    .where(eq(jobDrawingSets.id, input.uploadedSetId))
+    .limit(1);
+  if (!set || set.documentVersionId)
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "Drawing folder not found.",
+    });
+  assertDrawingManager(
+    drawingActor(await freshUser(ctx.db, ctx.userId), set.organizationId),
+  );
+  const available = await jobSheets(ctx.db, set.jobId, set.organizationId);
+  const evidenceSources = [];
+  for (const row of input.rows) {
+    if (!row.targetId) continue;
+    const target = available.find(
+      (s) => s.id === row.targetId && s.setId !== set.id,
+    );
+    const source = available.find(
+      (s) => s.id === row.sourceId && s.setId === set.id,
+    );
+    if (!target || !source)
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Choose drawings in this job.",
+      });
+    const current = await sheetMetadata(ctx.db, target.id);
+    const prior = available.find((s) => s.id === current.currentSourceSheetId);
+    if (prior) evidenceSources.push(prior, source);
+  }
+  await prepareRevisionEvidence(evidenceSources, set.jobId);
+  const lockIds = [
+    ...new Set(
+      input.rows.flatMap((r) => [
+        r.sourceId,
+        ...(r.targetId ? [r.targetId] : []),
+      ]),
+    ),
+  ].sort();
+  return ctx.db.transaction(async (tx) => {
+    for (const id of lockIds)
+      await tx.execute(
+        sql`select pg_advisory_xact_lock(hashtextextended(${id},4150))`,
+      );
+    await tx.execute(
+      sql`select pg_advisory_xact_lock(hashtextextended(${set.jobId},4151))`,
+    );
+    const [folder] = await tx
+      .select()
+      .from(jobDrawingSets)
+      .where(
+        and(
+          eq(jobDrawingSets.id, set.id),
+          eq(jobDrawingSets.organizationId, set.organizationId),
+        ),
+      )
+      .for("key share");
+    if (!folder)
+      throw new TRPCError({
+        code: "CONFLICT",
+        message: "The uploaded folder changed. Review again.",
+      });
+    const actor = drawingActor(
+      await freshUser(tx, ctx.userId),
+      set.organizationId,
+    );
+    assertDrawingManager(actor);
+    const sheets = await jobSheets(tx, set.jobId, actor.organizationId);
+    const sources = new Set<string>(),
+      targets = new Set<string>();
+    const result: {
+      revised: string[];
+      newSheets: string[];
+      calibrationRetained: string[];
+      needsCalibration: string[];
+      impactCount: number;
+    } = {
+      revised: [],
+      newSheets: [],
+      calibrationRetained: [],
+      needsCalibration: [],
+      impactCount: 0,
+    };
+    const versions = await tx
+      .select()
+      .from(entities)
+      .where(
+        and(
+          eq(entities.jobId, set.jobId),
+          eq(entities.organizationId, actor.organizationId),
+          sql`entity->>'kind' = 'version'`,
+        ),
+      );
+    const used = new Set(
+      versions.flatMap((row) =>
+        row.entity.kind === "version" ? [row.entity.data.sourceSheetId] : [],
+      ),
+    );
+    for (const row of input.rows) {
+      const source = sheets.find(
+        (s) => s.id === row.sourceId && s.setId === set.id,
+      );
+      if (!source || sources.has(row.sourceId) || used.has(row.sourceId))
+        throw new TRPCError({
+          code: "CONFLICT",
+          message:
+            "An uploaded sheet changed or is already attached. Review again.",
+        });
+      sources.add(row.sourceId);
+      const sourceMeta = await sheetMetadata(tx, row.sourceId);
+      assertRevision(sourceMeta.revision, row.sourceRevision);
+      if (!row.targetId) {
+        result.newSheets.push(source.name);
+        continue;
+      }
+      const target = sheets.find(
+        (s) => s.id === row.targetId && s.setId !== set.id && !used.has(s.id),
+      );
+      if (!target || targets.has(target.id))
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Choose each existing drawing only once.",
+        });
+      targets.add(target.id);
+      await tx
+        .select({ id: jobDrawingSheets.id })
+        .from(jobDrawingSheets)
+        .where(inArray(jobDrawingSheets.id, [source.id, target.id]))
+        .for("key share");
+      const current = await sheetMetadata(tx, target.id);
+      assertRevision(current.revision, row.expectedRevision ?? -1);
+      const items = await sheetEntities(tx, target.id);
+      const beforeSheet = sheets.find(
+        (s) => s.id === current.currentSourceSheetId,
+      );
+      const before = beforeSheet
+          ? await revisionEvidence(beforeSheet.imageUrl, set.jobId)
+          : null,
+        after = await revisionEvidence(source.imageUrl, set.jobId);
+      const calibration = compatibleRevisionScale(
+        current.scale,
+        before?.scale ?? null,
+        after.scale,
+        before?.linework ?? null,
+        after.linework,
+      );
+      const entity = prepareEntity(
+        {
+          kind: "version",
+          sheetId: target.id,
+          id: randomUUID(),
+          expectedRevision: 0,
+          expectedMetadataRevision: current.revision,
+          visibility: "published",
+          data: {
+            sourceSheetId: source.id,
+            label: input.label,
+            description: `Bulk revised PDF import. ${calibration.reason}`,
+          },
+        },
+        null,
+        actor,
+        sheets,
+        [],
+        new Date().toISOString(),
+      );
+      await persistEntity(
+        tx,
+        { id: target.id, jobId: set.jobId, organizationId: set.organizationId },
+        entity,
+        0,
+        items,
+      );
+      await writeMetadata(tx, target.id, {
+        ...current,
+        currentSourceSheetId: source.id,
+        revision: current.revision + 1,
+        status: "draft",
+        scale: calibration.preserve ? current.scale : null,
+      });
+      result.impactCount += await revisionImpactFlags(
+        tx,
+        actor,
+        { id: target.id, jobId: set.jobId, organizationId: set.organizationId },
+        current.currentSourceSheetId,
+        source.id,
+        items,
+        sheets,
+      );
+      await tx
+        .update(jobDrawingSets)
+        .set({ updatedAt: new Date() })
+        .where(eq(jobDrawingSets.id, target.setId));
+      await record(
+        tx,
+        target.id,
+        actor,
+        "revision_uploaded_and_made_current",
+        entity.id,
+      );
+      await enqueueDrawingNotifications(tx, {
+        sheetId: target.id,
+        organizationId: actor.organizationId,
+        senderId: actor.id,
+        entity,
+      });
+      result.revised.push(target.name);
+      (calibration.preserve
+        ? result.calibrationRetained
+        : result.needsCalibration
+      ).push(target.name);
+    }
+    return result;
+  });
+}
+
+async function revisionImpactFlags(
+  tx: Transaction,
+  actor: DrawingActor,
+  sheet: { id: string; jobId: string; organizationId: string },
+  previous: string,
+  next: string,
+  items: DrawingEntity[],
+  sheets: DrawingJobSheet[],
+) {
+  const beforeSheet = sheets.find((s) => s.id === previous),
+    afterSheet = sheets.find((s) => s.id === next);
+  const before = beforeSheet
+      ? await revisionEvidence(beforeSheet.imageUrl, sheet.jobId)
+      : null,
+    after = afterSheet
+      ? await revisionEvidence(afterSheet.imageUrl, sheet.jobId)
+      : null;
+  const changes = revisionChangedRegions(
+    before?.scale ?? null,
+    after?.scale ?? null,
+    before?.linework ?? null,
+    after?.linework ?? null,
+  );
+  const markups = items.filter(
+    (e): e is Extract<DrawingEntity, { kind: "markup" }> =>
+      e.kind === "markup" &&
+      e.visibility !== "archived" &&
+      e.data.sourceSheetId === previous &&
+      canReadEntity(e, actor),
+  );
+  const impacts: Array<{
+    id: string;
+    kind: "markup" | "takeoff" | "summary";
+    name: string;
+    points: Array<{ x: number; y: number }>;
+    private: boolean;
+  }> = markups
+    .filter(
+      (e) =>
+        !changes.aligned || nearRevisionChanges(e.data.points, changes.regions),
+    )
+    .map((e) => ({
+      id: e.id,
+      kind: "markup",
+      name: e.data.text ?? e.data.type,
+      points: e.data.points,
+      private: e.visibility === "private",
+    }));
+  const user = await freshUser(tx, actor.id);
+  if (
+    user &&
+    userCan(user, "tab.estimating") &&
+    userCan(user, "financial.view")
+  ) {
+    const rows = await tx
+      .select()
+      .from(estimates)
+      .where(
+        and(
+          eq(estimates.organizationId, sheet.organizationId),
+          eq(estimates.jobId, sheet.jobId),
+        ),
+      );
+    for (const estimate of rows)
+      for (const line of estimate.document.lines) {
+        if (line.source.sheetId !== sheet.id) continue;
+        const markup = markups.find((m) => m.id === line.source.markupId),
+          points = markup?.data.points ?? [];
+        if (
+          !changes.aligned ||
+          !points.length ||
+          nearRevisionChanges(points, changes.regions)
+        )
+          impacts.push({
+            id: `${estimate.id}:${line.id}`,
+            kind: "takeoff",
+            name: `${estimate.name}: ${line.description}`,
+            points,
+            private: true,
+          });
+      }
+  }
+  if (impacts.length > 200) {
+    impacts.splice(199);
+    impacts.push({
+      id: "remaining-impacts",
+      kind: "summary",
+      name: "Additional items need review; this drawing has more than 200 potentially affected items.",
+      points: [],
+      private: true,
+    });
+  }
+  const persisted = [...items];
+  for (const impact of impacts) {
+    const point = impact.points.length
+      ? {
+          x: impact.points.reduce((v, p) => v + p.x, 0) / impact.points.length,
+          y: impact.points.reduce((v, p) => v + p.y, 0) / impact.points.length,
+        }
+      : { x: 0.5, y: 0.5 };
+    const entity = prepareEntity(
+      {
+        kind: "issue",
+        sheetId: sheet.id,
+        id: randomUUID(),
+        expectedRevision: 0,
+        visibility: impact.private ? "private" : "published",
+        data: {
+          sourceSheetId: next,
+          type: "issue",
+          point,
+          title: `Needs review: ${impact.name}`.slice(0, 255),
+          body:
+            changes.aligned && impact.points.length
+              ? "Possible impact: revised drawing content changed near this item. Compare the old and new revisions, then mark reviewed. Quantities and annotations have not been changed."
+              : "Possible impact: alignment or this item's location could not be verified. Review the before/after drawings; this is not a confirmed overlap or error. Quantities and annotations have not been changed.",
+          status: "open",
+          assigneeId: actor.id,
+          dueDate: null,
+          links: [],
+          revisionImpact: {
+            previousSourceSheetId: previous,
+            affectedId: impact.id,
+            affectedKind: impact.kind,
+            alignmentVerified: changes.aligned && !!impact.points.length,
+          },
+        },
+      },
+      null,
+      actor,
+      sheets,
+      [actor.id],
+      new Date().toISOString(),
+    );
+    await persistEntity(tx, sheet, entity, 0, persisted);
+    persisted.push(entity);
+    await record(
+      tx,
+      sheet.id,
+      actor,
+      "possible_revision_impact_flagged",
+      entity.id,
+    );
+  }
+  return impacts.length;
 }

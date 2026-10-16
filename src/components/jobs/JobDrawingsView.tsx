@@ -50,6 +50,7 @@ import { useHeaderBackOverride } from "~/lib/header-back-events";
 import { tileBase } from "~/lib/drawing-tiles";
 import { warmDrawingPdfRuntime } from "~/lib/drawing-pdf-offline-runtime";
 import { collectDrawingOfflineUrls } from "~/lib/drawing-offline";
+import { BulkDrawingRevisions } from "./BulkDrawingRevisions";
 import { uploadDrawings } from "~/lib/upload-drawings";
 import {
   DrawingsAccessGate,
@@ -111,6 +112,7 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
     if (!preserveViewport) lastViewport.current = null;
     setSheetId(id);
   };
+  const [revisionsOpen, setRevisionsOpen] = useState(false);
   const [nameDialog, setNameDialog] = useState<NameDialog | null>(null);
   const [nameDraft, setNameDraft] = useState("");
   const [uploading, setUploading] = useState<string | null>(null);
@@ -450,6 +452,7 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
     }
   };
 
+  const revisionDialog = <BulkDrawingRevisions jobId={jobId} open={revisionsOpen} onOpenChange={setRevisionsOpen} onComplete={async () => { await utils.drawingsWorkspace.get.invalidate(); await refresh(); }} />;
   const nameDialogView = (
     <Dialog
       open={nameDialog !== null}
@@ -574,6 +577,7 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
           }
         />
         {nameDialogView}
+        {revisionDialog}
       </div>
     );
   }
@@ -873,6 +877,7 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
                 {((canUpload && sheets.length > 0) || account?.store) && (
                   <DropdownMenuSeparator />
                 )}
+                {canUpload && <DropdownMenuItem onSelect={() => setRevisionsOpen(true)}><UploadIcon className="h-4 w-4" />Upload revised drawings</DropdownMenuItem>}
                 {canUpload && sheets.length > 0 && (
                   <DropdownMenuItem onSelect={() => setRegisterOpen(true)}>
                     <FileTextIcon className="h-4 w-4" />
@@ -938,6 +943,7 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
           />
         )}
         {nameDialogView}
+        {revisionDialog}
       </div>
     );
   }
@@ -962,9 +968,7 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
     <div className="pb-24">
       <div className="mb-6 flex items-center justify-between gap-3">
         <h2 className="text-foreground text-xl font-semibold">Drawings</h2>
-        {canUpload &&
-          folders.length > 0 &&
-          newFolderButton("hidden h-11 sm:inline-flex")}
+        {canUpload && folders.length > 0 && <div className="hidden gap-2 sm:flex">{newFolderButton("h-11")}<Button className="h-11" variant="outline" onClick={() => setRevisionsOpen(true)}>Upload revised drawings</Button></div>}
       </div>
       {sets.isLoading && !setsData ? (
         <p role="status" className="text-muted-foreground text-sm">
@@ -1096,9 +1100,10 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
         </div>
       )}
       {canUpload && (
-        <div className={BOTTOM_BAR}>{newFolderButton("h-12 w-full")}</div>
+        <div className={BOTTOM_BAR}><div className="mx-auto flex max-w-6xl gap-2">{newFolderButton("h-12 min-w-0 flex-1 whitespace-normal px-2 text-xs")}<Button className="h-12 min-w-0 flex-1 whitespace-normal px-2 text-xs" variant="outline" onClick={() => setRevisionsOpen(true)}>Upload revised drawings</Button></div></div>
       )}
       {nameDialogView}
+      {revisionDialog}
     </div>
   );
 }

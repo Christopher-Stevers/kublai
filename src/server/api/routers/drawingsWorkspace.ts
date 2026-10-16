@@ -8,6 +8,8 @@ import {
 } from "~/lib/drawing-workspace";
 import { createTRPCRouter, hasDashboardAccess } from "~/server/api/trpc";
 import {
+  reviewDrawingRevisionUpload,
+  applyDrawingRevisionUpload,
   archiveDrawingEntity,
   commentDrawingEntity,
   favoriteDrawing,
@@ -30,6 +32,30 @@ const item = z.object({
   expectedRevision: revision,
 });
 export const drawingsWorkspaceRouter = createTRPCRouter({
+  reviewRevisionUpload: hasDashboardAccess
+    .input(z.object({ uploadedSetId: sheetId }))
+    .query(({ ctx, input }) =>
+      reviewDrawingRevisionUpload(ctx, input.uploadedSetId),
+    ),
+  applyRevisionUpload: hasDashboardAccess
+    .input(
+      z.object({
+        uploadedSetId: sheetId,
+        label: z.string().trim().min(1).max(255),
+        rows: z
+          .array(
+            z.object({
+              sourceId: sheetId,
+              sourceRevision: revision,
+              targetId: sheetId.nullable(),
+              expectedRevision: revision.optional(),
+            }),
+          )
+          .min(1)
+          .max(100),
+      }),
+    )
+    .mutation(({ ctx, input }) => applyDrawingRevisionUpload(ctx, input)),
   openDocument: hasDashboardAccess
     .input(z.object({ jobId: z.string().uuid(), versionId: z.string().uuid() }))
     .mutation(({ ctx, input }) => openDocumentDrawingWorkspace(ctx, input)),
