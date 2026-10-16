@@ -2593,3 +2593,5 @@ export const jobPricingAudit = createTable("job_pricing_audit", (d) => ({
   actorUserId:d.varchar({length:255}).references(()=>pricingReferenceId(users),{onDelete:"set null"}),
   createdAt:d.timestamp({withTimezone:true}).notNull().defaultNow(),
 }), t=>[index("job_pricing_audit_job_idx").on(t.organizationId,t.jobId,t.createdAt)]);
+
+export { supplierEmailPreferences } from "./supplier-email-preferences-schema";

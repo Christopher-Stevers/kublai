@@ -370,6 +370,13 @@
       "when": 1792148400000,
       "tag": "0076_landing_page_defaults",
       "breakpoints": false
+    },
+    {
+      "idx": 53,
+      "version": "7",
+      "when": 1792150000000,
+      "tag": "0077_supplier_email_preferences",
+      "breakpoints": false
     }
   ]
 }

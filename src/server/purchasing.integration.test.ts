@@ -1,3 +1,4 @@
+import { readSupplierEmailPreference, saveSupplierEmailPreference } from "~/server/supplier-email-preferences";
 // @vitest-environment node
 import {
   afterAll,
@@ -125,10 +126,11 @@ describe.skipIf(!socket)(
       await conn.unsafe(migration);
       await conn.unsafe(migration);
       await conn.unsafe(await readFile(new URL("../../drizzle/0074_job_pricing.sql",import.meta.url),"utf8"));
+      await conn.unsafe(await readFile(new URL("../../drizzle/0077_supplier_email_preferences.sql",import.meta.url),"utf8"));
     });
     beforeEach(async () => {
       await conn.unsafe(
-        `TRUNCATE kublai_job_pricing_audit, kublai_job_order_approval, kublai_job_price_entry, kublai_job_price_list, ${tables.map((table) => `"${getTableName(table)}"`).join(",")}`,
+        `TRUNCATE kublai_supplier_email_preference, kublai_job_pricing_audit, kublai_job_order_approval, kublai_job_price_entry, kublai_job_price_list, ${tables.map((table) => `"${getTableName(table)}"`).join(",")}`,
       );
       await db
         .insert(schema.organizations)
@@ -526,7 +528,8 @@ describe.skipIf(!socket)(
         expect(Number((await db.select().from(schema.supplierParts).where(eq(schema.supplierParts.id,sp)))[0]?.lastKnownUnitCost)).toBe(2);
         const preview=await material.previewOrders({materialListId:list});
         expect(preview.possible[0]?.approval?.allowed).toBe(true);
-        expect(preview.possible[0]?.email?.body).toContain("SKU: REAL-SKU");
+        expect(preview.possible[0]?.email?.body).not.toContain("SKU:");
+        expect(preview.possible[0]?.email?.supplierSkuLines.some(line=>line.withSku.includes("SKU: REAL-SKU"))).toBe(true);
         const sent=await material.sendGeneratedOrder({materialListId:list,supplierId:supplier,sentTo:"supplier@example.test"});
         await pricing.savePrices({jobId:job,revision:1,lines:[{entryId:(await db.select().from(schema.jobPriceEntries))[0]!.id,unitCost:4,priceStatus:"confirmed",priceSource:"Actual quote"}]});
         expect(Number((await db.select().from(schema.orderItems).where(eq(schema.orderItems.orderId,sent.id)))[0]?.unitCostAtOrderTime)).toBe(3);
@@ -543,6 +546,21 @@ describe.skipIf(!socket)(
         expect(orderMultipleInput.safeParse(value).success).toBe(false);
       for (const value of ["1", "25", "50", "0.25"])
         expect(orderMultipleInput.safeParse(value).success).toBe(true);
+    });
+
+    it("remembers SKU email choices per user and supplier without changing catalogue SKUs", async () => {
+      await db.update(schema.supplierParts).set({supplierSku:"NEXT123"}).where(eq(schema.supplierParts.id,sp));
+      expect((await material.previewOrders({materialListId:list})).possible[0]?.email?.body).not.toContain("[SKU:");
+      await saveSupplierEmailPreference(db,"worker",org,supplier,true);
+      expect(await readSupplierEmailPreference(db,"worker",org,supplier)).toBe(true);
+      expect(await readSupplierEmailPreference(db,"other",org,supplier)).toBe(false);
+      expect(await readSupplierEmailPreference(db,"worker",id(999),supplier)).toBe(false);
+      const preview=(await material.previewOrders({materialListId:list})).possible[0]!;
+      expect(preview.email?.body).toContain("[SKU: NEXT123]");
+      await saveSupplierEmailPreference(db,"worker",org,supplier,false);
+      expect((await material.previewOrders({materialListId:list})).possible[0]?.email?.body).not.toContain("[SKU:");
+      expect((await db.select().from(schema.supplierParts).where(eq(schema.supplierParts.id,sp)))[0]?.supplierSku).toBe("NEXT123");
+      await expect(saveSupplierEmailPreference(db,"worker",id(999),supplier,true)).rejects.toMatchObject({code:"NOT_FOUND"});
     });
   },
 );

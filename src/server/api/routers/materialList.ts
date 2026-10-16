@@ -1,3 +1,6 @@
+import { supplierEmailPreferences } from "~/server/db/supplier-email-preferences-schema";
+import { readSupplierEmailPreference } from "~/server/supplier-email-preferences";
+import { formatEmailItemLine, supplierSkuLines } from "~/lib/order-email-lines";
 import { resolveJobOrderItems, loadJobApprovalSnapshot, assertJobOrderApproved, getJobPriceBook, checkJobOrderApproval } from "~/server/job-pricing";
 import { jobOrderApprovals } from "~/server/db/schema";
 import { publishMaterialListEvent } from "~/server/material-list-events";
@@ -16,34 +19,6 @@ import {
 import type { db as appDb } from "~/server/db";
 import { userDeliveryDate } from "~/server/orders/delivery-calendar";
 import { retiredOfflineMutation } from "../retired-offline-sync";
-
-function formatEmailItemLine(item: {
-  quantity: string | null;
-  supplierSku?: string | null;
-  supplierSkuSnapshot?: string | null;
-  descriptionSnapshot: string | null;
-  partDefinitionDisplayName?: string | null;
-  partDefinitionPiecesPerPack?: number | null;
-  partDefinitionBulkUnit?: string | null;
-  partDefinitionIndividualUnit?: string | null;
-}) {
-  const rawQty = item.quantity ? item.quantity.toString().trim() : "0";
-  const parsedQty = Number(rawQty);
-  const qty = Number.isFinite(parsedQty) && packContents(item.partDefinitionPiecesPerPack) > 1
-    ? formatOrderedBulkQuantity(parsedQty, item.partDefinitionPiecesPerPack, item.partDefinitionBulkUnit, item.partDefinitionIndividualUnit)
-    : Number.isFinite(parsedQty)
-    ? parsedQty.toLocaleString("en-CA", {
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 6,
-      })
-    : rawQty;
-  const description =
-    item.descriptionSnapshot?.trim() ||
-    item.partDefinitionDisplayName?.trim() ||
-    "Item";
-
-  return `${qty} - ${description}${item.supplierSku || item.supplierSkuSnapshot ? ` [SKU: ${item.supplierSku || item.supplierSkuSnapshot}]` : ""}`;
-}
 
 function formatOneLineAddress(address: {
   name?: string | null;
@@ -116,6 +91,7 @@ function buildOrderEmailContent({
   items,
   notes,
   foremanName,
+  includeSupplierSku = false,
 }: {
   jobName: string;
   poNumber: string;
@@ -132,8 +108,9 @@ function buildOrderEmailContent({
   }>;
   notes?: string | null;
   foremanName: string;
+  includeSupplierSku?: boolean;
 }) {
-  const lineItems = items.map(formatEmailItemLine).join("\n");
+  const lineItems = items.map(item => formatEmailItemLine(item, includeSupplierSku)).join("\n");
   const sections = [
     `Hello${supplierContactName ? ` ${supplierContactName}` : ""},`,
     "",
@@ -152,6 +129,7 @@ function buildOrderEmailContent({
   return {
     subject: `Material Order ${poNumber} - ${jobName}`,
     body: sections.join("\n"),
+    supplierSkuLines: supplierSkuLines(items),
   };
 }
 
@@ -1211,6 +1189,8 @@ ${foremanName}`;
         possibleSupplierRows.map((supplier) => [supplier.id, supplier]),
       );
 
+      const skuPreferences = await ctx.db.select({supplierId:supplierEmailPreferences.supplierId}).from(supplierEmailPreferences).where(and(eq(supplierEmailPreferences.userId,ctx.user.id),eq(supplierEmailPreferences.organizationId,ctx.user.organizationId),eq(supplierEmailPreferences.includeSupplierSku,true)));
+      const skuSuppliers = new Set(skuPreferences.map(row=>row.supplierId));
       const jobName = materialList.jobName || "Job";
       const deliveryAddress = formatOneLineAddress({
         name: materialList.locationName,
@@ -1248,6 +1228,7 @@ ${foremanName}`;
           supplierContactName,
           items,
           foremanName,
+          includeSupplierSku: skuSuppliers.has(supplierId),
         });
 
         return {
@@ -1321,6 +1302,7 @@ ${foremanName}`;
           items,
           notes: order.notes,
           foremanName,
+          includeSupplierSku: !!order.supplierId && skuSuppliers.has(order.supplierId),
         });
 
         return {
@@ -1584,6 +1566,7 @@ ${foremanName}`;
       const items = await ctx.db
         .select({
           descriptionSnapshot: orderItems.descriptionSnapshot,
+          supplierSkuSnapshot: orderItems.supplierSkuSnapshot,
           partDefinitionDisplayName: partDefinitions.displayName,
           partDefinitionPiecesPerPack: partDefinitions.piecesPerPack,
           partDefinitionBulkUnit: partDefinitions.bulkUnit,
@@ -1618,7 +1601,8 @@ ${foremanName}`;
       const formattedDeliveryDate = formatDeliveryDate(deliveryDate);
       const deliveryAddress = formatOneLineAddress(order.location ?? {});
 
-      const lineItems = items.map(formatEmailItemLine).join("\n");
+      const includeSupplierSku = order.supplier?.id ? await readSupplierEmailPreference(ctx.db,ctx.userId,ctx.user.organizationId,order.supplier.id) : false;
+      const lineItems = items.map(item => formatEmailItemLine(item, includeSupplierSku)).join("\n");
 
       const sections = [
         `Hello${supplierContactName ? ` ${supplierContactName}` : ""},`,
@@ -1638,7 +1622,7 @@ ${foremanName}`;
       const subject = `Material Order ${poNumber} - ${jobName}`;
       const body = sections.join("\n");
 
-      return { subject, body, to: recipients.to, cc: recipients.cc };
+      return { subject, body, supplierSkuLines: supplierSkuLines(items), to: recipients.to, cc: recipients.cc };
     }),
 
   /**

@@ -1,3 +1,4 @@
+import { readSupplierEmailPreference, saveSupplierEmailPreference } from "~/server/supplier-email-preferences";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { eq, sql } from "drizzle-orm";
@@ -17,6 +18,16 @@ function assertTutorialAccount(expectedUserId: string, authenticatedUserId: stri
 }
 
 export const userRouter = createTRPCRouter({
+  getSupplierEmailPreference: protectedProcedure.input(z.object({supplierId:z.string().uuid(),expectedUserId:z.string().min(1).max(255)})).query(async({ctx,input})=>{
+    if(input.expectedUserId!==ctx.userId)throw new TRPCError({code:"CONFLICT",message:"Your account changed. Reload before reading email preferences."});
+    if(!ctx.user.organizationId)throw new TRPCError({code:"FORBIDDEN"});
+    return {includeSupplierSku:await readSupplierEmailPreference(ctx.db,ctx.userId,ctx.user.organizationId,input.supplierId)};
+  }),
+  setSupplierEmailPreference: protectedProcedure.input(z.object({supplierId:z.string().uuid(),includeSupplierSku:z.boolean(),expectedUserId:z.string().min(1).max(255)})).mutation(async({ctx,input})=>{
+    if(input.expectedUserId!==ctx.userId)throw new TRPCError({code:"CONFLICT",message:"Your account changed. Reload before updating email preferences."});
+    if(!ctx.user.organizationId)throw new TRPCError({code:"FORBIDDEN"});
+    return saveSupplierEmailPreference(ctx.db,ctx.userId,ctx.user.organizationId,input.supplierId,input.includeSupplierSku);
+  }),
   getTutorialState: protectedProcedure.query(async ({ ctx }) => {
     const [state] = await ctx.db
       .select(tutorialStateFields)

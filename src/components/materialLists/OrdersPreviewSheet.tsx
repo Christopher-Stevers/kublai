@@ -1,4 +1,6 @@
 "use client";
+import { OrderEmailSkuOption } from "~/components/materialLists/OrderEmailSkuOption";
+import type { SupplierSkuLine } from "~/lib/order-email-lines";
 import { UndoOrderButton } from "./UndoOrderButton";
 import { requestMaterialListReplicacheSync } from "~/lib/replicache-material-list";
 
@@ -28,6 +30,7 @@ interface OrdersPreviewSheetProps {
 }
 
 type EmailDraft = {
+  supplierSkuLines?: SupplierSkuLine[];
   subject: string;
   body: string;
   to?: string[];
@@ -638,6 +641,7 @@ export function OrdersPreviewSheet({
                   >
                     Email
                   </label>
+                  <OrderEmailSkuOption supplierId={order.supplier?.id} body={draft.body} lines={draft.supplierSkuLines} onChange={body => setEmailDrafts(previous => new Map(previous).set(order.id, { ...draft, body }))} />
                   <Textarea
                     id={`order-body-${order.id}`}
                     value={draft.body}

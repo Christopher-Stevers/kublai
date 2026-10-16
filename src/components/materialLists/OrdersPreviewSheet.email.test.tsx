@@ -20,6 +20,7 @@ const state = vi.hoisted(() => ({
 vi.mock("~/hooks/use-online-status", () => ({
   useOnlineStatus: () => state.online,
 }));
+vi.mock("~/hooks/use-supplier-email-preference",()=>({useSupplierEmailPreference:()=>({includeSupplierSku:false,disabled:false,set:vi.fn()})}));
 vi.mock("~/trpc/react", () => ({
   api: {
     useUtils: () => ({

@@ -9,6 +9,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu";
+import { SupplierEmailPreferenceItem } from "./SupplierEmailPreferenceItem";
 import { SupplierFormDialog } from "./SupplierFormDialog";
 import { SupplierPartsDialog } from "./SupplierPartsDialog";
 import {
@@ -194,6 +195,7 @@ export function SupplierList() {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
+                      <SupplierEmailPreferenceItem supplierId={supplier.id} />
                       <DropdownMenuItem
                         onClick={() => setEditSupplierId(supplier.id)}
                       >

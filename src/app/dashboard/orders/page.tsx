@@ -1,4 +1,6 @@
 "use client";
+import { OrderEmailSkuOption } from "~/components/materialLists/OrderEmailSkuOption";
+import type { SupplierSkuLine } from "~/lib/order-email-lines";
 import { UndoOrderButton } from "~/components/materialLists/UndoOrderButton";
 import { usePageViewState } from "~/hooks/use-page-view-state";
 
@@ -36,6 +38,7 @@ import { ListPageSkeleton } from "~/components/ui/skeleton";
 import { DeliveryCalendarSettings } from "~/components/materialLists/DeliveryCalendarSettings";
 
 type EmailDraft = {
+  supplierSkuLines?: SupplierSkuLine[];
   subject: string;
   body: string;
   to?: string[];
@@ -670,6 +673,7 @@ export default function OrdersPage() {
                             >
                               Email
                             </label>
+                          <OrderEmailSkuOption supplierId={order.supplier?.id} body={draft.body} lines={draft.supplierSkuLines} onChange={body => setEmailDrafts(previous => new Map(previous).set(order.id, { ...draft, body }))} />
                             <Textarea
                               id={`order-body-${order.id}`}
                               value={draft.body}
