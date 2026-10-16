@@ -14,6 +14,7 @@ import { StartupHandoff } from "~/components/app/StartupHandoff";
 import { ThemeProvider } from "~/components/app/ThemeProvider";
 import { AppDialogHost } from "~/components/ui/app-dialogs";
 import { THEME_BOOT_SCRIPT } from "~/lib/theme-document";
+import { LOADER_VARIANT_SCRIPT } from "~/lib/startup-loader-variant";
 
 export const metadata: Metadata = {
   title: `${APP_NAME} - Simplified Parts Ordering for Trades Foremen`,
@@ -97,6 +98,7 @@ export default function RootLayout({
         <link rel="preload" as="image" href="/foremanhq/icon-dark-v2-512.png" fetchPriority="high" />
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
         <script dangerouslySetInnerHTML={{ __html: installCaptureScript }} />
+        <script dangerouslySetInnerHTML={{ __html: LOADER_VARIANT_SCRIPT }} />
       </head>
       <body>
         <StartupHandoff>

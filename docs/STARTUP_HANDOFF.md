@@ -48,3 +48,13 @@ rendering. Browser viewport checks cover portrait, landscape, small phone and
 tablet sizes, including hydration, the fade and subsequent navigation. Android's
 native splash size is OS/browser-controlled; matching the user's actual cover
 still requires a device check.
+
+## Animation variants
+
+The cover plays one of four scenes around the same fixed logo: orbiting
+tools, a blueprint house drawn line by line, a brick wall being laid, and a
+spirit level settling. A head script (LOADER_VARIANT_SCRIPT) sets
+`data-loader-variant` on `<html>` before first paint, picking at random but
+never the same scene twice in a row, so the scene never swaps once visible.
+Without the script the orbit shows, so the no-JavaScript first frame is unchanged.
+Each loop ends where it began; the logo itself never animates in any scene.

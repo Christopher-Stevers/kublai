@@ -1,5 +1,7 @@
-/* Startup loading: the app icon with a ring of trade tools slowly orbiting it.
-   Tools pop into the ring, then a highlight chases around them while loading. */
+/* Startup loading: the fixed app logo with one of four scenes playing around it.
+   The html data-loader-variant attribute (set before first paint) picks the
+   scene; hidden scenes are display: none so their animations start only once
+   shown. Every loop ends where it began. */
 .screen {
   --size: min(90vw, 62vh, 24rem);
   position: fixed;
@@ -20,6 +22,26 @@
   place-items: center;
 }
 
+.scene {
+  position: absolute;
+  inset: 0;
+  animation: scene-in 520ms ease-out both;
+}
+
+.blueprintScene,
+.bricksScene,
+.levelScene,
+:global(html[data-loader-variant]:not([data-loader-variant="orbit"])) .orbitScene {
+  display: none;
+}
+
+:global(html[data-loader-variant="blueprint"]) .blueprintScene,
+:global(html[data-loader-variant="bricks"]) .bricksScene,
+:global(html[data-loader-variant="level"]) .levelScene {
+  display: block;
+}
+
+/* Orbit: a ring of trade tools slowly turning around the logo. */
 .halo {
   position: absolute;
   inset: 22%;
@@ -128,6 +150,176 @@
   animation: bar-sweep 1300ms ease-in-out infinite;
 }
 
+/* Blueprint: a house elevation drawn line by line around the logo. */
+.blueprintScene {
+  border: 1px solid rgb(147 197 253 / 30%);
+  border-radius: 1rem;
+  background-color: rgb(30 64 175 / 20%);
+  background-image:
+    linear-gradient(rgb(147 197 253 / 15%) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(147 197 253 / 15%) 1px, transparent 1px),
+    linear-gradient(rgb(147 197 253 / 6%) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(147 197 253 / 6%) 1px, transparent 1px);
+  background-size: 3.2rem 3.2rem, 3.2rem 3.2rem, 0.8rem 0.8rem, 0.8rem 0.8rem;
+  box-shadow: inset 0 0 2rem rgb(2 6 23 / 45%);
+  animation:
+    scene-in 520ms ease-out both,
+    grid-pan 10s linear infinite;
+}
+
+.drawing {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.drawing path {
+  fill: none;
+  stroke: #dbeafe;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  /* Gap longer than the line so the hidden dash's round cap can't show as a dot. */
+  stroke-dasharray: 1 1.2;
+  stroke-dashoffset: 0;
+  filter: drop-shadow(0 0 3px rgb(96 165 250 / 70%));
+  animation: draw 4.4s cubic-bezier(0.6, 0, 0.3, 1) infinite backwards;
+  animation-delay: calc(var(--i) * 160ms);
+}
+
+.drawing path:last-of-type {
+  stroke: #93c5fd;
+  stroke-width: 1.2;
+}
+
+.drawing text {
+  fill: #93c5fd;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  animation: label 4.4s ease-in-out infinite backwards;
+  animation-delay: 0.8s;
+}
+
+/* Bricks: a running-bond wall laid course by course, topped off with a hard hat. */
+.wall {
+  position: absolute;
+  left: 6%;
+  right: 6%;
+  bottom: 6%;
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 5px;
+}
+
+.course {
+  display: flex;
+  justify-content: center;
+  gap: 5px;
+  /* Trim the half bricks at the ends, but let bricks fall in from above. */
+  clip-path: inset(-100vh 0 0 0);
+}
+
+.brick {
+  flex: 0 0 calc((100% - 15px) / 4);
+  height: calc(var(--size) * 0.12);
+  border-radius: 3px;
+  background: linear-gradient(180deg, #df6d42, #a8401f);
+  box-shadow:
+    inset 0 1px rgb(255 255 255 / 28%),
+    inset 0 -2px rgb(0 0 0 / 22%);
+  animation: lay 5.2s cubic-bezier(0.3, 0, 0.2, 1) infinite backwards;
+  animation-delay: calc(var(--i) * 70ms);
+}
+
+.hat {
+  position: absolute;
+  left: 50%;
+  bottom: calc(6% + var(--size) * 0.6 + 22px);
+  width: calc(var(--size) * 0.18);
+  height: auto;
+  margin-left: calc(var(--size) * -0.09);
+  color: #fbbf24;
+  filter: drop-shadow(0 0.4rem 0.6rem rgb(2 6 23 / 60%));
+  animation: hat 5.2s cubic-bezier(0.3, 1.4, 0.5, 1) infinite backwards;
+  animation-delay: 0.6s;
+}
+
+/* Level: a spirit level rocking under the logo until the bubble settles. */
+.levelGlow {
+  position: absolute;
+  inset: 24%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgb(163 230 53 / 45%), transparent 70%);
+  filter: blur(8px);
+  opacity: 0;
+  animation: settle-glow 3.8s ease-in-out infinite;
+}
+
+.level {
+  position: absolute;
+  left: 4%;
+  right: 4%;
+  top: calc(50% + min(72px, var(--size) * 0.23) + var(--size) * 0.07);
+  height: calc(var(--size) * 0.15);
+  display: grid;
+  place-items: center;
+  border-radius: 0.6rem;
+  background: linear-gradient(180deg, #fcd34d, #f59e0b 55%, #d97706);
+  box-shadow:
+    inset 0 1px rgb(255 255 255 / 50%),
+    inset 0 -3px rgb(0 0 0 / 18%),
+    0 0.8rem 1.6rem rgb(2 6 23 / 55%);
+  animation: tilt 3.8s ease-in-out infinite;
+}
+
+.level::before {
+  content: "";
+  position: absolute;
+  left: 5%;
+  right: 5%;
+  bottom: 3px;
+  height: 5px;
+  background: repeating-linear-gradient(90deg, rgb(120 53 15 / 55%) 0 1px, transparent 1px 9px);
+}
+
+.vial {
+  position: relative;
+  width: 36%;
+  height: 56%;
+  overflow: hidden;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgb(217 249 157 / 95%), rgb(132 204 22 / 88%));
+  box-shadow:
+    inset 0 0 0 2px rgb(63 98 18 / 50%),
+    inset 0 2px 4px rgb(255 255 255 / 60%);
+}
+
+.vial::before,
+.vial::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: rgb(54 83 20 / 70%);
+}
+
+.vial::before { left: 27%; }
+.vial::after { right: 27%; }
+
+.bubble {
+  position: absolute;
+  top: 18%;
+  bottom: 18%;
+  left: 31%;
+  width: 38%;
+  border-radius: 999px;
+  background: radial-gradient(circle at 35% 35%, #fff, rgb(255 255 255 / 75%) 60%, rgb(236 252 203 / 60%));
+  animation: bubble 3.8s ease-in-out infinite;
+}
+
 @keyframes spin {
   to {
     rotate: 360deg;
@@ -180,6 +372,60 @@
     opacity: 0;
     translate: 0 0.5rem;
   }
+}
+
+@keyframes scene-in {
+  from { opacity: 0; }
+}
+
+@keyframes grid-pan {
+  to { background-position: 3.2rem 3.2rem, 3.2rem 3.2rem, 3.2rem 3.2rem, 3.2rem 3.2rem; }
+}
+
+@keyframes draw {
+  0% { stroke-dashoffset: 1.08; opacity: 1; }
+  35%, 80% { stroke-dashoffset: 0; opacity: 1; }
+  92%, 100% { stroke-dashoffset: 0; opacity: 0; }
+}
+
+@keyframes label {
+  0%, 30% { opacity: 0; }
+  42%, 78% { opacity: 1; }
+  90%, 100% { opacity: 0; }
+}
+
+@keyframes lay {
+  0% { translate: 0 -9rem; opacity: 0; }
+  5% { opacity: 1; }
+  14% { translate: 0 0; }
+  17% { translate: 0 -4px; }
+  20%, 70% { translate: 0 0; opacity: 1; scale: 1; }
+  82%, 100% { translate: 0 0; opacity: 0; scale: 0.96; }
+}
+
+@keyframes hat {
+  0%, 36% { translate: 0 -1.5rem; opacity: 0; }
+  46%, 70% { translate: 0 0; opacity: 1; }
+  80%, 100% { translate: 0 0; opacity: 0; }
+}
+
+@keyframes tilt {
+  0%, 76%, 100% { rotate: 0deg; }
+  18% { rotate: -6deg; }
+  42% { rotate: 5deg; }
+  62% { rotate: -2deg; }
+}
+
+@keyframes bubble {
+  0%, 80%, 100% { translate: 0 0; }
+  22% { translate: 70% 0; }
+  46% { translate: -70% 0; }
+  66% { translate: 20% 0; }
+}
+
+@keyframes settle-glow {
+  0%, 74%, 100% { opacity: 0; }
+  84%, 94% { opacity: 1; }
 }
 
 @keyframes bar-sweep {
