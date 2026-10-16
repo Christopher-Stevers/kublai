@@ -12,6 +12,7 @@ export type RequestUser = {
   image: string | null;
   role: string | null;
   permissionConfig: unknown;
+  defaultLandingPage?: import("~/lib/snapshot-source").SnapshotSource | null;
   permissionPresetId?: string | null;
   organizationAccessStatus: string | null;
   organizationId: string | null;

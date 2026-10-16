@@ -1,3 +1,4 @@
+import { snapshotSourceSchema } from "~/lib/snapshot-source";
 import { NextResponse } from "next/server";
 import { getRequestIdentity } from "~/server/utils/get-request-identity";
 import { and, eq, gt, isNull } from "drizzle-orm";
@@ -62,12 +63,15 @@ export async function GET(
     return response;
   }
 
+  const landing = snapshotSourceSchema.safeParse(invite.defaultLandingPage);
+
   await db
     .update(users)
     .set({
       organizationId: invite.organizationId,
       role: user.role === "admin" ? user.role : invite.role,
       permissionConfig: invite.permissionConfig,
+      ...(landing.success && !user.defaultLandingPage ? { defaultLandingPage: landing.data } : {}),
       organizationAccessStatus:
         user.organizationId === invite.organizationId
           ? user.organizationAccessStatus
@@ -76,7 +80,7 @@ export async function GET(
     })
     .where(eq(users.id, user.id));
 
-  const response = redirectTo(request, "/dashboard");
+  const response = redirectTo(request, landing.success ? landing.data.href : "/dashboard");
   response.cookies.delete(ORGANIZATION_INVITE_COOKIE);
   return response;
 }

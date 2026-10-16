@@ -19,7 +19,6 @@ import { EditPartDialog } from "~/components/catalogue/EditPartDialog";
 import type { PendingPart, PendingSupplierPartSnapshot, WizardStage } from "./wizard/types";
 import { useHeaderBackOverride } from "~/lib/header-back-events";
 
-const ADD_PARTS_HISTORY_KEY = "foremenhqAddParts";
 import { QuickWheelSurface } from "./wizard/QuickWheel";
 import { CatalogStage } from "./wizard/CatalogStage";
 import { MaterialStage } from "./wizard/MaterialStage";
@@ -140,7 +139,6 @@ export function AddPartDialog({
     handleCustomCategorySubmit,
     handleStageClick,
     returnToStage,
-    consumeAutoStep,
     resetWizard,
     selectedCatalogName,
     selectedMaterialName,
@@ -891,32 +889,7 @@ export function AddPartDialog({
     wizardStage !== "review" && wizardSearchQuery.trim().length > 0;
 
 
-  // Back history: every screen in Add Parts you tap into (each wizard step,
-  // review, prefabs) gets its own history entry, pushed while the tap still
-  // counts as user activation. Chrome on Android skips entries added without
-  // one, so re-adding entries after a back press made later backs jump several
-  // screens or close the app. Back now just returns to the previous entry; from
-  // the first step that is the page underneath Add Parts.
-  type AddPartsPosition = {
-    stage: WizardStage;
-    prefabView: PrefabView | null;
-    prefabTarget: { id: string; name: string } | null;
-  };
-  const position: AddPartsPosition = { stage: wizardStage, prefabView, prefabTarget };
-  const positionKey = JSON.stringify(position);
-  const historyDepthRef = useRef(-1); // -1: no Add Parts entries in history
-  const ignoreNextPopRef = useRef(false);
-  const latestRef = useRef({ position, onOpenChange, applyPosition: (_: AddPartsPosition) => {} });
-
-  const closeDialogAndCleanHistory = () => {
-    if (!sandbox && historyDepthRef.current >= 0) {
-      const entries = historyDepthRef.current + 1;
-      historyDepthRef.current = -1;
-      ignoreNextPopRef.current = true;
-      window.history.go(-entries);
-    }
-    onOpenChange(false);
-  };
+  const closeDialogAndCleanHistory = () => onOpenChange(false);
 
   const pageTitle = isToolRequest
     ? "Add Tools"
@@ -972,7 +945,7 @@ export function AddPartDialog({
 
   /** One step back inside Add Parts. Returns false at the first step. */
   const stepBack = () => {
-    if (quantityPickerPreview) return true;
+    if (quantityPickerPreview) { setQuantityPickerPreview(null); return true; }
     if (prefabTarget) {
       setPendingParts([]);
       resetWizard();
@@ -1002,99 +975,9 @@ export function AddPartDialog({
     return false;
   };
 
-  const applyPosition = (next: AddPartsPosition) => {
-    if (prefabTarget && !next.prefabTarget) {
-      setPendingParts([]);
-      resetWizard();
-    }
-    setPrefabTarget(next.prefabTarget);
-    setPrefabView(next.prefabView);
-    // Back to an earlier step clears that step's choice (and later ones).
-    const order: WizardStage[] = ["catalog", "material", "size", "category", "part"];
-    if (
-      next.stage !== "review" &&
-      wizardStage !== "review" &&
-      order.indexOf(next.stage) < order.indexOf(wizardStage)
-    ) {
-      returnToStage(next.stage);
-    } else {
-      setWizardStage(next.stage);
-    }
-  };
-  latestRef.current = { position, onOpenChange, applyPosition };
-
-  useEffect(() => {
-    if (sandbox || !open) return;
-    ignoreNextPopRef.current = false;
-    historyDepthRef.current = 0;
-    window.history.pushState(
-      { ...window.history.state, [ADD_PARTS_HISTORY_KEY]: { depth: 0, position: latestRef.current.position } },
-      "",
-    );
-    const onPopState = () => {
-      if (ignoreNextPopRef.current) {
-        ignoreNextPopRef.current = false;
-        return;
-      }
-      const entry = (window.history.state as Record<string, unknown> | null)?.[
-        ADD_PARTS_HISTORY_KEY
-      ] as { depth: number; position: AddPartsPosition } | undefined;
-      if (!entry) {
-        // Back past the first step: the page underneath is showing again.
-        historyDepthRef.current = -1;
-        latestRef.current.onOpenChange(false);
-        return;
-      }
-      historyDepthRef.current = entry.depth;
-      latestRef.current.applyPosition(entry.position);
-    };
-    window.addEventListener("popstate", onPopState);
-    return () => window.removeEventListener("popstate", onPopState);
-  }, [open, sandbox]);
-
-  // A forward move (a tap) adds an entry; returning via back restores the
-  // entry's position, which matches history already, so nothing is added.
-  useEffect(() => {
-    if (sandbox || !open || historyDepthRef.current < 0) return;
-    const current = (window.history.state as Record<string, unknown> | null)?.[
-      ADD_PARTS_HISTORY_KEY
-    ] as { depth: number; position: AddPartsPosition } | undefined;
-    const autoStep = consumeAutoStep(wizardStage);
-    if (current && JSON.stringify(current.position) === positionKey) return;
-    if (autoStep && current) {
-      // A skipped step (nothing to choose) gets no entry of its own, so back
-      // never lands on it: the current entry becomes where the skip led.
-      window.history.replaceState(
-        {
-          ...window.history.state,
-          [ADD_PARTS_HISTORY_KEY]: { depth: current.depth, position: JSON.parse(positionKey) as AddPartsPosition },
-        },
-        "",
-      );
-      return;
-    }
-    historyDepthRef.current += 1;
-    window.history.pushState(
-      {
-        ...window.history.state,
-        [ADD_PARTS_HISTORY_KEY]: { depth: historyDepthRef.current, position: JSON.parse(positionKey) as AddPartsPosition },
-      },
-      "",
-    );
-  }, [open, positionKey, sandbox]);
-
-  // Add Parts fills the main window. The app bar arrow is the same as the
-  // phone's back (the tutorial has no history, so it steps back directly).
-  // Escape closes it.
-  useHeaderBackOverride(
-    open
-      ? () => {
-          if (!sandbox && historyDepthRef.current >= 0) window.history.back();
-          else if (!stepBack()) closeDialogAndCleanHistory();
-        }
-      : null,
-    { historyGuard: false },
-  );
+  useHeaderBackOverride(open ? () => {
+    if (!stepBack()) closeDialogAndCleanHistory();
+  } : null, { priority: 20 });
   useEffect(() => {
     if (!open) return;
     const onKeyDown = (event: KeyboardEvent) => {

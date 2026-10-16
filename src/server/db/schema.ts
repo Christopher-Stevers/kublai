@@ -56,6 +56,7 @@ export const users = createTable("user", (d) => ({
   // App fields
   role: d.varchar({ length: 50 }).default("user"), // user | admin | foreman etc.
   permissionConfig: jsonb(),
+  defaultLandingPage: jsonb().$type<import("~/lib/snapshot-source").SnapshotSource>(),
   permissionPresetId: d.uuid().references(() => organizationPermissionPresets.id, { onDelete: "restrict" }),
   organizationAccessStatus: d.varchar({ length: 50 }).default("approved"),
   department: d.varchar({ length: 100 }),
@@ -274,6 +275,7 @@ export const organizationInvites = createTable(
       .notNull()
       .references(() => organizations.id, { onDelete: "cascade" }),
     token: d.varchar({ length: 128 }).notNull(),
+    defaultLandingPage: jsonb().$type<import("~/lib/snapshot-source").SnapshotSource>(),
     name: d.varchar({ length: 255 }),
     role: d.varchar({ length: 50 }).notNull().default("user"),
     permissionConfig: jsonb(),

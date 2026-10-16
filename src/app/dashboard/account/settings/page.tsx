@@ -1,5 +1,9 @@
 "use client";
 
+import { useLandingPage } from "~/hooks/use-landing-page";
+import { useLandingPagePicker } from "~/components/app/LandingPageProvider";
+import { api } from "~/trpc/react";
+import { useOnlineStatus } from "~/hooks/use-online-status";
 import { isIosDevice, useInstallPrompt } from "~/lib/install-prompt";
 import { CheckCircle2Icon, DownloadIcon } from "lucide-react";
 import { RestartTutorialCard } from "~/components/tutorial/TutorialGate";
@@ -33,6 +37,10 @@ const themes: { value: ThemePreference; label: string; icon: typeof Sun }[] = [
 ];
 
 export default function SettingsPage() {
+  const online = useOnlineStatus();
+  const { data: me } = api.user.getMe.useQuery(undefined, { enabled: online });
+  const { source: landingSource, setLandingPage } = useLandingPage(me?.id);
+  const landingPicker = useLandingPagePicker();
   const {
     prompt: installPrompt,
     installed: isInstalled,
@@ -76,6 +84,19 @@ export default function SettingsPage() {
           this device.
         </p>
       </div>
+
+      <Card>
+        <CardHeader><CardTitle>Navigation</CardTitle></CardHeader>
+        <CardContent className="space-y-2">
+          <p className="text-sm font-medium">Logo destination</p>
+          <p className="text-muted-foreground text-sm">{landingSource?.title ?? "Jobs"}</p>
+          <div className="flex flex-wrap gap-2">
+            <Button disabled={!me?.id || !landingPicker || landingPicker.active} onClick={() => landingPicker?.start()}>Choose destination</Button>
+            {landingSource && <Button variant="outline" onClick={() => setLandingPage(null)}>Reset to default</Button>}
+          </div>
+          <p className="text-muted-foreground text-sm">Browse to the page you want, then tap the checkmark. Saved for your account on this device. The back arrow always goes up one level.</p>
+        </CardContent>
+      </Card>
 
       <RestartTutorialCard />
 

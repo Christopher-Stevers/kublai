@@ -197,10 +197,10 @@ describe("tutorial on the real ForemanHQ workflow", () => {
     await guide("Back to your job");
     const items = await runtime!.material.query(tx => tx.scan({ prefix: "materialListItem/" }).values().toArray());
     expect(items).toEqual([expect.objectContaining({ quantity: "3", roomId: null })]);
-    fireEvent.click(screen.getByRole("button", { name: "Go back" }));
+    fireEvent.click(screen.getByRole("button", { name: "Go up one level" }));
     await screen.findByRole("heading", { name: "Material Lists" });
     await guide("Back to your job");
-    fireEvent.click(screen.getByRole("button", { name: "Go back" }));
+    fireEvent.click(screen.getByRole("button", { name: "Go up one level" }));
     await guide("Open Drawings");
     await clickTarget("drawings");
     await guide("Open a folder");
@@ -213,7 +213,7 @@ describe("tutorial on the real ForemanHQ workflow", () => {
     // Header back walks sheet → folder → drawings → job, with guidance active.
     for (let count = 0; count < 4 && !document.querySelector('[data-tutorial="chat"]'); count++) {
       await guide("Back to your job");
-      fireEvent.click(screen.getByRole("button", { name: "Go back" }));
+      fireEvent.click(screen.getByRole("button", { name: "Go up one level" }));
     }
     await guide("Open Chat");
     await clickTarget("chat");

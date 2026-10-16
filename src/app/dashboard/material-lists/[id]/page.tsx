@@ -1,6 +1,7 @@
 "use client";
 import { useJobPricing, jobPriceStatus } from "~/hooks/use-job-pricing";
 import { listedPartsFirst } from "~/lib/job-pricing";
+import { useHeaderBackOverride } from "~/lib/header-back-events";
 import Link from "next/link";
 import { usePageViewState } from "~/hooks/use-page-view-state";
 import { matchesMaterialOrderLine } from "~/lib/material-order-line";
@@ -107,6 +108,9 @@ export default function MaterialListDetailPage({
       { orderId: verifyOrderId ?? "" },
       { enabled: isBrowserOnline && !!verifyOrderId },
     );
+  useHeaderBackOverride(mlHeader?.jobId ? () => {
+    router.replace(`/dashboard/jobs/${encodeURIComponent(mlHeader.jobId)}/material-lists`);
+  } : null, { priority: -50 });
   const suppliers = useReplicacheSuppliers();
   const { sortedItems: ordinaryItems } = useMaterialListSort(unsortedItems, suppliers);
   const {data:jobPriceBook}=useJobPricing(mlHeader?.kind === "tools" ? null : mlHeader?.jobId);

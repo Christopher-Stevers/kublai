@@ -1,3 +1,5 @@
+import { snapshotSourceSchema } from "~/lib/snapshot-source";
+import { LandingPageProvider } from "~/components/app/LandingPageProvider";
 import { DrawingDestinationProvider } from "~/components/jobs/DrawingDestinationProvider";
 import { SimulationProvider } from "~/components/simulation/SimulationProvider";
 import { FinancialVisibilityProvider } from "~/components/permissions/FinancialVisibility";
@@ -75,6 +77,7 @@ export default async function DashboardLayout({
             >
               <SnapshotProvider>
                 <DrawingDestinationProvider>
+                  <LandingPageProvider key={effectiveUserId} userId={effectiveUserId} initial={snapshotSourceSchema.safeParse(user.defaultLandingPage).data ?? null}>
                   <div data-app-shell className="bg-canvas flex min-h-screen flex-col">
                     <ReplicacheSyncBootstrap
                       userId={effectiveUserId}
@@ -88,6 +91,7 @@ export default async function DashboardLayout({
                       </ChatViewProvider>
                     </main>
                   </div>
+                </LandingPageProvider>
                 </DrawingDestinationProvider>
               </SnapshotProvider>
             </DrawingAccountProvider>

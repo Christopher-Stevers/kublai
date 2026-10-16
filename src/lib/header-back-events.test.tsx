@@ -7,7 +7,7 @@ const isGuard = () => Boolean((window.history.state as Record<string, unknown> |
 const systemBack = async () => {
   // jsdom's history.back() is async; emulate the browser popping the guard.
   window.history.replaceState({ page: "under" }, "");
-  window.dispatchEvent(new PopStateEvent("popstate", { state: window.history.state }));
+  window.dispatchEvent(new PopStateEvent("popstate", { state: window.history.state as unknown }));
   await tick();
 };
 
@@ -90,7 +90,8 @@ describe("useHeaderBackOverride and the phone's back", () => {
     expect(runHeaderBackOverride()).toBe(true);
     rerender();
     await tick();
-    expect(back).toHaveBeenCalledTimes(1);
+    expect(back).not.toHaveBeenCalled();
+    expect(isGuard()).toBe(false);
     expect(runHeaderBackOverride()).toBe(false);
   });
 
@@ -104,10 +105,24 @@ describe("useHeaderBackOverride and the phone's back", () => {
     );
     await tick();
     expect(push).toHaveBeenCalledTimes(1);
-    await systemBack();
-    rerender();
+    act(() => {
+      window.history.replaceState({ page: "under" }, "");
+      window.dispatchEvent(new PopStateEvent("popstate", { state: window.history.state as unknown }));
+      rerender();
+    });
     await tick();
     expect(push).toHaveBeenCalledTimes(1);
     expect(back).not.toHaveBeenCalled();
   });
+});
+
+
+it("gives nested screens priority even when a parent mounts later", () => {
+  const child = vi.fn();
+  const parent = vi.fn();
+  renderHook(() => useHeaderBackOverride(child));
+  renderHook(() => useHeaderBackOverride(parent, { priority: -100 }));
+  runHeaderBackOverride();
+  expect(child).toHaveBeenCalledOnce();
+  expect(parent).not.toHaveBeenCalled();
 });

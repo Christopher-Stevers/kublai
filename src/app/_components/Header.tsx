@@ -43,14 +43,18 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu";
+import { useLandingPage } from "~/hooks/use-landing-page";
 import { APP_NAME } from "~/constants/app";
 import { useOnlineStatus } from "~/hooks/use-online-status";
 import {
   HEADER_BACK_STATE_EVENT,
   requestHeaderBack,
   runHeaderBackOverride,
+  useHeaderBackOverride,
   type HeaderBackStateDetail,
 } from "~/lib/header-back-events";
+import { parentRoute } from "~/lib/parent-navigation";
+import { resetJobWorkspaceNavigation } from "~/hooks/use-job-workspace-navigation";
 import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";
 
@@ -104,6 +108,19 @@ function HeaderFrame({
   const sandbox = useTutorialSandbox();
   const isOnline = useOnlineStatus();
   const [showRequestedBackButton, setShowRequestedBackButton] = useState(false);
+  const { landingPage, source: landingSource } = useLandingPage(sessionKey);
+  const openLandingPage = () => {
+    if (sandbox) return;
+    if (!landingSource) { navigate("/dashboard"); return; }
+    // Restore the captured nested view even when already on the same route.
+    const state = { ...(window.history.state as Record<string, unknown> | null) };
+    delete state.foremenhqWorkspace;
+    window.history.replaceState(state, "");
+    const target = new URL(landingPage, window.location.origin);
+    const sameRoute = target.pathname === window.location.pathname && target.search === window.location.search;
+    window.location.assign(landingPage);
+    if (sameRoute) window.location.reload();
+  };
   const navLinks: { href: string; label: string; icon: LucideIcon }[] = [
     ...(tabAccess.dashboard
       ? [
@@ -174,10 +191,7 @@ function HeaderFrame({
     return pathname?.startsWith(href);
   };
 
-  const showRouteBackButton =
-    (pathname?.startsWith("/dashboard/jobs/") ?? false) ||
-    (pathname?.startsWith("/dashboard/material-lists/") ?? false) ||
-    pathname === "/dashboard/account/settings";
+  const showRouteBackButton = Boolean(pathname && pathname !== "/dashboard" && pathname.startsWith("/dashboard/"));
   const showBackButton = showRouteBackButton || showRequestedBackButton;
 
   useEffect(() => {
@@ -195,6 +209,7 @@ function HeaderFrame({
 
   const navigate = (href: string) => {
     if (sandbox) return;
+    if (href === "/dashboard") resetJobWorkspaceNavigation();
     if (!isOnline) {
       window.location.href = href;
       return;
@@ -223,15 +238,23 @@ function HeaderFrame({
     }
   };
 
-  const handleBack = () => {
-    if (runHeaderBackOverride()) return;
+  const goUp = () => {
     if (showRequestedBackButton) {
       requestHeaderBack();
       return;
     }
-
-    if (!sandbox) router.back();
+    if (sandbox) return;
+    const parent = parentRoute(pathname ?? "/dashboard");
+    if (parent === "/dashboard") resetJobWorkspaceNavigation();
+    if (!isOnline) window.location.href = parent;
+    else router.replace(parent);
   };
+  // Routed screens provide the base level; in-page viewers and wizard steps
+  // take precedence even if their effects mount before the header.
+  useHeaderBackOverride(pathname?.startsWith("/dashboard") ? goUp : null, {
+    priority: -100, scope: pathname ?? "",
+  });
+  const handleBack = () => { runHeaderBackOverride(); };
 
   return (
     <header className="border-border bg-card sticky top-0 z-50 flex h-14 items-center justify-between border-b px-3 shadow-[0_2px_3px_rgba(0,0,0,0.35),0_6px_16px_rgba(0,0,0,0.6)] sm:h-16 sm:px-6 [[data-flat-header]_&]:border-b-transparent [[data-flat-header]_&]:shadow-none">
@@ -242,7 +265,7 @@ function HeaderFrame({
             size="icon"
             onClick={handleBack}
             className="h-10 w-10 shrink-0"
-            aria-label="Go back"
+            aria-label="Go up one level"
             data-tutorial="back"
           >
             <ArrowLeftIcon className="h-5 w-5" />
@@ -250,7 +273,8 @@ function HeaderFrame({
         )}
         <button
           type="button"
-          onClick={() => navigate("/dashboard")}
+          aria-label={`ForemanHQ — ${landingSource?.title ?? "Jobs"}`}
+          onClick={openLandingPage}
           className="text-foreground flex min-w-0 items-center gap-2 text-lg font-bold tracking-tight lg:shrink-0"
         >
           <Image

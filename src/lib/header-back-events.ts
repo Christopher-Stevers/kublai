@@ -26,10 +26,9 @@ export function requestHeaderBack() {
 // phone's back button/gesture does the same: while any override is active a
 // "guard" history entry sits on top, so system back lands here instead of
 // skipping past the screen (or closing the installed app on Android).
-const backOverrides: Array<{ current: () => void; guard: boolean }> = [];
+const backOverrides: Array<{ current: () => void; guard: boolean; priority: number }> = [];
 const GUARD_KEY = "foremenhqBackGuard";
 let guardOnTop = false;
-let ignoreNextPop = false;
 let listening = false;
 let syncQueued = false;
 
@@ -41,17 +40,19 @@ function isGuard(state: unknown) {
 function syncGuard() {
   syncQueued = false;
   const wantGuard = backOverrides.some((entry) => entry.guard);
-  if (wantGuard && !guardOnTop) {
+  if (wantGuard && (!guardOnTop || !isGuard(window.history.state))) {
     // Copy the current state (Next's routing data and the workspace location)
     // so leaving the guard restores exactly the same screen.
     window.history.pushState({ ...window.history.state, [GUARD_KEY]: true }, "");
     guardOnTop = true;
   } else if (!wantGuard && guardOnTop) {
     guardOnTop = false;
-    // Closed from the app (e.g. the back arrow): drop the unused guard.
+    // Never traverse history while closing a screen: that can restore an
+    // unrelated workspace or race the parent's navigation.
     if (isGuard(window.history.state)) {
-      ignoreNextPop = true;
-      window.history.back();
+      const state = { ...(window.history.state as Record<string, unknown> | null) };
+      delete state[GUARD_KEY];
+      window.history.replaceState(state, "");
     }
   }
 }
@@ -64,22 +65,25 @@ function queueSync() {
   window.setTimeout(syncGuard, 0);
 }
 
-function onPopState() {
-  if (ignoreNextPop) {
-    ignoreNextPop = false;
-    return;
-  }
-  // Still on (or above) the guard, e.g. a screen with its own history entries
-  // stacked over it stepped back: not ours to handle.
+function topOverride() {
+  return backOverrides.reduce<(typeof backOverrides)[number] | undefined>(
+    (top, entry) => !top || entry.priority >= top.priority ? entry : top,
+    undefined,
+  );
+}
+
+function onPopState(event: PopStateEvent) {
   if (!guardOnTop || isGuard(window.history.state)) return;
+  // Claim the traversal before Next or a workspace restores a visited screen.
+  event.stopImmediatePropagation();
   guardOnTop = false;
-  backOverrides.at(-1)?.current();
+  topOverride()?.current();
   queueSync();
 }
 
 /** Runs the most recent back override. Returns false when there is none. */
 export function runHeaderBackOverride() {
-  const top = backOverrides.at(-1);
+  const top = topOverride();
   if (!top) return false;
   top.current();
   return true;
@@ -92,7 +96,7 @@ export function runHeaderBackOverride() {
 export function useHeaderBackOverride(
   handler: (() => void) | null,
   /** historyGuard: false for screens that keep their own history entries. */
-  { historyGuard = true }: { historyGuard?: boolean } = {},
+  { historyGuard = true, priority = 0, scope }: { historyGuard?: boolean; priority?: number; scope?: string } = {},
 ) {
   const latest = useRef(handler);
   useLayoutEffect(() => {
@@ -103,9 +107,9 @@ export function useHeaderBackOverride(
     if (!active) return;
     if (!listening) {
       listening = true;
-      window.addEventListener("popstate", onPopState);
+      window.addEventListener("popstate", onPopState, true);
     }
-    const entry = { current: () => latest.current?.(), guard: historyGuard };
+    const entry = { current: () => latest.current?.(), guard: historyGuard, priority };
     backOverrides.push(entry);
     queueSync();
     return () => {
@@ -113,5 +117,5 @@ export function useHeaderBackOverride(
       if (index >= 0) backOverrides.splice(index, 1);
       queueSync();
     };
-  }, [active, historyGuard]);
+  }, [active, historyGuard, priority, scope]);
 }
