@@ -8,6 +8,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { nextWheelPreview, matchesPreviewSelection, type WheelPreview } from "./quick-wheel-preview";
 import { wizardExactSizeLabel, sortWizardSizeFamily } from "~/lib/wizard-size-selection";
 import { facetCount } from "~/lib/catalogue-facets";
 import { api } from "~/trpc/react";
@@ -478,6 +479,31 @@ export function usePartWizard(open = true, sortMode?: MaterialListSort, keywordG
       ? sortWizardSizeFamily(sorted) : sorted;
   }, [selectionParts, sortMode, categoryTree, keywordGroups, catalogs, hasSizeSelection, selectedSize]);
 
+  const previewQuickWheelChoice = async (title: string, label: string): Promise<WheelPreview | undefined> => {
+    if (title !== ({ catalog: "Select Catalog", material: "Select Material", size: "Select Size", category: "Select Category" } as Partial<Record<WizardStage, string>>)[wizardStage] || !summaryParts) return;
+    const next = nextWheelPreview(wizardStage, label, {
+      catalogId: hasCatalogSelection ? selectedCatalogId : null,
+      materialId: hasMaterialSelection ? selectedMaterialId : null,
+      size: hasSizeSelection ? selectedSize : null,
+      categoryId: hasCategorySelection ? selectedCategory?.categoryId ?? null : null,
+    }, { catalogs: catalogs ?? [], materials: materials ?? [], categories: categoryTree ?? [], parts: summaryParts });
+    if (!next || next.preview.kind === "wheel") return next?.preview;
+    const selection = next.selection;
+    const parts = hasReplicacheCatalogue ? replicacheCatalogue.parts.filter(part => matchesPreviewSelection(part, selection)) : isOnline ? await utils.catalogue.searchParts.fetch({
+      query: undefined, supplierId,
+      catalogId: selection.catalogId ?? undefined,
+      materialId: selection.materialId ?? undefined,
+      sizeNominal: selection.size?.nominal,
+      sizeUnit: selection.size?.unit,
+      sizeLabel: wizardExactSizeLabel(selection.size?.sizeLabel),
+      categoryId: selection.categoryId,
+      limit: 5000,
+    }, { staleTime: 1000 * 60 * 5 }) : [];
+    const sorted = sortMode ? sortMaterialListPartChoices(parts, sortMode, categoryTree ?? [], keywordGroups, catalogs ?? []) : parts;
+    const ordered = selection.size && !wizardExactSizeLabel(selection.size.sizeLabel) ? sortWizardSizeFamily(sorted) : sorted;
+    return { ...next.preview, options: ordered.slice(0, 6).map(part => ({ label: part.displayName, imageUrl: part.imageUrl })) };
+  };
+
   const createCatalog = api.catalogue.createCatalog.useMutation({
     onSuccess: (newCatalog) => {
       if (!newCatalog) return;
@@ -774,6 +800,7 @@ export function usePartWizard(open = true, sortMode?: MaterialListSort, keywordG
     wizardStage === "review" ? "" : "Search part names...";
 
   return {
+    previewQuickWheelChoice,
     isLoading: !!supplierId && (summaryPending || (shouldLoadSelectionParts && selectionPending)),
     loadError: supplierId ? summaryError ?? selectionError : null,
     wizardStage,

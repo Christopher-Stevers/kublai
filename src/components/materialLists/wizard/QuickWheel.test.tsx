@@ -627,3 +627,40 @@ describe("wizard quick wheel", () => {
     expect(wheel()).toBeNull();
   });
 });
+
+describe("anticipatory wheel previews",()=>{
+ const advance=async(ms:number)=>act(()=>vi.advanceTimersByTimeAsync(ms));
+ const preview=()=>document.querySelector('[data-wheel-preview]');
+ it("fades in the next step early while the original step owns input until 500 ms",async()=>{
+  const select=vi.fn(), prepare=vi.fn(()=>({title:"Stage 1",kind:"wheel" as const,options:[{label:"Next A"},{label:"Next B"}]}));
+  function Steps(){const[step,setStep]=useState(0);return <QuickWheelSurface previewChoice={prepare}><Stage title={`Stage ${step}`} select={index=>{select(index);setStep(step+1);}}/></QuickWheelSurface>;}
+  render(<Steps/>);down();aim();await advance(49);expect(preview()).toBeNull();
+  await advance(1);expect(preview()).toHaveAttribute("aria-hidden","true");expect(preview()!.className).toContain("preview");
+  expect(wheel()).toHaveAttribute("aria-label","Stage 0 quick wheel");expect(prepare).toHaveBeenCalledExactlyOnceWith("Stage 0","Choice 0");
+  await advance(449);expect(select).not.toHaveBeenCalled();expect(wheel()).toHaveAttribute("aria-label","Stage 0 quick wheel");
+  await advance(1);expect(select).toHaveBeenCalledExactlyOnceWith(0);expect(preview()).toBeNull();expect(wheel()).toHaveAttribute("aria-label","Stage 1 quick wheel");
+ });
+ it("keeps hit testing the original step, restarting anticipation when its choice changes",async()=>{
+  const select=vi.fn(), prepare=vi.fn((_title:string,label:string)=>({title:label,kind:"wheel" as const,options:[{label:"Inactive next option"}]}));
+  render(<QuickWheelSurface previewChoice={prepare}><Stage select={select}/></QuickWheelSurface>);down();aim();await advance(100);
+  expect(preview()).not.toBeNull();aim(300,360);expect(preview()).toBeNull();await advance(50);
+  expect(prepare).toHaveBeenLastCalledWith("Catalog","Choice 1");await advance(449);expect(select).not.toHaveBeenCalled();
+  await advance(1);expect(select).toHaveBeenCalledExactlyOnceWith(1);
+ });
+ it("discards cancelled and late previews and tolerates preload failures",async()=>{
+  let resolve!:(value:{title:string;kind:"wheel";options:{label:string}[]})=>void;
+  const select=vi.fn(), prepare=vi.fn(()=>new Promise<{title:string;kind:"wheel";options:{label:string}[]}>(r=>{resolve=r;}));
+  render(<QuickWheelSurface previewChoice={prepare}><Stage select={select}/></QuickWheelSurface>);down();aim();await advance(50);
+  aim(200,300);await act(async()=>resolve({title:"Stale",kind:"wheel",options:[{label:"Stale"}]}));expect(preview()).toBeNull();
+  prepare.mockImplementation(()=>{throw Error("Could not preload");});aim();await advance(500);expect(select).toHaveBeenCalledExactlyOnceWith(0);expect(preview()).toBeNull();
+ });
+ it("previews paging without activating the next page before the full dwell",async()=>{
+  render(<QuickWheelSurface><Stage count={15} select={vi.fn()}/></QuickWheelSurface>);down();aim(115,215);await advance(50);
+  expect(preview()).toHaveTextContent("Choice 6");expect(wheel()!.querySelector('[data-wheel-preview]')).not.toBeNull();
+  await advance(449);expect(wheel()!.querySelector('[data-wheel-preview]')).not.toBeNull();await advance(1);expect(preview()).toBeNull();expect(wheel()).toHaveTextContent("Choice 6");
+ });
+ it.each(["pointerup","pointercancel","blur"])("removes the preview on %s without confirming",async(event)=>{
+  const select=vi.fn();render(<QuickWheelSurface previewChoice={()=>({title:"Next",kind:"wheel",options:[{label:"Preview"}]})}><Stage select={select}/></QuickWheelSurface>);
+  down();aim();await advance(200);expect(preview()).not.toBeNull();if(event==="pointerup")fireEvent.pointerUp(window,pointer);else fireEvent(window,new Event(event));await advance(1000);expect(wheel()).toBeNull();expect(preview()).toBeNull();expect(select).not.toHaveBeenCalled();
+ });
+});

@@ -5,11 +5,15 @@ import {
   useContext,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   type HTMLAttributes,
 } from "react";
 
+import Image from "next/image";
+import type { WheelPreview } from "./quick-wheel-preview";
+import styles from "./QuickWheelPreview.module.css";
 import { cn } from "~/lib/utils";
 import {
   quickWheelLayout,
@@ -26,10 +30,24 @@ import {
 
 type Choice = { label: string; select: () => void };
 type Choices = { title: string; options: Choice[] };
-type Registry = {
-  current: Choices | null;
-  changed?: (choices: Choices) => void;
-};
+/** Mutable gesture registry; methods keep it separate from React render state. */
+class Registry {
+  current: Choices | null = null;
+  private changed?: (choices: Choices) => void;
+  register(choices: Choices) {
+    this.current = choices;
+    this.changed?.(choices);
+    return () => {
+      if (this.current === choices) this.current = null;
+    };
+  }
+  subscribe(listener: (choices: Choices) => void) {
+    this.changed = listener;
+    return () => {
+      this.changed = undefined;
+    };
+  }
+}
 const WheelContext = createContext<Registry | null>(null);
 
 /** Each stage supplies the same actions used by its cards, including off-page choices. */
@@ -38,11 +56,7 @@ export function useQuickWheelOptions(title: string, options: Choice[]) {
   useLayoutEffect(() => {
     if (!registry) return;
     const value = { title, options };
-    registry.current = value;
-    registry.changed?.(value);
-    return () => {
-      if (registry.current === value) registry.current = null;
-    };
+    return registry.register(value);
   }, [registry, title, options]);
   // Keep card and wheel selection actions consistent; selections do not affect ranking.
   return (label: string, commit?: () => void) => {
@@ -66,6 +80,7 @@ type Wheel = Choices & {
   page: number;
   hovered: number | null;
   moved: boolean;
+  skipEntrance?: boolean;
 };
 type Entry = Choice & { page?: number; sourceIndex?: number };
 function entriesFor(wheel: Wheel): Entry[] {
@@ -154,11 +169,25 @@ export function QuickWheelSurface({
   children,
   enabled = true,
   usage = {},
+  previewChoice,
   ...props
-}: HTMLAttributes<HTMLDivElement> & { enabled?: boolean; usage?: WheelUsage }) {
+}: HTMLAttributes<HTMLDivElement> & {
+  enabled?: boolean;
+  usage?: WheelUsage;
+  previewChoice?: (
+    title: string,
+    label: string,
+  ) => WheelPreview | undefined | Promise<WheelPreview | undefined>;
+}) {
+  const preparePreview = useRef(previewChoice);
+  preparePreview.current = previewChoice;
+  const [preview, setPreview] = useState<PendingPreview | null>(null);
+  const previewTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const previewVersion = useRef(0);
+  const previewShown = useRef(false);
   const orderUsage = useRef(usage);
   orderUsage.current = usage;
-  const registry = useRef<Registry>({ current: null }).current;
+  const registry = useMemo(() => new Registry(), []);
   const surface = useRef<HTMLDivElement>(null);
   const active = useRef<Wheel | null>(null);
   const [wheel, setWheel] = useState<Wheel | null>(null);
@@ -173,6 +202,11 @@ export function QuickWheelSurface({
   const clearTimer = () => {
     if (timer.current) clearTimeout(timer.current);
     timer.current = null;
+    if (previewTimer.current) clearTimeout(previewTimer.current);
+    previewTimer.current = null;
+    previewVersion.current += 1;
+    previewShown.current = false;
+    setPreview(null);
   };
   const close = () => {
     const pointerId = active.current?.pointerId;
@@ -187,7 +221,7 @@ export function QuickWheelSurface({
   };
 
   useLayoutEffect(() => {
-    registry.changed = (choices) => {
+    return registry.subscribe((choices) => {
       const current = active.current;
       if (!current) return;
       const changed =
@@ -208,10 +242,7 @@ export function QuickWheelSurface({
       } else {
         active.current = { ...current, options: choices.options };
       }
-    };
-    return () => {
-      registry.changed = undefined;
-    };
+    });
   }, [registry]);
 
   useEffect(() => {
@@ -311,15 +342,65 @@ export function QuickWheelSurface({
               current.radius,
             )
         : null;
-      if (hovered === current.hovered && moved === current.moved) return;
+      if (hovered === current.hovered && moved === current.moved) {
+        // The visual next centre matches where a confirmed choice will recenter.
+        setPreview((value) =>
+          value ? { ...value, x: event.clientX, y: event.clientY } : null,
+        );
+        return;
+      }
       clearTimer();
       if (hovered !== pageLatch.current) pageLatch.current = null;
       const next = { ...current, hovered, moved };
       update(next);
       const entry = hovered === null ? null : entriesFor(next)[hovered];
       if (entry && pageLatch.current === null) {
+        const version = previewVersion.current;
+        const deadline = Date.now() + 500;
+        if (entry.page !== undefined || preparePreview.current) {
+          previewTimer.current = setTimeout(() => {
+            previewTimer.current = null;
+            void Promise.resolve()
+              .then(() =>
+                entry.page !== undefined
+                  ? {
+                      title: next.title,
+                      kind: "wheel" as const,
+                      options: next.options.map((option) => ({
+                        label: option.label,
+                      })),
+                      page: entry.page,
+                    }
+                  : preparePreview.current?.(next.title, entry.label),
+              )
+              .then((value) => {
+                if (
+                  !value ||
+                  previewVersion.current !== version ||
+                  !active.current ||
+                  Date.now() >= deadline
+                )
+                  return;
+                const { x, y } = pointerPosition.current;
+                previewShown.current = true;
+                setPreview({
+                  value,
+                  x,
+                  y,
+                  duration: deadline - Date.now(),
+                  key: version,
+                  label: entry.label,
+                });
+              })
+              .catch(() => {
+                /* Speculation may fail; the real selection still works. */
+              });
+          }, 50);
+        }
         timer.current = setTimeout(() => {
           timer.current = null;
+          const hadPreview = previewShown.current;
+          clearTimer();
           const current = active.current;
           if (
             !current ||
@@ -339,6 +420,7 @@ export function QuickWheelSurface({
             startX: x,
             startY: y,
             page: entry.page ?? current.page,
+            skipEntrance: hadPreview,
             hovered: null,
             moved: false,
           });
@@ -434,7 +516,7 @@ export function QuickWheelSurface({
     <WheelContext.Provider value={registry}>
       <div {...props} ref={surface}>
         {children}
-        {wheel && <WheelDisplay wheel={wheel} />}
+        {wheel && <WheelDisplay wheel={wheel} preview={preview} />}
       </div>
     </WheelContext.Provider>
   );
@@ -443,7 +525,27 @@ export function QuickWheelSurface({
 /** Where the round choices sit on the full wheel (340-unit drawing space). */
 const RING = 138;
 
-function WheelDisplay({ wheel }: { wheel: Wheel }) {
+type PendingPreview = {
+  value: WheelPreview & { page?: number };
+  x: number;
+  y: number;
+  duration: number;
+  key: number;
+  label: string;
+};
+function WheelDisplay({
+  wheel,
+  preview,
+  isPreview = false,
+  pendingLabel,
+  duration,
+}: {
+  wheel: Wheel;
+  preview?: PendingPreview | null;
+  isPreview?: boolean;
+  pendingLabel?: string;
+  duration?: number;
+}) {
   const entries = entriesFor(wheel);
   const selected = wheel.hovered === null ? undefined : entries[wheel.hovered];
   const layout = quickWheelLayout(
@@ -476,231 +578,337 @@ function WheelDisplay({ wheel }: { wheel: Wheel }) {
     );
   return (
     <div
-      className="pointer-events-none fixed inset-0 z-[100] select-none"
-      data-quick-wheel=""
+      className={cn(
+        "pointer-events-none fixed inset-0 z-[100] select-none",
+        isPreview && styles.preview,
+      )}
+      data-quick-wheel={isPreview ? undefined : ""}
+      data-wheel-preview={isPreview ? "" : undefined}
+      aria-hidden={isPreview || undefined}
+      style={
+        isPreview
+          ? ({
+              "--preview-duration": `${duration ?? 450}ms`,
+            } as React.CSSProperties)
+          : undefined
+      }
       data-layout={layout.kind}
       data-origin-x={wheel.x}
       data-origin-y={wheel.y}
       aria-label={`${wheel.title} quick wheel`}
-      role="status"
+      role={isPreview ? undefined : "status"}
     >
-      <div
-        className="quick-wheel-backdrop bg-background/75 absolute inset-x-0 bottom-0 backdrop-blur-md"
-        style={{ top: wheel.overlayTop }}
-      />
-      <div
-        className="absolute text-center"
-        style={{
-          // Over the round wheel; across the screen for the edge layout.
-          left: layout.kind === "circle" ? wheel.x - 160 : 0,
-          width: layout.kind === "circle" ? 320 : "100%",
-          top:
-            layout.kind === "circle"
-              ? wheel.y - wheel.radius - 76 >= wheel.bounds.top
-                ? wheel.y - wheel.radius - 76
-                : wheel.y + wheel.radius + 22
-              : wheel.bounds.top + 4,
-        }}
-      >
-        <p className="text-foreground text-lg font-semibold">{wheel.title}</p>
-        <p className="text-muted-foreground mt-0.5 text-xs">
-          Slide to a choice and hold to pick it
-        </p>
-      </div>
-      {layout.kind === "curved" ? (
-        (() => {
-          const points = layout.choices.map((choice) => choice.label);
-          const gap = points.length
-            ? Math.min(
-                ...points.map((point, index) => {
-                  const next = points[(index + 1) % points.length]!;
-                  return points.length > 1
-                    ? Math.hypot(next.x - point.x, next.y - point.y)
-                    : 200;
-                }),
-              )
-            : 200;
-          // Round choices sized to the spacing between them.
-          const width = Math.max(56, Math.min(78, gap - 8)),
-            height = width;
-          const hub = layout.deadZoneRadius;
-          const target =
-            wheel.hovered === null ? undefined : points[wheel.hovered];
-          return (
-            <>
-              <svg
-                className="absolute inset-0 h-full w-full"
-                aria-hidden="true"
-              >
-                <path
-                  d={smoothCurve(points)}
-                  fill="none"
-                  className="stroke-border"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                />
-                <circle
-                  data-wheel-dead-zone=""
-                  cx={wheel.x}
-                  cy={wheel.y}
-                  r={hub}
-                  className="fill-card stroke-border drop-shadow-lg"
-                  strokeWidth="1.5"
-                />
-                <circle
-                  cx={wheel.x}
-                  cy={wheel.y}
-                  r="4"
-                  className="fill-primary"
-                />
-                <HighlightArc
-                  cx={wheel.x}
-                  cy={wheel.y}
-                  radius={hub + 12}
-                  angle={
-                    target
-                      ? Math.atan2(target.x - wheel.x, wheel.y - target.y)
-                      : null
-                  }
-                />
-                {layout.choices.map((choice, index) => (
-                  <foreignObject
-                    key={`${wheel.page}-${index}`}
-                    data-wheel-choice={index}
-                    x={choice.label.x - width / 2}
-                    y={choice.label.y - height / 2}
-                    width={width}
-                    height={height}
-                    className="overflow-visible"
-                  >
-                    <div
-                      className={cn(
-                        tileClass(index, entries[index]!),
-                        "text-[11px]",
-                      )}
-                      style={{ animationDelay: `${index * 20}ms` }}
-                    >
-                      <span className="line-clamp-3 break-words">
-                        {labelOf(entries[index]!)}
-                      </span>
-                    </div>
-                  </foreignObject>
-                ))}
-              </svg>
-              <div
-                className="absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-0.5 text-center"
-                style={{ left: wheel.x, top: wheel.y - 22, width: hub * 1.5 }}
-              >
-                <span
-                  className={cn(
-                    "line-clamp-2 text-xs leading-tight font-semibold",
-                    selected ? "text-primary" : "text-foreground",
-                  )}
-                >
-                  {selected ? labelOf(selected) : wheel.title}
-                </span>
-                <span className="text-muted-foreground text-[10px] leading-tight">
-                  {hint}
-                </span>
-              </div>
-            </>
-          );
-        })()
-      ) : (
+      {!isPreview && (
         <div
-          className="absolute"
+          className="quick-wheel-backdrop bg-background/75 absolute inset-x-0 bottom-0 backdrop-blur-md"
+          style={{ top: wheel.overlayTop }}
+        />
+      )}
+      <div
+        className={preview ? styles.current : undefined}
+        style={
+          preview
+            ? ({
+                "--preview-duration": `${preview.duration}ms`,
+              } as React.CSSProperties)
+            : undefined
+        }
+      >
+        <div
+          className="absolute text-center"
           style={{
-            left: wheel.x - wheel.radius,
-            top: wheel.y - wheel.radius,
-            width: wheel.radius * 2,
-            height: wheel.radius * 2,
+            // Over the round wheel; across the screen for the edge layout.
+            left: layout.kind === "circle" ? wheel.x - 160 : 0,
+            width: layout.kind === "circle" ? 320 : "100%",
+            top:
+              layout.kind === "circle"
+                ? wheel.y - wheel.radius - 76 >= wheel.bounds.top
+                  ? wheel.y - wheel.radius - 76
+                  : wheel.y + wheel.radius + 22
+                : wheel.bounds.top + 4,
           }}
         >
-          {(() => {
-            // Tiles keep a readable size on screen whatever the wheel's scale.
-            const scale = wheel.radius / 170;
-            const step = (Math.PI * 2) / entries.length;
-            const chord =
-              entries.length > 1 ? 2 * RING * Math.sin(step / 2) - 6 : 150;
-            const width = Math.max(54 / scale, Math.min(76 / scale, chord - 6)),
+          <p className="text-foreground text-lg font-semibold">
+            {isPreview ? `Next: ${wheel.title}` : wheel.title}
+          </p>
+          <p className="text-muted-foreground mt-0.5 text-xs">
+            {isPreview
+              ? `Preview · keep holding ${pendingLabel ?? "your choice"}`
+              : "Slide to a choice and hold to pick it"}
+          </p>
+        </div>
+        {layout.kind === "curved" ? (
+          (() => {
+            const points = layout.choices.map((choice) => choice.label);
+            const gap = points.length
+              ? Math.min(
+                  ...points.map((point, index) => {
+                    const next = points[(index + 1) % points.length]!;
+                    return points.length > 1
+                      ? Math.hypot(next.x - point.x, next.y - point.y)
+                      : 200;
+                  }),
+                )
+              : 200;
+            // Round choices sized to the spacing between them.
+            const width = Math.max(56, Math.min(78, gap - 8)),
               height = width;
+            const hub = layout.deadZoneRadius;
+            const target =
+              wheel.hovered === null ? undefined : points[wheel.hovered];
             return (
-              <svg
-                viewBox="0 0 340 340"
-                className="h-full w-full overflow-visible"
-                aria-hidden="true"
-              >
-                <circle
-                  cx="170"
-                  cy="170"
-                  r={RING}
-                  fill="none"
-                  className="stroke-border"
-                  strokeWidth={2 / scale}
-                />
-                <circle
-                  cx="170"
-                  cy="170"
-                  r="56"
-                  className="fill-card stroke-border drop-shadow-lg"
-                  strokeWidth={1.5 / scale}
-                />
-                <HighlightArc
-                  cx={170}
-                  cy={170}
-                  radius={70}
-                  strokeWidth={6 / scale}
-                  angle={wheel.hovered === null ? null : wheel.hovered * step}
-                />
-                {entries.map((entry, index) => {
-                  const angle = index * step;
-                  const lift = wheel.hovered === index ? 6 / scale : 0;
-                  return (
+              <>
+                <svg
+                  className="absolute inset-0 h-full w-full"
+                  aria-hidden="true"
+                >
+                  <path
+                    d={smoothCurve(points)}
+                    fill="none"
+                    className="stroke-border"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                  />
+                  <circle
+                    data-wheel-dead-zone=""
+                    cx={wheel.x}
+                    cy={wheel.y}
+                    r={hub}
+                    className="fill-card stroke-border drop-shadow-lg"
+                    strokeWidth="1.5"
+                  />
+                  <circle
+                    cx={wheel.x}
+                    cy={wheel.y}
+                    r="4"
+                    className="fill-primary"
+                  />
+                  <HighlightArc
+                    cx={wheel.x}
+                    cy={wheel.y}
+                    radius={hub + 12}
+                    angle={
+                      target
+                        ? Math.atan2(target.x - wheel.x, wheel.y - target.y)
+                        : null
+                    }
+                  />
+                  {layout.choices.map((choice, index) => (
                     <foreignObject
                       key={`${wheel.page}-${index}`}
-                      x={170 + Math.sin(angle) * (RING + lift) - width / 2}
-                      y={170 - Math.cos(angle) * (RING + lift) - height / 2}
+                      data-wheel-choice={index}
+                      x={choice.label.x - width / 2}
+                      y={choice.label.y - height / 2}
                       width={width}
                       height={height}
                       className="overflow-visible"
                     >
                       <div
-                        className={tileClass(index, entry)}
+                        className={cn(
+                          tileClass(index, entries[index]!),
+                          "text-[11px]",
+                        )}
                         style={{
-                          fontSize: 12 / scale,
                           animationDelay: `${index * 20}ms`,
+                          animation:
+                            isPreview || wheel.skipEntrance
+                              ? "none"
+                              : undefined,
                         }}
                       >
                         <span className="line-clamp-3 break-words">
-                          {labelOf(entry)}
+                          {labelOf(entries[index]!)}
                         </span>
                       </div>
                     </foreignObject>
-                  );
-                })}
-              </svg>
+                  ))}
+                </svg>
+                <div
+                  className="absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-0.5 text-center"
+                  style={{ left: wheel.x, top: wheel.y - 22, width: hub * 1.5 }}
+                >
+                  <span
+                    className={cn(
+                      "line-clamp-2 text-xs leading-tight font-semibold",
+                      selected ? "text-primary" : "text-foreground",
+                    )}
+                  >
+                    {selected ? labelOf(selected) : wheel.title}
+                  </span>
+                  <span className="text-muted-foreground text-[10px] leading-tight">
+                    {hint}
+                  </span>
+                </div>
+              </>
             );
-          })()}
-          <div className="absolute top-1/2 left-1/2 flex w-[28%] -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-0.5 text-center">
-            <span
-              className={cn(
-                "line-clamp-3 text-sm leading-tight font-semibold",
-                selected ? "text-primary" : "text-foreground",
-              )}
-            >
-              {selected ? labelOf(selected) : wheel.title}
-            </span>
-            <span className="text-muted-foreground text-[10px] leading-tight">
-              {hint}
-            </span>
-            {wheel.options.length > 8 && (
-              <span className="text-muted-foreground/80 text-[10px] tabular-nums">
-                {wheel.page + 1} / {pages}
+          })()
+        ) : (
+          <div
+            className="absolute"
+            style={{
+              left: wheel.x - wheel.radius,
+              top: wheel.y - wheel.radius,
+              width: wheel.radius * 2,
+              height: wheel.radius * 2,
+            }}
+          >
+            {(() => {
+              // Tiles keep a readable size on screen whatever the wheel's scale.
+              const scale = wheel.radius / 170;
+              const step = (Math.PI * 2) / entries.length;
+              const chord =
+                entries.length > 1 ? 2 * RING * Math.sin(step / 2) - 6 : 150;
+              const width = Math.max(
+                  54 / scale,
+                  Math.min(76 / scale, chord - 6),
+                ),
+                height = width;
+              return (
+                <svg
+                  viewBox="0 0 340 340"
+                  className="h-full w-full overflow-visible"
+                  aria-hidden="true"
+                >
+                  <circle
+                    cx="170"
+                    cy="170"
+                    r={RING}
+                    fill="none"
+                    className="stroke-border"
+                    strokeWidth={2 / scale}
+                  />
+                  <circle
+                    cx="170"
+                    cy="170"
+                    r="56"
+                    className="fill-card stroke-border drop-shadow-lg"
+                    strokeWidth={1.5 / scale}
+                  />
+                  <HighlightArc
+                    cx={170}
+                    cy={170}
+                    radius={70}
+                    strokeWidth={6 / scale}
+                    angle={wheel.hovered === null ? null : wheel.hovered * step}
+                  />
+                  {entries.map((entry, index) => {
+                    const angle = index * step;
+                    const lift = wheel.hovered === index ? 6 / scale : 0;
+                    return (
+                      <foreignObject
+                        key={`${wheel.page}-${index}`}
+                        x={170 + Math.sin(angle) * (RING + lift) - width / 2}
+                        y={170 - Math.cos(angle) * (RING + lift) - height / 2}
+                        width={width}
+                        height={height}
+                        className="overflow-visible"
+                      >
+                        <div
+                          className={tileClass(index, entry)}
+                          style={{
+                            fontSize: 12 / scale,
+                            animationDelay: `${index * 20}ms`,
+                            animation:
+                              isPreview || wheel.skipEntrance
+                                ? "none"
+                                : undefined,
+                          }}
+                        >
+                          <span className="line-clamp-3 break-words">
+                            {labelOf(entry)}
+                          </span>
+                        </div>
+                      </foreignObject>
+                    );
+                  })}
+                </svg>
+              );
+            })()}
+            <div className="absolute top-1/2 left-1/2 flex w-[28%] -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-0.5 text-center">
+              <span
+                className={cn(
+                  "line-clamp-3 text-sm leading-tight font-semibold",
+                  selected ? "text-primary" : "text-foreground",
+                )}
+              >
+                {selected ? labelOf(selected) : wheel.title}
               </span>
-            )}
+              <span className="text-muted-foreground text-[10px] leading-tight">
+                {hint}
+              </span>
+              {wheel.options.length > 8 && (
+                <span className="text-muted-foreground/80 text-[10px] tabular-nums">
+                  {wheel.page + 1} / {pages}
+                </span>
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
+      {preview &&
+        (preview.value.kind === "wheel" && preview.value.options.length ? (
+          <WheelDisplay
+            key={preview.key}
+            isPreview
+            duration={preview.duration}
+            pendingLabel={preview.label}
+            wheel={{
+              ...wheel,
+              title: preview.value.title,
+              options: preview.value.options.map((option) => ({
+                label: option.label,
+                select: () => undefined,
+              })),
+              x: preview.x,
+              y: preview.y,
+              page: preview.value.page ?? 0,
+              hovered: null,
+              moved: false,
+            }}
+          />
+        ) : preview.value.kind === "parts" ? (
+          <div
+            key={preview.key}
+            data-wheel-preview="parts"
+            aria-hidden="true"
+            className={cn(
+              styles.preview,
+              "bg-card absolute inset-x-3 bottom-6 mx-auto max-w-3xl rounded-2xl border p-3 shadow-lg",
+            )}
+            style={
+              {
+                "--preview-duration": `${preview.duration}ms`,
+                top: Math.max(wheel.bounds.top + 8, wheel.overlayTop + 8),
+                bottom: "auto",
+              } as React.CSSProperties
+            }
+          >
+            <p className="text-sm font-semibold">Next: Parts</p>
+            <p className="text-muted-foreground mb-2 text-xs">
+              Preview · keep holding {preview.label}
+            </p>
+            <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
+              {preview.value.options.map((option, index) => (
+                <div
+                  key={index}
+                  className="min-w-0 rounded-lg border p-2 text-center"
+                >
+                  {option.imageUrl && (
+                    <div className="relative mb-1 aspect-square">
+                      <Image
+                        src={option.imageUrl}
+                        alt=""
+                        fill
+                        className="object-contain"
+                      />
+                    </div>
+                  )}
+                  <span className="line-clamp-3 text-xs">{option.label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null)}
     </div>
   );
 }
