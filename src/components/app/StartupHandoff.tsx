@@ -1,10 +1,12 @@
 "use client";
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 
 /** Keep the first HTML frame painted until real route content is ready. */
-export function StartupHandoff() {
+export function StartupHandoff({ children }: { children: React.ReactNode }) {
+  const [phase, setPhase] = useState<"loading" | "fading" | "done">("loading");
+  const coverRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    const cover = document.getElementById("app-startup-cover");
+    const cover = coverRef.current;
     const content = document.getElementById("app-startup-content");
     if (!cover || !content) return;
     let exiting = false;
@@ -26,10 +28,9 @@ export function StartupHandoff() {
       // Give the ready page a paint underneath before fading the cover.
       firstFrame = requestAnimationFrame(() => {
         secondFrame = requestAnimationFrame(() => {
-          cover.style.pointerEvents = "none";
-          cover.style.opacity = "0";
+          setPhase("fading");
           const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-          removal = setTimeout(() => cover.remove(), reduced ? 0 : 220);
+          removal = setTimeout(() => setPhase("done"), reduced ? 0 : 220);
         });
       });
     }
@@ -42,5 +43,8 @@ export function StartupHandoff() {
       clearTimeout(removal);
     };
   }, []);
-  return null;
+  // React owns this subtree, including its removal. Do not remove the DOM node
+  // manually: streamed routes may still use it as an insertion anchor.
+  if (phase === "done") return null;
+  return <div ref={coverRef} id="app-startup-cover" aria-hidden="true" style={{position:"fixed",inset:0,zIndex:10000,background:"#111827",opacity:phase === "loading" ? 1 : 0,pointerEvents:phase === "loading" ? "auto" : "none",transition:"opacity 200ms ease-out"}}>{children}</div>;
 }

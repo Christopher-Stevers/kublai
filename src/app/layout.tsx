@@ -99,10 +99,9 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: installCaptureScript }} />
       </head>
       <body>
-        <div id="app-startup-cover" aria-hidden="true" style={{position:"fixed",inset:0,zIndex:10000,background:"#111827",opacity:1,transition:"opacity 200ms ease-out"}}>
+        <StartupHandoff>
           <AppStartupLoading />
-        </div>
-        <StartupHandoff />
+        </StartupHandoff>
         <div id="app-startup-content">
         <ThemeProvider>
           <SessionProviderWrapper>
