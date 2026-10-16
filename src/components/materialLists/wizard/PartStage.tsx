@@ -384,6 +384,12 @@ function PartCard({
                 </div>
               )}
             </div>
+            {(part.jobPriceStatus === "estimated" ||
+              part.jobPriceStatus === "confirmed") && (
+              <div className="absolute bottom-2 left-2 rounded-md bg-black/65 px-1.5 py-0.5 text-[10px] leading-tight font-semibold tracking-wide text-white shadow-sm backdrop-blur-sm">
+                Quoted
+              </div>
+            )}
             {part.imageApprovalStatus === "suggested" && (
               <div className="absolute right-2 bottom-2 rounded bg-amber-500 px-2 py-1 text-[11px] font-semibold text-white shadow">
                 Needs approval
@@ -395,7 +401,6 @@ function PartCard({
             <h4 className="line-clamp-4 text-sm leading-snug font-medium">
               {part.displayName}
             </h4>
-            <JobPriceBadge status={part.jobPriceStatus}/>
           </div>
         </div>
       </CardContent>
