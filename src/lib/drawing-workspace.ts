@@ -108,6 +108,7 @@ export const drawingMarkupSchema = z
       .max(MAX_DRAWING_LINKS)
       .optional(),
     linkAppearance: z.enum(["box", "highlight"]).optional(),
+    equipmentTag: z.string().trim().min(2).max(40).optional(),
     unit: z.enum(["mm", "cm", "m", "in", "ft"]).optional(),
     scale: z.number().finite().positive().max(1e9).optional(),
   })

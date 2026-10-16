@@ -1,3 +1,4 @@
+import { equipmentSources, equipmentMatches } from "~/server/drawings/equipment-links";
 import { openDocumentDrawingWorkspace } from "~/server/documents/drawing-workspace";
 import { drawingLinkTargets } from "~/server/drawings/link-targets";
 import { drawingLinkTargetKinds } from "~/lib/drawing-links";
@@ -32,6 +33,8 @@ const item = z.object({
   expectedRevision: revision,
 });
 export const drawingsWorkspaceRouter = createTRPCRouter({
+  equipmentSources: hasDashboardAccess.input(z.object({ sheetId })).query(({ctx,input})=>equipmentSources(ctx,input.sheetId)),
+  equipmentMatches: hasDashboardAccess.input(z.object({sheetId,tag:z.string().trim().min(2).max(40),source:z.object({kind:z.enum(["drawing","document"]),id:sheetId,name:z.string().max(255)})})).query(({ctx,input})=>equipmentMatches(ctx,input)),
   reviewRevisionUpload: hasDashboardAccess
     .input(z.object({ uploadedSetId: sheetId }))
     .query(({ ctx, input }) =>

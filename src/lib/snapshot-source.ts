@@ -124,6 +124,7 @@ export const snapshotStateSchema = z.object({
         ])
         .optional(),
       search: z.string().max(500).optional(),
+      highlight: z.object({ text: z.string().max(4000), left: coordinate, top: coordinate, right: coordinate, bottom: coordinate }).optional(),
       markupOpen: z.boolean().optional(),
       appearanceOpen: z.boolean().optional(),
     })

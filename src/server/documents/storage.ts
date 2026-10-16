@@ -49,7 +49,7 @@ export function detectedDocumentMime(data: Uint8Array, name: string): string {
   }
   return "application/octet-stream";
 }
-function blobPath(organizationId: string, sha256: string) {
+export function documentBlobPath(organizationId: string, sha256: string) {
   if (
     !/^[a-f0-9-]{36}$/i.test(organizationId) ||
     !/^[a-f0-9]{64}$/.test(sha256)
@@ -75,7 +75,7 @@ export async function writeDocumentBlob(
       message: "Upload a nonempty file no larger than 50 MB.",
     });
   const sha256 = createHash("sha256").update(bytes).digest("hex");
-  const target = blobPath(organizationId, sha256);
+  const target = documentBlobPath(organizationId, sha256);
   await mkdir(path.dirname(target), { recursive: true, mode: 0o700 });
   const temporary = `${target}.${randomUUID()}.tmp`;
   try {
@@ -111,7 +111,7 @@ export async function writeDocumentBlob(
 }
 export async function readDocumentBlob(organizationId: string, sha256: string) {
   try {
-    return await readFile(blobPath(organizationId, sha256));
+    return await readFile(documentBlobPath(organizationId, sha256));
   } catch {
     throw new TRPCError({
       code: "NOT_FOUND",

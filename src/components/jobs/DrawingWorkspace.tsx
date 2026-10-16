@@ -3,6 +3,8 @@ import { MARKUP_SHAKE_MS } from "./useDrawingEditor";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSnapshot } from "~/components/chat/SnapshotProvider";
+import { EquipmentTagLinks } from "./EquipmentTagLinks";
+import { MAX_DRAWING_LINKS, drawingMarkupLinks as equipmentExistingLinks } from "~/lib/drawing-links";
 import { useDrawingDestination } from "./DrawingDestinationProvider";
 import { readSnapshotState } from "~/lib/snapshot-source";
 import { useSnapshotSource } from "~/components/chat/SnapshotSourceContext";
@@ -351,6 +353,7 @@ export function DrawingWorkspace({
   onDocumentDetails?: () => void;
   onClose?: () => void;
 }) {
+  const [equipmentBusy, setEquipmentBusy] = useState(false);
   const snapshotTool = useSnapshot();
   const destinationPicker = useDrawingDestination();
   const [entrySnapshot] = useState(currentSnapshotState);
@@ -507,7 +510,7 @@ export function DrawingWorkspace({
   const [textBusy, setTextBusy] = useState(false);
   const textRequest = useRef(0);
   const ocrRequest = useRef<AbortController | null>(null);
-  const [highlight, setHighlight] = useState<DrawingText | null>(null);
+  const [highlight, setHighlight] = useState<DrawingText | null>(entryDrawing?.highlight ?? null);
   const sourceId =
     sourceOverride ?? data?.metadata.currentSourceSheetId ?? sheet.id;
   const source = data?.jobSheets.find((item) => item.id === sourceId) ?? {
@@ -533,6 +536,7 @@ export function DrawingWorkspace({
           selectedId,
           panel,
           search,
+          ...(highlight ? { highlight: { ...highlight, text: highlight.text.slice(0, 4000) } } : {}),
           markupOpen,
           appearanceOpen,
         }
@@ -634,7 +638,7 @@ export function DrawingWorkspace({
     ocrRequest.current?.abort();
     setTextBusy(false);
     setWords({ words: [], links: [] });
-    setHighlight(null);
+    setHighlight(entryDrawing?.sourceSheetId === source.id ? entryDrawing.highlight ?? null : null);
     selectTool("pan");
     const generation = textRequest;
     const abort = ocrRequest;
@@ -1850,6 +1854,23 @@ export function DrawingWorkspace({
               {panel === "selected" &&
                 (form ? (
                   <>
+                    {form.kind === "markup" && form.data.type === "link" && <EquipmentTagLinks
+                      key={form.id} id={form.id} sheetId={sheet.id} points={form.data.points} savedTag={form.data.equipmentTag}
+                      offline={!online} onBusy={setEquipmentBusy}
+                      readWords={async () => {
+                        if (words.words.length) return words.words;
+                        if (!pdf) return [];
+                        const index = await readDrawingText({ ...pdf, url: await resolveAssetUrl(pdf.url) });
+                        setWords(index); return index.words;
+                      }}
+                      onAdd={(found, tag) => {
+                        const existing = form.kind === "markup" ? equipmentExistingLinks(form.data) : [];
+                        const known = new Set(existing.map(link => link.url ?? link.targetSheetId));
+                        const additions = found.filter(link => { const key = link.url ?? link.targetSheetId; if (known.has(key)) return false; known.add(key); return true; }).slice(0, MAX_DRAWING_LINKS - existing.length);
+                        setForm(current => current?.id === form.id && current.kind === "markup" ? { ...current, data: { ...current.data, equipmentTag: tag, links: [...equipmentExistingLinks(current.data), ...additions].slice(0, MAX_DRAWING_LINKS), href: undefined, targetSheetId: undefined } } : current);
+                        return additions.length;
+                      }}
+                    />}
                     <DrawingEntityForm
                       key={form.id}
                       value={form}
@@ -1876,7 +1897,7 @@ export function DrawingWorkspace({
                             }
                           : undefined
                       }
-                      pending={pending > 0}
+                      pending={pending > 0 || equipmentBusy}
                       workspace={data}
                       offline={!online}
                       responseOnly={
