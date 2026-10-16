@@ -54,10 +54,10 @@ export function AppStartupLoading() {
         {/* Use the exact preloaded PWA asset; no image-optimizer handoff. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src="/foremanhq/icon-dark-v2-192.png"
+          src="/foremanhq/icon-dark-v2-512.png"
           alt=""
-          width={96}
-          height={96}
+          width={144}
+          height={144}
           className={styles.icon}
           loading="eager"
           fetchPriority="high"

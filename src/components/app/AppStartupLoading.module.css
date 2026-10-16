@@ -1,7 +1,7 @@
 /* Startup loading: the app icon with a ring of trade tools slowly orbiting it.
    Tools pop into the ring, then a highlight chases around them while loading. */
 .screen {
-  --size: min(72vw, 62vh, 17rem);
+  --size: min(90vw, 62vh, 24rem);
   position: fixed;
   inset: 0;
   z-index: 50;
@@ -10,7 +10,6 @@
   overflow: hidden;
   color: #e5e7eb;
   background: #111827;
-
 }
 
 .stage {
@@ -87,10 +86,10 @@
 
 .icon {
   position: relative;
-  width: 96px;
-  height: 96px;
-  max-width: 42%;
-  max-height: 42%;
+  width: 144px;
+  height: 144px;
+  max-width: 46%;
+  max-height: 46%;
   object-fit: contain;
   border-radius: 22%;
   box-shadow:
@@ -103,7 +102,7 @@
   position: absolute;
   top: calc(50% + var(--size) / 2 + 0.75rem);
   margin: 0;
-  font-size: 1.125rem;
+  font-size: 1.5rem;
   font-weight: 700;
   letter-spacing: -0.01em;
   animation: fade-up 480ms 200ms ease-out both;
@@ -112,7 +111,7 @@
 .bar {
   position: absolute;
   top: calc(50% + var(--size) / 2 + 3rem);
-  width: min(48vw, 10rem);
+  width: min(64vw, 15rem);
   height: 3px;
   overflow: hidden;
   border-radius: 999px;
@@ -130,16 +129,28 @@
 }
 
 @keyframes spin {
-  to { rotate: 360deg; }
+  to {
+    rotate: 360deg;
+  }
 }
 
 @keyframes tool-pop {
-  from { scale: 0.2; opacity: 0; }
-  to { scale: 1; opacity: 1; }
+  from {
+    scale: 0.2;
+    opacity: 0;
+  }
+  to {
+    scale: 1;
+    opacity: 1;
+  }
 }
 
 @keyframes chip-chase {
-  0%, 100% { filter: brightness(1); border-color: rgb(191 219 254 / 30%); }
+  0%,
+  100% {
+    filter: brightness(1);
+    border-color: rgb(191 219 254 / 30%);
+  }
   12% {
     filter: brightness(1.45);
     border-color: rgb(191 219 254 / 85%);
@@ -147,24 +158,38 @@
       inset 0 1px rgb(255 255 255 / 22%),
       0 0 1.2rem rgb(96 165 250 / 70%);
   }
-  30% { filter: brightness(1); }
+  30% {
+    filter: brightness(1);
+  }
 }
 
 @keyframes halo-pulse {
-  0%, 100% { opacity: 0.55; scale: 0.92; }
-  50% { opacity: 1; scale: 1.08; }
+  0%,
+  100% {
+    opacity: 0.55;
+    scale: 0.92;
+  }
+  50% {
+    opacity: 1;
+    scale: 1.08;
+  }
 }
 
-
 @keyframes fade-up {
-  from { opacity: 0; translate: 0 0.5rem; }
+  from {
+    opacity: 0;
+    translate: 0 0.5rem;
+  }
 }
 
 @keyframes bar-sweep {
-  from { translate: -100% 0; }
-  to { translate: 250% 0; }
+  from {
+    translate: -100% 0;
+  }
+  to {
+    translate: 250% 0;
+  }
 }
-
 
 @media (prefers-reduced-motion: reduce) {
   .screen *,

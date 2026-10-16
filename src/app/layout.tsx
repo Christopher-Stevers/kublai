@@ -94,7 +94,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${geist.variable}`} suppressHydrationWarning>
       <head>
-        <link rel="preload" as="image" href="/foremanhq/icon-dark-v2-192.png" fetchPriority="high" />
+        <link rel="preload" as="image" href="/foremanhq/icon-dark-v2-512.png" fetchPriority="high" />
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
         <script dangerouslySetInnerHTML={{ __html: installCaptureScript }} />
       </head>
