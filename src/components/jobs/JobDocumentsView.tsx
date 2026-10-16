@@ -759,7 +759,7 @@ export function JobDocumentsView({
   );
 
   return (
-    <div className="mx-auto w-full max-w-7xl space-y-4 px-4 py-4 pb-[calc(6rem+env(safe-area-inset-bottom))] sm:px-6">
+    <div className="space-y-4 pb-[calc(6rem+env(safe-area-inset-bottom))]">
       <input
         ref={fileInput}
         type="file"
@@ -768,12 +768,7 @@ export function JobDocumentsView({
         multiple
         onChange={(event) => void upload(Array.from(event.target.files ?? []))}
       />
-      <header className="flex items-center justify-between gap-3">
-        <h1 className="text-xl font-semibold">Documents</h1>
-        <span className="text-muted-foreground text-sm">
-          {activeDocs.length} files
-        </span>
-      </header>
+      <h2 className="text-foreground !mb-6 text-xl font-semibold">Documents</h2>
       {sandbox && (
         <p className="bg-muted rounded-lg border p-3 text-sm">
           Documents is read-only in the tutorial. Open a real job to upload
@@ -825,10 +820,10 @@ export function JobDocumentsView({
         <section
           aria-label={view === "files" ? "Project files" : "Recycled files"}
         >
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          {(view === "recycle" || breadcrumbs.length > 0) && (
             <nav
               aria-label="Document folders"
-              className="flex flex-wrap items-center gap-1 text-sm"
+              className="mb-4 flex flex-wrap items-center gap-1 text-sm"
             >
               <button
                 className="text-muted-foreground hover:text-foreground"
@@ -855,7 +850,7 @@ export function JobDocumentsView({
                 ))
               )}
             </nav>
-          </div>
+          )}
           {view === "files" && !query && childFolders.length > 0 && (
             <div className="mb-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
               {childFolders.map((folder) => (
@@ -973,11 +968,8 @@ export function JobDocumentsView({
               setDragging(false);
               if (canWrite && view === "files") {
                 uploadTarget.current = null;
-                {
-                  uploadTarget.current = null;
-                  uploadAsSubmittal.current = false;
-                  void upload(Array.from(event.dataTransfer.files));
-                }
+                uploadAsSubmittal.current = false;
+                void upload(Array.from(event.dataTransfer.files));
               }
             }}
           >
@@ -1109,17 +1101,6 @@ export function JobDocumentsView({
               </>
             )}
           </div>
-          <p className="text-muted-foreground mt-3 text-xs">
-            {filtered.length} {filtered.length === 1 ? "document" : "documents"}
-            {query
-              ? " matching across the project"
-              : view === "files"
-                ? " in this folder"
-                : " in recycle bin"}
-            {canWrite && view === "files"
-              ? " · Drop files into the list to upload"
-              : ""}
-          </p>
         </section>
       )}
       {view === "reviews" && (
@@ -1367,7 +1348,6 @@ export function JobDocumentsView({
             ))}
           </div>
           <div className="grid grid-cols-2 gap-2">
-            {" "}
             <select
               className={selectClass}
               aria-label="Filter by status"
