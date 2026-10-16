@@ -1,3 +1,4 @@
+import { documentPagePreview } from "~/server/documents/page-preview";
 import { TRPCError } from "@trpc/server";
 import { createHash } from "node:crypto";
 import { getRequestIdentity } from "~/server/utils/get-request-identity";
@@ -108,6 +109,10 @@ export async function POST(request: Request) {
       { ...metadata, size: bytes.length, mimeType, sha256 },
       () => writeDocumentBlob(fresh.job.organizationId, bytes),
     );
+    if (mimeType === "application/pdf")
+      void documentPagePreview(fresh.job.organizationId, sha256, 1).catch(
+        () => undefined,
+      );
     return Response.json(
       { success: true, ...result },
       { headers: { "Cache-Control": "private, no-store" } },

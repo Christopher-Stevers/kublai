@@ -1297,6 +1297,7 @@ export function DrawingWorkspace({
           <DrawingSheetViewer
             appearance={appearance}
             src={resolved.src}
+            sourceSize={{ width: source.width, height: source.height }}
             alt={source.name}
             onPdfReady={onReady}
             pdf={resolved.pdf}
@@ -1585,6 +1586,7 @@ export function DrawingWorkspace({
               }}
               initialViewport={viewport.current}
               src={resolved.src}
+              sourceSize={{ width: source.width, height: source.height }}
               alt={source.name}
               onPdfReady={onReady}
               pdf={resolved.pdf}

@@ -42,82 +42,99 @@ function vectorPdf(rotation: number) {
 
 for (const rotation of [0, 90, 180, 270]) {
   for (const verticalScale of [1, 1.5]) {
-    void test(`PDF.js cropped viewport stays pixel-aligned at rotation ${rotation} and vertical scale ${verticalScale}`, async () => {
-      const loading = getDocument({
-        data: vectorPdf(rotation),
-        useSystemFonts: false,
-      });
-      const document = await loading.promise;
-      try {
-        const page = await document.getPage(1);
-        const fullViewport = page.getViewport({ scale: 2 });
-        const full = createCanvas(
-          fullViewport.width,
-          fullViewport.height * verticalScale,
-        );
-        await page.render({
-          canvas: full as unknown as HTMLCanvasElement,
-          viewport: fullViewport,
-          recordOperations: true,
-          transform: [1, 0, 0, verticalScale, 0, 0],
-        }).promise;
+    for (const preparationScale of [2, 0.35]) {
+      void test(`PDF.js cropped viewport stays pixel-aligned at rotation ${rotation}, vertical scale ${verticalScale}, recording scale ${preparationScale}`, async () => {
+        const loading = getDocument({
+          data: vectorPdf(rotation),
+          useSystemFonts: false,
+        });
+        const document = await loading.promise;
+        try {
+          const page = await document.getPage(1);
+          if (preparationScale !== 2) {
+            const overviewViewport = page.getViewport({
+              scale: preparationScale,
+            });
+            const overview = createCanvas(
+              Math.ceil(overviewViewport.width),
+              Math.ceil(overviewViewport.height),
+            );
+            await page.render({
+              canvas: overview as unknown as HTMLCanvasElement,
+              viewport: overviewViewport,
+              recordOperations: true,
+            }).promise;
+            overview.width = overview.height = 0;
+          }
+          const fullViewport = page.getViewport({ scale: 2 });
+          const full = createCanvas(
+            fullViewport.width,
+            fullViewport.height * verticalScale,
+          );
+          await page.render({
+            canvas: full as unknown as HTMLCanvasElement,
+            viewport: fullViewport,
+            recordOperations: preparationScale === 2,
+            transform: [1, 0, 0, verticalScale, 0, 0],
+          }).promise;
 
-        // The viewer expresses patches in normalized, already-rotated page space.
-        const left = full.width / 4;
-        const top = full.height / 4;
-        const crop = createCanvas(full.width / 2, full.height / 2);
-        assert.ok(
-          page.recordedBBoxes,
-          "The whole-page render must record operation bounds",
-        );
-        const filter = drawingPdfOperationsFilter(
-          page.recordedBBoxes as PdfOperationBounds,
-          {
-            left: 0.25,
-            top: 0.25,
-            width: 0.5,
-            height: 0.5,
-            pixelWidth: crop.width,
-            pixelHeight: crop.height,
-            fullWidth: full.width,
-            fullHeight: full.height,
-          },
-        )!;
-        let skipped = 0;
-        await page.render({
-          operationsFilter: (index) => {
-            const keep = filter(index);
-            if (!keep) skipped++;
-            return keep;
-          },
-          canvas: crop as unknown as HTMLCanvasElement,
-          viewport: page.getViewport({ scale: 2 }),
-          // Same normalized-page transform used by DrawingPdfLayer, including
-          // the tiny independent x/y density adjustment from canvas rounding.
-          // A larger 1.5 fixture stretch makes transform order errors obvious.
-          transform: [1, 0, 0, verticalScale, -left, -top],
-        }).promise;
-        assert.ok(
-          skipped > 0,
-          "The optimized crop must skip offscreen operations",
-        );
-        const expected = full
-          .getContext("2d")
-          .getImageData(left, top, crop.width, crop.height).data;
-        const actual = crop
-          .getContext("2d")
-          .getImageData(0, 0, crop.width, crop.height).data;
-        assert.ok(
-          actual.every((value, index) => value === expected[index]),
-          "A cropped canvas must preserve every fixture pixel's position and color",
-        );
-        assert.ok(
-          actual.some((value, index) => index % 4 !== 3 && value < 80),
-          "The crop must contain drawing detail, not an empty page",
-        );
-      } finally {
-        await loading.destroy();
-      }
-    });
+          // The viewer expresses patches in normalized, already-rotated page space.
+          const left = full.width / 4;
+          const top = full.height / 4;
+          const crop = createCanvas(full.width / 2, full.height / 2);
+          assert.ok(
+            page.recordedBBoxes,
+            "The whole-page render must record operation bounds",
+          );
+          const filter = drawingPdfOperationsFilter(
+            page.recordedBBoxes as PdfOperationBounds,
+            {
+              left: 0.25,
+              top: 0.25,
+              width: 0.5,
+              height: 0.5,
+              pixelWidth: crop.width,
+              pixelHeight: crop.height,
+              fullWidth: full.width,
+              fullHeight: full.height,
+            },
+          )!;
+          let skipped = 0;
+          await page.render({
+            operationsFilter: (index) => {
+              const keep = filter(index);
+              if (!keep) skipped++;
+              return keep;
+            },
+            canvas: crop as unknown as HTMLCanvasElement,
+            viewport: page.getViewport({ scale: 2 }),
+            // Same normalized-page transform used by DrawingPdfLayer, including
+            // the tiny independent x/y density adjustment from canvas rounding.
+            // A larger 1.5 fixture stretch makes transform order errors obvious.
+            transform: [1, 0, 0, verticalScale, -left, -top],
+          }).promise;
+          assert.ok(
+            skipped > 0,
+            "The optimized crop must skip offscreen operations",
+          );
+          const expected = full
+            .getContext("2d")
+            .getImageData(left, top, crop.width, crop.height).data;
+          const actual = crop
+            .getContext("2d")
+            .getImageData(0, 0, crop.width, crop.height).data;
+          assert.ok(
+            actual.every((value, index) => value === expected[index]),
+            "A cropped canvas must preserve every fixture pixel's position and color",
+          );
+          assert.ok(
+            actual.some((value, index) => index % 4 !== 3 && value < 80),
+            "The crop must contain drawing detail, not an empty page",
+          );
+        } finally {
+          await loading.destroy();
+        }
+      });
+    }
   }
 }

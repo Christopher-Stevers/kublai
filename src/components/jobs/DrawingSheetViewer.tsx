@@ -132,6 +132,7 @@ const LOUPE_GAP_PX = 56;
 
 export function DrawingSheetViewer({
   src,
+  sourceSize,
   alt,
   pdf,
   tiles,
@@ -152,6 +153,8 @@ export function DrawingSheetViewer({
   /** A text markup typed in place on the drawing. */
   textEditing?: InlineTextEditing | null;
   src: string;
+  /** Known page dimensions let PDF detail start before a preview image arrives. */
+  sourceSize?: { width: number; height: number };
   alt: string;
   onPdfLink?: (link: DrawingPdfLink) => void;
   onPdfReady?: () => void;
@@ -519,17 +522,14 @@ export function DrawingSheetViewer({
     const img = image.current;
     if (!el || !img) return;
     const measure = () => {
-      if (!img.naturalWidth || !el.clientWidth || !el.clientHeight) return;
-      const ratio = Math.min(
-        el.clientWidth / img.naturalWidth,
-        el.clientHeight / img.naturalHeight,
-      );
-      setFit({
-        width: img.naturalWidth * ratio,
-        height: img.naturalHeight * ratio,
-        natural: img.naturalWidth,
-        aspect: img.naturalHeight / img.naturalWidth,
-      });
+      const width = img.naturalWidth > 0 ? img.naturalWidth : (sourceSize?.width ?? 0);
+      const height = img.naturalHeight > 0 ? img.naturalHeight : (sourceSize?.height ?? 0);
+      if (
+        ![width, height].every(n => Number.isFinite(n) && n > 0) ||
+        !el.clientWidth || !el.clientHeight
+      ) return;
+      const ratio = Math.min(el.clientWidth / width, el.clientHeight / height);
+      setFit({ width: width * ratio, height: height * ratio, natural: width, aspect: height / width });
       setFrameSize({ width: el.clientWidth, height: el.clientHeight });
     };
     measure();
@@ -540,7 +540,7 @@ export function DrawingSheetViewer({
       img.removeEventListener("load", measure);
       observer.disconnect();
     };
-  }, [src]);
+  }, [src, sourceSize?.width, sourceSize?.height]);
 
   // Tiles can finish generating after this sheet was opened. Retry missing
   // manifests without requiring navigation away; PDF rendering remains usable.

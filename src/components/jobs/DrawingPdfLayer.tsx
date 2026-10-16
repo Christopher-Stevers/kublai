@@ -1,11 +1,22 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, type RefCallback, type RefObject } from "react";
+import {
+  completedPdfBounds,
+  rememberPdfBounds,
+  preparePdfBounds,
+} from "~/lib/drawing-pdf-bounds";
+
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  type RefCallback,
+  type RefObject,
+} from "react";
 import type { RenderTask } from "pdfjs-dist/legacy/build/pdf.mjs";
 import {
   drawingPdfOperationsFilter,
   isFullDrawingPatch,
-  type PdfOperationBounds,
 } from "~/lib/drawing-pdf-operations";
 import { discardPdfDocument, loadPdfDocument } from "~/lib/pdf-client";
 import { recordDrawingPerformance } from "~/lib/drawing-performance";
@@ -34,10 +45,6 @@ type Props = {
   paintRef?: RefObject<((view: DrawingView) => void) | null>;
 };
 type Snapshot = { index: number; patch: DrawingPatch };
-// Only successful full-page renders are safe to reuse. PDF.js can expose
-// incomplete bounds after cancellation; never use those for filtering.
-const completedPageBounds = new WeakMap<object, PdfOperationBounds>();
-
 /**
  * Double-buffered, overscanned PDF detail. Primary drawings use screen-space
  * placement so a CSS-scaled ancestor cannot flatten their high-resolution ink.
@@ -58,15 +65,22 @@ export function DrawingPdfLayer(props: Props) {
     const p = latest.current;
     const width = p.fit.width * view.scale;
     const height = p.fit.height * view.scale;
-    Object.assign(canvas.style, p.screenSpace ? {
-      left: `${(p.frameSize.width - width) / 2 + view.x + patch.left * width}px`,
-      top: `${(p.frameSize.height - height) / 2 + view.y + patch.top * height}px`,
-      width: `${patch.width * width}px`,
-      height: `${patch.height * height}px`,
-    } : {
-      left: `${patch.left * 100}%`, top: `${patch.top * 100}%`,
-      width: `${patch.width * 100}%`, height: `${patch.height * 100}%`,
-    });
+    Object.assign(
+      canvas.style,
+      p.screenSpace
+        ? {
+            left: `${(p.frameSize.width - width) / 2 + view.x + patch.left * width}px`,
+            top: `${(p.frameSize.height - height) / 2 + view.y + patch.top * height}px`,
+            width: `${patch.width * width}px`,
+            height: `${patch.height * height}px`,
+          }
+        : {
+            left: `${patch.left * 100}%`,
+            top: `${patch.top * 100}%`,
+            width: `${patch.width * 100}%`,
+            height: `${patch.height * 100}%`,
+          },
+    );
   };
   useLayoutEffect(() => {
     const paint = (view: DrawingView) => {
@@ -76,13 +90,16 @@ export function DrawingPdfLayer(props: Props) {
     };
     paint(props.view);
     if (props.paintRef) props.paintRef.current = paint;
-    return () => { if (props.paintRef) props.paintRef.current = null; };
+    return () => {
+      if (props.paintRef) props.paintRef.current = null;
+    };
   });
 
   useEffect(() => {
     const buffers = [...canvases.current];
     let disposed = false;
     let rendering = false;
+    let stopPreparation: (() => void) | undefined;
     let current: Snapshot | null = null;
     let task: RenderTask | null = null;
     let nextTimer: ReturnType<typeof setTimeout> | null = null;
@@ -127,7 +144,12 @@ export function DrawingPdfLayer(props: Props) {
     const draw = async () => {
       if (disposed || rendering) return;
       const start = latest.current;
-      if (!start.enabled || document.visibilityState === "hidden" || Date.now() < retryAfter) return;
+      if (
+        !start.enabled ||
+        document.visibilityState === "hidden" ||
+        Date.now() < retryAfter
+      )
+        return;
       if (!planDrawingPatch(start.fit, start.frameSize, start.view, start.dpr))
         return;
       if (
@@ -151,7 +173,9 @@ export function DrawingPdfLayer(props: Props) {
       try {
         const loading = loadPdfDocument(source.url);
         const page = await Promise.race([
-          loading.then((document) => disposed ? null : document.getPage(source.page)),
+          loading.then((document) =>
+            disposed ? null : document.getPage(source.page),
+          ),
           new Promise<never>((_, reject) => {
             stalledTimer = setTimeout(() => {
               discardPdfDocument(source.url, loading);
@@ -182,7 +206,7 @@ export function DrawingPdfLayer(props: Props) {
         canvas.height = patch.pixelHeight;
         pixels = canvas.width * canvas.height;
         renderingAt = performance.now();
-        const bounds = completedPageBounds.get(page);
+        const bounds = completedPdfBounds(page);
         const recordFullPage = !bounds && isFullDrawingPatch(patch);
         if (recordFullPage) page.recordedBBoxes = null;
         const render = page.render({
@@ -211,11 +235,7 @@ export function DrawingPdfLayer(props: Props) {
         if (stalledTimer !== null) clearTimeout(stalledTimer);
         stalledTimer = null;
         if (disposed) return;
-        if (recordFullPage && page.recordedBBoxes)
-          completedPageBounds.set(
-            page,
-            page.recordedBBoxes as PdfOperationBounds,
-          );
+        if (recordFullPage) rememberPdfBounds(page);
         const now = latest.current;
         const coverage = patchScreenCoverage(
           patch,
@@ -256,6 +276,13 @@ export function DrawingPdfLayer(props: Props) {
           pixels,
           outcome: sharp ? "sharp" : "partial",
         });
+        if (!stopPreparation && !completedPdfBounds(page)) {
+          stopPreparation = preparePdfBounds(
+            page,
+            () => request.current(),
+            () => !disposed && latest.current.enabled && !latest.current.moving,
+          );
+        }
         retryAfter = 0;
         failures = 0;
       } catch (error) {
@@ -320,6 +347,7 @@ export function DrawingPdfLayer(props: Props) {
       disposed = true;
       request.current = () => undefined;
       task?.cancel();
+      stopPreparation?.();
       if (nextTimer !== null) clearTimeout(nextTimer);
       if (idle !== null) window.cancelIdleCallback(idle);
       if (warmTimer !== null) clearTimeout(warmTimer);
@@ -354,7 +382,12 @@ export function DrawingPdfLayer(props: Props) {
     <div
       aria-hidden="true"
       className="pointer-events-none absolute inset-0"
-      style={{ display: props.enabled ? undefined : "none", zIndex: 1, filter: props.appearanceFilter, overflow: props.screenSpace ? "hidden" : undefined }}
+      style={{
+        display: props.enabled ? undefined : "none",
+        zIndex: 1,
+        filter: props.appearanceFilter,
+        overflow: props.screenSpace ? "hidden" : undefined,
+      }}
     >
       {[0, 1].map((index) => (
         <canvas

@@ -3,6 +3,7 @@ import type { OverlayInkStyle } from "./drawing-line-overlay";
 import {
   boundedOverlayPatch,
   drawingInk,
+  drawingInkRange,
   MAX_OVERLAY_PIXELS,
   overlayBounds,
   overlaySourceRect,
@@ -234,9 +235,26 @@ it("keeps native Retina detail in iPad overlays through 5000% zoom", () => {
   const fit = { width: 1024, height: 768 };
   const frame = { width: 1024, height: 1366 };
   for (const scale of [1, 3, 4, 12, 50]) {
-    const patch = planOverlayPatch(fit, frame, { scale, x: 0, y: 0 }, 2,
-      { left: 0, top: 0, right: 1, bottom: 1 })!;
+    const patch = planOverlayPatch(fit, frame, { scale, x: 0, y: 0 }, 2, {
+      left: 0,
+      top: 0,
+      right: 1,
+      bottom: 1,
+    })!;
     expect(patch.fullWidth / (fit.width * scale)).toBeGreaterThan(2.19);
-    expect(patch.pixelWidth * patch.pixelHeight).toBeLessThanOrEqual(MAX_OVERLAY_PIXELS);
+    expect(patch.pixelWidth * patch.pixelHeight).toBeLessThanOrEqual(
+      MAX_OVERLAY_PIXELS,
+    );
   }
+});
+
+it("row-batched ink extraction is byte-identical to a whole-patch scan", () => {
+  const pixels = Uint8ClampedArray.from(
+    { length: 1003 * 4 },
+    (_, i) => (i * 73) % 256,
+  );
+  const ink = new Uint8Array(pixels.length / 4);
+  for (let start = 0; start < ink.length; start += 17)
+    drawingInkRange(pixels, ink, start, Math.min(start + 17, ink.length));
+  expect(ink).toEqual(drawingInk(pixels));
 });

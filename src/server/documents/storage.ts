@@ -1,3 +1,4 @@
+import { openStreamingFile } from "../utils/open-streaming-file";
 import { createHash, randomUUID } from "node:crypto";
 import { link, mkdir, open, readFile, unlink } from "node:fs/promises";
 import path from "node:path";
@@ -112,6 +113,17 @@ export async function writeDocumentBlob(
 export async function readDocumentBlob(organizationId: string, sha256: string) {
   try {
     return await readFile(documentBlobPath(organizationId, sha256));
+  } catch {
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "The stored file is unavailable. Contact your administrator.",
+    });
+  }
+}
+
+export async function openDocumentBlob(organizationId: string, sha256: string) {
+  try {
+    return await openStreamingFile(documentBlobPath(organizationId, sha256));
   } catch {
     throw new TRPCError({
       code: "NOT_FOUND",

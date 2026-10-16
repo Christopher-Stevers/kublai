@@ -1,3 +1,4 @@
+import { documentPagePreview } from "./page-preview";
 import { randomUUID } from "node:crypto";
 import { TRPCError } from "@trpc/server";
 import { and, asc, eq, sql } from "drizzle-orm";
@@ -69,6 +70,13 @@ export async function openDocumentDrawingWorkspace(
     input.jobId,
     input.versionId,
   );
+  // Start one useful preview while page identities are being opened. Cached
+  // derivatives never bypass document ACLs and never change the original PDF.
+  void documentPagePreview(
+    initial.actor.organizationId,
+    initial.version.sha256,
+    1,
+  ).catch(() => undefined);
   const existing = await ctx.db
     .select()
     .from(jobDrawingSheets)
@@ -109,16 +117,14 @@ export async function openDocumentDrawingWorkspace(
       .orderBy(asc(jobDrawingSheets.sortOrder));
     if (rows.length) return rows;
     const setId = randomUUID();
-    await tx
-      .insert(jobDrawingSets)
-      .values({
-        id: setId,
-        jobId: input.jobId,
-        organizationId: current.actor.organizationId,
-        documentVersionId: input.versionId,
-        name: current.document.name,
-        createdByUserId: ctx.userId,
-      });
+    await tx.insert(jobDrawingSets).values({
+      id: setId,
+      jobId: input.jobId,
+      organizationId: current.actor.organizationId,
+      documentVersionId: input.versionId,
+      name: current.document.name,
+      createdByUserId: ctx.userId,
+    });
     const sheets = pages.map((page, index) => {
       const rotated = Math.abs(page.getRotation().angle % 180) === 90;
       const size = page.getCropBox();

@@ -25,7 +25,18 @@ export function overlayStyle(value: OverlayInkStyle): OverlayInkStyle {
 /** Remove the paper rather than making one opaque sheet cover the other. */
 export function drawingInk(pixels: Uint8ClampedArray): Uint8Array {
   const ink = new Uint8Array(pixels.length / 4);
-  for (let i = 0; i < ink.length; i++) {
+  drawingInkRange(pixels, ink, 0, ink.length);
+  return ink;
+}
+
+/** The overlay schedules bounded row batches instead of one full-page JS scan. */
+export function drawingInkRange(
+  pixels: Uint8ClampedArray,
+  ink: Uint8Array,
+  start: number,
+  end: number,
+) {
+  for (let i = start; i < end; i++) {
     const at = i * 4;
     const darkness =
       ((255 - Math.min(pixels[at]!, pixels[at + 1]!, pixels[at + 2]!)) *
@@ -33,7 +44,6 @@ export function drawingInk(pixels: Uint8ClampedArray): Uint8Array {
       255;
     ink[i] = darkness < 8 ? 0 : Math.round(darkness);
   }
-  return ink;
 }
 
 /** Placement in the primary sheet's raster coordinates, including crop origin. */

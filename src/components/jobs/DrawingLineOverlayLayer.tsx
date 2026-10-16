@@ -1,11 +1,19 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type RefObject,
+} from "react";
 import type { RenderTask } from "pdfjs-dist/legacy/build/pdf.mjs";
+import { completedPdfBounds, preparePdfBounds } from "~/lib/drawing-pdf-bounds";
+import { drawingPdfOperationsFilter } from "~/lib/drawing-pdf-operations";
 import { loadPdfDocument } from "~/lib/pdf-client";
 import {
   boundedOverlayPatch,
-  drawingInk,
+  drawingInkRange,
   overlaySourceRect,
   overlayBounds,
   planOverlayPatch,
@@ -64,17 +72,30 @@ export function DrawingLineOverlayLayer(props: Props) {
   latest.current = props;
   const camera = useRef(props.view);
   const patches = useRef<Array<DrawingPatch | null>>([null, null]);
-  const position = (canvas: HTMLCanvasElement, patch: DrawingPatch, view: DrawingView) => {
+  const position = (
+    canvas: HTMLCanvasElement,
+    patch: DrawingPatch,
+    view: DrawingView,
+  ) => {
     const p = latest.current;
-    const width = p.fit.width * view.scale, height = p.fit.height * view.scale;
-    Object.assign(canvas.style, p.screenSpace ? {
-      left: `${(p.frameSize.width - width) / 2 + view.x + patch.left * width}px`,
-      top: `${(p.frameSize.height - height) / 2 + view.y + patch.top * height}px`,
-      width: `${patch.width * width}px`, height: `${patch.height * height}px`,
-    } : {
-      left: `${patch.left * 100}%`, top: `${patch.top * 100}%`,
-      width: `${patch.width * 100}%`, height: `${patch.height * 100}%`,
-    });
+    const width = p.fit.width * view.scale,
+      height = p.fit.height * view.scale;
+    Object.assign(
+      canvas.style,
+      p.screenSpace
+        ? {
+            left: `${(p.frameSize.width - width) / 2 + view.x + patch.left * width}px`,
+            top: `${(p.frameSize.height - height) / 2 + view.y + patch.top * height}px`,
+            width: `${patch.width * width}px`,
+            height: `${patch.height * height}px`,
+          }
+        : {
+            left: `${patch.left * 100}%`,
+            top: `${patch.top * 100}%`,
+            width: `${patch.width * 100}%`,
+            height: `${patch.height * 100}%`,
+          },
+    );
   };
   useLayoutEffect(() => {
     const paint = (view: DrawingView) => {
@@ -86,7 +107,9 @@ export function DrawingLineOverlayLayer(props: Props) {
     };
     paint(props.view);
     if (props.paintRef) props.paintRef.current = paint;
-    return () => { if (props.paintRef) props.paintRef.current = null; };
+    return () => {
+      if (props.paintRef) props.paintRef.current = null;
+    };
   });
   const request = useRef<() => void>(() => undefined);
   const repaint = useRef<() => void>(() => undefined);
@@ -124,6 +147,8 @@ export function DrawingLineOverlayLayer(props: Props) {
     let disposed = false,
       rendering = false;
     let task: RenderTask | null = null;
+    const preparations = new Map<object, () => void>();
+    const aspects = new Map<string, number>();
     let timer: ReturnType<typeof setTimeout> | null = null;
     let bounds: ReturnType<typeof overlayBounds> | null = null;
     let preview: Raster | null = null,
@@ -205,8 +230,16 @@ export function DrawingLineOverlayLayer(props: Props) {
       for (const [index, { source, alignment, opacity }] of sources.entries()) {
         if (opacity <= 0) continue;
         if (disposed) throw new Error("Overlay closed");
-        const image = await loadImage(source.src);
-        if (disposed) throw new Error("Overlay closed");
+        // Detail uses cached dimensions and original vectors, avoiding a second
+        // preview image decode for every PDF source on every zoom.
+        const image =
+          usePdf && source.pdf && aspects.has(source.src)
+            ? null
+            : await loadImage(source.src);
+        if (disposed) {
+          image?.removeAttribute("src");
+          throw new Error("Overlay closed");
+        }
         const canvas = document.createElement("canvas");
         canvas.width = patch.pixelWidth;
         canvas.height = patch.pixelHeight;
@@ -216,7 +249,7 @@ export function DrawingLineOverlayLayer(props: Props) {
         const rect = overlaySourceRect(
           patch,
           latest.current.fit,
-          image.naturalHeight / image.naturalWidth,
+          aspects.get(source.src) ?? image!.naturalHeight / image!.naturalWidth,
           alignment,
         );
         context.fillStyle = "#ffffff";
@@ -233,6 +266,19 @@ export function DrawingLineOverlayLayer(props: Props) {
             const render = page.render({
               canvas,
               viewport,
+              operationsFilter: drawingPdfOperationsFilter(
+                completedPdfBounds(page),
+                {
+                  left: -rect.left / rect.width,
+                  top: -rect.top / rect.height,
+                  width: patch.pixelWidth / rect.width,
+                  height: patch.pixelHeight / rect.height,
+                  pixelWidth: patch.pixelWidth,
+                  pixelHeight: patch.pixelHeight,
+                  fullWidth: rect.width,
+                  fullHeight: rect.height,
+                },
+              ),
               transform: [
                 1,
                 0,
@@ -244,35 +290,59 @@ export function DrawingLineOverlayLayer(props: Props) {
             });
             task = render;
             watchdog = setTimeout(() => render.cancel(), 30_000);
-            try { await render.promise; }
-            finally {
+            try {
+              await render.promise;
+              if (!preparations.has(page) && !completedPdfBounds(page))
+                preparations.set(
+                  page,
+                  preparePdfBounds(
+                    page,
+                    () => {
+                      // Refresh through the normal scheduler with the current view.
+                      schedule();
+                    },
+                    () => !disposed && !rendering,
+                  ),
+                );
+            } finally {
               if (watchdog !== null) clearTimeout(watchdog);
               watchdog = null;
               task = null;
             }
           } catch (error) {
-            image.onload = image.onerror = null;
-            image.removeAttribute("src");
+            if (image) {
+              image.onload = image.onerror = null;
+              image.removeAttribute("src");
+            }
             canvas.width = canvas.height = 0;
             throw error;
           }
-
         } else
           context.drawImage(
-            image,
+            image!,
             rect.left,
             rect.top,
             rect.width,
             rect.height,
           );
-        const mask = drawingInk(
-          context.getImageData(0, 0, canvas.width, canvas.height).data,
-        );
+        const pixels = context.getImageData(
+          0,
+          0,
+          canvas.width,
+          canvas.height,
+        ).data;
+        const mask = new Uint8Array(pixels.length / 4);
         for (
           let offset = 0;
           offset < mask.length;
           offset += 64 * patch.pixelWidth
         ) {
+          drawingInkRange(
+            pixels,
+            mask,
+            offset,
+            Math.min(mask.length, offset + 64 * patch.pixelWidth),
+          );
           addStackInk(
             ink,
             mask,
@@ -284,8 +354,10 @@ export function DrawingLineOverlayLayer(props: Props) {
           await nextTurn();
           if (disposed) throw new Error("Overlay closed");
         }
-        image.onload = image.onerror = null;
-        image.removeAttribute("src");
+        if (image) {
+          image.onload = image.onerror = null;
+          image.removeAttribute("src");
+        }
         canvas.width = 0;
         canvas.height = 0;
         await nextTurn();
@@ -294,10 +366,13 @@ export function DrawingLineOverlayLayer(props: Props) {
     };
     const schedule = () => {
       if (disposed || rendering || timer !== null || failures >= 4) return;
-      timer = setTimeout(() => {
-        timer = null;
-        void draw();
-      }, Math.max(50, retryAfter - Date.now()));
+      timer = setTimeout(
+        () => {
+          timer = null;
+          void draw();
+        },
+        Math.max(50, retryAfter - Date.now()),
+      );
     };
     const draw = async () => {
       if (disposed || rendering || !preview || !bounds) return;
@@ -363,6 +438,7 @@ export function DrawingLineOverlayLayer(props: Props) {
         if (opacity <= 0) continue;
         const image = await loadImage(source.src);
         if (disposed) return;
+        aspects.set(source.src, image.naturalHeight / image.naturalWidth);
         const sourceBounds = overlayBounds(
           fit,
           image.naturalHeight / image.naturalWidth,
@@ -408,6 +484,7 @@ export function DrawingLineOverlayLayer(props: Props) {
       request.current = () => undefined;
       repaint.current = () => undefined;
       task?.cancel();
+      for (const stop of preparations.values()) stop();
       if (watchdog !== null) clearTimeout(watchdog);
       window.removeEventListener("online", resume);
       document.removeEventListener("visibilitychange", resume);
