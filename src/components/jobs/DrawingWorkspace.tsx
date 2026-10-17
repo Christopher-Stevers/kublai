@@ -847,7 +847,7 @@ export function DrawingWorkspace({
     visibility:
       kind === "markup" ? ("published" as const) : ("private" as const),
   });
-  const save = async (value: DrawingSave) => {
+  const save = async (value: DrawingSave, selectAfterSave = true) => {
     if (!data) return;
     const queueable =
       isQueuedDrawingEdit(value) &&
@@ -875,7 +875,7 @@ export function DrawingWorkspace({
           data.actor.name,
         );
         setForm((current) => (current?.id === value.id ? null : current));
-        setSelectedId(value.id);
+        if (selectAfterSave) setSelectedId(value.id);
         setFailedDrafts((items) =>
           items.filter((item) => item.id !== value.id),
         );
@@ -919,7 +919,7 @@ export function DrawingWorkspace({
       });
       patchEntity(entity);
       setForm((current) => (current?.id === value.id ? null : current));
-      setSelectedId(entity.id);
+      if (selectAfterSave) setSelectedId(entity.id);
       setFailedDrafts((items) => items.filter((item) => item.id !== value.id));
       if (value.kind === "version") setSourceOverride(null);
       await refresh();
@@ -1641,6 +1641,16 @@ export function DrawingWorkspace({
                   : undefined
               }
               onCreate={writable ? createMarkup : undefined}
+              onMeasurementComplete={(markup, existingId) => {
+                setSelectedId(null);
+                setPanel(current => current === "selected" ? "" : current);
+                if (existingId) {
+                  const entity = entities.find(item => item.id === existingId);
+                  if (entity && editable(entity)) void save({ ...toForm(entity), kind: "markup", data: markup }, false);
+                } else if (writable) {
+                  void save({ ...base(), kind: "markup", data: markup }, false);
+                }
+              }}
               textEditing={
                 inlineText && {
                   id: inlineText.id,

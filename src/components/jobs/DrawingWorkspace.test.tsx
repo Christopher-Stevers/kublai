@@ -1488,3 +1488,16 @@ it("remembers the captured source drawing view before following an internal hype
  expect(visit).toHaveBeenCalledWith(expect.objectContaining({detail:{source:href,target:new URL(`/dashboard/jobs/${jobId}/documents`,location.origin).href}}));
  window.removeEventListener(HYPERLINK_VISIT_EVENT,visit);
 });
+
+it("leaves a completed measurement unselected after its asynchronous save finishes", async () => {
+  open();
+  const props = mocks.viewer.mock.calls.at(-1)![0] as ComponentProps<typeof DrawingSheetViewer>;
+  const dimension = { sourceSheetId: sheetId, type: "dimension" as const, points: [{ x: 0.1, y: 0.1 }, { x: 0.4, y: 0.4 }], stroke: "#ff0000", width: 2 };
+  act(() => props.onMeasurementComplete?.(dimension));
+  await waitFor(() => expect(mocks.save).toHaveBeenCalled());
+  await waitFor(() => {
+    const latest = mocks.viewer.mock.calls.at(-1)![0] as ComponentProps<typeof DrawingSheetViewer>;
+    expect(latest.annotations?.some(entity => entity.kind === "markup" && entity.data.type === "dimension")).toBe(true);
+    expect(latest.selectedId).toBeNull();
+  });
+});

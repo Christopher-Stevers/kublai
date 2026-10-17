@@ -16,6 +16,7 @@ export type DrawingEditorProps = {
   canEditAnnotation?: (entityId: string) => boolean;
   hideAnnotations?: boolean;
   onCreate?: (data: DrawingMarkup) => void;
+  onMeasurementComplete?: (data: DrawingMarkup, existingId?: string) => void;
   onSelect?: (id: string | null) => void;
   onPoint?: (type: "issue" | "rfi", point: DrawingPoint) => void;
   onUpdate?: (id: string, data: DrawingMarkup) => void;

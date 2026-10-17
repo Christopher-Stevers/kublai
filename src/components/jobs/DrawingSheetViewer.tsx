@@ -1757,8 +1757,10 @@ export function DrawingSheetViewer({
               }
             : {}),
         };
-        if (measureSource) editorProps.onUpdate?.(measureSource.id, completed);
+        if (editorProps.onMeasurementComplete) editorProps.onMeasurementComplete(completed, measureSource?.id);
+        else if (measureSource) editorProps.onUpdate?.(measureSource.id, completed);
         else editorProps.onCreate?.(completed);
+        editorProps.onSelect?.(null);
         dispatchRun({ type: "clear" });
         setMeasureSource(null);
         setRunScaleOverride(null);

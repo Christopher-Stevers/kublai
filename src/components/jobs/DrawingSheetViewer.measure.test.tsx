@@ -1318,3 +1318,19 @@ it("places a short first branch instead of grabbing the new gap node", () => {
   expect(frame.querySelectorAll("[data-measure-node]")).toHaveLength(4);
   expect(screen.getByRole("status")).toHaveTextContent("51'-9\"");
 });
+
+it("finishes a measurement through the host completion callback and clears selection", () => {
+  const onCreate = vi.fn(), onMeasurementComplete = vi.fn(), onSelect = vi.fn();
+  const { frame } = openSheet("sheet-1", undefined, {
+    sourceSheetId: "sheet-1", sharedScale: { unit: "m", unitsPerSheetWidth: 100 },
+    onCreate, onMeasurementComplete, onSelect,
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Measure" }));
+  tap(frame, 200, 300);
+  tap(frame, 600, 300);
+  onSelect.mockClear();
+  fireEvent.click(screen.getByRole("button", { name: "Done" }));
+  expect(onMeasurementComplete).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ type: "dimension" }), undefined);
+  expect(onCreate).not.toHaveBeenCalled();
+  expect(onSelect).toHaveBeenCalledWith(null);
+});
