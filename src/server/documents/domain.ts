@@ -612,6 +612,25 @@ export function applyDocumentAction(
       detail = `Recorded transmittal: ${action.title}`;
       break;
     }
+    case "moveDocuments": {
+      assertFolderRole(state, actor, action.folderId, "editor");
+      const documents = action.documentIds.map(id => accessibleDocument(state, actor, id, { write: true }));
+      const names = new Set<string>();
+      for (const doc of documents) {
+        const name = doc.name.toLocaleLowerCase();
+        if (names.has(name)) fail("CONFLICT", "Selected documents have duplicate names. Rename them before moving.");
+        names.add(name);
+        siblingName(state, doc.name, action.folderId, doc.id);
+      }
+      for (const doc of documents) {
+        doc.folderId = action.folderId;
+        doc.updatedAt = new Date(Math.max(Date.parse(now), Date.parse(doc.updatedAt) + 1)).toISOString();
+      }
+      resultId = documents[0]!.id;
+      auditFolder = action.folderId;
+      detail = `Moved ${documents.length} document(s)`;
+      break;
+    }
     default: {
       const doc = accessibleDocument(state, actor, action.documentId, {
         write: action.action !== "comment",

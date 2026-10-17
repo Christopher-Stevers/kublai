@@ -593,3 +593,39 @@ describe("Bounded inputs", () => {
     expectCode(() => assertStateBounds(state), "PAYLOAD_TOO_LARGE");
   });
 });
+
+it("moves selected documents together while retaining IDs and versions", () => {
+  const state = emptyDocumentState();
+  const a = appendVersion(state, owner, { ...file, name: "Drill.pdf" });
+  const b = appendVersion(state, owner, { ...file, name: "Saw.pdf" });
+  const target = folder(state);
+  const versions = structuredClone(state.versions);
+  applyDocumentAction(state, owner, { action: "moveDocuments", documentIds: [a.documentId, b.documentId], folderId: target });
+  expect(state.documents.map(doc => doc.folderId)).toEqual([target, target]);
+  expect(state.versions).toEqual(versions);
+  expect(documentActionSchema.safeParse({ action: "moveDocuments", documentIds: [a.documentId, a.documentId], folderId: target }).success).toBe(false);
+});
+it("does not move any selected documents when one is locked or destination names conflict", () => {
+  const state = emptyDocumentState();
+  const a = appendVersion(state, owner, { ...file, name: "Drill.pdf" });
+  const b = appendVersion(state, owner, { ...file, name: "Saw.pdf" });
+  const target = folder(state);
+  state.documents[1]!.lockedBy = "editor";
+  expectCode(() => applyDocumentAction(state, owner, { action: "moveDocuments", documentIds: [a.documentId, b.documentId], folderId: target }), "CONFLICT");
+  expect(state.documents.slice(0, 2).map(doc => doc.folderId)).toEqual([null, null]);
+  state.documents[1]!.lockedBy = null;
+  appendVersion(state, owner, { ...file, name: "Saw.pdf", folderId: target });
+  expectCode(() => applyDocumentAction(state, owner, { action: "moveDocuments", documentIds: [a.documentId, b.documentId], folderId: target }), "CONFLICT");
+  expect(state.documents.slice(0, 2).map(doc => doc.folderId)).toEqual([null, null]);
+});
+it("enforces source and destination permissions for bulk moves", () => {
+  const state = emptyDocumentState();
+  const source = folder(state, "Private");
+  const target = folder(state, "Target");
+  const a = appendVersion(state, owner, { ...file, folderId: source });
+  applyDocumentAction(state, owner, { action: "setFolderPermissions", folderId: source, permissions: [{ userId: "reader", role: "viewer" }] });
+  expectCode(() => applyDocumentAction(state, reader, { action: "moveDocuments", documentIds: [a.documentId], folderId: target }), "FORBIDDEN");
+  applyDocumentAction(state, owner, { action: "setFolderPermissions", folderId: target, permissions: [{ userId: "editor", role: "viewer" }] });
+  expectCode(() => applyDocumentAction(state, editor, { action: "moveDocuments", documentIds: [a.documentId], folderId: target }), "FORBIDDEN");
+  expect(state.documents[0]!.folderId).toBe(source);
+});

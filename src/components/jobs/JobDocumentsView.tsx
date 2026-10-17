@@ -643,10 +643,10 @@ export function JobDocumentsView({
           };
         break;
       case "move":
-        if (documentId)
+        if (modal.documentIds?.length)
           action = {
-            action: "updateDocument",
-            documentId,
+            action: "moveDocuments",
+            documentIds: modal.documentIds,
             folderId: draft.folderId || null,
           };
         break;
@@ -724,6 +724,10 @@ export function JobDocumentsView({
   const childFolders = data.folders.filter(
     (item) => item.parentId === folderId,
   );
+  const selectedMovable = checkedIds.length > 0 && checkedIds.every(id => {
+    const item = data.documents.find(document => document.id === id);
+    return item?.canWrite && !item.deletedAt && (!item.lockedBy || item.lockedBy === data.capabilities.userId);
+  });
   const selectedWritable =
     checkedIds.length > 0 &&
     checkedIds.every((id) => {
@@ -740,7 +744,7 @@ export function JobDocumentsView({
     "new-word": "New Word document",
     "new-spreadsheet": "New spreadsheet",
     metadata: "Edit document details",
-    move: "Move document",
+    move: modal?.documentIds?.length && modal.documentIds.length > 1 ? "Move documents" : "Move document",
     copy: "Copy document",
     review: "Request document review",
     resolve: "Complete review",
@@ -916,6 +920,12 @@ export function JobDocumentsView({
               <span className="mr-auto text-sm">
                 {checkedIds.length} selected
               </span>
+              {mutable && selectedMovable && (
+                <Button size="sm" variant="outline" disabled={processing}
+                  onClick={() => openModal({ kind: "move", documentIds: checkedIds })}>
+                  Move
+                </Button>
+              )}
               {mutable && selectedWritable && (
                 <>
                   <Button
@@ -1793,7 +1803,7 @@ export function JobDocumentsView({
                 </Button>
               </div>
             )}
-            {modal && ["review", "transmittal"].includes(modal.kind) && (
+            {modal && ["move", "review", "transmittal"].includes(modal.kind) && (
               <div className="bg-muted/50 space-y-1 rounded-md p-3">
                 <p className="text-xs font-medium">
                   {modal.documentIds?.length} document(s) included

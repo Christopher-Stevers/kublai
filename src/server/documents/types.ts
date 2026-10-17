@@ -160,6 +160,7 @@ export type DocumentAction =
       tags?: string[];
       status?: DocumentStatus;
     }
+  | { action: "moveDocuments"; documentIds: string[]; folderId: string | null }
   | { action: "delete" | "restore" | "lock" | "unlock"; documentId: string }
   | {
       action: "copy";

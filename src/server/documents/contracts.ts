@@ -64,6 +64,7 @@ export const documentActionSchema = z.discriminatedUnion("action", [
     tags: z.array(z.string().trim().min(1).max(50)).max(30).optional(),
     status: z.enum(["draft", "in_review", "approved", "superseded"]).optional(),
   }),
+  z.object({ action: z.literal("moveDocuments"), documentIds, folderId: id.nullable() }),
   z.object({ action: z.literal("delete"), documentId }),
   z.object({ action: z.literal("restore"), documentId }),
   z.object({ action: z.literal("lock"), documentId }),

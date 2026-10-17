@@ -999,3 +999,15 @@ it("keeps the document workspace focused on the bottom controls", async () => {
     screen.queryByRole("button", { name: "New folder" }),
   ).not.toBeInTheDocument();
 });
+
+it("moves selected files to a chosen folder in one request", async () => {
+  overview.documents.push(doc({ id: "doc-extra", name: "Second.pdf" }));
+  render(<JobDocumentsView jobId="job-1" />);
+  await ready();
+  fireEvent.click(screen.getByLabelText("Select Specification.pdf"));
+  fireEvent.click(screen.getByLabelText("Select Second.pdf"));
+  fireEvent.click(screen.getByRole("button", { name: "Move", exact: true }));
+  fireEvent.change(screen.getByLabelText("Destination folder"), { target: { value: "folder-1" } });
+  fireEvent.click(screen.getByRole("button", { name: "Save", exact: true }));
+  await waitFor(() => expect(jsonPosts()).toContainEqual({ jobId: "job-1", action: "moveDocuments", documentIds: ["doc-1", "doc-extra"], folderId: "folder-1" }));
+});
