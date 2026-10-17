@@ -817,3 +817,20 @@ describe("quick wheel Back target", () => {
     expect(select).not.toHaveBeenCalled();
   });
 });
+
+
+it("uses the learned hand for touch hit targets and keeps it stable through a gesture", () => {
+  vi.stubGlobal("innerWidth", 400);
+  const select = vi.fn();
+  render(<Harness select={select} />);
+  fireEvent.pointerDown(screen.getByTestId("blank"), {...pointer, pointerType:"touch", clientX:350, clientY:450});
+  expect(wheel()).toHaveAttribute("data-hand", "right");
+  const learned = localStorage.getItem("foremanhq:quick-wheel-hand:v1");
+  const choice=wheel()!.querySelector('[data-wheel-choice="0"]')!;
+  aim(Number(choice.getAttribute("x"))+52, Number(choice.getAttribute("y"))+52);
+  dwell();
+  expect(select).toHaveBeenCalledTimes(1);
+  expect(wheel()).toHaveAttribute("data-hand", "right");
+  expect(localStorage.getItem("foremanhq:quick-wheel-hand:v1")).toBe(learned);
+  fireEvent.pointerUp(window, pointer);
+});

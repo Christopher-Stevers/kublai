@@ -1,3 +1,4 @@
+import { thumbClearance, type WheelHand } from "./quick-wheel-hand";
 export type WheelBounds = {
   left: number;
   top: number;
@@ -8,15 +9,26 @@ type Point = { x: number; y: number };
 export type CurvedChoice = { path: string; polygon: Point[]; label: Point };
 export type WheelLayout =
   | { kind: "circle" }
-  | { kind: "curved"; choices: CurvedChoice[]; deadZoneRadius: number };
+  | {
+      kind: "curved";
+      choices: CurvedChoice[];
+      deadZoneRadius: number;
+      labelsOnly?: boolean;
+    };
 // A short, deliberate slide should arm a choice, even inside the feedback hub.
 export const wheelDeadZoneRadius = (radius: number) => (radius * 32) / 170;
 export const WHEEL_CHOICE_DIAMETER = 104;
 export const wheelChoiceRingRadius = (radius: number) =>
   Math.min((radius * 138) / 170, radius - WHEEL_CHOICE_DIAMETER / 2);
 
-export const wheelVisibleLimit = (bounds: WheelBounds) =>
-  bounds.bottom - bounds.top >= 260 && bounds.right - bounds.left < 350 ? 4 : 6;
+export const wheelVisibleLimit = (bounds: WheelBounds, hand?: WheelHand) =>
+  hand
+    ? bounds.bottom - bounds.top < 260
+      ? 3
+      : 4
+    : bounds.bottom - bounds.top >= 260 && bounds.right - bounds.left < 350
+      ? 4
+      : 6;
 
 const clamp = (n: number, min: number, max: number) =>
   Math.max(min, Math.min(max, n));
@@ -28,7 +40,57 @@ export function quickWheelLayout(
   radius: number,
   count: number,
   bounds: WheelBounds,
+  hand?: WheelHand,
 ): WheelLayout {
+  if (hand) {
+    const padding = WHEEL_CHOICE_DIAMETER / 2;
+    const gap = WHEEL_CHOICE_DIAMETER + 12;
+    const columns = Math.max(1, Math.floor((bounds.right - bounds.left) / gap));
+    const rows = Math.max(1, Math.floor((bounds.bottom - bounds.top) / gap));
+    const points = Array.from({ length: columns * rows }, (_, index) => {
+      const column = index % columns,
+        row = Math.floor(index / columns);
+      return {
+        x:
+          columns === 1
+            ? (bounds.left + bounds.right) / 2
+            : bounds.left +
+              padding +
+              (column * (bounds.right - bounds.left - padding * 2)) /
+                (columns - 1),
+        y:
+          rows === 1
+            ? (bounds.top + bounds.bottom) / 2
+            : bounds.top +
+              padding +
+              (row * (bounds.bottom - bounds.top - padding * 2)) / (rows - 1),
+      };
+    });
+    // Full circles stay clear of the estimated thumb, including their edges.
+    const clearance = (point: Point) =>
+      thumbClearance(point.x, point.y, x, y, hand);
+    points.sort((a, b) => {
+      const blockedA = clearance(a) < padding + 38,
+        blockedB = clearance(b) < padding + 38;
+      if (blockedA !== blockedB) return blockedA ? 1 : -1;
+      if (blockedA) return clearance(b) - clearance(a);
+      return Math.hypot(a.x - x, a.y - y) - Math.hypot(b.x - x, b.y - y);
+    });
+    if (points.length >= count) {
+      const chosen = points
+        .slice(0, count)
+        .sort(
+          (a, b) => Math.atan2(a.y - y, a.x - x) - Math.atan2(b.y - y, b.x - x),
+        );
+      return {
+        kind: "curved",
+        deadZoneRadius: wheelDeadZoneRadius(radius),
+        labelsOnly: true,
+        choices: chosen.map((label) => ({ label, polygon: [], path: "" })),
+      };
+    }
+  }
+
   if (
     x - radius >= bounds.left &&
     x + radius <= bounds.right &&
@@ -162,6 +224,7 @@ export function curvedChoiceAt(
       WHEEL_CHOICE_DIAMETER / 2,
   );
   if (label >= 0) return label;
+  if (layout.labelsOnly) return null;
   const index = layout.choices.findIndex(({ polygon }) => {
     let inside = false;
     for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {

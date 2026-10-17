@@ -11,6 +11,7 @@ import {
   type HTMLAttributes,
 } from "react";
 
+import { learnWheelHand, type WheelHand } from "./quick-wheel-hand";
 import Image from "next/image";
 import { ArrowLeftIcon } from "lucide-react";
 import type { WheelPreview } from "./quick-wheel-preview";
@@ -81,6 +82,7 @@ type Wheel = Choices & {
   overlayTop: number;
   screenCentre: { x: number; y: number };
   usage: WheelUsage;
+  hand?: WheelHand;
   page: number;
   hovered: number | null;
   moved: boolean;
@@ -97,7 +99,7 @@ function entriesFor(wheel: Wheel): Entry[] {
   ranked.sort(
     (a, b) => frequency(b) - frequency(a) || a.sourceIndex - b.sourceIndex,
   );
-  const visibleLimit = wheelVisibleLimit(wheel.bounds);
+  const visibleLimit = wheelVisibleLimit(wheel.bounds, wheel.hand);
   const pageSize = visibleLimit - 2;
   const pages = Math.ceil(ranked.length / pageSize);
   const entries: Entry[] =
@@ -123,6 +125,7 @@ function entriesFor(wheel: Wheel): Entry[] {
     wheel.radius,
     entries.length,
     wheel.bounds,
+    wheel.hand,
   );
   const points =
     layout.kind === "curved"
@@ -312,6 +315,14 @@ export function QuickWheelSurface({
       pageLatch.current = null;
       update({
         ...choices,
+        hand:
+          event.pointerType === "touch"
+            ? learnWheelHand(
+                event.clientX,
+                viewportLeft,
+                viewport?.width ?? innerWidth,
+              )
+            : undefined,
         pointerId: event.pointerId,
         x: event.clientX,
         y: event.clientY,
@@ -370,6 +381,7 @@ export function QuickWheelSurface({
         current.radius,
         entriesFor(current).length,
         current.bounds,
+        current.hand,
       );
       const hovered = moved
         ? layout.kind === "curved"
@@ -638,8 +650,9 @@ function WheelDisplay({
     wheel.radius,
     entries.length,
     wheel.bounds,
+    wheel.hand,
   );
-  const visibleLimit = wheelVisibleLimit(wheel.bounds);
+  const visibleLimit = wheelVisibleLimit(wheel.bounds, wheel.hand);
   const pages = Math.ceil(wheel.options.length / (visibleLimit - 2));
   const hint = selected
     ? selected.page !== undefined
@@ -678,6 +691,7 @@ function WheelDisplay({
           : undefined
       }
       data-layout={layout.kind}
+      data-hand={wheel.hand}
       data-origin-x={wheel.x}
       data-origin-y={wheel.y}
       aria-label={`${wheel.title} quick wheel`}
