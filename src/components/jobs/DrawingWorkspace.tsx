@@ -4,6 +4,7 @@ import { MARKUP_SHAKE_MS } from "./useDrawingEditor";
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { useRouter } from "next/navigation";
 import { useSnapshot } from "~/components/chat/SnapshotProvider";
 import { EquipmentTagLinks } from "./EquipmentTagLinks";
 import { MAX_DRAWING_LINKS, drawingMarkupLinks as equipmentExistingLinks } from "~/lib/drawing-links";
@@ -364,6 +365,7 @@ export function DrawingWorkspace({
   toolbarContainer?: HTMLElement | null;
   onClose?: () => void;
 }) {
+  const router = useRouter();
   const [equipmentBusy, setEquipmentBusy] = useState(false);
   const snapshotTool = useSnapshot();
   const destinationPicker = useDrawingDestination();
@@ -1059,6 +1061,15 @@ export function DrawingWorkspace({
       setPending((n) => n - 1);
     }
   };
+  const openLinkUrl = useCallback((href: string) => {
+    const url = new URL(href, window.location.origin);
+    if (url.origin === window.location.origin &&
+        (url.pathname === "/dashboard" || url.pathname.startsWith("/dashboard/"))) {
+      router.push(`${url.pathname}${url.search}${url.hash}`, { scroll: false });
+    } else {
+      window.open(url.href, "_blank", "noopener,noreferrer");
+    }
+  }, [router]);
   const openDestination = useCallback(
     (link: DrawingMarkupLink) => {
       if (link.targetSheetId) {
@@ -1069,19 +1080,10 @@ export function DrawingWorkspace({
         else setError("That linked sheet is no longer available.");
       } else {
         const href = drawingLinkHref(link, jobId, data?.jobSheets ?? []);
-        if (href) {
-          if (destinationPicker?.active && href.startsWith("/dashboard"))
-            window.location.assign(href);
-          else
-            window.open(
-              new URL(href, location.origin).href,
-              "_blank",
-              "noopener,noreferrer",
-            );
-        } else setError("That destination is no longer available.");
+        if (href) openLinkUrl(href); else setError("That destination is no longer available.");
       }
     },
-    [data?.jobSheets, onOpenSheet, jobId, destinationPicker?.active],
+    [data?.jobSheets, onOpenSheet, jobId, openLinkUrl],
   );
   const linkChoiceArmed = useRef(false);
   const activate = useCallback(
@@ -1117,14 +1119,14 @@ export function DrawingWorkspace({
     (link: DrawingPdfLink) => {
       if (link.url) {
         const url = drawingPdfLinkUrl(link.url);
-        if (url) window.open(url, "_blank", "noopener,noreferrer");
+        if (url) openLinkUrl(url);
       } else if (pdf) {
         const target = drawingPdfLinkTarget(link, pdf, data?.jobSheets ?? []);
         if (target) onOpenSheet(target);
         else setError("That linked page has not been added to this job.");
       }
     },
-    [pdf, data?.jobSheets, onOpenSheet],
+    [pdf, data?.jobSheets, onOpenSheet, openLinkUrl],
   );
   const readText = async (ocr = false) => {
     const request = ++textRequest.current;

@@ -21,6 +21,7 @@ import { makeSnapshotSource } from "~/lib/snapshot-source";
 
 const mocks = vi.hoisted(() => ({
   viewer: vi.fn(),
+  push: vi.fn(),
   account: null as { userId: string; accountKey: string; store: null } | null,
   data: null as Workspace | null,
   save: vi.fn<(value: DrawingSave) => Promise<DrawingEntity>>(),
@@ -35,6 +36,10 @@ const mocks = vi.hoisted(() => ({
   scaleResult: vi.fn(),
   invalidate: vi.fn(async () => undefined),
 }));
+vi.mock("next/navigation", () => {
+  const router = { push: mocks.push };
+  return { useRouter: () => router };
+});
 vi.mock("~/trpc/react", () => ({
   api: {
     useUtils: () => ({
@@ -577,11 +582,13 @@ describe("drawing workspace workflows", () => {
       <DrawingWorkspace jobId={jobId} sheet={sheet} onOpenSheet={vi.fn()} />,
     );
     fireEvent.click(screen.getByRole("button", { name: "Tap hyperlink" }));
-    expect(open).toHaveBeenLastCalledWith(
-      `${location.origin}/dashboard/jobs/${jobId}/chat`,
-      "_blank",
-      "noopener,noreferrer",
-    );
+    expect(mocks.push).toHaveBeenLastCalledWith(`/dashboard/jobs/${jobId}/chat`, { scroll: false });
+    expect(open).toHaveBeenCalledTimes(1);
+    entity.data.links = [{ label: "Drawing", url: `${location.origin}/dashboard/jobs/${jobId}/drawings?drawingSheet=${sheetId}#detail` }];
+    view.rerender(<DrawingWorkspace jobId={jobId} sheet={sheet} onOpenSheet={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: "Tap hyperlink" }));
+    expect(mocks.push).toHaveBeenLastCalledWith(`/dashboard/jobs/${jobId}/drawings?drawingSheet=${sheetId}#detail`, { scroll: false });
+    expect(open).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
   it("creates highlight hyperlinks and persists a named destination list", async () => {
