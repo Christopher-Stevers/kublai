@@ -1,3 +1,7 @@
+import {
+  equipmentAnnotationPlan,
+  withoutTagHighlight,
+} from "./equipment-annotations";
 import { estimates } from "~/server/db/estimating-schema";
 import {
   proposeDrawingRevisions,
@@ -589,6 +593,12 @@ export async function saveDrawingEntity(
   ctx: DrawingContext,
   input: DrawingSave,
 ) {
+  if (input.kind === "markup" && input.data.equipmentTag && input.data.links) {
+    input = {
+      ...input,
+      data: { ...input.data, links: input.data.links.map(withoutTagHighlight) },
+    };
+  }
   if (input.expectedUserId && input.expectedUserId !== ctx.userId)
     throw new TRPCError({
       code: "CONFLICT",
@@ -608,6 +618,20 @@ export async function saveDrawingEntity(
       sheetMetadata(tx, input.sheetId),
     ]);
     const existing = items.find((item) => item.id === input.id) ?? null;
+    // Generated relationships are server-owned; clients cannot attach annotations to another origin.
+    if (
+      input.kind === "markup" &&
+      (input.data.equipmentOriginId ||
+        (existing?.kind === "markup" && existing.data.equipmentOriginId))
+    ) {
+      const originId =
+        existing?.kind === "markup"
+          ? existing.data.equipmentOriginId
+          : undefined;
+      input.data = { ...input.data };
+      if (originId) input.data.equipmentOriginId = originId;
+      else delete input.data.equipmentOriginId;
+    }
     // An offline request can commit while its response is lost. A replay may
     // acknowledge only this account's exact immediately-following queued edit.
     // Changed data, visibility, later revisions and other authors still conflict.
@@ -770,8 +794,120 @@ export async function saveDrawingEntity(
         senderId: access.actor.id,
         entity,
       });
+    if (
+      (entity.kind === "markup" && entity.data.equipmentTag) ||
+      (existing?.kind === "markup" && existing.data.equipmentTag)
+    )
+      await syncEquipmentAnnotations(
+        tx,
+        access,
+        entity,
+        sheets,
+        people.map((p) => p.id),
+      );
     return entity;
   });
+}
+async function syncEquipmentAnnotations(
+  tx: Transaction,
+  access: Awaited<ReturnType<typeof accessSheet>>,
+  entity: DrawingEntity,
+  sheets: DrawingJobSheet[],
+  memberIds: string[],
+) {
+  if (entity.kind !== "markup" || entity.data.equipmentOriginId) return;
+  const plan = await equipmentAnnotationPlan(
+    entity,
+    access.sheet.jobId,
+    sheets,
+    async (sheetId) => {
+      const target = await accessSheet(tx, access.actor.id, sheetId);
+      if (!target.canAnnotate)
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "A linked drawing is read only.",
+        });
+      return (await sheetMetadata(tx, sheetId)).currentSourceSheetId;
+    },
+  );
+  const prior = await tx
+    .select({ entity: entities.entity })
+    .from(entities)
+    .where(
+      and(
+        eq(entities.jobId, access.sheet.jobId),
+        sql`entity->'data'->>'equipmentOriginId' = ${entity.id}`,
+      ),
+    );
+  for (const item of plan) {
+    const active = prior
+      .map((p) => p.entity)
+      .find(
+        (e) =>
+          e.visibility !== "archived" &&
+          e.kind === "markup" &&
+          e.sheetId === item.sheetId &&
+          e.data.sourceSheetId === item.sourceSheetId &&
+          JSON.stringify(e.data.points) === JSON.stringify(item.points),
+      );
+    if (active) item.id = active.id;
+    else if (prior.some((p) => p.entity.id === item.id)) item.id = randomUUID();
+  }
+  const wanted = new Set(plan.map((p) => p.id));
+  const now = new Date().toISOString();
+  for (const { entity: old } of prior) {
+    if (wanted.has(old.id) || old.visibility === "archived") continue;
+    const target = await accessSheet(tx, access.actor.id, old.sheetId);
+    const items = await sheetEntities(tx, old.sheetId);
+    const archived = archiveEntity(old, access.actor, old.revision, now);
+    await persistEntity(tx, target.sheet, archived, old.revision, items);
+    await record(tx, old.sheetId, access.actor, "archived", old.id);
+  }
+  for (const item of plan) {
+    const target = await accessSheet(tx, access.actor.id, item.sheetId);
+    const items = await sheetEntities(tx, item.sheetId);
+    const old = items.find((e) => e.id === item.id) ?? null;
+    const data = {
+      ...entity.data,
+      sourceSheetId: item.sourceSheetId,
+      points: item.points,
+      links: item.links,
+      href: undefined,
+      targetSheetId: undefined,
+      equipmentOriginId: entity.id,
+      linkAppearance: "box" as const,
+    };
+    if (
+      old?.visibility === entity.visibility &&
+      JSON.stringify(old.data) === JSON.stringify(data)
+    )
+      continue;
+    const input: DrawingSave = {
+      kind: "markup",
+      id: item.id,
+      sheetId: item.sheetId,
+      expectedRevision: old?.revision ?? 0,
+      visibility: entity.visibility,
+      data,
+    };
+    await validateLinks(tx, input, target, sheets);
+    const next = prepareEntity(
+      input,
+      old,
+      access.actor,
+      sheets,
+      memberIds,
+      now,
+    );
+    await persistEntity(tx, target.sheet, next, input.expectedRevision, items);
+    await record(
+      tx,
+      item.sheetId,
+      access.actor,
+      old ? "updated" : "created",
+      item.id,
+    );
+  }
 }
 export async function archiveDrawingEntity(
   ctx: DrawingContext,
@@ -800,6 +936,8 @@ export async function archiveDrawingEntity(
         senderId: access.actor.id,
         entity,
       });
+    if (entity.kind === "markup" && entity.data.equipmentTag)
+      await syncEquipmentAnnotations(tx, access, entity, [], []);
     return entity;
   });
 }

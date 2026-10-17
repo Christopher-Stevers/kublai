@@ -15,10 +15,11 @@ it("joins text fragments for a tag and preserves their visual location",()=>{
  const words=[{...word,text:"HEX",right:0.23},{...word,text:"-",left:0.231,right:0.235},{...word,text:"2",left:0.236}];
  expect(equipmentTagLocations(words,"HEX-2")).toEqual([expect.objectContaining({left:0.2,right:0.25})]);
 });
-it("saves an internal drawing destination with zoom, page and highlight",()=>{
+it("saves an internal drawing destination with zoom and page without a search highlight",()=>{
  const id="aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
  const source=equipmentDrawingDestination({jobId:id,setId:id,sheetId:id,sourceSheetId:id,name:"M-101",tag:"HEX-2",box:word});
  const url=new URL(source.href,"https://example.test");
+ expect(readSnapshotState(url.hash)?.drawing?.highlight).toBeUndefined();
  expect(url.searchParams.get("drawingSheet")).toBe(id);
- expect(readSnapshotState(url.hash)?.drawing).toMatchObject({sourceSheetId:id,highlight:word,viewport:{center:{x:0.225,y:0.31}}});
+ expect(readSnapshotState(url.hash)?.drawing).toMatchObject({sourceSheetId:id,search:"",viewport:{center:{x:0.225,y:0.31}}});
 });

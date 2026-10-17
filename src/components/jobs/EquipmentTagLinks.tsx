@@ -51,7 +51,7 @@ export function EquipmentTagLinks({id,sheetId,points,savedTag,readWords,onAdd,on
     if(cancelled)return;
     const added=latest.current.onAdd(found,normalizeEquipmentTag(tag));
     if(added<found.length)issues.push("Some destinations were already linked or exceeded the 50-destination limit.");
-    setStatus(`${added} related destination${added===1?"":"s"} added to this hyperlink. Save the hyperlink to keep them.`);
+    setStatus(`${added} related destination${added===1?"":"s"} added to this hyperlink. Save to keep these links and make matching drawing tags clickable.`);
     setWarnings(issues);
    }catch{if(!cancelled)setStatus("Could not search related items. Try again when connected.");}
    finally{if(!cancelled)latest.current.onBusy(false);}
