@@ -139,6 +139,7 @@ const NO_ANNOTATIONS: NonNullable<DrawingEditorProps["annotations"]> = [];
 /** Holding this long while measuring picks up the point to slide it. */
 const MEASURE_HOLD_MS = 250;
 const LOUPE_PX = 128;
+const LOUPE_GROWTH = 3;
 const LOUPE_ZOOM = 2.5;
 const LOUPE_GAP_PX = 56;
 
@@ -1599,12 +1600,12 @@ export function DrawingSheetViewer({
     : [];
 
   const maxLoupePx = Math.min(
-    LOUPE_PX * 1.5,
+    LOUPE_PX * LOUPE_GROWTH,
     Math.max(1, Math.min(frameSize.width, frameSize.height) - 16),
   );
   const loupePx = Math.min(
     LOUPE_PX *
-      (1 + 0.5 * ((loupe?.zoom ?? 1) - 1) / (MAX_MEASURE_PRECISION_ZOOM - 1)),
+      (1 + (LOUPE_GROWTH - 1) * ((loupe?.zoom ?? 1) - 1) / (MAX_MEASURE_PRECISION_ZOOM - 1)),
     maxLoupePx,
   );
   // Paint the magnifier from what is on screen: the saved image, any sharper

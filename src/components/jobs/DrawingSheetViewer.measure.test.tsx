@@ -1366,11 +1366,11 @@ describe("adaptive measurement magnifier", () => {
     expect(zoom(frame)).toBeLessThan(4);
     const growing = frame.querySelector<HTMLCanvasElement>("[data-measure-loupe-zoom]")!;
     expect(parseFloat(growing.style.width)).toBeGreaterThan(128);
-    expect(parseFloat(growing.style.width)).toBeLessThan(150);
+    expect(parseFloat(growing.style.width)).toBeLessThan(170);
     advance(4200);
     expect(zoom(frame)).toBe(20);
-    expect(growing).toHaveStyle({ width: "192px", height: "192px" });
-    expect(growing.style.top).toBe(initialTop);
+    expect(growing).toHaveStyle({ width: "384px", height: "384px" });
+    expect(parseFloat(growing.style.top) + 192).toBeGreaterThan(220);
   }
 
   it("keeps the finely adjusted position on release, including a final pointerup delta", () => {
@@ -1448,11 +1448,11 @@ describe("adaptive measurement magnifier", () => {
       advance(4500);
       const lens = frame.querySelector<HTMLCanvasElement>("[data-measure-loupe-zoom]")!;
       const left = parseFloat(lens.style.left), top = parseFloat(lens.style.top);
-      expect(lens).toHaveStyle({ width: "192px", height: "192px" });
+      expect(lens).toHaveStyle({ width: "384px", height: "384px" });
       expect(left).toBeGreaterThanOrEqual(8);
-      expect(left + 192).toBeLessThanOrEqual(792);
+      expect(left + 384).toBeLessThanOrEqual(792);
       expect(top).toBeGreaterThanOrEqual(8);
-      expect(top + 192).toBeLessThanOrEqual(592);
+      expect(top + 384).toBeLessThanOrEqual(592);
       fireEvent.pointerUp(frame, { ...pointer(x, y), buttons: 0 });
     }
   });
