@@ -4,10 +4,9 @@ type Point = { x: number; y: number };
 // from repeatedly switching between fine and direct movement.
 const SLOW_SPEED = 0.08;
 const FAST_SPEED = 0.3;
-const SLOW_DWELL_MS = 120;
-// Previously gained 3× in 600 ms. Keep the rate independent of the ceiling:
-// one third of that speed gains 1× per 600 ms, reaching 8× in 4.2 seconds.
-const ZOOM_PER_MS = 1 / 600;
+const SLOW_DWELL_MS = 2000;
+// After the pause, gain 1× per 800 ms: 25% slower than the previous rate.
+const ZOOM_PER_MS = 1 / 800;
 export const MAX_MEASURE_PRECISION_ZOOM = 8;
 
 export type MeasurePrecision = {

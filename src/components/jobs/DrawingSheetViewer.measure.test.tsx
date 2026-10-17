@@ -1361,13 +1361,16 @@ describe("adaptive measurement magnifier", () => {
     expect(frame.querySelector("[data-measure-loupe-zoom]")).toHaveStyle({ width: "128px", height: "128px" });
     const initialTop = frame.querySelector<HTMLCanvasElement>("[data-measure-loupe-zoom]")!.style.top;
     expect(parseFloat(initialTop)).toBeGreaterThan(220);
-    advance(400);
+    advance(1900);
+    expect(zoom(frame)).toBe(2.5);
+    expect(frame.querySelector("[data-measure-loupe-zoom]")).toHaveStyle({ width: "128px", height: "128px" });
+    advance(500);
     expect(zoom(frame)).toBeGreaterThan(2.5);
     expect(zoom(frame)).toBeLessThan(4);
     const growing = frame.querySelector<HTMLCanvasElement>("[data-measure-loupe-zoom]")!;
     expect(parseFloat(growing.style.width)).toBeGreaterThan(128);
     expect(parseFloat(growing.style.width)).toBeLessThan(170);
-    advance(4200);
+    advance(6000);
     expect(zoom(frame)).toBe(20);
     expect(growing).toHaveStyle({ width: "384px", height: "384px" });
     expect(parseFloat(growing.style.top) + 192).toBeGreaterThan(220);
@@ -1406,7 +1409,7 @@ describe("adaptive measurement magnifier", () => {
     const { frame } = start();
     tap(frame, 520, 220);
     fireEvent.pointerDown(frame, pointer(532, 224));
-    advance(5000);
+    advance(9000);
     expect(zoom(frame)).toBe(20);
     fireEvent.pointerMove(frame, pointer(540, 228));
     expect(points(frame)).toBe("200,200 521,120.5");
@@ -1426,7 +1429,7 @@ describe("adaptive measurement magnifier", () => {
     tap(frame, 200, 300);
     fireEvent.pointerDown(frame, pointer(520, 230));
     advance(260);
-    advance(5000);
+    advance(9000);
     expect(points(frame)).toBe("200,200 520,120");
     fireEvent.pointerMove(frame, pointer(528, 230));
     expect(points(frame)).toBe("200,200 521,120");
@@ -1445,7 +1448,7 @@ describe("adaptive measurement magnifier", () => {
     for (const [x, y] of [[12, 112], [790, 112], [12, 500], [790, 500]] as const) {
       fireEvent.pointerDown(frame, pointer(x, y));
       advance(260);
-      advance(4500);
+      advance(9000);
       const lens = frame.querySelector<HTMLCanvasElement>("[data-measure-loupe-zoom]")!;
       const left = parseFloat(lens.style.left), top = parseFloat(lens.style.top);
       expect(lens).toHaveStyle({ width: "384px", height: "384px" });
@@ -1461,13 +1464,13 @@ describe("adaptive measurement magnifier", () => {
     const { frame, unmount } = start();
     tap(frame, 520, 220);
     fireEvent.pointerDown(frame, pointer(520, 220));
-    advance(5000);
+    advance(9000);
     fireEvent.pointerMove(frame, pointer(528, 224));
     expect(points(frame)).toBe("200,200 521,120.5");
     if (reason === "cancel") fireEvent.pointerCancel(frame, pointer(528, 224));
     else if (reason === "lost capture") fireEvent.lostPointerCapture(frame, pointer(528, 224));
     else fireEvent.pointerDown(frame, { ...pointer(640, 320), pointerId: 2 });
-    advance(5000);
+    advance(9000);
     expect(points(frame)).toBe("200,200 520,120");
     expect(frame.querySelector("[data-measure-loupe-zoom]")).toBeNull();
     unmount();
