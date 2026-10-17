@@ -781,3 +781,39 @@ describe("anticipatory wheel previews",()=>{
   down();aim();await advance(200);expect(preview()).not.toBeNull();if(event==="pointerup")fireEvent.pointerUp(window,pointer);else fireEvent(window,new Event(event));await advance(1000);expect(wheel()).toBeNull();expect(preview()).toBeNull();expect(select).not.toHaveBeenCalled();
  });
 });
+
+
+describe("quick wheel Back target", () => {
+  function BackHarness({ back, select }: { back: () => void; select: (index: number) => void }) {
+    const [stage, setStage] = useState(2);
+    return <QuickWheelSurface onBack={stage > 0 ? () => { back(); setStage(value => value - 1); } : undefined}>
+      <Stage title={`Stage ${stage}`} select={select} />
+    </QuickWheelSurface>;
+  }
+  it("goes back on entry, cancels pending selection, and requires leaving before another step", () => {
+    const back = vi.fn(), select = vi.fn();
+    render(<BackHarness back={back} select={select} />);
+    expect(screen.queryByRole("button", { name: "Back one step" })).not.toBeInTheDocument();
+    down();
+    const target = screen.getByRole("button", { name: "Back one step" });
+    vi.spyOn(target, "getBoundingClientRect").mockReturnValue({ x: 0, y: 636, left: 0, top: 636, right: 400, bottom: 700, width: 400, height: 64, toJSON() {} });
+    aim();
+    dwell(250);
+    aim(10, 670);
+    expect(back).toHaveBeenCalledTimes(1);
+    expect(wheel()).toHaveAttribute("aria-label", "Stage 1 quick wheel");
+    expect(target).toHaveAttribute("data-active", "true");
+    dwell(1000);
+    aim(390, 670);
+    expect(back).toHaveBeenCalledTimes(1);
+    expect(select).not.toHaveBeenCalled();
+    aim(200, 300);
+    aim(390, 670);
+    expect(back).toHaveBeenCalledTimes(2);
+    expect(wheel()).toHaveAttribute("aria-label", "Stage 0 quick wheel");
+    expect(target).toBeDisabled();
+    fireEvent.pointerUp(window, pointer);
+    expect(screen.queryByRole("button", { name: "Back one step" })).not.toBeInTheDocument();
+    expect(select).not.toHaveBeenCalled();
+  });
+});

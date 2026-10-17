@@ -12,6 +12,7 @@ import {
 } from "react";
 
 import Image from "next/image";
+import { ArrowLeftIcon } from "lucide-react";
 import type { WheelPreview } from "./quick-wheel-preview";
 import styles from "./QuickWheelPreview.module.css";
 import { cn } from "~/lib/utils";
@@ -171,23 +172,36 @@ export function QuickWheelSurface({
   enabled = true,
   usage = {},
   previewChoice,
+  onBack,
   ...props
 }: HTMLAttributes<HTMLDivElement> & {
   enabled?: boolean;
   usage?: WheelUsage;
+  onBack?: () => void;
   previewChoice?: (
     title: string,
     label: string,
   ) => WheelPreview | undefined | Promise<WheelPreview | undefined>;
 }) {
+  const backAction = useRef(onBack);
+  useLayoutEffect(() => {
+    backAction.current = onBack;
+  }, [onBack]);
+  const backTarget = useRef<HTMLButtonElement>(null);
+  const backLatched = useRef(false);
+  const [backHovered, setBackHovered] = useState(false);
   const preparePreview = useRef(previewChoice);
-  preparePreview.current = previewChoice;
+  useLayoutEffect(() => {
+    preparePreview.current = previewChoice;
+  }, [previewChoice]);
   const [preview, setPreview] = useState<PendingPreview | null>(null);
   const previewTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const previewVersion = useRef(0);
   const previewShown = useRef(false);
   const orderUsage = useRef(usage);
-  orderUsage.current = usage;
+  useLayoutEffect(() => {
+    orderUsage.current = usage;
+  }, [usage]);
   const registry = useMemo(() => new Registry(), []);
   const surface = useRef<HTMLDivElement>(null);
   const active = useRef<Wheel | null>(null);
@@ -223,6 +237,8 @@ export function QuickWheelSurface({
     )
       surface.current.releasePointerCapture(pointerId);
     clearTimer();
+    backLatched.current = false;
+    setBackHovered(false);
     pageLatch.current = null;
     update(null);
   };
@@ -281,7 +297,7 @@ export function QuickWheelSurface({
         );
       const top = Math.max(viewportTop + 12, bounds.top + 8),
         bottom = Math.min(
-          viewportTop + (viewport?.height ?? innerHeight) - 24,
+          viewportTop + (viewport?.height ?? innerHeight) - 88,
           bounds.bottom - 8,
         );
       const radius = Math.min(170, (right - left) / 2, (bottom - top) / 2);
@@ -319,6 +335,29 @@ export function QuickWheelSurface({
       if (!current || event.pointerId !== current.pointerId) return;
       event.preventDefault();
       pointerPosition.current = { x: event.clientX, y: event.clientY };
+      const backBounds =
+        backAction.current || backLatched.current
+          ? backTarget.current?.getBoundingClientRect()
+          : undefined;
+      const overBack =
+        backBounds &&
+        event.clientX >= backBounds.left &&
+        event.clientX <= backBounds.right &&
+        event.clientY >= backBounds.top &&
+        event.clientY <= backBounds.bottom;
+      if (overBack) {
+        clearTimer();
+        setBackHovered(true);
+        if (!backLatched.current) {
+          backLatched.current = true;
+          pageLatch.current = null;
+          update({ ...current, hovered: null, moved: false });
+          backAction.current?.();
+        }
+        return;
+      }
+      backLatched.current = false;
+      setBackHovered(false);
       const moved =
         current.moved ||
         Math.hypot(
@@ -542,7 +581,29 @@ export function QuickWheelSurface({
     <WheelContext.Provider value={registry}>
       <div {...props} ref={surface}>
         {children}
-        {wheel && <WheelDisplay wheel={wheel} preview={preview} />}
+        {wheel && (
+          <>
+            <WheelDisplay wheel={wheel} preview={preview} />
+            <button
+              ref={backTarget}
+              type="button"
+              data-quick-wheel-back=""
+              data-active={backHovered}
+              aria-label="Back one step"
+              disabled={!onBack}
+              onClick={() => backAction.current?.()}
+              className={cn(
+                "pointer-events-none fixed inset-x-0 bottom-0 z-[101] flex h-[calc(4rem+env(safe-area-inset-bottom))] items-center justify-center gap-2 border-t pb-[env(safe-area-inset-bottom)] text-base font-semibold shadow-lg transition-colors",
+                backHovered && onBack
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-card text-card-foreground",
+                !onBack && "text-muted-foreground",
+              )}
+            >
+              <ArrowLeftIcon className="size-5" /> Back
+            </button>
+          </>
+        )}
       </div>
     </WheelContext.Provider>
   );
