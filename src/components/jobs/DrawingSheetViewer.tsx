@@ -75,6 +75,7 @@ import { snapToLine, type SnapIndex, type SnapSegment } from "~/lib/sheet-snap";
 import {
   advanceMeasurePrecision,
   beginMeasurePrecision,
+  MAX_MEASURE_PRECISION_ZOOM,
   moveMeasurePrecision,
   type MeasurePrecision,
 } from "~/lib/sheet-measure-precision";
@@ -1597,14 +1598,23 @@ export function DrawingSheetViewer({
       })
     : [];
 
+  const maxLoupePx = Math.min(
+    LOUPE_PX * 1.5,
+    Math.max(1, Math.min(frameSize.width, frameSize.height) - 16),
+  );
+  const loupePx = Math.min(
+    LOUPE_PX *
+      (1 + 0.5 * ((loupe?.zoom ?? 1) - 1) / (MAX_MEASURE_PRECISION_ZOOM - 1)),
+    maxLoupePx,
+  );
   // Paint the magnifier from what is on screen: the saved image, any sharper
   // tiles and the PDF redraw, magnified around the aimed point.
   useEffect(() => {
     const canvas = loupeCanvas.current;
     const sheet = layer.current;
     if (!loupe || !canvas || !sheet) return;
-    const dpr = window.devicePixelRatio || 1;
-    const size = Math.round(LOUPE_PX * dpr);
+    const size = Math.round(loupePx * (window.devicePixelRatio || 1));
+    const dpr = size / loupePx;
     if (canvas.width !== size) {
       canvas.width = size;
       canvas.height = size;
@@ -1618,7 +1628,7 @@ export function DrawingSheetViewer({
     });
     const centre = hover ? toClient(hover) : loupe;
     const zoom = LOUPE_ZOOM * loupe.zoom;
-    const reach = LOUPE_PX / 2 / zoom;
+    const reach = loupePx / 2 / zoom;
     const src = {
       left: centre.x - reach,
       top: centre.y - reach,
@@ -1776,24 +1786,30 @@ export function DrawingSheetViewer({
       ctx.strokeText(arc.text, label.x, label.y);
       ctx.fillText(arc.text, label.x, label.y);
     }
-    const c = map(centre);
-    const arm = 10 * dpr;
-    for (const dx of [-1, 1])
-      for (const dy of [-1, 1]) {
-        for (const [color, width] of [
-          [measureHalo, 3.5],
-          [measureColor, 1.5],
-        ] as const) {
-          ctx.beginPath();
-          ctx.moveTo(c.x + dx * arm * 0.35, c.y + dy * arm * 0.35);
-          ctx.lineTo(c.x + dx * arm, c.y + dy * arm);
-          ctx.strokeStyle = color;
-          ctx.lineWidth = width * dpr;
-          ctx.lineCap = "butt";
-          ctx.stroke();
-        }
-      }
     ctx.restore();
+    // Scope reticle: fine horizontal/vertical arms, an open central gap and a
+    // tiny dot marking the exact aim. Contrast outlines work on light/dark ink.
+    const c = map(centre);
+    const arm = loupePx * 0.38 * dpr;
+    const gap = 5 * dpr;
+    for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]] as const) {
+      for (const [color, width] of [["#ffffff", 3], ["#111827", 1]] as const) {
+        ctx.beginPath();
+        ctx.moveTo(c.x + dx * gap, c.y + dy * gap);
+        ctx.lineTo(c.x + dx * arm, c.y + dy * arm);
+        ctx.strokeStyle = color;
+        ctx.lineWidth = width * dpr;
+        ctx.lineCap = "butt";
+        ctx.stroke();
+      }
+    }
+    ctx.beginPath();
+    ctx.arc(c.x, c.y, 1.25 * dpr, 0, Math.PI * 2);
+    ctx.fillStyle = "#111827";
+    ctx.fill();
+    ctx.strokeStyle = "#ffffff";
+    ctx.lineWidth = 0.75 * dpr;
+    ctx.stroke();
   });
   const snapMark = Math.max(1.2, 8 / view.scale);
   const total =
@@ -2879,13 +2895,21 @@ export function DrawingSheetViewer({
           frame.current &&
           (() => {
             const box = frame.current.getBoundingClientRect();
-            const half = LOUPE_PX / 2;
-            // Above the thumb; below it when there is no room at the top.
+            const half = loupePx / 2;
+            // Reserve room for the grown lens so zooming alone never makes it
+            // jump from above the finger to below it halfway through the ramp.
+            const fingerY = loupe.y - box.top;
+            const roomAbove = fingerY - LOUPE_GAP_PX - 8;
+            const roomBelow = box.height - fingerY - LOUPE_GAP_PX - 8;
             const above = loupe.y - box.top - LOUPE_GAP_PX - half;
-            const top =
-              above - half >= 8
+            const preferredTop =
+              roomAbove >= maxLoupePx || roomAbove >= roomBelow
                 ? above
-                : loupe.y - box.top + LOUPE_GAP_PX + half;
+                : fingerY + LOUPE_GAP_PX + half;
+            const top = Math.min(
+              Math.max(preferredTop, half + 8),
+              box.height - half - 8,
+            );
             const left = Math.min(
               Math.max(loupe.x - box.left, half + 8),
               box.width - half - 8,
@@ -2897,8 +2921,8 @@ export function DrawingSheetViewer({
                 aria-hidden="true"
                 className="pointer-events-none absolute z-30 rounded-full border-2 border-white bg-white shadow-[0_4px_16px_rgba(0,0,0,0.45)] ring-1 ring-black/30"
                 style={{
-                  width: LOUPE_PX,
-                  height: LOUPE_PX,
+                  width: loupePx,
+                  height: loupePx,
                   left: left - half,
                   top: top - half,
                 }}

@@ -5,8 +5,10 @@ type Point = { x: number; y: number };
 const SLOW_SPEED = 0.08;
 const FAST_SPEED = 0.3;
 const SLOW_DWELL_MS = 120;
-const ZOOM_RAMP_MS = 600;
-const MAX_ZOOM = 4;
+// Previously gained 3× in 600 ms. Keep the rate independent of the ceiling:
+// one third of that speed gains 1× per 600 ms, reaching 8× in 4.2 seconds.
+const ZOOM_PER_MS = 1 / 600;
+export const MAX_MEASURE_PRECISION_ZOOM = 8;
 
 export type MeasurePrecision = {
   finger: Point;
@@ -51,8 +53,8 @@ export function advanceMeasurePrecision(
   const zoom =
     slowSince !== null && now - slowSince >= SLOW_DWELL_MS
       ? Math.min(
-          MAX_ZOOM,
-          state.zoom + ((MAX_ZOOM - 1) * elapsed) / ZOOM_RAMP_MS,
+          MAX_MEASURE_PRECISION_ZOOM,
+          state.zoom + elapsed * ZOOM_PER_MS,
         )
       : state.zoom;
   // Only magnification changes during a pause; the target never drifts.
