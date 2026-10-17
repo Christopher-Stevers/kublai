@@ -1,10 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { curvedChoiceAt, quickWheelLayout } from "./quick-wheel-layout";
+import {
+  curvedChoiceAt,
+  quickWheelLayout,
+  wheelVisibleLimit,
+} from "./quick-wheel-layout";
 
 describe("edge-aware wheel layout", () => {
   it("preserves the circular wheel when it fits", () => {
     expect(
-      quickWheelLayout(300, 300, 170, 8, {
+      quickWheelLayout(300, 300, 170, 6, {
         left: 12,
         top: 12,
         right: 900,
@@ -37,17 +41,17 @@ describe("edge-aware wheel layout", () => {
         };
         const x = bounds.left + u! * (bounds.right - bounds.left),
           y = bounds.top + v! * (bounds.bottom - bounds.top);
-        for (let count = 1; count <= 8; count++) {
+        for (let count = 1; count <= wheelVisibleLimit(bounds); count++) {
           const layout = quickWheelLayout(x, y, 170, count, bounds);
           expect(layout.kind).toBe("curved");
           if (layout.kind !== "curved") continue;
           expect(layout.choices).toHaveLength(count);
           layout.choices.forEach((choice, index) => {
             const box = {
-              x: choice.label.x - 27,
-              y: choice.label.y - 22,
-              width: 54,
-              height: 44,
+              x: choice.label.x - 52,
+              y: choice.label.y - 52,
+              width: 104,
+              height: 104,
             };
             expect(box.x).toBeGreaterThanOrEqual(bounds.left - 1);
             expect(box.y).toBeGreaterThanOrEqual(bounds.top - 1);
@@ -58,13 +62,15 @@ describe("edge-aware wheel layout", () => {
             ).toBe(index);
             for (const other of layout.choices.slice(index + 1)) {
               expect(
-                Math.abs(choice.label.x - other.label.x) >= 54 ||
-                  Math.abs(choice.label.y - other.label.y) >= 44,
+                Math.hypot(
+                  choice.label.x - other.label.x,
+                  choice.label.y - other.label.y,
+                ) >= 108,
               ).toBe(true);
             }
           });
           expect(curvedChoiceAt(layout, x, y, x, y)).toBeNull();
-          // Every direction inside the visible hub must remain non-selectable,
+          // Every direction inside the activation dead zone must remain non-selectable,
           // including areas that used to belong to the narrow wedge tips.
           for (let angle = 0; angle < Math.PI * 2; angle += Math.PI / 16) {
             expect(

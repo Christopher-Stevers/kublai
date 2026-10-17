@@ -11,6 +11,12 @@ export type WheelLayout =
   | { kind: "curved"; choices: CurvedChoice[]; deadZoneRadius: number };
 // A short, deliberate slide should arm a choice, even inside the feedback hub.
 export const wheelDeadZoneRadius = (radius: number) => (radius * 32) / 170;
+export const WHEEL_CHOICE_DIAMETER = 104;
+export const wheelChoiceRingRadius = (radius: number) =>
+  Math.min((radius * 138) / 170, radius - WHEEL_CHOICE_DIAMETER / 2);
+
+export const wheelVisibleLimit = (bounds: WheelBounds) =>
+  bounds.bottom - bounds.top >= 260 && bounds.right - bounds.left < 350 ? 4 : 6;
 
 const clamp = (n: number, min: number, max: number) =>
   Math.max(min, Math.min(max, n));
@@ -27,12 +33,39 @@ export function quickWheelLayout(
     x - radius >= bounds.left &&
     x + radius <= bounds.right &&
     y - radius >= bounds.top &&
-    y + radius <= bounds.bottom
+    y + radius <= bounds.bottom &&
+    (count <= 1 ||
+      2 * wheelChoiceRingRadius(radius) * Math.sin(Math.PI / count) >=
+        WHEEL_CHOICE_DIAMETER + 8)
   )
     return { kind: "circle" };
-  // Reserve space around the curved rim for readable labels, even at corners.
-  const padding = 34;
-  const expandedRadius = radius * (1 + Math.max(0, count - 6) * 0.3);
+  // A short landscape viewport has room for a horizontal row of full-size circles.
+  if (bounds.bottom - bounds.top < 260) {
+    const step = (bounds.right - bounds.left) / count;
+    const middle = (bounds.top + bounds.bottom) / 2;
+    return {
+      kind: "curved",
+      deadZoneRadius: wheelDeadZoneRadius(radius),
+      choices: Array.from({ length: count }, (_, index) => {
+        const left = bounds.left + index * step;
+        const right = left + step;
+        const polygon = [
+          { x: left, y: bounds.top },
+          { x: right, y: bounds.top },
+          { x: right, y: bounds.bottom },
+          { x: left, y: bounds.bottom },
+        ];
+        return {
+          label: { x: (left + right) / 2, y: middle },
+          polygon,
+          path: `M ${left},${bounds.top} H ${right} V ${bounds.bottom} H ${left} Z`,
+        };
+      }),
+    };
+  }
+  // Spread larger circles over a taller arc and reserve their full radius at edges.
+  const padding = WHEEL_CHOICE_DIAMETER / 2;
+  const expandedRadius = radius * 1.7;
   const rx = Math.min(
     expandedRadius * (bounds.bottom - bounds.top < 260 ? 1.3 : 1),
     (bounds.right - bounds.left) / 2 - padding,
@@ -125,7 +158,8 @@ export function curvedChoiceAt(
   // Labels are part of their wedge, including the small rim overhang.
   const label = layout.choices.findIndex(
     (choice) =>
-      Math.abs(x - choice.label.x) <= 27 && Math.abs(y - choice.label.y) <= 22,
+      Math.hypot(x - choice.label.x, y - choice.label.y) <=
+      WHEEL_CHOICE_DIAMETER / 2,
   );
   if (label >= 0) return label;
   const index = layout.choices.findIndex(({ polygon }) => {

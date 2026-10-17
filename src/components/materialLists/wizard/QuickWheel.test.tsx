@@ -112,12 +112,14 @@ describe("wizard quick wheel", () => {
     expect(wheel()!.querySelector(".quick-wheel-backdrop")).toHaveStyle({
       top: "120px",
     });
-    // Full-circle label centres use the expanded ring, not the old 117-unit radius.
+    // Larger circles fit inside the wheel instead of extending off its rim.
     const label = wheel()!.querySelector("foreignObject")!;
     const y =
       Number(label.getAttribute("y")) +
       Number(label.getAttribute("height")) / 2;
-    expect(y).toBeCloseTo(170 - 138);
+    expect(y).toBeCloseTo(52);
+    expect(label).toHaveAttribute("width", "104");
+    expect(label.querySelector("span")).toHaveClass("whitespace-nowrap");
   });
   it("selects after 500 ms and continues through stages without releasing", () => {
     const select = vi.fn();

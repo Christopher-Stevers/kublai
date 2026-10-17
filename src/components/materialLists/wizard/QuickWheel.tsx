@@ -19,6 +19,9 @@ import {
   quickWheelLayout,
   curvedChoiceAt,
   wheelDeadZoneRadius,
+  WHEEL_CHOICE_DIAMETER,
+  wheelChoiceRingRadius,
+  wheelVisibleLimit,
   type WheelBounds,
 } from "./quick-wheel-layout";
 
@@ -82,9 +85,6 @@ type Wheel = Choices & {
   moved: boolean;
   skipEntrance?: boolean;
 };
-const MAX_VISIBLE_OPTIONS = 6;
-// Leave two slots for Previous and More whenever choices need multiple pages.
-const PAGED_CHOICES = MAX_VISIBLE_OPTIONS - 2;
 type Entry = Choice & { page?: number; sourceIndex?: number };
 function entriesFor(wheel: Wheel): Entry[] {
   const ranked = wheel.options.map((choice, sourceIndex) => ({
@@ -96,15 +96,14 @@ function entriesFor(wheel: Wheel): Entry[] {
   ranked.sort(
     (a, b) => frequency(b) - frequency(a) || a.sourceIndex - b.sourceIndex,
   );
-  const pages = Math.ceil(ranked.length / PAGED_CHOICES);
+  const visibleLimit = wheelVisibleLimit(wheel.bounds);
+  const pageSize = visibleLimit - 2;
+  const pages = Math.ceil(ranked.length / pageSize);
   const entries: Entry[] =
-    ranked.length <= MAX_VISIBLE_OPTIONS
+    ranked.length <= visibleLimit
       ? ranked
       : [
-          ...ranked.slice(
-            wheel.page * PAGED_CHOICES,
-            (wheel.page + 1) * PAGED_CHOICES,
-          ),
+          ...ranked.slice(wheel.page * pageSize, (wheel.page + 1) * pageSize),
           {
             label: "Previous",
             select: () => undefined,
@@ -130,16 +129,12 @@ function entriesFor(wheel: Wheel): Entry[] {
       : entries.map((_, index) => ({
           x:
             wheel.x +
-            (Math.sin((index * Math.PI * 2) / entries.length) *
-              wheel.radius *
-              RING) /
-              170,
+            Math.sin((index * Math.PI * 2) / entries.length) *
+              wheelChoiceRingRadius(wheel.radius),
           y:
             wheel.y -
-            (Math.cos((index * Math.PI * 2) / entries.length) *
-              wheel.radius *
-              RING) /
-              170,
+            Math.cos((index * Math.PI * 2) / entries.length) *
+              wheelChoiceRingRadius(wheel.radius),
         }));
   const slots = inwardSlots(points, wheel.screenCentre);
   const arranged: Entry[] = [];
@@ -528,9 +523,6 @@ export function QuickWheelSurface({
   );
 }
 
-/** Where the round choices sit on the full wheel (340-unit drawing space). */
-const RING = 138;
-
 type PendingPreview = {
   value: WheelPreview & { page?: number };
   x: number;
@@ -561,7 +553,8 @@ function WheelDisplay({
     entries.length,
     wheel.bounds,
   );
-  const pages = Math.ceil(wheel.options.length / PAGED_CHOICES);
+  const visibleLimit = wheelVisibleLimit(wheel.bounds);
+  const pages = Math.ceil(wheel.options.length / (visibleLimit - 2));
   const hint = selected
     ? selected.page !== undefined
       ? "Hold to browse"
@@ -646,18 +639,7 @@ function WheelDisplay({
         {layout.kind === "curved" ? (
           (() => {
             const points = layout.choices.map((choice) => choice.label);
-            const gap = points.length
-              ? Math.min(
-                  ...points.map((point, index) => {
-                    const next = points[(index + 1) % points.length]!;
-                    return points.length > 1
-                      ? Math.hypot(next.x - point.x, next.y - point.y)
-                      : 200;
-                  }),
-                )
-              : 200;
-            // Round choices sized to the spacing between them.
-            const width = Math.max(56, Math.min(78, gap - 8)),
+            const width = WHEEL_CHOICE_DIAMETER,
               height = width;
             // Keep room for feedback text; activation starts closer to the finger.
             const hub = (wheel.radius * 64) / 170;
@@ -723,7 +705,7 @@ function WheelDisplay({
                               : undefined,
                         }}
                       >
-                        <span className="line-clamp-3 break-words">
+                        <span className="whitespace-nowrap">
                           {labelOf(entries[index]!)}
                         </span>
                       </div>
@@ -762,13 +744,9 @@ function WheelDisplay({
             {(() => {
               // Tiles keep a readable size on screen whatever the wheel's scale.
               const scale = wheel.radius / 170;
+              const ring = wheelChoiceRingRadius(wheel.radius) / scale;
               const step = (Math.PI * 2) / entries.length;
-              const chord =
-                entries.length > 1 ? 2 * RING * Math.sin(step / 2) - 6 : 150;
-              const width = Math.max(
-                  54 / scale,
-                  Math.min(76 / scale, chord - 6),
-                ),
+              const width = WHEEL_CHOICE_DIAMETER / scale,
                 height = width;
               return (
                 <svg
@@ -779,7 +757,7 @@ function WheelDisplay({
                   <circle
                     cx="170"
                     cy="170"
-                    r={RING}
+                    r={ring}
                     fill="none"
                     className="stroke-border"
                     strokeWidth={2 / scale}
@@ -804,8 +782,8 @@ function WheelDisplay({
                     return (
                       <foreignObject
                         key={`${wheel.page}-${index}`}
-                        x={170 + Math.sin(angle) * (RING + lift) - width / 2}
-                        y={170 - Math.cos(angle) * (RING + lift) - height / 2}
+                        x={170 + Math.sin(angle) * (ring + lift) - width / 2}
+                        y={170 - Math.cos(angle) * (ring + lift) - height / 2}
                         width={width}
                         height={height}
                         className="overflow-visible"
@@ -821,7 +799,7 @@ function WheelDisplay({
                                 : undefined,
                           }}
                         >
-                          <span className="line-clamp-3 break-words">
+                          <span className="whitespace-nowrap">
                             {labelOf(entry)}
                           </span>
                         </div>
@@ -843,7 +821,7 @@ function WheelDisplay({
               <span className="text-muted-foreground text-[10px] leading-tight">
                 {hint}
               </span>
-              {wheel.options.length > MAX_VISIBLE_OPTIONS && (
+              {wheel.options.length > visibleLimit && (
                 <span className="text-muted-foreground/80 text-[10px] tabular-nums">
                   {wheel.page + 1} / {pages}
                 </span>
