@@ -83,7 +83,7 @@ export default function JobOptionsPage({
     );
   const job = jobDetail?.job ?? serverJob ?? null;
   const materialListCount =
-    jobDetail?.materialLists.length ?? serverJob?.materialLists.length ?? 0;
+    (jobDetail?.materialLists ?? serverJob?.materialLists ?? []).filter(list => list.kind !== "tools").length;
   const jobLocationAddress = formatLocationAddress(job?.location);
 
   if (!job && !hasFetchedServerJob) {
@@ -180,6 +180,7 @@ export default function JobOptionsPage({
 
         <JobWorkspaceOptions
           materialListCount={materialListCount}
+          toolRequestCount={(jobDetail?.materialLists ?? serverJob?.materialLists ?? []).filter(list => list.kind === "tools").length}
           roomCount={roomCount.count}
           roomCountLoading={roomCount.loading}
           chatUnreadCount={chatOverview?.unreadCount}
@@ -189,6 +190,9 @@ export default function JobOptionsPage({
               view: optionId,
               materialListId: null,
             });
+            if (optionId === "tool-requests") {
+              router.push(`/dashboard/jobs/${job.id}/tool-requests`);
+            }
             if (optionId === "material-lists") {
               router.push(`/dashboard/jobs/${job.id}/material-lists`);
             }

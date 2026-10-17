@@ -1,5 +1,6 @@
 export type JobWorkspaceOptionId =
   | "material-lists"
+  | "tool-requests"
   | "rooms"
   | "models"
   | "drawings"
@@ -31,6 +32,7 @@ export function getLastJobWorkspaceLocation(): JobWorkspaceLocation | null {
     if (
       parsed.view !== "options" &&
       parsed.view !== "material-lists" &&
+      parsed.view !== "tool-requests" &&
       parsed.view !== "rooms" &&
       parsed.view !== "drawings" &&
       parsed.view !== "models" &&

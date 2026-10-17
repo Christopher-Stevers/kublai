@@ -78,3 +78,13 @@ it("the logo reset immediately clears an already mounted workspace", () => {
   expect(getLastJobWorkspaceLocation()).toBeNull();
   expect(window.history.state).toMatchObject(nextState);
 });
+it("restores tool requests and returns to their separate list", () => {
+  const request: JobWorkspaceLocation = { ...list, view: "tool-requests" };
+  setLastJobWorkspaceLocation(request);
+  const { result } = renderHook(useJobWorkspaceNavigation);
+  expect(result.current.location).toEqual(request);
+  act(() => result.current.back());
+  expect(result.current.location).toEqual({ ...request, materialListId: null });
+  act(() => result.current.back());
+  expect(result.current.location).toEqual(job);
+});

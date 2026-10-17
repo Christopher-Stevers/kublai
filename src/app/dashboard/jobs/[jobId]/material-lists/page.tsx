@@ -148,6 +148,8 @@ export default function JobDetailPage({
 }) {
   const { jobId: paramJobId } = use(params);
   const pathname = usePathname();
+  const showingToolRequests = pathname.endsWith("/tool-requests");
+  const createLabel = showingToolRequests ? "New Tool Request" : "New Material List";
   const jobId =
     pathname.match(/^\/dashboard\/jobs\/([^/?#]+)/)?.[1] ?? paramJobId;
   const router = useRouter();
@@ -173,10 +175,10 @@ export default function JobDetailPage({
   useEffect(() => {
     setLastJobWorkspaceLocation({
       jobId,
-      view: "material-lists",
+      view: showingToolRequests ? "tool-requests" : "material-lists",
       materialListId: null,
     });
-  }, [jobId]);
+  }, [jobId, showingToolRequests]);
   const { data: userData } = api.user.getMyRole.useQuery(undefined, {
     enabled: isBrowserOnline,
   });
@@ -215,7 +217,7 @@ export default function JobDetailPage({
     ]) ?? [],
   );
   const job = jobDetail?.job ?? serverJob ?? null;
-  const materialLists = (jobDetail?.materialLists ?? serverMaterialLists)?.map(
+  const materialLists = (jobDetail?.materialLists ?? serverMaterialLists)?.filter(list => (list.kind === "tools") === showingToolRequests).map(
     (list) => ({
       ...list,
       ...serverSendStatusByListId.get(list.id),
@@ -360,26 +362,17 @@ export default function JobDetailPage({
         <div className="mb-6 flex flex-col gap-4 sm:mb-8 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-xl font-semibold text-foreground">
-              Material Lists
+              {showingToolRequests ? "Tool Requests" : "Material Lists"}
             </h2>
           </div>
           <div className="hidden gap-2 sm:flex">
             <Button
-              onClick={handleCreateToolRequest}
-              size="lg"
-              variant="outline"
-              className="h-11 w-full sm:w-auto"
-            >
-              <WrenchIcon className="mr-2 h-5 w-5" />
-              Tool Request
-            </Button>
-            <Button
-              onClick={handleCreateNew}
+              onClick={showingToolRequests ? handleCreateToolRequest : handleCreateNew}
               size="lg"
               className="h-11 w-full sm:w-auto"
             >
               <PlusIcon className="mr-2 h-5 w-5" />
-              New Material List
+              {createLabel}
             </Button>
           </div>
         </div>
@@ -390,14 +383,14 @@ export default function JobDetailPage({
             <CardContent className="flex flex-col items-center justify-center py-12">
               <PackageIcon className="mb-4 h-12 w-12 text-muted-foreground/70" />
               <h3 className="mb-2 text-lg font-semibold">
-                No material lists yet
+                {showingToolRequests ? "No tool requests yet" : "No material lists yet"}
               </h3>
               <p className="text-muted-foreground mb-4 text-center">
-                Create your first material list to get started
+                {showingToolRequests ? "Create your first tool request to get started" : "Create your first material list to get started"}
               </p>
-              <Button onClick={handleCreateNew}>
+              <Button onClick={showingToolRequests ? handleCreateToolRequest : handleCreateNew}>
                 <PlusIcon className="mr-2 h-4 w-4" />
-                New Material List
+                {createLabel}
               </Button>
             </CardContent>
           </Card>
@@ -540,21 +533,10 @@ export default function JobDetailPage({
         )}
 
         <div className="bg-background fixed inset-x-0 bottom-0 z-40 border-t px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:hidden">
-          <div className="grid grid-cols-[auto_1fr] gap-2">
-            <Button
-              onClick={handleCreateToolRequest}
-              size="lg"
-              variant="outline"
-              className="h-12"
-              aria-label="New tool request"
-            >
-              <WrenchIcon className="h-5 w-5" />
-            </Button>
-            <Button onClick={handleCreateNew} size="lg" className="h-12 w-full">
+            <Button onClick={showingToolRequests ? handleCreateToolRequest : handleCreateNew} size="lg" className="h-12 w-full">
               <PlusIcon className="mr-2 h-5 w-5" />
-              New Material List
+              {createLabel}
             </Button>
-          </div>
         </div>
 
         <Dialog

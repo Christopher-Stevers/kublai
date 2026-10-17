@@ -44,6 +44,7 @@ export const snapshotStateSchema = z.object({
       view: z.enum([
         "options",
         "material-lists",
+        "tool-requests",
         "rooms",
         "drawings",
         "models",

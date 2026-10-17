@@ -77,7 +77,7 @@ export default function MaterialListDetailPage({
       { enabled: isBrowserOnline && !!verifyOrderId },
     );
   useHeaderBackOverride(mlHeader?.jobId ? () => {
-    router.replace(`/dashboard/jobs/${encodeURIComponent(mlHeader.jobId)}/material-lists`);
+    router.replace(`/dashboard/jobs/${encodeURIComponent(mlHeader.jobId)}/${mlHeader.kind === "tools" ? "tool-requests" : "material-lists"}`);
   } : null, { priority: -50 });
   const suppliers = useReplicacheSuppliers();
   const { sortedItems: ordinaryItems } = useMaterialListSort(unsortedItems, suppliers);
