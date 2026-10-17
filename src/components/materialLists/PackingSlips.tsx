@@ -1,6 +1,10 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
+const PackingSlipScanner = dynamic(() => import("./PackingSlipScanner"), {
+  ssr: false,
+});
 import { CameraIcon, FileTextIcon, UploadIcon } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import {
@@ -36,8 +40,8 @@ export function PackingSlips({
     [canUpload, setCanUpload] = useState(false);
   const [retryFile, setRetryFile] = useState<File | null>(null);
   useEffect(() => setRetryFile(null), [jobId, materialListId, orderId]);
-  const camera = useRef<HTMLInputElement>(null),
-    files = useRef<HTMLInputElement>(null);
+  const [scanning, setScanning] = useState(false);
+  const files = useRef<HTMLInputElement>(null);
   const load = useCallback(
     async (signal?: AbortSignal) => {
       setLoading(true);
@@ -81,7 +85,7 @@ export function PackingSlips({
     return () => controller.abort();
   }, [open, online, load]);
   const upload = async (file: File | undefined) => {
-    if (!file || !orderId) return;
+    if (!file || !orderId) return false;
     setBusy(true);
     setError(null);
     try {
@@ -98,10 +102,14 @@ export function PackingSlips({
           result.error ?? "Could not save packing slip. Please retry.",
         );
       setRetryFile(null);
-      await load();
+      await load().catch(() =>
+        setError("Packing slip saved. Reopen this window to refresh the list."),
+      );
+      return true;
     } catch (e) {
       setRetryFile(file);
       setError(e instanceof Error ? e.message : "Could not save packing slip.");
+      return false;
     } finally {
       setBusy(false);
     }
@@ -115,13 +123,13 @@ export function PackingSlips({
       <Dialog
         open={open}
         onOpenChange={(value) => {
-          if (!busy) {
+          if (!busy && !scanning) {
             setOpen(value);
             if (!value) setRetryFile(null);
           }
         }}
       >
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-h-[90dvh] max-w-lg overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Packing slips</DialogTitle>
             <DialogDescription>
@@ -130,16 +138,23 @@ export function PackingSlips({
                 : "Packing slips attached to orders from this material list."}
             </DialogDescription>
           </DialogHeader>
-          {!online ? (
+          {scanning ? (
+            <PackingSlipScanner
+              key={`${jobId}:${materialListId}:${orderId}`}
+              onSave={upload}
+              onCancel={() => {
+                setScanning(false);
+                setRetryFile(null);
+                setError(null);
+              }}
+            />
+          ) : !online ? (
             <p>Reconnect to view or upload packing slips.</p>
           ) : (
             <>
               {orderId && canUpload && (
                 <div className="flex flex-wrap gap-2">
-                  <Button
-                    disabled={busy}
-                    onClick={() => camera.current?.click()}
-                  >
+                  <Button disabled={busy} onClick={() => setScanning(true)}>
                     <CameraIcon className="mr-2 size-4" />
                     Take photo
                   </Button>
@@ -153,19 +168,6 @@ export function PackingSlips({
                   </Button>
                 </div>
               )}
-              <input
-                ref={camera}
-                type="file"
-                accept="image/*"
-                capture="environment"
-                className="hidden"
-                aria-label="Photograph packing slip"
-                onChange={(event) => {
-                  const file = event.currentTarget.files?.[0];
-                  event.currentTarget.value = "";
-                  void upload(file);
-                }}
-              />
               <input
                 ref={files}
                 type="file"
@@ -196,7 +198,13 @@ export function PackingSlips({
                     disabled={busy}
                     onClick={() => {
                       setError(null);
-                      void load().catch((e) => setError(e.message));
+                      void load().catch((e: unknown) =>
+                        setError(
+                          e instanceof Error
+                            ? e.message
+                            : "Could not load packing slips.",
+                        ),
+                      );
                     }}
                   >
                     Retry loading

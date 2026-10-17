@@ -12,7 +12,7 @@ afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
 });
-it("uploads a camera image with its order and lists the saved document without marking items received", async () => {
+it("uploads an image with its order and lists the saved document without marking items received", async () => {
   let saved = false;
   const fetcher = vi.fn(async (url: string, options?: RequestInit) => {
     if (options?.method === "POST") {
@@ -46,8 +46,7 @@ it("uploads a camera image with its order and lists the saved document without m
   render(<PackingSlips jobId="job" materialListId="list" orderId="order" />);
   fireEvent.click(screen.getByRole("button", { name: "Packing slips" }));
   await screen.findByRole("button", { name: "Take photo" });
-  const camera = screen.getByLabelText("Photograph packing slip");
-  expect(camera).toHaveAttribute("capture", "environment");
+  const camera = screen.getByLabelText("Upload packing slip");
   fireEvent.change(camera, {
     target: {
       files: [new File(["photo"], "photo.jpg", { type: "image/jpeg" })],
