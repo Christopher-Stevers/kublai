@@ -14,21 +14,115 @@ export type WheelLayout =
       choices: CurvedChoice[];
       deadZoneRadius: number;
       labelsOnly?: boolean;
+      /** Line joining the choices, when they don't sit on a single arc. */
+      track?: string;
     };
 // A short, deliberate slide should arm a choice, even inside the feedback hub.
 export const wheelDeadZoneRadius = (radius: number) => (radius * 32) / 170;
 export const WHEEL_CHOICE_DIAMETER = 104;
 export const wheelChoiceRingRadius = (radius: number) =>
   Math.min((radius * 138) / 170, radius - WHEEL_CHOICE_DIAMETER / 2);
+/** The feedback circle under the finger. */
+export const wheelHubRadius = (radius: number) => (radius * 64) / 170;
 
-export const wheelVisibleLimit = (bounds: WheelBounds, hand?: WheelHand) =>
-  hand
-    ? bounds.bottom - bounds.top < 260
-      ? 3
-      : 4
+type Origin = { x: number; y: number; radius: number };
+export const wheelVisibleLimit = (
+  bounds: WheelBounds,
+  hand?: WheelHand,
+  origin?: Origin,
+) =>
+  hand && origin
+    ? // As many as fit clear of the thumb, between three and six.
+      Math.max(
+        3,
+        thumbFan(origin.x, origin.y, origin.radius, 6, bounds, hand).length,
+      )
     : bounds.bottom - bounds.top >= 260 && bounds.right - bounds.left < 350
       ? 4
       : 6;
+
+// Clockwise from straight up, as on the round wheel.
+const pointAt = (x: number, y: number, angle: number, r: number) => ({
+  x: x + Math.sin(angle) * r,
+  y: y - Math.cos(angle) * r,
+});
+const turn = (angle: number) => {
+  const a = (((angle % (Math.PI * 2)) + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
+  return Math.abs(a);
+};
+function distanceToSegment(p: Point, a: Point, b: Point) {
+  const dx = b.x - a.x,
+    dy = b.y - a.y;
+  const t = clamp(
+    ((p.x - a.x) * dx + (p.y - a.y) * dy) / (dx * dx + dy * dy),
+    0,
+    1,
+  );
+  return Math.hypot(p.x - (a.x + dx * t), p.y - (a.y + dy * t));
+}
+type FanSlot = Point & { ring: number; angle: number };
+
+/**
+ * Up to `count` slots on rings around the finger, filled from the inner ring
+ * outward and centred on the side away from the thumb. No slot sits under the
+ * thumb, over the hub, under the title, or in the straight slide to another.
+ */
+function thumbFan(
+  x: number,
+  y: number,
+  radius: number,
+  count: number,
+  bounds: WheelBounds,
+  hand: WheelHand,
+): FanSlot[] {
+  const padding = WHEEL_CHOICE_DIAMETER / 2;
+  const gap = WHEEL_CHOICE_DIAMETER + 12;
+  const away = ((hand === "right" ? -1 : 1) * Math.PI) / 4;
+  const first = Math.max(
+    wheelChoiceRingRadius(radius),
+    wheelHubRadius(radius) + padding + 18,
+  );
+  const top = bounds.top + 52;
+  const candidates: (FanSlot & { score: number })[] = [];
+  // Rings closer than a tile apart; the spacing check staggers them.
+  for (let ring = 0; ring < 6; ring++) {
+    const r = first + ring * gap * 0.8;
+    for (let degree = 0; degree < 360; degree += 3) {
+      const angle = (degree * Math.PI) / 180;
+      const point = pointAt(x, y, angle, r);
+      if (
+        point.x - padding < bounds.left ||
+        point.x + padding > bounds.right ||
+        point.y - padding < top ||
+        point.y + padding > bounds.bottom ||
+        thumbClearance(point.x, point.y, x, y, hand) < padding + 38
+      )
+        continue;
+      candidates.push({
+        ...point,
+        ring: r,
+        angle,
+        score: ring * 10 + turn(angle - away),
+      });
+    }
+  }
+  candidates.sort((a, b) => a.score - b.score);
+  const chosen: FanSlot[] = [];
+  for (const slot of candidates) {
+    if (chosen.length === count) break;
+    if (
+      chosen.some(
+        (other) =>
+          Math.hypot(other.x - slot.x, other.y - slot.y) < gap ||
+          (other.ring < slot.ring &&
+            distanceToSegment(other, { x, y }, slot) < padding + 6),
+      )
+    )
+      continue;
+    chosen.push(slot);
+  }
+  return chosen;
+}
 
 const clamp = (n: number, min: number, max: number) =>
   Math.max(min, Math.min(max, n));
@@ -43,50 +137,35 @@ export function quickWheelLayout(
   hand?: WheelHand,
 ): WheelLayout {
   if (hand) {
-    const padding = WHEEL_CHOICE_DIAMETER / 2;
-    const gap = WHEEL_CHOICE_DIAMETER + 12;
-    const columns = Math.max(1, Math.floor((bounds.right - bounds.left) / gap));
-    const rows = Math.max(1, Math.floor((bounds.bottom - bounds.top) / gap));
-    const points = Array.from({ length: columns * rows }, (_, index) => {
-      const column = index % columns,
-        row = Math.floor(index / columns);
-      return {
-        x:
-          columns === 1
-            ? (bounds.left + bounds.right) / 2
-            : bounds.left +
-              padding +
-              (column * (bounds.right - bounds.left - padding * 2)) /
-                (columns - 1),
-        y:
-          rows === 1
-            ? (bounds.top + bounds.bottom) / 2
-            : bounds.top +
-              padding +
-              (row * (bounds.bottom - bounds.top - padding * 2)) / (rows - 1),
-      };
-    });
-    // Full circles stay clear of the estimated thumb, including their edges.
-    const clearance = (point: Point) =>
-      thumbClearance(point.x, point.y, x, y, hand);
-    points.sort((a, b) => {
-      const blockedA = clearance(a) < padding + 38,
-        blockedB = clearance(b) < padding + 38;
-      if (blockedA !== blockedB) return blockedA ? 1 : -1;
-      if (blockedA) return clearance(b) - clearance(a);
-      return Math.hypot(a.x - x, a.y - y) - Math.hypot(b.x - x, b.y - y);
-    });
-    if (points.length >= count) {
-      const chosen = points
-        .slice(0, count)
-        .sort(
-          (a, b) => Math.atan2(a.y - y, a.x - x) - Math.atan2(b.y - y, b.x - x),
-        );
+    const slots = thumbFan(x, y, radius, count, bounds, hand);
+    if (slots.length === count) {
+      // Order round the free side, starting just past the thumb, so the track
+      // along each ring never crosses the thumb or the hub.
+      const thumb = ((hand === "right" ? 1 : -1) * Math.PI * 4) / 5;
+      const around = (slot: FanSlot) =>
+        (((slot.angle - thumb) % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
+      slots.sort((a, b) => a.ring - b.ring || around(a) - around(b));
+      // One rail per ring, from its first tile to its last.
+      const track = [...new Set(slots.map((slot) => slot.ring))]
+        .map((ring) => {
+          const onRing = slots.filter((slot) => slot.ring === ring);
+          if (onRing.length < 2) return "";
+          const from = onRing[0]!,
+            to = onRing.at(-1)!;
+          const large = around(to) - around(from) > Math.PI ? 1 : 0;
+          return `M${from.x} ${from.y}A${ring} ${ring} 0 ${large} 1 ${to.x} ${to.y}`;
+        })
+        .join("");
       return {
         kind: "curved",
         deadZoneRadius: wheelDeadZoneRadius(radius),
         labelsOnly: true,
-        choices: chosen.map((label) => ({ label, polygon: [], path: "" })),
+        track,
+        choices: slots.map(({ x, y }) => ({
+          label: { x, y },
+          polygon: [],
+          path: "",
+        })),
       };
     }
   }

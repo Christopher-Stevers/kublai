@@ -99,7 +99,7 @@ function entriesFor(wheel: Wheel): Entry[] {
   ranked.sort(
     (a, b) => frequency(b) - frequency(a) || a.sourceIndex - b.sourceIndex,
   );
-  const visibleLimit = wheelVisibleLimit(wheel.bounds, wheel.hand);
+  const visibleLimit = wheelVisibleLimit(wheel.bounds, wheel.hand, wheel);
   const pageSize = visibleLimit - 2;
   const pages = Math.ceil(ranked.length / pageSize);
   const entries: Entry[] =
@@ -652,7 +652,7 @@ function WheelDisplay({
     wheel.bounds,
     wheel.hand,
   );
-  const visibleLimit = wheelVisibleLimit(wheel.bounds, wheel.hand);
+  const visibleLimit = wheelVisibleLimit(wheel.bounds, wheel.hand, wheel);
   const pages = Math.ceil(wheel.options.length / (visibleLimit - 2));
   const hint = selected
     ? selected.page !== undefined
@@ -667,12 +667,12 @@ function WheelDisplay({
       : entry.label;
   const tileClass = (index: number, entry: Entry) =>
     cn(
-      "quick-wheel-tile flex h-full w-full items-center justify-center rounded-full border p-1.5 text-center leading-tight font-semibold uppercase shadow-md transition-[scale,background-color,color,box-shadow] duration-150 ease-out",
+      "quick-wheel-tile flex h-full w-full items-center justify-center rounded-full border p-1.5 text-center leading-tight font-semibold tracking-wide uppercase shadow-[0_6px_16px_-4px_rgb(0_0_0/0.25)] transition-[scale,background-color,color,box-shadow,border-color] duration-150 ease-out",
       wheel.hovered === index
         ? "bg-primary text-primary-foreground border-primary ring-primary/25 scale-110 shadow-lg ring-4"
         : entry.page !== undefined
-          ? "bg-card text-muted-foreground"
-          : "bg-card text-card-foreground",
+          ? "bg-muted/90 text-muted-foreground border-dashed border-muted-foreground/40 backdrop-blur-sm"
+          : "bg-card text-card-foreground border-primary/25 dark:border-primary/35",
     );
   return (
     <div
@@ -752,10 +752,11 @@ function WheelDisplay({
                   aria-hidden="true"
                 >
                   <path
-                    d={smoothCurve(points)}
+                    data-wheel-track=""
+                    d={layout.track ?? smoothCurve(points)}
                     fill="none"
-                    className="stroke-border"
-                    strokeWidth="2"
+                    className="stroke-primary/30 dark:stroke-primary/40"
+                    strokeWidth="3"
                     strokeLinecap="round"
                   />
                   <circle
@@ -798,7 +799,12 @@ function WheelDisplay({
                           "text-[13px]",
                         )}
                         style={{
-                          animationDelay: `${index * 20}ms`,
+                          // Tiles fly out from under the finger.
+                          ...({
+                            "--from-x": `${wheel.x - choice.label.x}px`,
+                            "--from-y": `${wheel.y - choice.label.y}px`,
+                          } as React.CSSProperties),
+                          animationDelay: `${index * 25}ms`,
                           animation:
                             isPreview || wheel.skipEntrance
                               ? "none"
