@@ -31,3 +31,34 @@ default; all 11 current members of Tim's organization were subsequently assigned
 Validation: focused unit/component/workflow tests, route tests for invite defaults
 and rejected external destinations, and repeated history traversal in Chromium.
 Physical Android gesture behavior remains a device verification step.
+
+## Android cold-launch Back — 2026-10-17
+
+Android's browser UI may skip synthetic history entries created before user
+activation, or re-created following a history traversal. A `history.back()` test
+alone does not reproduce that policy, so a guard could appear to pass browser
+checks while an installed app still closed from its landing screen.
+
+On Android with `CloseWatcher` support, one shared native close watcher now calls
+the same highest-priority parent handler as the header arrow. It re-arms after
+React applies the parent screen. Registering separate watchers for each nested
+screen would risk processing multiple levels on one close request, so watcher
+ownership stays in the central override registry. The Jobs root registers no
+nonexistent routed parent, allowing ordinary platform closing there.
+
+Other platforms and unsupported/failed native constructors retain the history
+fallback. A marker inherited from an earlier document is cleared before adding
+its sentinel; Next and workspace metadata remain intact.
+
+Verification includes 98 focused tests and actual Chromium native close requests
+from a fresh Android-user-agent context, without a tap or user activation. The
+browser fixture reads state through CDP with `userGesture: false` (ordinary
+Playwright evaluation can grant activation and hide the bug). Four consecutive
+native close requests traversed Drawing → Set → Drawings → Job → Jobs, with zero
+new history entries or client errors. Alternating the arrow and native requests
+also moved exactly one level. Escape exercises the browser close-request path;
+a physical Android edge swipe remains a device verification step.
+
+Sources: [Chromium history intervention](https://chromium.googlesource.com/chromium/src/+/main/docs/history_manipulation_intervention.md),
+[Chrome's Android close requests](https://developer.chrome.com/blog/new-in-chrome-126),
+[CloseWatcher specification](https://html.spec.whatwg.org/dev/interaction.html#the-closewatcher-interface).

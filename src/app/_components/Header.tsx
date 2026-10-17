@@ -251,7 +251,7 @@ function HeaderFrame({
   };
   // Routed screens provide the base level; in-page viewers and wizard steps
   // take precedence even if their effects mount before the header.
-  useHeaderBackOverride(pathname?.startsWith("/dashboard") ? goUp : null, {
+  useHeaderBackOverride(pathname?.startsWith("/dashboard/") ? goUp : null, {
     priority: -100, scope: pathname ?? "",
   });
   const handleBack = () => { runHeaderBackOverride(); };

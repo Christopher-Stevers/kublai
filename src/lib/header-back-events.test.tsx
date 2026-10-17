@@ -1,13 +1,22 @@
 import { act, cleanup, renderHook } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { runHeaderBackOverride, useHeaderBackOverride } from "./header-back-events";
+import {
+  runHeaderBackOverride,
+  useHeaderBackOverride,
+} from "./header-back-events";
 
 const tick = () => act(() => new Promise((resolve) => setTimeout(resolve, 0)));
-const isGuard = () => Boolean((window.history.state as Record<string, unknown> | null)?.foremenhqBackGuard);
+const isGuard = () =>
+  Boolean(
+    (window.history.state as Record<string, unknown> | null)
+      ?.foremenhqBackGuard,
+  );
 const systemBack = async () => {
   // jsdom's history.back() is async; emulate the browser popping the guard.
   window.history.replaceState({ page: "under" }, "");
-  window.dispatchEvent(new PopStateEvent("popstate", { state: window.history.state as unknown }));
+  window.dispatchEvent(
+    new PopStateEvent("popstate", { state: window.history.state as unknown }),
+  );
   await tick();
 };
 
@@ -19,8 +28,8 @@ afterEach(async () => {
   cleanup();
   await tick();
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
-
 
 describe("useHeaderBackOverride", () => {
   it("lets the newest active screen take the back arrow, and releases it", () => {
@@ -83,7 +92,13 @@ describe("useHeaderBackOverride and the phone's back", () => {
     let open = true;
     const back = vi.spyOn(window.history, "back").mockImplementation(() => {});
     const { rerender } = renderHook(() =>
-      useHeaderBackOverride(open ? () => { open = false; } : null),
+      useHeaderBackOverride(
+        open
+          ? () => {
+              open = false;
+            }
+          : null,
+      ),
     );
     await tick();
     expect(isGuard()).toBe(true);
@@ -101,13 +116,23 @@ describe("useHeaderBackOverride and the phone's back", () => {
     const push = vi.spyOn(window.history, "pushState");
     const back = vi.spyOn(window.history, "back").mockImplementation(() => {});
     const { rerender } = renderHook(() =>
-      useHeaderBackOverride(open ? () => { open = false; } : null),
+      useHeaderBackOverride(
+        open
+          ? () => {
+              open = false;
+            }
+          : null,
+      ),
     );
     await tick();
     expect(push).toHaveBeenCalledTimes(1);
     act(() => {
       window.history.replaceState({ page: "under" }, "");
-      window.dispatchEvent(new PopStateEvent("popstate", { state: window.history.state as unknown }));
+      window.dispatchEvent(
+        new PopStateEvent("popstate", {
+          state: window.history.state as unknown,
+        }),
+      );
       rerender();
     });
     await tick();
@@ -115,7 +140,6 @@ describe("useHeaderBackOverride and the phone's back", () => {
     expect(back).not.toHaveBeenCalled();
   });
 });
-
 
 it("gives nested screens priority even when a parent mounts later", () => {
   const child = vi.fn();
@@ -125,4 +149,107 @@ it("gives nested screens priority even when a parent mounts later", () => {
   runHeaderBackOverride();
   expect(child).toHaveBeenCalledOnce();
   expect(parent).not.toHaveBeenCalled();
+});
+
+describe("Android native Back from a fresh launch", () => {
+  function android() {
+    const watchers: Array<EventTarget & { destroy: ReturnType<typeof vi.fn> }> =
+      [];
+    class Watcher extends EventTarget {
+      destroy = vi.fn();
+      constructor() {
+        super();
+        watchers.push(this);
+      }
+    }
+    vi.spyOn(navigator, "userAgent", "get").mockReturnValue(
+      "Mozilla/5.0 (Linux; Android 15)",
+    );
+    vi.stubGlobal("CloseWatcher", Watcher);
+    return watchers;
+  }
+  it("handles repeated native requests without prior taps or browser history, one parent per request", async () => {
+    const watchers = android();
+    const push = vi.spyOn(window.history, "pushState");
+    const parents = ["set", "drawings", "job", "jobs"];
+    let level = 0;
+    const navigate = vi.fn(() => {
+      level++;
+    });
+    const hook = renderHook(() =>
+      useHeaderBackOverride(level < parents.length ? navigate : null),
+    );
+    await tick();
+    for (let i = 0; i < parents.length; i++) {
+      expect(watchers).toHaveLength(i + 1);
+      act(() => {
+        watchers[i]!.dispatchEvent(new Event("close"));
+        hook.rerender();
+      });
+      await tick();
+      expect(navigate).toHaveBeenCalledTimes(i + 1);
+      expect(level).toBe(i + 1);
+    }
+    expect(push).not.toHaveBeenCalled();
+    expect(watchers).toHaveLength(4); // Jobs has no parent; no close trap remains.
+  });
+  it("uses only one watcher and the latest highest-priority screen when parents mount later", async () => {
+    const watchers = android();
+    const child = vi.fn(),
+      parent = vi.fn();
+    const nested = renderHook(() => useHeaderBackOverride(child));
+    renderHook(() => useHeaderBackOverride(parent, { priority: -100 }));
+    await tick();
+    expect(watchers).toHaveLength(1);
+    act(() => watchers[0]!.dispatchEvent(new Event("close")));
+    expect(child).toHaveBeenCalledOnce();
+    expect(parent).not.toHaveBeenCalled();
+    nested.unmount();
+    await tick();
+    act(() => watchers[1]!.dispatchEvent(new Event("close")));
+    expect(parent).toHaveBeenCalledOnce();
+  });
+  it("destroys the watcher on teardown and ignores late close events", async () => {
+    const watchers = android();
+    const handler = vi.fn();
+    const hook = renderHook(() => useHeaderBackOverride(handler));
+    await tick();
+    hook.unmount();
+    await tick();
+    expect(watchers[0]!.destroy).toHaveBeenCalledOnce();
+    act(() => watchers[0]!.dispatchEvent(new Event("close")));
+    expect(handler).not.toHaveBeenCalled();
+  });
+  it("falls back to history when the native constructor fails", async () => {
+    android();
+    vi.stubGlobal(
+      "CloseWatcher",
+      class {
+        constructor() {
+          throw new Error("Unavailable");
+        }
+      },
+    );
+    const handler = vi.fn();
+    renderHook(() => useHeaderBackOverride(handler));
+    await tick();
+    expect(isGuard()).toBe(true);
+    await systemBack();
+    expect(handler).toHaveBeenCalledOnce();
+  });
+});
+
+it("clears an inherited guard marker before adding the fallback sentinel", async () => {
+  window.history.replaceState(
+    { __NA: true, foremenhqBackGuard: true, page: "restored" },
+    "",
+  );
+  const handler = vi.fn();
+  renderHook(() => useHeaderBackOverride(handler));
+  await tick();
+  act(() => window.history.back());
+  await tick();
+  await tick();
+  expect(handler).toHaveBeenCalledOnce();
+  expect(window.history.state.__NA).toBe(true);
 });
