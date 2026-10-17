@@ -56,6 +56,7 @@ export interface ReplicacheMaterialListItem {
   partDefinition?: {
     id: string;
     displayName: string;
+    assetTracking?: string | null;
     piecesPerPack?: number | null;
     bulkUnit?: string | null;
     individualUnit?: string | null;

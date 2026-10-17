@@ -61,20 +61,22 @@ import { confirmAction, notify } from "~/components/ui/app-dialogs";
  */
 export function CatalogueScreen({
   catalogKind = "materials",
+  includeToolCatalogs = false,
 }: {
   catalogKind?: WizardCatalogKind;
+  includeToolCatalogs?: boolean;
 }) {
   const [supplierId, setSupplierId] = useState<string | undefined>(() => {
     const saved = currentSnapshotState()?.catalogue;
     return saved?.kind === catalogKind && saved.scope === window.location.pathname ? saved.supplierId : undefined;
   });
   const [supplierMode, setSupplierMode] = useState(!!supplierId);
-  return <CatalogueWorkspace key={supplierMode ? supplierId ?? "choose-supplier" : "all-parts"} catalogKind={catalogKind} supplierMode={supplierMode} supplierId={supplierId}
+  return <CatalogueWorkspace key={supplierMode ? supplierId ?? "choose-supplier" : "all-parts"} catalogKind={catalogKind} includeToolCatalogs={includeToolCatalogs} supplierMode={supplierMode} supplierId={supplierId}
     onModeChange={setSupplierMode} onSupplierChange={setSupplierId} />;
 }
 
-function CatalogueWorkspace({ catalogKind, supplierMode, supplierId, onModeChange, onSupplierChange }: {
-  catalogKind: WizardCatalogKind; supplierMode: boolean; supplierId?: string; onModeChange: (mode: boolean) => void; onSupplierChange: (id: string | undefined) => void;
+function CatalogueWorkspace({ catalogKind, includeToolCatalogs, supplierMode, supplierId, onModeChange, onSupplierChange }: {
+  catalogKind: WizardCatalogKind; includeToolCatalogs: boolean; supplierMode: boolean; supplierId?: string; onModeChange: (mode: boolean) => void; onSupplierChange: (id: string | undefined) => void;
 }) {
   const [editingPartId, setEditingPartId] = useState<string | null>(null);
   const [isCreatePartDialogOpen, setIsCreatePartDialogOpen] = useState(false);
@@ -221,9 +223,12 @@ function CatalogueWorkspace({ catalogKind, supplierMode, supplierId, onModeChang
     selectedSizeName,
     selectedCategoryName,
     filteredPartsForSelection,
-  } = usePartWizard(!supplierMode || !!supplierId, undefined, undefined, catalogKind, supplierMode ? supplierId : undefined);
+  } = usePartWizard(!supplierMode || !!supplierId, undefined, undefined, catalogKind, supplierMode ? supplierId : undefined, includeToolCatalogs);
 
   const catalogOptions = catalogs ?? [];
+  const editingCatalogId = filteredPartsForSelection.find(part => part.id === editingPartId)?.catalogId ?? selectedCatalogId;
+  const editorCatalogKind = catalogOptions.find(catalog => catalog.id === editingCatalogId)?.kind === "assets" ? "assets" : catalogKind;
+  const newPartCatalogKind = catalogOptions.find(catalog => catalog.id === selectedCatalogId)?.kind === "assets" ? "assets" : catalogKind;
   const isWizardSearchActive =
     wizardStage !== "review" && wizardSearchQuery.trim().length > 0;
   const centerOptionCards =
@@ -806,7 +811,7 @@ function CatalogueWorkspace({ catalogKind, supplierMode, supplierId, onModeChang
         listings={listings.get(editingPartId)!} supplierName={supplier.data?.name ?? "Supplier"} canEdit={canEditSupplier} showPrice={showPrice}
         bulkUnit={filteredPartsForSelection.find(part => part.id === editingPartId)?.bulkUnit} onClose={() => setEditingPartId(null)} />}
       <EditPartDialog
-        catalogKind={catalogKind}
+        catalogKind={editorCatalogKind}
         open={!supplierMode && editingPartId !== null}
         onOpenChange={(open) => {
           if (!open) setEditingPartId(null);
@@ -826,7 +831,7 @@ function CatalogueWorkspace({ catalogKind, supplierMode, supplierId, onModeChang
         categoryId={selectedCategory?.categoryId}
       />
       <CreateCustomPartDialog
-        catalogKind={catalogKind}
+        catalogKind={newPartCatalogKind}
         open={isCreatePartDialogOpen}
         onOpenChange={setIsCreatePartDialogOpen}
         onPartCreated={() => {

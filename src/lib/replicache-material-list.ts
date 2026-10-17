@@ -44,7 +44,8 @@ export type MaterialListReplicacheMutators = {
       partDefinitionSnapshot?: {
         id: string;
         displayName: string;
-        piecesPerPack?: number | null;
+        assetTracking?: string | null;
+    piecesPerPack?: number | null;
         bulkUnit?: string | null;
         individualUnit?: string | null;
         imageUrl: string | null;

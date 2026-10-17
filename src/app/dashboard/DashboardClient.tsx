@@ -40,7 +40,6 @@ import {
   SendIcon,
   TrashIcon,
   WifiOffIcon,
-  WrenchIcon,
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { Badge } from "~/components/ui/badge";
@@ -379,22 +378,6 @@ export function DashboardClient({
     navigateWorkspace({ jobId, view: "material-lists", materialListId });
   };
 
-  const handleCreateToolRequest = (jobId: string) => {
-    const materialListId = crypto.randomUUID();
-    const count = offlineJobDetail?.job?.id === jobId
-      ? offlineJobDetail.materialLists.filter((list) => list.kind === "tools").length
-      : 0;
-    void mutateMaterialListAndSync(
-      getMaterialListReplicache().mutate.createMaterialList({
-        materialListId,
-        jobId,
-        name: `Tool Request ${count + 1}`,
-        kind: "tools",
-      }),
-    );
-    navigateWorkspace({ jobId, view: "material-lists", materialListId });
-  };
-
   const handleConfirmDeleteJob = () => {
     if (!jobToDelete || !canDeleteJobs) return;
     const { id } = jobToDelete;
@@ -451,13 +434,14 @@ export function DashboardClient({
     const selectedMaterialList = offlineMaterialListDetail.materialList;
     const selectedItems = sortedItems;
     const isToolRequest = selectedMaterialList?.kind === "tools";
+    const hasToolItems = selectedItems.some(item => !!item.partDefinition?.assetTracking);
     const selectedMaterialTotal = offlineMaterialListDetail.materialTotal;
     const selectedMaterialListHasPendingSync =
       Boolean(selectedMaterialList?.pendingSync) ||
       selectedItems.some((item) => Boolean(item.pendingSync));
     const jobLocationAddress = formatLocationAddress(offlineJob?.location);
     const canQuote = can?.["quotes.create"] ?? true;
-    const canOrder = isToolRequest || (can?.["orders.send"] ?? true);
+    const canOrder = isToolRequest || hasToolItems || (can?.["orders.send"] ?? true);
     const offlineGenerationBlockReason = sandbox
       ? "Quotes and orders are not sent during the tutorial."
       : !isBrowserOnline
@@ -556,7 +540,7 @@ export function DashboardClient({
                             key={item.id}
                             materialListId={selectedMaterialList.id}
                             suppliers={suppliers}
-                            isToolRequest={isToolRequest}
+                            isToolRequest={isToolRequest || !!item.partDefinition?.assetTracking}
                             item={{
                               ...item,
                               selectedSupplierId: item.supplierId,
@@ -600,7 +584,7 @@ export function DashboardClient({
                   <OrdersPreviewSheet
                     open={showOfflineOrdersSheet}
                     onOpenChange={setShowOfflineOrdersSheet}
-                    isToolRequest={isToolRequest}
+                    isToolRequest={isToolRequest} hasToolItems={hasToolItems}
                     materialListId={selectedMaterialList.id}
                   />
                 )}
@@ -705,15 +689,6 @@ export function DashboardClient({
                 </div>
                 <div className="hidden gap-2 sm:flex">
                   <Button
-                    onClick={() => handleCreateToolRequest(offlineJob.id)}
-                    size="lg"
-                    variant="outline"
-                    className="h-11"
-                  >
-                    <WrenchIcon className="mr-2 h-5 w-5" />
-                    Tool Request
-                  </Button>
-                  <Button
                     data-tutorial="create-list"
                     onClick={() => handleCreateMaterialList(offlineJob.id)}
                     size="lg"
@@ -722,7 +697,6 @@ export function DashboardClient({
                     <PlusIcon className="mr-2 h-5 w-5" />
                     New Material List
                   </Button>
-                </div>
               </div>
 
               {merge.banner}
@@ -894,16 +868,6 @@ export function DashboardClient({
               )}
 
               <div className="bg-background fixed inset-x-0 bottom-0 z-40 border-t px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:hidden">
-                <div className="grid grid-cols-[auto_1fr] gap-2">
-                <Button
-                  onClick={() => handleCreateToolRequest(offlineJob.id)}
-                  size="lg"
-                  variant="outline"
-                  className="h-12"
-                  aria-label="New tool request"
-                >
-                  <WrenchIcon className="h-5 w-5" />
-                </Button>
                 <Button
                   data-tutorial="create-list"
                   onClick={() => handleCreateMaterialList(offlineJob.id)}

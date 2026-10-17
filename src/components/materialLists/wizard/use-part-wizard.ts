@@ -57,7 +57,7 @@ export type WizardCatalogKind = "materials" | "assets";
 const catalogKindOf = (catalog: { kind?: string | null }) =>
   catalog.kind === "assets" ? "assets" : "materials";
 
-export function usePartWizard(open = true, sortMode?: MaterialListSort, keywordGroups: readonly NameKeywordGroup[] = EMPTY_NAME_KEYWORD_GROUPS, catalogKind: WizardCatalogKind = "materials", supplierId?: string) {
+export function usePartWizard(open = true, sortMode?: MaterialListSort, keywordGroups: readonly NameKeywordGroup[] = EMPTY_NAME_KEYWORD_GROUPS, catalogKind: WizardCatalogKind = "materials", supplierId?: string, includeToolCatalogs = false) {
   const sandbox = useTutorialSandbox();
   const [saved] = useState(() => {
     const entry = currentSnapshotState()?.catalogue;
@@ -113,7 +113,7 @@ export function usePartWizard(open = true, sortMode?: MaterialListSort, keywordG
   // Material lists never offer tool catalogs, and tool requests only offer them.
   const replicacheCatalogue = useMemo(() => {
     const catalogs = rawReplicacheCatalogue.catalogs.filter(
-      (catalog) => catalogKindOf(catalog) === catalogKind,
+      (catalog) => includeToolCatalogs || catalogKindOf(catalog) === catalogKind,
     );
     const allowed = new Set(catalogs.map((catalog) => catalog.id));
     return {
@@ -123,7 +123,7 @@ export function usePartWizard(open = true, sortMode?: MaterialListSort, keywordG
         allowed.has(part.catalogId),
       ),
     };
-  }, [rawReplicacheCatalogue, catalogKind]);
+  }, [rawReplicacheCatalogue, catalogKind, includeToolCatalogs]);
   const hasReplicacheCatalogue = !supplierId && rawReplicacheCatalogue.catalogs.length > 0;
   const [summaryReady, setSummaryReady] = useState(false);
   useEffect(() => {
@@ -144,10 +144,10 @@ export function usePartWizard(open = true, sortMode?: MaterialListSort, keywordG
     () =>
       new Set(
         (rawServerSummary?.catalogs ?? [])
-          .filter((catalog) => catalogKindOf(catalog) === catalogKind)
+          .filter((catalog) => includeToolCatalogs || catalogKindOf(catalog) === catalogKind)
           .map((catalog) => catalog.id),
       ),
-    [rawServerSummary, catalogKind],
+    [rawServerSummary, catalogKind, includeToolCatalogs],
   );
   const serverSummary = useMemo(
     () =>

@@ -27,6 +27,7 @@ interface OrdersPreviewSheetProps {
   materialListId: string;
   /** Tool request list: one order to the tool room, sent in-app (no email). */
   isToolRequest?: boolean;
+  hasToolItems?: boolean;
 }
 
 type EmailDraft = {
@@ -38,6 +39,7 @@ type EmailDraft = {
 };
 
 type PreviewOrder = {
+  isToolRequest?: boolean;
   id: string;
   jobId?: string;
   approval?: {required:boolean;allowed:boolean;fingerprint:string;unlistedCount:number;approvalId:string|null;status:string;reviewNote:string|null}|null;
@@ -73,6 +75,7 @@ export function OrdersPreviewSheet({
   onOpenChange,
   materialListId,
   isToolRequest = false,
+  hasToolItems = false,
 }: OrdersPreviewSheetProps) {
   const [expandedOrders, setExpandedOrders] = useState<Set<string>>(new Set());
   const [orderNotes, setOrderNotes] = useState<Map<string, string>>(new Map());
@@ -103,7 +106,7 @@ export function OrdersPreviewSheet({
     });
   // Anyone can send a tool request; supplier orders need document rights.
   const canGenerateDocuments =
-    isToolRequest || (userData?.permissions.can["orders.send"] ?? false);
+    isToolRequest || hasToolItems || (userData?.permissions.can["orders.send"] ?? false);
 
   const sendGeneratedOrder = api.materialList.sendGeneratedOrder.useMutation();
   const requestApproval=api.jobPricing.requestApproval.useMutation({onSuccess:async()=>{setSyncError(null);await loadPreview();},onError:e=>setSyncError(e.message)});
@@ -251,7 +254,7 @@ export function OrdersPreviewSheet({
 
   const handleEmailOrder = async (order: PreviewOrder) => {
     if (sendInFlight.current) return;
-    if (!canGenerateDocuments) {
+    if (!(userData?.permissions.can["orders.send"] ?? false)) {
       setSyncError("You don't have permission to send orders.");
       return;
     }
@@ -424,7 +427,7 @@ export function OrdersPreviewSheet({
     const ccRecipient = emailCcRecipients.get(order.id) ?? "";
     const isSending = sendingOrderId === order.id;
 
-    if (isToolRequest) {
+    if (isToolRequest || order.isToolRequest) {
       return (
         <div key={order.id} className="rounded-lg border p-4">
           <div className="flex items-center justify-between gap-3">

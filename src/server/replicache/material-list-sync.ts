@@ -1,3 +1,4 @@
+import { ensureToolRoomSupplier } from "~/server/assets/service";
 import { recalculatePurchaseTotals } from "~/server/purchasing";
 import { purchaseLineTotal } from "~/lib/purchase-quantity";
 import { enqueueMaterialNotification } from "~/server/notifications/materials";
@@ -29,6 +30,7 @@ import {
   orderItems,
   orders,
   partDefinitions,
+  catalogs,
   quoteItems,
   quotes,
   replicacheClientGroups,
@@ -557,20 +559,23 @@ async function applyReplicacheMutation(
         roomId: args.roomId, defaultRoomId: materialList.roomId,
       });
 
+      const [part] = args.partDefinitionId ? await tx.select({ catalogKind: catalogs.kind })
+        .from(partDefinitions).innerJoin(catalogs, eq(partDefinitions.catalogId, catalogs.id)).where(and(eq(partDefinitions.id, args.partDefinitionId), eq(partDefinitions.organizationId, input.organizationId))).limit(1) : [];
+      const isTool = part?.catalogKind === "assets";
       const offlineSupplierPart = parseOfflineSupplierPartId(
         args.supplierPartId,
       );
-      const serverSupplierPartId = isUuid(args.supplierPartId)
+      const serverSupplierPartId = !isTool && isUuid(args.supplierPartId)
         ? args.supplierPartId
         : null;
       const resolvedSupplierId =
-        args.supplierId ?? offlineSupplierPart?.supplierId ?? null;
+        isTool ? await ensureToolRoomSupplier(tx, input.organizationId) : args.supplierId ?? offlineSupplierPart?.supplierId ?? null;
 
       let unitCost = args.unitCost ?? 0;
       if (serverSupplierPartId) {
         unitCost = await getUnitCostFromSupplierPart(tx, serverSupplierPartId);
       }
-      if (!Number.isFinite(unitCost)) unitCost = 0;
+      if (isTool || !Number.isFinite(unitCost)) unitCost = 0;
 
       const extendedPrice = args.quantity * unitCost;
 
@@ -1215,6 +1220,7 @@ export async function handleMaterialListReplicachePull(
           descriptionSnapshot: quoteItems.descriptionSnapshot,
           partDefinitionId: quoteItems.partDefinitionId,
           partDefinitionDisplayName: partDefinitions.displayName,
+          partDefinitionAssetTracking: sql<string | null>`case when ${catalogs.kind} = 'assets' then coalesce(${partDefinitions.assetTracking}, 'serialized') else null end`,
           partDefinitionPiecesPerPack: partDefinitions.piecesPerPack,
           partDefinitionBulkUnit: partDefinitions.bulkUnit,
           partDefinitionIndividualUnit: partDefinitions.individualUnit,
@@ -1239,6 +1245,7 @@ export async function handleMaterialListReplicachePull(
           partDefinitions,
           eq(quoteItems.partDefinitionId, partDefinitions.id),
         )
+        .leftJoin(catalogs, eq(partDefinitions.catalogId, catalogs.id))
         .leftJoin(materials, eq(partDefinitions.materialId, materials.id))
         .leftJoin(
           supplierParts,
@@ -1469,6 +1476,7 @@ export async function handleMaterialListReplicachePull(
                     item.partDefinitionDisplayName ??
                     item.descriptionSnapshot ??
                     "Unknown Part",
+                  assetTracking: item.partDefinitionAssetTracking,
                   piecesPerPack: item.partDefinitionPiecesPerPack,
                   bulkUnit: item.partDefinitionBulkUnit,
                   individualUnit: item.partDefinitionIndividualUnit,

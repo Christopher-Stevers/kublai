@@ -278,3 +278,12 @@ describe("saved order email handoff", () => {
     expect(state.resend).not.toHaveBeenCalled();
   });
 });
+
+it("sends a tool line from an ordinary material list to the tool room without opening email", async () => {
+  state.permitted = false;
+  state.fetch.mockResolvedValue({ possible: [{ ...order, isToolRequest: true }], sent: [] });
+  render(<OrdersPreviewSheet open onOpenChange={vi.fn()} materialListId="list" hasToolItems />);
+  fireEvent.click(await screen.findByRole("button", { name: "Send" }));
+  await waitFor(() => expect(state.save).toHaveBeenCalledWith({ materialListId: "list", supplierId: "supplier", sentTo: "Tool room", notes: undefined }));
+  expect(launched).toEqual([]);
+});

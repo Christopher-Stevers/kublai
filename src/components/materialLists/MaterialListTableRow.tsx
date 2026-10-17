@@ -31,6 +31,7 @@ export interface MaterialListTableRowProps {
     partDefinition?: {
       id: string;
       displayName: string;
+      assetTracking?: string | null;
       piecesPerPack?: number | null;
       bulkUnit?: string | null;
       individualUnit?: string | null;

@@ -19,6 +19,7 @@ export interface PendingSupplierPartSnapshot {
 }
 
 export interface PendingPart {
+  isTool?: boolean;
   partId: string;
   partDefinition: {
     id: string;

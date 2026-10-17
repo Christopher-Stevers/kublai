@@ -448,6 +448,7 @@ export function ReviewStage({
       {reviewView === "grid" ? (
         <div className="space-y-2">
           {pendingParts.map((pendingPart) => {
+            const isToolLine = isToolRequest || pendingPart.isTool;
             const supplierSelection = getSupplierSelection(pendingPart);
             const unitCost = supplierSelection.lastKnownUnitCost
               ? parseFloat(supplierSelection.lastKnownUnitCost)
@@ -459,7 +460,7 @@ export function ReviewStage({
               pendingPart.partDefinition.piecesPerPack,
             );
             const isMissingSupplier =
-              !isToolRequest && !supplierSelection.hasSupplier;
+              !isToolLine && !supplierSelection.hasSupplier;
 
             return (
               <Card
@@ -484,7 +485,7 @@ export function ReviewStage({
                           </h3>
                           <FinancialOnly>
                             <div
-                              className={`text-muted-foreground mt-0.5 flex flex-wrap items-center gap-1.5 text-xs ${isToolRequest ? "hidden" : ""}`}
+                              className={`text-muted-foreground mt-0.5 flex flex-wrap items-center gap-1.5 text-xs ${isToolLine ? "hidden" : ""}`}
                             >
                               <span>
                                 Total:{" "}
@@ -509,7 +510,7 @@ export function ReviewStage({
                         quantity={pendingPart.quantity}
                         piecesPerPack={pendingPart.partDefinition.piecesPerPack} bulkUnit={pendingPart.partDefinition.bulkUnit} individualUnit={pendingPart.partDefinition.individualUnit}
                         orderMultiple={
-                          isToolRequest
+                          isToolLine
                             ? null
                             : supplierSelection.selectedSupplierPart?.packSize
                         }
@@ -519,7 +520,7 @@ export function ReviewStage({
                     </div>
 
                     <div className="flex h-10 min-w-0 items-center sm:h-11">
-                      {isToolRequest ? (
+                      {isToolLine ? (
                         <span className="text-muted-foreground text-sm">
                           Tool room
                         </span>
@@ -552,7 +553,8 @@ export function ReviewStage({
             </div>
 
             {pendingParts.map((pendingPart) => {
-              const supplierSelection = getSupplierSelection(pendingPart);
+              const isToolLine = isToolRequest || pendingPart.isTool;
+            const supplierSelection = getSupplierSelection(pendingPart);
               const unitCost = supplierSelection.lastKnownUnitCost
                 ? parseFloat(supplierSelection.lastKnownUnitCost)
                 : 0;
@@ -563,7 +565,7 @@ export function ReviewStage({
               pendingPart.partDefinition.piecesPerPack,
               );
               const isMissingSupplier =
-                !isToolRequest && !supplierSelection.hasSupplier;
+                !isToolLine && !supplierSelection.hasSupplier;
 
               return (
                 <div
@@ -582,7 +584,7 @@ export function ReviewStage({
                       quantity={pendingPart.quantity}
                         piecesPerPack={pendingPart.partDefinition.piecesPerPack} bulkUnit={pendingPart.partDefinition.bulkUnit} individualUnit={pendingPart.partDefinition.individualUnit}
                       orderMultiple={
-                        isToolRequest
+                        isToolLine
                           ? null
                           : supplierSelection.selectedSupplierPart?.packSize
                       }
@@ -598,7 +600,7 @@ export function ReviewStage({
                   </div>
 
                   <div className="flex h-8 min-w-0 items-center self-center">
-                    {isToolRequest ? (
+                    {isToolLine ? (
                       <span className="text-muted-foreground text-sm">
                         Tool room
                       </span>
@@ -608,7 +610,7 @@ export function ReviewStage({
                   </div>
 
                   <div className="text-foreground flex h-8 min-w-0 items-center justify-end self-center overflow-hidden text-sm font-semibold whitespace-nowrap">
-                    {!isToolRequest && (
+                    {!isToolLine && (
                       <FinancialOnly>
                         <span className="shrink-0">
                           ${lineTotal.toFixed(2)}

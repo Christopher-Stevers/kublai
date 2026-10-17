@@ -151,8 +151,14 @@ export function AddPartDialog({
     sortMode,
     keywordGroups,
     isToolRequest ? "assets" : "materials",
+    undefined,
+    !managePrefabs && !isToolRequest,
   );
 
+  const selectingTools = isToolRequest || catalogsWithCounts.some(catalog => catalog.id === selectedCatalogId && catalog.kind === "assets");
+  const toolPartIds = new Set(baseFilteredPartsForSelection
+    .filter(part => catalogsWithCounts.some(catalog => catalog.id === part.catalogId && catalog.kind === "assets"))
+    .map(part => part.id));
   const {data:priceBookSnapshot}=useJobPricing(listHeader?.kind === "tools" ? null : listHeader?.jobId);
   const jobPriceBook = useMemo(() => priceBookSnapshot && ({ ...priceBookSnapshot, entries: indexJobPrices(priceBookSnapshot.entries) }), [priceBookSnapshot]);
   const filteredPartsForSelection=useMemo(()=>{
@@ -313,7 +319,7 @@ export function AddPartDialog({
   // Auto-select preferred supplier when part is added
   useEffect(() => {
     pendingParts.forEach((pendingPart) => {
-      if (pendingPart.supplierPartId) return;
+      if (pendingPart.supplierPartId || pendingPart.isTool) return;
 
       const partsData = supplierPartsData.get(pendingPart.partId);
       if (partsData && partsData.length > 0) {
@@ -384,6 +390,7 @@ export function AddPartDialog({
         ...prev,
         {
           partId: part.id,
+          isTool: selectingTools || toolPartIds.has(part.id),
           partDefinition: {
             id: part.id,
             displayName: part.displayName,
@@ -522,6 +529,7 @@ export function AddPartDialog({
       ...prev,
       {
         partId,
+        isTool: selectingTools || toolPartIds.has(partId),
         partDefinition: {
           id: part.id,
           displayName: part.displayName,
@@ -683,7 +691,7 @@ export function AddPartDialog({
 
     try {
       const pendingSupplierResolutions = pendingParts
-        .filter((pendingPart) => !pendingPart.supplierPartId)
+        .filter((pendingPart) => !pendingPart.supplierPartId && !pendingPart.isTool)
         .map((pendingPart) => ({
           partId: pendingPart.partId,
           resolution: supplierPartResolutionPromisesRef.current.get(
@@ -720,7 +728,7 @@ export function AddPartDialog({
       }));
 
       const partsWithoutSupplier = partsReadyToAdd.filter(
-        (p) => !p.supplierPartId,
+        (p) => !p.supplierPartId && !p.isTool,
       );
       if (partsWithoutSupplier.length > 0 && !isToolRequest) {
         console.error(
@@ -761,10 +769,11 @@ export function AddPartDialog({
           ) ??
           null;
         const jobCost=findJobPrice(jobPriceBook?.entries??[],pendingPart.partId,selectedSupplierPart?.supplierId,selectedSupplierPart?.id)?.unitCost;
-        const unitCost=Number(jobCost ?? selectedSupplierPart?.lastKnownUnitCost ?? 0);
+        const unitCost=pendingPart.isTool ? 0 : Number(jobCost ?? selectedSupplierPart?.lastKnownUnitCost ?? 0);
         const partDefinitionSnapshot = {
           id: pendingPart.partDefinition.id,
           displayName: pendingPart.partDefinition.displayName,
+          assetTracking: pendingPart.isTool ? "serialized" : null,
           piecesPerPack: pendingPart.partDefinition.piecesPerPack,
           bulkUnit: pendingPart.partDefinition.bulkUnit,
           individualUnit: pendingPart.partDefinition.individualUnit,
@@ -841,7 +850,7 @@ export function AddPartDialog({
   const allPartsHaveSuppliers = useMemo(() => {
     if (pendingParts.length === 0) return false;
     if (isToolRequest) return true;
-    return pendingParts.every((p) => !!p.supplierPartId);
+    return pendingParts.every((p) => p.isTool || !!p.supplierPartId);
   }, [pendingParts, isToolRequest]);
 
   const reviewedPartsTotal = useMemo(() => {
@@ -879,7 +888,7 @@ export function AddPartDialog({
       setResolvingSupplierPartIds(new Set());
       resetWizard();
     }
-  }, [open, resetWizard]);
+  }, [open, resetWizard, materialListId]);
 
   useEffect(() => {
     if (pendingParts.length === 0) {
@@ -1435,13 +1444,13 @@ export function AddPartDialog({
             <VerticalPickerOverlay<number>
               className="absolute"
               title="Quantity"
-              description={pickerContents > 1 ? `${pickerContents.toLocaleString("en-CA")} ${pickerPart?.individualUnit || "pcs"} per ${bulkUnit}` : undefined}
+              description={pickerContents > 1 ? `${pickerContents.toLocaleString("en-CA")} ${pickerPart?.individualUnit ?? "pcs"} per ${bulkUnit}` : undefined}
               centerIndex={quantityPickerPreview.quantity}
               getItemFontSize={value => value === -1 ? "2rem" : undefined}
               getItem={(value) => (value < (pickerContents > 1 ? -1 : 0) ? null : value)}
               renderItem={(value) => {
                 if (value === -1) return <ArrowLeftRight className="h-12 w-12" aria-label={`Switch to ${quantityPickerPreview.mode === "individual" ? bulkUnit : individualUnitLabel(pickerPart?.individualUnit)}`} />;
-                if (quantityPickerPreview.mode === "individual") return `${value.toLocaleString("en-CA")} ${pickerPart?.individualUnit || "pcs"}`;
+                if (quantityPickerPreview.mode === "individual") return `${value.toLocaleString("en-CA")} ${pickerPart?.individualUnit ?? "pcs"}`;
                 return pickerContents > 1 ? `${value.toLocaleString("en-CA")} ${value === 1 ? bulkUnit : bulkPlural}` : value.toLocaleString("en-CA");
               }}
             />
@@ -1452,7 +1461,7 @@ export function AddPartDialog({
 
       {isCreateCustomPartDialogOpen && (
         <CreateCustomPartDialog
-          catalogKind={isToolRequest ? "assets" : "materials"}
+          catalogKind={selectingTools ? "assets" : "materials"}
           open={isCreateCustomPartDialogOpen}
           onOpenChange={setIsCreateCustomPartDialogOpen}
           onPartCreated={handleCustomPartCreated}
@@ -1462,7 +1471,7 @@ export function AddPartDialog({
 
       {editingPartId !== null && (
         <EditPartDialog
-          catalogKind={isToolRequest ? "assets" : "materials"}
+          catalogKind={selectingTools ? "assets" : "materials"}
           open={editingPartId !== null}
           onOpenChange={(open) => {
             if (!open) setEditingPartId(null);

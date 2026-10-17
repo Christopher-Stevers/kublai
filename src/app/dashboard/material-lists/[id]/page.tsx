@@ -90,6 +90,7 @@ export default function MaterialListDetailPage({
   const jobName = jobDetail?.name;
   // Tool request lists reuse this screen; they send to the tool room.
   const isToolRequest = mlHeader?.kind === "tools";
+  const hasToolItems = items.some(item => !!item.partDefinition?.assetTracking);
 
   const { data: userData } = api.user.getMyRole.useQuery(undefined, {
     enabled: isBrowserOnline,
@@ -119,7 +120,7 @@ export default function MaterialListDetailPage({
   });
   const canQuote = userData?.permissions.can["quotes.create"] ?? true;
   const canOrder =
-    isToolRequest || (userData?.permissions.can["orders.send"] ?? true);
+    isToolRequest || hasToolItems || (userData?.permissions.can["orders.send"] ?? true);
   const isReplicacheSyncing = useReplicacheSyncing();
   const hasPendingSync =
     (mlHeader?.pendingSync ?? false) || items.some((i) => i.pendingSync);
@@ -357,7 +358,7 @@ export default function MaterialListDetailPage({
                         materialListId={id}
                         suppliers={suppliers}
                         verifyMode={!!verifyOrderId}
-                        isToolRequest={isToolRequest}
+                        isToolRequest={isToolRequest || !!item.partDefinition?.assetTracking}
                         verifyOrderedQuantity={verifyOrderItem?.quantity}
                         verifyInitialReceivedQuantity={
                           verifyOrderItem?.receivedQuantity
@@ -487,7 +488,7 @@ export default function MaterialListDetailPage({
           open={showOrdersSheet}
           onOpenChange={setShowOrdersSheet}
           materialListId={mlHeader.id}
-          isToolRequest={isToolRequest}
+          isToolRequest={isToolRequest} hasToolItems={hasToolItems}
         />
       )}
 

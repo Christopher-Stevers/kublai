@@ -47,6 +47,7 @@ function firstName(name: string | null | undefined) {
 }
 
 type OrderableQuoteItem = {
+  assetTracking?: string | null;
   id: string;
   supplierPartId: string | null;
   selectedSupplierId: string | null;
@@ -194,6 +195,7 @@ async function loadOrderableQuoteItems(
       selectedSupplierId: quoteItems.supplierId,
       partDefinitionId: quoteItems.partDefinitionId,
       partDefinitionDisplayName: partDefinitions.displayName,
+      assetTracking: sql<string | null>`case when ${catalogs.kind} = 'assets' then coalesce(${partDefinitions.assetTracking}, 'serialized') else null end`,
       partDefinitionPiecesPerPack: partDefinitions.piecesPerPack,
       partDefinitionBulkUnit: partDefinitions.bulkUnit,
       partDefinitionIndividualUnit: partDefinitions.individualUnit,
@@ -212,6 +214,7 @@ async function loadOrderableQuoteItems(
       partDefinitions,
       eq(quoteItems.partDefinitionId, partDefinitions.id),
     )
+    .leftJoin(catalogs, eq(partDefinitions.catalogId, catalogs.id))
     .where(and(eq(quoteItems.quoteId, quoteId), isNull(quoteItems.sentOrderItemId))) as Promise<OrderableQuoteItem[]>;
 }
 
@@ -228,6 +231,7 @@ import {
   orderItems,
   orders,
   partDefinitions,
+  catalogs,
   quoteItems,
   quotes,
   supplierParts,
@@ -1068,7 +1072,7 @@ ${foremanName}`;
       // Anyone can send a tool request to the tool room; supplier orders
       // stay limited to accounts that may generate documents.
       const isToolRequest = materialList.kind === "tools";
-      if (!isToolRequest) assertCan(ctx.user, "orders.send");
+      const canSendMaterials = userCan(ctx.user, "orders.send");
 
       if (!materialList.quoteId) {
         throw new TRPCError({
@@ -1091,35 +1095,17 @@ ${foremanName}`;
       }
 
       const rawItems = await loadOrderableQuoteItems(ctx.db, quote.id);
-      const quoteItemsList = isToolRequest ? rawItems : await resolveJobOrderItems(ctx.db, ctx.user.organizationId, materialList.jobId, rawItems);
-      // Every tool on a tool request goes to the organization's tool room,
-      // minus anything this list has already requested.
-      const toolItems = isToolRequest
-        ? await withoutAlreadyRequestedTools(
-            ctx.db,
-            materialList.id,
-            quoteItemsList,
-          )
-        : [];
-      const orderableItemsBySupplier = isToolRequest
-        ? new Map(
-            toolItems.length
-              ? [
-                  [
-                    await ensureToolRoomSupplier(
-                      ctx.db,
-                      ctx.user.organizationId,
-                    ),
-                    toolItems,
-                  ],
-                ]
-              : [],
-          )
-        : groupOrderableItemsBySupplier(quoteItemsList);
+      const toolItems = await withoutAlreadyRequestedTools(ctx.db, materialList.id,
+        rawItems.filter(item => isToolRequest || !!item.assetTracking).map(item => ({ ...item, unitCost: "0", supplierPartId: null, packSize: null })));
+      const materialItems = isToolRequest || !canSendMaterials ? [] : await resolveJobOrderItems(ctx.db, ctx.user.organizationId, materialList.jobId, rawItems.filter(item => !item.assetTracking));
+      const orderableItemsBySupplier = groupOrderableItemsBySupplier(materialItems);
+      const toolRoomSupplierId = toolItems.length ? await ensureToolRoomSupplier(ctx.db, ctx.user.organizationId) : null;
+      if (toolRoomSupplierId) orderableItemsBySupplier.set(toolRoomSupplierId, toolItems);
 
       const sentOrders = await ctx.db
         .select({
           id: orders.id,
+          orderKind: orders.kind,
           orderNumber: orders.orderNumber,
           notes: orders.notes,
           sentAt: orders.sentAt,
@@ -1209,7 +1195,7 @@ ${foremanName}`;
 
         const supplier = possibleSuppliersById.get(supplierId) ?? null;
         const items = orderableItemsBySupplier.get(supplierId) ?? [];
-        const approval = isToolRequest ? null : await checkJobOrderApproval(ctx.db,{organizationId:ctx.user.organizationId,jobId:materialList.jobId,materialListId:materialList.id,supplierId,items:items.map(item=>({id:item.id,partDefinitionId:item.partDefinitionId,supplierPartId:item.supplierPartId,supplierSku:item.supplierSku,quantity:item.quantity,requestedQuantity:item.requestedQuantity,unitCost:item.unitCost,descriptionSnapshot:item.descriptionSnapshot?.trim()||item.partDefinitionDisplayName?.trim()||null,listed:!!item.jobListed}))});
+        const approval = supplierId === toolRoomSupplierId ? null : await checkJobOrderApproval(ctx.db,{organizationId:ctx.user.organizationId,jobId:materialList.jobId,materialListId:materialList.id,supplierId,items:items.map(item=>({id:item.id,partDefinitionId:item.partDefinitionId,supplierPartId:item.supplierPartId,supplierSku:item.supplierSku,quantity:item.quantity,requestedQuantity:item.requestedQuantity,unitCost:item.unitCost,descriptionSnapshot:item.descriptionSnapshot?.trim()||item.partDefinitionDisplayName?.trim()||null,listed:!!item.jobListed}))});
         const supplierContacts = normalizeSupplierContacts(supplier?.contacts, {
           contactName: supplier?.contactName ?? supplier?.name ?? null,
           contactEmail: supplier?.contactEmail ?? null,
@@ -1234,6 +1220,7 @@ ${foremanName}`;
 
         return {
           id: `preview:${supplierId}`,
+          isToolRequest: supplierId === toolRoomSupplierId,
           jobId:materialList.jobId,
           approval,
           supplierId,
@@ -1268,7 +1255,7 @@ ${foremanName}`;
         };
       }));
 
-      const sent = sentOrders.map((order) => {
+      const sent = sentOrders.filter(order => canSendMaterials || order.orderKind === "tool_request").map((order) => {
         const items = (sentItemsByOrderId.get(order.id) ?? []).map(
           ({ orderId: _orderId, partDefinitionDisplayName, ...item }) => ({
             ...item,
@@ -1308,6 +1295,7 @@ ${foremanName}`;
 
         return {
           id: order.id,
+          isToolRequest: order.orderKind === "tool_request",
           supplierId: order.supplierId,
           orderNumber: order.orderNumber,
           notes: order.notes,
@@ -1377,7 +1365,9 @@ ${foremanName}`;
         });
       }
 
-      const isToolRequest = materialList.kind === "tools";
+      const [requestedSupplier] = await ctx.db.select({ kind: suppliers.kind }).from(suppliers)
+        .where(and(eq(suppliers.id, input.supplierId), eq(suppliers.organizationId, ctx.user.organizationId))).limit(1);
+      const isToolRequest = materialList.kind === "tools" || requestedSupplier?.kind === "tool_room";
       if (!isToolRequest) assertCan(ctx.user, "orders.send");
       const toolRoomSupplierId = isToolRequest
         ? await ensureToolRoomSupplier(ctx.db, ctx.user.organizationId)
@@ -1406,7 +1396,9 @@ ${foremanName}`;
           .where(eq(quoteItems.quoteId, materialList.quoteId!)).orderBy(quoteItems.id).for("update");
         await recalculatePurchaseTotals(tx, orderingScope.quoteId);
         const rawItems = await loadOrderableQuoteItems(tx, orderingScope.quoteId);
-        const quoteItemsList = isToolRequest ? rawItems : await resolveJobOrderItems(tx, ctx.user.organizationId, orderingScope.jobId, rawItems);
+        const quoteItemsList: OrderableQuoteItem[] = isToolRequest
+          ? rawItems.filter(item => materialList.kind === "tools" || !!item.assetTracking).map(item => ({ ...item, unitCost: "0", supplierPartId: null, packSize: null }))
+          : await resolveJobOrderItems(tx, ctx.user.organizationId, orderingScope.jobId, rawItems.filter(item => !item.assetTracking));
         const items = isToolRequest
           ? await withoutAlreadyRequestedTools(tx, input.materialListId, quoteItemsList)
           : (groupOrderableItemsBySupplier(quoteItemsList).get(input.supplierId) ?? []);

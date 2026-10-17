@@ -59,7 +59,7 @@ export function MaterialListSheet({
               materialListId={materialListId}
               suppliers={suppliers}
               isReplicacheSyncing={isReplicacheSyncing ?? syncing}
-              isToolRequest={isToolRequest}
+              isToolRequest={isToolRequest || !!item.partDefinition?.assetTracking}
             />
           ))}
         </tbody>

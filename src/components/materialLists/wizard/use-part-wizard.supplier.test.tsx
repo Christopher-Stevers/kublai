@@ -48,3 +48,14 @@ it("preloads supplier-scoped parts without committing the category or changing w
  expect(fixtures.fetch).toHaveBeenCalledWith(expect.objectContaining({supplierId:"supplier",catalogId:"catalog",materialId:"material",categoryId:"category",sizeNominal:.5}),expect.anything());
  expect(result.current.wizardStage).toBe("category");expect(result.current.selectedCategory).toBe(before);
 });
+
+it("offers tools beside material catalogues when the shared picker enables them", () => {
+ const catalog = { id:"tools", name:"Tools", kind:"assets", sortOrder:1 };
+ const original = [...fixtures.cache.catalogs];
+ fixtures.cache.catalogs.push(catalog);
+ fixtures.cache.parts.push({ ...fixtures.part, id:"drill", catalogId:"tools" });
+ try {
+  const { result } = renderHook(() => usePartWizard(true, undefined, undefined, "materials", undefined, true));
+  expect(result.current.catalogsWithCounts.map(catalog => catalog.id)).toContain("tools");
+ } finally { fixtures.cache.catalogs.splice(0, fixtures.cache.catalogs.length, ...original); fixtures.cache.parts.pop(); }
+});

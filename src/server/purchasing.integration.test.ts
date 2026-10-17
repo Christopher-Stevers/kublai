@@ -32,13 +32,13 @@ vi.mock("~/server/api/trpc", async () => {
   const t = initTRPC.create();
   return { createTRPCRouter: t.router, hasDashboardAccess: t.procedure };
 });
-const supplierAccess = vi.hoisted(() => ({ financial: true }));
+const supplierAccess = vi.hoisted(() => ({ financial: true, orders: true }));
 vi.mock("~/server/auth/permissions", () => ({
   assertCan: vi.fn(),
   assertCanAccessTab: vi.fn(),
   assertCanManageAssets: vi.fn(),
   getUserPermissions: () => ({ canManageAssets: true }),
-  userCan: (_user: unknown, permission: string) => permission !== "financial.view" || supplierAccess.financial,
+  userCan: (_user: unknown, permission: string) => permission === "orders.send" ? supplierAccess.orders : permission !== "financial.view" || supplierAccess.financial,
 }));
 vi.mock("~/server/material-list-events", () => ({
   publishMaterialListEvent: vi.fn(),
@@ -142,6 +142,7 @@ describe.skipIf(!socket)(
     });
     beforeEach(async () => {
       supplierAccess.financial = true;
+      supplierAccess.orders = true;
       await conn.unsafe(
         `TRUNCATE kublai_supplier_email_preference, kublai_job_pricing_audit, kublai_job_order_approval, kublai_job_price_entry, kublai_job_price_list, ${tables.map((table) => `"${getTableName(table)}"`).join(",")}`,
       );
@@ -211,6 +212,36 @@ describe.skipIf(!socket)(
         __testConnection: postgres.Sql;
       };
       await databaseModule.__testConnection.end();
+    });
+    it("routes tools and materials from one list into separate correct orders", async () => {
+      const tool = id(930), toolItem = id(931);
+      await db.insert(schema.catalogs).values({ id: id(932), organizationId: org, name: "Tools", kind: "assets" });
+      await db.insert(schema.partDefinitions).values({ id: tool, organizationId: org, catalogId: id(932), displayName: "Test drill", assetTracking: null });
+      // Even an incorrectly selected external supplier cannot turn a tool request into a purchase.
+      await db.insert(schema.quoteItems).values({ id: toolItem, quoteId: quote, partDefinitionId: tool, supplierId: supplier, quantity: "2", unitCost: "99" });
+      const preview = await material.previewOrders({ materialListId: list });
+      const tools = preview.possible.find(order => order.isToolRequest)!;
+      const materials = preview.possible.find(order => !order.isToolRequest)!;
+      expect(tools.items.map(item => item.id)).toEqual([toolItem]);
+      expect(materials.items.map(row => row.id)).toEqual([item]);
+      const request = await material.sendGeneratedOrder({ materialListId: list, supplierId: tools.supplierId!, sentTo: "Tool room" });
+      expect(request).toMatchObject({ kind: "tool_request", sentVia: "tool_room", fulfillmentStatus: "open" });
+      const lines = await db.select().from(schema.orderItems).where(eq(schema.orderItems.orderId, request!.id));
+      expect(lines).toHaveLength(1);
+      expect(lines[0]).toMatchObject({ partDefinitionId: tool });
+      expect(Number(lines[0]!.unitCostAtOrderTime)).toBe(0);
+      expect(Number(lines[0]!.quantity)).toBe(2);
+      const next = await material.previewOrders({ materialListId: list });
+      expect(next.possible).toHaveLength(1);
+      expect(next.possible[0]!.items.map(row => row.id)).toEqual([item]);
+      expect(next.sent.find(order => order.id === request!.id)?.isToolRequest).toBe(true);
+      supplierAccess.orders = false;
+      const limited = await material.previewOrders({ materialListId: list });
+      expect(limited.possible).toEqual([]);
+      expect(limited.sent.every(order => order.isToolRequest)).toBe(true);
+      expect(limited.sent.some(order => order.id === request!.id)).toBe(true);
+      const queued = await assetsRouter.createCaller(context as never).listRequests({ status: "open" });
+      expect(queued.some(order => order.id === request!.id)).toBe(true);
     });
     it("sends a tool list into the Asset Management queue without a supplier email", async () => {
       await db.update(schema.materialLists).set({ kind: "tools" }).where(eq(schema.materialLists.id, list));
