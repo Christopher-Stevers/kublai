@@ -1334,3 +1334,118 @@ it("finishes a measurement through the host completion callback and clears selec
   expect(onCreate).not.toHaveBeenCalled();
   expect(onSelect).toHaveBeenCalledWith(null);
 });
+
+describe("adaptive measurement magnifier", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(null);
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+  const advance = (ms: number) => { void act(() => vi.advanceTimersByTime(ms)); };
+  const points = (frame: HTMLElement) => frame.querySelector("[data-measure-path]")?.getAttribute("points");
+  const zoom = (frame: HTMLElement) => Number(frame.querySelector("[data-measure-loupe-zoom]")?.getAttribute("data-measure-loupe-zoom"));
+  const pointer = (x: number, y: number) => ({ clientX: x, clientY: y, pointerId: 1, pointerType: "touch", buttons: 1, button: 0 });
+  function start() {
+    const view = openSheet("precision");
+    fireEvent.click(screen.getByRole("button", { name: "Measure" }));
+    tap(view.frame, 200, 300);
+    return view;
+  }
+  function hold(frame: HTMLElement) {
+    fireEvent.pointerDown(frame, pointer(520, 220));
+    advance(260);
+    expect(zoom(frame)).toBe(2.5);
+    advance(400);
+    expect(zoom(frame)).toBeGreaterThan(2.5);
+    expect(zoom(frame)).toBeLessThan(10);
+    advance(600);
+    expect(zoom(frame)).toBe(10);
+  }
+
+  it("keeps the finely adjusted position on release, including a final pointerup delta", () => {
+    const { frame } = start();
+    hold(frame);
+    fireEvent.pointerMove(frame, pointer(528, 224));
+    expect(points(frame)).toBe("200,200 522,121");
+    advance(80);
+    fireEvent.pointerUp(frame, { ...pointer(530, 224), buttons: 0 });
+    expect(points(frame)).toBe("200,200 522.5,121");
+    expect(frame.querySelector("[data-measure-loupe-zoom]")).toBeNull();
+    advance(2000);
+    expect(points(frame)).toBe("200,200 522.5,121");
+  });
+
+  it("returns to direct finger placement on a faster swipe, and resets the next hold", () => {
+    const { frame } = start();
+    hold(frame);
+    fireEvent.pointerMove(frame, pointer(528, 224));
+    advance(16);
+    fireEvent.pointerMove(frame, pointer(608, 264));
+    expect(zoom(frame)).toBe(2.5);
+    expect(points(frame)).toBe("200,200 608,164");
+    fireEvent.pointerUp(frame, { ...pointer(608, 264), buttons: 0 });
+    expect(points(frame)).toBe("200,200 608,164");
+    fireEvent.pointerDown(frame, pointer(700, 230));
+    advance(260);
+    expect(zoom(frame)).toBe(2.5);
+  });
+
+  it("preserves an existing node under an off-centre touch and saves its fine adjustment", () => {
+    const { frame } = start();
+    tap(frame, 520, 220);
+    fireEvent.pointerDown(frame, pointer(532, 224));
+    advance(1000);
+    expect(zoom(frame)).toBe(10);
+    fireEvent.pointerMove(frame, pointer(540, 228));
+    expect(points(frame)).toBe("200,200 522,121");
+    const visible = points(frame);
+    advance(100);
+    fireEvent.pointerUp(frame, { ...pointer(540, 228), buttons: 0 });
+    expect(points(frame)).toBe(visible);
+    expect(frame.querySelectorAll("[data-measure-node]")).toHaveLength(2);
+  });
+
+  it("keeps an initial line snap steady, but narrows snapping reach for fine adjustments", async () => {
+    vi.mocked(loadSnapLines).mockResolvedValue([{ x1: 0, y1: 0.3, x2: 1, y2: 0.3 }]);
+    const { frame } = openSheet("precise-snapping", { url: "/plan.pdf", page: 1 });
+    fireEvent.click(screen.getByRole("button", { name: "Measure" }));
+    await act(async () => { await vi.advanceTimersByTimeAsync(1); });
+    expect(document.querySelector('[data-snapping="ready"]')).toBeTruthy();
+    tap(frame, 200, 300);
+    fireEvent.pointerDown(frame, pointer(520, 230));
+    advance(260);
+    advance(1000);
+    expect(points(frame)).toBe("200,200 520,120");
+    fireEvent.pointerMove(frame, pointer(528, 230));
+    expect(points(frame)).toBe("200,200 522,120");
+    advance(160);
+    fireEvent.pointerMove(frame, pointer(528, 238));
+    expect(points(frame)).toBe("200,200 522,120");
+    advance(160);
+    fireEvent.pointerMove(frame, pointer(528, 254));
+    expect(points(frame)).toBe("200,200 522,126");
+    fireEvent.pointerUp(frame, { ...pointer(528, 254), buttons: 0 });
+    expect(points(frame)).toBe("200,200 522,126");
+  });
+
+  it.each(["cancel", "lost capture", "pinch"])("abandons precision safely on %s", (reason) => {
+    const { frame, unmount } = start();
+    tap(frame, 520, 220);
+    fireEvent.pointerDown(frame, pointer(520, 220));
+    advance(1000);
+    fireEvent.pointerMove(frame, pointer(528, 224));
+    expect(points(frame)).toBe("200,200 522,121");
+    if (reason === "cancel") fireEvent.pointerCancel(frame, pointer(528, 224));
+    else if (reason === "lost capture") fireEvent.lostPointerCapture(frame, pointer(528, 224));
+    else fireEvent.pointerDown(frame, { ...pointer(640, 320), pointerId: 2 });
+    advance(1000);
+    expect(points(frame)).toBe("200,200 520,120");
+    expect(frame.querySelector("[data-measure-loupe-zoom]")).toBeNull();
+    unmount();
+    advance(2000);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+});

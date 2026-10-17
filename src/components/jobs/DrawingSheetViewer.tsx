@@ -72,6 +72,12 @@ import {
 } from "~/lib/sheet-measure-run";
 import { scaleReadMessage } from "~/lib/sheet-scale-text";
 import { snapToLine, type SnapIndex, type SnapSegment } from "~/lib/sheet-snap";
+import {
+  advanceMeasurePrecision,
+  beginMeasurePrecision,
+  moveMeasurePrecision,
+  type MeasurePrecision,
+} from "~/lib/sheet-measure-precision";
 import { SheetMeasureBar } from "./SheetMeasureBar";
 import { DrawingTileLayer } from "./DrawingTileLayer";
 import { DrawingPdfLayer } from "./DrawingPdfLayer";
@@ -105,6 +111,11 @@ type MeasureNode = {
   point: SheetPoint;
   line: SnapSegment | null;
   referenceOnly?: boolean;
+};
+type MeasureAim = {
+  point: SheetPoint;
+  segment: SnapSegment | null;
+  angle?: 45 | 90;
 };
 export type DrawingViewport = { center: SheetPoint; zoom: number };
 type View = { scale: number; x: number; y: number };
@@ -256,16 +267,40 @@ export function DrawingSheetViewer({
     moved: boolean;
     holding?: boolean;
   } | null>(null);
-  // Press and hold while measuring: the point follows the finger (snapping to
-  // lines) with a magnifier above the thumb; lifting sets it.
+  // The finger positions the loupe; its target moves more finely as it zooms.
   const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [loupe, setLoupe] = useState<{ x: number; y: number } | null>(null);
+  const [loupe, setLoupe] = useState<(Point & { zoom: number }) | null>(null);
   const loupeCanvas = useRef<HTMLCanvasElement>(null);
-  const endHold = () => {
+  const precision = useRef<MeasurePrecision | null>(null);
+  const precisionFrame = useRef(0);
+  const lastAim = useRef<MeasureAim | null>(null);
+  const endHold = useCallback(() => {
     if (holdTimer.current) clearTimeout(holdTimer.current);
     holdTimer.current = null;
     if (measureTap.current) measureTap.current.holding = false;
+    precision.current = null;
+    cancelAnimationFrame(precisionFrame.current);
+    precisionFrame.current = 0;
     setLoupe(null);
+  }, []);
+  const loupeActive = loupe !== null;
+  useEffect(() => {
+    if (!loupeActive) return;
+    const tick = (now: number) => {
+      const current = precision.current;
+      if (!current) return;
+      const next = advanceMeasurePrecision(current, now);
+      precision.current = next;
+      if (next.zoom !== current.zoom)
+        setLoupe((shown) => shown && { ...shown, zoom: next.zoom });
+      precisionFrame.current = requestAnimationFrame(tick);
+    };
+    precisionFrame.current = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(precisionFrame.current);
+  }, [loupeActive]);
+  const beginLoupe = (finger: Point, aim = finger) => {
+    precision.current = beginMeasurePrecision(finger, performance.now(), aim);
+    setLoupe({ ...finger, zoom: 1 });
   };
   const [measuring, setMeasuring] = useState(false);
   const [measureColor, setMeasureColor] = useState(DEFAULT_MEASURE_COLOR);
@@ -488,14 +523,12 @@ export function DrawingSheetViewer({
   useEffect(() => {
     nodeDrag.current = null;
     setDragIndex(null);
-    if (holdTimer.current) clearTimeout(holdTimer.current);
-    holdTimer.current = null;
+    endHold();
     measureTap.current = null;
-    setLoupe(null);
     setHover(null);
     setSnapLine(null);
     setAngleSnap(null);
-  }, [measuring, calibrating, sheetKey]);
+  }, [measuring, calibrating, sheetKey, endHold]);
 
   useEffect(() => {
     if (!measuring || calibrating) {
@@ -690,6 +723,19 @@ export function DrawingSheetViewer({
       live.current,
     );
   };
+  const pointToClient = (point: SheetPoint): Point | undefined => {
+    const el = frame.current;
+    if (!el || !fit) return undefined;
+    const box = el.getBoundingClientRect();
+    return {
+      x:
+        box.left + el.clientWidth / 2 + live.current.x +
+        (point.x - 0.5) * fit.width * live.current.scale,
+      y:
+        box.top + el.clientHeight / 2 + live.current.y +
+        (point.y - 0.5) * fit.height * live.current.scale,
+    };
+  };
   const rememberLine = (segment: SnapSegment | null) => {
     setSnapLine((current) =>
       current === segment ||
@@ -744,11 +790,8 @@ export function DrawingSheetViewer({
     clientX: number,
     clientY: number,
     movingNode?: number,
-  ): {
-    point: SheetPoint;
-    segment: SnapSegment | null;
-    angle?: 45 | 90;
-  } | null => {
+    precisionZoom = 1,
+  ): MeasureAim | null => {
     const point = pointFromClient(clientX, clientY);
     if (!point) return null;
     if (gapMode && !calibrating && movingNode === undefined && fit) {
@@ -781,9 +824,17 @@ export function DrawingSheetViewer({
       ? null
       : referenceNode?.line;
     const shown = fit ? fit.width * live.current.scale : 0;
+    // Fine movement must also be able to escape a nearby line or angle lock.
+    const snapReach = SNAP_PX / precisionZoom;
     const hit =
       snapIndex && shown > 0
-        ? snapToLine(point, snapIndex, SNAP_PX / shown, attachedLine, 4 / shown)
+        ? snapToLine(
+            point,
+            snapIndex,
+            snapReach / shown,
+            attachedLine,
+            4 / (shown * precisionZoom),
+          )
         : null;
     if (anchor && fit) {
       const angled = snapToAngle(
@@ -803,7 +854,7 @@ export function DrawingSheetViewer({
           (angled.point.y - point.y) * fit.aspect,
         ) *
           shown <=
-          SNAP_PX
+          snapReach
       )
         return {
           point: angled.point,
@@ -819,17 +870,44 @@ export function DrawingSheetViewer({
     clientX: number,
     clientY: number,
     movingNode?: number,
+    precisionZoom = 1,
   ) => {
-    const aim = aimFromClient(clientX, clientY, movingNode);
+    const aim = aimFromClient(clientX, clientY, movingNode, precisionZoom);
+    lastAim.current = aim;
     rememberHover(aim?.point ?? null);
     rememberLine(aim?.segment ?? null);
     const angle = aim?.angle ?? null;
     setAngleSnap((current) => (current === angle ? current : angle));
   };
   const clearAim = () => {
+    lastAim.current = null;
     rememberHover(null);
     rememberLine(null);
     setAngleSnap(null);
+  };
+  const moveLoupe = (finger: Point, movingNode?: number) => {
+    const current = precision.current;
+    if (!current) {
+      rememberAim(finger.x, finger.y, movingNode);
+      return;
+    }
+    const next = moveMeasurePrecision(current, finger, performance.now());
+    precision.current = next;
+    setLoupe({ ...finger, zoom: next.zoom });
+    rememberAim(next.aim.x, next.aim.y, movingNode, next.zoom);
+  };
+  const releaseAim = (finger: Point, movingNode?: number) => {
+    const current = precision.current;
+    if (!current) return aimFromClient(finger.x, finger.y, movingNode);
+    // Keep the visible, snapped aim on lift. Some devices supply a final move
+    // only with pointerup; apply that delta through the same precision control.
+    if (
+      !lastAim.current ||
+      finger.x !== current.finger.x ||
+      finger.y !== current.finger.y
+    )
+      moveLoupe(finger, movingNode);
+    return lastAim.current;
   };
   // Keep the saved geometry untouched until release, so Cancel/pinch can roll back.
   const cancelNodeDrag = () => {
@@ -890,7 +968,7 @@ export function DrawingSheetViewer({
     }
     nodeDrag.current = null;
     setDragIndex(null);
-    setLoupe(null);
+    endHold();
     if (calibrating) {
       if (calNodes.length) {
         setCalFuture((future) => [calNodes, ...future]);
@@ -903,7 +981,7 @@ export function DrawingSheetViewer({
     setHover(null);
     setSnapLine(null);
     setAngleSnap(null);
-  }, [calibrating, gapMode, calNodes]);
+  }, [calibrating, gapMode, calNodes, endHold]);
   const redoPoint = () => {
     if (calibrating) {
       const next = calFuture[0];
@@ -1186,6 +1264,7 @@ export function DrawingSheetViewer({
       if (commitTimer.current) clearTimeout(commitTimer.current);
       if (wheelSettleTimer.current) clearTimeout(wheelSettleTimer.current);
       if (holdTimer.current) clearTimeout(holdTimer.current);
+      cancelAnimationFrame(precisionFrame.current);
     },
     [],
   );
@@ -1519,7 +1598,7 @@ export function DrawingSheetViewer({
     : [];
 
   // Paint the magnifier from what is on screen: the saved image, any sharper
-  // tiles and the PDF redraw, at LOUPE_ZOOM around the aimed point.
+  // tiles and the PDF redraw, magnified around the aimed point.
   useEffect(() => {
     const canvas = loupeCanvas.current;
     const sheet = layer.current;
@@ -1538,14 +1617,15 @@ export function DrawingSheetViewer({
       y: box.top + point.y * box.height,
     });
     const centre = hover ? toClient(hover) : loupe;
-    const reach = LOUPE_PX / 2 / LOUPE_ZOOM;
+    const zoom = LOUPE_ZOOM * loupe.zoom;
+    const reach = LOUPE_PX / 2 / zoom;
     const src = {
       left: centre.x - reach,
       top: centre.y - reach,
       right: centre.x + reach,
       bottom: centre.y + reach,
     };
-    const k = LOUPE_ZOOM * dpr;
+    const k = zoom * dpr;
     const map = (c: { x: number; y: number }) => ({
       x: (c.x - src.left) * k,
       y: (c.y - src.top) * k,
@@ -1907,6 +1987,13 @@ export function DrawingSheetViewer({
           if (pdfLinkTap.current?.pointerId === event.pointerId)
             pdfLinkTap.current = null;
           endMiddlePan(event);
+          if (pointers.current.has(event.pointerId)) {
+            cancelNodeDrag();
+            measureTap.current = null;
+            pointers.current.delete(event.pointerId);
+            startGesture();
+            move(live.current, true);
+          }
         }}
         onPointerDown={(event) => {
           if ((measuring || pipeMode) && event.button !== 0) return;
@@ -1987,8 +2074,12 @@ export function DrawingSheetViewer({
                 };
                 setDragIndex(index);
                 clearAim();
-                setHover((calibrating ? calNodes : trace)[index]!.point);
-                setLoupe({ x: event.clientX, y: event.clientY });
+                const point = (calibrating ? calNodes : trace)[index]!.point;
+                setHover(point);
+                beginLoupe(
+                  { x: event.clientX, y: event.clientY },
+                  pointToClient(point),
+                );
                 return;
               }
               // A short press drops a point. Holding still lets the point be slid
@@ -2009,7 +2100,10 @@ export function DrawingSheetViewer({
                 tap.holding = true;
                 navigator.vibrate?.(8);
                 rememberAim(finger.x, finger.y);
-                setLoupe({ x: finger.x, y: finger.y });
+                beginLoupe(
+                  finger,
+                  lastAim.current ? pointToClient(lastAim.current.point) : undefined,
+                );
               }, MEASURE_HOLD_MS);
               return;
             }
@@ -2080,8 +2174,7 @@ export function DrawingSheetViewer({
             drag.moved ||=
               Math.hypot(event.clientX - drag.x, event.clientY - drag.y) > 2;
             if (drag.moved)
-              rememberAim(event.clientX, event.clientY, drag.index);
-            setLoupe({ x: event.clientX, y: event.clientY });
+              moveLoupe({ x: event.clientX, y: event.clientY }, drag.index);
             return;
           }
           const zoom = quickZoom.current;
@@ -2141,8 +2234,7 @@ export function DrawingSheetViewer({
               return;
             const p = now[0]!;
             if (measuring && measureTap.current?.holding) {
-              rememberAim(event.clientX, event.clientY);
-              setLoupe({ x: event.clientX, y: event.clientY });
+              moveLoupe({ x: event.clientX, y: event.clientY });
               return;
             }
             if (measuring && measureTap.current && !measureTap.current.moved) {
@@ -2187,7 +2279,7 @@ export function DrawingSheetViewer({
               drag.moved ||
               Math.hypot(event.clientX - drag.x, event.clientY - drag.y) > 2;
             const aim = moved
-              ? aimFromClient(event.clientX, event.clientY, drag.index)
+              ? releaseAim({ x: event.clientX, y: event.clientY }, drag.index)
               : null;
             if (!moved && !calibrating)
               dispatchRun({ type: "select", index: drag.index });
@@ -2282,11 +2374,13 @@ export function DrawingSheetViewer({
             !pipeMode &&
             wasSingle &&
             editor.up(pointFromClient(event.clientX, event.clientY));
+          const measuredAim =
+            measuring && tap && !tap.moved && wasSingle
+              ? releaseAim({ x: event.clientX, y: event.clientY })
+              : null;
           pointers.current.delete(event.pointerId);
           measureTap.current = null;
-          if (holdTimer.current) clearTimeout(holdTimer.current);
-          holdTimer.current = null;
-          setLoupe(null);
+          endHold();
           startGesture();
           if (pointers.current.size > 0) return;
           if (activatedLink) {
@@ -2309,7 +2403,8 @@ export function DrawingSheetViewer({
           }
           if (measuring && tap && !tap.moved && wasSingle) {
             if (gapMode && !calibrating && fit) {
-              const point = pointFromClient(event.clientX, event.clientY);
+              const point =
+                measuredAim?.point ?? pointFromClient(event.clientX, event.clientY);
               const selected = point && gapHit(point);
               if (selected) {
                 if (selected.source) {
@@ -2337,8 +2432,7 @@ export function DrawingSheetViewer({
               move(live.current, true);
               return;
             }
-            const aim = aimFromClient(event.clientX, event.clientY);
-            if (aim) commitPoint(aim.point, aim.segment);
+            if (measuredAim) commitPoint(measuredAim.point, measuredAim.segment);
             move(live.current, true);
             return;
           }
@@ -2361,7 +2455,8 @@ export function DrawingSheetViewer({
           if (pointers.current.size === 0) move(live.current, true);
         }}
         onPointerLeave={() => {
-          if (measuring && !nodeDrag.current) clearAim();
+          if (measuring && !nodeDrag.current && !measureTap.current?.holding)
+            clearAim();
         }}
         onWheel={(event) => {
           if (scrollPages && !event.ctrlKey && !event.metaKey) return;
@@ -2798,6 +2893,7 @@ export function DrawingSheetViewer({
             return (
               <canvas
                 ref={loupeCanvas}
+                data-measure-loupe-zoom={LOUPE_ZOOM * loupe.zoom}
                 aria-hidden="true"
                 className="pointer-events-none absolute z-30 rounded-full border-2 border-white bg-white shadow-[0_4px_16px_rgba(0,0,0,0.45)] ring-1 ring-black/30"
                 style={{
