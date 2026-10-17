@@ -117,11 +117,7 @@ export function SupplierSelector({
   const displayValue =
     optimisticDisplayLabel ??
     (currentSupplierPart
-      ? `${currentSupplierPart.supplier.name}${
-          currentSupplierPart.supplierSku
-            ? ` (${currentSupplierPart.supplierSku})`
-            : ""
-        }`
+      ? currentSupplierPart.supplier.name
       : (currentSupplier?.name ?? "No supplier"));
 
   // Filter suppliers based on search query
@@ -168,11 +164,7 @@ export function SupplierSelector({
     setOptimisticSupplierId(selectedSupplierPart?.supplierId ?? null);
     setOptimisticDisplayLabel(
       selectedSupplierPart
-        ? `${selectedSupplierPart.supplier.name}${
-            selectedSupplierPart.supplierSku
-              ? ` (${selectedSupplierPart.supplierSku})`
-              : ""
-          }`
+        ? selectedSupplierPart.supplier.name
         : "No supplier",
     );
     setIsDropdownOpen(false);

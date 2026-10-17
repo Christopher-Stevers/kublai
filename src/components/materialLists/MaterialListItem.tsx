@@ -1,5 +1,5 @@
 "use client";
-import { JobPriceBadge } from "~/components/jobPricing/JobPriceBadge";
+import { QuotedBadge } from "~/components/jobPricing/QuotedBadge";
 import { SentMaterialStatus, type SentMaterialOrder } from "./SentMaterialStatus";
 import { packContents } from "~/lib/pack-quantity";
 
@@ -744,6 +744,7 @@ function MaterialListItemComponent({
                 </svg>
               </div>
             )}
+            <QuotedBadge status={item.jobPriceStatus} onPhoto />
             {verifyMode && isVerifyComplete && (
               <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-emerald-500/10">
                 <CheckCircle2Icon
@@ -787,7 +788,6 @@ function MaterialListItemComponent({
               {partName}
             </h3>
           </div>
-          <div className="text-center"><JobPriceBadge status={item.jobPriceStatus}/></div>
           {item.roomName && (
             <p className="mt-1 text-center text-xs text-muted-foreground">
               Room: {item.roomName}

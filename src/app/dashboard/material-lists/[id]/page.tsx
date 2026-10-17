@@ -2,7 +2,6 @@
 import { useJobPricing, jobPriceStatus } from "~/hooks/use-job-pricing";
 import { listedPartsFirst } from "~/lib/job-pricing";
 import { useHeaderBackOverride } from "~/lib/header-back-events";
-import Link from "next/link";
 import { usePageViewState } from "~/hooks/use-page-view-state";
 import { matchesMaterialOrderLine } from "~/lib/material-order-line";
 import { MaterialListSheet as MaterialListTableView } from "~/components/materialLists/MaterialListSheet";
@@ -29,51 +28,19 @@ import {
 } from "~/components/ui/dialog";
 import { Textarea } from "~/components/ui/textarea";
 import {
-  CheckCircle2Icon,
-  Clock3Icon,
-  Loader2Icon,
   PencilIcon,
   PlusIcon,
   WifiOffIcon,
 } from "lucide-react";
 import { ViewToggle } from "~/components/ui/view-toggle";
 import {
-  resolveReplicacheSyncStatus,
   useReplicacheMaterialList,
   useReplicacheSyncing,
-  type ReplicacheSyncStatus,
 } from "~/hooks/use-replicache-material-list";
 import { useReplicacheJob } from "~/hooks/use-replicache-jobs";
 import { useReplicacheSuppliers } from "~/hooks/use-replicache-suppliers";
 import { useOnlineStatus } from "~/hooks/use-online-status";
 import { markUserAction } from "~/lib/performance-marks";
-
-function MaterialListSyncBadge({ status }: { status: ReplicacheSyncStatus }) {
-  if (status === "syncing") {
-    return (
-      <div className="inline-flex h-6 min-w-[5.75rem] items-center justify-center gap-1.5 rounded-full bg-blue-100 px-2.5 py-0 text-xs font-medium leading-none text-blue-900 whitespace-nowrap">
-        <Loader2Icon className="h-3.5 w-3.5 shrink-0 animate-spin" />
-        <span className="leading-none">Syncing</span>
-      </div>
-    );
-  }
-
-  if (status === "pending") {
-    return (
-      <div className="inline-flex h-6 min-w-[5.75rem] items-center justify-center gap-1.5 rounded-full bg-orange-100 px-2.5 py-0 text-xs font-medium leading-none text-orange-900 whitespace-nowrap">
-        <Clock3Icon className="h-3.5 w-3.5 shrink-0" />
-        <span className="leading-none">Pending sync</span>
-      </div>
-    );
-  }
-
-  return (
-    <div className="inline-flex h-6 min-w-[5.75rem] items-center justify-center gap-1.5 rounded-full bg-emerald-100 px-2.5 py-0 text-xs font-medium leading-none text-emerald-900 whitespace-nowrap">
-      <CheckCircle2Icon className="h-3.5 w-3.5 shrink-0" />
-      <span className="leading-none">Synced</span>
-    </div>
-  );
-}
 
 export default function MaterialListDetailPage({
   params,
@@ -155,10 +122,6 @@ export default function MaterialListDetailPage({
   const isReplicacheSyncing = useReplicacheSyncing();
   const hasPendingSync =
     (mlHeader?.pendingSync ?? false) || items.some((i) => i.pendingSync);
-  const listSyncStatus = resolveReplicacheSyncStatus(
-    hasPendingSync,
-    isReplicacheSyncing,
-  );
   const verifySupplierId = verifyOrder?.supplier?.id ?? null;
   const visibleItems = verifyOrderId
     ? items.filter((item) => verifyOrder?.items.some((orderItem) =>
@@ -202,10 +165,6 @@ export default function MaterialListDetailPage({
           ? "Finish syncing this material list before generating a quote or order."
           : null;
   const canGenerateQuoteOrOrder = !generationBlockReason;
-
-  const handleJobInfoClick = () => {
-    setShowJobInfoModal(true);
-  };
 
   const handleGenerateQuote = () => {
     if (!canGenerateQuoteOrOrder || !canQuote) return;
@@ -319,21 +278,6 @@ export default function MaterialListDetailPage({
                 <ViewToggle view={viewMode} onViewChange={setViewMode} showOnMobile />
               )}
             </div>
-            <div className="flex items-center justify-between gap-3">
-              <button
-                onClick={() => {
-                  if (mlHeader.jobId) {
-                    router.push(`/dashboard/jobs/${mlHeader.jobId}`);
-                  } else {
-                    handleJobInfoClick();
-                  }
-                }}
-                className="text-muted-foreground h-auto text-sm leading-tight hover:text-foreground"
-              >
-                Job: {jobName || "Not set"}
-              </button>
-              <MaterialListSyncBadge status={listSyncStatus} />
-            </div>
           </div>
         </div>
       </div>
@@ -379,7 +323,6 @@ export default function MaterialListDetailPage({
             </div>
           ) : (
             <>
-              {jobPriceBook?.policy?.active&&<p className="mb-3 text-xs text-muted-foreground">On-list parts first. Estimated prices are CAD allowances. <Link className="underline" href={`/dashboard/jobs/${mlHeader?.jobId}/pricing`}>Job pricing & approvals</Link></p>}
               {/* Grid View */}
               {(verifyOrderId || viewMode === "grid") && (
                 <div className="grid items-stretch grid-cols-[repeat(auto-fit,minmax(12rem,1fr))] gap-3">

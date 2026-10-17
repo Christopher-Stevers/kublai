@@ -1,5 +1,5 @@
 "use client";
-import { JobPriceBadge } from "~/components/jobPricing/JobPriceBadge";
+import { QuotedBadge } from "~/components/jobPricing/QuotedBadge";
 import { SentMaterialStatus, type SentMaterialOrder } from "./SentMaterialStatus";
 
 import { purchaseLineTotal } from "~/lib/purchase-quantity";
@@ -137,7 +137,7 @@ function MaterialListTableRowComponent({
             </span>
           )}
         </div>
-        <JobPriceBadge status={item.jobPriceStatus}/>
+        <QuotedBadge status={item.jobPriceStatus} />
         {item.sentOrder && <SentMaterialStatus order={item.sentOrder} materialListId={materialListId} unit={item.partDefinition?.bulkUnit || item.uom?.code} />}
         {item.oneOff?.sizeNominal && (
           <div className="text-muted-foreground text-xs">
