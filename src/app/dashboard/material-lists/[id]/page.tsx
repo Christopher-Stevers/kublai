@@ -1,4 +1,5 @@
 "use client";
+import { PackingSlips } from "~/components/materialLists/PackingSlips";
 import { useJobPricing, jobPriceStatus } from "~/hooks/use-job-pricing";
 import { listedPartsFirst } from "~/lib/job-pricing";
 import { useHeaderBackOverride } from "~/lib/header-back-events";
@@ -303,6 +304,7 @@ export default function MaterialListDetailPage({
               )}
             </div>
           )}
+          {mlHeader.jobId && <div className="mb-3"><PackingSlips jobId={mlHeader.jobId} materialListId={id} orderId={verifyOrder?.materialListId === id ? verifyOrderId : undefined}/></div>}
           {visibleItems.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12">
               <p className="text-muted-foreground mb-4">

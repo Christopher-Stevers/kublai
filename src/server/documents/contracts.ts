@@ -119,6 +119,7 @@ export const documentActionSchema = z.discriminatedUnion("action", [
   }),
 ]);
 export const uploadMetadataSchema = z.object({
+  packingSlipOrderId: id.optional(),
   submittal: submittalInputSchema.optional(),
   jobId: id,
   folderId,

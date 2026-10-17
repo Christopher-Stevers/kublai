@@ -1,7 +1,13 @@
+import { userCan } from "~/server/auth/permissions";
+import { appendPackingSlip } from "./packing-slips";
 import { TRPCError } from "@trpc/server";
 import { and, eq, sql } from "drizzle-orm";
 import { db } from "~/server/db";
-import { jobDocumentWorkspaces } from "~/server/db/schema";
+import {
+  jobDocumentWorkspaces,
+  orders,
+  materialLists,
+} from "~/server/db/schema";
 import {
   assertDocumentAccess,
   documentActor,
@@ -65,6 +71,7 @@ export async function mutateWorkspace<T>(
     state: DocumentState,
     actor: DocumentActor,
     access: DocumentAccess,
+    tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
   ) => T | Promise<T>,
 ): Promise<T> {
   return db.transaction(async (tx) => {
@@ -96,6 +103,7 @@ export async function mutateWorkspace<T>(
         })),
       ),
       access,
+      tx,
     );
     if (row)
       await tx
@@ -134,14 +142,75 @@ export async function changeDocuments(
 }
 export async function saveDocumentVersion(
   access: DocumentAccess,
-  input: Parameters<typeof appendVersion>[2],
+  input: Parameters<typeof appendVersion>[2] & { packingSlipOrderId?: string },
   persistBlob: () => Promise<unknown>,
 ) {
   return mutateWorkspace(
     access.user.id,
     access.job.id,
-    async (state, actor) => {
-      const result = appendVersion(state, actor, input);
+    async (state, actor, fresh, tx) => {
+      let result;
+      if (input.packingSlipOrderId) {
+        if (!userCan(fresh.user, "orders.receive"))
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "Order receiving permission is required.",
+          });
+        const [order] = await tx
+          .select({
+            id: orders.id,
+            status: orders.status,
+            fulfillmentStatus: orders.fulfillmentStatus,
+            materialListId: orders.materialListId,
+            orderNumber: orders.orderNumber,
+          })
+          .from(orders)
+          .where(
+            and(
+              eq(orders.id, input.packingSlipOrderId),
+              eq(orders.jobId, fresh.job.id),
+              eq(orders.organizationId, fresh.job.organizationId),
+            ),
+          )
+          .for("share");
+        if (!order?.materialListId)
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "This order has no available material list.",
+          });
+        if (
+          order.status === "draft" ||
+          order.status === "cancelled" ||
+          order.fulfillmentStatus === "cancelled"
+        )
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Choose a sent order to attach a packing slip.",
+          });
+        const [list] = await tx
+          .select({ name: materialLists.name })
+          .from(materialLists)
+          .where(
+            and(
+              eq(materialLists.id, order.materialListId),
+              eq(materialLists.jobId, fresh.job.id),
+              eq(materialLists.organizationId, fresh.job.organizationId),
+            ),
+          )
+          .for("share");
+        if (!list)
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Material list not found.",
+          });
+        // Receiving grants only this validated attachment, not general document editing.
+        result = appendPackingSlip(state, { ...actor, canWrite: true }, input, {
+          orderId: order.id,
+          materialListId: order.materialListId,
+          orderNumber: order.orderNumber ?? `Order ${order.id.slice(0, 8)}`,
+          materialListName: list.name ?? "Material list",
+        });
+      } else result = appendVersion(state, actor, input);
       // Validate all conflicts and bounds before creating a blob; publish metadata only after bytes exist.
       await persistBlob();
       return result;

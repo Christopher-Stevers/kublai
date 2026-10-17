@@ -22,7 +22,9 @@ export type SubmittalDetails = {
   dueDate: string | null;
 };
 export type SubmittalInput = Omit<SubmittalDetails, "number">;
+export type PackingSlipLink = { orderId: string; materialListId: string; orderNumber: string; materialListName: string };
 export type JobDocument = {
+  packingSlip?: PackingSlipLink;
   submittal?: SubmittalDetails;
   id: string;
   jobId: string;

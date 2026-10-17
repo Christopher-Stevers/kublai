@@ -1,3 +1,4 @@
+import { userCan } from "~/server/auth/permissions";
 import { documentPagePreview } from "~/server/documents/page-preview";
 import { TRPCError } from "@trpc/server";
 import { createHash } from "node:crypto";
@@ -35,7 +36,7 @@ export async function POST(request: Request) {
     );
     const { userId } = await getRequestIdentity(request.headers, { request });
     const access = await assertDocumentAccess(userId, jobId);
-    if (!access.canWrite)
+    if (!access.canWrite && !userCan(access.user, "orders.receive"))
       throw new TRPCError({
         code: "FORBIDDEN",
         message: "Document editing permission is required.",
@@ -78,6 +79,7 @@ export async function POST(request: Request) {
     };
     const metadata = uploadMetadataSchema.parse({
       jobId,
+      packingSlipOrderId: field("packingSlipOrderId") ?? undefined,
       submittal: parseSubmittalUpload(form.get("submittal")),
       folderId: field("folderId") ?? null,
       documentId: field("documentId") ?? undefined,
@@ -86,6 +88,22 @@ export async function POST(request: Request) {
     });
     // Recheck current account permissions after receiving the potentially slow body.
     const fresh = await assertDocumentAccess(userId, jobId);
+    if (!metadata.packingSlipOrderId && !fresh.canWrite)
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "Document editing permission is required.",
+      });
+    if (
+      metadata.packingSlipOrderId &&
+      (metadata.documentId ||
+        metadata.folderId ||
+        metadata.submittal ||
+        metadata.expectedVersionId)
+    )
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Upload packing slips as new attachments.",
+      });
     const state = await readWorkspace(fresh);
     const actor = documentActor(fresh, []);
     if (metadata.documentId) {
@@ -100,7 +118,8 @@ export async function POST(request: Request) {
           code: "CONFLICT",
           message: "A newer version exists. Refresh before uploading.",
         });
-    } else assertFolderRole(state, actor, metadata.folderId ?? null, "editor");
+    } else if (!metadata.packingSlipOrderId)
+      assertFolderRole(state, actor, metadata.folderId ?? null, "editor");
     const bytes = new Uint8Array(await file.arrayBuffer());
     const mimeType = detectedDocumentMime(bytes, metadata.name);
     const sha256 = createHash("sha256").update(bytes).digest("hex");

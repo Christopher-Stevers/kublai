@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useSnapshot } from "~/components/chat/SnapshotProvider";
 import { useSnapshotSource } from "~/components/chat/SnapshotSourceContext";
@@ -556,6 +557,11 @@ export function DocumentDetails({
               <div role="tabpanel" aria-label={tab} className="space-y-4">
                 {tab === "details" && (
                   <>
+                    {document.packingSlip && <div className="rounded-lg border p-3 text-sm space-y-2">
+                      <p className="font-medium">Packing slip · {document.packingSlip.orderNumber}</p>
+                      <Link className="block underline" href={`/dashboard/material-lists/${document.packingSlip.materialListId}`}>{document.packingSlip.materialListName}</Link>
+                      <Link className="block underline" href={`/dashboard/material-lists/${document.packingSlip.materialListId}?orderId=${document.packingSlip.orderId}`}>View order receiving</Link>
+                    </div>}
                     <dl className="space-y-4 text-sm">
                       <div>
                         <dt className="text-muted-foreground mb-1 text-xs">
