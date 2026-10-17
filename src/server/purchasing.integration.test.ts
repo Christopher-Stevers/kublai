@@ -227,6 +227,17 @@ describe.skipIf(!socket)(
       const after = await material.previewOrders({ materialListId: list });
       expect(after.possible).toHaveLength(0);
       expect(after.sent).toEqual([expect.objectContaining({ id: sent.id })]);
+      const [locked] = await db.select().from(schema.quoteItems).where(eq(schema.quoteItems.id, item));
+      const [sentLine] = await db.select().from(schema.orderItems).where(eq(schema.orderItems.orderId, sent.id));
+      expect(locked!.sentOrderItemId).toBe(sentLine!.id);
+      const copy = await material.duplicate({ materialListId: list });
+      expect((await material.previewOrders({ materialListId: copy.id })).possible).toHaveLength(1);
+      await db.insert(schema.quoteItems).values({ id: id(998), quoteId: quote, partDefinitionId: part, quantity: "1" });
+      const added = await material.previewOrders({ materialListId: list });
+      expect(Number(added.possible[0]!.items[0]!.quantity)).toBe(1);
+      await material.sendGeneratedOrder({ materialListId: list, supplierId, sentTo: "Tool room" });
+      expect((await material.previewOrders({ materialListId: list })).possible).toHaveLength(0);
+
     });
     it("shows 37 required but charges 50, including markup", async () => {
       await recalculatePurchaseTotals(db, quote);

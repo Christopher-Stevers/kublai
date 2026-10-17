@@ -157,6 +157,7 @@ async function withoutAlreadyRequestedTools<
       and(
         eq(orders.materialListId, materialListId),
         eq(orders.kind, "tool_request"),
+        sql`not exists (select 1 from ${quoteItems} where ${quoteItems.sentOrderItemId} = ${orderItems.id})`,
         sql`coalesce(${orders.fulfillmentStatus}, 'open') <> 'cancelled'`,
       ),
     )
@@ -1482,7 +1483,7 @@ ${foremanName}`;
               undefined,
             supplierSkuSnapshot: item.supplierSku ?? undefined,
           });
-          if (!isToolRequest) await tx.update(quoteItems).set({ sentOrderItemId: orderItemId, extendedPrice: String(purchaseLineTotal(item.quantity, item.unitCost)), updatedAt: new Date() })
+          await tx.update(quoteItems).set({ sentOrderItemId: orderItemId, extendedPrice: String(purchaseLineTotal(item.quantity, item.unitCost)), updatedAt: new Date() })
             .where(eq(quoteItems.id, item.id));
         }
 

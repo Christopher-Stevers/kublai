@@ -455,7 +455,7 @@ export function DashboardClient({
       Boolean(selectedMaterialList?.pendingSync) ||
       selectedItems.some((item) => Boolean(item.pendingSync));
     const jobLocationAddress = formatLocationAddress(offlineJob?.location);
-    const canQuote = !isToolRequest && (can?.["quotes.create"] ?? true);
+    const canQuote = can?.["quotes.create"] ?? true;
     const canOrder = isToolRequest || (can?.["orders.send"] ?? true);
     const offlineGenerationBlockReason = sandbox
       ? "Quotes and orders are not sent during the tutorial."

@@ -175,9 +175,10 @@ it("lets a foreman send tools from the job workspace to Asset Management without
   }));
   render(<DashboardClient initialJobs={[]} />);
   expect(state.itemMode).toHaveBeenCalledWith(true);
-  const start = screen.getByRole("button", { name: "Send to Tool Room" });
+  const start = screen.getByRole("button", { name: /^Order$/ });
   expect(start).toBeEnabled();
-  expect(screen.queryByRole("button", { name: /^Order$/ })).toBeNull();
+  expect(screen.getByRole("button", { name: "More" })).toBeVisible();
+  expect(screen.getByRole("button", { name: "Add Part" })).toBeVisible();
   fireEvent.click(start);
   fireEvent.click(await screen.findByRole("button", { name: /^Send$/ }));
   await waitFor(() =>
