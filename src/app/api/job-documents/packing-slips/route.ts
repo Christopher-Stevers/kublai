@@ -32,6 +32,8 @@ export async function GET(request: Request) {
             name: d.name,
             createdAt: d.createdAt,
             packingSlip: d.packingSlip,
+            packingSlipAnalysis: d.packingSlipAnalysis,
+            currentVersionId: d.currentVersionId,
           })),
       },
       { headers: { "Cache-Control": "private, no-store" } },

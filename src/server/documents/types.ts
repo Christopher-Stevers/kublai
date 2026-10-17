@@ -24,6 +24,7 @@ export type SubmittalDetails = {
 export type SubmittalInput = Omit<SubmittalDetails, "number">;
 export type PackingSlipLink = { orderId: string; materialListId: string; orderNumber: string; materialListName: string };
 export type JobDocument = {
+  packingSlipAnalysis?: import("~/lib/packing-slip-review").SlipAnalysis;
   packingSlip?: PackingSlipLink;
   submittal?: SubmittalDetails;
   id: string;

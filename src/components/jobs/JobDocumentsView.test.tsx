@@ -1006,8 +1006,8 @@ it("moves selected files to a chosen folder in one request", async () => {
   await ready();
   fireEvent.click(screen.getByLabelText("Select Specification.pdf"));
   fireEvent.click(screen.getByLabelText("Select Second.pdf"));
-  fireEvent.click(screen.getByRole("button", { name: "Move", exact: true }));
+  fireEvent.click(screen.getByRole("button", { name: "Move" }));
   fireEvent.change(screen.getByLabelText("Destination folder"), { target: { value: "folder-1" } });
-  fireEvent.click(screen.getByRole("button", { name: "Save", exact: true }));
+  fireEvent.click(screen.getByRole("button", { name: "Save" }));
   await waitFor(() => expect(jsonPosts()).toContainEqual({ jobId: "job-1", action: "moveDocuments", documentIds: ["doc-1", "doc-extra"], folderId: "folder-1" }));
 });

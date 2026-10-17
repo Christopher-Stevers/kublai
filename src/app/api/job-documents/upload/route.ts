@@ -1,3 +1,4 @@
+import { startSlipAnalysis } from "~/server/packing-slips/service";
 import { userCan } from "~/server/auth/permissions";
 import { documentPagePreview } from "~/server/documents/page-preview";
 import { TRPCError } from "@trpc/server";
@@ -132,8 +133,17 @@ export async function POST(request: Request) {
       void documentPagePreview(fresh.job.organizationId, sha256, 1).catch(
         () => undefined,
       );
+    let analysisError: string | undefined;
+    if (metadata.packingSlipOrderId) {
+      try {
+        await startSlipAnalysis(fresh, result.documentId);
+      } catch {
+        analysisError =
+          "PDF saved, but analysis could not start. Use Analyze slip to retry.";
+      }
+    }
     return Response.json(
-      { success: true, ...result },
+      { success: true, ...result, analysisError },
       { headers: { "Cache-Control": "private, no-store" } },
     );
   } catch (error) {

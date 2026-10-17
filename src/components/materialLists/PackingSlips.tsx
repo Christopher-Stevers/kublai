@@ -1,6 +1,8 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { PackingSlipReview } from "./PackingSlipReview";
+import type { SlipAnalysis } from "~/lib/packing-slip-review";
 import dynamic from "next/dynamic";
 const PackingSlipScanner = dynamic(() => import("./PackingSlipScanner"), {
   ssr: false,
@@ -21,15 +23,19 @@ type Slip = {
   name: string;
   createdAt: string;
   packingSlip: PackingSlipLink;
+  packingSlipAnalysis?: SlipAnalysis;
+  currentVersionId: string | null;
 };
 export function PackingSlips({
   jobId,
   materialListId,
   orderId,
+  onVerified,
 }: {
   jobId: string;
   materialListId: string;
   orderId?: string | null;
+  onVerified?: () => void;
 }) {
   const online = useOnlineStatus();
   const [open, setOpen] = useState(false),
@@ -40,6 +46,7 @@ export function PackingSlips({
     [canUpload, setCanUpload] = useState(false);
   const [retryFile, setRetryFile] = useState<File | null>(null);
   useEffect(() => setRetryFile(null), [jobId, materialListId, orderId]);
+  const [notice, setNotice] = useState("");
   const [scanning, setScanning] = useState(false);
   const files = useRef<HTMLInputElement>(null);
   const load = useCallback(
@@ -96,12 +103,20 @@ export function PackingSlips({
         `/api/job-documents/upload?jobId=${encodeURIComponent(jobId)}`,
         { method: "POST", body: form },
       );
-      const result = (await response.json()) as { error?: string };
+      const result = (await response.json()) as {
+        error?: string;
+        analysisError?: string;
+      };
       if (!response.ok)
         throw Error(
           result.error ?? "Could not save packing slip. Please retry.",
         );
       setRetryFile(null);
+      setNotice(
+        result.analysisError ??
+          "Packing slip saved. Analysis will prepare quantities for your review.",
+      );
+      setScanning(false);
       await load().catch(() =>
         setError("Packing slip saved. Reopen this window to refresh the list."),
       );
@@ -110,6 +125,55 @@ export function PackingSlips({
       setRetryFile(file);
       setError(e instanceof Error ? e.message : "Could not save packing slip.");
       return false;
+    } finally {
+      setBusy(false);
+    }
+  };
+  useEffect(() => {
+    if (
+      !open ||
+      !online ||
+      !slips.some((s) => s.packingSlipAnalysis?.status === "processing")
+    )
+      return;
+    const timer = setInterval(() => {
+      void load().catch(() => undefined);
+    }, 4000);
+    return () => clearInterval(timer);
+  }, [open, online, slips, load]);
+  const analysisAction = async (
+    slip: Slip,
+    action: "analyze" | "refresh" | "confirm",
+    quantities?: Record<string, number>,
+  ) => {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/job-documents/packing-slips/analysis", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action,
+          jobId,
+          documentId: slip.id,
+          runId: slip.packingSlipAnalysis?.runId,
+          quantities,
+        }),
+      });
+      const result = (await res.json()) as { error?: string };
+      if (!res.ok)
+        throw Error(result.error ?? "Could not update this receipt.");
+      await load();
+      if (action === "confirm") {
+        setNotice(
+          "Received quantities updated. Differences are flagged on the order.",
+        );
+        onVerified?.();
+      }
+    } catch (e) {
+      setError(
+        e instanceof Error ? e.message : "Could not update this receipt.",
+      );
     } finally {
       setBusy(false);
     }
@@ -138,6 +202,11 @@ export function PackingSlips({
                 : "Packing slips attached to orders from this material list."}
             </DialogDescription>
           </DialogHeader>
+          {notice && (
+            <p role="status" className="text-sm">
+              {notice}
+            </p>
+          )}
           {scanning ? (
             <PackingSlipScanner
               key={`${jobId}:${materialListId}:${orderId}`}
@@ -217,20 +286,33 @@ export function PackingSlips({
                   {!orderId ? " Open Verify Order to attach one." : ""}
                 </p>
               )}
-              <div className="max-h-72 space-y-2 overflow-y-auto">
+              <div className="space-y-3">
                 {slips.map((slip) => (
-                  <Link
-                    key={slip.id}
-                    href={`/dashboard/jobs/${jobId}/documents?document=${slip.id}`}
-                    className="hover:bg-accent block rounded-lg border p-3 text-sm"
-                    onClick={() => setOpen(false)}
-                  >
-                    <span className="block font-medium">{slip.name}</span>
-                    <span className="text-muted-foreground">
-                      {slip.packingSlip.orderNumber} ·{" "}
-                      {new Date(slip.createdAt).toLocaleDateString()}
-                    </span>
-                  </Link>
+                  <div key={slip.id} className="space-y-3 rounded border p-3">
+                    <Link
+                      href={`/dashboard/jobs/${jobId}/documents?document=${slip.id}`}
+                      className="hover:bg-accent block rounded-lg border p-3 text-sm"
+                      onClick={() => setOpen(false)}
+                    >
+                      <span className="block font-medium">{slip.name}</span>
+                      <span className="text-muted-foreground">
+                        {slip.packingSlip.orderNumber} ·{" "}
+                        {new Date(slip.createdAt).toLocaleDateString()}
+                      </span>
+                    </Link>
+                    {(Boolean(orderId && canUpload) ||
+                      Boolean(slip.packingSlipAnalysis?.applied)) && (
+                      <PackingSlipReview
+                        key={`${slip.packingSlipAnalysis?.runId ?? slip.id}:${slip.packingSlipAnalysis?.status ?? "none"}`}
+                        analysis={slip.packingSlipAnalysis}
+                        versionId={slip.currentVersionId}
+                        busy={busy}
+                        onAction={(action, quantities) =>
+                          analysisAction(slip, action, quantities)
+                        }
+                      />
+                    )}
+                  </div>
                 ))}
               </div>
             </>
