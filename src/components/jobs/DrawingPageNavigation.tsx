@@ -5,7 +5,6 @@ import { Button } from "~/components/ui/button";
 
 /** Shared navigation for Drawings and document PDFs. */
 export function DrawingPageNavigation({
-  scrollPages = false,
   name,
   index,
   count,
@@ -35,7 +34,7 @@ export function DrawingPageNavigation({
       className="bg-card shrink-0 px-3 pt-0.5 pb-[calc(0.25rem+env(safe-area-inset-bottom))]"
     >
       <div className="mx-auto grid max-w-6xl grid-cols-[minmax(0,1fr)_minmax(0,1.25fr)_minmax(0,1fr)] items-center gap-2">
-        {!scrollPages && <Button
+        <Button
           variant="outline"
           className="h-9 min-w-0 rounded-lg px-2 text-sm"
           disabled={index <= 0}
@@ -43,8 +42,8 @@ export function DrawingPageNavigation({
         >
           <ChevronLeftIcon className="mr-1 h-4 w-4" />
           Previous
-        </Button>}
-        <div className={`flex min-w-0 flex-col items-center ${scrollPages ? "col-span-3" : ""}`}>
+        </Button>
+        <div className="flex min-w-0 flex-col items-center">
           <div className="flex w-full min-w-0 items-center justify-center gap-1.5">
             {nameControl ?? (
               <span
@@ -81,7 +80,7 @@ export function DrawingPageNavigation({
             </Button>
           </div>
         </div>
-        {!scrollPages && <Button
+        <Button
           variant="outline"
           className="h-9 min-w-0 rounded-lg px-2 text-sm"
           disabled={index >= count - 1}
@@ -89,7 +88,7 @@ export function DrawingPageNavigation({
         >
           Next
           <ChevronRightIcon className="ml-1 h-4 w-4" />
-        </Button>}
+        </Button>
       </div>
     </div>
   );
