@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuickWheelOptions } from "./QuickWheel";
+import { wizardSizeOptions } from "~/lib/wizard-size-options";
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { formatSize, formatSizeDimensions } from "~/lib/size-utils";
 import { Card, CardContent } from "~/components/ui/card";
@@ -274,14 +275,20 @@ export function SizeStage({
   const pagination = useClientPagination(availableSizes ?? []);
   useQuickWheelOptions("Select Size", [
     { label: "All", select: () => commitSize(null) },
-    ...(availableSizes ?? []).flatMap(size =>
-      size.subSizes?.length
-        ? size.subSizes.map(sub => ({
-            label: formatSizeDimensions(sub.label, size.unit),
-            select: () => commitSize({ nominal: size.nominal, unit: size.unit, sizeLabel: sub.label }),
-          }))
-        : [{ label: formatSizeDimensions(size.nominal, size.unit), select: () => commitSize(size) }],
-    ),
+    ...wizardSizeOptions(
+      (availableSizes ?? []).flatMap<SizeSelection>((size) =>
+        size.subSizes?.length
+          ? size.subSizes.map((sub) => ({
+              nominal: size.nominal,
+              unit: size.unit,
+              sizeLabel: sub.label,
+            }))
+          : [size],
+      ),
+    ).map((option) => ({
+      label: option.label,
+      select: () => commitSize(option.size),
+    })),
   ]);
   // Regular cards retain their broad nominal-size filter and sub-size picker.
   const onSizeSelect = commitSize;
