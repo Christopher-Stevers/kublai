@@ -4,6 +4,7 @@ import { useState } from "react";
 import {
   BoxesIcon,
   CheckCheckIcon,
+  XIcon,
   FileTextIcon,
   MoreHorizontalIcon,
   PlusIcon,
@@ -31,6 +32,7 @@ export function MaterialListActions({
   onAdd,
   onNotes,
   onMarkAllReceived,
+  onMarkNoneReceived,
   receivingAll = false,
   receiveDisabled = false,
   materialListId,
@@ -46,6 +48,7 @@ export function MaterialListActions({
   onAdd: () => void;
   onNotes?: () => void;
   onMarkAllReceived?: () => void;
+  onMarkNoneReceived?: () => void;
   receivingAll?: boolean;
   receiveDisabled?: boolean;
   /** Kept for callers; tool routing is handled by the order preview. */
@@ -73,16 +76,18 @@ export function MaterialListActions({
       <div className="grid grid-cols-3 gap-1.5">
         {onNotes ? (
           <>
-            <Button variant="outline" className={`${onMarkAllReceived ? "col-span-1" : "col-span-3"} ${style}`} onClick={onNotes}>
+            <Button variant="outline" className={style} onClick={onMarkAllReceived} disabled={!onMarkAllReceived || receiveDisabled || receivingAll || !isOnline}>
+              <CheckCheckIcon className="mr-1 h-3.5 w-3.5 shrink-0" />
+              Mark all received
+            </Button>
+            <Button className={style} onClick={onNotes}>
               <FileTextIcon className="mr-1 h-3.5 w-3.5 shrink-0" />
               Notes
             </Button>
-            {onMarkAllReceived && (
-              <Button className={`col-span-2 ${style}`} onClick={onMarkAllReceived} disabled={receiveDisabled || receivingAll || !isOnline}>
-                <CheckCheckIcon className="mr-1 h-3.5 w-3.5 shrink-0" />
-                {receivingAll ? "Saving..." : "Mark all received"}
-              </Button>
-            )}
+            <Button variant="outline" className={style} onClick={onMarkNoneReceived} disabled={!onMarkNoneReceived || receiveDisabled || receivingAll || !isOnline}>
+              <XIcon className="mr-1 h-3.5 w-3.5 shrink-0" />
+              Mark none received
+            </Button>
           </>
         ) : (
           <>

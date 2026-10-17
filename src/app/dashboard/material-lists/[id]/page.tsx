@@ -398,6 +398,7 @@ export default function MaterialListDetailPage({
           onQuote={handleGenerateQuote} onOrder={handleGenerateOrder} onAdd={openAddPartDialog}
           onNotes={verifyOrderId ? () => setShowVerifyNotesDialog(true) : undefined}
           onMarkAllReceived={verifyOrderId && userData?.permissions.can["orders.receive"] ? () => markAllReceived.mutate({ orderId: verifyOrderId }) : undefined}
+          onMarkNoneReceived={verifyOrderId && userData?.permissions.can["orders.receive"] ? () => markAllReceived.mutate({ orderId: verifyOrderId, allReceived: false }) : undefined}
           receivingAll={markAllReceived.isPending}
           receiveDisabled={!verifyOrder?.items.length || updateOrderItemVerification.isPending}
 

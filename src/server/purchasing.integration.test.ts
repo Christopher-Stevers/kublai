@@ -455,6 +455,10 @@ describe.skipIf(!socket)(
       expect(Number(received.items.find(line => line.id === first!.id)!.quantity)).toBe(50);
       expect(Number((await material.getOrderById({ orderId: another.id })).items[0]!.receivedQuantity)).toBe(0);
       await material.markAllOrderItemsReceived({ orderId: sent.id });
+      await material.markAllOrderItemsReceived({ orderId: sent.id, allReceived: false });
+      const cleared = await material.getOrderById({ orderId: sent.id });
+      expect(cleared.items.every(line => Number(line.receivedQuantity) === 0 && line.verificationStatus === "pending")).toBe(true);
+      expect(Number(cleared.items.find(line => line.id === first!.id)!.quantity)).toBe(50);
       const foreign = materialListRouter.createCaller({ ...context, user: { ...context.user, organizationId: id(999) } } as never);
       await expect(foreign.markAllOrderItemsReceived({ orderId: sent.id })).rejects.toThrow("Order not found");
       await db.update(schema.orders).set({ status: "cancelled" }).where(eq(schema.orders.id, sent.id));

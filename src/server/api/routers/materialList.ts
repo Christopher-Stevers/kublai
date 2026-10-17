@@ -2003,7 +2003,7 @@ ${foremanName}`;
     }),
 
   markAllOrderItemsReceived: hasDashboardAccess
-    .input(z.object({ orderId: z.string().uuid() }))
+    .input(z.object({ orderId: z.string().uuid(), allReceived: z.boolean().default(true) }))
     .mutation(async ({ ctx, input }) => {
       assertCan(ctx.user, "orders.receive");
       const organizationId = ctx.user.organizationId;
@@ -2017,7 +2017,7 @@ ${foremanName}`;
           throw new TRPCError({ code: "BAD_REQUEST", message: "Cancelled orders cannot be received." });
         }
         const updated = await tx.update(orderItems)
-          .set({ receivedQuantity: sql`${orderItems.quantity}`, verificationStatus: "complete" })
+          .set({ receivedQuantity: input.allReceived ? sql`${orderItems.quantity}` : "0", verificationStatus: input.allReceived ? "complete" : "pending" })
           .where(eq(orderItems.orderId, order.id)).returning({ id: orderItems.id });
         return { materialListId: order.materialListId, count: updated.length };
       });
