@@ -39,3 +39,9 @@ describe("planPrefabAdd", () => {
     expect(planPrefabAdd(prefab, [], 0)).toEqual({ updates: [], adds: [] });
   });
 });
+
+it("adds a new editable row when the matching existing item is locked", () => {
+  const plan = planPrefabAdd([prefab[0]!], [{id:"sent",partDefinitionId:"pipe",supplierPartId:"pipe-a",quantity:10,sentOrderItemId:"order-line"}], 1);
+  expect(plan.updates).toEqual([]);
+  expect(plan.adds).toHaveLength(1);
+});

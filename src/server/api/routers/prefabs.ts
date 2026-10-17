@@ -7,6 +7,7 @@ import { createTRPCRouter, hasDashboardAccess } from "~/server/api/trpc";
 import { userCan } from "~/server/auth/permissions";
 import type { db as database } from "~/server/db";
 import {
+  catalogs,
   materialPrefabItems,
   materialPrefabs,
   partDefinitions,
@@ -20,6 +21,7 @@ import {
  * mutations; this router only stores and edits the prefabs themselves.
  */
 const name = z.string().trim().min(1).max(255);
+const prefabKind = z.enum(["materials", "tools"]);
 const quantity = z.number().positive().max(1_000_000);
 const itemInput = z.object({
   partDefinitionId: z.string().uuid(),
@@ -65,12 +67,14 @@ async function addItems(
   organizationId: string,
   prefabId: string,
   items: Array<z.infer<typeof itemInput>>,
+  kind: "materials" | "tools",
 ) {
   if (items.length === 0) return;
   const partIds = [...new Set(items.map((item) => item.partDefinitionId))];
   const parts = await db
-    .select({ id: partDefinitions.id, piecesPerPack: partDefinitions.piecesPerPack })
+    .select({ id: partDefinitions.id, piecesPerPack: partDefinitions.piecesPerPack, catalogKind: catalogs.kind })
     .from(partDefinitions)
+    .leftJoin(catalogs, eq(partDefinitions.catalogId, catalogs.id))
     .where(
       and(
         inArray(partDefinitions.id, partIds),
@@ -79,6 +83,8 @@ async function addItems(
     );
   if (parts.length !== partIds.length)
     throw new TRPCError({ code: "BAD_REQUEST", message: "Unknown part" });
+  if (parts.some(part => (part.catalogKind === "assets" ? "tools" : "materials") !== kind))
+    throw new TRPCError({ code: "BAD_REQUEST", message: "Tool prefabs can only contain tools; material prefabs can only contain materials." });
   const supplierPartIds = [
     ...new Set(items.flatMap((item) => (item.supplierPartId ? [item.supplierPartId] : []))),
   ];
@@ -143,12 +149,12 @@ async function touch(ctx: Ctx, prefabId: string) {
 
 export const prefabsRouter = createTRPCRouter({
   /** Every prefab in the company with its parts, ready to add offline. */
-  list: hasDashboardAccess.query(async ({ ctx }) => {
+  list: hasDashboardAccess.input(z.object({ kind: prefabKind }).optional()).query(async ({ ctx, input }) => {
     const organizationId = organizationOf(ctx);
     const prefabs = await ctx.db
       .select()
       .from(materialPrefabs)
-      .where(eq(materialPrefabs.organizationId, organizationId))
+      .where(and(eq(materialPrefabs.organizationId, organizationId), input ? eq(materialPrefabs.kind, input.kind) : undefined))
       .orderBy(asc(materialPrefabs.name));
     if (prefabs.length === 0) return [];
     const items = await ctx.db
@@ -186,6 +192,7 @@ export const prefabsRouter = createTRPCRouter({
     return prefabs.map((prefab) => ({
       id: prefab.id,
       name: prefab.name,
+      kind: prefab.kind,
       updatedAt: prefab.updatedAt,
       items: items
         .filter((item) => item.prefabId === prefab.id)
@@ -209,16 +216,16 @@ export const prefabsRouter = createTRPCRouter({
 
   /** New prefab, empty or (for "Save as prefab") with a list's parts. */
   create: hasDashboardAccess
-    .input(z.object({ name, items: z.array(itemInput).max(500).default([]) }))
+    .input(z.object({ name, kind: prefabKind.default("materials"), items: z.array(itemInput).max(500).default([]) }))
     .mutation(async ({ ctx, input }) => {
       assertCanEdit(ctx);
       const organizationId = organizationOf(ctx);
       return ctx.db.transaction(async (tx) => {
         const [prefab] = await tx
           .insert(materialPrefabs)
-          .values({ organizationId, name: input.name, createdByUserId: userIdOf(ctx) })
+          .values({ organizationId, name: input.name, kind: input.kind, createdByUserId: userIdOf(ctx) })
           .returning();
-        await addItems(tx, organizationId, prefab!.id, input.items);
+        await addItems(tx, organizationId, prefab!.id, input.items, input.kind);
         return prefab!;
       });
     }),
@@ -246,9 +253,9 @@ export const prefabsRouter = createTRPCRouter({
     .input(z.object({ prefabId: z.string().uuid(), items: z.array(itemInput).min(1).max(500) }))
     .mutation(async ({ ctx, input }) => {
       assertCanEdit(ctx);
-      await requirePrefab(ctx, input.prefabId);
+      const prefab = await requirePrefab(ctx, input.prefabId);
       await ctx.db.transaction((tx) =>
-        addItems(tx, organizationOf(ctx), input.prefabId, input.items),
+        addItems(tx, organizationOf(ctx), input.prefabId, input.items, prefab.kind),
       );
       await touch(ctx, input.prefabId);
     }),

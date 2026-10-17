@@ -26,7 +26,7 @@ export function SaveAsPrefabDialog({
   onOpenChange: (open: boolean) => void;
   materialListId: string;
 }) {
-  const { items } = useReplicacheMaterialList(materialListId);
+  const { items, materialList } = useReplicacheMaterialList(materialListId);
   const [name, setName] = useState("");
   const utils = api.useUtils();
   const create = api.prefabs.create.useMutation({
@@ -37,7 +37,7 @@ export function SaveAsPrefabDialog({
   const save = async () => {
     const trimmed = name.trim();
     if (!trimmed || parts.length === 0) return;
-    const prefab = await create.mutateAsync({ name: trimmed, items: parts }).catch(() => null);
+    const prefab = await create.mutateAsync({ name: trimmed, items: parts, kind: materialList?.kind === "tools" ? "tools" : "materials" }).catch(() => null);
     if (!prefab) return;
     void utils.prefabs.list.invalidate();
     notify(`Saved this list as ${prefab.name}`, "success", 3000);
@@ -49,7 +49,7 @@ export function SaveAsPrefabDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md" showCloseButton={false}>
         <DialogHeader>
-          <DialogTitle>Save as Prefab</DialogTitle>
+          <DialogTitle>Save as {materialList?.kind === "tools" ? "Tool" : "Material"} Prefab</DialogTitle>
           <DialogDescription>
             Saves {parts.length} part{parts.length === 1 ? "" : "s"} from this list so anyone in
             the company can add them in one go.

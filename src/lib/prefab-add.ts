@@ -14,6 +14,7 @@ export type PrefabLine = {
 };
 export type ListLine = {
   id: string;
+  sentOrderItemId?: string | null;
   partDefinitionId: string | null;
   supplierPartId: string | null;
   quantity: string | number;
@@ -39,7 +40,7 @@ export function planPrefabAdd<P extends PrefabLine>(
         : roundQuantity(prefabLine.quantity * multiplier);
     if (!(quantity > 0)) continue;
     const samePart = listLines.filter(
-      (line) => line.partDefinitionId === prefabLine.partDefinitionId,
+      (line) => !line.sentOrderItemId && line.partDefinitionId === prefabLine.partDefinitionId,
     );
     const target =
       samePart.find(

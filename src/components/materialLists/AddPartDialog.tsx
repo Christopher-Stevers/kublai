@@ -59,7 +59,8 @@ export function AddPartDialog({
   // Tool request lists pick from tool catalogs; material lists never do.
   const { materialList: listHeader, items: listItems } =
     useReplicacheMaterialList(materialListId || "catalogue-prefab-manager");
-  const isToolRequest = listHeader?.kind === "tools";
+  const [managedPrefabKind, setManagedPrefabKind] = useState<"materials" | "tools">("materials");
+  const isToolRequest = managePrefabs ? managedPrefabKind === "tools" : listHeader?.kind === "tools";
   // Prefabs: the panel replaces the wizard while open; with a target set, the
   // wizard picks parts for that prefab instead of this list.
   const [prefabView, setPrefabView] = useState<PrefabView | null>(managePrefabs ? {kind:"list"} : null);
@@ -892,13 +893,11 @@ export function AddPartDialog({
 
   const closeDialogAndCleanHistory = () => onOpenChange(false);
 
-  const pageTitle = isToolRequest
-    ? "Add Tools"
+  const pageTitle = prefabView
+    ? (isToolRequest ? "Tool Prefabs" : "Material Prefabs")
     : prefabTarget
-      ? `Add Parts to ${prefabTarget.name}`
-      : prefabView
-        ? "Prefabs"
-        : "Add Parts";
+      ? `Add ${isToolRequest ? "Tools" : "Parts"} to ${prefabTarget.name}`
+      : isToolRequest ? "Add Tools" : "Add Parts";
   const barButton =
     "h-9 min-h-9 w-full rounded-lg px-1.5 py-1 text-xs leading-tight whitespace-normal";
 
@@ -1083,6 +1082,8 @@ export function AddPartDialog({
             )}
             {prefabView ? (
               <PrefabsPanel
+                kind={isToolRequest ? "tools" : "materials"}
+                onKindChange={kind => { setManagedPrefabKind(kind); setPrefabTarget(null); setPendingParts([]); resetWizard(); setPrefabView({kind:"list"}); }}
                 materialListId={materialListId}
                 listItems={managePrefabs ? [] : listItems}
                 view={prefabView}
@@ -1126,7 +1127,7 @@ export function AddPartDialog({
               wizardStage === "catalog" && (<>
                 <CatalogStage
                   onPrefabsSelect={
-                    !isToolRequest && !prefabTarget
+                    !prefabTarget
                       ? () => setPrefabView({ kind: "list" })
                       : undefined
                   }

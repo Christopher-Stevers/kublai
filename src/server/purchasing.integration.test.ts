@@ -572,6 +572,26 @@ describe.skipIf(!socket)(
       expect((await material.getOrderEmailContent({orderId:sent.id})).body).toContain("2 boxes (100 pcs)");
       expect((await material.getQuoteEmailContent({quoteId:quote})).body).toContain("2 boxes (100 pcs)");
     });
+    it("separates tool prefabs and rejects mixed contents", async () => {
+      const caller = prefabsRouter.createCaller(context as never);
+      const tool = id(901);
+      await db.insert(schema.catalogs).values({id:id(902),organizationId:org,name:"Tools",kind:"assets"});
+      await db.insert(schema.partDefinitions).values({id:tool,organizationId:org,catalogId:id(902),displayName:"Drill"});
+      const tools = await caller.create({name:"Tool kit",kind:"tools",items:[{partDefinitionId:tool,quantity:2}]});
+      const materials = await caller.create({name:"Material kit",kind:"materials",items:[{partDefinitionId:part,quantity:3}]});
+      expect((await caller.list({kind:"tools"})).map(p=>p.id)).toEqual([tools.id]);
+      expect((await caller.list({kind:"materials"})).map(p=>p.id)).toEqual([materials.id]);
+      await expect(caller.addItems({prefabId:tools.id,items:[{partDefinitionId:part,quantity:1}]})).rejects.toThrow("only contain");
+      await expect(caller.addItems({prefabId:materials.id,items:[{partDefinitionId:tool,quantity:1}]})).rejects.toThrow("only contain");
+      await expect(caller.create({name:"Mixed",kind:"tools",items:[{partDefinitionId:tool,quantity:1},{partDefinitionId:part,quantity:1}]})).rejects.toThrow("only contain");
+      expect(await caller.list()).toHaveLength(2);
+      // Backfill an existing all-tool prefab without disturbing material kits.
+      await db.update(schema.materialPrefabs).set({kind:"materials"}).where(eq(schema.materialPrefabs.id,tools.id));
+      const migration = await readFile(new URL("../../drizzle/0078_prefab_kinds.sql",import.meta.url),"utf8");
+      await conn.unsafe(migration);
+      await conn.unsafe(migration);
+      expect((await caller.list({kind:"tools"})).map(p=>p.id)).toEqual([tools.id]);
+    });
     it("preserves single-piece requirements when merging saved prefabs", async () => {
       await db.update(schema.partDefinitions).set({piecesPerPack: 3000}).where(eq(schema.partDefinitions.id, part));
       const caller = prefabsRouter.createCaller(context as never);

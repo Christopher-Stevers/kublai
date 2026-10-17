@@ -2333,6 +2333,7 @@ export const materialPrefabs = createTable(
   (d) => ({
     id: d.uuid().notNull().primaryKey().$defaultFn(() => crypto.randomUUID()),
     organizationId: d.uuid().notNull().references(() => organizations.id, { onDelete: "cascade" }),
+    kind: d.varchar({ length: 16 }).$type<"materials" | "tools">().notNull().default("materials"),
     name: d.varchar({ length: 255 }).notNull(),
     createdByUserId: d.varchar({ length: 255 }),
     createdAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),

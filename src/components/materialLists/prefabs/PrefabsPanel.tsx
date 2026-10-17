@@ -40,6 +40,8 @@ function partCount(prefab: Prefab) {
  * offline mutations, so it works without a connection once prefabs are loaded.
  */
 export function PrefabsPanel({
+  kind = "materials",
+  onKindChange,
   materialListId,
   managementOnly = false,
   listItems,
@@ -50,6 +52,8 @@ export function PrefabsPanel({
   isOnline,
   addedBy,
 }: {
+  kind?: "materials" | "tools";
+  onKindChange?: (kind: "materials" | "tools") => void;
   materialListId: string;
   managementOnly?: boolean;
   listItems: ReplicacheMaterialListItem[];
@@ -62,7 +66,7 @@ export function PrefabsPanel({
   addedBy: { id: string; name: string | null; email: string | null } | null;
 }) {
   const utils = api.useUtils();
-  const { data: prefabs, isLoading } = api.prefabs.list.useQuery(undefined, {
+  const { data: prefabs, isLoading } = api.prefabs.list.useQuery({kind}, {
     staleTime: 30_000,
   });
   const { data: role } = api.user.getMyRole.useQuery(undefined, { enabled: isOnline });
@@ -81,7 +85,7 @@ export function PrefabsPanel({
   const [naming, setNaming] = useState<"new" | "save" | null>(null);
 
   const addToList = async (prefab: Prefab, multiplier: number) => {
-    if (managementOnly) return;
+    if (managementOnly || prefab.kind !== kind) return;
     setIsAdding(true);
     try {
       const plan = planPrefabAdd(
@@ -143,7 +147,7 @@ export function PrefabsPanel({
 
   const createPrefab = async (name: string, fromList: boolean) => {
     const items = fromList ? prefabItemsFromList(listItems) : [];
-    const prefab = await create.mutateAsync({ name, items }).catch(() => null);
+    const prefab = await create.mutateAsync({ name, items, kind }).catch(() => null);
     if (!prefab) return;
     setNaming(null);
     await refresh();
@@ -302,6 +306,12 @@ export function PrefabsPanel({
         {managementOnly ? "Catalogue" : "Catalogs"}
       </Button>
 
+      {managementOnly && onKindChange ? (
+        <div className="grid grid-cols-2 gap-2" aria-label="Prefab type">
+          <Button variant={kind === "materials" ? "default" : "outline"} onClick={() => onKindChange("materials")}>Material Prefabs</Button>
+          <Button variant={kind === "tools" ? "default" : "outline"} onClick={() => onKindChange("tools")}>Tool Prefabs</Button>
+        </div>
+      ) : <h2 className="text-lg font-semibold">{kind === "tools" ? "Tool Prefabs" : "Material Prefabs"}</h2>}
       {isLoading ? (
         <p className="text-muted-foreground px-1 text-sm">Loading prefabs…</p>
       ) : !prefabs?.length ? (

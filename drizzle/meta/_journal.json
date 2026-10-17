@@ -377,6 +377,13 @@
       "when": 1792150000000,
       "tag": "0077_supplier_email_preferences",
       "breakpoints": false
+    },
+    {
+      "idx": 54,
+      "version": "7",
+      "when": 1792234407410,
+      "tag": "0078_prefab_kinds",
+      "breakpoints": false
     }
   ]
 }
