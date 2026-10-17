@@ -267,11 +267,20 @@ async function cacheFirstStatic(request) {
 const imageWork = new Map();
 const imageQueue = [];
 let activeImageDownloads = 0;
+let activeBackgroundImageDownloads = 0;
 const IMAGE_CONCURRENCY = 4;
 
 function drainImages() {
   while (activeImageDownloads < IMAGE_CONCURRENCY && imageQueue.length) {
-    const job = imageQueue.shift();
+    // Leave three download slots free for the photos the user can actually see.
+    let index = imageQueue.findIndex(job => job.visible);
+    if (index < 0) {
+      if (activeBackgroundImageDownloads >= 1) return;
+      index = 0;
+    }
+    const [job] = imageQueue.splice(index, 1);
+    const background = !job.visible;
+    if (background) activeBackgroundImageDownloads++;
     activeImageDownloads++;
     (async () => {
       const cached = await safeMatch(job.request, IMAGE_CACHE);
@@ -284,6 +293,7 @@ function drainImages() {
       .then(job.resolve, job.reject)
       .finally(() => {
         activeImageDownloads--;
+        if (background) activeBackgroundImageDownloads--;
         imageWork.delete(job.request.url);
         drainImages();
       });
@@ -293,7 +303,7 @@ function drainImages() {
 function queueImage(request, visible = false) {
   let job = imageWork.get(request.url);
   if (!job) {
-    job = { request };
+    job = { request, visible };
     job.promise = new Promise((resolve, reject) => {
       job.resolve = resolve;
       job.reject = reject;
@@ -302,6 +312,7 @@ function queueImage(request, visible = false) {
     if (visible) imageQueue.unshift(job);
     else imageQueue.push(job);
   } else if (visible) {
+    job.visible = true;
     const index = imageQueue.indexOf(job);
     if (index >= 0) {
       imageQueue.splice(index, 1);
@@ -395,11 +406,12 @@ self.addEventListener("message", (event) => {
           isCacheableImageRequest(url, { destination: "image" }),
         );
 
-      await Promise.allSettled(
+      const results = await Promise.allSettled(
         urls.map((url) =>
           queueImage(new Request(url.href, { credentials: "same-origin" })),
         ),
       );
+      event.ports?.[0]?.postMessage({ cached: urls.filter((_, index) => results[index].status === "fulfilled" && results[index].value.ok).map(url => url.pathname + url.search) });
     })(),
   );
 });

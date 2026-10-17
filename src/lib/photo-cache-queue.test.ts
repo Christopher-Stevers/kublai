@@ -49,22 +49,25 @@ it("bounds downloads, deduplicates messages and prioritizes visible photos", asy
   work.push(enqueue(request(8), true));
   const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
   await tick();
-  expect(started).toHaveLength(4);
+  expect(started).toHaveLength(2); // one background photo, plus the promoted visible one
+  work.push(...[10, 11, 12].map(id => enqueue(request(id), true)));
+  await tick();
+  expect(started).toHaveLength(4); // visible work can use the other three slots
   pending.splice(0).forEach((resolve) => resolve());
   await tick();
-  expect(started[4]).toContain("/8");
-  while (started.length < 9 || active) {
+  expect(started.slice(0, 5).some(url => url.endsWith("/8"))).toBe(true);
+  while (started.length < 12 || active) {
     pending.splice(0).forEach((resolve) => resolve());
     await tick();
   }
   const responses = await Promise.all(work);
   expect(await Promise.all(responses.map((r) => r.text()))).toEqual(
-    Array(10).fill("photo"),
+    Array(13).fill("photo"),
   );
   expect(peak).toBe(4);
   expect(started.filter((url) => url.endsWith("/8"))).toHaveLength(1);
   await enqueue(request(8));
-  expect(started).toHaveLength(9);
+  expect(started).toHaveLength(12);
 });
 
 it("uses the warmed original when an unseen thumbnail is requested offline", async () => {

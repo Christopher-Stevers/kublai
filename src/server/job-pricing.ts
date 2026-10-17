@@ -14,7 +14,7 @@ import {
   partDefinitions,
   quoteItems,
 } from "~/server/db/schema";
-import { findJobPrice, type ApprovalSnapshotItem } from "~/lib/job-pricing";
+import { findJobPrice, indexJobPrices, type ApprovalSnapshotItem } from "~/lib/job-pricing";
 
 type Database = Pick<typeof db, "select" | "update" | "execute">;
 
@@ -104,10 +104,11 @@ export async function resolveJobOrderItems<T extends Priceable>(
   items: T[],
 ) {
   const book = await getJobPriceBook(database, org, jobId);
+  const priceIndex = indexJobPrices(book.entries);
   const listingIds = new Set<string>();
   const resolved = items.map((item) => {
     const entry = findJobPrice(
-      book.entries,
+      priceIndex,
       item.partDefinitionId,
       item.selectedSupplierId ?? item.supplierPartSupplierId,
       item.supplierPartId,

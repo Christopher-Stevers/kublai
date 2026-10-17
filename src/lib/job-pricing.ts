@@ -9,14 +9,32 @@ export type JobPriceEntry = {
   priceStatus: string;
 };
 
+export type JobPriceIndex<T extends JobPriceEntry = JobPriceEntry> =
+  ReadonlyMap<string, readonly T[]>;
+
+/** Build once per price-book snapshot, then inspect only a part's own listings. */
+export function indexJobPrices<T extends JobPriceEntry>(
+  entries: readonly T[],
+): JobPriceIndex<T> {
+  const index = new Map<string, T[]>();
+  for (const entry of entries) {
+    const group = index.get(entry.partDefinitionId);
+    if (group) group.push(entry);
+    else index.set(entry.partDefinitionId, [entry]);
+  }
+  return index;
+}
+
 export function findJobPrice<T extends JobPriceEntry>(
-  entries: T[],
+  entries: readonly T[] | JobPriceIndex<T>,
   partId?: string | null,
   supplierId?: string | null,
   supplierPartId?: string | null,
 ): T | undefined {
   if (!partId) return undefined;
-  const candidates = entries.filter(
+  const candidates = (
+    "get" in entries ? (entries.get(partId) ?? []) : entries
+  ).filter(
     (e) =>
       e.partDefinitionId === partId &&
       (!supplierId || e.supplierId === supplierId),

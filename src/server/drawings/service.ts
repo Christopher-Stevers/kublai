@@ -14,7 +14,7 @@ import { documentDrawingAccess } from "~/server/documents/drawing-workspace";
 import { drawingMarkupLinks } from "~/lib/drawing-links";
 import { randomUUID } from "node:crypto";
 import { TRPCError } from "@trpc/server";
-import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull, sql, type SQL, type Table, type Column } from "drizzle-orm";
 import type { z } from "zod";
 import type {
   DrawingActivity,
@@ -112,7 +112,7 @@ export async function accessSheet(
   const actor = drawingActor(user, sheet.organizationId);
   return { actor, sheet, user: user!, canAnnotate: true };
 }
-async function jobSheets(
+export async function jobSheets(
   reader: Reader,
   jobId: string,
   organizationId: string,
@@ -475,8 +475,12 @@ async function validateLinks(
 export async function getDrawingWorkspace(
   ctx: DrawingContext,
   sheetId: string,
+  known?: { access: Awaited<ReturnType<typeof accessSheet>>; revision: string },
 ): Promise<DrawingWorkspace> {
-  const access = await accessSheet(ctx.db, ctx.userId, sheetId);
+  const access = known?.access ?? await accessSheet(ctx.db, ctx.userId, sheetId);
+  // Read the token before the data: a concurrent write can cause an extra
+  // refresh, but must never mark an older response as the newer revision.
+  const revision = known?.revision ?? await workspaceRevision(ctx, access);
   const [items, data, people, sheets, starred, events, watched] =
     await Promise.all([
       sheetEntities(ctx.db, sheetId),
@@ -512,6 +516,7 @@ export async function getDrawingWorkspace(
   const visible = items.filter((item) => canReadEntity(item, access.actor));
   const ids = new Set(visible.map((item) => item.id));
   return {
+    revision,
     sheetId,
     jobId: access.sheet.jobId,
     actor: { id: access.actor.id, name: access.actor.name },
@@ -529,6 +534,43 @@ export async function getDrawingWorkspace(
       .filter((entry) => !entry.entityId || ids.has(entry.entityId))
       .slice(0, 200),
   };
+}
+
+/** Fingerprint row identities and PostgreSQL row versions, not annotation JSON.
+ * This catches inserts, deletes and every update (including legacy writers that
+ * don't advance a timestamp). Tokens are cache validators, never authorization.
+ */
+async function workspaceRevision(ctx: DrawingContext, access: Awaited<ReturnType<typeof accessSheet>>) {
+  const { sheet, actor } = access;
+  const stamp = (table: Table, key: Column, where: SQL) => sql`(
+    select coalesce(md5(string_agg(${key}::text || ':' || xmin::text, ',' order by ${key})), '')
+    from ${table} where ${where}
+  )`;
+  const sheetScope = and(eq(jobDrawingSheets.jobId, sheet.jobId), eq(jobDrawingSheets.organizationId, actor.organizationId), sheet.documentVersionId ? eq(jobDrawingSheets.documentVersionId, sheet.documentVersionId) : isNull(jobDrawingSheets.documentVersionId))!;
+  const [row] = await ctx.db.execute<{ revision: string }>(sql`select md5(json_build_array(
+    ${ctx.userId}::text, ${sheet.id}::text, ${actor.canManage}::boolean, ${access.canAnnotate}::boolean,
+    ${stamp(entities, entities.id, eq(entities.sheetId, sheet.id))},
+    ${stamp(metadata, metadata.sheetId, eq(metadata.sheetId, sheet.id))},
+    ${stamp(activity, activity.id, eq(activity.sheetId, sheet.id))},
+    ${stamp(favorites, favorites.userId, and(eq(favorites.sheetId, sheet.id), eq(favorites.userId, ctx.userId))!)},
+    ${stamp(watches, watches.userId, and(eq(watches.sheetId, sheet.id), eq(watches.userId, ctx.userId))!)},
+    ${stamp(jobDrawingSheets, jobDrawingSheets.id, sheetScope)},
+    ${stamp(jobDrawingSets, jobDrawingSets.id, and(eq(jobDrawingSets.jobId, sheet.jobId), eq(jobDrawingSets.organizationId, actor.organizationId))!)},
+    ${stamp(users, users.id, eq(users.organizationId, actor.organizationId))},
+    ${sheet.documentVersionId ? stamp(jobDocumentWorkspaces, jobDocumentWorkspaces.jobId, and(eq(jobDocumentWorkspaces.jobId, sheet.jobId), eq(jobDocumentWorkspaces.organizationId, actor.organizationId))!) : sql`''`}
+  )::text) as revision`);
+  return row!.revision;
+}
+
+export async function getDrawingWorkspaceChanges(ctx: DrawingContext, input: { sheetId: string; revision?: string }) {
+  return ctx.db.transaction(async tx => {
+    const reader = { ...ctx, db: tx as unknown as Database };
+    // Permissions and document-folder ACLs are checked even on an unchanged poll.
+    const access = await accessSheet(tx, ctx.userId, input.sheetId);
+    const revision = await workspaceRevision(reader, access);
+    const workspace = revision === input.revision ? null : await getDrawingWorkspace(reader, input.sheetId, { access, revision });
+    return { revision, workspace };
+  }, { isolationLevel: "repeatable read", accessMode: "read only" });
 }
 export async function listDrawingWorkspace(
   ctx: DrawingContext,

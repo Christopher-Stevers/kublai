@@ -1,4 +1,4 @@
-import { equipmentSources, equipmentMatches } from "~/server/drawings/equipment-links";
+import { equipmentSources, equipmentMatches, equipmentMatchesBatch } from "~/server/drawings/equipment-links";
 import { openDocumentDrawingWorkspace } from "~/server/documents/drawing-workspace";
 import { drawingLinkTargets } from "~/server/drawings/link-targets";
 import { drawingLinkTargetKinds } from "~/lib/drawing-links";
@@ -15,6 +15,7 @@ import {
   commentDrawingEntity,
   favoriteDrawing,
   getDrawingWorkspace,
+  getDrawingWorkspaceChanges,
   listDrawingWorkspace,
   saveDrawingEntity,
   saveDrawingMetadata,
@@ -26,6 +27,7 @@ import {
   readDrawingNotification,
 } from "~/server/drawings/notifications";
 const sheetId = z.string().uuid();
+const equipmentSource = z.object({kind:z.enum(["drawing","document"]),id:sheetId,name:z.string().max(255)});
 const revision = z.number().int().min(0);
 const item = z.object({
   sheetId,
@@ -33,6 +35,7 @@ const item = z.object({
   expectedRevision: revision,
 });
 export const drawingsWorkspaceRouter = createTRPCRouter({
+  equipmentMatchesBatch: hasDashboardAccess.input(z.object({ sheetId, tag: z.string().trim().min(2).max(40), sources: z.array(equipmentSource).min(1).max(32) })).query(({ ctx, input }) => equipmentMatchesBatch(ctx, input)),
   equipmentSources: hasDashboardAccess.input(z.object({ sheetId })).query(({ctx,input})=>equipmentSources(ctx,input.sheetId)),
   equipmentMatches: hasDashboardAccess.input(z.object({sheetId,tag:z.string().trim().min(2).max(40),source:z.object({kind:z.enum(["drawing","document"]),id:sheetId,name:z.string().max(255)})})).query(({ctx,input})=>equipmentMatches(ctx,input)),
   reviewRevisionUpload: hasDashboardAccess
@@ -84,6 +87,9 @@ export const drawingsWorkspaceRouter = createTRPCRouter({
   get: hasDashboardAccess
     .input(z.object({ sheetId }))
     .query(({ ctx, input }) => getDrawingWorkspace(ctx, input.sheetId)),
+  changes: hasDashboardAccess
+    .input(z.object({ sheetId, revision: z.string().max(64).optional() }))
+    .query(({ ctx, input }) => getDrawingWorkspaceChanges(ctx, input)),
   list: hasDashboardAccess
     .input(z.object({ jobId: z.string().uuid() }))
     .query(({ ctx, input }) => listDrawingWorkspace(ctx, input.jobId)),

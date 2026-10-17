@@ -1,6 +1,6 @@
 "use client";
 import { useJobPricing, jobPriceStatus } from "~/hooks/use-job-pricing";
-import { findJobPrice, listedPartsFirst } from "~/lib/job-pricing";
+import { findJobPrice, indexJobPrices, listedPartsFirst } from "~/lib/job-pricing";
 import { PackQuantityControls } from "./PackQuantityControls";
 import { packContents, packsFromPieces, individualUnitLabel } from "~/lib/pack-quantity";
 
@@ -153,7 +153,8 @@ export function AddPartDialog({
     isToolRequest ? "assets" : "materials",
   );
 
-  const {data:jobPriceBook}=useJobPricing(listHeader?.kind === "tools" ? null : listHeader?.jobId);
+  const {data:priceBookSnapshot}=useJobPricing(listHeader?.kind === "tools" ? null : listHeader?.jobId);
+  const jobPriceBook = useMemo(() => priceBookSnapshot && ({ ...priceBookSnapshot, entries: indexJobPrices(priceBookSnapshot.entries) }), [priceBookSnapshot]);
   const filteredPartsForSelection=useMemo(()=>{
     const annotated=baseFilteredPartsForSelection.map(p=>({...p,jobPriceStatus:jobPriceStatus(jobPriceBook,p.id)}));
     return jobPriceBook?.policy?.active ? listedPartsFirst(annotated,p=>p.jobPriceStatus!=="unlisted") : annotated;

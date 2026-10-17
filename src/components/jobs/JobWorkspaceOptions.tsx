@@ -149,6 +149,26 @@ export function JobWorkspaceOptions({
           </div>
         </CardContent>
       </Card>
+      {onTools && (
+        <Card
+          className="cursor-pointer transition-shadow hover:shadow-md"
+          onClick={onTools}
+        >
+          <CardHeader>
+            <CardTitle className="line-clamp-2 min-w-0 leading-tight break-words">
+              Tools
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-muted-foreground space-y-2 text-sm">
+              <div className="flex items-center gap-2">
+                <WrenchIcon className="h-4 w-4" />
+                <span>Checked out, requests &amp; returns</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
       <Card
         data-tutorial="rooms"
         aria-label="Rooms, experimental"
@@ -212,26 +232,6 @@ export function JobWorkspaceOptions({
             <div className="text-muted-foreground flex items-center gap-2 text-sm">
               <BoxIcon className="h-4 w-4" />
               <span>Revit &amp; IFC · 3D construction coordination</span>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-      {onTools && (
-        <Card
-          className="cursor-pointer transition-shadow hover:shadow-md"
-          onClick={onTools}
-        >
-          <CardHeader>
-            <CardTitle className="line-clamp-2 min-w-0 leading-tight break-words">
-              Tools
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-muted-foreground space-y-2 text-sm">
-              <div className="flex items-center gap-2">
-                <WrenchIcon className="h-4 w-4" />
-                <span>Checked out, requests &amp; returns</span>
-              </div>
             </div>
           </CardContent>
         </Card>

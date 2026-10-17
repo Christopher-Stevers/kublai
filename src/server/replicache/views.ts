@@ -62,6 +62,9 @@ export class ReplicacheViews {
   }
 
   remember(view: View) {
+    // TTL measures inactivity. A successfully committed pull keeps its exact
+    // base available, while older revisions and abandoned scopes still expire.
+    view.expires = Date.now() + this.ttl;
     this.views.delete(view.id);
     this.views.set(view.id, view);
     this.prune();

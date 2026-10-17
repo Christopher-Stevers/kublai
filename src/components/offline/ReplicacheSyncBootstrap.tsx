@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { warmDeferredFeatures } from "~/components/app/DeferredFeatures";
+import { scheduleBackgroundWork } from "~/lib/background-work";
 
 import {
   closeMaterialListReplicache,
@@ -41,7 +42,7 @@ export function ReplicacheSyncBootstrap({
     warmDeferredFeatures();
     // Replicache pulls when constructed. Consumers that need the catalog open it
     // immediately; other routes warm it after their initial render.
-    const catalogueWarmup = setTimeout(() => tryGetCatalogueReplicache(), 4000);
+    const cancelCatalogueWarmup = scheduleBackgroundWork("catalogue-sync", async () => { tryGetCatalogueReplicache(); });
     const events = new EventSource("/api/material-lists/events");
     let clientGroupId: string | null = null;
     void replicache.clientGroupID.then((id) => {
@@ -94,7 +95,7 @@ export function ReplicacheSyncBootstrap({
     };
 
     return () => {
-      clearTimeout(catalogueWarmup);
+      cancelCatalogueWarmup();
       window.removeEventListener("online", syncOnOnline);
       document.removeEventListener("visibilitychange", syncOnVisible);
       events.removeEventListener("replicache-poke", syncOnPoke);

@@ -547,6 +547,7 @@ function PartListRow({
 }
 
 export interface PartStageProps {
+  onVisiblePartsChange?: (ids: string[]) => void;
   detailsByPartId?: Record<string, ReactNode>;
   partsForSelection: Array<{
     id: string;
@@ -627,10 +628,15 @@ export function PartStage({
   actionLabel,
   emptyMessage,
   detailsByPartId,
+  onVisiblePartsChange,
 }: PartStageProps) {
   const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
   const pagination = useClientPagination(partsForSelection);
   const visibleParts = pagination.paginatedItems;
+  const visibleIds = JSON.stringify(visibleParts.map(part => part.id));
+  useEffect(() => {
+    onVisiblePartsChange?.(JSON.parse(visibleIds) as string[]);
+  }, [visibleIds, onVisiblePartsChange]);
   useQuickWheelOptions(actionMode === "edit" ? "Edit Part" : "Add Part", partsForSelection.map(part => ({
     label: part.displayName,
     select: () => actionMode === "edit" ? onEditPart(part.id) : onPartSelect(part),

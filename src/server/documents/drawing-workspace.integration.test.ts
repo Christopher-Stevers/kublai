@@ -17,6 +17,7 @@ import { readDocumentBlob } from "./storage";
 import { openDocumentDrawingWorkspace } from "./drawing-workspace";
 import {
   getDrawingWorkspace,
+  getDrawingWorkspaceChanges,
   listDrawingWorkspace,
   saveDrawingEntity,
 } from "~/server/drawings/service";
@@ -153,6 +154,14 @@ it.skipIf(!socket)(
     ]);
     const first = pages[0]!;
     const initial = await getDrawingWorkspace(ctx, first.id);
+    expect(initial.revision).toMatch(/^[0-9a-f]{32}$/);
+    expect(await getDrawingWorkspaceChanges(ctx, { sheetId: first.id, revision: initial.revision })).toEqual({ revision: initial.revision, workspace: null });
+    // Row versions catch changes even when a legacy writer doesn't update a timestamp.
+    await db.update(schema.jobDrawingSheets).set({ name: "Renamed page" }).where(eq(schema.jobDrawingSheets.id, pages[1]!.id));
+    const renamed = await getDrawingWorkspaceChanges(ctx, { sheetId: first.id, revision: initial.revision });
+    expect(renamed.revision).not.toBe(initial.revision);
+    expect(renamed.workspace?.jobSheets[1]?.name).toBe("Renamed page");
+    expect((await getDrawingWorkspaceChanges(ctx, { sheetId: first.id, revision: renamed.revision })).workspace).toBeNull();
     expect(initial.canAnnotate).toBe(true);
     expect(initial.jobSheets.map((p) => p.id)).toEqual(pages.map((p) => p.id));
     const entityId = randomUUID();
@@ -176,6 +185,13 @@ it.skipIf(!socket)(
     expect((await getDrawingWorkspace(ctx, first.id)).entities[0]?.id).toBe(
       entityId,
     );
+    const annotated = await getDrawingWorkspaceChanges(ctx, { sheetId: first.id, revision: renamed.revision });
+    expect(annotated.workspace?.entities[0]?.id).toBe(entityId);
+    await db.insert(workspaceTables.drawingWorkspaceFavorites).values({ sheetId: first.id, userId: "editor" });
+    const starred = await getDrawingWorkspaceChanges(ctx, { sheetId: first.id, revision: annotated.revision });
+    expect(starred.workspace?.favorite).toBe(true);
+    await db.delete(workspaceTables.drawingWorkspaceFavorites).where(eq(workspaceTables.drawingWorkspaceFavorites.sheetId, first.id));
+    expect((await getDrawingWorkspaceChanges(ctx, { sheetId: first.id, revision: starred.revision })).workspace?.favorite).toBe(false);
     expect((await getDrawingWorkspace(ctx, pages[1]!.id)).entities).toEqual([]);
     await expect(
       getDrawingWorkspace({ db, userId: "outsider" }, first.id),
@@ -236,7 +252,9 @@ it.skipIf(!socket)(
         .canAnnotate,
     ).toBe(false);
     state.folders[0]!.permissions = [{ userId: "editor", role: "manager" }];
+    const outsiderRevision = (await getDrawingWorkspace({ db, userId: "outsider" }, revised[0]!.id)).revision;
     await storeState();
+    await expect(getDrawingWorkspaceChanges({ db, userId: "outsider" }, { sheetId: revised[0]!.id, revision: outsiderRevision })).rejects.toMatchObject({ code: "NOT_FOUND" });
     await expect(
       getDrawingWorkspace({ db, userId: "outsider" }, revised[0]!.id),
     ).rejects.toMatchObject({ code: "NOT_FOUND" });

@@ -15,6 +15,7 @@ import { DRAWING_DESTINATION_EVENT, type SnapshotState, readSnapshotState } from
 import { useSnapshotSource } from "~/components/chat/SnapshotSourceContext";
 import { currentSnapshotState } from "~/lib/snapshot-source";
 import { api } from "~/trpc/react";
+import { useDrawingWorkspaceQuery } from "~/hooks/use-drawing-workspace-query";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import {
@@ -398,10 +399,7 @@ export function DrawingWorkspace({
     () => typeof navigator === "undefined" || navigator.onLine,
   );
   const [snapshot, setSnapshot] = useState<Workspace | null>(null);
-  const query = api.drawingsWorkspace.get.useQuery(
-    { sheetId: sheet.id },
-    { refetchInterval: online ? 15_000 : false, retry: 1 },
-  );
+  const query = useDrawingWorkspaceQuery(sheet.id, online);
   // Cache keys also include the simulation session; identity comes from the
   // server-validated account, never from parsing a storage namespace.
   const boundUser = account?.userId;

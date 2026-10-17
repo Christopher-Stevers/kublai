@@ -10,23 +10,13 @@ import {
 } from "react";
 
 import { FeatureErrorBoundary } from "./FeatureErrorBoundary";
+import { scheduleBackgroundWork } from "~/lib/background-work";
 
-const queued = new Set<() => Promise<unknown>>();
+const warmed = new Set<() => Promise<unknown>>();
 const features = new Set<() => Promise<unknown>>();
-let timer: ReturnType<typeof setTimeout> | undefined;
 function warm(load: () => Promise<unknown>) {
-  queued.add(load);
-  if (timer) return;
-  timer = setTimeout(async () => {
-    // Load sequentially after first paint, so dialogs remain available offline
-    // without competing with the initial scripts or mounting their queries.
-    for (const next of queued) {
-      if (!navigator.onLine) break;
-      queued.delete(next);
-      await next().catch(() => {});
-    }
-    timer = undefined;
-  }, 4000);
+  if (warmed.has(load)) return;
+  scheduleBackgroundWork(load, async () => { await load(); warmed.add(load); });
 }
 
 function feature<P extends object>(

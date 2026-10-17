@@ -105,7 +105,9 @@ function CatalogueWorkspace({ catalogKind, supplierMode, supplierId, onModeChang
   const canEditSupplier = canEditParts || (roleData?.permissions.can?.["suppliers.edit"] ?? false);
   const showPrice = roleData?.permissions.can?.["financial.view"] ?? false;
   const supplierList = api.supplier.list.useQuery(undefined, { enabled: supplierMode && isCatalogueOnline });
-  const supplier = api.supplier.getById.useQuery({ id: supplierId! }, { enabled: supplierMode && !!supplierId && isCatalogueOnline });
+  const [visiblePartIds, setVisiblePartIds] = useState<string[]>([]);
+  const listingPartIds = useMemo(() => [...new Set([...visiblePartIds, ...(editingPartId ? [editingPartId] : [])])].sort(), [visiblePartIds, editingPartId]);
+  const supplier = api.supplier.getById.useQuery({ id: supplierId!, partDefinitionIds: listingPartIds }, { enabled: supplierMode && !!supplierId && listingPartIds.length > 0 && isCatalogueOnline, staleTime: 30_000 });
   const listings = useMemo(() => {
     const groups = new Map<string, SupplierListing[]>();
     for (const listing of supplier.data?.supplierParts ?? []) groups.set(listing.partDefinitionId, [...(groups.get(listing.partDefinitionId) ?? []), listing]);
@@ -499,10 +501,11 @@ function CatalogueWorkspace({ catalogKind, supplierMode, supplierId, onModeChang
           : supplierMode && !supplierId && supplierList.isPending ? <p role="status" className="py-8 text-center text-sm">Loading suppliers…</p>
           : supplierMode && !supplierId ? <p className="text-muted-foreground py-8 text-center text-sm">Choose a supplier to browse their parts with the catalogue wizard.</p>
           : supplierMode && (supplierList.error || supplier.error || wizardError) ? <div role="alert" className="space-y-3 py-8 text-center text-sm"><p>Could not load supplier parts. Check your connection and try again.</p><Button variant="outline" onClick={() => { void supplierList.refetch(); void supplier.refetch(); void utils.catalogue.getPartWizardSummary.invalidate(); void utils.catalogue.searchParts.invalidate(); }}>Retry</Button></div>
-          : supplierMode && (supplier.isPending || isWizardLoading) ? <p role="status" className="text-muted-foreground py-8 text-center text-sm">Loading supplier parts…</p>
+          : supplierMode && isWizardLoading ? <p role="status" className="text-muted-foreground py-8 text-center text-sm">Loading supplier parts…</p>
           : <>
         {isWizardSearchActive ? (
           <PartStage
+            onVisiblePartsChange={supplierMode ? setVisiblePartIds : undefined}
             detailsByPartId={supplierMode ? detailsByPartId : undefined}
             partsForSelection={filteredPartsForSelection}
             pendingParts={[]}
@@ -596,6 +599,7 @@ function CatalogueWorkspace({ catalogKind, supplierMode, supplierId, onModeChang
           hasSizeSelection &&
           hasCategorySelection && (
             <PartStage
+              onVisiblePartsChange={supplierMode ? setVisiblePartIds : undefined}
               detailsByPartId={supplierMode ? detailsByPartId : undefined}
             partsForSelection={filteredPartsForSelection}
               pendingParts={[]}

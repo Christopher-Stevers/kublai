@@ -20,7 +20,7 @@ vi.mock("~/server/auth/permissions", () => ({
   hasManagingSeat: () => false,
 }));
 import * as schema from "~/server/db/schema";
-import { saveDocumentVersion } from "./service";
+import { saveDocumentVersion, packingSlipDocuments } from "./service";
 import { assertDocumentAccess } from "./access";
 import { emptyDocumentState } from "./domain";
 const socket = process.env.PURCHASE_TEST_SOCKET;
@@ -116,6 +116,13 @@ describe.skipIf(!socket)("packing slip transactions", () => {
       orderId: order,
       materialListId: list,
     });
+    expect(await packingSlipDocuments(access, list, order, db)).toHaveLength(1);
+    expect(await packingSlipDocuments(access, id(99), order, db)).toEqual([]);
+    expect(await packingSlipDocuments(access, list, id(99), db)).toEqual([]);
+    const state = await workspace();
+    state.folders[0]!.permissions = [{ userId: "someone-else", role: "viewer" }];
+    await db.update(schema.jobDocumentWorkspaces).set({ state }).where(eq(schema.jobDocumentWorkspaces.jobId, job));
+    expect(await packingSlipDocuments(access, list, order, db)).toEqual([]);
     expect((await db.select().from(schema.orders))[0]!.status).toBe("sent");
     await expect(
       saveDocumentVersion(

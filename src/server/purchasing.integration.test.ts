@@ -374,6 +374,11 @@ describe.skipIf(!socket)(
       expect(await catalogue.searchParts({supplierId:supplier,query:"NX-OTHER"})).toEqual([]);
       expect((await catalogue.searchParts({})).map(p=>p.id).sort()).toEqual([part,otherPart].sort());
       expect((await catalogue.getPartWizardSummary({grouped:true,supplierId:otherSupplier})).partCount).toBe(1);
+      expect((await suppliers.getById({id:supplier,partDefinitionIds:[part]})).supplierParts.map(p=>p.id).sort()).toEqual([sp,id(905)].sort());
+      expect((await suppliers.getById({id:supplier,partDefinitionIds:[otherPart]})).supplierParts).toEqual([]);
+      expect((await suppliers.getById({id:otherSupplier,partDefinitionIds:[otherPart]})).supplierParts.map(p=>p.id)).toEqual([id(904)]);
+      await expect(suppliers.getById({id:supplier,partDefinitionIds:[]})).rejects.toMatchObject({code:"BAD_REQUEST"});
+      await expect(suppliers.getById({id:supplier,partDefinitionIds:Array(202).fill(part)})).rejects.toMatchObject({code:"BAD_REQUEST"});
     });
     it("saves and clears supplier metadata without changing the shared part or another organization", async () => {
       const otherOrg=id(920), foreign=id(921);

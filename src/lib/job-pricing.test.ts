@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { findJobPrice, listedPartsFirst, parseJobPrice } from "./job-pricing";
+import { findJobPrice, indexJobPrices, listedPartsFirst, parseJobPrice } from "./job-pricing";
 import { orderApprovalFingerprint } from "~/server/job-pricing";
 import { resolvePermissions } from "~/server/auth/permissions";
 import { redactFinancialValues } from "./financial-visibility";
@@ -27,6 +27,18 @@ describe("job purchasing rules", () => {
     expect(findJobPrice(entries, "p", "s")?.supplierSku).toBe("sku");
     expect(findJobPrice(entries, "p", "another")).toBeUndefined();
     expect(findJobPrice(entries, "unrelated", "s")).toBeUndefined();
+  });
+  it("indexed prices preserve listing preference, supplier boundaries and fallback order", () => {
+    const rows = Array.from({ length: 1000 }, (_, n) => ({
+      ...entries[0]!, id: String(n), partDefinitionId: `part-${n % 23}`,
+      supplierId: `supplier-${n % 7}`, supplierPartId: `listing-${n}`,
+    }));
+    const index = indexJobPrices(rows);
+    for (const part of [undefined, "missing", ...Array.from(index.keys())])
+      for (const supplier of [null, "missing", "supplier-1", "supplier-3"])
+        for (const listing of [null, "missing", "listing-47", "listing-92"])
+          expect(findJobPrice(index, part, supplier, listing)).toBe(findJobPrice(rows, part, supplier, listing));
+    expect(findJobPrice(indexJobPrices([]), "part-1")).toBeUndefined();
   });
   it("preserves the ordinary sort within listed and unlisted parts", () => {
     expect(listedPartsFirst([4, 3, 2, 1], (n) => n % 2 === 1)).toEqual([

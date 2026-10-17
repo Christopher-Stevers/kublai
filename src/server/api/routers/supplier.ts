@@ -1,7 +1,7 @@
 import { publishOrganizationCatalogueEvent, publishOrganizationReplicachePoke } from "~/server/material-list-events";
 import { orderMultipleInput, refreshSupplierPurchaseTotals } from "~/server/purchasing";
 import { TRPCError } from "@trpc/server";
-import { eq, and, desc, asc, isNull } from "drizzle-orm";
+import { eq, and, desc, asc, isNull, inArray } from "drizzle-orm";
 import { z } from "zod";
 
 import { createTRPCRouter, hasDashboardAccess } from "~/server/api/trpc";
@@ -59,7 +59,7 @@ export const supplierRouter = createTRPCRouter({
    * Get a single supplier by ID with related supplierParts
    */
   getById: hasDashboardAccess
-    .input(z.object({ id: z.string().uuid() }))
+    .input(z.object({ id: z.string().uuid(), partDefinitionIds: z.array(z.string().uuid()).min(1).max(201).optional() }))
     .query(async ({ ctx, input }) => {
       if (!ctx.user.organizationId) {
         throw new TRPCError({
@@ -133,6 +133,7 @@ export const supplierRouter = createTRPCRouter({
             and(
               eq(supplierParts.supplierId, input.id),
               eq(supplierParts.organizationId, ctx.user.organizationId),
+              input.partDefinitionIds ? inArray(supplierParts.partDefinitionId, input.partDefinitionIds) : undefined,
             ),
           )
           .orderBy(supplierParts.supplierSku),

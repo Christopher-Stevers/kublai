@@ -24,11 +24,30 @@ import {
 } from "./domain";
 import { validateOfficeUrl } from "./office";
 import type { DocumentAction, DocumentOverview, DocumentState } from "./types";
+import { folderRole } from "./domain";
+
+/** Receipt polling needs only matching slips and the folder ACL tree, not every
+ * document version, activity entry, comment and organization member. */
+export async function packingSlipDocuments(access: DocumentAccess, materialListId: string, orderId?: string, reader: Pick<typeof db, "select"> = db) {
+  const [row] = await reader.select({
+    folders: sql<DocumentState["folders"]>`${jobDocumentWorkspaces.state}->'folders'`,
+    documents: sql<DocumentState["documents"]>`coalesce((select jsonb_agg(doc) from jsonb_array_elements(${jobDocumentWorkspaces.state}->'documents') doc
+      where doc->'packingSlip'->>'materialListId' = ${materialListId}
+      and (${orderId ?? null}::text is null or doc->'packingSlip'->>'orderId' = ${orderId ?? null}::text)), '[]'::jsonb)`,
+  }).from(jobDocumentWorkspaces).where(and(eq(jobDocumentWorkspaces.jobId, access.job.id), eq(jobDocumentWorkspaces.organizationId, access.job.organizationId))).limit(1);
+  const state = { ...emptyDocumentState(), ...row };
+  const actor = documentActor(access, []);
+  return state.documents.filter(doc => doc.jobId === actor.jobId && !doc.deletedAt && folderRole(state, actor, doc.folderId)).map(d => ({
+    id: d.id, name: d.name, createdAt: d.createdAt, packingSlip: d.packingSlip,
+    packingSlipAnalysis: d.packingSlipAnalysis, currentVersionId: d.currentVersionId,
+  }));
+}
 
 export async function readWorkspace(
   access: DocumentAccess,
+  reader: Pick<typeof db, "select"> = db,
 ): Promise<DocumentState> {
-  const [row] = await db
+  const [row] = await reader
     .select({ state: jobDocumentWorkspaces.state })
     .from(jobDocumentWorkspaces)
     .where(
@@ -42,10 +61,11 @@ export async function readWorkspace(
 }
 export async function documentOverview(
   access: DocumentAccess,
+  reader: Pick<typeof db, "select"> = db,
 ): Promise<DocumentOverview> {
   const [state, members] = await Promise.all([
-    readWorkspace(access),
-    documentMembers(access),
+    readWorkspace(access, reader),
+    documentMembers(access, reader),
   ]);
   const actor = documentActor(
     access,

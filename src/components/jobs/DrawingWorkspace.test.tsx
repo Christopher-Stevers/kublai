@@ -91,6 +91,9 @@ vi.mock("~/trpc/react", () => ({
     },
   },
 }));
+vi.mock("~/hooks/use-drawing-workspace-query", () => ({
+  useDrawingWorkspaceQuery: () => ({ data: mocks.data, error: null, refetch: mocks.invalidate }),
+}));
 
 vi.mock("./DrawingAccountProvider", () => ({
   useDrawingAccount: () => mocks.account,
