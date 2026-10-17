@@ -35,6 +35,9 @@ vi.mock("~/server/api/trpc", async () => {
 const supplierAccess = vi.hoisted(() => ({ financial: true }));
 vi.mock("~/server/auth/permissions", () => ({
   assertCan: vi.fn(),
+  assertCanAccessTab: vi.fn(),
+  assertCanManageAssets: vi.fn(),
+  getUserPermissions: () => ({ canManageAssets: true }),
   userCan: (_user: unknown, permission: string) => permission !== "financial.view" || supplierAccess.financial,
 }));
 vi.mock("~/server/material-list-events", () => ({
@@ -48,6 +51,7 @@ vi.mock("~/server/orders/delivery-calendar", () => ({
 import { db } from "~/server/db";
 import { prefabsRouter } from "~/server/api/routers/prefabs";
 import { materialListRouter } from "~/server/api/routers/materialList";
+import { assetsRouter } from "~/server/api/routers/assets";
 import { jobPricingRouter } from "~/server/api/routers/jobPricing";
 import { supplierRouter } from "~/server/api/routers/supplier";
 import { catalogueRouter } from "~/server/api/routers/catalogue";
@@ -207,6 +211,22 @@ describe.skipIf(!socket)(
         __testConnection: postgres.Sql;
       };
       await databaseModule.__testConnection.end();
+    });
+    it("sends a tool list into the Asset Management queue without a supplier email", async () => {
+      await db.update(schema.materialLists).set({ kind: "tools" }).where(eq(schema.materialLists.id, list));
+      await db.update(schema.quoteItems).set({ supplierId: null, supplierPartId: null, quantity: "2", unitCost: null }).where(eq(schema.quoteItems.id, item));
+      const preview = await material.previewOrders({ materialListId: list });
+      expect(preview.listKind).toBe("tools");
+      expect(preview.possible).toHaveLength(1);
+      const supplierId = preview.possible[0]!.supplierId;
+      expect(supplierId).toBeTruthy();
+      const sent = await material.sendGeneratedOrder({ materialListId: list, supplierId: supplierId!, sentTo: "Tool room", notes: "Needed tomorrow" });
+      expect(sent).toMatchObject({ kind: "tool_request", status: "sent", fulfillmentStatus: "open", sentVia: "tool_room", materialListId: list, createdByUserId: "worker" });
+      const requests = await assetsRouter.createCaller(context as never).listRequests({ status: "open" });
+      expect(requests).toEqual([expect.objectContaining({ id: sent.id, jobId: job, materialListId: list, totalQuantity: 2, notes: "Needed tomorrow" })]);
+      const after = await material.previewOrders({ materialListId: list });
+      expect(after.possible).toHaveLength(0);
+      expect(after.sent).toEqual([expect.objectContaining({ id: sent.id })]);
     });
     it("shows 37 required but charges 50, including markup", async () => {
       await recalculatePurchaseTotals(db, quote);

@@ -449,13 +449,14 @@ export function DashboardClient({
     const offlineMaterialLists = offlineJobDetail?.materialLists ?? [];
     const selectedMaterialList = offlineMaterialListDetail.materialList;
     const selectedItems = sortedItems;
+    const isToolRequest = selectedMaterialList?.kind === "tools";
     const selectedMaterialTotal = offlineMaterialListDetail.materialTotal;
     const selectedMaterialListHasPendingSync =
       Boolean(selectedMaterialList?.pendingSync) ||
       selectedItems.some((item) => Boolean(item.pendingSync));
     const jobLocationAddress = formatLocationAddress(offlineJob?.location);
-    const canQuote = can?.["quotes.create"] ?? true;
-    const canOrder = can?.["orders.send"] ?? true;
+    const canQuote = !isToolRequest && (can?.["quotes.create"] ?? true);
+    const canOrder = isToolRequest || (can?.["orders.send"] ?? true);
     const offlineGenerationBlockReason = sandbox
       ? "Quotes and orders are not sent during the tutorial."
       : !isBrowserOnline
@@ -534,12 +535,13 @@ export function DashboardClient({
                         No items yet
                       </h3>
                       <p className="text-muted-foreground mb-4 text-center">
-                        Add parts now. They’ll stay on this device and sync when
-                        online.
+                        {isToolRequest
+                          ? "Add tools, then send the request to Asset Management."
+                          : "Add parts now. They’ll stay on this device and sync when online."}
                       </p>
                       <Button data-tutorial="add-part" onClick={() => setShowOfflineAddPartDialog(true)}>
                         <PlusIcon className="mr-2 h-4 w-4" />
-                        Add Part
+                        {isToolRequest ? "Add Tool" : "Add Part"}
                       </Button>
                     </CardContent>
                   </Card>
@@ -552,6 +554,7 @@ export function DashboardClient({
                             key={item.id}
                             materialListId={selectedMaterialList.id}
                             suppliers={suppliers}
+                            isToolRequest={isToolRequest}
                             item={{
                               ...item,
                               selectedSupplierId: item.supplierId,
@@ -562,7 +565,7 @@ export function DashboardClient({
                         ))}
                       </div>
                     ) : (
-                      <MaterialListSheet className="mb-24" items={selectedItems} materialListId={selectedMaterialList.id} suppliers={suppliers} />
+                      <MaterialListSheet className="mb-24" items={selectedItems} materialListId={selectedMaterialList.id} suppliers={suppliers} isToolRequest={isToolRequest} />
                     )}
                   </>
                 )}
@@ -571,7 +574,7 @@ export function DashboardClient({
                     it floating under a short list on desktop). */}
                 <div className="fixed inset-x-0 bottom-0 z-40 border-t bg-card px-4 pt-1.5 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:px-6 sm:pt-2">
                   <MaterialListActions total={selectedMaterialTotal} canGenerate={canGenerateOfflineQuoteOrOrder} blockedReason={offlineGenerationBlockReason} canQuote={canQuote} canOrder={canOrder}
-                    onQuote={handleOfflineGenerateQuote} onOrder={handleOfflineGenerateOrder} onAdd={() => setShowOfflineAddPartDialog(true)} materialListId={offlineMaterialListId ?? undefined} />
+                    onQuote={handleOfflineGenerateQuote} onOrder={handleOfflineGenerateOrder} onAdd={() => setShowOfflineAddPartDialog(true)} materialListId={offlineMaterialListId ?? undefined} isToolRequest={isToolRequest} />
                 </div>
 
                 <AddPartDialog
@@ -595,6 +598,7 @@ export function DashboardClient({
                   <OrdersPreviewSheet
                     open={showOfflineOrdersSheet}
                     onOpenChange={setShowOfflineOrdersSheet}
+                    isToolRequest={isToolRequest}
                     materialListId={selectedMaterialList.id}
                   />
                 )}
