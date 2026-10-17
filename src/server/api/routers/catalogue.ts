@@ -1,3 +1,4 @@
+import { normalizePartSize } from "~/lib/part-size-input";
 import { partDeletionUsage, permanentlyDeletePart } from "~/server/catalogue/delete-part";
 import { orderWheelUsage, type OrderedFacet } from "~/lib/order-wheel-usage";
 import { appendQuantityDescription } from "~/lib/pack-quantity";
@@ -60,6 +61,12 @@ import {
   writeCatalogueImage,
 } from "~/server/catalogue/image-storage";
 import { publishOrganizationCatalogueEvent } from "~/server/material-list-events";
+
+const partSizeLabelInput = z.string().max(100).trim()
+  .refine(value => normalizePartSize(value) !== null, {
+    message: "Size must contain only numbers and x separators. Choose units separately.",
+  })
+  .transform(value => normalizePartSize(value)!);
 
 function normalizeAliases(input: string | string[] | null | undefined) {
   const aliases = Array.isArray(input) ? input : (input ?? "").split(/[;,\n]/);
@@ -2277,7 +2284,7 @@ export const catalogueRouter = createTRPCRouter({
         categoryId: z.string().uuid().optional().nullable(),
         materialId: z.string().uuid().optional().nullable(),
         sizeNominal: z.number().optional().nullable(),
-        sizeLabel: z.string().optional().nullable(),
+        sizeLabel: partSizeLabelInput.optional().nullable(),
         sizeUnitId: z.string().uuid().optional().nullable(),
         isActive: z.boolean().optional(),
         aliases: z.array(z.string().min(1).max(255)).optional(),
@@ -2727,7 +2734,7 @@ export const catalogueRouter = createTRPCRouter({
             displayName: z.string().optional().default(""),
             description: z.string().optional().nullable(),
             sizeNominal: z
-              .union([z.number(), z.string()])
+              .union([z.number().finite().nonnegative(), partSizeLabelInput])
               .optional()
               .nullable(),
             sizeUnit: z.string().optional().nullable(),
@@ -2889,10 +2896,7 @@ export const catalogueRouter = createTRPCRouter({
           ? (unitByCode.get(sizeUnitCode)?.id ?? null)
           : null;
         const sizeLabel =
-          formatSizeDimensions(
-            rawRow.sizeNominal ?? null,
-            rawRow.sizeUnit ?? null,
-          ) || null;
+          normalizePartSize(String(rawRow.sizeNominal ?? "")) || null;
         const sizeId = await findOrCreateSize(
           ctx.db,
           organizationId,
@@ -2961,7 +2965,7 @@ export const catalogueRouter = createTRPCRouter({
         categoryName: z.string().optional().nullable(),
         materialId: z.string().uuid().optional().nullable(),
         sizeNominal: z.number().optional().nullable(),
-        sizeLabel: z.string().optional().nullable(),
+        sizeLabel: partSizeLabelInput.optional().nullable(),
         sizeUnitId: z.string().uuid().optional().nullable(),
         isActive: z.boolean().optional(),
         aliases: z.array(z.string().min(1).max(255)).optional(),

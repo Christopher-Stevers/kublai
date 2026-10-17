@@ -366,6 +366,14 @@ describe("PartDetailsDialog inline add", () => {
       await screen.findByLabelText("Invalid size input"),
     ).toBeInTheDocument();
 
+    for (const invalid of ['4"', "4 in", "75 mm", "3xword"]) {
+      fireEvent.change(sizeInput, { target: { value: invalid } });
+      expect(sizeInput).toHaveValue("");
+    }
+
+    fireEvent.change(sizeInput, { target: { value: "1-1/2" } });
+    expect(sizeInput).toHaveValue("1-1/2");
+
     fireEvent.change(sizeInput, { target: { value: "3 x 2.5" } });
 
     expect(sizeInput).toHaveValue("3 x 2.5");

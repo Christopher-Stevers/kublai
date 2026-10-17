@@ -1,4 +1,6 @@
 "use client";
+
+import { isPartSizeInput, normalizePartSize } from "~/lib/part-size-input";
 import { confirmAction } from "~/components/ui/app-dialogs";
 import { appendQuantityDescription } from "~/lib/pack-quantity";
 import { notify } from "~/components/ui/app-dialogs";
@@ -109,20 +111,6 @@ function formatCurrencyInput(value: string) {
   }).format(amount);
 }
 
-function isValidSizeInput(value: string) {
-  if (!/^[0-9xX./\s]*$/.test(value)) return false;
-
-  const normalizedValue = value.toLowerCase();
-  if (/^\s*x/.test(normalizedValue) || /x\s*x/.test(normalizedValue)) {
-    return false;
-  }
-
-  return normalizedValue.split("x").every((segment) => {
-    const trimmedSegment = segment.trim();
-    if (!trimmedSegment) return true;
-    return /^(?:\d*(?:\.\d*)?|\d+\/?\d*|\d+\s+\d+\/?\d*)$/.test(trimmedSegment);
-  });
-}
 
 function buildPartName({
   description,
@@ -386,7 +374,7 @@ export function PartDetailsDialog({
   };
 
   const handleSizeValueChange = (nextValue: string) => {
-    if (!isValidSizeInput(nextValue)) {
+    if (!isPartSizeInput(nextValue)) {
       flashInvalidSizeInput();
       return;
     }
@@ -1093,6 +1081,12 @@ export function PartDetailsDialog({
       notify("Pieces per pack must be a whole number between 2 and 999999.", "error");
       return;
     }
+    const normalizedSize = normalizePartSize(sizeValue);
+    if (normalizedSize === null) {
+      flashInvalidSizeInput();
+      notify("Enter numbers separated by x. Choose the unit separately.", "error");
+      return;
+    }
     const normalizedImageUrl = normalizePartImageUrlInput(imageUrl) || null;
     const imageUrlToSave = normalizedImageUrl;
 
@@ -1108,7 +1102,7 @@ export function PartDetailsDialog({
       categoryId,
       materialId,
       sizeNominal: parsedSizeNominal,
-      sizeLabel: formatSizeDimensions(sizeValue.trim(), null) || null,
+      sizeLabel: normalizedSize || null,
       sizeUnitId: parsedSizeNominal !== null ? sizeUnitId : null,
       isActive,
       aliases: aliasesText
@@ -1857,7 +1851,7 @@ export function PartDetailsDialog({
                 !displayName.trim() ||
                 !catalogId ||
                 (sizeValue.trim() !== "" &&
-                  (parsedSizeNominal === null || !sizeUnitId))
+                  (normalizePartSize(sizeValue) === null || parsedSizeNominal === null || !sizeUnitId))
               }
             >
               {isLoading
