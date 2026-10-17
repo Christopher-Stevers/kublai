@@ -1,4 +1,6 @@
 "use client";
+import { useDrawingPageMode } from "./DrawingPageMode";
+import { DrawingScrollPages } from "./DrawingScrollPages";
 import { DrawingPageNavigation } from "./DrawingPageNavigation";
 import { usePageViewState } from "~/hooks/use-page-view-state";
 
@@ -104,6 +106,7 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
   const full = useDrawingFullscreen(sheetId !== null);
   const lastViewport = useRef<DrawingViewport | null>(null);
   const zoomLabel = useRef<HTMLSpanElement>(null);
+  const { scroll } = useDrawingPageMode();
   const [entryViewport, setEntryViewport] = useState<DrawingViewport | null>(
     null,
   );
@@ -523,8 +526,9 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
           </Button>
         )}
         <div data-tutorial="drawing-view" className="relative min-h-0 flex-1">
+          <DrawingScrollPages enabled={scroll} sheets={sheets} index={sheetIndex} onPage={next => openSheet(sheets[next]!.id)}>
           <DrawingWorkspace
-            key={sheet.id}
+            scrollPages={scroll}            key={sheet.id}
             jobId={jobId}
             sheet={sheet}
             initialViewport={entryViewport}
@@ -539,8 +543,10 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
               openSheet(target.id);
             }}
           />
+          </DrawingScrollPages>
         </div>
         <DrawingPageNavigation
+          scrollPages={scroll}
           name={sheet.name}
           index={sheetIndex}
           count={sheets.length}

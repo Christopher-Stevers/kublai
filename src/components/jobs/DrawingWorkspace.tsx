@@ -1,4 +1,5 @@
 "use client";
+import { DrawingPageModeSetting } from "./DrawingPageMode";
 import { MARKUP_SHAKE_MS } from "./useDrawingEditor";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -335,6 +336,7 @@ export function DrawingWorkspace({
   onViewportChange,
   onReady,
   onDocumentDetails,
+  scrollPages = false,
   onClose,
 }: {
   jobId: string;
@@ -351,6 +353,7 @@ export function DrawingWorkspace({
   onViewportChange?: (viewport: DrawingViewport) => void;
   onReady?: () => void;
   onDocumentDetails?: () => void;
+  scrollPages?: boolean;
   onClose?: () => void;
 }) {
   const [equipmentBusy, setEquipmentBusy] = useState(false);
@@ -1295,6 +1298,7 @@ export function DrawingWorkspace({
         </p>
         <div className="min-h-0 flex-1">
           <DrawingSheetViewer
+            scrollPages={scrollPages}
             appearance={appearance}
             src={resolved.src}
             sourceSize={{ width: source.width, height: source.height }}
@@ -1576,6 +1580,7 @@ export function DrawingWorkspace({
             />
           ) : (
             <DrawingSheetViewer
+            scrollPages={scrollPages}
               appearance={appearance}
               key={source.id}
               toolControls={{
@@ -2865,7 +2870,7 @@ export function DrawingWorkspace({
           below it in the Drawings screen). */}
       <div
         data-drawing-chrome
-        className="bg-card relative shrink-0 border-t px-3 pt-1 pb-0.5"
+        className={`bg-card shrink-0 border-t px-3 pt-1 pb-0.5 ${scrollPages ? "sticky bottom-0 z-20" : "relative"}`}
       >
         {markupOpen && (
           <>
@@ -3064,6 +3069,7 @@ export function DrawingWorkspace({
                 align="start"
                 className={`${MENU_CLASS} max-h-[70dvh] overflow-y-auto`}
               >
+                <DrawingPageModeSetting />
                 {statusText && (
                   <DropdownMenuLabel className="text-muted-foreground px-2 py-1.5 text-xs font-normal">
                     {statusText}

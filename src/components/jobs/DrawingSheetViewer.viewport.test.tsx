@@ -125,3 +125,13 @@ describe("drawing viewport navigation", () => {
     expect(image.closest<HTMLElement>('[data-drawing-sheet-layer]')!.style.transform).toContain("scale(1)");
   });
 });
+
+it("lets ordinary wheel movement scroll pages while retaining modifier zoom", () => {
+  const { rerender, props, frame, onViewportChange } = open(null);
+  rerender(<DrawingSheetViewer {...props} scrollPages />);
+  onViewportChange.mockClear();
+  fireEvent.wheel(frame, { deltaY: 100, clientX: 400, clientY: 300 });
+  expect(onViewportChange).not.toHaveBeenCalled();
+  fireEvent.wheel(frame, { deltaY: -100, ctrlKey: true, clientX: 400, clientY: 300 });
+  expect(onViewportChange).toHaveBeenCalled();
+});

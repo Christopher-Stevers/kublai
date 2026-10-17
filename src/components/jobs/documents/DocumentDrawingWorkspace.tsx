@@ -1,4 +1,6 @@
 "use client";
+import { useDrawingPageMode } from "../DrawingPageMode";
+import { DrawingScrollPages } from "../DrawingScrollPages";
 import { useEffect, useRef, useState } from "react";
 import { MinimizeIcon } from "lucide-react";
 import { api } from "~/trpc/react";
@@ -26,6 +28,7 @@ export function DocumentDrawingWorkspace({
   onDocumentDetails,
   onClose,
 }: Props) {
+  const { scroll } = useDrawingPageMode();
   const {
     mutate,
     data: sheets,
@@ -87,7 +90,9 @@ export function DocumentDrawingWorkspace({
       {sheet ? (
         <>
           <div className="relative min-h-0 flex-1">
+            <DrawingScrollPages enabled={scroll} sheets={sheets} index={actualIndex} onPage={openPage}>
             <DrawingWorkspace
+              scrollPages={scroll}
               key={sheet.id}
               jobId={jobId}
               sheet={sheet}
@@ -105,8 +110,10 @@ export function DocumentDrawingWorkspace({
                 if (next >= 0) openPage(next);
               }}
             />
+            </DrawingScrollPages>
           </div>
           <DrawingPageNavigation
+            scrollPages={scroll}
             name={sheet.name}
             index={actualIndex}
             count={sheets.length}

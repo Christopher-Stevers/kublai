@@ -1,4 +1,5 @@
 "use client";
+import { DrawingPageModeSetting } from "./DrawingPageMode";
 import { usePageViewState } from "~/hooks/use-page-view-state";
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -1309,6 +1310,7 @@ export function JobDocumentsView({
               Browse sections, filter documents, and manage folders.
             </DialogDescription>
           </DialogHeader>
+          <DrawingPageModeSetting />
           <div
             className="flex flex-wrap gap-1 border-b"
             role="tablist"

@@ -148,10 +148,12 @@ export function DrawingSheetViewer({
   onPdfError,
   onPdfLink,
   textEditing,
+  scrollPages = false,
   ...editorProps
 }: DrawingEditorProps & {
   /** A text markup typed in place on the drawing. */
   textEditing?: InlineTextEditing | null;
+  scrollPages?: boolean;
   src: string;
   /** Known page dimensions let PDF detail start before a preview image arrives. */
   sourceSize?: { width: number; height: number };
@@ -1851,10 +1853,10 @@ export function DrawingSheetViewer({
     <div className="relative flex h-full min-h-0 w-full flex-col">
       <div
         ref={frame}
-        className={`bg-muted relative min-h-0 w-full flex-1 touch-none overflow-hidden select-none [&_img]:pointer-events-none${middlePanning || dragIndex !== null ? "cursor-grabbing" : measuring ? "cursor-crosshair" : ""}`}
+        className={`bg-muted relative min-h-0 w-full flex-1 overflow-hidden select-none [&_img]:pointer-events-none${middlePanning || dragIndex !== null ? "cursor-grabbing" : measuring ? "cursor-crosshair" : ""}`}
         // No phone long-press menu (copy/save image, open link) on the drawing:
         // long presses are for working on the sheet.
-        style={{ WebkitTouchCallout: "none" }}
+        style={{ WebkitTouchCallout: "none", touchAction: scrollPages && !measuring && !pipeMode && annotationTool === "pan" && view.scale <= 1.01 ? "pan-y" : "none" }}
         onContextMenu={(event) => event.preventDefault()}
         onAuxClick={(event) => {
           if (event.button === 1) event.preventDefault();
@@ -2159,6 +2161,7 @@ export function DrawingSheetViewer({
               };
               return;
             }
+            if (scrollPages && event.pointerType === "touch" && !measuring && !pipeMode && annotationTool === "pan" && live.current.scale <= 1.01) return;
             move({
               ...base,
               x: base.x + p.x - before[0].x,
@@ -2359,6 +2362,7 @@ export function DrawingSheetViewer({
           if (measuring && !nodeDrag.current) clearAim();
         }}
         onWheel={(event) => {
+          if (scrollPages && !event.ctrlKey && !event.metaKey) return;
           stopAnimation();
           move(
             zoomAt(
