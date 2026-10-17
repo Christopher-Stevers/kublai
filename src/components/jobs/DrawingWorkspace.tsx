@@ -2,7 +2,8 @@
 import { DrawingPageModeSetting } from "./DrawingPageMode";
 import { MARKUP_SHAKE_MS } from "./useDrawingEditor";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { useSnapshot } from "~/components/chat/SnapshotProvider";
 import { EquipmentTagLinks } from "./EquipmentTagLinks";
 import { MAX_DRAWING_LINKS, drawingMarkupLinks as equipmentExistingLinks } from "~/lib/drawing-links";
@@ -328,6 +329,11 @@ const nameOf = (entity: DrawingEntity) =>
 const sourceOf = (entity: DrawingEntity) =>
   entity.kind === "transmittal" ? null : entity.data.sourceSheetId;
 
+/** Keep viewer controls outside the page scroller when the host provides a dock. */
+function DrawingToolbarDock({ target, children }: { target?: HTMLElement | null; children: ReactNode }) {
+  return target ? createPortal(children, target) : children;
+}
+
 export function DrawingWorkspace({
   jobId,
   sheet,
@@ -337,6 +343,7 @@ export function DrawingWorkspace({
   onReady,
   onDocumentDetails,
   scrollPages = false,
+  toolbarContainer,
   onClose,
 }: {
   jobId: string;
@@ -354,6 +361,7 @@ export function DrawingWorkspace({
   onReady?: () => void;
   onDocumentDetails?: () => void;
   scrollPages?: boolean;
+  toolbarContainer?: HTMLElement | null;
   onClose?: () => void;
 }) {
   const [equipmentBusy, setEquipmentBusy] = useState(false);
@@ -2868,9 +2876,10 @@ export function DrawingWorkspace({
       </span>
       {/* Bottom bar: More, Tools, Markup, Measure (Previous / Next sit
           below it in the Drawings screen). */}
+      <DrawingToolbarDock target={toolbarContainer}>
       <div
         data-drawing-chrome
-        className={`bg-card shrink-0 border-t px-3 pt-1 pb-0.5 ${scrollPages ? "sticky bottom-0 z-20" : "relative"}`}
+        className="bg-card relative shrink-0 border-t px-3 pt-1 pb-0.5"
       >
         {markupOpen && (
           <>
@@ -3281,6 +3290,7 @@ export function DrawingWorkspace({
           </Button>
         </div>
       </div>
+      </DrawingToolbarDock>
       <Dialog
         open={Boolean(linkChooser)}
         onOpenChange={(open) => {

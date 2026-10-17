@@ -1437,3 +1437,17 @@ it("reviews possible revision impacts in a focused comparison without editing th
     true,
   );
 });
+
+it("keeps the scrolling drawing toolbar in the host dock and its controls working", () => {
+  const dock = document.createElement("div");
+  document.body.append(dock);
+  const view = render(<DrawingWorkspace jobId={jobId} sheet={sheet} onOpenSheet={vi.fn()} scrollPages toolbarContainer={dock} />);
+  expect(within(view.container).queryByRole("button", { name: "Measure" })).toBeNull();
+  fireEvent.click(within(dock).getByRole("button", { name: "Measure" }));
+  expect(within(dock).getByRole("button", { name: "Done" })).toBeVisible();
+  fireEvent.click(within(dock).getByRole("button", { name: "Markup" }));
+  expect(within(dock).getByRole("dialog", { name: "Markup tools" })).toBeVisible();
+  view.unmount();
+  expect(dock).toBeEmptyDOMElement();
+  dock.remove();
+});

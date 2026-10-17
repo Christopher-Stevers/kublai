@@ -115,6 +115,7 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
     if (!preserveViewport) lastViewport.current = null;
     setSheetId(id);
   };
+  const [toolbarContainer, setToolbarContainer] = useState<HTMLDivElement | null>(null);
   const [revisionsOpen, setRevisionsOpen] = useState(false);
   const [nameDialog, setNameDialog] = useState<NameDialog | null>(null);
   const [nameDraft, setNameDraft] = useState("");
@@ -528,7 +529,9 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
         <div data-tutorial="drawing-view" className="relative min-h-0 flex-1">
           <DrawingScrollPages enabled={scroll} sheets={sheets} index={sheetIndex} onPage={next => openSheet(sheets[next]!.id)}>
           <DrawingWorkspace
-            scrollPages={scroll}            key={sheet.id}
+            scrollPages={scroll}
+            toolbarContainer={toolbarContainer}
+            key={sheet.id}
             jobId={jobId}
             sheet={sheet}
             initialViewport={entryViewport}
@@ -545,6 +548,7 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
           />
           </DrawingScrollPages>
         </div>
+        <div ref={setToolbarContainer} data-drawing-chrome className="relative z-30 shrink-0" />
         <DrawingPageNavigation
           scrollPages={scroll}
           name={sheet.name}

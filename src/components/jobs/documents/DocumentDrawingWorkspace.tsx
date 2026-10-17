@@ -29,6 +29,7 @@ export function DocumentDrawingWorkspace({
   onClose,
 }: Props) {
   const { scroll } = useDrawingPageMode();
+  const [toolbarContainer, setToolbarContainer] = useState<HTMLDivElement | null>(null);
   const {
     mutate,
     data: sheets,
@@ -93,6 +94,7 @@ export function DocumentDrawingWorkspace({
             <DrawingScrollPages enabled={scroll} sheets={sheets} index={actualIndex} onPage={openPage}>
             <DrawingWorkspace
               scrollPages={scroll}
+              toolbarContainer={toolbarContainer}
               key={sheet.id}
               jobId={jobId}
               sheet={sheet}
@@ -112,6 +114,7 @@ export function DocumentDrawingWorkspace({
             />
             </DrawingScrollPages>
           </div>
+          <div ref={setToolbarContainer} data-drawing-chrome className="relative z-30 shrink-0" />
           <DrawingPageNavigation
             scrollPages={scroll}
             name={sheet.name}
