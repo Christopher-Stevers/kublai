@@ -220,7 +220,7 @@ describe.skipIf(!socket)(
       expect(preview.possible).toHaveLength(1);
       const supplierId = preview.possible[0]!.supplierId;
       expect(supplierId).toBeTruthy();
-      const sent = await material.sendGeneratedOrder({ materialListId: list, supplierId: supplierId!, sentTo: "Tool room", notes: "Needed tomorrow" });
+      const sent = await material.sendGeneratedOrder({ materialListId: list, supplierId, sentTo: "Tool room", notes: "Needed tomorrow" });
       expect(sent).toMatchObject({ kind: "tool_request", status: "sent", fulfillmentStatus: "open", sentVia: "tool_room", materialListId: list, createdByUserId: "worker" });
       const requests = await assetsRouter.createCaller(context as never).listRequests({ status: "open" });
       expect(requests).toEqual([expect.objectContaining({ id: sent.id, jobId: job, materialListId: list, totalQuantity: 2, notes: "Needed tomorrow" })]);
