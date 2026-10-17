@@ -99,11 +99,104 @@ fn apply(mut data: Vec<u8>, width: usize, height: usize, steps: &[Step]) -> Vec<
     data
 }
 
+// Row-major, four-connected free-space labels; stable IDs match TypeScript.
+fn components(data: &[u8], width: usize, height: usize) -> (Vec<u32>, Vec<(u32, bool)>) {
+    let mut labels = vec![0_u32; data.len()];
+    let mut sizes = vec![(0, false)];
+    let mut stack = Vec::new();
+    for start in 0..data.len() {
+        if data[start] != 0 || labels[start] != 0 {
+            continue;
+        }
+        let id = sizes.len() as u32;
+        labels[start] = id;
+        stack.push(start);
+        let mut size = 0;
+        let mut border = false;
+        while let Some(p) = stack.pop() {
+            size += 1;
+            let x = p % width;
+            let y = p / width;
+            border |= x == 0 || y == 0 || x + 1 == width || y + 1 == height;
+            let mut push = |q: usize| {
+                if data[q] == 0 && labels[q] == 0 {
+                    labels[q] = id;
+                    stack.push(q);
+                }
+            };
+            if x > 0 {
+                push(p - 1);
+            }
+            if x + 1 < width {
+                push(p + 1);
+            }
+            if y > 0 {
+                push(p - width);
+            }
+            if y + 1 < height {
+                push(p + width);
+            }
+        }
+        sizes.push((size, border));
+    }
+    (labels, sizes)
+}
+
+fn run_components(
+    input: &mut impl Read,
+    output: &mut impl Write,
+    header: &[u8; 16],
+) -> Result<(), String> {
+    let width = word(&header[4..8]);
+    let height = word(&header[8..12]);
+    let n = width.checked_mul(height).ok_or("dimensions overflow")?;
+    if width == 0
+        || height == 0
+        || width > MAX_EDGE
+        || height > MAX_EDGE
+        || n > MAX_PIXELS
+        || word(&header[12..16]) != 0
+    {
+        return Err("request exceeds bounds".into());
+    }
+    let mut data = vec![0; n];
+    input.read_exact(&mut data).map_err(|_| "truncated mask")?;
+    let mut extra = [0; 1];
+    if input.read(&mut extra).map_err(|_| "input failure")? != 0 || data.iter().any(|v| *v > 1) {
+        return Err("invalid mask".into());
+    }
+    let (labels, sizes) = components(&data, width, height);
+    output
+        .write_all(&header[..12])
+        .map_err(|_| "output failure")?;
+    output
+        .write_all(&(sizes.len() as u32).to_le_bytes())
+        .map_err(|_| "output failure")?;
+    for label in labels {
+        output
+            .write_all(&label.to_le_bytes())
+            .map_err(|_| "output failure")?;
+    }
+    for (size, border) in sizes {
+        output
+            .write_all(&size.to_le_bytes())
+            .map_err(|_| "output failure")?;
+        output
+            .write_all(&(border as u32).to_le_bytes())
+            .map_err(|_| "output failure")?;
+    }
+    output.flush().map_err(|_| "output failure")?;
+    Ok(())
+}
+
 fn run(input: &mut impl Read, output: &mut impl Write) -> Result<(), String> {
     let mut header = [0_u8; 16];
     input
         .read_exact(&mut header)
         .map_err(|_| "truncated header")?;
+    if &header[0..4] == b"FRC1" {
+        return run_components(input, output, &header);
+    }
     if &header[0..4] != b"FMR1" {
         return Err("unsupported protocol".into());
     }
@@ -154,7 +247,10 @@ fn run(input: &mut impl Read, output: &mut impl Write) -> Result<(), String> {
 }
 
 fn main() {
-    if let Err(error) = run(&mut io::stdin().lock(), &mut io::stdout().lock()) {
+    if let Err(error) = run(
+        &mut io::stdin().lock(),
+        &mut io::BufWriter::new(io::stdout().lock()),
+    ) {
         eprintln!("room-raster: {error}");
         std::process::exit(1);
     }

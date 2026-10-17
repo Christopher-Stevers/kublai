@@ -1,9 +1,19 @@
+import { compactGeometryRust } from "../geometry-kernels";
 /**
  * Preserve every triangle and the exact Float32 positions used for measurement.
  * Unit normals use normalized Int16 storage (under 0.003 degrees of error).
  * Index identical position/normal pairs, retaining distinct hard-edge normals.
  */
 export function compactGeometry(vertices: Float32Array, indices: Uint32Array) {
+  const accelerated = compactGeometryRust(vertices, indices);
+  if (accelerated) return accelerated;
+  return compactGeometryTypeScript(vertices, indices);
+}
+
+export function compactGeometryTypeScript(
+  vertices: Float32Array,
+  indices: Uint32Array,
+) {
   const count = vertices.length / 6;
   if (!Number.isInteger(count) || indices.length % 3)
     throw Error("The model contains invalid geometry.");

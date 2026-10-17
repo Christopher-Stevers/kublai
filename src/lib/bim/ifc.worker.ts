@@ -1,4 +1,5 @@
 /// <reference lib="webworker" />
+import { initializeGeometryKernels } from "../geometry-kernels";
 import { deviceModelDownload } from "./device-model-cache";
 import {
   IfcAPI,
@@ -80,7 +81,7 @@ async function load(
         throw error;
       });
   }
-  await initialization;
+  await Promise.all([initialization, initializeGeometryKernels()]);
   flow.check();
   progress(2, installedApp ? "Checking saved model" : "Downloading model");
   const model = await downloadAndOpen(url, flow, progress, installedApp);

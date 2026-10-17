@@ -1,3 +1,4 @@
+import { initializeGeometryKernels, mergeLinesRust } from "./geometry-kernels";
 import { buildSnapIndex, mergeCollinear, type SnapSegment } from "./sheet-snap";
 import {
   buildPipeSystemIndex,
@@ -13,6 +14,8 @@ import type {
   PipeGeometryInfo,
 } from "./drawing-geometry-protocol";
 
+const kernels = initializeGeometryKernels();
+
 // PDF parsing retains its existing worker. This worker owns the expensive
 // spatial graph, including its reusable connection caches, away from touch input.
 let pipes: PipeSystemIndex | null = null;
@@ -22,24 +25,28 @@ const scope = globalThis as unknown as {
   onmessage: ((event: MessageEvent<GeometryRequest>) => void) | null;
   postMessage: (response: GeometryResponse) => void;
 };
-scope.onmessage = ({ data }) => {
+const handle = async ({ data }: MessageEvent<GeometryRequest>) => {
   try {
     switch (data.kind) {
       case "snap-chunk":
         snaps.push(...data.segments);
         scope.postMessage({ id: data.id, ok: true, value: null });
         break;
-      case "snap":
+      case "snap": {
+        const segments = snaps;
+        snaps = [];
+        await kernels;
         scope.postMessage({
           id: data.id,
           ok: true,
           value: buildSnapIndex(
-            mergeCollinear(snaps, data.aspect),
+            mergeLinesRust(segments, data.aspect) ??
+              mergeCollinear(segments, data.aspect),
             data.aspect,
           ),
         });
-        snaps = [];
         break;
+      }
       case "pipe-start":
         pipes = null;
         linework = data.linework;
@@ -57,9 +64,12 @@ scope.onmessage = ({ data }) => {
         const info: PipeGeometryInfo = {
           layerCodes: pipeLayerCodes(pipes.linework),
           codes: [
-            ...new Set(
-              [...pipeLayerCodes(pipes.linework), ...[...pipes.segmentSystems.values()].flatMap((codes) => [...codes])],
-            ),
+            ...new Set([
+              ...pipeLayerCodes(pipes.linework),
+              ...[...pipes.segmentSystems.values()].flatMap((codes) => [
+                ...codes,
+              ]),
+            ]),
           ].sort(),
           hasLines: pipes.linework.segments.length > 0,
         };
@@ -81,7 +91,11 @@ scope.onmessage = ({ data }) => {
         break;
       case "pipe-layer":
         if (!pipes) throw new Error("The drawing lines are not ready.");
-        scope.postMessage({ id: data.id, ok: true, value: selectPipeLayerSystem(pipes.linework, data.system) });
+        scope.postMessage({
+          id: data.id,
+          ok: true,
+          value: selectPipeLayerSystem(pipes.linework, data.system),
+        });
         break;
     }
   } catch (error) {
@@ -92,4 +106,8 @@ scope.onmessage = ({ data }) => {
         error instanceof Error ? error.message : "Drawing geometry failed.",
     });
   }
+};
+
+scope.onmessage = (event) => {
+  void handle(event);
 };

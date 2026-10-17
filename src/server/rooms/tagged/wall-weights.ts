@@ -1,6 +1,6 @@
+import { freeComponentsNative } from "../components-native";
 import {
   createMask,
-  freeComponents,
   inkMask,
   sealAxisGaps,
   union,
@@ -34,7 +34,7 @@ export async function openSpaceMask(
     sealAxisGaps(walls, wideGap, minRun, true),
     sealAxisGaps(walls, wideGap, minRun, false),
   );
-  const comps = freeComponents(sealed);
+  const comps = await freeComponentsNative(sealed);
   const seeded = new Set<number>();
   for (const s of seeds) {
     const x = Math.min(width - 1, Math.max(0, Math.floor(s.x * width)));
