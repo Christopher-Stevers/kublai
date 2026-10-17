@@ -1083,10 +1083,11 @@ export function DrawingWorkspace({
     },
     [data?.jobSheets, onOpenSheet, jobId, destinationPicker?.active],
   );
+  const linkChoiceArmed = useRef(false);
   const activate = useCallback(
     (markup: DrawingMarkup) => {
       const links = drawingMarkupLinks(markup);
-      if (links.length > 1) setLinkChooser(markup);
+      if (links.length > 1) { linkChoiceArmed.current = false; setLinkChooser(markup); }
       else if (links[0]) openDestination(links[0]);
       else setError("Add a destination to this hyperlink.");
     },
@@ -1109,6 +1110,7 @@ export function DrawingWorkspace({
     requestedLink.current = request;
     setSourceOverride(entity.data.sourceSheetId);
     // A PDF or shared address must never launch another window without a tap.
+    linkChoiceArmed.current = false;
     setLinkChooser(entity.data);
   }, [data, sheet.id]);
   const activatePdfLink = useCallback(
@@ -3297,7 +3299,7 @@ export function DrawingWorkspace({
           if (!open) setLinkChooser(null);
         }}
       >
-        <DialogContent>
+        <DialogContent layerClassName="z-[90]">
           <DialogHeader>
             <DialogTitle>
               {linkChooser?.text?.trim().length
@@ -3315,7 +3317,15 @@ export function DrawingWorkspace({
                   key={index}
                   variant="outline"
                   className="h-auto min-h-12 justify-start text-left whitespace-normal"
-                  onClick={() => {
+                  onPointerDown={() => { linkChoiceArmed.current = true; }}
+                  onClick={(event) => {
+                    // The opening touch's synthetic click must not pick a destination.
+                    // Keyboard/assistive activation has detail 0 and remains supported.
+                    if (event.detail > 0 && !linkChoiceArmed.current) {
+                      event.preventDefault();
+                      return;
+                    }
+                    linkChoiceArmed.current = false;
                     setLinkChooser(null);
                     openDestination(link);
                   }}

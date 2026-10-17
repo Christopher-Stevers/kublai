@@ -533,7 +533,12 @@ describe("drawing workspace workflows", () => {
     expect(screen.getByRole("dialog", { name: "AHU-1" })).toBeInTheDocument();
     expect(open).not.toHaveBeenCalled();
     expect(onOpenSheet).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: "Equipment manual" }));
+    const destination = screen.getByRole("button", { name: "Equipment manual" });
+    fireEvent.click(destination, { detail: 1 });
+    expect(open).not.toHaveBeenCalled();
+    expect(screen.getByRole("dialog", { name: "AHU-1" })).toBeInTheDocument();
+    fireEvent.pointerDown(destination, { pointerId: 2, pointerType: "touch" });
+    fireEvent.click(destination, { detail: 1 });
     expect(open).toHaveBeenCalledWith(
       "https://example.com/manual",
       "_blank",
