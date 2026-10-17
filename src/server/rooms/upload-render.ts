@@ -21,7 +21,7 @@ async function runRenderer(args: string[]) {
     const child = spawn(
       process.execPath,
       [
-        "--max-old-space-size=512",
+        "--max-old-space-size=1536",
         "--expose-gc",
         "--import",
         "dotenv/config",

@@ -1,3 +1,4 @@
+import { uploadProcessingError } from "./upload-processing-error";
 import { renderUploadPdf } from "./upload-render";
 import { addDrawingUpload } from "~/server/drawings/import-upload";
 
@@ -115,7 +116,7 @@ try {
     await saveSession({
       ...s,
       status: "error",
-      error: error instanceof Error ? error.message : "PDF processing failed",
+      error: uploadProcessingError(error instanceof Error ? error.message : "PDF processing failed"),
     });
   process.exitCode = 1;
 } finally {

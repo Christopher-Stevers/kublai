@@ -43,10 +43,10 @@ fi
 cgroup_parent=$(dirname "/sys/fs/cgroup$current_cgroup")
 cgroup_dir="$cgroup_parent/foremenhq-upload-$upload_id"
 mkdir -p "$cgroup_dir"
-# Complex architectural pages can transiently require about 1.5 GiB in
-# PDF.js/canvas. Per-page child isolation makes 2 GiB a hard per-page ceiling
-# while preventing allocations from accumulating across the drawing set.
-printf '%s\n' 2147483648 > "$cgroup_dir/memory.max"
+# Dense architectural pages need more than a 512 MiB JavaScript heap.
+# Allow a 1.5 GiB page heap plus native canvas/decoder and coordinator memory.
+# Pages remain sequential and isolated within a hard 3 GiB process-tree cap.
+printf '%s\n' 3221225472 > "$cgroup_dir/memory.max"
 printf '%s\n' 0 > "$cgroup_dir/memory.swap.max"
 # Linux counts threads here, not just processes. On the 28-core host the
 # canvas renderer alone starts ~40 threads; 64 leaves too little headroom
