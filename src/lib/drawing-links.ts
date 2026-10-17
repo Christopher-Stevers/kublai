@@ -1,3 +1,4 @@
+import { readSnapshotState } from "./snapshot-source";
 import type {
   DrawingMarkup,
   DrawingMarkupLink,
@@ -25,6 +26,23 @@ export function drawingMarkupLinks(markup: DrawingMarkup): DrawingMarkupLink[] {
       },
     ];
   return [];
+}
+
+/** Hide only this tag occurrence, not other tags elsewhere on the same sheet. */
+export function drawingDestinationLinks(markup: DrawingMarkup, sheetId: string): DrawingMarkupLink[] {
+  const links = drawingMarkupLinks(markup);
+  if (!markup.equipmentTag || !markup.points.length) return links;
+  const left = Math.min(...markup.points.map(p=>p.x)), right = Math.max(...markup.points.map(p=>p.x));
+  const top = Math.min(...markup.points.map(p=>p.y)), bottom = Math.max(...markup.points.map(p=>p.y));
+  return links.filter(link => {
+    if (!link.url) return true;
+    let drawing;
+    try { drawing = readSnapshotState(new URL(link.url, "https://snapshot.invalid").hash)?.drawing; }
+    catch { return true; }
+    if (!drawing || drawing.sheetId !== sheetId || drawing.sourceSheetId !== markup.sourceSheetId) return true;
+    const {x,y} = drawing.viewport.center;
+    return !(x >= left && x <= right && y >= top && y <= bottom);
+  });
 }
 
 export function drawingLinkHref(

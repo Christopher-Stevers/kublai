@@ -22,7 +22,7 @@ import {
   DialogDescription,
   DialogHeader,
 } from "~/components/ui/dialog";
-import { drawingMarkupLinks, drawingLinkHref } from "~/lib/drawing-links";
+import { drawingDestinationLinks, drawingLinkHref } from "~/lib/drawing-links";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -1091,12 +1091,12 @@ export function DrawingWorkspace({
   const linkChoiceArmed = useRef(false);
   const activate = useCallback(
     (markup: DrawingMarkup) => {
-      const links = drawingMarkupLinks(markup);
+      const links = drawingDestinationLinks(markup, sheet.id);
       if (links.length > 1) { linkChoiceArmed.current = false; setLinkChooser(markup); }
       else if (links[0]) openDestination(links[0]);
       else setError("Add a destination to this hyperlink.");
     },
-    [openDestination],
+    [openDestination, sheet.id],
   );
   const requestedLink = useRef<string | null>(null);
   useEffect(() => {
@@ -1990,7 +1990,7 @@ export function DrawingWorkspace({
                           variant="outline"
                           onClick={() => activate(selected.data)}
                         >
-                          {drawingMarkupLinks(selected.data).length > 1
+                          {drawingDestinationLinks(selected.data, sheet.id).length > 1
                             ? "Choose a link"
                             : "Open link"}
                         </Button>
@@ -3317,7 +3317,7 @@ export function DrawingWorkspace({
           </DialogHeader>
           <div className="grid max-h-[60vh] gap-2 overflow-y-auto">
             {linkChooser &&
-              drawingMarkupLinks(linkChooser).map((link, index) => (
+              drawingDestinationLinks(linkChooser, sheet.id).map((link, index) => (
                 <Button
                   key={index}
                   variant="outline"
