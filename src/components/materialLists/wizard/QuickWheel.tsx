@@ -195,6 +195,12 @@ export function QuickWheelSurface({
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pageLatch = useRef<number | null>(null);
   const suppressClick = useRef(false);
+  // The wheel may disappear before its initiating finger leaves the screen.
+  const heldPointer = useRef<number | null>(null);
+  const wheelEnabled = useRef(enabled);
+  useLayoutEffect(() => {
+    wheelEnabled.current = enabled;
+  }, [enabled]);
   const pointerPosition = useRef({ x: 0, y: 0 });
   const update = (value: Wheel | null) => {
     active.current = value;
@@ -248,11 +254,9 @@ export function QuickWheelSurface({
 
   useEffect(() => {
     const element = surface.current;
-    if (!element || !enabled) {
-      close();
-      return;
-    }
+    if (!element) return;
     function start(event: PointerEvent) {
+      if (!wheelEnabled.current) return;
       if (active.current) {
         close();
         return;
@@ -287,6 +291,7 @@ export function QuickWheelSurface({
       // gesture owned by this stable surface, not the removed touch target.
       element!.setPointerCapture?.(event.pointerId);
       suppressClick.current = true;
+      heldPointer.current = event.pointerId;
       pointerPosition.current = { x: event.clientX, y: event.clientY };
       pageLatch.current = null;
       update({
@@ -439,10 +444,18 @@ export function QuickWheelSurface({
       }
     }
     function end(event: PointerEvent) {
-      const current = active.current;
-      if (!current || event.pointerId !== current.pointerId) return;
+      if (event.pointerId !== heldPointer.current) return;
+      heldPointer.current = null;
       close();
       event.preventDefault();
+      // Capture phase: newly mounted part cards must never receive this lift.
+      event.stopImmediatePropagation();
+    }
+
+    function finishTouch(event: TouchEvent) {
+      if (!suppressClick.current) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
     }
 
     function cancel() {
@@ -468,8 +481,11 @@ export function QuickWheelSurface({
       event.preventDefault();
       event.stopPropagation();
     }
-    function resetClick() {
-      if (!active.current) suppressClick.current = false;
+    function resetClick(event: PointerEvent) {
+      if (event.isPrimary !== false) {
+        heldPointer.current = null;
+        suppressClick.current = false;
+      }
     }
     function context(event: Event) {
       if (active.current) event.preventDefault();
@@ -477,7 +493,11 @@ export function QuickWheelSurface({
     element.addEventListener("pointerdown", start);
     window.addEventListener("pointerdown", resetClick, true);
     window.addEventListener("pointermove", move, { passive: false });
-    window.addEventListener("pointerup", end);
+    window.addEventListener("pointerup", end, true);
+    window.addEventListener("touchend", finishTouch, {
+      capture: true,
+      passive: false,
+    });
     window.addEventListener("pointercancel", cancel);
     window.addEventListener("blur", cancel);
     window.addEventListener("resize", cancel);
@@ -498,7 +518,8 @@ export function QuickWheelSurface({
       element.removeEventListener("pointerdown", start);
       window.removeEventListener("pointerdown", resetClick, true);
       window.removeEventListener("pointermove", move);
-      window.removeEventListener("pointerup", end);
+      window.removeEventListener("pointerup", end, true);
+      window.removeEventListener("touchend", finishTouch, true);
       window.removeEventListener("pointercancel", cancel);
       window.removeEventListener("blur", cancel);
       window.removeEventListener("resize", cancel);
@@ -511,7 +532,11 @@ export function QuickWheelSurface({
       element.removeEventListener("click", click, true);
       element.removeEventListener("contextmenu", context);
     };
-  }, [enabled]); // The gesture reads fresh stage callbacks from registry, without restarting on renders.
+  }, []); // Keep release/click guards alive when the final choice disables the wheel.
+
+  useEffect(() => {
+    if (!enabled) close();
+  }, [enabled]);
 
   return (
     <WheelContext.Provider value={registry}>

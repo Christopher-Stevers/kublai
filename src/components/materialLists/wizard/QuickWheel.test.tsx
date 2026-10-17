@@ -690,6 +690,40 @@ describe("wizard quick wheel", () => {
     expect(wheel()).toBeNull();
     expect(select).not.toHaveBeenCalled();
   });
+  it("blocks the final wheel lift and click, then allows the next part touch", async () => {
+    const selected = vi.fn();
+    const clicked = vi.fn();
+    function Finish() {
+      const [parts, setParts] = useState(false);
+      return (
+        <QuickWheelSurface enabled={!parts}>
+          {parts ? (
+            <button onPointerUp={selected} onClick={clicked}>Part</button>
+          ) : (
+            <Stage title="Category" select={() => setParts(true)} />
+          )}
+        </QuickWheelSurface>
+      );
+    }
+    render(<Finish />);
+    down();
+    aim();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(500);
+    });
+    expect(wheel()).toBeNull();
+    const part = screen.getByText("Part");
+    fireEvent.pointerUp(part, pointer);
+    fireEvent.touchEnd(part, { touches: [] });
+    fireEvent.click(part);
+    expect(selected).not.toHaveBeenCalled();
+    expect(clicked).not.toHaveBeenCalled();
+    fireEvent.pointerDown(part, { ...pointer, pointerId: 2 });
+    fireEvent.pointerUp(part, { ...pointer, pointerId: 2 });
+    fireEvent.click(part);
+    expect(selected).toHaveBeenCalledTimes(1);
+    expect(clicked).toHaveBeenCalledTimes(1);
+  });
   it("ignores a second pointer movement and cancels multi-touch", () => {
     const select = vi.fn();
     render(
