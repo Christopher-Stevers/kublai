@@ -17,7 +17,6 @@ export type { JobWorkspaceOptionId };
 
 export function JobWorkspaceOptions({
   materialListCount = 0,
-  toolRequestCount = 0,
   roomCount,
   roomCountLoading = false,
   chatUnreadCount = 0,
@@ -25,7 +24,6 @@ export function JobWorkspaceOptions({
   onTools,
 }: {
   materialListCount?: number;
-  toolRequestCount?: number;
   roomCount?: number;
   roomCountLoading?: boolean;
   chatUnreadCount?: number;
@@ -62,23 +60,6 @@ export function JobWorkspaceOptions({
                 {materialListCount} {materialListCount === 1 ? "list" : "lists"}
               </span>
             </div>
-          </div>
-        </CardContent>
-      </Card>
-      <Card role="button" tabIndex={0} aria-label="Tool Requests"
-        className="cursor-pointer transition-shadow hover:shadow-md"
-        onClick={() => onSelect("tool-requests")}
-        onKeyDown={(event) => {
-          if (event.key === "Enter" || event.key === " ") {
-            event.preventDefault();
-            onSelect("tool-requests");
-          }
-        }}>
-        <CardHeader><CardTitle>Tool Requests</CardTitle></CardHeader>
-        <CardContent>
-          <div className="text-muted-foreground flex items-center gap-2 text-sm">
-            <WrenchIcon className="h-4 w-4" />
-            <span>{toolRequestCount} {toolRequestCount === 1 ? "request" : "requests"}</span>
           </div>
         </CardContent>
       </Card>

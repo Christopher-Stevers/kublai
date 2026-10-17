@@ -40,6 +40,7 @@ import {
   SendIcon,
   TrashIcon,
   WifiOffIcon,
+  WrenchIcon,
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { Badge } from "~/components/ui/badge";
@@ -391,7 +392,7 @@ export function DashboardClient({
         kind: "tools",
       }),
     );
-    navigateWorkspace({ jobId, view: "tool-requests", materialListId });
+    navigateWorkspace({ jobId, view: "material-lists", materialListId });
   };
 
   const handleConfirmDeleteJob = () => {
@@ -446,11 +447,7 @@ export function DashboardClient({
   if (offlineJobId) {
     const fallbackJob = jobs.find((job) => job.id === offlineJobId) ?? null;
     const offlineJob = offlineJobDetail?.job ?? fallbackJob;
-    const allJobLists = offlineJobDetail?.materialLists ?? [];
-    const showingToolRequests = offlineJobView === "tool-requests";
-    const offlineMaterialLists = allJobLists.filter(list => (list.kind === "tools") === showingToolRequests);
-    const createList = () => showingToolRequests ? handleCreateToolRequest(offlineJobId) : handleCreateMaterialList(offlineJobId);
-    const createLabel = showingToolRequests ? "New Tool Request" : "New Material List";
+    const offlineMaterialLists = offlineJobDetail?.materialLists ?? [];
     const selectedMaterialList = offlineMaterialListDetail.materialList;
     const selectedItems = sortedItems;
     const isToolRequest = selectedMaterialList?.kind === "tools";
@@ -676,8 +673,7 @@ export function DashboardClient({
 
               {offlineJobView === "options" ? (
                 <JobWorkspaceOptions
-                  materialListCount={allJobLists.filter(list => list.kind !== "tools").length}
-                  toolRequestCount={allJobLists.filter(list => list.kind === "tools").length}
+                  materialListCount={offlineMaterialLists.length}
                   roomCount={roomCount.count}
                   roomCountLoading={roomCount.loading}
                   chatUnreadCount={chatOverview?.unreadCount}
@@ -704,18 +700,27 @@ export function DashboardClient({
               <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <h2 className="text-xl font-semibold text-foreground">
-                    {showingToolRequests ? "Tool Requests" : "Material Lists"}
+                    Material Lists
                   </h2>
                 </div>
                 <div className="hidden gap-2 sm:flex">
                   <Button
+                    onClick={() => handleCreateToolRequest(offlineJob.id)}
+                    size="lg"
+                    variant="outline"
+                    className="h-11"
+                  >
+                    <WrenchIcon className="mr-2 h-5 w-5" />
+                    Tool Request
+                  </Button>
+                  <Button
                     data-tutorial="create-list"
-                    onClick={createList}
+                    onClick={() => handleCreateMaterialList(offlineJob.id)}
                     size="lg"
                     className="hidden h-11 sm:inline-flex sm:w-auto"
                   >
                     <PlusIcon className="mr-2 h-5 w-5" />
-                    {createLabel}
+                    New Material List
                   </Button>
                 </div>
               </div>
@@ -726,7 +731,7 @@ export function DashboardClient({
                   <CardContent className="flex flex-col items-center justify-center py-12">
                     <PackageIcon className="mb-4 h-12 w-12 text-muted-foreground/70" />
                     <h3 className="mb-2 text-lg font-semibold">
-                      {showingToolRequests ? "No tool requests yet" : "No material lists yet"}
+                      No material lists yet
                     </h3>
                     <p className="text-muted-foreground mb-4 text-center">
                       Create one now. It’ll stay on this device and sync when
@@ -734,10 +739,10 @@ export function DashboardClient({
                     </p>
                     <Button
                       data-tutorial="create-list"
-                      onClick={createList}
+                      onClick={() => handleCreateMaterialList(offlineJob.id)}
                     >
                       <PlusIcon className="mr-2 h-4 w-4" />
-                      {createLabel}
+                      New Material List
                     </Button>
                   </CardContent>
                 </Card>
@@ -783,7 +788,7 @@ export function DashboardClient({
                         }
                         navigateWorkspace({
                           jobId: offlineJobId,
-                          view: showingToolRequests ? "tool-requests" : "material-lists",
+                          view: "material-lists",
                           materialListId: list.id,
                         });
                       }}
@@ -889,15 +894,26 @@ export function DashboardClient({
               )}
 
               <div className="bg-background fixed inset-x-0 bottom-0 z-40 border-t px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:hidden">
+                <div className="grid grid-cols-[auto_1fr] gap-2">
+                <Button
+                  onClick={() => handleCreateToolRequest(offlineJob.id)}
+                  size="lg"
+                  variant="outline"
+                  className="h-12"
+                  aria-label="New tool request"
+                >
+                  <WrenchIcon className="h-5 w-5" />
+                </Button>
                 <Button
                   data-tutorial="create-list"
-                  onClick={createList}
+                  onClick={() => handleCreateMaterialList(offlineJob.id)}
                   size="lg"
                   className="h-12 w-full"
                 >
                   <PlusIcon className="mr-2 h-5 w-5" />
-                  {createLabel}
+                  New Material List
                 </Button>
+                </div>
               </div>
                 </>
               )}

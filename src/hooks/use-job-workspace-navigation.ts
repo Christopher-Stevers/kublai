@@ -66,6 +66,7 @@ export function useJobWorkspaceNavigation() {
   useSnapshotSource("workspace", () => location);
 
   const restore = useCallback((next: JobWorkspaceLocation | null) => {
+    if (next?.view === "tool-requests") next = { ...next, view: "material-lists" };
     setLocation(next);
     if (sandbox) return;
     if (next) setLastJobWorkspaceLocation(next);
@@ -80,7 +81,7 @@ export function useJobWorkspaceNavigation() {
     if (!entry || (sourceHash && entry.sourceHash !== sourceHash)) {
       const last = saved !== undefined ? saved : getLastJobWorkspaceLocation();
       writeHistory("replaceState", last ? {
-        ...last, view: last.materialListId && last.view !== "tool-requests" ? "material-lists" : last.view,
+        ...last, view: last.materialListId ? "material-lists" : last.view,
       } : null, sourceHash);
       entry = readHistory();
     }
@@ -114,7 +115,7 @@ export function useJobWorkspaceNavigation() {
 
   const back = useCallback(() => {
     const parent: JobWorkspaceLocation | null = !location ? null
-      : location.materialListId ? { ...location, view: location.view === "tool-requests" ? "tool-requests" : "material-lists", materialListId: null }
+      : location.materialListId ? { ...location, view: "material-lists", materialListId: null }
       : location.view !== "options" ? { ...location, view: "options", materialListId: null }
       : null;
     if (!sandbox) writeHistory("replaceState", parent);

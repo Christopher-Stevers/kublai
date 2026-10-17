@@ -43,7 +43,7 @@ export function getLastJobWorkspaceLocation(): JobWorkspaceLocation | null {
     }
     return {
       jobId: parsed.jobId,
-      view: parsed.view,
+      view: parsed.view === "tool-requests" ? "material-lists" : parsed.view,
       materialListId:
         typeof parsed.materialListId === "string"
           ? parsed.materialListId
