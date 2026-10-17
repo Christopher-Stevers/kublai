@@ -82,6 +82,9 @@ type Wheel = Choices & {
   moved: boolean;
   skipEntrance?: boolean;
 };
+const MAX_VISIBLE_OPTIONS = 6;
+// Leave two slots for Previous and More whenever choices need multiple pages.
+const PAGED_CHOICES = MAX_VISIBLE_OPTIONS - 2;
 type Entry = Choice & { page?: number; sourceIndex?: number };
 function entriesFor(wheel: Wheel): Entry[] {
   const ranked = wheel.options.map((choice, sourceIndex) => ({
@@ -93,12 +96,15 @@ function entriesFor(wheel: Wheel): Entry[] {
   ranked.sort(
     (a, b) => frequency(b) - frequency(a) || a.sourceIndex - b.sourceIndex,
   );
-  const pages = Math.ceil(ranked.length / 6);
+  const pages = Math.ceil(ranked.length / PAGED_CHOICES);
   const entries: Entry[] =
-    ranked.length <= 8
+    ranked.length <= MAX_VISIBLE_OPTIONS
       ? ranked
       : [
-          ...ranked.slice(wheel.page * 6, wheel.page * 6 + 6),
+          ...ranked.slice(
+            wheel.page * PAGED_CHOICES,
+            (wheel.page + 1) * PAGED_CHOICES,
+          ),
           {
             label: "Previous",
             select: () => undefined,
@@ -555,7 +561,7 @@ function WheelDisplay({
     entries.length,
     wheel.bounds,
   );
-  const pages = Math.ceil(wheel.options.length / 6);
+  const pages = Math.ceil(wheel.options.length / PAGED_CHOICES);
   const hint = selected
     ? selected.page !== undefined
       ? "Hold to browse"
@@ -569,7 +575,7 @@ function WheelDisplay({
       : entry.label;
   const tileClass = (index: number, entry: Entry) =>
     cn(
-      "quick-wheel-tile flex h-full w-full items-center justify-center rounded-full border p-1.5 text-center leading-tight font-semibold shadow-md transition-[scale,background-color,color,box-shadow] duration-150 ease-out",
+      "quick-wheel-tile flex h-full w-full items-center justify-center rounded-full border p-1.5 text-center leading-tight font-semibold uppercase shadow-md transition-[scale,background-color,color,box-shadow] duration-150 ease-out",
       wheel.hovered === index
         ? "bg-primary text-primary-foreground border-primary ring-primary/25 scale-110 shadow-lg ring-4"
         : entry.page !== undefined
@@ -653,7 +659,8 @@ function WheelDisplay({
             // Round choices sized to the spacing between them.
             const width = Math.max(56, Math.min(78, gap - 8)),
               height = width;
-            const hub = layout.deadZoneRadius;
+            // Keep room for feedback text; activation starts closer to the finger.
+            const hub = (wheel.radius * 64) / 170;
             const target =
               wheel.hovered === null ? undefined : points[wheel.hovered];
             return (
@@ -670,7 +677,7 @@ function WheelDisplay({
                     strokeLinecap="round"
                   />
                   <circle
-                    data-wheel-dead-zone=""
+                    data-wheel-hub=""
                     cx={wheel.x}
                     cy={wheel.y}
                     r={hub}
@@ -706,7 +713,7 @@ function WheelDisplay({
                       <div
                         className={cn(
                           tileClass(index, entries[index]!),
-                          "text-[11px]",
+                          "text-[13px]",
                         )}
                         style={{
                           animationDelay: `${index * 20}ms`,
@@ -729,7 +736,7 @@ function WheelDisplay({
                 >
                   <span
                     className={cn(
-                      "line-clamp-2 text-xs leading-tight font-semibold",
+                      "line-clamp-2 text-sm leading-tight font-semibold uppercase",
                       selected ? "text-primary" : "text-foreground",
                     )}
                   >
@@ -806,7 +813,7 @@ function WheelDisplay({
                         <div
                           className={tileClass(index, entry)}
                           style={{
-                            fontSize: 12 / scale,
+                            fontSize: 14 / scale,
                             animationDelay: `${index * 20}ms`,
                             animation:
                               isPreview || wheel.skipEntrance
@@ -827,7 +834,7 @@ function WheelDisplay({
             <div className="absolute top-1/2 left-1/2 flex w-[28%] -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-0.5 text-center">
               <span
                 className={cn(
-                  "line-clamp-3 text-sm leading-tight font-semibold",
+                  "line-clamp-3 text-base leading-tight font-semibold uppercase",
                   selected ? "text-primary" : "text-foreground",
                 )}
               >
@@ -836,7 +843,7 @@ function WheelDisplay({
               <span className="text-muted-foreground text-[10px] leading-tight">
                 {hint}
               </span>
-              {wheel.options.length > 8 && (
+              {wheel.options.length > MAX_VISIBLE_OPTIONS && (
                 <span className="text-muted-foreground/80 text-[10px] tabular-nums">
                   {wheel.page + 1} / {pages}
                 </span>

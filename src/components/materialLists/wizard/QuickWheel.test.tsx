@@ -152,6 +152,51 @@ describe("wizard quick wheel", () => {
     expect(wheel()).not.toBeInTheDocument();
     expect(select).toHaveBeenCalledTimes(2);
   });
+  it.each([
+    ["circle", 200],
+    ["curved", 20],
+  ] as const)(
+    "selects with a short slide in the %s layout",
+    (layout, originX) => {
+      const select = vi.fn();
+      render(
+        <QuickWheelSurface>
+          <Stage select={select} />
+        </QuickWheelSurface>,
+      );
+      fireEvent.pointerDown(screen.getByTestId("blank"), {
+        ...pointer,
+        clientX: originX,
+      });
+      expect(wheel()).toHaveAttribute("data-layout", layout);
+      const choice = wheel()!.querySelector("foreignObject")!;
+      const x =
+        Number(choice.getAttribute("x")) +
+        Number(choice.getAttribute("width")) / 2 +
+        (layout === "circle" ? originX - 170 : 0);
+      const y =
+        Number(choice.getAttribute("y")) +
+        Number(choice.getAttribute("height")) / 2 +
+        (layout === "circle" ? pointer.clientY - 170 : 0);
+      const length = Math.hypot(x - originX, y - pointer.clientY);
+      const slide = (distance: number) =>
+        aim(
+          originX + ((x - originX) * distance) / length,
+          pointer.clientY + ((y - pointer.clientY) * distance) / length,
+        );
+      slide(24);
+      void dwell();
+      expect(select).not.toHaveBeenCalled();
+      slide(40);
+      void dwell(499);
+      expect(select).not.toHaveBeenCalled();
+      void dwell(1);
+      expect(select).toHaveBeenCalledExactlyOnceWith(0);
+      // The next selection still needs a fresh slide from the recentered origin.
+      void dwell(1000);
+      expect(select).toHaveBeenCalledTimes(1);
+    },
+  );
   it("recenters at the latest position within a highlighted sector, including near edges", () => {
     const select = vi.fn();
     render(
@@ -174,7 +219,7 @@ describe("wizard quick wheel", () => {
     fireEvent.pointerUp(window, pointer);
     expect(wheel()).toBeNull();
   });
-  it("shows the curved dead zone and cancels a pending selection when returning to it", () => {
+  it("keeps the curved feedback hub readable and cancels a pending selection in the smaller dead zone", () => {
     const select = vi.fn();
     render(
       <QuickWheelSurface>
@@ -186,7 +231,7 @@ describe("wizard quick wheel", () => {
       clientX: 20,
       clientY: 300,
     });
-    expect(document.querySelector("[data-wheel-dead-zone]")).toHaveAttribute(
+    expect(document.querySelector("[data-wheel-hub]")).toHaveAttribute(
       "r",
       "64",
     );
@@ -200,7 +245,7 @@ describe("wizard quick wheel", () => {
     aim(x, y);
     dwell(300);
     const length = Math.hypot(x - 20, y - 300);
-    aim(20 + ((x - 20) * 50) / length, 300 + ((y - 300) * 50) / length);
+    aim(20 + ((x - 20) * 24) / length, 300 + ((y - 300) * 24) / length);
     dwell(1000);
     expect(select).not.toHaveBeenCalled();
     aim(x, y);
@@ -369,14 +414,50 @@ describe("wizard quick wheel", () => {
       dwell();
     };
     expect(choices()).toEqual(
-      [9, 10, 11, 12, 13, 14].map((n) => `Choice ${n}`).sort(),
+      [11, 12, 13, 14].map((n) => `Choice ${n}`).sort(),
     );
     more();
     expect(choices()).toEqual(
-      [3, 4, 5, 6, 7, 8].map((n) => `Choice ${n}`).sort(),
+      [7, 8, 9, 10].map((n) => `Choice ${n}`).sort(),
     );
     more();
+    expect(choices()).toEqual([3, 4, 5, 6].map((n) => `Choice ${n}`).sort());
+    more();
     expect(choices()).toEqual(["Choice 0", "Choice 1", "Choice 2"]);
+  });
+  it.each([6, 7, 8, 15])("limits %i choices to six visible options and keeps every page reachable", (count) => {
+    render(<QuickWheelSurface><Stage count={count} select={vi.fn()} /></QuickWheelSurface>);
+    down();
+    const labels = () => Array.from(wheel()!.querySelectorAll("foreignObject"));
+    const navigate = (name: string) => {
+      const root = wheel()!;
+      const label = labels().find((entry) => entry.textContent?.includes(name))!;
+      const circle = root.getAttribute("data-layout") === "circle";
+      aim(
+        Number(label.getAttribute("x")) + Number(label.getAttribute("width")) / 2
+          + (circle ? Number(root.getAttribute("data-origin-x")) - 170 : 0),
+        Number(label.getAttribute("y")) + Number(label.getAttribute("height")) / 2
+          + (circle ? Number(root.getAttribute("data-origin-y")) - 170 : 0),
+      );
+      void dwell();
+    };
+    const seen = new Set<string>();
+    const pages = count <= 6 ? 1 : Math.ceil(count / 4);
+    for (let page = 0; page < pages; page++) {
+      expect(labels().length).toBeLessThanOrEqual(6);
+      for (const label of labels()) {
+        expect(label.firstElementChild).toHaveClass("uppercase");
+        if (label.textContent?.startsWith("Choice ")) seen.add(label.textContent);
+      }
+      if (pages > 1) navigate("More");
+    }
+    expect(seen.size).toBe(count);
+    expect(labels().some((label) => label.textContent === "Choice 0")).toBe(true);
+    if (pages > 1) {
+      navigate("Previous");
+      expect(labels().length).toBeLessThanOrEqual(6);
+      expect(labels().some((label) => label.textContent === `Choice ${count - 1}`)).toBe(true);
+    }
   });
   it("shows only exact combinations in the size wheel while cards retain the nominal choice", () => {
     const select = vi.fn();
@@ -547,12 +628,12 @@ describe("wizard quick wheel", () => {
       </QuickWheelSurface>,
     );
     down();
-    aim(115, 215);
-    dwell(); // sector 7: More
-    expect(screen.getByText("Choice 6")).toBeInTheDocument();
-    aim(115, 215);
+    aim(96, 240);
+    dwell(); // sector 5: More
+    expect(screen.getByText("Choice 4")).toBeInTheDocument();
+    aim(96, 240);
     dwell(2000);
-    expect(screen.getByText("Choice 6")).toBeInTheDocument();
+    expect(screen.getByText("Choice 4")).toBeInTheDocument();
     const choice = document.querySelector<HTMLElement>(
       '[data-wheel-choice="0"]',
     )!;
@@ -563,7 +644,7 @@ describe("wizard quick wheel", () => {
         Number(choice.getAttribute("height")) / 2,
     );
     dwell();
-    expect(select).toHaveBeenCalledWith(6);
+    expect(select).toHaveBeenCalledWith(4);
     dwell(1000);
     expect(select).toHaveBeenCalledTimes(1);
   });
@@ -655,9 +736,9 @@ describe("anticipatory wheel previews",()=>{
   prepare.mockImplementation(()=>{throw Error("Could not preload");});aim();await advance(500);expect(select).toHaveBeenCalledExactlyOnceWith(0);expect(preview()).toBeNull();
  });
  it("previews paging without activating the next page before the full dwell",async()=>{
-  render(<QuickWheelSurface><Stage count={15} select={vi.fn()}/></QuickWheelSurface>);down();aim(115,215);await advance(50);
-  expect(preview()).toHaveTextContent("Choice 6");expect(wheel()!.querySelector('[data-wheel-preview]')).not.toBeNull();
-  await advance(449);expect(wheel()!.querySelector('[data-wheel-preview]')).not.toBeNull();await advance(1);expect(preview()).toBeNull();expect(wheel()).toHaveTextContent("Choice 6");
+  render(<QuickWheelSurface><Stage count={15} select={vi.fn()}/></QuickWheelSurface>);down();aim(96,240);await advance(50);
+  expect(preview()).toHaveTextContent("Choice 4");expect(wheel()!.querySelector('[data-wheel-preview]')).not.toBeNull();
+  await advance(449);expect(wheel()!.querySelector('[data-wheel-preview]')).not.toBeNull();await advance(1);expect(preview()).toBeNull();expect(wheel()).toHaveTextContent("Choice 4");
  });
  it.each(["pointerup","pointercancel","blur"])("removes the preview on %s without confirming",async(event)=>{
   const select=vi.fn();render(<QuickWheelSurface previewChoice={()=>({title:"Next",kind:"wheel",options:[{label:"Preview"}]})}><Stage select={select}/></QuickWheelSurface>);

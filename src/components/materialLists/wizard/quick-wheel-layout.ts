@@ -9,7 +9,8 @@ export type CurvedChoice = { path: string; polygon: Point[]; label: Point };
 export type WheelLayout =
   | { kind: "circle" }
   | { kind: "curved"; choices: CurvedChoice[]; deadZoneRadius: number };
-export const wheelDeadZoneRadius = (radius: number) => (radius * 64) / 170;
+// A short, deliberate slide should arm a choice, even inside the feedback hub.
+export const wheelDeadZoneRadius = (radius: number) => (radius * 32) / 170;
 
 const clamp = (n: number, min: number, max: number) =>
   Math.max(min, Math.min(max, n));
