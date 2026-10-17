@@ -1,5 +1,6 @@
 "use client";
 
+import { useHyperlinkBack } from "~/hooks/use-hyperlink-back";
 import { AppDeviceReporter } from "~/components/app/AppDeviceReporter";
 import { InstallAppButton } from "~/components/app/InstallAppButton";
 
@@ -192,7 +193,8 @@ function HeaderFrame({
   };
 
   const showRouteBackButton = Boolean(pathname && pathname !== "/dashboard" && pathname.startsWith("/dashboard/"));
-  const showBackButton = showRouteBackButton || showRequestedBackButton;
+  const hasHyperlinkParent = useHyperlinkBack(pathname, sessionKey);
+  const showBackButton = showRouteBackButton || showRequestedBackButton || hasHyperlinkParent;
 
   useEffect(() => {
     const handleBackState = (event: Event) => {

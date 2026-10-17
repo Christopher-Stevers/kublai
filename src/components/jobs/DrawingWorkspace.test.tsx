@@ -1,3 +1,5 @@
+import { SnapshotSourceContext } from "~/components/chat/SnapshotSourceContext";
+import { HYPERLINK_VISIT_EVENT } from "~/hooks/use-hyperlink-back";
 import {
   act,
   cleanup,
@@ -551,9 +553,8 @@ describe("drawing workspace workflows", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: "Tap hyperlink" }));
     fireEvent.click(screen.getByRole("button", { name: "Revision drawing" }));
-    expect(onOpenSheet).toHaveBeenCalledWith(
-      expect.objectContaining({ id: revisionId }),
-    );
+    const target = mocks.data!.jobSheets.find(s=>s.id===revisionId)!;
+    expect(mocks.push).toHaveBeenLastCalledWith(`/dashboard/jobs/${jobId}/drawings?drawingSet=${target.setId}&drawingSheet=${revisionId}`,{scroll:false});
   });
   it("opens single and legacy hyperlinks directly", () => {
     const entity = existingMarkup();
@@ -675,9 +676,9 @@ describe("drawing workspace workflows", () => {
     fireEvent.click(
       screen.getByRole("button", { name: "Follow original page link" }),
     );
-    expect(onOpenSheet).toHaveBeenCalledExactlyOnceWith(
-      mocks.data!.jobSheets[1],
-    );
+    const target = mocks.data!.jobSheets[1]!;
+    expect(mocks.push).toHaveBeenLastCalledWith(`/dashboard/jobs/${jobId}/drawings?drawingSet=${target.setId}&drawingSheet=${target.id}`,{scroll:false});
+    expect(onOpenSheet).not.toHaveBeenCalled();
     expect(mocks.save).not.toHaveBeenCalled();
   });
   it("opens original web links using their retained protocol", () => {
@@ -1466,4 +1467,21 @@ it("keeps the scrolling drawing toolbar in the host dock and its controls workin
   view.unmount();
   expect(dock).toBeEmptyDOMElement();
   dock.remove();
+});
+
+it("remembers the captured source drawing view before following an internal hyperlink",()=>{
+ const entity=existingMarkup();
+ if(entity.kind!=="markup")throw Error("fixture");
+ entity.data={...entity.data,type:"link",links:[{label:"Documents",url:`/dashboard/jobs/${jobId}/documents`}]};
+ mocks.data!.entities=[entity];
+ const href=`/dashboard/jobs/${jobId}/drawings?drawingSheet=${sheetId}#snapshot=captured-zoom`;
+ const captureSource=vi.fn(()=>({href,title:"Source",capturedAt:new Date().toISOString()}));
+ const visit=vi.fn();window.addEventListener(HYPERLINK_VISIT_EVENT,visit);
+ render(<SnapshotSourceContext.Provider value={{captureSource,register:()=>()=>{},registerPage:()=>()=>{}}}>
+   <DrawingWorkspace jobId={jobId} sheet={sheet} onOpenSheet={vi.fn()}/>
+ </SnapshotSourceContext.Provider>);
+ fireEvent.click(screen.getByRole("button",{name:"Tap hyperlink"}));
+ expect(captureSource).toHaveBeenCalledOnce();
+ expect(visit).toHaveBeenCalledWith(expect.objectContaining({detail:{source:href,target:new URL(`/dashboard/jobs/${jobId}/documents`,location.origin).href}}));
+ window.removeEventListener(HYPERLINK_VISIT_EVENT,visit);
 });

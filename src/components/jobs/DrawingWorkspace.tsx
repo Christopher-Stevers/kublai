@@ -1,8 +1,10 @@
 "use client";
+import { rememberHyperlinkSource } from "~/hooks/use-hyperlink-back";
+import { SnapshotSourceContext } from "~/components/chat/SnapshotSourceContext";
 import { DrawingPageModeSetting } from "./DrawingPageMode";
 import { MARKUP_SHAKE_MS } from "./useDrawingEditor";
 
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useContext, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { useSnapshot } from "~/components/chat/SnapshotProvider";
@@ -368,6 +370,7 @@ export function DrawingWorkspace({
   onClose?: () => void;
 }) {
   const router = useRouter();
+  const sourceRegistry = useContext(SnapshotSourceContext);
   const [equipmentBusy, setEquipmentBusy] = useState(false);
   const snapshotTool = useSnapshot();
   const destinationPicker = useDrawingDestination();
@@ -1067,26 +1070,20 @@ export function DrawingWorkspace({
     const url = new URL(href, window.location.origin);
     if (url.origin === window.location.origin &&
         (url.pathname === "/dashboard" || url.pathname.startsWith("/dashboard/"))) {
+      rememberHyperlinkSource(sourceRegistry?.captureSource().href ?? window.location.href, url.href);
       window.dispatchEvent(new CustomEvent(DRAWING_DESTINATION_EVENT, {detail:url.href}));
       router.push(`${url.pathname}${url.search}${url.hash}`, { scroll: false });
     } else {
       window.open(url.href, "_blank", "noopener,noreferrer");
     }
-  }, [router]);
+  }, [router, sourceRegistry]);
   const openDestination = useCallback(
     (link: DrawingMarkupLink) => {
-      if (link.targetSheetId) {
-        const target = data?.jobSheets.find(
-          (item) => item.id === link.targetSheetId,
-        );
-        if (target) onOpenSheet(target);
-        else setError("That linked sheet is no longer available.");
-      } else {
-        const href = drawingLinkHref(link, jobId, data?.jobSheets ?? []);
-        if (href) openLinkUrl(href); else setError("That destination is no longer available.");
-      }
+      const href = drawingLinkHref(link, jobId, data?.jobSheets ?? []);
+      if (href) openLinkUrl(href);
+      else setError("That destination is no longer available.");
     },
-    [data?.jobSheets, onOpenSheet, jobId, openLinkUrl],
+    [data?.jobSheets, jobId, openLinkUrl],
   );
   const linkChoiceArmed = useRef(false);
   const activate = useCallback(
@@ -1125,11 +1122,14 @@ export function DrawingWorkspace({
         if (url) openLinkUrl(url);
       } else if (pdf) {
         const target = drawingPdfLinkTarget(link, pdf, data?.jobSheets ?? []);
-        if (target) onOpenSheet(target);
+        if (target) {
+          const href = drawingLinkHref({label:target.name,targetSheetId:target.id},jobId,data?.jobSheets??[]);
+          if(href) openLinkUrl(href);
+        }
         else setError("That linked page has not been added to this job.");
       }
     },
-    [pdf, data?.jobSheets, onOpenSheet, openLinkUrl],
+    [pdf, data?.jobSheets, jobId, openLinkUrl],
   );
   const readText = async (ocr = false) => {
     const request = ++textRequest.current;
