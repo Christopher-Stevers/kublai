@@ -1,4 +1,5 @@
 import { z } from "zod";
+export const DRAWING_DESTINATION_EVENT = "foremanhq:drawing-destination";
 export const SNAPSHOT_FREEZE_EVENT = "foremanhq:snapshot-freeze";
 
 const coordinate = z.number().finite().min(-10).max(10);

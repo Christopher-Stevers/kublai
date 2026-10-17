@@ -9,7 +9,7 @@ import { useSnapshot } from "~/components/chat/SnapshotProvider";
 import { EquipmentTagLinks } from "./EquipmentTagLinks";
 import { MAX_DRAWING_LINKS, drawingMarkupLinks as equipmentExistingLinks } from "~/lib/drawing-links";
 import { useDrawingDestination } from "./DrawingDestinationProvider";
-import { readSnapshotState } from "~/lib/snapshot-source";
+import { DRAWING_DESTINATION_EVENT, type SnapshotState, readSnapshotState } from "~/lib/snapshot-source";
 import { useSnapshotSource } from "~/components/chat/SnapshotSourceContext";
 import { currentSnapshotState } from "~/lib/snapshot-source";
 import { api } from "~/trpc/react";
@@ -340,6 +340,7 @@ export function DrawingWorkspace({
   sheet,
   onOpenSheet,
   initialViewport,
+  initialSnapshot,
   onViewportChange,
   onReady,
   onDocumentDetails,
@@ -358,6 +359,7 @@ export function DrawingWorkspace({
   };
   onOpenSheet: (sheet: DrawingJobSheet) => void;
   initialViewport?: DrawingViewport | null;
+  initialSnapshot?: SnapshotState | null;
   onViewportChange?: (viewport: DrawingViewport) => void;
   onReady?: () => void;
   onDocumentDetails?: () => void;
@@ -369,7 +371,7 @@ export function DrawingWorkspace({
   const [equipmentBusy, setEquipmentBusy] = useState(false);
   const snapshotTool = useSnapshot();
   const destinationPicker = useDrawingDestination();
-  const [entrySnapshot] = useState(currentSnapshotState);
+  const [entrySnapshot] = useState(() => initialSnapshot === undefined ? currentSnapshotState() : initialSnapshot);
   const entryDrawing =
     entrySnapshot?.drawing?.jobId === jobId &&
     entrySnapshot.drawing.sheetId === sheet.id
@@ -505,7 +507,7 @@ export function DrawingWorkspace({
     requestId: string;
   } | null>(null);
   const viewport = useRef<DrawingViewport>(
-    initialViewport ?? { center: { x: 0.5, y: 0.5 }, zoom: 1 },
+    initialViewport ?? entryDrawing?.viewport ?? { center: { x: 0.5, y: 0.5 }, zoom: 1 },
   );
   const updateViewport = (value: DrawingViewport) => {
     viewport.current = value;
@@ -1065,6 +1067,7 @@ export function DrawingWorkspace({
     const url = new URL(href, window.location.origin);
     if (url.origin === window.location.origin &&
         (url.pathname === "/dashboard" || url.pathname.startsWith("/dashboard/"))) {
+      window.dispatchEvent(new CustomEvent(DRAWING_DESTINATION_EVENT, {detail:url.href}));
       router.push(`${url.pathname}${url.search}${url.hash}`, { scroll: false });
     } else {
       window.open(url.href, "_blank", "noopener,noreferrer");

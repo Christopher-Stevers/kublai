@@ -62,7 +62,7 @@ import type { DrawingViewport } from "./DrawingSheetViewer";
 import { DrawingWorkspace } from "./DrawingWorkspace";
 import { DrawingSheetRegister } from "./DrawingSheetRegister";
 import { useDrawingAccount } from "./DrawingAccountProvider";
-import { currentSnapshotState } from "~/lib/snapshot-source";
+import { DRAWING_DESTINATION_EVENT, readSnapshotState, type SnapshotState } from "~/lib/snapshot-source";
 import { useDrawingSnapshot } from "./useDrawingSnapshot";
 import { useDrawingFullscreen } from "./useDrawingFullscreen";
 
@@ -110,7 +110,9 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
   const [entryViewport, setEntryViewport] = useState<DrawingViewport | null>(
     null,
   );
+  const [destination, setDestination] = useState<{request:number;snapshot:SnapshotState|null}>({request:0,snapshot:null});
   const openSheet = (id: string | null, preserveViewport = false) => {
+    setDestination(previous=>({...previous,snapshot:null}));
     setEntryViewport(preserveViewport ? lastViewport.current : null);
     if (!preserveViewport) lastViewport.current = null;
     setSheetId(id);
@@ -162,29 +164,38 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
     onError: (error) => notify(error.message, "error"),
   });
   useEffect(() => {
-    const url = new URL(window.location.href);
-    const id = url.searchParams.get("drawingSheet"),
-      folder = url.searchParams.get("drawingSet");
-    if (
-      id &&
-      folder &&
-      /^[0-9a-f-]{36}$/i.test(id) &&
-      /^[0-9a-f-]{36}$/i.test(folder)
-    ) {
+    const apply = (href: string) => {
+      const url = new URL(href, window.location.origin);
+      const snapshot = readSnapshotState(url.hash);
+      const saved = snapshot?.drawing;
+      if (url.origin !== window.location.origin ||
+          (url.pathname !== `/dashboard/jobs/${jobId}/drawings` && !(url.pathname === "/dashboard" && saved?.jobId === jobId))) return;
+      const id = url.searchParams.get("drawingSheet"), folder = url.searchParams.get("drawingSet");
+      if (!id || !folder || !/^[0-9a-f-]{36}$/i.test(id) || !/^[0-9a-f-]{36}$/i.test(folder)) return;
+      const matches = saved?.jobId === jobId && saved.sheetId === id && saved.setId === folder;
       setSetId(folder);
       setSheetId(id);
-      const saved = currentSnapshotState()?.drawing;
-      if (
-        saved?.jobId === jobId &&
-        saved.sheetId === id &&
-        saved.setId === folder
-      ) {
-        setEntryViewport(saved.viewport);
-        lastViewport.current = saved.viewport;
-      }
-    }
-    return () => downloader.current?.abort();
-  }, [jobId]);
+      setEntryViewport(matches ? saved.viewport : null);
+      lastViewport.current = matches ? saved.viewport : null;
+      // A new request remounts even the same sheet; its saved viewport/revision must reapply.
+      setDestination(previous => ({request:previous.request+1,snapshot:matches ? snapshot : null}));
+    };
+    const current = () => apply(window.location.href);
+    const linked = (event: Event) => {
+      const href = (event as CustomEvent<unknown>).detail;
+      if (typeof href === "string") apply(href);
+    };
+    current();
+    window.addEventListener(DRAWING_DESTINATION_EVENT, linked);
+    window.addEventListener("hashchange", current);
+    window.addEventListener("popstate", current);
+    return () => {
+      window.removeEventListener(DRAWING_DESTINATION_EVENT, linked);
+      window.removeEventListener("hashchange", current);
+      window.removeEventListener("popstate", current);
+    };
+  }, [jobId, setSetId, setSheetId]);
+  useEffect(() => () => downloader.current?.abort(), []);
 
   const sets = api.drawings.listSets.useQuery({ jobId });
   const set = api.drawings.getSet.useQuery(
@@ -531,7 +542,8 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
           <DrawingWorkspace
             scrollPages={scroll}
             toolbarContainer={toolbarContainer}
-            key={sheet.id}
+            key={`${sheet.id}:${destination.request}`}
+            initialSnapshot={destination.snapshot}
             jobId={jobId}
             sheet={sheet}
             initialViewport={entryViewport}

@@ -1,3 +1,5 @@
+import { useRef } from "react";
+import { DRAWING_DESTINATION_EVENT, makeSnapshotSource } from "~/lib/snapshot-source";
 import {
   act,
   cleanup,
@@ -116,13 +118,16 @@ vi.mock("./DrawingWorkspace", () => ({
     sheet: { name: string };
     initialViewport?: { center: { x: number; y: number }; zoom: number } | null;
     onViewportChange?: (viewport: { center: { x: number; y: number }; zoom: number }) => void;
-  }) => (
+  }) => {
+    const mountedView = useRef(initialViewport);
+    return (
     <div>
+      <span data-testid="mounted-view">{JSON.stringify(mountedView.current ?? null)}</span>
       <span>Viewing {sheet.name}</span>
       <span data-testid="inherited-view">{JSON.stringify(initialViewport ?? null)}</span>
       <button onClick={() => onViewportChange?.({ center: { x: 0.2, y: 0.7 }, zoom: 3 })}>Zoom and pan sample</button>
     </div>
-  ),
+  );},
 }));
 vi.mock("./DrawingAccountProvider", () => ({ useDrawingAccount: () => state.account }));
 
@@ -491,7 +496,7 @@ describe("Drawings", () => {
     window.history.replaceState(
       {},
       "",
-      `/?drawingSet=${folder}&drawingSheet=${sheetId}`,
+      `/dashboard/jobs/job/drawings?drawingSet=${folder}&drawingSheet=${sheetId}`,
     );
     render(<JobDrawingsView jobId="job" />);
     expect(screen.getByText("Viewing M-101")).toBeInTheDocument();
@@ -558,4 +563,27 @@ describe("drawing set downloads", () => {
     expect(screen.queryByText("Downloaded · Refresh")).toBeNull();
     expect(store.saveSnapshot.mock.calls.some(call => call[0] === "drawing-download:set-1")).toBe(false);
   });
+});
+
+it("refocuses an already open drawing for every hyperlink, including repeated same-sheet destinations", () => {
+  const id=(n:number)=>`00000000-0000-4000-8000-${String(n).padStart(12,"0")}`;
+  const jobId=id(1),setId=id(2);
+  state.sets[0]!.id=setId;
+  state.sheets[0]!.id=id(3);state.sheets[1]!.id=id(4);
+  render(<JobDrawingsView jobId={jobId}/>);
+  fireEvent.click(screen.getByRole("button",{name:"Open Mechanical"}));
+  fireEvent.click(screen.getByRole("button",{name:"Open M-101"}));
+  const jump=(sheetId:string,x:number)=>{
+    const viewport={center:{x,y:.4},zoom:8};
+    const saved=makeSnapshotSource(`/dashboard/jobs/${jobId}/drawings`,{version:1,drawing:{jobId,setId,sheetId,sourceSheetId:sheetId,viewport,appearance:{inverted:false,lineColor:null},layers:{markups:true,issues:true,private:true,published:true},selectedId:null}},"Tag");
+    // Next navigation need not have changed location yet when the link is selected.
+    act(()=>window.dispatchEvent(new CustomEvent(DRAWING_DESTINATION_EVENT,{detail:new URL(saved.href,location.origin).href})));
+    expect(screen.getByTestId("mounted-view")).toHaveTextContent(JSON.stringify(viewport));
+    return saved.href;
+  };
+  jump(id(3),.2);jump(id(3),.8);jump(id(3),.8);
+  const other=jump(id(4),.6);
+  expect(screen.getByText("Viewing M-102")).toBeVisible();
+  act(()=>{window.history.replaceState(null,"",other);window.dispatchEvent(new PopStateEvent("popstate"));});
+  expect(screen.getByTestId("mounted-view")).toHaveTextContent('"x":0.6');
 });

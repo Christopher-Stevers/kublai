@@ -17,7 +17,7 @@ import { useEffect, type ComponentProps } from "react";
 import type { DrawingSheetViewer } from "./DrawingSheetViewer";
 import { DrawingWorkspace, panels, tools } from "./DrawingWorkspace";
 import type { DrawingCompare } from "./DrawingCompare";
-import { makeSnapshotSource } from "~/lib/snapshot-source";
+import { DRAWING_DESTINATION_EVENT, makeSnapshotSource } from "~/lib/snapshot-source";
 
 const mocks = vi.hoisted(() => ({
   viewer: vi.fn(),
@@ -584,11 +584,15 @@ describe("drawing workspace workflows", () => {
     fireEvent.click(screen.getByRole("button", { name: "Tap hyperlink" }));
     expect(mocks.push).toHaveBeenLastCalledWith(`/dashboard/jobs/${jobId}/chat`, { scroll: false });
     expect(open).toHaveBeenCalledTimes(1);
+    const destinationEvent = vi.fn();
+    window.addEventListener(DRAWING_DESTINATION_EVENT,destinationEvent);
     entity.data.links = [{ label: "Drawing", url: `${location.origin}/dashboard/jobs/${jobId}/drawings?drawingSheet=${sheetId}#detail` }];
     view.rerender(<DrawingWorkspace jobId={jobId} sheet={sheet} onOpenSheet={vi.fn()} />);
     fireEvent.click(screen.getByRole("button", { name: "Tap hyperlink" }));
     expect(mocks.push).toHaveBeenLastCalledWith(`/dashboard/jobs/${jobId}/drawings?drawingSheet=${sheetId}#detail`, { scroll: false });
     expect(open).toHaveBeenCalledTimes(1);
+    expect(destinationEvent).toHaveBeenCalledWith(expect.objectContaining({detail:entity.data.links[0]!.url}));
+    window.removeEventListener(DRAWING_DESTINATION_EVENT,destinationEvent);
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
   it("creates highlight hyperlinks and persists a named destination list", async () => {
