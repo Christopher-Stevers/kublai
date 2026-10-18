@@ -8,16 +8,28 @@ import {
 } from "@testing-library/react";
 import { PackingSlips } from "./PackingSlips";
 vi.mock("~/hooks/use-online-status", () => ({ useOnlineStatus: () => true }));
-vi.mock("next/dynamic", () => ({
-  default: () => ({ onCancel }: { onCancel: () => void }) => (
-    <section aria-label="Packing slip camera"><button onClick={onCancel}>Cancel scan</button></section>
-  ),
-}));
+vi.mock("next/dynamic", async () => {
+  const { useState } = await import("react");
+  return {
+    default: () => function Scanner({ onCancel, onSave }: { onCancel: () => void; onSave: (file: File) => Promise<boolean> }) {
+      const [saved, setSaved] = useState(false);
+      const [failed, setFailed] = useState(false);
+      const [file] = useState(() => new File(["scan"], "Packing slip.pdf", { type: "application/pdf" }));
+      return <section aria-label="Packing slip camera">
+        {failed && <p role="alert">PDF was not saved. Tap Done to retry.</p>}
+        {saved ? <><p>PDF saved</p><button onClick={onCancel}>Close scan</button></> : <>
+          <button onClick={async () => { const ok = await onSave(file); setSaved(ok); setFailed(!ok); }}>Done</button>
+          <button onClick={onCancel}>Cancel scan</button>
+        </>}
+      </section>;
+    },
+  };
+});
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
 });
-it("uploads an image with its order and lists the saved document without marking items received", async () => {
+it("saves a scan with its order and closes to the order without an intermediate window", async () => {
   let saved = false;
   const fetcher = vi.fn(async (url: string, options?: RequestInit) => {
     if (options?.method === "POST") {
@@ -51,21 +63,16 @@ it("uploads an image with its order and lists the saved document without marking
   render(<PackingSlips jobId="job" materialListId="list" orderId="order" />);
   fireEvent.click(screen.getByRole("button", { name: "Packing slips" }));
   await screen.findByRole("region", { name: "Packing slip camera" });
-  fireEvent.click(screen.getByRole("button", { name: "Cancel scan" }));
-  const camera = screen.getByLabelText("Upload packing slip");
-  fireEvent.change(camera, {
-    target: {
-      files: [new File(["photo"], "photo.jpg", { type: "image/jpeg" })],
-    },
-  });
-  expect(
-    await screen.findByRole("link", { name: /Packing slip - PO-123/ }),
-  ).toHaveAttribute("href", "/dashboard/jobs/job/documents?document=doc");
+  fireEvent.click(screen.getByRole("button", { name: "Done" }));
+  await screen.findByText("PDF saved");
+  expect(screen.queryByRole("button", { name: "Take photo" })).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Close scan" }));
+  await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
   expect(
     fetcher.mock.calls.filter(([, options]) => options?.method === "POST"),
   ).toHaveLength(1);
 });
-it("retains a failed photo for retry and offers read-only slips from a normal material list", async () => {
+it("retains a failed scan for retry and offers read-only slips from a normal material list", async () => {
   let fail = true;
   const fetcher = vi.fn(async (_: string, options?: RequestInit) =>
     options?.method === "POST"
@@ -81,16 +88,11 @@ it("retains a failed photo for retry and offers read-only slips from a normal ma
   );
   fireEvent.click(screen.getByRole("button", { name: "Packing slips" }));
   await screen.findByRole("region", { name: "Packing slip camera" });
-  fireEvent.click(screen.getByRole("button", { name: "Cancel scan" }));
-  fireEvent.change(screen.getByLabelText("Upload packing slip"), {
-    target: { files: [new File(["photo"], "photo.jpg")] },
-  });
-  await screen.findByText("Storage unavailable");
+  fireEvent.click(screen.getByRole("button", { name: "Done" }));
+  await screen.findByRole("alert");
   fail = false;
-  fireEvent.click(screen.getByRole("button", { name: "Retry upload" }));
-  await waitFor(() =>
-    expect(screen.queryByText("Storage unavailable")).not.toBeInTheDocument(),
-  );
+  fireEvent.click(screen.getByRole("button", { name: "Done" }));
+  await screen.findByText("PDF saved");
   await waitFor(() =>
     expect(
       fetcher.mock.calls.filter(([, options]) => options?.method === "POST"),
@@ -113,7 +115,10 @@ it("opens the scanner directly for an order without requiring Take photo", async
   expect(screen.queryByRole("button", { name: "Take photo" })).not.toBeInTheDocument();
   expect(screen.getByRole("heading", { name: "Scan packing slip" })).toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "Cancel scan" }));
-  expect(await screen.findByRole("button", { name: "Upload photo or PDF" })).toBeInTheDocument();
+  await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+  expect(screen.queryByRole("button", { name: "Take photo" })).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Packing slips" }));
+  await screen.findByRole("region", { name: "Packing slip camera" });
 });
 it("does not open the camera before upload permission is confirmed", async () => {
   vi.stubGlobal("fetch", vi.fn(async () => Response.json({ canUpload: false, documents: [] })));

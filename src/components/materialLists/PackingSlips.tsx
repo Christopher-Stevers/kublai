@@ -130,7 +130,6 @@ export function PackingSlips({
         result.analysisError ??
           "Packing slip saved. Analysis will prepare quantities for your review.",
       );
-      setScanning(false);
       await load().catch(() =>
         setError("Packing slip saved. Reopen this window to refresh the list."),
       );
@@ -213,7 +212,7 @@ export function PackingSlips({
           }
         }}
       >
-        <DialogContent className="max-h-[90dvh] max-w-lg overflow-y-auto">
+        <DialogContent showCloseButton={!scanning} className="max-h-[90dvh] max-w-lg overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{scanning || openingScanner ? "Scan packing slip" : "Packing slips"}</DialogTitle>
             <DialogDescription>
@@ -236,6 +235,9 @@ export function PackingSlips({
               key={`${jobId}:${materialListId}:${orderId}`}
               onSave={upload}
               onCancel={() => {
+                scanOnLoad.current = false;
+                setOpen(false);
+                setOpeningScanner(false);
                 setScanning(false);
                 setRetryFile(null);
                 setError(null);
