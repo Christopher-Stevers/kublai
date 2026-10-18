@@ -1166,6 +1166,17 @@ describe("drawing workspace workflows", () => {
       screen.queryByRole("toolbar", { name: "Selected markup actions" }),
     ).toBeNull();
   });
+  it("selects a measurement normally and resumes only from Edit", async () => {
+    const entity=existingMarkup("published");
+    mocks.data!.entities=[{...entity,data:{...entity.data,type:"dimension",parents:[null,0],points:[{x:.2,y:.2},{x:.5,y:.2}],unit:"m",scale:100}} as DrawingEntity];
+    open();
+    fireEvent.click(screen.getByRole("button",{name:"Select first annotation"}));
+    const actions=await screen.findByRole("toolbar",{name:"Selected markup actions"});
+    expect(mocks.viewer.mock.lastCall?.[0]).toMatchObject({selectedId:entity.id,editMeasurementRequest:null});
+    fireEvent.click(await within(actions).findByRole("button",{name:"Edit"}));
+    expect(mocks.viewer.mock.lastCall?.[0]).toMatchObject({editMeasurementRequest:{entityId:entity.id}});
+    expect(mocks.save).not.toHaveBeenCalled();
+  });
   it("offers a selected markup's drawing style and saves a change", async () => {
     mocks.data!.entities = [existingMarkup("published")];
     open();

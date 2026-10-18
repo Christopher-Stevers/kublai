@@ -485,6 +485,8 @@ export function DrawingWorkspace({
     id: string | null;
     data: DrawingMarkup;
   } | null>(null);
+  const [measurementEdit, setMeasurementEdit] = useState<{id:number;entityId:string}|null>(null);
+  const editMeasurement = (entityId:string) => {setTool("pan");setPanel("");setMeasurementEdit({id:Date.now(),entityId});};
   const [selectionMode, setSelectionMode] = useState<"move" | "resize">(
     "resize",
   );
@@ -1654,6 +1656,7 @@ export function DrawingWorkspace({
               resolveAssetUrl={resolveAssetUrl}
               annotations={viewerAnnotations}
               measurementLayers={measurementLayers}
+              editMeasurementRequest={measurementEdit}
               tool={writable ? tool : "pan"}
               style={style}
               selectedId={selectedId}
@@ -1828,6 +1831,9 @@ export function DrawingWorkspace({
                   >
                     Resize
                   </Button>
+                  {selected.data.type === "dimension" && selected.data.parents && (
+                    <Button size="sm" variant="outline" disabled={pending > 0} onClick={() => editMeasurement(selected.id)}>Edit</Button>
+                  )}
                   {selected.data.type === "text" && (
                     <Button
                       size="sm"
@@ -2046,7 +2052,7 @@ export function DrawingWorkspace({
                       <div className="flex flex-wrap gap-2">
                         <Button
                           size="sm"
-                          onClick={() => setForm(toForm(selected))}
+                          onClick={() => selected.kind === "markup" && selected.data.type === "dimension" && selected.data.parents ? editMeasurement(selected.id) : setForm(toForm(selected))}
                         >
                           Edit
                         </Button>

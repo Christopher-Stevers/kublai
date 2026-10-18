@@ -12,7 +12,7 @@ beforeEach(() => {
   HTMLElement.prototype.setPointerCapture = () => undefined;
 });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
-function open(props: DrawingEditorProps = {}) {
+function open(props: DrawingEditorProps & {editMeasurementRequest?: {id:number;entityId:string}} = {}) {
   const view = render(<DrawingSheetViewer src="/sheet.webp" alt="Sheet" sheetKey={sourceSheetId} {...props} />);
   const image = screen.getByAltText("Sheet");
   const frame = image.closest<HTMLElement>('[data-drawing-sheet-layer]')!.parentElement!;
@@ -229,7 +229,7 @@ describe("drawing annotation tools in the real viewer", () => {
     expect(frame.clientHeight).toBe(250);
     expect(onUpdate).not.toHaveBeenCalled();
   });
-  it("reopens a held saved measurement in Measure instead of selecting it", async () => {
+  it("selects a held saved measurement without continuing its run", async () => {
     const onSelect = vi.fn(), onUpdate = vi.fn();
     const run = markup({
       type: "dimension",
@@ -244,8 +244,16 @@ describe("drawing annotation tools in the real viewer", () => {
     fireEvent.pointerDown(hit, { clientX: 300, clientY: 250, pointerId: 1, button: 0 });
     await hold();
     fireEvent.pointerUp(frame, { clientX: 300, clientY: 250, pointerId: 1, button: 0 });
-    expect(onSelect).not.toHaveBeenCalledWith("markup");
+    expect(onSelect).toHaveBeenCalledWith("markup");
+    expect(frame.querySelectorAll("[data-measure-node]")).toHaveLength(0);
+    expect(onUpdate).not.toHaveBeenCalled();
+  });
+  it("resumes a saved measurement only after an explicit Edit request", () => {
+    const run = markup({type:"dimension",parents:[null,0],points:[{x:.25,y:.25},{x:.5,y:.25}],unit:"m",scale:100});
+    const onSelect=vi.fn();
+    const {frame}=open({annotations:[run],onSelect,onUpdate:vi.fn(),editMeasurementRequest:{id:1,entityId:"markup"}});
     expect(frame.querySelectorAll("[data-measure-node]")).toHaveLength(2);
+    expect(onSelect).toHaveBeenCalledWith(null);
   });
   it("pans instead of moving when a drag starts on a markup without a hold", () => {
     const onSelect = vi.fn(), onUpdate = vi.fn();

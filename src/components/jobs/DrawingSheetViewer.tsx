@@ -161,11 +161,13 @@ export function DrawingSheetViewer({
   onPdfError,
   onPdfLink,
   textEditing,
+  editMeasurementRequest,
   scrollPages = false,
   ...editorProps
 }: DrawingEditorProps & {
   /** A text markup typed in place on the drawing. */
   textEditing?: InlineTextEditing | null;
+  editMeasurementRequest?: { id: number; entityId: string } | null;
   scrollPages?: boolean;
   src: string;
   /** Known page dimensions let PDF detail start before a preview image arrives. */
@@ -475,22 +477,11 @@ export function DrawingSheetViewer({
     y: 0,
     t: 0,
   });
-  // Selecting a saved measurement reopens it in Measure, set from its own
-  // points, unit, colour and layer, the way it was made.
+  // Selection only highlights the markup. A host Edit action resumes its run.
   const resumeRun = useRef<(entity: DrawingEntity) => void>(() => undefined);
   const editor = useDrawingEditor(
     {
       ...editorProps,
-      onSelect: (id) => {
-        const run = id
-          ? savedRuns.find((entity) => entity.id === id)
-          : undefined;
-        if (run && !pipeMode) {
-          resumeRun.current(run);
-          return;
-        }
-        editorProps.onSelect?.(id);
-      },
       ...(pipeMode
         ? { tool: "pan" as const, onUpdate: undefined, onDelete: undefined }
         : {}),
@@ -1908,6 +1899,13 @@ export function DrawingSheetViewer({
     setGapMode(false);
     setGapMessage(null);
   };
+  const lastMeasurementEdit = useRef<number | null>(null);
+  useEffect(() => {
+    if (!editMeasurementRequest || lastMeasurementEdit.current === editMeasurementRequest.id) return;
+    lastMeasurementEdit.current = editMeasurementRequest.id;
+    const entity = savedRuns.find(item => item.id === editMeasurementRequest.entityId);
+    if (entity) resumeRun.current(entity);
+  }, [editMeasurementRequest, savedRuns]);
   const togglePipe = () => {
     endHold();
     cancelNodeDrag();
