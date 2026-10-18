@@ -963,7 +963,9 @@ export function JobDocumentsView({
             </div>
           )}
           <div
-            className={`overflow-hidden rounded-lg border ${dragging ? "border-primary bg-primary/5 ring-primary/20 ring-4" : "bg-card"}`}
+            className={!loading && filtered.length === 0 && !query && !status && !kind && view === "files"
+              ? `min-h-24 ${dragging ? "rounded-lg border border-primary bg-primary/5 ring-4 ring-primary/20" : ""}`
+              : `overflow-hidden rounded-lg border ${dragging ? "border-primary bg-primary/5 ring-primary/20 ring-4" : "bg-card"}`}
             aria-label="Document file list"
             onDragOver={(event) => {
               event.preventDefault();
@@ -993,39 +995,18 @@ export function JobDocumentsView({
                 Loading documents…
               </div>
             ) : filtered.length === 0 ? (
-              <div className="flex flex-col items-center gap-3 p-8 text-center sm:p-14">
-                <div className="bg-muted rounded-2xl p-4">
-                  {view === "recycle" ? (
-                    <Trash2Icon className="text-muted-foreground size-8" />
-                  ) : (
-                    <FileTextIcon className="text-primary size-8" />
-                  )}
-                </div>
-                <h2 className="font-semibold">
-                  {query || status || kind
-                    ? "No matching documents"
-                    : view === "recycle"
-                      ? "The recycle bin is empty"
-                      : "A home for your project files"}
-                </h2>
-                <p className="text-muted-foreground max-w-md text-sm">
-                  {query || status || kind
-                    ? "Try a different search or clear the filters."
-                    : view === "recycle"
+              query || status || kind || view === "recycle" ? (
+                <div className="flex flex-col items-center gap-3 p-8 text-center sm:p-14">
+                  <h2 className="font-semibold">
+                    {view === "recycle" && !query && !status && !kind ? "The recycle bin is empty" : "No matching documents"}
+                  </h2>
+                  <p className="text-muted-foreground max-w-md text-sm">
+                    {view === "recycle" && !query && !status && !kind
                       ? "Deleted documents appear here and can be restored."
-                      : "Upload specifications, contracts, photos, and schedules. Every revision stays with its document."}
-                </p>
-                {canWrite && view === "files" && !query && !status && !kind && (
-                  <Button
-                    variant="outline"
-                    disabled={processing}
-                    onClick={() => pickFiles()}
-                  >
-                    <UploadIcon />
-                    Choose files or drop them here
-                  </Button>
-                )}
-              </div>
+                      : "Try a different search or clear the filters."}
+                  </p>
+                </div>
+              ) : null
             ) : (
               <>
                 <div className="text-muted-foreground hidden grid-cols-[2.5rem_minmax(0,1fr)_7rem_6rem_11rem] gap-3 border-b px-4 py-3 text-xs font-medium md:grid">
