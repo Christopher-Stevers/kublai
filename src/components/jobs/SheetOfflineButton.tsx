@@ -97,7 +97,7 @@ export function SheetOfflineButton({
         type="button"
         className={
           iconOnly
-            ? `flex size-9 items-center justify-center rounded-md transition-colors disabled:opacity-50 ${saved && !progress ? "bg-green-600 text-white hover:bg-green-700" : "hover:bg-accent hover:text-accent-foreground"}`
+            ? `flex size-9 items-center justify-center rounded-full transition-colors disabled:opacity-50 ${saved && !progress ? "bg-green-600 text-white hover:bg-green-700" : "hover:bg-accent hover:text-accent-foreground"}`
             : "bg-background flex min-h-9 items-center justify-center gap-1.5 rounded-md border px-2 py-1 text-xs disabled:opacity-50"
         }
         disabled={!store}

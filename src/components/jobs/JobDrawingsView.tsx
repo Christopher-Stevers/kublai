@@ -764,16 +764,6 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
                       {bySheet.get(item.id)?.metadata.title?.trim()}
                     </span>
                   </div>
-                  <SheetOfflineButton iconOnly sheet={item} prepare={async (signal) => {
-                    const workspace = await utils.drawingsWorkspace.get.fetch({ sheetId: item.id });
-                    signal.throwIfAborted();
-                    await account?.store?.saveSnapshot(`workspace:${item.id}`, workspace);
-                    if (setData) await account?.store?.saveSnapshot(`drawing-set:${setId}`, setData);
-                    if (setsData) await account?.store?.saveSnapshot(`drawing-sets:${jobId}`, setsData);
-                    if (summarySnapshot.data) await account?.store?.saveSnapshot(`drawing-index:${jobId}`, summarySnapshot.data);
-                    const current = workspace.jobSheets.find(source => source.id === workspace.metadata.currentSourceSheetId);
-                    return current ? [current.imageUrl] : [];
-                  }} />
                   <Button
                     variant="ghost"
                     size="icon"
@@ -791,6 +781,16 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
                       className={`h-4 w-4 ${bySheet.get(item.id)?.favorite ? "fill-amber-400 text-amber-600" : ""}`}
                     />
                   </Button>
+                  <SheetOfflineButton iconOnly sheet={item} prepare={async (signal) => {
+                    const workspace = await utils.drawingsWorkspace.get.fetch({ sheetId: item.id });
+                    signal.throwIfAborted();
+                    await account?.store?.saveSnapshot(`workspace:${item.id}`, workspace);
+                    if (setData) await account?.store?.saveSnapshot(`drawing-set:${setId}`, setData);
+                    if (setsData) await account?.store?.saveSnapshot(`drawing-sets:${jobId}`, setsData);
+                    if (summarySnapshot.data) await account?.store?.saveSnapshot(`drawing-index:${jobId}`, summarySnapshot.data);
+                    const current = workspace.jobSheets.find(source => source.id === workspace.metadata.currentSourceSheetId);
+                    return current ? [current.imageUrl] : [];
+                  }} />
                   {(canUpload || canDelete) && (
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
