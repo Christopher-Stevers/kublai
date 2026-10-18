@@ -57,6 +57,7 @@ export function SheetMeasureBar({
   onRedo,
   canRedo = false,
   onClear,
+  clearDisabled = false,
   onStartScale,
   onCancelScale,
   onDraft,
@@ -99,6 +100,7 @@ export function SheetMeasureBar({
   onRedo?: () => void;
   canRedo?: boolean;
   onClear: () => void;
+  clearDisabled?: boolean;
   /** Set the scale from two ends of a known length. */
   onStartScale: () => void;
   /** Read the scale printed on the drawing (PDF sheets only). */
@@ -195,6 +197,7 @@ export function SheetMeasureBar({
               onRedo={onRedo}
               canRedo={canRedo}
               onClear={onClear}
+              clearDisabled={clearDisabled}
               onStartScale={onStartScale}
               gap={gap}
               canGap={canGap}
@@ -347,6 +350,7 @@ function Tracing({
   onRedo,
   canRedo = false,
   onClear,
+  clearDisabled = false,
   onStartScale,
   onUnit,
   controls,
@@ -371,6 +375,7 @@ function Tracing({
   onRedo?: () => void;
   canRedo?: boolean;
   onClear: () => void;
+  clearDisabled?: boolean;
   onStartScale: () => void;
   onUnit: (unit: LengthUnit) => void;
   controls: ReactNode;
@@ -459,7 +464,7 @@ function Tracing({
           type="button"
           variant="ghost"
           className={MEASURE_TILE}
-          disabled={pointCount === 0}
+          disabled={pointCount === 0 || clearDisabled}
           aria-label="Clear"
           onClick={onClear}
         >

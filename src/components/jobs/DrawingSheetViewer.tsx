@@ -355,6 +355,8 @@ export function DrawingSheetViewer({
   const [runScaleOverride, setRunScaleOverride] = useState<SheetScale | null>(
     null,
   );
+  const removingMeasurement = useRef(false);
+  const [clearingMeasurement, setClearingMeasurement] = useState(false);
   const [gapMode, setGapMode] = useState(false);
   const [gapMessage, setGapMessage] = useState<string | null>(null);
   const editingTextId = textEditing?.id ?? null;
@@ -541,7 +543,7 @@ export function DrawingSheetViewer({
   }, [measuring, calibrating, sheetKey, pdf?.url, pdf?.page]);
 
   useEffect(() => {
-    if (!measureSource) return;
+    if (!measureSource || removingMeasurement.current) return;
     const current = savedRuns.find((entity) => entity.id === measureSource.id);
     if (!current || current.revision !== measureSource.revision) {
       dispatchRun({ type: "clear" });
@@ -1830,6 +1832,7 @@ export function DrawingSheetViewer({
       : null;
 
   const toggleMeasuring = () => {
+    if (removingMeasurement.current) return;
     if (!measuring) editorProps.onSelect?.(null);
     if (
       measuring &&
@@ -3045,13 +3048,30 @@ export function DrawingSheetViewer({
         onUndo={undoPoint}
         onRedo={redoPoint}
         canRedo={calibrating ? calFuture.length > 0 : run.future.length > 0}
+        clearDisabled={clearingMeasurement}
         onClear={() => {
-          cancelNodeDrag();
-          dispatchRun({ type: "clear" });
-          setMeasureSource(null);
-          setRunScaleOverride(null);
-          setGapMode(false);
-          setGapMessage(null);
+          if (removingMeasurement.current) return;
+          const clear = () => {
+            cancelNodeDrag();
+            editor.cancelGesture();
+            editorProps.onSelect?.(null);
+            dispatchRun({ type: "clear" });
+            setMeasureSource(null);
+            setRunScaleOverride(null);
+            setGapMode(false);
+            setGapMessage(null);
+          };
+          if (!measureSource) { clear(); return; }
+          const remove = editorProps.onRemoveMeasurement;
+          if (!remove) { setGapMessage("This saved measurement cannot be removed here."); return; }
+          removingMeasurement.current = true;
+          setClearingMeasurement(true);
+          setGapMessage("Removing measurement…");
+          void remove(measureSource.id).then((removed) => {
+            if (removed) clear();
+            else setGapMessage("Measurement was not removed. Reconnect and check your permission, then try Clear again.");
+          }).catch(() => setGapMessage("Could not remove the measurement. Please try Clear again."))
+            .finally(() => { removingMeasurement.current = false; setClearingMeasurement(false); });
         }}
         onStartScale={beginLengthScale}
         onReadPrinted={pdfUrl && pdfPage != null ? readPrintedScale : undefined}

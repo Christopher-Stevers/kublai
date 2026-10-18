@@ -1029,7 +1029,7 @@ export function DrawingWorkspace({
     setPanel("selected");
   };
   const archive = async (entity: DrawingEntity) => {
-    if (!deletable(entity)) return;
+    if (!deletable(entity)) return false;
     setPending((n) => n + 1);
     setError(null);
     try {
@@ -1043,8 +1043,10 @@ export function DrawingWorkspace({
       setSelectedId(null);
       setPanel("");
       await refresh();
+      return true;
     } catch (reason) {
       fail(reason);
+      return false;
     } finally {
       setPending((n) => n - 1);
     }
@@ -1768,6 +1770,10 @@ export function DrawingWorkspace({
                     kind: "markup",
                     data: markup,
                   });
+              }}
+              onRemoveMeasurement={async (id) => {
+                const entity = entities.find((item) => item.id === id);
+                return entity ? archive(entity) : false;
               }}
               onDelete={(id) => {
                 const entity = entities.find((item) => item.id === id);

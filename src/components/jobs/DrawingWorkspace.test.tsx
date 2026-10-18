@@ -1166,6 +1166,18 @@ describe("drawing workspace workflows", () => {
       screen.queryByRole("toolbar", { name: "Selected markup actions" }),
     ).toBeNull();
   });
+  it("removes a saved measurement through Clear using its revision", async () => {
+    const entity=existingMarkup("published");
+    mocks.data!.entities=[{...entity,data:{...entity.data,type:"dimension",parents:[null,0],points:[{x:.2,y:.2},{x:.5,y:.2}]}} as DrawingEntity];
+    mocks.archive.mockResolvedValueOnce({...mocks.data!.entities[0],visibility:"archived",revision:5});
+    open();
+    const viewer=mocks.viewer.mock.lastCall?.[0] as ComponentProps<typeof DrawingSheetViewer>;
+    let removed:boolean|undefined;
+    await act(async()=>{removed=await viewer.onRemoveMeasurement?.(entity.id);});
+    expect(removed).toBe(true);
+    expect(mocks.archive).toHaveBeenCalledWith({sheetId,id:entity.id,expectedRevision:4});
+    expect(mocks.save).not.toHaveBeenCalled();
+  });
   it("selects a measurement normally and resumes only from Edit", async () => {
     const entity=existingMarkup("published");
     mocks.data!.entities=[{...entity,data:{...entity.data,type:"dimension",parents:[null,0],points:[{x:.2,y:.2},{x:.5,y:.2}],unit:"m",scale:100}} as DrawingEntity];

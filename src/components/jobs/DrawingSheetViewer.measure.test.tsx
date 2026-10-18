@@ -1200,10 +1200,10 @@ describe("Gap branching in Measure", () => {
     expect(entity.data.points).toHaveLength(2);
   });
 
-  it("cancels an adopted saved run with Escape or Clear without changing the saved markup", () => {
+  it("cancels an adopted saved run with Escape without changing the saved markup", () => {
     const entity = savedRun(), onUpdate = vi.fn();
     const { frame } = openSheet(source, undefined, { annotations: [entity], onUpdate });
-    for (const action of ["Escape", "Clear"]) {
+    for (const action of ["Escape"]) {
       if (action === "Escape") fireEvent.click(screen.getByRole("button", { name: "Measure" }));
       fireEvent.click(screen.getByRole("button", { name: "Branch" }));
       tap(frame, 400, 300); tap(frame, 400, 180);
@@ -1213,6 +1213,34 @@ describe("Gap branching in Measure", () => {
       expect(frame.querySelector('[data-annotation-id="existing-run"]')).not.toBeNull();
     }
     expect(onUpdate).not.toHaveBeenCalled();
+  });
+
+  it("Clear removes a saved measurement and waits for success before clearing the draft", async () => {
+    let finish!: (removed:boolean)=>void;
+    const remove=vi.fn(()=>new Promise<boolean>(resolve=>{finish=resolve;}));
+    const entity=savedRun(),onUpdate=vi.fn();
+    const {frame}=openSheet(source,undefined,{annotations:[entity],onUpdate,onRemoveMeasurement:remove});
+    fireEvent.click(screen.getByRole("button",{name:"Measure"}));
+    fireEvent.click(screen.getByRole("button",{name:"Branch"}));
+    tap(frame,400,300);
+    fireEvent.click(screen.getByRole("button",{name:"Clear"}));
+    expect(remove).toHaveBeenCalledExactlyOnceWith(entity.id);
+    expect(screen.getByRole("button",{name:"Clear"})).toBeDisabled();
+    expect(frame.querySelectorAll("[data-measure-node]").length).toBeGreaterThan(0);
+    await act(async()=>finish(true));
+    expect(frame.querySelectorAll("[data-measure-node]")).toHaveLength(0);
+    expect(onUpdate).not.toHaveBeenCalled();
+  });
+  it("keeps a saved measurement draft when removal fails", async () => {
+    const entity=savedRun();
+    const remove=vi.fn(async()=>false);
+    const {frame}=openSheet(source,undefined,{annotations:[entity],onUpdate:vi.fn(),onRemoveMeasurement:remove});
+    fireEvent.click(screen.getByRole("button",{name:"Measure"}));
+    fireEvent.click(screen.getByRole("button",{name:"Branch"}));
+    tap(frame,400,300);
+    fireEvent.click(screen.getByRole("button",{name:"Clear"}));
+    await screen.findByText(/Measurement was not removed/);
+    expect(frame.querySelectorAll("[data-measure-node]").length).toBeGreaterThan(0);
   });
 
   it("uses restored directions for angles without snapping new branch points onto a synthesized PDF line", async () => {

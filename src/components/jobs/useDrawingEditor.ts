@@ -21,6 +21,7 @@ export type DrawingEditorProps = {
   onPoint?: (type: "issue" | "rfi", point: DrawingPoint) => void;
   onUpdate?: (id: string, data: DrawingMarkup) => void;
   onDelete?: (id: string) => void;
+  onRemoveMeasurement?: (id: string) => Promise<boolean>;
   onActivate?: (data: DrawingMarkup) => void;
   sharedScale?: SheetScale | null;
   onScaleChange?: (scale: SheetScale) => boolean | void | Promise<boolean | void>;
