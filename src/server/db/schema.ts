@@ -2596,3 +2596,5 @@ export const jobPricingAudit = createTable("job_pricing_audit", (d) => ({
 }), t=>[index("job_pricing_audit_job_idx").on(t.organizationId,t.jobId,t.createdAt)]);
 
 export { supplierEmailPreferences } from "./supplier-email-preferences-schema";
+
+export { superScaleJobs } from "./super-scale-schema";

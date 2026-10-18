@@ -1,4 +1,5 @@
 const state = globalThis as typeof globalThis & {
+  superScaleTimer?: NodeJS.Timeout;
   chatMaintenanceTimer?: NodeJS.Timeout;
   modelConversionTimer?: NodeJS.Timeout;
   roomDetectionTimer?: NodeJS.Timeout;
@@ -25,6 +26,13 @@ export async function register() {
       };
       state.roomDetectionTimer = setInterval(dispatch, 3000);
       state.roomDetectionTimer.unref();
+      dispatch();
+    }
+    if (!state.superScaleTimer) {
+      const { dispatchSuperScale } = await import("~/server/super-scale/dispatch");
+      const dispatch = () => void dispatchSuperScale().catch(error => console.error("Super scale will retry", error));
+      state.superScaleTimer = setInterval(dispatch, 3000);
+      state.superScaleTimer.unref();
       dispatch();
     }
     const { startChatPushWorker } = await import("~/server/chat/push");

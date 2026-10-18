@@ -427,6 +427,9 @@ export function DrawingWorkspace({
   const [moreOpen, setMoreOpen] = useState(false);
   const [superScaleOpen, setSuperScaleOpen] = useState(false);
   const [superScalePrompt, setSuperScalePrompt] = useState(false);
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("superScale") === "review") setSuperScaleOpen(true);
+  }, [sheet.id]);
   const superScaleCalibration = useRef<string | null>(null);
   const [toolsOpen, setToolsOpen] = useState(false);
   const [tool, setTool] = useState<DrawingTool>("pan");
@@ -3177,12 +3180,18 @@ export function DrawingWorkspace({
                   Sheet
                 </DropdownMenuLabel>
                 {!data.documentSource && (
+                  <>
                   <DropdownMenuItem className={MENU_ITEM}
                     disabled={!data.canManage || !online || !writable || !current || metadataDirty || pending > 0}
                     onSelect={() => { setMoreOpen(false); setCompareIds(null); setSuperScalePrompt(true); }}>
                     <MenuTile icon={RulerIcon} />
                     Super scale
                   </DropdownMenuItem>
+                  <DropdownMenuItem className={MENU_ITEM} disabled={!data.canManage || !online} onSelect={() => {setMoreOpen(false);setSuperScaleOpen(true);}}>
+                    <MenuTile icon={RulerIcon} />
+                    Super scale results
+                  </DropdownMenuItem>
+                  </>
                 )}
                 <div className="px-2 py-2">
                   <SheetOfflineButton sheet={source} workspaceSheetId={sheet.id} prepare={async () => {

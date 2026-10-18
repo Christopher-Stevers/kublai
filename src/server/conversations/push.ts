@@ -110,7 +110,7 @@ async function deliver(
     SELECT s."userId" AS "subscriptionUserId", to_jsonb(u) AS "user",
       jsonb_build_object('lastReadSequence',m."lastReadSequence") AS member,
       c.kind AS "kind", c.name AS "chatName", msg.body AS "body",
-      (SELECT a.name FROM kublai_user a WHERE a.id=msg."authorId") AS "senderName"
+      COALESCE((SELECT a.name FROM kublai_user a WHERE a.id=msg."authorId"), CASE WHEN c."directKey" LIKE 'super-scale:%' AND msg."authorId" IS NULL THEN 'ForemanHQ' END) AS "senderName"
     FROM kublai_conversation_push_outbox o JOIN kublai_chat_push_subscription s ON s.id=o."subscriptionId"
     JOIN kublai_user u ON u.id=o."recipientId"
     JOIN kublai_conversation c ON c.id=o."conversationId" AND c."organizationId"=o."organizationId"

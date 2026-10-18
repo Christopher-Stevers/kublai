@@ -1,3 +1,5 @@
+import type { SuperScaleOutput } from "~/lib/super-scale-job";
+type MockJob = {id:string; status:string; first?:string; progress?:string; output?:SuperScaleOutput};
 import {
   cleanup,
   fireEvent,
@@ -13,6 +15,9 @@ import {
 import { identifyGrids } from "~/lib/super-scale";
 import { SuperScaleDialog } from "./SuperScaleDialog";
 const mocks = vi.hoisted(() => ({
+  job: null as MockJob | null,
+  start: vi.fn(),
+  cancel: vi.fn(),
   list: vi.fn(),
   get: vi.fn(),
   save: vi.fn(),
@@ -20,20 +25,37 @@ const mocks = vi.hoisted(() => ({
   close: vi.fn(),
   invalidate: vi.fn(),
 }));
-vi.mock("~/trpc/react", () => ({
-  api: {
-    useUtils: () => ({
+vi.mock("~/trpc/react", async () => {
+  const { useState } = await import("react");
+  return {
+    api: {
+      useUtils: () => ({
+        drawingsWorkspace: {
+          list: { fetch: mocks.list },
+          get: { fetch: mocks.get },
+          invalidate: mocks.invalidate,
+        },
+      }),
       drawingsWorkspace: {
-        list: { fetch: mocks.list },
-        get: { fetch: mocks.get },
-        invalidate: mocks.invalidate,
+        metadata: { useMutation: () => ({ mutateAsync: mocks.save }) },
+        superScaleStart: { useMutation: () => ({ mutateAsync: mocks.start }) },
+        superScaleCancel: {
+          useMutation: () => ({ mutateAsync: mocks.cancel }),
+        },
+        superScaleLatest: {
+          useQuery: () => {
+            const [, refresh] = useState(0);
+            return {
+              data: mocks.job,
+              isSuccess: true,
+              refetch: async () => refresh((v) => v + 1),
+            };
+          },
+        },
       },
-    }),
-    drawingsWorkspace: {
-      metadata: { useMutation: () => ({ mutateAsync: mocks.save }) },
     },
-  },
-}));
+  };
+});
 vi.mock("~/lib/pdf-super-scale", () => ({
   createGridReader: () => ({ read: mocks.read, close: mocks.close }),
 }));
@@ -73,6 +95,52 @@ const grids = (factor = 1) =>
   );
 beforeEach(() => {
   vi.resetAllMocks();
+  mocks.job = {
+    id: "reference",
+    status: "completed",
+    first: "",
+    output: {
+      reference: grids(),
+      revision: 4,
+      sourceId: "source",
+      first: "",
+      second: "",
+      rows: [],
+    },
+  };
+  mocks.start.mockImplementation(async (input: {first:string; second:string}) => {
+    mocks.job = {
+      id: "scan",
+      status: "completed",
+      first: input.first,
+      output: {
+        reference: grids(),
+        revision: 4,
+        sourceId: "source",
+        first: input.first,
+        second: input.second,
+        rows: [
+          {
+            sheet: sheet("target"),
+            ownerId: "target",
+            metadata: meta("target"),
+            grids: grids(0.5),
+            scale: { unit: "m", unitsPerSheetWidth: 60 },
+            selected: true,
+            status: "Matched",
+          },
+          {
+            sheet: sheet("existing"),
+            ownerId: "existing",
+            metadata: meta("existing", true),
+            selected: false,
+            status: "Already calibrated — kept",
+          },
+        ],
+      },
+    };
+    return mocks.job;
+  });
   mocks.close.mockResolvedValue(undefined);
   mocks.invalidate.mockResolvedValue(undefined);
   mocks.read.mockImplementation(async (url: string) =>
@@ -169,4 +237,40 @@ it("does not offer transfers without a reference calibration", async () => {
   expect(
     screen.queryByRole("button", { name: "Find matching drawings" }),
   ).toBeNull();
+});
+
+it("closing a running scan leaves the server job running", async () => {
+  mocks.job = {
+    id: "running",
+    status: "running",
+    progress: "Checking drawing 2",
+  };
+  const onClose = vi.fn();
+  const view = render(
+    <SuperScaleDialog
+      jobId="job"
+      source={sheet("source")}
+      ownerId="source"
+      metadata={meta("source", true)}
+      sheets={[]}
+      onClose={onClose}
+      onSaved={() => undefined}
+    />,
+  );
+  await screen.findByText("Checking drawing 2");
+  fireEvent.click(
+    screen.getAllByRole("button", { name: "Close" })[0]!,
+  );
+  expect(onClose).toHaveBeenCalled();
+  view.unmount();
+  expect(mocks.cancel).not.toHaveBeenCalled();
+  expect(mocks.read).not.toHaveBeenCalled();
+});
+it("reopening restores completed server results without parsing a PDF", async () => {
+  await mocks.start({ first: "A", second: "B" });
+  mocks.start.mockClear();
+  open();
+  await screen.findByRole("button", { name: "Apply to 1 drawing" });
+  expect(mocks.start).not.toHaveBeenCalled();
+  expect(mocks.read).not.toHaveBeenCalled();
 });

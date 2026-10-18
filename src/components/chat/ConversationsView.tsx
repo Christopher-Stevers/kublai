@@ -922,7 +922,7 @@ function ConversationThread({
                           className="text-inherit mt-3 inline-flex items-center gap-1.5 text-sm font-medium underline underline-offset-4"
                         >
                           <ExternalLinkIcon className="size-4" />
-                          Open snapshot source
+                          {m.author.id === null && m.source.title === "Review Super scale results" ? m.source.title : "Open snapshot source"}
                         </a>
                       )}
                       {m.author.id === userId &&

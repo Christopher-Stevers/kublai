@@ -299,7 +299,7 @@ export async function conversationHistory(
     source: m.deletedAt ? null : m.source,
     author: {
       id: m.authorId,
-      name: typeof name === "string" ? name : "Former member",
+      name: typeof name === "string" ? name : access.conversation.directKey?.startsWith("super-scale:") && m.authorId === null ? "ForemanHQ" : "Former member",
     },
     attachments: m.deletedAt
       ? []
