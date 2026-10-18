@@ -1,5 +1,6 @@
 "use client";
 
+import { useSheetOfflineStatus } from "./useSheetOfflineStatus";
 import { useEffect, useRef, useState } from "react";
 import type { DrawingEntity, DrawingMarkup } from "~/lib/drawing-workspace";
 import { drawingMarkupLinks } from "~/lib/drawing-links";
@@ -25,6 +26,7 @@ export type DrawingDocumentActionsProps = {
   jobId?: string;
   /** Immutable version id if different from the workspace's logical sheet id. */
   sourceSheetId?: string;
+  workspaceSheetId?: string;
   sheets?: Sheet[];
   entities?: DrawingEntity[];
   scale?: SheetScale | null;
@@ -42,6 +44,7 @@ export function DrawingDocumentActions({
   sheet,
   jobId,
   sourceSheetId = sheet.id,
+  workspaceSheetId = sheet.id,
   sheets = [sheet],
   entities = [],
   scale,
@@ -52,6 +55,7 @@ export function DrawingDocumentActions({
   allowBatchOffline = false,
   title,
 }: DrawingDocumentActionsProps) {
+  const { saved: savedOffline } = useSheetOfflineStatus(store, sheet, workspaceSheetId);
   const [annotations, setAnnotations] = useState(true);
   const [includeTiles, setIncludeTiles] = useState(false);
   const [scope, setScope] = useState<"sheet" | "folder">("sheet");
@@ -366,10 +370,11 @@ export function DrawingDocumentActions({
                     });
                     signal.throwIfAborted();
                     await onOfflineSaved?.();
+                    window.dispatchEvent(new Event("foremanhq-drawing-downloads-changed"));
                   });
               }}
             >
-              Save offline
+              {savedOffline && scope === "sheet" ? "Available offline · Refresh" : "Save offline"}
             </button>
             <button
               className={button}

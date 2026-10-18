@@ -4,8 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { CheckIcon, DownloadIcon, Loader2Icon } from "lucide-react";
 import { collectDrawingOfflineUrls } from "~/lib/drawing-offline";
 import { warmDrawingPdfRuntime } from "~/lib/drawing-pdf-offline-runtime";
-import type { DrawingWorkspace } from "~/lib/drawing-workspace";
-import { sourcePdfPage } from "~/lib/pdf-client";
+import { useSheetOfflineStatus } from "./useSheetOfflineStatus";
 import { useDrawingAccount } from "./DrawingAccountProvider";
 
 type Props = {
@@ -22,69 +21,23 @@ export function SheetOfflineButton({
   workspaceSheetId = sheet.id,
 }: Props) {
   const store = useDrawingAccount()?.store;
-  const [saved, setSaved] = useState(false);
+  const { saved, setSaved } = useSheetOfflineStatus(
+    store,
+    sheet,
+    workspaceSheetId,
+  );
   const [progress, setProgress] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const controller = useRef<AbortController | null>(null);
   const marker = `sheet-download:${sheet.id}:${sheet.imageUrl}`;
   useEffect(() => {
-    let active = true;
-    setSaved(false);
     setProgress(null);
     setError(null);
-    let check = 0;
-    const refresh = async () => {
-      const generation = ++check;
-      let available = false;
-      try {
-        if (!store) return;
-        let urls = await store.readSnapshot<string[]>(marker);
-        if (!urls?.length) {
-          // Folder downloads predate individual completion markers. Recognize
-          // their actual assets and workspace without downloading them again.
-          const workspace = await store.readSnapshot<DrawingWorkspace>(
-            `workspace:${workspaceSheetId}`,
-          );
-          const current = workspace?.jobSheets?.find(
-            (source) => source.id === workspace.metadata.currentSourceSheetId,
-          );
-          if (
-            !current ||
-            !workspace?.jobSheets.some(
-              (source) => source.imageUrl === sheet.imageUrl,
-            )
-          )
-            return;
-          urls = [
-            ...new Set(
-              [sheet.imageUrl, current.imageUrl].flatMap((image) => {
-                const pdf = sourcePdfPage(image);
-                return pdf ? [image, pdf.url] : [image];
-              }),
-            ),
-          ];
-        }
-        for (const url of urls) if (!(await store.readAsset(url))) return;
-        available = true;
-      } finally {
-        if (active && generation === check) setSaved(available);
-      }
-    };
-    const changed = () => {
-      void refresh().catch(() => undefined);
-    };
-    changed();
-    window.addEventListener("foremanhq-drawing-downloads-changed", changed);
     return () => {
-      active = false;
-      window.removeEventListener(
-        "foremanhq-drawing-downloads-changed",
-        changed,
-      );
       controller.current?.abort();
       controller.current = null;
     };
-  }, [store, marker, workspaceSheetId, sheet.imageUrl]);
+  }, [store, marker]);
   const save = async () => {
     if (!store || controller.current) return;
     const aborter = new AbortController();

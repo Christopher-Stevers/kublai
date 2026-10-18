@@ -2788,6 +2788,7 @@ export function DrawingWorkspace({
               {panel === "files" && (
                 <DrawingDocumentActions
                   sheet={source}
+                  workspaceSheetId={sheet.id}
                   jobId={jobId}
                   sheets={data.jobSheets}
                   entities={visible}

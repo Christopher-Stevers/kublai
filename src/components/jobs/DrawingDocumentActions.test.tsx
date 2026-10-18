@@ -269,3 +269,19 @@ describe("drawing document actions", () => {
     ).not.toBeInTheDocument();
   });
 });
+
+it("shows a folder-saved sheet as available offline in the download panel too", async () => {
+  const saveAssets = vi.fn();
+  const store = {
+    summary: async () => ({ files: 2, bytes: 8 }),
+    readSnapshot: async (key: string) => key === `workspace:${sheet.id}` ? {
+      metadata: { currentSourceSheetId: sheet.id }, jobSheets: [sheet],
+    } : null,
+    readAsset: async () => new Blob(["saved drawing"]),
+    saveAssets,
+  } as unknown as DrawingOfflineStore;
+  render(<DrawingDocumentActions sheet={sheet} store={store} />);
+  await screen.findByRole("button", { name: "Available offline · Refresh" });
+  expect(screen.queryByRole("button", { name: "Save offline" })).toBeNull();
+  expect(saveAssets).not.toHaveBeenCalled();
+});
