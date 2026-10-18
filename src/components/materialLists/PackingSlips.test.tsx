@@ -8,6 +8,11 @@ import {
 } from "@testing-library/react";
 import { PackingSlips } from "./PackingSlips";
 vi.mock("~/hooks/use-online-status", () => ({ useOnlineStatus: () => true }));
+vi.mock("next/dynamic", () => ({
+  default: () => ({ onCancel }: { onCancel: () => void }) => (
+    <section aria-label="Packing slip camera"><button onClick={onCancel}>Cancel scan</button></section>
+  ),
+}));
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
@@ -45,7 +50,8 @@ it("uploads an image with its order and lists the saved document without marking
   vi.stubGlobal("fetch", fetcher);
   render(<PackingSlips jobId="job" materialListId="list" orderId="order" />);
   fireEvent.click(screen.getByRole("button", { name: "Packing slips" }));
-  await screen.findByRole("button", { name: "Take photo" });
+  await screen.findByRole("region", { name: "Packing slip camera" });
+  fireEvent.click(screen.getByRole("button", { name: "Cancel scan" }));
   const camera = screen.getByLabelText("Upload packing slip");
   fireEvent.change(camera, {
     target: {
@@ -74,7 +80,8 @@ it("retains a failed photo for retry and offers read-only slips from a normal ma
     <PackingSlips jobId="job" materialListId="list" orderId="order" />,
   );
   fireEvent.click(screen.getByRole("button", { name: "Packing slips" }));
-  await screen.findByRole("button", { name: "Take photo" });
+  await screen.findByRole("region", { name: "Packing slip camera" });
+  fireEvent.click(screen.getByRole("button", { name: "Cancel scan" }));
   fireEvent.change(screen.getByLabelText("Upload packing slip"), {
     target: { files: [new File(["photo"], "photo.jpg")] },
   });
@@ -96,4 +103,22 @@ it("retains a failed photo for retry and offers read-only slips from a normal ma
   expect(
     screen.queryByRole("button", { name: "Take photo" }),
   ).not.toBeInTheDocument();
+});
+
+it("opens the scanner directly for an order without requiring Take photo", async () => {
+  vi.stubGlobal("fetch", vi.fn(async () => Response.json({ canUpload: true, documents: [] })));
+  render(<PackingSlips jobId="job" materialListId="list" orderId="order" />);
+  fireEvent.click(screen.getByRole("button", { name: "Packing slips" }));
+  await screen.findByRole("region", { name: "Packing slip camera" });
+  expect(screen.queryByRole("button", { name: "Take photo" })).not.toBeInTheDocument();
+  expect(screen.getByRole("heading", { name: "Scan packing slip" })).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Cancel scan" }));
+  expect(await screen.findByRole("button", { name: "Upload photo or PDF" })).toBeInTheDocument();
+});
+it("does not open the camera before upload permission is confirmed", async () => {
+  vi.stubGlobal("fetch", vi.fn(async () => Response.json({ canUpload: false, documents: [] })));
+  render(<PackingSlips jobId="job" materialListId="list" orderId="order" />);
+  fireEvent.click(screen.getByRole("button", { name: "Packing slips" }));
+  await screen.findByText("No packing slips attached yet.");
+  expect(screen.queryByRole("region", { name: "Packing slip camera" })).not.toBeInTheDocument();
 });

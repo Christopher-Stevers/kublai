@@ -52,6 +52,8 @@ export function PackingSlips({
   useEffect(() => setRetryFile(null), [jobId, materialListId, orderId]);
   const [notice, setNotice] = useState("");
   const [scanning, setScanning] = useState(false);
+  const [openingScanner, setOpeningScanner] = useState(false);
+  const scanOnLoad = useRef(false);
   const files = useRef<HTMLInputElement>(null);
   const load = useCallback(
     async (signal?: AbortSignal) => {
@@ -73,10 +75,18 @@ export function PackingSlips({
         };
         if (!response.ok)
           throw Error(result.error ?? "Could not load packing slips.");
+        if (signal?.aborted) return;
         setSlips(result.documents ?? []);
         setCanUpload(!!result.canUpload);
+        if (scanOnLoad.current) {
+          scanOnLoad.current = false;
+          setScanning(Boolean(orderId && result.canUpload));
+        }
       } finally {
-        if (!signal?.aborted) setLoading(false);
+        if (!signal?.aborted) {
+          setLoading(false);
+          setOpeningScanner(false);
+        }
       }
     },
     [jobId, materialListId, orderId],
@@ -184,7 +194,13 @@ export function PackingSlips({
   };
   return (
     <>
-      <Button variant={buttonVariant} className={buttonClassName} size="sm" onClick={() => setOpen(true)}>
+      <Button variant={buttonVariant} className={buttonClassName} size="sm" onClick={() => {
+        scanOnLoad.current = Boolean(orderId);
+        setOpeningScanner(Boolean(orderId && online));
+        setScanning(false);
+        setNotice("");
+        setOpen(true);
+      }}>
         <FileTextIcon className="mr-1 h-3.5 w-3.5 shrink-0" />
         Packing slips
       </Button>
@@ -199,9 +215,11 @@ export function PackingSlips({
       >
         <DialogContent className="max-h-[90dvh] max-w-lg overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Packing slips</DialogTitle>
+            <DialogTitle>{scanning || openingScanner ? "Scan packing slip" : "Packing slips"}</DialogTitle>
             <DialogDescription>
-              {orderId
+              {scanning || openingScanner
+                ? "Keep the whole page in view. Captured pages are saved together as a PDF."
+                : orderId
                 ? "Photograph or upload this delivery’s packing slip. It is saved in Documents → Packing Slips and linked to this material list. Receiving quantities stay unchanged."
                 : "Packing slips attached to orders from this material list."}
             </DialogDescription>
@@ -211,7 +229,9 @@ export function PackingSlips({
               {notice}
             </p>
           )}
-          {scanning ? (
+          {openingScanner ? (
+            <p role="status">Opening scanner…</p>
+          ) : scanning ? (
             <PackingSlipScanner
               key={`${jobId}:${materialListId}:${orderId}`}
               onSave={upload}
