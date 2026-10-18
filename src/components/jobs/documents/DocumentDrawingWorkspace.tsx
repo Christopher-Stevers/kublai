@@ -7,6 +7,8 @@ import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
 import { useSnapshotSource } from "~/components/chat/SnapshotSourceContext";
 import type { SnapshotState } from "~/lib/snapshot-source";
+import { useDrawingAccount } from "../DrawingAccountProvider";
+import { useDrawingSnapshot } from "../useDrawingSnapshot";
 import { DrawingWorkspace } from "../DrawingWorkspace";
 import { DrawingPageNavigation } from "../DrawingPageNavigation";
 import { useDrawingFullscreen } from "../useDrawingFullscreen";
@@ -28,14 +30,17 @@ export function DocumentDrawingWorkspace({
   onDocumentDetails,
   onClose,
 }: Props) {
+  const account = useDrawingAccount();
   const { scroll } = useDrawingPageMode();
   const [toolbarContainer, setToolbarContainer] = useState<HTMLDivElement | null>(null);
   const {
     mutate,
-    data: sheets,
+    data: liveSheets,
     error,
     isPending,
   } = api.drawingsWorkspace.openDocument.useMutation();
+  const savedSheets = useDrawingSnapshot(`document-sheets:${versionId}`, liveSheets);
+  const sheets = savedSheets.data;
   const [index, setIndex] = useState(Math.max(0, (initialView?.page ?? 1) - 1));
   const [camera, setCamera] = useState<DrawingViewport>(
     initialView?.viewport ?? {
@@ -52,7 +57,7 @@ export function DocumentDrawingWorkspace({
     ready.current = onReady;
   }, [onReady]);
   useEffect(() => {
-    mutate({ jobId, versionId });
+    if (navigator.onLine) mutate({ jobId, versionId });
   }, [jobId, versionId, mutate]);
   const actualIndex = Math.min(index, Math.max(0, (sheets?.length ?? 1) - 1));
   const sheet = sheets?.[actualIndex];
@@ -99,6 +104,9 @@ export function DocumentDrawingWorkspace({
               jobId={jobId}
               sheet={sheet}
               initialViewport={camera}
+              onPrepareOffline={async () => {
+                await account?.store?.saveSnapshot(`document-sheets:${versionId}`, sheets);
+              }}
               onReady={() => ready.current?.()}
               onDocumentDetails={onDocumentDetails}
               onClose={onClose}

@@ -124,6 +124,12 @@ function assetPath(url: string) {
     typeof window === "undefined"
       ? "https://foremanhq.invalid"
       : window.location.origin;
+  // Only immutable PDF versions/pages, with an exact job binding. Never editor,
+  // attachment, share-token or arbitrary document URLs.
+  if (parsed.origin === origin && !parsed.hash &&
+      /^\/api\/job-documents\/(?:pages\/[0-9a-f-]{36}\/[1-9]\d*|files\/[0-9a-f-]{36})$/i.test(parsed.pathname) &&
+      /^\?jobId=[0-9a-f-]{36}$/i.test(parsed.search))
+    return `${parsed.pathname}${parsed.search}`;
   if (
     parsed.origin !== origin ||
     parsed.search ||

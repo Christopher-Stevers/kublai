@@ -1,4 +1,5 @@
 "use client";
+import { useDrawingAccount } from "./DrawingAccountProvider";
 import { DrawingPageModeSetting } from "./DrawingPageMode";
 import { usePageViewState } from "~/hooks/use-page-view-state";
 
@@ -180,6 +181,7 @@ export function JobDocumentsView({
   jobId: string;
   sandbox?: boolean;
 }) {
+  const drawingAccount = useDrawingAccount();
   const tutorialSandbox = useTutorialSandbox();
   const sandbox = sandboxProp || Boolean(tutorialSandbox);
   const [data, setData] = useState<DocumentOverview>(blankOverview);
@@ -290,6 +292,12 @@ export function JobDocumentsView({
   const refresh = useCallback(async () => {
     if (sandbox) return;
     const number = ++requestNumber.current;
+    if (!navigator.onLine) {
+      const saved = await drawingAccount?.store?.readSnapshot<DocumentOverview>(`document-overview:${jobId}`);
+      if (!saved) throw new Error("Connect once to load this job's documents, then save individual sheets offline.");
+      if (number === requestNumber.current) { loadedJobId.current = jobId; setData(saved); setError(null); }
+      return;
+    }
     const response = await fetch(
       `/api/job-documents?jobId=${encodeURIComponent(jobId)}`,
       { cache: "no-store", credentials: "same-origin" },
@@ -299,8 +307,9 @@ export function JobDocumentsView({
       loadedJobId.current = jobId;
       setData(result);
       setError(null);
+      void drawingAccount?.store?.saveSnapshot(`document-overview:${jobId}`, result).catch(() => undefined);
     }
-  }, [jobId, sandbox]);
+  }, [jobId, sandbox, drawingAccount?.store]);
 
   useEffect(() => {
     if (sandbox) return;
@@ -803,7 +812,7 @@ export function JobDocumentsView({
           className="flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm"
         >
           <WifiOffIcon className="size-4 shrink-0" />
-          You are offline. Document files and edits require an internet
+          You are offline. Saved PDF sheets are available. Other files and edits require an internet
           connection; changes are not queued.
         </p>
       )}

@@ -121,6 +121,7 @@ import { DrawingAppearanceDialog } from "./DrawingAppearanceDialog";
 import { useDrawingAppearance } from "./useDrawingAppearance";
 import { DrawingOverlayPicker } from "./DrawingOverlayPicker";
 import { DrawingCompare } from "./DrawingCompare";
+import { SheetOfflineButton } from "./SheetOfflineButton";
 import { DrawingDocumentActions } from "./DrawingDocumentActions";
 import { DrawingReferenceLinks } from "./DrawingReferenceLinks";
 import { useDrawingAccount } from "./DrawingAccountProvider";
@@ -350,6 +351,7 @@ export function DrawingWorkspace({
   scrollPages = false,
   toolbarContainer,
   onClose,
+  onPrepareOffline,
 }: {
   jobId: string;
   sheet: {
@@ -369,6 +371,7 @@ export function DrawingWorkspace({
   scrollPages?: boolean;
   toolbarContainer?: HTMLElement | null;
   onClose?: () => void;
+  onPrepareOffline?: () => Promise<void>;
 }) {
   const router = useRouter();
   const sourceRegistry = useContext(SnapshotSourceContext);
@@ -566,12 +569,10 @@ export function DrawingWorkspace({
   } | null>(null);
   const resolveAssetUrl = useCallback(
     async (url: string) =>
-      data?.documentSource
-        ? url
-        : account?.store
+      account?.store
           ? account.store.resolveAssetUrl(url)
           : url,
-    [account?.store, data?.documentSource],
+    [account?.store],
   );
   const pdf = useMemo(() => sourcePdfPage(source.imageUrl), [source.imageUrl]);
 
@@ -2786,14 +2787,12 @@ export function DrawingWorkspace({
                   sheets={data.jobSheets}
                   entities={visible}
                   scale={current ? data.metadata.scale : null}
-                  store={data.documentSource ? null : account?.store}
+                  store={account?.store}
                   resolveAssetUrl={resolveAssetUrl}
-                  onOfflineSaved={() =>
-                    account?.store?.saveSnapshot(
-                      `workspace:${sheet.id}`,
-                      data,
-                    ) ?? Promise.resolve()
-                  }
+                  onOfflineSaved={async () => {
+                    await account?.store?.saveSnapshot(`workspace:${sheet.id}`, data);
+                    await onPrepareOffline?.();
+                  }}
                 />
               )}
               {panel === "notifications" && (
@@ -3141,6 +3140,12 @@ export function DrawingWorkspace({
                 <DropdownMenuLabel className={MENU_SECTION}>
                   Sheet
                 </DropdownMenuLabel>
+                <div className="px-2 py-2">
+                  <SheetOfflineButton sheet={source} prepare={async () => {
+                    await account?.store?.saveSnapshot(`workspace:${sheet.id}`, data);
+                    await onPrepareOffline?.();
+                  }} />
+                </div>
                 {onDocumentDetails && (
                   <DropdownMenuItem
                     className={MENU_ITEM}

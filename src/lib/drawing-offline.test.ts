@@ -213,3 +213,24 @@ describe("explicit account-scoped drawing downloads", () => {
     expect(urls.some((url) => url.endsWith("/2/1_0.webp"))).toBe(true);
   });
 });
+
+it("retains immutable document PDF pages privately across reopen and clears them on account change", async () => {
+  const version = "0391aed4-7773-47ec-9141-09df373ec008";
+  const job = "d814fc88-da7c-4df5-aa89-fe3c1fde0462";
+  const page = `/api/job-documents/pages/${version}/2?jobId=${job}`;
+  const original = `/api/job-documents/files/${version}?jobId=${job}`;
+  const store = new DrawingOfflineStore("org:alice");
+  const urls = await collectDrawingOfflineUrls([page]);
+  expect(urls).toEqual([page, original]);
+  await store.saveAssets(urls);
+  store.dispose();
+  const reopened = new DrawingOfflineStore("org:alice");
+  expect(await reopened.readAsset(original)).not.toBeNull();
+  expect(await reopened.resolveAssetUrl(page)).toMatch(/^blob:/);
+  for (const url of [original + "&token=secret", original.replace("?jobId=", "?other="), `/api/job-documents/editor?jobId=${job}`, `https://other.test${page}`])
+    await expect(reopened.saveAssets([url])).rejects.toThrow(/Only this account/);
+  await setDrawingOfflineAccount("org:bob");
+  const bob = new DrawingOfflineStore("org:bob");
+  expect(await bob.readAsset(original)).toBeNull();
+  await expect(reopened.readAsset(original)).rejects.toMatchObject({ name: "AbortError" });
+});

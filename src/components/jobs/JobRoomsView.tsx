@@ -1,4 +1,7 @@
 "use client";
+import { SheetOfflineButton } from "./SheetOfflineButton";
+import { useDrawingSnapshot } from "./useDrawingSnapshot";
+import { useDrawingAccount } from "./DrawingAccountProvider";
 import { usePageViewState } from "~/hooks/use-page-view-state";
 
 import {
@@ -300,17 +303,19 @@ export function JobRoomsView({
     utils.rooms.getJobRooms,
   ]);
 
-  const data = roomsQuery.data;
-  const canManage = !sandbox && (data?.canManage ?? false);
+  const account = useDrawingAccount();
+  const roomSnapshot = useDrawingSnapshot(`room-sheets:${jobId}`, roomsQuery.data);
+  const data = roomSnapshot.data;
+  const canManage = !sandbox && roomSnapshot.online && (data?.canManage ?? false);
   const drawingPermissions = useDrawingCapabilities();
   const canUpload =
-    !sandbox &&
+    !sandbox && roomSnapshot.online &&
     (drawingPermissions.canUpload ??
       data?.canUpload ??
       data?.canManage ??
       false);
   const canDelete =
-    !sandbox &&
+    !sandbox && roomSnapshot.online &&
     (drawingPermissions.canDelete ??
       data?.canDelete ??
       data?.canManage ??
@@ -909,6 +914,9 @@ export function JobRoomsView({
                       ) : null}
                     </div>
                   </CardHeader>
+                  <div className="px-6 pb-2"><SheetOfflineButton sheet={floor} prepare={async () => {
+                    if (data) await account?.store?.saveSnapshot(`room-sheets:${jobId}`, data);
+                  }} /></div>
                   <CardContent>
                     <div className="text-muted-foreground space-y-2 text-sm">
                       <div className="flex items-center gap-2">
@@ -1445,11 +1453,9 @@ export function JobRoomsView({
                 <PencilIcon className="mr-1 h-4 w-4 shrink-0" />
                 {editMenuOpen ? "Done" : "Edit"}
               </Button>
-              {/* Reserved for a future action. */}
-              <div
-                aria-hidden="true"
-                className="h-10 rounded-md border border-dashed"
-              />
+              <SheetOfflineButton sheet={selectedFloor} prepare={async () => {
+                if (data) await account?.store?.saveSnapshot(`room-sheets:${jobId}`, data);
+              }} />
             </div>
           </div>
         </div>

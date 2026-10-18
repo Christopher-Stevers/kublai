@@ -59,6 +59,7 @@ import {
   useDrawingCapabilities,
 } from "~/components/permissions/DrawingsAccess";
 import type { DrawingViewport } from "./DrawingSheetViewer";
+import { SheetOfflineButton } from "./SheetOfflineButton";
 import { DrawingWorkspace } from "./DrawingWorkspace";
 import { DrawingSheetRegister } from "./DrawingSheetRegister";
 import { useDrawingAccount } from "./DrawingAccountProvider";
@@ -745,7 +746,7 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
                       : "bg-muted aspect-[4/3] w-full border-b object-contain"
                   }
                 />
-                <div className="flex min-w-0 flex-1 items-center gap-1 px-3 py-2">
+                <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1 px-3 py-2">
                   <div className="min-w-0 flex-1">
                     <span className="block truncate text-sm font-medium">
                       {nonempty(
@@ -757,6 +758,16 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
                       {bySheet.get(item.id)?.metadata.title?.trim()}
                     </span>
                   </div>
+                  <div className="order-last basis-full pt-1"><SheetOfflineButton sheet={item} prepare={async (signal) => {
+                    const workspace = await utils.drawingsWorkspace.get.fetch({ sheetId: item.id });
+                    signal.throwIfAborted();
+                    await account?.store?.saveSnapshot(`workspace:${item.id}`, workspace);
+                    if (setData) await account?.store?.saveSnapshot(`drawing-set:${setId}`, setData);
+                    if (setsData) await account?.store?.saveSnapshot(`drawing-sets:${jobId}`, setsData);
+                    if (summarySnapshot.data) await account?.store?.saveSnapshot(`drawing-index:${jobId}`, summarySnapshot.data);
+                    const current = workspace.jobSheets.find(source => source.id === workspace.metadata.currentSourceSheetId);
+                    return current ? [current.imageUrl] : [];
+                  }} /></div>
                   <Button
                     variant="ghost"
                     size="icon"

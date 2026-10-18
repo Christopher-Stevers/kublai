@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useDrawingAccount } from "./DrawingAccountProvider";
 import { roomReviewTransform } from "~/lib/floor-plan-viewport";
 import { getRoomColor } from "~/lib/room-colors";
 import {
@@ -91,6 +92,15 @@ export function FloorPlanCanvas({
   previewShape?: FloorRoomShape | null;
   tracePoints?: Array<Point & { kind: "include" | "exclude" }>;
 }) {
+  const store = useDrawingAccount()?.store;
+  const [asset, setAsset] = useState<{ key: string; url: string } | null>(null);
+  useEffect(() => {
+    let active = true;
+    if (store) void store.resolveAssetUrl(imageUrl).then(url => {
+      if (active) setAsset({ key: imageUrl, url });
+    }).catch(() => undefined);
+    return () => { active = false; };
+  }, [store, imageUrl]);
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const planRef = useRef<HTMLDivElement | null>(null);
   const imageRef = useRef<HTMLImageElement | null>(null);
@@ -680,7 +690,7 @@ export function FloorPlanCanvas({
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             ref={imageRef}
-            src={imageUrl}
+            src={asset?.key === imageUrl ? asset.url : imageUrl}
             alt="Floor plan"
             className="block max-h-[78dvh] w-auto max-w-[92vw] select-none"
             draggable={false}
