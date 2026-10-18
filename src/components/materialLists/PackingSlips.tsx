@@ -31,11 +31,15 @@ export function PackingSlips({
   materialListId,
   orderId,
   onVerified,
+  buttonClassName,
+  buttonVariant = "outline",
 }: {
   jobId: string;
   materialListId: string;
   orderId?: string | null;
   onVerified?: () => void;
+  buttonClassName?: string;
+  buttonVariant?: "default" | "outline";
 }) {
   const online = useOnlineStatus();
   const [open, setOpen] = useState(false),
@@ -180,8 +184,8 @@ export function PackingSlips({
   };
   return (
     <>
-      <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
-        <FileTextIcon className="mr-2 size-4" />
+      <Button variant={buttonVariant} className={buttonClassName} size="sm" onClick={() => setOpen(true)}>
+        <FileTextIcon className="mr-1 h-3.5 w-3.5 shrink-0" />
         Packing slips
       </Button>
       <Dialog

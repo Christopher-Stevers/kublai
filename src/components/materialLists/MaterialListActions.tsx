@@ -1,6 +1,6 @@
 "use client";
 import { FinancialOnly } from "~/components/permissions/FinancialVisibility";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import {
   BoxesIcon,
   CheckCheckIcon,
@@ -21,6 +21,9 @@ import { SaveAsPrefabDialog } from "~/components/materialLists/prefabs/SaveAsPre
 import { useTutorialSandbox } from "~/components/tutorial/tutorial-sandbox-context";
 import { useOnlineStatus } from "~/hooks/use-online-status";
 
+export const MATERIAL_LIST_ACTION_CLASS =
+  "h-9 min-h-9 w-full gap-1 px-1.5 py-1 text-[11px] leading-tight whitespace-normal [&_svg]:mr-0 sm:h-9 sm:text-xs";
+
 export function MaterialListActions({
   total,
   canGenerate,
@@ -31,6 +34,7 @@ export function MaterialListActions({
   onOrder,
   onAdd,
   onNotes,
+  packingSlips,
   onMarkAllReceived,
   onMarkNoneReceived,
   receivingAll = false,
@@ -47,6 +51,7 @@ export function MaterialListActions({
   onOrder: () => void;
   onAdd: () => void;
   onNotes?: () => void;
+  packingSlips?: ReactNode;
   onMarkAllReceived?: () => void;
   onMarkNoneReceived?: () => void;
   receivingAll?: boolean;
@@ -59,8 +64,7 @@ export function MaterialListActions({
   const sandbox = useTutorialSandbox();
   const isOnline = useOnlineStatus();
   const [savingPrefab, setSavingPrefab] = useState(false);
-  const style =
-    "h-9 min-h-9 w-full px-1.5 py-1 text-[11px] leading-tight whitespace-normal sm:h-9 sm:text-xs";
+  const style = MATERIAL_LIST_ACTION_CLASS;
   return (
     <div className="mx-auto max-w-6xl space-y-1.5">
       {!onNotes && (
@@ -73,7 +77,7 @@ export function MaterialListActions({
           </span>
         </div></FinancialOnly>
       )}
-      <div className="grid grid-cols-3 gap-1.5">
+      <div className={`grid gap-1.5 ${onNotes && packingSlips ? "grid-cols-4" : "grid-cols-3"}`}>
         {onNotes ? (
           <>
             <Button variant="outline" className={style} onClick={onMarkAllReceived} disabled={!onMarkAllReceived || receiveDisabled || receivingAll || !isOnline}>
@@ -84,6 +88,7 @@ export function MaterialListActions({
               <FileTextIcon className="mr-1 h-3.5 w-3.5 shrink-0" />
               Notes
             </Button>
+            {packingSlips}
             <Button variant="outline" className={style} onClick={onMarkNoneReceived} disabled={!onMarkNoneReceived || receiveDisabled || receivingAll || !isOnline}>
               <XIcon className="mr-1 h-3.5 w-3.5 shrink-0" />
               Mark none received

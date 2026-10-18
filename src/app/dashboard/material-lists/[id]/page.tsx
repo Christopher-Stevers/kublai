@@ -6,7 +6,7 @@ import { useHeaderBackOverride } from "~/lib/header-back-events";
 import { usePageViewState } from "~/hooks/use-page-view-state";
 import { matchesMaterialOrderLine } from "~/lib/material-order-line";
 import { MaterialListSheet as MaterialListTableView } from "~/components/materialLists/MaterialListSheet";
-import { MaterialListActions } from "~/components/materialLists/MaterialListActions";
+import { MaterialListActions, MATERIAL_LIST_ACTION_CLASS } from "~/components/materialLists/MaterialListActions";
 import { AddPartDialog, QuotePreviewSheet, OrdersPreviewSheet, ExistingQuotesOrdersDialog } from "~/components/app/DeferredFeatures";
 
 import { useMaterialListSort } from "~/hooks/use-material-list-sort";
@@ -305,7 +305,6 @@ export default function MaterialListDetailPage({
               )}
             </div>
           )}
-          {verifyOrderId && verifyOrder?.materialListId === id && mlHeader.jobId && <div className="mb-3"><PackingSlips jobId={mlHeader.jobId} materialListId={id} orderId={verifyOrderId} onVerified={() => { void utils.materialList.invalidate(); }}/></div>}
           {visibleItems.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12">
               <p className="text-muted-foreground mb-4">
@@ -400,6 +399,11 @@ export default function MaterialListDetailPage({
         <MaterialListActions total={footerMaterialTotal} canGenerate={canGenerateQuoteOrOrder} blockedReason={generationBlockReason} canQuote={canQuote} canOrder={canOrder}
           onQuote={handleGenerateQuote} onOrder={handleGenerateOrder} onAdd={openAddPartDialog}
           onNotes={verifyOrderId ? () => setShowVerifyNotesDialog(true) : undefined}
+          packingSlips={verifyOrderId && verifyOrder?.materialListId === id && mlHeader.jobId ? (
+            <PackingSlips jobId={mlHeader.jobId} materialListId={id} orderId={verifyOrderId}
+              buttonVariant="default" buttonClassName={MATERIAL_LIST_ACTION_CLASS}
+              onVerified={() => { void utils.materialList.invalidate(); }} />
+          ) : undefined}
           onMarkAllReceived={verifyOrderId && userData?.permissions.can["orders.receive"] ? () => markAllReceived.mutate({ orderId: verifyOrderId }) : undefined}
           onMarkNoneReceived={verifyOrderId && userData?.permissions.can["orders.receive"] ? () => markAllReceived.mutate({ orderId: verifyOrderId, allReceived: false }) : undefined}
           receivingAll={markAllReceived.isPending}
