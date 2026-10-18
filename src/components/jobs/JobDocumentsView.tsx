@@ -20,6 +20,7 @@ import {
   PlusIcon,
   PackageIcon,
   RefreshCwIcon,
+  RotateCcwIcon,
   SearchIcon,
   ShieldIcon,
   Trash2Icon,
@@ -29,7 +30,7 @@ import {
 import { useTutorialSandbox } from "~/components/tutorial/tutorial-sandbox-context";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
-import { notify } from "~/components/ui/app-dialogs";
+import { confirmAction, notify } from "~/components/ui/app-dialogs";
 import {
   Dialog,
   DialogContent,
@@ -411,6 +412,22 @@ export function JobDocumentsView({
       return false;
     } finally {
       setBusy(false);
+    }
+  };
+
+  const recycleDocument = async (document: JobDocument) => {
+    if (!mutable || processing || !document.canWrite || document.deletedAt ||
+      (document.lockedBy && document.lockedBy !== data.capabilities.userId)) return;
+    if (!await confirmAction({
+      title: "Delete document?",
+      description: `“${document.name}” will move to the recycle bin. You can restore it and its versions later.${document.officeWebUrl ? " The original Microsoft file will stay in Microsoft 365." : ""}`,
+      confirmLabel: "Delete document",
+      destructive: true,
+    })) return;
+    if (await mutate({ action: "delete", documentId: document.id })) {
+      setCheckedIds(items => items.filter(id => id !== document.id));
+      if (selectedId === document.id) setSelectedId(null);
+      notify("Document moved to recycle bin.", "success");
     }
   };
 
@@ -1009,12 +1026,13 @@ export function JobDocumentsView({
               ) : null
             ) : (
               <>
-                <div className="text-muted-foreground hidden grid-cols-[2.5rem_minmax(0,1fr)_7rem_6rem_11rem] gap-3 border-b px-4 py-3 text-xs font-medium md:grid">
+                <div className="text-muted-foreground hidden grid-cols-[2.5rem_minmax(0,1fr)_7rem_6rem_11rem_2.5rem] gap-3 border-b px-4 py-3 text-xs font-medium md:grid">
                   <span />
                   <span>NAME</span>
                   <span>STATUS</span>
                   <span>VERSION</span>
                   <span>UPDATED</span>
+                  <span className="sr-only">Actions</span>
                 </div>
                 {filtered.map((document) => {
                   const current = data.versions.find(
@@ -1022,7 +1040,7 @@ export function JobDocumentsView({
                   );
                   return (
                     <div
-                      className="hover:bg-muted/40 flex items-start gap-3 border-b p-4 last:border-b-0 md:grid md:grid-cols-[2.5rem_minmax(0,1fr)_7rem_6rem_11rem] md:items-center"
+                      className="hover:bg-muted/40 flex items-start gap-3 border-b p-4 last:border-b-0 md:grid md:grid-cols-[2.5rem_minmax(0,1fr)_7rem_6rem_11rem_2.5rem] md:items-center"
                       key={document.id}
                     >
                       {view === "files" ? (
@@ -1087,6 +1105,26 @@ export function JobDocumentsView({
                       <span className="text-muted-foreground hidden text-xs md:block">
                         {formatDate(document.updatedAt)}
                       </span>
+                      {mutable && document.canWrite ? (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className={view === "files" ? "text-destructive shrink-0" : "shrink-0"}
+                          aria-label={`${view === "recycle" ? "Restore" : "Delete"} ${document.name}`}
+                          title={document.lockedBy && document.lockedBy !== data.capabilities.userId ? "Locked by another person" : view === "recycle" ? "Restore document" : "Delete document"}
+                          disabled={processing || Boolean(document.lockedBy && document.lockedBy !== data.capabilities.userId)}
+                          onClick={() => {
+                            if (view === "recycle") {
+                              void mutate({ action: "restore", documentId: document.id });
+                            } else {
+                              void recycleDocument(document);
+                            }
+                          }}
+                        >
+                          {view === "recycle" ? <RotateCcwIcon className="size-4" /> : <Trash2Icon className="size-4" />}
+                        </Button>
+                      ) : <span className="hidden md:block" />}
+
                     </div>
                   );
                 })}

@@ -37,6 +37,7 @@ vi.mock("./documents/DocumentPdfPreview", async () => {
   };
 });
 import { JobDocumentsView } from "./JobDocumentsView";
+import { confirmAction, notify } from "~/components/ui/app-dialogs";
 
 let overview: DocumentOverview;
 let requests: Array<{ url: string; init?: RequestInit }>;
@@ -76,6 +77,7 @@ async function ready() {
 
 beforeEach(() => {
   requests = [];
+  vi.mocked(confirmAction).mockClear().mockResolvedValue(true);
   Object.defineProperty(navigator, "onLine", {
     configurable: true,
     value: true,
@@ -175,6 +177,58 @@ afterEach(async () => {
 });
 
 describe("job documents workspace", () => {
+  it("deletes directly from a file row after confirmation and refreshes the list", async () => {
+    render(<JobDocumentsView jobId="job-1" />);
+    await ready();
+    const previousReads = requests.filter(item => item.url === "/api/job-documents?jobId=job-1").length;
+    fireEvent.click(screen.getByRole("button", { name: "Delete Specification.pdf" }));
+    await waitFor(() => expect(jsonPosts()).toContainEqual({ jobId: "job-1", action: "delete", documentId: "doc-1" }));
+    expect(confirmAction).toHaveBeenCalledWith(expect.objectContaining({ title: "Delete document?", destructive: true }));
+    await waitFor(() => expect(requests.filter(item => item.url === "/api/job-documents?jobId=job-1").length).toBeGreaterThan(previousReads));
+  });
+  it("keeps the document when deletion is cancelled", async () => {
+    vi.mocked(confirmAction).mockResolvedValue(false);
+    render(<JobDocumentsView jobId="job-1" />);
+    await ready();
+    fireEvent.click(screen.getByRole("button", { name: "Delete Specification.pdf" }));
+    await waitFor(() => expect(confirmAction).toHaveBeenCalled());
+    expect(posts()).toHaveLength(0);
+    expect(screen.getByRole("button", { name: "Open Specification.pdf" })).toBeInTheDocument();
+  });
+  it("keeps the document and reports a rejected deletion", async () => {
+    vi.mocked(fetch).mockImplementation(async (_url, init) =>
+      new Response(JSON.stringify(init?.method === "POST" ? { error: "You cannot delete this document." } : overview), { status: init?.method === "POST" ? 403 : 200 }),
+    );
+    render(<JobDocumentsView jobId="job-1" />);
+    await ready();
+    fireEvent.click(screen.getByRole("button", { name: "Delete Specification.pdf" }));
+    await waitFor(() => expect(notify).toHaveBeenCalledWith("You cannot delete this document.", "error"));
+    expect(screen.getByRole("button", { name: "Open Specification.pdf" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Delete Specification.pdf" })).toBeEnabled();
+  });
+  it("respects read-only documents and locks owned by someone else", async () => {
+    overview.documents[0]!.canWrite = false;
+    render(<JobDocumentsView jobId="job-1" />);
+    await ready();
+    expect(screen.queryByRole("button", { name: "Delete Specification.pdf" })).not.toBeInTheDocument();
+    cleanup();
+    overview.documents[0]!.canWrite = true;
+    overview.documents[0]!.lockedBy = "user-2";
+    render(<JobDocumentsView jobId="job-1" />);
+    await ready();
+    expect(screen.getByRole("button", { name: "Delete Specification.pdf" })).toBeDisabled();
+    expect(posts()).toHaveLength(0);
+  });
+  it("shows a restore action for recycled documents", async () => {
+    overview.documents[0]!.deletedAt = when;
+    render(<JobDocumentsView jobId="job-1" />);
+    fireEvent.click(await screen.findByRole("button", { name: "More" }));
+    fireEvent.click(screen.getByRole("tab", { name: "Recycle bin" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Restore Specification.pdf" }));
+    await waitFor(() => expect(jsonPosts()).toContainEqual({ jobId: "job-1", action: "restore", documentId: "doc-1" }));
+    expect(screen.queryByRole("button", { name: "Delete Specification.pdf" })).not.toBeInTheDocument();
+  });
+
   it("opens PDFs full screen and keeps their document tools behind Details", async () => {
     render(<JobDocumentsView jobId="job-1" />);
     await ready();
