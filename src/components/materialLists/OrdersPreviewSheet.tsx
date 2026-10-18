@@ -431,18 +431,30 @@ export function OrdersPreviewSheet({
       return (
         <div key={order.id} className="rounded-lg border p-4">
           <div className="flex items-center justify-between gap-3">
-            <div className="min-w-0">
-              <div className="truncate font-semibold">
-                {isSent ? (order.orderNumber ?? "Tool request") : "Tool Room"}
-              </div>
-              <div className="text-muted-foreground text-xs">
-                {order.items.length} tool line
-                {order.items.length === 1 ? "" : "s"}
-                {isSent && order.sentAt
-                  ? ` · sent ${new Date(order.sentAt).toLocaleDateString()}`
-                  : ""}
-              </div>
-            </div>
+            <button
+              type="button"
+              onClick={() => toggleOrder(order.id)}
+              aria-expanded={isExpanded}
+              className="flex min-w-0 items-center gap-2 text-left"
+            >
+              {isExpanded ? (
+                <ChevronDownIcon className="h-4 w-4 shrink-0" />
+              ) : (
+                <ChevronRightIcon className="h-4 w-4 shrink-0" />
+              )}
+              <span className="min-w-0">
+                <span className="block truncate font-semibold">
+                  {isSent ? (order.orderNumber ?? "Tool request") : "Tool Room"}
+                </span>
+                <span className="text-muted-foreground block text-xs">
+                  {order.items.length} tool line
+                  {order.items.length === 1 ? "" : "s"}
+                  {isSent && order.sentAt
+                    ? ` · sent ${new Date(order.sentAt).toLocaleDateString()}`
+                    : ""}
+                </span>
+              </span>
+            </button>
             {isSent ? (
               <a
                 href={`/dashboard/assets/requests/${order.id}`}
@@ -462,34 +474,38 @@ export function OrdersPreviewSheet({
               </Button>
             )}
           </div>
-          <ul className="mt-3 space-y-1 text-sm">
-            {order.items.map((item) => (
-              <li key={item.id} className="flex justify-between gap-3">
-                <span className="min-w-0 truncate">
-                  {item.descriptionSnapshot ?? "Tool"}
-                </span>
-                <span className="shrink-0 tabular-nums">
-                  × {Number(item.quantity)}
-                </span>
-              </li>
-            ))}
-          </ul>
-          {!isSent && (
-            <Textarea
-              value={orderNotes.get(order.id) ?? ""}
-              onChange={(event) => {
-                const next = new Map(orderNotes);
-                next.set(order.id, event.target.value);
-                setOrderNotes(next);
-              }}
-              placeholder="Note for the tool room (needed by, drop-off, etc.)"
-              className="mt-3 min-h-[70px]"
-            />
-          )}
-          {isSent && order.notes && (
-            <p className="text-muted-foreground mt-2 text-xs whitespace-pre-wrap">
-              {order.notes}
-            </p>
+          {isExpanded && (
+            <div className="mt-4 space-y-3 pl-6">
+              <ul className="space-y-1 text-sm">
+                {order.items.map((item) => (
+                  <li key={item.id} className="flex justify-between gap-3">
+                    <span className="min-w-0 truncate">
+                      {item.descriptionSnapshot ?? "Tool"}
+                    </span>
+                    <span className="shrink-0 tabular-nums">
+                      × {Number(item.quantity)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              {!isSent && (
+                <Textarea
+                  value={orderNotes.get(order.id) ?? ""}
+                  onChange={(event) => {
+                    const next = new Map(orderNotes);
+                    next.set(order.id, event.target.value);
+                    setOrderNotes(next);
+                  }}
+                  placeholder="Note for the tool room (needed by, drop-off, etc.)"
+                  className="min-h-[70px]"
+                />
+              )}
+              {isSent && order.notes && (
+                <p className="text-muted-foreground text-xs whitespace-pre-wrap">
+                  {order.notes}
+                </p>
+              )}
+            </div>
           )}
         </div>
       );
@@ -499,7 +515,9 @@ export function OrdersPreviewSheet({
       <div key={order.id} className="rounded-lg border p-4">
         <div className="flex items-center justify-between gap-3">
           <button
+            type="button"
             onClick={() => toggleOrder(order.id)}
+            aria-expanded={isExpanded}
             className="flex min-w-0 items-center gap-2 font-semibold"
           >
             {isExpanded ? (

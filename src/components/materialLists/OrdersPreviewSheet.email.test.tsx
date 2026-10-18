@@ -212,13 +212,31 @@ describe("supplier email handoff", () => {
   });
   it("keeps tool requests in-app and sends them without a mail link", async () => {
     state.permitted = false;
-    fireEvent.click(await show(true));
+    const send = await show(true);
+    const toggle = screen.getByRole("button", { name: /Tool Room/ });
+    fireEvent.click(toggle);
+    fireEvent.change(
+      screen.getByPlaceholderText(
+        "Note for the tool room (needed by, drop-off, etc.)",
+      ),
+      { target: { value: "Needed Friday at the job trailer" } },
+    );
+    fireEvent.click(toggle);
+    expect(screen.queryByText("Pipe", { exact: true })).not.toBeInTheDocument();
+    expect(state.save).not.toHaveBeenCalled();
+    fireEvent.click(toggle);
+    expect(
+      screen.getByPlaceholderText(
+        "Note for the tool room (needed by, drop-off, etc.)",
+      ),
+    ).toHaveValue("Needed Friday at the job trailer");
+    fireEvent.click(send);
     await waitFor(() =>
       expect(state.save).toHaveBeenCalledWith({
         materialListId: "list",
         supplierId: "supplier",
         sentTo: "Tool room",
-        notes: undefined,
+        notes: "Needed Friday at the job trailer",
       }),
     );
     expect(launched).toEqual([]);
