@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import { useTutorialSandbox } from "~/components/tutorial/tutorial-sandbox-context";
 import { Button } from "~/components/ui/button";
+import { PageHeader } from "~/components/ui/page-header";
 import { Input } from "~/components/ui/input";
 import { confirmAction, notify } from "~/components/ui/app-dialogs";
 import {
@@ -799,7 +800,12 @@ export function JobDocumentsView({
         multiple
         onChange={(event) => void upload(Array.from(event.target.files ?? []))}
       />
-      <h2 className="text-foreground !mb-6 text-xl font-semibold">Documents</h2>
+      <PageHeader
+        level="section"
+        title="Documents"
+        description="Files, revisions, reviews & Office documents"
+        className="!mb-6"
+      />
       {sandbox && (
         <p className="bg-muted rounded-lg border p-3 text-sm">
           Documents is read-only in the tutorial. Open a real job to upload

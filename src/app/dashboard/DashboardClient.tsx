@@ -1,6 +1,7 @@
 "use client";
 import { useCardMerge } from "~/components/materialLists/use-card-merge";
 import { notify } from "~/components/ui/app-dialogs";
+import { PageHeader } from "~/components/ui/page-header";
 import { usePageViewState } from "~/hooks/use-page-view-state";
 import { FinancialOnly } from "~/components/permissions/FinancialVisibility";
 import { DeferredJobModelsView } from "~/components/models/DeferredJobModelsView";
@@ -679,23 +680,24 @@ export function DashboardClient({
                 } />
               ) : (
                 <>
-              <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <h2 className="text-xl font-semibold text-foreground">
-                    Material Lists
-                  </h2>
-                </div>
-                <div className="hidden gap-2 sm:flex">
-                  <Button
-                    data-tutorial="create-list"
-                    onClick={() => handleCreateMaterialList(offlineJob.id)}
-                    size="lg"
-                    className="hidden h-11 sm:inline-flex sm:w-auto"
-                  >
-                    <PlusIcon className="mr-2 h-5 w-5" />
-                    New Material List
-                  </Button>
-              </div>
+              <PageHeader
+                level="section"
+                title="Material Lists"
+                description="Parts to price, send and track"
+                actions={
+                  <div className="hidden gap-2 sm:flex">
+                    <Button
+                      data-tutorial="create-list"
+                      onClick={() => handleCreateMaterialList(offlineJob.id)}
+                      size="lg"
+                      className="hidden h-11 sm:inline-flex sm:w-auto"
+                    >
+                      <PlusIcon className="mr-2 h-5 w-5" />
+                      New Material List
+                    </Button>
+                  </div>
+                }
+              />
 
               {merge.banner}
               {offlineMaterialLists.length === 0 ? (
@@ -876,7 +878,6 @@ export function DashboardClient({
                   New Material List
                 </Button>
                 </div>
-              </div>
                 </>
               )}
             </>
@@ -980,18 +981,10 @@ export function DashboardClient({
             </div>
           </div>
         )}
-        <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <h1 className="text-2xl font-bold text-foreground sm:text-3xl">
-                Jobs
-              </h1>
-              <p className="text-muted-foreground mt-2 text-sm sm:text-base">
-                Select a job to open it
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
+        <PageHeader
+          title="Jobs"
+          description="Select a job to open it"
+          actions={
             <Button
               onClick={() => setShowCreateDialog(true)}
               size="lg"
@@ -1000,8 +993,8 @@ export function DashboardClient({
               <PlusIcon className="mr-2 h-5 w-5" />
               Add Job
             </Button>
-          </div>
-        </div>
+          }
+        />
 
         {isWaitingForJobs ? (
           <div

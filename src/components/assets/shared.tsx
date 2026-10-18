@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 
 import { Badge } from "~/components/ui/badge";
+import { PageHeader } from "~/components/ui/page-header";
 import { useOnlineStatus } from "~/hooks/use-online-status";
 import { cn } from "~/lib/utils";
 import { api, type RouterOutputs } from "~/trpc/react";
@@ -73,16 +74,15 @@ export function AssetsShell({
   return (
     <div className="px-4 py-6 pb-24 sm:px-6 sm:py-8">
       <div className="mx-auto max-w-6xl space-y-5">
+        <PageHeader
+          title={title}
+          description={description}
+          className="mb-3"
+          actions={
+            actions && <div className="flex flex-wrap gap-2">{actions}</div>
+          }
+        />
         <AssetsNav />
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <div className="min-w-0">
-            <h2 className="text-xl font-bold sm:text-2xl">{title}</h2>
-            {description && (
-              <p className="text-muted-foreground mt-1 text-sm sm:text-base">{description}</p>
-            )}
-          </div>
-          {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
-        </div>
         {!isOnline ? (
           <p className="inline-flex items-center gap-2 rounded-full bg-orange-100 px-3 py-1 text-xs font-medium text-orange-900">
             <WifiOffIcon className="h-3 w-3" /> Reconnect to use Asset Management.

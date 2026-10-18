@@ -276,8 +276,10 @@ export default function JobPricingPage({
       </Link>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">Job pricing</h1>
-          <p className="text-muted-foreground mt-1 text-sm">
+          <h2 className="text-foreground text-xl font-semibold sm:text-2xl">
+            Job pricing
+          </h2>
+          <p className="text-muted-foreground mt-1 text-sm sm:text-base">
             {data.policy?.name ?? "Set up a job supplier list"}
           </p>
         </div>

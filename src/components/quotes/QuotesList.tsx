@@ -6,6 +6,7 @@ import { api } from "~/trpc/react";
 import Link from "next/link";
 import { FileTextIcon, ExternalLinkIcon, MailIcon, WifiOffIcon } from "lucide-react";
 import { Button } from "~/components/ui/button";
+import { PageHeader } from "~/components/ui/page-header";
 import { useOnlineStatus } from "~/hooks/use-online-status";
 import { useOfflineQuotes } from "~/hooks/use-offline-documents";
 import { ListPageSkeleton } from "~/components/ui/skeleton";
@@ -33,17 +34,16 @@ export function QuotesList() {
   if (!quotes || quotes.length === 0) {
     return (
       <div className="space-y-4">
-        <div>
-          <h2 className="text-xl font-bold sm:text-2xl">Quotes</h2>
-          <p className="text-muted-foreground mt-1 text-sm sm:text-base">
-            View past quotes and their material lists
-          </p>
+        <PageHeader
+          title="Quotes"
+          description="View past quotes and their material lists"
+        >
           {isOfflineFallback && (
             <p className="mt-2 inline-flex items-center gap-2 rounded-full bg-orange-100 px-3 py-1 text-xs font-medium text-orange-900">
               <WifiOffIcon className="h-3 w-3" /> Offline cached quotes
             </p>
           )}
-        </div>
+        </PageHeader>
         <div className="rounded-lg border border-dashed p-12 text-center">
           <FileTextIcon className="mx-auto h-12 w-12 text-muted-foreground" />
           <h3 className="mt-4 text-lg font-semibold">No quotes yet</h3>
@@ -99,12 +99,10 @@ export function QuotesList() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h2 className="text-xl font-bold sm:text-2xl">Quotes</h2>
-        <p className="text-muted-foreground mt-1 text-sm sm:text-base">
-          View past quotes and their material lists
-        </p>
-      </div>
+      <PageHeader
+        title="Quotes"
+        description="View past quotes and their material lists"
+      />
 
       <div className="rounded-lg border bg-card">
         <div className="divide-y">

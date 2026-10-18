@@ -1,6 +1,7 @@
 "use client";
 import { useCardMerge } from "~/components/materialLists/use-card-merge";
 import { notify } from "~/components/ui/app-dialogs";
+import { PageHeader } from "~/components/ui/page-header";
 import { CopyIcon, MergeIcon } from "lucide-react";
 import { FinancialOnly } from "~/components/permissions/FinancialVisibility";
 
@@ -327,34 +328,32 @@ export default function JobDetailPage({
           </div>
         )}
 
-        {userData?.permissions.tabAccess.assets && (
-          <Link
-            href={`/dashboard/assets/where/job/${job.id}`}
-            className="text-muted-foreground mb-4 inline-flex items-center gap-2 text-sm hover:text-foreground hover:underline"
-          >
-            <WrenchIcon className="h-4 w-4" />
-            <span>Tools on this job</span>
-          </Link>
-        )}
-
-        {/* Material Lists Section */}
-        <div className="mb-6 flex flex-col gap-4 sm:mb-8 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="text-xl font-semibold text-foreground">
-              Material Lists
-            </h2>
-          </div>
-          <div className="hidden gap-2 sm:flex">
-            <Button
-              onClick={handleCreateNew}
-              size="lg"
-              className="h-11 w-full sm:w-auto"
-            >
-              <PlusIcon className="mr-2 h-5 w-5" />
-              New Material List
-            </Button>
-          </div>
-        </div>
+        <PageHeader
+          level="section"
+          title="Material Lists"
+          description="Parts to price, send and track"
+          actions={
+            <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+              {userData?.permissions.tabAccess.assets && (
+                <Link
+                  href={`/dashboard/assets/where/job/${job.id}`}
+                  className="text-muted-foreground hover:text-foreground inline-flex h-11 items-center gap-2 text-sm hover:underline sm:px-2"
+                >
+                  <WrenchIcon className="h-4 w-4" />
+                  <span>Tools on this job</span>
+                </Link>
+              )}
+              <Button
+                onClick={handleCreateNew}
+                size="lg"
+                className="hidden h-11 sm:inline-flex sm:w-auto"
+              >
+                <PlusIcon className="mr-2 h-5 w-5" />
+                New Material List
+              </Button>
+            </div>
+          }
+        />
 
         {merge.banner}
         {!materialLists || materialLists.length === 0 ? (

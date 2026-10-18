@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
+import { PageHeader } from "~/components/ui/page-header";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -67,21 +68,19 @@ export function SupplierList() {
   if (suppliers.length === 0) {
     return (
       <div className="space-y-4">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="text-xl font-bold sm:text-2xl">Suppliers</h2>
-            <p className="text-muted-foreground mt-1 text-sm sm:text-base">
-              Manage your suppliers and their parts
-            </p>
-          </div>
-          <Button
-            onClick={() => setIsCreateDialogOpen(true)}
-            className="h-11 w-full sm:w-auto"
-          >
-            <PlusIcon className="mr-2 h-4 w-4" />
-            Add Supplier
-          </Button>
-        </div>
+        <PageHeader
+          title="Suppliers"
+          description="Manage your suppliers and their parts"
+          actions={
+            <Button
+              onClick={() => setIsCreateDialogOpen(true)}
+              className="h-11 w-full sm:w-auto"
+            >
+              <PlusIcon className="mr-2 h-4 w-4" />
+              Add Supplier
+            </Button>
+          }
+        />
         <div className="rounded-lg border border-dashed p-12 text-center">
           <PackageIcon className="text-muted-foreground mx-auto h-12 w-12" />
           <h3 className="mt-4 text-lg font-semibold">No suppliers yet</h3>
@@ -103,21 +102,19 @@ export function SupplierList() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className="text-xl font-bold sm:text-2xl">Suppliers</h2>
-          <p className="text-muted-foreground mt-1 text-sm sm:text-base">
-            Manage your suppliers and their parts
-          </p>
-        </div>
-        <Button
-          onClick={() => setIsCreateDialogOpen(true)}
-          className="h-11 w-full sm:w-auto"
-        >
-          <PlusIcon className="mr-2 h-4 w-4" />
-          Add Supplier
-        </Button>
-      </div>
+      <PageHeader
+        title="Suppliers"
+        description="Manage your suppliers and their parts"
+        actions={
+          <Button
+            onClick={() => setIsCreateDialogOpen(true)}
+            className="h-11 w-full sm:w-auto"
+          >
+            <PlusIcon className="mr-2 h-4 w-4" />
+            Add Supplier
+          </Button>
+        }
+      />
 
       <div className="rounded-lg border bg-card">
         <div className="divide-y">

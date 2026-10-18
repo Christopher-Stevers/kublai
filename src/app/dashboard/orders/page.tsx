@@ -8,6 +8,7 @@ import { useMemo, useRef, useState } from "react";
 import { scoreOrderSearch } from "~/lib/order-search";
 import { api } from "~/trpc/react";
 import { Card, CardContent } from "~/components/ui/card";
+import { PageHeader } from "~/components/ui/page-header";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Textarea } from "~/components/ui/textarea";
@@ -340,19 +341,16 @@ export default function OrdersPage() {
   return (
     <div className="px-4 py-6 sm:px-6 sm:py-8">
       <div className="mx-auto max-w-2xl">
-        <div className="mb-8">
-          <h1 className="text-foreground text-2xl font-bold sm:text-3xl">
-            Orders
-          </h1>
-          <p className="text-muted-foreground mt-2 text-sm sm:text-base">
-            Open an order to review the email that was sent.
-          </p>
+        <PageHeader
+          title="Orders"
+          description="Open an order to review the email that was sent"
+        >
           {isOfflineFallback && (
             <p className="mt-3 inline-flex items-center gap-2 rounded-full bg-orange-100 px-3 py-1 text-xs font-medium text-orange-900">
               <WifiOffIcon className="h-3 w-3" /> Offline cached orders
             </p>
           )}
-        </div>
+        </PageHeader>
 
         {canSendOrders && <DeliveryCalendarSettings online={isOnline} onSaved={() => {
           setEmailDrafts(new Map());

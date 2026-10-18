@@ -285,6 +285,55 @@ a {
   }
 }
 
+/* Drop-downs: every native <select> matches the outline drop-down buttons
+   (Orders filters) — same border, shadow, chevron and focus ring — while
+   phones still open their own picker. Unlayered so it applies over each
+   select's own padding utilities, which would otherwise hide the chevron. */
+select:not([multiple]):not([size]) {
+  appearance: none;
+  padding-inline-end: 2.25rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23737373' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 1rem;
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  cursor: pointer;
+  text-overflow: ellipsis;
+  transition:
+    border-color 150ms,
+    box-shadow 150ms;
+}
+.dark select:not([multiple]):not([size]) {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a3a3a3' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+select.border-0 {
+  box-shadow: none;
+}
+select:not([multiple]):not([size]):hover:not(:disabled) {
+  border-color: color-mix(in oklab, var(--ring) 45%, var(--border));
+}
+select:focus-visible,
+input[type="date"]:focus-visible,
+input[type="time"]:focus-visible {
+  outline: none;
+  border-color: var(--ring);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 50%, transparent);
+}
+select:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+/* Date and time boxes sit beside drop-downs; give them the same finish. */
+input[type="date"],
+input[type="time"] {
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+}
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.55;
+}
+
 @layer utilities {
   .dark .bg-white,
   .dark .bg-gray-50,

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
+import { PageHeader } from "~/components/ui/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Badge } from "~/components/ui/badge";
 import { Input } from "~/components/ui/input";
@@ -60,9 +61,10 @@ export default function AccountPage() {
     return (
       <div className="px-4 py-6 sm:px-6 sm:py-8">
         <div className="mx-auto max-w-4xl">
-          <h1 className="text-foreground mb-6 text-2xl font-bold sm:mb-8 sm:text-3xl">
-            Account
-          </h1>
+          <PageHeader
+            title="Account"
+            description="Your profile, sign-in and subscription"
+          />
           <Card>
             <CardContent className="p-6 sm:p-8">
               <FormSkeleton label="Loading account" />
@@ -76,9 +78,10 @@ export default function AccountPage() {
   return (
     <div className="px-4 py-6 sm:px-6 sm:py-8">
       <div className="mx-auto max-w-4xl">
-        <h1 className="text-foreground mb-6 text-2xl font-bold sm:mb-8 sm:text-3xl">
-          Account
-        </h1>
+        <PageHeader
+          title="Account"
+          description="Your profile, sign-in and subscription"
+        />
         <div className="space-y-6 sm:space-y-8">
           <Card>
             <CardHeader>

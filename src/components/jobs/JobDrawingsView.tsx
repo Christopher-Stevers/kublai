@@ -26,6 +26,7 @@ import { api } from "~/trpc/react";
 import type { DrawingWorkspace as WorkspaceSnapshot } from "~/lib/drawing-workspace";
 import { useTutorialSandbox } from "~/components/tutorial/tutorial-sandbox-context";
 import { Button } from "~/components/ui/button";
+import { PageHeader } from "~/components/ui/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
 import { ViewToggle } from "~/components/ui/view-toggle";
@@ -1005,10 +1006,26 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
   );
   return (
     <div className="pb-24">
-      <div className="mb-6 flex items-center justify-between gap-3">
-        <h2 className="text-foreground text-xl font-semibold">Drawings</h2>
-        {canUpload && folders.length > 0 && <div className="hidden gap-2 sm:flex">{newFolderButton("h-11")}<Button className="h-11" variant="outline" onClick={() => setRevisionsOpen(true)}>Upload revised drawings</Button></div>}
-      </div>
+      <PageHeader
+        level="section"
+        title="Drawings"
+        description="Drawing sets to view on site"
+        actions={
+          canUpload &&
+          folders.length > 0 && (
+            <div className="hidden gap-2 sm:flex">
+              {newFolderButton("h-11")}
+              <Button
+                className="h-11"
+                variant="outline"
+                onClick={() => setRevisionsOpen(true)}
+              >
+                Upload revised drawings
+              </Button>
+            </div>
+          )
+        }
+      />
       {sets.isLoading && !setsData ? (
         <p role="status" className="text-muted-foreground text-sm">
           Loading drawings…

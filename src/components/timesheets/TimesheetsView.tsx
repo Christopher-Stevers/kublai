@@ -14,6 +14,7 @@ import {
 import { api, type RouterOutputs } from "~/trpc/react";
 import type { TimeSettings } from "~/lib/timesheets";
 import { Button } from "~/components/ui/button";
+import { PageHeader } from "~/components/ui/page-header";
 import { Input } from "~/components/ui/input";
 import {
   Dialog,
@@ -62,8 +63,8 @@ export function TimesheetsView() {
   });
   if (!context.data)
     return (
-      <div className="p-5">
-        <h1 className="text-2xl font-bold">Timesheets</h1>
+      <div className="mx-auto max-w-6xl px-4 py-5 sm:px-6">
+        <PageHeader title="Timesheets" />
         <p role={context.error || !online ? "alert" : "status"}>
           {context.error?.message ??
             (!online ? "Reconnect to load timesheets." : "Loading timesheets…")}
@@ -351,14 +352,10 @@ function TimesheetsContent({
   }
   return (
     <div className="mx-auto max-w-6xl space-y-5 px-4 py-5 pb-20 sm:px-6">
-      <div className="flex items-center justify-between gap-3">
-        <h1 className="text-2xl font-bold">Timesheets</h1>
-        {info && (
-          <span className="text-muted-foreground text-sm">
-            {cap(info.settings.cadence)} submissions
-          </span>
-        )}
-      </div>
+      <PageHeader
+        title="Timesheets"
+        description={`Clock in, log hours and submit ${info ? `${info.settings.cadence} ` : ""}timesheets`}
+      />
       {!online && (
         <p role="alert" className="rounded-md border p-3 text-sm">
           Reconnect to save time or change the clock. A running timer continues

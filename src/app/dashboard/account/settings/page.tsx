@@ -8,6 +8,7 @@ import { isIosDevice, useInstallPrompt } from "~/lib/install-prompt";
 import { CheckCircle2Icon, DownloadIcon } from "lucide-react";
 import { RestartTutorialCard } from "~/components/tutorial/TutorialGate";
 import { Button } from "~/components/ui/button";
+import { PageHeader } from "~/components/ui/page-header";
 import { Input } from "~/components/ui/input";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -75,15 +76,10 @@ export default function SettingsPage() {
 
   return (
     <div className="mx-auto w-full max-w-2xl space-y-5 px-4 py-6 sm:px-6 sm:py-8">
-      <div>
-        <h1 className="text-foreground text-2xl font-bold sm:text-3xl">
-          Settings
-        </h1>
-        <p className="text-muted-foreground mt-2 text-sm">
-          Make ForemanHQ work the way you prefer. Changes save automatically on
-          this device.
-        </p>
-      </div>
+      <PageHeader
+        title="Settings"
+        description="Make ForemanHQ work the way you prefer. Changes save automatically on this device."
+      />
 
       <Card>
         <CardHeader><CardTitle>Navigation</CardTitle></CardHeader>

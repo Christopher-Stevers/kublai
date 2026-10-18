@@ -22,6 +22,7 @@ import { RoomDetails, type RoomNotesDraft } from "./RoomDetails";
 
 import { useDrawingCapabilities } from "~/components/permissions/DrawingsAccess";
 import { notify } from "~/components/ui/app-dialogs";
+import { PageHeader } from "~/components/ui/page-header";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import {
@@ -685,12 +686,13 @@ export function JobRoomsView({
       {!selectedFloor ? (
         <div className={canUpload ? "sm:pb-20" : undefined}>
           <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <h2
-              data-tutorial="rooms-root"
-              className="text-foreground text-xl font-semibold"
-            >
-              Rooms
-            </h2>
+            <PageHeader
+              level="section"
+              title="Rooms"
+              description="Rooms found on each floor plan"
+              className="mb-0"
+              titleProps={{ "data-tutorial": "rooms-root" }}
+            />
             {canUpload ? (
               <>
                 <input
